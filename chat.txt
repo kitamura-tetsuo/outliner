@@ -1,0 +1,14 @@
+Fluid Frameworkと svelteを使ったアプリを作りたい。 Fluid FrameworkのサーバーはローカルでRouterliciousを使う。 dockerコンテナ内で作業したいから、 .devcontainerを作りたい。
+
+この情報だけ十分なら設定ファイルを作成して。
+
+不十分なら何が不十分か教えて。
+
+最新のAPIドキュメントを確認しながら作業して。
+代替方法の提案をするとき、コードは出力しないで。
+拡張機能のバグだと思うが、最初の候補のコードが表示されなくなる。
+
+
+https://www.npmjs.com/package/fluid-framework
+https://fluidframework.com/docs/start/tree-start
+https://learn.microsoft.com/en-us/azure/azure-fluid-relay/how-tos/connect-fluid-azure-service

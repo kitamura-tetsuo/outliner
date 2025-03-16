@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Launch Chrome against localhost",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/src/*"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug SvelteKit Server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--host", "0.0.0.0"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "restart": true
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full-Stack: Server + Client",
+      "configurations": ["Debug SvelteKit Server", "Launch Chrome against localhost"]
+    }
+  ]
+}
