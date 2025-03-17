@@ -52,7 +52,7 @@
 		"@fluidframework/fluid-static": "^2.23.0",
 		"@fluidframework/sequence": "^2.23.0",
 		"@fluidframework/tree": "^2.23.0",
-		"@inlang/paraglide-sveltekit": "^0.15.5"
+		"@inlang/paraglide-sveltekit": "^0.15.5",
+		"fluid-framework": "^2.23.0"
 	}
 }
-

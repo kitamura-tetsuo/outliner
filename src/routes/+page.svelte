@@ -1,4 +1,6 @@
 <script lang="ts">
+  export const ssr = false;
+  
   import { onDestroy, onMount } from 'svelte';
   import { FluidClient } from '../fluid/fluidClient';
   import { getDebugConfig } from '../lib/env';

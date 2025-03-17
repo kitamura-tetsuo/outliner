@@ -1,4 +1,6 @@
 <script lang="ts">
+  export const ssr = false;
+  
 	import type { AvailableLanguageTag } from '$lib/paraglide/runtime';
 	import { i18n } from '$lib/i18n';
 	import { page } from '$app/state';

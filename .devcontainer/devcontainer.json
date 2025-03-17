@@ -14,9 +14,11 @@
 	// "customizations": {},
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	"remoteUser": "node",
-	
 	// ワークスペースフォルダを/workspaceに設定
 	"workspaceFolder": "/workspace",
 	// ローカルのソースコードを/workspaceにマウント
-	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+	"mounts": [
+		"source=/home/ubuntu/.ssh,target=/home/node/.ssh,type=bind,consistency=cached"
+	],
 }
