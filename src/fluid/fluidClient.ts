@@ -1,8 +1,8 @@
 import type { ITokenProvider } from '@fluidframework/azure-client';
 import { AzureClient } from '@fluidframework/azure-client';
-import { SchemaFactory, TreeViewConfiguration } from '@fluidframework/tree';
 import { type ContainerSchema, SharedTree } from "fluid-framework";
 import { getFluidClient } from '../lib/fluidService';
+import { appTreeConfiguration, Items } from "../schema/app-schema";
 
 // ユーザー情報の型定義
 export interface IUser {
@@ -146,36 +146,17 @@ export class FluidClient {
 			const { container } = await this.client.createContainer(schema, "2");
 			this.container = container;
 			this.containerId = await container.attach();
-
-			const schemaFactory = new SchemaFactory('some-schema-id-prob-a-uuid');
-
-			class TodoItem extends schemaFactory.object('TodoItem', {
-				description: schemaFactory.string,
-				isCompleted: schemaFactory.boolean
-			}) {}
-			class TodoItems extends schemaFactory.array('TodoItems', TodoItem) {}
-
-			class TodoList extends schemaFactory.object('TodoList', {
-				title: schemaFactory.string,
-				items: TodoItems
-			}) {}
-
-			const treeConfiguration = new TreeViewConfiguration({ schema: TodoList });
-
-			const appData = container.initialObjects.appData.viewWith(treeConfiguration);
-
-			appData.initialize(
-				new TodoList({
-					title: 'todo list',
-					items: []
-				})
-			);
+			
+			// スキーマを指定してTreeViewを構成 - SchemaをクラスではなくSchema定義として使用
+			// const treeConfiguration = new TreeViewConfiguration({ schema: ProjectSchema });
+			const appData = container.initialObjects.appData.viewWith(appTreeConfiguration);
+			
+			// 初期データでアプリを初期化
+			appData.initialize(new Items([]));
 
 			// コンテナの接続状態を監視
 			this.container.on('connected', () => {
 				console.log('Connected to Fluid service');
-				// デバッガー用のデバッグポイント
-				debugger; // 接続成功時にデバッガーが停止します
 			});
 
 			this.container.on('disconnected', () => {
