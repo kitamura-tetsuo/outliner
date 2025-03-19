@@ -15,26 +15,15 @@ import { v4 as uuid } from "uuid";
 // as list and map nodes.
 
 // Include a UUID to guarantee that this schema will be uniquely identifiable.
-// As this schema uses a recursive type, the beta SchemaFactoryRecursive is used instead of just SchemaFactory.
 const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120002");
 
 // Define the schema for the note object.
-// Helper functions for working with the data contained in this object
-// are included in this class definition as methods.
 export class Note extends sf.object(
 	"Note",
-	// Fields for Notes which SharedTree will store and synchronize across clients.
-	// These fields are exposed as members of instances of the Note class.
 	{
-		/**
-		 * Id to make building the React app simpler.
-		 */
 		id: sf.string,
 		text: sf.string,
 		author: sf.string,
-		/**
-		 * Sequence of user ids to track which users have voted on this note.
-		 */
 		votes: sf.array(sf.string),
 		created: sf.number,
 		lastChanged: sf.number,
@@ -57,13 +46,8 @@ export class Note extends sf.object(
 		this.lastChanged = new Date().getTime();
 	};
 
-	/**
-	 * Removes a node from its parent {@link Items}.
-	 * If the note is not in an {@link Items}, it is left unchanged.
-	 */
 	public readonly delete = () => {
 		const parent = Tree.parent(this);
-		// Use type narrowing to ensure that parent is Items as expected for a note.
 		if (Tree.is(parent, Items)) {
 			const index = parent.indexOf(this);
 			parent.removeAt(index);
@@ -76,8 +60,6 @@ export class Items extends sf.arrayRecursive("Items", [() => Item, Note]) {
 	public readonly addNode = (author: string) => {
 		const timeStamp = new Date().getTime();
 
-		// Define the note to add to the SharedTree - this must conform to
-		// the schema definition of a note
 		const newNote = new Note({
 			id: uuid(),
 			text: "",
@@ -87,13 +69,9 @@ export class Items extends sf.arrayRecursive("Items", [() => Item, Note]) {
 			lastChanged: timeStamp,
 		});
 
-		// Insert the note into the SharedTree.
 		this.insertAtEnd(newNote);
 	};
 
-	/**
-	 * Add a new group (container for notes) to the SharedTree.
-	 */
 	public readonly addGroup = (name: string): Item => {
 		const group = new Item({
 			id: uuid(),
@@ -107,10 +85,7 @@ export class Items extends sf.arrayRecursive("Items", [() => Item, Note]) {
 }
 
 {
-	// Due to limitations of TypeScript, recursive schema may not produce type errors when declared incorrectly.
-	// Using ValidateRecursiveSchema helps ensure that mistakes made in the definition of a recursive schema (like `Items`)
-	// will introduce a compile error.
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	// Type validation helper
 	type _check = ValidateRecursiveSchema<typeof Items>;
 }
 
@@ -121,12 +96,6 @@ export class Item extends sf.objectRecursive("Item", {
 	text: sf.string,
 	items: Items,
 }) {
-	/**
-	 * Removes a group from its parent {@link Items}.
-	 * If the note is not in an {@link Items}, it is left unchanged.
-	 *
-	 * Before removing the group, its children are move to the parent.
-	 */
 	public readonly delete = () => {
 		const parent = Tree.parent(this);
 		if (Tree.is(parent, Items)) {
@@ -147,12 +116,11 @@ export class Item extends sf.objectRecursive("Item", {
 }
 
 {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	// Type validation helper
 	type _check = ValidateRecursiveSchema<typeof Item>;
 }
 
 // Export the tree config appropriate for this schema.
-// This is passed into the SharedTree when it is initialized.
 export const appTreeConfiguration = new TreeViewConfiguration(
 	// Schema for the root
 	{ schema: Items },

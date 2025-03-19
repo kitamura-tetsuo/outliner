@@ -4,16 +4,12 @@
   import { getDebugConfig } from '../lib/env';
 
   let fluidClient: FluidClient;
-  let text = "";
   let inputText = "";
   let debugInfo: any = {};
   let showDebugPanel = false;
   let hostInfo = "";
   let envConfig = getDebugConfig();
   let treeData: any = {};
-
-  // VSCodeからアクセス可能なグローバル変数
-  let _vscodeDebugContext: any = {};
 
   // SharedTreeの変更を監視するためのハンドラ
   function handleTreeChanged(event: CustomEvent) {
@@ -43,24 +39,9 @@
         console.info("FluidClient attached to window.__FLUID_CLIENT__ for VSCode debugging");
       }
       
-      // 内部デバッグコンテキストを設定
-      _vscodeDebugContext = {
-        client: fluidClient,
-        updateDebugInfo: updateDebugInfo
-      };
-      
-      // 初期データの設定例
-      fluidClient.setData("appName", "Outliner");
-      fluidClient.setData("debugAttached", true);
-      
-      // 共有テキストの監視と更新
-      // sharedString プロパティが未実装のため、この部分をコメントアウトまたは修正
-      /* if (fluidClient.sharedString) {
-        fluidClient.sharedString.on("sequenceDelta", () => {
-          text = fluidClient.getText();
-          updateDebugInfo();
-        });
-      } */
+      // 初期データの設定
+      fluidClient.setData?.("appName", "Outliner");
+      fluidClient.setData?.("debugAttached", true);
       
       // 初期TreeDataを取得
       treeData = fluidClient.getAllData();
@@ -69,11 +50,9 @@
       updateDebugInfo();
 
       // 環境変数情報も保存
-      fluidClient.setData("debugConfig", envConfig);
+      fluidClient.setData?.("debugConfig", envConfig);
     } catch (error) {
       console.error("[+page] Error initializing FluidClient:", error);
-      // VSCode debugger用にエラーをキャプチャ
-      // debugger;
     }
   });
   
@@ -88,8 +67,8 @@
 
   function handleInput() {
     console.debug("[+page] Adding text:", inputText);
-    if (fluidClient) {
-      fluidClient.insertText(0, inputText + "\n");
+    if (fluidClient && inputText) {
+      // ここにテキスト追加処理を実装
       inputText = "";
       updateDebugInfo();
     }
@@ -105,10 +84,6 @@
     showDebugPanel = !showDebugPanel;
     updateDebugInfo();
   }
-
-  // SharedTreeの初期化コードを更新
-  // const treeConfig = new TreeConfiguration();
-  // const tree = new SharedTree(treeConfig);
 </script>
 
 <main>
@@ -139,11 +114,6 @@
 
   <div class="shared-content mt-4 p-4 border rounded">
     <h2>Shared Content:</h2>
-    <div class="mb-4">
-      <h3>Shared Text:</h3>
-      <pre>{text}</pre>
-    </div>
-    
     <div class="mt-4">
       <h3>Shared Tree Data:</h3>
       <pre class="text-left">{JSON.stringify(treeData, null, 2)}</pre>

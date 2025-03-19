@@ -88,16 +88,6 @@ export class FluidClient {
 		if (this.currentUser) {
 			return {
 				fetchOrdererToken: async () => {
-					// 実際の環境では、ここでバックエンドAPIを呼び出してトークンを取得します
-					// 例: const response = await fetch('/api/getFluidToken', { 
-					//   method: 'POST', 
-					//   body: JSON.stringify({ userId: this.currentUser.id }),
-					//   headers: { 'Content-Type': 'application/json' }
-					// });
-					// const token = await response.json();
-					// return token;
-					
-					// 開発用にシミュレートしたトークンを返す
 					console.debug(`[FluidClient] Fetching orderer token for user: ${this.currentUser.id}`);
 					return {
 						jwt: `simulated-token-for-${this.currentUser.id}`,
@@ -105,7 +95,6 @@ export class FluidClient {
 					};
 				},
 				fetchStorageToken: async () => {
-					// 同様に、実際の環境ではバックエンドAPIからトークンを取得
 					console.debug(`[FluidClient] Fetching storage token for user: ${this.currentUser.id}`);
 					return {
 						jwt: `simulated-token-for-${this.currentUser.id}`,
@@ -147,8 +136,7 @@ export class FluidClient {
 			this.container = container;
 			this.containerId = await container.attach();
 			
-			// スキーマを指定してTreeViewを構成 - SchemaをクラスではなくSchema定義として使用
-			// const treeConfiguration = new TreeViewConfiguration({ schema: ProjectSchema });
+			// スキーマを指定してTreeViewを構成
 			const appData = container.initialObjects.appData.viewWith(appTreeConfiguration);
 			
 			// 初期データでアプリを初期化
@@ -172,54 +160,11 @@ export class FluidClient {
 			return this;
 		} catch (error) {
 			console.error('Failed to initialize Fluid container:', error);
-			// エラー時にデバッグしやすいようにデバッガーを停止
-			// debugger; // エラー発生時にデバッガーが停止します
 			throw error;
 		}
 	}
 
-	// データの設定と取得のためのヘルパーメソッド - SharedTree版 - 最新API対応
-	setData(key: string, value: any) {
-		console.debug(`[FluidClient] Setting data: ${key} =`, value);
-		if (this.sharedTree) {
-			// 最新のSharedTree APIを使用
-			const currentData = this.sharedTree.jsonObjects.get('root') || {};
-			currentData[key] = value;
-			this.sharedTree.jsonObjects.set('root', currentData);
-		}
-	}
-
-	getData(key: string) {
-		if (this.sharedTree) {
-			const data = this.sharedTree.jsonObjects.get('root');
-			const value = data?.[key];
-			console.debug(`[FluidClient] Getting data: ${key} =`, value);
-			return value ?? null;
-		}
-		return null;
-	}
-
-	// 全データを一度に取得
-	getAllData() {
-		if (this.sharedTree) {
-			return this.sharedTree.jsonObjects.get('root') || {};
-		}
-		return {};
-	}
-
-	// テキストの操作用メソッド
-	insertText(position: number, text: string) {
-		console.debug(`[FluidClient] Inserting text at position ${position}:`, text);
-	}
-
-	getText() {
-		// text変数が未定義なためエラーを修正
-		const text = ""; // 適切な実装に置き換える必要があります
-		console.debug(`[FluidClient] Getting text:`, text);
-		return text;
-	}
-
-	// VSCode debugger用の詳細なイベントリスナー
+	// デバッグ用のイベントリスナー設定
 	private _setupDebugEventListeners() {
 		if (!this.container) return;
 
@@ -227,12 +172,11 @@ export class FluidClient {
 			console.debug('[FluidClient] Operation received:', op);
 		});
 
-		// SharedTree用のイベントリスナー - 最新APIに対応
+		// SharedTree用のイベントリスナー
 		if (this.sharedTree) {
 			this.sharedTree.on('changed', () => {
 				console.debug('[FluidClient] Tree changed');
 				if (typeof window !== 'undefined') {
-					// データの変更をページに通知するためのカスタムイベント
 					window.dispatchEvent(
 						new CustomEvent('fluidTreeChanged', {
 							detail: { data: this.getAllData() }
@@ -243,7 +187,7 @@ export class FluidClient {
 		}
 	}
 
-	// デバッグ用のヘルパーメソッド - コメントアウトされていたので実装
+	// デバッグ用のヘルパーメソッド
 	getDebugInfo() {
 		return {
 			clientInitialized: !!this.client,
@@ -252,9 +196,16 @@ export class FluidClient {
 			treeInitialized: !!this.sharedTree,
 			treeData: this.getAllData(),
 			treeKeys: Object.keys(this.getAllData() || {}),
-			textContent: this.getText(),
 			currentUser: this.currentUser
 		};
+	}
+	
+	// 以下は共有データ操作用のヘルパーメソッド
+	getAllData() {
+		if (this.sharedTree) {
+			return this.sharedTree.jsonObjects.get('root') || {};
+		}
+		return {};
 	}
 }
 
