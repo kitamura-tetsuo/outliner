@@ -1,6 +1,4 @@
 <script lang="ts">
-  export const ssr = false;
-  
   import { onDestroy, onMount } from 'svelte';
   import { FluidClient } from '../fluid/fluidClient';
   import { getDebugConfig } from '../lib/env';
@@ -56,12 +54,13 @@
       fluidClient.setData("debugAttached", true);
       
       // 共有テキストの監視と更新
-      if (fluidClient.sharedString) {
+      // sharedString プロパティが未実装のため、この部分をコメントアウトまたは修正
+      /* if (fluidClient.sharedString) {
         fluidClient.sharedString.on("sequenceDelta", () => {
           text = fluidClient.getText();
           updateDebugInfo();
         });
-      }
+      } */
       
       // 初期TreeDataを取得
       treeData = fluidClient.getAllData();

@@ -1,11 +1,8 @@
 import type { ITokenProvider } from '@fluidframework/azure-client';
 import { AzureClient } from '@fluidframework/azure-client';
 import { SchemaFactory, TreeViewConfiguration } from '@fluidframework/tree';
-
-// 修正: 正しいパッケージからContainerSchemaをインポート
 import { type ContainerSchema, SharedTree } from "fluid-framework";
-// import { ContainerSchema } from "@fluidframework/container-definitions";
-// import type { ContainerSchema } from "@fluidframework/fluid-static";
+import { getFluidClient } from '../lib/fluidService';
 
 // ユーザー情報の型定義
 export interface IUser {
@@ -22,45 +19,15 @@ export class FluidClient {
 	public sharedTree: SharedTree | undefined;
 	// ユーザー情報を保持するプロパティ
 	public currentUser: IUser | null = null;
-	// 直接rootにアクセスするように変更
 
 	// Schema definition with SharedTree IdCompressor enabled
 	constructor() {
 		// Set a breakpoint here to debug initialization
 		console.debug('[FluidClient] Initializing...');
-
-		// クライアントサイドかサーバーサイドかを判断
-		const isBrowser = typeof window !== 'undefined';
-
-		// 環境に基づいてエンドポイントを設定
-		const endpoint = isBrowser
-			? (window as any).__FLUID_RELAY_ENDPOINT__ ||
-				import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT ||
-				'https://your-azure-fluid-relay-instance.azurefluid.net'
-			: process.env.AZURE_FLUID_RELAY_ENDPOINT || 'http://0.0.0.0:7070';
-
-		// Azure Fluid Relay の設定 (Microsoft公式ドキュメント準拠)
-		const config = {
-			tenantId:
-				import.meta.env.VITE_AZURE_TENANT_ID || process.env.AZURE_TENANT_ID || 'your-tenant-id',
-			// 開発用のダミートークンプロバイダー
-			// 本番環境では実際のユーザー認証情報に基づいたトークンを取得
-			tokenProvider: this.getTokenProvider(),
-			endpoint: endpoint,
-			type: 'remote'
-		};
-
-		console.debug('[FluidClient] Using endpoint:', endpoint);
-
-		// Azure Fluid Relay クライアントの初期化
-		const clientProps = {
-			connection: config
-		};
-
-		this.client = new AzureClient(clientProps);
-
-		// デバッガー用のデバッグポイント
-		// debugger; // 初期化完了時にデバッガーが停止します
+		
+		// fluidService.tsからシングルトンクライアントを取得
+		const { client } = getFluidClient();
+		this.client = client;
 	}
 
 	// ユーザー登録メソッド
@@ -109,22 +76,10 @@ export class FluidClient {
 
 	// クライアントを新しいユーザー情報で再初期化
 	private reinitializeClient(): void {
-		const isBrowser = typeof window !== 'undefined';
-		const endpoint = isBrowser
-			? (window as any).__FLUID_RELAY_ENDPOINT__ ||
-				import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT ||
-				'https://your-azure-fluid-relay-instance.azurefluid.net'
-			: process.env.AZURE_FLUID_RELAY_ENDPOINT || 'http://0.0.0.0:7070';
-
-		const config = {
-			tenantId:
-				import.meta.env.VITE_AZURE_TENANT_ID || process.env.AZURE_TENANT_ID || 'your-tenant-id',
-			tokenProvider: this.getTokenProvider(),
-			endpoint: endpoint,
-			type: 'remote'
-		};
-
-		this.client = new AzureClient({ connection: config });
+		// シングルトン実装を利用するため、単にgetFluidClientを呼び出すだけでよい
+		const { client } = getFluidClient(this.currentUser?.id);
+		this.client = client;
+		console.debug(`[FluidClient] Client reinitialized for user: ${this.currentUser?.id || 'anonymous'}`);
 	}
 
 	// ユーザー情報に基づいたトークンプロバイダーを取得
@@ -176,14 +131,21 @@ export class FluidClient {
 				this.loadSavedUser();
 			}
 
+			// IdCompressorを有効にしたコンテナスキーマを定義
 			const containerSchema: ContainerSchema = {
 				initialObjects: {
 					appData: SharedTree
 				}
 			};
 
-			const { container } = await this.client.createContainer(containerSchema, '2');
-      this.container = container;
+			// fluid-service.ts から適切なクライアントを取得
+			const { client, schema } = getFluidClient(this.currentUser?.id, containerSchema);
+			this.client = client;
+
+			// バージョン2を明示的に指定してIdCompressorを有効化
+			const { container } = await this.client.createContainer(schema, "2");
+			this.container = container;
+			this.containerId = await container.attach();
 
 			const schemaFactory = new SchemaFactory('some-schema-id-prob-a-uuid');
 
@@ -203,45 +165,11 @@ export class FluidClient {
 			const appData = container.initialObjects.appData.viewWith(treeConfiguration);
 
 			appData.initialize(
-        new TodoList({
+				new TodoList({
 					title: 'todo list',
 					items: []
 				})
-
-      );
-
-			// appData.initialize(
-			// 	new TodoList({
-			// 		title: 'todo list',
-			// 		items: [
-			// 			new TodoItem({
-			// 				description: 'first item',
-			// 				isComplete: true
-			// 			})
-			// 		]
-			// 	})
-			// );
-
-			// // Schema for better debugger access
-			// const schema = FluidClient.schema;
-
-			// // 既存のコンテナを取得または新しいコンテナを作成
-			// const containerResponse = this.containerId
-			// 	? await this.client.getContainer(this.containerId, schema)
-			// 	: await this.client.createContainer(schema);
-
-			// this.container = containerResponse.container;
-			// this.containerId = await this.container.id;
-
-			// // 共有オブジェクトへの参照を取得
-			// this.sharedTree = this.container.initialObjects.tree as SharedTree;
-
-			// // 初期化時、ルートが空の場合は初期データ構造を作成
-			// // 最新のSharedTree APIでは、TreeNodeHandleの代わりに別の方法でアクセスします
-			// const currentContent = this.sharedTree.jsonObjects.get('root');
-			// if (!currentContent) {
-			// 	this.sharedTree.jsonObjects.set('root', {});
-			// }
+			);
 
 			// コンテナの接続状態を監視
 			this.container.on('connected', () => {
@@ -263,7 +191,7 @@ export class FluidClient {
 		} catch (error) {
 			console.error('Failed to initialize Fluid container:', error);
 			// エラー時にデバッグしやすいようにデバッガーを停止
-			debugger; // エラー発生時にデバッガーが停止します
+			// debugger; // エラー発生時にデバッガーが停止します
 			throw error;
 		}
 	}
@@ -331,24 +259,20 @@ export class FluidClient {
 				}
 			});
 		}
-
-			// 	console.debug('[FluidClient] Text changed:', event);
-			// });
-		}
 	}
 
-	// デバッグ用のヘルパーメソッド
-	// getDebugInfo() {
-	// 	// const treeData = this.sharedTree ? this.getAllData() : {};
-
-	// 	// return {
-	// 	// 	clientInitialized: !!this.client,
-	// 	// 	containerConnected: this.container?.connected || false,
-	// 	// 	containerId: this.containerId,
-	// 	// 	treeInitialized: !!this.sharedTree,
-	// 	// 	treeData: treeData,
-	// 	// 	treeKeys: treeData ? Object.keys(treeData) : [],
-	// 	// 	textContent: this.getText()
-	// 	// };
-	// }
+	// デバッグ用のヘルパーメソッド - コメントアウトされていたので実装
+	getDebugInfo() {
+		return {
+			clientInitialized: !!this.client,
+			containerConnected: this.container?.connected || false,
+			containerId: this.containerId,
+			treeInitialized: !!this.sharedTree,
+			treeData: this.getAllData(),
+			treeKeys: Object.keys(this.getAllData() || {}),
+			textContent: this.getText(),
+			currentUser: this.currentUser
+		};
+	}
+}
 

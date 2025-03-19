@@ -11,12 +11,14 @@ export const getEnv = (key: string, defaultValue: string = ''): string => {
 	return process.env[key] || defaultValue;
 };
 
-// デバッグするとき用の設定取得関数
-export const getDebugConfig = () => {
-	return {
-		userId: getEnv('VITE_DEBUG_USER_ID', 'dev-user'),
-		userName: getEnv('VITE_DEBUG_USER_NAME', 'Developer'),
-		fluidEndpoint: getEnv('VITE_AZURE_FLUID_RELAY_ENDPOINT', 'http://0.0.0.0:7070'),
-		tenantId: getEnv('VITE_AZURE_TENANT_ID', 'your-tenant-id')
-	};
-};
+/**
+ * デバッグ用の環境設定を取得する関数
+ */
+export function getDebugConfig() {
+  return {
+    isDevelopment: import.meta.env.DEV,
+    host: typeof window !== 'undefined' ? window.location.host : 'server-side',
+    nodeEnv: import.meta.env.MODE,
+    fluidEndpoint: import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT || 'development-endpoint'
+  };
+}

@@ -17,16 +17,42 @@
       "request": "launch",
       "name": "Debug SvelteKit Server",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--host", "0.0.0.0"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "0.0.0.0"
+      ],
       "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
       "restart": true
+    },
+    {
+      "name": "Launch Tinylicious",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "tinylicious"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     }
   ],
   "compounds": [
     {
       "name": "Full-Stack: Server + Client",
-      "configurations": ["Debug SvelteKit Server", "Launch Chrome against localhost"]
-    }
-  ]
+      "configurations": [
+        "Launch Tinylicious",
+        "Debug SvelteKit Server",
+        "Launch Chrome against localhost"
+      ],
+      "stopAll": true
+    },
+  }
+]
 }
