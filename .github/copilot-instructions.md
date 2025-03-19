@@ -1,12 +1,10 @@
 作成するアプリの説明
-scrapboxのクローンから始める。
+scrapbox, workflowy のクローンから始める。
 
 利用するライブラリ
 Fluid Frameworkと svelteを使ったアプリを作りたい。
 
 最新のAPIドキュメントを確認しながら作業して。
-代替方法の提案をするとき、コードは出力しないで。
-拡張機能のバグだと思うが、最初の候補のコードが表示されなくなる。
 
 最新のAPIドキュメント
 https://learn.microsoft.com/ja-jp/azure/azure-fluid-relay/how-tos/connect-fluid-azure-service

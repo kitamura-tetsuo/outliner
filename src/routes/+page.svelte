@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { FluidClient } from '../fluid/fluidClient';
   import { getDebugConfig } from '../lib/env';
+  import OutlinerTree from '../components/OutlinerTree.svelte';
 
   let fluidClient: FluidClient;
   let inputText = "";
@@ -10,6 +11,7 @@
   let hostInfo = "";
   let envConfig = getDebugConfig();
   let treeData: any = {};
+  let rootItems; // アウトラインのルートアイテム
 
   // SharedTreeの変更を監視するためのハンドラ
   function handleTreeChanged(event: CustomEvent) {
@@ -38,6 +40,9 @@
         (window as any).__FLUID_CLIENT__ = fluidClient;
         console.info("FluidClient attached to window.__FLUID_CLIENT__ for VSCode debugging");
       }
+      
+      // Outlinerで使用するrootItemsを設定
+      rootItems = fluidClient.getTree();
       
       // 初期データの設定
       fluidClient.setData?.("appName", "Outliner");
@@ -87,40 +92,26 @@
 </script>
 
 <main>
-  <h1>Fluid Framework with Azure Fluid Relay</h1>
-  <p>Welcome to your Azure Fluid Relay powered application!</p>
+  <h1>Workflowy/Scrapbox Style Outliner</h1>
   <p class="host-info">Running on: {hostInfo}</p>
   
-  <div class="input-section">
-    <input 
-      type="text" 
-      bind:value={inputText} 
-      placeholder="Enter text to share"
-      class="border p-2 rounded"
-    />
-    <button 
-      on:click={handleInput}
-      class="bg-blue-500 text-white p-2 rounded ml-2"
-    >
-      Add Text
-    </button>
-    <button
-      on:click={toggleDebugPanel}
-      class="bg-purple-500 text-white p-2 rounded ml-2"
-    >
-      {showDebugPanel ? 'Hide' : 'Show'} Debug
-    </button>
-  </div>
-
-  <div class="shared-content mt-4 p-4 border rounded">
-    <h2>Shared Content:</h2>
-    <div class="mt-4">
-      <h3>Shared Tree Data:</h3>
-      <pre class="text-left">{JSON.stringify(treeData, null, 2)}</pre>
+  {#if rootItems}
+    <OutlinerTree rootItems={rootItems} />
+  {:else}
+    <div class="loading">
+      <p>Loading shared data...</p>
     </div>
-  </div>
+  {/if}
+  
+  <button
+    on:click={toggleDebugPanel}
+    class="bg-purple-500 text-white p-2 rounded mt-4"
+  >
+    {showDebugPanel ? 'Hide' : 'Show'} Debug
+  </button>
   
   {#if showDebugPanel}
+    <!-- 既存のデバッグパネル -->
     <div class="debug-panel mt-4 p-4 border rounded bg-gray-50">
       <h3>Debug Info (VSCode)</h3>
       <div class="text-left text-xs mt-2">
@@ -175,5 +166,15 @@
     font-size: 0.8em;
     color: #666;
     margin-bottom: 1em;
+  }
+
+  .loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    margin-top: 20px;
   }
 </style>
