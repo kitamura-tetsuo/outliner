@@ -15,11 +15,16 @@ const isDevelopment = import.meta.env.DEV;
 
 // Tinylicious接続設定（開発環境用）
 const getTinyliciousConfig = (): AzureClientProps => {
-  // InsecureTokenProviderを使用して正しいインターフェースを提供
+  // Azureユーザー形式に準拠したユーザー情報を提供
+  const user = {
+    id: "user-tinylicious",
+    name: "Tinylicious User" // nameプロパティの追加
+  };
+  
   return {
     connection: {
       type: "local",
-      tokenProvider: new InsecureTokenProvider("", { id: "user-tinylicious" }),
+      tokenProvider: new InsecureTokenProvider("", user),
       endpoint: "http://localhost:7070",
       localAddress: "http://localhost:7070",
     },
@@ -27,14 +32,22 @@ const getTinyliciousConfig = (): AzureClientProps => {
 };
 
 // Azure Fluid Relay の接続設定（本番環境用）
-const getAzureConfig = (userId = "anonymous-user"): AzureClientProps => ({
-  connection: {
-    type: "remote",
-    tenantId: import.meta.env.VITE_AZURE_TENANT_ID || "your-tenant-id",
-    tokenProvider: new InsecureTokenProvider("your-secret-key", { id: userId }),
-    endpoint: import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT || "your-azure-fluid-relay-endpoint",
-  }
-});
+const getAzureConfig = (userId = "anonymous-user"): AzureClientProps => {
+  // Azureユーザー形式に準拠したユーザー情報を提供
+  const user = {
+    id: userId,
+    name: `User ${userId.split('-').pop()}` // nameプロパティを追加
+  };
+  
+  return {
+    connection: {
+      type: "remote",
+      tenantId: import.meta.env.VITE_AZURE_TENANT_ID || "your-tenant-id",
+      tokenProvider: new InsecureTokenProvider("your-secret-key", user),
+      endpoint: import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT || "your-azure-fluid-relay-endpoint",
+    }
+  };
+};
 
 // デフォルトのコンテナスキーマ定義
 export const defaultContainerSchema: ContainerSchema = {

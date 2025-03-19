@@ -153,6 +153,7 @@ export class FluidClient {
 			
 			// 初期データでアプリを初期化
 			appData.initialize(new Items([]));
+			appData.root.addNode("test");
 
 			// コンテナの接続状態を監視
 			this.container.on('connected', () => {

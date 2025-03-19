@@ -72,7 +72,7 @@ export class Note extends sf.object(
 }
 
 // Schema for a list of Notes and Groups.
-export class Items extends sf.arrayRecursive("Items", [() => Group, Note]) {
+export class Items extends sf.arrayRecursive("Items", [() => Item, Note]) {
 	public readonly addNode = (author: string) => {
 		const timeStamp = new Date().getTime();
 
@@ -94,8 +94,8 @@ export class Items extends sf.arrayRecursive("Items", [() => Group, Note]) {
 	/**
 	 * Add a new group (container for notes) to the SharedTree.
 	 */
-	public readonly addGroup = (name: string): Group => {
-		const group = new Group({
+	public readonly addGroup = (name: string): Item => {
+		const group = new Item({
 			id: uuid(),
 			name,
 			items: new Items([]),
@@ -115,9 +115,10 @@ export class Items extends sf.arrayRecursive("Items", [() => Group, Note]) {
 }
 
 // Define the schema for the container of notes.
-export class Group extends sf.objectRecursive("Group", {
+export class Item extends sf.objectRecursive("Item", {
 	id: sf.string,
 	name: sf.string,
+	text: sf.string,
 	items: Items,
 }) {
 	/**
@@ -147,7 +148,7 @@ export class Group extends sf.objectRecursive("Group", {
 
 {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	type _check = ValidateRecursiveSchema<typeof Group>;
+	type _check = ValidateRecursiveSchema<typeof Item>;
 }
 
 // Export the tree config appropriate for this schema.
