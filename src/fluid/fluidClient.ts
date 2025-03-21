@@ -196,14 +196,25 @@ export class FluidClient {
 			clientInitialized: !!this.client,
 			containerConnected: this.container?.connected || false,
 			containerId: this.containerId,
-			treeData: this.getAllData(),
-			treeKeys: Object.keys(this.getAllData() || {}),
+			treeData: this.appData ? this.getAllData() : {},
+			treeCount: this.appData?.root?.length || 0,
+			treeFirstItem: this.appData?.root?.[0]?.text || null,
+			timeStamp: new Date().toISOString(), // タイムスタンプを追加してデバッグ情報が毎回変わるようにする
 			currentUser: this.currentUser
 		};
 	}
 
 	// 以下は共有データ操作用のヘルパーメソッド
 	getAllData() {
+		if (this.appData?.root) {
+			return {
+				itemCount: this.appData.root.length,
+				items: [...this.appData.root].map(item => ({
+					id: item.id,
+					text: item.text
+				}))
+			};
+		}
 		return {};
 	}
 }

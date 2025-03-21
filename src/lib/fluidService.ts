@@ -20,13 +20,16 @@ const getTinyliciousConfig = (): AzureClientProps => {
     id: "user-tinylicious",
     name: "Tinylicious User" // nameプロパティの追加
   };
-  
+
+  // 固定IPアドレスを使用して接続する
+  const endpoint = "http://192.168.50.13:7070";
+
   return {
     connection: {
       type: "local",
       tokenProvider: new InsecureTokenProvider("", user),
-      endpoint: "http://localhost:7070",
-      localAddress: "http://localhost:7070",
+      endpoint,
+      localAddress: endpoint,
     },
   };
 };
@@ -38,7 +41,7 @@ const getAzureConfig = (userId = "anonymous-user"): AzureClientProps => {
     id: userId,
     name: `User ${userId.split('-').pop()}` // nameプロパティを追加
   };
-  
+
   return {
     connection: {
       type: "remote",
@@ -62,20 +65,20 @@ export function getFluidClient(userId?: string, schema: ContainerSchema = defaul
   // ユーザーIDが変更された場合、または初回の場合はクライアントを作成/再作成
   if (!clientInstance || (userId && userId !== currentUserId)) {
     const clientProps = isDevelopment ? getTinyliciousConfig() : getAzureConfig(userId);
-    
+
     if (isDevelopment) {
       console.debug("[fluid-service] Creating new AzureClient with Tinylicious configuration");
     } else {
       console.debug("[fluid-service] Creating new AzureClient with Azure configuration");
     }
-    
+
     clientInstance = new AzureClient(clientProps);
     currentUserId = userId || null;
     console.debug(`[fluid-service] Client initialized for user: ${currentUserId}`);
   } else {
     console.debug("[fluid-service] Reusing existing AzureClient instance");
   }
-  
+
   return {
     client: clientInstance,
     schema

@@ -1,10 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { Note, Item } from "../schema/app-schema";
+  import { Item } from "../schema/app-schema";
   import { Tree } from "fluid-framework";
 
   // Props
-  export let item: Item | Note;
+  export let item: Item;
   export let level: number = 0;
   export let currentUser: string = "anonymous";
   
@@ -16,20 +16,15 @@
   let editText = "";
   
   // 子アイテムを持っているかどうか判定
-  $: hasChildren = Tree.is(item, Item) && item.items && item.items.length > 0;
+  $: hasChildren = item.items && item.items.length > 0;
   
   function toggleCollapse() {
     isCollapsed = !isCollapsed;
   }
   
   function startEditing() {
-    if (Tree.is(item, Note)) {
-      editText = item.text;
-      isEditing = true;
-    } else if (Tree.is(item, Item)) {
-      editText = item.name;
-      isEditing = true;
-    }
+    editText = item.text;
+    isEditing = true;
   }
   
   function handleKeyDown(event: KeyboardEvent) {
@@ -47,25 +42,33 @@
         // Indent (Move down a level)
         dispatch('indent', { item });
       }
+      console.log("Tab key pressed in textarea");
+    }
+  }
+  
+  // 新しく追加：アイテム全体のキーダウンイベントハンドラ
+  function handleItemKeyDown(event: KeyboardEvent) {
+    // Tabキーが押された場合
+    if (event.key === "Tab") {
+      event.preventDefault();
+      if (event.shiftKey) {
+        dispatch('unindent', { item });
+      } else {
+        dispatch('indent', { item });
+      }
+      console.log(`Tab key pressed, dispatch: ${event.shiftKey ? 'unindent' : 'indent'}`);
     }
   }
   
   function saveEdit() {
-    if (Tree.is(item, Note) && editText !== item.text) {
+    if (editText !== item.text) {
       item.updateText(editText);
-    } else if (Tree.is(item, Item) && editText !== item.name) {
-      item.name = editText;
     }
     isEditing = false;
   }
   
   function addNewItem() {
-    if (Tree.is(item, Item)) {
-      item.items.addNode(currentUser);
-    } else {
-      // 親要素に通知
-      dispatch('add', { after: item });
-    }
+    item.items.addNode(currentUser);
   }
   
   function handleDelete() {
@@ -75,13 +78,18 @@
   }
   
   function toggleVote() {
-    if (Tree.is(item, Note)) {
-      item.toggleVote(currentUser);
-    }
+    // 全てのアイテムで投票機能が使える
+    item.toggleVote(currentUser);
   }
 </script>
 
-<div class="outliner-item" style="padding-left: {level * 20}px">
+<!-- tabindex属性を追加してキーボードフォーカスを受け付けるようにする -->
+<div 
+  class="outliner-item" 
+  style="padding-left: {level * 20}px"
+  tabindex="0"
+  on:keydown={handleItemKeyDown}
+>
   <div class="item-header">
     {#if hasChildren}
       <button class="collapse-btn" on:click={toggleCollapse}>
@@ -101,13 +109,11 @@
       ></textarea>
     {:else}
       <div class="item-content" on:dblclick={startEditing}>
-        {#if Tree.is(item, Note)}
-          <span class="item-text">{item.text || "空白のノート"}</span>
-          {#if item.votes.length > 0}
-            <span class="vote-count">{item.votes.length}</span>
-          {/if}
-        {:else if Tree.is(item, Item)}
-          <span class="group-name">{item.name}</span>
+        <!-- 空白のノートではなく、常に.item-textクラスを適用 -->
+        <span class="item-text">{item.text || "空白のノート"}</span>
+        
+        {#if item.votes.length > 0}
+          <span class="vote-count">{item.votes.length}</span>
         {/if}
       </div>
     {/if}
@@ -115,20 +121,18 @@
     <div class="item-actions">
       <button on:click={addNewItem} title="新しいアイテムを追加">+</button>
       <button on:click={handleDelete} title="削除">×</button>
-      {#if Tree.is(item, Note)}
-        <button 
-          on:click={toggleVote} 
-          class="vote-btn" 
-          class:voted={item.votes.includes(currentUser)}
-          title="投票"
-        >
-          ⭐
-        </button>
-      {/if}
+      <button 
+        on:click={toggleVote} 
+        class="vote-btn" 
+        class:voted={item.votes.includes(currentUser)}
+        title="投票"
+      >
+        ⭐
+      </button>
     </div>
   </div>
   
-  {#if hasChildren && !isCollapsed && Tree.is(item, Item)}
+  {#if hasChildren && !isCollapsed}
     <div class="item-children">
       {#each [...item.items] as child, i}
         <svelte:self 
@@ -254,5 +258,11 @@
   
   .item-children {
     margin-left: 2px;
+  }
+  
+  /* フォーカス時のスタイルを追加 */
+  .outliner-item:focus {
+    outline: 1px dashed #aaa;
+    background-color: rgba(0, 0, 0, 0.02);
   }
 </style>

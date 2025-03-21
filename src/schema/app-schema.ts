@@ -4,37 +4,33 @@
  */
 
 import {
-  SchemaFactory,
-  Tree,
-  TreeViewConfiguration,
-  type ValidateRecursiveSchema,
+	SchemaFactory,
+	Tree,
+	TreeViewConfiguration,
+	type ValidateRecursiveSchema,
 } from "fluid-framework";
 import { v4 as uuid } from "uuid";
 
-// Schema is defined using a factory object that generates classes for objects as well
-// as list and map nodes.
-
-// Include a UUID to guarantee that this schema will be uniquely identifiable.
+// スキーマファクトリを作成
 const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120002");
 
-// Define the schema for the note object.
-export class Note extends sf.object(
-	"Note",
-	{
-		id: sf.string,
-		text: sf.string,
-		author: sf.string,
-		votes: sf.array(sf.string),
-		created: sf.number,
-		lastChanged: sf.number,
-	},
-) {
-	// Update the note text and also update the timestamp in the note
+// アイテム定義をシンプル化（グループとノートの区別を削除）
+export class Item extends sf.objectRecursive("Item", {
+	id: sf.string,
+	text: sf.string, // テキスト内容のみを保持
+	author: sf.string,
+	votes: sf.array(sf.string),
+	created: sf.number,
+	lastChanged: sf.number,
+	items: () => Items, // 子アイテムを保持
+}) {
+	// テキスト更新時にタイムスタンプも更新
 	public readonly updateText = (text: string) => {
 		this.lastChanged = new Date().getTime();
 		this.text = text;
 	};
 
+	// 投票機能
 	public readonly toggleVote = (user: string) => {
 		const index = this.votes.indexOf(user);
 		if (index > -1) {
@@ -42,86 +38,55 @@ export class Note extends sf.object(
 		} else {
 			this.votes.insertAtEnd(user);
 		}
-
 		this.lastChanged = new Date().getTime();
 	};
 
+	// アイテム削除機能
 	public readonly delete = () => {
 		const parent = Tree.parent(this);
 		if (Tree.is(parent, Items)) {
-			const index = parent.indexOf(this);
-			parent.removeAt(index);
+			// 子アイテムがある場合、親に移動してから削除
+			if (this.items.length > 0) {
+				Tree.runTransaction(parent, () => {
+					const index = parent.indexOf(this);
+					parent.moveRangeToIndex(index, 0, this.items.length, this.items);
+					parent.removeAt(parent.indexOf(this));
+				});
+			} else {
+				// 子アイテムがない場合は単純に削除
+				parent.removeAt(parent.indexOf(this));
+			}
 		}
 	};
 }
 
-// Schema for a list of Notes and Groups.
-export class Items extends sf.arrayRecursive("Items", [() => Item, Note]) {
+// アイテムのリスト
+export class Items extends sf.arrayRecursive("Items", [Item]) {
+	// 新しいアイテムを追加（グループ区別なし）
 	public readonly addNode = (author: string) => {
 		const timeStamp = new Date().getTime();
 
-		const newNote = new Note({
+		const newItem = new Item({
 			id: uuid(),
 			text: "",
 			author,
 			votes: [],
 			created: timeStamp,
 			lastChanged: timeStamp,
+			items: new Items([]), // 空の子アイテムリスト
 		});
 
-		this.insertAtEnd(newNote);
-	};
-
-	public readonly addGroup = (name: string): Item => {
-		const group = new Item({
-			id: uuid(),
-			name,
-			items: new Items([]),
-		});
-
-		this.insertAtEnd(group);
-		return group;
+		this.insertAtEnd(newItem);
+		return newItem;
 	};
 }
 
+// 型検証ヘルパー
 {
-	// Type validation helper
 	type _check = ValidateRecursiveSchema<typeof Items>;
 }
 
-// Define the schema for the container of notes.
-export class Item extends sf.objectRecursive("Item", {
-	id: sf.string,
-	name: sf.string,
-	text: sf.string,
-	items: Items,
-}) {
-	public readonly delete = () => {
-		const parent = Tree.parent(this);
-		if (Tree.is(parent, Items)) {
-			// Run the deletion as a transaction to ensure that the tree is in a consistent state
-			Tree.runTransaction(parent, () => {
-				// Move the children of the group to the parent
-				if (this.items.length !== 0) {
-					const index = parent.indexOf(this);
-					parent.moveRangeToIndex(index, 0, this.items.length, this.items);
-				}
-
-				// Delete the now empty group
-				const i = parent.indexOf(this);
-				parent.removeAt(i);
-			});
-		}
-	};
-}
-
-{
-	// Type validation helper
-	type _check = ValidateRecursiveSchema<typeof Item>;
-}
-
-// Export the tree config appropriate for this schema.
+// TreeView構成をエクスポート
 export const appTreeConfiguration = new TreeViewConfiguration(
-	// Schema for the root
 	{ schema: Items },
 );

@@ -1,0 +1,8 @@
+scrapbox ライクに、ルートの下のアイテムはページとして扱って。
+
+e2eテストをページ形式に対応させて。
+
+ウェブサイトの urlを scrapboxライクに http://localhost:5175/project_name/page_title となる様にして。 project_nameは今はダミーなので、project_name 固定で良い。 http://localhost:5175/project_name を開いたときはページリストを表示して。
+
+http://localhost:5175 は開発サーバーのアドレスなので、単なる例示。
+

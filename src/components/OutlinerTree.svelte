@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { fluidClient } from "../stores/fluidStore";
   import OutlinerItem from "./OutlinerItem.svelte";
-  import { Items } from "../schema/app-schema";
+  import { Items, Item } from "../schema/app-schema";
   import { Tree } from "fluid-framework";
   
   export let rootItems: Items;
@@ -14,13 +14,12 @@
     if ($fluidClient?.currentUser) {
       currentUser = $fluidClient.currentUser.id;
     }
-    debugger;
     
     // 初期アイテムのロード
     updateItems();
     
-    // アイテムの変更を監視
-    const unsubscribe =　Tree.on(rootItems, "nodeChanged", updateItems);
+    // アイテムの変更を監視 - イベント名を修正
+    const unsubscribe = Tree.on(rootItems, "change", updateItems);
     
     return () => {
       unsubscribe();
@@ -30,7 +29,10 @@
   function updateItems() {
     // rootItemsの変更を反映
     items = [...rootItems];
-		console.log(items);
+    console.log('Items updated:', items);
+    
+    // 強制的に更新をトリガー
+    items = items;
   }
   
   function handleAddItem() {
@@ -55,13 +57,58 @@
   }
   
   function handleIndent(event) {
-    // インデントを増やす処理（未実装）
-    console.log("Indent", event.detail);
+    // インデントを増やす処理
+    const { item } = event.detail;
+    
+    console.log("Indent event received for item:", item);
+    
+    // 1. アイテムの親を取得
+    const parent = Tree.parent(item);
+    if (!Tree.is(parent, Items)) return;
+    
+    // 2. 親内でのアイテムのインデックスを取得
+    const index = parent.indexOf(item);
+    if (index <= 0) return; // 最初のアイテムはインデントできない
+    
+    // 3. 前のアイテムを取得
+    const previousItem = parent[index - 1];
+    
+    try {
+      // 4. 前のアイテムの子リストへアイテムを移動
+      const itemIndex = parent.indexOf(item);
+      parent.moveRangeToEnd(itemIndex, itemIndex + 1, previousItem.items);
+      console.log(`Indented item under previous item`);
+    } catch (error) {
+      console.error("Failed to indent item:", error);
+    }
   }
   
   function handleUnindent(event) {
-    // インデントを減らす処理（未実装）
-    console.log("Unindent", event.detail);
+    // インデントを減らす処理
+    const { item } = event.detail;
+    
+    console.log("Unindent event received for item:", item);
+    
+    // 1. アイテムの親を取得
+    const parent = Tree.parent(item);
+    if (!Tree.is(parent, Items)) return;
+    
+    // 2. 親の親を取得（親グループを取得）
+    const grandParent = Tree.parent(parent);
+    if (!grandParent || !Tree.is(grandParent, Items)) return; // ルートアイテムの直下は既に最上位
+
+    try {
+      // 3. 親アイテムのindex取得
+      const parentItem = Tree.parent(parent) as Item;
+      const parentIndex = grandParent.indexOf(parentItem);
+      
+      // 4. 親の親の、親の次の位置にアイテムを移動
+      const itemIndex = parent.indexOf(item);
+      grandParent.moveRangeToIndex(itemIndex, itemIndex + 1, parentIndex + 1, parent);
+      console.log("Unindented item to parent level");
+    } catch (error) {
+      console.error("Failed to unindent item:", error);
+    }
   }
 </script>
 
@@ -70,7 +117,6 @@
     <h2>アウトライン</h2>
     <div class="actions">
       <button on:click={handleAddItem}>アイテム追加</button>
-      <button on:click={handleAddGroup}>グループ追加</button>
     </div>
   </div>
   

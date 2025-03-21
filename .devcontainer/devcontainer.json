@@ -4,6 +4,10 @@
 	"name": "Node.js & TypeScript",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+	"runArgs": [
+		"-p",
+		"7070:7070"
+	],
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
@@ -21,4 +25,11 @@
 	"mounts": [
 		"source=/home/ubuntu/.ssh,target=/home/node/.ssh,type=bind,consistency=cached"
 	],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-playwright.playwright"
+			]
+		}
+	},
 }
