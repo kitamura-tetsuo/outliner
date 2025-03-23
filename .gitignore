@@ -28,3 +28,5 @@ src/lib/paraglide
 
 # Tinylicious のデータファイル
 tinylicious
+
+playwright-report

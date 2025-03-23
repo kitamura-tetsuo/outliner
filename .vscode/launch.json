@@ -31,6 +31,14 @@
       "restart": true
     },
     {
+      "name": "Kill Tinylicious Process",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/kill-tinylicious.js",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
       "name": "Launch Tinylicious",
       "type": "node",
       "request": "launch",
@@ -51,8 +59,10 @@
         "Debug SvelteKit Server",
         "Launch Chrome against localhost"
       ],
-      "stopAll": true
+      "stopAll": true,
+      "dependsOn": [
+        "Kill Tinylicious Process"
+      ]
     },
-  }
-]
+  ]
 }
