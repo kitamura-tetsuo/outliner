@@ -3,28 +3,64 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
-console.log('Checking for Tinylicious process on port 7070...');
+// 終了したいポートのリスト
+const PORTS_TO_KILL = [7070, 5173, 3000];
 
-try
+/**
+ * 指定したポートで実行中のプロセスを終了する
+ */
+async function killProcessOnPort(port)
 {
-  const { stdout } = await execAsync('lsof -i :7070 -t');
+  console.log(`Checking for processes on port ${port}...`);
 
-  if (stdout.trim())
+  try
   {
-    const pids = stdout.trim().split('\n');
-    console.log(`Found Tinylicious processes: ${pids.join(', ')}`);
+    const { stdout } = await execAsync(`lsof -i :${port} -t`);
 
-    for (const pid of pids)
+    if (stdout.trim())
     {
-      console.log(`Killing process with PID: ${pid}`);
-      await execAsync(`kill -9 ${pid}`);
+      const pids = stdout.trim().split('\n');
+      console.log(`Found processes on port ${port}: ${pids.join(', ')}`);
+
+      for (const pid of pids)
+      {
+        console.log(`Killing process with PID: ${pid}`);
+        await execAsync(`kill -9 ${pid}`);
+      }
+      console.log(`All processes on port ${port} killed successfully`);
+      return true;
+    } else
+    {
+      console.log(`No process found on port ${port}`);
+      return false;
     }
-    console.log('All Tinylicious processes killed successfully');
-  } else
+  } catch (error)
   {
-    console.log('No Tinylicious process found on port 7070');
+    console.error(`Error checking or killing process on port ${port}:`, error);
+    return false;
   }
-} catch (error)
-{
-  console.error('Error checking or killing Tinylicious process:', error);
 }
+
+// メイン実行関数
+async function main()
+{
+  console.log('Starting cleanup of development processes...');
+
+  let successCount = 0;
+
+  // 各ポートに対して処理を実行
+  for (const port of PORTS_TO_KILL)
+  {
+    const success = await killProcessOnPort(port);
+    if (success) successCount++;
+  }
+
+  console.log(`Cleanup completed. Successfully processed ${successCount}/${PORTS_TO_KILL.length} ports.`);
+}
+
+// スクリプト実行
+main().catch(error =>
+{
+  console.error('Unexpected error during execution:', error);
+  process.exit(1);
+});

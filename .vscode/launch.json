@@ -6,7 +6,7 @@
       "request": "launch",
       "name": "Launch Chrome against localhost",
       "url": "http://localhost:5173",
-      "webRoot": "${workspaceFolder}",
+      "webRoot": "${workspaceFolder}/client",
       "sourceMaps": true,
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/src/*"
@@ -17,6 +17,7 @@
       "request": "launch",
       "name": "Debug SvelteKit Server",
       "runtimeExecutable": "npm",
+      "localRoot": "${workspaceFolder}/client",
       "runtimeArgs": [
         "run",
         "dev",
@@ -24,6 +25,31 @@
         "--host",
         "0.0.0.0"
       ],
+      "env": {
+        "PORT": "5173"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "restart": true
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Server",
+      "runtimeExecutable": "npm",
+      "localRoot": "${workspaceFolder}/server",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "0.0.0.0"
+      ],
+      "env": {
+        "PORT": "3000"
+      },
       "console": "integratedTerminal",
       "skipFiles": [
         "<node_internals>/**"
@@ -42,7 +68,7 @@
       "name": "Launch Tinylicious",
       "type": "node",
       "request": "launch",
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/client",
       "runtimeExecutable": "npx",
       "runtimeArgs": [
         "tinylicious"
@@ -55,14 +81,13 @@
     {
       "name": "Full-Stack: Server + Client",
       "configurations": [
+        "Debug Server",
         "Launch Tinylicious",
         "Debug SvelteKit Server",
         "Launch Chrome against localhost"
       ],
       "stopAll": true,
-      "dependsOn": [
-        "Kill Tinylicious Process"
-      ]
-    },
+      "preLaunchTask": "Kill Tinylicious Process"
+    }
   ]
 }

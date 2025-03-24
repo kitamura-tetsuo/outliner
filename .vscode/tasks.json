@@ -6,6 +6,7 @@
       "type": "npm",
       "script": "dev",
       "isBackground": true,
+      "path": "client",
       "problemMatcher": {
         "owner": "custom",
         "pattern": {
@@ -20,14 +21,14 @@
     {
       "label": "Watch and Run E2E Tests",
       "type": "shell",
-      "command": "npx chokidar \"src/**/*.{ts,js,svelte}\" \"e2e/**/*.ts\" -c \"npm run test:e2e:debug\"",
+      "command": "cd client && npx chokidar \"src/**/*.{ts,js,svelte}\" \"e2e/**/*.ts\" -c \"npm run test:e2e:debug\"",
       "isBackground": true,
       "problemMatcher": []
     },
     {
       "label": "Watch and Run E2E Tests with xvfb",
       "type": "shell",
-      "command": "npx chokidar \"src/**/*.{ts,js,svelte}\" \"e2e/**/*.ts\" -c \"xvfb-run --auto-servernum --server-args=\\\"-screen 0 1280x960x24\\\" npm run test:e2e\"",
+      "command": "cd client && npx chokidar \"src/**/*.{ts,js,svelte}\" \"e2e/**/*.ts\" -c \"xvfb-run --auto-servernum --server-args=\\\"-screen 0 1280x960x24\\\" npm run test:e2e\"",
       "isBackground": true,
       "problemMatcher": []
     },
@@ -42,6 +43,13 @@
         "kind": "test",
         "isDefault": true
       }
+    },
+    {
+      "label": "Kill Tinylicious Process",
+      "type": "shell",
+      "command": "node ${workspaceFolder}/scripts/kill-tinylicious.js",
+      "problemMatcher": [],
+      "group": "none"
     }
   ]
 }

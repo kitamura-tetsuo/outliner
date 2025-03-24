@@ -28,7 +28,8 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"ms-playwright.playwright"
+				"ms-playwright.playwright",
+				"svelte.svelte-vscode"
 			]
 		}
 	},
