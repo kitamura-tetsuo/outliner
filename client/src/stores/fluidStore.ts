@@ -1,84 +1,61 @@
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { writable } from 'svelte/store';
-import type { IUser } from '../fluid/fluidClient';
+import { UserManager } from '../auth/UserManager';
 import { FluidClient } from '../fluid/fluidClient';
 
-// Fluid クライアントのストア
+// FluidClientのインスタンスを保持するStore
 export const fluidClient = writable<FluidClient | null>(null);
 
-// アプリケーション起動時にFluidクライアントを初期化
-let initialized = false;
+// ユーザー認証状態の変更を監視して、FluidClientを初期化/更新する
+export async function initFluidClientWithAuth() {
+  const userManager = UserManager.getInstance();
 
-// Fluid クライアントを初期化する関数
-export async function initializeFluidClient(): Promise<FluidClient> {
-  if (initialized) {
-    // 既に初期化されている場合はストアから取得
-    let client: FluidClient | null = null;
-    fluidClient.subscribe(value => {
-      client = value;
-    })();
+  // 認証状態の変更を監視
+  userManager.addEventListener(async (authResult) => {
+    if (authResult) {
+      console.log('認証成功により、Fluidクライアントを初期化します');
+      try {
+        // FluidClientのインスタンスを作成して初期化
+        const client = new FluidClient();
+        await client.initialize();
 
-    if (client) return client;
-  }
+        // Storeに保存
+        fluidClient.set(client);
 
-  try {
-    console.debug('[fluidStore] Initializing new FluidClient');
-    const client = new FluidClient();
-    await client.initialize();
-
-    // ストアを更新
-    fluidClient.set(client);
-    initialized = true;
-
-    return client;
-  } catch (error) {
-    console.error('[fluidStore] Failed to initialize FluidClient:', error);
-    throw error;
-  }
-}
-
-// ユーザー認証状態の変更を監視し、必要ならFluidクライアントを再初期化
-export function watchAuthState() {
-  const auth = getAuth();
-
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      // ユーザーがログインした場合
-      const userData: IUser = {
-        id: user.uid,
-        name: user.displayName || 'User',
-        email: user.email || undefined,
-        photoURL: user.photoURL || undefined
-      };
-
-      // Fluid クライアントが初期化されていない場合は初期化
-      let client: FluidClient | null = null;
-      fluidClient.subscribe(value => {
-        client = value;
-      })();
-
-      if (client) {
-        // 既存のクライアントにユーザー情報を設定
-        await client.registerUser(userData);
-      } else {
-        // 新しいクライアントを初期化
-        await initializeFluidClient();
+        // デバッグ用にグローバル変数に設定
+        if (typeof window !== 'undefined') {
+          (window as any).__FLUID_CLIENT__ = client;
+        }
+      } catch (error) {
+        console.error('FluidClient初期化エラー:', error);
+        fluidClient.set(null);
       }
     } else {
-      // ユーザーがログアウトした場合、クライアントをリセットするか決定
-      // 今回はそのままにしています
+      console.log('ログアウトにより、Fluidクライアントをリセットします');
+      fluidClient.set(null);
+      if (typeof window !== 'undefined') {
+        delete (window as any).__FLUID_CLIENT__;
+      }
     }
   });
+
+  // 既に認証済みの場合は初期化を試行
+  const currentUser = userManager.getCurrentUser();
+  if (currentUser) {
+    try {
+      const client = new FluidClient();
+      await client.initialize();
+      fluidClient.set(client);
+
+      if (typeof window !== 'undefined') {
+        (window as any).__FLUID_CLIENT__ = client;
+      }
+    } catch (error) {
+      console.error('既存ユーザーでのFluidClient初期化エラー:', error);
+    }
+  }
 }
 
-// アプリ起動時に自動的に初期化
+// アプリ起動時に初期化を実行
 if (typeof window !== 'undefined') {
-  initializeFluidClient()
-    .then(() => {
-      console.debug('[fluidStore] FluidClient initialized and stored');
-      watchAuthState();
-    })
-    .catch(err => {
-      console.error('[fluidStore] Error during FluidClient initialization:', err);
-    });
+  initFluidClientWithAuth();
 }

@@ -10,7 +10,8 @@
       "sourceMaps": true,
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/src/*"
-      }
+      },
+      "port": 9876
     },
     {
       "type": "node",

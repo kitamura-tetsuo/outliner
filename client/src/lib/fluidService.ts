@@ -1,212 +1,198 @@
-import { AzureClient, type AzureClientProps, type TokenProvider, type TokenResponse } from "@fluidframework/azure-client";
-import { InsecureTokenProvider } from "@fluidframework/test-client-utils";
-import {
-  type ContainerSchema,
-  type IFluidContainer,
-  SharedTree
-} from "fluid-framework";
-import type { IUser } from '../fluid/fluidClient';
-import { getFluidToken } from './api';
-import { getEnv } from './env';
+import { AzureClient, type AzureClientProps, type ITokenProvider } from '@fluidframework/azure-client';
+import { InsecureTokenProvider } from '@fluidframework/test-client-utils';
+import { type ContainerSchema } from 'fluid-framework';
+import { UserManager } from '../auth/UserManager';
 
-// シングルトンインスタンスを保持する変数
-let clientInstance: AzureClient | null = null;
-let currentUserId: string | null = null;
+// シングルトンパターンでAzureClientを管理
+let azureClient: AzureClient | null = null;
 
-// 開発環境フラグ (SvelteKit の環境変数を使用)
-const isDevelopment = import.meta.env.DEV;
-
-// Tinylicious接続設定（開発環境用）
-const getTinyliciousConfig = (): AzureClientProps => {
-  // 環境変数から取得
-  const userId = getEnv('VITE_DEBUG_USER_ID', 'tinylicious-user');
-  const userName = getEnv('VITE_DEBUG_USER_NAME', 'Tinylicious User');
-
-  // Azureユーザー形式に準拠したユーザー情報を提供
-  const user = {
-    id: userId,
-    name: userName
-  };
-
-  // 環境変数から取得
-  const endpoint = getEnv('VITE_TINYLICIOUS_ENDPOINT');
-
-  if (!endpoint) {
-    console.warn('Tinylicious endpoint not set in environment variables. ' +
-      'Please set VITE_TINYLICIOUS_ENDPOINT in your .env file.');
-  }
-
-  return {
-    connection: {
-      type: "local",
-      tokenProvider: new InsecureTokenProvider("", user),
-      endpoint: endpoint || "http://localhost:7070",
-      localAddress: endpoint || "http://localhost:7070",
-    },
-  };
+// Azure Fluid Relayエンドポイント設定
+const azureConfig = {
+  tenantId: import.meta.env.VITE_AZURE_TENANT_ID || '00000000-0000-0000-0000-000000000000',
+  endpoint: import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT || 'https://us.fluidrelay.azure.com',
 };
 
-// APIを使用したトークンプロバイダー
-class ApiTokenProvider implements TokenProvider {
-  constructor(
-    private readonly user: IUser
-  ) { }
+// 開発環境ではTinyliciousを使用する
+const useTinylicious = import.meta.env.DEV && !import.meta.env.VITE_FORCE_AZURE;
 
-  async fetchOrdererToken(): Promise<TokenResponse> {
-    return this.getToken();
-  }
-
-  async fetchStorageToken(): Promise<TokenResponse> {
-    return this.getToken();
-  }
-
-  private async getToken(): Promise<TokenResponse> {
-    try {
-      const result = await getFluidToken();
-      if (!result || !result.token) {
-        console.warn('[ApiTokenProvider] Failed to get token from API, falling back to insecure token');
-        return {
-          jwt: `demo-token-${this.user.id}`,
-          fromCache: false
-        };
-      }
-
-      console.debug('[ApiTokenProvider] Successfully obtained token from API');
-      return {
-        jwt: result.token,
-        fromCache: false
-      };
-    } catch (error) {
-      console.error('[ApiTokenProvider] Error getting token:', error);
-      throw new Error('Failed to get authentication token');
-    }
-  }
-}
-
-// Azure Fluid Relay の接続設定（本番環境用）
-const getAzureConfig = (user?: IUser): AzureClientProps => {
-  // ユーザー情報がない場合は環境変数から取得
-  const fluidUser = user || {
-    id: getEnv('VITE_DEBUG_USER_ID', 'anonymous-user'),
-    name: getEnv('VITE_DEBUG_USER_NAME', 'Anonymous User')
-  };
-
-  // 必要な環境変数の確認
-  const tenantId = getEnv('VITE_AZURE_TENANT_ID');
-  const endpoint = getEnv('VITE_AZURE_FLUID_RELAY_ENDPOINT');
-
-  if (!tenantId || !endpoint) {
-    console.warn(`[fluid-service] Missing environment variables for Azure Fluid Relay: 
-      VITE_AZURE_TENANT_ID=${tenantId ? 'set' : 'missing'}, 
-      VITE_AZURE_FLUID_RELAY_ENDPOINT=${endpoint ? 'set' : 'missing'}`);
-    console.warn('Please set these variables in your .env file and restart the application.');
-  }
-
-  // 環境変数で Firebase 認証の使用を制御
-  const useApiAuth = getEnv('VITE_USE_API_AUTH') === 'true';
-  const tokenKey = getEnv('VITE_FLUID_TOKEN_KEY', '');
-
-  if (!useApiAuth && !tokenKey) {
-    console.warn('[fluid-service] No token key provided for insecure token provider.');
-  }
-
-  // APIベースの認証を使用（バックエンドサーバー経由）
-  const tokenProvider = useApiAuth
-    ? new ApiTokenProvider(fluidUser)
-    : new InsecureTokenProvider(tokenKey, fluidUser);
-
-  return {
-    connection: {
-      type: "remote",
-      tenantId: tenantId || '',
-      tokenProvider,
-      endpoint: endpoint || '',
-    }
-  };
-};
-
-// デフォルトのコンテナスキーマ定義
-export const defaultContainerSchema: ContainerSchema = {
+// デフォルトのコンテナスキーマ
+const defaultSchema: ContainerSchema = {
   initialObjects: {
-    tree: SharedTree,
-  },
-  idCompressor: true,
+    // 初期化時に指定するためここでは空
+  }
 };
 
-// シングルトンのFluidクライアントを取得する関数
-export function getFluidClient(user?: IUser, schema: ContainerSchema = defaultContainerSchema) {
-  // ユーザーIDが変更された場合、または初回の場合はクライアントを作成/再作成
-  if (!clientInstance || (user && (currentUserId === null || user.id !== currentUserId))) {
-    const clientProps = isDevelopment ? getTinyliciousConfig() : getAzureConfig(user);
+// TokenProviderの取得
+function getTokenProvider(userId?: string): ITokenProvider {
+  // 本番環境の場合はUserManagerからトークンを取得
+  if (import.meta.env.PROD) {
+    const userManager = UserManager.getInstance();
+    const fluidToken = userManager.getCurrentFluidToken();
 
-    if (isDevelopment) {
-      console.debug("[fluid-service] Creating new AzureClient with Tinylicious configuration");
+    if (fluidToken) {
+      return {
+        fetchOrdererToken: async () => {
+          return {
+            jwt: fluidToken.token,
+            fromCache: true
+          };
+        },
+        fetchStorageToken: async () => {
+          return {
+            jwt: fluidToken.token,
+            fromCache: true
+          };
+        }
+      };
+    }
+  }
+
+  // 開発環境または未認証の場合はInsecureTokenProviderを使用
+  const userName = userId ? `User-${userId}` : 'Anonymous';
+  return new InsecureTokenProvider(
+    azureConfig.tenantId,
+    { id: userId || 'anonymous', name: userName }
+  );
+}
+
+// AzureClientの取得（またはTinyliciousClient）
+export function getFluidClient(userId?: string, schema: ContainerSchema = defaultSchema) {
+  // ユーザーIDが変わった場合は新しいクライアントを作成
+  if (azureClient && userId) {
+    // 既存クライアントの破棄（必要に応じて）
+    azureClient = null;
+  }
+
+  if (!azureClient) {
+    // TokenProvider設定
+    const tokenProvider = getTokenProvider(userId);
+
+    let clientProps: AzureClientProps;
+
+    if (useTinylicious) {
+      // Tinylicious（開発環境）用の設定
+      clientProps = {
+        connection: {
+          type: "local",
+          tokenProvider,
+          endpoint: tinyliciousConfig.endpoint,
+        },
+      };
+      console.log("[fluidService] Using Tinylicious local service for development");
     } else {
-      console.debug("[fluid-service] Creating new AzureClient with Azure configuration");
+      // Azure Fluid Relay（本番環境）用の設定
+      const connectionConfig: AzureRemoteConnectionConfig = {
+        type: "remote",
+        tenantId: azureConfig.tenantId,
+        tokenProvider: tokenProvider,
+        endpoint: azureConfig.endpoint,
+      };
+
+      clientProps = {
+        connection: connectionConfig,
+      };
+      console.log("[fluidService] Using Azure Fluid Relay service");
     }
 
-    clientInstance = new AzureClient(clientProps);
-    currentUserId = user?.id || null;
-    console.debug(`[fluid-service] Client initialized for user: ${currentUserId || 'anonymous'}`);
-  } else {
-    console.debug("[fluid-service] Reusing existing AzureClient instance");
+    // Azure Clientの作成
+    azureClient = new AzureClient(clientProps);
+    console.debug(`[fluidService] Created new AzureClient for user: ${userId || 'anonymous'}`);
   }
 
   return {
-    client: clientInstance,
-    schema
+    client: azureClient,
+    schema: schema,
+    useTinylicious  // この値を返すようにする
   };
 }
 
-// クライアントを強制的に再初期化するメソッド（テスト時などに使用）
+// AzureClientの再設定（トークン更新時など）
 export function resetFluidClient(): void {
-  clientInstance = null;
-  currentUserId = null;
-  console.debug("[fluid-service] Client instance reset");
+  azureClient = null;
+  console.debug('[fluidService] Reset AzureClient');
 }
 
-// コンテナ作成関数
-export async function createContainer(
-  schema: ContainerSchema = defaultContainerSchema,
-  userId?: string
-): Promise<IFluidContainer> {
-  const { client } = getFluidClient(userId, schema);
-  // バージョン2を明示的に指定してIdCompressorを有効化
-  const { container } = await client.createContainer(schema, "2");
-  const containerId = await container.attach();
-  console.log(`Container created with ID: ${containerId}`);
-  return container;
-}
+/**
+ * Fluid Framework接続エラーを処理する
+ * @param error エラーオブジェクト
+ * @returns ユーザー向けエラーメッセージとステータスコード
+ */
+export function handleConnectionError(error: any): { message: string; statusCode?: number } {
+  console.error('[fluidService] Connection error:', error);
 
-// 既存のコンテナを取得する関数
-export async function getContainer(
-  containerId: string,
-  schema: ContainerSchema = defaultContainerSchema,
-  userId?: string
-): Promise<IFluidContainer> {
-  const { client } = getFluidClient(userId, schema);
-  const { container } = await client.getContainer(containerId, schema);
-  console.log(`Container loaded with ID: ${containerId}`);
-  return container;
-}
+  // エラーメッセージの初期値
+  let message = 'Azure Fluid Relayへの接続中にエラーが発生しました';
+  let statusCode = undefined;
 
-// 認証状態をチェックする関数（ページロード時などに使用）
-export function isAuthenticated(): boolean {
-  return currentUserId !== null;
-}
+  // errorがResponseオブジェクトを含むか確認
+  if (error.response) {
+    statusCode = error.response.status;
 
-// 接続エラーを処理するヘルパー関数
-export async function handleConnectionError(error: any): Promise<string> {
-  console.error('[fluid-service] Connection error:', error);
-
-  // エラーの種類によって異なるメッセージを返す
-  if (error.errorType === 'authenticationError') {
-    return '認証エラーが発生しました。ログインし直してください。';
-  } else if (error.errorType === 'notFound') {
-    return 'コンテナが見つかりませんでした。URLを確認してください。';
-  } else if (error.errorType === 'connectionError') {
-    return 'サーバーへの接続に失敗しました。ネットワーク接続を確認してください。';
+    // HTTPステータスコードに基づいて詳細なエラーメッセージを提供
+    switch (statusCode) {
+      case 401:
+      case 403:
+        message = '認証に失敗しました。トークンが無効または期限切れです。';
+        break;
+      case 404:
+        message = '指定されたコンテナが見つかりません。';
+        break;
+      case 429:
+        message = 'リクエスト制限を超えました。しばらく待ってから再試行してください。';
+        break;
+      case 500:
+      case 502:
+      case 503:
+      case 504:
+        message = 'サーバーエラーが発生しました。しばらく待ってから再試行してください。';
+        break;
+      default:
+        if (statusCode >= 400) {
+          message = `エラーが発生しました (${statusCode})`;
+        }
+    }
+  } else if (error.code === 'ECONNABORTED') {
+    message = '接続がタイムアウトしました。ネットワーク接続を確認してください。';
+  } else if (error.message) {
+    // エラーメッセージが存在する場合はそれを使用
+    message = `エラー: ${error.message}`;
   }
 
-  return 'エラーが発生しました。もう一度お試しください。';
+  return { message, statusCode };
+}
+
+/**
+ * Fluidコンテナの接続状態を監視する
+ * @param container Fluidコンテナ
+ * @param onConnected 接続時のコールバック
+ * @param onDisconnected 切断時のコールバック
+ * @returns イベントリスナー解除用の関数
+ */
+export function setupConnectionListeners(
+  container: any,
+  onConnected?: () => void,
+  onDisconnected?: () => void
+): () => void {
+  if (!container) {
+    return () => { };
+  }
+
+  const connectedListener = () => {
+    console.log('[fluidService] Connected to Fluid Relay service');
+    if (onConnected) onConnected();
+  };
+
+  const disconnectedListener = () => {
+    console.log('[fluidService] Disconnected from Fluid Relay service');
+    if (onDisconnected) onDisconnected();
+  };
+
+  container.on('connected', connectedListener);
+  container.on('disconnected', disconnectedListener);
+
+  // イベントリスナー解除用の関数を返す
+  return () => {
+    container.off('connected', connectedListener);
+    container.off('disconnected', disconnectedListener);
+  };
 }

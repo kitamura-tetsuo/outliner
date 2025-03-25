@@ -10,7 +10,7 @@ const path = require('path');
 // サービスアカウントJSONファイルのパス
 const serviceAccountPath = path.join(__dirname, 'firebase-adminsdk.json');
 
-// 環境変数のチェック（Firebase認証情報を除外）
+// 環境変数のチェック
 const requiredEnvVars = [
   'AZURE_TENANT_ID',
   'AZURE_FLUID_RELAY_ENDPOINT'
@@ -51,10 +51,6 @@ const azureConfig = {
   key: process.env.AZURE_PRIMARY_KEY
 };
 
-// セッション情報を一時的に保存するためのマップ
-// 注: 本番環境ではRedisなどの永続ストレージを使用すべき
-const sessions = new Map();
-
 // Firebase初期化
 try
 {
@@ -69,12 +65,17 @@ try
 }
 
 const app = express();
+// CORS設定を強化
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  methods: ['GET', 'POST'],
-  credentials: true
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173', // 明示的にクライアントのURLを許可
+  methods: ['GET', 'POST', 'OPTIONS'],  // OPTIONSメソッドを追加(プリフライトリクエスト対応)
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'] // 許可するヘッダーを明示
 }));
 app.use(express.json());
+
+// プリフライトリクエスト用のルート
+app.options('*', cors());
 
 // ヘルスチェックエンドポイント
 app.get('/health', (req, res) =>
@@ -82,8 +83,8 @@ app.get('/health', (req, res) =>
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Firebase認証トークン検証エンドポイント
-app.post('/api/verify-token', async (req, res) =>
+// Firebase認証トークン検証とFluid Relay JWT生成を一括処理
+app.post('/api/fluid-token', async (req, res) =>
 {
   try
   {
@@ -97,36 +98,22 @@ app.post('/api/verify-token', async (req, res) =>
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = decodedToken.uid;
 
-    // セッションIDを生成
-    const sessionId = uuidv4();
-
     // ユーザー情報を取得
     const userRecord = await admin.auth().getUser(uid);
 
-    // セッション情報を保存
-    sessions.set(sessionId, {
+    // ユーザー情報をログに記録
+    console.log(`User authenticated: ${uid} (${userRecord.displayName || 'Anonymous'})`);
+
+    // Azure Fluidトークンを生成
+    const result = generateAzureFluidToken({
       uid,
-      displayName: userRecord.displayName || 'Anonymous User',
-      email: userRecord.email,
-      photoURL: userRecord.photoURL,
-      createdAt: Date.now()
+      displayName: userRecord.displayName || 'Anonymous User'
     });
 
-    console.log(`User ${uid} (${userRecord.displayName || 'Anonymous'}) authenticated, session created: ${sessionId}`);
-
-    // セッションIDをクライアントに返す
-    res.json({
-      sessionId,
-      user: {
-        uid,
-        displayName: userRecord.displayName,
-        email: userRecord.email,
-        photoURL: userRecord.photoURL
-      }
-    });
+    res.json(result);
   } catch (error)
   {
-    console.error('Token verification error:', error);
+    console.error('Token verification or generation error:', error);
     res.status(401).json({ error: '認証に失敗しました' });
   }
 });
@@ -176,54 +163,6 @@ function generateAzureFluidToken(user)
     throw new Error('トークン生成に失敗しました');
   }
 }
-
-// Azure Fluid Relay用トークン取得エンドポイント
-app.post('/api/fluid-token', async (req, res) =>
-{
-  try
-  {
-    const { sessionId } = req.body;
-    if (!sessionId || !sessions.has(sessionId))
-    {
-      return res.status(401).json({ error: '有効なセッションが見つかりません' });
-    }
-
-    const session = sessions.get(sessionId);
-
-    // Azure Fluidトークンを生成
-    const result = generateAzureFluidToken({
-      uid: session.uid,
-      displayName: session.displayName
-    });
-
-    res.json(result);
-  } catch (error)
-  {
-    console.error('Fluid token error:', error);
-    res.status(500).json({ error: 'トークン生成に失敗しました' });
-  }
-});
-
-// セッションクリーンアップ（24時間で期限切れ）
-setInterval(() =>
-{
-  const now = Date.now();
-  let expiredCount = 0;
-
-  for (const [key, session] of sessions.entries())
-  {
-    if (now - session.createdAt > 24 * 60 * 60 * 1000)
-    {
-      sessions.delete(key);
-      expiredCount++;
-    }
-  }
-
-  if (expiredCount > 0)
-  {
-    console.log(`${expiredCount}個の期限切れセッションを削除しました。残り: ${sessions.size}個`);
-  }
-}, 60 * 60 * 1000); // 1時間ごとにクリーンアップ
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>

@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { UserManager, type IAuthResult } from '../auth/UserManager';
+	import AuthComponent from '../components/AuthComponent.svelte';
 	import EnvDebugger from '../components/EnvDebugger.svelte';
 	import MissingEnvWarning from '../components/MissingEnvWarning.svelte';
+	import NetworkErrorAlert from '../components/NetworkErrorAlert.svelte';
 	import OutlinerTree from '../components/OutlinerTree.svelte';
-	import UserRegistration from '../components/UserRegistration.svelte';
-	import { authStore, initAuth } from '../lib/authService';
 	import { getDebugConfig } from '../lib/env';
 	import { handleConnectionError } from '../lib/fluidService';
 	import { fluidClient } from '../stores/fluidStore';
@@ -19,6 +20,8 @@
 	let envConfig = getDebugConfig();
 	let treeData: any = {};
 	let rootItems; // アウトラインのルートアイテム
+	let isAuthenticated = false;
+	let networkError: string | null = null;
 
 	// SharedTreeの変更を監視するためのハンドラ
 	function handleTreeChanged(event: CustomEvent) {
@@ -26,18 +29,78 @@
 		updateDebugInfo();
 	}
 
-	// 認証状態を確認
-	$: isUserAuthenticated = $authStore.user !== null;
+	// 認証成功時の処理
+	async function handleAuthSuccess(event: CustomEvent<IAuthResult>) {
+		console.log('認証成功:', event.detail);
+		isAuthenticated = true;
+
+		try {
+			// Fluidクライアントの再初期化が必要な場合はここで行う
+			await initializeFluidClient();
+		} catch (err) {
+			console.error('認証後のFluid初期化エラー:', err);
+			error = err instanceof Error ? err.message : 'Fluid初期化エラー';
+
+			// ネットワークエラーの場合は特別なエラーメッセージを表示
+			if (err.message && err.message.includes('サーバーに接続できませんでした')) {
+				networkError =
+					'バックエンドサーバーに接続できませんでした。サーバーが起動しているか確認してください。';
+			}
+		}
+	}
+
+	// ネットワークエラー発生時の再試行
+	async function retryConnection() {
+		networkError = null;
+		try {
+			// UserManagerインスタンスを取得して再接続
+			const userManager = UserManager.getInstance();
+			const currentUser = userManager.getCurrentUser();
+
+			if (currentUser) {
+				// 認証状態を更新
+				const authToken = await userManager.refreshToken();
+				if (authToken) {
+					await initializeFluidClient();
+				}
+			}
+		} catch (err) {
+			console.error('再接続エラー:', err);
+			networkError = '再接続に失敗しました。しばらくしてからもう一度お試しください。';
+		}
+	}
+
+	// 認証ログアウト時の処理
+	function handleAuthLogout() {
+		console.log('ログアウトしました');
+		isAuthenticated = false;
+		// 必要に応じてページをリロードするか、非認証状態の表示に切り替える
+	}
+
+	// Fluidクライアントの初期化
+	async function initializeFluidClient() {
+		if (!$fluidClient) {
+			error = 'Fluidクライアントが初期化されていません。';
+			isLoading = false;
+			return;
+		}
+
+		// コンテナIDの保存
+		containerId = $fluidClient.containerId;
+
+		// Outlinerで使用するrootItemsを設定
+		rootItems = $fluidClient.getTree();
+
+		// デバッグ情報の初期化
+		updateDebugInfo();
+
+		isLoading = false;
+	}
 
 	onMount(async () => {
-		// debugger
-
 		console.debug('[+page] Component mounted');
 
 		try {
-			// 認証の初期化
-			initAuth();
-
 			// ホスト情報を取得
 			if (typeof window !== 'undefined') {
 				hostInfo = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
@@ -47,33 +110,16 @@
 				window.addEventListener('fluidTreeChanged', handleTreeChanged as EventListener);
 			}
 
-			// Fluidクライアントの初期化
-			if (!$fluidClient) {
-				error = 'Fluidクライアントが初期化されていません。';
-				isLoading = false;
-				return;
+			// UserManagerの認証状態を確認
+			const userManager = UserManager.getInstance();
+			isAuthenticated = userManager.getCurrentUser() !== null;
+
+			// 認証済みの場合はFluidクライアントを初期化
+			if (isAuthenticated) {
+				await initializeFluidClient();
+			} else {
+				isLoading = false; // 未認証の場合はローディングを終了
 			}
-
-			// コンテナIDの保存
-			containerId = $fluidClient.containerId;
-
-			// Outlinerで使用するrootItemsを設定
-			rootItems = $fluidClient.getTree();
-
-			// 初期データの設定
-			$fluidClient.setData?.('appName', 'Outliner');
-			$fluidClient.setData?.('debugAttached', true);
-
-			// 初期TreeDataを取得
-			treeData = $fluidClient.getAllData();
-
-			// デバッグ情報の初期化
-			updateDebugInfo();
-
-			// 環境変数情報も保存
-			$fluidClient.setData?.('debugConfig', envConfig);
-
-			isLoading = false;
 		} catch (err) {
 			console.error('Error initializing page:', err);
 			error = err instanceof Error ? err.message : '初期化中にエラーが発生しました。';
@@ -110,18 +156,10 @@
 			}
 		} catch (err) {
 			console.error('Connection test error:', err);
-			error = await handleConnectionError(err);
+			const errorInfo = handleConnectionError(err);
+			error = errorInfo.message;
 		} finally {
 			isLoading = false;
-		}
-	}
-
-	function handleInput() {
-		console.debug('[+page] Adding text:', inputText);
-		if ($fluidClient && inputText) {
-			// ここにテキスト追加処理を実装
-			inputText = '';
-			updateDebugInfo();
 		}
 	}
 
@@ -148,11 +186,16 @@
 	<!-- 環境変数の警告 -->
 	<MissingEnvWarning />
 
-	<!-- ユーザー認証コンポーネント -->
-	<UserRegistration />
+	<!-- 認証コンポーネント -->
+	<div class="auth-section">
+		<AuthComponent on:authSuccess={handleAuthSuccess} on:authLogout={handleAuthLogout} />
+	</div>
 
 	<!-- 環境変数デバッガー -->
 	<EnvDebugger />
+
+	<!-- ネットワークエラー表示 -->
+	<NetworkErrorAlert error={networkError} retryCallback={retryConnection} />
 
 	{#if isLoading}
 		<div class="loading">読み込み中...</div>
@@ -161,28 +204,39 @@
 			<p>エラー: {error}</p>
 			<button on:click={() => location.reload()}>再読み込み</button>
 		</div>
-	{:else}
-		<div class="connection-status">
-			<div
-				class="status-indicator {$fluidClient?.container?.connected ? 'connected' : 'disconnected'}"
-			></div>
-			<span>接続状態: {$fluidClient?.container?.connected ? '接続済み' : '未接続'}</span>
-			<button on:click={testConnection}>接続テスト</button>
+	{:else if isAuthenticated}
+		<!-- 認証済みユーザー向けコンテンツ -->
+		<div class="authenticated-content">
+			<div class="connection-status">
+				<div
+					class="status-indicator {$fluidClient?.container?.connected
+						? 'connected'
+						: 'disconnected'}"
+				></div>
+				<span>接続状態: {$fluidClient?.container?.connected ? '接続済み' : '未接続'}</span>
+				<button on:click={testConnection}>接続テスト</button>
+			</div>
+
+			{#if containerId}
+				<div class="container-info">
+					<p>コンテナID: <code>{containerId}</code></p>
+				</div>
+			{/if}
+
+			{#if rootItems}
+				<OutlinerTree {rootItems} />
+			{:else}
+				<div class="loading">
+					<p>Loading shared data...</p>
+				</div>
+			{/if}
 		</div>
-
-		{#if containerId}
-			<div class="container-info">
-				<p>コンテナID: <code>{containerId}</code></p>
-			</div>
-		{/if}
-
-		{#if rootItems}
-			<OutlinerTree {rootItems} />
-		{:else}
-			<div class="loading">
-				<p>Loading shared data...</p>
-			</div>
-		{/if}
+	{:else}
+		<!-- 未認証ユーザー向けメッセージ -->
+		<div class="unauthenticated-message">
+			<p>Outlinerアプリを使用するには、上部のGoogleログインボタンからログインしてください。</p>
+			<p>ログインすると、リアルタイムでの共同編集が可能になります。</p>
+		</div>
 	{/if}
 
 	<button on:click={toggleDebugPanel} class="mt-4 rounded bg-purple-500 p-2 text-white">
@@ -312,13 +366,21 @@
 		margin-bottom: 1em;
 	}
 
-	.loading {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		height: 200px;
-		background: #f9f9f9;
+	.auth-section {
+		max-width: 400px;
+		margin: 0 auto 2rem auto;
+	}
+
+	.unauthenticated-message {
+		text-align: center;
+		padding: 2rem;
+		background: #f5f5f5;
 		border-radius: 8px;
-		margin-top: 20px;
+		margin: 2rem 0;
+		color: #555;
+	}
+
+	.authenticated-content {
+		margin-top: 2rem;
 	}
 </style>
