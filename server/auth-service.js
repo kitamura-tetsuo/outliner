@@ -6,6 +6,8 @@ const { v4: uuidv4 } = require('uuid');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
+const { generateToken } = require("@fluidframework/azure-service-utils");
+const { ScopeType, IUser } = require("@fluidframework/azure-client");
 
 // サービスアカウントJSONファイルのパス
 const serviceAccountPath = path.join(__dirname, 'firebase-adminsdk.json');
@@ -48,7 +50,10 @@ try
 const azureConfig = {
   tenantId: process.env.AZURE_TENANT_ID,
   endpoint: process.env.AZURE_FLUID_RELAY_ENDPOINT,
-  key: process.env.AZURE_PRIMARY_KEY
+  primaryKey: process.env.AZURE_PRIMARY_KEY,
+  secondaryKey: process.env.AZURE_SECONDARY_KEY,
+  // キーローテーション中はこれをsecondaryに設定
+  activeKey: process.env.AZURE_ACTIVE_KEY || 'primary'
 };
 
 // Firebase初期化
@@ -88,7 +93,7 @@ app.post('/api/fluid-token', async (req, res) =>
 {
   try
   {
-    const { idToken } = req.body;
+    const { idToken, containerId } = req.body;
     if (!idToken)
     {
       return res.status(400).json({ error: 'IDトークンが必要です' });
@@ -104,11 +109,17 @@ app.post('/api/fluid-token', async (req, res) =>
     // ユーザー情報をログに記録
     console.log(`User authenticated: ${uid} (${userRecord.displayName || 'Anonymous'})`);
 
+    // コンテナIDが指定されている場合はログに出力
+    if (containerId)
+    {
+      console.log(`Generating token for container: ${containerId}`);
+    }
+
     // Azure Fluidトークンを生成
     const result = generateAzureFluidToken({
       uid,
       displayName: userRecord.displayName || 'Anonymous User'
-    });
+    }, containerId);
 
     res.json(result);
   } catch (error)
@@ -118,12 +129,54 @@ app.post('/api/fluid-token', async (req, res) =>
   }
 });
 
-// Azure Fluid Relay用トークン生成関数
-function generateAzureFluidToken(user)
+// デバッグ用: トークン内容を検証（開発環境のみ）
+if (process.env.NODE_ENV !== 'production')
 {
-  if (!azureConfig.key)
+  app.get('/debug/token-info', async (req, res) =>
   {
-    console.warn('Azure Primary Keyが設定されていません。テスト用トークンを生成します。');
+    try
+    {
+      const { token } = req.query;
+
+      if (!token)
+      {
+        return res.status(400).json({ error: 'トークンが必要です' });
+      }
+
+      // JWTをデコード（検証なし）
+      const decoded = jwt.decode(token, { complete: true });
+
+      if (!decoded)
+      {
+        return res.status(400).json({ error: '無効なJWTトークンです' });
+      }
+
+      return res.json({
+        header: decoded.header,
+        payload: decoded.payload,
+        // 署名は表示しない
+        expiresIn: decoded.payload.exp ? new Date(decoded.payload.exp * 1000).toISOString() : 'N/A',
+        issuedAt: decoded.payload.iat ? new Date(decoded.payload.iat * 1000).toISOString() : 'N/A',
+      });
+    } catch (error)
+    {
+      console.error('Token debug error:', error);
+      res.status(500).json({ error: 'トークン情報の取得に失敗しました' });
+    }
+  });
+}
+
+// Azure Fluid Relay用トークン生成関数
+function generateAzureFluidToken(user, containerId = undefined)
+{
+  // 使用するキーを決定
+  const keyToUse = azureConfig.activeKey === 'secondary' && azureConfig.secondaryKey
+    ? azureConfig.secondaryKey
+    : azureConfig.primaryKey;
+
+  if (!keyToUse)
+  {
+    console.warn('Azure Keyが設定されていません。テスト用トークンを生成します。');
     return {
       token: `test-token-${user.uid}-${Date.now()}`,
       user: { id: user.uid, name: user.displayName }
@@ -132,30 +185,44 @@ function generateAzureFluidToken(user)
 
   try
   {
-    // トークンの有効期限（1時間）
-    const now = Math.floor(Date.now() / 1000);
-    const exp = now + 3600;
+    // トークン生成前にテナントIDをログに出力して確認
+    console.log(`Generating token with tenantId: ${azureConfig.tenantId}`);
 
-    // トークンのペイロード
-    const claims = {
+    // コンテナID情報をログに出力
+    if (containerId)
+    {
+      console.log(`Token will be scoped to container: ${containerId}`);
+    }
+
+    // 公式Fluid Service Utilsを使用してトークンを生成
+    const fluidUser = {
+      id: user.uid,
+      name: user.displayName || 'Anonymous'
+    };
+
+    const token = generateToken(
+      azureConfig.tenantId,  // テナントID
+      keyToUse,        // 署名キー
+      [ScopeType.DocRead, ScopeType.DocWrite, ScopeType.SummaryWrite], // 権限スコープ
+      containerId,      // コンテナID (指定されていれば)
+      fluidUser
+    );
+
+    // 使用したキーとテナントIDをログに記録（デバッグ用）
+    console.log(`Generated token for user: ${user.uid} using ${azureConfig.activeKey} key and tenantId: ${azureConfig.tenantId}`);
+
+    // JWT内容をデコードして確認（デバッグ用）
+    const decoded = jwt.decode(token);
+    console.log('Token payload:', decoded);
+
+    return {
+      token,
       user: {
         id: user.uid,
         name: user.displayName || 'Anonymous'
       },
-      aud: azureConfig.tenantId,
-      iss: 'outliner-auth-server',
-      sub: user.uid,
-      iat: now,
-      exp,
-      jti: uuidv4()
-    };
-
-    // JWTの署名
-    const token = jwt.sign(claims, azureConfig.key, { algorithm: 'HS256' });
-
-    return {
-      token,
-      user: claims.user
+      tenantId: azureConfig.tenantId, // クライアントに明示的にテナントIDを返す
+      containerId: containerId || null   // 対象コンテナIDも返す
     };
   } catch (error)
   {

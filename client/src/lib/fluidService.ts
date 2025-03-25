@@ -1,4 +1,4 @@
-import { AzureClient, type AzureClientProps, type ITokenProvider } from '@fluidframework/azure-client';
+import { AzureClient, type AzureClientProps, type AzureRemoteConnectionConfig, type ITokenProvider } from '@fluidframework/azure-client';
 import { InsecureTokenProvider } from '@fluidframework/test-client-utils';
 import { type ContainerSchema } from 'fluid-framework';
 import { UserManager } from '../auth/UserManager';
@@ -12,8 +12,15 @@ const azureConfig = {
   endpoint: import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT || 'https://us.fluidrelay.azure.com',
 };
 
-// 開発環境ではTinyliciousを使用する
-const useTinylicious = import.meta.env.DEV && !import.meta.env.VITE_FORCE_AZURE;
+// Tinylicious設定(ローカル開発用)
+const tinyliciousConfig = {
+  endpoint: import.meta.env.VITE_TINYLICIOUS_ENDPOINT || "http://localhost:7070",
+};
+
+// 開発環境ではTinyliciousを使用する - 環境変数で強制的に切り替え可能
+const useTinylicious =
+  import.meta.env.VITE_USE_TINYLICIOUS === 'true' ||
+  (import.meta.env.DEV && import.meta.env.VITE_FORCE_AZURE !== 'true');
 
 // デフォルトのコンテナスキーマ
 const defaultSchema: ContainerSchema = {
@@ -23,13 +30,41 @@ const defaultSchema: ContainerSchema = {
 };
 
 // TokenProviderの取得
-function getTokenProvider(userId?: string): ITokenProvider {
-  // 本番環境の場合はUserManagerからトークンを取得
-  if (import.meta.env.PROD) {
+async function getTokenProvider(userId?: string, containerId?: string): Promise<ITokenProvider> {
+  if (!useTinylicious) {
+    // Azureモードの場合はUserManagerからトークンを取得
     const userManager = UserManager.getInstance();
-    const fluidToken = userManager.getCurrentFluidToken();
+
+    // 特定のコンテナID用のトークンが必要な場合
+    if (containerId) {
+      console.log(`[fluidService] Requesting token for specific container: ${containerId}`);
+      // コンテナID付きで強制的にトークンを更新
+      await userManager.refreshToken(containerId);
+    }
+
+    // トークンが利用可能になるまで待機
+    const fluidToken = await userManager.getCurrentFluidToken();
 
     if (fluidToken) {
+      // サーバーから受け取ったテナントIDを確認
+      const tokenTenantId = (fluidToken as any).tenantId;
+
+      // テナントIDをログに出力（デバッグ用）
+      console.log(`[fluidService] Server provided tenantId: ${tokenTenantId || 'not provided'}`);
+      console.log(`[fluidService] Local configured tenantId: ${azureConfig.tenantId}`);
+
+      // サーバーから受け取ったテナントIDがある場合は、それを使用する
+      if (tokenTenantId) {
+        azureConfig.tenantId = tokenTenantId;
+      }
+
+      console.log(`[fluidService] Using Azure Fluid Relay with token for user: ${fluidToken.user.name} and tenantId: ${azureConfig.tenantId}`);
+
+      // コンテナID制限のログ出力
+      if (fluidToken.containerId) {
+        console.log(`[fluidService] Token is scoped to container: ${fluidToken.containerId}`);
+      }
+
       return {
         fetchOrdererToken: async () => {
           return {
@@ -44,19 +79,22 @@ function getTokenProvider(userId?: string): ITokenProvider {
           };
         }
       };
+    } else {
+      console.warn('[fluidService] No Fluid token available for Azure mode, fallback to insecure provider');
     }
   }
 
-  // 開発環境または未認証の場合はInsecureTokenProviderを使用
+  // Tinyliciousモードまたはトークンが無い場合はInsecureTokenProviderを使用
   const userName = userId ? `User-${userId}` : 'Anonymous';
+  console.log(`[fluidService] Using InsecureTokenProvider for user: ${userName}`);
   return new InsecureTokenProvider(
-    azureConfig.tenantId,
+    useTinylicious ? "tinylicious" : azureConfig.tenantId,
     { id: userId || 'anonymous', name: userName }
   );
 }
 
 // AzureClientの取得（またはTinyliciousClient）
-export function getFluidClient(userId?: string, schema: ContainerSchema = defaultSchema) {
+export async function getFluidClient(userId?: string, schema: ContainerSchema = defaultSchema, containerId?: string) {
   // ユーザーIDが変わった場合は新しいクライアントを作成
   if (azureClient && userId) {
     // 既存クライアントの破棄（必要に応じて）
@@ -64,8 +102,8 @@ export function getFluidClient(userId?: string, schema: ContainerSchema = defaul
   }
 
   if (!azureClient) {
-    // TokenProvider設定
-    const tokenProvider = getTokenProvider(userId);
+    // TokenProvider設定 - コンテナIDが指定されている場合はそれも渡す
+    const tokenProvider = await getTokenProvider(userId, containerId);
 
     let clientProps: AzureClientProps;
 
@@ -78,7 +116,7 @@ export function getFluidClient(userId?: string, schema: ContainerSchema = defaul
           endpoint: tinyliciousConfig.endpoint,
         },
       };
-      console.log("[fluidService] Using Tinylicious local service for development");
+      console.log(`[fluidService] Using Tinylicious local service at ${tinyliciousConfig.endpoint}`);
     } else {
       // Azure Fluid Relay（本番環境）用の設定
       const connectionConfig: AzureRemoteConnectionConfig = {
@@ -91,18 +129,23 @@ export function getFluidClient(userId?: string, schema: ContainerSchema = defaul
       clientProps = {
         connection: connectionConfig,
       };
-      console.log("[fluidService] Using Azure Fluid Relay service");
+      console.log(`[fluidService] Using Azure Fluid Relay service at ${azureConfig.endpoint}`);
     }
 
-    // Azure Clientの作成
-    azureClient = new AzureClient(clientProps);
-    console.debug(`[fluidService] Created new AzureClient for user: ${userId || 'anonymous'}`);
+    try {
+      // Azure Clientの作成
+      azureClient = new AzureClient(clientProps);
+      console.debug(`[fluidService] Created new Fluid client for user: ${userId || 'anonymous'}`);
+    } catch (error) {
+      console.error("[fluidService] Failed to create Fluid client:", error);
+      throw error;
+    }
   }
 
   return {
     client: azureClient,
     schema: schema,
-    useTinylicious  // この値を返すようにする
+    useTinylicious
   };
 }
 

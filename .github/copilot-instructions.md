@@ -6,10 +6,14 @@ Fluid Frameworkと svelteを使ったアプリを作りたい。
 
 最新のAPIドキュメントを確認しながら作業して。
 
-最新のAPIドキュメント
+APIドキュメント
 https://learn.microsoft.com/ja-jp/azure/azure-fluid-relay/how-tos/connect-fluid-azure-service
 https://www.npmjs.com/package/fluid-framework
 https://fluidframework.com/docs/start/tree-start
+https://fluidframework.com/docs/
+
+引数や戻り値は毎回APIドキュメントから探して。qに単語を入れれば検索出来る。
+https://fluidframework.com/search/?q=
 
 テスト
 テストが通らない時、テストが正しいなら実装を修正して。
@@ -36,3 +40,11 @@ Firebase SDKを使ってGoogle認証を完結させる
 
 クライアント:
 受け取ったJWTでAzure Fluid Relayに接続
+
+
+
+
+
+
+注意事項
+初期化前に if (!this.appData.root)  を実行するとエラーになるので、初期化チェックにこれを使用しないで。

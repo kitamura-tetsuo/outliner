@@ -12,7 +12,7 @@ import {
 import { v4 as uuid } from "uuid";
 
 // スキーマファクトリを作成
-const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120002");
+const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120003");
 
 // アイテム定義をシンプル化（グループとノートの区別を削除）
 export class Item extends sf.objectRecursive("Item", {

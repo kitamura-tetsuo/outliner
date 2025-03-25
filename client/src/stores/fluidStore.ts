@@ -5,17 +5,35 @@ import { FluidClient } from '../fluid/fluidClient';
 // FluidClientのインスタンスを保持するStore
 export const fluidClient = writable<FluidClient | null>(null);
 
+// 初期化中フラグを追跡するための変数
+let isInitializing = false;
+let unsubscribeAuth: (() => void) | null = null;
+
 // ユーザー認証状態の変更を監視して、FluidClientを初期化/更新する
 export async function initFluidClientWithAuth() {
+  // 既に初期化中なら何もしない
+  if (isInitializing) {
+    console.log('FluidClient初期化は既に実行中です。重複呼び出しをスキップします。');
+    return;
+  }
+
+  // 以前のリスナーがあればクリーンアップ
+  if (unsubscribeAuth) {
+    unsubscribeAuth();
+    unsubscribeAuth = null;
+  }
+
+  isInitializing = true;
   const userManager = UserManager.getInstance();
 
   // 認証状態の変更を監視
-  userManager.addEventListener(async (authResult) => {
-    if (authResult) {
-      console.log('認証成功により、Fluidクライアントを初期化します');
-      try {
-        // FluidClientのインスタンスを作成して初期化
-        const client = new FluidClient();
+  unsubscribeAuth = userManager.addEventListener(async (authResult) => {
+    try {
+      if (authResult) {
+        console.log('認証成功により、Fluidクライアントを初期化します');
+
+        // FluidClientのシングルトンインスタンスを取得し初期化
+        const client = FluidClient.getInstance();
         await client.initialize();
 
         // Storeに保存
@@ -25,16 +43,17 @@ export async function initFluidClientWithAuth() {
         if (typeof window !== 'undefined') {
           (window as any).__FLUID_CLIENT__ = client;
         }
-      } catch (error) {
-        console.error('FluidClient初期化エラー:', error);
+      } else {
+        console.log('ログアウトにより、Fluidクライアントをリセットします');
+        // 注意: シングルトンインスタンスはリセットせず、ストアからの参照のみ削除
         fluidClient.set(null);
+        if (typeof window !== 'undefined') {
+          delete (window as any).__FLUID_CLIENT__;
+        }
       }
-    } else {
-      console.log('ログアウトにより、Fluidクライアントをリセットします');
+    } catch (error) {
+      console.error('FluidClient初期化エラー:', error);
       fluidClient.set(null);
-      if (typeof window !== 'undefined') {
-        delete (window as any).__FLUID_CLIENT__;
-      }
     }
   });
 
@@ -42,7 +61,7 @@ export async function initFluidClientWithAuth() {
   const currentUser = userManager.getCurrentUser();
   if (currentUser) {
     try {
-      const client = new FluidClient();
+      const client = FluidClient.getInstance();
       await client.initialize();
       fluidClient.set(client);
 
@@ -53,9 +72,41 @@ export async function initFluidClientWithAuth() {
       console.error('既存ユーザーでのFluidClient初期化エラー:', error);
     }
   }
+
+  isInitializing = false;
+}
+
+// クリーンアップ関数
+export function cleanupFluidClient() {
+  if (unsubscribeAuth) {
+    unsubscribeAuth();
+    unsubscribeAuth = null;
+  }
+
+  // 現在のクライアントをクリーンアップ
+  fluidClient.update(client => {
+    if (client) {
+      try {
+        // クライアントが接続状態のイベントハンドラを持っていれば解除
+        if (client.container) {
+          client.container.off('connected', () => { });
+          client.container.off('disconnected', () => { });
+        }
+      } catch (e) {
+        console.warn('FluidClient接続解除中のエラー:', e);
+      }
+    }
+    return null;
+  });
 }
 
 // アプリ起動時に初期化を実行
 if (typeof window !== 'undefined') {
-  initFluidClientWithAuth();
+  // ページロード時の重複初期化を避けるため少し遅延させる
+  setTimeout(() => {
+    initFluidClientWithAuth();
+  }, 100);
+
+  // ページ終了時にクリーンアップ
+  window.addEventListener('beforeunload', cleanupFluidClient);
 }

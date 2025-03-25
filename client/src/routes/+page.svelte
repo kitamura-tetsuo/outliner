@@ -34,17 +34,43 @@
 		console.log('認証成功:', event.detail);
 		isAuthenticated = true;
 
+		// Fluidクライアントの初期化はfluidStoreが処理するため、
+		// ここでは初期化せず、状態が変わるのを待つだけにする
 		try {
-			// Fluidクライアントの再初期化が必要な場合はここで行う
-			await initializeFluidClient();
+			// fluidStoreからのクライアント状態変更を待つ
+			const unsubscribe = fluidClient.subscribe((client) => {
+				if (client?.container?.connected) {
+					console.log('Fluidクライアントが接続されました');
+
+					// containerId と rootItems を設定
+					containerId = client.containerId;
+					rootItems = client.getTree();
+
+					// ページの状態を更新
+					isLoading = false;
+					error = null;
+
+					// 不要になったら購読を停止
+					unsubscribe();
+				}
+			});
+
+			// 一定時間後もFluidクライアントが接続されない場合はエラー表示
+			setTimeout(() => {
+				if ($fluidClient && !$fluidClient.isConnected) {
+					error = 'Fluidサービスへの接続がタイムアウトしました。';
+					isLoading = false;
+				}
+			}, 10000);
 		} catch (err) {
-			console.error('認証後のFluid初期化エラー:', err);
+			console.error('認証後のFluid初期化監視エラー:', err);
 			error = err instanceof Error ? err.message : 'Fluid初期化エラー';
 
 			// ネットワークエラーの場合は特別なエラーメッセージを表示
 			if (err.message && err.message.includes('サーバーに接続できませんでした')) {
 				networkError =
 					'バックエンドサーバーに接続できませんでした。サーバーが起動しているか確認してください。';
+				isLoading = false;
 			}
 		}
 	}
@@ -114,9 +140,19 @@
 			const userManager = UserManager.getInstance();
 			isAuthenticated = userManager.getCurrentUser() !== null;
 
-			// 認証済みの場合はFluidクライアントを初期化
+			// 認証済みの場合はFluidクライアントの状態を監視
 			if (isAuthenticated) {
-				await initializeFluidClient();
+				// fluidClientストアを購読
+				const unsubscribe = fluidClient.subscribe((client) => {
+					if (client?.container) {
+						containerId = client.containerId;
+						rootItems = client.getTree();
+						isLoading = false;
+					}
+				});
+
+				// コンポーネントのクリーンアップ時に購読を解除
+				return () => unsubscribe();
 			} else {
 				isLoading = false; // 未認証の場合はローディングを終了
 			}
@@ -209,11 +245,9 @@
 		<div class="authenticated-content">
 			<div class="connection-status">
 				<div
-					class="status-indicator {$fluidClient?.container?.connected
-						? 'connected'
-						: 'disconnected'}"
+					class="status-indicator {$fluidClient?.isConnected ? 'connected' : 'disconnected'}"
 				></div>
-				<span>接続状態: {$fluidClient?.container?.connected ? '接続済み' : '未接続'}</span>
+				<span>接続状態: {$fluidClient?.getConnectionStateString() || '未接続'}</span>
 				<button on:click={testConnection}>接続テスト</button>
 			</div>
 

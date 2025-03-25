@@ -24,6 +24,8 @@ export interface IFluidToken {
     id: string;
     name: string;
   };
+  tenantId?: string; // サーバーから受け取ったテナントIDを格納できるように追加
+  containerId?: string; // 対象コンテナID
 }
 
 // 認証結果の型定義
@@ -53,10 +55,12 @@ export class UserManager {
   private app = initializeApp(this.firebaseConfig);
   private auth = getAuth(this.app);
 
-  private currentUser: IUser | null = null;
   private currentFluidToken: IFluidToken | null = null;
   private listeners: AuthEventListener[] = [];
   private unsubscribeAuth: (() => void) | null = null;
+  private isRefreshingToken = false; // トークン更新中フラグ
+  private tokenRefreshPromise: Promise<IFluidToken | null> | null = null;
+  private readonly TOKEN_REFRESH_TIMEOUT = 10000; // 10秒のタイムアウト
 
   // シングルトンパターン
   public static getInstance(): UserManager {
@@ -70,6 +74,11 @@ export class UserManager {
     console.debug('[UserManager] Initializing...');
     this.initAuthListener();
     this.loadSavedUser();
+  }
+
+  // 認証状態をチェックする新しいヘルパーメソッド
+  public isAuthenticated(): boolean {
+    return !!this.auth.currentUser;
   }
 
   // Firebase認証状態の監視
@@ -93,28 +102,15 @@ export class UserManager {
 
       // Fluid Relayトークンを取得
       const fluidToken = await this.getFluidToken(idToken);
-
-      // ユーザー情報を更新
-      this.currentUser = {
-        id: firebaseUser.uid,
-        name: firebaseUser.displayName || 'Anonymous User',
-        email: firebaseUser.email || undefined,
-        photoURL: firebaseUser.photoURL || undefined
-      };
-
       this.currentFluidToken = fluidToken;
 
-      // ユーザー情報をローカルストレージに保存
-      this.saveUserToLocalStorage(this.currentUser);
-
-      // リスナーに通知
+      // リスナーに通知 - Firebase認証状態から直接ユーザー情報を構築
       this.notifyListeners({
-        user: this.currentUser,
+        user: this.getCurrentUser()!,
         fluidToken: this.currentFluidToken
       });
     } catch (error) {
       console.error('[UserManager] Error handling signed in user:', error);
-      this.currentUser = null;
       this.currentFluidToken = null;
       this.notifyListeners(null);
     }
@@ -123,23 +119,37 @@ export class UserManager {
   // ユーザーサインアウト処理
   private handleUserSignedOut(): void {
     console.debug('[UserManager] User signed out');
-    this.currentUser = null;
     this.currentFluidToken = null;
-    localStorage.removeItem('fluidUser');
+    localStorage.removeItem('fluidUser'); // 不要になる可能性あり
     this.notifyListeners(null);
   }
 
-  // ユーザー情報をローカルストレージに保存
-  private saveUserToLocalStorage(user: IUser): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('fluidUser', JSON.stringify(user));
-    }
+  // ユーザー情報を取得する関数
+  public getCurrentUser(): IUser | null {
+    const firebaseUser = this.auth.currentUser;
+    if (!firebaseUser) return null;
+
+    return {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName || 'Anonymous User',
+      email: firebaseUser.email || undefined,
+      photoURL: firebaseUser.photoURL || undefined
+    };
   }
 
   // Fluid Relayトークンを取得
-  private async getFluidToken(idToken: string): Promise<IFluidToken> {
+  private async getFluidToken(idToken: string, containerId?: string): Promise<IFluidToken> {
     try {
       console.log(`[UserManager] Requesting Fluid token from: ${this.apiBaseUrl}/api/fluid-token`);
+
+      // リクエストボディの作成
+      const requestBody: any = { idToken };
+
+      // コンテナIDが指定されている場合は追加
+      if (containerId) {
+        requestBody.containerId = containerId;
+        console.log(`[UserManager] Requesting token for container: ${containerId}`);
+      }
 
       // フェッチオプションを明示的に設定
       const response = await fetch(`${this.apiBaseUrl}/api/fluid-token`, {
@@ -153,7 +163,7 @@ export class UserManager {
         credentials: 'include',
         // CORSモードを明示
         mode: 'cors',
-        body: JSON.stringify({ idToken })
+        body: JSON.stringify(requestBody)
       });
 
       // エラーレスポンスの詳細ログ
@@ -185,8 +195,7 @@ export class UserManager {
       const savedUser = localStorage.getItem('fluidUser');
       if (savedUser) {
         try {
-          this.currentUser = JSON.parse(savedUser);
-          return this.currentUser;
+          return JSON.parse(savedUser);
         } catch (e) {
           console.error('[UserManager] Error parsing saved user:', e);
           localStorage.removeItem('fluidUser');
@@ -224,9 +233,9 @@ export class UserManager {
     this.listeners.push(listener);
 
     // 既に認証済みの場合は即座に通知
-    if (this.currentUser && this.currentFluidToken) {
+    if (this.auth.currentUser && this.currentFluidToken) {
       listener({
-        user: this.currentUser,
+        user: this.getCurrentUser()!,
         fluidToken: this.currentFluidToken
       });
     }
@@ -247,43 +256,126 @@ export class UserManager {
     }
   }
 
-  // 現在のユーザーを取得
-  public getCurrentUser(): IUser | null {
-    return this.currentUser;
+  // 現在のFluid Relayトークンを取得（なければ取得を試みる）
+  public async getCurrentFluidToken(forceRefresh = false): Promise<IFluidToken | null> {
+    // 既存のトークン更新が進行中の場合はそのプロミスを返す
+    if (this.tokenRefreshPromise) {
+      console.log('[UserManager] Token refresh already in progress, waiting...');
+      return this.tokenRefreshPromise;
+    }
+
+    // トークンが存在しないか強制更新が要求された場合
+    if ((forceRefresh || !this.currentFluidToken) && this.isAuthenticated() && !this.isRefreshingToken) {
+      try {
+        // 更新中フラグをセット（無限ループ防止）
+        this.isRefreshingToken = true;
+
+        console.log('[UserManager] No token available, attempting to refresh');
+
+        // 更新処理をプロミスとして保存（他の呼び出しが同じプロミスを共有できるように）
+        this.tokenRefreshPromise = new Promise<IFluidToken | null>(async (resolve) => {
+          // タイムアウト処理
+          const timeoutId = setTimeout(() => {
+            console.warn('[UserManager] Token refresh timed out after', this.TOKEN_REFRESH_TIMEOUT, 'ms');
+            this.isRefreshingToken = false;
+            this.tokenRefreshPromise = null;
+            resolve(this.currentFluidToken); // タイムアウト時は現在の状態を返す
+          }, this.TOKEN_REFRESH_TIMEOUT);
+
+          try {
+            await this.refreshToken();
+            clearTimeout(timeoutId);
+            resolve(this.currentFluidToken);
+          } catch (error) {
+            console.error('[UserManager] Failed to get fluid token:', error);
+            clearTimeout(timeoutId);
+            resolve(this.currentFluidToken); // エラー時は現在の状態を返す
+          } finally {
+            this.isRefreshingToken = false;
+            this.tokenRefreshPromise = null;
+          }
+        });
+
+        return await this.tokenRefreshPromise;
+      } catch (error) {
+        console.error('[UserManager] Error in getCurrentFluidToken:', error);
+        this.isRefreshingToken = false;
+        this.tokenRefreshPromise = null;
+        return this.currentFluidToken;
+      }
+    }
+
+    return this.currentFluidToken;
   }
 
-  // 現在のFluid Relayトークンを取得
-  public getCurrentFluidToken(): IFluidToken | null {
+  // 同期バージョンも保持（互換性のため）
+  public getFluidTokenSync(): IFluidToken | null {
+    if (this.isRefreshingToken) {
+      console.warn('[UserManager] Warning: Token is being refreshed, returning current value synchronously');
+    }
     return this.currentFluidToken;
   }
 
   // Fluid Relayに接続する際に必要なユーザー情報
   public getFluidUserInfo(): { id: string; name: string } | null {
-    if (!this.currentUser) return null;
+    const currentUser = this.getCurrentUser();
+    if (!currentUser) return null;
     return {
-      id: this.currentUser.id,
-      name: this.currentUser.name
+      id: currentUser.id,
+      name: currentUser.name
     };
   }
 
+  // Firebase認証の完了を待機するためのヘルパーメソッド
+  private waitForFirebaseAuth(timeoutMs = 10000): Promise<boolean> {
+    return new Promise((resolve) => {
+      // すでに認証済みなら即座に完了
+      if (this.auth.currentUser) {
+        return resolve(true);
+      }
+
+      // タイムアウト用のタイマー
+      const timeoutId = setTimeout(() => {
+        unsubscribe();
+        console.warn('[UserManager] Firebase auth state timeout after', timeoutMs, 'ms');
+        resolve(false);
+      }, timeoutMs);
+
+      // 認証状態変更のリスナー
+      const unsubscribe = this.auth.onAuthStateChanged((user) => {
+        if (user) {
+          clearTimeout(timeoutId);
+          unsubscribe();
+          resolve(true);
+        }
+      });
+    });
+  }
+
   // トークンをリフレッシュする
-  public async refreshToken(): Promise<string | null> {
+  public async refreshToken(containerId?: string): Promise<string | null> {
     try {
-      const firebaseUser = this.auth.currentUser;
-      if (!firebaseUser) {
+      // Firebase認証の完了を待機
+      console.log('[UserManager] Waiting for Firebase auth to complete...');
+      const authCompleted = await this.waitForFirebaseAuth();
+
+      if (!authCompleted || !this.isAuthenticated()) {
+        console.warn('[UserManager] Firebase auth did not complete or user is not authenticated');
         return null;
       }
 
+      console.log('[UserManager] Firebase auth completed, getting ID token...');
       // Firebase IDトークンを強制的にリフレッシュ
-      const idToken = await firebaseUser.getIdToken(true);
+      const idToken = await this.auth.currentUser!.getIdToken(true);
 
       // Fluid Relayトークンを再取得
-      this.currentFluidToken = await this.getFluidToken(idToken);
+      console.log('[UserManager] Got Firebase ID token, requesting Fluid token...');
+      this.currentFluidToken = await this.getFluidToken(idToken, containerId);
 
       // リスナーに通知
-      if (this.currentUser && this.currentFluidToken) {
+      if (this.auth.currentUser && this.currentFluidToken) {
         this.notifyListeners({
-          user: this.currentUser,
+          user: this.getCurrentUser()!,
           fluidToken: this.currentFluidToken
         });
       }
