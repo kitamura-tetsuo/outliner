@@ -10,16 +10,18 @@
 
 	const dispatch = createEventDispatcher();
 
-	let pageTitle = '';
+	// 開発環境ではデフォルトのタイトルを提案
+	const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV === true;
+	let pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : '';
 
 	function handleCreatePage() {
-		if (!pageTitle.trim()) {
+		if (!pageTitle.trim() && !isDev) {
 			pageTitle = '新しいページ ' + new Date().toLocaleString();
 		}
 
 		// TreeViewManagerを使用して、正しくページを追加
 		const newPage = TreeViewManager.addPage(rootItems, pageTitle, currentUser);
-		pageTitle = '';
+		pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : '';
 
 		// 新しいページを選択（オブジェクト直接渡し）
 		dispatch('select', {

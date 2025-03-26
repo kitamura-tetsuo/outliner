@@ -70,9 +70,14 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	public readonly addNode = (author: string) => {
 		const timeStamp = new Date().getTime();
 
+		// 開発環境では、アイテムのインデックスをテキストに設定
+		const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV === true;
+		const itemIndex = this.length;
+		const defaultText = isDev ? `Item ${itemIndex}` : "";
+
 		const newItem = new Item({
 			id: uuid(),
-			text: "", // 空テキストで開始
+			text: defaultText, // 開発環境ではインデックスを含むテキスト
 			author,
 			votes: [],
 			created: timeStamp,
@@ -96,10 +101,15 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	public readonly addPage = (title: string, author: string) => {
 		const timeStamp = new Date().getTime();
 
+		// 開発環境では、タイトルが空の場合にインデックスをタイトルに設定
+		const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV === true;
+		const pageIndex = this.length;
+		const pageTitle = title || (isDev ? `Page ${pageIndex}` : "");
+
 		// 基本的にはaddNodeと同じItemだが、タイトルが設定されている
 		const newPage = new Item({
 			id: uuid(),
-			text: title, // タイトルを設定
+			text: pageTitle, // 開発環境で空の場合はインデックスベースのタイトル
 			author,
 			votes: [],
 			created: timeStamp,

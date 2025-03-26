@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Tree } from 'fluid-framework';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { Item, Items } from '../schema/app-schema';
 	import { fluidClient } from '../stores/fluidStore';
 	import OutlinerItem from './OutlinerItem.svelte';
@@ -11,6 +11,10 @@
 	let currentUser = 'anonymous';
 	let items = [];
 	let title = '';
+
+	// デバウンス用のフラグとタイマーID
+	let inProgress = false;
+	let operationTimer: ReturnType<typeof setTimeout> | null = null;
 
 	$: if (pageItem) {
 		title = pageItem.text;
@@ -28,6 +32,10 @@
 		return () => {
 			if (unsubscribe) unsubscribe();
 		};
+	});
+
+	onDestroy(() => {
+		if (operationTimer) clearTimeout(operationTimer);
 	});
 
 	function updateItems() {
