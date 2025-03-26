@@ -7,6 +7,8 @@
 	import MissingEnvWarning from '../components/MissingEnvWarning.svelte';
 	import NetworkErrorAlert from '../components/NetworkErrorAlert.svelte';
 	import OutlinerTree from '../components/OutlinerTree.svelte';
+	import PageList from '../components/PageList.svelte';
+	import { TreeViewManager } from '../fluid/TreeViewManager';
 	import { getDebugConfig } from '../lib/env';
 	import { handleConnectionError } from '../lib/fluidService';
 	import { fluidClient } from '../stores/fluidStore';
@@ -24,6 +26,9 @@
 	let rootItems; // アウトラインのルートアイテム
 	let isAuthenticated = false;
 	let networkError: string | null = null;
+	let rootData; // ルートデータ（ページのコレクションを含む）
+	let currentPage; // 現在選択されているページ
+	let currentPageId = '';
 
 	// SharedTreeの変更を監視するためのハンドラ
 	function handleTreeChanged(event: CustomEvent) {
@@ -47,6 +52,20 @@
 					// containerId と rootItems を設定
 					containerId = client.containerId;
 					rootItems = client.getTree();
+
+					// 最初のページを選択または新規作成
+					if (rootItems.length > 0) {
+						currentPage = rootItems[0]; // 直接オブジェクトを代入
+						currentPageId = currentPage.id; // IDも保持（UI表示用）
+					} else {
+						// 初期ページの作成 - TreeViewManagerを使用
+						currentPage = TreeViewManager.addPage(
+							rootItems,
+							'はじめてのページ',
+							client.currentUser?.id || 'anonymous'
+						);
+						currentPageId = currentPage.id;
+					}
 
 					// ページの状態を更新
 					isLoading = false;
@@ -75,6 +94,13 @@
 				isLoading = false;
 			}
 		}
+	}
+
+	// ページ選択時の処理
+	function handlePageSelect(event) {
+		// 直接オブジェクトを受け取る
+		currentPage = event.detail.page;
+		currentPageId = event.detail.pageId; // UIで現在の選択を示すために保持
 	}
 
 	// ネットワークエラー発生時の再試行
@@ -210,11 +236,11 @@
 </script>
 
 <svelte:head>
-	<title>Fluid Outliner App</title>
+	<title>Scrapbox風 Fluid Outliner</title>
 </svelte:head>
 
 <main>
-	<h1>Fluid Outliner App</h1>
+	<h1>Scrapbox風 Fluid Outliner</h1>
 	<!-- window.locationの参照を条件付きレンダリングに変更 -->
 	<p class="host-info">
 		{#if browser}
@@ -256,17 +282,32 @@
 				<button on:click={testConnection}>接続テスト</button>
 			</div>
 
-			{#if containerId}
-				<div class="container-info">
-					<p>コンテナID: <code>{containerId}</code></p>
-				</div>
-			{/if}
-
 			{#if rootItems}
-				<OutlinerTree {rootItems} />
+				<div class="content-layout">
+					<!-- ページリスト（左サイドバー） -->
+					<div class="sidebar">
+						<PageList
+							{rootItems}
+							{currentPageId}
+							currentUser={$fluidClient?.currentUser?.id || 'anonymous'}
+							on:select={handlePageSelect}
+						/>
+					</div>
+
+					<!-- ページコンテンツ（右メインエリア） -->
+					<div class="main-content">
+						{#if currentPage}
+							<OutlinerTree pageItem={currentPage} />
+						{:else}
+							<div class="empty-state">
+								<p>左のサイドバーからページを選択するか、新しいページを作成してください。</p>
+							</div>
+						{/if}
+					</div>
+				</div>
 			{:else}
 				<div class="loading">
-					<p>Loading shared data...</p>
+					<p>データを読み込んでいます...</p>
 				</div>
 			{/if}
 		</div>
@@ -421,5 +462,29 @@
 
 	.authenticated-content {
 		margin-top: 2rem;
+	}
+
+	.content-layout {
+		display: grid;
+		grid-template-columns: 300px 1fr;
+		gap: 20px;
+		margin-top: 20px;
+	}
+
+	.sidebar {
+		background: #fafafa;
+		border-radius: 6px;
+	}
+
+	.main-content {
+		min-height: 500px;
+	}
+
+	.empty-state {
+		background: #f5f5f5;
+		padding: 30px;
+		border-radius: 6px;
+		text-align: center;
+		color: #666;
 	}
 </style>

@@ -9,22 +9,21 @@ import {
 	TreeViewConfiguration,
 	type ValidateRecursiveSchema,
 } from "fluid-framework";
+import { v4 as uuid } from 'uuid';
 
 // スキーマファクトリを作成
 const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120003");
 
-// アイテム定義をシンプル化（グループとノートの区別を削除）
+// アイテム定義をシンプル化
 export class Item extends sf.objectRecursive("Item", {
-	text: sf.string, // テキスト内容のみを保持
+	id: sf.string,
+	text: sf.string, // テキスト内容 (ページのタイトルまたは通常のテキスト)
 	author: sf.string,
 	votes: sf.array(sf.string),
 	created: sf.number,
 	lastChanged: sf.number,
 	items: () => Items, // 子アイテムを保持
 }) {
-	// items プロパティの型を明示的に定義（Fluid Framework による型推論が unknown となるのを防ぐが、Uncaught TypeError TypeError: 'ownKeys' on proxy: trap returned duplicate entries のエラーが出る。
-	// public readonly items!: typeof Items;
-
 	// テキスト更新時にタイムスタンプも更新
 	public readonly updateText = (text: string) => {
 		this.lastChanged = new Date().getTime();
@@ -63,21 +62,53 @@ export class Item extends sf.objectRecursive("Item", {
 
 // アイテムのリスト
 export class Items extends sf.arrayRecursive("Items", [Item]) {
-	// 新しいアイテムを追加（グループ区別なし）
+	/**
+	 * 通常のアイテム（ページ内のノード）を追加
+	 * @param author 作成者
+	 * @returns 作成されたアイテム
+	 */
 	public readonly addNode = (author: string) => {
 		const timeStamp = new Date().getTime();
 
 		const newItem = new Item({
-			text: "",
+			id: uuid(),
+			text: "", // 空テキストで開始
 			author,
 			votes: [],
 			created: timeStamp,
 			lastChanged: timeStamp,
-			items: new Items([]), // 空の子アイテムリスト
+			items: new Items([]), // 子アイテムのための空のリスト
 		});
 
 		this.insertAtEnd(newItem);
 		return newItem;
+	};
+
+	/**
+	 * ページとして機能するアイテム（最上位アイテム）を追加
+	 * このメソッドはルートItemsコレクションに対してのみ使用してください。
+	 * 通常のアイテムの子アイテムとしては使用しないでください。
+	 * 
+	 * @param title ページのタイトル
+	 * @param author 作成者
+	 * @returns 作成されたページアイテム
+	 */
+	public readonly addPage = (title: string, author: string) => {
+		const timeStamp = new Date().getTime();
+
+		// 基本的にはaddNodeと同じItemだが、タイトルが設定されている
+		const newPage = new Item({
+			id: uuid(),
+			text: title, // タイトルを設定
+			author,
+			votes: [],
+			created: timeStamp,
+			lastChanged: timeStamp,
+			items: new Items([]), // ページ内容のための空のリスト
+		});
+
+		this.insertAtEnd(newPage);
+		return newPage;
 	};
 }
 
@@ -86,7 +117,8 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	type _check = ValidateRecursiveSchema<typeof Items>;
 }
 
-// TreeView構成をエクスポート
+// ルート要素は単一の Items コレクション
+// 最上位の Items が「ページ」のリスト、各アイテムの子 Items がページの内容になる
 export const appTreeConfiguration = new TreeViewConfiguration(
 	{ schema: Items },
 );

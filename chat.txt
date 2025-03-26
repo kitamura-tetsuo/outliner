@@ -12,3 +12,4 @@ Fluid Frameworkと svelteを使ったアプリを作りたい。 Fluid Framework
 https://www.npmjs.com/package/fluid-framework
 https://fluidframework.com/docs/start/tree-start
 https://learn.microsoft.com/en-us/azure/azure-fluid-relay/how-tos/connect-fluid-azure-service
+

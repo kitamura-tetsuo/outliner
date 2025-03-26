@@ -1,6 +1,9 @@
 作成するアプリの説明
 scrapbox, workflowy のクローンから始める。
 
+scrapboxの公開ページの例
+https://scrapbox.io/shokai/
+
 利用するライブラリ
 Fluid Frameworkと svelteを使ったアプリを作りたい。
 

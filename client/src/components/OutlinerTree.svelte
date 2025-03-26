@@ -5,38 +5,49 @@
 	import { fluidClient } from '../stores/fluidStore';
 	import OutlinerItem from './OutlinerItem.svelte';
 
-	export let rootItems: Items;
+	export let pageItem: Item; // ページとして表示する Item
+	export let isReadOnly = false;
 
 	let currentUser = 'anonymous';
 	let items = [];
+	let title = '';
+
+	$: if (pageItem) {
+		title = pageItem.text;
+		items = [...pageItem.items]; // ページアイテムの子アイテムを表示
+	}
 
 	onMount(() => {
 		if ($fluidClient?.currentUser) {
 			currentUser = $fluidClient.currentUser.id;
 		}
 
-		// 初期アイテムのロード
-		updateItems();
-
-		// アイテムの変更を監視 - イベント名を修正
-		const unsubscribe = Tree.on(rootItems, 'treeChanged', updateItems);
+		// アイテムの変更を監視
+		const unsubscribe = pageItem ? Tree.on(pageItem.items, 'treeChanged', updateItems) : undefined;
 
 		return () => {
-			unsubscribe();
+			if (unsubscribe) unsubscribe();
 		};
 	});
 
 	function updateItems() {
-		// rootItemsの変更を反映
-		items = [...rootItems];
-		console.log('Items updated:', items);
+		// ページコンテンツの変更を反映
+		if (pageItem) {
+			items = [...pageItem.items];
+			console.log('Items updated:', items);
+		}
+	}
 
-		// 強制的に更新をトリガー
-		items = items;
+	function handleUpdateTitle() {
+		if (pageItem && !isReadOnly) {
+			pageItem.updateText(title);
+		}
 	}
 
 	function handleAddItem() {
-		rootItems.addNode(currentUser);
+		if (pageItem && !isReadOnly) {
+			pageItem.items.addNode(currentUser);
+		}
 	}
 
 	function handleAddGroup() {
@@ -90,21 +101,23 @@
 		console.log('Unindent event received for item:', item);
 
 		// 1. アイテムの親を取得
-		const parent = Tree.parent(item);
-		if (!Tree.is(parent, Items)) return;
+		const parentList = Tree.parent(item);
+		if (!Tree.is(parentList, Items)) return;
 
 		// 2. 親の親を取得（親グループを取得）
-		const grandParent = Tree.parent(parent);
-		if (!grandParent || !Tree.is(grandParent, Items)) return; // ルートアイテムの直下は既に最上位
+		const parentItem = Tree.parent(parentList);
+		if (!parentItem || !Tree.is(parentItem, Item)) return; // ルートアイテムの直下は既に最上位
+
+		const grandParentList = Tree.parent(parentItem);
+		if (!grandParentList || !Tree.is(grandParentList, Items)) return; // ルートアイテムの直下は既に最上位
 
 		try {
 			// 3. 親アイテムのindex取得
-			const parentItem = Tree.parent(parent) as Item;
-			const parentIndex = grandParent.indexOf(parentItem);
+			const parentIndex = grandParentList.indexOf(parentItem);
 
 			// 4. 親の親の、親の次の位置にアイテムを移動
-			const itemIndex = parent.indexOf(item);
-			grandParent.moveRangeToIndex(itemIndex, itemIndex + 1, parentIndex + 1, parent);
+			const itemIndex = parentList.indexOf(item);
+			grandParentList.moveRangeToIndex(parentIndex + 1, itemIndex, itemIndex + 1, parentList);
 			console.log('Unindented item to parent level');
 		} catch (error) {
 			console.error('Failed to unindent item:', error);
@@ -114,10 +127,25 @@
 
 <div class="outliner">
 	<div class="toolbar">
-		<h2>アウトライン</h2>
-		<div class="actions">
-			<button on:click={handleAddItem}>アイテム追加</button>
+		<div class="title-container">
+			{#if isReadOnly}
+				<h2>{title || '無題のページ'}</h2>
+			{:else}
+				<input
+					type="text"
+					bind:value={title}
+					placeholder="ページタイトル"
+					on:blur={handleUpdateTitle}
+					class="title-input"
+				/>
+			{/if}
 		</div>
+
+		{#if !isReadOnly}
+			<div class="actions">
+				<button on:click={handleAddItem}>アイテム追加</button>
+			</div>
+		{/if}
 	</div>
 
 	<div class="tree-container">
@@ -125,6 +153,7 @@
 			<OutlinerItem
 				{item}
 				{currentUser}
+				{isReadOnly}
 				on:add={handleAddAfter}
 				on:indent={handleIndent}
 				on:unindent={handleUnindent}
@@ -133,7 +162,13 @@
 
 		{#if items.length === 0}
 			<div class="empty-state">
-				<p>アイテムがありません。「アイテム追加」ボタンを押して始めましょう。</p>
+				<p>
+					{#if isReadOnly}
+						このページにはまだ内容がありません。
+					{:else}
+						アイテムがありません。「アイテム追加」ボタンを押して始めましょう。
+					{/if}
+				</p>
 			</div>
 		{/if}
 	</div>
@@ -157,7 +192,20 @@
 		border-bottom: 1px solid #ddd;
 	}
 
-	.toolbar h2 {
+	.title-container {
+		flex: 1;
+	}
+
+	.title-input {
+		width: 100%;
+		font-size: 18px;
+		font-weight: 500;
+		padding: 4px 8px;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+	}
+
+	h2 {
 		margin: 0;
 		font-size: 18px;
 	}

@@ -1,0 +1,2 @@
+	// items プロパティの型を明示的に定義（Fluid Framework による型推論が unknown となるのを防ぐが、Uncaught TypeError TypeError: 'ownKeys' on proxy: trap returned duplicate entries のエラーが出る。
+	// public readonly items!: typeof Items;

@@ -39,6 +39,7 @@
 		"@testing-library/jest-dom": "^6.6.3",
 		"@testing-library/svelte": "^5.2.4",
 		"@types/dotenv": "^6.1.1",
+		"@types/uuid": "^10.0.0",
 		"chokidar-cli": "^2.1.0",
 		"concurrently": "^8.2.2",
 		"cross-env": "^7.0.3",
