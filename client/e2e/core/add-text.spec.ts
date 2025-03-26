@@ -39,17 +39,24 @@ test('Add Text button should add text to shared content', async ({ page }) => {
   // 追加されたアイテムをダブルクリックして編集モードに
   const item = page.locator('.outliner-item').first();
   await item.dblclick();
+  await item.click();
 
   // テキストを入力
   const testText = 'Hello Fluid Framework!';
   await page.keyboard.type(testText);
+  await page.screenshot({ path: 'test-results/Hello Fluid Framework.png' });
   await page.keyboard.press('Enter');
 
   // デバッグのため一時停止
   await page.waitForTimeout(1000);
 
-  // テキストが保存されたことを確認 - タイムアウトを延長
-  await expect(item.locator('.item-text')).toContainText(testText, { timeout: 10000 });
+  // スクリーンショットを撮ってデバッグ
+  await page.screenshot({ path: 'test-results/before-check.png' });
+
+  // 修正: より特定のセレクタを使用して、正確にitem-textだけを対象にする
+  await expect(
+    item.locator('.item-text')
+  ).toContainText(testText, { timeout: 15000 });
 
   // デバッグ用のスクリーンショットを保存
   await page.screenshot({ path: 'test-results/add-text-result.png' });

@@ -76,7 +76,7 @@
 		try {
 			// 4. 前のアイテムの子リストへアイテムを移動
 			const itemIndex = parent.indexOf(item);
-			parent.moveRangeToEnd(itemIndex, itemIndex + 1, previousItem.items);
+			previousItem.items.moveRangeToEnd(itemIndex, itemIndex + 1, parent);
 			console.log(`Indented item under previous item`);
 		} catch (error) {
 			console.error('Failed to indent item:', error);

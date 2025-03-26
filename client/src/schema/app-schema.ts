@@ -9,14 +9,12 @@ import {
 	TreeViewConfiguration,
 	type ValidateRecursiveSchema,
 } from "fluid-framework";
-import { v4 as uuid } from "uuid";
 
 // スキーマファクトリを作成
 const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120003");
 
 // アイテム定義をシンプル化（グループとノートの区別を削除）
 export class Item extends sf.objectRecursive("Item", {
-	id: sf.string,
 	text: sf.string, // テキスト内容のみを保持
 	author: sf.string,
 	votes: sf.array(sf.string),
@@ -24,6 +22,9 @@ export class Item extends sf.objectRecursive("Item", {
 	lastChanged: sf.number,
 	items: () => Items, // 子アイテムを保持
 }) {
+	// items プロパティの型を明示的に定義（Fluid Framework による型推論が unknown となるのを防ぐが、Uncaught TypeError TypeError: 'ownKeys' on proxy: trap returned duplicate entries のエラーが出る。
+	// public readonly items!: typeof Items;
+
 	// テキスト更新時にタイムスタンプも更新
 	public readonly updateText = (text: string) => {
 		this.lastChanged = new Date().getTime();
@@ -67,7 +68,6 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		const timeStamp = new Date().getTime();
 
 		const newItem = new Item({
-			id: uuid(),
 			text: "",
 			author,
 			votes: [],
