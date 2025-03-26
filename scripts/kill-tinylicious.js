@@ -4,7 +4,7 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 // 終了したいポートのリスト
-const PORTS_TO_KILL = [7070, 5173, 3000];
+const PORTS_TO_KILL = [7070, 5173, 5174, 3000];
 
 /**
  * 指定したポートで実行中のプロセスを終了する

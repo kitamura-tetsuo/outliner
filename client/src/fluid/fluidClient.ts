@@ -1,5 +1,6 @@
 import { AzureClient } from '@fluidframework/azure-client';
-import { ConnectionState, type ContainerSchema, type IFluidContainer, type ImplicitFieldSchema, SharedTree, type TreeView } from "fluid-framework";
+import { TinyliciousClient } from '@fluidframework/tinylicious-client';
+import { ConnectionState, type ContainerSchema, type IFluidContainer, SharedTree, type TreeView, type ViewableTree } from "fluid-framework";
 import { UserManager } from '../auth/UserManager';
 import { getFluidClient, setupConnectionListeners } from '../lib/fluidService';
 import { appTreeConfiguration, Items } from "../schema/app-schema";
@@ -17,11 +18,10 @@ export class FluidClient {
   private initPromise: Promise<FluidClient> | null = null;
 
   // Public properties for easier debugging
-  public client: AzureClient;
+  public client: AzureClient | TinyliciousClient | undefined = undefined;
   public container!: IFluidContainer;
-  public containerId: string | null = null;
-  public appData!: TreeView<ImplicitFieldSchema>;
-  public useTinylicious?: boolean;
+  public containerId: string | undefined = undefined;
+  public appData!: TreeView<typeof Items>;
 
   // ユーザーマネージャー
   private userManager: UserManager;
@@ -54,17 +54,6 @@ export class FluidClient {
 
     // 保存されたコンテナIDがあれば読み込む
     this.loadContainerId();
-
-    // 一時的にプレースホルダーのクライアントを設定
-    // 実際の初期化はinitialize()で行う
-    const userId = this.userManager.getCurrentUser()?.id;
-    // 同期的に取得できる初期値だけを設定
-    const clientInfo = {
-      client: new AzureClient({ connection: { type: "local", endpoint: "http://localhost:7070", tokenProvider: { fetchOrdererToken: async () => ({ jwt: "", fromCache: true }), fetchStorageToken: async () => ({ jwt: "", fromCache: true }) } } }),
-      useTinylicious: true
-    };
-    this.client = clientInfo.client;
-    this.useTinylicious = clientInfo.useTinylicious;
   }
 
   // ローカルストレージからコンテナIDを読み込む
@@ -91,7 +80,7 @@ export class FluidClient {
     if (typeof window !== 'undefined') {
       console.log('[FluidClient] Resetting container ID');
       localStorage.removeItem(CONTAINER_ID_STORAGE_KEY);
-      this.containerId = null;
+      this.containerId = undefined;
     }
   }
 
@@ -137,33 +126,36 @@ export class FluidClient {
 
         // fluid-service.ts から適切なクライアントを取得
         // 既存のcontainerIdがある場合は、それに対応するトークンを取得するよう指定
-        const fluidClientInfo = await getFluidClient(userId, containerSchema, this.containerId);
-        this.client = fluidClientInfo.client;
-        this.useTinylicious = fluidClientInfo.useTinylicious;
+        this.client = await getFluidClient(userId, this.containerId);
 
-        // バージョン2を明示的に指定してIdCompressorを有効化
-        const createOption = this.useTinylicious ? undefined : "2";
+        const createOption = "2";
 
-        var isCreatingContainer = false;
         // 既存のコンテナIDがあれば、そのコンテナに接続
         if (this.containerId) {
           try {
             console.log(`[FluidClient] Connecting to existing container: ${this.containerId}`);
-            ({ container: this.container, services: this.services } = await this.client.getContainer(this.containerId, fluidClientInfo.schema, createOption));
+            ({ container: this.container, services: this.services } = await this.client.getContainer(this.containerId, containerSchema, createOption));
             console.log(`[FluidClient] Successfully connected to existing container: ${this.containerId}`);
           } catch (error) {
             console.warn(`[FluidClient] Failed to connect to existing container: ${this.containerId}`, error);
             console.warn('[FluidClient] Creating a new container instead...');
-            this.containerId = null; // コンテナIDをリセット
+            this.containerId = undefined; // コンテナIDをリセット
             localStorage.removeItem(CONTAINER_ID_STORAGE_KEY);
-            isCreatingContainer = true;
-            ({ container: this.container, services: this.services } = await this.client.createContainer(fluidClientInfo.schema, createOption));
+            ({ container: this.container, services: this.services } = await this.client.createContainer(containerSchema, createOption));
           }
         } else {
           // 新しいコンテナを作成
           console.log('[FluidClient] Creating a new container');
-          isCreatingContainer = true;
-          ({ container: this.container, services: this.services } = await this.client.createContainer(fluidClientInfo.schema, createOption));
+          ({ container: this.container, services: this.services } = await this.client.createContainer(containerSchema, createOption));
+        }
+
+        // スキーマを指定してTreeViewを構成
+        this.appData = (this.container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+
+        if (this.appData.compatibility.canInitialize) {
+          console.log('[FluidClient] Initializing appData with default items');
+          this.appData.initialize(new Items([]));
+          this.appData.root.addNode("test");
         }
 
         // コンテナをアタッチして、コンテナIDを取得または確認
@@ -177,15 +169,6 @@ export class FluidClient {
           }
         }
 
-
-        // スキーマを指定してTreeViewを構成
-        this.appData = this.container.initialObjects.appData.viewWith(appTreeConfiguration);
-
-        if (this.appData.compatibility.canInitialize) {
-          console.log('[FluidClient] Initializing appData with default items');
-          this.appData.initialize(new Items([]));
-          this.appData.root.addNode("test");
-        }
 
         // コンテナの接続状態を監視
         this.setupConnectionMonitoring();
@@ -278,19 +261,16 @@ export class FluidClient {
   }
 
   public getTree() {
-    if (this.container) {
-      console.log(this.appData.root.length);
-      console.log(this.appData.root[0]);
-      const rootItems = this.appData.root;
-      const items = [...rootItems];
-      console.log(items);
-      this.appData.root.map(element => {
-        console.log('Element:', element);
-      });
+    console.log(this.appData.root.length);
+    console.log(this.appData.root[0]);
+    const rootItems = this.appData.root;
+    const items = [...rootItems];
+    console.log(items);
+    this.appData.root.map(element => {
+      console.log('Element:', element);
+    });
 
-      return this.appData.root;
-    }
-    return null;
+    return this.appData.root;
   }
 
   /**
@@ -323,8 +303,6 @@ export class FluidClient {
         return "接続中";
       case ConnectionState.CatchingUp:
         return "同期中";
-      case ConnectionState.WriteStopped:
-        return "読取専用";
       default:
         return "不明";
     }
@@ -377,7 +355,7 @@ export class FluidClient {
 
     try {
       // コンテナの切断
-      if (this.container && this.container.connected) {
+      if (this.isConnected) {
         this.container.disconnect();
       }
     } catch (e) {

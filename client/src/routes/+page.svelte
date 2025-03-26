@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
 	import { UserManager, type IAuthResult } from '../auth/UserManager';
 	import AuthComponent from '../components/AuthComponent.svelte';
@@ -17,6 +18,7 @@
 	let debugInfo: any = {};
 	let showDebugPanel = false;
 	let hostInfo = '';
+	let portInfo = '';
 	let envConfig = getDebugConfig();
 	let treeData: any = {};
 	let rootItems; // アウトラインのルートアイテム
@@ -39,7 +41,7 @@
 		try {
 			// fluidStoreからのクライアント状態変更を待つ
 			const unsubscribe = fluidClient.subscribe((client) => {
-				if (client?.container?.connected) {
+				if (client?.isConnected) {
 					console.log('Fluidクライアントが接続されました');
 
 					// containerId と rootItems を設定
@@ -127,9 +129,10 @@
 		console.debug('[+page] Component mounted');
 
 		try {
-			// ホスト情報を取得
-			if (typeof window !== 'undefined') {
+			// ホスト情報を取得 - ブラウザ環境でのみ実行
+			if (browser) {
 				hostInfo = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
+				portInfo = window.location.port || '5173/default';
 				console.info('Running on host:', hostInfo);
 
 				// SharedTreeの変更イベントをリッスン
@@ -166,7 +169,7 @@
 	onDestroy(() => {
 		console.debug('[+page] Component destroying');
 		// イベントリスナーのクリーンアップ
-		if (typeof window !== 'undefined') {
+		if (browser && window) {
 			window.removeEventListener('fluidTreeChanged', handleTreeChanged as EventListener);
 			delete (window as any).__FLUID_CLIENT__;
 		}
@@ -182,14 +185,9 @@
 				throw new Error('Fluidクライアントが初期化されていません。');
 			}
 
-			// コンテナの接続状態を確認
-			const isConnected = $fluidClient.container?.connected || false;
-
-			if (isConnected) {
-				alert('接続テスト成功！コンテナは接続されています。');
-			} else {
-				alert('コンテナは接続されていません。');
-			}
+			// テストメソッドを呼び出し（追加したメソッド）
+			const message = $fluidClient.testConnection();
+			alert(message);
 		} catch (err) {
 			console.error('Connection test error:', err);
 			const errorInfo = handleConnectionError(err);
@@ -217,7 +215,14 @@
 
 <main>
 	<h1>Fluid Outliner App</h1>
-	<p class="host-info">Running on: {hostInfo}</p>
+	<!-- window.locationの参照を条件付きレンダリングに変更 -->
+	<p class="host-info">
+		{#if browser}
+			Running on: {hostInfo} (Port: {portInfo})
+		{:else}
+			Loading host info...
+		{/if}
+	</p>
 
 	<!-- 環境変数の警告 -->
 	<MissingEnvWarning />

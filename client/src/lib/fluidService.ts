@@ -1,6 +1,6 @@
 import { AzureClient, type AzureClientProps, type AzureRemoteConnectionConfig, type ITokenProvider } from '@fluidframework/azure-client';
 import { InsecureTokenProvider } from '@fluidframework/test-client-utils';
-import { type ContainerSchema } from 'fluid-framework';
+import { TinyliciousClient } from '@fluidframework/tinylicious-client';
 import { UserManager } from '../auth/UserManager';
 
 // シングルトンパターンでAzureClientを管理
@@ -18,16 +18,11 @@ const tinyliciousConfig = {
 };
 
 // 開発環境ではTinyliciousを使用する - 環境変数で強制的に切り替え可能
+const isTestEnvironment = import.meta.env.MODE === 'test' || process.env.NODE_ENV === 'test';
 const useTinylicious =
+  isTestEnvironment || // テスト環境では常にTinyliciousを使用
   import.meta.env.VITE_USE_TINYLICIOUS === 'true' ||
   (import.meta.env.DEV && import.meta.env.VITE_FORCE_AZURE !== 'true');
-
-// デフォルトのコンテナスキーマ
-const defaultSchema: ContainerSchema = {
-  initialObjects: {
-    // 初期化時に指定するためここでは空
-  }
-};
 
 // TokenProviderの取得
 async function getTokenProvider(userId?: string, containerId?: string): Promise<ITokenProvider> {
@@ -94,7 +89,10 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
 }
 
 // AzureClientの取得（またはTinyliciousClient）
-export async function getFluidClient(userId?: string, schema: ContainerSchema = defaultSchema, containerId?: string) {
+export async function getFluidClient(userId?: string, containerId?: string) {
+  if (useTinylicious) {
+    return new TinyliciousClient();
+  }
   // ユーザーIDが変わった場合は新しいクライアントを作成
   if (azureClient && userId) {
     // 既存クライアントの破棄（必要に応じて）
@@ -108,7 +106,7 @@ export async function getFluidClient(userId?: string, schema: ContainerSchema = 
     let clientProps: AzureClientProps;
 
     if (useTinylicious) {
-      // Tinylicious（開発環境）用の設定
+      // Tinylicious（開発環境・テスト環境）用の設定
       clientProps = {
         connection: {
           type: "local",
@@ -117,6 +115,10 @@ export async function getFluidClient(userId?: string, schema: ContainerSchema = 
         },
       };
       console.log(`[fluidService] Using Tinylicious local service at ${tinyliciousConfig.endpoint}`);
+
+      if (isTestEnvironment) {
+        console.log('[fluidService] Test environment detected, forcing Tinylicious usage');
+      }
     } else {
       // Azure Fluid Relay（本番環境）用の設定
       const connectionConfig: AzureRemoteConnectionConfig = {
@@ -142,11 +144,7 @@ export async function getFluidClient(userId?: string, schema: ContainerSchema = 
     }
   }
 
-  return {
-    client: azureClient,
-    schema: schema,
-    useTinylicious
-  };
+  return azureClient;
 }
 
 // AzureClientの再設定（トークン更新時など）

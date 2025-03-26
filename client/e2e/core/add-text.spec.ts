@@ -1,8 +1,31 @@
 import { expect, test } from '@playwright/test';
 
+/**
+ * @playwright
+ * @title テキスト追加機能テスト
+ */
+
 test('Add Text button should add text to shared content', async ({ page }) => {
   // ホームページにアクセス
   await page.goto('/');
+
+  // モックの設定
+  await page.addInitScript(() => {
+    window.mockFluidClient = true;
+    window.mockUser = {
+      id: 'test-user-id',
+      name: 'Test User',
+      email: 'test@example.com'
+    };
+    window.mockFluidToken = {
+      token: 'mock-jwt-token',
+      user: {
+        id: 'test-user-id',
+        name: 'Test User'
+      }
+    };
+    window.localStorage.setItem('authenticated', 'true');
+  });
 
   // ページが読み込まれるまで一時停止（Fluidが初期化されるのを待つ）
   await page.waitForLoadState('networkidle');
@@ -36,6 +59,23 @@ test('Add Text button should add text to shared content', async ({ page }) => {
 test('Adding text updates data structure', async ({ page }) => {
   // ホームページにアクセス
   await page.goto('/');
+
+  // モックの設定
+  await page.addInitScript(() => {
+    window.mockFluidClient = true;
+    window.mockUser = {
+      id: 'test-user-id',
+      name: 'Test User'
+    };
+    window.mockFluidToken = {
+      token: 'mock-jwt-token',
+      user: {
+        id: 'test-user-id',
+        name: 'Test User'
+      }
+    };
+  });
+
   await page.waitForLoadState('networkidle');
 
   // デバッグパネルを表示

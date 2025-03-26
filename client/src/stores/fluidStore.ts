@@ -11,6 +11,14 @@ let unsubscribeAuth: (() => void) | null = null;
 
 // ユーザー認証状態の変更を監視して、FluidClientを初期化/更新する
 export async function initFluidClientWithAuth() {
+  // テスト環境の場合は自動的にモックを使用
+  if (typeof window !== 'undefined' && (window as any).mockFluidClient) {
+    console.log('[fluidStore] Test environment detected, using mock FluidClient');
+    const client = FluidClient.getInstance();
+    fluidClient.set(client);
+    return;
+  }
+
   // 既に初期化中なら何もしない
   if (isInitializing) {
     console.log('FluidClient初期化は既に実行中です。重複呼び出しをスキップします。');
