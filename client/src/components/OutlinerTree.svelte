@@ -94,8 +94,19 @@
 
 		try {
 			// 4. 前のアイテムの子リストへアイテムを移動
+			// itemIndexが確実に取得できるようにインデックスを再計算
 			const itemIndex = parent.indexOf(item);
-			previousItem.items.moveRangeToEnd(itemIndex, itemIndex + 1, parent);
+
+			// 移動操作の前にログを追加
+			console.log(
+				`Moving item from parent (${parent.length} items) at index ${itemIndex} to previous item's children`
+			);
+
+			// 厳密なトランザクション処理を行う
+			Tree.runTransaction(parent, () => {
+				previousItem.items.moveRangeToEnd(itemIndex, itemIndex + 1, parent);
+			});
+
 			console.log(`Indented item under previous item`);
 		} catch (error) {
 			console.error('Failed to indent item:', error);

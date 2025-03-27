@@ -236,11 +236,11 @@
 </script>
 
 <svelte:head>
-	<title>Scrapbox風 Fluid Outliner</title>
+	<title>Fluid Outliner App</title>
 </svelte:head>
 
 <main>
-	<h1>Scrapbox風 Fluid Outliner</h1>
+	<h1>Fluid Outliner App</h1>
 	<!-- window.locationの参照を条件付きレンダリングに変更 -->
 	<p class="host-info">
 		{#if browser}

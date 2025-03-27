@@ -6,7 +6,7 @@
 	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
 	"runArgs": [
 		"-p",
-		"7070:7070"
+		"7070:7070",
 	],
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
@@ -23,7 +23,7 @@
 	// ローカルのソースコードを/workspaceにマウント
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
 	"mounts": [
-		"source=/home/ubuntu/.ssh,target=/home/node/.ssh,type=bind,consistency=cached"
+		"source=/home/ubuntu/.ssh,target=/home/node/.ssh,type=bind,consistency=cached",
 	],
 	"customizations": {
 		"vscode": {

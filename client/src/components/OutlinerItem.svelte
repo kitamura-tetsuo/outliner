@@ -151,7 +151,15 @@
 	{#if hasChildren && !isCollapsed}
 		<div class="item-children">
 			{#each [...item.items] as child, i}
-				<svelte:self item={child} level={level + 1} {currentUser} on:indent on:unindent on:add />
+				<svelte:self
+					item={child}
+					level={level + 1}
+					{currentUser}
+					{isReadOnly}
+					on:indent
+					on:unindent
+					on:add
+				/>
 			{/each}
 		</div>
 	{/if}

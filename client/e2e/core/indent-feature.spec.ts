@@ -25,82 +25,86 @@ test('Indent feature should move items to create hierarchy', async ({ page }) =>
   // ページが読み込まれるのを待つ
   await page.waitForLoadState('networkidle');
 
-  // ステップ1: まず2つのアイテムを追加
+  // ステップ1: まず3つのアイテムを追加
+  await page.click('button:has-text("アイテム追加")');
   await page.click('button:has-text("アイテム追加")');
   await page.click('button:has-text("アイテム追加")');
 
-  // 空白のままの最初のアイテムをクリックして編集モードに
-  const firstItem = page.locator('.outliner-item').first();
-  await firstItem.dblclick();
+  // 各アイテムにテキストを設定
+  const items = page.locator('.outliner-item');
 
-  // 最初のアイテムにテキストを入力
+  await items.nth(0).dblclick();
   await page.keyboard.type('最初のアイテム');
   await page.keyboard.press('Enter');
 
-  // 2番目のアイテムをクリックして編集モードに
-  const secondItem = page.locator('.outliner-item').nth(1);
-  await secondItem.dblclick();
-
-  // 2番目のアイテムにテキストを入力
+  await items.nth(1).dblclick();
   await page.keyboard.type('2番目のアイテム');
   await page.keyboard.press('Enter');
 
-  // エディタを終了するためにESCキーを押す
-  await page.keyboard.press('Escape');
+  await items.nth(2).dblclick();
+  await page.keyboard.type('3番目のアイテム');
+  await page.keyboard.press('Enter');
+
+  // エディタを終了するために少し待機
+  await page.waitForTimeout(500);
 
   // スクリーンショットを撮って初期状態を確認
   await page.screenshot({ path: 'test-results/indent-before.png' });
 
-  // ステップ2: 2番目のアイテムを選択してタブキーを押してインデント
-  await secondItem.click();
-  await secondItem.focus();
+  // ステップ2: 2番目と3番目のアイテムをインデント
+  // 2番目のアイテムを選択してタブキーを押す
+  await items.nth(1).click();
+  await items.nth(1).focus();
+  await page.keyboard.press('Tab');
+  await page.waitForTimeout(500);
 
-  // タブキーを押す前のスクリーンショット
-  await page.screenshot({ path: 'test-results/before-tab-key.png' });
-
-  // タブキーを押して、イベントが確実に処理されるように少し待機
+  // 3番目のアイテムを選択してタブキーを押す
+  await items.nth(2).click();
+  await items.nth(2).focus();
   await page.keyboard.press('Tab');
   await page.waitForTimeout(500);
 
   // インデント後の状態が反映されるのを待つ
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(1000);
   await page.screenshot({ path: 'test-results/indent-after.png' });
 
   // ステップ3: インデントされたことを検証
-  try {
-    // インデント後のクラス名を確認（詳細なデバッグ情報）
-    const secondItemClasses = await secondItem.evaluate((el) => el.className);
-    console.log('Second item classes:', secondItemClasses);
+  // パディングに基づいてインデントを検証
+  const firstItemPadding = await items.nth(0).evaluate(el => {
+    return window.getComputedStyle(el).paddingLeft;
+  });
 
-    // 要素のスタイル属性を直接チェック
-    const paddingStyle = await secondItem.evaluate((el) => el.getAttribute('style'));
-    console.log('Padding style attribute:', paddingStyle);
+  const secondItemPadding = await items.nth(1).evaluate(el => {
+    return window.getComputedStyle(el).paddingLeft;
+  });
 
-    // 実際のスタイル計算値をチェック
-    const computedStyle = await secondItem.evaluate((el) => {
-      const style = window.getComputedStyle(el);
-      return {
-        paddingLeft: style.paddingLeft,
-        marginLeft: style.marginLeft,
-        textIndent: style.textIndent,
-        transform: style.transform,
-        left: style.left
-      };
-    });
-    console.log('Computed styles:', JSON.stringify(computedStyle));
+  const thirdItemPadding = await items.nth(2).evaluate(el => {
+    return window.getComputedStyle(el).paddingLeft;
+  });
 
-    // インデント機能が機能しているかを確認（paddingLeftまたはマージン等でインデントされているか）
-    const isIndented = paddingStyle?.includes('padding-left') ||
-      computedStyle.paddingLeft !== '0px' ||
-      computedStyle.marginLeft !== '0px' ||
-      computedStyle.left !== '0px';
+  // 2番目、3番目のアイテムがインデントされているかを検証
+  console.log(`Padding values - First: ${firstItemPadding}, Second: ${secondItemPadding}, Third: ${thirdItemPadding}`);
 
-    // テストを通すための緩い条件
-    expect(isIndented || paddingStyle?.includes('padding') || computedStyle.transform !== 'none').toBeTruthy();
-  } catch (error) {
-    // エラーが発生した場合はスクリーンショットを撮影
-    console.error('インデントテストエラー:', error);
-    await page.screenshot({ path: 'test-results/indent-error.png' });
-    throw error;
-  }
+  // 最初のアイテムよりも2番目のアイテムのパディングが大きい
+  expect(parseInt(secondItemPadding)).toBeGreaterThan(parseInt(firstItemPadding));
+
+  // ステップ4: アンインデント操作を確認
+  // 3番目のアイテムを選択してShift+Tabキーを押す
+  await items.nth(2).click();
+  await items.nth(2).focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.waitForTimeout(500);
+
+  // アンインデント後の状態を確認
+  await page.screenshot({ path: 'test-results/unindent-after.png' });
+
+  // 3番目のアイテムのパディングが元に戻ったことを検証
+  const unindentedThirdPadding = await items.nth(2).evaluate(el => {
+    return window.getComputedStyle(el).paddingLeft;
+  });
+
+  console.log(`After unindent - Third item padding: ${unindentedThirdPadding}`);
+
+  // パディングが2番目のアイテムと同じになった（アンインデントされた）
+  expect(parseInt(unindentedThirdPadding)).toBeLessThan(parseInt(thirdItemPadding));
 });
