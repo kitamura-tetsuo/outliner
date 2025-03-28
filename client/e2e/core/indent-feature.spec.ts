@@ -6,19 +6,19 @@ test('Indent feature should move items to create hierarchy', async ({ page }) =>
 
   // モックの設定
   await page.addInitScript(() => {
-    // window.mockFluidClient = true;
-    // window.mockUser = {
-    //   id: 'test-user-id',
-    //   name: 'Test User',
-    //   email: 'test@example.com'
-    // };
-    // window.mockFluidToken = {
-    //   token: 'mock-jwt-token',
-    //   user: {
-    //     id: 'test-user-id',
-    //     name: 'Test User'
-    //   }
-    // };
+    window.mockFluidClient = true;
+    window.mockUser = {
+      id: 'test-user-id',
+      name: 'Test User',
+      email: 'test@example.com'
+    };
+    window.mockFluidToken = {
+      token: 'mock-jwt-token',
+      user: {
+        id: 'test-user-id',
+        name: 'Test User'
+      }
+    };
     window.localStorage.setItem('authenticated', 'true');
   });
 

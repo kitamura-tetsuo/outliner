@@ -91,7 +91,7 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
 // AzureClientの取得（またはTinyliciousClient）
 export async function getFluidClient(userId?: string, containerId?: string) {
   if (useTinylicious) {
-    return new TinyliciousClient();
+    return new TinyliciousClient({ connection: { port: import.meta.env.VITE_TINYLICIOUS_PORT } });
   }
   // ユーザーIDが変わった場合は新しいクライアントを作成
   if (azureClient && userId) {

@@ -15,10 +15,10 @@
     "format": "prettier --write .",
     "lint": "prettier --check . && eslint .",
     "test:unit": "vitest run",
-    "test": "npm run test:unit && npm run test:e2e",
-    "test:e2e": "playwright test",
-    "test:core": "playwright test --project=core",
-    "test:auth": "playwright test --project=auth",
+    "test": "NODE_ENV=test dotenv -e .env.test -- npm run test:unit && npm run test:e2e",
+    "test:e2e": "NODE_ENV=test dotenv -e .env.test -- playwright test",
+    "test:core": "NODE_ENV=test dotenv -e .env.test -- playwright test --project=core",
+    "test:auth": "NODE_ENV=test dotenv -e .env.test -- playwright test --project=auth",
     "test:e2e:debug": "NODE_ENV=test dotenv -e .env.test -- playwright test --debug",
     "test:e2e:ui": "NODE_ENV=test dotenv -e .env.test -- playwright test --ui",
     "test:e2e:codegen": "NODE_ENV=test dotenv -e .env.test -- playwright codegen",
@@ -47,6 +47,8 @@
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-svelte": "^3.0.0",
+    "find-process": "^1.4.7",
+    "@types/find-process": "^1.2.3",
     "globals": "^16.0.0",
     "jsdom": "^26.0.0",
     "mdsvex": "^0.12.3",
@@ -71,6 +73,7 @@
     "dotenv": "^16.4.7",
     "firebase": "^11.5.0",
     "fluid-framework": "^2.30.0",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "pino": "^8.15.0"
   }
 }

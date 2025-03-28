@@ -1,4 +1,5 @@
-import { expect, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 
 /**
  * UIとSharedTree構造を同時に検証するユーティリティ関数群
@@ -122,5 +123,16 @@ export class TreeValidator {
     }
 
     return true;
+  }
+}
+
+// グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
+declare global {
+  interface Window {
+    mockFluidClient?: boolean;
+    mockUser?: { id: string; name: string; email?: string };
+    mockFluidToken?: { token: string; user: { id: string; name: string } };
+    getFluidTreeDebugData?: () => any;
+    fluidServerPort?: number;
   }
 }
