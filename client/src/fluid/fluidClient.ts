@@ -2,8 +2,9 @@ import { AzureClient } from '@fluidframework/azure-client';
 import { TinyliciousClient } from '@fluidframework/tinylicious-client';
 import { ConnectionState, type ContainerSchema, type IFluidContainer, SharedTree, type TreeView, type ViewableTree } from "fluid-framework";
 import { UserManager } from '../auth/UserManager';
+import { getEnv } from '../lib/env';
 import { getFluidClient, setupConnectionListeners } from '../lib/fluidService';
-import { appTreeConfiguration, Items } from "../schema/app-schema";
+import { appTreeConfiguration, Items, Project } from "../schema/app-schema";
 
 // ローカルストレージのキー名
 const CONTAINER_ID_STORAGE_KEY = 'fluid_container_id';
@@ -58,20 +59,68 @@ export class FluidClient {
 
   // ローカルストレージからコンテナIDを読み込む
   private loadContainerId(): void {
-    if (typeof window !== 'undefined') {
-      const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
-      if (savedContainerId) {
-        console.log(`[FluidClient] Loading saved container ID: ${savedContainerId}`);
-        this.containerId = savedContainerId;
-      }
-    }
+    // if (typeof window !== 'undefined') {
+    //   const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
+    //   if (savedContainerId) {
+    //     console.log(`[FluidClient] Loading saved container ID: ${savedContainerId}`);
+    //     this.containerId = savedContainerId;
+    //   }
+    // }
   }
 
   // コンテナIDをローカルストレージに保存
   private saveContainerId(containerId: string): void {
     if (typeof window !== 'undefined') {
-      console.log(`[FluidClient] Saving container ID: ${containerId}`);
+      console.log(`[FluidClient] Saving container ID locally: ${containerId}`);
       localStorage.setItem(CONTAINER_ID_STORAGE_KEY, containerId);
+    }
+  }
+
+  /**
+   * コンテナIDをサーバー側に保存する
+   * @param containerId 保存するコンテナID
+   */
+  private async saveContainerIdToServer(containerId: string): Promise<void> {
+    try {
+      // ユーザーがログインしていることを確認
+      const userManager = UserManager.getInstance();
+      const currentUser = userManager.getCurrentUser();
+
+      if (!currentUser) {
+        console.warn('[FluidClient] Cannot save container ID to server: User not logged in');
+        return;
+      }
+
+      // Firebase IDトークンを取得
+      const firebaseUser = userManager['auth'].currentUser;
+      if (!firebaseUser) {
+        console.warn('[FluidClient] Cannot save container ID to server: Firebase user not available');
+        return;
+      }
+
+      const idToken = await firebaseUser.getIdToken();
+      const apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:3000');
+
+      // サーバー側にコンテナIDを保存
+      const response = await fetch(`${apiBaseUrl}/api/save-container`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          idToken,
+          containerId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save container ID to server: ${response.statusText}`);
+      }
+
+      console.log(`[FluidClient] Successfully saved container ID to server for user ${currentUser.id}`);
+    } catch (error) {
+      console.error('[FluidClient] Error saving container ID to server:', error);
+      // エラーが発生してもクリティカルではないので、処理は続行
     }
   }
 
@@ -124,9 +173,13 @@ export class FluidClient {
           console.warn('[FluidClient] No user ID available for initialization');
         }
 
-        // fluid-service.ts から適切なクライアントを取得
-        // 既存のcontainerIdがある場合は、それに対応するトークンを取得するよう指定
-        this.client = await getFluidClient(userId, this.containerId);
+        try {
+          // fluid-service.ts から適切なクライアントを取得
+          this.client = await getFluidClient(userId, this.containerId);
+        } catch (error) {
+          window.alert('Fluid client: getFluidClient failed. Please check your server.');
+          throw error;
+        }
 
         const createOption = "2";
 
@@ -154,8 +207,8 @@ export class FluidClient {
 
         if (this.appData.compatibility.canInitialize) {
           console.log('[FluidClient] Initializing appData with default items');
-          this.appData.initialize(new Items([]));
-          this.appData.root.addNode("test");
+          this.appData.initialize(new Project({ title: "", items: new Items([]) }));
+          this.appData.root.addPage("test", "author");
         }
 
         // コンテナをアタッチして、コンテナIDを取得または確認
@@ -166,9 +219,13 @@ export class FluidClient {
             this.containerId = attachedContainerId;
             // 新しいコンテナIDを保存
             this.saveContainerId(this.containerId);
+
+            // サーバー側にもコンテナIDを保存する（ユーザーがログインしている場合のみ）
+            if (userId) {
+              await this.saveContainerIdToServer(this.containerId);
+            }
           }
         }
-
 
         // コンテナの接続状態を監視
         this.setupConnectionMonitoring();
@@ -261,16 +318,16 @@ export class FluidClient {
   }
 
   public getTree() {
-    console.log(this.appData.root.length);
-    console.log(this.appData.root[0]);
-    const rootItems = this.appData.root;
+    console.log(this.appData.root.items.length);
+    console.log(this.appData.root.items[0]);
+    const rootItems = this.appData.root.items;
     const items = [...rootItems];
     console.log(items);
-    this.appData.root.map(element => {
+    this.appData.root.items.map(element => {
       console.log('Element:', element);
     });
 
-    return this.appData.root;
+    return this.appData.root.items;
   }
 
   /**
@@ -336,8 +393,8 @@ export class FluidClient {
   getAllData() {
     if (this.appData?.root) {
       return {
-        itemCount: this.appData.root.length,
-        items: [...this.appData.root].map(item => ({
+        itemCount: this.appData.root.items.length,
+        items: [...this.appData.root.items].map(item => ({
           id: item.id,
           text: item.text
         }))

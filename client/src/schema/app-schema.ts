@@ -14,6 +14,7 @@ import { v4 as uuid } from 'uuid';
 // スキーマファクトリを作成
 const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120003");
 
+
 // アイテム定義をシンプル化
 export class Item extends sf.objectRecursive("Item", {
 	id: sf.string,
@@ -89,6 +90,23 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		return newItem;
 	};
 
+}
+
+// 型検証ヘルパー
+{
+	type _check = ValidateRecursiveSchema<typeof Items>;
+}
+
+// アイテム定義をシンプル化
+export class Project extends sf.objectRecursive("Project", {
+	title: sf.string, // テキスト内容 (ページのタイトルまたは通常のテキスト)
+	items: () => Items, // 子アイテムを保持
+}) {
+	// テキスト更新時にタイムスタンプも更新
+	public readonly updateText = (text: string) => {
+		this.title = text;
+	};
+
 	/**
 	 * ページとして機能するアイテム（最上位アイテム）を追加
 	 * このメソッドはルートItemsコレクションに対してのみ使用してください。
@@ -99,36 +117,18 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	 * @returns 作成されたページアイテム
 	 */
 	public readonly addPage = (title: string, author: string) => {
-		const timeStamp = new Date().getTime();
-
-		// 開発環境では、タイトルが空の場合にインデックスをタイトルに設定
-		const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV === true;
-		const pageIndex = this.length;
-		const pageTitle = title || (isDev ? `Page ${pageIndex}` : "");
-
-		// 基本的にはaddNodeと同じItemだが、タイトルが設定されている
-		const newPage = new Item({
-			id: uuid(),
-			text: pageTitle, // 開発環境で空の場合はインデックスベースのタイトル
-			author,
-			votes: [],
-			created: timeStamp,
-			lastChanged: timeStamp,
-			items: new Items([]), // ページ内容のための空のリスト
-		});
-
-		this.insertAtEnd(newPage);
-		return newPage;
+		(this.items as Items).addNode(author);
 	};
 }
 
 // 型検証ヘルパー
 {
-	type _check = ValidateRecursiveSchema<typeof Items>;
+	type _check = ValidateRecursiveSchema<typeof Project>;
 }
+
 
 // ルート要素は単一の Items コレクション
 // 最上位の Items が「ページ」のリスト、各アイテムの子 Items がページの内容になる
 export const appTreeConfiguration = new TreeViewConfiguration(
-	{ schema: Items },
+	{ schema: Project },
 );

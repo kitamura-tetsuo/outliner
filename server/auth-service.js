@@ -88,44 +88,133 @@ app.get('/health', (req, res) =>
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// データベース接続設定 - 例としてFirestoreを使用
+const db = admin.firestore();
+const userContainersCollection = db.collection('userContainers');
+
 // Firebase認証トークン検証とFluid Relay JWT生成を一括処理
 app.post('/api/fluid-token', async (req, res) =>
 {
   try
   {
     const { idToken, containerId } = req.body;
-    if (!idToken)
+
+    // Firebase IDトークンを検証
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    // クライアントから特定のコンテナIDが指定された場合はそれを使用
+    let targetContainerId = containerId;
+
+    // コンテナIDが指定されていない場合は、ユーザーのデフォルトコンテナを取得または作成
+    if (!targetContainerId)
     {
-      return res.status(400).json({ error: 'IDトークンが必要です' });
+      try
+      {
+        // ユーザーのデフォルトコンテナを取得
+        const userDocRef = userContainersCollection.doc(userId);
+        const userDoc = await userDocRef.get();
+
+        if (userDoc.exists && userDoc.data().defaultContainerId)
+        {
+          targetContainerId = userDoc.data().defaultContainerId;
+          console.log(`Using existing default container ID for user ${userId}: ${targetContainerId}`);
+        } else
+        {
+          // 新しいコンテナIDはクライアント側で生成されるので、ここでは空のドキュメントを作成
+          await userDocRef.set({
+            userId,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          console.log(`Created user document for ${userId}, waiting for client to create container`);
+        }
+      } catch (firestoreError)
+      {
+        // Firestoreエラーをログに記録するが、処理は続行
+        console.warn(`Failed to get or create document for user ${userId}:`, firestoreError);
+        console.log(`Proceeding without stored container ID for user ${userId}`);
+        // このエラーはクライアント側には返さない（処理を継続）
+      }
+    }
+
+    // コンテナが指定された場合、そのコンテナへのアクセス権を確認
+    // ここで権限チェックロジックを実装できます
+
+    // Azure Fluid RelayのJWT生成
+    const jwt = generateAzureFluidToken({
+      uid: userId,
+      displayName: decodedToken.name || 'Anonymous User'
+    }, targetContainerId);
+
+    // レスポンスを返す
+    res.status(200).json({
+      token: jwt.token,
+      user: {
+        id: userId,
+        name: decodedToken.name || 'Anonymous User'
+      },
+      tenantId: azureConfig.tenantId,
+      containerId: targetContainerId
+    });
+  } catch (error)
+  {
+    console.error('Token validation error:', error);
+    res.status(401).json({ error: 'Authentication failed' });
+  }
+});
+
+// ユーザーのコンテナIDを保存するエンドポイント
+app.post('/api/save-container', async (req, res) =>
+{
+  try
+  {
+    const { idToken, containerId } = req.body;
+
+    if (!containerId)
+    {
+      return res.status(400).json({ error: 'Container ID is required' });
     }
 
     // Firebaseトークンを検証
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid;
+    const userId = decodedToken.uid;
 
-    // ユーザー情報を取得
-    const userRecord = await admin.auth().getUser(uid);
-
-    // ユーザー情報をログに記録
-    console.log(`User authenticated: ${uid} (${userRecord.displayName || 'Anonymous'})`);
-
-    // コンテナIDが指定されている場合はログに出力
-    if (containerId)
+    try
     {
-      console.log(`Generating token for container: ${containerId}`);
+      // ユーザーのデフォルトコンテナIDを保存
+      const userDocRef = userContainersCollection.doc(userId);
+      // ドキュメントが存在するか確認
+      const docSnapshot = await userDocRef.get();
+
+      if (docSnapshot.exists)
+      {
+        // ドキュメントが存在する場合は更新
+        await userDocRef.update({
+          defaultContainerId: containerId,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      } else
+      {
+        // ドキュメントが存在しない場合は新規作成
+        await userDocRef.set({
+          userId,
+          defaultContainerId: containerId,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+      console.log(`Saved default container ID ${containerId} for user ${userId}`);
+      res.status(200).json({ success: true });
+    } catch (firestoreError)
+    {
+      console.error('Firestore error while saving container ID:', firestoreError);
+      res.status(500).json({ error: 'Database error while saving container ID' });
     }
-
-    // Azure Fluidトークンを生成
-    const result = generateAzureFluidToken({
-      uid,
-      displayName: userRecord.displayName || 'Anonymous User'
-    }, containerId);
-
-    res.json(result);
   } catch (error)
   {
-    console.error('Token verification or generation error:', error);
-    res.status(401).json({ error: '認証に失敗しました' });
+    console.error('Error saving container ID:', error);
+    res.status(500).json({ error: 'Failed to save container ID' });
   }
 });
 

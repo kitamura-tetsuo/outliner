@@ -87,6 +87,62 @@ export async function getFluidToken(): Promise<{
 }
 
 /**
+ * ユーザーのデフォルトコンテナIDを取得する
+ * @param idToken Firebase認証トークン
+ */
+export async function getUserContainerId(idToken: string): Promise<string | null> {
+  try {
+    const apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:3000');
+
+    const response = await fetch(`${apiBaseUrl}/api/user-container`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ idToken })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get user container ID: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.containerId || null;
+  } catch (error) {
+    console.error('API error getting user container ID:', error);
+    return null;
+  }
+}
+
+/**
+ * ユーザーのデフォルトコンテナIDを保存する
+ * @param idToken Firebase認証トークン
+ * @param containerId 保存するコンテナID
+ */
+export async function saveUserContainerId(idToken: string, containerId: string): Promise<boolean> {
+  try {
+    const apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:3000');
+
+    const response = await fetch(`${apiBaseUrl}/api/save-container`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ idToken, containerId })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to save user container ID: ${response.statusText}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('API error saving user container ID:', error);
+    return false;
+  }
+}
+
+/**
  * セッションをクリアする（ログアウト時）
  */
 export function clearSession(): void {
