@@ -1,10 +1,17 @@
-import { AzureClient, type AzureClientProps, type AzureRemoteConnectionConfig, type ITokenProvider } from '@fluidframework/azure-client';
+import { AzureClient, type AzureRemoteConnectionConfig, type ITokenProvider } from '@fluidframework/azure-client';
 import { InsecureTokenProvider } from '@fluidframework/test-client-utils';
 import { TinyliciousClient } from '@fluidframework/tinylicious-client';
 import { UserManager } from '../auth/UserManager';
+import { CustomKeyMap } from './CustomKeyMap';
 
-// シングルトンパターンでAzureClientを管理
-let azureClient: AzureClient | null = null;
+// クライアントキーの型定義
+interface FluidClientKey {
+  type: 'container' | 'user';
+  id: string;
+}
+
+// シングルトンからマップ型に変更して複数クライアントを管理
+const clientRegistry = new CustomKeyMap<FluidClientKey, AzureClient>();
 
 // Azure Fluid Relayエンドポイント設定
 const azureConfig = {
@@ -23,6 +30,14 @@ const useTinylicious =
   isTestEnvironment || // テスト環境では常にTinyliciousを使用
   import.meta.env.VITE_USE_TINYLICIOUS === 'true' ||
   (import.meta.env.DEV && import.meta.env.VITE_FORCE_AZURE !== 'true');
+
+// キー生成ロジックを一元化する関数
+function createClientKey(userId?: string, containerId?: string): FluidClientKey {
+  if (containerId) {
+    return { type: 'container', id: containerId };
+  }
+  return { type: 'user', id: userId || 'anonymous' };
+}
 
 // TokenProviderの取得
 async function getTokenProvider(userId?: string, containerId?: string): Promise<ITokenProvider> {
@@ -84,7 +99,7 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
   console.log(`[fluidService] Using InsecureTokenProvider for user: ${userName}`);
   return new InsecureTokenProvider(
     useTinylicious ? "tinylicious" : azureConfig.tenantId,
-    { id: userId || 'anonymous', name: userName }
+    { id: userId || 'anonymous' }
   );
 }
 
@@ -93,64 +108,60 @@ export async function getFluidClient(userId?: string, containerId?: string) {
   if (useTinylicious) {
     return new TinyliciousClient({ connection: { port: import.meta.env.VITE_TINYLICIOUS_PORT } });
   }
-  // ユーザーIDが変わった場合は新しいクライアントを作成
-  if (azureClient && userId) {
-    // 既存クライアントの破棄（必要に応じて）
-    azureClient = null;
+
+  // クライアントキーを生成
+  const clientKey = createClientKey(userId, containerId);
+
+  // 既存クライアントがあれば返す
+  if (clientRegistry.has(clientKey)) {
+    return clientRegistry.get(clientKey)!;
   }
 
-  if (!azureClient) {
-    // TokenProvider設定 - コンテナIDが指定されている場合はそれも渡す
-    const tokenProvider = await getTokenProvider(userId, containerId);
+  // TokenProvider設定 - コンテナIDが指定されている場合はそれも渡す
+  const tokenProvider = await getTokenProvider(userId, containerId);
 
-    let clientProps: AzureClientProps;
+  // Azure Fluid Relay（本番環境）用の設定
+  const connectionConfig: AzureRemoteConnectionConfig = {
+    type: "remote",
+    tenantId: azureConfig.tenantId,
+    tokenProvider: tokenProvider,
+    endpoint: azureConfig.endpoint,
+  };
 
-    if (useTinylicious) {
-      // Tinylicious（開発環境・テスト環境）用の設定
-      clientProps = {
-        connection: {
-          type: "local",
-          tokenProvider,
-          endpoint: tinyliciousConfig.endpoint,
-        },
-      };
-      console.log(`[fluidService] Using Tinylicious local service at ${tinyliciousConfig.endpoint}`);
+  const clientProps = {
+    connection: connectionConfig,
+  };
 
-      if (isTestEnvironment) {
-        console.log('[fluidService] Test environment detected, forcing Tinylicious usage');
-      }
-    } else {
-      // Azure Fluid Relay（本番環境）用の設定
-      const connectionConfig: AzureRemoteConnectionConfig = {
-        type: "remote",
-        tenantId: azureConfig.tenantId,
-        tokenProvider: tokenProvider,
-        endpoint: azureConfig.endpoint,
-      };
-
-      clientProps = {
-        connection: connectionConfig,
-      };
-      console.log(`[fluidService] Using Azure Fluid Relay service at ${azureConfig.endpoint}`);
-    }
-
-    try {
-      // Azure Clientの作成
-      azureClient = new AzureClient(clientProps);
-      console.debug(`[fluidService] Created new Fluid client for user: ${userId || 'anonymous'}`);
-    } catch (error) {
-      console.error("[fluidService] Failed to create Fluid client:", error);
-      throw error;
-    }
+  try {
+    // 新しいAzure Clientを作成して登録
+    console.log(`[fluidService] Creating new Fluid client for ${clientKey.type}:${clientKey.id}`);
+    const client = new AzureClient(clientProps);
+    clientRegistry.set(clientKey, client);
+    return client;
+  } catch (error) {
+    console.error(`[fluidService] Failed to create Fluid client for ${clientKey.type}:${clientKey.id}:`, error);
+    throw error;
   }
-
-  return azureClient;
 }
 
-// AzureClientの再設定（トークン更新時など）
-export function resetFluidClient(): void {
-  azureClient = null;
-  console.debug('[fluidService] Reset AzureClient');
+// 特定のクライアントをリセット
+export function resetFluidClient(containerId?: string, userId?: string): void {
+  if (!containerId && !userId) {
+    // 全クライアントをリセット
+    clientRegistry.clear();
+    console.debug('[fluidService] Reset all AzureClients');
+    return;
+  }
+
+  // 同じロジックでキーを生成
+  const clientKey = createClientKey(userId, containerId);
+
+  if (clientRegistry.has(clientKey)) {
+    clientRegistry.delete(clientKey);
+    console.debug(`[fluidService] Reset AzureClient for ${clientKey.type}:${clientKey.id}`);
+  } else {
+    console.debug(`[fluidService] No AzureClient found for ${clientKey.type}:${clientKey.id}`);
+  }
 }
 
 /**

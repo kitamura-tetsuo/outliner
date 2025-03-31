@@ -182,6 +182,7 @@ export class FluidClient {
         }
 
         const createOption = "2";
+        let tokenRefreshNeeded = false;
 
         // 既存のコンテナIDがあれば、そのコンテナに接続
         if (this.containerId) {
@@ -195,11 +196,13 @@ export class FluidClient {
             this.containerId = undefined; // コンテナIDをリセット
             localStorage.removeItem(CONTAINER_ID_STORAGE_KEY);
             ({ container: this.container, services: this.services } = await this.client.createContainer(containerSchema, createOption));
+            tokenRefreshNeeded = true; // 新しいコンテナを作成したので、後でトークンを再取得
           }
         } else {
           // 新しいコンテナを作成
           console.log('[FluidClient] Creating a new container');
           ({ container: this.container, services: this.services } = await this.client.createContainer(containerSchema, createOption));
+          tokenRefreshNeeded = true; // 新しいコンテナを作成したので、後でトークンを再取得
         }
 
         // スキーマを指定してTreeViewを構成
@@ -217,12 +220,33 @@ export class FluidClient {
           // コンテナIDが変わった場合は更新
           if (attachedContainerId !== this.containerId) {
             this.containerId = attachedContainerId;
+            tokenRefreshNeeded = true; // コンテナIDが変更されたのでトークンを再取得
+
             // 新しいコンテナIDを保存
             this.saveContainerId(this.containerId);
 
             // サーバー側にもコンテナIDを保存する（ユーザーがログインしている場合のみ）
             if (userId) {
               await this.saveContainerIdToServer(this.containerId);
+            }
+          }
+
+          // 新しいコンテナIDでトークンを更新
+          if (tokenRefreshNeeded) {
+            console.log(`[FluidClient] Refreshing token for new container: ${this.containerId}`);
+            try {
+              // 新しいコンテナID用のトークンを取得
+              await this.userManager.refreshToken(this.containerId);
+              // 更新されたトークンで新しいクライアントを作成
+              this.client = await getFluidClient(userId, this.containerId);
+
+              // 新しいクライアントでコンテナに再接続
+              ({ container: this.container, services: this.services } =
+                await this.client.getContainer(this.containerId, containerSchema, createOption));
+              console.log(`[FluidClient] Successfully reconnected with refreshed token`);
+            } catch (refreshError) {
+              console.error('[FluidClient] Failed to refresh token for new container:', refreshError);
+              // エラーをスローせず、現在のクライアントで続行を試みる
             }
           }
         }
@@ -304,16 +328,29 @@ export class FluidClient {
   // 再接続を試みる
   private async reconnect() {
     try {
-      // ユーザートークンの更新
-      const userManager = UserManager.getInstance();
-      await userManager.refreshToken();
+      console.log('[FluidClient] Attempting to reconnect...');
 
-      // コンテナの再接続
-      if (this.container) {
-        this.container.connect();
+      // 現在のコンテナIDがある場合は、そのIDに特化したトークンを更新
+      if (this.containerId) {
+        console.log(`[FluidClient] Refreshing token for container: ${this.containerId}`);
+        await this.userManager.refreshToken(this.containerId);
+
+        // 更新したトークンで再接続
+        if (this.container) {
+          console.log('[FluidClient] Reconnecting with refreshed token...');
+          this.container.connect();
+        }
+      } else {
+        // 一般的なトークン更新
+        const userManager = UserManager.getInstance();
+        await userManager.refreshToken();
+
+        if (this.container) {
+          this.container.connect();
+        }
       }
     } catch (error) {
-      console.error('Fluid service reconnection failed:', error);
+      console.error('[FluidClient] Reconnection failed:', error);
     }
   }
 

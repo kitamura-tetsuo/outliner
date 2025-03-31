@@ -415,10 +415,18 @@ export class UserManager {
 
     this.isRefreshingToken = true;
 
+    // リフレッシュの詳細をログ出力
+    if (containerId) {
+      console.log(`[UserManager] Refreshing token specifically for container: ${containerId}`);
+    } else {
+      console.log(`[UserManager] Refreshing token (no specific container)`);
+    }
+
     try {
       // Firebase認証を待機
       const isAuthenticated = await this.waitForFirebaseAuth();
       if (!isAuthenticated || !this.auth.currentUser) {
+        console.warn('[UserManager] Cannot refresh token - user not authenticated');
         return null;
       }
 
@@ -427,10 +435,16 @@ export class UserManager {
 
       // Fluidトークンを取得
       this.currentFluidToken = await this.getFluidToken(idToken, containerId);
+
+      if (containerId && this.currentFluidToken.containerId !== containerId) {
+        console.warn(`[UserManager] Warning: Requested token for container ${containerId} ` +
+          `but received token for ${this.currentFluidToken.containerId || 'unspecified container'}`);
+      }
+
       return this.currentFluidToken.token;
     } catch (error) {
       console.error('[UserManager] Token refresh failed:', error);
-      // エラーを上位に伝播させる（デグレードモードなし）
+      // エラーを上位に伝播させる
       throw error;
     } finally {
       this.isRefreshingToken = false;
