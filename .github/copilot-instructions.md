@@ -14,6 +14,7 @@ https://learn.microsoft.com/ja-jp/azure/azure-fluid-relay/how-tos/connect-fluid-
 https://www.npmjs.com/package/fluid-framework
 https://fluidframework.com/docs/start/tree-start
 https://fluidframework.com/docs/
+https://svelte.dev/docs/svelte/v5-migration-guide#Event-changes-Component-events
 
 引数や戻り値は毎回APIドキュメントから探して。qに単語を入れれば検索出来る。
 https://fluidframework.com/search/?q=

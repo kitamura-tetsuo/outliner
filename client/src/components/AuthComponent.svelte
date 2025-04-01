@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-	import { UserManager } from '../auth/UserManager';
+	import { UserManager, type IUser } from '../auth/UserManager';
 
 	const dispatch = createEventDispatcher();
 
 	let isLoading = true;
 	let error = '';
 	let userManager: UserManager;
-	let currentUser = null;
+	let currentUser: IUser | null = null;
 	let loginError = '';
 
 	// リスナー解除用の関数

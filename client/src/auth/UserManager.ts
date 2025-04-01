@@ -116,7 +116,6 @@ export class UserManager {
     setTimeout(() => {
       this.notifyListeners({
         user: mockUser,
-        fluidToken: mockToken
       });
 
       // 認証成功イベントをディスパッチ
