@@ -22,7 +22,7 @@ export class FluidClient {
   public client: AzureClient | TinyliciousClient | undefined = undefined;
   public container!: IFluidContainer;
   public containerId: string | undefined = undefined;
-  public appData!: TreeView<typeof Items>;
+  public appData!: TreeView<typeof Project>;
 
   // ユーザーマネージャー
   private userManager: UserManager;
@@ -208,8 +208,10 @@ export class FluidClient {
         // スキーマを指定してTreeViewを構成
         this.appData = (this.container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
 
+
         if (this.appData.compatibility.canInitialize) {
           console.log('[FluidClient] Initializing appData with default items');
+          // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
           this.appData.initialize(new Project({ title: "", items: new Items([]) }));
           this.appData.root.addPage("test", "author");
         }
@@ -355,12 +357,12 @@ export class FluidClient {
   }
 
   public getTree() {
-    console.log(this.appData.root.items.length);
-    console.log(this.appData.root.items[0]);
-    const rootItems = this.appData.root.items;
+    const rootItems = this.appData.root.items as Items;
+    console.log(rootItems.length);
+    console.log(rootItems[0]);
     const items = [...rootItems];
     console.log(items);
-    this.appData.root.items.map(element => {
+    rootItems.map(element => {
       console.log('Element:', element);
     });
 
@@ -406,21 +408,25 @@ export class FluidClient {
   private _setupDebugEventListeners() {
     if (!this.container) return;
 
+    // TypeScriptの型定義ではopイベントは認識されていないが、実際のランタイムでは機能する
+    // @ts-ignore - カスタムイベントタイプはTypeScriptの型定義に含まれていない
     this.container.on('op', (op: any) => {
       console.debug('[FluidClient] Operation received:', op);
     });
+
   }
 
   // デバッグ用のヘルパーメソッド
   getDebugInfo() {
+    const rootItems = this.appData.root.items as Items;
     return {
       clientInitialized: !!this.client,
       containerConnected: this.isConnected,
       connectionState: this.getConnectionStateString(),
       containerId: this.containerId,
       treeData: this.appData ? this.getAllData() : {},
-      treeCount: this.appData?.root?.length || 0,
-      treeFirstItem: this.appData?.root?.[0]?.text || null,
+      treeCount: rootItems.length || 0,
+      treeFirstItem: rootItems[0]?.text || null,
       timeStamp: new Date().toISOString(), // タイムスタンプを追加してデバッグ情報が毎回変わるようにする
       currentUser: this.userManager.getCurrentUser()
     };
@@ -429,9 +435,10 @@ export class FluidClient {
   // 以下は共有データ操作用のヘルパーメソッド
   getAllData() {
     if (this.appData?.root) {
+      const rootItems = this.appData.root.items as Items;
       return {
-        itemCount: this.appData.root.items.length,
-        items: [...this.appData.root.items].map(item => ({
+        itemCount: rootItems.length,
+        items: [...rootItems].map(item => ({
           id: item.id,
           text: item.text
         }))

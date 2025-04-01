@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onDestroy, onMount } from 'svelte';
-	import { UserManager, type IAuthResult } from '../auth/UserManager';
+	import { UserManager } from '../auth/UserManager';
 	import AuthComponent from '../components/AuthComponent.svelte';
 	import EnvDebugger from '../components/EnvDebugger.svelte';
 	import MissingEnvWarning from '../components/MissingEnvWarning.svelte';
@@ -37,8 +37,8 @@
 	}
 
 	// 認証成功時の処理
-	async function handleAuthSuccess(event: CustomEvent<IAuthResult>) {
-		console.log('認証成功:', event.detail);
+	async function handleAuthSuccess(authResult) {
+		console.log('認証成功:', authResult);
 		isAuthenticated = true;
 
 		// Fluidクライアントの初期化はfluidStoreが処理するため、
@@ -96,6 +96,13 @@
 		}
 	}
 
+	// 認証ログアウト時の処理
+	function handleAuthLogout() {
+		console.log('ログアウトしました');
+		isAuthenticated = false;
+		// 必要に応じてページをリロードするか、非認証状態の表示に切り替える
+	}
+
 	// ページ選択時の処理
 	function handlePageSelect(event) {
 		// 直接オブジェクトを受け取る
@@ -122,13 +129,6 @@
 			console.error('再接続エラー:', err);
 			networkError = '再接続に失敗しました。しばらくしてからもう一度お試しください。';
 		}
-	}
-
-	// 認証ログアウト時の処理
-	function handleAuthLogout() {
-		console.log('ログアウトしました');
-		isAuthenticated = false;
-		// 必要に応じてページをリロードするか、非認証状態の表示に切り替える
 	}
 
 	// Fluidクライアントの初期化
@@ -255,7 +255,7 @@
 
 	<!-- 認証コンポーネント -->
 	<div class="auth-section">
-		<AuthComponent on:authSuccess={handleAuthSuccess} on:authLogout={handleAuthLogout} />
+		<AuthComponent onAuthSuccess={handleAuthSuccess} onAuthLogout={handleAuthLogout} />
 	</div>
 
 	<!-- 環境変数デバッガー -->

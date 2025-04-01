@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { UserManager, type IUser } from '../auth/UserManager';
 
-	const dispatch = createEventDispatcher();
+	// Define callback props instead of using createEventDispatcher
+	export let onAuthSuccess: ((authResult: any) => void) | undefined = undefined;
+	export let onAuthLogout: (() => void) | undefined = undefined;
 
 	let isLoading = true;
 	let error = '';
@@ -22,10 +24,12 @@
 
 			if (authResult) {
 				currentUser = authResult.user;
-				dispatch('authSuccess', authResult);
+				// Call the callback prop directly instead of dispatching
+				if (onAuthSuccess) onAuthSuccess(authResult);
 			} else {
 				currentUser = null;
-				dispatch('authLogout');
+				// Call the callback prop directly instead of dispatching
+				if (onAuthLogout) onAuthLogout();
 			}
 		});
 
@@ -45,7 +49,8 @@
 			document.addEventListener('auth-success', (event: any) => {
 				if (event.detail && event.detail.user) {
 					currentUser = event.detail.user;
-					dispatch('authSuccess', event.detail);
+					// Call the callback prop directly
+					if (onAuthSuccess) onAuthSuccess(event.detail);
 				}
 			});
 		}
@@ -63,9 +68,9 @@
 			error = '';
 			loginError = '';
 			await userManager.loginWithGoogle();
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error('Login error:', err);
-			loginError = err.message || 'ログイン中にエラーが発生しました';
+			loginError = (err as Error).message || 'ログイン中にエラーが発生しました';
 			isLoading = false;
 		}
 	}
@@ -77,7 +82,7 @@
 			await userManager.logout();
 		} catch (err) {
 			console.error('Logout error:', err);
-			error = err.message || 'ログアウト中にエラーが発生しました';
+			error = (err as Error).message || 'ログアウト中にエラーが発生しました';
 			isLoading = false;
 		}
 	}
