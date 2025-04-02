@@ -59,13 +59,13 @@ export class FluidClient {
 
   // ローカルストレージからコンテナIDを読み込む
   private loadContainerId(): void {
-    // if (typeof window !== 'undefined') {
-    //   const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
-    //   if (savedContainerId) {
-    //     console.log(`[FluidClient] Loading saved container ID: ${savedContainerId}`);
-    //     this.containerId = savedContainerId;
-    //   }
-    // }
+    if (typeof window !== 'undefined') {
+      const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
+      if (savedContainerId) {
+        console.log(`[FluidClient] Loading saved container ID: ${savedContainerId}`);
+        this.containerId = savedContainerId;
+      }
+    }
   }
 
   // コンテナIDをローカルストレージに保存

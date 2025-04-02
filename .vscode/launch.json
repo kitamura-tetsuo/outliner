@@ -94,7 +94,7 @@
         "Debug Server",
         "Launch Tinylicious",
         "Debug SvelteKit Server",
-        "Launch Chrome against localhost"
+        // "Launch Chrome against localhost"
       ],
       "stopAll": true,
       "preLaunchTask": "Kill Tinylicious Process"
