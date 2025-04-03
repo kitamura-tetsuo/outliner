@@ -186,93 +186,46 @@ export class FluidClient {
         const createOption = "2";
         let tokenRefreshNeeded = false;
 
-        // 既存のコンテナIDがあれば、そのコンテナに接続
+        // コンテナIDがある場合のみ接続を試みる
         if (this.containerId) {
           try {
             console.log(`[FluidClient] Connecting to existing container: ${this.containerId}`);
             ({ container: this.container, services: this.services } = await this.client.getContainer(this.containerId, containerSchema, createOption));
             console.log(`[FluidClient] Successfully connected to existing container: ${this.containerId}`);
+            
+            // スキーマを指定してTreeViewを構成
+            this.appData = (this.container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+            
+            // コンテナの接続状態を監視
+            this.setupConnectionMonitoring();
+
+            console.log('[FluidClient] Fluid client initialized with container ID:', this.containerId);
+
+            // VSCode debugger用のイベントリスナーを設定
+            this._setupDebugEventListeners();
+
+            // 初期化完了フラグを設定
+            this.isInitialized = true;
+            this.isInitializing = false;
+
+            resolve(this);
           } catch (error) {
-            console.warn(`[FluidClient] Failed to connect to existing container: ${this.containerId}`, error);
-            console.warn('[FluidClient] Creating a new container instead...');
-            this.containerId = undefined; // コンテナIDをリセット
-            localStorage.removeItem(CONTAINER_ID_STORAGE_KEY);
-            ({ container: this.container, services: this.services } = await this.client.createContainer(containerSchema, createOption));
-            tokenRefreshNeeded = true; // 新しいコンテナを作成したので、後でトークンを再取得
+            console.error(`[FluidClient] Failed to connect to existing container: ${this.containerId}`, error);
+            this.isInitializing = false;
+            this.initPromise = null;
+            reject(new Error(`指定されたコンテナIDに接続できませんでした: ${this.containerId}`));
           }
         } else {
-          // 新しいコンテナを作成
-          console.log('[FluidClient] Creating a new container');
-          ({ container: this.container, services: this.services } = await this.client.createContainer(containerSchema, createOption));
-          tokenRefreshNeeded = true; // 新しいコンテナを作成したので、後でトークンを再取得
+          // コンテナIDがない場合はエラーを返す
+          console.warn('[FluidClient] No container ID provided and automatic container creation is disabled');
+          this.isInitializing = false;
+          this.initPromise = null;
+          reject(new Error('コンテナIDが指定されていません。新しいアウトライナーの作成ページから新規作成してください。'));
         }
-
-        // スキーマを指定してTreeViewを構成
-        this.appData = (this.container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
-
-
-        if (this.appData.compatibility.canInitialize) {
-          console.log('[FluidClient] Initializing appData with default items');
-          // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
-          this.appData.initialize(new Project({ title: "", items: new Items([]) }));
-          this.appData.root.addPage("test", "author");
-        }
-
-        // コンテナをアタッチして、コンテナIDを取得または確認
-        if (this.container.connectionState === ConnectionState.Disconnected) {
-          const attachedContainerId = await this.container.attach();
-          // コンテナIDが変わった場合は更新
-          if (attachedContainerId !== this.containerId) {
-            this.containerId = attachedContainerId;
-            tokenRefreshNeeded = true; // コンテナIDが変更されたのでトークンを再取得
-
-            // 新しいコンテナIDを保存
-            this.saveContainerId(this.containerId);
-
-            // サーバー側にもコンテナIDを保存する（ユーザーがログインしている場合のみ）
-            if (userId) {
-              await this.saveContainerIdToServer(this.containerId);
-            }
-          }
-
-          // 新しいコンテナIDでトークンを更新
-          if (tokenRefreshNeeded) {
-            console.log(`[FluidClient] Refreshing token for new container: ${this.containerId}`);
-            try {
-              // 新しいコンテナID用のトークンを取得
-              await this.userManager.refreshToken(this.containerId);
-              // 更新されたトークンで新しいクライアントを作成
-              this.client = await getFluidClient(userId, this.containerId);
-
-              // 新しいクライアントでコンテナに再接続
-              ({ container: this.container, services: this.services } =
-                await this.client.getContainer(this.containerId, containerSchema, createOption));
-              console.log(`[FluidClient] Successfully reconnected with refreshed token`);
-            } catch (refreshError) {
-              console.error('[FluidClient] Failed to refresh token for new container:', refreshError);
-              // エラーをスローせず、現在のクライアントで続行を試みる
-            }
-          }
-        }
-
-        // コンテナの接続状態を監視
-        this.setupConnectionMonitoring();
-
-        console.log('[FluidClient] Fluid client initialized with container ID:', this.containerId);
-
-        // VSCode debugger用のイベントリスナーを設定
-        this._setupDebugEventListeners();
-
-        // 初期化完了フラグを設定
-        this.isInitialized = true;
-        this.isInitializing = false;
-
-        resolve(this);
       } catch (error) {
         console.error('[FluidClient] Failed to initialize Fluid container:', error);
         this.isInitializing = false;
         this.initPromise = null;
-        this.resetContainerId(); // コンテナIDをリセット
         reject(error);
       }
     });
