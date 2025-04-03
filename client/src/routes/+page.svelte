@@ -12,6 +12,7 @@
 	import { getDebugConfig } from '../lib/env';
 	import { handleConnectionError } from '../lib/fluidService';
 	import { fluidClient } from '../stores/fluidStore';
+	import { Items, Item } from '../schema/app-schema';
 
 	let isLoading = true;
 	let error: string | null = null;
@@ -23,11 +24,11 @@
 	let portInfo = '';
 	let envConfig = getDebugConfig();
 	let treeData: any = {};
-	let rootItems; // アウトラインのルートアイテム
+	let rootItems: Items; // 明示的に型を指定
 	let isAuthenticated = false;
 	let networkError: string | null = null;
 	let rootData; // ルートデータ（ページのコレクションを含む）
-	let currentPage; // 現在選択されているページ
+	let currentPage: Item | null = null; // 現在選択されているページ
 	let currentPageId = '';
 
 	// SharedTreeの変更を監視するためのハンドラ
@@ -45,7 +46,8 @@
 		// ここでは初期化せず、状態が変わるのを待つだけにする
 		try {
 			// fluidStoreからのクライアント状態変更を待つ
-			const unsubscribe = fluidClient.subscribe((client) => {
+			let unsubscribe; // 明示的に変数を宣言
+			unsubscribe = fluidClient.subscribe((client) => {
 				if (client?.isConnected) {
 					console.log('Fluidクライアントが接続されました');
 
@@ -72,7 +74,9 @@
 					error = null;
 
 					// 不要になったら購読を停止
-					unsubscribe();
+					if (unsubscribe) {
+						unsubscribe();
+					}
 				}
 			});
 
@@ -158,7 +162,7 @@
 			// ホスト情報を取得 - ブラウザ環境でのみ実行
 			if (browser) {
 				hostInfo = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
-				portInfo = window.location.port || '5173/default';
+				portInfo = window.location.port || '7071/default';
 				console.info('Running on host:', hostInfo);
 
 				// SharedTreeの変更イベントをリッスン
@@ -280,6 +284,13 @@
 				></div>
 				<span>接続状態: {$fluidClient?.getConnectionStateString() || '未接続'}</span>
 				<button on:click={testConnection}>接続テスト</button>
+			</div>
+
+			<!-- 新規コンテナ作成リンク -->
+			<div class="action-buttons">
+				<a href="/containers" class="new-container-button">
+					<span class="icon">+</span> 新しいアウトライナーを作成
+				</a>
 			</div>
 
 			{#if rootItems}
@@ -486,5 +497,40 @@
 		border-radius: 6px;
 		text-align: center;
 		color: #666;
+	}
+
+	.action-buttons {
+		margin: 1rem 0;
+		display: flex;
+		justify-content: center;
+	}
+
+	.new-container-button {
+		display: inline-flex;
+		align-items: center;
+		background-color: #4CAF50;
+		color: white;
+		padding: 0.5rem 1rem;
+		border-radius: 4px;
+		text-decoration: none;
+		font-weight: bold;
+		transition: background-color 0.2s;
+	}
+
+	.new-container-button:hover {
+		background-color: #45a049;
+	}
+
+	.new-container-button .icon {
+		font-size: 1.2rem;
+		margin-right: 0.5rem;
+	}
+
+	.container-info {
+		background: #f0f8ff;
+		padding: 0.5rem 1rem;
+		border-radius: 4px;
+		margin-bottom: 1rem;
+		border-left: 4px solid #2196f3;
 	}
 </style>

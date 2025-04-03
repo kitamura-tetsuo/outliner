@@ -55,7 +55,7 @@ async function globalSetup(config: any) {
   });
 
   // サーバーが起動するまで待機
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  await new Promise(resolve => setTimeout(resolve, 7073));
   logger.info('Tinylicious server startup wait completed');
 
   // グローバル変数に保存

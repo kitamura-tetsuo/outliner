@@ -13,6 +13,6 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
-  "playwright.env.PLAYWRIGHT_TEST_BASE_URL": "http://localhost:5173",
+  "playwright.env.PLAYWRIGHT_TEST_BASE_URL": "http://localhost:7071",
   "playwright.use.dotenv": true
 }

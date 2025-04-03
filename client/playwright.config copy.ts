@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // テスト用ポートを定義 - これを明示的に指定
-const TEST_PORT = '5174';
+const TEST_PORT = '7072';
 // Tinylicious サーバーのポートを定義
 const TINYLICIOUS_PORT = '7170';
 

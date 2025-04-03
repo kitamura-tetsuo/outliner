@@ -72,7 +72,7 @@ try
 const app = express();
 // CORS設定を強化
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173', // 明示的にクライアントのURLを許可
+  origin: process.env.CORS_ORIGIN || 'http://localhost:7071', // 明示的にクライアントのURLを許可
   methods: ['GET', 'POST', 'OPTIONS'],  // OPTIONSメソッドを追加(プリフライトリクエスト対応)
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'] // 許可するヘッダーを明示
@@ -94,11 +94,14 @@ const userContainersCollection = db.collection('userContainers');
 const containerUsersCollection = db.collection('containerUsers');
 
 // ユーザーのコンテナIDを保存するエンドポイント
-app.post('/api/save-container', async (req, res) => {
-  try {
+app.post('/api/save-container', async (req, res) =>
+{
+  try
+  {
     const { idToken, containerId } = req.body;
 
-    if (!containerId) {
+    if (!containerId)
+    {
       return res.status(400).json({ error: 'Container ID is required' });
     }
 
@@ -106,9 +109,11 @@ app.post('/api/save-container', async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
-    try {
+    try
+    {
       // Firestoreトランザクションを使用して両方のコレクションを更新
-      await db.runTransaction(async (transaction) => {
+      await db.runTransaction(async (transaction) =>
+      {
         const userDocRef = userContainersCollection.doc(userId);
         const containerDocRef = containerUsersCollection.doc(containerId);
 
@@ -118,11 +123,13 @@ app.post('/api/save-container', async (req, res) => {
 
         // 読み取り完了後に書き込み操作を開始
         // ユーザーのデフォルトコンテナIDとアクセス可能なコンテナIDを更新
-        if (userDoc.exists) {
+        if (userDoc.exists)
+        {
           const userData = userDoc.data();
           const accessibleContainerIds = userData.accessibleContainerIds || [];
 
-          if (!accessibleContainerIds.includes(containerId)) {
+          if (!accessibleContainerIds.includes(containerId))
+          {
             accessibleContainerIds.push(containerId);
           }
 
@@ -131,7 +138,8 @@ app.post('/api/save-container', async (req, res) => {
             accessibleContainerIds,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
           });
-        } else {
+        } else
+        {
           transaction.set(userDocRef, {
             userId,
             defaultContainerId: containerId,
@@ -142,11 +150,13 @@ app.post('/api/save-container', async (req, res) => {
         }
 
         // コンテナのアクセス可能なユーザーIDを更新
-        if (containerDoc.exists) {
+        if (containerDoc.exists)
+        {
           const containerData = containerDoc.data();
           const accessibleUserIds = containerData.accessibleUserIds || [];
 
-          if (!accessibleUserIds.includes(userId)) {
+          if (!accessibleUserIds.includes(userId))
+          {
             accessibleUserIds.push(userId);
           }
 
@@ -154,7 +164,8 @@ app.post('/api/save-container', async (req, res) => {
             accessibleUserIds,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
           });
-        } else {
+        } else
+        {
           transaction.set(containerDocRef, {
             containerId,
             accessibleUserIds: [userId],
@@ -166,11 +177,13 @@ app.post('/api/save-container', async (req, res) => {
 
       console.log(`Saved container ID ${containerId} for user ${userId}`);
       res.status(200).json({ success: true });
-    } catch (firestoreError) {
+    } catch (firestoreError)
+    {
       console.error('Firestore error while saving container ID:', firestoreError);
       res.status(500).json({ error: 'Database error while saving container ID' });
     }
-  } catch (error) {
+  } catch (error)
+  {
     console.error('Error saving container ID:', error);
     res.status(500).json({ error: 'Failed to save container ID' });
   }
@@ -245,8 +258,10 @@ app.post('/api/get-container-users', async (req, res) =>
 });
 
 // Firebase認証トークン検証とFluid Relay JWT生成を一括処理
-app.post('/api/fluid-token', async (req, res) => {
-  try {
+app.post('/api/fluid-token', async (req, res) =>
+{
+  try
+  {
     const { idToken, containerId } = req.body;
 
     // Firebase IDトークンを検証
@@ -255,24 +270,27 @@ app.post('/api/fluid-token', async (req, res) => {
 
     // ユーザーのコンテナ情報を取得
     const userDoc = await userContainersCollection.doc(userId).get();
-    
+
     // ユーザーデータが存在しない場合のデフォルト値を設定
     const userData = userDoc.exists ? userDoc.data() : { accessibleContainerIds: [] };
     const accessibleContainerIds = userData.accessibleContainerIds || [];
     const defaultContainerId = userData.defaultContainerId || null;
-    
+
     // 使用するコンテナIDを決定
     let targetContainerId = containerId;
-    
+
     // コンテナIDが指定されていない場合はデフォルトを使用
-    if (!targetContainerId && defaultContainerId) {
+    if (!targetContainerId && defaultContainerId)
+    {
       console.log(`No container ID specified, using default container: ${defaultContainerId}`);
       targetContainerId = defaultContainerId;
     }
 
     // コンテナIDが指定されている場合はアクセス権をチェック
-    if (targetContainerId && accessibleContainerIds.length > 0) {
-      if (!accessibleContainerIds.includes(targetContainerId)) {
+    if (targetContainerId && accessibleContainerIds.length > 0)
+    {
+      if (!accessibleContainerIds.includes(targetContainerId))
+      {
         return res.status(403).json({ error: 'Access to the container is denied' });
       }
     }
@@ -295,7 +313,8 @@ app.post('/api/fluid-token', async (req, res) => {
       defaultContainerId,
       accessibleContainerIds
     });
-  } catch (error) {
+  } catch (error)
+  {
     console.error('Token validation error:', error);
     res.status(401).json({ error: 'Authentication failed' });
   }
@@ -403,7 +422,7 @@ function generateAzureFluidToken(user, containerId = undefined)
   }
 }
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 7073;
 app.listen(PORT, () =>
 {
   console.log(`Auth service running on port ${PORT}`);

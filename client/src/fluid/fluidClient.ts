@@ -99,7 +99,7 @@ export class FluidClient {
       }
 
       const idToken = await firebaseUser.getIdToken();
-      const apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:3000');
+      const apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:7073');
 
       // サーバー側にコンテナIDを保存
       const response = await fetch(`${apiBaseUrl}/api/save-container`, {

@@ -7,6 +7,10 @@
 	"runArgs": [
 		"-p",
 		"7070:7070",
+		"-p",
+		"7071:7071",
+		"-p",
+		"7072:7072",
 	],
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},

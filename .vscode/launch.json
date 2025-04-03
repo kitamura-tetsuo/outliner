@@ -5,7 +5,7 @@
       "type": "chrome",
       "request": "launch",
       "name": "Launch Chrome against localhost",
-      "url": "http://localhost:5173",
+      "url": "http://localhost:7071",
       "webRoot": "${workspaceFolder}/client",
       "sourceMaps": true,
       "sourceMapPathOverrides": {
@@ -27,7 +27,7 @@
         "0.0.0.0"
       ],
       "env": {
-        "PORT": "5173"
+        "PORT": "7071"
       },
       "console": "integratedTerminal",
       "skipFiles": [
@@ -49,7 +49,7 @@
         "0.0.0.0"
       ],
       "env": {
-        "PORT": "3000"
+        "PORT": "7073"
       },
       "console": "integratedTerminal",
       "skipFiles": [

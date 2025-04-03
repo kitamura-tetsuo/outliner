@@ -1,6 +1,6 @@
 import { getEnv } from './env';
 
-const API_BASE_URL = getEnv('VITE_API_BASE_URL', 'http://localhost:3000');
+const API_BASE_URL = getEnv('VITE_API_BASE_URL', 'http://localhost:7073');
 
 // セッション情報
 let currentSessionId: string | null = null;
@@ -92,7 +92,7 @@ export async function getFluidToken(): Promise<{
  */
 export async function getUserContainerId(idToken: string): Promise<string | null> {
   try {
-    const apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:3000');
+    const apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:7073');
 
     const response = await fetch(`${apiBaseUrl}/api/user-container`, {
       method: 'POST',
@@ -121,7 +121,7 @@ export async function getUserContainerId(idToken: string): Promise<string | null
  */
 export async function saveUserContainerId(idToken: string, containerId: string): Promise<boolean> {
   try {
-    const apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:3000');
+    const apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:7073');
 
     const response = await fetch(`${apiBaseUrl}/api/save-container`, {
       method: 'POST',

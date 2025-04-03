@@ -53,7 +53,7 @@ function startNgrok(port) {
     timeout = setTimeout(async () => {
       console.log('ngrokの起動を待機しています...');
       resolve(true); // 次のステップに進む
-    }, 3000);
+    }, 7073);
     
     ngrok.stdout.on('data', (data) => {
       ngrokOutput += data.toString();
@@ -129,7 +129,7 @@ function startServer() {
  */
 async function start() {
   try {
-    const port = process.env.PORT || 3000;
+    const port = process.env.PORT || 7073;
     
     // ngrokを起動
     const ngrokStarted = await startNgrok(port);
