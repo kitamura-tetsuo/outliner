@@ -23,6 +23,7 @@ export class FluidClient {
   public container!: IFluidContainer;
   public containerId: string | undefined = undefined;
   public appData!: TreeView<typeof Project>;
+  private _sharedTree: any;
 
   // ユーザーマネージャー
   private userManager: UserManager;
@@ -32,6 +33,7 @@ export class FluidClient {
   private connectionRetryCount = 0;
   private readonly MAX_RETRY_COUNT = 3;
   services: any;
+  currentUser: { id: string } | null = null;
 
   /**
    * シングルトンインスタンスを取得します
@@ -445,6 +447,47 @@ export class FluidClient {
       };
     }
     return {};
+  }
+
+  /**
+   * E2Eテスト用に現在のSharedTreeデータ構造を取得する
+   * @returns ツリー構造のシリアライズされたデータ
+   */
+  public getTreeDebugData(): any {
+    if (!this.container || !this.appData) {
+      return null;
+    }
+
+    // SharedTreeのデータ構造をシリアライズして返す
+    const treeData = this.appData.root;
+
+    // 再帰的にツリー構造をプレーンなオブジェクトに変換
+    return this._serializeTreeNode(treeData);
+  }
+
+  /**
+   * ツリーノードを再帰的にシリアライズする
+   * @private
+   */
+  private _serializeTreeNode(node: any): any {
+    if (!node) return null;
+
+    // ID、テキスト、子アイテムなどの基本情報を収集
+    const result: any = {
+      id: node.id,
+      text: node.text,
+      hasChildren: node.items?.length > 0
+    };
+
+    // 子アイテムを再帰的に処理
+    if (node.items && node.items.length > 0) {
+      result.children = [];
+      for (const child of node.items) {
+        result.children.push(this._serializeTreeNode(child));
+      }
+    }
+
+    return result;
   }
 
   // コンポーネント破棄時のクリーンアップ
