@@ -69,7 +69,7 @@ export class MockFluidClient {
       };
 
       // テスト用の新しいコンテナを常に作成
-      const createResponse = await this.client.createContainer(containerSchema);
+      const createResponse = await this.client.createContainer(containerSchema,"2");
       this.container = createResponse.container;
       const containerID = await this.container.attach();
       this.containerId = containerID;

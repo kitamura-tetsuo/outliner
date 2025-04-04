@@ -27,12 +27,12 @@ export default defineConfig(({ mode }) => {
 			})
 		],
 		server: {
-			port: parseInt(process.env.VITE_PORT || '7071'),
+			port: parseInt(process.env.VITE_PORT || '7070'),
 			strictPort: true,
 			host: process.env.VITE_HOST || 'localhost'
 		},
 		preview: {
-			port: parseInt(process.env.VITE_PORT || '7071'),
+			port: parseInt(process.env.VITE_PORT || '7070'),
 			strictPort: true,
 			host: process.env.VITE_HOST || 'localhost'
 		},

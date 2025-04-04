@@ -72,7 +72,7 @@ try
 const app = express();
 // CORS設定を強化
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:7071', // 明示的にクライアントのURLを許可
+  origin: process.env.CORS_ORIGIN || 'http://localhost:7070', // 明示的にクライアントのURLを許可
   methods: ['GET', 'POST', 'OPTIONS'],  // OPTIONSメソッドを追加(プリフライトリクエスト対応)
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'] // 許可するヘッダーを明示
@@ -422,7 +422,7 @@ function generateAzureFluidToken(user, containerId = undefined)
   }
 }
 
-const PORT = process.env.PORT || 7073;
+const PORT = process.env.PORT || 7071;
 app.listen(PORT, () =>
 {
   console.log(`Auth service running on port ${PORT}`);

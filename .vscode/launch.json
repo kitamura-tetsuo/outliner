@@ -5,7 +5,7 @@
       "type": "chrome",
       "request": "launch",
       "name": "Launch Chrome against localhost",
-      "url": "http://localhost:7071",
+      "url": "http://localhost:7070",
       "webRoot": "${workspaceFolder}/client",
       "sourceMaps": true,
       "sourceMapPathOverrides": {
@@ -27,7 +27,7 @@
         "0.0.0.0"
       ],
       "env": {
-        "PORT": "7071"
+        "PORT": "7070"
       },
       "console": "integratedTerminal",
       "skipFiles": [
@@ -49,21 +49,13 @@
         "0.0.0.0"
       ],
       "env": {
-        "PORT": "7073"
+        "PORT": "7071"
       },
       "console": "integratedTerminal",
       "skipFiles": [
         "<node_internals>/**"
       ],
       "restart": true
-    },
-    {
-      "name": "Kill Tinylicious Process",
-      "type": "node",
-      "request": "launch",
-      "program": "${workspaceFolder}/scripts/kill-tinylicious.js",
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen"
     },
     {
       "name": "Launch Tinylicious",
@@ -74,6 +66,9 @@
       "runtimeArgs": [
         "tinylicious"
       ],
+      "env": {
+        "PORT": "7072"
+      },
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
     },

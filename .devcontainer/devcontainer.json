@@ -11,6 +11,10 @@
 		"7071:7071",
 		"-p",
 		"7072:7072",
+		"-p",
+		"7080:7080",
+		"-p",
+		"7082:7082",
 	],
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},

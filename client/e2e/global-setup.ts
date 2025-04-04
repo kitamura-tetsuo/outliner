@@ -26,7 +26,7 @@ declare global {
 }
 
 // Tinyliciousサーバーのポートは設定ファイルと同期
-const TINYLICIOUS_PORT = process.env.VITE_TINYLICIOUS_PORT || '7170';
+const TINYLICIOUS_PORT = process.env.VITE_TINYLICIOUS_PORT || '7082';
 
 /**
  * テスト全体の実行前に1度だけ呼び出される設定

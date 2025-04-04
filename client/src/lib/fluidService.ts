@@ -21,7 +21,7 @@ const azureConfig = {
 
 // Tinylicious設定(ローカル開発用)
 const tinyliciousConfig = {
-  endpoint: import.meta.env.VITE_TINYLICIOUS_ENDPOINT || "http://localhost:7070",
+  endpoint: import.meta.env.VITE_TINYLICIOUS_ENDPOINT || "http://localhost:7072",
 };
 
 // 開発環境ではTinyliciousを使用する - 環境変数で強制的に切り替え可能

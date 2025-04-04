@@ -103,7 +103,7 @@ test.describe('Tinyliciousリアル接続テスト (Example)', () => {
     // テスト用の環境変数を設定
     await page.addInitScript(() => {
       window.localStorage.setItem('VITE_USE_TINYLICIOUS', 'true');
-      window.localStorage.setItem('VITE_TINYLICIOUS_PORT', '7170');
+      window.localStorage.setItem('VITE_TINYLICIOUS_PORT', '7082');
     });
 
     await page.goto('/');

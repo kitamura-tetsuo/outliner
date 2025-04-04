@@ -50,7 +50,7 @@ export class UserManager {
     measurementId: "G-FKSFRCT7GR"
   };
 
-  private apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:7073');
+  private apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:7071');
   private app = initializeApp(this.firebaseConfig);
   private auth = getAuth(this.app);
 

@@ -39,3 +39,13 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
+dev
+VITE_PORT=7070
+API=7071
+VITE_TINYLICIOUS_ENDPOINT=7072
+
+test
+VITE_PORT=7080
+VITE_TINYLICIOUS_ENDPOINT=7082
+

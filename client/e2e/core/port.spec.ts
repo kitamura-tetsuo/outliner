@@ -6,16 +6,16 @@ import { expect, test } from '@playwright/test';
  */
 
 test.describe('テスト環境ポート検証', () => {
-  test('アプリケーションがポート7072で動作していること', async ({ page, baseURL }) => {
+  test('アプリケーションがポート7080で動作していること', async ({ page, baseURL }) => {
     // テスト環境の URL を確認
-    expect(baseURL).toBe('http://localhost:7072');
+    expect(baseURL).toBe('http://localhost:7080');
 
     // ページにアクセス
     await page.goto('/');
 
     // URLから直接ポートを確認
     const url = page.url();
-    expect(url).toContain('localhost:7072');
+    expect(url).toContain('localhost:7080');
 
     // ページが正しく表示されていることを確認
     await expect(page.locator('h1')).toContainText('Fluid Outliner App');

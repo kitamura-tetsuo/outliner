@@ -20,7 +20,7 @@ declare global {
 }
 
 // Tinylicious サーバーのポート
-const TINYLICIOUS_PORT = process.env.VITE_TINYLICIOUS_PORT || '7170';
+const TINYLICIOUS_PORT = process.env.VITE_TINYLICIOUS_PORT || '7082';
 
 /**
  * テスト全体の実行後に1度だけ呼び出される後処理
@@ -35,7 +35,7 @@ async function globalTeardown(config: any) {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
 
-  // 万が一プロセスが残っている場合に備え、ポート7170を使用しているすべてのプロセスを終了
+  // 万が一プロセスが残っている場合に備え、ポート7082を使用しているすべてのプロセスを終了
   try {
     logger.info(`Finding processes using port ${TINYLICIOUS_PORT}`);
     const portNumber = parseInt(TINYLICIOUS_PORT);
