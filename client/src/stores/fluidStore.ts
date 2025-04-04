@@ -18,7 +18,7 @@ let mockCleanup: (() => void) | null = null;
 // ユーザー認証状態の変更を監視して、FluidClientを初期化/更新する
 export async function initFluidClientWithAuth() {
   // テスト環境の場合は自動的にモックを使用
-  if (typeof window !== 'undefined' && (window as any).mockFluidClient) {
+  if (import.meta.env.VITE_IS_TEST === 'true' || typeof window !== 'undefined' && (window as any).mockFluidClient) {
     console.log('[fluidStore] Test environment detected, using mock FluidClient');
     
     // モックセットアップしてクリーンアップ関数を保存

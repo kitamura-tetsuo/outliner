@@ -25,7 +25,7 @@ export class MockFluidClient {
    * Tinyliciousに接続するモックFluidClientを初期化
    */
   constructor() {
-    this.client = new TinyliciousClient();
+    this.client = new TinyliciousClient({ connection: { port: import.meta.env.VITE_TINYLICIOUS_PORT } });
   }
 
   /**
