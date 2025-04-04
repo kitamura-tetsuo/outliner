@@ -48,7 +48,6 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-svelte": "^3.0.0",
     "find-process": "^1.4.7",
-    "@types/find-process": "^1.2.3",
     "globals": "^16.0.0",
     "jsdom": "^26.0.0",
     "mdsvex": "^0.12.3",
@@ -72,7 +71,7 @@
     "@inlang/paraglide-sveltekit": "^0.15.5",
     "dotenv": "^16.4.7",
     "firebase": "^11.5.0",
-    "fluid-framework": "^2.30.0",
+    "fluid-framework": "2.30.0",
     "uuid": "^8.3.2",
     "pino": "^8.15.0"
   }

@@ -124,7 +124,7 @@
 				autofocus
 			></textarea>
 		{:else}
-			<div class="item-content" on:dblclick={startEditing}>
+			<div class="item-content" on:click={startEditing}>
 				<!-- 空白のノートではなく、常に.item-textクラスを適用 -->
 				<span class="item-text">{item.text || '空白のノート'}</span>
 

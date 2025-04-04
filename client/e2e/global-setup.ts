@@ -55,9 +55,15 @@ async function globalSetup(config: any) {
   });
 
   // サーバーが起動するまで待機
-  await new Promise(resolve => setTimeout(resolve, 7073));
+  await new Promise(resolve => setTimeout(resolve, 3000));
   logger.info('Tinylicious server startup wait completed');
 
+  // サーバーが起動しているか確認
+  logger.info(`Checking if Tinylicious server is running on port ${TINYLICIOUS_PORT}`);
+  
+  // grpcの異常終了を防ぐために環境変数を設定
+  process.env.NODE_OPTIONS = '--no-experimental-fetch';
+  
   // グローバル変数に保存
   global.__tinyliciousProcess = tinyliciousProcess;
 }

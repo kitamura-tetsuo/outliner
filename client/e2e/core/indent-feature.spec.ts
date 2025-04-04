@@ -33,15 +33,15 @@ test('Indent feature should move items to create hierarchy', async ({ page }) =>
   // 各アイテムにテキストを設定
   const items = page.locator('.outliner-item');
 
-  await items.nth(0).dblclick();
+  await items.nth(0).click();
   await page.keyboard.type('最初のアイテム');
   await page.keyboard.press('Enter');
 
-  await items.nth(1).dblclick();
+  await items.nth(1).click();
   await page.keyboard.type('2番目のアイテム');
   await page.keyboard.press('Enter');
 
-  await items.nth(2).dblclick();
+  await items.nth(2).click();
   await page.keyboard.type('3番目のアイテム');
   await page.keyboard.press('Enter');
 

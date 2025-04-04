@@ -2,27 +2,24 @@ import { expect, test } from '@playwright/test';
 
 /**
  * @playwright
- * @title Tinylicious接続テスト
+ * @title Tinyliciousリアル接続テスト
  */
 
-test.describe('Tinylicious接続テスト', () => {
-  // すべてのテスト前にモックを設定
+test.describe('Tinyliciousリアル接続テスト', () => {
+  // テスト前の準備 - モックを無効化し、実際のTinyliciousサーバーに接続するように設定
   test.beforeEach(async ({ page }) => {
-    // モックフラグを設定してFluidClientとUserManagerの動作を制御
+    // 認証のみモック化し、Fluid接続は実際のTinyliciousを使用
     await page.addInitScript(() => {
-      window.mockFluidClient = true;
-
-      // 認証済み状態をシミュレート
+      // Fluid接続のモックを無効化
+      window.mockFluidClient = false;
+      
+      // 認証はモックを使用（認証部分のみ）
       window.localStorage.setItem('authenticated', 'true');
-
-      // テスト用のユーザーデータ
       window.mockUser = {
         id: 'test-user-id',
         name: 'Test User',
         email: 'test@example.com'
       };
-
-      // テスト用のFluidトークン 
       window.mockFluidToken = {
         token: 'mock-jwt-token',
         user: {
@@ -30,15 +27,21 @@ test.describe('Tinylicious接続テスト', () => {
           name: 'Test User'
         }
       };
-
-      // モックコンテナが接続済みであることをシミュレート
-      window.mockContainerConnected = true;
-
-      // アラートを上書き
-      window.alert = function (message) {
+      
+      // 接続状態のモックは削除（実際の接続状態を確認するため）
+      // モックコンテナが接続済みであることをシミュレートしない
+      
+      // アラートをキャプチャしてテストで確認できるようにする
+      window.alert = function(message) {
         window._alertMessage = message;
         console.log('Alert:', message);
       };
+    });
+
+    // 強制的にテスト用の環境変数を設定
+    await page.addInitScript(() => {
+      window.localStorage.setItem('VITE_USE_TINYLICIOUS', 'true');
+      window.localStorage.setItem('VITE_TINYLICIOUS_PORT', '7170');
     });
 
     await page.goto('/');
@@ -47,33 +50,48 @@ test.describe('Tinylicious接続テスト', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  // 認証とリアルタイム接続のテスト - 単純に接続要素だけを確認するバージョン
-  test('Tinyliciousサーバー接続テスト - シンプルバージョン', async ({ page }) => {
-    // テストが実行されていることを確認
-    console.log('Running simplified Tinylicious test');
-
-    // ページ内のコンテンツを確認
-    const bodyText = await page.textContent('body');
-    expect(bodyText).toBeTruthy();
-
-    // スクリーンショットを撮影（トラブルシューティング用）
-    await page.screenshot({ path: 'test-results/tinylicious-simplified.png', fullPage: true });
-
-    // 少なくともタイトル要素が存在することを確認
-    await expect(page.locator('h1')).toBeVisible();
+  // 実際のTinylicious接続テスト
+  test('実際のTinyliciousサーバーに接続できること', async ({ page }) => {
+    console.log('Running real Tinylicious connection test');
+    
+    // デバッグパネルを表示して接続状態を確認
+    await page.click('button:has-text("Show Debug")');
+    await page.waitForTimeout(2000); // 接続が確立するまで少し待つ
+    
+    // スクリーンショットを撮影（接続状態確認用）
+    await page.screenshot({ path: 'test-results/tinylicious-real-connection.png', fullPage: true });
+    
+    // 接続状態テキストを取得して確認
+    const connectionStateText = await page.locator('.connection-status span').textContent();
+    console.log('Connection state text:', connectionStateText);
+    
+    // 接続状態が「接続済み」または「同期中」であることを確認
+    expect(connectionStateText).toMatch(/接続済み|同期中/);
+    
+    // 状態インジケータのクラスも確認
+    const hasConnectedClass = await page.locator('.status-indicator').hasClass('connected');
+    expect(hasConnectedClass).toBe(true);
   });
 
-  // 接続テストボタンのテスト - 単純にボタンの存在だけを確認
-  test('接続テストボタンが表示されること', async ({ page }) => {
-    // スクリーンショットを撮影（UI確認用）
-    await page.screenshot({ path: 'test-results/connection-test-button.png', fullPage: true });
-
-    // 念のため、ページ全体のHTMLをダンプ（トラブルシューティング用）
-    const html = await page.content();
-    console.log('Page HTML:', html.substring(0, 500) + '...');
-
-    // 接続テストボタンが存在する可能性のあるセレクタを確認
-    const buttonExists = await page.locator('button:has-text("接続")').count() > 0;
-    expect(buttonExists).toBeTruthy();
+  // 接続テストボタンを使用した明示的な接続テスト
+  test('接続テストボタンが機能すること', async ({ page }) => {
+    // 接続テストボタンを探す
+    const connectButton = page.locator('button:has-text("接続テスト")');
+    
+    // ボタンが存在することを確認
+    await expect(connectButton).toBeVisible();
+    
+    // ボタンをクリック
+    await connectButton.click();
+    await page.waitForTimeout(2000); // アラート表示を待つ
+    
+    // JSのalertがトリガーされたことを確認
+    const alertMessage = await page.evaluate(() => window._alertMessage);
+    expect(alertMessage).toBeTruthy();
+    expect(alertMessage).not.toContain('Error');
+    expect(alertMessage).toContain('Connection');
+    
+    // スクリーンショットを撮影
+    await page.screenshot({ path: 'test-results/connection-test-result.png', fullPage: true });
   });
 });

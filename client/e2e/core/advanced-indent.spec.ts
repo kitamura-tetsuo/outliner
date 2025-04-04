@@ -138,7 +138,7 @@ test.describe('Advanced indent/unindent functionality', () => {
     for (let i = 0; i < 5; i++) {
       await page.click('button:has-text("アイテム追加")');
       // 各アイテムにテキストを入力
-      await page.locator('.outliner-item').nth(i).dblclick();
+      await page.locator('.outliner-item').nth(i).click();
       await page.keyboard.type(`アイテム ${i + 1}`);
       await page.keyboard.press('Enter');
     }
@@ -264,19 +264,19 @@ test.describe('Advanced indent/unindent functionality', () => {
     // ネストされた構造を作成
     // 1. 最初のアイテムを追加
     await page.click('button:has-text("アイテム追加")');
-    await page.locator('.outliner-item').first().dblclick();
+    await page.locator('.outliner-item').first().click();
     await page.keyboard.type('親アイテム');
     await page.keyboard.press('Enter');
 
     // 2. 子アイテムを追加
     await page.click('button:has-text("アイテム追加")');
-    await page.locator('.outliner-item').nth(1).dblclick();
+    await page.locator('.outliner-item').nth(1).click();
     await page.keyboard.type('子アイテム1');
     await page.keyboard.press('Enter');
 
     // 3. 孫アイテムを追加
     await page.click('button:has-text("アイテム追加")');
-    await page.locator('.outliner-item').nth(2).dblclick();
+    await page.locator('.outliner-item').nth(2).click();
     await page.keyboard.type('子アイテム2');
     await page.keyboard.press('Enter');
 
@@ -324,7 +324,7 @@ test.describe('Advanced indent/unindent functionality', () => {
     // アイテム追加
     for (let i = 0; i < 5; i++) {
       await page.click('button:has-text("アイテム追加")');
-      await page.locator('.outliner-item').nth(i).dblclick();
+      await page.locator('.outliner-item').nth(i).click();
       await page.keyboard.type(`アイテム ${i + 1}`);
       await page.keyboard.press('Enter');
     }

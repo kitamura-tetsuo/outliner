@@ -10,10 +10,18 @@ const config = {
 
 	kit: {
 		adapter: adapter(),
-		// ssr: false // これで全体の SSR を無効化
+		// csrf: {
+		// 	checkOrigin: true
+		// },
+		// csp: {
+		// 	mode: 'auto'
+		// }
 	},
 
 	extensions: ['.svelte', '.svx']
 };
+
+// SSRを無効化するにはroutes/+layout.jsで設定する
+// export const ssr = false;
 
 export default config;

@@ -1,10 +1,13 @@
 import { AzureClient } from '@fluidframework/azure-client';
 import { TinyliciousClient } from '@fluidframework/tinylicious-client';
-import { ConnectionState, type ContainerSchema, type IFluidContainer, SharedTree, type TreeView, type ViewableTree } from "fluid-framework";
+import { ConnectionState, type ContainerSchema, type IFluidContainer, SharedTree } from "fluid-framework";
 import { UserManager } from '../auth/UserManager';
 import { getEnv } from '../lib/env';
 import { getFluidClient, setupConnectionListeners } from '../lib/fluidService';
 import { appTreeConfiguration, Items, Project } from "../schema/app-schema";
+
+// TreeView型を型エイリアスとして定義（SSR互換）
+type TreeViewType<T> = ReturnType<typeof SharedTree.prototype.viewWith>;
 
 // ローカルストレージのキー名
 const CONTAINER_ID_STORAGE_KEY = 'fluid_container_id';
@@ -22,7 +25,7 @@ export class FluidClient {
   public client: AzureClient | TinyliciousClient | undefined = undefined;
   public container!: IFluidContainer;
   public containerId: string | undefined = undefined;
-  public appData!: TreeView<typeof Project>;
+  public appData!: TreeViewType<typeof Project>;
   private _sharedTree: any;
 
   // ユーザーマネージャー
@@ -193,8 +196,10 @@ export class FluidClient {
             ({ container: this.container, services: this.services } = await this.client.getContainer(this.containerId, containerSchema, createOption));
             console.log(`[FluidClient] Successfully connected to existing container: ${this.containerId}`);
             
-            // スキーマを指定してTreeViewを構成
-            this.appData = (this.container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+            // SSR互換の方法でSharedTreeからTreeViewを取得
+            // ViewableTreeへの依存を避けるため、2ステップでキャストを行う
+            const sharedTree = this.container.initialObjects.appData as SharedTree;
+            this.appData = sharedTree.viewWith(appTreeConfiguration);
             
             // コンテナの接続状態を監視
             this.setupConnectionMonitoring();

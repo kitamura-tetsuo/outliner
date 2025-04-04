@@ -2,6 +2,9 @@ import { writable } from 'svelte/store';
 import { UserManager } from '../auth/UserManager';
 import { FluidClient } from '../fluid/fluidClient';
 
+// テスト環境用にMockFluidClientをインポート
+import { MockFluidClient, setupMockFluidClient } from '../tests/mocks/mockFluidClient';
+
 // FluidClientのインスタンスを保持するStore
 export const fluidClient = writable<FluidClient | null>(null);
 
@@ -9,13 +12,29 @@ export const fluidClient = writable<FluidClient | null>(null);
 let isInitializing = false;
 let unsubscribeAuth: (() => void) | null = null;
 
+// モックのクリーンアップ関数
+let mockCleanup: (() => void) | null = null;
+
 // ユーザー認証状態の変更を監視して、FluidClientを初期化/更新する
 export async function initFluidClientWithAuth() {
   // テスト環境の場合は自動的にモックを使用
   if (typeof window !== 'undefined' && (window as any).mockFluidClient) {
     console.log('[fluidStore] Test environment detected, using mock FluidClient');
+    
+    // モックセットアップしてクリーンアップ関数を保存
+    mockCleanup = setupMockFluidClient();
+    
+    // FluidClientのインスタンスを取得して初期化
     const client = FluidClient.getInstance();
+    await client.initialize();
+    
     fluidClient.set(client);
+    
+    // デバッグ用にグローバル変数に設定
+    if (typeof window !== 'undefined') {
+      (window as any).__FLUID_CLIENT__ = client;
+    }
+    
     return;
   }
 
@@ -89,6 +108,12 @@ export function cleanupFluidClient() {
   if (unsubscribeAuth) {
     unsubscribeAuth();
     unsubscribeAuth = null;
+  }
+
+  // モックのクリーンアップ関数を実行
+  if (mockCleanup) {
+    mockCleanup();
+    mockCleanup = null;
   }
 
   // 現在のクライアントをクリーンアップ
