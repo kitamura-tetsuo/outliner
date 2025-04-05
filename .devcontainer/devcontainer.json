@@ -2,8 +2,11 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
 	"name": "Node.js & TypeScript",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+	// Use the Dockerfile instead of the pre-built image
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": "."
+	},
 	"runArgs": [
 		"-p",
 		"7070:7070",
@@ -37,7 +40,9 @@
 		"vscode": {
 			"extensions": [
 				"ms-playwright.playwright",
-				"svelte.svelte-vscode"
+				"svelte.svelte-vscode",
+				"ms-vscode.vscode-websearchforcopilot",
+				"ms-vscode.copilot-mermaid-diagram"
 			]
 		}
 	},
