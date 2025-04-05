@@ -1,4 +1,4 @@
-import { writable, type Writable } from 'svelte/store';
+import { get, writable, type Writable } from 'svelte/store';
 import { getFirestore, doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
 import { UserManager } from '../auth/UserManager';
@@ -141,15 +141,8 @@ export async function getDefaultContainerId(): Promise<string | null> {
             return null;
         }
 
-        // 1. Svelte ストアから取得を試みる（既にリアルタイム同期している場合）
-        let containerData = await new Promise<UserContainer | null>(resolve => {
-            // 一度だけ値を取得
-            const unsubscribe = userContainer.subscribe(value => {
-                unsubscribe();
-                resolve(value);
-            });
-        });
-
+        // 1. Svelte の get() 関数を使ってストアから直接取得
+        const containerData = get(userContainer);
         if (containerData?.defaultContainerId) {
             return containerData.defaultContainerId;
         }

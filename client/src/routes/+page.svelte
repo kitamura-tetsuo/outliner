@@ -14,7 +14,6 @@
 	import { fluidClient } from '../stores/fluidStore';
 	import { Items, Item } from '../schema/app-schema';
 
-	let isLoading = true;
 	let error: string | null = null;
 	let containerId: string | null = null;
 	let inputText = '';
@@ -30,6 +29,7 @@
 	let rootData; // ルートデータ（ページのコレクションを含む）
 	let currentPage: Item | null = null; // 現在選択されているページ
 	let currentPageId = '';
+	let isInitializing = false; // 非同期操作実行中のフラグ（必要な場合のみ使用）
 
 	// SharedTreeの変更を監視するためのハンドラ
 	function handleTreeChanged(event: CustomEvent) {
@@ -70,7 +70,6 @@
 					}
 
 					// ページの状態を更新
-					isLoading = false;
 					error = null;
 
 					// 不要になったら購読を停止
@@ -79,14 +78,6 @@
 					}
 				}
 			});
-
-			// 一定時間後もFluidクライアントが接続されない場合はエラー表示
-			setTimeout(() => {
-				if ($fluidClient && !$fluidClient.isConnected) {
-					error = 'Fluidサービスへの接続がタイムアウトしました。';
-					isLoading = false;
-				}
-			}, 10000);
 		} catch (err) {
 			console.error('認証後のFluid初期化監視エラー:', err);
 			error = err instanceof Error ? err.message : 'Fluid初期化エラー';
@@ -95,7 +86,6 @@
 			if (err.message && err.message.includes('サーバーに接続できませんでした')) {
 				networkError =
 					'バックエンドサーバーに接続できませんでした。サーバーが起動しているか確認してください。';
-				isLoading = false;
 			}
 		}
 	}
@@ -117,6 +107,8 @@
 	// ネットワークエラー発生時の再試行
 	async function retryConnection() {
 		networkError = null;
+		isInitializing = true;
+
 		try {
 			// UserManagerインスタンスを取得して再接続
 			const userManager = UserManager.getInstance();
@@ -132,6 +124,8 @@
 		} catch (err) {
 			console.error('再接続エラー:', err);
 			networkError = '再接続に失敗しました。しばらくしてからもう一度お試しください。';
+		} finally {
+			isInitializing = false;
 		}
 	}
 
@@ -139,7 +133,6 @@
 	async function initializeFluidClient() {
 		if (!$fluidClient) {
 			error = 'Fluidクライアントが初期化されていません。';
-			isLoading = false;
 			return;
 		}
 
@@ -151,8 +144,6 @@
 
 		// デバッグ情報の初期化
 		updateDebugInfo();
-
-		isLoading = false;
 	}
 
 	onMount(async () => {
@@ -180,19 +171,15 @@
 					if (client?.container) {
 						containerId = client.containerId;
 						rootItems = client.getTree();
-						isLoading = false;
 					}
 				});
 
 				// コンポーネントのクリーンアップ時に購読を解除
 				return () => unsubscribe();
-			} else {
-				isLoading = false; // 未認証の場合はローディングを終了
 			}
 		} catch (err) {
 			console.error('Error initializing page:', err);
 			error = err instanceof Error ? err.message : '初期化中にエラーが発生しました。';
-			isLoading = false;
 		}
 	});
 
@@ -204,28 +191,6 @@
 			delete (window as any).__FLUID_CLIENT__;
 		}
 	});
-
-	// Azure Fluid Relay接続テスト
-	async function testConnection() {
-		isLoading = true;
-		error = null;
-
-		try {
-			if (!$fluidClient) {
-				throw new Error('Fluidクライアントが初期化されていません。');
-			}
-
-			// テストメソッドを呼び出し（追加したメソッド）
-			const message = $fluidClient.testConnection();
-			alert(message);
-		} catch (err) {
-			console.error('Connection test error:', err);
-			const errorInfo = handleConnectionError(err);
-			error = errorInfo.message;
-		} finally {
-			isLoading = false;
-		}
-	}
 
 	function updateDebugInfo() {
 		if ($fluidClient) {
@@ -268,7 +233,7 @@
 	<!-- ネットワークエラー表示 -->
 	<NetworkErrorAlert error={networkError} retryCallback={retryConnection} />
 
-	{#if isLoading}
+	{#if isInitializing}
 		<div class="loading">読み込み中...</div>
 	{:else if error}
 		<div class="error">
@@ -280,10 +245,11 @@
 		<div class="authenticated-content">
 			<div class="connection-status">
 				<div
-					class="status-indicator {$fluidClient?.isConnected ? 'connected' : 'disconnected'}"
+					class="status-indicator {$fluidClient?.isContainerConnected
+						? 'connected'
+						: 'disconnected'}"
 				></div>
 				<span>接続状態: {$fluidClient?.getConnectionStateString() || '未接続'}</span>
-				<button on:click={testConnection}>接続テスト</button>
 			</div>
 
 			<!-- 新規コンテナ作成リンク -->
@@ -293,7 +259,7 @@
 				</a>
 			</div>
 
-			{#if rootItems}
+			{#if $fluidClient && rootItems}
 				<div class="content-layout">
 					<!-- ページリスト（左サイドバー） -->
 					<div class="sidebar">
@@ -316,9 +282,13 @@
 						{/if}
 					</div>
 				</div>
-			{:else}
+			{:else if $fluidClient}
 				<div class="loading">
 					<p>データを読み込んでいます...</p>
+				</div>
+			{:else}
+				<div class="loading">
+					<p>Fluidクライアントを初期化しています...</p>
 				</div>
 			{/if}
 		</div>
@@ -508,7 +478,7 @@
 	.new-container-button {
 		display: inline-flex;
 		align-items: center;
-		background-color: #4CAF50;
+		background-color: #4caf50;
 		color: white;
 		padding: 0.5rem 1rem;
 		border-radius: 4px;

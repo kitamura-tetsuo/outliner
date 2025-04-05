@@ -366,7 +366,7 @@ export class FluidClient {
   /**
    * コンテナが接続済みかどうかを確認します
    */
-  public get isConnected(): boolean {
+  public get isContainerConnected(): boolean {
     if (!this.container) return false;
     return this.container.connectionState !== ConnectionState.Disconnected;
   }
@@ -382,7 +382,7 @@ export class FluidClient {
    * コンテナの接続状態を文字列で取得します
    */
   public getConnectionStateString(): string {
-    if (!this.container) return "未初期化";
+    if (!this.container) return "コンテナ未接続";
 
     switch (this.container.connectionState) {
       case ConnectionState.Connected:
@@ -418,7 +418,7 @@ export class FluidClient {
 
     return {
       clientInitialized: !!this.client,
-      containerConnected: this.isConnected,
+      containerConnected: this.isContainerConnected,
       connectionState: this.getConnectionStateString(),
       containerId: this.containerId,
       treeData: this.appData?.root ? this.getAllData() : {},
@@ -494,7 +494,7 @@ export class FluidClient {
 
     try {
       // コンテナの切断
-      if (this.isConnected) {
+      if (this.isContainerConnected) {
         this.container.disconnect();
       }
     } catch (e) {
