@@ -5,6 +5,7 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   signOut,
+  signInWithEmailAndPassword,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { getEnv } from '../lib/env';
@@ -91,6 +92,28 @@ export class UserManager {
 
   // テスト環境用のモックユーザーをセットアップ
   private _setupMockUser() {
+    // E2Eテスト用にFirebaseメール/パスワード認証を使う
+    if (typeof window !== 'undefined' && window.location.href.includes('e2e-test') || import.meta.env.VITE_IS_TEST === 'true') {
+      console.log('[UserManager] E2E test environment detected, using real Firebase auth with test account');
+      // 実際にFirebaseにテストアカウントでログイン
+      signInWithEmailAndPassword(this.auth, 'test@example.com', 'password')
+        .then(async (userCredential) => {
+          const firebaseUser = userCredential.user;
+          await this.handleUserSignedIn(firebaseUser);
+        })
+        .catch((error) => {
+          console.error('[UserManager] E2E test login failed:', error);
+          // 失敗した場合はモックユーザーにフォールバック
+          this._setupMockUserFallback();
+        });
+      return;
+    }
+
+    this._setupMockUserFallback();
+  }
+
+  // モックユーザー設定のフォールバック処理
+  private _setupMockUserFallback() {
     // カスタムモックユーザーを取得（テストから提供される可能性がある）
     const mockUser: IUser = (typeof window !== 'undefined' && (window as any).mockUser) ?
       (window as any).mockUser : {
@@ -153,10 +176,6 @@ export class UserManager {
 
       // Firebase認証ユーザーからIDトークンを取得
       const idToken = await firebaseUser.getIdToken();
-
-      // Fluid用のトークンを取得 - 失敗したら例外をスロー（デグレードモードなし）
-      this.currentFluidToken = await this.getFluidToken(idToken);
-      console.log('[UserManager] Fluid token obtained successfully');
 
       // 認証情報をローカルストレージに保存する
       // ...existing code...

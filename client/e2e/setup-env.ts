@@ -32,3 +32,11 @@ if (fs.existsSync(envTestPath)) {
 
 // グローバル環境にテスト用フラグを設定
 global.isTestEnvironment = true;
+
+// Mark this as an E2E test environment
+window.isE2ETest = true;
+
+// Add URL parameter to trigger test account login
+const url = new URL(window.location.href);
+url.searchParams.set('e2e-test', 'true');
+window.history.replaceState({}, '', url.toString());

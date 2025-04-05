@@ -75,6 +75,50 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "For Test SvelteKit Server",
+      "runtimeExecutable": "npx",
+      "localRoot": "${workspaceFolder}/client",
+      "runtimeArgs": [
+        "dotenv",
+        "-e",
+        ".env.test",
+        "--",
+        "npm",
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "7080"
+      ],
+      "env": {
+        "PORT": "7070"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "restart": true
+    },
+    {
+      "name": "For Test Launch Tinylicious",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/client",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "tinylicious"
+      ],
+      "env": {
+        "PORT": "7082"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Debug Firestore Sequential",
       "program": "${workspaceFolder}/server/firestore-sequential.js",
       "skipFiles": [
@@ -89,6 +133,8 @@
         "Debug Server",
         "Launch Tinylicious",
         "Debug SvelteKit Server",
+        "For Test SvelteKit Server",
+        "For Test Launch Tinylicious",
         // "Launch Chrome against localhost"
       ],
       "stopAll": true,
