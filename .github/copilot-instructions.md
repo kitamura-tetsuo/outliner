@@ -16,6 +16,9 @@ https://fluidframework.com/docs/start/tree-start
 https://fluidframework.com/docs/
 https://svelte.dev/docs/svelte/v5-migration-guide#Event-changes-Component-events
 
+サンプルコードの書き方を参考にして。
+https://github.com/microsoft/FluidExamples
+
 引数や戻り値は毎回APIドキュメントから探して。qに単語を入れれば検索出来る。
 https://fluidframework.com/search/?q=
 
@@ -53,3 +56,4 @@ Firebase SDKを使ってGoogle認証を完結させる
 注意事項
 初期化前に if (!this.appData.root)  を実行するとエラーになるので、初期化チェックにこれを使用しないで。
 フォールバックは使わないで。フォールバックを使うとバグに気づくのが遅れる。
+

@@ -123,6 +123,14 @@ export class Project extends sf.objectRecursive("Project", {
 	public readonly addPage = (title: string, author: string) => {
 		(this.items as Items).addNode(author);
 	};
+
+	public static createInstance(title: string): Project {
+		return new Project({
+			title: title,
+			// @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題
+			items: new Items([]), // 空のアイテムリストで初期化
+		});
+	}
 }
 
 // 型検証ヘルパーはコメントアウト - 型エラーを避けるため

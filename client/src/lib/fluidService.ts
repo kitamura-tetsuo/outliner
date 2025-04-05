@@ -1,8 +1,13 @@
-import { AzureClient, type AzureRemoteConnectionConfig, type ITokenProvider } from '@fluidframework/azure-client';
+import { AzureClient, type AzureContainerServices, type AzureRemoteConnectionConfig, type ITokenProvider } from '@fluidframework/azure-client';
 import { InsecureTokenProvider } from '@fluidframework/test-client-utils';
-import { TinyliciousClient } from '@fluidframework/tinylicious-client';
+import { TinyliciousClient, type TinyliciousContainerServices } from '@fluidframework/tinylicious-client';
 import { UserManager } from '../auth/UserManager';
 import { CustomKeyMap } from './CustomKeyMap';
+import { SharedTree, type TreeView, type ViewableTree } from 'fluid-framework';
+import { appTreeConfiguration, Item, Items, Project } from '../schema/app-schema';
+import { type IFluidContainer, type ContainerSchema } from '@fluidframework/fluid-static';
+import { v4 as uuid } from 'uuid';
+
 
 // クライアントキーの型定義
 interface FluidClientKey {
@@ -10,8 +15,9 @@ interface FluidClientKey {
   id: string;
 }
 
+type FluidInstances = [TinyliciousClient | AzureClient, IFluidContainer | undefined, AzureContainerServices | TinyliciousContainerServices | undefined, TreeView<typeof Project> | undefined]
 // シングルトンからマップ型に変更して複数クライアントを管理
-const clientRegistry = new CustomKeyMap<FluidClientKey, AzureClient>();
+const clientRegistry = new CustomKeyMap<FluidClientKey, FluidInstances>();
 
 // Azure Fluid Relayエンドポイント設定
 const azureConfig = {
@@ -30,6 +36,14 @@ const useTinylicious =
   isTestEnvironment || // テスト環境では常にTinyliciousを使用
   import.meta.env.VITE_USE_TINYLICIOUS === 'true' ||
   (import.meta.env.DEV && import.meta.env.VITE_FORCE_AZURE !== 'true');
+
+// Fluid Frameworkがパスの不一致によるエラーを回避するため、
+// ContainerSchemaを直接インポートせずにオブジェクトとして定義
+export const containerSchema: ContainerSchema = {
+  initialObjects: {
+    appData: SharedTree
+  }
+} as any satisfies ContainerSchema  // 型アサーションを使用して型互換性の問題を回避
 
 // キー生成ロジックを一元化する関数
 function createClientKey(userId?: string, containerId?: string): FluidClientKey {
@@ -103,10 +117,23 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
   );
 }
 
+
 // AzureClientの取得（またはTinyliciousClient）
-export async function getFluidClient(userId?: string, containerId?: string) {
+export async function getFluidClient(userId?: string, containerId?: string):
+  Promise<FluidInstances> {
   if (useTinylicious) {
-    return new TinyliciousClient({ connection: { port: import.meta.env.VITE_TINYLICIOUS_PORT } });
+    const client = new TinyliciousClient({ connection: { port: import.meta.env.VITE_TINYLICIOUS_PORT } });
+    const createResponse = await client.createContainer(containerSchema, "2");
+    const container = createResponse.container;
+    const containerID = await container.attach();
+    const appData = (container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+    appData.initialize(Project.createInstance("Test Project"));
+    const project = appData.root as Project;
+    for (let i = 0; i < 3; i++) {
+      project.addPage("Test Page", "test-user");
+    }
+
+    return [client, container, createResponse.services, appData];
   }
 
   // クライアントキーを生成
@@ -117,8 +144,15 @@ export async function getFluidClient(userId?: string, containerId?: string) {
     return clientRegistry.get(clientKey)!;
   }
 
-  // TokenProvider設定 - コンテナIDが指定されている場合はそれも渡す
-  const tokenProvider = await getTokenProvider(userId, containerId);
+  let tokenProvider;
+  try {
+    // TokenProvider設定 - コンテナIDが指定されている場合はそれも渡す
+    tokenProvider = await getTokenProvider(userId, containerId);
+  } catch (error) {
+    console.error(`[fluidService] Failed to getTokenProvider. retry without containerId.  ${clientKey.type}:${clientKey.id}:`, error);
+    containerId = undefined; // コンテナIDをクリアして再試行
+    tokenProvider = await getTokenProvider(userId);
+  }
 
   // Azure Fluid Relay（本番環境）用の設定
   const connectionConfig: AzureRemoteConnectionConfig = {
@@ -136,8 +170,27 @@ export async function getFluidClient(userId?: string, containerId?: string) {
     // 新しいAzure Clientを作成して登録
     console.log(`[fluidService] Creating new Fluid client for ${clientKey.type}:${clientKey.id}`);
     const client = new AzureClient(clientProps);
-    clientRegistry.set(clientKey, client);
-    return client;
+
+    // コンテナIDがある場合はコンテナをロード、なければ新規作成
+    let container: IFluidContainer | undefined = undefined;
+    let services: AzureContainerServices | undefined = undefined;
+    let appData: TreeView<typeof Project> | undefined = undefined;
+
+    if (containerId) {
+      // 既存のコンテナに接続
+      console.log(`[fluidService] Loading existing container: ${containerId}`);
+      const getResponse = await client.getContainer(containerId, containerSchema, "2");
+      container = getResponse.container;
+      services = getResponse.services;
+      appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+    }
+
+    // SharedTreeデータを取得
+
+    const result: FluidInstances = [client, container, services, appData];
+
+    clientRegistry.set(clientKey, result as any);
+    return result;
   } catch (error) {
     console.error(`[fluidService] Failed to create Fluid client for ${clientKey.type}:${clientKey.id}:`, error);
     throw error;

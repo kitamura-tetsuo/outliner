@@ -1,16 +1,23 @@
 import { AzureClient } from '@fluidframework/azure-client';
 import { TinyliciousClient } from '@fluidframework/tinylicious-client';
-import { ConnectionState, type ContainerSchema, type IFluidContainer, SharedTree } from "fluid-framework";
+import { ConnectionState, SharedTree, type TreeView, type ViewableTree } from "fluid-framework";
 import { UserManager } from '../auth/UserManager';
 import { getEnv } from '../lib/env';
 import { getFluidClient, setupConnectionListeners } from '../lib/fluidService';
 import { appTreeConfiguration, Items, Project } from "../schema/app-schema";
-
-// TreeView型を型エイリアスとして定義（SSR互換）
-type TreeViewType<T> = ReturnType<typeof SharedTree.prototype.viewWith>;
+import { type IFluidContainer, type ContainerSchema } from '@fluidframework/fluid-static';
+import { userContainer, getDefaultContainerId } from '../stores/firestoreStore';
+import { get } from 'svelte/store';
 
 // ローカルストレージのキー名
 const CONTAINER_ID_STORAGE_KEY = 'fluid_container_id';
+
+// IdCompressorを有効にしたコンテナスキーマを定義
+export const containerSchema = {
+  initialObjects: {
+    appData: SharedTree
+  }
+} as any satisfies ContainerSchema;
 
 export class FluidClient {
   // シングルトンインスタンス
@@ -23,9 +30,9 @@ export class FluidClient {
 
   // Public properties for easier debugging
   public client: AzureClient | TinyliciousClient | undefined = undefined;
-  public container!: IFluidContainer;
+  public container!: IFluidContainer | undefined;
   public containerId: string | undefined = undefined;
-  public appData!: TreeViewType<typeof Project>;
+  public appData!: TreeView<typeof Project> | undefined;
   private _sharedTree: any;
 
   // ユーザーマネージャー
@@ -60,6 +67,76 @@ export class FluidClient {
 
     // 保存されたコンテナIDがあれば読み込む
     this.loadContainerId();
+  }
+
+  /**
+   * Firestoreからユーザーのデフォルトコンテナを取得する
+   * @returns デフォルトコンテナID、未設定の場合はnull
+   */
+  public async getDefaultContainerId(): Promise<string | null> {
+    try {
+      // ユーザーがログインしていることを確認
+      const currentUser = this.userManager.getCurrentUser();
+      if (!currentUser) {
+        console.warn('[FluidClient] Cannot get default container ID: User not logged in');
+        return null;
+      }
+
+      // 1. まずストアから直接取得を試みる（リアルタイム更新されている場合）
+      const containerData = get(userContainer);
+      if (containerData?.defaultContainerId) {
+        console.log(`[FluidClient] Found default container ID in store: ${containerData.defaultContainerId}`);
+        return containerData.defaultContainerId;
+      }
+
+      // 2. ストアに見つからない場合はAPIから直接取得
+      console.log('[FluidClient] No default container found in store, fetching from server...');
+      const defaultId = await getDefaultContainerId();
+      if (defaultId) {
+        console.log(`[FluidClient] Found default container ID from API: ${defaultId}`);
+        return defaultId;
+      }
+
+      console.log('[FluidClient] No default container ID found');
+      return null;
+    } catch (error) {
+      console.error('[FluidClient] Error getting default container ID:', error);
+      return null;
+    }
+  }
+
+  /**
+   * ローカルストレージとFirestore両方からコンテナIDを取得し、利用可能なものを使用
+   * @returns 利用可能なコンテナID、なければnull
+   */
+  public async resolveContainerId(): Promise<string | undefined> {
+    // 1. すでにコンテナIDが設定されていれば、それを使用
+    if (this.containerId) {
+      return this.containerId;
+    }
+
+    // 2. ローカルストレージからの読み込みを試みる
+    if (typeof window !== 'undefined') {
+      const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
+      if (savedContainerId) {
+        console.log(`[FluidClient] Using container ID from local storage: ${savedContainerId}`);
+        this.containerId = savedContainerId;
+        return savedContainerId;
+      }
+    }
+
+    // 3. Firestoreからデフォルトコンテナを取得
+    const defaultContainerId = await this.getDefaultContainerId();
+    if (defaultContainerId) {
+      console.log(`[FluidClient] Using default container ID from Firestore: ${defaultContainerId}`);
+      this.containerId = defaultContainerId;
+      this.saveContainerId(defaultContainerId); // ローカルストレージにも保存
+      return defaultContainerId;
+    }
+
+    // 利用可能なコンテナIDがない
+    console.log('[FluidClient] No container ID available');
+    return undefined;
   }
 
   // ローカルストレージからコンテナIDを読み込む
@@ -163,13 +240,6 @@ export class FluidClient {
       try {
         console.debug('[FluidClient] Starting initialization...');
 
-        // IdCompressorを有効にしたコンテナスキーマを定義
-        const containerSchema: ContainerSchema = {
-          initialObjects: {
-            appData: SharedTree
-          }
-        };
-
         // ユーザー情報を取得
         const userInfo = this.userManager.getFluidUserInfo();
         const userId = userInfo?.id;
@@ -178,55 +248,19 @@ export class FluidClient {
           console.warn('[FluidClient] No user ID available for initialization');
         }
 
-        try {
-          // fluid-service.ts から適切なクライアントを取得
-          this.client = await getFluidClient(userId, this.containerId);
-        } catch (error) {
-          window.alert('Fluid client: getFluidClient failed. Please check your server.');
-          throw error;
-        }
+        this.containerId = await this.resolveContainerId();
 
-        const createOption = "2";
-        let tokenRefreshNeeded = false;
+        [this.client, this.container, this.services, this.appData] = await getFluidClient(userId, this.containerId);
+        // コンテナの接続状態を監視
+        this.setupConnectionMonitoring();
+        this._setupDebugEventListeners();
 
-        // コンテナIDがある場合のみ接続を試みる
-        if (this.containerId) {
-          try {
-            console.log(`[FluidClient] Connecting to existing container: ${this.containerId}`);
-            ({ container: this.container, services: this.services } = await this.client.getContainer(this.containerId, containerSchema, createOption));
-            console.log(`[FluidClient] Successfully connected to existing container: ${this.containerId}`);
-            
-            // SSR互換の方法でSharedTreeからTreeViewを取得
-            // ViewableTreeへの依存を避けるため、2ステップでキャストを行う
-            const sharedTree = this.container.initialObjects.appData as SharedTree;
-            this.appData = sharedTree.viewWith(appTreeConfiguration);
-            
-            // コンテナの接続状態を監視
-            this.setupConnectionMonitoring();
+        // 初期化完了フラグを設定
+        this.isInitialized = true;
+        this.isInitializing = false;
 
-            console.log('[FluidClient] Fluid client initialized with container ID:', this.containerId);
-
-            // VSCode debugger用のイベントリスナーを設定
-            this._setupDebugEventListeners();
-
-            // 初期化完了フラグを設定
-            this.isInitialized = true;
-            this.isInitializing = false;
-
-            resolve(this);
-          } catch (error) {
-            console.error(`[FluidClient] Failed to connect to existing container: ${this.containerId}`, error);
-            this.isInitializing = false;
-            this.initPromise = null;
-            reject(new Error(`指定されたコンテナIDに接続できませんでした: ${this.containerId}`));
-          }
-        } else {
-          // コンテナIDがない場合はエラーを返す
-          console.warn('[FluidClient] No container ID provided and automatic container creation is disabled');
-          this.isInitializing = false;
-          this.initPromise = null;
-          reject(new Error('コンテナIDが指定されていません。新しいアウトライナーの作成ページから新規作成してください。'));
-        }
+        resolve(this);
+        return
       } catch (error) {
         console.error('[FluidClient] Failed to initialize Fluid container:', error);
         this.isInitializing = false;
@@ -378,16 +412,19 @@ export class FluidClient {
 
   // デバッグ用のヘルパーメソッド
   getDebugInfo() {
-    const rootItems = this.appData.root.items as Items;
+    // rootItems の安全な取得
+    const rootItems = this.appData?.root?.items as Items;
+    const hasItems = rootItems && rootItems.length > 0;
+
     return {
       clientInitialized: !!this.client,
       containerConnected: this.isConnected,
       connectionState: this.getConnectionStateString(),
       containerId: this.containerId,
-      treeData: this.appData ? this.getAllData() : {},
-      treeCount: rootItems.length || 0,
-      treeFirstItem: rootItems[0]?.text || null,
-      timeStamp: new Date().toISOString(), // タイムスタンプを追加してデバッグ情報が毎回変わるようにする
+      treeData: this.appData?.root ? this.getAllData() : {},
+      treeCount: rootItems?.length || 0,
+      treeFirstItem: hasItems ? rootItems[0]?.text || null : null,
+      timeStamp: new Date().toISOString(),
       currentUser: this.userManager.getCurrentUser()
     };
   }

@@ -184,7 +184,12 @@ export class UserManager {
   private handleUserSignedOut(): void {
     console.debug('[UserManager] User signed out');
     this.currentFluidToken = null;
-    localStorage.removeItem('fluidUser'); // 不要になる可能性あり
+
+    // ブラウザ環境でのみlocalStorageを使用
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('fluidUser'); // 不要になる可能性あり
+    }
+
     this.notifyListeners(null);
   }
 
