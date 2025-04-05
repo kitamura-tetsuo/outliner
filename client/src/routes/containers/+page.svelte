@@ -7,6 +7,7 @@
 	import { FluidClient } from '../../fluid/fluidClient';
 	import { fluidClient } from '../../stores/fluidStore';
 	import { getEnv } from '../../lib/env';
+	import { saveContainerId } from '../../stores/firestoreStore';
 
 	let isLoading = false;
 	let error: string | null = null;
@@ -30,7 +31,7 @@
 	// 新規コンテナを作成する
 	async function createNewContainer() {
 		if (!containerName.trim()) {
-			error = 'コンテナ名を入力してください';
+			error = 'アウトライナー名を入力してください';
 			return;
 		}
 
@@ -47,29 +48,26 @@
 
 			// 新しいFluidClientインスタンスを取得
 			const client = FluidClient.getInstance();
-			
-			// コンテナIDをリセットして新規作成モードにする
-			client.resetContainerId();
-			
-			// クライアントを初期化（新規コンテナが作成される）
-			await client.initialize();
-			
-			// 作成されたコンテナIDを取得
-			createdContainerId = client.containerId;
-			
+
+			// 新規コンテナを作成
+			createdContainerId = await client.createNewContainer(containerName);
+
 			// fluidClientストアを更新
 			fluidClient.set(client);
-			
-			success = `新しいコンテナが作成されました！ (ID: ${createdContainerId})`;
-			
-			// 1秒後にメインページに移動
+
+			// サーバーに保存（デフォルトコンテナとして設定）
+			await saveContainerId(createdContainerId);
+
+			success = `新しいアウトライナーが作成されました！ (ID: ${createdContainerId})`;
+
+			// 1.5秒後にメインページに移動
 			setTimeout(() => {
 				goto('/');
-			}, 2000);
-			
+			}, 1500);
 		} catch (err) {
-			console.error('新規コンテナ作成エラー:', err);
-			error = err instanceof Error ? err.message : '新規コンテナの作成中にエラーが発生しました。';
+			console.error('新規アウトライナー作成エラー:', err);
+			error =
+				err instanceof Error ? err.message : '新規アウトライナーの作成中にエラーが発生しました。';
 		} finally {
 			isLoading = false;
 		}
@@ -87,22 +85,22 @@
 </script>
 
 <svelte:head>
-	<title>新規コンテナ作成 - Fluid Outliner</title>
+	<title>新規アウトライナー作成 - Fluid Outliner</title>
 </svelte:head>
 
 <main class="container mx-auto px-4 py-8">
-	<h1 class="mb-6 text-3xl font-bold text-center">新規アウトライナーの作成</h1>
+	<h1 class="mb-6 text-center text-3xl font-bold">新規アウトライナーの作成</h1>
 
 	<div class="auth-section mb-8">
 		<AuthComponent onAuthSuccess={handleAuthSuccess} onAuthLogout={handleAuthLogout} />
 	</div>
 
 	{#if isAuthenticated}
-		<div class="bg-white p-6 rounded-lg shadow-md max-w-md mx-auto">
-			<h2 class="text-xl font-semibold mb-4">新しいアウトライナーを作成</h2>
-			
+		<div class="mx-auto max-w-md rounded-lg bg-white p-6 shadow-md">
+			<h2 class="mb-4 text-xl font-semibold">新しいアウトライナーを作成</h2>
+
 			<div class="mb-4">
-				<label for="containerName" class="block text-sm font-medium text-gray-700 mb-1">
+				<label for="containerName" class="mb-1 block text-sm font-medium text-gray-700">
 					アウトライナー名
 				</label>
 				<input
@@ -110,18 +108,18 @@
 					id="containerName"
 					bind:value={containerName}
 					placeholder="マイアウトライナー"
-					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+					class="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
 				/>
 			</div>
 
 			{#if error}
-				<div class="mb-4 p-3 bg-red-100 text-red-700 rounded-md" role="alert">
+				<div class="mb-4 rounded-md bg-red-100 p-3 text-red-700" role="alert">
 					{error}
 				</div>
 			{/if}
 
 			{#if success}
-				<div class="mb-4 p-3 bg-green-100 text-green-700 rounded-md" role="alert">
+				<div class="mb-4 rounded-md bg-green-100 p-3 text-green-700" role="alert">
 					{success}
 				</div>
 			{/if}
@@ -129,27 +127,31 @@
 			<button
 				on:click={createNewContainer}
 				disabled={isLoading}
-				class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors {isLoading ? 'opacity-70 cursor-not-allowed' : ''}"
+				class="w-full rounded-md bg-blue-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {isLoading
+					? 'cursor-not-allowed opacity-70'
+					: ''}"
 			>
 				{#if isLoading}
-					<span class="inline-block animate-spin mr-2">⏳</span> 作成中...
+					<span class="mr-2 inline-block animate-spin">⏳</span> 作成中...
 				{:else}
 					作成する
 				{/if}
 			</button>
 
 			{#if createdContainerId}
-				<div class="mt-4 p-3 bg-gray-100 rounded-md">
+				<div class="mt-4 rounded-md bg-gray-100 p-3">
 					<p class="text-sm text-gray-700">
-						作成されたコンテナID: <code class="bg-gray-200 px-1 py-0.5 rounded">{createdContainerId}</code>
+						作成されたコンテナID: <code class="rounded bg-gray-200 px-1 py-0.5"
+							>{createdContainerId}</code
+						>
 					</p>
 				</div>
 			{/if}
 		</div>
 	{:else}
-		<div class="bg-yellow-50 p-6 rounded-lg shadow-md max-w-md mx-auto">
-			<h2 class="text-xl font-semibold mb-2">認証が必要です</h2>
-			<p class="text-gray-700 mb-4">
+		<div class="mx-auto max-w-md rounded-lg bg-yellow-50 p-6 shadow-md">
+			<h2 class="mb-2 text-xl font-semibold">認証が必要です</h2>
+			<p class="mb-4 text-gray-700">
 				新しいアウトライナーを作成するには、まず上部のログインボタンからログインしてください。
 			</p>
 		</div>
@@ -158,7 +160,7 @@
 	<div class="mt-6 text-center">
 		<a
 			href="/"
-			class="text-blue-600 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md px-2 py-1"
+			class="rounded-md px-2 py-1 text-blue-600 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
 		>
 			ホームに戻る
 		</a>

@@ -272,6 +272,99 @@ export class FluidClient {
     return this.initPromise;
   }
 
+  /**
+   * 新規コンテナを作成します
+   * @param containerName 作成するコンテナの名前（メタデータとして保存）
+   * @returns 作成されたコンテナのID
+   */
+  public async createNewContainer(containerName: string): Promise<string> {
+    try {
+      console.log(`[FluidClient] Creating a new container: ${containerName}`);
+
+      // 現在の状態をリセット
+      this.resetState();
+
+      // ユーザー情報を取得
+      const userInfo = this.userManager.getFluidUserInfo();
+      const userId = userInfo?.id;
+
+      if (!userId) {
+        throw new Error('ユーザーがログインしていないため、新規コンテナを作成できません');
+      }
+
+      // AzureClientのインスタンスを取得
+      const tokenProvider = await this.userManager.getCurrentFluidToken(true);
+      if (!tokenProvider) {
+        throw new Error('認証トークンを取得できません');
+      }
+
+      // Fluid Frameworkのクライアントを初期化
+      const [client] = await getFluidClient(userId);
+      this.client = client;
+
+      // 新規コンテナを作成
+      console.log('[FluidClient] Creating container with schema');
+      const createResponse = await this.client.createContainer(containerSchema, "2");
+      this.container = createResponse.container;
+      this.services = createResponse.services;
+
+      // コンテナをアタッチして永続化（コンテナIDを取得）
+      console.log('[FluidClient] Attaching container');
+      this.containerId = await this.container.attach();
+      console.log(`[FluidClient] Container created with ID: ${this.containerId}`);
+
+      // SharedTreeデータを初期化
+      this.appData = (this.container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+      this.appData.initialize(Project.createInstance(containerName || "新規プロジェクト"));
+
+      // 初期データとして最初のページを作成
+      const project = this.appData.root as Project;
+      project.addPage("はじめてのページ", userId);
+
+      // 接続状態監視を設定
+      this.setupConnectionMonitoring();
+      this._setupDebugEventListeners();
+
+      // コンテナIDをローカルとサーバーに保存
+      this.saveContainerId(this.containerId);
+      await this.saveContainerIdToServer(this.containerId);
+
+      // 初期化済みフラグを設定
+      this.isInitialized = true;
+      this.isInitializing = false;
+
+      return this.containerId;
+    } catch (error) {
+      console.error('[FluidClient] Failed to create new container:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * クライアントの状態をリセットします
+   * @private
+   */
+  private resetState(): void {
+    // コンテナが接続されている場合は切断
+    if (this.container && this.isContainerConnected) {
+      this.container.disconnect();
+    }
+
+    // 接続リスナーがある場合はクリーンアップ
+    if (this.connectionListenerCleanup) {
+      this.connectionListenerCleanup();
+      this.connectionListenerCleanup = null;
+    }
+
+    // 状態をリセット
+    this.container = undefined;
+    this.appData = undefined;
+    this.services = undefined;
+    this.isInitialized = false;
+    this.isInitializing = false;
+    this.initPromise = null;
+  }
+
   // 接続状態の監視を設定
   private setupConnectionMonitoring() {
     if (!this.container) return;
