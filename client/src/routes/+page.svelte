@@ -3,16 +3,18 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { UserManager } from '../auth/UserManager';
 	import AuthComponent from '../components/AuthComponent.svelte';
+	import ContainerSelector from '../components/ContainerSelector.svelte';
 	import EnvDebugger from '../components/EnvDebugger.svelte';
 	import MissingEnvWarning from '../components/MissingEnvWarning.svelte';
 	import NetworkErrorAlert from '../components/NetworkErrorAlert.svelte';
 	import OutlinerTree from '../components/OutlinerTree.svelte';
 	import PageList from '../components/PageList.svelte';
+	import { FluidClient } from '../fluid/fluidClient';
 	import { TreeViewManager } from '../fluid/TreeViewManager';
 	import { getDebugConfig } from '../lib/env';
 	import { handleConnectionError } from '../lib/fluidService';
 	import { fluidClient } from '../stores/fluidStore';
-	import { Items, Item } from '../schema/app-schema';
+	import { Items, Item, Project } from '../schema/app-schema';
 
 	let error: string | null = null;
 	let containerId: string | null = null;
@@ -23,6 +25,7 @@
 	let portInfo = '';
 	let envConfig = getDebugConfig();
 	let treeData: any = {};
+	let project: Project; // 明示的に型を指定
 	let rootItems: Items; // 明示的に型を指定
 	let isAuthenticated = false;
 	let networkError: string | null = null;
@@ -53,6 +56,7 @@
 
 					// containerId と rootItems を設定
 					containerId = client.containerId;
+					project = client.getProject();
 					rootItems = client.getTree();
 
 					// 最初のページを選択または新規作成
@@ -62,7 +66,7 @@
 					} else {
 						// 初期ページの作成 - TreeViewManagerを使用
 						currentPage = TreeViewManager.addPage(
-							rootItems,
+							project,
 							'はじめてのページ',
 							client.currentUser?.id || 'anonymous'
 						);
@@ -146,6 +150,54 @@
 		updateDebugInfo();
 	}
 
+	// コンテナ選択時の処理
+	async function handleContainerSelected(selectedContainerId: string) {
+		try {
+			isInitializing = true;
+			error = null;
+
+			// 現在のコンテナと同じ場合は早期リターン
+			if ($fluidClient?.containerId === selectedContainerId) {
+				console.log('すでに選択されているコンテナが選択されました。');
+				isInitializing = false;
+				return;
+			}
+
+			// 現在のFluidClientインスタンスがあれば破棄
+			if ($fluidClient) {
+				$fluidClient.dispose();
+			}
+
+			console.log(`コンテナを切り替えます: ${selectedContainerId}`);
+
+			// 新しいコンテナIDで FluidClient をロード
+			const client = FluidClient.getInstance();
+			await client.loadContainer(selectedContainerId);
+
+			// fluidClientストアを更新
+			fluidClient.set(client);
+
+			// コンテナID、project、rootItems を更新
+			containerId = client.containerId;
+			project = client.getProject();
+			rootItems = client.getTree();
+
+			// 最初のページを選択
+			if (rootItems.length > 0) {
+				currentPage = rootItems[0];
+				currentPageId = currentPage.id;
+			} else {
+				currentPage = null;
+				currentPageId = '';
+			}
+		} catch (err) {
+			console.error('コンテナ切り替えエラー:', err);
+			error = err instanceof Error ? err.message : 'コンテナの切り替え中にエラーが発生しました';
+		} finally {
+			isInitializing = false;
+		}
+	}
+
 	onMount(async () => {
 		console.debug('[+page] Component mounted');
 
@@ -170,6 +222,7 @@
 				const unsubscribe = fluidClient.subscribe((client) => {
 					if (client?.container) {
 						containerId = client.containerId;
+						project = client.getProject();
 						rootItems = client.getTree();
 					}
 				});
@@ -243,6 +296,9 @@
 	{:else if isAuthenticated}
 		<!-- 認証済みユーザー向けコンテンツ -->
 		<div class="authenticated-content">
+			<!-- コンテナセレクター -->
+			<ContainerSelector onContainerSelected={handleContainerSelected} />
+
 			<div class="connection-status">
 				<div
 					class="status-indicator {$fluidClient?.isContainerConnected
@@ -264,6 +320,7 @@
 					<!-- ページリスト（左サイドバー） -->
 					<div class="sidebar">
 						<PageList
+							{project}
 							{rootItems}
 							{currentPageId}
 							currentUser={$fluidClient?.currentUser?.id || 'anonymous'}

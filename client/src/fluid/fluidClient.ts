@@ -33,6 +33,7 @@ export class FluidClient {
   public container!: IFluidContainer | undefined;
   public containerId: string | undefined = undefined;
   public appData!: TreeView<typeof Project> | undefined;
+  private project: Project | undefined = undefined;
   private _sharedTree: any;
 
   // ユーザーマネージャー
@@ -250,7 +251,8 @@ export class FluidClient {
 
         this.containerId = await this.resolveContainerId();
 
-        [this.client, this.container, this.services, this.appData] = await getFluidClient(userId, this.containerId);
+        [this.client, this.container, this.services, this.appData, this.project] = await getFluidClient(userId, this.containerId);
+
         // コンテナの接続状態を監視
         this.setupConnectionMonitoring();
         this._setupDebugEventListeners();
@@ -313,13 +315,18 @@ export class FluidClient {
       this.containerId = await this.container.attach();
       console.log(`[FluidClient] Container created with ID: ${this.containerId}`);
 
+      await this.saveContainerIdToServer(this.containerId);
+
+      [this.client, this.container, this.services, this.appData, this.project] = await getFluidClient(userId, this.containerId);
+
       // SharedTreeデータを初期化
-      this.appData = (this.container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
-      this.appData.initialize(Project.createInstance(containerName || "新規プロジェクト"));
+      if (this.appData!.compatibility.canInitialize) {
+        this.appData!.initialize(Project.createInstance(containerName || "新規プロジェクト"));
+      }
 
       // 初期データとして最初のページを作成
-      const project = this.appData.root as Project;
-      project.addPage("はじめてのページ", userId);
+      this.project = this.appData!.root as Project;
+      this.project.addPage("はじめてのページ", userId);
 
       // 接続状態監視を設定
       this.setupConnectionMonitoring();
@@ -327,7 +334,6 @@ export class FluidClient {
 
       // コンテナIDをローカルとサーバーに保存
       this.saveContainerId(this.containerId);
-      await this.saveContainerIdToServer(this.containerId);
 
       // 初期化済みフラグを設定
       this.isInitialized = true;
@@ -336,6 +342,64 @@ export class FluidClient {
       return this.containerId;
     } catch (error) {
       console.error('[FluidClient] Failed to create new container:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 特定のコンテナIDを使用してコンテナをロードします
+   * @param containerId ロードするコンテナID
+   * @returns Fluid クライアントのインスタンス
+   */
+  public async loadContainer(containerId: string): Promise<FluidClient> {
+    try {
+      console.log(`[FluidClient] Loading container with ID: ${containerId}`);
+
+      if (this.containerId === containerId && this.isInitialized && this.container) {
+        console.log('[FluidClient] Container already loaded, returning current instance');
+        return this;
+      }
+
+      // 現在の状態をリセット
+      this.resetState();
+
+      // 新しいコンテナIDを設定
+      this.containerId = containerId;
+
+      // ローカルストレージに保存
+      this.saveContainerId(containerId);
+
+      // 初期化中フラグを設定
+      this.isInitializing = true;
+
+      // ユーザー情報を取得
+      const userInfo = this.userManager.getFluidUserInfo();
+      const userId = userInfo?.id;
+
+      if (!userId) {
+        throw new Error('ユーザーがログインしていないため、コンテナをロードできません');
+      }
+
+      // コンテナをロード
+      [this.client, this.container, this.services, this.appData, this.project] = await getFluidClient(userId, containerId);
+
+      if (!this.container || !this.appData) {
+        throw new Error('コンテナのロードに失敗しました');
+      }
+
+      // 接続状態監視を設定
+      this.setupConnectionMonitoring();
+      this._setupDebugEventListeners();
+
+      // 初期化完了フラグを設定
+      this.isInitialized = true;
+      this.isInitializing = false;
+
+      console.log(`[FluidClient] Successfully loaded container: ${containerId}`);
+      return this;
+    } catch (error) {
+      console.error(`[FluidClient] Failed to load container ${containerId}:`, error);
+      this.isInitializing = false;
       throw error;
     }
   }
@@ -443,8 +507,12 @@ export class FluidClient {
     }
   }
 
+  public getProject() {
+    return this.project;
+  }
+
   public getTree() {
-    const rootItems = this.appData.root.items as Items;
+    const rootItems = this.project?.items as Items;
     console.log(rootItems.length);
     console.log(rootItems[0]);
     const items = [...rootItems];

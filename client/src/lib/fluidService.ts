@@ -15,7 +15,7 @@ interface FluidClientKey {
   id: string;
 }
 
-type FluidInstances = [TinyliciousClient | AzureClient, IFluidContainer | undefined, AzureContainerServices | TinyliciousContainerServices | undefined, TreeView<typeof Project> | undefined]
+type FluidInstances = [TinyliciousClient | AzureClient, IFluidContainer | undefined, AzureContainerServices | TinyliciousContainerServices | undefined, TreeView<typeof Project> | undefined, Project | undefined]
 // シングルトンからマップ型に変更して複数クライアントを管理
 const clientRegistry = new CustomKeyMap<FluidClientKey, FluidInstances>();
 
@@ -133,14 +133,14 @@ export async function getFluidClient(userId?: string, containerId?: string):
       project.addPage("Test Page", "test-user");
     }
 
-    return [client, container, createResponse.services, appData];
+    return [client, container, createResponse.services, appData, project];
   }
 
   // クライアントキーを生成
   const clientKey = createClientKey(userId, containerId);
 
   // 既存クライアントがあれば返す
-  if (clientRegistry.has(clientKey)) {
+  if (containerId && clientRegistry.has(clientKey)) {
     return clientRegistry.get(clientKey)!;
   }
 
@@ -175,6 +175,7 @@ export async function getFluidClient(userId?: string, containerId?: string):
     let container: IFluidContainer | undefined = undefined;
     let services: AzureContainerServices | undefined = undefined;
     let appData: TreeView<typeof Project> | undefined = undefined;
+    let project: Project | undefined = undefined;
 
     if (containerId) {
       // 既存のコンテナに接続
@@ -183,11 +184,18 @@ export async function getFluidClient(userId?: string, containerId?: string):
       container = getResponse.container;
       services = getResponse.services;
       appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+
+      if (appData.compatibility.canInitialize) {
+        console.info("something wrong");
+        appData.initialize(Project.createInstance("新規プロジェクト"));
+      }
+      project = appData.root as Project;
     }
+
 
     // SharedTreeデータを取得
 
-    const result: FluidInstances = [client, container, services, appData];
+    const result: FluidInstances = [client, container, services, appData, project];
 
     clientRegistry.set(clientKey, result as any);
     return result;

@@ -1,5 +1,5 @@
 import { Tree } from "fluid-framework";
-import { Item, Items } from "../schema/app-schema";
+import { Item, Items, Project } from "../schema/app-schema";
 
 /**
  * TreeViewに関するヘルパー関数を提供するクラス
@@ -12,9 +12,9 @@ export class TreeViewManager {
    * @param author 作成者
    * @returns 作成されたページアイテム
    */
-  public static addPage(rootItems: Items, title: string, author: string): Item {
+  public static addPage(project: Project, title: string, author: string): Item {
     // ルートItemsコレクションにのみページを追加
-    return rootItems.addPage(title, author);
+    return project.addPage(title, author);
   }
 
   /**

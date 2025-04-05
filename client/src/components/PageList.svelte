@@ -1,8 +1,11 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import { Tree } from 'fluid-framework';
 	import { TreeViewManager } from '../fluid/TreeViewManager';
-	import { Item, Items } from '../schema/app-schema';
+	import { Item, Items, Project } from '../schema/app-schema';
+	import { fluidClient } from '../stores/fluidStore';
 
+	export let project: Project;
 	export let rootItems: Items; // 最上位のアイテムリスト（ページリスト）
 	export let currentPageId: string = '';
 	export let currentPage: Item | null = null; // 直接ページオブジェクトを受け取るように追加
@@ -14,28 +17,54 @@
 	const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV === true;
 	let pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : '';
 
+	// ページリストの表示用配列
+	let displayItems = [...rootItems];
+
 	function handleCreatePage() {
 		if (!pageTitle.trim() && !isDev) {
 			pageTitle = '新しいページ ' + new Date().toLocaleString();
 		}
 
 		// TreeViewManagerを使用して、正しくページを追加
-		const newPage = TreeViewManager.addPage(rootItems, pageTitle, currentUser);
+		const newPage = TreeViewManager.addPage(project, pageTitle, currentUser);
 		pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : '';
 
 		// 新しいページを選択（オブジェクト直接渡し）
 		dispatch('select', {
 			page: newPage,
-			pageId: newPage.id // Tree.idではなく直接idを使用
+			pageId: newPage.id
 		});
 	}
 
 	function selectPage(page: Item) {
-		// ページオブジェクト自体も一緒に送信
 		dispatch('select', {
 			page: page,
-			pageId: page.id // Tree.idではなく直接idを使用
+			pageId: page.id
 		});
+	}
+
+	// ページリストの更新処理
+	function updatePageList() {
+		if (rootItems) {
+			displayItems = [...rootItems];
+			console.log('PageList updated:', displayItems.length);
+		}
+	}
+
+	onMount(() => {
+		// rootItemsが存在する場合、変更を監視
+		if (rootItems) {
+			const unsubscribe = Tree.on(rootItems, 'treeChanged', updatePageList);
+
+			return () => {
+				if (unsubscribe) unsubscribe();
+			};
+		}
+	});
+
+	// 初期表示時にリストを更新
+	$: if (rootItems) {
+		displayItems = [...rootItems];
 	}
 </script>
 
@@ -48,14 +77,14 @@
 	</div>
 
 	<ul>
-		{#each [...rootItems] as page}
+		{#each displayItems as page}
 			<li class:active={page.id === currentPageId} on:click={() => selectPage(page)}>
 				<span class="page-title">{page.text || '無題のページ'}</span>
 				<span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
 			</li>
 		{/each}
 
-		{#if rootItems.length === 0}
+		{#if displayItems.length === 0}
 			<li class="empty">ページがありません。新しいページを作成してください。</li>
 		{/if}
 	</ul>

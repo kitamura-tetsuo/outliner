@@ -121,7 +121,7 @@ export class Project extends sf.objectRecursive("Project", {
 	 * @returns 作成されたページアイテム
 	 */
 	public readonly addPage = (title: string, author: string) => {
-		(this.items as Items).addNode(author);
+		return (this.items as Items).addNode(author);
 	};
 
 	public static createInstance(title: string): Project {

@@ -164,6 +164,88 @@ export async function getDefaultContainerId(): Promise<string | null> {
     }
 }
 
+// ユーザーのコンテナリストを取得
+export async function getUserContainers(): Promise<{ id: string, name?: string }[]> {
+    try {
+        const currentUser = userManager.getCurrentUser();
+        if (!currentUser) {
+            console.warn('getUserContainers: ユーザーがログインしていません');
+            return [];
+        }
+
+        // Svelte ストアから取得を試みる
+        const containerData = get(userContainer);
+        if (containerData) {
+            const containers = [];
+
+            // デフォルトコンテナがあれば優先的に追加
+            if (containerData.defaultContainerId) {
+                containers.push({
+                    id: containerData.defaultContainerId,
+                    name: 'デフォルトコンテナ',
+                    isDefault: true
+                });
+            }
+
+            // アクセス可能なコンテナIDリストがあれば追加
+            if (containerData.accessibleContainerIds && containerData.accessibleContainerIds.length > 0) {
+                // デフォルトコンテナと重複しないようにフィルタリング
+                const additionalContainers = containerData.accessibleContainerIds
+                    .filter(id => id !== containerData.defaultContainerId)
+                    .map(id => ({
+                        id,
+                        name: `コンテナ ${id.substring(0, 8)}...`, // IDの一部を表示
+                        isDefault: false
+                    }));
+
+                containers.push(...additionalContainers);
+            }
+
+            return containers;
+        }
+
+        // ストアに値がない場合は直接Firestoreから取得
+        const userId = currentUser.id;
+        const userContainerRef = doc(db, 'userContainers', userId);
+        const snapshot = await getDoc(userContainerRef);
+
+        if (snapshot.exists()) {
+            const data = snapshot.data();
+            const containers = [];
+
+            // デフォルトコンテナがあれば優先的に追加
+            if (data.defaultContainerId) {
+                containers.push({
+                    id: data.defaultContainerId,
+                    name: 'デフォルトコンテナ',
+                    isDefault: true
+                });
+            }
+
+            // アクセス可能なコンテナIDリストがあれば追加
+            if (data.accessibleContainerIds && data.accessibleContainerIds.length > 0) {
+                // デフォルトコンテナと重複しないようにフィルタリング
+                const additionalContainers = data.accessibleContainerIds
+                    .filter(id => id !== data.defaultContainerId)
+                    .map(id => ({
+                        id,
+                        name: `コンテナ ${id.substring(0, 8)}...`, // IDの一部を表示
+                        isDefault: false
+                    }));
+
+                containers.push(...additionalContainers);
+            }
+
+            return containers;
+        }
+
+        return [];
+    } catch (error) {
+        console.error('コンテナリスト取得エラー:', error);
+        return [];
+    }
+}
+
 // アプリ起動時に自動的に初期化
 if (typeof window !== 'undefined') {
     let cleanup: (() => void) | null = null;
