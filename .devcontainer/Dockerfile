@@ -9,6 +9,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     ca-certificates \
     gnupg \
     lsb-release \
+    xauth \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 # Install Docker CLI

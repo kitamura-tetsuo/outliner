@@ -39,3 +39,6 @@ SSR 環境で特定の処理を条件分岐する場合：
 
 cd /workspace/client
 npx tsc src/debug/checkTypes.ts --noEmit
+
+
+cd /workspace/server && npm run create-test-user

@@ -10,11 +10,11 @@ services:
       - /home/ubuntu/.ssh:/home/node/.ssh:cached
       - /var/run/docker.sock:/var/run/docker.sock:cached
     ports:
-      - "7070:7070"
-      - "7071:7071"
-      - "7072:7072"
-      - "7080:7080"
-      - "7082:7082"
+      - "0.0.0.0:7070:7070"
+      - "0.0.0.0:7071:7071"
+      - "0.0.0.0:7072:7072"
+      - "0.0.0.0:7080:7080"
+      - "0.0.0.0:7082:7082"
     command: sleep infinity
     working_dir: /workspace
     user: node
@@ -30,9 +30,9 @@ services:
       context: ../firebase
       dockerfile: Dockerfile
     ports:
-      - "6400:4000"  # Firebase Emulator UI
-      - "6480:8080"  # Firestore Emulator
-      - "6499:9099"  # Auth Emulator
+      - "0.0.0.0:6400:4000"  # Firebase Emulator UI
+      - "0.0.0.0:6480:8080"  # Firestore Emulator
+      - "0.0.0.0:6499:9099"  # Auth Emulator
     volumes:
       - ../firebase-data:/firebase-data
     networks:

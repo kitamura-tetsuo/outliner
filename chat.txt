@@ -13,3 +13,10 @@ https://www.npmjs.com/package/fluid-framework
 https://fluidframework.com/docs/start/tree-start
 https://learn.microsoft.com/en-us/azure/azure-fluid-relay/how-tos/connect-fluid-azure-service
 
+
+
+
+
+e2e testの実行して、エラーの解消をして。
+cd /workspace/client && npm run test:e2e:xvfb
+で実行できる。

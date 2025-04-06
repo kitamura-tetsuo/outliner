@@ -1,0 +1,24 @@
+{
+    "inputs": [
+        {
+            "type": "promptString",
+            "id": "example-key",
+            "description": "必要に応じて入力する値（ここでは例として）",
+            "password": false
+        }
+    ],
+    "servers": {
+        "filesystem": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-filesystem",
+                "${workspaceFolder}"
+            ],
+            "env": {
+                "DEBUG": "*"
+            }
+        }
+    }
+}

@@ -11,6 +11,10 @@
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/src/*"
       },
+      "skipFiles": [
+        "**/lib/logger.*",
+        "**/node_modules/**"
+      ],
       "port": 9876
     },
     {
