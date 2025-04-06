@@ -6,8 +6,18 @@ const { v4: uuidv4 } = require('uuid');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
+const fsExtra = require('fs-extra');
 const { generateToken } = require("@fluidframework/azure-service-utils");
 const { ScopeType, IUser } = require("@fluidframework/azure-client");
+// ロガーモジュールをインポート
+const {
+  serverLogger,
+  clientLogger,
+  rotateClientLogs,
+  rotateServerLogs,
+  refreshClientLogStream,
+  refreshServerLogStream
+} = require('./utils/logger');
 
 // サービスアカウントJSONファイルのパス
 const serviceAccountPath = path.join(__dirname, 'firebase-adminsdk.json');
@@ -157,14 +167,14 @@ app.post('/api/save-container', async (req, res) => {
         }
       });
 
-      console.log(`Saved container ID ${containerId} for user ${userId}`);
+      serverLogger.info(`Saved container ID ${containerId} for user ${userId}`);
       res.status(200).json({ success: true });
     } catch (firestoreError) {
-      console.error('Firestore error while saving container ID:', firestoreError);
+      serverLogger.error('Firestore error while saving container ID:', firestoreError);
       res.status(500).json({ error: 'Database error while saving container ID' });
     }
   } catch (error) {
-    console.error('Error saving container ID:', error);
+    serverLogger.error('Error saving container ID:', error);
     res.status(500).json({ error: 'Failed to save container ID' });
   }
 });
@@ -191,7 +201,7 @@ app.post('/api/get-user-containers', async (req, res) => {
       defaultContainerId: userData.defaultContainerId || null
     });
   } catch (error) {
-    console.error('Error getting user containers:', error);
+    serverLogger.error('Error getting user containers:', error);
     res.status(500).json({ error: 'Failed to get user containers' });
   }
 });
@@ -223,7 +233,7 @@ app.post('/api/get-container-users', async (req, res) => {
       users: containerData.accessibleUserIds || []
     });
   } catch (error) {
-    console.error('Error getting container users:', error);
+    serverLogger.error('Error getting container users:', error);
     res.status(500).json({ error: 'Failed to get container users' });
   }
 });
@@ -250,7 +260,7 @@ app.post('/api/fluid-token', async (req, res) => {
 
     // コンテナIDが指定されていない場合はデフォルトを使用
     if (!targetContainerId && defaultContainerId) {
-      console.log(`No container ID specified, using default container: ${defaultContainerId}`);
+      serverLogger.info(`No container ID specified, using default container: ${defaultContainerId}`);
       targetContainerId = defaultContainerId;
     }
 
@@ -280,8 +290,96 @@ app.post('/api/fluid-token', async (req, res) => {
       accessibleContainerIds
     });
   } catch (error) {
-    console.error('Token validation error:', error);
+    serverLogger.error('Token validation error:', error);
     res.status(401).json({ error: 'Authentication failed' });
+  }
+});
+
+// クライアントからのログを受信するエンドポイント
+app.post('/api/log', (req, res) => {
+  try {
+    const logData = req.body;
+
+    // ログデータのバリデーション
+    if (!logData || !logData.level || !logData.log) {
+      serverLogger.warn('無効なログ形式を受信しました', { receivedData: logData });
+      return res.status(400).json({ error: '無効なログ形式' });
+    }
+
+    // クライアント情報を追加
+    const enrichedLog = {
+      ...logData,
+      clientIp: req.ip || 'unknown',
+      timestamp: logData.timestamp || new Date().toISOString(),
+      source: 'client'
+    };
+
+    // レベルに応じたログ出力
+    switch (logData.level.toLowerCase()) {
+      case 'trace':
+        clientLogger.trace(enrichedLog);
+        break;
+      case 'debug':
+        clientLogger.debug(enrichedLog);
+        break;
+      case 'info':
+        clientLogger.info(enrichedLog);
+        break;
+      case 'warn':
+        clientLogger.warn(enrichedLog);
+        break;
+      case 'error':
+        clientLogger.error(enrichedLog);
+        break;
+      case 'fatal':
+        clientLogger.fatal(enrichedLog);
+        break;
+      default:
+        clientLogger.info(enrichedLog); // デフォルトはinfoレベル
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    serverLogger.error('ログ処理エラー', { error: error.message, stack: error.stack });
+    res.status(500).json({ error: 'ログ処理に失敗しました' });
+  }
+});
+
+// ログファイルをローテーションするエンドポイント
+app.post('/api/rotate-logs', async (req, res) => {
+  try {
+    // クライアント・サーバーのログファイルをローテーション
+    const clientRotated = await rotateClientLogs(2);
+    const serverRotated = await rotateServerLogs(2);
+
+    // 新しいログストリームを作成（既存のストリームを閉じて再作成）
+    if (clientRotated) {
+      refreshClientLogStream();
+    }
+
+    if (serverRotated) {
+      refreshServerLogStream();
+    }
+
+    res.status(200).json({
+      success: true,
+      clientRotated,
+      serverRotated,
+      timestamp: new Date().toISOString()
+    });
+
+    // 新しいログファイルに情報を記録
+    serverLogger.info('ログファイルをローテーションしました', {
+      clientRotated,
+      serverRotated,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    serverLogger.error('ログローテーション中にエラーが発生しました:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 
@@ -310,7 +408,6 @@ if (process.env.NODE_ENV !== 'production') {
         issuedAt: decoded.payload.iat ? new Date(decoded.payload.iat * 1000).toISOString() : 'N/A',
       });
     } catch (error) {
-      console.error('Token debug error:', error);
       res.status(500).json({ error: 'トークン情報の取得に失敗しました' });
     }
   });
@@ -324,7 +421,7 @@ function generateAzureFluidToken(user, containerId = undefined) {
     : azureConfig.primaryKey;
 
   if (!keyToUse) {
-    console.warn('Azure Keyが設定されていません。テスト用トークンを生成します。');
+    serverLogger.warn('Azure Keyが設定されていません。テスト用トークンを生成します。');
     return {
       token: `test-token-${user.uid}-${Date.now()}`,
       user: { id: user.uid, name: user.displayName }
@@ -333,11 +430,11 @@ function generateAzureFluidToken(user, containerId = undefined) {
 
   try {
     // トークン生成前にテナントIDをログに出力して確認
-    console.log(`Generating token with tenantId: ${azureConfig.tenantId}`);
+    serverLogger.info(`Generating token with tenantId: ${azureConfig.tenantId}`);
 
     // コンテナID情報をログに出力
     if (containerId) {
-      console.log(`Token will be scoped to container: ${containerId}`);
+      serverLogger.info(`Token will be scoped to container: ${containerId}`);
     }
 
     // 公式Fluid Service Utilsを使用してトークンを生成
@@ -355,11 +452,11 @@ function generateAzureFluidToken(user, containerId = undefined) {
     );
 
     // 使用したキーとテナントIDをログに記録（デバッグ用）
-    console.log(`Generated token for user: ${user.uid} using ${azureConfig.activeKey} key and tenantId: ${azureConfig.tenantId}`);
+    serverLogger.info(`Generated token for user: ${user.uid} using ${azureConfig.activeKey} key and tenantId: ${azureConfig.tenantId}`);
 
     // JWT内容をデコードして確認（デバッグ用）
     const decoded = jwt.decode(token);
-    console.log('Token payload:', decoded);
+    serverLogger.debug('Token payload:', decoded);
 
     return {
       token,
@@ -371,13 +468,13 @@ function generateAzureFluidToken(user, containerId = undefined) {
       containerId: containerId || null   // 対象コンテナIDも返す
     };
   } catch (error) {
-    console.error('Fluid token generation error:', error);
+    serverLogger.error('Fluid token generation error:', error);
     throw new Error('トークン生成に失敗しました');
   }
 }
 
 const PORT = process.env.PORT || 7071;
 app.listen(PORT, () => {
-  console.log(`Auth service running on port ${PORT}`);
-  console.log(`CORS origin: ${process.env.CORS_ORIGIN || '*'}`);
+  serverLogger.info(`Auth service running on port ${PORT}`);
+  serverLogger.info(`CORS origin: ${process.env.CORS_ORIGIN || '*'}`);
 });
