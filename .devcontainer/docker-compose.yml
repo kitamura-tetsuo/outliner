@@ -1,0 +1,44 @@
+version: '3'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - /home/ubuntu/.ssh:/home/node/.ssh:cached
+      - /var/run/docker.sock:/var/run/docker.sock:cached
+    ports:
+      - "7070:7070"
+      - "7071:7071"
+      - "7072:7072"
+      - "7080:7080"
+      - "7082:7082"
+    command: sleep infinity
+    working_dir: /workspace
+    user: node
+    environment:
+      - FIREBASE_EMULATOR_HOST=firebase-emulator
+      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8080
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulator:9099
+    networks:
+      - firebase-network
+
+  firebase-emulator:
+    build:
+      context: ../firebase
+      dockerfile: Dockerfile
+    ports:
+      - "6400:4000"  # Firebase Emulator UI
+      - "6480:8080"  # Firestore Emulator
+      - "6499:9099"  # Auth Emulator
+    volumes:
+      - ../firebase-data:/firebase-data
+    networks:
+      - firebase-network
+    container_name: firebase-emulator
+
+networks:
+  firebase-network:
+    driver: bridge

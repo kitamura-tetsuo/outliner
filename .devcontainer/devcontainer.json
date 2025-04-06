@@ -1,41 +1,13 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+docker// For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
-	"name": "Node.js & TypeScript",
-	// Use the Dockerfile instead of the pre-built image
-	"build": {
-		"dockerfile": "Dockerfile",
-		"context": "."
-	},
-	"runArgs": [
-		"-p",
-		"7070:7070",
-		"-p",
-		"7071:7071",
-		"-p",
-		"7072:7072",
-		"-p",
-		"7080:7080",
-		"-p",
-		"7082:7082",
-	],
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "yarn install",
-	// Configure tool-specific properties.
-	// "customizations": {},
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	"remoteUser": "node",
-	// ワークスペースフォルダを/workspaceに設定
+	"name": "Node.js & TypeScript with Firebase Emulator",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
 	"workspaceFolder": "/workspace",
-	// ローカルのソースコードを/workspaceにマウント
-	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
-	"mounts": [
-		"source=/home/ubuntu/.ssh,target=/home/node/.ssh,type=bind,consistency=cached",
-	],
+	// 必要に応じてコンテナ作成後にコマンドを実行
+	// "postCreateCommand": "cd client && npm install && cd ../server && npm install",
+	// VS Code 機能をカスタマイズ
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -46,4 +18,12 @@
 			]
 		}
 	},
+	// Firebaseエミュレータ関連のポートを転送
+	"forwardPorts": [
+		4000,
+		8080,
+		9099
+	],
+	// node ユーザーとして接続
+	"remoteUser": "node"
 }
