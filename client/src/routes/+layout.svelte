@@ -6,6 +6,8 @@
 	import { browser } from '$app/environment';
 	import { getEnv } from '$lib/env';
 	import { getLogger } from '$lib/logger';
+	// Import from $lib/index.ts to ensure fetch override is loaded
+	import '$lib';
 
 	let { children } = $props();
 	const logger = getLogger('AppLayout');
