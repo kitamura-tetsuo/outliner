@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { Item } from '../schema/app-schema';
+	import { getLogger } from '../lib/logger';
+	const logger = getLogger();
 
 	// Props
 	export let item: Item;
@@ -47,7 +49,7 @@
 				dispatch('indent', { item });
 			}
 
-			console.log('Tab key processed in textarea');
+			logger.info('Tab key processed in textarea');
 		}
 	}
 
@@ -64,10 +66,10 @@
 
 			if (event.shiftKey) {
 				dispatch('unindent', { item });
-				console.log(`Unindent dispatched`);
+				logger.info(`Unindent dispatched`);
 			} else {
 				dispatch('indent', { item });
-				console.log(`Indent dispatched`);
+				logger.info(`Indent dispatched`);
 			}
 		}
 	}

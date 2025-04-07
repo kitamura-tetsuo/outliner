@@ -19,6 +19,13 @@
             "env": {
                 "DEBUG": "*"
             }
+        },
+        "playwright": {
+            "command": "npx",
+            "args": [
+                "@playwright/mcp@latest",
+                "--headless"
+            ]
         }
     }
 }

@@ -29,12 +29,15 @@ export default defineConfig(({ mode }) => {
 		server: {
 			port: parseInt(process.env.VITE_PORT || '7070'),
 			strictPort: true,
-			host: process.env.VITE_HOST || 'localhost'
+			host: process.env.VITE_HOST || '192.168.50.16'
 		},
 		preview: {
 			port: parseInt(process.env.VITE_PORT || '7070'),
 			strictPort: true,
-			host: process.env.VITE_HOST || 'localhost'
+			host: process.env.VITE_HOST || '192.168.50.16'
+		},
+		build: {
+			sourcemap: true
 		},
 		test: {
 			workspace: [

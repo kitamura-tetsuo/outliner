@@ -1,4 +1,5 @@
 // dotenvを直接importしてテスト時に.env.testを読み込めるようにする
+import { log } from './logger'; // ロガーをインポート
 
 /**
  * 環境変数を取得する関数
@@ -17,13 +18,13 @@ export function getEnv(key: string, defaultValue: string = ''): string {
   if (isTestEnv) {
     // テスト関連のログ出力
     if (key === 'VITE_USE_TINYLICIOUS' || key === 'VITE_FORCE_AZURE' || key === 'VITE_API_BASE_URL') {
-      console.log(`[env] Test environment detected, checking value for ${key}`);
+      log('env', 'debug', `Test environment detected, checking value for ${key}`);
     }
 
     // 環境変数から直接値を取得
     const envValue = import.meta.env[key];
     if (envValue !== undefined) {
-      console.log(`[env] Using value for ${key}: ${envValue}`);
+      log('env', 'debug', `Using value for ${key}: ${envValue}`);
       return envValue;
     }
 
@@ -42,6 +43,7 @@ export function getEnv(key: string, defaultValue: string = ''): string {
 export function getDebugConfig() {
   return {
     isDevelopment: import.meta.env.DEV,
+    isTest: import.meta.env.VITE_IS_TEST,
     host: typeof window !== 'undefined' ? window.location.host : 'server-side',
     nodeEnv: import.meta.env.MODE,
     fluidEndpoint: import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT || 'development-endpoint'

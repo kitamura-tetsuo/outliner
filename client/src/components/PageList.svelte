@@ -4,6 +4,8 @@
 	import { TreeViewManager } from '../fluid/TreeViewManager';
 	import { Item, Items, Project } from '../schema/app-schema';
 	import { fluidClient } from '../stores/fluidStore';
+	import { getLogger } from '../lib/logger';
+	const logger = getLogger();
 
 	export let project: Project;
 	export let rootItems: Items; // 最上位のアイテムリスト（ページリスト）
@@ -47,7 +49,7 @@
 	function updatePageList() {
 		if (rootItems) {
 			displayItems = [...rootItems];
-			console.log('PageList updated:', displayItems.length);
+			logger.info('PageList updated:', displayItems.length);
 		}
 	}
 

@@ -4,6 +4,8 @@
 	import { Item, Items } from '../schema/app-schema';
 	import { fluidClient } from '../stores/fluidStore';
 	import OutlinerItem from './OutlinerItem.svelte';
+	import { getLogger } from '../lib/logger';
+	const logger = getLogger();
 
 	export let pageItem: Item; // ページとして表示する Item
 	export let isReadOnly = false;
@@ -27,7 +29,7 @@
 		}
 
 		// アイテムの変更を監視
-		const unsubscribe = pageItem ? Tree.on(pageItem.items, 'treeChanged', updateItems) : undefined;
+		const unsubscribe = pageItem ? Tree.on(pageItem, 'treeChanged', updateItems) : undefined;
 
 		return () => {
 			if (unsubscribe) unsubscribe();
@@ -42,7 +44,7 @@
 		// ページコンテンツの変更を反映
 		if (pageItem) {
 			items = [...pageItem.items];
-			console.log('Items updated:', items);
+			logger.info('Items updated:', items);
 		}
 	}
 
@@ -79,7 +81,7 @@
 		// インデントを増やす処理
 		const { item } = event.detail;
 
-		console.log('Indent event received for item:', item);
+		logger.info('Indent event received for item:', item);
 
 		// 1. アイテムの親を取得
 		const parent = Tree.parent(item);
@@ -98,7 +100,7 @@
 			const itemIndex = parent.indexOf(item);
 
 			// 移動操作の前にログを追加
-			console.log(
+			logger.info(
 				`Moving item from parent (${parent.length} items) at index ${itemIndex} to previous item's children`
 			);
 
@@ -107,7 +109,7 @@
 				previousItem.items.moveRangeToEnd(itemIndex, itemIndex + 1, parent);
 			});
 
-			console.log(`Indented item under previous item`);
+			logger.info(`Indented item under previous item`);
 		} catch (error) {
 			console.error('Failed to indent item:', error);
 		}
@@ -117,7 +119,7 @@
 		// インデントを減らす処理
 		const { item } = event.detail;
 
-		console.log('Unindent event received for item:', item);
+		logger.info('Unindent event received for item:', item);
 
 		// 1. アイテムの親を取得
 		const parentList = Tree.parent(item);
@@ -137,7 +139,7 @@
 			// 4. 親の親の、親の次の位置にアイテムを移動
 			const itemIndex = parentList.indexOf(item);
 			grandParentList.moveRangeToIndex(parentIndex + 1, itemIndex, itemIndex + 1, parentList);
-			console.log('Unindented item to parent level');
+			logger.info('Unindented item to parent level');
 		} catch (error) {
 			console.error('Failed to unindent item:', error);
 		}

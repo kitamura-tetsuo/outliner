@@ -2,18 +2,19 @@
  * VSCodeデバッグ用のヘルパー関数
  * このファイルにブレークポイントを設定して、デバッグセッション中に使用できます。
  */
+import { log } from './logger'; // ロガーをインポート
 
 // デバッガーのためのグローバル参照にアクセスするヘルパー
 export function getFluidClient() {
 	if (typeof window === 'undefined') {
-		console.error('Window is not defined (server-side context)');
+		log('debugHelper', 'error', 'Window is not defined (server-side context)');
 		return null;
 	}
 
 	const client = (window as any).__FLUID_CLIENT__;
 
 	if (!client) {
-		console.error('FluidClient not found on window.__FLUID_CLIENT__');
+		log('debugHelper', 'error', 'FluidClient not found on window.__FLUID_CLIENT__');
 		return null;
 	}
 
@@ -51,7 +52,7 @@ export function setTreeData(key: string, value: any) {
 			allData: client.getAllData()
 		};
 	} catch (error) {
-		console.error('Error setting tree data:', error);
+		log('debugHelper', 'error', 'Error setting tree data:', error);
 		debugger;
 		return { success: false, error };
 	}
@@ -63,14 +64,14 @@ export function simulateError() {
 	if (!client) return;
 
 	try {
-		console.log('Simulating an error for debugging purposes...');
+		log('debugHelper', 'info', 'Simulating an error for debugging purposes...');
 		// わざとエラーを発生させる
 		const nonExistentMethod = (client as any).nonExistentMethod();
 		return nonExistentMethod;
 	} catch (error) {
 		// デバッガーでここに停止します
 		debugger;
-		console.error('Simulated error caught:', error);
+		log('debugHelper', 'error', 'Simulated error caught:', error);
 		throw error;
 	}
 }

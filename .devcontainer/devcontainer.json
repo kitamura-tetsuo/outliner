@@ -1,4 +1,4 @@
-docker// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+docker // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
 	"name": "Node.js & TypeScript with Firebase Emulator",
@@ -22,7 +22,13 @@ docker// For format details, see https://aka.ms/devcontainer.json. For config op
 	"forwardPorts": [
 		4000,
 		8080,
-		9099
+		9099,
+		7070,
+		7071,
+		7072,
+		7080,
+		7081,
+		7082
 	],
 	// node ユーザーとして接続
 	"remoteUser": "node"

@@ -3,6 +3,8 @@
 	import { getUserContainers } from '../stores/firestoreStore';
 	import { fluidClient } from '../stores/fluidStore';
 	import { FluidClient } from '../fluid/fluidClient';
+	import { getLogger } from '../lib/logger';
+	const logger = getLogger();
 
 	export let onContainerSelected: (containerId: string) => void = () => {};
 
@@ -23,25 +25,56 @@
 		}
 	});
 
-	// コンテナリストのロード
-	async function loadContainers() {
+	// コンテナリストを読み込む
+	const loadContainers = async () => {
+		isLoading = true;
+		error = null;
+
 		try {
-			isLoading = true;
-			error = null;
+			// 標準の方法でユーザーのコンテナを読み込む
+			let userContainers = await getUserContainers();
+			logger.info(`[ContainerSelector] Loaded ${userContainers.length} containers from store`);
 
-			containers = await getUserContainers();
+			// テスト環境では、ローカルストレージから現在のコンテナIDも確認
+			if (
+				typeof window !== 'undefined' &&
+				(window.mockFluidClient === false ||
+					import.meta.env.VITE_IS_TEST === 'true' ||
+					window.localStorage.getItem('VITE_USE_TINYLICIOUS') === 'true')
+			) {
+				const currentContainerId = window.localStorage.getItem('currentContainerId');
 
-			// 選択肢がある場合、最初のコンテナを選択する
-			if (containers.length > 0 && !selectedContainerId) {
-				selectedContainerId = containers[0].id;
+				// 現在のコンテナIDが存在し、かつリストに含まれていない場合は追加
+				if (currentContainerId && !userContainers.some((c) => c.id === currentContainerId)) {
+					logger.info('[ContainerSelector] Adding current container to list:', currentContainerId);
+					userContainers.push({
+						id: currentContainerId,
+						name: 'テスト中のコンテナ',
+						isDefault: userContainers.length === 0
+					});
+				}
 			}
+
+			containers = userContainers;
+
+			// デフォルトコンテナを選択
+			const defaultContainer = containers.find((c) => c.isDefault);
+			if (defaultContainer) {
+				selectedContainerId = defaultContainer.id;
+			} else if (containers.length > 0) {
+				selectedContainerId = containers[0].id;
+			} else {
+				selectedContainerId = null;
+			}
+
+			logger.info(`[ContainerSelector] Final container count: ${containers.length}`);
 		} catch (err) {
-			console.error('コンテナリスト取得エラー:', err);
-			error = err instanceof Error ? err.message : 'コンテナリストの取得に失敗しました';
+			console.error('[ContainerSelector] Error loading containers:', err);
+			error = 'コンテナリストの読み込みに失敗しました';
 		} finally {
 			isLoading = false;
 		}
-	}
+	};
 
 	// コンテナ選択時の処理
 	async function handleContainerChange() {

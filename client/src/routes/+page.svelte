@@ -15,6 +15,8 @@
 	import { handleConnectionError } from '../lib/fluidService';
 	import { fluidClient } from '../stores/fluidStore';
 	import { Items, Item, Project } from '../schema/app-schema';
+	import { getLogger } from '../lib/logger';
+	const logger = getLogger();
 
 	let error: string | null = null;
 	let containerId: string | null = null;
@@ -42,7 +44,7 @@
 
 	// 認証成功時の処理
 	async function handleAuthSuccess(authResult) {
-		console.log('認証成功:', authResult);
+		logger.info('認証成功:', authResult);
 		isAuthenticated = true;
 
 		// Fluidクライアントの初期化はfluidStoreが処理するため、
@@ -52,7 +54,7 @@
 			let unsubscribe; // 明示的に変数を宣言
 			unsubscribe = fluidClient.subscribe((client) => {
 				if (client?.isConnected) {
-					console.log('Fluidクライアントが接続されました');
+					logger.info('Fluidクライアントが接続されました');
 
 					// containerId と rootItems を設定
 					containerId = client.containerId;
@@ -96,7 +98,7 @@
 
 	// 認証ログアウト時の処理
 	function handleAuthLogout() {
-		console.log('ログアウトしました');
+		logger.info('ログアウトしました');
 		isAuthenticated = false;
 		// 必要に応じてページをリロードするか、非認証状態の表示に切り替える
 	}
@@ -158,7 +160,7 @@
 
 			// 現在のコンテナと同じ場合は早期リターン
 			if ($fluidClient?.containerId === selectedContainerId) {
-				console.log('すでに選択されているコンテナが選択されました。');
+				logger.info('すでに選択されているコンテナが選択されました。');
 				isInitializing = false;
 				return;
 			}
@@ -168,7 +170,7 @@
 				$fluidClient.dispose();
 			}
 
-			console.log(`コンテナを切り替えます: ${selectedContainerId}`);
+			logger.info(`コンテナを切り替えます: ${selectedContainerId}`);
 
 			// 新しいコンテナIDで FluidClient をロード
 			const client = FluidClient.getInstance();

@@ -48,9 +48,16 @@ Firebase SDKを使ってGoogle認証を完結させる
 クライアント:
 受け取ったJWTでAzure Fluid Relayに接続
 
+APIサーバーの実装
+/workspace/server/auth-service.js
 
-
-
+クライアント側のログについて。
+クライアント側のログはpinoを介してサーバーへ送られる。
+    /api/log
+/workspace/client/logs/browser.log
+に保存される。
+ウェブアプリの終了時にログはローテートされる。
+    /api/rotate-logs
 
 
 注意事項
@@ -60,3 +67,13 @@ Firebase SDKを使ってGoogle認証を完結させる
 dotenv は node版を使っているので、npx dotenv。
 
 単純な置換は sedを使って。
+
+
+コード修正後の確認作業
+テスト用のサーバー
+http://192.168.50.16:7080/
+へアクセスして、正常に動作していることを確認して。
+クライアントのログがここにあるので、アクセス後にこちらを確認して。
+/workspace/client/logs/browser.log
+テスト用のSveltKit serverのログがここにあるので、アクセス後にこちらを確認して。
+/workspace/server/logs/test-svelte-kit.log

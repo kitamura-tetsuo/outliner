@@ -6,9 +6,13 @@ import {
   signInWithPopup,
   signOut,
   signInWithEmailAndPassword,
+  connectAuthEmulator,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { getEnv } from '../lib/env';
+import { getLogger, log } from '../lib/logger'; // log関数をインポート
+
+const logger = getLogger();
 
 // ユーザー情報の型定義
 export interface IUser {
@@ -42,16 +46,16 @@ export class UserManager {
 
   // Firebase 設定
   private firebaseConfig = {
-    apiKey: "AIzaSyCikgn1YY06j6ZlAJPYab1FIOKSQAuzcH4",
-    authDomain: "outliner-d57b0.firebaseapp.com",
-    projectId: "outliner-d57b0",
-    storageBucket: "outliner-d57b0.firebasestorage.app",
-    messagingSenderId: "560407608873",
-    appId: "1:560407608873:web:147817f4a93a4678606638",
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCikgn1YY06j6ZlAJPYab1FIOKSQAuzcH4",
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "outliner-d57b0.firebaseapp.com",
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "outliner-d57b0",
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "outliner-d57b0.firebasestorage.app",
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "560407608873",
+    appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:560407608873:web:147817f4a93a4678606638",
     measurementId: "G-FKSFRCT7GR"
   };
 
-  private apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:7071');
+  private apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:7071').replace('localhost', '192.168.50.16');
   private app = initializeApp(this.firebaseConfig);
   private auth = getAuth(this.app);
 
@@ -71,7 +75,7 @@ export class UserManager {
   }
 
   private constructor() {
-    console.debug('[UserManager] Initializing...');
+    logger.debug('Initializing...');
 
     // テスト環境の検出を強化
     const isTestEnv =
@@ -80,82 +84,301 @@ export class UserManager {
       import.meta.env.VITE_IS_TEST === 'true' ||
       (typeof window !== 'undefined' && window.mockFluidClient);
 
-    if (isTestEnv) {
-      console.log('[UserManager] Test environment detected, using mock authentication');
-      // テスト用にダミーユーザーを設定
-      this._setupMockUser();
+    const useEmulator =
+      isTestEnv ||
+      import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true' ||
+      (typeof window !== 'undefined' && window.localStorage?.getItem('VITE_USE_FIREBASE_EMULATOR') === 'true');
+
+    // サーバーサイドレンダリング環境かどうかを判定
+    const isSSR = typeof window === 'undefined';
+
+    // Firebase Auth Emulatorに接続
+    if (useEmulator) {
+      logger.info('Connecting to Auth emulator');
+      try {
+        const connected = this.connectToFirebaseEmulator();
+        if (connected) {
+          logger.info('Successfully connected to Auth emulator');
+          // テスト環境では自動的にテストユーザーでログイン
+          this._setupMockUser();
+        } else {
+          // エミュレーター接続に失敗した場合
+          const error = new Error('Failed to connect to Firebase Auth emulator');
+          logger.error('Failed to connect to Auth emulator, authentication may not work', error);
+
+          // SSR環境ではエラーをスローしない（クライアント側でリトライできるように）
+          if (!isSSR) {
+            throw error;
+          } else {
+            logger.info('Running in SSR environment, will retry connection on client side');
+          }
+        }
+      } catch (err) {
+        // エミュレーターに接続できない場合
+        logger.error('Failed to connect to Auth emulator:', err);
+
+        // SSR環境ではエラーをスローしない
+        if (!isSSR) {
+          throw err;
+        } else {
+          logger.info('Running in SSR environment, will retry connection on client side');
+        }
+      }
     } else {
       this.initAuthListener();
       this.loadSavedUser();
     }
   }
 
-  // テスト環境用のモックユーザーをセットアップ
+  // Firebase Auth Emulatorに接続
+  private connectToFirebaseEmulator(): boolean {
+    const isBrowser = typeof window !== 'undefined';
+
+    try {
+      const emulatorHost = import.meta.env.VITE_AUTH_EMULATOR_HOST || 'firebase-emulator';
+      const emulatorPort = parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT || '9099', 10);
+
+      const host = isBrowser ? emulatorHost : '192.168.50.16';
+      const port = emulatorPort;
+
+      logger.info(`Attempting to connect to Firebase Auth emulator at ${host}:${port}`);
+      connectAuthEmulator(this.auth, `http://${host}:${port}`, { disableWarnings: true });
+      logger.info(`Successfully connected to Firebase Auth emulator at ${host}:${port}`);
+      return true;
+    } catch (err) {
+      logger.error('Error connecting to Firebase Auth emulator:', err);
+      return false;
+    }
+  }
+
+  // テスト環境用のユーザーをセットアップ
   private _setupMockUser() {
     // E2Eテスト用にFirebaseメール/パスワード認証を使う
-    if (typeof window !== 'undefined' && window.location.href.includes('e2e-test') || import.meta.env.VITE_IS_TEST === 'true') {
-      console.log('[UserManager] E2E test environment detected, using real Firebase auth with test account');
-      // 実際にFirebaseにテストアカウントでログイン
-      signInWithEmailAndPassword(this.auth, 'test@example.com', 'password')
-        .then(async (userCredential) => {
-          const firebaseUser = userCredential.user;
-          await this.handleUserSignedIn(firebaseUser);
-        })
-        .catch((error) => {
-          console.error('[UserManager] E2E test login failed:', error);
-          // 失敗した場合はモックユーザーにフォールバック
-          this._setupMockUserFallback();
-        });
+    if (typeof window !== 'undefined' && (window.location.href.includes('e2e-test') || import.meta.env.VITE_IS_TEST === 'true')) {
+      logger.info('[UserManager] E2E test environment detected, using real Firebase auth with test account');
+
+      // 認証試行前に長めに待機（Emulatorが起動するまで）
+      setTimeout(() => {
+        logger.info('[UserManager] Attempting E2E test login with test@example.com');
+
+        // 複数のエミュレータ接続設定を試す
+        this._tryMultipleEmulatorConnections();
+      }, 2000); // Emulatorの起動を待つために2秒待機に延長
       return;
     }
 
-    this._setupMockUserFallback();
+    // モックユーザーは使用せず、常に実際のFirebase認証を使用
+    logger.info('[UserManager] Using real Firebase auth only, no mock users');
+    this.initAuthListener();
   }
 
-  // モックユーザー設定のフォールバック処理
-  private _setupMockUserFallback() {
-    // カスタムモックユーザーを取得（テストから提供される可能性がある）
-    const mockUser: IUser = (typeof window !== 'undefined' && (window as any).mockUser) ?
-      (window as any).mockUser : {
-        id: 'test-user-id',
-        name: 'Test User',
-        email: 'test@example.com'
-      };
+  // 複数のエミュレータ接続設定を順番に試す
+  private async _tryMultipleEmulatorConnections() {
+    // Firestoreが成功している接続先を優先する
+    const firestoreHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST;
 
-    // カスタムモックトークンを取得（テストから提供される可能性がある）
-    const mockToken: IFluidToken = (typeof window !== 'undefined' && (window as any).mockFluidToken) ?
-      (window as any).mockFluidToken : {
-        token: 'mock-jwt-token',
-        user: {
-          id: mockUser.id,
-          name: mockUser.name
+    const emulatorConfigs = [
+      // Firestoreが接続している設定を最優先
+      { host: firestoreHost || '192.168.50.16', port: 9099 },
+      { host: '192.168.50.16', port: 9099 },
+      // 以下は元の設定
+      { host: 'firebase-emulator', port: 9099 },
+      { host: 'localhost', port: 9099 },
+      { host: '127.0.0.1', port: 9099 },
+      { host: window.location.hostname, port: 9099 }
+    ];
+
+    logger.info(`Trying emulator connections in order: ${emulatorConfigs.map(c => `${c.host}:${c.port}`).join(', ')}`);
+
+    let lastConnectedHost = null;
+    let lastConnectedPort = null;
+    let lastConnectedAuth = null;
+    let lastSuccessfulUser = null;
+
+    for (const { host, port } of emulatorConfigs) {
+      try {
+        logger.info(`Trying emulator at ${host}:${port}`);
+
+        // 新しい Auth インスタンスを作成（既存の接続をリセット）
+        const tempApp = initializeApp(this.firebaseConfig, `temp-app-${Math.random()}`);
+        const tempAuth = getAuth(tempApp);
+
+        // エミュレータに接続
+        connectAuthEmulator(tempAuth, `http://${host}:${port}`, { disableWarnings: true });
+
+        // ログイン試行
+        logger.info(`Attempting login with test@example.com via ${host}:${port}`);
+        try {
+          // テストユーザーでのログイン試行
+          const result = await signInWithEmailAndPassword(tempAuth, 'test@example.com', 'password');
+          logger.info(`Login successful via ${host}:${port}!`, { uid: result.user.uid });
+
+          lastSuccessfulUser = result.user;
+
+          try {
+            // 成功した接続情報で本来のauth接続を設定
+            connectAuthEmulator(this.auth, `http://${host}:${port}`, { disableWarnings: true });
+
+            // 本来のauthインスタンスで再ログイン
+            const finalResult = await signInWithEmailAndPassword(this.auth, 'test@example.com', 'password');
+            await this.handleUserSignedIn(finalResult.user);
+            return; // 成功したらループを抜ける
+          } catch (reconnectError) {
+            // メインの認証インスタンスの再接続に失敗した場合
+            logger.warn(`Successfully logged in with test user on ${host}:${port}, but failed to reconnect main auth instance:`, reconnectError);
+
+            // 一度成功したユーザー情報は保持しておく
+            lastConnectedHost = host;
+            lastConnectedPort = port;
+            lastConnectedAuth = tempAuth;
+          }
+        } catch (error) {
+          // エラーがFirebaseErrorかどうかを確認
+          const firebaseError = error as { code?: string };
+
+          // auth/user-not-found エラーの場合、その接続先でユーザーを作成する
+          if (firebaseError.code === 'auth/user-not-found') {
+            logger.info(`Firebase connection to ${host}:${port} successful, but test user not found. Attempting to create user directly.`);
+
+            try {
+              // Firebase Auth REST APIを直接使用してユーザーを作成
+              const response = await fetch(`http://${host}:${port}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=${this.firebaseConfig.apiKey}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  email: 'test@example.com',
+                  password: 'password',
+                  returnSecureToken: true
+                })
+              });
+
+              if (response.ok) {
+                logger.info(`Successfully created test user on ${host}:${port}`);
+
+                try {
+                  // 成功した接続情報で本来のauth接続を設定
+                  connectAuthEmulator(this.auth, `http://${host}:${port}`, { disableWarnings: true });
+
+                  // 作成したユーザーでログイン
+                  const loginResult = await signInWithEmailAndPassword(this.auth, 'test@example.com', 'password');
+                  await this.handleUserSignedIn(loginResult.user);
+                  return; // 成功したらループを抜ける
+                } catch (loginError) {
+                  logger.warn(`Created user but failed to reconnect main auth instance:`, loginError);
+                  // 成功したホスト情報を記録
+                  lastConnectedHost = host;
+                  lastConnectedPort = port;
+                  lastConnectedAuth = tempAuth;
+                }
+              } else {
+                const errorData = await response.json();
+                logger.warn(`Failed to create test user directly: ${JSON.stringify(errorData)}`);
+
+                // 接続は成功しているので情報を記録
+                lastConnectedHost = host;
+                lastConnectedPort = port;
+                lastConnectedAuth = tempAuth;
+              }
+            } catch (createError) {
+              logger.warn(`Error creating test user directly:`, createError);
+              // 接続は成功しているので情報を記録
+              lastConnectedHost = host;
+              lastConnectedPort = port;
+              lastConnectedAuth = tempAuth;
+            }
+          } else {
+            // その他のエラーの場合は次の設定を試す
+            logger.warn(`Login failed with ${host}:${port}:`, error);
+          }
         }
-      };
+      } catch (err) {
+        // 接続自体に失敗した場合は次の設定を試す
+        logger.warn(`Connection failed with ${host}:${port}:`, err);
+      }
+    }
 
-    // モックデータを設定
-    this.currentFluidToken = mockToken;
+    // 成功したユーザー情報がある場合は、それを使用する
+    if (lastSuccessfulUser) {
+      logger.info('Using last successful login user information');
+      await this.handleUserSignedIn(lastSuccessfulUser);
+      return;
+    }
 
-    // 認証状態を通知
-    setTimeout(() => {
-      this.notifyListeners({
-        user: mockUser,
+    // すべてのエミュレーターを試した後、最後に成功した接続先でテストユーザーの作成を再試行
+    if (lastConnectedHost && lastConnectedPort && lastConnectedAuth) {
+      logger.info(`Creating test user on last successful connection: ${lastConnectedHost}:${lastConnectedPort}`);
+
+      try {
+        // API経由でユーザー作成を試みる
+        const result = await this._createTestUser(lastConnectedHost, lastConnectedPort);
+        if (result) {
+          try {
+            // 本来のauthインスタンスに成功した接続情報を設定
+            connectAuthEmulator(this.auth, `http://${lastConnectedHost}:${lastConnectedPort}`, { disableWarnings: true });
+
+            // 作成したユーザーでログイン
+            const finalResult = await signInWithEmailAndPassword(this.auth, 'test@example.com', 'password');
+            await this.handleUserSignedIn(finalResult.user);
+            return;
+          } catch (loginError) {
+            logger.warn('Created user but failed to login with main auth instance:', loginError);
+
+            // 最後の手段として、うまく機能したtempAuthのユーザー情報を直接使用
+            if (lastConnectedAuth.currentUser) {
+              await this.handleUserSignedIn(lastConnectedAuth.currentUser);
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        logger.error('Failed to create or use test user:', error);
+      }
+    }
+
+    // すべての接続試行が失敗した場合はエラーをスロー
+    const error = new Error('Failed to connect to any Firebase emulator or authenticate test user');
+    logger.error('All Firebase emulator connection attempts failed. Authentication will not work.', error);
+    throw error;
+  }
+
+  // テストユーザーを作成する関数
+  private async _createTestUser(host: string, port: number): Promise<boolean> {
+    logger.info(`Attempting to create test user in emulator at ${host}:${port}`);
+
+    try {
+      // ホスト名がlocalhostやfirebase-emulatorの場合は192.168.50.16に置換
+      const emulatorHost = host === 'localhost' || host === 'firebase-emulator' ? '192.168.50.16' : host;
+
+      // APIサーバーを通じてテストユーザーを作成
+      const response = await fetch(`${this.apiBaseUrl}/api/create-test-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          emulatorHost,
+          emulatorPort: port,
+          email: 'test@example.com',
+          password: 'password',
+          displayName: 'Test User'
+        })
       });
 
-      // 認証成功イベントをディスパッチ
-      if (typeof document !== 'undefined') {
-        document.dispatchEvent(new CustomEvent('auth-success', {
-          detail: {
-            user: mockUser,
-            fluidToken: mockToken
-          }
-        }));
+      if (response.ok) {
+        const data = await response.json();
+        logger.info('Test user created successfully', data);
+        return true;
+      } else {
+        const error = await response.text();
+        logger.error('Failed to create test user via API:', error);
+        return false;
       }
-    }, 100);
-  }
-
-  // 認証状態をチェックする新しいヘルパーメソッド
-  public isAuthenticated(): boolean {
-    return !!this.auth.currentUser;
+    } catch (error) {
+      logger.error('Error creating test user:', error);
+      return false;
+    }
   }
 
   // Firebase認証状態の監視
@@ -172,7 +395,7 @@ export class UserManager {
   // ユーザーサインイン処理
   private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<void> {
     try {
-      console.debug('[UserManager] User signed in', firebaseUser.uid);
+      logger.debug('User signed in', { uid: firebaseUser.uid });
 
       // Firebase認証ユーザーからIDトークンを取得
       const idToken = await firebaseUser.getIdToken();
@@ -193,7 +416,7 @@ export class UserManager {
         user,
       });
     } catch (error) {
-      console.error('[UserManager] Error handling user sign in:', error);
+      logger.error('Error handling user sign in:', error);
       // エラーが発生した場合は認証失敗として扱う
       this.notifyListeners(null);
     }
@@ -201,7 +424,7 @@ export class UserManager {
 
   // ユーザーサインアウト処理
   private handleUserSignedOut(): void {
-    console.debug('[UserManager] User signed out');
+    logger.debug('User signed out');
     this.currentFluidToken = null;
 
     // ブラウザ環境でのみlocalStorageを使用
@@ -228,7 +451,7 @@ export class UserManager {
   // Fluid Relayトークンを取得
   private async getFluidToken(idToken: string, containerId?: string): Promise<IFluidToken> {
     try {
-      console.log(`[UserManager] Requesting Fluid token from: ${this.apiBaseUrl}/api/fluid-token`);
+      logger.info(`[UserManager] Requesting Fluid token from: ${this.apiBaseUrl}/api/fluid-token`);
 
       // リクエストボディの作成
       const requestBody: any = { idToken };
@@ -236,7 +459,7 @@ export class UserManager {
       // コンテナIDが指定されている場合は追加
       if (containerId) {
         requestBody.containerId = containerId;
-        console.log(`[UserManager] Requesting token for container: ${containerId}`);
+        logger.info(`[UserManager] Requesting token for container: ${containerId}`);
       }
 
       // フェッチオプションを明示的に設定
@@ -253,15 +476,15 @@ export class UserManager {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[UserManager] Fluid token request failed: ${response.status}`, errorText);
+        logger.error(`[UserManager] Fluid token request failed: ${response.status}`, errorText);
         throw new Error(`Fluid token request failed: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('[UserManager] Fluid token received successfully');
+      logger.info('[UserManager] Fluid token received successfully');
       return data;
     } catch (error) {
-      console.error('[UserManager] Error getting fluid token:', error);
+      logger.error('[UserManager] Error getting fluid token:', error);
       throw error;
     }
   }
@@ -274,7 +497,7 @@ export class UserManager {
         try {
           return JSON.parse(savedUser);
         } catch (e) {
-          console.error('[UserManager] Error parsing saved user:', e);
+          logger.error('[UserManager] Error parsing saved user:', e);
           localStorage.removeItem('fluidUser');
         }
       }
@@ -289,7 +512,7 @@ export class UserManager {
       await signInWithPopup(this.auth, provider);
       // 認証状態の変更はonAuthStateChangedで検知される
     } catch (error) {
-      console.error('[UserManager] Google login error:', error);
+      logger.error('[UserManager] Google login error:', error);
       throw error;
     }
   }
@@ -300,7 +523,7 @@ export class UserManager {
       await signOut(this.auth);
       // ログアウト処理はonAuthStateChangedで検知される
     } catch (error) {
-      console.error('[UserManager] Logout error:', error);
+      logger.error('[UserManager] Logout error:', error);
       throw error;
     }
   }
@@ -336,7 +559,7 @@ export class UserManager {
   public async getCurrentFluidToken(forceRefresh = false): Promise<IFluidToken | null> {
     // 既存のトークン更新が進行中の場合はそのプロミスを返す
     if (this.tokenRefreshPromise) {
-      console.log('[UserManager] Token refresh already in progress, waiting...');
+      logger.info('[UserManager] Token refresh already in progress, waiting...');
       return this.tokenRefreshPromise;
     }
 
@@ -346,13 +569,13 @@ export class UserManager {
         // 更新中フラグをセット（無限ループ防止）
         this.isRefreshingToken = true;
 
-        console.log('[UserManager] No token available, attempting to refresh');
+        logger.info('[UserManager] No token available, attempting to refresh');
 
         // 更新処理をプロミスとして保存（他の呼び出しが同じプロミスを共有できるように）
         this.tokenRefreshPromise = new Promise<IFluidToken | null>(async (resolve) => {
           // タイムアウト処理
           const timeoutId = setTimeout(() => {
-            console.warn('[UserManager] Token refresh timed out after', this.TOKEN_REFRESH_TIMEOUT, 'ms');
+            logger.warn('[UserManager] Token refresh timed out after', this.TOKEN_REFRESH_TIMEOUT, 'ms');
             this.isRefreshingToken = false;
             this.tokenRefreshPromise = null;
             resolve(this.currentFluidToken); // タイムアウト時は現在の状態を返す
@@ -363,7 +586,7 @@ export class UserManager {
             clearTimeout(timeoutId);
             resolve(this.currentFluidToken);
           } catch (error) {
-            console.error('[UserManager] Failed to get fluid token:', error);
+            logger.error('[UserManager] Failed to get fluid token:', error);
             clearTimeout(timeoutId);
             resolve(this.currentFluidToken); // エラー時は現在の状態を返す
           } finally {
@@ -374,7 +597,7 @@ export class UserManager {
 
         return await this.tokenRefreshPromise;
       } catch (error) {
-        console.error('[UserManager] Error in getCurrentFluidToken:', error);
+        logger.error('[UserManager] Error in getCurrentFluidToken:', error);
         this.isRefreshingToken = false;
         this.tokenRefreshPromise = null;
         return this.currentFluidToken;
@@ -387,7 +610,7 @@ export class UserManager {
   // 同期バージョンも保持（互換性のため）
   public getFluidTokenSync(): IFluidToken | null {
     if (this.isRefreshingToken) {
-      console.warn('[UserManager] Warning: Token is being refreshed, returning current value synchronously');
+      logger.warn('[UserManager] Warning: Token is being refreshed, returning current value synchronously');
     }
     return this.currentFluidToken;
   }
@@ -414,7 +637,7 @@ export class UserManager {
       // タイムアウト用のタイマー
       const timeoutId = setTimeout(() => {
         unsubscribe();
-        console.warn('[UserManager] Firebase auth state timeout after', timeoutMs, 'ms');
+        logger.warn('[UserManager] Firebase auth state timeout after', timeoutMs, 'ms');
         resolve(false);
       }, timeoutMs);
 
@@ -432,7 +655,7 @@ export class UserManager {
   // トークンをリフレッシュする
   public async refreshToken(containerId?: string): Promise<string | null> {
     if (this.isRefreshingToken) {
-      console.log('[UserManager] Token refresh already in progress, waiting...');
+      logger.info('[UserManager] Token refresh already in progress, waiting...');
       return this.tokenRefreshPromise?.then(token => token?.token || null) || null;
     }
 
@@ -440,9 +663,9 @@ export class UserManager {
 
     // リフレッシュの詳細をログ出力
     if (containerId) {
-      console.log(`[UserManager] Refreshing token specifically for container: ${containerId}`);
+      logger.info(`[UserManager] Refreshing token specifically for container: ${containerId}`);
     } else {
-      console.log(`[UserManager] Refreshing token (no specific container)`);
+      logger.info(`[UserManager] Refreshing token (no specific container)`);
     }
 
     try {
@@ -466,7 +689,7 @@ export class UserManager {
 
       return this.currentFluidToken.token;
     } catch (error) {
-      console.error('[UserManager] Token refresh failed:', error);
+      logger.error('[UserManager] Token refresh failed:', error);
       // エラーを上位に伝播させる
       throw error;
     } finally {

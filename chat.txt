@@ -20,3 +20,24 @@ https://learn.microsoft.com/en-us/azure/azure-fluid-relay/how-tos/connect-fluid-
 e2e testの実行して、エラーの解消をして。
 cd /workspace/client && npm run test:e2e:xvfb
 で実行できる。
+
+
+/workspace/client/logs/browser.log
+で記録されているエラーに対処して。
+
+
+
+http://192.168.50.16:7080/
+はテスト用のサーバー
+
+
+テスト用のサーバー
+http://192.168.50.16:7080/
+へアクセスして、正常に動作していることを確認して。
+クライアントのログがここにあるので、アクセス後にこちらを確認して。
+/workspace/client/logs/browser.log
+テスト用のSveltKit serverのログがここにあるので、アクセス後にこちらを確認して。
+/workspace/server/logs/test-svelte-kit.log
+API serverのログがここにあるので、アクセス後にこちらを確認して。
+/workspace/server/logs/auth-service.log
+

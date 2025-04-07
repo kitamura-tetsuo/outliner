@@ -8,6 +8,8 @@
 	import { fluidClient } from '../../stores/fluidStore';
 	import { getEnv } from '../../lib/env';
 	import { saveContainerId } from '../../stores/firestoreStore';
+	import { getLogger } from '../../lib/logger';
+	const logger = getLogger();
 
 	let isLoading = false;
 	let error: string | null = null;
@@ -18,13 +20,13 @@
 
 	// 認証成功時の処理
 	async function handleAuthSuccess(authResult) {
-		console.log('認証成功:', authResult);
+		logger.info('認証成功:', authResult);
 		isAuthenticated = true;
 	}
 
 	// 認証ログアウト時の処理
 	function handleAuthLogout() {
-		console.log('ログアウトしました');
+		logger.info('ログアウトしました');
 		isAuthenticated = false;
 	}
 

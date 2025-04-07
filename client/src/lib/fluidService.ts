@@ -7,6 +7,7 @@ import { SharedTree, type TreeView, type ViewableTree } from 'fluid-framework';
 import { appTreeConfiguration, Item, Items, Project } from '../schema/app-schema';
 import { type IFluidContainer, type ContainerSchema } from '@fluidframework/fluid-static';
 import { v4 as uuid } from 'uuid';
+import { log } from './logger'; // ロガーをインポート
 
 
 // クライアントキーの型定義
@@ -61,7 +62,7 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
 
     // 特定のコンテナID用のトークンが必要な場合
     if (containerId) {
-      console.log(`[fluidService] Requesting token for specific container: ${containerId}`);
+      log('fluidService', 'debug', `Requesting token for specific container: ${containerId}`);
       // コンテナID付きで強制的にトークンを更新
       await userManager.refreshToken(containerId);
     }
@@ -74,19 +75,19 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
       const tokenTenantId = (fluidToken as any).tenantId;
 
       // テナントIDをログに出力（デバッグ用）
-      console.log(`[fluidService] Server provided tenantId: ${tokenTenantId || 'not provided'}`);
-      console.log(`[fluidService] Local configured tenantId: ${azureConfig.tenantId}`);
+      log('fluidService', 'debug', `Server provided tenantId: ${tokenTenantId || 'not provided'}`);
+      log('fluidService', 'debug', `Local configured tenantId: ${azureConfig.tenantId}`);
 
       // サーバーから受け取ったテナントIDがある場合は、それを使用する
       if (tokenTenantId) {
         azureConfig.tenantId = tokenTenantId;
       }
 
-      console.log(`[fluidService] Using Azure Fluid Relay with token for user: ${fluidToken.user.name} and tenantId: ${azureConfig.tenantId}`);
+      log('fluidService', 'info', `Using Azure Fluid Relay with token for user: ${fluidToken.user.name} and tenantId: ${azureConfig.tenantId}`);
 
       // コンテナID制限のログ出力
       if (fluidToken.containerId) {
-        console.log(`[fluidService] Token is scoped to container: ${fluidToken.containerId}`);
+        log('fluidService', 'debug', `Token is scoped to container: ${fluidToken.containerId}`);
       }
 
       return {
@@ -104,13 +105,13 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
         }
       };
     } else {
-      console.warn('[fluidService] No Fluid token available for Azure mode, fallback to insecure provider');
+      log('fluidService', 'warn', 'No Fluid token available for Azure mode, fallback to insecure provider');
     }
   }
 
   // Tinyliciousモードまたはトークンが無い場合はInsecureTokenProviderを使用
   const userName = userId ? `User-${userId}` : 'Anonymous';
-  console.log(`[fluidService] Using InsecureTokenProvider for user: ${userName}`);
+  log('fluidService', 'info', `Using InsecureTokenProvider for user: ${userName}`);
   return new InsecureTokenProvider(
     useTinylicious ? "tinylicious" : azureConfig.tenantId,
     { id: userId || 'anonymous' }
@@ -149,7 +150,7 @@ export async function getFluidClient(userId?: string, containerId?: string):
     // TokenProvider設定 - コンテナIDが指定されている場合はそれも渡す
     tokenProvider = await getTokenProvider(userId, containerId);
   } catch (error) {
-    console.error(`[fluidService] Failed to getTokenProvider. retry without containerId.  ${clientKey.type}:${clientKey.id}:`, error);
+    log('fluidService', 'error', `Failed to getTokenProvider. retry without containerId. ${clientKey.type}:${clientKey.id}:`, error);
     containerId = undefined; // コンテナIDをクリアして再試行
     tokenProvider = await getTokenProvider(userId);
   }
@@ -168,7 +169,7 @@ export async function getFluidClient(userId?: string, containerId?: string):
 
   try {
     // 新しいAzure Clientを作成して登録
-    console.log(`[fluidService] Creating new Fluid client for ${clientKey.type}:${clientKey.id}`);
+    log('fluidService', 'info', `Creating new Fluid client for ${clientKey.type}:${clientKey.id}`);
     const client = new AzureClient(clientProps);
 
     // コンテナIDがある場合はコンテナをロード、なければ新規作成
@@ -179,14 +180,14 @@ export async function getFluidClient(userId?: string, containerId?: string):
 
     if (containerId) {
       // 既存のコンテナに接続
-      console.log(`[fluidService] Loading existing container: ${containerId}`);
+      log('fluidService', 'info', `Loading existing container: ${containerId}`);
       const getResponse = await client.getContainer(containerId, containerSchema, "2");
       container = getResponse.container;
       services = getResponse.services;
       appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
 
       if (appData.compatibility.canInitialize) {
-        console.info("something wrong");
+        log('fluidService', 'warn', "Something wrong with the container, initializing new project");
         appData.initialize(Project.createInstance("新規プロジェクト"));
       }
       project = appData.root as Project;
@@ -200,7 +201,7 @@ export async function getFluidClient(userId?: string, containerId?: string):
     clientRegistry.set(clientKey, result as any);
     return result;
   } catch (error) {
-    console.error(`[fluidService] Failed to create Fluid client for ${clientKey.type}:${clientKey.id}:`, error);
+    log('fluidService', 'error', `Failed to create Fluid client for ${clientKey.type}:${clientKey.id}:`, error);
     throw error;
   }
 }
@@ -210,7 +211,7 @@ export function resetFluidClient(containerId?: string, userId?: string): void {
   if (!containerId && !userId) {
     // 全クライアントをリセット
     clientRegistry.clear();
-    console.debug('[fluidService] Reset all AzureClients');
+    log('fluidService', 'debug', 'Reset all AzureClients');
     return;
   }
 
@@ -219,9 +220,9 @@ export function resetFluidClient(containerId?: string, userId?: string): void {
 
   if (clientRegistry.has(clientKey)) {
     clientRegistry.delete(clientKey);
-    console.debug(`[fluidService] Reset AzureClient for ${clientKey.type}:${clientKey.id}`);
+    log('fluidService', 'debug', `Reset AzureClient for ${clientKey.type}:${clientKey.id}`);
   } else {
-    console.debug(`[fluidService] No AzureClient found for ${clientKey.type}:${clientKey.id}`);
+    log('fluidService', 'debug', `No AzureClient found for ${clientKey.type}:${clientKey.id}`);
   }
 }
 
@@ -231,7 +232,7 @@ export function resetFluidClient(containerId?: string, userId?: string): void {
  * @returns ユーザー向けエラーメッセージとステータスコード
  */
 export function handleConnectionError(error: any): { message: string; statusCode?: number } {
-  console.error('[fluidService] Connection error:', error);
+  log('fluidService', 'error', 'Connection error:', error);
 
   // エラーメッセージの初期値
   let message = 'Azure Fluid Relayへの接続中にエラーが発生しました';
@@ -291,12 +292,12 @@ export function setupConnectionListeners(
   }
 
   const connectedListener = () => {
-    console.log('[fluidService] Connected to Fluid Relay service');
+    log('fluidService', 'info', 'Connected to Fluid Relay service');
     if (onConnected) onConnected();
   };
 
   const disconnectedListener = () => {
-    console.log('[fluidService] Disconnected from Fluid Relay service');
+    log('fluidService', 'info', 'Disconnected from Fluid Relay service');
     if (onDisconnected) onDisconnected();
   };
 

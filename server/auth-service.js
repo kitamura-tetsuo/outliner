@@ -19,6 +19,37 @@ const {
   refreshServerLogStream
 } = require('./utils/logger');
 
+const bodyParser = require('body-parser');
+
+// Set up periodic log rotation (every 24 hours)
+const LOG_ROTATION_INTERVAL = process.env.LOG_ROTATION_INTERVAL || 24 * 60 * 60 * 1000; // Default: 24 hours
+const periodicLogRotation = async () => {
+  try {
+    serverLogger.info('Performing scheduled periodic log rotation');
+    const clientRotated = await rotateClientLogs(2);
+    const serverRotated = await rotateServerLogs(2);
+
+    if (clientRotated) {
+      refreshClientLogStream();
+    }
+
+    if (serverRotated) {
+      refreshServerLogStream();
+    }
+
+    serverLogger.info('Periodic log rotation completed', {
+      clientRotated,
+      serverRotated,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    serverLogger.error('Error during periodic log rotation:', error);
+  }
+};
+
+// Start the periodic log rotation
+const logRotationTimer = setInterval(periodicLogRotation, LOG_ROTATION_INTERVAL);
+
 // サービスアカウントJSONファイルのパス
 const serviceAccountPath = path.join(__dirname, 'firebase-adminsdk.json');
 
@@ -76,12 +107,13 @@ try {
 const app = express();
 // CORS設定を強化
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:7070', // 明示的にクライアントのURLを許可
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim()) : ['http://192.168.50.16:7070'], // カンマ区切りで複数オリジンをサポート
   methods: ['GET', 'POST', 'OPTIONS'],  // OPTIONSメソッドを追加(プリフライトリクエスト対応)
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'] // 許可するヘッダーを明示
 }));
 app.use(express.json());
+app.use(bodyParser.json());
 
 // プリフライトリクエスト用のルート
 app.options('*', cors());
@@ -412,6 +444,30 @@ if (process.env.NODE_ENV !== 'production') {
     }
   });
 }
+
+// テストユーザー作成エンドポイント
+app.post('/api/create-test-user', async (req, res) => {
+  const { emulatorHost, emulatorPort, email, password, displayName } = req.body;
+
+  if (!emulatorHost || !emulatorPort || !email || !password || !displayName) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const auth = admin.auth();
+    const userRecord = await auth.createUser({
+      email,
+      password,
+      displayName,
+    });
+
+    console.log(`Successfully created test user: ${userRecord.uid}`);
+    res.status(200).json({ uid: userRecord.uid });
+  } catch (error) {
+    console.error('Error creating test user:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Azure Fluid Relay用トークン生成関数
 function generateAzureFluidToken(user, containerId = undefined) {

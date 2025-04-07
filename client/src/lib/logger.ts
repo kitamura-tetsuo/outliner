@@ -11,9 +11,25 @@ const baseLogger = pino({
     level: import.meta.env.DEV ? 'debug' : 'info', // 開発環境では詳細なログを出力
     browser: {
         asObject: true, // ログをオブジェクトとして扱う
+        write: {
+            // Pino のデフォルトコンソール出力を無効化（カスタム出力のみを使用）
+            info: () => { },
+            debug: () => { },
+            error: () => { },
+            fatal: () => { },
+            warn: () => { },
+            trace: () => { },
+            log: () => { },
+            silent: () => { }
+        },
         transmit: {
             level: 'info', // このレベル以上のログをサーバーに送信
             send: (level: string, logEvent: any) => {
+                // デバッグ用: 送信されるログデータを確認
+                if (import.meta.env.DEV) {
+                    // console.debug('ログ送信:', { level, logEvent });
+                }
+
                 // ログをサーバーに送信する処理
                 fetch(`${API_URL}/api/log`, {
                     method: 'POST',
@@ -23,15 +39,16 @@ const baseLogger = pino({
                         log: logEvent,
                         timestamp: new Date().toISOString(),
                         userAgent: navigator.userAgent
-                    })
+                    }),
+                    // エラー発生時でもリクエストを中断しない
+                    credentials: 'omit',
+                    mode: 'cors'
                 }).catch(err => {
-                    // 送信エラー時の処理（必要に応じて）
+                    // 送信エラー時の処理
                     console.error('ログ送信エラー:', err);
                 });
             }
-        },
-        // コンソールには出力しない設定
-        write: () => { }
+        }
     }
 });
 
@@ -44,10 +61,9 @@ interface CallSite {
 }
 
 /**
- * 呼び出し元の情報（ファイル名、行番号）を取得するヘルパー関数
- * ロガーラッパーを経由した場合でも正確な呼び出し元を特定する
+ * 呼び出し元の情報（ファイル名のみ）を取得するシンプル関数
  */
-function getCallerInfo(): { file: string; line: number } {
+function getCallerFile(): string {
     const originalPrepareStackTrace = Error.prepareStackTrace;
     try {
         const err = new Error();
@@ -55,42 +71,35 @@ function getCallerInfo(): { file: string; line: number } {
         Error.prepareStackTrace = (_, stack: CallSite[]) => stack;
         const stack = err.stack as unknown as CallSite[];
 
-        // スタックトレースからロガー関連以外の最初の呼び出し元を見つける
-        // 少なくともこれらの深さはスキップする必要がある:
-        // 0: getCallerInfo 自身
-        // 1: ラッパー関数 (enhancedLogger のログメソッド)
-        // 2: getLogger が返した Proxy または child logger
-
-        // ロガーに関連するファイルパス
+        // ロガーに関連するファイルパスとメソッド名
         const loggerPaths = ['logger.ts', '/lib/logger'];
+        const loggerMethods = ['getLogger', 'log', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'];
 
         // ロガー以外の最初の呼び出し元を探す
-        let callerIndex = 0;
         for (let i = 0; i < stack.length; i++) {
             const fileName = stack[i].getFileName() || '';
+            const functionName = stack[i].getFunctionName() || '';
 
-            // ロガーに関連しないファイルを見つけたらそれが実際の呼び出し元
             const isLoggerFile = loggerPaths.some(path => fileName.includes(path));
-            if (!isLoggerFile) {
-                callerIndex = i;
-                break;
+            const isLoggerMethod = loggerMethods.some(method => functionName.includes(method));
+
+            if (!isLoggerFile && !isLoggerMethod) {
+                // ファイルパスからファイル名だけを抽出
+                const parts = fileName.split('/');
+                let file = parts[parts.length - 1] || 'unknown';
+
+                // クエリパラメータ（?t=...など）を削除
+                if (file.includes('?')) {
+                    file = file.split('?')[0];
+                }
+
+                return file;
             }
         }
 
-        // 呼び出し元情報を取得
-        if (callerIndex < stack.length) {
-            const caller = stack[callerIndex];
-            const fileName = caller.getFileName() || 'unknown';
-            // ファイルパスからファイル名だけを抽出
-            const parts = fileName.split('/');
-            const file = parts[parts.length - 1];
-            const line = caller.getLineNumber() || 0;
-            return { file, line };
-        }
-
-        return { file: 'unknown', line: 0 };
+        return 'unknown';
     } catch (error) {
-        return { file: 'unknown', line: 0 };
+        return 'unknown';
     } finally {
         // 元の prepareStackTrace を復元
         Error.prepareStackTrace = originalPrepareStackTrace;
@@ -111,14 +120,14 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
         const originalMethod = logger[level].bind(logger);
         enhancedLogger[level] = (...args: any[]) => {
             // ログ呼び出し時に位置情報を取得
-            const { file, line } = getCallerInfo();
+            const file = getCallerFile();
 
             // 引数の処理: 最初の引数がオブジェクトなら位置情報を追加
             if (args.length > 0 && typeof args[0] === 'object' && args[0] !== null) {
-                args[0] = { file, line, ...args[0] };
+                args[0] = { file, ...args[0] };
             } else {
                 // オブジェクトでない場合は先頭に位置情報を追加
-                args.unshift({ file, line });
+                args.unshift({ file });
             }
 
             // 元のログメソッドを呼び出し
@@ -164,12 +173,13 @@ const consoleStyles = {
  * 呼び出し元のファイル名と行番号を child logger のコンテキストに付加して返す
  * コンソールにも同時に出力したい場合は enableConsole を true に設定
  */
-export function getLogger(componentName?: string, enableConsole: boolean = false): pino.Logger {
-    const { file, line } = getCallerInfo();
+export function getLogger(componentName?: string, enableConsole: boolean = true): pino.Logger {
+    const file = getCallerFile();
     const module = componentName || file;
+    const isCustomModule = componentName !== undefined && componentName !== file;
 
     // 基本のロガー
-    const childLogger = logger.child({ module, line });
+    const childLogger = logger.child({ module });
 
     // コンソール出力が有効な場合、コンソールにも出力する拡張ロガーを作成
     if (enableConsole && useConsoleAPI) {
@@ -186,7 +196,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = false
 
                         try {
                             // ファイル情報とモジュール名を整形
-                            const sourceInfo = `${file}:${line}`;
+                            const sourceInfo = `${file}`;
                             const levelUpperCase = prop.toUpperCase();
 
                             // 最初の引数がオブジェクトの場合とそうでない場合で処理を分ける
@@ -194,34 +204,54 @@ export function getLogger(componentName?: string, enableConsole: boolean = false
                                 // オブジェクトデータ
                                 const objData = { ...args[0] };
                                 delete objData.file;  // すでに別途表示するので削除
-                                delete objData.line;  // すでに別途表示するので削除
                                 delete objData.module; // すでに別途表示するので削除
 
                                 // メッセージ部分
                                 const messages = args.slice(1);
 
-                                // スタイル付きのログを出力
-                                console[consoleMethod as keyof Console](
-                                    `%c[${sourceInfo}]%c [${module}]%c [${levelUpperCase}]:`,
-                                    consoleStyles.fileInfo,
-                                    consoleStyles.moduleName,
-                                    consoleStyles.levels[prop as keyof typeof consoleStyles.levels],
-                                    ...(messages.length > 0 ? messages : []),
-                                    objData
-                                );
+                                // スタイル付きのログを出力 - カスタムモジュール名がある場合のみそれを表示
+                                if (isCustomModule) {
+                                    console[consoleMethod as keyof Console](
+                                        `%c[${sourceInfo}]%c [${module}]%c [${levelUpperCase}]:`,
+                                        consoleStyles.fileInfo,
+                                        consoleStyles.moduleName,
+                                        consoleStyles.levels[prop as keyof typeof consoleStyles.levels],
+                                        ...(messages.length > 0 ? messages : []),
+                                        objData
+                                    );
+                                } else {
+                                    // モジュール名がファイル名と同じ場合は一つだけ表示
+                                    console[consoleMethod as keyof Console](
+                                        `%c[${sourceInfo}]%c [${levelUpperCase}]:`,
+                                        consoleStyles.fileInfo,
+                                        consoleStyles.levels[prop as keyof typeof consoleStyles.levels],
+                                        ...(messages.length > 0 ? messages : []),
+                                        objData
+                                    );
+                                }
                             } else {
                                 // 通常のメッセージ（オブジェクトなし）
-                                console[consoleMethod as keyof Console](
-                                    `%c[${sourceInfo}]%c [${module}]%c [${levelUpperCase}]:`,
-                                    consoleStyles.fileInfo,
-                                    consoleStyles.moduleName,
-                                    consoleStyles.levels[prop as keyof typeof consoleStyles.levels],
-                                    ...args
-                                );
+                                if (isCustomModule) {
+                                    console[consoleMethod as keyof Console](
+                                        `%c[${sourceInfo}]%c [${module}]%c [${levelUpperCase}]:`,
+                                        consoleStyles.fileInfo,
+                                        consoleStyles.moduleName,
+                                        consoleStyles.levels[prop as keyof typeof consoleStyles.levels],
+                                        ...args
+                                    );
+                                } else {
+                                    // モジュール名がファイル名と同じ場合は一つだけ表示
+                                    console[consoleMethod as keyof Console](
+                                        `%c[${sourceInfo}]%c [${levelUpperCase}]:`,
+                                        consoleStyles.fileInfo,
+                                        consoleStyles.levels[prop as keyof typeof consoleStyles.levels],
+                                        ...args
+                                    );
+                                }
                             }
                         } catch (e) {
                             // スタイル適用に失敗した場合は通常のフォーマットで表示
-                            console[consoleMethod as keyof Console](`[${file}:${line}] [${module}] [${prop.toUpperCase()}]:`, ...args);
+                            console[consoleMethod as keyof Console](`[${file}] [${prop.toUpperCase()}]:`, ...args);
                         }
                     };
                 }
@@ -252,17 +282,108 @@ export function log(componentName: string, level: 'trace' | 'debug' | 'info' | '
         fatal: '#d9534f'
     };
 
+    // 呼び出し元情報を取得（デバッグ用）
+    const file = getCallerFile();
+
     // コンソールへ直接出力
-    console[consoleMethod as keyof Console](
-        `%c[${componentName}]%c [${level.toUpperCase()}]:`,
-        `color: #5cb85c; font-weight: bold`,
-        `color: ${levelColors[level]}; font-weight: bold`,
-        ...args
-    );
+    // componentName がファイル名と同じで重複している場合は、ファイル名の情報は含めない
+    if (componentName === file.replace(/\.[jt]s$/, '')) {
+        console[consoleMethod as keyof Console](
+            `%c[${componentName}]%c [${level.toUpperCase()}]:`,
+            `color: #6699cc; font-weight: bold`,
+            `color: ${levelColors[level]}; font-weight: bold`,
+            ...args
+        );
+    } else {
+        console[consoleMethod as keyof Console](
+            `%c[${componentName}]%c [${level.toUpperCase()}]:`,
+            `color: #5cb85c; font-weight: bold`,
+            `color: ${levelColors[level]}; font-weight: bold`,
+            ...args
+        );
+    }
 
     // 2. Pinoロガーを使ってサーバーに送信（ログファイルに記録）
     const logger = getLogger(componentName, false); // コンソール出力せずサーバーに送信
     logger[level](...args);
 }
 
-export { logger };
+/**
+ * エラーの詳細な情報を抽出する
+ */
+function extractErrorDetails(error: Error | unknown): { message: string; stack?: string; name?: string;[key: string]: any } {
+    if (error instanceof Error) {
+        return {
+            message: error.message,
+            name: error.name,
+            stack: error.stack,
+            ...(error as any) // その他のカスタムプロパティも含める
+        };
+    } else if (typeof error === 'string') {
+        return { message: error };
+    } else if (error && typeof error === 'object') {
+        return { ...error as object, message: String(error) };
+    }
+    return { message: String(error) };
+}
+
+/**
+ * グローバルなエラーハンドラーを初期化する
+ * 未捕捉の例外をログに記録する
+ */
+function setupGlobalErrorHandlers(): void {
+    if (typeof window === 'undefined') return; // サーバーサイドでは実行しない
+
+    const uncaughtLogger = getLogger('UncaughtError', false);
+
+    // 未捕捉の例外をログに記録
+    window.onerror = (message, source, lineno, colno, error) => {
+        const errorInfo = {
+            type: 'uncaught_exception',
+            message: String(message),
+            source: source || '',
+            line: lineno || 0,
+            column: colno || 0,
+            ...extractErrorDetails(error || message)
+        };
+
+        // ロガーとコンソールの両方に出力
+        uncaughtLogger.error(errorInfo);
+        console.error(
+            `%c[UncaughtError]%c [ERROR]: Uncaught Exception`,
+            `color: #6699cc; font-weight: bold`,
+            `color: #d9534f; font-weight: bold`,
+            errorInfo
+        );
+
+        // デフォルトのエラーハンドリングは継続する（falseを返さない）
+        return false;
+    };
+
+    // 未処理のPromise拒否をログに記録
+    window.onunhandledrejection = (event: PromiseRejectionEvent) => {
+        const reason = event.reason;
+        const errorInfo = {
+            type: 'unhandled_rejection',
+            ...extractErrorDetails(reason)
+        };
+
+        // ロガーとコンソールの両方に出力
+        uncaughtLogger.error(errorInfo);
+        console.error(
+            `%c[UncaughtError]%c [ERROR]: Unhandled Promise Rejection`,
+            `color: #6699cc; font-weight: bold`,
+            `color: #d9534f; font-weight: bold`,
+            errorInfo
+        );
+    };
+}
+
+// ブラウザ環境ならグローバルエラーハンドラーを初期化
+if (typeof window !== 'undefined') {
+    setupGlobalErrorHandlers();
+}
+
+// 最終的にエクスポートするもののみを列挙（重複を避ける）
+export { logger, setupGlobalErrorHandlers };
+// getLoggerとlogはすでに直接exportされているので、ここでは再エクスポートしない

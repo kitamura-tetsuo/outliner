@@ -2,7 +2,7 @@
 	import { i18n } from '$lib/i18n';
 	import { ParaglideJS } from '@inlang/paraglide-sveltekit';
 	import '../app.css';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import { getEnv } from '$lib/env';
 	import { getLogger } from '$lib/logger';
@@ -18,22 +18,76 @@
 	 */
 	async function rotateLogFiles() {
 		try {
-			logger.info('アプリケーション起動時のログローテーションを実行します');
-			const response = await fetch(`${API_URL}/api/rotate-logs`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				}
-			});
+			logger.info('アプリケーション終了時のログローテーションを実行します');
 
-			if (response.ok) {
-				const result = await response.json();
-				logger.info('ログローテーション完了', result);
+			// 1. まず通常のFetch APIで試す
+			try {
+				const response = await fetch(`${API_URL}/api/rotate-logs`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({})
+				});
+
+				if (response.ok) {
+					const result = await response.json();
+					logger.info('ログローテーション完了', result);
+					return;
+				}
+			} catch (fetchError) {
+				// fetch失敗時はsendBeaconを試す - エラーは記録しない
+				logger.debug('通常のfetch呼び出しに失敗、sendBeaconを試行します');
+			}
+
+			// 2. フォールバックとしてsendBeaconを使用
+			const blob = new Blob([JSON.stringify({})], { type: 'application/json' });
+			const success = navigator.sendBeacon(`${API_URL}/api/rotate-logs`, blob);
+
+			if (success) {
+				logger.info('ログローテーション実行をスケジュールしました');
 			} else {
-				logger.warn('ログローテーション失敗', { status: response.status });
+				logger.warn('ログローテーション送信失敗');
+
+				// 3. さらに再試行としてケーキング用のクロージングリクエストを試す
+				try {
+					const img = new Image();
+					img.src = `${API_URL}/api/rotate-logs?t=${Date.now()}`;
+				} catch (imgError) {
+					// 最後の試行なのでエラーは無視
+				}
 			}
 		} catch (error) {
 			logger.error('ログローテーション中にエラーが発生しました', { error });
+		}
+	}
+
+	/**
+	 * 定期的にログローテーションを実行する関数（予防策）
+	 */
+	function schedulePeriodicLogRotation() {
+		// 定期的なログローテーション（12時間ごと）
+		const ROTATION_INTERVAL = 12 * 60 * 60 * 1000;
+
+		return setInterval(() => {
+			logger.info('定期的なログローテーションを実行します');
+			rotateLogFiles();
+		}, ROTATION_INTERVAL);
+	}
+
+	let rotationInterval: ReturnType<typeof setInterval> | null = null;
+
+	// ブラウザのunloadイベント用リスナー
+	function handleBeforeUnload() {
+		// ブラウザ終了時にログローテーションを実行
+		rotateLogFiles();
+	}
+
+	// 別の呼び出し方法としてvisibilitychangeイベントを使用
+	function handleVisibilityChange() {
+		if (document.visibilityState === 'hidden') {
+			// ユーザーがページを離れる際にもログローテーションを試行
+			rotateLogFiles();
 		}
 	}
 
@@ -41,8 +95,32 @@
 	onMount(() => {
 		// ブラウザ環境でのみ実行
 		if (browser) {
-			// ログローテーションを実行
-			rotateLogFiles();
+			// アプリケーション初期化のログ
+			logger.info('アプリケーションがマウントされました');
+
+			// ブラウザ終了時のイベントリスナーを登録
+			window.addEventListener('beforeunload', handleBeforeUnload);
+
+			// visibilitychangeイベントリスナーを登録（追加の保険）
+			document.addEventListener('visibilitychange', handleVisibilityChange);
+
+			// 定期的なログローテーションを設定
+			rotationInterval = schedulePeriodicLogRotation();
+		}
+	});
+
+	// コンポーネント破棄時の処理
+	onDestroy(() => {
+		// ブラウザ環境でのみ実行
+		if (browser) {
+			// イベントリスナーを削除
+			window.removeEventListener('beforeunload', handleBeforeUnload);
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+			// 定期的なログローテーションの解除
+			if (rotationInterval) {
+				clearInterval(rotationInterval);
+			}
 		}
 	});
 </script>

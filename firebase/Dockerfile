@@ -19,6 +19,10 @@ COPY .firebaserc .
 # Create data directory
 RUN mkdir -p /firebase-data
 
+# Copy initialization scripts
+COPY scripts/ /firebase/scripts/
+RUN chmod +x /firebase/scripts/init-firebase.sh
+
 # Expose ports
 # Firebase UI
 EXPOSE 4000
@@ -27,8 +31,5 @@ EXPOSE 8080
 # Authentication
 EXPOSE 9099
 
-# Start emulators
-CMD firebase emulators:start --project demo-test \
-    --only auth,firestore \
-    --import=/firebase-data \
-    --export-on-exit=/firebase-data
+# Start emulators and create test user
+CMD ["/firebase/scripts/init-firebase.sh"]

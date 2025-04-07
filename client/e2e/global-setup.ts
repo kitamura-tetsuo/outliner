@@ -1,71 +1,118 @@
-import { ChildProcess, spawn } from 'child_process';
-import fs from 'fs';
+import { chromium } from '@playwright/test';
+import { setupEnv } from './setup-env';
+import { spawn } from 'child_process';
 import path from 'path';
-import pino from 'pino';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 // ESモジュールで__dirnameを使うための設定
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ログディレクトリの作成
-// const logDir = '/logs');
-const logDir = path.join(__dirname, './logs');
-if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir, { recursive: true });
+// 環境変数のセットアップ
+setupEnv();
+
+// Tinyliciousサーバーのインスタンスを格納する変数
+let tinyliciousProcess = null;
+
+// Tinyliciousサーバーを起動する関数
+function startTinyliciousServer() {
+  const tinyliciousPort = process.env.VITE_TINYLICIOUS_PORT || '7082';
+  console.log(`Starting Tinylicious server on port ${tinyliciousPort}...`);
+
+  // プロセス起動前にログディレクトリを確認して作成
+  const logDir = path.join(__dirname, 'logs');
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+
+  // ログファイルのパス
+  const logFile = path.join(logDir, 'tinylicious-server.log');
+  const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+
+  // Tinyliciousサーバーを起動
+  const serverProcess = spawn('npx', ['tinylicious', '--port', tinyliciousPort], {
+    env: { ...process.env, PORT: tinyliciousPort },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  // 標準出力と標準エラー出力をログファイルに記録
+  serverProcess.stdout.pipe(logStream);
+  serverProcess.stderr.pipe(logStream);
+
+  // ログにタイムスタンプを追加
+  logStream.write(`\n--- Tinylicious server started at ${new Date().toISOString()} ---\n`);
+
+  // エラーハンドリング
+  serverProcess.on('error', (err) => {
+    console.error('Failed to start Tinylicious server:', err);
+    logStream.write(`Error starting server: ${err.message}\n`);
+  });
+
+  return serverProcess;
 }
 
-// pinoロガーを設定
-const logger = pino({
-  level: 'info',
-}, pino.destination(path.join(logDir, 'tinylicious-server.log')));
+async function globalSetup() {
+  console.log('Starting global setup...');
 
-// グローバル変数の型定義を追加
-declare global {
-  var __tinyliciousProcess: ChildProcess | null;
-}
+  // Tinyliciousサーバーを起動
+  try {
+    tinyliciousProcess = startTinyliciousServer();
+    // サーバーが起動するまで少し待機
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
-// Tinyliciousサーバーのポートは設定ファイルと同期
-const TINYLICIOUS_PORT = process.env.VITE_TINYLICIOUS_PORT || '7082';
+    global.__TINYLICIOUS_PROCESS__ = tinyliciousProcess;
+  } catch (err) {
+    console.error('Failed to start Tinylicious server:', err);
+  }
 
-/**
- * テスト全体の実行前に1度だけ呼び出される設定
- */
-async function globalSetup(config: any) {
-  logger.info(`Starting Tinylicious server on port ${TINYLICIOUS_PORT}`);
+  // ブラウザインスタンスを作成
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
 
-  // Tinyliciousサーバーを起動（正しく PORT 環境変数を設定）
-  const tinyliciousProcess = spawn('npx', ['tinylicious'], {
-    stdio: 'pipe',
-    shell: true,
-    env: {
-      ...process.env,
-      PORT: TINYLICIOUS_PORT  // PORTを環境変数として正しく設定
-    },
-    cwd: __dirname
-  });
+  try {
+    // Firebase Emulatorの起動確認（オプション）
+    // エミュレータが既に起動済みであることを前提としています
+    console.log('Testing Firebase Emulator connection...');
+    if (process.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+      const emulatorHost = process.env.VITE_FIRESTORE_EMULATOR_HOST || 'firebase-emulator';
+      const emulatorUiPort = process.env.VITE_FIREBASE_EMULATOR_UI_PORT || '4000';
 
-  // 出力をログに記録
-  tinyliciousProcess.stdout?.on('data', (data) => {
-    logger.info(`Tinylicious: ${data.toString().trim()}`);
-  });
+      try {
+        // Emulator UI が応答するか確認
+        await page.goto(`http://${emulatorHost}:${emulatorUiPort}`, { timeout: 5000 });
+        console.log('Firebase Emulator UI is accessible');
+      } catch (err) {
+        console.warn(`Firebase Emulator UI check failed: ${err.message}`);
+        console.warn('Tests may still work if emulator is running but UI is not accessible');
+      }
+    }
 
-  tinyliciousProcess.stderr?.on('data', (data) => {
-    logger.error(`Tinylicious error: ${data.toString().trim()}`);
-  });
+    // Tinylicious サーバーの起動確認
+    console.log('Testing Tinylicious server connection...');
 
-  // サーバーが起動するまで待機
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  logger.info('Tinylicious server startup wait completed');
+    // 環境変数からTinyliciousエンドポイントを取得
+    const tinyliciousHost = process.env.VITE_TINYLICIOUS_HOST || 'localhost';
+    const tinyliciousPort = process.env.VITE_TINYLICIOUS_PORT || '7082';
+    const tinyliciousEndpoint = `http://${tinyliciousHost}:${tinyliciousPort}`;
 
-  // サーバーが起動しているか確認
-  logger.info(`Checking if Tinylicious server is running on port ${TINYLICIOUS_PORT}`);
-  
-  // grpcの異常終了を防ぐために環境変数を設定
-  process.env.NODE_OPTIONS = '--no-experimental-fetch';
-  
-  // グローバル変数に保存
-  global.__tinyliciousProcess = tinyliciousProcess;
+    try {
+      // Tinylicious が応答するか確認
+      await page.goto(tinyliciousEndpoint, { timeout: 5000 });
+      console.log('Tinylicious server is accessible');
+    } catch (err) {
+      console.warn(`Tinylicious server check failed: ${err.message}`);
+      console.warn('Tests may fail if Tinylicious server is not running');
+    }
+
+    // localStorage設定はスキップ - SecurityErrorの原因になるため
+    console.log('Skipping localStorage initialization to avoid SecurityError');
+  } catch (err) {
+    console.error('Global setup failed:', err);
+  } finally {
+    await browser.close();
+    console.log('Global setup completed');
+  }
 }
 
 export default globalSetup;
