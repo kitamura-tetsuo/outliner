@@ -25,6 +25,7 @@ USER node
 
 # Install Playwright
 RUN npx playwright install --with-deps
+RUN npm install -g dotenv-cli
 
 # Any additional customizations can go here
 

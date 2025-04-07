@@ -14,6 +14,7 @@ services:
       - "7071:7071"
       - "7072:7072"
       - "7080:7080"
+      - "7081:7081"
       - "7082:7082"
     command: sleep infinity
     working_dir: /workspace

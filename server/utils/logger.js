@@ -15,7 +15,10 @@ const clientLogDir = path.join('/workspace/client/logs');
 
 // ログファイルのパス
 const serverLogPath = path.join(serverLogDir, 'auth-service.log');
-const clientLogPath = path.join(clientLogDir, 'browser.log');
+// テスト環境かどうかをチェック
+const isTestEnv = process.env.NODE_ENV === 'test';
+const clientLogFileName = isTestEnv ? 'test-browser.log' : 'browser.log';
+const clientLogPath = path.join(clientLogDir, clientLogFileName);
 
 // ログディレクトリを確認・作成
 function ensureLogDirectories() {
@@ -65,7 +68,7 @@ let logger = pino(
         timestamp: pino.stdTimeFunctions.isoTime
     },
     pino.multistream([
-        { stream: serverLogStream }, // サーバーログをサーバーログディレクトリに保存
+        //        { stream: serverLogStream }, // サーバーログをサーバーログディレクトリに保存
         { stream: prettyStream }    // 整形ログをコンソールに表示
     ])
 );

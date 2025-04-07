@@ -114,6 +114,25 @@
       "restart": true
     },
     {
+      "type": "node",
+      "request": "launch",
+      "name": "For Test Debug Server",
+      "runtimeExecutable": "bash",
+      "localRoot": "${workspaceFolder}/server",
+      "runtimeArgs": [
+        "-c",
+        "cd ${workspaceFolder}/server && npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7081 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
+      ],
+      "env": {
+        "PORT": "7081"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "restart": true
+    },
+    {
       "name": "Launch Tinylicious",
       "type": "node",
       "request": "launch",
@@ -135,11 +154,11 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "mkdir -p /workspace/server/logs && npx dotenv -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7080 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
+        "npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7080 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
       ],
       "localRoot": "${workspaceFolder}/client",
       "env": {
-        "PORT": "7070"
+        "PORT": "7080"
       },
       "console": "integratedTerminal",
       "skipFiles": [
@@ -174,14 +193,25 @@
   ],
   "compounds": [
     {
-      "name": "Full-Stack: Server + Client",
+      "name": "Servers",
       "configurations": [
         "Debug Server",
         "Launch Tinylicious",
         "Debug SvelteKit Server",
         "For Test SvelteKit Server",
+        "For Test Debug Server",
         "For Test Launch Tinylicious",
         // "Launch Chrome against localhost"
+      ],
+      "stopAll": true,
+      "preLaunchTask": "Kill Tinylicious Process"
+    },
+    {
+      "name": "Test Servers",
+      "configurations": [
+        "For Test SvelteKit Server",
+        "For Test Debug Server",
+        "For Test Launch Tinylicious",
       ],
       "stopAll": true,
       "preLaunchTask": "Kill Tinylicious Process"
