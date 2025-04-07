@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node auth-service.js",
     "dev": "nodemon auth-service.js",
+    "temp": "nodemon server.js",
     "create-test-user": "node utils/create-test-user.js"
   },
   "dependencies": {

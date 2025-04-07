@@ -53,14 +53,15 @@ let clientLogger = pino(
     },
     pino.multistream([
         { stream: clientLogStream }, // 生ログをクライアントログディレクトリに保存
-        { stream: prettyStream }    // 整形ログをコンソールに表示（必要な場合）
+        // { stream: prettyStream }    // 整形ログをコンソールに表示（必要な場合）
     ])
 );
 
 // サーバー自身のロガー設定
 let logger = pino(
     {
-        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        level: 'debug',
+        // level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
         timestamp: pino.stdTimeFunctions.isoTime
     },
     pino.multistream([

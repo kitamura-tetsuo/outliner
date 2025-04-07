@@ -18,10 +18,6 @@ services:
     command: sleep infinity
     working_dir: /workspace
     user: node
-    environment:
-      - FIREBASE_EMULATOR_HOST=firebase-emulator
-      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8080
-      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulator:9099
     networks:
       - firebase-network
 

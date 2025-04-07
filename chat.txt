@@ -41,3 +41,12 @@ http://192.168.50.16:7080/
 API serverのログがここにあるので、アクセス後にこちらを確認して。
 /workspace/server/logs/auth-service.log
 
+開発用のサーバー
+http://192.168.50.16:7070/
+へアクセスして、正常に動作していることを確認して。
+クライアントのログがここにあるので、アクセス後にこちらを確認して。
+/workspace/client/logs/browser.log
+開発用のSveltKit serverのログがここにあるので、アクセス後にこちらを確認して。
+/workspace/server/logs/svelte-kit.log
+API serverのログがここにあるので、アクセス後にこちらを確認して。
+/workspace/server/logs/auth-service-tee.log

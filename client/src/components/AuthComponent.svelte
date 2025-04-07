@@ -12,6 +12,14 @@
 	let currentUser: IUser | null = null;
 	let loginError = '';
 
+	// 開発環境用のメール/パスワード認証フォーム
+	let showDevLogin = false;
+	let email = 'test@example.com';
+	let password = 'password';
+
+	// 環境チェック
+	const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+
 	// リスナー解除用の関数
 	let unsubscribe: (() => void) | null = null;
 
@@ -75,6 +83,19 @@
 		}
 	}
 
+	async function handleDevLogin() {
+		try {
+			isLoading = true;
+			error = '';
+			loginError = '';
+			await userManager.loginWithEmailPassword(email, password);
+		} catch (err: unknown) {
+			console.error('Development login error:', err);
+			loginError = (err as Error).message || '開発用ログインでエラーが発生しました';
+			isLoading = false;
+		}
+	}
+
 	async function handleLogout() {
 		try {
 			isLoading = true;
@@ -85,6 +106,10 @@
 			error = (err as Error).message || 'ログアウト中にエラーが発生しました';
 			isLoading = false;
 		}
+	}
+
+	function toggleDevLogin() {
+		showDevLogin = !showDevLogin;
 	}
 </script>
 
@@ -110,6 +135,7 @@
 			<button on:click={handleLogout} class="logout-btn">ログアウト</button>
 		</div>
 	{:else}
+		<!-- Google認証ボタン -->
 		<button on:click={handleLogin} class="auth-button google-btn" disabled={isLoading}>
 			<span class="google-icon">
 				<svg viewBox="0 0 24 24" width="18" height="18">
@@ -133,6 +159,29 @@
 			</span>
 			Googleでログイン
 		</button>
+
+		{#if isDevelopment}
+			<!-- 開発環境用ログイントグルボタン -->
+			<button on:click={toggleDevLogin} class="dev-toggle">
+				{showDevLogin ? '開発者ログインを隠す' : '開発者ログイン'}
+			</button>
+
+			{#if showDevLogin}
+				<div class="dev-login-form">
+					<h3>開発環境用ログイン</h3>
+					<div class="form-group">
+						<label for="email">メールアドレス</label>
+						<input type="email" id="email" bind:value={email} placeholder="test@example.com" />
+					</div>
+					<div class="form-group">
+						<label for="password">パスワード</label>
+						<input type="password" id="password" bind:value={password} placeholder="password" />
+					</div>
+					<button on:click={handleDevLogin} class="dev-login-btn"> 開発環境でログイン </button>
+				</div>
+			{/if}
+		{/if}
+
 		{#if loginError}
 			<p class="error-message">{loginError}</p>
 		{/if}
@@ -242,5 +291,66 @@
 
 	.logout-btn:hover {
 		background-color: #ffebee;
+	}
+
+	/* 開発環境用ログインスタイル */
+	.dev-toggle {
+		background-color: #f0f0f0;
+		color: #666;
+		border: none;
+		border-radius: 4px;
+		padding: 0.5rem;
+		font-size: 0.8rem;
+		margin-top: 0.5rem;
+		cursor: pointer;
+		width: 100%;
+	}
+
+	.dev-login-form {
+		background-color: #f5f5f5;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		padding: 1rem;
+		margin-top: 0.5rem;
+	}
+
+	.dev-login-form h3 {
+		margin-top: 0;
+		font-size: 1rem;
+		color: #444;
+	}
+
+	.form-group {
+		margin-bottom: 0.75rem;
+	}
+
+	.form-group label {
+		display: block;
+		font-size: 0.85rem;
+		margin-bottom: 0.25rem;
+		color: #555;
+	}
+
+	.form-group input {
+		width: 100%;
+		padding: 0.5rem;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		font-size: 0.9rem;
+	}
+
+	.dev-login-btn {
+		background-color: #2196f3;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		padding: 0.5rem 0.75rem;
+		font-size: 0.9rem;
+		cursor: pointer;
+		width: 100%;
+	}
+
+	.dev-login-btn:hover {
+		background-color: #1976d2;
 	}
 </style>

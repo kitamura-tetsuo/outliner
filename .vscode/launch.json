@@ -98,14 +98,11 @@
       "type": "node",
       "request": "launch",
       "name": "Debug Server",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "bash",
       "localRoot": "${workspaceFolder}/server",
       "runtimeArgs": [
-        "run",
-        "dev",
-        "--",
-        "--host",
-        "0.0.0.0"
+        "-c",
+        "npm run dev -- --host 0.0.0.0 2>&1 | tee /workspace/server/logs/auth-service-tee.log"
       ],
       "env": {
         "PORT": "7071"

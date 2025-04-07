@@ -7,7 +7,8 @@ import {
   signOut,
   signInWithEmailAndPassword,
   connectAuthEmulator,
-  type User as FirebaseUser
+  type User as FirebaseUser,
+  createUserWithEmailAndPassword
 } from 'firebase/auth';
 import { getEnv } from '../lib/env';
 import { getLogger, log } from '../lib/logger'; // log関数をインポート
@@ -52,10 +53,11 @@ export class UserManager {
     storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "outliner-d57b0.firebasestorage.app",
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "560407608873",
     appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:560407608873:web:147817f4a93a4678606638",
-    measurementId: "G-FKSFRCT7GR"
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-FKSFRCT7GR"
   };
 
   private apiBaseUrl = getEnv('VITE_API_BASE_URL', 'http://localhost:7071').replace('localhost', '192.168.50.16');
+  private apiServerUrl = getEnv('VITE_API_SERVER_URL', 'http://localhost:7071').replace('localhost', '192.168.50.16');
   private app = initializeApp(this.firebaseConfig);
   private auth = getAuth(this.app);
 
@@ -65,6 +67,9 @@ export class UserManager {
   private isRefreshingToken = false; // トークン更新中フラグ
   private tokenRefreshPromise: Promise<IFluidToken | null> | null = null;
   private readonly TOKEN_REFRESH_TIMEOUT = 10000; // 10秒のタイムアウト
+
+  // 開発環境かどうかの判定
+  private isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development' || process.env.NODE_ENV === 'development';
 
   // シングルトンパターン
   public static getInstance(): UserManager {
@@ -496,6 +501,45 @@ export class UserManager {
     }
   }
 
+  // メールアドレスとパスワードでログイン（開発環境用）
+  public async loginWithEmailPassword(email: string, password: string): Promise<void> {
+    try {
+      logger.info(`[UserManager] Attempting email/password login for: ${email}`);
+
+      // 開発環境の場合
+      if (this.isDevelopment) {
+        try {
+          // まず通常のFirebase認証を試みる
+          await signInWithEmailAndPassword(this.auth, email, password);
+          logger.info('[UserManager] Email/password login successful via Firebase Auth');
+          return;
+        } catch (firebaseError: any) {
+          logger.warn('[UserManager] Firebase Auth login failed:', firebaseError?.message);
+
+          // ユーザーが存在しない場合は作成を試みる
+          if (firebaseError?.code === 'auth/user-not-found') {
+            try {
+              logger.info('[UserManager] User not found, attempting to create user');
+              await createUserWithEmailAndPassword(this.auth, email, password);
+              logger.info('[UserManager] New user created and logged in successfully');
+              return;
+            } catch (createError) {
+              logger.error('[UserManager] Failed to create new user:', createError);
+            }
+          }
+          // すべての方法が失敗した場合は元のエラーをスロー
+          throw firebaseError;
+        }
+      } else {
+        // 本番環境では通常のFirebase認証のみを使用
+        await signInWithEmailAndPassword(this.auth, email, password);
+      }
+    } catch (error) {
+      logger.error('[UserManager] Email/password login error:', error);
+      throw error;
+    }
+  }
+
   // ログアウト
   public async logout(): Promise<void> {
     try {
@@ -532,6 +576,11 @@ export class UserManager {
     for (const listener of this.listeners) {
       listener(authResult);
     }
+  }
+
+  // Firebaseに認証済みかどうかを確認
+  public isAuthenticated(): boolean {
+    return !!this.auth.currentUser;
   }
 
   // 現在のFluid Relayトークンを取得（なければ取得を試みる）
