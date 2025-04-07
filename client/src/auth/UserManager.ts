@@ -77,6 +77,8 @@ export class UserManager {
   private constructor() {
     logger.debug('Initializing...');
 
+    this.initAuthListener();
+
     // テスト環境の検出を強化
     const isTestEnv =
       import.meta.env.MODE === 'test' ||
@@ -125,7 +127,6 @@ export class UserManager {
         }
       }
     } else {
-      this.initAuthListener();
       this.loadSavedUser();
     }
   }
@@ -169,7 +170,6 @@ export class UserManager {
 
     // モックユーザーは使用せず、常に実際のFirebase認証を使用
     logger.info('[UserManager] Using real Firebase auth only, no mock users');
-    this.initAuthListener();
   }
 
   // 複数のエミュレータ接続設定を順番に試す
@@ -190,10 +190,7 @@ export class UserManager {
 
     logger.info(`Trying emulator connections in order: ${emulatorConfigs.map(c => `${c.host}:${c.port}`).join(', ')}`);
 
-    let lastConnectedHost = null;
-    let lastConnectedPort = null;
-    let lastConnectedAuth = null;
-    let lastSuccessfulUser = null;
+    let successful = false;
 
     for (const { host, port } of emulatorConfigs) {
       try {
@@ -213,24 +210,32 @@ export class UserManager {
           const result = await signInWithEmailAndPassword(tempAuth, 'test@example.com', 'password');
           logger.info(`Login successful via ${host}:${port}!`, { uid: result.user.uid });
 
-          lastSuccessfulUser = result.user;
-
           try {
             // 成功した接続情報で本来のauth接続を設定
             connectAuthEmulator(this.auth, `http://${host}:${port}`, { disableWarnings: true });
 
             // 本来のauthインスタンスで再ログイン
-            const finalResult = await signInWithEmailAndPassword(this.auth, 'test@example.com', 'password');
-            await this.handleUserSignedIn(finalResult.user);
+            // ここでのログインでonAuthStateChangedが呼ばれる
+            await signInWithEmailAndPassword(this.auth, 'test@example.com', 'password');
+
+            successful = true;
             return; // 成功したらループを抜ける
           } catch (reconnectError) {
             // メインの認証インスタンスの再接続に失敗した場合
-            logger.warn(`Successfully logged in with test user on ${host}:${port}, but failed to reconnect main auth instance:`, reconnectError);
+            // この警告はエラーではなく、通常の動作の一部として扱う
+            if (reconnectError.code === 'auth/emulator-config-failed') {
+              // エミュレータ設定が既に行われている場合は問題なし
+              logger.info(`Auth emulator already configured, using successful login from ${host}:${port}`);
 
-            // 一度成功したユーザー情報は保持しておく
-            lastConnectedHost = host;
-            lastConnectedPort = port;
-            lastConnectedAuth = tempAuth;
+              // 直接ログインを試みる
+              await signInWithEmailAndPassword(this.auth, 'test@example.com', 'password');
+
+              successful = true;
+              return; // 成功したとしてループを抜ける
+            } else {
+              // その他のエラーの場合は警告を記録
+              logger.info(`Successfully logged in with test user on ${host}:${port}, but failed to reconnect main auth instance:`, reconnectError);
+            }
           }
         } catch (error) {
           // エラーがFirebaseErrorかどうかを確認
@@ -262,35 +267,23 @@ export class UserManager {
                   connectAuthEmulator(this.auth, `http://${host}:${port}`, { disableWarnings: true });
 
                   // 作成したユーザーでログイン
-                  const loginResult = await signInWithEmailAndPassword(this.auth, 'test@example.com', 'password');
-                  await this.handleUserSignedIn(loginResult.user);
+                  await signInWithEmailAndPassword(this.auth, 'test@example.com', 'password');
+
+                  successful = true;
                   return; // 成功したらループを抜ける
                 } catch (loginError) {
-                  logger.warn(`Created user but failed to reconnect main auth instance:`, loginError);
-                  // 成功したホスト情報を記録
-                  lastConnectedHost = host;
-                  lastConnectedPort = port;
-                  lastConnectedAuth = tempAuth;
+                  logger.info(`Created user but failed to reconnect main auth instance:`, loginError);
                 }
               } else {
                 const errorData = await response.json();
-                logger.warn(`Failed to create test user directly: ${JSON.stringify(errorData)}`);
-
-                // 接続は成功しているので情報を記録
-                lastConnectedHost = host;
-                lastConnectedPort = port;
-                lastConnectedAuth = tempAuth;
+                logger.info(`Failed to create test user directly: ${JSON.stringify(errorData)}`);
               }
             } catch (createError) {
-              logger.warn(`Error creating test user directly:`, createError);
-              // 接続は成功しているので情報を記録
-              lastConnectedHost = host;
-              lastConnectedPort = port;
-              lastConnectedAuth = tempAuth;
+              logger.info(`Error creating test user directly:`, createError);
             }
           } else {
             // その他のエラーの場合は次の設定を試す
-            logger.warn(`Login failed with ${host}:${port}:`, error);
+            logger.info(`Login failed with ${host}:${port}:`, error);
           }
         }
       } catch (err) {
@@ -299,48 +292,34 @@ export class UserManager {
       }
     }
 
-    // 成功したユーザー情報がある場合は、それを使用する
-    if (lastSuccessfulUser) {
-      logger.info('Using last successful login user information');
-      await this.handleUserSignedIn(lastSuccessfulUser);
-      return;
-    }
-
-    // すべてのエミュレーターを試した後、最後に成功した接続先でテストユーザーの作成を再試行
-    if (lastConnectedHost && lastConnectedPort && lastConnectedAuth) {
-      logger.info(`Creating test user on last successful connection: ${lastConnectedHost}:${lastConnectedPort}`);
-
+    // すべてのエミュレーターを試した後も成功しなかった場合
+    if (!successful) {
+      // APIサーバーを通じて最後にユーザー作成を試みる
       try {
-        // API経由でユーザー作成を試みる
-        const result = await this._createTestUser(lastConnectedHost, lastConnectedPort);
+        logger.info('Attempting to create test user via API server');
+        const result = await this._createTestUser('192.168.50.16', 9099);
+
         if (result) {
+          // エミュレータの設定を試みる
           try {
-            // 本来のauthインスタンスに成功した接続情報を設定
-            connectAuthEmulator(this.auth, `http://${lastConnectedHost}:${lastConnectedPort}`, { disableWarnings: true });
-
-            // 作成したユーザーでログイン
-            const finalResult = await signInWithEmailAndPassword(this.auth, 'test@example.com', 'password');
-            await this.handleUserSignedIn(finalResult.user);
-            return;
-          } catch (loginError) {
-            logger.warn('Created user but failed to login with main auth instance:', loginError);
-
-            // 最後の手段として、うまく機能したtempAuthのユーザー情報を直接使用
-            if (lastConnectedAuth.currentUser) {
-              await this.handleUserSignedIn(lastConnectedAuth.currentUser);
-              return;
-            }
+            connectAuthEmulator(this.auth, 'http://192.168.50.16:9099', { disableWarnings: true });
+          } catch (emulatorError) {
+            logger.warn('Failed to set up emulator, but continuing with login attempt', emulatorError);
           }
-        }
-      } catch (error) {
-        logger.error('Failed to create or use test user:', error);
-      }
-    }
 
-    // すべての接続試行が失敗した場合はエラーをスロー
-    const error = new Error('Failed to connect to any Firebase emulator or authenticate test user');
-    logger.error('All Firebase emulator connection attempts failed. Authentication will not work.', error);
-    throw error;
+          // 認証を試みる
+          await signInWithEmailAndPassword(this.auth, 'test@example.com', 'password');
+          return;
+        }
+      } catch (apiError) {
+        logger.error('Failed to create test user via API:', apiError);
+      }
+
+      // それでも失敗した場合はエラーをスロー
+      const error = new Error('Failed to connect to any Firebase emulator or authenticate test user');
+      logger.error('All Firebase emulator connection attempts failed. Authentication will not work.', error);
+      throw error;
+    }
   }
 
   // テストユーザーを作成する関数

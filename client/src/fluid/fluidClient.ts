@@ -63,7 +63,7 @@ export class FluidClient {
    */
   private constructor() {
     // Set a breakpoint here to debug initialization
-    console.debug('[FluidClient] Initializing...');
+    logger.debug('Initializing...');
 
     // ユーザーマネージャーのインスタンスを取得
     this.userManager = UserManager.getInstance();
@@ -81,29 +81,29 @@ export class FluidClient {
       // ユーザーがログインしていることを確認
       const currentUser = this.userManager.getCurrentUser();
       if (!currentUser) {
-        console.info('[FluidClient] Cannot get default container ID: User not logged in. Waiting for login...');
+        logger.info('Cannot get default container ID: User not logged in. Waiting for login...');
         return null;
       }
 
       // 1. まずストアから直接取得を試みる（リアルタイム更新されている場合）
       const containerData = get(userContainer);
       if (containerData?.defaultContainerId) {
-        logger.info(`[FluidClient] Found default container ID in store: ${containerData.defaultContainerId}`);
+        logger.info(`Found default container ID in store: ${containerData.defaultContainerId}`);
         return containerData.defaultContainerId;
       }
 
       // 2. ストアに見つからない場合はAPIから直接取得
-      logger.info('[FluidClient] No default container found in store, fetching from server...');
+      logger.info('No default container found in store, fetching from server...');
       const defaultId = await getDefaultContainerId();
       if (defaultId) {
-        logger.info(`[FluidClient] Found default container ID from API: ${defaultId}`);
+        logger.info(`Found default container ID from API: ${defaultId}`);
         return defaultId;
       }
 
-      logger.info('[FluidClient] No default container ID found');
+      logger.info('No default container ID found');
       return null;
     } catch (error) {
-      console.error('[FluidClient] Error getting default container ID:', error);
+      logger.error('Error getting default container ID:', error);
       return null;
     }
   }
@@ -122,7 +122,7 @@ export class FluidClient {
     if (typeof window !== 'undefined') {
       const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
       if (savedContainerId) {
-        logger.info(`[FluidClient] Using container ID from local storage: ${savedContainerId}`);
+        logger.info(`Using container ID from local storage: ${savedContainerId}`);
         this.containerId = savedContainerId;
         return savedContainerId;
       }
@@ -131,14 +131,14 @@ export class FluidClient {
     // 3. Firestoreからデフォルトコンテナを取得
     const defaultContainerId = await this.getDefaultContainerId();
     if (defaultContainerId) {
-      logger.info(`[FluidClient] Using default container ID from Firestore: ${defaultContainerId}`);
+      logger.info(`Using default container ID from Firestore: ${defaultContainerId}`);
       this.containerId = defaultContainerId;
       this.saveContainerId(defaultContainerId); // ローカルストレージにも保存
       return defaultContainerId;
     }
 
     // 利用可能なコンテナIDがない
-    logger.info('[FluidClient] No container ID available');
+    logger.info('No container ID available');
     return undefined;
   }
 
@@ -147,7 +147,7 @@ export class FluidClient {
     if (typeof window !== 'undefined') {
       const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
       if (savedContainerId) {
-        logger.info(`[FluidClient] Loading saved container ID: ${savedContainerId}`);
+        logger.info(`Loading saved container ID: ${savedContainerId}`);
         this.containerId = savedContainerId;
       }
     }
@@ -156,7 +156,7 @@ export class FluidClient {
   // コンテナIDをローカルストレージに保存
   private saveContainerId(containerId: string): void {
     if (typeof window !== 'undefined') {
-      logger.info(`[FluidClient] Saving container ID locally: ${containerId}`);
+      logger.info(`Saving container ID locally: ${containerId}`);
       localStorage.setItem(CONTAINER_ID_STORAGE_KEY, containerId);
     }
   }
@@ -171,12 +171,12 @@ export class FluidClient {
       const result = await saveContainerIdToServer(containerId);
 
       if (!result) {
-        console.warn('[FluidClient] Failed to save container ID to server');
+        logger.warn('Failed to save container ID to server');
       } else {
-        logger.info(`[FluidClient] Successfully saved container ID: ${containerId}`);
+        logger.info(`Successfully saved container ID: ${containerId}`);
       }
     } catch (error) {
-      console.error('[FluidClient] Error saving container ID to server:', error);
+      logger.error('Error saving container ID to server:', error);
       // エラーが発生してもクリティカルではないので、処理は続行
     }
   }
@@ -184,7 +184,7 @@ export class FluidClient {
   // コンテナIDをリセット（削除）する
   public resetContainerId(): void {
     if (typeof window !== 'undefined') {
-      logger.info('[FluidClient] Resetting container ID');
+      logger.info('Resetting container ID');
       localStorage.removeItem(CONTAINER_ID_STORAGE_KEY);
       this.containerId = undefined;
     }
@@ -197,13 +197,13 @@ export class FluidClient {
   public async initialize(): Promise<FluidClient> {
     // 既に初期化済みの場合は早期リターン
     if (this.isInitialized) {
-      logger.info('[FluidClient] Already initialized, returning instance');
+      logger.info('Already initialized, returning instance');
       return this;
     }
 
     // 初期化中の場合は既存のプロミスを返す
     if (this.isInitializing && this.initPromise) {
-      logger.info('[FluidClient] Initialization already in progress, returning existing promise');
+      logger.info('Initialization already in progress, returning existing promise');
       return this.initPromise;
     }
 
@@ -213,14 +213,14 @@ export class FluidClient {
     // 初期化処理をプロミスとして保存し、他のcallerが共有できるようにする
     this.initPromise = new Promise<FluidClient>(async (resolve, reject) => {
       try {
-        console.debug('[FluidClient] Starting initialization...');
+        logger.debug('Starting initialization...');
 
         // ユーザー情報を取得
         const userInfo = this.userManager.getFluidUserInfo();
         const userId = userInfo?.id;
 
         if (!userId) {
-          console.info('[FluidClient] No user ID available for initialization. waiting for login...');
+          logger.info('No user ID available for initialization. waiting for login...');
           this.isInitializing = false;
           this.initPromise = null;
           reject();
@@ -242,7 +242,7 @@ export class FluidClient {
         resolve(this);
         return
       } catch (error) {
-        console.error('[FluidClient] Failed to initialize Fluid container:', error);
+        logger.error('Failed to initialize Fluid container:', error);
         this.isInitializing = false;
         this.initPromise = null;
         reject(error);
@@ -259,7 +259,7 @@ export class FluidClient {
    */
   public async createNewContainer(containerName: string): Promise<string> {
     try {
-      logger.info(`[FluidClient] Creating a new container: ${containerName}`);
+      logger.info(`Creating a new container: ${containerName}`);
 
       // 現在の状態をリセット
       this.resetState();
@@ -283,15 +283,15 @@ export class FluidClient {
       this.client = client;
 
       // 新規コンテナを作成
-      logger.info('[FluidClient] Creating container with schema');
+      logger.info('Creating container with schema');
       const createResponse = await this.client.createContainer(containerSchema, "2");
       this.container = createResponse.container;
       this.services = createResponse.services;
 
       // コンテナをアタッチして永続化（コンテナIDを取得）
-      logger.info('[FluidClient] Attaching container');
+      logger.info('Attaching container');
       this.containerId = await this.container.attach();
-      logger.info(`[FluidClient] Container created with ID: ${this.containerId}`);
+      logger.info(`Container created with ID: ${this.containerId}`);
 
       await this.saveContainerIdToServer(this.containerId);
 
@@ -319,7 +319,7 @@ export class FluidClient {
 
       return this.containerId;
     } catch (error) {
-      console.error('[FluidClient] Failed to create new container:', error);
+      logger.error('Failed to create new container:', error);
       throw error;
     }
   }
@@ -331,10 +331,10 @@ export class FluidClient {
    */
   public async loadContainer(containerId: string): Promise<FluidClient> {
     try {
-      logger.info(`[FluidClient] Loading container with ID: ${containerId}`);
+      logger.info(`Loading container with ID: ${containerId}`);
 
       if (this.containerId === containerId && this.isInitialized && this.container) {
-        logger.info('[FluidClient] Container already loaded, returning current instance');
+        logger.info('Container already loaded, returning current instance');
         return this;
       }
 
@@ -373,10 +373,10 @@ export class FluidClient {
       this.isInitialized = true;
       this.isInitializing = false;
 
-      logger.info(`[FluidClient] Successfully loaded container: ${containerId}`);
+      logger.info(`Successfully loaded container: ${containerId}`);
       return this;
     } catch (error) {
-      console.error(`[FluidClient] Failed to load container ${containerId}:`, error);
+      logger.error(`Failed to load container ${containerId}:`, error);
       this.isInitializing = false;
       throw error;
     }
@@ -450,7 +450,7 @@ export class FluidClient {
           //   this.reconnect();
           // }, 2000);
         } else {
-          console.warn('最大再接続回数に達しました。手動での再接続が必要です。');
+          logger.warn('最大再接続回数に達しました。手動での再接続が必要です。');
         }
       }
     );
@@ -459,16 +459,16 @@ export class FluidClient {
   // 再接続を試みる
   private async reconnect() {
     try {
-      logger.info('[FluidClient] Attempting to reconnect...');
+      logger.info('Attempting to reconnect...');
 
       // 現在のコンテナIDがある場合は、そのIDに特化したトークンを更新
       if (this.containerId) {
-        logger.info(`[FluidClient] Refreshing token for container: ${this.containerId}`);
+        logger.info(`Refreshing token for container: ${this.containerId}`);
         await this.userManager.refreshToken(this.containerId);
 
         // 更新したトークンで再接続
         if (this.container) {
-          logger.info('[FluidClient] Reconnecting with refreshed token...');
+          logger.info('Reconnecting with refreshed token...');
           this.container.connect();
         }
       } else {
@@ -481,7 +481,7 @@ export class FluidClient {
         }
       }
     } catch (error) {
-      console.error('[FluidClient] Reconnection failed:', error);
+      logger.error('Reconnection failed:', error);
     }
   }
 
@@ -544,7 +544,7 @@ export class FluidClient {
     // TypeScriptの型定義ではopイベントは認識されていないが、実際のランタイムでは機能する
     // @ts-ignore - カスタムイベントタイプはTypeScriptの型定義に含まれていない
     this.container.on('op', (op: any) => {
-      console.debug('[FluidClient] Operation received:', op);
+      logger.debug('Operation received:', op);
     });
 
   }
@@ -637,7 +637,7 @@ export class FluidClient {
         this.container.disconnect();
       }
     } catch (e) {
-      console.warn('FluidClient disposal error:', e);
+      logger.warn('FluidClient disposal error:', e);
     }
   }
 }

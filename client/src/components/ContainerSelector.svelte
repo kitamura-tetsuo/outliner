@@ -33,7 +33,7 @@
 		try {
 			// 標準の方法でユーザーのコンテナを読み込む
 			let userContainers = await getUserContainers();
-			logger.info(`[ContainerSelector] Loaded ${userContainers.length} containers from store`);
+			logger.info(`Loaded ${userContainers.length} containers from store`);
 
 			// テスト環境では、ローカルストレージから現在のコンテナIDも確認
 			if (
@@ -46,7 +46,7 @@
 
 				// 現在のコンテナIDが存在し、かつリストに含まれていない場合は追加
 				if (currentContainerId && !userContainers.some((c) => c.id === currentContainerId)) {
-					logger.info('[ContainerSelector] Adding current container to list:', currentContainerId);
+					logger.info('Adding current container to list:', currentContainerId);
 					userContainers.push({
 						id: currentContainerId,
 						name: 'テスト中のコンテナ',
@@ -67,9 +67,9 @@
 				selectedContainerId = null;
 			}
 
-			logger.info(`[ContainerSelector] Final container count: ${containers.length}`);
+			logger.info(`Final container count: ${containers.length}`);
 		} catch (err) {
-			console.error('[ContainerSelector] Error loading containers:', err);
+			console.error('Error loading containers:', err);
 			error = 'コンテナリストの読み込みに失敗しました';
 		} finally {
 			isLoading = false;
