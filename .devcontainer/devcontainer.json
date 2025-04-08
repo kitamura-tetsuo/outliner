@@ -14,7 +14,8 @@ docker // For format details, see https://aka.ms/devcontainer.json. For config o
 				"ms-playwright.playwright",
 				"svelte.svelte-vscode",
 				"ms-vscode.vscode-websearchforcopilot",
-				"ms-vscode.copilot-mermaid-diagram"
+				"ms-vscode.copilot-mermaid-diagram",
+				"dprint.dprint"
 			]
 		}
 	},
