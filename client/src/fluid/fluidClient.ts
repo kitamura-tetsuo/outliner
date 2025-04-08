@@ -279,7 +279,7 @@ export class FluidClient {
       // }
 
       // Fluid Frameworkのクライアントを初期化
-      const [client] = await getFluidClient(userId);
+      const [client] = await getFluidClient(userId, "");
       this.client = client;
 
       // 新規コンテナを作成

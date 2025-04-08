@@ -61,7 +61,7 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
     const userManager = UserManager.getInstance();
 
     // 特定のコンテナID用のトークンが必要な場合
-    if (containerId) {
+    if (containerId !== undefined) {
       log('fluidService', 'debug', `Requesting token for specific container: ${containerId}`);
       // コンテナID付きで強制的にトークンを更新
       await userManager.refreshToken(containerId);
