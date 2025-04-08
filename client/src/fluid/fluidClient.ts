@@ -491,15 +491,7 @@ export class FluidClient {
 
   public getTree() {
     const rootItems = this.project?.items as Items;
-    logger.info(rootItems.length);
-    logger.info(rootItems[0]);
-    const items = [...rootItems];
-    logger.info(items);
-    rootItems.map(element => {
-      logger.info('Element:', element);
-    });
-
-    return this.appData.root.items;
+    return rootItems;
   }
 
   /**

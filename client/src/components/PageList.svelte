@@ -8,6 +8,7 @@
 	import { fluidClient } from '../stores/fluidStore';
 	import { getLogger } from '../lib/logger';
 	const logger = getLogger();
+	import { store } from '../stores/store.svelte';
 
 	interface Props {
 		project: Project;
@@ -30,9 +31,6 @@
 	// 開発環境ではデフォルトのタイトルを提案
 	const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV === true;
 	let pageTitle = $state(isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : '');
-
-	// ページリストの表示用配列
-	let displayItems = $state([...rootItems]);
 
 	function handleCreatePage() {
 		if (!pageTitle.trim() && !isDev) {
@@ -57,29 +55,28 @@
 		});
 	}
 
-	// ページリストの更新処理
-	function updatePageList() {
-		if (rootItems) {
-			displayItems = [...rootItems];
-			logger.info('PageList updated:', displayItems.length);
-		}
-	}
+	// // ページリストの更新処理
+	// function updatePageList() {
+	// 	if (rootItems) {
+	// 		displayItems = [...rootItems];
+	// 		logger.info('PageList updated:', displayItems.length);
+	// 	}
+	// }
 
 	onMount(() => {
 		// rootItemsが存在する場合、変更を監視
 		if (rootItems) {
-			const unsubscribe = Tree.on(rootItems, 'treeChanged', updatePageList);
-
-			return () => {
-				if (unsubscribe) unsubscribe();
-			};
+			// 	const unsubscribe = Tree.on(rootItems, 'treeChanged', updatePageList);
+			// 	return () => {
+			// 		if (unsubscribe) unsubscribe();
+			// 	};
 		}
 	});
 
 	// 初期表示時にリストを更新
 	run(() => {
 		if (rootItems) {
-			displayItems = [...rootItems];
+			// displayItems = [...rootItems];
 		}
 	});
 </script>
@@ -93,14 +90,14 @@
 	</div>
 
 	<ul>
-		{#each displayItems as page}
+		{#each store?.pages?.current! as page}
 			<li class:active={page.id === currentPageId} onclick={() => selectPage(page)}>
 				<span class="page-title">{page.text || '無題のページ'}</span>
 				<span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
 			</li>
 		{/each}
 
-		{#if displayItems.length === 0}
+		{#if store.pages}
 			<li class="empty">ページがありません。新しいページを作成してください。</li>
 		{/if}
 	</ul>

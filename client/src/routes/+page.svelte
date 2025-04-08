@@ -16,6 +16,9 @@
 	import { fluidClient } from '../stores/fluidStore';
 	import { Items, Item, Project } from '../schema/app-schema';
 	import { getLogger } from '../lib/logger';
+
+	import { store } from '../stores/store.svelte';
+
 	const logger = getLogger();
 
 	let error: string | null = $state(null);
@@ -27,8 +30,6 @@
 	let portInfo = $state('');
 	let envConfig = getDebugConfig();
 	let treeData: any = {};
-	let project: Project = $state(); // 明示的に型を指定
-	let rootItems: Items = $state(); // 明示的に型を指定
 	let isAuthenticated = $state(false);
 	let networkError: string | null = $state(null);
 	let rootData; // ルートデータ（ページのコレクションを含む）
@@ -53,22 +54,21 @@
 			// fluidStoreからのクライアント状態変更を待つ
 			let unsubscribe; // 明示的に変数を宣言
 			unsubscribe = fluidClient.subscribe((client) => {
-				if (client?.isConnected) {
+				if (client) {
 					logger.info('Fluidクライアントが接続されました');
 
 					// containerId と rootItems を設定
 					containerId = client.containerId;
-					project = client.getProject();
-					rootItems = client.getTree();
+					store.project = client.getProject();
 
 					// 最初のページを選択または新規作成
-					if (rootItems.length > 0) {
-						currentPage = rootItems[0]; // 直接オブジェクトを代入
+					if (store.pages?.current.length) {
+						currentPage = store.pages?.current[0]; // 直接オブジェクトを代入
 						currentPageId = currentPage.id; // IDも保持（UI表示用）
 					} else {
 						// 初期ページの作成 - TreeViewManagerを使用
 						currentPage = TreeViewManager.addPage(
-							project,
+							store.project!,
 							'はじめてのページ',
 							client.currentUser?.id || 'anonymous'
 						);
@@ -317,13 +317,11 @@
 				</a>
 			</div>
 
-			{#if $fluidClient && rootItems}
+			{#if $fluidClient}
 				<div class="content-layout">
 					<!-- ページリスト（左サイドバー） -->
 					<div class="sidebar">
 						<PageList
-							{project}
-							{rootItems}
 							{currentPageId}
 							currentUser={$fluidClient?.currentUser?.id || 'anonymous'}
 							on:select={handlePageSelect}
