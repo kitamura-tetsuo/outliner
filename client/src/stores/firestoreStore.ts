@@ -1,8 +1,18 @@
-import { get, writable, type Writable } from 'svelte/store';
-import { getFirestore, doc, onSnapshot, getDoc, connectFirestoreEmulator } from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
-import { UserManager } from '../auth/UserManager';
-import { getLogger } from '../lib/logger';
+import { initializeApp } from "firebase/app";
+import {
+    connectFirestoreEmulator,
+    doc,
+    getDoc,
+    getFirestore,
+    onSnapshot,
+} from "firebase/firestore";
+import {
+    get,
+    type Writable,
+    writable,
+} from "svelte/store";
+import { UserManager } from "../auth/UserManager";
+import { getLogger } from "../lib/logger";
 const logger = getLogger();
 
 // Firebaseの設定情報はUserManagerから取得
@@ -14,7 +24,7 @@ const firebaseConfig = {
     storageBucket: "outliner-d57b0.firebasestorage.app",
     messagingSenderId: "560407608873",
     appId: "1:560407608873:web:147817f4a93a4678606638",
-    measurementId: "G-FKSFRCT7GR"
+    measurementId: "G-FKSFRCT7GR",
 };
 
 // ユーザーコンテナの型定義
@@ -37,27 +47,26 @@ let db;
 try {
     try {
         app = initializeApp(firebaseConfig);
-        logger.info('Firebase app initialized successfully');
-    } catch (e) {
+        logger.info("Firebase app initialized successfully");
+    }
+    catch (e) {
         // すでに初期化されている場合は既存のアプリを使用
-        logger.info('Firebase app already initialized, reusing existing instance');
+        logger.info("Firebase app already initialized, reusing existing instance");
     }
 
     // Firestoreインスタンスの取得
     db = getFirestore(app);
 
     // テスト環境またはエミュレータ環境を検出して接続
-    const isTestEnv =
-        import.meta.env.MODE === 'test' ||
-        process.env.NODE_ENV === 'test' ||
-        import.meta.env.VITE_IS_TEST === 'true' ||
-        (typeof window !== 'undefined' && window.mockFluidClient === false);
+    const isTestEnv = import.meta.env.MODE === "test" ||
+        process.env.NODE_ENV === "test" ||
+        import.meta.env.VITE_IS_TEST === "true" ||
+        (typeof window !== "undefined" && window.mockFluidClient === false);
 
-    const useEmulator =
-        isTestEnv ||
-        import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true' ||
-        (typeof window !== 'undefined' &&
-            window.localStorage?.getItem('VITE_USE_FIREBASE_EMULATOR') === 'true');
+    const useEmulator = isTestEnv ||
+        import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true" ||
+        (typeof window !== "undefined" &&
+            window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true");
 
     // Firebase Emulatorに接続
     if (useEmulator) {
@@ -67,11 +76,11 @@ try {
         let emulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST;
         // ホスト名が指定されていない場合、もしくは 'firebase-emulator', 'localhost', '127.0.0.1' の場合は
         // 実際のIPアドレスを使用
-        if (!emulatorHost || ['firebase-emulator', 'localhost', '127.0.0.1'].includes(emulatorHost)) {
-            emulatorHost = '192.168.50.16';
+        if (!emulatorHost || ["firebase-emulator", "localhost", "127.0.0.1"].includes(emulatorHost)) {
+            emulatorHost = "192.168.50.16";
         }
 
-        const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || '6480', 10);
+        const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "6480", 10);
 
         // エミュレーター接続情報をログに出力
         logger.info(`Connecting to Firestore emulator at ${emulatorHost}:${emulatorPort}`);
@@ -79,16 +88,18 @@ try {
         try {
             // エミュレーターに接続
             connectFirestoreEmulator(db, emulatorHost, emulatorPort);
-            logger.info('Successfully connected to Firestore emulator');
-        } catch (err) {
-            logger.error('Failed to connect to Firestore emulator:', err);
+            logger.info("Successfully connected to Firestore emulator");
+        }
+        catch (err) {
+            logger.error("Failed to connect to Firestore emulator:", err);
 
             // 接続できない場合はオフラインモードで続行することを通知
-            logger.warn('Continuing in offline mode. Data operations will be cached until connection is restored.');
+            logger.warn("Continuing in offline mode. Data operations will be cached until connection is restored.");
         }
     }
-} catch (error) {
-    logger.error('Critical error initializing Firestore:', error);
+}
+catch (error) {
+    logger.error("Critical error initializing Firestore:", error);
     // データベース接続に失敗した場合でもアプリが動作し続けられるように
     // 最低限の初期化だけを行う
     if (!db) {
@@ -110,14 +121,14 @@ export function initFirestoreSync(): () => void {
     const currentUser = userManager.getCurrentUser();
     // ユーザーがログインしていない場合は早期リターン
     if (!currentUser) {
-        logger.info('ユーザーがログインしていないため、Firestoreの監視を開始しません');
-        return () => { }; // 空のクリーンアップ関数を返す
+        logger.info("ユーザーがログインしていないため、Firestoreの監視を開始しません");
+        return () => {}; // 空のクリーンアップ関数を返す
     }
 
     // ユーザーIDの存在確認を追加
     if (!currentUser.id) {
-        logger.warn('ユーザーオブジェクトにIDがないため、Firestoreの監視を開始しません');
-        return () => { }; // 空のクリーンアップ関数を返す
+        logger.warn("ユーザーオブジェクトにIDがないため、Firestoreの監視を開始しません");
+        return () => {}; // 空のクリーンアップ関数を返す
     }
 
     const userId = currentUser.id;
@@ -125,12 +136,12 @@ export function initFirestoreSync(): () => void {
 
     try {
         // ドキュメントへの参照を取得 (/userContainers/{userId})
-        const userContainerRef = doc(db, 'userContainers', userId);
+        const userContainerRef = doc(db, "userContainers", userId);
 
         // エラーハンドリングを強化したリアルタイム更新リスナー
         unsubscribe = onSnapshot(
             userContainerRef,
-            (snapshot) => {
+            snapshot => {
                 if (snapshot.exists()) {
                     const data = snapshot.data();
 
@@ -144,25 +155,26 @@ export function initFirestoreSync(): () => void {
 
                     userContainer.set(containerData);
                     logger.info(`ユーザー ${userId} のコンテナ情報を読み込みました`);
-                    logger.info(`デフォルトコンテナID: ${containerData.defaultContainerId || 'なし'}`);
-                } else {
-
+                    logger.info(`デフォルトコンテナID: ${containerData.defaultContainerId || "なし"}`);
+                }
+                else {
                     // Tinyliciousテスト環境ではテスト用データをセットアップ
                     if (!setupTinyliciousTestContainers()) {
                         userContainer.set(null);
-                    } else {
+                    }
+                    else {
                         logger.info(`ユーザー ${userId} のコンテナ情報は存在しません`);
                     }
                 }
             },
-            (error) => {
-                logger.error('Firestoreのリスニングエラー:', error);
+            error => {
+                logger.error("Firestoreのリスニングエラー:", error);
 
                 // エラーが発生した場合でもTinyliciousテスト環境ではテスト用データをセットアップ
                 if (!setupTinyliciousTestContainers()) {
                     userContainer.set(null);
                 }
-            }
+            },
         );
 
         // クリーンアップ関数を返す
@@ -172,13 +184,14 @@ export function initFirestoreSync(): () => void {
                 unsubscribe = null;
             }
         };
-    } catch (error) {
-        logger.error('Firestore監視設定エラー:', error);
+    }
+    catch (error) {
+        logger.error("Firestore監視設定エラー:", error);
 
         // エラーが発生した場合でもTinyliciousテスト環境ではテスト用データをセットアップ
         setupTinyliciousTestContainers();
 
-        return () => { }; // 空のクリーンアップ関数を返す
+        return () => {}; // 空のクリーンアップ関数を返す
     }
 }
 
@@ -187,26 +200,26 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
     try {
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
-            throw new Error('ユーザーがログインしていません');
+            throw new Error("ユーザーがログインしていません");
         }
 
         // Firebase IDトークンを取得
         const idToken = await userManager.auth.currentUser?.getIdToken();
         if (!idToken) {
-            throw new Error('認証トークンを取得できません');
+            throw new Error("認証トークンを取得できません");
         }
 
         // サーバーAPIを呼び出してコンテナIDを保存
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:7071';
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:7071";
         const response = await fetch(`${apiBaseUrl}/api/save-container`, {
-            method: 'POST',
+            method: "POST",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
             body: JSON.stringify({
                 idToken,
-                containerId
-            })
+                containerId,
+            }),
         });
 
         if (!response.ok) {
@@ -216,8 +229,9 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
 
         const result = await response.json();
         return result.success === true;
-    } catch (error) {
-        logger.error('コンテナID保存エラー:', error);
+    }
+    catch (error) {
+        logger.error("コンテナID保存エラー:", error);
         return false;
     }
 }
@@ -227,7 +241,7 @@ export async function getDefaultContainerId(): Promise<string | null> {
     try {
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
-            logger.warn('getDefaultContainerId: ユーザーがログインしていません');
+            logger.warn("getDefaultContainerId: ユーザーがログインしていません");
             return null;
         }
 
@@ -239,7 +253,7 @@ export async function getDefaultContainerId(): Promise<string | null> {
 
         // 2. ストアに値がない場合は直接Firestoreから取得
         const userId = currentUser.id;
-        const userContainerRef = doc(db, 'userContainers', userId);
+        const userContainerRef = doc(db, "userContainers", userId);
         const snapshot = await getDoc(userContainerRef);
 
         if (snapshot.exists()) {
@@ -248,8 +262,9 @@ export async function getDefaultContainerId(): Promise<string | null> {
         }
 
         return null;
-    } catch (error) {
-        logger.error('デフォルトコンテナID取得エラー:', error);
+    }
+    catch (error) {
+        logger.error("デフォルトコンテナID取得エラー:", error);
         return null;
     }
 }
@@ -258,19 +273,19 @@ export async function getDefaultContainerId(): Promise<string | null> {
 function setupTinyliciousTestContainers() {
     // テスト環境かつ Tinylicious モードの場合
     if (
-        (typeof window !== 'undefined' &&
+        (typeof window !== "undefined" &&
             (window.mockFluidClient === false || // 明示的に mockFluidClient=false の場合（実際の Tinylicious 接続）
-                (import.meta.env.VITE_USE_TINYLICIOUS === 'true' ||
-                    window.localStorage.getItem('VITE_USE_TINYLICIOUS') === 'true')))
+                (import.meta.env.VITE_USE_TINYLICIOUS === "true" ||
+                    window.localStorage.getItem("VITE_USE_TINYLICIOUS") === "true")))
     ) {
-        logger.info('Setting up Tinylicious test containers');
+        logger.info("Setting up Tinylicious test containers");
 
         // テスト用のコンテナデータを作成
-        const testContainerId = window.localStorage.getItem('currentContainerId') || 'test-container-id';
+        const testContainerId = window.localStorage.getItem("currentContainerId") || "test-container-id";
 
         // ユーザーコンテナにテスト用のデータをセット
         userContainer.set({
-            userId: 'test-user-id',
+            userId: "test-user-id",
             defaultContainerId: testContainerId,
             accessibleContainerIds: [testContainerId],
             createdAt: new Date(),
@@ -284,7 +299,7 @@ function setupTinyliciousTestContainers() {
 }
 
 // ユーザーのコンテナリストを取得
-export async function getUserContainers(): Promise<{ id: string, name?: string, isDefault?: boolean }[]> {
+export async function getUserContainers(): Promise<{ id: string; name?: string; isDefault?: boolean; }[]> {
     try {
         // E2E テスト環境の場合は Tinylicious 用のテストコンテナを使用
         if (setupTinyliciousTestContainers()) {
@@ -296,8 +311,8 @@ export async function getUserContainers(): Promise<{ id: string, name?: string, 
                 if (containerData.defaultContainerId) {
                     containers.push({
                         id: containerData.defaultContainerId,
-                        name: 'Tinylicious テストコンテナ',
-                        isDefault: true
+                        name: "Tinylicious テストコンテナ",
+                        isDefault: true,
                     });
                 }
 
@@ -308,7 +323,7 @@ export async function getUserContainers(): Promise<{ id: string, name?: string, 
                         .map(id => ({
                             id,
                             name: `テストコンテナ ${id.substring(0, 8)}...`,
-                            isDefault: false
+                            isDefault: false,
                         }));
 
                     containers.push(...additionalContainers);
@@ -320,7 +335,7 @@ export async function getUserContainers(): Promise<{ id: string, name?: string, 
 
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
-            logger.warn('getUserContainers: ユーザーがログインしていません');
+            logger.warn("getUserContainers: ユーザーがログインしていません");
             return [];
         }
 
@@ -333,8 +348,8 @@ export async function getUserContainers(): Promise<{ id: string, name?: string, 
             if (containerData.defaultContainerId) {
                 containers.push({
                     id: containerData.defaultContainerId,
-                    name: 'デフォルトコンテナ',
-                    isDefault: true
+                    name: "デフォルトコンテナ",
+                    isDefault: true,
                 });
             }
 
@@ -346,7 +361,7 @@ export async function getUserContainers(): Promise<{ id: string, name?: string, 
                     .map(id => ({
                         id,
                         name: `コンテナ ${id.substring(0, 8)}...`, // IDの一部を表示
-                        isDefault: false
+                        isDefault: false,
                     }));
 
                 containers.push(...additionalContainers);
@@ -357,7 +372,7 @@ export async function getUserContainers(): Promise<{ id: string, name?: string, 
 
         // ストアに値がない場合は直接Firestoreから取得
         const userId = currentUser.id;
-        const userContainerRef = doc(db, 'userContainers', userId);
+        const userContainerRef = doc(db, "userContainers", userId);
         const snapshot = await getDoc(userContainerRef);
 
         if (snapshot.exists()) {
@@ -368,8 +383,8 @@ export async function getUserContainers(): Promise<{ id: string, name?: string, 
             if (data.defaultContainerId) {
                 containers.push({
                     id: data.defaultContainerId,
-                    name: 'デフォルトコンテナ',
-                    isDefault: true
+                    name: "デフォルトコンテナ",
+                    isDefault: true,
                 });
             }
 
@@ -381,7 +396,7 @@ export async function getUserContainers(): Promise<{ id: string, name?: string, 
                     .map(id => ({
                         id,
                         name: `コンテナ ${id.substring(0, 8)}...`, // IDの一部を表示
-                        isDefault: false
+                        isDefault: false,
                     }));
 
                 containers.push(...additionalContainers);
@@ -391,8 +406,9 @@ export async function getUserContainers(): Promise<{ id: string, name?: string, 
         }
 
         return [];
-    } catch (error) {
-        logger.error('コンテナリスト取得エラー:', error);
+    }
+    catch (error) {
+        logger.error("コンテナリスト取得エラー:", error);
         return [];
     }
 }
@@ -405,12 +421,13 @@ export async function getUserContainers(): Promise<{ id: string, name?: string, 
 export async function saveContainerIdToServer(containerId: string): Promise<boolean> {
     try {
         // テスト環境の場合は、直接 userContainer ストアに追加
-        if (typeof window !== 'undefined' &&
+        if (
+            typeof window !== "undefined" &&
             (window.mockFluidClient === false ||
-                import.meta.env.VITE_IS_TEST === 'true' ||
-                window.localStorage.getItem('VITE_USE_TINYLICIOUS') === 'true')) {
-
-            logger.info('Test environment detected, saving container ID to mock store');
+                import.meta.env.VITE_IS_TEST === "true" ||
+                window.localStorage.getItem("VITE_USE_TINYLICIOUS") === "true")
+        ) {
+            logger.info("Test environment detected, saving container ID to mock store");
 
             // 既存のコンテナデータを取得
             const containerData = get(userContainer);
@@ -422,21 +439,21 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
                 accessibleContainerIds: containerData.accessibleContainerIds
                     ? [...new Set([...containerData.accessibleContainerIds, containerId])]
                     : [containerId],
-                updatedAt: new Date()
+                updatedAt: new Date(),
             } : {
-                userId: 'test-user-id',
+                userId: "test-user-id",
                 defaultContainerId: containerId,
                 accessibleContainerIds: [containerId],
                 createdAt: new Date(),
-                updatedAt: new Date()
+                updatedAt: new Date(),
             };
 
             // ストアを更新
             userContainer.set(updatedData);
-            logger.info('Container ID saved to mock store:', updatedData);
+            logger.info("Container ID saved to mock store:", updatedData);
 
             // ローカルストレージにも現在のコンテナIDを保存
-            window.localStorage.setItem('currentContainerId', containerId);
+            window.localStorage.setItem("currentContainerId", containerId);
 
             return true;
         }
@@ -445,28 +462,28 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         // ユーザーがログインしていることを確認
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
-            logger.warn('Cannot save container ID to server: User not logged in');
+            logger.warn("Cannot save container ID to server: User not logged in");
             return false;
         }
 
         // Firebase IDトークンを取得
         const idToken = await userManager.auth.currentUser?.getIdToken();
         if (!idToken) {
-            logger.warn('Cannot save container ID to server: Firebase user not available');
+            logger.warn("Cannot save container ID to server: Firebase user not available");
             return false;
         }
 
         // サーバーAPIを呼び出してコンテナIDを保存
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:7071';
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:7071";
         const response = await fetch(`${apiBaseUrl}/api/save-container`, {
-            method: 'POST',
+            method: "POST",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
             body: JSON.stringify({
                 idToken,
-                containerId
-            })
+                containerId,
+            }),
         });
 
         if (!response.ok) {
@@ -477,18 +494,19 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         const result = await response.json();
         logger.info(`Successfully saved container ID to server for user ${currentUser.id}`);
         return result.success === true;
-    } catch (error) {
-        logger.error('Error saving container ID to server:', error);
+    }
+    catch (error) {
+        logger.error("Error saving container ID to server:", error);
         return false;
     }
 }
 
 // アプリ起動時に自動的に初期化
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
     let cleanup: (() => void) | null = null;
 
     // 認証状態が変更されたときに Firestore 同期を初期化/クリーンアップ
-    const unsubscribeAuth = userManager.addEventListener((authResult) => {
+    const unsubscribeAuth = userManager.addEventListener(authResult => {
         // 前回のクリーンアップがあれば実行
         if (cleanup) {
             cleanup();
@@ -498,14 +516,15 @@ if (typeof window !== 'undefined') {
         // 認証されていればリスナーを設定
         if (authResult) {
             cleanup = initFirestoreSync();
-        } else {
+        }
+        else {
             // 未認証の場合はコンテナを空にする
             userContainer.set(null);
         }
     });
 
     // ページアンロード時のクリーンアップ
-    window.addEventListener('beforeunload', () => {
+    window.addEventListener("beforeunload", () => {
         if (cleanup) {
             cleanup();
         }

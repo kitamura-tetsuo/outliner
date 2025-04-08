@@ -10,11 +10,13 @@
 ## セットアップ
 
 1. 依存関係をインストール:
+
 ```bash
 npm install
 ```
 
 2. `.env` ファイルを作成:
+
 ```bash
 cp .env.example .env
 ```
@@ -41,4 +43,3 @@ cp .env.example .env
 2. 「Your apps」セクションで「Add app」をクリック（Webアプリ）
 3. アプリを登録し、Firebaseの設定情報を取得
 4. クライアントプロジェクトの `.env` ファイルに以下の情報を設定:
-

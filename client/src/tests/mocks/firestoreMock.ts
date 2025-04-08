@@ -1,6 +1,10 @@
 // filepath: /workspace/client/src/tests/mocks/firestoreMock.ts
-import { get, writable, type Writable } from 'svelte/store';
-import { log } from '../../lib/logger'; // ロガーをインポート
+import {
+    get,
+    type Writable,
+    writable,
+} from "svelte/store";
+import { log } from "../../lib/logger"; // ロガーをインポート
 
 // Mock version of UserContainer from the real store
 export interface UserContainer {
@@ -30,7 +34,7 @@ export function setupMockFirestore(initialData?: {
     mockContainers.clear();
 
     if (initialData) {
-        const userId = initialData.userId || 'test-user-id';
+        const userId = initialData.userId || "test-user-id";
         const containerData: UserContainer = {
             userId: userId,
             defaultContainerId: initialData.defaultContainerId,
@@ -41,7 +45,8 @@ export function setupMockFirestore(initialData?: {
 
         mockContainers.set(userId, containerData);
         mockUserContainer.set(containerData);
-    } else {
+    }
+    else {
         mockUserContainer.set(null);
     }
 
@@ -51,7 +56,7 @@ export function setupMockFirestore(initialData?: {
 }
 
 // Mock API response for saveContainerId
-let mockSaveContainerIdResponse: { success: boolean } = { success: true };
+let mockSaveContainerIdResponse: { success: boolean; } = { success: true };
 let mockApiErrors = false;
 
 // Set API response behavior
@@ -66,7 +71,7 @@ export function setMockApiErrors(shouldError: boolean) {
 
 // Mock initFirestoreSync function
 export function mockInitFirestoreSync(): () => void {
-    const currentUserId = 'test-user-id'; // Default mock user ID
+    const currentUserId = "test-user-id"; // Default mock user ID
 
     if (mockUnsubscribe) {
         mockUnsubscribe();
@@ -77,15 +82,16 @@ export function mockInitFirestoreSync(): () => void {
     const containerData = mockContainers.get(currentUserId);
     if (containerData) {
         mockUserContainer.set(containerData);
-        log('firestoreMock', 'debug', `[MOCK] Loaded container data for user ${currentUserId}`);
-    } else {
+        log("firestoreMock", "debug", `[MOCK] Loaded container data for user ${currentUserId}`);
+    }
+    else {
         mockUserContainer.set(null);
-        log('firestoreMock', 'debug', `[MOCK] No container data found for user ${currentUserId}`);
+        log("firestoreMock", "debug", `[MOCK] No container data found for user ${currentUserId}`);
     }
 
     // Create a mock unsubscribe function
     mockUnsubscribe = () => {
-        log('firestoreMock', 'debug', '[MOCK] Unsubscribed from Firestore');
+        log("firestoreMock", "debug", "[MOCK] Unsubscribed from Firestore");
     };
 
     return mockUnsubscribe;
@@ -94,21 +100,21 @@ export function mockInitFirestoreSync(): () => void {
 // Mock saveContainerId function
 export async function mockSaveContainerId(containerId: string): Promise<boolean> {
     if (mockApiErrors) {
-        throw new Error('[MOCK] API error occurred');
+        throw new Error("[MOCK] API error occurred");
     }
 
-    const userId = 'test-user-id';
+    const userId = "test-user-id";
     const existingData = mockContainers.get(userId) || {
         userId,
         accessibleContainerIds: [],
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
     };
 
     const updatedData = {
         ...existingData,
         defaultContainerId: containerId,
-        updatedAt: new Date()
+        updatedAt: new Date(),
     };
 
     mockContainers.set(userId, updatedData);
@@ -120,15 +126,15 @@ export async function mockSaveContainerId(containerId: string): Promise<boolean>
 // Mock saveContainerIdToServer function
 export async function mockSaveContainerIdToServer(containerId: string): Promise<boolean> {
     if (mockApiErrors) {
-        throw new Error('[MOCK] API error occurred');
+        throw new Error("[MOCK] API error occurred");
     }
 
-    const userId = 'test-user-id';
+    const userId = "test-user-id";
     const existingData = mockContainers.get(userId) || {
         userId,
         accessibleContainerIds: [],
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
     };
 
     const updatedData = {
@@ -137,15 +143,15 @@ export async function mockSaveContainerIdToServer(containerId: string): Promise<
         accessibleContainerIds: existingData.accessibleContainerIds
             ? [...new Set([...existingData.accessibleContainerIds, containerId])]
             : [containerId],
-        updatedAt: new Date()
+        updatedAt: new Date(),
     };
 
     mockContainers.set(userId, updatedData);
     mockUserContainer.set(updatedData);
 
     // ローカルストレージにも現在のコンテナIDを保存
-    if (typeof window !== 'undefined') {
-        window.localStorage.setItem('currentContainerId', containerId);
+    if (typeof window !== "undefined") {
+        window.localStorage.setItem("currentContainerId", containerId);
     }
 
     return mockSaveContainerIdResponse.success;
@@ -154,7 +160,7 @@ export async function mockSaveContainerIdToServer(containerId: string): Promise<
 // Mock getDefaultContainerId function
 export async function mockGetDefaultContainerId(): Promise<string | null> {
     if (mockApiErrors) {
-        throw new Error('[MOCK] API error occurred');
+        throw new Error("[MOCK] API error occurred");
     }
 
     // Try from store first
@@ -164,15 +170,15 @@ export async function mockGetDefaultContainerId(): Promise<string | null> {
     }
 
     // Then try from mock "database"
-    const userId = 'test-user-id';
+    const userId = "test-user-id";
     const storedData = mockContainers.get(userId);
     return storedData?.defaultContainerId || null;
 }
 
 // Mock getUserContainers function
-export async function mockGetUserContainers(): Promise<{ id: string, name?: string, isDefault?: boolean }[]> {
+export async function mockGetUserContainers(): Promise<{ id: string; name?: string; isDefault?: boolean; }[]> {
     if (mockApiErrors) {
-        throw new Error('[MOCK] API error occurred');
+        throw new Error("[MOCK] API error occurred");
     }
 
     // Try from store first
@@ -182,7 +188,7 @@ export async function mockGetUserContainers(): Promise<{ id: string, name?: stri
     }
 
     // Then try from mock "database"
-    const userId = 'test-user-id';
+    const userId = "test-user-id";
     const storedData = mockContainers.get(userId);
     if (storedData) {
         return buildContainersList(storedData);
@@ -192,15 +198,15 @@ export async function mockGetUserContainers(): Promise<{ id: string, name?: stri
 }
 
 // Helper function to build containers list
-function buildContainersList(data: UserContainer): { id: string, name?: string, isDefault?: boolean }[] {
+function buildContainersList(data: UserContainer): { id: string; name?: string; isDefault?: boolean; }[] {
     const containers = [];
 
     // Add default container if exists
     if (data.defaultContainerId) {
         containers.push({
             id: data.defaultContainerId,
-            name: 'デフォルトコンテナ',
-            isDefault: true
+            name: "デフォルトコンテナ",
+            isDefault: true,
         });
     }
 
@@ -211,7 +217,7 @@ function buildContainersList(data: UserContainer): { id: string, name?: string, 
             .map(id => ({
                 id,
                 name: `コンテナ ${id.substring(0, 8)}...`,
-                isDefault: false
+                isDefault: false,
             }));
 
         containers.push(...additionalContainers);

@@ -1,4 +1,7 @@
-import { Tree, type TreeNode } from "fluid-framework";
+import {
+    Tree,
+    type TreeNode,
+} from "fluid-framework";
 import { onDestroy } from "svelte";
 import { getLogger } from "./logger";
 
@@ -21,11 +24,11 @@ export class SubscriptionManager {
     subscribe(node: TreeNode | null | undefined, eventName: string, callback: Function, key?: string): Function {
         if (!node) {
             logger.warn(`Cannot subscribe to ${eventName} on null/undefined node`);
-            return () => { };
+            return () => {};
         }
 
         // キーが提供されていない場合、node+eventNameの組み合わせを使用
-        const subscriptionKey = key || `${node.id || 'unknown'}-${eventName}`;
+        const subscriptionKey = key || `${node.id || "unknown"}-${eventName}`;
 
         // 既存の購読があれば解除
         this.unsubscribe(subscriptionKey);

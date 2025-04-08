@@ -1,636 +1,674 @@
-import { AzureClient } from '@fluidframework/azure-client';
-import { TinyliciousClient } from '@fluidframework/tinylicious-client';
-import { ConnectionState, SharedTree, type TreeView, type ViewableTree } from "fluid-framework";
-import { UserManager } from '../auth/UserManager';
-import { getEnv } from '../lib/env';
-import { getFluidClient, setupConnectionListeners } from '../lib/fluidService';
-import { appTreeConfiguration, Items, Project } from "../schema/app-schema";
-import { type IFluidContainer, type ContainerSchema } from '@fluidframework/fluid-static';
-import { userContainer, getDefaultContainerId, saveContainerIdToServer } from '../stores/firestoreStore';
-import { get } from 'svelte/store';
-import { getLogger } from '../lib/logger';
+import { AzureClient } from "@fluidframework/azure-client";
+import {
+    type ContainerSchema,
+    type IFluidContainer,
+} from "@fluidframework/fluid-static";
+import { TinyliciousClient } from "@fluidframework/tinylicious-client";
+import {
+    ConnectionState,
+    SharedTree,
+    type TreeView,
+    type ViewableTree,
+} from "fluid-framework";
+import { get } from "svelte/store";
+import { UserManager } from "../auth/UserManager";
+import { getEnv } from "../lib/env";
+import {
+    getFluidClient,
+    setupConnectionListeners,
+} from "../lib/fluidService";
+import { getLogger } from "../lib/logger";
+import {
+    appTreeConfiguration,
+    Items,
+    Project,
+} from "../schema/app-schema";
+import {
+    getDefaultContainerId,
+    saveContainerIdToServer,
+    userContainer,
+} from "../stores/firestoreStore";
 const logger = getLogger();
 
 // ローカルストレージのキー名
-const CONTAINER_ID_STORAGE_KEY = 'fluid_container_id';
+const CONTAINER_ID_STORAGE_KEY = "fluid_container_id";
 
 // IdCompressorを有効にしたコンテナスキーマを定義
 export const containerSchema = {
-  initialObjects: {
-    appData: SharedTree
-  }
+    initialObjects: {
+        appData: SharedTree,
+    },
 } as any satisfies ContainerSchema;
 
 export class FluidClient {
-  // シングルトンインスタンス
-  private static instance: FluidClient | null = null;
+    // シングルトンインスタンス
+    private static instance: FluidClient | null = null;
 
-  // 初期化状態フラグ
-  private isInitialized = false;
-  private isInitializing = false;
-  private initPromise: Promise<FluidClient> | null = null;
+    // 初期化状態フラグ
+    private isInitialized = false;
+    private isInitializing = false;
+    private initPromise: Promise<FluidClient> | null = null;
 
-  // Public properties for easier debugging
-  public client: AzureClient | TinyliciousClient | undefined = undefined;
-  public container!: IFluidContainer | undefined;
-  public containerId: string | undefined = undefined;
-  public appData!: TreeView<typeof Project> | undefined;
-  private project: Project | undefined = undefined;
-  private _sharedTree: any;
+    // Public properties for easier debugging
+    public client: AzureClient | TinyliciousClient | undefined = undefined;
+    public container!: IFluidContainer | undefined;
+    public containerId: string | undefined = undefined;
+    public appData!: TreeView<typeof Project> | undefined;
+    private project: Project | undefined = undefined;
+    private _sharedTree: any;
 
-  // ユーザーマネージャー
-  private userManager: UserManager;
+    // ユーザーマネージャー
+    private userManager: UserManager;
 
-  // 接続ステータスの追跡
-  private connectionListenerCleanup: (() => void) | null = null;
-  private connectionRetryCount = 0;
-  private readonly MAX_RETRY_COUNT = 3;
-  services: any;
-  currentUser: { id: string } | null = null;
+    // 接続ステータスの追跡
+    private connectionListenerCleanup: (() => void) | null = null;
+    private connectionRetryCount = 0;
+    private readonly MAX_RETRY_COUNT = 3;
+    services: any;
+    currentUser: { id: string; } | null = null;
 
-  /**
-   * シングルトンインスタンスを取得します
-   */
-  public static getInstance(): FluidClient {
-    if (!FluidClient.instance) {
-      FluidClient.instance = new FluidClient();
-    }
-    return FluidClient.instance;
-  }
-
-  /**
-   * コンストラクタはプライベートにして外部からのインスタンス化を防止
-   */
-  private constructor() {
-    // Set a breakpoint here to debug initialization
-    logger.debug('Initializing...');
-
-    // ユーザーマネージャーのインスタンスを取得
-    this.userManager = UserManager.getInstance();
-
-    // 保存されたコンテナIDがあれば読み込む
-    this.loadContainerId();
-  }
-
-  /**
-   * Firestoreからユーザーのデフォルトコンテナを取得する
-   * @returns デフォルトコンテナID、未設定の場合はnull
-   */
-  public async getDefaultContainerId(): Promise<string | null> {
-    try {
-      // ユーザーがログインしていることを確認
-      const currentUser = this.userManager.getCurrentUser();
-      if (!currentUser) {
-        logger.info('Cannot get default container ID: User not logged in. Waiting for login...');
-        return null;
-      }
-
-      // 1. まずストアから直接取得を試みる（リアルタイム更新されている場合）
-      const containerData = get(userContainer);
-      if (containerData?.defaultContainerId) {
-        logger.info(`Found default container ID in store: ${containerData.defaultContainerId}`);
-        return containerData.defaultContainerId;
-      }
-
-      // 2. ストアに見つからない場合はAPIから直接取得
-      logger.info('No default container found in store, fetching from server...');
-      const defaultId = await getDefaultContainerId();
-      if (defaultId) {
-        logger.info(`Found default container ID from API: ${defaultId}`);
-        return defaultId;
-      }
-
-      logger.info('No default container ID found');
-      return null;
-    } catch (error) {
-      logger.error('Error getting default container ID:', error);
-      return null;
-    }
-  }
-
-  /**
-   * ローカルストレージとFirestore両方からコンテナIDを取得し、利用可能なものを使用
-   * @returns 利用可能なコンテナID、なければnull
-   */
-  public async resolveContainerId(): Promise<string | undefined> {
-    // 1. すでにコンテナIDが設定されていれば、それを使用
-    if (this.containerId) {
-      return this.containerId;
+    /**
+     * シングルトンインスタンスを取得します
+     */
+    public static getInstance(): FluidClient {
+        if (!FluidClient.instance) {
+            FluidClient.instance = new FluidClient();
+        }
+        return FluidClient.instance;
     }
 
-    // 2. ローカルストレージからの読み込みを試みる
-    if (typeof window !== 'undefined') {
-      const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
-      if (savedContainerId) {
-        logger.info(`Using container ID from local storage: ${savedContainerId}`);
-        this.containerId = savedContainerId;
-        return savedContainerId;
-      }
+    /**
+     * コンストラクタはプライベートにして外部からのインスタンス化を防止
+     */
+    private constructor() {
+        // Set a breakpoint here to debug initialization
+        logger.debug("Initializing...");
+
+        // ユーザーマネージャーのインスタンスを取得
+        this.userManager = UserManager.getInstance();
+
+        // 保存されたコンテナIDがあれば読み込む
+        this.loadContainerId();
     }
 
-    // 3. Firestoreからデフォルトコンテナを取得
-    const defaultContainerId = await this.getDefaultContainerId();
-    if (defaultContainerId) {
-      logger.info(`Using default container ID from Firestore: ${defaultContainerId}`);
-      this.containerId = defaultContainerId;
-      this.saveContainerId(defaultContainerId); // ローカルストレージにも保存
-      return defaultContainerId;
+    /**
+     * Firestoreからユーザーのデフォルトコンテナを取得する
+     * @returns デフォルトコンテナID、未設定の場合はnull
+     */
+    public async getDefaultContainerId(): Promise<string | null> {
+        try {
+            // ユーザーがログインしていることを確認
+            const currentUser = this.userManager.getCurrentUser();
+            if (!currentUser) {
+                logger.info("Cannot get default container ID: User not logged in. Waiting for login...");
+                return null;
+            }
+
+            // 1. まずストアから直接取得を試みる（リアルタイム更新されている場合）
+            const containerData = get(userContainer);
+            if (containerData?.defaultContainerId) {
+                logger.info(`Found default container ID in store: ${containerData.defaultContainerId}`);
+                return containerData.defaultContainerId;
+            }
+
+            // 2. ストアに見つからない場合はAPIから直接取得
+            logger.info("No default container found in store, fetching from server...");
+            const defaultId = await getDefaultContainerId();
+            if (defaultId) {
+                logger.info(`Found default container ID from API: ${defaultId}`);
+                return defaultId;
+            }
+
+            logger.info("No default container ID found");
+            return null;
+        }
+        catch (error) {
+            logger.error("Error getting default container ID:", error);
+            return null;
+        }
     }
 
-    // 利用可能なコンテナIDがない
-    logger.info('No container ID available');
-    return undefined;
-  }
-
-  // ローカルストレージからコンテナIDを読み込む
-  private loadContainerId(): void {
-    if (typeof window !== 'undefined') {
-      const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
-      if (savedContainerId) {
-        logger.info(`Loading saved container ID: ${savedContainerId}`);
-        this.containerId = savedContainerId;
-      }
-    }
-  }
-
-  // コンテナIDをローカルストレージに保存
-  private saveContainerId(containerId: string): void {
-    if (typeof window !== 'undefined') {
-      logger.info(`Saving container ID locally: ${containerId}`);
-      localStorage.setItem(CONTAINER_ID_STORAGE_KEY, containerId);
-    }
-  }
-
-  /**
-   * コンテナIDをサーバー側に保存する
-   * @param containerId 保存するコンテナID
-   */
-  private async saveContainerIdToServer(containerId: string): Promise<void> {
-    try {
-      // firestoreStore.ts の saveContainerIdToServer 関数を使用
-      const result = await saveContainerIdToServer(containerId);
-
-      if (!result) {
-        logger.warn('Failed to save container ID to server');
-      } else {
-        logger.info(`Successfully saved container ID: ${containerId}`);
-      }
-    } catch (error) {
-      logger.error('Error saving container ID to server:', error);
-      // エラーが発生してもクリティカルではないので、処理は続行
-    }
-  }
-
-  // コンテナIDをリセット（削除）する
-  public resetContainerId(): void {
-    if (typeof window !== 'undefined') {
-      logger.info('Resetting container ID');
-      localStorage.removeItem(CONTAINER_ID_STORAGE_KEY);
-      this.containerId = undefined;
-    }
-  }
-
-  /**
-   * Fluidクライアントを初期化します
-   * 既に初期化済み/初期化中の場合は既存のプロミスを返します
-   */
-  public async initialize(): Promise<FluidClient> {
-    // 既に初期化済みの場合は早期リターン
-    if (this.isInitialized) {
-      logger.info('Already initialized, returning instance');
-      return this;
-    }
-
-    // 初期化中の場合は既存のプロミスを返す
-    if (this.isInitializing && this.initPromise) {
-      logger.info('Initialization already in progress, returning existing promise');
-      return this.initPromise;
-    }
-
-    // 初期化中フラグを設定
-    this.isInitializing = true;
-
-    // 初期化処理をプロミスとして保存し、他のcallerが共有できるようにする
-    this.initPromise = new Promise<FluidClient>(async (resolve, reject) => {
-      try {
-        logger.debug('Starting initialization...');
-
-        // ユーザー情報を取得
-        const userInfo = this.userManager.getFluidUserInfo();
-        const userId = userInfo?.id;
-
-        if (!userId) {
-          logger.info('No user ID available for initialization. waiting for login...');
-          this.isInitializing = false;
-          this.initPromise = null;
-          reject();
-          return;
+    /**
+     * ローカルストレージとFirestore両方からコンテナIDを取得し、利用可能なものを使用
+     * @returns 利用可能なコンテナID、なければnull
+     */
+    public async resolveContainerId(): Promise<string | undefined> {
+        // 1. すでにコンテナIDが設定されていれば、それを使用
+        if (this.containerId) {
+            return this.containerId;
         }
 
-        this.containerId = await this.resolveContainerId();
+        // 2. ローカルストレージからの読み込みを試みる
+        if (typeof window !== "undefined") {
+            const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
+            if (savedContainerId) {
+                logger.info(`Using container ID from local storage: ${savedContainerId}`);
+                this.containerId = savedContainerId;
+                return savedContainerId;
+            }
+        }
 
-        [this.client, this.container, this.services, this.appData, this.project] = await getFluidClient(userId, this.containerId);
+        // 3. Firestoreからデフォルトコンテナを取得
+        const defaultContainerId = await this.getDefaultContainerId();
+        if (defaultContainerId) {
+            logger.info(`Using default container ID from Firestore: ${defaultContainerId}`);
+            this.containerId = defaultContainerId;
+            this.saveContainerId(defaultContainerId); // ローカルストレージにも保存
+            return defaultContainerId;
+        }
 
-        // コンテナの接続状態を監視
-        this.setupConnectionMonitoring();
-        this._setupDebugEventListeners();
+        // 利用可能なコンテナIDがない
+        logger.info("No container ID available");
+        return undefined;
+    }
 
-        // 初期化完了フラグを設定
-        this.isInitialized = true;
-        this.isInitializing = false;
+    // ローカルストレージからコンテナIDを読み込む
+    private loadContainerId(): void {
+        if (typeof window !== "undefined") {
+            const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
+            if (savedContainerId) {
+                logger.info(`Loading saved container ID: ${savedContainerId}`);
+                this.containerId = savedContainerId;
+            }
+        }
+    }
 
-        resolve(this);
-        return
-      } catch (error) {
-        logger.error('Failed to initialize Fluid container:', error);
+    // コンテナIDをローカルストレージに保存
+    private saveContainerId(containerId: string): void {
+        if (typeof window !== "undefined") {
+            logger.info(`Saving container ID locally: ${containerId}`);
+            localStorage.setItem(CONTAINER_ID_STORAGE_KEY, containerId);
+        }
+    }
+
+    /**
+     * コンテナIDをサーバー側に保存する
+     * @param containerId 保存するコンテナID
+     */
+    private async saveContainerIdToServer(containerId: string): Promise<void> {
+        try {
+            // firestoreStore.ts の saveContainerIdToServer 関数を使用
+            const result = await saveContainerIdToServer(containerId);
+
+            if (!result) {
+                logger.warn("Failed to save container ID to server");
+            }
+            else {
+                logger.info(`Successfully saved container ID: ${containerId}`);
+            }
+        }
+        catch (error) {
+            logger.error("Error saving container ID to server:", error);
+            // エラーが発生してもクリティカルではないので、処理は続行
+        }
+    }
+
+    // コンテナIDをリセット（削除）する
+    public resetContainerId(): void {
+        if (typeof window !== "undefined") {
+            logger.info("Resetting container ID");
+            localStorage.removeItem(CONTAINER_ID_STORAGE_KEY);
+            this.containerId = undefined;
+        }
+    }
+
+    /**
+     * Fluidクライアントを初期化します
+     * 既に初期化済み/初期化中の場合は既存のプロミスを返します
+     */
+    public async initialize(): Promise<FluidClient> {
+        // 既に初期化済みの場合は早期リターン
+        if (this.isInitialized) {
+            logger.info("Already initialized, returning instance");
+            return this;
+        }
+
+        // 初期化中の場合は既存のプロミスを返す
+        if (this.isInitializing && this.initPromise) {
+            logger.info("Initialization already in progress, returning existing promise");
+            return this.initPromise;
+        }
+
+        // 初期化中フラグを設定
+        this.isInitializing = true;
+
+        // 初期化処理をプロミスとして保存し、他のcallerが共有できるようにする
+        this.initPromise = new Promise<FluidClient>(async (resolve, reject) => {
+            try {
+                logger.debug("Starting initialization...");
+
+                // ユーザー情報を取得
+                const userInfo = this.userManager.getFluidUserInfo();
+                const userId = userInfo?.id;
+
+                if (!userId) {
+                    logger.info("No user ID available for initialization. waiting for login...");
+                    this.isInitializing = false;
+                    this.initPromise = null;
+                    reject();
+                    return;
+                }
+
+                this.containerId = await this.resolveContainerId();
+
+                [this.client, this.container, this.services, this.appData, this.project] = await getFluidClient(
+                    userId,
+                    this.containerId,
+                );
+
+                // コンテナの接続状態を監視
+                this.setupConnectionMonitoring();
+                this._setupDebugEventListeners();
+
+                // 初期化完了フラグを設定
+                this.isInitialized = true;
+                this.isInitializing = false;
+
+                resolve(this);
+                return;
+            }
+            catch (error) {
+                logger.error("Failed to initialize Fluid container:", error);
+                this.isInitializing = false;
+                this.initPromise = null;
+                reject(error);
+            }
+        });
+
+        return this.initPromise;
+    }
+
+    /**
+     * 新規コンテナを作成します
+     * @param containerName 作成するコンテナの名前（メタデータとして保存）
+     * @returns 作成されたコンテナのID
+     */
+    public async createNewContainer(containerName: string): Promise<string> {
+        try {
+            logger.info(`Creating a new container: ${containerName}`);
+
+            // 現在の状態をリセット
+            this.resetState();
+
+            // ユーザー情報を取得
+            const userInfo = this.userManager.getFluidUserInfo();
+            const userId = userInfo?.id;
+
+            if (!userId) {
+                throw new Error("ユーザーがログインしていないため、新規コンテナを作成できません");
+            }
+
+            // // AzureClientのインスタンスを取得
+            // const tokenProvider = await this.userManager.getCurrentFluidToken(true);
+            // if (!tokenProvider) {
+            //   throw new Error('認証トークンを取得できません');
+            // }
+
+            // Fluid Frameworkのクライアントを初期化
+            const [client] = await getFluidClient(userId, "");
+            this.client = client;
+
+            // 新規コンテナを作成
+            logger.info("Creating container with schema");
+            const createResponse = await this.client.createContainer(containerSchema, "2");
+            this.container = createResponse.container;
+            this.services = createResponse.services;
+
+            // コンテナをアタッチして永続化（コンテナIDを取得）
+            logger.info("Attaching container");
+            this.containerId = await this.container.attach();
+            logger.info(`Container created with ID: ${this.containerId}`);
+
+            await this.saveContainerIdToServer(this.containerId);
+
+            [this.client, this.container, this.services, this.appData, this.project] = await getFluidClient(
+                userId,
+                this.containerId,
+            );
+
+            // SharedTreeデータを初期化
+            if (this.appData!.compatibility.canInitialize) {
+                this.appData!.initialize(Project.createInstance(containerName || "新規プロジェクト"));
+            }
+
+            // 初期データとして最初のページを作成
+            this.project = this.appData!.root as Project;
+            this.project.addPage("はじめてのページ", userId);
+
+            // 接続状態監視を設定
+            this.setupConnectionMonitoring();
+            this._setupDebugEventListeners();
+
+            // コンテナIDをローカルとサーバーに保存
+            this.saveContainerId(this.containerId);
+
+            // 初期化済みフラグを設定
+            this.isInitialized = true;
+            this.isInitializing = false;
+
+            return this.containerId;
+        }
+        catch (error) {
+            logger.error("Failed to create new container:", error);
+            throw error;
+        }
+    }
+
+    /**
+     * 特定のコンテナIDを使用してコンテナをロードします
+     * @param containerId ロードするコンテナID
+     * @returns Fluid クライアントのインスタンス
+     */
+    public async loadContainer(containerId: string): Promise<FluidClient> {
+        try {
+            logger.info(`Loading container with ID: ${containerId}`);
+
+            if (this.containerId === containerId && this.isInitialized && this.container) {
+                logger.info("Container already loaded, returning current instance");
+                return this;
+            }
+
+            // 現在の状態をリセット
+            this.resetState();
+
+            // 新しいコンテナIDを設定
+            this.containerId = containerId;
+
+            // ローカルストレージに保存
+            this.saveContainerId(containerId);
+
+            // 初期化中フラグを設定
+            this.isInitializing = true;
+
+            // ユーザー情報を取得
+            const userInfo = this.userManager.getFluidUserInfo();
+            const userId = userInfo?.id;
+
+            if (!userId) {
+                throw new Error("ユーザーがログインしていないため、コンテナをロードできません");
+            }
+
+            // コンテナをロード
+            [this.client, this.container, this.services, this.appData, this.project] = await getFluidClient(
+                userId,
+                containerId,
+            );
+
+            if (!this.container || !this.appData) {
+                throw new Error("コンテナのロードに失敗しました");
+            }
+
+            // 接続状態監視を設定
+            this.setupConnectionMonitoring();
+            this._setupDebugEventListeners();
+
+            // 初期化完了フラグを設定
+            this.isInitialized = true;
+            this.isInitializing = false;
+
+            logger.info(`Successfully loaded container: ${containerId}`);
+            return this;
+        }
+        catch (error) {
+            logger.error(`Failed to load container ${containerId}:`, error);
+            this.isInitializing = false;
+            throw error;
+        }
+    }
+
+    /**
+     * クライアントの状態をリセットします
+     * @private
+     */
+    private resetState(): void {
+        // コンテナが接続されている場合は切断
+        if (this.container && this.isContainerConnected) {
+            this.container.disconnect();
+        }
+
+        // 接続リスナーがある場合はクリーンアップ
+        if (this.connectionListenerCleanup) {
+            this.connectionListenerCleanup();
+            this.connectionListenerCleanup = null;
+        }
+
+        // 状態をリセット
+        this.container = undefined;
+        this.appData = undefined;
+        this.services = undefined;
+        this.isInitialized = false;
         this.isInitializing = false;
         this.initPromise = null;
-        reject(error);
-      }
-    });
-
-    return this.initPromise;
-  }
-
-  /**
-   * 新規コンテナを作成します
-   * @param containerName 作成するコンテナの名前（メタデータとして保存）
-   * @returns 作成されたコンテナのID
-   */
-  public async createNewContainer(containerName: string): Promise<string> {
-    try {
-      logger.info(`Creating a new container: ${containerName}`);
-
-      // 現在の状態をリセット
-      this.resetState();
-
-      // ユーザー情報を取得
-      const userInfo = this.userManager.getFluidUserInfo();
-      const userId = userInfo?.id;
-
-      if (!userId) {
-        throw new Error('ユーザーがログインしていないため、新規コンテナを作成できません');
-      }
-
-      // // AzureClientのインスタンスを取得
-      // const tokenProvider = await this.userManager.getCurrentFluidToken(true);
-      // if (!tokenProvider) {
-      //   throw new Error('認証トークンを取得できません');
-      // }
-
-      // Fluid Frameworkのクライアントを初期化
-      const [client] = await getFluidClient(userId, "");
-      this.client = client;
-
-      // 新規コンテナを作成
-      logger.info('Creating container with schema');
-      const createResponse = await this.client.createContainer(containerSchema, "2");
-      this.container = createResponse.container;
-      this.services = createResponse.services;
-
-      // コンテナをアタッチして永続化（コンテナIDを取得）
-      logger.info('Attaching container');
-      this.containerId = await this.container.attach();
-      logger.info(`Container created with ID: ${this.containerId}`);
-
-      await this.saveContainerIdToServer(this.containerId);
-
-      [this.client, this.container, this.services, this.appData, this.project] = await getFluidClient(userId, this.containerId);
-
-      // SharedTreeデータを初期化
-      if (this.appData!.compatibility.canInitialize) {
-        this.appData!.initialize(Project.createInstance(containerName || "新規プロジェクト"));
-      }
-
-      // 初期データとして最初のページを作成
-      this.project = this.appData!.root as Project;
-      this.project.addPage("はじめてのページ", userId);
-
-      // 接続状態監視を設定
-      this.setupConnectionMonitoring();
-      this._setupDebugEventListeners();
-
-      // コンテナIDをローカルとサーバーに保存
-      this.saveContainerId(this.containerId);
-
-      // 初期化済みフラグを設定
-      this.isInitialized = true;
-      this.isInitializing = false;
-
-      return this.containerId;
-    } catch (error) {
-      logger.error('Failed to create new container:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 特定のコンテナIDを使用してコンテナをロードします
-   * @param containerId ロードするコンテナID
-   * @returns Fluid クライアントのインスタンス
-   */
-  public async loadContainer(containerId: string): Promise<FluidClient> {
-    try {
-      logger.info(`Loading container with ID: ${containerId}`);
-
-      if (this.containerId === containerId && this.isInitialized && this.container) {
-        logger.info('Container already loaded, returning current instance');
-        return this;
-      }
-
-      // 現在の状態をリセット
-      this.resetState();
-
-      // 新しいコンテナIDを設定
-      this.containerId = containerId;
-
-      // ローカルストレージに保存
-      this.saveContainerId(containerId);
-
-      // 初期化中フラグを設定
-      this.isInitializing = true;
-
-      // ユーザー情報を取得
-      const userInfo = this.userManager.getFluidUserInfo();
-      const userId = userInfo?.id;
-
-      if (!userId) {
-        throw new Error('ユーザーがログインしていないため、コンテナをロードできません');
-      }
-
-      // コンテナをロード
-      [this.client, this.container, this.services, this.appData, this.project] = await getFluidClient(userId, containerId);
-
-      if (!this.container || !this.appData) {
-        throw new Error('コンテナのロードに失敗しました');
-      }
-
-      // 接続状態監視を設定
-      this.setupConnectionMonitoring();
-      this._setupDebugEventListeners();
-
-      // 初期化完了フラグを設定
-      this.isInitialized = true;
-      this.isInitializing = false;
-
-      logger.info(`Successfully loaded container: ${containerId}`);
-      return this;
-    } catch (error) {
-      logger.error(`Failed to load container ${containerId}:`, error);
-      this.isInitializing = false;
-      throw error;
-    }
-  }
-
-  /**
-   * クライアントの状態をリセットします
-   * @private
-   */
-  private resetState(): void {
-    // コンテナが接続されている場合は切断
-    if (this.container && this.isContainerConnected) {
-      this.container.disconnect();
-    }
-
-    // 接続リスナーがある場合はクリーンアップ
-    if (this.connectionListenerCleanup) {
-      this.connectionListenerCleanup();
-      this.connectionListenerCleanup = null;
-    }
-
-    // 状態をリセット
-    this.container = undefined;
-    this.appData = undefined;
-    this.services = undefined;
-    this.isInitialized = false;
-    this.isInitializing = false;
-    this.initPromise = null;
-  }
-
-  // 接続状態の監視を設定
-  private setupConnectionMonitoring() {
-    if (!this.container) return;
-
-    // 以前のリスナーがあれば解除
-    if (this.connectionListenerCleanup) {
-      this.connectionListenerCleanup();
     }
 
     // 接続状態の監視を設定
-    this.connectionListenerCleanup = setupConnectionListeners(
-      this.container,
-      // 接続時のコールバック
-      () => {
-        logger.info('Connected to Fluid service');
-        this.connectionRetryCount = 0; // 接続成功したらリトライカウントをリセット
+    private setupConnectionMonitoring() {
+        if (!this.container) return;
 
-        // カスタムイベントを発行して接続成功を通知
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('fluidConnected', {
-            detail: { containerId: this.containerId }
-          }));
-        }
-      },
-      // 切断時のコールバック
-      () => {
-        logger.info('Disconnected from Fluid service');
-
-        // 切断イベントを発行
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('fluidDisconnected'));
+        // 以前のリスナーがあれば解除
+        if (this.connectionListenerCleanup) {
+            this.connectionListenerCleanup();
         }
 
-        // リトライ回数が上限に達していなければ再接続を試みる
-        if (this.connectionRetryCount < this.MAX_RETRY_COUNT) {
-          this.connectionRetryCount++;
-          // logger.info(`再接続を試みます (${this.connectionRetryCount}/${this.MAX_RETRY_COUNT})...`);
+        // 接続状態の監視を設定
+        this.connectionListenerCleanup = setupConnectionListeners(
+            this.container,
+            // 接続時のコールバック
+            () => {
+                logger.info("Connected to Fluid service");
+                this.connectionRetryCount = 0; // 接続成功したらリトライカウントをリセット
 
-          // // 少し待ってから再接続
-          // setTimeout(() => {
-          //   this.reconnect();
-          // }, 2000);
-        } else {
-          logger.warn('最大再接続回数に達しました。手動での再接続が必要です。');
+                // カスタムイベントを発行して接続成功を通知
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                        new CustomEvent("fluidConnected", {
+                            detail: { containerId: this.containerId },
+                        }),
+                    );
+                }
+            },
+            // 切断時のコールバック
+            () => {
+                logger.info("Disconnected from Fluid service");
+
+                // 切断イベントを発行
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("fluidDisconnected"));
+                }
+
+                // リトライ回数が上限に達していなければ再接続を試みる
+                if (this.connectionRetryCount < this.MAX_RETRY_COUNT) {
+                    this.connectionRetryCount++;
+                    // logger.info(`再接続を試みます (${this.connectionRetryCount}/${this.MAX_RETRY_COUNT})...`);
+
+                    // // 少し待ってから再接続
+                    // setTimeout(() => {
+                    //   this.reconnect();
+                    // }, 2000);
+                }
+                else {
+                    logger.warn("最大再接続回数に達しました。手動での再接続が必要です。");
+                }
+            },
+        );
+    }
+
+    // 再接続を試みる
+    private async reconnect() {
+        try {
+            logger.info("Attempting to reconnect...");
+
+            // 現在のコンテナIDがある場合は、そのIDに特化したトークンを更新
+            if (this.containerId) {
+                logger.info(`Refreshing token for container: ${this.containerId}`);
+                await this.userManager.refreshToken(this.containerId);
+
+                // 更新したトークンで再接続
+                if (this.container) {
+                    logger.info("Reconnecting with refreshed token...");
+                    this.container.connect();
+                }
+            }
+            else {
+                // 一般的なトークン更新
+                const userManager = UserManager.getInstance();
+                await userManager.refreshToken();
+
+                if (this.container) {
+                    this.container.connect();
+                }
+            }
         }
-      }
-    );
-  }
-
-  // 再接続を試みる
-  private async reconnect() {
-    try {
-      logger.info('Attempting to reconnect...');
-
-      // 現在のコンテナIDがある場合は、そのIDに特化したトークンを更新
-      if (this.containerId) {
-        logger.info(`Refreshing token for container: ${this.containerId}`);
-        await this.userManager.refreshToken(this.containerId);
-
-        // 更新したトークンで再接続
-        if (this.container) {
-          logger.info('Reconnecting with refreshed token...');
-          this.container.connect();
+        catch (error) {
+            logger.error("Reconnection failed:", error);
         }
-      } else {
-        // 一般的なトークン更新
-        const userManager = UserManager.getInstance();
-        await userManager.refreshToken();
+    }
 
-        if (this.container) {
-          this.container.connect();
+    public getProject() {
+        return this.project;
+    }
+
+    public getTree() {
+        const rootItems = this.project?.items as Items;
+        return rootItems;
+    }
+
+    /**
+     * コンテナが接続済みかどうかを確認します
+     */
+    public get isContainerConnected(): boolean {
+        if (!this.container) return false;
+        return this.container.connectionState !== ConnectionState.Disconnected;
+    }
+
+    /**
+     * コンテナの接続状態を取得します
+     */
+    public get connectionState(): ConnectionState | undefined {
+        return this.container?.connectionState;
+    }
+
+    /**
+     * コンテナの接続状態を文字列で取得します
+     */
+    public getConnectionStateString(): string {
+        if (!this.container) return "コンテナ未接続";
+
+        switch (this.container.connectionState) {
+            case ConnectionState.Connected:
+                return "接続済み";
+            case ConnectionState.Disconnected:
+                return "切断";
+            case ConnectionState.EstablishingConnection:
+                return "接続中";
+            case ConnectionState.CatchingUp:
+                return "同期中";
+            default:
+                return "不明";
         }
-      }
-    } catch (error) {
-      logger.error('Reconnection failed:', error);
-    }
-  }
-
-  public getProject() {
-    return this.project;
-  }
-
-  public getTree() {
-    const rootItems = this.project?.items as Items;
-    return rootItems;
-  }
-
-  /**
-   * コンテナが接続済みかどうかを確認します
-   */
-  public get isContainerConnected(): boolean {
-    if (!this.container) return false;
-    return this.container.connectionState !== ConnectionState.Disconnected;
-  }
-
-  /**
-   * コンテナの接続状態を取得します
-   */
-  public get connectionState(): ConnectionState | undefined {
-    return this.container?.connectionState;
-  }
-
-  /**
-   * コンテナの接続状態を文字列で取得します
-   */
-  public getConnectionStateString(): string {
-    if (!this.container) return "コンテナ未接続";
-
-    switch (this.container.connectionState) {
-      case ConnectionState.Connected:
-        return "接続済み";
-      case ConnectionState.Disconnected:
-        return "切断";
-      case ConnectionState.EstablishingConnection:
-        return "接続中";
-      case ConnectionState.CatchingUp:
-        return "同期中";
-      default:
-        return "不明";
-    }
-  }
-
-  // デバッグ用のイベントリスナー設定
-  private _setupDebugEventListeners() {
-    if (!this.container) return;
-
-    // TypeScriptの型定義ではopイベントは認識されていないが、実際のランタイムでは機能する
-    // @ts-ignore - カスタムイベントタイプはTypeScriptの型定義に含まれていない
-    this.container.on('op', (op: any) => {
-      logger.debug('Operation received:', op);
-    });
-
-  }
-
-  // デバッグ用のヘルパーメソッド
-  getDebugInfo() {
-    // rootItems の安全な取得
-    const rootItems = this.appData?.root?.items as Items;
-    const hasItems = rootItems && rootItems.length > 0;
-
-    return {
-      clientInitialized: !!this.client,
-      containerConnected: this.isContainerConnected,
-      connectionState: this.getConnectionStateString(),
-      containerId: this.containerId,
-      treeData: this.appData?.root ? this.getAllData() : {},
-      treeCount: rootItems?.length || 0,
-      treeFirstItem: hasItems ? rootItems[0]?.text || null : null,
-      timeStamp: new Date().toISOString(),
-      currentUser: this.userManager.getCurrentUser()
-    };
-  }
-
-  // 以下は共有データ操作用のヘルパーメソッド
-  getAllData() {
-    if (this.appData?.root) {
-      const rootItems = this.appData.root.items as Items;
-      return {
-        itemCount: rootItems.length,
-        items: [...rootItems].map(item => ({
-          id: item.id,
-          text: item.text
-        }))
-      };
-    }
-    return {};
-  }
-
-  /**
-   * E2Eテスト用に現在のSharedTreeデータ構造を取得する
-   * @returns ツリー構造のシリアライズされたデータ
-   */
-  public getTreeDebugData(): any {
-    if (!this.container || !this.appData) {
-      return null;
     }
 
-    // SharedTreeのデータ構造をシリアライズして返す
-    const treeData = this.appData.root;
+    // デバッグ用のイベントリスナー設定
+    private _setupDebugEventListeners() {
+        if (!this.container) return;
 
-    // 再帰的にツリー構造をプレーンなオブジェクトに変換
-    return this._serializeTreeNode(treeData);
-  }
-
-  /**
-   * ツリーノードを再帰的にシリアライズする
-   * @private
-   */
-  private _serializeTreeNode(node: any): any {
-    if (!node) return null;
-
-    // ID、テキスト、子アイテムなどの基本情報を収集
-    const result: any = {
-      id: node.id,
-      text: node.text,
-      hasChildren: node.items?.length > 0
-    };
-
-    // 子アイテムを再帰的に処理
-    if (node.items && node.items.length > 0) {
-      result.children = [];
-      for (const child of node.items) {
-        result.children.push(this._serializeTreeNode(child));
-      }
+        // TypeScriptの型定義ではopイベントは認識されていないが、実際のランタイムでは機能する
+        // @ts-ignore - カスタムイベントタイプはTypeScriptの型定義に含まれていない
+        this.container.on("op", (op: any) => {
+            logger.debug("Operation received:", op);
+        });
     }
 
-    return result;
-  }
+    // デバッグ用のヘルパーメソッド
+    getDebugInfo() {
+        // rootItems の安全な取得
+        const rootItems = this.appData?.root?.items as Items;
+        const hasItems = rootItems && rootItems.length > 0;
 
-  // コンポーネント破棄時のクリーンアップ
-  public dispose() {
-    if (this.connectionListenerCleanup) {
-      this.connectionListenerCleanup();
-      this.connectionListenerCleanup = null;
+        return {
+            clientInitialized: !!this.client,
+            containerConnected: this.isContainerConnected,
+            connectionState: this.getConnectionStateString(),
+            containerId: this.containerId,
+            treeData: this.appData?.root ? this.getAllData() : {},
+            treeCount: rootItems?.length || 0,
+            treeFirstItem: hasItems ? rootItems[0]?.text || null : null,
+            timeStamp: new Date().toISOString(),
+            currentUser: this.userManager.getCurrentUser(),
+        };
     }
 
-    try {
-      // コンテナの切断
-      if (this.isContainerConnected) {
-        this.container.disconnect();
-      }
-    } catch (e) {
-      logger.warn('FluidClient disposal error:', e);
+    // 以下は共有データ操作用のヘルパーメソッド
+    getAllData() {
+        if (this.appData?.root) {
+            const rootItems = this.appData.root.items as Items;
+            return {
+                itemCount: rootItems.length,
+                items: [...rootItems].map(item => ({
+                    id: item.id,
+                    text: item.text,
+                })),
+            };
+        }
+        return {};
     }
-  }
+
+    /**
+     * E2Eテスト用に現在のSharedTreeデータ構造を取得する
+     * @returns ツリー構造のシリアライズされたデータ
+     */
+    public getTreeDebugData(): any {
+        if (!this.container || !this.appData) {
+            return null;
+        }
+
+        // SharedTreeのデータ構造をシリアライズして返す
+        const treeData = this.appData.root;
+
+        // 再帰的にツリー構造をプレーンなオブジェクトに変換
+        return this._serializeTreeNode(treeData);
+    }
+
+    /**
+     * ツリーノードを再帰的にシリアライズする
+     * @private
+     */
+    private _serializeTreeNode(node: any): any {
+        if (!node) return null;
+
+        // ID、テキスト、子アイテムなどの基本情報を収集
+        const result: any = {
+            id: node.id,
+            text: node.text,
+            hasChildren: node.items?.length > 0,
+        };
+
+        // 子アイテムを再帰的に処理
+        if (node.items && node.items.length > 0) {
+            result.children = [];
+            for (const child of node.items) {
+                result.children.push(this._serializeTreeNode(child));
+            }
+        }
+
+        return result;
+    }
+
+    // コンポーネント破棄時のクリーンアップ
+    public dispose() {
+        if (this.connectionListenerCleanup) {
+            this.connectionListenerCleanup();
+            this.connectionListenerCleanup = null;
+        }
+
+        try {
+            // コンテナの切断
+            if (this.isContainerConnected) {
+                this.container.disconnect();
+            }
+        }
+        catch (e) {
+            logger.warn("FluidClient disposal error:", e);
+        }
+    }
 }
-

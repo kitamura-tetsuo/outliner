@@ -1,18 +1,18 @@
 {
-  "playwright.env": {
-    "NODE_ENV": "test",
-    "VITE_USE_TINYLICIOUS": "true",
-    "VITE_FORCE_AZURE": "false",
-    "VITE_IS_TEST": "true",
-    "DOTENV_CONFIG_PATH": ".env.test"
-  },
-  "playwright.reuseBrowser": true,
-  "playwright.showTrace": true,
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  },
-  "playwright.env.PLAYWRIGHT_TEST_BASE_URL": "http://192.168.50.16:7080",
-  "playwright.use.dotenv": true
+    "playwright.env": {
+        "NODE_ENV": "test",
+        "VITE_USE_TINYLICIOUS": "true",
+        "VITE_FORCE_AZURE": "false",
+        "VITE_IS_TEST": "true",
+        "DOTENV_CONFIG_PATH": ".env.test"
+    },
+    "playwright.reuseBrowser": true,
+    "playwright.showTrace": true,
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    },
+    "playwright.env.PLAYWRIGHT_TEST_BASE_URL": "http://192.168.50.16:7080",
+    "playwright.use.dotenv": true
 }

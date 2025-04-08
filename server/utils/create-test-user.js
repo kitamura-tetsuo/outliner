@@ -1,28 +1,28 @@
 // Firebase Auth Emulator Test User Setup
-const admin = require('firebase-admin');
-const http = require('http');
-require('dotenv').config();
+const admin = require("firebase-admin");
+const http = require("http");
+require("dotenv").config();
 
 // Check if Firebase Auth emulator is running
-const checkEmulatorRunning = (host = 'localhost', port = 9099) => {
-    return new Promise((resolve) => {
+const checkEmulatorRunning = (host = "localhost", port = 9099) => {
+    return new Promise(resolve => {
         const req = http.request({
-            method: 'GET',
+            method: "GET",
             host,
             port,
-            path: '/',
-            timeout: 1000
-        }, (res) => {
+            path: "/",
+            timeout: 1000,
+        }, res => {
             // Response received, emulator is running
             resolve(true);
         });
 
-        req.on('error', () => {
+        req.on("error", () => {
             // Error connecting, emulator is not running
             resolve(false);
         });
 
-        req.on('timeout', () => {
+        req.on("timeout", () => {
             req.destroy();
             resolve(false);
         });
@@ -37,7 +37,7 @@ const initializeAdminEmulator = (host, port) => {
         // Check if already initialized
         if (admin.apps.length === 0) {
             admin.initializeApp({
-                projectId: 'demo-project',
+                projectId: "demo-project",
             });
         }
 
@@ -45,8 +45,9 @@ const initializeAdminEmulator = (host, port) => {
         const emulatorHost = `${host}:${port}`;
         process.env.FIREBASE_AUTH_EMULATOR_HOST = emulatorHost;
         console.log(`Setting Auth emulator host to: ${emulatorHost}`);
-    } catch (error) {
-        console.error('Error initializing Firebase Admin:', error);
+    }
+    catch (error) {
+        console.error("Error initializing Firebase Admin:", error);
         throw error;
     }
 };
@@ -55,12 +56,12 @@ const initializeAdminEmulator = (host, port) => {
 const createTestUser = async () => {
     // Check if emulator is running on possible hosts
     const hostOptions = [
-        { host: 'firebase-emulator', port: 9099 },
-        { host: 'localhost', port: 9099 },
-        { host: 'localhost', port: 6499 }, // Host port mapping
-        { host: '172.18.0.2', port: 9099 }, // Direct IP of emulator container 
-        { host: '172.20.0.3', port: 9099 }, // Direct IP of emulator container on firebase-network
-        { host: 'devcontainer-firebase-emulator-1', port: 9099 } // Container name
+        { host: "firebase-emulator", port: 9099 },
+        { host: "localhost", port: 9099 },
+        { host: "localhost", port: 6499 }, // Host port mapping
+        { host: "172.18.0.2", port: 9099 }, // Direct IP of emulator container
+        { host: "172.20.0.3", port: 9099 }, // Direct IP of emulator container on firebase-network
+        { host: "devcontainer-firebase-emulator-1", port: 9099 }, // Container name
     ];
 
     let emulatorHost, emulatorPort, isRunning = false;
@@ -78,24 +79,25 @@ const createTestUser = async () => {
 
     if (!isRunning) {
         console.error(`Firebase Auth emulator is not running on any host`);
-        console.error('Please make sure the Firebase emulator container is running');
-        throw new Error('Firebase Auth emulator not running');
+        console.error("Please make sure the Firebase emulator container is running");
+        throw new Error("Firebase Auth emulator not running");
     }
 
     try {
         initializeAdminEmulator(emulatorHost, emulatorPort);
 
-        const testEmail = 'test@example.com';
-        const testPassword = 'password';
+        const testEmail = "test@example.com";
+        const testPassword = "password";
 
         // Check if user already exists
         try {
             const userRecord = await admin.auth().getUserByEmail(testEmail);
             console.log(`Test user already exists: ${userRecord.uid}`);
             return userRecord;
-        } catch (error) {
+        }
+        catch (error) {
             // User doesn't exist, continue to create
-            if (error.code !== 'auth/user-not-found') {
+            if (error.code !== "auth/user-not-found") {
                 throw error;
             }
         }
@@ -104,14 +106,15 @@ const createTestUser = async () => {
         const userRecord = await admin.auth().createUser({
             email: testEmail,
             password: testPassword,
-            displayName: 'Test User',
-            emailVerified: true
+            displayName: "Test User",
+            emailVerified: true,
         });
 
         console.log(`Successfully created test user: ${userRecord.uid}`);
         return userRecord;
-    } catch (error) {
-        console.error('Error creating test user:', error);
+    }
+    catch (error) {
+        console.error("Error creating test user:", error);
         throw error;
     }
 };
@@ -120,11 +123,11 @@ const createTestUser = async () => {
 if (require.main === module) {
     createTestUser()
         .then(() => {
-            console.log('Test user setup completed');
+            console.log("Test user setup completed");
             process.exit(0);
         })
         .catch(error => {
-            console.error('Test user setup failed:', error);
+            console.error("Test user setup failed:", error);
             process.exit(1);
         });
 }

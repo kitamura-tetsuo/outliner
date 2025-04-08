@@ -1,39 +1,42 @@
 // filepath: /workspace/client/src/tests/mocks/index.ts
-import { setupMockFirestore, resetMockFirestore } from './firestoreMock';
-import { UserManager } from '../../auth/UserManager';
+import { UserManager } from "../../auth/UserManager";
+import {
+    resetMockFirestore,
+    setupMockFirestore,
+} from "./firestoreMock";
 
 // Mock for UserManager
 const mockUserManager = {
     getCurrentUser: jest.fn().mockReturnValue({
-        id: 'test-user-id',
-        name: 'Test User',
-        email: 'test@example.com'
+        id: "test-user-id",
+        name: "Test User",
+        email: "test@example.com",
     }),
-    addEventListener: jest.fn().mockImplementation((callback) => {
+    addEventListener: jest.fn().mockImplementation(callback => {
         // Simulate auth state change notification
         callback({
             user: {
-                id: 'test-user-id',
-                name: 'Test User',
-                email: 'test@example.com'
-            }
+                id: "test-user-id",
+                name: "Test User",
+                email: "test@example.com",
+            },
         });
         return jest.fn(); // Return mock unsubscribe function
     }),
     auth: {
         currentUser: {
-            getIdToken: jest.fn().mockResolvedValue('mock-id-token')
-        }
-    }
+            getIdToken: jest.fn().mockResolvedValue("mock-id-token"),
+        },
+    },
 };
 
 // Setup all mocks at once
 export function setupMocks({
     firebase = {},
-    firestore = {}
+    firestore = {},
 } = {}) {
     // Mock UserManager singleton
-    jest.spyOn(UserManager, 'getInstance').mockReturnValue(mockUserManager as any);
+    jest.spyOn(UserManager, "getInstance").mockReturnValue(mockUserManager as any);
 
     // Setup Firestore mock with optional initial data
     setupMockFirestore(firestore);
@@ -41,22 +44,23 @@ export function setupMocks({
     // Mock fetch for API calls
     const originalFetch = global.fetch;
     global.fetch = jest.fn().mockImplementation((url, options) => {
-        if (url.includes('/api/save-container')) {
+        if (url.includes("/api/save-container")) {
             return Promise.resolve({
                 ok: true,
                 status: 200,
-                json: () => Promise.resolve({ success: true })
+                json: () => Promise.resolve({ success: true }),
             });
         }
 
-        if (url.includes('/api/fluid-token')) {
+        if (url.includes("/api/fluid-token")) {
             return Promise.resolve({
                 ok: true,
                 status: 200,
-                json: () => Promise.resolve({
-                    token: 'mock-fluid-token',
-                    user: { id: 'test-user-id', name: 'Test User' }
-                })
+                json: () =>
+                    Promise.resolve({
+                        token: "mock-fluid-token",
+                        user: { id: "test-user-id", name: "Test User" },
+                    }),
             });
         }
 
@@ -72,9 +76,9 @@ export function setupMocks({
             resetMockFirestore();
             jest.clearAllMocks();
             global.fetch = originalFetch;
-        }
+        },
     };
 }
 
 // Export all individual mock modules for direct access
-export * from './firestoreMock';
+export * from "./firestoreMock";

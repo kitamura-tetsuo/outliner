@@ -1,220 +1,220 @@
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Launch Chrome against localhost",
-      "url": "http://192.168.50.16:7070",
-      "webRoot": "${workspaceFolder}/client",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/src/*",
-        "http://192.168.50.16:7070/src/*": "${webRoot}/src/*",
-        "http://192.168.50.16:7080/src/*": "${webRoot}/src/*",
-        "webpack:///./*": "${webRoot}/*",
-        "/./*": "${webRoot}/*",
-        "/*": "*",
-        "/src/*": "${webRoot}/src/*",
-        "192.168.50.16꞉7070/src/*": "${webRoot}/src/*",
-        "192.168.50.16꞉7080/src/*": "${webRoot}/src/*"
-      },
-      "skipFiles": [
-        "**/lib/logger.*",
-        "**/node_modules/**"
-      ],
-      "port": 9876
-    },
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Launch Chrome against dev server",
-      "url": "http://192.168.50.16:7070",
-      "webRoot": "${workspaceFolder}/client",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/src/*",
-        "http://192.168.50.16:7070/src/*": "${webRoot}/src/*",
-        "http://192.168.50.16:7080/src/*": "${webRoot}/src/*",
-        "webpack:///./*": "${webRoot}/*",
-        "/./*": "${webRoot}/*",
-        "/*": "*",
-        "/src/*": "${webRoot}/src/*",
-        "192.168.50.16꞉7070/src/*": "${webRoot}/src/*",
-        "192.168.50.16꞉7080/src/*": "${webRoot}/src/*"
-      },
-      "skipFiles": [
-        "**/lib/logger.*",
-        "**/node_modules/**"
-      ],
-      "port": 9876,
-      "urlFilter": "*192.168.50.16:7070*"
-    },
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Launch Chrome against test server",
-      "url": "http://192.168.50.16:7080",
-      "webRoot": "${workspaceFolder}/client",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/src/*",
-        "http://192.168.50.16:7070/src/*": "${webRoot}/src/*",
-        "http://192.168.50.16:7080/src/*": "${webRoot}/src/*",
-        "webpack:///./*": "${webRoot}/*",
-        "/./*": "${webRoot}/*",
-        "/*": "*",
-        "/src/*": "${webRoot}/src/*",
-        "192.168.50.16꞉7070/src/*": "${webRoot}/src/*",
-        "192.168.50.16꞉7080/src/*": "${webRoot}/src/*"
-      },
-      "skipFiles": [
-        "**/lib/logger.*",
-        "**/node_modules/**"
-      ],
-      "port": 9877,
-      "urlFilter": "*192.168.50.16:7080*"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug SvelteKit Server",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "mkdir -p /workspace/server/logs && npm run dev -- --host 0.0.0.0 2>&1 | tee /workspace/server/logs/svelte-kit.log"
-      ],
-      "localRoot": "${workspaceFolder}/client",
-      "env": {
-        "PORT": "7070"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "restart": true
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug Server",
-      "runtimeExecutable": "bash",
-      "localRoot": "${workspaceFolder}/server",
-      "runtimeArgs": [
-        "-c",
-        "npm run dev -- --host 0.0.0.0 2>&1 | tee /workspace/server/logs/auth-service-tee.log"
-      ],
-      "env": {
-        "PORT": "7071"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "restart": true
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "For Test Debug Server",
-      "runtimeExecutable": "bash",
-      "localRoot": "${workspaceFolder}/server",
-      "runtimeArgs": [
-        "-c",
-        "cd ${workspaceFolder}/server && npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7081 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
-      ],
-      "env": {
-        "PORT": "7081"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "restart": true
-    },
-    {
-      "name": "Launch Tinylicious",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/client",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": [
-        "tinylicious"
-      ],
-      "env": {
-        "PORT": "7072"
-      },
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "For Test SvelteKit Server",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7080 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
-      ],
-      "localRoot": "${workspaceFolder}/client",
-      "env": {
-        "PORT": "7080"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "restart": true
-    },
-    {
-      "name": "For Test Launch Tinylicious",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/client",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": [
-        "tinylicious"
-      ],
-      "env": {
-        "PORT": "7082"
-      },
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug Firestore Sequential",
-      "program": "${workspaceFolder}/server/firestore-sequential.js",
-      "skipFiles": [
-        "<node_internals>/**"
-      ]
-    }
-  ],
-  "compounds": [
-    {
-      "name": "Servers",
-      "configurations": [
-        "Debug Server",
-        "Launch Tinylicious",
-        "Debug SvelteKit Server",
-        "For Test SvelteKit Server",
-        "For Test Debug Server",
-        "For Test Launch Tinylicious",
-        // "Launch Chrome against localhost"
-      ],
-      "stopAll": true,
-      "preLaunchTask": "Kill Tinylicious Process"
-    },
-    {
-      "name": "Test Servers",
-      "configurations": [
-        "For Test SvelteKit Server",
-        "For Test Debug Server",
-        "For Test Launch Tinylicious",
-      ],
-      "stopAll": true,
-      "preLaunchTask": "Kill Tinylicious Process"
-    }
-  ]
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost",
+            "url": "http://192.168.50.16:7070",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http://192.168.50.16:7070/src/*": "${webRoot}/src/*",
+                "http://192.168.50.16:7080/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "192.168.50.16꞉7070/src/*": "${webRoot}/src/*",
+                "192.168.50.16꞉7080/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/node_modules/**"
+            ],
+            "port": 9876
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against dev server",
+            "url": "http://192.168.50.16:7070",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http://192.168.50.16:7070/src/*": "${webRoot}/src/*",
+                "http://192.168.50.16:7080/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "192.168.50.16꞉7070/src/*": "${webRoot}/src/*",
+                "192.168.50.16꞉7080/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/node_modules/**"
+            ],
+            "port": 9876,
+            "urlFilter": "*192.168.50.16:7070*"
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against test server",
+            "url": "http://192.168.50.16:7080",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http://192.168.50.16:7070/src/*": "${webRoot}/src/*",
+                "http://192.168.50.16:7080/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "192.168.50.16꞉7070/src/*": "${webRoot}/src/*",
+                "192.168.50.16꞉7080/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/node_modules/**"
+            ],
+            "port": 9877,
+            "urlFilter": "*192.168.50.16:7080*"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug SvelteKit Server",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "mkdir -p /workspace/server/logs && npm run dev -- --host 0.0.0.0 2>&1 | tee /workspace/server/logs/svelte-kit.log"
+            ],
+            "localRoot": "${workspaceFolder}/client",
+            "env": {
+                "PORT": "7070"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "restart": true
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Server",
+            "runtimeExecutable": "bash",
+            "localRoot": "${workspaceFolder}/server",
+            "runtimeArgs": [
+                "-c",
+                "npm run dev -- --host 0.0.0.0 2>&1 | tee /workspace/server/logs/auth-service-tee.log"
+            ],
+            "env": {
+                "PORT": "7071"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "restart": true
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "For Test Debug Server",
+            "runtimeExecutable": "bash",
+            "localRoot": "${workspaceFolder}/server",
+            "runtimeArgs": [
+                "-c",
+                "cd ${workspaceFolder}/server && npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7081 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
+            ],
+            "env": {
+                "PORT": "7081"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "restart": true
+        },
+        {
+            "name": "Launch Tinylicious",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/client",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "tinylicious"
+            ],
+            "env": {
+                "PORT": "7072"
+            },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "For Test SvelteKit Server",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7080 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
+            ],
+            "localRoot": "${workspaceFolder}/client",
+            "env": {
+                "PORT": "7080"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "restart": true
+        },
+        {
+            "name": "For Test Launch Tinylicious",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/client",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "tinylicious"
+            ],
+            "env": {
+                "PORT": "7082"
+            },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Firestore Sequential",
+            "program": "${workspaceFolder}/server/firestore-sequential.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Servers",
+            "configurations": [
+                "Debug Server",
+                "Launch Tinylicious",
+                "Debug SvelteKit Server",
+                "For Test SvelteKit Server",
+                "For Test Debug Server",
+                "For Test Launch Tinylicious"
+                // "Launch Chrome against localhost"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "Kill Tinylicious Process"
+        },
+        {
+            "name": "Test Servers",
+            "configurations": [
+                "For Test SvelteKit Server",
+                "For Test Debug Server",
+                "For Test Launch Tinylicious"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "Kill Tinylicious Process"
+        }
+    ]
 }

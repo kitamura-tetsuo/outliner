@@ -11,7 +11,7 @@
 // export class MockFluidClient {
 //   // オリジナルのFluidClientのシングルトンメソッドを保存
 //   private static originalGetInstance: typeof FluidClient.getInstance;
-  
+
 //   // Tinyliciousクライアント
 //   private client: TinyliciousClient;
 //   public container!: IFluidContainer;
@@ -34,15 +34,15 @@
 //   public static setup(): () => void {
 //     // オリジナルのメソッドを保存
 //     this.originalGetInstance = FluidClient.getInstance;
-    
+
 //     // モックインスタンスを作成
 //     const mockInstance = new MockFluidClient();
-    
+
 //     // FluidClient.getInstanceをオーバーライド
 //     FluidClient.getInstance = () => {
 //       return mockInstance as unknown as FluidClient;
 //     };
-    
+
 //     // クリーンアップ関数を返す
 //     return () => {
 //       FluidClient.getInstance = this.originalGetInstance;
@@ -60,7 +60,7 @@
 
 //     try {
 //       console.log('[MockFluidClient] Creating new container for testing');
-      
+
 //       // IdCompressorを有効にしたコンテナスキーマを定義
 //       const containerSchema: ContainerSchema = {
 //         initialObjects: {
@@ -78,26 +78,26 @@
 //       // スキーマを指定してTreeViewを構成（SSR互換の書き方）
 //       const sharedTree = this.container.initialObjects.appData as SharedTree;
 //       this.appData = sharedTree.viewWith(appTreeConfiguration);
-      
+
 //       // 初期データを作成
 //       if (this.appData.compatibility.canInitialize) {
 //         this.appData.initialize(new Project({
 //           title: "Test Project",
 //           items: new Items([])
 //         }));
-        
+
 //         // テスト用のアイテムを追加
 //         this.addSampleItems();
 //       }
-      
+
 //       this.isInitialized = true;
 //       this.isConnected = true;
-      
+
 //       // コンソールでデバッグ用に表示
 //       if (typeof window !== 'undefined') {
 //         (window as any).__FLUID_CLIENT__ = this;
 //       }
-      
+
 //       return this;
 //     } catch (error) {
 //       console.error('[MockFluidClient] Initialization error:', error);
@@ -111,7 +111,7 @@
 //   private addSampleItems() {
 //     const items = this.appData.root.items as Items;
 //     const timeStamp = new Date().getTime();
-    
+
 //     // 3つのテストアイテムを追加
 //     for (let i = 0; i < 3; i++) {
 //       const newItem = new Item({
@@ -123,7 +123,7 @@
 //         lastChanged: timeStamp,
 //         items: new Items([]),
 //       });
-      
+
 //       items.insertAtEnd(newItem);
 //     }
 //   }
@@ -140,7 +140,7 @@
 //    */
 //   public getConnectionStateString(): string {
 //     if (!this.container) return "未初期化";
-    
+
 //     switch (this.container.connectionState) {
 //       case ConnectionState.Connected:
 //         return "接続済み";

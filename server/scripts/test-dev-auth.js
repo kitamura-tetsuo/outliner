@@ -1,25 +1,25 @@
 // Test script for development authentication
-require('dotenv').config();
-const fetch = require('node-fetch');
+require("dotenv").config();
+const fetch = require("node-fetch");
 
 // APIサーバーのURL
-const API_BASE_URL = process.env.API_BASE_URL || 'http://192.168.50.16:7071';
+const API_BASE_URL = process.env.API_BASE_URL || "http://192.168.50.16:7071";
 
 // テスト用認証情報
 const testCredentials = {
-    email: 'test@example.com',
-    password: 'password123'
+    email: "test@example.com",
+    password: "password123",
 };
 
 // カラー出力用ヘルパー
 const colors = {
-    reset: '\x1b[0m',
-    red: '\x1b[31m',
-    green: '\x1b[32m',
-    yellow: '\x1b[33m',
-    blue: '\x1b[34m',
-    magenta: '\x1b[35m',
-    cyan: '\x1b[36m'
+    reset: "\x1b[0m",
+    red: "\x1b[31m",
+    green: "\x1b[32m",
+    yellow: "\x1b[33m",
+    blue: "\x1b[34m",
+    magenta: "\x1b[35m",
+    cyan: "\x1b[36m",
 };
 
 async function testEmailPasswordLogin() {
@@ -31,14 +31,16 @@ async function testEmailPasswordLogin() {
     try {
         console.log(`\n${colors.yellow}1. /api/loginエンドポイントでログインを試行...${colors.reset}`);
         const loginResponse = await fetch(`${API_BASE_URL}/api/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(testCredentials)
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(testCredentials),
         });
 
         if (!loginResponse.ok) {
             const errorText = await loginResponse.text();
-            console.error(`${colors.red}ログイン失敗: ${loginResponse.status} ${loginResponse.statusText}${colors.reset}`);
+            console.error(
+                `${colors.red}ログイン失敗: ${loginResponse.status} ${loginResponse.statusText}${colors.reset}`,
+            );
             console.error(`${colors.red}エラー詳細: ${errorText}${colors.reset}`);
             return;
         }
@@ -60,25 +62,27 @@ async function testEmailPasswordLogin() {
             uid: loginData.user.uid,
             email: loginData.user.email,
             displayName: loginData.user.displayName,
-            devUser: true,  // 開発環境用フラグ
-            role: 'user'
+            devUser: true, // 開発環境用フラグ
+            role: "user",
         };
 
         // トークンを文字列化して署名を追加（開発環境用の簡易版）
-        const fakeIdToken = Buffer.from(JSON.stringify(devToken)).toString('base64');
+        const fakeIdToken = Buffer.from(JSON.stringify(devToken)).toString("base64");
         console.log(`${colors.green}開発環境用IDトークン生成完了${colors.reset}`);
 
         // トークンを使ってFluid Token APIを呼び出す
         console.log(`\n${colors.yellow}3. /api/fluid-tokenエンドポイントでトークンを取得...${colors.reset}`);
         const fluidTokenResponse = await fetch(`${API_BASE_URL}/api/fluid-token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken: fakeIdToken })
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken: fakeIdToken }),
         });
 
         if (!fluidTokenResponse.ok) {
             const errorText = await fluidTokenResponse.text();
-            console.error(`${colors.red}Fluidトークン取得失敗: ${fluidTokenResponse.status} ${fluidTokenResponse.statusText}${colors.reset}`);
+            console.error(
+                `${colors.red}Fluidトークン取得失敗: ${fluidTokenResponse.status} ${fluidTokenResponse.statusText}${colors.reset}`,
+            );
             console.error(`${colors.red}エラー詳細: ${errorText}${colors.reset}`);
             return;
         }
@@ -93,10 +97,12 @@ async function testEmailPasswordLogin() {
             console.log(`${colors.cyan}===================================================${colors.reset}`);
             console.log(`${colors.cyan}テスト結果: 成功${colors.reset}`);
             console.log(`${colors.cyan}===================================================${colors.reset}`);
-        } else {
+        }
+        else {
             console.error(`${colors.red}トークンが返されませんでした${colors.reset}`);
         }
-    } catch (error) {
+    }
+    catch (error) {
         console.error(`${colors.red}テスト中にエラーが発生しました:${colors.reset}`, error);
     }
 }

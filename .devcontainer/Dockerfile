@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
 # Install system dependencies if needed
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
-    # Add any extra dependencies you might need here
+# Add any extra dependencies you might need here
     curl \
     apt-transport-https \
     ca-certificates \

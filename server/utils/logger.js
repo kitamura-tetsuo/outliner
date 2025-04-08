@@ -1,23 +1,23 @@
 /**
  * ロギング機能モジュール
- * 
+ *
  * サーバーとクライアントのログを管理するためのユーティリティ
  */
-const fs = require('fs');
-const path = require('path');
-const fsExtra = require('fs-extra');
-const pino = require('pino');
-const pretty = require('pino-pretty');
+const fs = require("fs");
+const path = require("path");
+const fsExtra = require("fs-extra");
+const pino = require("pino");
+const pretty = require("pino-pretty");
 
 // ログディレクトリのパス
-const serverLogDir = path.join(__dirname, '..', 'logs');
-const clientLogDir = path.join('/workspace/client/logs');
+const serverLogDir = path.join(__dirname, "..", "logs");
+const clientLogDir = path.join("/workspace/client/logs");
 
 // ログファイルのパス
-const serverLogPath = path.join(serverLogDir, 'auth-service.log');
+const serverLogPath = path.join(serverLogDir, "auth-service.log");
 // テスト環境かどうかをチェック
-const isTestEnv = process.env.NODE_ENV === 'test';
-const clientLogFileName = isTestEnv ? 'test-browser.log' : 'browser.log';
+const isTestEnv = process.env.NODE_ENV === "test";
+const clientLogFileName = isTestEnv ? "test-browser.log" : "browser.log";
 const clientLogPath = path.join(clientLogDir, clientLogFileName);
 
 // ログディレクトリを確認・作成
@@ -39,38 +39,38 @@ function ensureLogDirectories() {
 ensureLogDirectories();
 
 // ファイル転送用と整形表示用のログストリームを設定
-let serverLogStream = fs.createWriteStream(serverLogPath, { flags: 'a' });
-let clientLogStream = fs.createWriteStream(clientLogPath, { flags: 'a' });
+let serverLogStream = fs.createWriteStream(serverLogPath, { flags: "a" });
+let clientLogStream = fs.createWriteStream(clientLogPath, { flags: "a" });
 let prettyStream = pretty({
     colorize: true,
-    translateTime: 'SYS:standard',
-    levelFirst: true
+    translateTime: "SYS:standard",
+    levelFirst: true,
 });
 prettyStream.pipe(process.stdout);
 
 // クライアントログ用のロガー設定
 let clientLogger = pino(
     {
-        level: 'trace', // すべてのレベルのログを収集
-        timestamp: pino.stdTimeFunctions.isoTime
+        level: "trace", // すべてのレベルのログを収集
+        timestamp: pino.stdTimeFunctions.isoTime,
     },
     pino.multistream([
         { stream: clientLogStream }, // 生ログをクライアントログディレクトリに保存
         // { stream: prettyStream }    // 整形ログをコンソールに表示（必要な場合）
-    ])
+    ]),
 );
 
 // サーバー自身のロガー設定
 let logger = pino(
     {
-        level: 'debug',
+        level: "debug",
         // level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-        timestamp: pino.stdTimeFunctions.isoTime
+        timestamp: pino.stdTimeFunctions.isoTime,
     },
     pino.multistream([
         //        { stream: serverLogStream }, // サーバーログをサーバーログディレクトリに保存
-        { stream: prettyStream }    // 整形ログをコンソールに表示
-    ])
+        { stream: prettyStream }, // 整形ログをコンソールに表示
+    ]),
 );
 
 /**
@@ -89,17 +89,17 @@ async function rotateLogFile(logFilePath, maxBackups = 2) {
 
         const directory = path.dirname(logFilePath);
         const basename = path.basename(logFilePath);
-        const timestamp = new Date().toISOString().replace(/:/g, '-');
+        const timestamp = new Date().toISOString().replace(/:/g, "-");
 
         // 古いバックアップファイルのリストを取得（.1, .2, ...のサフィックス）
         const files = await fsExtra.readdir(directory);
         const backupFiles = files
-            .filter(file => file.startsWith(basename + '.'))
+            .filter(file => file.startsWith(basename + "."))
             .map(file => ({
                 name: file,
                 path: path.join(directory, file),
                 // ファイル名からサフィックス番号を抽出して数値に変換
-                suffix: parseInt(file.replace(basename + '.', ''), 10) || 0
+                suffix: parseInt(file.replace(basename + ".", ""), 10) || 0,
             }))
             // 番号の降順にソート
             .sort((a, b) => b.suffix - a.suffix);
@@ -131,8 +131,9 @@ async function rotateLogFile(logFilePath, maxBackups = 2) {
         console.log(`新しいログファイルを作成しました: ${logFilePath}`);
 
         return true;
-    } catch (error) {
-        console.error('ログローテーション中にエラーが発生しました:', error);
+    }
+    catch (error) {
+        console.error("ログローテーション中にエラーが発生しました:", error);
         return false;
     }
 }
@@ -165,7 +166,7 @@ function refreshClientLogStream() {
         clientLogStream.end();
 
         // 新しいストリームを作成
-        const newClientLogStream = fs.createWriteStream(clientLogPath, { flags: 'a' });
+        const newClientLogStream = fs.createWriteStream(clientLogPath, { flags: "a" });
 
         // モジュール内のグローバル変数を更新
         clientLogStream = newClientLogStream;
@@ -173,35 +174,36 @@ function refreshClientLogStream() {
         // pino-prettyストリームも再作成
         const newPrettyStream = pretty({
             colorize: true,
-            translateTime: 'SYS:standard',
-            levelFirst: true
+            translateTime: "SYS:standard",
+            levelFirst: true,
         });
         newPrettyStream.pipe(process.stdout);
 
         // 新しいmultistreamを作成
         const newMultiStream = pino.multistream([
             { stream: newClientLogStream },
-            { stream: newPrettyStream }
+            { stream: newPrettyStream },
         ]);
 
         // 新しいロガーインスタンスを作成
         const newLogger = pino(
             {
-                level: 'trace',
-                timestamp: pino.stdTimeFunctions.isoTime
+                level: "trace",
+                timestamp: pino.stdTimeFunctions.isoTime,
             },
-            newMultiStream
+            newMultiStream,
         );
 
         // 既存のロガーオブジェクトのプロパティを新しいロガーのものに置き換え
         Object.assign(clientLogger, newLogger);
 
-        console.log('クライアントログストリームを更新しました');
+        console.log("クライアントログストリームを更新しました");
         return newClientLogStream;
-    } catch (error) {
-        console.error('クライアントログストリーム更新エラー:', error);
+    }
+    catch (error) {
+        console.error("クライアントログストリーム更新エラー:", error);
         // エラーが発生した場合でも、新しいストリームを作成して返す
-        return fs.createWriteStream(clientLogPath, { flags: 'a' });
+        return fs.createWriteStream(clientLogPath, { flags: "a" });
     }
 }
 
@@ -215,7 +217,7 @@ function refreshServerLogStream() {
         serverLogStream.end();
 
         // 新しいストリームを作成
-        const newServerLogStream = fs.createWriteStream(serverLogPath, { flags: 'a' });
+        const newServerLogStream = fs.createWriteStream(serverLogPath, { flags: "a" });
 
         // モジュール内のグローバル変数を更新
         serverLogStream = newServerLogStream;
@@ -223,35 +225,36 @@ function refreshServerLogStream() {
         // pino-prettyストリームも再作成
         const newPrettyStream = pretty({
             colorize: true,
-            translateTime: 'SYS:standard',
-            levelFirst: true
+            translateTime: "SYS:standard",
+            levelFirst: true,
         });
         newPrettyStream.pipe(process.stdout);
 
         // 新しいmultistreamを作成
         const newMultiStream = pino.multistream([
             { stream: newServerLogStream },
-            { stream: newPrettyStream }
+            { stream: newPrettyStream },
         ]);
 
         // 新しいロガーインスタンスを作成
         const newLogger = pino(
             {
-                level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-                timestamp: pino.stdTimeFunctions.isoTime
+                level: process.env.NODE_ENV === "production" ? "info" : "debug",
+                timestamp: pino.stdTimeFunctions.isoTime,
             },
-            newMultiStream
+            newMultiStream,
         );
 
         // 既存のロガーオブジェクトのプロパティを新しいロガーのものに置き換え
         Object.assign(logger, newLogger);
 
-        console.log('サーバーログストリームを更新しました');
+        console.log("サーバーログストリームを更新しました");
         return newServerLogStream;
-    } catch (error) {
-        console.error('サーバーログストリーム更新エラー:', error);
+    }
+    catch (error) {
+        console.error("サーバーログストリーム更新エラー:", error);
         // エラーが発生した場合でも、新しいストリームを作成して返す
-        return fs.createWriteStream(serverLogPath, { flags: 'a' });
+        return fs.createWriteStream(serverLogPath, { flags: "a" });
     }
 }
 
@@ -265,5 +268,5 @@ module.exports = {
     refreshClientLogStream,
     refreshServerLogStream,
     serverLogPath,
-    clientLogPath
+    clientLogPath,
 };

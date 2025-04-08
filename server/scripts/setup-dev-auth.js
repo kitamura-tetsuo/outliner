@@ -1,12 +1,12 @@
 // Development environment authentication setup script
-require('dotenv').config();
-const admin = require('firebase-admin');
-const path = require('path');
-const fs = require('fs');
-const { serverLogger: logger } = require('../utils/logger');
+require("dotenv").config();
+const admin = require("firebase-admin");
+const path = require("path");
+const fs = require("fs");
+const { serverLogger: logger } = require("../utils/logger");
 
 // サービスアカウントJSONファイルのパス
-const serviceAccountPath = path.join(__dirname, '..', 'firebase-adminsdk.json');
+const serviceAccountPath = path.join(__dirname, "..", "firebase-adminsdk.json");
 
 // Firebase Admin SDKの初期化
 async function initializeFirebase() {
@@ -17,17 +17,19 @@ async function initializeFirebase() {
             const serviceAccount = require(serviceAccountPath);
 
             admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount)
+                credential: admin.credential.cert(serviceAccount),
             });
 
             logger.info(`Firebase Admin SDK initialized with project: ${serviceAccount.project_id}`);
-        } else {
-            logger.info('Firebase Admin SDK already initialized');
+        }
+        else {
+            logger.info("Firebase Admin SDK already initialized");
         }
 
         return admin;
-    } catch (error) {
-        logger.error('Firebase initialization error:', error);
+    }
+    catch (error) {
+        logger.error("Firebase initialization error:", error);
         throw error;
     }
 }
@@ -38,17 +40,18 @@ async function setupTestUser() {
         const adminInstance = await initializeFirebase();
         const auth = adminInstance.auth();
 
-        const testEmail = 'test@example.com';
-        const testPassword = 'password';
-        const displayName = 'Test User';
+        const testEmail = "test@example.com";
+        const testPassword = "password";
+        const displayName = "Test User";
 
         // ユーザーが既に存在するか確認
         try {
             const userRecord = await auth.getUserByEmail(testEmail);
             logger.info(`Test user already exists: ${userRecord.uid}`);
             return userRecord;
-        } catch (error) {
-            if (error.code !== 'auth/user-not-found') {
+        }
+        catch (error) {
+            if (error.code !== "auth/user-not-found") {
                 throw error;
             }
 
@@ -57,7 +60,7 @@ async function setupTestUser() {
                 email: testEmail,
                 password: testPassword,
                 displayName: displayName,
-                emailVerified: true
+                emailVerified: true,
             });
 
             logger.info(`Successfully created test user: ${userRecord.uid}`);
@@ -65,15 +68,16 @@ async function setupTestUser() {
             // カスタムクレームを追加して開発環境用トークンの検証をバイパス
             await auth.setCustomUserClaims(userRecord.uid, {
                 devUser: true,
-                role: 'admin'
+                role: "admin",
             });
 
             logger.info(`Added custom claims to user: ${userRecord.uid}`);
 
             return userRecord;
         }
-    } catch (error) {
-        logger.error('Error setting up test user:', error);
+    }
+    catch (error) {
+        logger.error("Error setting up test user:", error);
         throw error;
     }
 }
@@ -82,19 +86,19 @@ async function setupTestUser() {
 if (require.main === module) {
     setupTestUser()
         .then(user => {
-            console.log('=================================================');
-            console.log('開発環境用テストユーザーのセットアップが完了しました');
-            console.log('=================================================');
-            console.log('Email:', user.email);
-            console.log('UID:', user.uid);
-            console.log('DisplayName:', user.displayName);
-            console.log('Password: password');
-            console.log('=================================================');
-            console.log('このユーザー情報を使ってアプリにログインしてください。');
+            console.log("=================================================");
+            console.log("開発環境用テストユーザーのセットアップが完了しました");
+            console.log("=================================================");
+            console.log("Email:", user.email);
+            console.log("UID:", user.uid);
+            console.log("DisplayName:", user.displayName);
+            console.log("Password: password");
+            console.log("=================================================");
+            console.log("このユーザー情報を使ってアプリにログインしてください。");
             process.exit(0);
         })
         .catch(error => {
-            console.error('テストユーザーのセットアップに失敗しました:', error);
+            console.error("テストユーザーのセットアップに失敗しました:", error);
             process.exit(1);
         });
 }

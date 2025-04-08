@@ -33,7 +33,6 @@ server/ に実装を保存。
 クライアント
 client/ に実装を保存。
 
-
 認証フローの説明
 認証フローは以下のようになります：
 
@@ -53,21 +52,19 @@ APIサーバーの実装
 
 クライアント側のログについて。
 クライアント側のログはpinoを介してサーバーへ送られる。
-    /api/log
+/api/log
 /workspace/client/logs/browser.log
 に保存される。
 ウェブアプリの終了時にログはローテートされる。
-    /api/rotate-logs
-
+/api/rotate-logs
 
 注意事項
-初期化前に if (!this.appData.root)  を実行するとエラーになるので、初期化チェックにこれを使用しないで。
+初期化前に if (!this.appData.root) を実行するとエラーになるので、初期化チェックにこれを使用しないで。
 フォールバックは使わないで。フォールバックを使うとバグに気づくのが遅れる。
 
 dotenv は node版を使っているので、npx dotenv。
 
 単純な置換は sedを使って。
-
 
 コード修正後の確認作業
 テスト用のサーバー
@@ -77,7 +74,6 @@ http://192.168.50.16:7080/
 /workspace/client/logs/browser.log
 テスト用のSveltKit serverのログがここにあるので、アクセス後にこちらを確認して。
 /workspace/server/logs/test-svelte-kit.log
-
 
 環境変数は .envで管理
 docke-compose.yaml 等他の箇所へ書くのは禁止。

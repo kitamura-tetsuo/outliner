@@ -1,6 +1,8 @@
-import type { Items, Project } from "../schema/app-schema";
+import type {
+    Items,
+    Project,
+} from "../schema/app-schema";
 import { TreeSubscriber } from "./TreeSubscriber";
-
 
 class GeneralStore {
     pages = $state<TreeSubscriber<Items>>();
@@ -15,4 +17,3 @@ class GeneralStore {
     }
 }
 export const store = new GeneralStore();
-
