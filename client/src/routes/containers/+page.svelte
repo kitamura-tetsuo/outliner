@@ -11,12 +11,12 @@
 	import { getLogger } from '../../lib/logger';
 	const logger = getLogger();
 
-	let isLoading = false;
-	let error: string | null = null;
-	let success: string | null = null;
-	let containerName = '';
-	let isAuthenticated = false;
-	let createdContainerId: string | null = null;
+	let isLoading = $state(false);
+	let error: string | null = $state(null);
+	let success: string | null = $state(null);
+	let containerName = $state('');
+	let isAuthenticated = $state(false);
+	let createdContainerId: string | null = $state(null);
 
 	// 認証成功時の処理
 	async function handleAuthSuccess(authResult) {
@@ -127,7 +127,7 @@
 			{/if}
 
 			<button
-				on:click={createNewContainer}
+				onclick={createNewContainer}
 				disabled={isLoading}
 				class="w-full rounded-md bg-blue-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {isLoading
 					? 'cursor-not-allowed opacity-70'

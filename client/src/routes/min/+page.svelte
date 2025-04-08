@@ -24,8 +24,8 @@
 	const auth = getAuth(app);
 	const provider = new GoogleAuthProvider();
 
-	let idToken = '';
-	let verificationResult = '';
+	let idToken = $state('');
+	let verificationResult = $state('');
 
 	// Google ログインして ID トークンを取得し、バックエンドで検証する
 	async function signIn() {
@@ -50,7 +50,7 @@
 
 <main>
 	<h1>Firebase Google Login &amp; Token Verification</h1>
-	<button on:click={signIn}>Sign in with Google</button>
+	<button onclick={signIn}>Sign in with Google</button>
 
 	{#if idToken}
 		<section>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { run } from 'svelte/legacy';
+
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { Tree } from 'fluid-framework';
 	import { TreeViewManager } from '../fluid/TreeViewManager';
@@ -7,20 +9,30 @@
 	import { getLogger } from '../lib/logger';
 	const logger = getLogger();
 
-	export let project: Project;
-	export let rootItems: Items; // 最上位のアイテムリスト（ページリスト）
-	export let currentPageId: string = '';
-	export let currentPage: Item | null = null; // 直接ページオブジェクトを受け取るように追加
-	export let currentUser: string = 'anonymous';
+	interface Props {
+		project: Project;
+		rootItems: Items; // 最上位のアイテムリスト（ページリスト）
+		currentPageId?: string;
+		currentPage?: Item | null; // 直接ページオブジェクトを受け取るように追加
+		currentUser?: string;
+	}
+
+	let {
+		project,
+		rootItems,
+		currentPageId = '',
+		currentPage = null,
+		currentUser = 'anonymous'
+	}: Props = $props();
 
 	const dispatch = createEventDispatcher();
 
 	// 開発環境ではデフォルトのタイトルを提案
 	const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV === true;
-	let pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : '';
+	let pageTitle = $state(isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : '');
 
 	// ページリストの表示用配列
-	let displayItems = [...rootItems];
+	let displayItems = $state([...rootItems]);
 
 	function handleCreatePage() {
 		if (!pageTitle.trim() && !isDev) {
@@ -65,9 +77,11 @@
 	});
 
 	// 初期表示時にリストを更新
-	$: if (rootItems) {
-		displayItems = [...rootItems];
-	}
+	run(() => {
+		if (rootItems) {
+			displayItems = [...rootItems];
+		}
+	});
 </script>
 
 <div class="page-list">
@@ -75,12 +89,12 @@
 
 	<div class="page-create">
 		<input type="text" bind:value={pageTitle} placeholder="新しいページ名" />
-		<button on:click={handleCreatePage}>作成</button>
+		<button onclick={handleCreatePage}>作成</button>
 	</div>
 
 	<ul>
 		{#each displayItems as page}
-			<li class:active={page.id === currentPageId} on:click={() => selectPage(page)}>
+			<li class:active={page.id === currentPageId} onclick={() => selectPage(page)}>
 				<span class="page-title">{page.text || '無題のページ'}</span>
 				<span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
 			</li>

@@ -6,15 +6,19 @@
 	import { getLogger } from '../lib/logger';
 	const logger = getLogger();
 
-	export let onContainerSelected: (containerId: string) => void = () => {};
+	interface Props {
+		onContainerSelected?: (containerId: string) => void;
+	}
 
-	let containers: Array<{ id: string; name: string; isDefault?: boolean }> = [];
-	let selectedContainerId: string = '';
-	let isLoading = false;
-	let error: string | null = null;
+	let { onContainerSelected = () => {} }: Props = $props();
+
+	let containers: Array<{ id: string; name: string; isDefault?: boolean }> = $state([]);
+	let selectedContainerId: string = $state('');
+	let isLoading = $state(false);
+	let error: string | null = $state(null);
 
 	// 現在ロード中のコンテナIDを表示
-	$: currentContainerId = $fluidClient?.containerId || null;
+	let currentContainerId = $derived($fluidClient?.containerId || null);
 
 	onMount(async () => {
 		await loadContainers();
@@ -135,7 +139,7 @@
 		<div class="select-container">
 			<select
 				bind:value={selectedContainerId}
-				on:change={handleContainerChange}
+				onchange={handleContainerChange}
 				disabled={isLoading || containers.length === 0}
 				class="container-select"
 			>
@@ -153,7 +157,7 @@
 			</select>
 
 			<button
-				on:click={() => loadContainers()}
+				onclick={() => loadContainers()}
 				disabled={isLoading}
 				class="refresh-button"
 				title="コンテナリストを更新"
@@ -164,7 +168,7 @@
 
 		<div class="actions">
 			<button
-				on:click={reloadCurrentContainer}
+				onclick={reloadCurrentContainer}
 				disabled={isLoading || !currentContainerId}
 				class="reload-button"
 			>

@@ -18,23 +18,23 @@
 	import { getLogger } from '../lib/logger';
 	const logger = getLogger();
 
-	let error: string | null = null;
+	let error: string | null = $state(null);
 	let containerId: string | null = null;
 	let inputText = '';
-	let debugInfo: any = {};
-	let showDebugPanel = false;
-	let hostInfo = '';
-	let portInfo = '';
+	let debugInfo: any = $state({});
+	let showDebugPanel = $state(false);
+	let hostInfo = $state('');
+	let portInfo = $state('');
 	let envConfig = getDebugConfig();
 	let treeData: any = {};
-	let project: Project; // 明示的に型を指定
-	let rootItems: Items; // 明示的に型を指定
-	let isAuthenticated = false;
-	let networkError: string | null = null;
+	let project: Project = $state(); // 明示的に型を指定
+	let rootItems: Items = $state(); // 明示的に型を指定
+	let isAuthenticated = $state(false);
+	let networkError: string | null = $state(null);
 	let rootData; // ルートデータ（ページのコレクションを含む）
-	let currentPage: Item | null = null; // 現在選択されているページ
-	let currentPageId = '';
-	let isInitializing = false; // 非同期操作実行中のフラグ（必要な場合のみ使用）
+	let currentPage: Item | null = $state(null); // 現在選択されているページ
+	let currentPageId = $state('');
+	let isInitializing = $state(false); // 非同期操作実行中のフラグ（必要な場合のみ使用）
 
 	// SharedTreeの変更を監視するためのハンドラ
 	function handleTreeChanged(event: CustomEvent) {
@@ -293,7 +293,7 @@
 	{:else if error}
 		<div class="error">
 			<p>エラー: {error}</p>
-			<button on:click={() => location.reload()}>再読み込み</button>
+			<button onclick={() => location.reload()}>再読み込み</button>
 		</div>
 	{:else if isAuthenticated}
 		<!-- 認証済みユーザー向けコンテンツ -->
@@ -359,7 +359,7 @@
 		</div>
 	{/if}
 
-	<button on:click={toggleDebugPanel} class="mt-4 rounded bg-purple-500 p-2 text-white">
+	<button onclick={toggleDebugPanel} class="mt-4 rounded bg-purple-500 p-2 text-white">
 		{showDebugPanel ? 'Hide' : 'Show'} Debug
 	</button>
 

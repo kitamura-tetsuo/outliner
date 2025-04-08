@@ -1,24 +1,35 @@
 <script lang="ts">
+	import OutlinerItem from './OutlinerItem.svelte';
 	import { createEventDispatcher } from 'svelte';
 	import { Item } from '../schema/app-schema';
 	import { getLogger } from '../lib/logger';
 	const logger = getLogger();
 
-	// Props
-	export let item: Item;
-	export let level: number = 0;
-	export let currentUser: string = 'anonymous';
-	export let isReadOnly: boolean = false;
+	
+	interface Props {
+		// Props
+		item: Item;
+		level?: number;
+		currentUser?: string;
+		isReadOnly?: boolean;
+	}
+
+	let {
+		item,
+		level = 0,
+		currentUser = 'anonymous',
+		isReadOnly = false
+	}: Props = $props();
 
 	const dispatch = createEventDispatcher();
 
 	// Stateの管理
-	let isEditing = false;
-	let isCollapsed = false;
-	let editText = '';
+	let isEditing = $state(false);
+	let isCollapsed = $state(false);
+	let editText = $state('');
 
 	// 子アイテムを持っているかどうか判定
-	$: hasChildren = item.items && item.items.length > 0;
+	let hasChildren = $derived(item.items && item.items.length > 0);
 
 	function toggleCollapse() {
 		isCollapsed = !isCollapsed;
@@ -106,11 +117,11 @@
 	class="outliner-item"
 	style="padding-left: {level * 20}px"
 	tabindex="0"
-	on:keydown={handleItemKeyDown}
+	onkeydown={handleItemKeyDown}
 >
 	<div class="item-header">
 		{#if hasChildren}
-			<button class="collapse-btn" on:click={toggleCollapse}>
+			<button class="collapse-btn" onclick={toggleCollapse}>
 				{isCollapsed ? '▶' : '▼'}
 			</button>
 		{:else}
@@ -120,13 +131,13 @@
 		{#if isEditing}
 			<textarea
 				bind:value={editText}
-				on:keydown={handleKeyDown}
-				on:blur={saveEdit}
+				onkeydown={handleKeyDown}
+				onblur={saveEdit}
 				rows={Math.max(1, editText.split('\n').length)}
 				autofocus
 			></textarea>
 		{:else}
-			<div class="item-content" on:click={startEditing}>
+			<div class="item-content" onclick={startEditing}>
 				<!-- 空白のノートではなく、常に.item-textクラスを適用 -->
 				<span class="item-text">{item.text || '空白のノート'}</span>
 
@@ -137,10 +148,10 @@
 		{/if}
 
 		<div class="item-actions">
-			<button on:click={addNewItem} title="新しいアイテムを追加">+</button>
-			<button on:click={handleDelete} title="削除">×</button>
+			<button onclick={addNewItem} title="新しいアイテムを追加">+</button>
+			<button onclick={handleDelete} title="削除">×</button>
 			<button
-				on:click={toggleVote}
+				onclick={toggleVote}
 				class="vote-btn"
 				class:voted={item.votes.includes(currentUser)}
 				title="投票"
@@ -153,7 +164,7 @@
 	{#if hasChildren && !isCollapsed}
 		<div class="item-children">
 			{#each [...item.items] as child, i}
-				<svelte:self
+				<OutlinerItem
 					item={child}
 					level={level + 1}
 					{currentUser}

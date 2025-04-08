@@ -1,19 +1,21 @@
 <script lang="ts">
+	import { preventDefault } from 'svelte/legacy';
+
 	import { createEventDispatcher, onMount } from 'svelte';
 	import type { IUser } from '../fluid/fluidClient';
 	import { fluidClient } from '../stores/fluidStore';
 
 	const dispatch = createEventDispatcher();
 
-	let user: IUser = {
+	let user: IUser = $state({
 		id: '',
 		name: '',
 		email: ''
-	};
+	});
 
-	let isRegistering = false;
-	let errorMessage = '';
-	let savedUser: IUser | null = null;
+	let isRegistering = $state(false);
+	let errorMessage = $state('');
+	let savedUser: IUser | null = $state(null);
 
 	onMount(() => {
 		// 保存されたユーザー情報があれば読み込む
@@ -66,15 +68,15 @@
 				<strong>{savedUser.name}</strong>
 				{#if savedUser.email}<span>({savedUser.email})</span>{/if}
 			</div>
-			<button on:click={continueWithSavedUser}>この情報で続ける</button>
+			<button onclick={continueWithSavedUser}>この情報で続ける</button>
 			<button
-				on:click={() => {
+				onclick={() => {
 					savedUser = null;
 				}}>新しいユーザーを登録</button
 			>
 		</div>
 	{:else}
-		<form on:submit|preventDefault={handleSubmit}>
+		<form onsubmit={preventDefault(handleSubmit)}>
 			<div class="form-field">
 				<label for="userName">名前 (必須)</label>
 				<input

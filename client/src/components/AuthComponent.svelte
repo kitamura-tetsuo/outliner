@@ -2,20 +2,25 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { UserManager, type IUser } from '../auth/UserManager';
 
-	// Define callback props instead of using createEventDispatcher
-	export let onAuthSuccess: ((authResult: any) => void) | undefined = undefined;
-	export let onAuthLogout: (() => void) | undefined = undefined;
+	
+	interface Props {
+		// Define callback props instead of using createEventDispatcher
+		onAuthSuccess?: ((authResult: any) => void) | undefined;
+		onAuthLogout?: (() => void) | undefined;
+	}
 
-	let isLoading = true;
-	let error = '';
+	let { onAuthSuccess = undefined, onAuthLogout = undefined }: Props = $props();
+
+	let isLoading = $state(true);
+	let error = $state('');
 	let userManager: UserManager;
-	let currentUser: IUser | null = null;
-	let loginError = '';
+	let currentUser: IUser | null = $state(null);
+	let loginError = $state('');
 
 	// 開発環境用のメール/パスワード認証フォーム
-	let showDevLogin = false;
-	let email = 'test@example.com';
-	let password = 'password';
+	let showDevLogin = $state(false);
+	let email = $state('test@example.com');
+	let password = $state('password');
 
 	// 環境チェック
 	const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
@@ -121,7 +126,7 @@
 	{:else if error}
 		<div class="error">
 			<p>{error}</p>
-			<button on:click={() => (error = '')} class="try-again">再試行</button>
+			<button onclick={() => (error = '')} class="try-again">再試行</button>
 		</div>
 	{:else if currentUser}
 		<div class="user-info">
@@ -132,11 +137,11 @@
 				<p class="user-name">{currentUser.name}</p>
 				<p class="user-email">{currentUser.email || ''}</p>
 			</div>
-			<button on:click={handleLogout} class="logout-btn">ログアウト</button>
+			<button onclick={handleLogout} class="logout-btn">ログアウト</button>
 		</div>
 	{:else}
 		<!-- Google認証ボタン -->
-		<button on:click={handleLogin} class="auth-button google-btn" disabled={isLoading}>
+		<button onclick={handleLogin} class="auth-button google-btn" disabled={isLoading}>
 			<span class="google-icon">
 				<svg viewBox="0 0 24 24" width="18" height="18">
 					<path
@@ -162,7 +167,7 @@
 
 		{#if isDevelopment}
 			<!-- 開発環境用ログイントグルボタン -->
-			<button on:click={toggleDevLogin} class="dev-toggle">
+			<button onclick={toggleDevLogin} class="dev-toggle">
 				{showDevLogin ? '開発者ログインを隠す' : '開発者ログイン'}
 			</button>
 
@@ -177,7 +182,7 @@
 						<label for="password">パスワード</label>
 						<input type="password" id="password" bind:value={password} placeholder="password" />
 					</div>
-					<button on:click={handleDevLogin} class="dev-login-btn"> 開発環境でログイン </button>
+					<button onclick={handleDevLogin} class="dev-login-btn"> 開発環境でログイン </button>
 				</div>
 			{/if}
 		{/if}

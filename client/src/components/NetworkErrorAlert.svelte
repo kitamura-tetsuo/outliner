@@ -1,6 +1,10 @@
 <script lang="ts">
-	export let error: string | null = null;
-	export let retryCallback: (() => void) | null = null;
+	interface Props {
+		error?: string | null;
+		retryCallback?: (() => void) | null;
+	}
+
+	let { error = $bindable(null), retryCallback = null }: Props = $props();
 
 	function dismiss() {
 		error = null;
@@ -15,9 +19,9 @@
 			<p>{error}</p>
 			<div class="error-actions">
 				{#if retryCallback}
-					<button class="retry-btn" on:click={retryCallback}>再試行</button>
+					<button class="retry-btn" onclick={retryCallback}>再試行</button>
 				{/if}
-				<button class="dismiss-btn" on:click={dismiss}>閉じる</button>
+				<button class="dismiss-btn" onclick={dismiss}>閉じる</button>
 			</div>
 		</div>
 	</div>

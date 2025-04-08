@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { run } from 'svelte/legacy';
+
 	import { Tree } from 'fluid-framework';
 	import { onDestroy, onMount } from 'svelte';
 	import { Item, Items } from '../schema/app-schema';
@@ -7,21 +9,27 @@
 	import { getLogger } from '../lib/logger';
 	const logger = getLogger();
 
-	export let pageItem: Item; // ページとして表示する Item
-	export let isReadOnly = false;
+	interface Props {
+		pageItem: Item; // ページとして表示する Item
+		isReadOnly?: boolean;
+	}
 
-	let currentUser = 'anonymous';
-	let items = [];
-	let title = '';
+	let { pageItem, isReadOnly = false }: Props = $props();
+
+	let currentUser = $state('anonymous');
+	let items = $state([]);
+	let title = $state('');
 
 	// デバウンス用のフラグとタイマーID
 	let inProgress = false;
 	let operationTimer: ReturnType<typeof setTimeout> | null = null;
 
-	$: if (pageItem) {
-		title = pageItem.text;
-		items = [...pageItem.items]; // ページアイテムの子アイテムを表示
-	}
+	run(() => {
+		if (pageItem) {
+			title = pageItem.text;
+			items = [...pageItem.items]; // ページアイテムの子アイテムを表示
+		}
+	});
 
 	onMount(() => {
 		if ($fluidClient?.currentUser) {
@@ -156,7 +164,7 @@
 					type="text"
 					bind:value={title}
 					placeholder="ページタイトル"
-					on:blur={handleUpdateTitle}
+					onblur={handleUpdateTitle}
 					class="title-input"
 				/>
 			{/if}
@@ -164,7 +172,7 @@
 
 		{#if !isReadOnly}
 			<div class="actions">
-				<button on:click={handleAddItem}>アイテム追加</button>
+				<button onclick={handleAddItem}>アイテム追加</button>
 			</div>
 		{/if}
 	</div>

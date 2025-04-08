@@ -8,6 +8,9 @@ const config = {
 	// for more information about preprocessors
 	preprocess: [vitePreprocess(), mdsvex()],
 
+	// compilerOptions: { runes: true },
+	compilerOptions: { runes: true },
+
 	kit: {
 		adapter: adapter(),
 		// csrf: {

@@ -3,15 +3,15 @@
 	import { UserManager } from '../auth/UserManager';
 	import { decodeJwt } from '../lib/tokenDebugger';
 
-	let tokenInfo: any = null;
+	let tokenInfo: any = $state(null);
 	let userManager: UserManager;
-	let isLoading = false;
-	let error = '';
-	let tenantId = '';
-	let documentId = '';
-	let customDocumentId = '';
-	let containerId = '';
-	let customContainerId = '';
+	let isLoading = $state(false);
+	let error = $state('');
+	let tenantId = $state('');
+	let documentId = $state('');
+	let customDocumentId = $state('');
+	let containerId = $state('');
+	let customContainerId = $state('');
 
 	onMount(() => {
 		userManager = UserManager.getInstance();
@@ -116,8 +116,8 @@
 	<h3>Fluid Relay トークン情報</h3>
 
 	<div class="controls">
-		<button on:click={loadTokenInfo} disabled={isLoading}>情報を更新</button>
-		<button on:click={refreshToken} disabled={isLoading}>トークンを再取得</button>
+		<button onclick={loadTokenInfo} disabled={isLoading}>情報を更新</button>
+		<button onclick={refreshToken} disabled={isLoading}>トークンを再取得</button>
 	</div>
 
 	<div class="document-token-section">
@@ -129,7 +129,7 @@
 				bind:value={customDocumentId}
 				disabled={isLoading}
 			/>
-			<button on:click={refreshTokenForDocument} disabled={isLoading || !customDocumentId}>
+			<button onclick={refreshTokenForDocument} disabled={isLoading || !customDocumentId}>
 				トークン取得
 			</button>
 		</div>
@@ -144,7 +144,7 @@
 				bind:value={customContainerId}
 				disabled={isLoading}
 			/>
-			<button on:click={refreshTokenForContainer} disabled={isLoading || !customContainerId}>
+			<button onclick={refreshTokenForContainer} disabled={isLoading || !customContainerId}>
 				トークン取得
 			</button>
 		</div>

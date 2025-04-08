@@ -3,7 +3,7 @@
   import { getDebugConfig, getEnv } from '../lib/env';
   
   let debugConfig = getDebugConfig();
-  let rawEnv = {};
+  let rawEnv = $state({});
   let currentConfig = {};
   let importMetaEnv = {};
   let windowEnv = {};
