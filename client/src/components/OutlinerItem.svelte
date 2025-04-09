@@ -1,11 +1,11 @@
 <script lang="ts">
-	import OutlinerItem from './OutlinerItem.svelte';
 	import { createEventDispatcher } from 'svelte';
-	import { Item } from '../schema/app-schema';
 	import { getLogger } from '../lib/logger';
+	import { Item } from '../schema/app-schema';
+	import { TreeSubscriber } from '../stores/TreeSubscriber';
+	import OutlinerItem from './OutlinerItem.svelte';
 	const logger = getLogger();
 
-	
 	interface Props {
 		// Props
 		item: Item;
@@ -14,12 +14,16 @@
 		isReadOnly?: boolean;
 	}
 
-	let {
-		item,
-		level = 0,
-		currentUser = 'anonymous',
-		isReadOnly = false
-	}: Props = $props();
+	let { item, level = 0, currentUser = 'anonymous', isReadOnly = false }: Props = $props();
+
+	// 子アイテムを監視するためのTreeSubscriberを作成
+	let childrenSubscriber = $state(new TreeSubscriber(item.items, 'nodeChanged'));
+
+	// 子アイテムの変更を監視する
+	$effect(() => {
+		// 親アイテムが変わったときに子アイテムの監視を更新
+		childrenSubscriber = new TreeSubscriber(item.items, 'nodeChanged');
+	});
 
 	const dispatch = createEventDispatcher();
 
@@ -28,36 +32,38 @@
 	let isCollapsed = $state(false);
 	let editText = $state('');
 
-	// 子アイテムを持っているかどうか判定
-	let hasChildren = $derived(item.items && item.items.length > 0);
+	// 子アイテムを持っているかどうか判定（リアクティブに更新）
+	let hasChildren = $derived(childrenSubscriber.current && childrenSubscriber.current.length > 0);
 
 	// テキストエリアのref
 	let textareaRef: HTMLTextAreaElement;
+	// アイテム全体のDOMエレメントのref
+	let itemRef: HTMLDivElement;
 
 	function getClickPosition(event: MouseEvent, text: string): number {
 		const element = event.currentTarget as HTMLElement;
 		const rect = element.getBoundingClientRect();
 		const x = event.clientX - rect.left;
-		
+
 		// クリック位置に最も近い文字位置を見つける
 		const span = document.createElement('span');
 		span.style.font = window.getComputedStyle(element).font;
 		document.body.appendChild(span);
-		
+
 		let bestPosition = 0;
 		let minDistance = Infinity;
-		
+
 		for (let i = 0; i <= text.length; i++) {
 			span.textContent = text.slice(0, i);
 			const width = span.getBoundingClientRect().width;
 			const distance = Math.abs(width - x);
-			
+
 			if (distance < minDistance) {
 				minDistance = distance;
 				bestPosition = i;
 			}
 		}
-		
+
 		document.body.removeChild(span);
 		return bestPosition;
 	}
@@ -70,7 +76,7 @@
 		if (isReadOnly) return;
 		editText = item.text;
 		isEditing = true;
-		
+
 		// 非同期で要素が更新された後にフォーカスとキャレット位置を設定
 		setTimeout(() => {
 			if (textareaRef) {
@@ -118,10 +124,10 @@
 			event.stopPropagation();
 
 			if (event.shiftKey) {
-				dispatch('unindent', { item });
+				dispatch('unindent', { item, focusAfter: () => itemRef.focus() });
 				logger.info(`Unindent dispatched`);
 			} else {
-				dispatch('indent', { item });
+				dispatch('indent', { item, focusAfter: () => itemRef.focus() });
 				logger.info(`Indent dispatched`);
 			}
 		}
@@ -160,6 +166,8 @@
 	style="padding-left: {level * 20}px"
 	tabindex="0"
 	onkeydown={handleItemKeyDown}
+	bind:this={itemRef}
+	data-item-id={item.id}
 >
 	<div class="item-header">
 		{#if hasChildren}
@@ -206,7 +214,7 @@
 
 	{#if hasChildren && !isCollapsed}
 		<div class="item-children">
-			{#each [...item.items] as child, i}
+			{#each [...childrenSubscriber.current] as child, i}
 				<OutlinerItem
 					item={child}
 					level={level + 1}
@@ -249,41 +257,32 @@
 		border: none;
 		padding: 0;
 		cursor: pointer;
-		font-size: 10px;
-		color: #555;
-	}
-
-	.bullet {
-		font-size: 18px;
-		color: #999;
+		font-size: 0.7rem;
+		color: #666;
 	}
 
 	.item-content {
 		flex-grow: 1;
-		padding: 2px 4px;
-		margin-right: 8px;
-		border-radius: 2px;
-		min-height: 18px;
+		padding: 4px 8px;
+		border-radius: 4px;
+		cursor: text;
+		min-height: 20px;
+		word-break: break-word;
+		white-space: pre-wrap;
 	}
 
 	.item-content:hover {
-		background: #f5f5f5;
+		background-color: rgba(0, 0, 0, 0.05);
 	}
 
 	textarea {
 		width: 100%;
 		border: 1px solid #ddd;
-		border-radius: 3px;
-		padding: 4px;
+		border-radius: 4px;
+		padding: 4px 8px;
 		font-family: inherit;
 		font-size: inherit;
 		resize: vertical;
-		background: #fff;
-	}
-
-	.group-name {
-		font-weight: 500;
-		color: #333;
 	}
 
 	.item-actions {
@@ -300,43 +299,45 @@
 	.item-actions button {
 		background: none;
 		border: none;
+		font-size: 1rem;
 		cursor: pointer;
-		width: 20px;
-		height: 20px;
+		padding: 0;
+		width: 24px;
+		height: 24px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 14px;
-		border-radius: 3px;
+		color: #666;
+		border-radius: 4px;
 	}
 
 	.item-actions button:hover {
-		background: #eee;
-	}
-
-	.vote-count {
-		background: #eef;
-		padding: 0 4px;
-		border-radius: 10px;
-		font-size: 12px;
-		margin-left: 6px;
+		background: rgba(0, 0, 0, 0.05);
 	}
 
 	.vote-btn {
+		font-size: 0.8rem !important;
+	}
+
+	.voted {
+		color: gold !important;
+	}
+
+	.vote-count {
+		margin-left: 8px;
+		padding: 0 6px;
+		background: #f0f0f0;
+		border-radius: 10px;
+		font-size: 0.8rem;
+		color: #666;
+	}
+
+	.bullet {
+		font-size: 1rem;
 		color: #ccc;
 	}
 
-	.vote-btn.voted {
-		color: gold;
-	}
-
 	.item-children {
-		margin-left: 2px;
-	}
-
-	/* フォーカス時のスタイルを追加 */
-	.outliner-item:focus {
-		outline: 1px dashed #aaa;
-		background-color: rgba(0, 0, 0, 0.02);
+		margin-left: 0;
 	}
 </style>

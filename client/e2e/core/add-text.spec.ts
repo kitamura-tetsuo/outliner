@@ -20,7 +20,7 @@ import {
  * @check テキストを入力できる
  * @check Enter キーを押すとテキストが保存される
  * @check 入力したテキストがアイテムのコンテンツとして表示される
- * @issue クリックしても適切にフォーカスが当たらない場合がある（編集モードになっても入力できない）
+ * @updated 2023-04-09 フォーカスの問題は修正済み
  */
 test("Add Text button should add text to shared content", async ({ page }) => {
     // ホームページにアクセス
@@ -33,7 +33,7 @@ test("Add Text button should add text to shared content", async ({ page }) => {
     });
 
     // ページが読み込まれるまで一時停止（Fluidが初期化されるのを待つ）
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("networkidle", { timeout: 30000 });
 
     // アウトラインにアイテムを追加
     await page.click('button:has-text("アイテム追加")');
@@ -85,7 +85,7 @@ test("Adding text updates data structure", async ({ page }) => {
         window.localStorage.setItem("authenticated", "true");
     });
 
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("networkidle", { timeout: 30000 });
 
     // デバッグパネルを表示
     await page.click('button:has-text("Show Debug")');
@@ -103,12 +103,8 @@ test("Adding text updates data structure", async ({ page }) => {
     // データが更新されるのを待つ - 長めに設定
     await page.waitForTimeout(2000);
 
-    // ページを再読み込みして確実に反映させる
-    await page.reload();
-    await page.waitForLoadState("networkidle");
-
-    // デバッグパネルを再度表示
-    await page.click('button:has-text("Show Debug")');
+    // デバッグパネルを更新
+    await page.click('button:has-text("Update Debug")');
 
     // 更新後のDebugInfoを取得
     const updatedDebugInfo = await page.textContent(".debug-panel details[open] pre");

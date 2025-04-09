@@ -93,7 +93,8 @@ function handleAddAfter(event) {
 
 function handleIndent(event) {
     // インデントを増やす処理
-    const { item } = event.detail;
+    const { item, focusAfter } = event.detail;
+    const itemId = item.id; // アイテムのIDを保存
 
     logger.info("Indent event received for item:", item);
 
@@ -124,6 +125,20 @@ function handleIndent(event) {
         });
 
         logger.info(`Indented item under previous item`);
+
+        // インデント後にフォーカスを設定（ID検索で正しい要素を見つける）
+        if (focusAfter) {
+            setTimeout(() => {
+                // IDでアイテム要素を検索してフォーカス
+                const movedItemElement = document.querySelector(`[data-item-id="${itemId}"]`);
+                if (movedItemElement) {
+                    movedItemElement.focus();
+                }
+                else {
+                    focusAfter(); // フォールバック
+                }
+            }, 0);
+        }
     }
     catch (error) {
         console.error("Failed to indent item:", error);
@@ -132,7 +147,8 @@ function handleIndent(event) {
 
 function handleUnindent(event) {
     // インデントを減らす処理
-    const { item } = event.detail;
+    const { item, focusAfter } = event.detail;
+    const itemId = item.id; // アイテムのIDを保存
 
     logger.info("Unindent event received for item:", item);
 
@@ -155,6 +171,20 @@ function handleUnindent(event) {
         const itemIndex = parentList.indexOf(item);
         grandParentList.moveRangeToIndex(parentIndex + 1, itemIndex, itemIndex + 1, parentList);
         logger.info("Unindented item to parent level");
+
+        // アンインデント後にフォーカスを設定（ID検索で正しい要素を見つける）
+        if (focusAfter) {
+            setTimeout(() => {
+                // IDでアイテム要素を検索してフォーカス
+                const movedItemElement = document.querySelector(`[data-item-id="${itemId}"]`);
+                if (movedItemElement) {
+                    movedItemElement.focus();
+                }
+                else {
+                    focusAfter(); // フォールバック
+                }
+            }, 0);
+        }
     }
     catch (error) {
         console.error("Failed to unindent item:", error);

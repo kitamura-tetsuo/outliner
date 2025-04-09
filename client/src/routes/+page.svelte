@@ -12,16 +12,10 @@ import MissingEnvWarning from "../components/MissingEnvWarning.svelte";
 import NetworkErrorAlert from "../components/NetworkErrorAlert.svelte";
 import OutlinerTree from "../components/OutlinerTree.svelte";
 import PageList from "../components/PageList.svelte";
-import { FluidClient } from "../fluid/fluidClient";
 import { TreeViewManager } from "../fluid/TreeViewManager";
 import { getDebugConfig } from "../lib/env";
-import { handleConnectionError } from "../lib/fluidService";
 import { getLogger } from "../lib/logger";
-import {
-    Item,
-    Items,
-    Project,
-} from "../schema/app-schema";
+import { Item } from "../schema/app-schema";
 import { fluidClient } from "../stores/fluidStore";
 
 import { store } from "../stores/store.svelte";
@@ -183,9 +177,7 @@ async function handleContainerSelected(selectedContainerId: string) {
         logger.info(`コンテナを切り替えます: ${selectedContainerId}`);
 
         // 新しいコンテナIDで ファクトリーメソッドを使用してFluidClientを作成
-        const client = await import("../lib/fluidService").then(module => 
-            module.loadContainer(selectedContainerId)
-        );
+        const client = await import("../lib/fluidService").then(module => module.loadContainer(selectedContainerId));
 
         // fluidClientストアを更新
         fluidClient.set(client);
@@ -280,28 +272,10 @@ function toggleDebugPanel() {
 
 <main>
     <h1>Fluid Outliner App</h1>
-    <!-- window.locationの参照を条件付きレンダリングに変更 -->
-    <p class="host-info">
-        {#if browser}
-            Running on: {hostInfo} (Port: {portInfo})
-        {:else}
-            Loading host info...
-        {/if}
-    </p>
-
-    <!-- 環境変数の警告 -->
-    <MissingEnvWarning />
-
     <!-- 認証コンポーネント -->
     <div class="auth-section">
         <AuthComponent onAuthSuccess={handleAuthSuccess} onAuthLogout={handleAuthLogout} />
     </div>
-
-    <!-- 環境変数デバッガー -->
-    <EnvDebugger />
-
-    <!-- ネットワークエラー表示 -->
-    <NetworkErrorAlert error={networkError} retryCallback={retryConnection} />
 
     {#if isInitializing}
         <div class="loading">読み込み中...</div>
@@ -315,18 +289,6 @@ function toggleDebugPanel() {
         <div class="authenticated-content">
             <!-- コンテナセレクター -->
             <ContainerSelector onContainerSelected={handleContainerSelected} />
-
-            <div class="connection-status">
-                <div
-                    class="
-                        status-indicator {$fluidClient?.isContainerConnected
-                        ? 'connected'
-                        : 'disconnected'}
-                    "
-                >
-                </div>
-                <span>接続状態: {$fluidClient?.getConnectionStateString() || "未接続"}</span>
-            </div>
 
             <!-- 新規コンテナ作成リンク -->
             <div class="action-buttons">
@@ -379,6 +341,10 @@ function toggleDebugPanel() {
         {showDebugPanel ? "Hide" : "Show"} Debug
     </button>
 
+    <button onclick={updateDebugInfo} class="ml-2 mt-4 rounded bg-blue-500 p-2 text-white">
+        Update Debug
+    </button>
+
     {#if showDebugPanel}
         <!-- 既存のデバッグパネル -->
         <div class="debug-panel mt-4 rounded border bg-gray-50 p-4">
@@ -404,7 +370,30 @@ function toggleDebugPanel() {
     <!-- デバッグ情報 -->
     <details>
         <summary>デバッグ情報</summary>
-        <pre>{JSON.stringify($fluidClient?.getDebugInfo() || {}, null, 2)}</pre>
+
+        <div class="connection-status">
+            <div class="status-indicator {$fluidClient?.isContainerConnected ? 'connected' : 'disconnected'}"></div>
+            <span>接続状態: {$fluidClient?.getConnectionStateString() || "未接続"}</span>
+        </div>
+        <!-- window.locationの参照を条件付きレンダリングに変更 -->
+        <p class="host-info">
+            {#if browser}
+                Running on: {hostInfo} (Port: {portInfo})
+            {:else}
+                Loading host info...
+            {/if}
+        </p>
+
+        <!-- 環境変数の警告 -->
+        <MissingEnvWarning />
+
+        <!-- 環境変数デバッガー -->
+        <EnvDebugger />
+
+        <!-- ネットワークエラー表示 -->
+        <NetworkErrorAlert error={networkError} retryCallback={retryConnection} />
+        <pre>
+		{JSON.stringify($fluidClient?.getDebugInfo() || {}, null, 2)}</pre>
     </details>
 </main>
 

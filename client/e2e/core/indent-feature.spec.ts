@@ -30,7 +30,7 @@ test("Indent feature should move items to create hierarchy", async ({ page }) =>
     });
 
     // ページが読み込まれるのを待つ
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("networkidle", { timeout: 30000 });
 
     // ステップ1: まず3つのアイテムを追加
     await page.click('button:has-text("アイテム追加")');

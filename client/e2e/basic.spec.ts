@@ -60,7 +60,7 @@ test("認証UIが正しく表示される", async ({ page, browserName }) => {
     });
 
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("networkidle", { timeout: 30000 });
 
     // ボタン要素を異なる方法で検索（より正確なセレクタを使用）
     await expect(page.locator(".google-btn")).toBeVisible();

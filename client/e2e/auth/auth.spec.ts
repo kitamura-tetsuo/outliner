@@ -21,7 +21,7 @@ test.describe("認証UI機能テスト", () => {
         await page.goto("/");
 
         // ページが完全に読み込まれるまで待機
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("networkidle", { timeout: 30000 });
         console.log("Page loaded, waiting for UI elements to stabilize...");
 
         // UIが安定するまでさらに待機

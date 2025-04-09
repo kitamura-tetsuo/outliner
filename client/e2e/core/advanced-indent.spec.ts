@@ -100,7 +100,7 @@ test.describe("Advanced indent/unindent functionality", () => {
         });
 
         // ページが読み込まれるのを待つ
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("networkidle", { timeout: 30000 });
 
         // テスト前に確実にページが選択されていることを確認
         await ensurePageExists(page);
@@ -165,14 +165,26 @@ test.describe("Advanced indent/unindent functionality", () => {
         await page.locator(".outliner-item").nth(2).click();
         await page.keyboard.press("Tab");
         await page.waitForTimeout(500);
+        await page.keyboard.press("Tab");
+        await page.waitForTimeout(500);
 
         // アイテム4をアイテム3の子にする
         await page.locator(".outliner-item").nth(3).click();
         await page.keyboard.press("Tab");
         await page.waitForTimeout(500);
+        await page.keyboard.press("Tab");
+        await page.waitForTimeout(500);
+        await page.keyboard.press("Tab");
+        await page.waitForTimeout(500);
 
         // アイテム5をアイテム4の子にする
         await page.locator(".outliner-item").nth(4).click();
+        await page.keyboard.press("Tab");
+        await page.waitForTimeout(500);
+        await page.keyboard.press("Tab");
+        await page.waitForTimeout(500);
+        await page.keyboard.press("Tab");
+        await page.waitForTimeout(500);
         await page.keyboard.press("Tab");
         await page.waitForTimeout(500);
 

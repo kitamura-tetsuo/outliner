@@ -30,7 +30,7 @@ test.describe("Tinylicious接続テスト", () => { // すべてのテスト前�
         await page.goto("/");
 
         // ページが完全に読み込まれるまで待機
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("networkidle", { timeout: 30000 });
     }); /**
      * @testcase Tinyliciousサーバー接続テスト - シンプルバージョン
      * @description Tinyliciousサーバーへの最も基本的な接続テスト
@@ -94,7 +94,7 @@ test.describe("Tinyliciousリアル接続テスト (Example)", () => {
         await page.goto("/");
 
         // ページが完全に読み込まれるまで待機
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("networkidle", { timeout: 30000 });
     }); /**
      * @testcase 実際のTinyliciousサーバーに接続できること
      * @description 実際にTinyliciousサーバーへの接続が成功することを確認するテスト

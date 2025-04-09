@@ -8,32 +8,18 @@ import {
     ConnectionState,
     SharedTree,
     type TreeView,
-    type ViewableTree,
 } from "fluid-framework";
-import { get } from "svelte/store";
 import { UserManager } from "../auth/UserManager";
-import { getEnv } from "../lib/env";
 import {
-    CONTAINER_ID_STORAGE_KEY,
     getConnectionStateString as getConnectionStateStringUtil,
-    getFluidClient,
     isContainerConnected as isContainerConnectedUtil,
-    loadContainerId as loadContainerIdUtil,
-    resetContainerId as resetContainerIdUtil,
-    saveContainerId as saveContainerIdUtil,
     setupConnectionListeners,
 } from "../lib/fluidService";
 import { getLogger } from "../lib/logger";
 import {
-    appTreeConfiguration,
     Items,
     Project,
 } from "../schema/app-schema";
-import {
-    getDefaultContainerId,
-    saveContainerIdToServer,
-    userContainer,
-} from "../stores/firestoreStore";
 const logger = getLogger();
 
 // IdCompressorを有効にしたコンテナスキーマを定義
@@ -272,13 +258,44 @@ export class FluidClient {
             const rootItems = this.appData.root.items as Items;
             return {
                 itemCount: rootItems.length,
-                items: [...rootItems].map(item => ({
-                    id: item.id,
-                    text: item.text,
-                })),
+                items: [...rootItems].map(item => this._processItemRecursively(item)),
             };
         }
         return {};
+    }
+
+    /**
+     * アイテムとその子アイテムを再帰的に処理するヘルパーメソッド
+     * @param item 処理するアイテム
+     * @returns 処理されたアイテムとその子アイテムを含むオブジェクト
+     */
+    private _processItemRecursively(item: any) {
+        // 型定義を追加して'items'プロパティを許可する
+        interface ItemData {
+            id: string;
+            text: string;
+            author: string;
+            votes: string[];
+            created: number;
+            lastChanged: number;
+            items?: ItemData[];
+        }
+
+        const result: ItemData = {
+            id: item.id,
+            text: item.text,
+            author: item.author,
+            votes: [...item.votes],
+            created: item.created,
+            lastChanged: item.lastChanged,
+        };
+
+        // 子アイテムが存在する場合は再帰的に処理
+        if (item.items && item.items.length > 0) {
+            result.items = [...item.items].map(childItem => this._processItemRecursively(childItem));
+        }
+
+        return result;
     } /**
      * E2Eテスト用に現在のSharedTreeデータ構造を取得する
      * @returns ツリー構造のシリアライズされたデータ

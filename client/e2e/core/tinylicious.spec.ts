@@ -39,7 +39,7 @@ test.describe("Tinyliciousリアル接続テスト", () => {
         await page.goto("/");
 
         // ページが完全に読み込まれるまで待機
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("networkidle", { timeout: 30000 });
     }); /**
      * @testcase 実際のTinyliciousサーバーに接続できること
      * @description アプリケーションがTinyliciousサーバーに正常に接続できることを確認するテスト
