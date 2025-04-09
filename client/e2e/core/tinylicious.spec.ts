@@ -4,32 +4,21 @@ import {
 } from "@playwright/test";
 
 /**
+ * @file tinylicious.spec.ts
+ * @description Tinyliciousサーバーへの接続テスト
+ * アプリケーションがTinyliciousサーバーと正常に接続できることを確認するためのテストです。
+ * 実際の接続状態の検証、接続テストボタンの機能確認など、Fluid Frameworkの
+ * 基本的な接続機能をテストします。
  * @playwright
  * @title Tinyliciousリアル接続テスト
  */
 
 test.describe("Tinyliciousリアル接続テスト", () => {
     // テスト前の準備 - モックを無効化し、実際のTinyliciousサーバーに接続するように設定
-    test.beforeEach(async ({ page }) => {
-        // 認証のみモック化し、Fluid接続は実際のTinyliciousを使用
+    test.beforeEach(async ({ page }) => { // エミュレータを使用してTinyliciousに接続
         await page.addInitScript(() => {
-            // Fluid接続のモックを無効化
-            window.mockFluidClient = false;
-
-            // 認証はモックを使用（認証部分のみ）
+            // 認証状態の設定
             window.localStorage.setItem("authenticated", "true");
-            window.mockUser = {
-                id: "test-user-id",
-                name: "Test User",
-                email: "test@example.com",
-            };
-            window.mockFluidToken = {
-                token: "mock-jwt-token",
-                user: {
-                    id: "test-user-id",
-                    name: "Test User",
-                },
-            };
 
             // 接続状態のモックは削除（実際の接続状態を確認するため）
             // モックコンテナが接続済みであることをシミュレートしない
@@ -51,9 +40,15 @@ test.describe("Tinyliciousリアル接続テスト", () => {
 
         // ページが完全に読み込まれるまで待機
         await page.waitForLoadState("networkidle");
-    });
+    }); /**
+     * @testcase 実際のTinyliciousサーバーに接続できること
+     * @description アプリケーションがTinyliciousサーバーに正常に接続できることを確認するテスト
+     * @check デバッグパネルを表示して接続状態を視覚的に確認する
+     * @check 接続状態が「接続済み」または「同期中」のいずれかであることを確認する
+     * @check 接続状態インジケータが「connected」クラスを持っていることを確認する
+     * @check スクリーンショットを撮影して接続状態を視覚的に記録する
+     */
 
-    // 実際のTinylicious接続テスト
     test("実際のTinyliciousサーバーに接続できること", async ({ page }) => {
         console.log("Running real Tinylicious connection test");
 
@@ -74,9 +69,17 @@ test.describe("Tinyliciousリアル接続テスト", () => {
         // 状態インジケータのクラスも確認
         const hasConnectedClass = await page.locator(".status-indicator").hasClass("connected");
         expect(hasConnectedClass).toBe(true);
-    });
+    }); /**
+     * @testcase 接続テストボタンが機能すること
+     * @description 接続テストボタンがクリックでき、正しく動作することを確認するテスト
+     * @check 接続テストボタンが画面上に表示されていることを確認する
+     * @check ボタンをクリックすると接続テストが実行される
+     * @check クリック後にJavaScriptのalertダイアログがトリガーされることを確認する
+     * @check アラートメッセージにエラーが含まれていないことを確認する
+     * @check アラートメッセージに「Connection」という文字列が含まれていることを確認する
+     * @check スクリーンショットを撮影して結果を視覚的に確認する
+     */
 
-    // 接続テストボタンを使用した明示的な接続テスト
     test("接続テストボタンが機能すること", async ({ page }) => {
         // 接続テストボタンを探す
         const connectButton = page.locator('button:has-text("接続テスト")');

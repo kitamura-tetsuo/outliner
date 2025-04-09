@@ -88,11 +88,10 @@ export class UserManager {
 
         this.initAuthListener();
 
-        // テスト環境の検出を強化
+        // テスト環境の検出
         const isTestEnv = import.meta.env.MODE === "test" ||
             process.env.NODE_ENV === "test" ||
-            import.meta.env.VITE_IS_TEST === "true" ||
-            (typeof window !== "undefined" && window.mockFluidClient);
+            import.meta.env.VITE_IS_TEST === "true";
 
         const useEmulator = isTestEnv ||
             import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true" ||
@@ -163,16 +162,14 @@ export class UserManager {
             logger.error("Error connecting to Firebase Auth emulator:", err);
             return false;
         }
-    }
-
-    // テスト環境用のユーザーをセットアップ
+    } // テスト環境用のユーザーをセットアップ
     private _setupMockUser() {
         // E2Eテスト用にFirebaseメール/パスワード認証を使う
         if (
             typeof window !== "undefined" &&
             (window.location.href.includes("e2e-test") || import.meta.env.VITE_IS_TEST === "true")
         ) {
-            logger.info("[UserManager] E2E test environment detected, using real Firebase auth with test account");
+            logger.info("[UserManager] E2E test environment detected, using Firebase auth emulator with test account");
 
             // 認証試行前に長めに待機（Emulatorが起動するまで）
             setTimeout(() => {
@@ -184,8 +181,8 @@ export class UserManager {
             return;
         }
 
-        // モックユーザーは使用せず、常に実際のFirebase認証を使用
-        logger.info("[UserManager] Using real Firebase auth only, no mock users");
+        // エミュレータを使用して認証
+        logger.info("[UserManager] Using Firebase auth emulator for testing");
     }
 
     // 複数のエミュレータ接続設定を順番に試す

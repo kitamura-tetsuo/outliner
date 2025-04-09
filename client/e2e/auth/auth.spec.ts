@@ -4,6 +4,10 @@ import {
 } from "@playwright/test";
 
 /**
+ * @file auth.spec.ts
+ * @description 認証機能関連のテスト
+ * アプリケーションの認証UI、特にGoogleログインボタンが正しく表示され機能することを確認します。
+ * 実際の認証フローの検証、ログイン状態の確認などを行います。
  * @playwright
  * @title 認証機能テスト
  */
@@ -24,6 +28,13 @@ test.describe("認証UI機能テスト", () => {
         await new Promise(resolve => setTimeout(resolve, 3000));
     });
 
+    /**
+     * @testcase Googleログインボタンが表示される
+     * @description Googleログイン用のボタンが画面上に正しく表示されることを確認するテスト
+     * @check 具体的なセレクタ(.google-btn)を使用してボタン要素を特定する
+     * @check ボタンが画面上に表示されることを確認する(最大30秒間待機)
+     * @check ボタンのテキスト内に「Google」という文字列が含まれているか確認する
+     */
     test("Googleログインボタンが表示される", async ({ page }) => {
         // より具体的なセレクタを使用して、Googleログインボタンのみに一致するようにする
         const loginButton = page.locator(".google-btn");

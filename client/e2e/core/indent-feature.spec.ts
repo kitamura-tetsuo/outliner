@@ -3,25 +3,29 @@ import {
     test,
 } from "@playwright/test";
 
+/**
+ * @file indent-feature.spec.ts
+ * @description インデント機能のテスト
+ * アウトラインアプリのインデント機能が適切に動作することを確認するためのテストです。
+ * アイテムのインデント増加（Tab）とインデント減少（Shift+Tab）による階層構造の
+ * 作成と操作が正しく行われることを検証します。
+ */
+
+/**
+ * @testcase Indent feature should move items to create hierarchy
+ * @description アイテムのインデント操作によって階層構造が適切に作成されることを確認するテスト
+ * @check 3つのアイテムを追加してテキストを設定できる
+ * @check 2番目のアイテムをタブキーでインデントすると、パディングが増加する
+ * @check 3番目のアイテムも同様にインデントできる
+ * @check インデント後のパディング値が適切に設定されていることをCSSから検証
+ * @check Shift+Tabキーでインデントを減らせる（アンインデント操作）
+ * @check アンインデント後のパディング値が減少していることを検証
+ */
 test("Indent feature should move items to create hierarchy", async ({ page }) => {
     // ホームページにアクセス
-    await page.goto("/");
-
-    // モックの設定
+    await page.goto("/"); // エミュレータを使用するための設定
     await page.addInitScript(() => {
-        window.mockFluidClient = true;
-        window.mockUser = {
-            id: "test-user-id",
-            name: "Test User",
-            email: "test@example.com",
-        };
-        window.mockFluidToken = {
-            token: "mock-jwt-token",
-            user: {
-                id: "test-user-id",
-                name: "Test User",
-            },
-        };
+        // エミュレータを使用するためモックは不要
         window.localStorage.setItem("authenticated", "true");
     });
 

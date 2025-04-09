@@ -4,26 +4,19 @@ import {
 } from "@playwright/test";
 import { TreeValidator } from "../utils/treeValidation";
 
+/**
+ * @file advanced-indent.spec.ts
+ * @description インデント操作のテスト
+ * アウトラインアプリのインデント操作（Tab, Shift+Tab）による項目の階層変更と、
+ * 階層の折りたたみ・展開機能をテストします。
+ */
+
 test.describe("Advanced indent/unindent functionality", () => {
     test.beforeEach(async ({ page }) => {
         // ホームページにアクセス
-        await page.goto("/");
-
-        // モックの設定とデバッグ関数の追加
+        await page.goto("/"); // エミュレータを使用するための設定とデバッグ関数の追加
         await page.addInitScript(() => {
-            window.mockFluidClient = true;
-            window.mockUser = {
-                id: "test-user-id",
-                name: "Test User",
-                email: "test@example.com",
-            };
-            window.mockFluidToken = {
-                token: "mock-jwt-token",
-                user: {
-                    id: "test-user-id",
-                    name: "Test User",
-                },
-            };
+            // エミュレータを使用するためモックは不要
             window.localStorage.setItem("authenticated", "true");
 
             // テスト用に共有ツリー構造を厳格に取得する関数を追加
@@ -136,6 +129,16 @@ test.describe("Advanced indent/unindent functionality", () => {
         await page.waitForSelector(".outliner", { timeout: 5000 });
     }
 
+    /**
+     * @testcase Should create and manipulate a deeply nested structure
+     * @description 複数のアイテムを作成し、インデント操作で深い階層構造を作成・操作するテスト
+     * @check 5つのアイテムを作成してテキストを入力できる
+     * @check Tab キーでインデントを増加させて階層構造を作成できる
+     * @check インデント後のパディング値や階層レベルが正しく増加している
+     * @check TreeValidator を使用して SharedTree の構造と UI の整合性を検証する
+     * @check Shift+Tab キーでインデントを減少させて階層構造を変更できる
+     * @check インデント減少後のパディング値や階層レベルが適切に減少している
+     */
     test("Should create and manipulate a deeply nested structure", async ({ page }) => {
         // アイテムを5つ追加
         for (let i = 0; i < 5; i++) {
@@ -263,6 +266,16 @@ test.describe("Advanced indent/unindent functionality", () => {
         await TreeValidator.validateTreeStructure(page);
     });
 
+    /**
+     * @testcase Should handle collapsing and expanding nested items
+     * @description 階層構造の折りたたみと展開機能をテストする
+     * @check 親アイテムと子アイテム、孫アイテムを作成できる
+     * @check Tab キーを使用して子アイテム、孫アイテムを適切にインデントできる
+     * @check 親アイテムの折りたたみボタンをクリックすると子孫アイテムが非表示になる
+     * @check 折りたたみ後は親アイテムのみが表示され、子孫アイテムは非表示になる
+     * @check 再度折りたたみボタンをクリックすると子孫アイテムが再表示される
+     * @check 展開後はすべてのアイテムが正しく表示される
+     */
     test("Should handle collapsing and expanding nested items", async ({ page }) => {
         // ネストされた構造を作成
         // 1. 最初のアイテムを追加
@@ -320,9 +333,16 @@ test.describe("Advanced indent/unindent functionality", () => {
         const itemsAfterExpand = await page.locator(".outliner-item:visible").count();
         // 注：実際のカウントはDOMの構造によって3または2+1になる可能性がある
         expect(itemsAfterExpand).toBeGreaterThanOrEqual(3);
-    });
+    }); /**
+     * @testcase Should correctly validate tree structure when indenting items
+     * @description インデント操作によるツリー構造の変化が正しく反映されるかを検証するテスト
+     * @check 複数のアイテムを作成し、初期状態のツリー構造を検証する
+     * @check インデント操作後に TreeValidator を使用してツリー構造が正しく更新されることを確認する
+     * @check インデント操作後は親要素に子要素が追加され、全体のルートアイテム数が減少する
+     * @check アンインデント操作後にツリー構造が元の状態に戻ることを検証する
+     * @check アンインデント後は親子関係が解除され、全体のルートアイテム数が元に戻る
+     */
 
-    // より厳格なテストケースに修正
     test("Should correctly validate tree structure when indenting items", async ({ page }) => {
         // アイテム追加
         for (let i = 0; i < 5; i++) {

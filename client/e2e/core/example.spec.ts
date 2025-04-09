@@ -4,38 +4,21 @@ import {
 } from "@playwright/test";
 
 /**
+ * @file example.spec.ts
+ * @description Tinylicious接続テストの例
+ * アプリケーションとTinyliciousサーバー間の接続機能を検証する基本的なテスト例です。
+ * このテストでは、単純な接続確認からUIコンポーネントの表示確認まで、
+ * Fluid Frameworkの基礎的な接続機能をテストします。
  * @playwright
  * @title Tinylicious接続テスト
  */
 
-test.describe("Tinylicious接続テスト", () => {
-    // すべてのテスト前にモックを設定
+test.describe("Tinylicious接続テスト", () => { // すべてのテスト前に必要な設定を行う
     test.beforeEach(async ({ page }) => {
-        // モックフラグを設定してFluidClientとUserManagerの動作を制御
+        // エミュレータを使用するための設定
         await page.addInitScript(() => {
-            window.mockFluidClient = true;
-
             // 認証済み状態をシミュレート
             window.localStorage.setItem("authenticated", "true");
-
-            // テスト用のユーザーデータ
-            window.mockUser = {
-                id: "test-user-id",
-                name: "Test User",
-                email: "test@example.com",
-            };
-
-            // テスト用のFluidトークン
-            window.mockFluidToken = {
-                token: "mock-jwt-token",
-                user: {
-                    id: "test-user-id",
-                    name: "Test User",
-                },
-            };
-
-            // モックコンテナが接続済みであることをシミュレート
-            window.mockContainerConnected = true;
 
             // アラートを上書き
             window.alert = function (message) {
@@ -48,9 +31,14 @@ test.describe("Tinylicious接続テスト", () => {
 
         // ページが完全に読み込まれるまで待機
         await page.waitForLoadState("networkidle");
-    });
+    }); /**
+     * @testcase Tinyliciousサーバー接続テスト - シンプルバージョン
+     * @description Tinyliciousサーバーへの最も基本的な接続テスト
+     * @check ページ内に何らかのコンテンツが存在することを確認
+     * @check スクリーンショットを撮影してトラブルシューティング用に保存
+     * @check 少なくともh1要素（タイトル）が表示されることを確認
+     */
 
-    // 認証とリアルタイム接続のテスト - 単純に接続要素だけを確認するバージョン
     test("Tinyliciousサーバー接続テスト - シンプルバージョン", async ({ page }) => {
         // テストが実行されていることを確認
         console.log("Running simplified Tinylicious test");
@@ -64,37 +52,31 @@ test.describe("Tinylicious接続テスト", () => {
 
         // 少なくともタイトル要素が存在することを確認
         await expect(page.locator("h1")).toBeVisible();
-    });
+    }); /**
+     * @testcase 接続テストボタンが表示されること
+     * @description 接続テスト用のUIボタンが画面上に表示されることを確認するシンプルなテスト
+     * @check スクリーンショットを撮影して接続テストボタンの表示を視覚的に確認
+     */
 
-    // 接続テストボタンのテスト - 単純にボタンの存在だけを確認
     test("接続テストボタンが表示されること", async ({ page }) => {
         // スクリーンショットを撮影（UI確認用）
         await page.screenshot({ path: "test-results/connection-test-button.png", fullPage: true });
     });
 });
 
+/**
+ * @testgroup Tinyliciousリアル接続テスト (Example)
+ * @description 実際のTinyliciousサーバーへの接続をテストするグループ
+ * @setup 認証状態を設定
+ * @setup Tinylicious接続用の環境変数を設定
+ */
 test.describe("Tinyliciousリアル接続テスト (Example)", () => {
-    // テスト前の準備 - モックを最小限にして実際のTinyliciousサーバーに接続
+    // テスト前の準備 - エミュレータを使用して実際のTinyliciousサーバーに接続
     test.beforeEach(async ({ page }) => {
-        // 認証のみモック化し、Fluid接続は実際のTinyliciousを使用
+        // エミュレータを使用してTinyliciousに接続
         await page.addInitScript(() => {
-            // Fluid接続のモックを無効化
-            window.mockFluidClient = false;
-
-            // 認証はモックを使用（認証部分のみ）
+            // 認証状態を設定
             window.localStorage.setItem("authenticated", "true");
-            window.mockUser = {
-                id: "test-user-id",
-                name: "Test User",
-                email: "test@example.com",
-            };
-            window.mockFluidToken = {
-                token: "mock-jwt-token",
-                user: {
-                    id: "test-user-id",
-                    name: "Test User",
-                },
-            };
 
             // アラートをキャプチャ
             window.alert = function (message) {
@@ -113,9 +95,15 @@ test.describe("Tinyliciousリアル接続テスト (Example)", () => {
 
         // ページが完全に読み込まれるまで待機
         await page.waitForLoadState("networkidle");
-    });
+    }); /**
+     * @testcase 実際のTinyliciousサーバーに接続できること
+     * @description 実際にTinyliciousサーバーへの接続が成功することを確認するテスト
+     * @check デバッグパネルを表示して接続状態を確認する
+     * @check 接続状態のテキストが「接続済み」または「同期中」のいずれかであることを検証する
+     * @check 状態インジケータが「connected」クラスを持っていることを確認する
+     * @check スクリーンショットを撮影して接続状態を視覚的に記録する
+     */
 
-    // 実際のTinylicious接続テスト
     test("実際のTinyliciousサーバーに接続できること", async ({ page }) => {
         console.log("Running real Tinylicious connection test (example)");
 

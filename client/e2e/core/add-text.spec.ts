@@ -6,27 +6,29 @@ import {
 /**
  * @playwright
  * @title テキスト追加機能テスト
+ * @description このファイルではアウトライナーアプリでテキストを追加する機能をテストします。
+ * アイテムを追加した後、そのアイテムに対してテキスト入力ができ、入力したテキストが
+ * 正しく保存・表示されることと、データ構造が更新されることを確認します。
  */
 
+/**
+ * @testcase Add Text button should add text to shared content
+ * @description アイテム追加ボタンでアイテムを作成し、テキストを入力できることを確認するテスト
+ * @check アイテム追加ボタンをクリックするとアイテムが表示される
+ * @check アイテムをクリックすると編集モードになる
+ * @check 編集モード時にフォーカスが正しく当たる
+ * @check テキストを入力できる
+ * @check Enter キーを押すとテキストが保存される
+ * @check 入力したテキストがアイテムのコンテンツとして表示される
+ * @issue クリックしても適切にフォーカスが当たらない場合がある（編集モードになっても入力できない）
+ */
 test("Add Text button should add text to shared content", async ({ page }) => {
     // ホームページにアクセス
     await page.goto("/");
 
-    // モックの設定
+    // 認証状態の設定
     await page.addInitScript(() => {
-        window.mockFluidClient = true;
-        window.mockUser = {
-            id: "test-user-id",
-            name: "Test User",
-            email: "test@example.com",
-        };
-        window.mockFluidToken = {
-            token: "mock-jwt-token",
-            user: {
-                id: "test-user-id",
-                name: "Test User",
-            },
-        };
+        // エミュレータを使用するためモックは不要
         window.localStorage.setItem("authenticated", "true");
     });
 
@@ -64,25 +66,23 @@ test("Add Text button should add text to shared content", async ({ page }) => {
     await page.screenshot({ path: "test-results/add-text-result.png" });
 });
 
-// SharedTreeデータが更新されることをテスト
+/**
+ * @testcase Adding text updates data structure
+ * @description テキスト追加時にデータ構造が正しく更新されることを確認するテスト
+ * @check デバッグパネルでテキスト追加前の状態を記録する
+ * @check アイテムを追加し、テキストを入力する
+ * @check デバッグパネルで更新後の状態を確認する
+ * @check データ構造に入力したテキストが反映されていることを確認する
+ * @check ページを再読み込みしても入力したデータが保持されていることを確認する
+ */
 test("Adding text updates data structure", async ({ page }) => {
     // ホームページにアクセス
     await page.goto("/");
 
-    // モックの設定
+    // 認証状態の設定 - エミュレータを使用
     await page.addInitScript(() => {
-        window.mockFluidClient = true;
-        window.mockUser = {
-            id: "test-user-id",
-            name: "Test User",
-        };
-        window.mockFluidToken = {
-            token: "mock-jwt-token",
-            user: {
-                id: "test-user-id",
-                name: "Test User",
-            },
-        };
+        // エミュレータを使用するためモックは不要
+        window.localStorage.setItem("authenticated", "true");
     });
 
     await page.waitForLoadState("networkidle");
