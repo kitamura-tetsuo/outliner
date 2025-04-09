@@ -55,17 +55,17 @@ function startTinyliciousServer() {
 async function globalSetup() {
     console.log("Starting global setup...");
 
-    // Tinyliciousサーバーを起動
-    try {
-        tinyliciousProcess = startTinyliciousServer();
-        // サーバーが起動するまで少し待機
-        await new Promise(resolve => setTimeout(resolve, 5000));
+    // // Tinyliciousサーバーを起動
+    // try {
+    //     tinyliciousProcess = startTinyliciousServer();
+    //     // サーバーが起動するまで少し待機
+    //     await new Promise(resolve => setTimeout(resolve, 5000));
 
-        global.__TINYLICIOUS_PROCESS__ = tinyliciousProcess;
-    }
-    catch (err) {
-        console.error("Failed to start Tinylicious server:", err);
-    }
+    //     global.__TINYLICIOUS_PROCESS__ = tinyliciousProcess;
+    // }
+    // catch (err) {
+    //     console.error("Failed to start Tinylicious server:", err);
+    // }
 
     // ブラウザインスタンスを作成
     const browser = await chromium.launch();

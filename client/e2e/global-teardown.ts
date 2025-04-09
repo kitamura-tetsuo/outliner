@@ -36,34 +36,34 @@ async function globalTeardown(config: any) {
         await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // 万が一プロセスが残っている場合に備え、ポート7082を使用しているすべてのプロセスを終了
-    try {
-        console.log(`Finding processes using port ${TINYLICIOUS_PORT}`);
-        const portNumber = parseInt(TINYLICIOUS_PORT);
-        const processList = await findProcess("port", portNumber);
+    // // 万が一プロセスが残っている場合に備え、ポート7082を使用しているすべてのプロセスを終了
+    // try {
+    //     console.log(`Finding processes using port ${TINYLICIOUS_PORT}`);
+    //     const portNumber = parseInt(TINYLICIOUS_PORT);
+    //     const processList = await findProcess("port", portNumber);
 
-        if (processList.length > 0) {
-            console.log(`Found ${processList.length} processes using port ${TINYLICIOUS_PORT}`);
+    //     if (processList.length > 0) {
+    //         console.log(`Found ${processList.length} processes using port ${TINYLICIOUS_PORT}`);
 
-            // 各プロセスを強制終了
-            for (const proc of processList) {
-                console.log(`Killing process ${proc.pid} (${proc.name}) using port ${TINYLICIOUS_PORT}`);
-                try {
-                    process.kill(proc.pid);
-                    console.log(`Successfully killed process ${proc.pid}`);
-                }
-                catch (killError) {
-                    console.error(`Failed to kill process ${proc.pid}: ${killError}`);
-                }
-            }
-        }
-        else {
-            console.log(`No processes found using port ${TINYLICIOUS_PORT}`);
-        }
-    }
-    catch (error) {
-        console.error(`Error finding or killing processes on port ${TINYLICIOUS_PORT}:`, error);
-    }
+    //         // 各プロセスを強制終了
+    //         for (const proc of processList) {
+    //             console.log(`Killing process ${proc.pid} (${proc.name}) using port ${TINYLICIOUS_PORT}`);
+    //             try {
+    //                 process.kill(proc.pid);
+    //                 console.log(`Successfully killed process ${proc.pid}`);
+    //             }
+    //             catch (killError) {
+    //                 console.error(`Failed to kill process ${proc.pid}: ${killError}`);
+    //             }
+    //         }
+    //     }
+    //     else {
+    //         console.log(`No processes found using port ${TINYLICIOUS_PORT}`);
+    //     }
+    // }
+    // catch (error) {
+    //     console.error(`Error finding or killing processes on port ${TINYLICIOUS_PORT}:`, error);
+    // }
 
     console.log("Tinylicious server cleanup completed");
 
