@@ -61,9 +61,8 @@ export async function initFluidClientWithAuth() {
             if (authResult) {
                 logger.info("認証成功により、Fluidクライアントを初期化します");
 
-                // FluidClientのシングルトンインスタンスを取得し初期化
-                const client = FluidClient.getInstance();
-                await client.initialize();
+                // FluidClientのファクトリーメソッドを使用して新しいインスタンスを作成
+                const client = await FluidClient.create();
 
                 // Storeに保存
                 fluidClient.set(client);
@@ -75,7 +74,7 @@ export async function initFluidClientWithAuth() {
             }
             else {
                 logger.info("ログアウトにより、Fluidクライアントをリセットします");
-                // 注意: シングルトンインスタンスはリセットせず、ストアからの参照のみ削除
+                // ストアからの参照を削除
                 fluidClient.set(null);
                 if (typeof window !== "undefined") {
                     delete (window as any).__FLUID_CLIENT__;
@@ -92,8 +91,8 @@ export async function initFluidClientWithAuth() {
     const currentUser = userManager.getCurrentUser();
     if (currentUser) {
         try {
-            const client = FluidClient.getInstance();
-            await client.initialize();
+            // FluidClientのファクトリーメソッドを使用して新しいインスタンスを作成
+            const client = await FluidClient.create();
             fluidClient.set(client);
 
             if (typeof window !== "undefined") {

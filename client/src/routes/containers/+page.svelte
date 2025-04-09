@@ -51,11 +51,13 @@ async function createNewContainer() {
             fluidClient.set(null);
         }
 
-        // 新しいFluidClientインスタンスを取得
-        const client = FluidClient.getInstance();
-
-        // 新規コンテナを作成
-        createdContainerId = await client.createNewContainer(containerName);
+        // 新規コンテナを作成し、新しいFluidClientインスタンスを取得
+        const client = await import("../../lib/fluidService").then(module => 
+            module.createNewContainer(containerName)
+        );
+        
+        // 作成されたコンテナIDを取得
+        createdContainerId = client.containerId;
 
         // fluidClientストアを更新
         fluidClient.set(client);

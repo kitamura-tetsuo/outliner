@@ -102,9 +102,7 @@ async function handleContainerChange() {
     finally {
         isLoading = false;
     }
-}
-
-// 現在のコンテナIDのリロード
+}    // 現在のコンテナIDのリロード
 async function reloadCurrentContainer() {
     if (!currentContainerId) return;
 
@@ -112,9 +110,8 @@ async function reloadCurrentContainer() {
         isLoading = true;
         error = null;
 
-        // 現在のコンテナを再ロード
-        const client = FluidClient.getInstance();
-        await client.initialize();
+        // ファクトリーメソッドを使用して現在のコンテナを再ロード
+        const client = await FluidClient.create(currentContainerId);
 
         // fluidClientストアを更新
         fluidClient.set(client);

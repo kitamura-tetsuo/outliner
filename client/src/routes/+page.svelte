@@ -182,9 +182,10 @@ async function handleContainerSelected(selectedContainerId: string) {
 
         logger.info(`コンテナを切り替えます: ${selectedContainerId}`);
 
-        // 新しいコンテナIDで FluidClient をロード
-        const client = FluidClient.getInstance();
-        await client.loadContainer(selectedContainerId);
+        // 新しいコンテナIDで ファクトリーメソッドを使用してFluidClientを作成
+        const client = await import("../lib/fluidService").then(module => 
+            module.loadContainer(selectedContainerId)
+        );
 
         // fluidClientストアを更新
         fluidClient.set(client);
