@@ -31,14 +31,56 @@
 	// 子アイテムを持っているかどうか判定
 	let hasChildren = $derived(item.items && item.items.length > 0);
 
+	// テキストエリアのref
+	let textareaRef: HTMLTextAreaElement;
+
+	function getClickPosition(event: MouseEvent, text: string): number {
+		const element = event.currentTarget as HTMLElement;
+		const rect = element.getBoundingClientRect();
+		const x = event.clientX - rect.left;
+		
+		// クリック位置に最も近い文字位置を見つける
+		const span = document.createElement('span');
+		span.style.font = window.getComputedStyle(element).font;
+		document.body.appendChild(span);
+		
+		let bestPosition = 0;
+		let minDistance = Infinity;
+		
+		for (let i = 0; i <= text.length; i++) {
+			span.textContent = text.slice(0, i);
+			const width = span.getBoundingClientRect().width;
+			const distance = Math.abs(width - x);
+			
+			if (distance < minDistance) {
+				minDistance = distance;
+				bestPosition = i;
+			}
+		}
+		
+		document.body.removeChild(span);
+		return bestPosition;
+	}
+
 	function toggleCollapse() {
 		isCollapsed = !isCollapsed;
 	}
 
-	function startEditing() {
+	function startEditing(event?: MouseEvent) {
 		if (isReadOnly) return;
 		editText = item.text;
 		isEditing = true;
+		
+		// 非同期で要素が更新された後にフォーカスとキャレット位置を設定
+		setTimeout(() => {
+			if (textareaRef) {
+				textareaRef.focus();
+				if (event) {
+					const position = getClickPosition(event, item.text);
+					textareaRef.setSelectionRange(position, position);
+				}
+			}
+		}, 0);
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
@@ -130,6 +172,7 @@
 
 		{#if isEditing}
 			<textarea
+				bind:this={textareaRef}
 				bind:value={editText}
 				onkeydown={handleKeyDown}
 				onblur={saveEdit}

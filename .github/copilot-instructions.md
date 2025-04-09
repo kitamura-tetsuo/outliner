@@ -7,6 +7,10 @@ https://scrapbox.io/shokai/
 利用するライブラリ
 Fluid Frameworkと svelteを使ったアプリを作りたい。
 
+ライブラリのバージョン
+svelte v5
+fluid-framework v2
+
 最新のAPIドキュメントを確認しながら作業して。
 
 APIドキュメント
