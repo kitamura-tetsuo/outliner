@@ -1,0 +1,482 @@
+<script lang="ts">
+import { onDestroy, onMount } from 'svelte';
+import { editorOverlayStore, type CursorPosition, type SelectionRange } from '../stores/EditorOverlayStore';
+
+// デバッグモード
+const DEBUG_MODE = false;
+
+// カーソルの位置とアイテムの位置情報をマッピングするオブジェクト
+interface CursorPositionMap {
+    [itemId: string]: {
+        elementRect: DOMRect;
+        textElement: HTMLElement;
+        lineHeight: number;
+        fontProperties: {
+            fontFamily: string;
+            fontSize: string;
+            fontWeight: string;
+            letterSpacing: string;
+        };
+    };
+}
+
+// カーソルと選択範囲のマッピング情報
+let positionMap = $state<CursorPositionMap>({});
+// すべてのカーソル位置
+let allCursors = $state<CursorPosition[]>([]);
+// すべての選択範囲
+let allSelections = $state<SelectionRange[]>([]);
+// アクティブアイテムID
+let activeItemId = $state<string | null>(null);
+
+// カーソル点滅の状態
+let cursorVisible = $state(true);
+// カーソル点滅タイマーID
+let blinkTimerId: number;
+
+// DOM要素への参照
+let overlayRef: HTMLDivElement;
+
+// カーソルの点滅制御用タイマーを開始
+function startCursorBlink() {
+    clearInterval(blinkTimerId);
+    cursorVisible = true;
+    blinkTimerId = setInterval(() => {
+        cursorVisible = !cursorVisible;
+    }, 530) as unknown as number;
+}
+
+// カーソル点滅タイマーを停止
+function stopCursorBlink() {
+    clearInterval(blinkTimerId);
+    cursorVisible = true;
+}
+
+// より正確なテキスト測定を行うヘルパー関数
+function createMeasurementSpan(itemId: string, text: string): HTMLSpanElement {
+    const itemInfo = positionMap[itemId];
+    if (!itemInfo) {
+        throw new Error(`Item info not found for ${itemId}`);
+    }
+    
+    // 仮想測定用のspan要素を作成
+    const span = document.createElement('span');
+    
+    // スタイルを正確に継承
+    const { fontProperties } = itemInfo;
+    span.style.fontFamily = fontProperties.fontFamily;
+    span.style.fontSize = fontProperties.fontSize;
+    span.style.fontWeight = fontProperties.fontWeight;
+    span.style.letterSpacing = fontProperties.letterSpacing;
+    
+    // その他の重要なスタイル
+    span.style.whiteSpace = 'pre';
+    span.style.visibility = 'hidden';
+    span.style.position = 'absolute';
+    span.style.pointerEvents = 'none';
+    span.textContent = text;
+    
+    return span;
+}
+
+// カーソル位置をピクセル値に変換する関数
+function calculateCursorPixelPosition(itemId: string, offset: number): { left: number; top: number } | null {
+    const itemInfo = positionMap[itemId];
+    if (!itemInfo) return null;
+    
+    const { textElement } = itemInfo;
+    
+    // オーバーレイ要素の絶対位置を取得（変換の基準点）
+    const overlayRect = overlayRef.getBoundingClientRect();
+    
+    // ツリーコンテナを取得
+    const treeContainer = overlayRef.closest('.tree-container');
+    if (!treeContainer) return null;
+    
+    // テキスト要素の絶対位置
+    const textRect = textElement.getBoundingClientRect();
+    
+    // アイテム要素を取得
+    const itemElement = textElement.closest('[data-item-id]');
+    if (!itemElement || !(itemElement instanceof HTMLElement)) return null;
+    
+    // アイテムの左端からのオフセット（インデント）
+    const itemStyle = window.getComputedStyle(itemElement);
+    const marginLeft = parseFloat(itemStyle.marginLeft) || 0;
+    
+    // テキストの内容を取得
+    const text = textElement.textContent || '';
+    const textBeforeCursor = text.substring(0, offset);
+    
+    try {
+        // 仮想span要素を使用してオフセット位置のピクセル値を計算
+        const span = createMeasurementSpan(itemId, textBeforeCursor);
+        
+        // 一時的に親要素に追加して測定
+        textElement.parentElement?.appendChild(span);
+        const cursorWidth = span.getBoundingClientRect().width;
+        textElement.parentElement?.removeChild(span);
+        
+        // 計算：ツリーコンテナ内でのアイテムの位置 + テキスト内のカーソル位置
+        // まず、ツリーコンテナからの相対位置を計算する
+        const treeContainerRect = treeContainer.getBoundingClientRect();
+        
+        // テキスト要素の左端からの距離
+        const contentContainer = textElement.closest('.item-content-container');
+        const contentRect = contentContainer?.getBoundingClientRect() || textRect;
+        
+        // ツリーコンテナを基準にした位置
+        const contentLeft = contentRect.left - treeContainerRect.left;
+        
+        // テキスト要素内でのカーソル位置
+        const relativeLeft = contentLeft + cursorWidth;
+        const relativeTop = textRect.top - treeContainerRect.top + 3;
+        
+        if (DEBUG_MODE) {
+            console.log(`Cursor for ${itemId} at offset ${offset}:`, { 
+                relativeLeft, relativeTop, 
+                cursorWidth,
+                contentLeft,
+                textRectLeft: textRect.left,
+                treeContainerLeft: treeContainerRect.left,
+                marginLeft,
+                offsetText: textBeforeCursor.replaceAll('\n', '\\n'),  // デバッグ用にテキストを表示
+                fullText: text.replaceAll('\n', '\\n')
+            });
+        }
+        
+        return { left: relativeLeft, top: relativeTop };
+    } catch (error) {
+        console.error('Error calculating cursor position:', error);
+        return null;
+    }
+}
+
+// 選択範囲のピクセル位置を計算する関数
+function calculateSelectionPixelRange(
+    itemId: string, 
+    startOffset: number, 
+    endOffset: number,
+    isReversed?: boolean
+): { left: number; top: number; width: number; height: number } | null {
+    // 開始位置と終了位置が同じ場合は表示しない
+    if (startOffset === endOffset) return null;
+    
+    const itemInfo = positionMap[itemId];
+    if (!itemInfo) return null;
+    
+    const { textElement, lineHeight } = itemInfo;
+    
+    // オーバーレイ要素の絶対位置を取得（変換の基準点）
+    const overlayRect = overlayRef.getBoundingClientRect();
+    
+    // ツリーコンテナを取得
+    const treeContainer = overlayRef.closest('.tree-container');
+    if (!treeContainer) return null;
+    
+    // テキスト要素の絶対位置
+    const textRect = textElement.getBoundingClientRect();
+    
+    // テキストコンテンツを取得
+    const text = textElement.textContent || '';
+    
+    // 開始と終了が逆転している場合は入れ替え
+    const actualStart = Math.min(startOffset, endOffset);
+    const actualEnd = Math.max(startOffset, endOffset);
+    
+    const textBeforeStart = text.substring(0, actualStart);
+    const selectedText = text.substring(actualStart, actualEnd);
+    
+    try {
+        // 開始位置の計算
+        const startSpan = createMeasurementSpan(itemId, textBeforeStart);
+        textElement.parentElement?.appendChild(startSpan);
+        const startX = startSpan.getBoundingClientRect().width;
+        textElement.parentElement?.removeChild(startSpan);
+        
+        // 選択範囲の幅を計算
+        const selectionSpan = createMeasurementSpan(itemId, selectedText);
+        textElement.parentElement?.appendChild(selectionSpan);
+        const width = selectionSpan.getBoundingClientRect().width || 5; // 最小幅を確保
+        textElement.parentElement?.removeChild(selectionSpan);
+        
+        // 計算：ツリーコンテナ内でのアイテムの位置 + テキスト内のカーソル位置
+        const treeContainerRect = treeContainer.getBoundingClientRect();
+        
+        // テキスト要素の左端からの距離
+        const contentContainer = textElement.closest('.item-content-container');
+        const contentRect = contentContainer?.getBoundingClientRect() || textRect;
+        
+        // ツリーコンテナを基準にした位置
+        const contentLeft = contentRect.left - treeContainerRect.left;
+        
+        // 最終位置計算
+        const relativeLeft = contentLeft + startX;
+        const relativeTop = textRect.top - treeContainerRect.top + 3;
+        
+        // 高さは行の高さを使用
+        const height = lineHeight || textRect.height || 20;
+        
+        if (DEBUG_MODE) {
+            console.log(`Selection for ${itemId} from ${actualStart} to ${actualEnd}:`, { 
+                relativeLeft, relativeTop, width, height,
+                contentLeft,
+                textRectLeft: textRect.left,
+                treeContainerLeft: treeContainerRect.left,
+                selectedText: selectedText.replaceAll('\n', '\\n'),
+                isReversed
+            });
+        }
+        
+        return { 
+            left: relativeLeft, 
+            top: relativeTop, 
+            width, 
+            height 
+        };
+    } catch (error) {
+        console.error('Error calculating selection range:', error);
+        return null;
+    }
+}
+
+// DOMが変更された時に位置マッピングを更新する関数
+function updatePositionMap() {
+    const newMap: CursorPositionMap = {};
+    
+    // すべてのアイテムとそのテキスト要素を取得
+    const itemElements = document.querySelectorAll('[data-item-id]');
+    
+    itemElements.forEach(itemElement => {
+        const itemId = itemElement.getAttribute('data-item-id');
+        if (!itemId) return;
+        
+        const textElement = itemElement.querySelector('.item-text');
+        if (!textElement || !(textElement instanceof HTMLElement)) return;
+        
+        // 要素の位置情報を取得
+        const elementRect = itemElement.getBoundingClientRect();
+        
+        // コンテンツコンテナの位置情報
+        const contentContainer = textElement.closest('.item-content-container');
+        if (!contentContainer) return;
+        
+        // コンピュートされたスタイルを取得
+        const styles = window.getComputedStyle(textElement);
+        const lineHeight = parseFloat(styles.lineHeight) || textElement.getBoundingClientRect().height;
+        
+        // フォント関連のプロパティを保存
+        const fontProperties = {
+            fontFamily: styles.fontFamily,
+            fontSize: styles.fontSize,
+            fontWeight: styles.fontWeight,
+            letterSpacing: styles.letterSpacing
+        };
+        
+        newMap[itemId] = {
+            elementRect,
+            textElement,
+            lineHeight,
+            fontProperties
+        };
+    });
+    
+    positionMap = newMap;
+    
+    if (DEBUG_MODE) {
+        console.log("Position map updated:", newMap);
+    }
+}
+
+// MutationObserver を使用してDOMの変更を監視
+let mutationObserver: MutationObserver;
+
+// 位置マップの更新をdebounce（頻度制限）するための変数
+let updatePositionMapTimer: number;
+
+// 位置マップをdebounce付きで更新
+function debouncedUpdatePositionMap() {
+    clearTimeout(updatePositionMapTimer);
+    updatePositionMapTimer = setTimeout(() => {
+        updatePositionMap();
+    }, 100) as unknown as number;
+}
+
+// editorOverlayStore からのデータを監視し、状態を更新
+editorOverlayStore.subscribe(state => {
+    allCursors = Object.values(state.cursors);
+    allSelections = Object.values(state.selections);
+    activeItemId = state.activeItemId;
+    
+    // カーソルがある場合は点滅を開始
+    if (allCursors.some(cursor => cursor.isActive)) {
+        startCursorBlink();
+    } else {
+        stopCursorBlink();
+    }
+    
+    // 位置マップを更新
+    updatePositionMap();
+});
+
+onMount(() => {
+    // 初期位置マップの作成
+    updatePositionMap();
+    
+    // MutationObserver を設定して DOM の変更を監視
+    mutationObserver = new MutationObserver(debouncedUpdatePositionMap);
+    mutationObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
+    });
+    
+    // リサイズやスクロール時に位置マップを更新
+    window.addEventListener('resize', debouncedUpdatePositionMap);
+    window.addEventListener('scroll', debouncedUpdatePositionMap);
+    
+    // カーソル点滅タイマーを開始
+    startCursorBlink();
+});
+
+onDestroy(() => {
+    // MutationObserver の切断
+    if (mutationObserver) {
+        mutationObserver.disconnect();
+    }
+    
+    // イベントリスナーの削除
+    window.removeEventListener('resize', debouncedUpdatePositionMap);
+    window.removeEventListener('scroll', debouncedUpdatePositionMap);
+    
+    // タイマーのクリア
+    clearTimeout(updatePositionMapTimer);
+    
+    // カーソル点滅タイマーの停止
+    stopCursorBlink();
+});
+</script>
+
+<div class="editor-overlay" bind:this={overlayRef}>
+    <!-- 選択範囲のレンダリング -->
+    {#each allSelections as selection}
+        {#if selection.startOffset !== selection.endOffset}
+            {@const selectionRect = calculateSelectionPixelRange(selection.itemId, selection.startOffset, selection.endOffset, selection.isReversed)}
+            {#if selectionRect}
+                {@const isPageTitle = selection.itemId === "page-title"}
+                <div 
+                    class="selection" 
+                    class:page-title-selection={isPageTitle}
+                    class:selection-reversed={selection.isReversed}
+                    style="
+                        position: absolute;
+                        left: {selectionRect.left}px; 
+                        top: {selectionRect.top}px; 
+                        width: {selectionRect.width}px; 
+                        height: {isPageTitle ? '1.5em' : selectionRect.height}px;
+                        background-color: {selection.color ? `${selection.color}33` : 'rgba(0, 120, 215, 0.2)'};
+                        pointer-events: none;
+                    "
+                    title={selection.userName || ''}
+                ></div>
+            {/if}
+        {/if}
+    {/each}
+    
+    <!-- カーソルのレンダリング -->
+    {#each allCursors as cursor}
+        {@const cursorPos = calculateCursorPixelPosition(cursor.itemId, cursor.offset)}
+        {#if cursorPos && (cursor.isActive ? cursorVisible : true)}
+            {@const isPageTitle = cursor.itemId === "page-title"}
+            <div 
+                class="cursor" 
+                class:active={cursor.isActive}
+                class:page-title-cursor={isPageTitle}
+                style="
+                    position: absolute;
+                    left: {cursorPos.left}px; 
+                    top: {cursorPos.top}px; 
+                    height: {isPageTitle ? '1.5em' : positionMap[cursor.itemId]?.lineHeight || '1.2em'};
+                    background-color: {cursor.color || '#0078d7'};
+                    pointer-events: none;
+                "
+                title={cursor.userName || ''}
+            ></div>
+        {/if}
+    {/each}
+    
+    {#if DEBUG_MODE && activeItemId}
+        <div class="debug-info">
+            カーソル位置: アイテム {activeItemId}
+            {#if allCursors.length > 0}
+                <br>オフセット: {allCursors[0].offset}
+            {/if}
+        </div>
+    {/if}
+</div>
+
+<style>
+.editor-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none !important;
+    z-index: 100;
+    will-change: transform;
+}
+
+.cursor {
+    position: absolute;
+    width: 2px;
+    height: 1.2em;
+    background-color: #0078d7;
+    pointer-events: none !important;
+    will-change: transform;
+}
+
+.page-title-cursor {
+    width: 3px; /* タイトル用のカーソルを少し太く */
+}
+
+.cursor.active {
+    animation: blink 1.06s steps(1) infinite;
+    pointer-events: none !important;
+}
+
+.selection {
+    position: absolute;
+    background-color: rgba(0, 120, 215, 0.2);
+    pointer-events: none !important;
+    will-change: transform;
+}
+
+.selection-reversed {
+    /* 逆方向選択の場合のスタイル調整（必要に応じて） */
+    border-left: 1px solid rgba(0, 120, 215, 0.5);
+}
+
+.page-title-selection {
+    background-color: rgba(0, 120, 215, 0.15); /* タイトル用の選択範囲を少し薄く */
+}
+
+.debug-info {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 1000;
+    pointer-events: none !important;
+}
+
+@keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+</style> 

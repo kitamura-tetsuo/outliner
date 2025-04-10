@@ -3,6 +3,7 @@
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import { getLogger } from '../lib/logger';
 	import { Items } from '../schema/app-schema';
+	import { editorOverlayStore } from '../stores/EditorOverlayStore';
 	import type { OutlinerItemViewModel } from '../stores/OutlinerViewStore';
 	import { TreeSubscriber } from "../stores/TreeSubscriber";
 
@@ -16,6 +17,7 @@
 		isReadOnly?: boolean;
 		isCollapsed?: boolean;
 		hasChildren?: boolean;
+		isPageTitle?: boolean; // ページタイトルかどうか
 	}
 
 	let { 
@@ -24,7 +26,8 @@
 		currentUser = 'anonymous', 
 		isReadOnly = false,
 		isCollapsed = false,
-		hasChildren = false
+		hasChildren = false,
+		isPageTitle = false
 	}: Props = $props();
 
 	const dispatch = createEventDispatcher();
@@ -34,6 +37,9 @@
 	let cursorVisible = $state(true);
 	let selectionStart = $state(0);
 	let selectionEnd = $state(0);
+	let lastSelectionStart = $state(0);
+	let lastSelectionEnd = $state(0);
+	let lastCursorPosition = $state(0);
 
 	let item = model.original;
 
@@ -111,22 +117,39 @@
 		hiddenTextareaRef.value = text.current;
 		hiddenTextareaRef.focus();
 		
+		let cursorPosition = 0;
+		
 		if (event) {
 			// クリック位置に基づいてカーソル位置を設定
-			const position = getClickPosition(event, text.current);
-			hiddenTextareaRef.setSelectionRange(position, position);
-			selectionStart = selectionEnd = position;
+			cursorPosition = getClickPosition(event, text.current);
+			hiddenTextareaRef.setSelectionRange(cursorPosition, cursorPosition);
 		} else {
 			// デフォルトでは末尾にカーソルを配置
-			const textLength = text.current.length;
-			hiddenTextareaRef.setSelectionRange(textLength, textLength);
-			selectionStart = selectionEnd = textLength;
+			cursorPosition = text.current.length;
+			hiddenTextareaRef.setSelectionRange(cursorPosition, cursorPosition);
 		}
+		
+		selectionStart = selectionEnd = cursorPosition;
+		
+		// カーソル位置をストアに設定
+		editorOverlayStore.setActiveItem(model.id);
+		editorOverlayStore.setCursor({
+			itemId: model.id,
+			offset: cursorPosition,
+			isActive: true,
+			userId: 'local'
+		});
 		
 		startCursorBlink();
 	}
 
+	// テキストエリア用のキーダウンハンドラ
 	function handleKeyDown(event: KeyboardEvent) {
+		lastSelectionStart = hiddenTextareaRef.selectionStart;
+		lastSelectionEnd = hiddenTextareaRef.selectionEnd;
+		lastCursorPosition = hiddenTextareaRef.selectionDirection === 'forward' ? 
+			hiddenTextareaRef.selectionEnd : hiddenTextareaRef.selectionStart;
+		
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
 			finishEditing();
@@ -134,36 +157,98 @@
 			event.preventDefault();
 			finishEditing();
 		} else if (event.key === 'Tab') {
-			// タブキーイベントはバブリングを止める
 			event.preventDefault();
 			event.stopPropagation();
 
 			if (event.shiftKey) {
-				// Unindent (Move up a level)
 				dispatch('unindent', { itemId: model.id });
 			} else {
-				// Indent (Move down a level)
 				dispatch('indent', { itemId: model.id });
 			}
 
 			logger.info('Tab key processed in textarea');
+		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+			setTimeout(() => {
+				updateSelectionAndCursor(event.shiftKey);
+			}, 0);
 		}
 		
-		// 選択範囲の更新をマイクロタスク内で実行
 		setTimeout(() => {
-			selectionStart = hiddenTextareaRef.selectionStart;
-			selectionEnd = hiddenTextareaRef.selectionEnd;
+			updateSelectionAndCursor(event.shiftKey);
 		}, 0);
+	}
+
+	// カーソル位置と選択範囲を更新する共通関数
+	function updateSelectionAndCursor(isShiftKey = false) {
+		if (!hiddenTextareaRef) return;
+		
+		const currentStart = hiddenTextareaRef.selectionStart;
+		const currentEnd = hiddenTextareaRef.selectionEnd;
+		selectionStart = currentStart;
+		selectionEnd = currentEnd;
+		
+		if (currentStart === currentEnd) {
+			lastCursorPosition = currentStart;
+			
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: currentStart,
+				isActive: true,
+				userId: 'local'
+			});
+			editorOverlayStore.setSelection({
+				itemId: model.id,
+				startOffset: 0,
+				endOffset: 0,
+				userId: 'local'
+			});
+		} else {
+			let cursorAtStart = false;
+			let isReversed = false;
+			
+			if (isShiftKey) {
+				if (currentStart !== lastSelectionStart) {
+					cursorAtStart = true;
+					isReversed = true;
+				} else if (currentEnd !== lastSelectionEnd) {
+					cursorAtStart = false;
+					isReversed = false;
+				} else {
+					cursorAtStart = lastCursorPosition === lastSelectionStart;
+					isReversed = cursorAtStart;
+				}
+			} else {
+				isReversed = hiddenTextareaRef.selectionDirection === 'backward';
+				cursorAtStart = isReversed;
+			}
+			
+			const cursorOffset = cursorAtStart ? currentStart : currentEnd;
+			lastCursorPosition = cursorOffset;
+			
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: cursorOffset,
+				isActive: true,
+				userId: 'local'
+			});
+			editorOverlayStore.setSelection({
+				itemId: model.id,
+				startOffset: Math.min(currentStart, currentEnd),
+				endOffset: Math.max(currentStart, currentEnd),
+				userId: 'local',
+				isReversed: isReversed
+			});
+		}
+		
+		lastSelectionStart = currentStart;
+		lastSelectionEnd = currentEnd;
 	}
 
 	// アイテム全体のキーダウンイベントハンドラ
 	function handleItemKeyDown(event: KeyboardEvent) {
-		// 編集中は処理しない
 		if (isEditing) return;
 
-		// Tabキーが押された場合
 		if (event.key === 'Tab') {
-			// タブキーイベントはバブリングを止める
 			event.preventDefault();
 			event.stopPropagation();
 
@@ -181,16 +266,17 @@
 	}
 
 	function handleInput() {
-		// テキストの更新
 		text.current = hiddenTextareaRef.value;
-		// 選択範囲の更新
-		selectionStart = hiddenTextareaRef.selectionStart;
-		selectionEnd = hiddenTextareaRef.selectionEnd;
+		
+		updateSelectionAndCursor();
 	}
 
 	function finishEditing() {
 		isEditing = false;
 		stopCursorBlink();
+		
+		editorOverlayStore.clearCursorAndSelection();
+		editorOverlayStore.setActiveItem(null);
 	}
 
 	function addNewItem() {
@@ -212,93 +298,12 @@
 		}
 	}
 
-	// カーソル位置を描画するヘルパー関数
-	function renderCursor() {
-		if (!isEditing || !cursorVisible || selectionStart !== selectionEnd) {
-			return '';
-		}
-		
-		// 現在のカーソル位置までのテキストを取得
-		const textBeforeCursor = text.current.substring(0, selectionStart);
-		
-		// カーソル位置の計算
-		let cursorLeft = 0;
-		if (displayRef) {
-			// テキスト幅を測定
-			const tempSpan = document.createElement('span');
-			tempSpan.style.font = window.getComputedStyle(displayRef).font;
-			tempSpan.style.visibility = 'hidden';
-			tempSpan.style.position = 'absolute';
-			tempSpan.style.whiteSpace = 'pre';
-			tempSpan.textContent = textBeforeCursor;
-			document.body.appendChild(tempSpan);
-			cursorLeft = tempSpan.getBoundingClientRect().width;
-			document.body.removeChild(tempSpan);
-		}
-		
-		return `<span class="cursor" style="left: ${cursorLeft}px;"></span>`;
-	}
-
-	// 選択範囲を描画するヘルパー関数
-	function renderSelection() {
-		if (!isEditing || selectionStart === selectionEnd) {
-			return '';
-		}
-		
-		// 選択範囲の前のテキスト
-		const textBefore = text.current.substring(0, Math.min(selectionStart, selectionEnd));
-		// 選択されたテキスト
-		const selectedText = text.current.substring(
-			Math.min(selectionStart, selectionEnd),
-			Math.max(selectionStart, selectionEnd)
-		);
-		
-		let selectionLeft = 0;
-		let selectionWidth = 0;
-		
-		if (displayRef) {
-			// 位置を測定するための一時要素
-			const tempSpan = document.createElement('span');
-			tempSpan.style.font = window.getComputedStyle(displayRef).font;
-			tempSpan.style.visibility = 'hidden';
-			tempSpan.style.position = 'absolute';
-			tempSpan.style.whiteSpace = 'pre';
-			
-			// 選択範囲前のテキスト幅を測定
-			tempSpan.textContent = textBefore;
-			document.body.appendChild(tempSpan);
-			selectionLeft = tempSpan.getBoundingClientRect().width;
-			
-			// 選択テキストの幅を測定
-			tempSpan.textContent = selectedText;
-			selectionWidth = tempSpan.getBoundingClientRect().width;
-			
-			document.body.removeChild(tempSpan);
-		}
-		
-		return `<span class="selection" style="left: ${selectionLeft}px; width: ${selectionWidth}px;"></span>`;
-	}
-
-	// テキストをエスケープしてHTML表示用に変換
-	function escapeHtml(text: string): string {
-		return text
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;')
-			.replace(/'/g, '&#039;')
-			.replace(/ /g, '&nbsp;')
-			.replace(/\n/g, '<br>');
-	}
-
 	function handleClick(event: MouseEvent) {
 		startEditing(event);
 	}
 
 	onMount(() => {
-		// ドキュメント全体へのクリックイベントリスナを追加
 		document.addEventListener('click', (e) => {
-			// displayRef以外の領域をクリックしたらフォーカスを外す
 			if (isEditing && displayRef && !displayRef.contains(e.target as Node)) {
 				finishEditing();
 			}
@@ -306,13 +311,15 @@
 	});
 
 	onDestroy(() => {
-		// クリーンアップ
 		stopCursorBlink();
+		
+		editorOverlayStore.clearCursorAndSelection();
 	});
 </script>
 
 <div
 	class="outliner-item"
+	class:page-title={isPageTitle}
 	style="margin-left: {depth * 20}px"
 	tabindex="0"
 	onkeydown={handleItemKeyDown}
@@ -320,12 +327,14 @@
 	data-item-id={model.id}
 >
 	<div class="item-header">
-		{#if hasChildren}
-			<button class="collapse-btn" onclick={toggleCollapse}>
-				{isCollapsed ? '▶' : '▼'}
-			</button>
-		{:else}
-			<span class="bullet">•</span>
+		{#if !isPageTitle}
+			{#if hasChildren}
+				<button class="collapse-btn" onclick={toggleCollapse}>
+					{isCollapsed ? '▶' : '▼'}
+				</button>
+			{:else}
+				<span class="bullet">•</span>
+			{/if}
 		{/if}
 
 		<div class="item-content-container">
@@ -342,37 +351,36 @@
 			<div
 				bind:this={displayRef}
 				class="item-content"
+				class:page-title-content={isPageTitle}
 				onclick={handleClick}
 				class:editing={isEditing}
 			>
 				{#if text.current}
-					<span class="item-text">{@html escapeHtml(text.current)}</span>
-					{#if isEditing}
-						<!-- カーソルと選択範囲の視覚的表現 -->
-						{@html renderCursor() + renderSelection()}
-					{/if}
+					<span class="item-text">{text.current}</span>
 				{:else}
-					<span class="empty-text">空白のノート</span>
+					<span class="empty-text">{isPageTitle ? '無題のページ' : '空白のノート'}</span>
 				{/if}
 				
-				{#if model.votes.length > 0}
+				{#if !isPageTitle && model.votes.length > 0}
 					<span class="vote-count">{model.votes.length}</span>
 				{/if}
 			</div>
 		</div>
 
-		<div class="item-actions">
-			<button onclick={addNewItem} title="新しいアイテムを追加">+</button>
-			<button onclick={handleDelete} title="削除">×</button>
-			<button
-				onclick={toggleVote}
-				class="vote-btn"
-				class:voted={model.votes.includes(currentUser)}
-				title="投票"
-			>
-				⭐
-			</button>
-		</div>
+		{#if !isPageTitle}
+			<div class="item-actions">
+				<button onclick={addNewItem} title="新しいアイテムを追加">+</button>
+				<button onclick={handleDelete} title="削除">×</button>
+				<button
+					onclick={toggleVote}
+					class="vote-btn"
+					class:voted={model.votes.includes(currentUser)}
+					title="投票"
+				>
+					⭐
+				</button>
+			</div>
+		{/if}
 	</div>
 </div>
 
@@ -382,6 +390,10 @@
 		margin: 0;
 		padding-top: 4px;
 		padding-bottom: 4px;
+	}
+	
+	.page-title {
+		margin-bottom: 10px;
 	}
 
 	.item-header {
@@ -397,6 +409,7 @@
 		justify-content: center;
 		align-items: center;
 		margin-right: 4px;
+		flex-shrink: 0;
 	}
 
 	.collapse-btn {
@@ -412,20 +425,23 @@
 		position: relative;
 		flex: 1;
 		min-width: 0;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.hidden-textarea {
 		position: absolute;
 		top: 0;
 		left: 0;
-		width: 0;
-		height: 0;
+		width: 100%;
+		height: 100%;
 		opacity: 0;
 		overflow: hidden;
 		padding: 0;
 		resize: none;
-		z-index: -1;
+		z-index: 0;
 		white-space: pre;
+		pointer-events: auto;
 	}
 
 	.item-content {
@@ -436,6 +452,16 @@
 		display: flex;
 		align-items: center;
 		word-break: break-word;
+		width: 100%;
+	}
+	
+	.page-title-content {
+		font-size: 24px;
+		font-weight: bold;
+		min-height: 32px;
+		border-bottom: 1px solid #eee;
+		margin-bottom: 8px;
+		padding-bottom: 8px;
 	}
     
 	.item-content.editing {
@@ -446,6 +472,8 @@
 	.item-text {
 		flex: 1;
 		white-space: pre-wrap;
+		display: inline-block;
+		min-width: 1px;
 	}
     
 	.empty-text {
@@ -458,6 +486,7 @@
 		gap: 4px;
 		opacity: 0;
 		transition: opacity 0.2s;
+		flex-shrink: 0;
 	}
 
 	.outliner-item:hover .item-actions,
@@ -496,24 +525,7 @@
 		color: #666;
 	}
     
-	.cursor {
-		display: inline-block;
-		width: 2px;
-		height: 1.2em;
-		background-color: #000;
-		vertical-align: middle;
-		animation: blink 1s infinite;
-		position: absolute;
-	}
-    
-	.selection {
-		background-color: rgba(0, 120, 215, 0.3);
-		position: absolute;
-		height: 1.2em;
-	}
-    
-	@keyframes blink {
-		0%, 49% { opacity: 1; }
-		50%, 100% { opacity: 0; }
+	.cursor, .selection {
+		display: none;
 	}
 </style> 

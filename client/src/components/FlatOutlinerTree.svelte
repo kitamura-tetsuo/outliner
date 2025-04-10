@@ -9,10 +9,12 @@ import {
     Item,
     Items,
 } from "../schema/app-schema";
+import { editorOverlayStore } from "../stores/EditorOverlayStore";
 import { fluidClient } from "../stores/fluidStore";
 import type { DisplayItem } from "../stores/OutlinerViewStore";
 import { OutlinerViewStore } from "../stores/OutlinerViewStore";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
+import EditorOverlay from "./EditorOverlay.svelte";
 import FlatOutlinerItem from "./FlatOutlinerItem.svelte";
 
 const logger = getLogger();
@@ -79,6 +81,14 @@ const displayItems = new TreeSubscriber<Items, DisplayItem[]>(
 // 変換結果を使った例
 let childCount = $derived(itemChildrenCount.current);
 
+// ページタイトル用のモデル
+let pageTitleViewModel = $state({
+    id: "page-title",
+    original: pageItem,
+    votes: [],
+    children: [],
+});
+
 onMount(() => {
     if ($fluidClient?.currentUser) {
         currentUser = $fluidClient.currentUser.id;
@@ -105,6 +115,9 @@ function handleToggleCollapse(event: CustomEvent) {
 }
 
 function handleIndent(event: CustomEvent) {
+    // ページタイトルの場合は無視
+    if (event.detail.itemId === "page-title") return;
+
     // インデントを増やす処理
     const { itemId } = event.detail;
 
@@ -154,6 +167,9 @@ function handleIndent(event: CustomEvent) {
 }
 
 function handleUnindent(event: CustomEvent) {
+    // ページタイトルの場合は無視
+    if (event.detail.itemId === "page-title") return;
+
     // インデントを減らす処理
     const { itemId } = event.detail;
 
@@ -200,43 +216,40 @@ function handleUnindent(event: CustomEvent) {
         console.error("Failed to unindent item:", error);
     }
 }
+
+// ページタイトルの編集を開始したときのハンドラ
+function handlePageTitleClick() {
+    if (isReadOnly) return;
+
+    // ページタイトルをアクティブに設定
+    editorOverlayStore.setActiveItem("page-title");
+}
 </script>
 
 <div class="outliner" bind:this={containerRef}>
     <div class="toolbar">
-        <div class="title-container">
-            {#if isReadOnly}
-                <h2>{pageItem.text || "無題のページ"}</h2>
-            {:else}
-                <!-- 
-                    【注意】ここでは"マジカルな連携"が起きています：
-                    - SvelteのUIバインディング (bind:value) がFluid Frameworkオブジェクト (pageItem.text) に接続
-                    - この連携はSvelteの変更検知とFluidの分散データモデルの両方に依存
-                    - 問題が発生した場合は、以下の代替手段を検討：
-                      1. 中間変数を使用 (let title = $state(""); + $effect + onblur)
-                      2. TreeSubscriber + 明示的なupdateText関数の使用
-                      3. Fluidオブジェクトへの書き込み操作をログ/モニタリング
-                -->
-                <input
-                    type="text"
-                    bind:value={titleSubscriber.current}
-                    placeholder="ページタイトル"
-                    class="title-input"
-                />
-            {/if}
-
-            <!-- TreeSubscriberの変換結果を表示 -->
-            <span class="item-count">アイテム数: {childCount}</span>
-        </div>
-
-        {#if !isReadOnly}
-            <div class="actions">
+        <div class="actions">
+            {#if !isReadOnly}
                 <button onclick={handleAddItem}>アイテム追加</button>
-            </div>
-        {/if}
+            {/if}
+        </div>
     </div>
 
     <div class="tree-container">
+        <!-- ページタイトル（特別なアイテムとして扱う） -->
+        <div class="item-container title-container" style="--item-depth: 0; --item-index: -1">
+            <FlatOutlinerItem
+                model={pageTitleViewModel}
+                depth={0}
+                currentUser={currentUser}
+                isReadOnly={isReadOnly}
+                isCollapsed={false}
+                hasChildren={childCount > 0}
+                on:toggle-collapse={handleToggleCollapse}
+                isPageTitle={true}
+            />
+        </div>
+
         <!-- フラット表示の各アイテム（絶対位置配置） -->
         {#each displayItems.current as display, index (display.model.id)}
             <div
@@ -246,8 +259,8 @@ function handleUnindent(event: CustomEvent) {
                 <FlatOutlinerItem
                     model={display.model}
                     depth={display.depth}
-                    {currentUser}
-                    {isReadOnly}
+                    currentUser={currentUser}
+                    isReadOnly={isReadOnly}
                     isCollapsed={viewStore.isCollapsed(display.model.id)}
                     hasChildren={viewStore.hasChildren(display.model.id)}
                     on:toggle-collapse={handleToggleCollapse}
@@ -257,17 +270,18 @@ function handleUnindent(event: CustomEvent) {
             </div>
         {/each}
 
-        {#if displayItems.current.length === 0}
+        {#if displayItems.current.length === 0 && !isReadOnly}
             <div class="empty-state">
                 <p>
-                    {#if isReadOnly}
-                        このページにはまだ内容がありません。
-                    {:else}
-                        アイテムがありません。「アイテム追加」ボタンを押して始めましょう。
-                    {/if}
+                    アイテムがありません。「アイテム追加」ボタンを押して始めましょう。
                 </p>
             </div>
         {/if}
+
+        <!-- エディタオーバーレイレイヤー -->
+        <div class="overlay-container">
+            <EditorOverlay />
+        </div>
     </div>
 </div>
 
@@ -282,7 +296,7 @@ function handleUnindent(event: CustomEvent) {
 
 .toolbar {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     padding: 8px 16px;
     background: #f5f5f5;
@@ -290,33 +304,7 @@ function handleUnindent(event: CustomEvent) {
 }
 
 .title-container {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.title-input {
-    width: 100%;
-    font-size: 18px;
-    font-weight: 500;
-    padding: 4px 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.item-count {
-    font-size: 12px;
-    color: #666;
-    background: #e9e9e9;
-    padding: 3px 8px;
-    border-radius: 12px;
-    white-space: nowrap;
-}
-
-h2 {
-    margin: 0;
-    font-size: 18px;
+    margin-bottom: 16px;
 }
 
 .actions {
@@ -355,5 +343,16 @@ h2 {
     padding: 20px;
     text-align: center;
     color: #999;
+}
+
+.overlay-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none !important; /* クリックイベントを下のレイヤーに確実に透過 */
+    z-index: 100;
+    transform: none !important; /* 変形を防止 */
 }
 </style>
