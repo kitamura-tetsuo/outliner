@@ -237,35 +237,56 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
 }
 
 // デフォルトコンテナIDを取得
-export async function getDefaultContainerId(): Promise<string | null> {
+export async function getDefaultContainerId(): Promise<string | undefined> {
     try {
+        // ユーザーがログインしていることを確認
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
-            logger.warn("getDefaultContainerId: ユーザーがログインしていません");
-            return null;
+            logger.info("Cannot get default container ID: User not logged in. Waiting for login...");
+            return undefined;
         }
 
-        // 1. Svelte の get() 関数を使ってストアから直接取得
+        // 1. まずストアから直接取得を試みる（リアルタイム更新されている場合）
         const containerData = get(userContainer);
         if (containerData?.defaultContainerId) {
+            logger.info(`Found default container ID in store: ${containerData.defaultContainerId}`);
             return containerData.defaultContainerId;
         }
 
         // 2. ストアに値がない場合は直接Firestoreから取得
-        const userId = currentUser.id;
-        const userContainerRef = doc(db, "userContainers", userId);
-        const snapshot = await getDoc(userContainerRef);
+        try {
+            logger.info("No default container found in store, fetching from server...");
+            const userId = currentUser.id;
 
-        if (snapshot.exists()) {
-            const data = snapshot.data();
-            return data.defaultContainerId || null;
+            // Firestoreのimport確認
+            if (!db) {
+                logger.error("Firestore db is not initialized");
+                return undefined;
+            }
+
+            const userContainerRef = doc(db, "userContainers", userId);
+            const snapshot = await getDoc(userContainerRef);
+
+            if (snapshot.exists()) {
+                const data = snapshot.data();
+                const containerId = data.defaultContainerId;
+                if (containerId) {
+                    logger.info(`Found default container ID from Firestore: ${containerId}`);
+                    return containerId;
+                }
+            }
+        }
+        catch (firestoreError) {
+            logger.error("Firestore access error:", firestoreError);
+            // Firestoreエラーは致命的ではないので、続行
         }
 
-        return null;
+        logger.info("No default container ID found");
+        return undefined;
     }
     catch (error) {
         logger.error("デフォルトコンテナID取得エラー:", error);
-        return null;
+        return undefined;
     }
 }
 

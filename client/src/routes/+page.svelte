@@ -8,9 +8,9 @@ import { UserManager } from "../auth/UserManager";
 import AuthComponent from "../components/AuthComponent.svelte";
 import ContainerSelector from "../components/ContainerSelector.svelte";
 import EnvDebugger from "../components/EnvDebugger.svelte";
+import FlatOutlinerTree from "../components/FlatOutlinerTree.svelte";
 import MissingEnvWarning from "../components/MissingEnvWarning.svelte";
 import NetworkErrorAlert from "../components/NetworkErrorAlert.svelte";
-import OutlinerTree from "../components/OutlinerTree.svelte";
 import PageList from "../components/PageList.svelte";
 import { TreeViewManager } from "../fluid/TreeViewManager";
 import { getDebugConfig } from "../lib/env";
@@ -311,10 +311,12 @@ function toggleDebugPanel() {
                     <!-- ページコンテンツ（右メインエリア） -->
                     <div class="main-content">
                         {#if currentPage}
-                            <OutlinerTree pageItem={currentPage} />
+                            <div class="page-container">
+                                <FlatOutlinerTree pageItem={currentPage} isReadOnly={false} />
+                            </div>
                         {:else}
                             <div class="empty-state">
-                                <p>左のサイドバーからページを選択するか、新しいページを作成してください。</p>
+                                <p>ページを選択するか、新しいページを作成してください。</p>
                             </div>
                         {/if}
                     </div>

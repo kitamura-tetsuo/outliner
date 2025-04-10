@@ -19,16 +19,16 @@ import {
     type TreeView,
     type ViewableTree,
 } from "fluid-framework";
-import { get } from "svelte/store";
 import { v4 as uuid } from "uuid";
 import { UserManager } from "../auth/UserManager";
 import {
     appTreeConfiguration,
-    Item,
-    Items,
     Project,
 } from "../schema/app-schema";
-import { userContainer } from "../stores/firestoreStore";
+import {
+    getDefaultContainerId,
+    saveContainerIdToServer as saveFirestoreContainerIdToServer,
+} from "../services";
 import { CustomKeyMap } from "./CustomKeyMap";
 import {
     getLogger,
@@ -401,10 +401,8 @@ export function resetContainerId(): void {
  */
 export async function saveContainerIdToServer(containerId: string): Promise<boolean> {
     try {
-        // firestoreStore.ts の saveContainerIdToServer 関数を使用
-        const result = await import("../stores/firestoreStore").then(module =>
-            module.saveContainerIdToServer(containerId)
-        );
+        // バレルパターンを使用して関数を呼び出し
+        const result = await saveFirestoreContainerIdToServer(containerId);
 
         if (!result) {
             log("fluidService", "warn", "Failed to save container ID to server");
@@ -479,43 +477,6 @@ export function isContainerConnected(container?: IFluidContainer): boolean {
     return container.connectionState !== ConnectionState.Disconnected;
 }
 
-/**
- * Firestoreからユーザーのデフォルトコンテナを取得する
- * @returns デフォルトコンテナID、未設定の場合はnull
- */
-export async function getDefaultContainerId(): Promise<string | null> {
-    try {
-        // ユーザーがログインしていることを確認
-        const currentUser = UserManager.getInstance().getCurrentUser();
-        if (!currentUser) {
-            logger.info("Cannot get default container ID: User not logged in. Waiting for login...");
-            return null;
-        }
-
-        // 1. まずストアから直接取得を試みる（リアルタイム更新されている場合）
-        const containerData = get(userContainer);
-        if (containerData?.defaultContainerId) {
-            logger.info(`Found default container ID in store: ${containerData.defaultContainerId}`);
-            return containerData.defaultContainerId;
-        }
-
-        // 2. ストアに見つからない場合はAPIから直接取得
-        logger.info("No default container found in store, fetching from server...");
-        const defaultId = await getDefaultContainerId();
-        if (defaultId) {
-            logger.info(`Found default container ID from API: ${defaultId}`);
-            return defaultId;
-        }
-
-        logger.info("No default container ID found");
-        return null;
-    }
-    catch (error) {
-        logger.error("Error getting default container ID:", error);
-        return null;
-    }
-}
-
 // FluidClientの初期化状態を追跡するためのマップ
 type InitState = {
     isInitializing: boolean;
@@ -580,12 +541,16 @@ export async function createNewContainer(containerName: string): Promise<any> {
             newContainerId,
         );
 
-        if (appData!.compatibility.canInitialize) {
-            appData!.initialize(Project.createInstance(containerName || "新規プロジェクト"));
+        if (!updatedContainer || !appData || !project) {
+            throw new Error("FluidClientの初期化に失敗しました");
+        }
+
+        if (appData.compatibility.canInitialize) {
+            appData.initialize(Project.createInstance(containerName || "新規プロジェクト"));
         }
 
         // 初期データとして最初のページを作成
-        const projectRoot = appData!.root as Project;
+        const projectRoot = appData.root as Project;
         projectRoot.addPage("はじめてのページ", userId);
 
         // 必要な全てのパラメータを設定してFluidClientインスタンスを作成
@@ -654,7 +619,9 @@ export async function createFluidClient(containerId?: string): Promise<any> {
 
             // ローカルストレージからも取得できない場合はFirestoreから取得を試みる
             if (!resolvedContainerId) {
-                resolvedContainerId = await getDefaultContainerId();
+                const defaultId = await getDefaultContainerId();
+                // nullは許容しないようにundefinedに変換
+                resolvedContainerId = defaultId || undefined;
             }
         }
 
