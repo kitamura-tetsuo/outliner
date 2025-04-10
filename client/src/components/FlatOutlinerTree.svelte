@@ -210,7 +210,7 @@ function handleUnindent(event: CustomEvent) {
             {:else}
                 <!-- 
                     【注意】ここでは"マジカルな連携"が起きています：
-                    - SvelteのUIバインディング (bind:value) が直接Fluid Frameworkオブジェクト (pageItem.text) に接続
+                    - SvelteのUIバインディング (bind:value) がFluid Frameworkオブジェクト (pageItem.text) に接続
                     - この連携はSvelteの変更検知とFluidの分散データモデルの両方に依存
                     - 問題が発生した場合は、以下の代替手段を検討：
                       1. 中間変数を使用 (let title = $state(""); + $effect + onblur)
@@ -219,16 +219,10 @@ function handleUnindent(event: CustomEvent) {
                 -->
                 <input
                     type="text"
-                    bind:value={pageItem.text}
-                    placeholder="ページタイトル"
-                    class="title-input"
-                />
-                <input
-                    type="text"
                     bind:value={titleSubscriber.current}
                     placeholder="ページタイトル"
                     class="title-input"
-                />{titleSubscriber.current}
+                />
             {/if}
 
             <!-- TreeSubscriberの変換結果を表示 -->

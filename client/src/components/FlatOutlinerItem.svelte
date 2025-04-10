@@ -4,6 +4,7 @@
 	import { getLogger } from '../lib/logger';
 	import { Items } from '../schema/app-schema';
 	import type { OutlinerItemViewModel } from '../stores/OutlinerViewStore';
+	import { TreeSubscriber } from "../stores/TreeSubscriber";
 
 	const logger = getLogger();
 
@@ -30,7 +31,17 @@
 
 	// Stateの管理
 	let isEditing = $state(false);
-	let editText = $state('');
+
+	let item = model.original;
+
+	const text = new TreeSubscriber(
+    item,
+    "nodeChanged",
+    () => item.text,
+    value => {
+			item.text = value;
+    }
+	);
 
 	// テキストエリアのref
 	let textareaRef: HTMLTextAreaElement;
@@ -38,7 +49,7 @@
 	let itemRef: HTMLDivElement;
 
 	function getClickPosition(event: MouseEvent, text: string): number {
-		const element = event.currentTarget as HTMLElement;
+		const element = (event.currentTarget || event.target) as HTMLElement;
 		const rect = element.getBoundingClientRect();
 		const x = event.clientX - rect.left;
 
@@ -71,7 +82,6 @@
 
 	function startEditing(event?: MouseEvent) {
 		if (isReadOnly) return;
-		editText = model.text;
 		isEditing = true;
 
 		// 非同期で要素が更新された後にフォーカスとキャレット位置を設定
@@ -89,7 +99,7 @@
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
-			saveEdit();
+			finishEditing();
 		} else if (event.key === 'Escape') {
 			isEditing = false;
 		} else if (event.key === 'Tab') {
@@ -130,10 +140,7 @@
 		}
 	}
 
-	function saveEdit() {
-		if (!isReadOnly && editText !== model.text) {
-			model.original.updateText(editText);
-		}
+	function finishEditing() {
 		isEditing = false;
 	}
 
@@ -177,10 +184,10 @@
 		{#if isEditing}
 			<textarea
 				bind:this={textareaRef}
-				bind:value={editText}
+				bind:value={text.current}
 				onkeydown={handleKeyDown}
-				onblur={saveEdit}
-				rows={Math.max(1, editText.split('\n').length)}
+				onblur={finishEditing}
+				rows={Math.max(1, text.current.split('\n').length)}
 				autofocus
 			></textarea>
 		{:else}
