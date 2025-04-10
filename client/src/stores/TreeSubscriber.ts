@@ -7,17 +7,14 @@ import { createSubscriber } from "svelte/reactivity";
 
 export class TreeSubscriber<T extends TreeNode, R = T> {
     subscribe;
-    private getter: () => R;
 
     constructor(
         node: T,
         eventName: keyof TreeChangeEvents,
-        getter?: () => R,
+        private getter: () => R = () => node as unknown as R,
         private setter?: (value: R) => void,
     ) {
         // 変換関数が指定されなければ、デフォルトでノードをそのまま返す
-        this.getter = getter || (() => node as unknown as R);
-
         this.subscribe = createSubscriber(update => {
             // when the eventName event occurs, re-run any effects that read `this.current`
             const off = Tree.on(node, eventName, update);
