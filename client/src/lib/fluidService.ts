@@ -23,6 +23,7 @@ import { v4 as uuid } from "uuid";
 import { UserManager } from "../auth/UserManager";
 import {
     appTreeConfiguration,
+    Items,
     Project,
 } from "../schema/app-schema";
 import {
@@ -166,7 +167,10 @@ export async function getFluidClient(userId?: string, containerId?: string): Pro
         appData.initialize(Project.createInstance("Test Project"));
         const project = appData.root as Project;
         for (let i = 0; i < 3; i++) {
-            project.addPage("Test Page", "test-user");
+            const page = project.addPage("Test Page", "test-user");
+            for (let j = 0; j < 3; j++) {
+                (page.items as Items).addNode("test-user");
+            }
         }
 
         return [client, container, createResponse.services, appData, project];

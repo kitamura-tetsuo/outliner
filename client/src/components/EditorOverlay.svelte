@@ -82,33 +82,37 @@ function createMeasurementSpan(itemId: string, text: string): HTMLSpanElement {
 // カーソル位置をピクセル値に変換する関数
 function calculateCursorPixelPosition(itemId: string, offset: number): { left: number; top: number } | null {
     const itemInfo = positionMap[itemId];
-    if (!itemInfo) return null;
+    if (!itemInfo) {
+        // アイテム情報がない場合、マップを更新してみる
+        updatePositionMap();
+        // 再度確認
+        if (!positionMap[itemId]) {
+            if (DEBUG_MODE) {
+                console.warn(`No item info found for ${itemId} after update`);
+            }
+            return null;
+        }
+        return calculateCursorPixelPosition(itemId, offset);
+    }
     
     const { textElement } = itemInfo;
-    
-    // オーバーレイ要素の絶対位置を取得（変換の基準点）
-    const overlayRect = overlayRef.getBoundingClientRect();
     
     // ツリーコンテナを取得
     const treeContainer = overlayRef.closest('.tree-container');
     if (!treeContainer) return null;
     
-    // テキスト要素の絶対位置
-    const textRect = textElement.getBoundingClientRect();
-    
-    // アイテム要素を取得
-    const itemElement = textElement.closest('[data-item-id]');
-    if (!itemElement || !(itemElement instanceof HTMLElement)) return null;
-    
-    // アイテムの左端からのオフセット（インデント）
-    const itemStyle = window.getComputedStyle(itemElement);
-    const marginLeft = parseFloat(itemStyle.marginLeft) || 0;
-    
-    // テキストの内容を取得
-    const text = textElement.textContent || '';
-    const textBeforeCursor = text.substring(0, offset);
-    
     try {
+        // 最新の位置情報を取得するため、常に新たに計測
+        // テキスト要素の絶対位置
+        const textRect = textElement.getBoundingClientRect();
+        
+        // ツリーコンテナの絶対位置
+        const treeContainerRect = treeContainer.getBoundingClientRect();
+        
+        // テキストの内容を取得
+        const text = textElement.textContent || '';
+        const textBeforeCursor = text.substring(0, offset);
+        
         // 仮想span要素を使用してオフセット位置のピクセル値を計算
         const span = createMeasurementSpan(itemId, textBeforeCursor);
         
@@ -116,10 +120,6 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         textElement.parentElement?.appendChild(span);
         const cursorWidth = span.getBoundingClientRect().width;
         textElement.parentElement?.removeChild(span);
-        
-        // 計算：ツリーコンテナ内でのアイテムの位置 + テキスト内のカーソル位置
-        // まず、ツリーコンテナからの相対位置を計算する
-        const treeContainerRect = treeContainer.getBoundingClientRect();
         
         // テキスト要素の左端からの距離
         const contentContainer = textElement.closest('.item-content-container');
@@ -130,17 +130,18 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         
         // テキスト要素内でのカーソル位置
         const relativeLeft = contentLeft + cursorWidth;
-        const relativeTop = textRect.top - treeContainerRect.top + 3;
+        
+        // Y座標は常に最新の値を使用
+        const relativeTop = textRect.top - treeContainerRect.top + 3; // 微調整（+3px）
         
         if (DEBUG_MODE) {
             console.log(`Cursor for ${itemId} at offset ${offset}:`, { 
                 relativeLeft, relativeTop, 
                 cursorWidth,
                 contentLeft,
-                textRectLeft: textRect.left,
-                treeContainerLeft: treeContainerRect.left,
-                marginLeft,
-                offsetText: textBeforeCursor.replaceAll('\n', '\\n'),  // デバッグ用にテキストを表示
+                textRectTop: textRect.top,
+                treeContainerTop: treeContainerRect.top,
+                offsetText: textBeforeCursor.replaceAll('\n', '\\n'),
                 fullText: text.replaceAll('\n', '\\n')
             });
         }
@@ -167,27 +168,28 @@ function calculateSelectionPixelRange(
     
     const { textElement, lineHeight } = itemInfo;
     
-    // オーバーレイ要素の絶対位置を取得（変換の基準点）
-    const overlayRect = overlayRef.getBoundingClientRect();
-    
     // ツリーコンテナを取得
     const treeContainer = overlayRef.closest('.tree-container');
     if (!treeContainer) return null;
     
-    // テキスト要素の絶対位置
-    const textRect = textElement.getBoundingClientRect();
-    
-    // テキストコンテンツを取得
-    const text = textElement.textContent || '';
-    
-    // 開始と終了が逆転している場合は入れ替え
-    const actualStart = Math.min(startOffset, endOffset);
-    const actualEnd = Math.max(startOffset, endOffset);
-    
-    const textBeforeStart = text.substring(0, actualStart);
-    const selectedText = text.substring(actualStart, actualEnd);
-    
     try {
+        // 最新の位置情報を取得するため、常に新たに計測
+        // テキスト要素の絶対位置
+        const textRect = textElement.getBoundingClientRect();
+        
+        // ツリーコンテナの絶対位置
+        const treeContainerRect = treeContainer.getBoundingClientRect();
+        
+        // テキストコンテンツを取得
+        const text = textElement.textContent || '';
+        
+        // 開始と終了が逆転している場合は入れ替え
+        const actualStart = Math.min(startOffset, endOffset);
+        const actualEnd = Math.max(startOffset, endOffset);
+        
+        const textBeforeStart = text.substring(0, actualStart);
+        const selectedText = text.substring(actualStart, actualEnd);
+        
         // 開始位置の計算
         const startSpan = createMeasurementSpan(itemId, textBeforeStart);
         textElement.parentElement?.appendChild(startSpan);
@@ -199,9 +201,6 @@ function calculateSelectionPixelRange(
         textElement.parentElement?.appendChild(selectionSpan);
         const width = selectionSpan.getBoundingClientRect().width || 5; // 最小幅を確保
         textElement.parentElement?.removeChild(selectionSpan);
-        
-        // 計算：ツリーコンテナ内でのアイテムの位置 + テキスト内のカーソル位置
-        const treeContainerRect = treeContainer.getBoundingClientRect();
         
         // テキスト要素の左端からの距離
         const contentContainer = textElement.closest('.item-content-container');
@@ -221,8 +220,8 @@ function calculateSelectionPixelRange(
             console.log(`Selection for ${itemId} from ${actualStart} to ${actualEnd}:`, { 
                 relativeLeft, relativeTop, width, height,
                 contentLeft,
-                textRectLeft: textRect.left,
-                treeContainerLeft: treeContainerRect.left,
+                textRectTop: textRect.top,
+                treeContainerTop: treeContainerRect.top,
                 selectedText: selectedText.replaceAll('\n', '\\n'),
                 isReversed
             });
@@ -284,7 +283,7 @@ function updatePositionMap() {
     positionMap = newMap;
     
     if (DEBUG_MODE) {
-        console.log("Position map updated:", newMap);
+        console.log("Position map updated:", Object.keys(newMap));
     }
 }
 
@@ -304,9 +303,43 @@ function debouncedUpdatePositionMap() {
 
 // editorOverlayStore からのデータを監視し、状態を更新
 editorOverlayStore.subscribe(state => {
+    // アクティブアイテムが変わった場合
+    const activeItemChanged = state.activeItemId !== activeItemId;
+    
+    // 状態を更新
     allCursors = Object.values(state.cursors);
     allSelections = Object.values(state.selections);
+    const previousActiveItemId = activeItemId;
     activeItemId = state.activeItemId;
+    
+    if (activeItemChanged) {
+        if (DEBUG_MODE) {
+            console.log(`Active item changed from ${previousActiveItemId} to ${state.activeItemId}`);
+        }
+        
+        // アイテム間移動時のカーソル位置更新を確実にするための処理
+        // 複雑な再試行メカニズムを避け、シンプルな実装に変更
+        updatePositionMap();
+        
+        // カーソルとセレクションが存在する場合は、再計算を強制
+        // 単一の遅延処理で、DOM更新が確実に完了した後に実行
+        setTimeout(() => {
+            updatePositionMap();
+            
+            // 現在のアクティブアイテムのカーソル情報を取得
+            const activeCursor = state.cursors["local"];
+            if (activeCursor && activeCursor.itemId === state.activeItemId) {
+                // カーソル位置を再設定して更新を促す（クリアはしない）
+                editorOverlayStore.setCursor({
+                    ...activeCursor,
+                    isActive: true
+                });
+            }
+        }, 100); // 100msの遅延で十分なDOM更新時間を確保
+    } else {
+        // カーソル位置のみ更新された場合の処理
+        debouncedUpdatePositionMap();
+    }
     
     // カーソルがある場合は点滅を開始
     if (allCursors.some(cursor => cursor.isActive)) {
@@ -314,17 +347,19 @@ editorOverlayStore.subscribe(state => {
     } else {
         stopCursorBlink();
     }
-    
-    // 位置マップを更新
-    updatePositionMap();
 });
 
+// MutationObserver を設定して DOM の変更を監視
 onMount(() => {
     // 初期位置マップの作成
     updatePositionMap();
     
-    // MutationObserver を設定して DOM の変更を監視
-    mutationObserver = new MutationObserver(debouncedUpdatePositionMap);
+    // MutationObserverを単純化 - 変更検出後すぐに再計算するのではなく、
+    // debounceを使用して頻度を制限
+    mutationObserver = new MutationObserver(() => {
+        debouncedUpdatePositionMap();
+    });
+    
     mutationObserver.observe(document.body, {
         childList: true,
         subtree: true,

@@ -85,6 +85,10 @@ let childCount = $derived(itemChildrenCount.current);
 let pageTitleViewModel = $state({
     id: "page-title",
     original: pageItem,
+    text: pageItem.text || "", // テキストはページアイテムから取得
+    author: pageItem.author || "",
+    created: pageItem.created || Date.now(), // number型として設定
+    lastChanged: pageItem.lastChanged || Date.now(), // number型として設定
     votes: [],
     children: [],
 });
@@ -217,6 +221,189 @@ function handleUnindent(event: CustomEvent) {
     }
 }
 
+// デバッグモードを有効化
+(window as any).DEBUG_MODE = true;
+
+// アイテム間のナビゲーション処理
+function handleNavigateToItem(event: CustomEvent) {
+    const { direction, cursorScreenX, fromItemId } = event.detail;
+
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(
+            `Navigation event received: direction=${direction}, fromItemId=${fromItemId}, cursorScreenX=${cursorScreenX}`,
+        );
+    }
+
+    // 左右方向の処理 (ページタイトルは特別処理)
+    if (direction === "left") {
+        // 左方向の移動（前のアイテムの末尾に移動）
+        // ページタイトルの場合は何もしない
+        if (fromItemId === "page-title") {
+            return;
+        }
+
+        let currentIndex = displayItems.current.findIndex(item => item.model.id === fromItemId);
+        if (currentIndex <= 0) {
+            // 最初のアイテムの場合はページタイトルに移動
+            focusItemWithPosition("page-title", Number.MAX_SAFE_INTEGER); // 末尾を指定
+            return;
+        }
+        else {
+            // 前のアイテムに移動
+            const targetItemId = displayItems.current[currentIndex - 1].model.id;
+            focusItemWithPosition(targetItemId, Number.MAX_SAFE_INTEGER); // 末尾を指定
+            return;
+        }
+    }
+    else if (direction === "right") {
+        // 右方向の移動（次のアイテムの先頭に移動）
+        if (fromItemId === "page-title") {
+            // ページタイトルから右に移動する場合は最初のアイテムに移動
+            if (displayItems.current.length > 0) {
+                focusItemWithPosition(displayItems.current[0].model.id, 0); // 先頭を指定
+            }
+            return;
+        }
+
+        let currentIndex = displayItems.current.findIndex(item => item.model.id === fromItemId);
+        if (currentIndex >= 0 && currentIndex < displayItems.current.length - 1) {
+            // 次のアイテムに移動
+            const targetItemId = displayItems.current[currentIndex + 1].model.id;
+            focusItemWithPosition(targetItemId, 0); // 先頭を指定
+            return;
+        }
+        // 最後のアイテムなら何もしない
+        return;
+    }
+
+    // ページタイトル処理 (特別なナビゲーション)
+    if (fromItemId === "page-title" && direction === "down" && displayItems.current.length > 0) {
+        // ページタイトルから下に移動する場合は最初のアイテムにフォーカス
+        const targetItemId = displayItems.current[0].model.id;
+        focusItemWithPosition(targetItemId, cursorScreenX);
+        return;
+    }
+    else if (
+        fromItemId !== "page-title" && direction === "up" &&
+        displayItems.current.findIndex(item => item.model.id === fromItemId) === 0
+    ) {
+        // 最初のアイテムから上に移動する場合はページタイトルにフォーカス
+        focusItemWithPosition("page-title", cursorScreenX);
+        return;
+    }
+
+    // 通常のアイテム間ナビゲーション
+    let currentIndex = -1;
+
+    if (fromItemId === "page-title") {
+        currentIndex = -1; // ページタイトルは-1として扱う
+    }
+    else {
+        currentIndex = displayItems.current.findIndex(item => item.model.id === fromItemId);
+    }
+
+    if (currentIndex === -1 && fromItemId !== "page-title") {
+        console.error(`Could not find item with ID: ${fromItemId} in displayItems`);
+        return;
+    }
+
+    let targetIndex = -1;
+    if (direction === "up") {
+        targetIndex = currentIndex - 1;
+    }
+    else if (direction === "down") {
+        targetIndex = currentIndex + 1;
+    }
+
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(
+            `Navigation calculation: currentIndex=${currentIndex}, targetIndex=${targetIndex}, items count=${displayItems.current.length}`,
+        );
+    }
+
+    // ターゲットが通常のアイテムの範囲内にある場合
+    if (targetIndex >= 0 && targetIndex < displayItems.current.length) {
+        const targetItemId = displayItems.current[targetIndex].model.id;
+        focusItemWithPosition(targetItemId, cursorScreenX);
+    }
+    // ターゲットがページタイトルの場合
+    else if (targetIndex === -1 && direction === "up") {
+        focusItemWithPosition("page-title", cursorScreenX);
+    }
+}
+
+// 指定したアイテムにフォーカスし、カーソル位置を設定する
+function focusItemWithPosition(itemId: string, cursorScreenX?: number) {
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(`Focusing item ${itemId} with cursor X: ${cursorScreenX}px`);
+    }
+
+    // ターゲットアイテム要素を取得
+    const item = document.querySelector(`[data-item-id="${itemId}"]`);
+    if (!item) {
+        console.error(`Could not find item with ID: ${itemId}`);
+        return;
+    }
+
+    // 現在フォーカスされているアイテムがある場合は編集を終了
+    const activeItem = editorOverlayStore.getActiveItem();
+
+    // アクティブなアイテムから新しいアイテムへの移動を順に処理
+    const focusNewItem = () => {
+        try {
+            // 特殊なカーソル位置値を処理
+            let cursorXValue = cursorScreenX;
+
+            // アイテム要素からFlatOutlinerItemコンポーネントインスタンスへの参照を取得
+            const itemInstance = (item as any).__svelte?.FlatOutlinerItem;
+
+            // カスタムイベントを作成してアイテムに発火
+            const event = new CustomEvent("focus-item", {
+                detail: {
+                    cursorScreenX: cursorXValue,
+                },
+                bubbles: false,
+                cancelable: true,
+            });
+
+            // イベントをディスパッチ
+            item.dispatchEvent(event);
+
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Dispatched focus-item event to ${itemId} with X: ${cursorXValue}px`);
+            }
+        }
+        catch (error) {
+            console.error(`Error dispatching focus-item event to ${itemId}:`, error);
+        }
+    };
+
+    if (activeItem && activeItem !== itemId) {
+        // 現在編集中のアイテムがあり、それが対象と異なる場合
+        const activeElement = document.querySelector(`[data-item-id="${activeItem}"]`);
+        if (activeElement) {
+            // 現在のアイテムで編集を終了
+            const finishEditEvent = new CustomEvent("finish-edit");
+            activeElement.dispatchEvent(finishEditEvent);
+
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Sent finish-edit event to active item ${activeItem}`);
+            }
+
+            // 確実に処理の順序を保つため、少し遅延させてから新しいアイテムにフォーカス
+            setTimeout(focusNewItem, 10);
+        }
+        else {
+            // アクティブ要素が見つからない場合はすぐにフォーカス
+            focusNewItem();
+        }
+    }
+    else {
+        // アクティブなアイテムがない、または同じアイテムなら直接フォーカス
+        focusNewItem();
+    }
+}
+
 // ページタイトルの編集を開始したときのハンドラ
 function handlePageTitleClick() {
     if (isReadOnly) return;
@@ -246,6 +433,7 @@ function handlePageTitleClick() {
                 isCollapsed={false}
                 hasChildren={childCount > 0}
                 on:toggle-collapse={handleToggleCollapse}
+                on:navigate-to-item={handleNavigateToItem}
                 isPageTitle={true}
             />
         </div>
@@ -266,6 +454,7 @@ function handlePageTitleClick() {
                     on:toggle-collapse={handleToggleCollapse}
                     on:indent={handleIndent}
                     on:unindent={handleUnindent}
+                    on:navigate-to-item={handleNavigateToItem}
                 />
             </div>
         {/each}

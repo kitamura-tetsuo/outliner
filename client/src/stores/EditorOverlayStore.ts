@@ -77,6 +77,16 @@ const createEditorOverlayStore = () => {
             }));
         },
 
+        // 現在アクティブなアイテムIDを取得
+        getActiveItem: () => {
+            let activeItemId: string | null = null;
+            update(state => {
+                activeItemId = state.activeItemId;
+                return state;
+            });
+            return activeItemId;
+        },
+
         // カーソル位置と選択範囲をクリア
         clearCursorAndSelection: (userId = "local") => {
             update(state => {
@@ -90,6 +100,24 @@ const createEditorOverlayStore = () => {
                     cursors: newCursors,
                     selections: newSelections,
                 };
+            });
+        },
+
+        // 特定のアイテムのカーソルのみをクリア
+        clearCursorForItem: (itemId: string, userId = "local") => {
+            update(state => {
+                // 指定されたユーザーのカーソルが該当アイテムにある場合のみクリア
+                const cursor = state.cursors[userId];
+                if (cursor && cursor.itemId === itemId) {
+                    const newCursors = { ...state.cursors };
+                    delete newCursors[userId];
+
+                    return {
+                        ...state,
+                        cursors: newCursors,
+                    };
+                }
+                return state;
             });
         },
 
