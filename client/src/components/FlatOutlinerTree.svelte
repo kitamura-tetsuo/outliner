@@ -239,6 +239,8 @@ function handleNavigateToItem(event: CustomEvent) {
         // 左方向の移動（前のアイテムの末尾に移動）
         // ページタイトルの場合は何もしない
         if (fromItemId === "page-title") {
+            // ページタイトルでは左キーを処理しない（先頭に移動することはできる）
+            focusItemWithPosition("page-title", 0);
             return;
         }
 
@@ -272,12 +274,18 @@ function handleNavigateToItem(event: CustomEvent) {
             focusItemWithPosition(targetItemId, 0); // 先頭を指定
             return;
         }
-        // 最後のアイテムなら何もしない
+        // 最後のアイテムなら何もしない（末尾まで移動）
+        focusItemWithPosition(fromItemId, Number.MAX_SAFE_INTEGER);
         return;
     }
 
-    // ページタイトル処理 (特別なナビゲーション)
-    if (fromItemId === "page-title" && direction === "down" && displayItems.current.length > 0) {
+    // 上下方向の境界ケース処理
+    if (fromItemId === "page-title" && direction === "up") {
+        // タイトルから上へ移動しようとした場合: タイトルの先頭にカーソル移動
+        focusItemWithPosition("page-title", 0);
+        return;
+    }
+    else if (fromItemId === "page-title" && direction === "down" && displayItems.current.length > 0) {
         // ページタイトルから下に移動する場合は最初のアイテムにフォーカス
         const targetItemId = displayItems.current[0].model.id;
         focusItemWithPosition(targetItemId, cursorScreenX);
@@ -289,6 +297,14 @@ function handleNavigateToItem(event: CustomEvent) {
     ) {
         // 最初のアイテムから上に移動する場合はページタイトルにフォーカス
         focusItemWithPosition("page-title", cursorScreenX);
+        return;
+    }
+    else if (
+        direction === "down" &&
+        displayItems.current.findIndex(item => item.model.id === fromItemId) === displayItems.current.length - 1
+    ) {
+        // 最後のアイテムから下へ移動しようとした場合: 最後のアイテムの末尾にカーソル移動
+        focusItemWithPosition(fromItemId, Number.MAX_SAFE_INTEGER);
         return;
     }
 

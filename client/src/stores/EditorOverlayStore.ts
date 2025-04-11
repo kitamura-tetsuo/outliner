@@ -27,6 +27,8 @@ interface EditorOverlayState {
     cursors: Record<string, CursorPosition>; // key: userId
     selections: Record<string, SelectionRange>; // key: userId
     activeItemId: string | null;
+    cursorVisible: boolean; // カーソル点滅の表示状態
+    animationPaused: boolean; // アニメーション一時停止状態
 }
 
 const createEditorOverlayStore = () => {
@@ -34,9 +36,12 @@ const createEditorOverlayStore = () => {
         cursors: {},
         selections: {},
         activeItemId: null,
+        cursorVisible: true,
+        animationPaused: false,
     };
 
     const { subscribe, update, set } = writable<EditorOverlayState>(initialState);
+    let timerId: NodeJS.Timeout | undefined = undefined;
 
     return {
         subscribe,
@@ -85,6 +90,56 @@ const createEditorOverlayStore = () => {
                 return state;
             });
             return activeItemId;
+        },
+
+        // カーソル点滅の表示状態を制御
+        setCursorVisible: (visible: boolean) => {
+            update(state => ({
+                ...state,
+                cursorVisible: visible,
+            }));
+        },
+
+        // アニメーション一時停止状態を制御
+        setAnimationPaused: (paused: boolean) => {
+            update(state => ({
+                ...state,
+                animationPaused: paused,
+            }));
+        },
+
+        // カーソル点滅の開始
+        startCursorBlink: () => {
+            // まずカーソルを確実に表示
+            update(state => ({
+                ...state,
+                cursorVisible: true,
+                animationPaused: true, // アニメーションを一時停止
+            }));
+            if (timerId) {
+                clearTimeout(timerId);
+                timerId = undefined;
+            }
+
+            // 一定時間後にアニメーションを再開
+            timerId = setTimeout(() => {
+                // アニメーションを再開（ウィンドウがフォーカスされている場合のみ）
+                if (document.hasFocus()) {
+                    update(state => ({
+                        ...state,
+                        animationPaused: false,
+                    }));
+                }
+            }, 500); // 0.5秒後に再開
+        },
+
+        // カーソル点滅の停止
+        stopCursorBlink: () => {
+            update(state => ({
+                ...state,
+                cursorVisible: true,
+                animationPaused: true, // アニメーションを停止
+            }));
         },
 
         // カーソル位置と選択範囲をクリア

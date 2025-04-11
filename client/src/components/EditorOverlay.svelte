@@ -28,29 +28,13 @@ let allCursors = $state<CursorPosition[]>([]);
 let allSelections = $state<SelectionRange[]>([]);
 // アクティブアイテムID
 let activeItemId = $state<string | null>(null);
-
-// カーソル点滅の状態
-let cursorVisible = $state(true);
-// カーソル点滅タイマーID
-let blinkTimerId: number;
+// ストアからカーソル点滅状態を取得
+let cursorVisible = $state(false);
+// ストアからアニメーション一時停止状態を取得
+let animationPaused = $state(false);
 
 // DOM要素への参照
 let overlayRef: HTMLDivElement;
-
-// カーソルの点滅制御用タイマーを開始
-function startCursorBlink() {
-    clearInterval(blinkTimerId);
-    cursorVisible = true;
-    blinkTimerId = setInterval(() => {
-        cursorVisible = !cursorVisible;
-    }, 530) as unknown as number;
-}
-
-// カーソル点滅タイマーを停止
-function stopCursorBlink() {
-    clearInterval(blinkTimerId);
-    cursorVisible = true;
-}
 
 // より正確なテキスト測定を行うヘルパー関数
 function createMeasurementSpan(itemId: string, text: string): HTMLSpanElement {
@@ -311,6 +295,8 @@ editorOverlayStore.subscribe(state => {
     allSelections = Object.values(state.selections);
     const previousActiveItemId = activeItemId;
     activeItemId = state.activeItemId;
+    cursorVisible = state.cursorVisible;
+    animationPaused = state.animationPaused;
     
     if (activeItemChanged) {
         if (DEBUG_MODE) {
@@ -318,8 +304,10 @@ editorOverlayStore.subscribe(state => {
         }
         
         // アイテム間移動時のカーソル位置更新を確実にするための処理
-        // 複雑な再試行メカニズムを避け、シンプルな実装に変更
         updatePositionMap();
+        
+        // アイテム間移動時は、カーソルを表示し、アニメーションを一時停止するようストアに通知
+        editorOverlayStore.startCursorBlink();
         
         // カーソルとセレクションが存在する場合は、再計算を強制
         // 単一の遅延処理で、DOM更新が確実に完了した後に実行
@@ -334,18 +322,14 @@ editorOverlayStore.subscribe(state => {
                     ...activeCursor,
                     isActive: true
                 });
+                
+                // アイテム移動後にカーソル点滅を再開始（強制表示期間を含む）
+                editorOverlayStore.startCursorBlink();
             }
         }, 100); // 100msの遅延で十分なDOM更新時間を確保
     } else {
         // カーソル位置のみ更新された場合の処理
         debouncedUpdatePositionMap();
-    }
-    
-    // カーソルがある場合は点滅を開始
-    if (allCursors.some(cursor => cursor.isActive)) {
-        startCursorBlink();
-    } else {
-        stopCursorBlink();
     }
 });
 
@@ -371,8 +355,12 @@ onMount(() => {
     window.addEventListener('resize', debouncedUpdatePositionMap);
     window.addEventListener('scroll', debouncedUpdatePositionMap);
     
-    // カーソル点滅タイマーを開始
-    startCursorBlink();
+    // 初期状態でアクティブカーソルがある場合は、少し遅延してから点滅を開始
+    setTimeout(() => {
+        if (allCursors.some(cursor => cursor.isActive)) {
+            editorOverlayStore.startCursorBlink();
+        }
+    }, 200);
 });
 
 onDestroy(() => {
@@ -389,11 +377,11 @@ onDestroy(() => {
     clearTimeout(updatePositionMapTimer);
     
     // カーソル点滅タイマーの停止
-    stopCursorBlink();
+    editorOverlayStore.stopCursorBlink();
 });
 </script>
 
-<div class="editor-overlay" bind:this={overlayRef}>
+<div class="editor-overlay" bind:this={overlayRef}>{animationPaused}
     <!-- 選択範囲のレンダリング -->
     {#each allSelections as selection}
         {#if selection.startOffset !== selection.endOffset}
@@ -422,11 +410,13 @@ onDestroy(() => {
     <!-- カーソルのレンダリング -->
     {#each allCursors as cursor}
         {@const cursorPos = calculateCursorPixelPosition(cursor.itemId, cursor.offset)}
-        {#if cursorPos && (cursor.isActive ? cursorVisible : true)}
+        {#if cursorPos}
             {@const isPageTitle = cursor.itemId === "page-title"}
+            {@const isActive = cursor.isActive}
+            <!-- 常にカーソルをレンダリングし、アニメーションでの点滅を有効に -->
             <div 
                 class="cursor" 
-                class:active={cursor.isActive}
+                class:active={isActive}
                 class:page-title-cursor={isPageTitle}
                 style="
                     position: absolute;
@@ -435,6 +425,9 @@ onDestroy(() => {
                     height: {isPageTitle ? '1.5em' : positionMap[cursor.itemId]?.lineHeight || '1.2em'};
                     background-color: {cursor.color || '#0078d7'};
                     pointer-events: none;
+                    visibility: {!isActive ? 'visible' : null};
+                    opacity: {!isActive ? 1 : null};
+                    animation-play-state: {isActive ? (animationPaused ? 'paused' : 'running') : 'paused'};
                 "
                 title={cursor.userName || ''}
             ></div>
@@ -470,6 +463,7 @@ onDestroy(() => {
     background-color: #0078d7;
     pointer-events: none !important;
     will-change: transform;
+    z-index: 200; /* より高い値を設定 */
 }
 
 .page-title-cursor {
@@ -478,6 +472,7 @@ onDestroy(() => {
 
 .cursor.active {
     animation: blink 1.06s steps(1) infinite;
+    animation-play-state: running;
     pointer-events: none !important;
 }
 
@@ -511,7 +506,13 @@ onDestroy(() => {
 }
 
 @keyframes blink {
-    0%, 49% { opacity: 1; }
-    50%, 100% { opacity: 0; }
+    0%, 49% { 
+        opacity: 1; 
+        visibility: visible;
+    }
+    50%, 100% { 
+        opacity: 0; 
+        visibility: hidden;
+    }
 }
 </style> 

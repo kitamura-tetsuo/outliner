@@ -34,7 +34,6 @@
 
 	// Stateの管理
 	let isEditing = $state(false);
-	let cursorVisible = $state(true);
 	let selectionStart = $state(0);
 	let selectionEnd = $state(0);
 	let lastSelectionStart = $state(0);
@@ -58,24 +57,6 @@
 	let displayRef: HTMLDivElement;
 	// アイテム全体のDOMエレメントのref
 	let itemRef: HTMLDivElement;
-
-	// カーソル点滅用タイマー
-	let cursorBlinkTimer: number;
-
-	// カーソル点滅の開始
-	function startCursorBlink() {
-		cursorVisible = true;
-		clearInterval(cursorBlinkTimer);
-		cursorBlinkTimer = setInterval(() => {
-			cursorVisible = !cursorVisible;
-		}, 500) as unknown as number;
-	}
-
-	// カーソル点滅の停止
-	function stopCursorBlink() {
-		clearInterval(cursorBlinkTimer);
-		cursorVisible = false;
-	}
 
 	function getClickPosition(event: MouseEvent, content: string): number {
 		const element = (event.currentTarget || event.target) as HTMLElement;
@@ -141,7 +122,8 @@
 			userId: 'local'
 		});
 		
-		startCursorBlink();
+		// カーソル点滅を開始
+		editorOverlayStore.startCursorBlink();
 	}
 
 	/**
@@ -307,6 +289,7 @@
 		
 		// 矢印キー処理後のカーソル位置更新
 		if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+			editorOverlayStore.startCursorBlink();
 			requestAnimationFrame(() => {
 				if (!event.defaultPrevented) {
 					updateSelectionAndCursor(event.shiftKey);
@@ -519,7 +502,7 @@
 
 	function finishEditing() {
 		isEditing = false;
-		stopCursorBlink();
+		editorOverlayStore.stopCursorBlink();
 		
 		editorOverlayStore.clearCursorAndSelection();
 		editorOverlayStore.setActiveItem(null);
@@ -585,9 +568,6 @@
 			// テキストエリアの内容を同期
 			hiddenTextareaRef.value = text.current;
 			
-			// editorOverlayStoreにアクティブアイテムを設定
-			editorOverlayStore.setActiveItem(model.id);
-			
 			// カーソル位置を決定
 			let textPosition = 0;
 			
@@ -619,23 +599,46 @@
 				}
 			}
 			
-			// カーソル点滅を開始
-			startCursorBlink();
-			
-			// フォーカスを設定してカーソル位置を確実に設定
-			try {
-				// まずフォーカスを設定
-				hiddenTextareaRef.focus();
-				
-				// カーソル位置設定を実行
-				setCaretPosition(textPosition);
-				
-				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-					console.log(`Focus and cursor position set for item ${model.id} at position ${textPosition}`);
+			// 一連の処理をリクエストアニメーションフレームで最適化
+			requestAnimationFrame(() => {
+				try {
+					// まずフォーカスを設定（最優先）
+					hiddenTextareaRef.focus();
+					
+					// ローカル変数を更新
+					selectionStart = selectionEnd = textPosition;
+					lastSelectionStart = lastSelectionEnd = textPosition;
+					lastCursorPosition = textPosition;
+					
+					// 再度カーソルが表示されていることを確認
+					editorOverlayStore.startCursorBlink();
+					
+					// editorOverlayStoreにアクティブアイテムとカーソル位置を設定
+					editorOverlayStore.setActiveItem(model.id);
+					editorOverlayStore.setCursor({
+						itemId: model.id,
+						offset: textPosition,
+						isActive: true,
+						userId: 'local'
+					});
+					
+					editorOverlayStore.setSelection({
+						itemId: model.id,
+						startOffset: textPosition,
+						endOffset: textPosition,
+						userId: 'local'
+					});
+					
+					// カーソル位置設定を実行
+					setCaretPosition(textPosition);
+					
+					if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+						console.log(`Focus and cursor position set for item ${model.id} at position ${textPosition}`);
+					}
+				} catch (error) {
+					console.error('Error setting focus and cursor position:', error);
 				}
-			} catch (error) {
-				console.error('Error setting focus and cursor position:', error);
-			}
+			});
 		};
 		
 		// 編集完了イベントハンドラ
@@ -667,7 +670,6 @@
 				itemRef.removeEventListener('finish-edit', handleFinishEdit as EventListener);
 			}
 			document.removeEventListener('click', handleOutsideClick);
-			stopCursorBlink();
 			
 			editorOverlayStore.clearCursorAndSelection();
 		};
@@ -826,7 +828,7 @@
 		lastCursorPosition = end;
 		
 		updateSelectionAndCursor();
-		startCursorBlink();
+		editorOverlayStore.startCursorBlink();
 	}
 
 	// アイテムの編集を開始し、カーソル位置を指定する
@@ -866,7 +868,7 @@
 		});
 		
 		// 重要: カーソル点滅を開始
-		startCursorBlink();
+		editorOverlayStore.startCursorBlink();
 	}
 
 	// 他のアイテムに移動するイベントを発火する
