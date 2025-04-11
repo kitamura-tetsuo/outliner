@@ -12,90 +12,49 @@ import FlatOutlinerTree from "../components/FlatOutlinerTree.svelte";
 import MissingEnvWarning from "../components/MissingEnvWarning.svelte";
 import NetworkErrorAlert from "../components/NetworkErrorAlert.svelte";
 import PageList from "../components/PageList.svelte";
-import { TreeViewManager } from "../fluid/TreeViewManager";
 import { getDebugConfig } from "../lib/env";
 import { getLogger } from "../lib/logger";
-import { Item } from "../schema/app-schema";
-import { fluidClient } from "../stores/fluidStore";
+import { fluidStore } from "../stores/fluidStore.svelte";
 
+import {
+    createFluidClient,
+    loadContainer,
+} from "../services";
 import { store } from "../stores/store.svelte";
 
 const logger = getLogger();
 
 let error: string | null = $state(null);
-let containerId: string | null = null;
+let project: any = $state(null);
+let rootItems: any = $state(null);
 let inputText = "";
 let debugInfo: any = $state({});
 let showDebugPanel = $state(false);
 let hostInfo = $state("");
 let portInfo = $state("");
 let envConfig = getDebugConfig();
-let treeData: any = {};
 let isAuthenticated = $state(false);
 let networkError: string | null = $state(null);
-let rootData; // ルートデータ（ページのコレクションを含む）
-let currentPage: Item | null = $state(null); // 現在選択されているページ
-let currentPageId = $state("");
 let isInitializing = $state(false); // 非同期操作実行中のフラグ（必要な場合のみ使用）
 
-// SharedTreeの変更を監視するためのハンドラ
-function handleTreeChanged(event: CustomEvent) {
-    treeData = event.detail.data;
-    updateDebugInfo();
-}
+let currentUser = $derived(fluidStore.currentUser?.id ?? "anonymous");
+let isConnected = $derived(fluidStore.isConnected);
+let connectionState = $derived(fluidStore.connectionState);
 
-// 認証成功時の処理
-async function handleAuthSuccess(authResult) {
-    logger.info("認証成功:", authResult);
-    isAuthenticated = true;
-
-    // Fluidクライアントの初期化はfluidStoreが処理するため、
-    // ここでは初期化せず、状態が変わるのを待つだけにする
-    try {
-        // fluidStoreからのクライアント状態変更を待つ
-        let unsubscribe; // 明示的に変数を宣言
-        unsubscribe = fluidClient.subscribe(client => {
-            if (client) {
-                logger.info("Fluidクライアントが接続されました");
-
-                // containerId と rootItems を設定
-                containerId = client.containerId;
-                store.project = client.getProject();
-
-                // 最初のページを選択または新規作成
-                if (store.pages?.current.length) {
-                    currentPage = store.pages?.current[0]; // 直接オブジェクトを代入
-                    currentPageId = currentPage.id; // IDも保持（UI表示用）
-                }
-                else {
-                    // 初期ページの作成 - TreeViewManagerを使用
-                    currentPage = TreeViewManager.addPage(
-                        store.project!,
-                        "はじめてのページ",
-                        client.currentUser?.id || "anonymous",
-                    );
-                    currentPageId = currentPage.id;
-                }
-
-                // ページの状態を更新
-                error = null;
-
-                // 不要になったら購読を停止
-                if (unsubscribe) {
-                    unsubscribe();
-                }
-            }
-        });
-    }
-    catch (err) {
-        console.error("認証後のFluid初期化監視エラー:", err);
-        error = err instanceof Error ? err.message : "Fluid初期化エラー";
-
-        // ネットワークエラーの場合は特別なエラーメッセージを表示
-        if (err.message && err.message.includes("サーバーに接続できませんでした")) {
-            networkError = "バックエンドサーバーに接続できませんでした。サーバーが起動しているか確認してください。";
+$effect(() => {
+    if (isAuthenticated) {
+        const client = fluidStore.fluidClient;
+        if (client?.container) {
+            project = client.getProject();
+            rootItems = client.getTree();
         }
     }
+});
+
+// 認証成功時の処理
+async function handleAuthSuccess(authResult: any) {
+    logger.info("認証成功:", authResult);
+    isAuthenticated = true;
 }
 
 // 認証ログアウト時の処理
@@ -103,13 +62,6 @@ function handleAuthLogout() {
     logger.info("ログアウトしました");
     isAuthenticated = false;
     // 必要に応じてページをリロードするか、非認証状態の表示に切り替える
-}
-
-// ページ選択時の処理
-function handlePageSelect(event) {
-    // 直接オブジェクトを受け取る
-    currentPage = event.detail.page;
-    currentPageId = event.detail.pageId; // UIで現在の選択を示すために保持
 }
 
 // ネットワークエラー発生時の再試行
@@ -126,7 +78,7 @@ async function retryConnection() {
             // 認証状態を更新
             const authToken = await userManager.refreshToken();
             if (authToken) {
-                await initializeFluidClient();
+                await createFluidClient();
             }
         }
     }
@@ -139,74 +91,27 @@ async function retryConnection() {
     }
 }
 
-// Fluidクライアントの初期化
-async function initializeFluidClient() {
-    if (!$fluidClient) {
-        error = "Fluidクライアントが初期化されていません。";
+// コンテナ選択時の処理
+async function handleContainerSelected(selectedContainerId: string) {
+    const client = fluidStore.fluidClient;
+    if (client?.containerId === selectedContainerId) {
+        logger.info("Selected container is already loaded");
         return;
     }
 
-    // コンテナIDの保存
-    containerId = $fluidClient.containerId;
-
-    // Outlinerで使用するrootItemsを設定
-    rootItems = $fluidClient.getTree();
-
-    // デバッグ情報の初期化
-    updateDebugInfo();
-}
-
-// コンテナ選択時の処理
-async function handleContainerSelected(selectedContainerId: string) {
     try {
-        isInitializing = true;
-        error = null;
-
-        // 現在のコンテナと同じ場合は早期リターン
-        if ($fluidClient?.containerId === selectedContainerId) {
-            logger.info("すでに選択されているコンテナが選択されました。");
-            isInitializing = false;
-            return;
-        }
-
-        // 現在のFluidClientインスタンスがあれば破棄
-        if ($fluidClient) {
-            $fluidClient.dispose();
-        }
-
-        logger.info(`コンテナを切り替えます: ${selectedContainerId}`);
-
         // 新しいコンテナIDで ファクトリーメソッドを使用してFluidClientを作成
-        const client = await import("../lib/fluidService").then(module => module.loadContainer(selectedContainerId));
+        const client = await loadContainer(selectedContainerId);
 
         // fluidClientストアを更新
-        fluidClient.set(client);
-
-        // コンテナID、project、rootItems を更新
-        containerId = client.containerId;
-        project = client.getProject();
-        rootItems = client.getTree();
-
-        // 最初のページを選択
-        if (rootItems.length > 0) {
-            currentPage = rootItems[0];
-            currentPageId = currentPage.id;
-        }
-        else {
-            currentPage = null;
-            currentPageId = "";
-        }
+        fluidStore.fluidClient = client;
     }
-    catch (err) {
-        console.error("コンテナ切り替えエラー:", err);
-        error = err instanceof Error ? err.message : "コンテナの切り替え中にエラーが発生しました";
-    }
-    finally {
-        isInitializing = false;
+    catch (error) {
+        console.error("Failed to switch container:", error);
     }
 }
 
-onMount(async () => {
+onMount(() => {
     console.debug("[+page] Component mounted");
 
     try {
@@ -215,29 +120,11 @@ onMount(async () => {
             hostInfo = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
             portInfo = window.location.port || "7070/default";
             console.info("Running on host:", hostInfo);
-
-            // SharedTreeの変更イベントをリッスン
-            window.addEventListener("fluidTreeChanged", handleTreeChanged as EventListener);
         }
 
         // UserManagerの認証状態を確認
         const userManager = UserManager.getInstance();
         isAuthenticated = userManager.getCurrentUser() !== null;
-
-        // 認証済みの場合はFluidクライアントの状態を監視
-        if (isAuthenticated) {
-            // fluidClientストアを購読
-            const unsubscribe = fluidClient.subscribe(client => {
-                if (client?.container) {
-                    containerId = client.containerId;
-                    project = client.getProject();
-                    rootItems = client.getTree();
-                }
-            });
-
-            // コンポーネントのクリーンアップ時に購読を解除
-            return () => unsubscribe();
-        }
     }
     catch (err) {
         console.error("Error initializing page:", err);
@@ -249,14 +136,14 @@ onDestroy(() => {
     console.debug("[+page] Component destroying");
     // イベントリスナーのクリーンアップ
     if (browser && window) {
-        window.removeEventListener("fluidTreeChanged", handleTreeChanged as EventListener);
         delete (window as any).__FLUID_CLIENT__;
     }
 });
 
 function updateDebugInfo() {
-    if ($fluidClient) {
-        debugInfo = $fluidClient.getDebugInfo();
+    const client = fluidStore.fluidClient;
+    if (client) {
+        debugInfo = client.getDebugInfo();
     }
 }
 
@@ -297,22 +184,23 @@ function toggleDebugPanel() {
                 </a>
             </div>
 
-            {#if $fluidClient}
+            {#if fluidStore.fluidClient}
                 <div class="content-layout">
                     <!-- ページリスト（左サイドバー） -->
                     <div class="sidebar">
                         <PageList
-                            {currentPageId}
-                            currentUser={$fluidClient?.currentUser?.id || "anonymous"}
+                            currentUser={fluidStore.currentUser?.id || "anonymous"}
                             on:select={handlePageSelect}
+                            project={store.project}
+                            rootItems={store.pages?.current}
                         />
                     </div>
 
                     <!-- ページコンテンツ（右メインエリア） -->
                     <div class="main-content">
-                        {#if currentPage}
+                        {#if store.currentPage}
                             <div class="page-container">
-                                <FlatOutlinerTree pageItem={currentPage} isReadOnly={false} />
+                                <FlatOutlinerTree pageItem={store.currentPage} isReadOnly={false} />
                             </div>
                         {:else}
                             <div class="empty-state">
@@ -321,7 +209,7 @@ function toggleDebugPanel() {
                         {/if}
                     </div>
                 </div>
-            {:else if $fluidClient}
+            {:else if fluidStore.fluidClient}
                 <div class="loading">
                     <p>データを読み込んでいます...</p>
                 </div>
@@ -374,8 +262,9 @@ function toggleDebugPanel() {
         <summary>デバッグ情報</summary>
 
         <div class="connection-status">
-            <div class="status-indicator {$fluidClient?.isContainerConnected ? 'connected' : 'disconnected'}"></div>
-            <span>接続状態: {$fluidClient?.getConnectionStateString() || "未接続"}</span>
+            <div class="status-indicator {fluidStore.fluidClient?.isContainerConnected ? 'connected' : 'disconnected'}">
+            </div>
+            <span>接続状態: {fluidStore.fluidClient?.getConnectionStateString() || "未接続"}</span>
         </div>
         <!-- window.locationの参照を条件付きレンダリングに変更 -->
         <p class="host-info">
@@ -395,7 +284,7 @@ function toggleDebugPanel() {
         <!-- ネットワークエラー表示 -->
         <NetworkErrorAlert error={networkError} retryCallback={retryConnection} />
         <pre>
-		{JSON.stringify($fluidClient?.getDebugInfo() || {}, null, 2)}</pre>
+		{JSON.stringify(fluidStore.fluidClient?.getDebugInfo() || {}, null, 2)}</pre>
     </details>
 </main>
 

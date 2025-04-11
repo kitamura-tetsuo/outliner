@@ -1,16 +1,20 @@
 <script lang="ts">
-import { i18n } from "$lib/i18n";
-import { ParaglideJS } from "@inlang/paraglide-sveltekit";
-import "../app.css";
 import { browser } from "$app/environment";
 import { getEnv } from "$lib/env";
+import { i18n } from "$lib/i18n";
 import { getLogger } from "$lib/logger";
+import { ParaglideJS } from "@inlang/paraglide-sveltekit";
 import {
     onDestroy,
     onMount,
 } from "svelte";
+import "../app.css";
 // Import from $lib/index.ts to ensure fetch override is loaded
 import "$lib";
+import {
+    cleanupFluidClient,
+    initFluidClientWithAuth,
+} from "../services";
 
 let { children } = $props();
 const logger = getLogger("AppLayout");
@@ -107,6 +111,8 @@ onMount(() => {
         // アプリケーション初期化のログ
         logger.info("アプリケーションがマウントされました");
 
+        initFluidClientWithAuth();
+
         // ブラウザ終了時のイベントリスナーを登録
         window.addEventListener("beforeunload", handleBeforeUnload);
 
@@ -125,6 +131,8 @@ onDestroy(() => {
         // イベントリスナーを削除
         window.removeEventListener("beforeunload", handleBeforeUnload);
         document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+        cleanupFluidClient();
 
         // 定期的なログローテーションの解除
         if (rotationInterval) {

@@ -1,5 +1,4 @@
 <script lang="ts">
-import { browser } from "$app/environment";
 import { goto } from "$app/navigation";
 import {
     onDestroy,
@@ -7,11 +6,10 @@ import {
 } from "svelte";
 import { UserManager } from "../../auth/UserManager";
 import AuthComponent from "../../components/AuthComponent.svelte";
-import { FluidClient } from "../../fluid/fluidClient";
-import { getEnv } from "../../lib/env";
+import * as fluidService from "../../lib/fluidService";
 import { getLogger } from "../../lib/logger";
 import { saveContainerId } from "../../stores/firestoreStore";
-import { fluidClient } from "../../stores/fluidStore";
+import { fluidStore } from "../../stores/fluidStore.svelte";
 const logger = getLogger();
 
 let isLoading = $state(false);
@@ -46,21 +44,20 @@ async function createNewContainer() {
 
     try {
         // 現在のFluidClientインスタンスを破棄してリセット
-        if ($fluidClient) {
-            $fluidClient.dispose();
-            fluidClient.set(null);
+        const client = fluidStore.fluidClient;
+        if (client) {
+            client.dispose();
+            fluidStore.fluidClient = undefined;
         }
 
         // 新規コンテナを作成し、新しいFluidClientインスタンスを取得
-        const client = await import("../../lib/fluidService").then(module => 
-            module.createNewContainer(containerName)
-        );
-        
+        const newClient = await fluidService.createNewContainer(containerName);
+
         // 作成されたコンテナIDを取得
-        createdContainerId = client.containerId;
+        createdContainerId = newClient.containerId;
 
         // fluidClientストアを更新
-        fluidClient.set(client);
+        fluidStore.fluidClient = newClient;
 
         // サーバーに保存（デフォルトコンテナとして設定）
         await saveContainerId(createdContainerId);

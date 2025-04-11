@@ -1,25 +1,27 @@
-import { AzureClient } from "@fluidframework/azure-client";
+import {
+    AzureClient,
+    type AzureContainerServices,
+} from "@fluidframework/azure-client";
 import {
     type ContainerSchema,
     type IFluidContainer,
 } from "@fluidframework/fluid-static";
-import { TinyliciousClient } from "@fluidframework/tinylicious-client";
+import {
+    TinyliciousClient,
+    type TinyliciousContainerServices,
+} from "@fluidframework/tinylicious-client";
 import {
     ConnectionState,
     SharedTree,
     type TreeView,
 } from "fluid-framework";
 import { UserManager } from "../auth/UserManager";
-import {
-    getConnectionStateString as getConnectionStateStringUtil,
-    isContainerConnected as isContainerConnectedUtil,
-    setupConnectionListeners,
-} from "../lib/fluidService";
 import { getLogger } from "../lib/logger";
 import {
     Items,
     Project,
 } from "../schema/app-schema";
+
 const logger = getLogger();
 
 // IdCompressorを有効にしたコンテナスキーマを定義
@@ -42,9 +44,14 @@ export interface FluidClientParams {
     services: any;
 }
 
+export interface IUser {
+    id: string;
+    name: string;
+    email?: string;
+    color: string;
+}
+
 export class FluidClient {
-    // 初期化状態フラグ - ファクトリーパターンのため常にtrue
-    public readonly isInitialized = true;
     public readonly clientId: string;
 
     // Public properties - コンストラクタで初期化
@@ -52,7 +59,7 @@ export class FluidClient {
     public readonly container: IFluidContainer;
     public readonly containerId: string;
     public readonly appData: TreeView<typeof Project>;
-    public readonly services: any;
+    public readonly services: AzureContainerServices | TinyliciousContainerServices;
     private readonly project: Project;
 
     // 接続ステータスの追跡
@@ -63,9 +70,8 @@ export class FluidClient {
 
     /**
      * コンストラクタ - 必要なパラメータを全て受け取る
-     * 直接呼び出しではなく、createFluidClientファクトリー関数を使用してください
      */
-    constructor(params: FluidClientParams) { // すべての必須パラメータをセット
+    constructor(params: FluidClientParams) {
         this.clientId = params.clientId;
         this.client = params.client;
         this.container = params.container;
@@ -81,35 +87,6 @@ export class FluidClient {
         this._setupDebugEventListeners();
     }
 
-    /**
-     * 新しいFluidClientインスタンスを作成するファクトリーメソッド
-     * @param containerId 既存のコンテナID（省略すると新しいコンテナが作成される）
-     * @returns 初期化されたFluidClientインスタンス
-     */
-    public static async create(containerId?: string): Promise<FluidClient> {
-        // fluidService.tsのファクトリー関数を使用
-        return import("../lib/fluidService").then(module => module.createFluidClient(containerId));
-    } /**
-     * ファクトリーパターンを採用したので、このメソッドは不要になりました
-     * 新しいFluidClientを作成するには FluidClient.create() を使用してください
-     * @deprecated 互換性のために残しています
-     */
-
-    public async resolveContainerId(): Promise<string | undefined> {
-        // このメソッドは今後使用しないでください
-        logger.warn("resolveContainerId() is deprecated. Use FluidClient.create() instead");
-        return this.containerId;
-    } /**
-     * 初期化済みのインスタンスなので、リファレンスをそのまま返します
-     * 新しいインスタンスを作成するにはFluidClient.create()を使用してください
-     * @deprecated 互換性のために残しています
-     */
-
-    public async initialize(): Promise<FluidClient> {
-        // すでに完全に初期化されているため、そのまま自身を返す
-        return this;
-    }
-
     // 接続状態の監視を設定
     private setupConnectionMonitoring() {
         if (!this.container) return;
@@ -120,7 +97,7 @@ export class FluidClient {
         }
 
         // 接続状態の監視を設定
-        this.connectionListenerCleanup = setupConnectionListeners(
+        this.connectionListenerCleanup = this.setupConnectionListeners(
             this.container,
             // 接続時のコールバック
             () => {
@@ -148,12 +125,12 @@ export class FluidClient {
                 // リトライ回数が上限に達していなければ再接続を試みる
                 if (this.connectionRetryCount < this.MAX_RETRY_COUNT) {
                     this.connectionRetryCount++;
-                    // logger.info(`再接続を試みます (${this.connectionRetryCount}/${this.MAX_RETRY_COUNT})...`);
+                    logger.info(`再接続を試みます (${this.connectionRetryCount}/${this.MAX_RETRY_COUNT})...`);
 
-                    // // 少し待ってから再接続
-                    // setTimeout(() => {
-                    //   this.reconnect();
-                    // }, 2000);
+                    // 少し待ってから再接続
+                    setTimeout(() => {
+                        this.reconnect();
+                    }, 2000);
                 }
                 else {
                     logger.warn("最大再接続回数に達しました。手動での再接続が必要です。");
@@ -162,35 +139,37 @@ export class FluidClient {
         );
     }
 
-    // 再接続を試みる
-    private async reconnect() {
-        try {
-            logger.info("Attempting to reconnect...");
-
-            // 現在のコンテナIDがある場合は、そのIDに特化したトークンを更新
-            if (this.containerId) {
-                logger.info(`Refreshing token for container: ${this.containerId}`);
-                await UserManager.getInstance().refreshToken(this.containerId);
-
-                // 更新したトークンで再接続
-                if (this.container) {
-                    logger.info("Reconnecting with refreshed token...");
-                    this.container.connect();
-                }
-            }
-            else {
-                // 一般的なトークン更新
-                const userManager = UserManager.getInstance();
-                await userManager.refreshToken();
-
-                if (this.container) {
-                    this.container.connect();
-                }
-            }
+    /**
+     * Fluidコンテナの接続状態を監視する
+     * @param container Fluidコンテナ
+     * @param onConnected 接続時のコールバック
+     * @param onDisconnected 切断時のコールバック
+     * @returns イベントリスナー解除用の関数
+     */
+    private setupConnectionListeners(
+        container: any,
+        onConnected?: () => void,
+        onDisconnected?: () => void,
+    ): () => void {
+        if (!container) {
+            return () => {};
         }
-        catch (error) {
-            logger.error("Reconnection failed:", error);
-        }
+
+        const connectedListener = () => {
+            if (onConnected) onConnected();
+        };
+
+        const disconnectedListener = () => {
+            if (onDisconnected) onDisconnected();
+        };
+
+        container.on("connected", connectedListener);
+        container.on("disconnected", disconnectedListener);
+
+        return () => {
+            container.off("connected", connectedListener);
+            container.off("disconnected", disconnectedListener);
+        };
     }
 
     public getProject() {
@@ -200,12 +179,14 @@ export class FluidClient {
     public getTree() {
         const rootItems = this.project?.items as Items;
         return rootItems;
-    } /**
+    }
+
+    /**
      * コンテナが接続済みかどうかを確認します
      */
-
     public get isContainerConnected(): boolean {
-        return isContainerConnectedUtil(this.container);
+        if (!this.container) return false;
+        return this.container.connectionState !== ConnectionState.Disconnected;
     }
 
     /**
@@ -219,7 +200,20 @@ export class FluidClient {
      * コンテナの接続状態を文字列で取得します
      */
     public getConnectionStateString(): string {
-        return getConnectionStateStringUtil(this.container);
+        if (!this.container) return "コンテナ未接続";
+
+        switch (this.container.connectionState) {
+            case ConnectionState.Connected:
+                return "接続済み";
+            case ConnectionState.Disconnected:
+                return "切断";
+            case ConnectionState.EstablishingConnection:
+                return "接続中";
+            case ConnectionState.CatchingUp:
+                return "同期中";
+            default:
+                return "不明";
+        }
     }
 
     // デバッグ用のイベントリスナー設定
@@ -270,7 +264,6 @@ export class FluidClient {
      * @returns 処理されたアイテムとその子アイテムを含むオブジェクト
      */
     private _processItemRecursively(item: any) {
-        // 型定義を追加して'items'プロパティを許可する
         interface ItemData {
             id: string;
             text: string;
@@ -290,28 +283,12 @@ export class FluidClient {
             lastChanged: item.lastChanged,
         };
 
-        // 子アイテムが存在する場合は再帰的に処理
         if (item.items && item.items.length > 0) {
             result.items = [...item.items].map(childItem => this._processItemRecursively(childItem));
         }
 
         return result;
-    } /**
-     * E2Eテスト用に現在のSharedTreeデータ構造を取得する
-     * @returns ツリー構造のシリアライズされたデータ
-     */
-
-    public getTreeDebugData(): any {
-        if (!this.container || !this.appData) {
-            return null;
-        }
-
-        // SharedTreeのデータ構造をシリアライズして返す
-        const treeData = this.appData.root;
-
-        // 再帰的にツリー構造をプレーンなオブジェクトに変換
-        return import("../lib/fluidService").then(module => module.serializeTreeNode(treeData));
-    } // _serializeTreeNode メソッドは fluidService.serializeTreeNode を直接使用するため削除
+    }
 
     // コンポーネント破棄時のクリーンアップ
     public dispose() {
@@ -320,14 +297,68 @@ export class FluidClient {
             this.connectionListenerCleanup = null;
         }
 
+        this.appData.dispose();
+        this.container.dispose();
+    }
+
+    // ユーザー関連のメソッド
+    public loadSavedUser(): IUser | null {
         try {
-            // コンテナの切断
-            if (this.isContainerConnected) {
-                this.container.disconnect();
+            const savedUser = localStorage.getItem("fluidUser");
+            return savedUser ? JSON.parse(savedUser) : null;
+        }
+        catch (error) {
+            logger.error("Failed to load saved user:", error);
+            return null;
+        }
+    }
+
+    public async registerUser(user: IUser): Promise<IUser> {
+        // ユーザー情報を保存
+        const registeredUser = {
+            ...user,
+            id: crypto.randomUUID(),
+        };
+
+        try {
+            localStorage.setItem("fluidUser", JSON.stringify(registeredUser));
+            this.currentUser = registeredUser;
+            return registeredUser;
+        }
+        catch (error) {
+            logger.error("Failed to register user:", error);
+            throw new Error("ユーザー登録に失敗しました");
+        }
+    }
+
+    // 再接続を試みる
+    private async reconnect() {
+        try {
+            logger.info("Attempting to reconnect...");
+
+            // 現在のコンテナIDがある場合は、そのIDに特化したトークンを更新
+            if (this.containerId) {
+                logger.info(`Refreshing token for container: ${this.containerId}`);
+                await UserManager.getInstance().refreshToken(this.containerId);
+
+                // 更新したトークンで再接続
+                if (this.container) {
+                    logger.info("Reconnecting with refreshed token...");
+                    this.container.connect();
+                }
+            }
+            else {
+                // 一般的なトークン更新
+                const userManager = UserManager.getInstance();
+                await userManager.refreshToken();
+
+                if (this.container) {
+                    this.container.connect();
+                }
             }
         }
-        catch (e) {
-            logger.warn("FluidClient disposal error:", e);
+        catch (error) {
+            logger.error("Reconnection failed:", error);
         }
     }
 }

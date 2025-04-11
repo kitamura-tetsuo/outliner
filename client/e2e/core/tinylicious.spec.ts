@@ -69,35 +69,5 @@ test.describe("Tinyliciousリアル接続テスト", () => {
         // 状態インジケータのクラスも確認
         const hasConnectedClass = await page.locator(".status-indicator").hasClass("connected");
         expect(hasConnectedClass).toBe(true);
-    }); /**
-     * @testcase 接続テストボタンが機能すること
-     * @description 接続テストボタンがクリックでき、正しく動作することを確認するテスト
-     * @check 接続テストボタンが画面上に表示されていることを確認する
-     * @check ボタンをクリックすると接続テストが実行される
-     * @check クリック後にJavaScriptのalertダイアログがトリガーされることを確認する
-     * @check アラートメッセージにエラーが含まれていないことを確認する
-     * @check アラートメッセージに「Connection」という文字列が含まれていることを確認する
-     * @check スクリーンショットを撮影して結果を視覚的に確認する
-     */
-
-    test("接続テストボタンが機能すること", async ({ page }) => {
-        // 接続テストボタンを探す
-        const connectButton = page.locator('button:has-text("接続テスト")');
-
-        // ボタンが存在することを確認
-        await expect(connectButton).toBeVisible();
-
-        // ボタンをクリック
-        await connectButton.click();
-        await page.waitForTimeout(2000); // アラート表示を待つ
-
-        // JSのalertがトリガーされたことを確認
-        const alertMessage = await page.evaluate(() => window._alertMessage);
-        expect(alertMessage).toBeTruthy();
-        expect(alertMessage).not.toContain("Error");
-        expect(alertMessage).toContain("Connection");
-
-        // スクリーンショットを撮影
-        await page.screenshot({ path: "test-results/connection-test-result.png", fullPage: true });
     });
 });

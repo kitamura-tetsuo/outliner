@@ -1,5 +1,4 @@
 // filepath: /workspace/client/src/tests/mocks/mockFirestoreStore.ts
-import { get } from "svelte/store";
 import {
     mockGetDefaultContainerId,
     mockGetUserContainers,

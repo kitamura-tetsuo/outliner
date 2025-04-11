@@ -10,7 +10,7 @@ import {
     Items,
 } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore";
-import { fluidClient } from "../stores/fluidStore";
+import { fluidStore } from "../stores/fluidStore.svelte";
 import type { DisplayItem } from "../stores/OutlinerViewStore";
 import { OutlinerViewStore } from "../stores/OutlinerViewStore";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
@@ -40,7 +40,7 @@ interface Props {
 
 let { pageItem, isReadOnly = false }: Props = $props();
 
-let currentUser = $state("anonymous");
+let currentUser = $derived(fluidStore.currentUser?.id ?? null);
 
 // ビューストアを作成
 const viewStore = new OutlinerViewStore();
@@ -94,8 +94,9 @@ let pageTitleViewModel = $state({
 });
 
 onMount(() => {
-    if ($fluidClient?.currentUser) {
-        currentUser = $fluidClient.currentUser.id;
+    const client = fluidStore.fluidClient;
+    if (client?.currentUser) {
+        currentUser = client.currentUser.id;
     }
 });
 
@@ -107,7 +108,7 @@ onDestroy(() => {
 function handleAddItem() {
     if (pageItem && !isReadOnly && pageItem.items && Tree.is(pageItem.items, Items)) {
         // アイテム追加
-        pageItem.items.addNode(currentUser);
+        pageItem.items.addNode(currentUser ?? "");
     }
 }
 

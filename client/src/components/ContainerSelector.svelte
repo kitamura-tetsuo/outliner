@@ -3,7 +3,7 @@ import { onMount } from "svelte";
 import { FluidClient } from "../fluid/fluidClient";
 import { getLogger } from "../lib/logger";
 import { getUserContainers } from "../stores/firestoreStore";
-import { fluidClient } from "../stores/fluidStore";
+import { fluidStore } from "../stores/fluidStore.svelte";
 const logger = getLogger();
 
 interface Props {
@@ -12,13 +12,13 @@ interface Props {
 
 let { onContainerSelected = () => {} }: Props = $props();
 
-let containers: Array<{ id: string; name: string; isDefault?: boolean; }> = $state([]);
-let selectedContainerId: string = $state("");
+let containers = $state<Array<{ id: string; name: string; isDefault?: boolean; }>>([]);
+let selectedContainerId = $state<string | null>(null);
 let isLoading = $state(false);
-let error: string | null = $state(null);
+let error = $state<string | null>(null);
 
 // 現在ロード中のコンテナIDを表示
-let currentContainerId = $derived($fluidClient?.containerId || null);
+let currentContainerId = $derived(fluidStore.currentContainerId);
 
 onMount(async () => {
     await loadContainers();
@@ -38,6 +38,12 @@ const loadContainers = async () => {
         // 標準の方法でユーザーのコンテナを読み込む
         let userContainers = await getUserContainers();
         logger.info(`Loaded ${userContainers.length} containers from store`);
+
+        // 必須のname属性を保証
+        userContainers = userContainers.map(container => ({
+            ...container,
+            name: container.name || "名称未設定",
+        }));
 
         // テスト環境では、ローカルストレージから現在のコンテナIDも確認
         if (
@@ -102,7 +108,9 @@ async function handleContainerChange() {
     finally {
         isLoading = false;
     }
-}    // 現在のコンテナIDのリロード
+}
+
+// 現在のコンテナIDのリロード
 async function reloadCurrentContainer() {
     if (!currentContainerId) return;
 
@@ -114,7 +122,7 @@ async function reloadCurrentContainer() {
         const client = await FluidClient.create(currentContainerId);
 
         // fluidClientストアを更新
-        fluidClient.set(client);
+        updateFluidClient(client);
     }
     catch (err) {
         console.error("コンテナ再ロードエラー:", err);

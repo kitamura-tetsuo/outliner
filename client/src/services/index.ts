@@ -12,12 +12,12 @@ export {
 
 // FluidService関連の関数をエクスポート
 export {
+    cleanupFluidClient,
     createFluidClient,
     createNewContainer,
-    getConnectionStateString,
     getFluidClient,
     handleConnectionError,
-    isContainerConnected,
+    initFluidClientWithAuth,
     loadContainer,
     loadContainerId,
     resetContainerId,
@@ -25,5 +25,4 @@ export {
     saveContainerId,
     saveContainerIdToServer,
     serializeTreeNode,
-    setupConnectionListeners,
 } from "../lib/fluidService";

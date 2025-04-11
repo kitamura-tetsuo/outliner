@@ -1,27 +1,21 @@
 <script lang="ts">
 import { run } from "svelte/legacy";
 
-import { Tree } from "fluid-framework";
 import {
     createEventDispatcher,
-    onDestroy,
     onMount,
 } from "svelte";
 import { TreeViewManager } from "../fluid/TreeViewManager";
-import { getLogger } from "../lib/logger";
 import {
     Item,
     Items,
     Project,
 } from "../schema/app-schema";
-import { fluidClient } from "../stores/fluidStore";
-const logger = getLogger();
 import { store } from "../stores/store.svelte";
 
 interface Props {
     project: Project;
     rootItems: Items; // 最上位のアイテムリスト（ページリスト）
-    currentPageId?: string;
     currentPage?: Item | null; // 直接ページオブジェクトを受け取るように追加
     currentUser?: string;
 }
@@ -29,7 +23,6 @@ interface Props {
 let {
     project,
     rootItems,
-    currentPageId = "",
     currentPage = null,
     currentUser = "anonymous",
 }: Props = $props();
@@ -99,7 +92,7 @@ run(() => {
 
     <ul>
         {#each store?.pages?.current! as page}
-            <li class:active={page.id === currentPageId} onclick={() => selectPage(page)}>
+            <li class:active={page === store.currentPage} onclick={() => selectPage(page)}>
                 <span class="page-title">{page.text || "無題のページ"}</span>
                 <span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
             </li>

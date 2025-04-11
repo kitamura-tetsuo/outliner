@@ -11,7 +11,7 @@ import {
     Item,
     Items,
 } from "../schema/app-schema";
-import { fluidClient } from "../stores/fluidStore";
+import { fluidStore } from "../stores/fluidStore.svelte";
 import OutlinerItem from "./OutlinerItem.svelte";
 const logger = getLogger();
 
@@ -22,7 +22,7 @@ interface Props {
 
 let { pageItem, isReadOnly = false }: Props = $props();
 
-let currentUser = $state("anonymous");
+let currentUser = $derived(fluidStore.currentUser?.id ?? null);
 let items = $state([]);
 let title = $state("");
 
@@ -38,8 +38,9 @@ run(() => {
 });
 
 onMount(() => {
-    if ($fluidClient?.currentUser) {
-        currentUser = $fluidClient.currentUser.id;
+    const client = fluidStore.fluidClient;
+    if (client?.currentUser) {
+        currentUser = client.currentUser.id;
     }
 
     // アイテムの変更を監視
@@ -70,7 +71,7 @@ function handleUpdateTitle() {
 
 function handleAddItem() {
     if (pageItem && !isReadOnly) {
-        pageItem.items.addNode(currentUser);
+        pageItem.items.addNode(currentUser ?? "");
     }
 }
 

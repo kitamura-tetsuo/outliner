@@ -14,13 +14,13 @@ import {
     type TinyliciousContainerServices,
 } from "@fluidframework/tinylicious-client";
 import {
-    ConnectionState,
     SharedTree,
     type TreeView,
     type ViewableTree,
 } from "fluid-framework";
 import { v4 as uuid } from "uuid";
 import { UserManager } from "../auth/UserManager";
+import { FluidClient } from "../fluid/fluidClient";
 import {
     appTreeConfiguration,
     Items,
@@ -30,11 +30,13 @@ import {
     getDefaultContainerId,
     saveContainerIdToServer as saveFirestoreContainerIdToServer,
 } from "../services";
+import { fluidStore } from "../stores/fluidStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";
 import {
     getLogger,
     log,
-} from "./logger"; // ロガーをインポート
+} from "./logger";
+
 const logger = getLogger();
 
 // クライアントキーの型定義
@@ -50,6 +52,7 @@ type FluidInstances = [
     TreeView<typeof Project> | undefined,
     Project | undefined,
 ];
+
 // シングルトンからマップ型に変更して複数クライアントを管理
 const clientRegistry = new CustomKeyMap<FluidClientKey, FluidInstances>();
 
@@ -76,7 +79,7 @@ export const containerSchema: ContainerSchema = {
     initialObjects: {
         appData: SharedTree,
     },
-} as any satisfies ContainerSchema; // 型アサーションを使用して型互換性の問題を回避
+} as any satisfies ContainerSchema;
 
 // キー生成ロジックを一元化する関数
 function createClientKey(userId?: string, containerId?: string): FluidClientKey {
@@ -238,8 +241,6 @@ export async function getFluidClient(userId?: string, containerId?: string): Pro
             project = appData.root as Project;
         }
 
-        // SharedTreeデータを取得
-
         const result: FluidInstances = [client, container, services, appData, project];
 
         clientRegistry.set(clientKey, result as any);
@@ -322,42 +323,6 @@ export function handleConnectionError(error: any): { message: string; statusCode
     }
 
     return { message, statusCode };
-}
-
-/**
- * Fluidコンテナの接続状態を監視する
- * @param container Fluidコンテナ
- * @param onConnected 接続時のコールバック
- * @param onDisconnected 切断時のコールバック
- * @returns イベントリスナー解除用の関数
- */
-export function setupConnectionListeners(
-    container: any,
-    onConnected?: () => void,
-    onDisconnected?: () => void,
-): () => void {
-    if (!container) {
-        return () => {};
-    }
-
-    const connectedListener = () => {
-        log("fluidService", "info", "Connected to Fluid Relay service");
-        if (onConnected) onConnected();
-    };
-
-    const disconnectedListener = () => {
-        log("fluidService", "info", "Disconnected from Fluid Relay service");
-        if (onDisconnected) onDisconnected();
-    };
-
-    container.on("connected", connectedListener);
-    container.on("disconnected", disconnectedListener);
-
-    // イベントリスナー解除用の関数を返す
-    return () => {
-        container.off("connected", connectedListener);
-        container.off("disconnected", disconnectedListener);
-    };
 }
 
 // ローカルストレージのキー名
@@ -449,38 +414,6 @@ export function serializeTreeNode(node: any): any {
     return result;
 }
 
-/**
- * コンテナの接続状態を文字列で取得します
- * @param container Fluidコンテナ
- * @returns 接続状態を表す文字列
- */
-export function getConnectionStateString(container?: IFluidContainer): string {
-    if (!container) return "コンテナ未接続";
-
-    switch (container.connectionState) {
-        case ConnectionState.Connected:
-            return "接続済み";
-        case ConnectionState.Disconnected:
-            return "切断";
-        case ConnectionState.EstablishingConnection:
-            return "接続中";
-        case ConnectionState.CatchingUp:
-            return "同期中";
-        default:
-            return "不明";
-    }
-}
-
-/**
- * コンテナが接続済みかどうかを確認します
- * @param container Fluidコンテナ
- * @returns 接続済みの場合はtrue
- */
-export function isContainerConnected(container?: IFluidContainer): boolean {
-    if (!container) return false;
-    return container.connectionState !== ConnectionState.Disconnected;
-}
-
 // FluidClientの初期化状態を追跡するためのマップ
 type InitState = {
     isInitializing: boolean;
@@ -504,7 +437,7 @@ export async function initializeFluidClient(containerId?: string): Promise<any> 
  * @param containerName 作成するコンテナの名前（メタデータとして保存）
  * @returns 初期化されたFluidClientインスタンス
  */
-export async function createNewContainer(containerName: string): Promise<any> {
+export async function createNewContainer(containerName: string): Promise<FluidClient> {
     try {
         log("fluidService", "info", `Creating a new container: ${containerName}`);
 
@@ -517,8 +450,6 @@ export async function createNewContainer(containerName: string): Promise<any> {
             throw new Error("ユーザーがログインしていないため、新規コンテナを作成できません");
         }
 
-        // FluidClientのインポートと新規コンテナの作成
-        const FluidClientModule = await import("../fluid/fluidClient");
         const clientId = uuid();
 
         // Fluid Frameworkのクライアントを初期化
@@ -569,7 +500,7 @@ export async function createNewContainer(containerName: string): Promise<any> {
         };
 
         // 新しいFluidClientインスタンスを返す
-        return new FluidClientModule.FluidClient(fluidClientParams);
+        return new FluidClient(fluidClientParams);
     }
     catch (error) {
         log("fluidService", "error", "Failed to create new container:", error);
@@ -597,12 +528,9 @@ export async function loadContainer(containerId: string): Promise<any> {
  * @param containerId 既存のコンテナID（省略すると新規作成かローカルストレージから復元）
  * @returns 完全に初期化されたFluidClientインスタンス
  */
-export async function createFluidClient(containerId?: string): Promise<any> {
+export async function createFluidClient(containerId?: string): Promise<FluidClient> {
     try {
         log("fluidService", "info", "Creating new FluidClient instance...");
-
-        // FluidClient モジュールを動的にインポート
-        const FluidClientModule = await import("../fluid/fluidClient");
 
         // クライアントIDを生成
         const clientId = uuid();
@@ -655,7 +583,7 @@ export async function createFluidClient(containerId?: string): Promise<any> {
             };
 
             // 新しいFluidClientインスタンスを返す
-            return new FluidClientModule.FluidClient(fluidClientParams);
+            return new FluidClient(fluidClientParams);
         }
         else {
             // コンテナIDが取得できない場合は新規コンテナを作成
@@ -700,11 +628,88 @@ export async function createFluidClient(containerId?: string): Promise<any> {
             };
 
             // 新しいFluidClientインスタンスを返す
-            return new FluidClientModule.FluidClient(fluidClientParams);
+            return new FluidClient(fluidClientParams);
         }
     }
     catch (error) {
         log("fluidService", "error", "Failed to create FluidClient:", error);
         throw error;
     }
+}
+
+let unsubscribeAuth: (() => void) | null = null;
+
+// ユーザー認証状態の変更を監視して、FluidClientを初期化/更新する
+export async function initFluidClientWithAuth() {
+    const userManager = UserManager.getInstance();
+
+    // 認証状態の変更を監視
+    unsubscribeAuth = userManager.addEventListener(async authResult => {
+        try {
+            if (authResult) {
+                logger.info("認証成功により、Fluidクライアントを初期化します");
+
+                // FluidClientのファクトリーメソッドを使用して新しいインスタンスを作成
+                const client = await createFluidClient();
+
+                // Storeに保存
+                fluidStore.fluidClient = client;
+
+                // デバッグ用にグローバル変数に設定
+                if (typeof window !== "undefined") {
+                    (window as any).__FLUID_CLIENT__ = client;
+                }
+            }
+            else {
+                logger.info("ログアウトにより、Fluidクライアントをリセットします");
+                // ストアからの参照を削除
+                fluidStore.fluidClient = null;
+                if (typeof window !== "undefined") {
+                    delete (window as any).__FLUID_CLIENT__;
+                }
+            }
+        }
+        catch (error) {
+            logger.error("FluidClient初期化エラー:", error);
+            fluidStore.fluidClient = null;
+        }
+    });
+
+    // 既に認証済みの場合は初期化を試行
+    const currentUser = userManager.getCurrentUser();
+    if (currentUser) {
+        try {
+            // FluidClientのファクトリーメソッドを使用して新しいインスタンスを作成
+            const client = await createFluidClient();
+            fluidStore.fluidClient = client;
+
+            if (typeof window !== "undefined") {
+                (window as any).__FLUID_CLIENT__ = client;
+            }
+        }
+        catch (error) {
+            logger.error("既存ユーザーでのFluidClient初期化エラー:", error);
+        }
+    }
+}
+
+// クリーンアップ関数
+export function cleanupFluidClient() {
+    if (unsubscribeAuth) {
+        unsubscribeAuth();
+        unsubscribeAuth = null;
+    }
+
+    // 現在のクライアントをクリーンアップ
+    if (fluidStore.fluidClient?.container) {
+        try {
+            // クライアントが接続状態のイベントハンドラを持っていれば解除
+            fluidStore.fluidClient.container.off("connected", () => {});
+            fluidStore.fluidClient.container.off("disconnected", () => {});
+        }
+        catch (e) {
+            logger.warn("FluidClient接続解除中のエラー:", e);
+        }
+    }
+    fluidStore.fluidClient = null;
 }

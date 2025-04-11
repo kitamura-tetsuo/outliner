@@ -381,7 +381,7 @@ onDestroy(() => {
 });
 </script>
 
-<div class="editor-overlay" bind:this={overlayRef}>{animationPaused}
+<div class="editor-overlay" bind:this={overlayRef}>
     <!-- 選択範囲のレンダリング -->
     {#each allSelections as selection}
         {#if selection.startOffset !== selection.endOffset}

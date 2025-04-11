@@ -1,30 +1,33 @@
 <script lang="ts">
-import { preventDefault } from "svelte/legacy";
-
 import {
     createEventDispatcher,
     onMount,
 } from "svelte";
+import { preventDefault } from "svelte/legacy";
 import type { IUser } from "../fluid/fluidClient";
-import { fluidClient } from "../stores/fluidStore";
+import { getFluidClient } from "../stores/fluidStore.svelte";
 
 const dispatch = createEventDispatcher();
 
-let user: IUser = $state({
+let savedUser = $state<IUser | null>(null);
+let user = $state<IUser>({
     id: "",
     name: "",
-    email: "",
+    color: "#000000",
 });
 
 let isRegistering = $state(false);
 let errorMessage = $state("");
-let savedUser: IUser | null = $state(null);
 
 onMount(() => {
-    // 保存されたユーザー情報があれば読み込む
-    savedUser = $fluidClient?.loadSavedUser() || null;
-    if (savedUser) {
-        user = { ...savedUser };
+    // 保存されているユーザー情報を読み込む
+    const client = getFluidClient();
+    if (client) {
+        const loadedUser = client.loadSavedUser();
+        if (loadedUser) {
+            savedUser = loadedUser;
+            user = { ...loadedUser };
+        }
     }
 });
 
@@ -39,27 +42,30 @@ async function handleSubmit() {
         errorMessage = "";
 
         // FluidClientを使ってユーザー登録
-        if ($fluidClient) {
-            const registeredUser = await $fluidClient.registerUser(user);
-            dispatch("userRegistered", registeredUser);
+        const client = getFluidClient();
+        if (client && client.registerUser) {
+            const registeredUser = await client.registerUser(user);
+            savedUser = registeredUser;
+            dispatch("registered", registeredUser);
         }
         else {
-            throw new Error("FluidClient is not initialized");
+            throw new Error("FluidClient is not initialized or does not support user registration");
         }
     }
-    catch (error) {
-        console.error("User registration failed:", error);
-        errorMessage = `登録に失敗しました: ${error.message || "不明なエラー"}`;
+    catch (error: unknown) {
+        console.error("ユーザー登録エラー:", error);
+        errorMessage = `登録に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`;
     }
     finally {
         isRegistering = false;
     }
 }
 
-function continueWithSavedUser() {
-    if (savedUser && $fluidClient) {
-        $fluidClient.currentUser = savedUser;
-        dispatch("userRegistered", savedUser);
+function handleUseExisting() {
+    const client = getFluidClient();
+    if (savedUser && client) {
+        client.currentUser = savedUser;
+        dispatch("registered", savedUser);
     }
 }
 </script>
@@ -74,7 +80,7 @@ function continueWithSavedUser() {
                 <strong>{savedUser.name}</strong>
                 {#if savedUser.email}<span>({savedUser.email})</span>{/if}
             </div>
-            <button onclick={continueWithSavedUser}>この情報で続ける</button>
+            <button onclick={handleUseExisting}>この情報で続ける</button>
             <button
                 onclick={() => {
                     savedUser = null;
