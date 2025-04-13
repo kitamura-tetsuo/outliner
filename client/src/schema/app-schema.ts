@@ -71,14 +71,15 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
     /**
      * 通常のアイテム（ページ内のノード）を追加
      * @param author 作成者
+     * @param index 追加する位置のインデックス。未指定の場合は末尾に追加
      * @returns 作成されたアイテム
      */
-    public readonly addNode = (author: string) => {
+    public readonly addNode = (author: string, index?: number) => {
         const timeStamp = new Date().getTime();
 
         // 開発環境では、アイテムのインデックスをテキストに設定
         const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
-        const itemIndex = this.length;
+        const itemIndex = index ?? this.length;
         const defaultText = isDev ? `Item ${itemIndex}` : "";
 
         const newItem = new Item({
@@ -92,7 +93,19 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
             items: new Items([]), // 子アイテムのための空のリスト
         });
 
-        this.insertAtEnd(newItem);
+        if (index !== undefined) {
+            // 指定された位置に挿入
+            if (index === 0) {
+                this.insertAtStart(newItem);
+            }
+            else {
+                this.insertAt(index, newItem);
+            }
+        }
+        else {
+            // 末尾に追加
+            this.insertAtEnd(newItem);
+        }
         return newItem;
     };
 }

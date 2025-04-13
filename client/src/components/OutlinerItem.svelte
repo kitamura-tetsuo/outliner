@@ -266,9 +266,17 @@
 				return;
 			}
 		} else if (event.key === 'Enter' && !event.shiftKey) {
-			// Enter処理
 			event.preventDefault();
-			finishEditing();
+			
+			if (isPageTitle) {
+				// ページタイトルの場合、子アイテムとして追加
+				finishEditing();
+				addNewItem();
+			} else {
+				// 通常アイテムの場合、同じ階層に新しいアイテムを追加
+				finishEditing();
+				dispatch('add-sibling', { itemId: model.id });
+			}
 			return;
 		} else if (event.key === 'Escape') {
 			// Escape処理
@@ -513,7 +521,7 @@
 
 	function addNewItem() {
 		if (!isReadOnly && model.original.items && Tree.is(model.original.items, Items)) {
-			model.original.items.addNode(currentUser);
+			model.original.items.addNode(currentUser,0);
 		}
 	}
 

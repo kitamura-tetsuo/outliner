@@ -40,7 +40,7 @@ interface Props {
 
 let { pageItem, isReadOnly = false }: Props = $props();
 
-let currentUser = $derived(fluidStore.currentUser?.id ?? null);
+let currentUser = $derived(fluidStore.currentUser?.id ?? 'anonymous');
 
 // ビューストアを作成
 const viewModel = new OutlinerViewModel();
@@ -101,7 +101,10 @@ function updateItemPositions() {
     let currentTop = 8; // 最初のアイテムの上部マージン
     itemPositions = itemHeights.map((height, index) => {
         const position = currentTop;
-        currentTop += height + (index === 0 ? 24 : 8); // ページタイトルの後は24px、それ以降は8pxの間隔
+        // 最小高さ36pxを考慮
+        const effectiveHeight = Math.max(height || 28, 28);
+        // ページタイトルの後は24px、それ以降は36pxの間隔
+        currentTop += effectiveHeight;
         return position;
     });
 
@@ -116,8 +119,8 @@ function updateItemPositions() {
 function handleItemResize(event: CustomEvent) {
     const { index, height } = event.detail;
     if (typeof index === 'number' && typeof height === 'number') {
-        // 高さが実際に変更された場合のみ更新
-        if (itemHeights[index] !== height) {
+        // 高さが実際に変更され、かつ0より大きい場合のみ更新
+        if (itemHeights[index] !== height && height > 0) {
             itemHeights[index] = height;
             updateItemPositions();
 
@@ -154,14 +157,25 @@ $effect(() => {
     const itemCount = displayItems.current.length;
     if (itemHeights.length !== itemCount) {
         // 既存のアイテムの高さを保持しつつ、新しい配列を作成
-        const newHeights = new Array(itemCount).fill(0);
+        const newHeights = new Array(itemCount).fill(28); // デフォルト値として28pxを設定
         itemHeights.forEach((height, index) => {
             if (index < itemCount) {
-                newHeights[index] = height;
+                newHeights[index] = height || 28; // 0の場合は28pxを使用
             }
         });
         itemHeights = newHeights;
-        updateItemPositions();
+
+        // DOMの更新を待ってから実際の高さを取得
+        requestAnimationFrame(() => {
+            const items = document.querySelectorAll('.item-container');
+            items.forEach((item, index) => {
+                const height = item.getBoundingClientRect().height;
+                if (height > 0) {  // 実際の高さが取得できた場合のみ更新
+                    itemHeights[index] = height;
+                }
+            });
+            updateItemPositions();
+        });
     }
 });
 
@@ -172,8 +186,8 @@ onDestroy(() => {
 
 function handleAddItem() {
     if (pageItem && !isReadOnly && pageItem.items && Tree.is(pageItem.items, Items)) {
-        // アイテム追加
-        pageItem.items.addNode(currentUser ?? "");
+        // 末尾にアイテム追加
+        pageItem.items.addNode(currentUser);
     }
 }
 
@@ -443,6 +457,39 @@ function handlePageTitleClick() {
     // ページタイトルをアクティブに設定
     editorOverlayStore.setActiveItem("page-title");
 }
+
+// 同じ階層に新しいアイテムを追加するハンドラ
+function handleAddSibling(event: CustomEvent) {
+	const { itemId } = event.detail;
+	const currentIndex = displayItems.current.findIndex(item => item.model.id === itemId);
+	
+	if (currentIndex >= 0) {
+		const currentItem = displayItems.current[currentIndex];
+		const parent = Tree.parent(currentItem.model.original);
+		
+		if (parent && Tree.is(parent, Items)) {
+			// 親アイテムが存在する場合、現在のアイテムの直後に追加
+			const itemIndex = parent.indexOf(currentItem.model.original);
+			parent.addNode(currentUser, itemIndex + 1);
+		} else {
+			// ルートレベルのアイテムとして追加
+			const items = pageItem.items;
+			if (items && Tree.is(items, Items)) {
+				const itemIndex = items.indexOf(currentItem.model.original);
+				items.addNode(currentUser, itemIndex + 1);
+			}
+		}
+	}
+}
+
+// ページタイトルの子アイテムとして追加する関数を修正
+function addNewItem() {
+	const items = pageItem.items;
+	if (!isReadOnly && items && Tree.is(items, Items)) {
+		// 先頭に追加
+		items.addNode(currentUser, 0);
+	}
+}
 </script>
 
 <div class="outliner" bind:this={containerRef}>
@@ -476,6 +523,7 @@ function handlePageTitleClick() {
                     on:unindent={handleUnindent}
                     on:navigate-to-item={handleNavigateToItem}
                     on:resize={handleItemResize}
+                    on:add-sibling={handleAddSibling}
                 />
             </div>
         {/each}
@@ -551,6 +599,7 @@ function handlePageTitleClick() {
     position: absolute;
     left: calc(16px + var(--item-depth) * 24px);
     width: calc(100% - 32px - var(--item-depth) * 24px);
+    min-height: 36px; /* 最小の高さを設定 */
     transition: left 0.2s ease, top 0.2s ease;
 }
 

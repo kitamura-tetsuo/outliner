@@ -116,4 +116,7 @@ cd /workspace/client && npm run check
 
 
 commit
-git diff で変更点を確認して、コミットメッセージを書いて、コミットして。
+git diff  --staged で変更点を確認して、コミットメッセージを英語で書いて、コミットして。
+下記は無視して。
+/workspace/.specstory/history
+/workspace/chat.txt
