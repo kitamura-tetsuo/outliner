@@ -29,7 +29,7 @@ export interface DisplayItem {
  * アウトライナーのビューモデルを管理するストア
  * DOMの再生成を避けるために、アイテムの参照同一性を維持する
  */
-export class OutlinerViewStore {
+export class OutlinerViewModel {
     // IDによるビューモデルマップ（参照同一性を維持）
     private viewModels = new Map<string, OutlinerItemViewModel>();
 
@@ -103,9 +103,9 @@ export class OutlinerViewStore {
 
     /**
      * データモデルからビューモデルを更新する
-     * @param rootItems ルートアイテムのコレクション
+     * @param pageItem ルートアイテムのコレクション
      */
-    updateFromModel(rootItems: Items): void {
+    updateFromModel(pageItem: Item): void {
         // 更新中に既に処理中かどうかをチェック
         if (this._isUpdating) return;
 
@@ -113,10 +113,10 @@ export class OutlinerViewStore {
             this._isUpdating = true;
 
             // 既存のビューモデルをクリアせず、更新または追加する
-            this.ensureViewModelsExist(rootItems);
+            this.ensureViewModelsItemExist(pageItem);
 
             // 表示順序と深度を再計算
-            this.recalculateOrderAndDepth(rootItems);
+            this.recalculateOrderAndDepthItem(pageItem);
 
             logger.info("View models updated, count:", this.visibleOrder.length);
         }
@@ -128,44 +128,46 @@ export class OutlinerViewStore {
     /**
      * アイテムのビューモデルが存在することを確認し、必要に応じて作成または更新する
      */
-    private ensureViewModelsExist(items: Items, parentId: string | null = null): void {
+    private ensureViewModelsItemsExist(items: Items, parentId: string | null = null): void {
         if (!items) return;
 
         for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            if (!Tree.is(item, Item) || !item.id) continue;
-
-            // 既存のビューモデルを更新または新規作成
-            const existingViewModel = this.viewModels.get(item.id);
-            if (existingViewModel) {
-                // プロパティを更新（参照は維持）
-                existingViewModel.text = item.text;
-                existingViewModel.votes = [...item.votes];
-                existingViewModel.lastChanged = item.lastChanged;
-            }
-            else {
-                // 新しいビューモデルを作成
-                this.viewModels.set(item.id, {
-                    id: item.id,
-                    original: item,
-                    text: item.text,
-                    votes: [...item.votes],
-                    author: item.author,
-                    created: item.created,
-                    lastChanged: item.lastChanged,
-                });
-            }
-
-            // 親の設定
-            this.parentMap.set(item.id, parentId);
-
-            // 子アイテムも処理
-            if (item.items && Tree.is(item.items, Items)) {
-                this.ensureViewModelsExist(item.items, item.id);
-            }
+            this.ensureViewModelsItemExist(items[i], parentId);
         }
     }
 
+    private ensureViewModelsItemExist(item: Item, parentId: string | null = null): void {
+        if (!Tree.is(item, Item) || !item.id) return;
+
+        // 既存のビューモデルを更新または新規作成
+        const existingViewModel = this.viewModels.get(item.id);
+        if (existingViewModel) {
+            // プロパティを更新（参照は維持）
+            existingViewModel.text = item.text;
+            existingViewModel.votes = [...item.votes];
+            existingViewModel.lastChanged = item.lastChanged;
+        }
+        else {
+            // 新しいビューモデルを作成
+            this.viewModels.set(item.id, {
+                id: item.id,
+                original: item,
+                text: item.text,
+                votes: [...item.votes],
+                author: item.author,
+                created: item.created,
+                lastChanged: item.lastChanged,
+            });
+        }
+
+        // 親の設定
+        this.parentMap.set(item.id, parentId);
+
+        // 子アイテムも処理
+        if (item.items && Tree.is(item.items, Items)) {
+            this.ensureViewModelsItemsExist(item.items, item.id);
+        }
+    }
     /**
      * 表示順序と深度を再計算する
      */
@@ -178,19 +180,28 @@ export class OutlinerViewStore {
         }
 
         for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            if (!Tree.is(item, Item) || !item.id) continue;
+            this.recalculateOrderAndDepthItem(items[i], depth, parentId);
+        }
+    }
+    /**
+     * 表示順序と深度を再計算する
+     */
+    private recalculateOrderAndDepthItem(item: Item, depth: number = 0, parentId: string | null = null): void {
+        // 表示順序と深度を最初に初期化
+        if (depth === 0) {
+            this.visibleOrder = [];
+        }
+        if (!Tree.is(item, Item) || !item.id) return;
 
-            // 表示順序に追加
-            this.visibleOrder.push(item.id);
+        // 表示順序に追加
+        this.visibleOrder.push(item.id);
 
-            // 深度を設定
-            this.depthMap.set(item.id, depth);
+        // 深度を設定
+        this.depthMap.set(item.id, depth);
 
-            // 子アイテムを処理（折りたたまれていない場合のみ）
-            if (item.items && Tree.is(item.items, Items) && !this.collapsedMap.get(item.id)) {
-                this.recalculateOrderAndDepth(item.items, depth + 1, item.id);
-            }
+        // 子アイテムを処理（折りたたまれていない場合のみ）
+        if (item.items && Tree.is(item.items, Items) && !this.collapsedMap.get(item.id)) {
+            this.recalculateOrderAndDepth(item.items, depth + 1, item.id);
         }
     }
 

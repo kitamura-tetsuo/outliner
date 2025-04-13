@@ -4,7 +4,7 @@
 	import { getLogger } from '../lib/logger';
 	import { Items } from '../schema/app-schema';
 	import { editorOverlayStore } from '../stores/EditorOverlayStore';
-	import type { OutlinerItemViewModel } from '../stores/OutlinerViewStore';
+	import type { OutlinerItemViewModel } from '../stores/OutlinerViewModel';
 	import { TreeSubscriber } from "../stores/TreeSubscriber";
 
 	const logger = getLogger();
@@ -965,7 +965,7 @@
 				class:editing={isEditing}
 			>
 				{#if text.current}
-					<span class="item-text">{text.current}</span>
+					<span class="item-text" class:title-text={isPageTitle}>{text.current}</span>
 				{:else}
 					<span class="empty-text">{isPageTitle ? '無題のページ' : '空白のノート'}</span>
 				{/if}
@@ -1136,5 +1136,21 @@
     
 	.cursor, .selection {
 		display: none;
+	}
+
+	.title-text {
+		font-size: 1.5em;
+		font-weight: bold;
+		color: #333;
+	}
+
+	.page-title {
+		margin-bottom: 1.5em;
+		border-bottom: 1px solid #eee;
+		padding-bottom: 0.5em;
+	}
+
+	.page-title-content {
+		font-size: 1.2em;
 	}
 </style> 

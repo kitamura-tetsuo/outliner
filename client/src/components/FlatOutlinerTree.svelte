@@ -11,8 +11,8 @@ import {
 } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore";
 import { fluidStore } from "../stores/fluidStore.svelte";
-import type { DisplayItem } from "../stores/OutlinerViewStore";
-import { OutlinerViewStore } from "../stores/OutlinerViewStore";
+import type { DisplayItem } from "../stores/OutlinerViewModel";
+import { OutlinerViewModel } from "../stores/OutlinerViewModel";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
 import EditorOverlay from "./EditorOverlay.svelte";
 import FlatOutlinerItem from "./FlatOutlinerItem.svelte";
@@ -43,7 +43,7 @@ let { pageItem, isReadOnly = false }: Props = $props();
 let currentUser = $derived(fluidStore.currentUser?.id ?? null);
 
 // ビューストアを作成
-const viewStore = new OutlinerViewStore();
+const viewModel = new OutlinerViewModel();
 
 // コンテナ要素への参照
 let containerRef: HTMLDivElement;
@@ -73,8 +73,8 @@ const displayItems = new TreeSubscriber<Items, DisplayItem[]>(
     pageItem.items as Items,
     "treeChanged",
     () => {
-        viewStore.updateFromModel(pageItem.items as Items);
-        return viewStore.getVisibleItems();
+        viewModel.updateFromModel(pageItem);
+        return viewModel.getVisibleItems();
     },
 );
 
@@ -102,7 +102,7 @@ onMount(() => {
 
 onDestroy(() => {
     // リソースを解放
-    viewStore.dispose();
+    viewModel.dispose();
 });
 
 function handleAddItem() {
@@ -116,7 +116,7 @@ function handleToggleCollapse(event: CustomEvent) {
     const { itemId } = event.detail;
 
     // 折りたたみ状態を変更
-    viewStore.toggleCollapsed(itemId);
+    viewModel.toggleCollapsed(itemId);
 }
 
 function handleIndent(event: CustomEvent) {
@@ -127,7 +127,7 @@ function handleIndent(event: CustomEvent) {
     const { itemId } = event.detail;
 
     // 元のアイテムを取得
-    const itemViewModel = viewStore.getViewModel(itemId);
+    const itemViewModel = viewModel.getViewModel(itemId);
     if (!itemViewModel) return;
 
     const item = itemViewModel.original;
@@ -179,7 +179,7 @@ function handleUnindent(event: CustomEvent) {
     const { itemId } = event.detail;
 
     // 元のアイテムを取得
-    const itemViewModel = viewStore.getViewModel(itemId);
+    const itemViewModel = viewModel.getViewModel(itemId);
     if (!itemViewModel) return;
 
     const item = itemViewModel.original;
@@ -235,39 +235,21 @@ function handleNavigateToItem(event: CustomEvent) {
         );
     }
 
-    // 左右方向の処理 (ページタイトルは特別処理)
+    // 左右方向の処理
     if (direction === "left") {
-        // 左方向の移動（前のアイテムの末尾に移動）
-        // ページタイトルの場合は何もしない
-        if (fromItemId === "page-title") {
-            // ページタイトルでは左キーを処理しない（先頭に移動することはできる）
-            focusItemWithPosition("page-title", 0);
-            return;
-        }
-
         let currentIndex = displayItems.current.findIndex(item => item.model.id === fromItemId);
-        if (currentIndex <= 0) {
-            // 最初のアイテムの場合はページタイトルに移動
-            focusItemWithPosition("page-title", Number.MAX_SAFE_INTEGER); // 末尾を指定
-            return;
-        }
-        else {
+        if (currentIndex > 0) {
             // 前のアイテムに移動
             const targetItemId = displayItems.current[currentIndex - 1].model.id;
             focusItemWithPosition(targetItemId, Number.MAX_SAFE_INTEGER); // 末尾を指定
-            return;
         }
+        else {
+            // 最初のアイテムの場合は現在のアイテムにとどまる
+            focusItemWithPosition(fromItemId, 0);
+        }
+        return;
     }
     else if (direction === "right") {
-        // 右方向の移動（次のアイテムの先頭に移動）
-        if (fromItemId === "page-title") {
-            // ページタイトルから右に移動する場合は最初のアイテムに移動
-            if (displayItems.current.length > 0) {
-                focusItemWithPosition(displayItems.current[0].model.id, 0); // 先頭を指定
-            }
-            return;
-        }
-
         let currentIndex = displayItems.current.findIndex(item => item.model.id === fromItemId);
         if (currentIndex >= 0 && currentIndex < displayItems.current.length - 1) {
             // 次のアイテムに移動
@@ -280,50 +262,22 @@ function handleNavigateToItem(event: CustomEvent) {
         return;
     }
 
-    // 上下方向の境界ケース処理
-    if (fromItemId === "page-title" && direction === "up") {
-        // タイトルから上へ移動しようとした場合: タイトルの先頭にカーソル移動
-        focusItemWithPosition("page-title", 0);
+    // 上下方向の処理
+    let currentIndex = displayItems.current.findIndex(item => item.model.id === fromItemId);
+
+    // 最初のアイテムで上に移動しようとした場合
+    if (currentIndex === 0 && direction === "up") {
+        focusItemWithPosition(fromItemId, 0); // 現在のアイテムにとどまる
         return;
     }
-    else if (fromItemId === "page-title" && direction === "down" && displayItems.current.length > 0) {
-        // ページタイトルから下に移動する場合は最初のアイテムにフォーカス
-        const targetItemId = displayItems.current[0].model.id;
-        focusItemWithPosition(targetItemId, cursorScreenX);
-        return;
-    }
-    else if (
-        fromItemId !== "page-title" && direction === "up" &&
-        displayItems.current.findIndex(item => item.model.id === fromItemId) === 0
-    ) {
-        // 最初のアイテムから上に移動する場合はページタイトルにフォーカス
-        focusItemWithPosition("page-title", cursorScreenX);
-        return;
-    }
-    else if (
-        direction === "down" &&
-        displayItems.current.findIndex(item => item.model.id === fromItemId) === displayItems.current.length - 1
-    ) {
-        // 最後のアイテムから下へ移動しようとした場合: 最後のアイテムの末尾にカーソル移動
+
+    // 最後のアイテムから下へ移動しようとした場合
+    if (direction === "down" && currentIndex === displayItems.current.length - 1) {
         focusItemWithPosition(fromItemId, Number.MAX_SAFE_INTEGER);
         return;
     }
 
     // 通常のアイテム間ナビゲーション
-    let currentIndex = -1;
-
-    if (fromItemId === "page-title") {
-        currentIndex = -1; // ページタイトルは-1として扱う
-    }
-    else {
-        currentIndex = displayItems.current.findIndex(item => item.model.id === fromItemId);
-    }
-
-    if (currentIndex === -1 && fromItemId !== "page-title") {
-        console.error(`Could not find item with ID: ${fromItemId} in displayItems`);
-        return;
-    }
-
     let targetIndex = -1;
     if (direction === "up") {
         targetIndex = currentIndex - 1;
@@ -342,10 +296,6 @@ function handleNavigateToItem(event: CustomEvent) {
     if (targetIndex >= 0 && targetIndex < displayItems.current.length) {
         const targetItemId = displayItems.current[targetIndex].model.id;
         focusItemWithPosition(targetItemId, cursorScreenX);
-    }
-    // ターゲットがページタイトルの場合
-    else if (targetIndex === -1 && direction === "up") {
-        focusItemWithPosition("page-title", cursorScreenX);
     }
 }
 
@@ -440,21 +390,6 @@ function handlePageTitleClick() {
     </div>
 
     <div class="tree-container">
-        <!-- ページタイトル（特別なアイテムとして扱う） -->
-        <div class="item-container title-container" style="--item-depth: 0; --item-index: -1">
-            <FlatOutlinerItem
-                model={pageTitleViewModel}
-                depth={0}
-                currentUser={currentUser}
-                isReadOnly={isReadOnly}
-                isCollapsed={false}
-                hasChildren={childCount > 0}
-                on:toggle-collapse={handleToggleCollapse}
-                on:navigate-to-item={handleNavigateToItem}
-                isPageTitle={true}
-            />
-        </div>
-
         <!-- フラット表示の各アイテム（絶対位置配置） -->
         {#each displayItems.current as display, index (display.model.id)}
             <div
@@ -466,8 +401,9 @@ function handlePageTitleClick() {
                     depth={display.depth}
                     currentUser={currentUser}
                     isReadOnly={isReadOnly}
-                    isCollapsed={viewStore.isCollapsed(display.model.id)}
-                    hasChildren={viewStore.hasChildren(display.model.id)}
+                    isCollapsed={viewModel.isCollapsed(display.model.id)}
+                    hasChildren={viewModel.hasChildren(display.model.id)}
+                    isPageTitle={index === 0}
                     on:toggle-collapse={handleToggleCollapse}
                     on:indent={handleIndent}
                     on:unindent={handleUnindent}

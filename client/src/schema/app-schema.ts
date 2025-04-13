@@ -20,7 +20,7 @@ const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120003");
 // アイテム定義をシンプル化
 export class Item extends sf.objectRecursive("Item", {
     id: sf.string,
-    text: sf.string, // テキスト内容 (ページのタイトルまたは通常のテキスト)
+    text: sf.string, // テキスト内容
     author: sf.string,
     votes: sf.array(sf.string),
     created: sf.number,

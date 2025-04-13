@@ -42,18 +42,11 @@ function handleCreatePage() {
     const newPage = TreeViewManager.addPage(project, pageTitle, currentUser);
     pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : "";
 
-    // 新しいページを選択（オブジェクト直接渡し）
-    dispatch("select", {
-        page: newPage,
-        pageId: newPage.id,
-    });
+    store.currentPage = newPage;
 }
 
 function selectPage(page: Item) {
-    dispatch("select", {
-        page: page,
-        pageId: page.id,
-    });
+    store.currentPage = page;
 }
 
 // // ページリストの更新処理

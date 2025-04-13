@@ -190,7 +190,6 @@ function toggleDebugPanel() {
                     <div class="sidebar">
                         <PageList
                             currentUser={fluidStore.currentUser?.id || "anonymous"}
-                            on:select={handlePageSelect}
                             project={store.project}
                             rootItems={store.pages?.current}
                         />
