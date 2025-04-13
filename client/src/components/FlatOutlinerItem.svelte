@@ -18,6 +18,7 @@
 		isCollapsed?: boolean;
 		hasChildren?: boolean;
 		isPageTitle?: boolean; // ページタイトルかどうか
+		index: number; // 追加：アイテムのインデックス
 	}
 
 	let { 
@@ -27,7 +28,8 @@
 		isReadOnly = false,
 		isCollapsed = false,
 		hasChildren = false,
-		isPageTitle = false
+		isPageTitle = false,
+		index
 	}: Props = $props();
 
 	const dispatch = createEventDispatcher();
@@ -57,6 +59,7 @@
 	let displayRef: HTMLDivElement;
 	// アイテム全体のDOMエレメントのref
 	let itemRef: HTMLDivElement;
+	let lastHeight = 0;
 
 	function getClickPosition(event: MouseEvent, content: string): number {
 		const element = (event.currentTarget || event.target) as HTMLElement;
@@ -924,6 +927,35 @@
 			});
 		}
 	}
+
+	// ResizeObserverを使用して要素の高さ変更を監視
+	onMount(() => {
+		const resizeObserver = new ResizeObserver(entries => {
+			for (const entry of entries) {
+				const newHeight = entry.contentRect.height;
+				if (newHeight !== lastHeight) {
+					lastHeight = newHeight;
+					dispatch('resize', { 
+						index,
+						height: newHeight
+					});
+				}
+			}
+		});
+
+		if (itemRef) {
+			resizeObserver.observe(itemRef);
+			// 初期高さを通知
+			dispatch('resize', {
+				index,
+				height: itemRef.getBoundingClientRect().height
+			});
+		}
+
+		return () => {
+			resizeObserver.disconnect();
+		};
+	});
 </script>
 
 <div

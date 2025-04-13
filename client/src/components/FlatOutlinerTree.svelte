@@ -1,13 +1,13 @@
 <script lang="ts">
 import { Tree } from "fluid-framework";
 import {
-    onDestroy,
-    onMount,
+	onDestroy,
+	onMount,
 } from "svelte";
 import { getLogger } from "../lib/logger";
 import {
-    Item,
-    Items,
+	Item,
+	Items,
 } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore";
 import { fluidStore } from "../stores/fluidStore.svelte";
@@ -51,6 +51,9 @@ let containerRef: HTMLDivElement;
 // インデントオフセット（ピクセル単位）
 const INDENT_SIZE = 24;
 
+let itemHeights = $state<number[]>([]);
+let itemPositions = $state<number[]>([]);
+
 // タイトルをTreeSubscriberで監視
 const titleSubscriber = new TreeSubscriber<Item, string>(
     pageItem,
@@ -93,10 +96,72 @@ let pageTitleViewModel = $state({
     children: [],
 });
 
+// アイテムの高さが変更されたときに位置を再計算
+function updateItemPositions() {
+    let currentTop = 8; // 最初のアイテムの上部マージン
+    itemPositions = itemHeights.map((height, index) => {
+        const position = currentTop;
+        currentTop += height + (index === 0 ? 24 : 8); // ページタイトルの後は24px、それ以降は8pxの間隔
+        return position;
+    });
+
+    // デバッグ用のログ
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log("Heights:", itemHeights);
+        console.log("Positions:", itemPositions);
+    }
+}
+
+// アイテムの高さが変更されたときのハンドラ
+function handleItemResize(event: CustomEvent) {
+    const { index, height } = event.detail;
+    if (typeof index === 'number' && typeof height === 'number') {
+        // 高さが実際に変更された場合のみ更新
+        if (itemHeights[index] !== height) {
+            itemHeights[index] = height;
+            updateItemPositions();
+
+            // デバッグ用のログ
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Item ${index} height changed to ${height}px`);
+            }
+        }
+    }
+}
+
 onMount(() => {
     const client = fluidStore.fluidClient;
     if (client?.currentUser) {
         currentUser = client.currentUser.id;
+    }
+
+    // 初期状態でアイテムの高さを初期化
+    itemHeights = new Array(displayItems.current.length).fill(0);
+
+    // 各アイテムの初期高さを取得して設定
+    requestAnimationFrame(() => {
+        const items = document.querySelectorAll('.item-container');
+        items.forEach((item, index) => {
+            const height = item.getBoundingClientRect().height;
+            itemHeights[index] = height;
+        });
+        updateItemPositions();
+    });
+});
+
+// displayItemsが変更されたときにitemHeightsを更新
+$effect(() => {
+    const itemCount = displayItems.current.length;
+    if (itemHeights.length !== itemCount) {
+        // 既存のアイテムの高さを保持しつつ、新しい配列を作成
+        const newHeights = new Array(itemCount).fill(0);
+        itemHeights.forEach((height, index) => {
+            if (index < itemCount) {
+                newHeights[index] = height;
+            }
+        });
+        itemHeights = newHeights;
+        updateItemPositions();
     }
 });
 
@@ -394,7 +459,8 @@ function handlePageTitleClick() {
         {#each displayItems.current as display, index (display.model.id)}
             <div
                 class="item-container"
-                style="--item-depth: {display.depth}; --item-index: {index}"
+                style="--item-depth: {display.depth}; top: {itemPositions[index] ?? 0}px"
+                bind:clientHeight={itemHeights[index]}
             >
                 <FlatOutlinerItem
                     model={display.model}
@@ -404,10 +470,12 @@ function handlePageTitleClick() {
                     isCollapsed={viewModel.isCollapsed(display.model.id)}
                     hasChildren={viewModel.hasChildren(display.model.id)}
                     isPageTitle={index === 0}
+                    {index}
                     on:toggle-collapse={handleToggleCollapse}
                     on:indent={handleIndent}
                     on:unindent={handleUnindent}
                     on:navigate-to-item={handleNavigateToItem}
+                    on:resize={handleItemResize}
                 />
             </div>
         {/each}
@@ -475,10 +543,9 @@ function handlePageTitleClick() {
 
 .item-container {
     position: absolute;
-    left: calc(16px + var(--item-depth) * 24px); /* インデントに応じてX座標を計算 */
-    top: calc(8px + var(--item-index) * 32px); /* 各アイテムの高さを32pxと仮定 */
-    width: calc(100% - 32px - var(--item-depth) * 24px); /* 幅を調整 */
-    transition: left 0.2s ease, top 0.2s ease; /* 位置変更時のアニメーション */
+    left: calc(16px + var(--item-depth) * 24px);
+    width: calc(100% - 32px - var(--item-depth) * 24px);
+    transition: left 0.2s ease, top 0.2s ease;
 }
 
 .empty-state {
