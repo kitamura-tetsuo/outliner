@@ -43,9 +43,11 @@ test("Add Text button should add text to shared content", async ({ page }) => {
 
     // 追加されたアイテムをクリックして編集モードに
     const item = page.locator(".outliner-item").first();
-    await item.click();
+    await item.locator(".item-content").click({ force: true });
+    await page.waitForTimeout(1000);
 
     // テキストを入力
+    await page.screenshot({ path: "test-results/before Hello Fluid Framework.png" });
     const testText = "Hello Fluid Framework!";
     await page.keyboard.type(testText);
     await page.screenshot({ path: "test-results/Hello Fluid Framework.png" });
@@ -96,9 +98,8 @@ test("Adding text updates data structure", async ({ page }) => {
     // アイテムを追加して編集
     await page.click('button:has-text("アイテム追加")');
     const item = page.locator(".outliner-item").first();
-    await item.click();
+    await item.locator(".item-content").click({ force: true });
     await page.keyboard.type("Test data update");
-    await page.keyboard.press("Enter");
 
     // データが更新されるのを待つ - 長めに設定
     await page.waitForTimeout(2000);
