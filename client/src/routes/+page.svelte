@@ -8,7 +8,6 @@ import { UserManager } from "../auth/UserManager";
 import AuthComponent from "../components/AuthComponent.svelte";
 import ContainerSelector from "../components/ContainerSelector.svelte";
 import EnvDebugger from "../components/EnvDebugger.svelte";
-import FlatOutlinerTree from "../components/FlatOutlinerTree.svelte";
 import MissingEnvWarning from "../components/MissingEnvWarning.svelte";
 import NetworkErrorAlert from "../components/NetworkErrorAlert.svelte";
 import PageList from "../components/PageList.svelte";
@@ -16,6 +15,7 @@ import { getDebugConfig } from "../lib/env";
 import { getLogger } from "../lib/logger";
 import { fluidStore } from "../stores/fluidStore.svelte";
 
+import OutlinerTree from "../components/OutlinerTree.svelte";
 import {
     createFluidClient,
     loadContainer,
@@ -199,7 +199,7 @@ function toggleDebugPanel() {
                     <div class="main-content">
                         {#if store.currentPage}
                             <div class="page-container">
-                                <FlatOutlinerTree pageItem={store.currentPage} isReadOnly={false} />
+                                <OutlinerTree pageItem={store.currentPage} isReadOnly={false} />
                             </div>
                         {:else}
                             <div class="empty-state">
