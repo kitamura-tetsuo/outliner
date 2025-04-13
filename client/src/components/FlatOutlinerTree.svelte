@@ -502,6 +502,9 @@ function handlePageTitleClick() {
     border-radius: 6px;
     overflow: hidden;
     margin-bottom: 20px;
+    height: calc(100vh - 40px); /* ブラウザの高さから余白を引いた値 */
+    display: flex;
+    flex-direction: column;
 }
 
 .toolbar {
@@ -511,6 +514,7 @@ function handlePageTitleClick() {
     padding: 8px 16px;
     background: #f5f5f5;
     border-bottom: 1px solid #ddd;
+    flex-shrink: 0; /* ツールバーは縮まないように */
 }
 
 .title-container {
@@ -539,6 +543,8 @@ function handlePageTitleClick() {
     padding: 8px 16px;
     position: relative; /* 子要素の絶対位置の基準点 */
     min-height: 100px; /* 最小高さを設定 */
+    flex: 1; /* 残りの空間を全て使用 */
+    overflow-y: auto; /* スクロール可能に */
 }
 
 .item-container {
