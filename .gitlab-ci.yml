@@ -1,0 +1,76 @@
+image: mcr.microsoft.com/playwright:v1.51.0-noble
+
+variables:
+  NODE_VERSION: '22'
+  # Server Ports
+  TEST_SERVER_PORT: '7080'
+  TEST_API_PORT: '3000'
+  TEST_FLUID_PORT: '7070'
+
+  # Firebase Emulator
+  FIREBASE_EMULATOR_HUB: '4400'
+  FIREBASE_AUTH_EMULATOR_PORT: '9099'
+  FIREBASE_FIRESTORE_EMULATOR_PORT: '8080'
+
+  # Client Environment Variables
+  VITE_USE_FIREBASE_AUTH: 'true'
+  VITE_USE_API_AUTH: 'true'
+  VITE_USE_TINYLICIOUS: 'true'
+  VITE_FORCE_AZURE: 'false'
+  VITE_HOST: '0.0.0.0'
+  VITE_PORT: '7070'
+  VITE_API_BASE_URL: 'http://localhost:${TEST_API_PORT}'
+  VITE_API_SERVER_URL: 'http://localhost:${TEST_API_PORT}'
+  VITE_TINYLICIOUS_ENDPOINT: 'http://localhost:${TEST_FLUID_PORT}'
+
+  # テスト用ダミー設定
+  VITE_FIREBASE_API_KEY: 'demo-test-key'
+  VITE_FIREBASE_PROJECT_ID: 'demo-test'
+  VITE_FIREBASE_AUTH_DOMAIN: 'demo-test.firebaseapp.com'
+  VITE_DEBUG_USER_ID: 'test-user'
+  VITE_DEBUG_USER_NAME: 'Test User'
+  VITE_FLUID_TOKEN_KEY: 'test-key'
+
+  # Server Environment Variables
+  PORT: '${TEST_API_PORT}'
+  CORS_ORIGIN: 'http://localhost:7070,http://localhost:7080'
+  NODE_ENV: 'test'
+  SESSION_SECRET: 'test-session-secret'
+
+stages:
+  - test
+
+e2e-tests:
+  stage: test
+  before_script:
+    # Firebase CLIのインストール
+    - npm install -g firebase-tools
+    # Tinyliciousのインストール
+    - npm install -g @fluidframework/tinylicious
+    # サーバーサイドの準備
+    - cd server
+    - npm ci
+    - npm run build
+    # Firebase Emulatorの起動
+    - firebase emulators:start --only auth,firestore --project demo-test --hub-port ${FIREBASE_EMULATOR_HUB} --auth-port ${FIREBASE_AUTH_EMULATOR_PORT} --firestore-port ${FIREBASE_FIRESTORE_EMULATOR_PORT} > logs/firebase-emulator.log 2>&1 &
+    # Tinyliciousサーバーの起動
+    - tinylicious > logs/tinylicious.log 2>&1 &
+    # APIサーバーの起動
+    - npm run start:test:api > logs/test-auth-service-tee.log 2>&1 &
+    # SvelteKitサーバーの起動
+    - npm run start:test:server > logs/test-svelte-kit.log 2>&1 &
+    # サーバーの起動待機
+    - sleep 30
+    # クライアントの準備
+    - cd ../client
+    - npm ci
+    - npx playwright install --with-deps chromium
+  script:
+    - npm run test:e2e:xvfb
+  artifacts:
+    when: on_failure
+    paths:
+      - client/test-results/
+      - client/logs/
+      - server/logs/
+    expire_in: 1 week
