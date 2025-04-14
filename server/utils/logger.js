@@ -144,6 +144,9 @@ async function rotateLogFile(logFilePath, maxBackups = 2) {
  * @returns {Promise<boolean>} - 成功すればtrue
  */
 async function rotateClientLogs(maxBackups = 2) {
+    if (process.env.CI) {
+        maxBackups = Number.MAX_SAFE_INTEGER;
+    }
     return rotateLogFile(clientLogPath, maxBackups);
 }
 
@@ -153,6 +156,9 @@ async function rotateClientLogs(maxBackups = 2) {
  * @returns {Promise<boolean>} - 成功すればtrue
  */
 async function rotateServerLogs(maxBackups = 2) {
+    if (process.env.CI) {
+        maxBackups = Number.MAX_SAFE_INTEGER;
+    }
     return rotateLogFile(serverLogPath, maxBackups);
 }
 
