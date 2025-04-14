@@ -163,7 +163,7 @@ async function start() {
 
         console.log("\n=====================================================");
         console.log("アプリケーションが正常に起動しました！");
-        console.log(`バックエンドサーバー: http://192.168.50.16:${port}`);
+        console.log(`バックエンドサーバー: http://192.168.50.13:${port}`);
         if (ngrokUrl) {
             console.log(`パブリックURL: ${ngrokUrl}`);
         }

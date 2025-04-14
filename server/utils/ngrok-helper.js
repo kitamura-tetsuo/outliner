@@ -13,7 +13,7 @@ const envPath = path.join(__dirname, "..", ".env");
 async function getNgrokPublicUrl() {
     try {
         // ngrokのAPIからトンネル情報を取得
-        const response = await axios.get("http://192.168.50.16:4040/api/tunnels");
+        const response = await axios.get("http://192.168.50.13:4040/api/tunnels");
         const tunnels = response.data.tunnels;
 
         // HTTPS URLを探す

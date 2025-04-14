@@ -32,12 +32,12 @@ export default defineConfig(({ mode }) => {
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,
-            host: process.env.VITE_HOST || "192.168.50.16",
+            host: process.env.VITE_HOST || "192.168.50.13",
         },
         preview: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,
-            host: process.env.VITE_HOST || "192.168.50.16",
+            host: process.env.VITE_HOST || "192.168.50.13",
         },
         build: {
             sourcemap: true,

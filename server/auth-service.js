@@ -195,7 +195,7 @@ const app = express();
 // CORS設定を強化
 app.use(cors({
     origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",").map(origin => origin.trim())
-        : ["http://192.168.50.16:7070"], // カンマ区切りで複数オリジンをサポート
+        : ["http://192.168.50.13:7070"], // カンマ区切りで複数オリジンをサポート
     methods: ["GET", "POST", "OPTIONS"], // OPTIONSメソッドを追加(プリフライトリクエスト対応)
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"], // 許可するヘッダーを明示

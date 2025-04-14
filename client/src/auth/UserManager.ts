@@ -56,8 +56,8 @@ export class UserManager {
         measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-FKSFRCT7GR",
     };
 
-    private apiBaseUrl = getEnv("VITE_API_BASE_URL", "http://localhost:7071").replace("localhost", "192.168.50.16");
-    private apiServerUrl = getEnv("VITE_API_SERVER_URL", "http://localhost:7071").replace("localhost", "192.168.50.16");
+    private apiBaseUrl = getEnv("VITE_API_BASE_URL", "http://localhost:7071").replace("localhost", "192.168.50.13");
+    private apiServerUrl = getEnv("VITE_API_SERVER_URL", "http://localhost:7071").replace("localhost", "192.168.50.13");
     private app = initializeApp(this.firebaseConfig);
     private auth = getAuth(this.app);
 
@@ -147,7 +147,7 @@ export class UserManager {
             const emulatorHost = import.meta.env.VITE_AUTH_EMULATOR_HOST || "firebase-emulator";
             const emulatorPort = parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT || "59099", 10);
 
-            const host = isBrowser ? emulatorHost : "192.168.50.16";
+            const host = isBrowser ? emulatorHost : "192.168.50.13";
             const port = emulatorPort;
 
             logger.info(`Attempting to connect to Firebase Auth emulator at ${host}:${port}`);
@@ -189,8 +189,8 @@ export class UserManager {
 
         const emulatorConfigs = [
             // Firestoreが接続している設定を最優先
-            { host: firestoreHost || "192.168.50.16", port: 59099 },
-            { host: "192.168.50.16", port: 59099 },
+            { host: firestoreHost || "192.168.50.13", port: 59099 },
+            { host: "192.168.50.13", port: 59099 },
             // 以下は元の設定
             { host: "firebase-emulator", port: 59099 },
             { host: "localhost", port: 59099 },
@@ -327,12 +327,12 @@ export class UserManager {
             // APIサーバーを通じて最後にユーザー作成を試みる
             try {
                 logger.info("Attempting to create test user via API server");
-                const result = await this._createTestUser("192.168.50.16", 59099);
+                const result = await this._createTestUser("192.168.50.13", 59099);
 
                 if (result) {
                     // エミュレータの設定を試みる
                     try {
-                        connectAuthEmulator(this.auth, "http://192.168.50.16:59099", { disableWarnings: true });
+                        connectAuthEmulator(this.auth, "http://192.168.50.13:59099", { disableWarnings: true });
                     }
                     catch (emulatorError) {
                         logger.warn("Failed to set up emulator, but continuing with login attempt", emulatorError);
@@ -359,8 +359,8 @@ export class UserManager {
         logger.info(`Attempting to create test user in emulator at ${host}:${port}`);
 
         try {
-            // ホスト名がlocalhostやfirebase-emulatorの場合は192.168.50.16に置換
-            const emulatorHost = host === "localhost" || host === "firebase-emulator" ? "192.168.50.16" : host;
+            // ホスト名がlocalhostやfirebase-emulatorの場合は192.168.50.13に置換
+            const emulatorHost = host === "localhost" || host === "firebase-emulator" ? "192.168.50.13" : host;
 
             // APIサーバーを通じてテストユーザーを作成
             const response = await fetch(`${this.apiBaseUrl}/api/create-test-user`, {

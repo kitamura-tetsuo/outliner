@@ -26,8 +26,9 @@ USER node
 # Install Playwright
 RUN npx playwright install --with-deps
 RUN npm install -g dotenv-cli
+RUN curl -fsSL https://dprint.dev/install.sh | sh
 
 # Any additional customizations can go here
-
+    
 # Switch back to root for permissions compatibility with VSCode
 USER root

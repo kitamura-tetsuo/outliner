@@ -30,7 +30,7 @@ export default defineConfig({
 
     use: {
         // テスト用ポートを明示的に設定
-        baseURL: `http://192.168.50.16:${TEST_PORT}`,
+        baseURL: `http://192.168.50.13:${TEST_PORT}`,
         trace: "on-first-retry",
     },
 
@@ -50,7 +50,7 @@ export default defineConfig({
     ],
     // webServer: {
     //     command: `npx dotenv -e .env.test -- npm run dev -- --host 0.0.0.0 --port ${TEST_PORT}`,
-    //     url: `http://192.168.50.16:${TEST_PORT}`,
+    //     url: `http://192.168.50.13:${TEST_PORT}`,
     //     reuseExistingServer: !process.env.CI,
     //     env: {
     //         NODE_ENV: "test",
