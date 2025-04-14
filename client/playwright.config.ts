@@ -13,6 +13,8 @@ const __dirname = path.dirname(__filename);
 const TEST_PORT = "7080";
 // Tinylicious サーバーのポートを定義（PORT環境変数で設定されます）
 const TINYLICIOUS_PORT = "7082";
+// ホストを定義
+const VITE_HOST = "localhost";
 
 export default defineConfig({
     testDir: "./e2e",
@@ -30,7 +32,7 @@ export default defineConfig({
 
     use: {
         // テスト用ポートを明示的に設定
-        baseURL: `http://192.168.50.13:${TEST_PORT}`,
+        baseURL: `http://${process.env.VITE_HOST || VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
         trace: "on-first-retry",
     },
 

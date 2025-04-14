@@ -160,6 +160,66 @@ node ➜ /workspace (main) $
 
 ---
 
+_**User**_
+
+For the code present, we get this error:
+```
+ReferenceError: VITE_HOST is not defined
+```
+How can I resolve this? If you propose a fix, please make it concise.
+
+---
+
+_**Assistant**_
+
+`VITE_HOST`環境変数が定義されていないようですので、設定を追加します。
+
+---
+
+```diff
+  // Tinylicious サーバーのポートを定義（PORT環境変数で設定されます）
+  const TINYLICIOUS_PORT = "7082";
++ // ホストを定義
++ const VITE_HOST = "localhost";
+  
+  export default defineConfig({
+```
+
+---
+
+`VITE_HOST`を`localhost`として定義しました。これでエラーは解決されるはずです。
+
+また、`headless`のエラーも修正が必要ですが、それについては別途対応が必要な場合はお知らせください。
+
+---
+
+_**User**_
+
+VITE_HOST は環境変数を使用したい。
+
+---
+
+_**Assistant**_
+
+はい、環境変数を使用する形に修正します。
+
+---
+
+```diff
+      use: {
+          // テスト用ポートを明示的に設定
+-         baseURL: `http://${VITE_HOST}:${TEST_PORT}`,
++         baseURL: `http://${process.env.VITE_HOST || 'localhost'}:${TEST_PORT}`,
+          trace: "on-first-retry",
+      },
+```
+
+---
+
+これで`VITE_HOST`環境変数を使用し、設定されていない場合は`localhost`にフォールバックするように変更しました。`.env`ファイルや実行時の環境変数で`VITE_HOST`を設定できます。
+
+---
+
 
 
 ---

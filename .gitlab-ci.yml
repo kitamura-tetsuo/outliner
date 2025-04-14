@@ -19,6 +19,7 @@ variables:
   VITE_FORCE_AZURE: 'false'
   VITE_HOST: '0.0.0.0'
   VITE_PORT: '7080'
+  VITE_HOST: 'localhost'
   VITE_API_BASE_URL: 'http://localhost:${TEST_API_PORT}'
   VITE_API_SERVER_URL: 'http://localhost:${TEST_API_PORT}'
   VITE_TINYLICIOUS_ENDPOINT: 'http://localhost:${TEST_FLUID_PORT}'
