@@ -76,9 +76,6 @@ try {
         let emulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST;
         // ホスト名が指定されていない場合、もしくは 'firebase-emulator', 'localhost', '127.0.0.1' の場合は
         // 実際のIPアドレスを使用
-        if (!emulatorHost || ["firebase-emulator", "localhost", "127.0.0.1"].includes(emulatorHost)) {
-            emulatorHost = "192.168.50.13";
-        }
 
         const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "6480", 10);
 

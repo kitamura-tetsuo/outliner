@@ -54,9 +54,9 @@ e2e-tests:
     # Firebase Emulatorの起動
     - firebase emulators:start --only auth,firestore --project demo-test --hub-port ${FIREBASE_EMULATOR_HUB} --auth-port ${FIREBASE_AUTH_EMULATOR_PORT} --firestore-port ${FIREBASE_FIRESTORE_EMULATOR_PORT} > logs/firebase-emulator.log 2>&1 &
     # SvelteKitサーバーの起動
-    - npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} > logs/test-svelte-kit.log 2>&1 &
+    - npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} > logs/test-svelte-kit.log 2>&1 &
     # APIサーバーの起動
-    - npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port ${TEST_SERVER_PORT} > logs/test-auth-service-tee.log 2>&1 &
+    - npm run dev -- --host 0.0.0.0 --port ${TEST_SERVER_PORT} > logs/test-auth-service-tee.log 2>&1 &
     # Tinyliciousサーバーの起動
     - PORT=${TEST_FLUID_PORT} tinylicious > logs/tinylicious.log 2>&1 &
     # サーバーの起動待機

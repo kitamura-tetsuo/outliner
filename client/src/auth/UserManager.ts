@@ -56,8 +56,8 @@ export class UserManager {
         measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-FKSFRCT7GR",
     };
 
-    private apiBaseUrl = getEnv("VITE_API_BASE_URL", "http://localhost:7071").replace("localhost", "192.168.50.13");
-    private apiServerUrl = getEnv("VITE_API_SERVER_URL", "http://localhost:7071").replace("localhost", "192.168.50.13");
+    private apiBaseUrl = getEnv("VITE_API_BASE_URL", "http://localhost:7071");
+    private apiServerUrl = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
     private app = initializeApp(this.firebaseConfig);
     private auth = getAuth(this.app);
 
