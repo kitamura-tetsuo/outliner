@@ -46,7 +46,7 @@ e2e-tests:
     # Firebase CLIのインストール
     - npm install -g firebase-tools
     # Tinyliciousのインストール
-    - npm install -g @fluidframework/tinylicious
+    - npm install -g tinylicious
     # サーバーサイドの準備
     - cd server
     - npm ci
