@@ -25,11 +25,11 @@ RUN chmod +x /firebase/scripts/init-firebase.sh
 
 # Expose ports
 # Firebase UI
-EXPOSE 4000
+EXPOSE 54000
 # Firestore
-EXPOSE 8080
+EXPOSE 58080
 # Authentication
-EXPOSE 9099
+EXPOSE 59099
 
 # Start emulators and create test user
 CMD ["/firebase/scripts/init-firebase.sh"]

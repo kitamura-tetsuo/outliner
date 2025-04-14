@@ -4,7 +4,7 @@ const http = require("http");
 require("dotenv").config();
 
 // Check if Firebase Auth emulator is running
-const checkEmulatorRunning = (host = "localhost", port = 9099) => {
+const checkEmulatorRunning = (host = "localhost", port = 59099) => {
     return new Promise(resolve => {
         const req = http.request({
             method: "GET",
@@ -56,12 +56,12 @@ const initializeAdminEmulator = (host, port) => {
 const createTestUser = async () => {
     // Check if emulator is running on possible hosts
     const hostOptions = [
-        { host: "firebase-emulator", port: 9099 },
-        { host: "localhost", port: 9099 },
+        { host: "firebase-emulator", port: 59099 },
+        { host: "localhost", port: 59099 },
         { host: "localhost", port: 6499 }, // Host port mapping
-        { host: "172.18.0.2", port: 9099 }, // Direct IP of emulator container
-        { host: "172.20.0.3", port: 9099 }, // Direct IP of emulator container on firebase-network
-        { host: "devcontainer-firebase-emulator-1", port: 9099 }, // Container name
+        { host: "172.18.0.2", port: 59099 }, // Direct IP of emulator container
+        { host: "172.20.0.3", port: 59099 }, // Direct IP of emulator container on firebase-network
+        { host: "devcontainer-firebase-emulator-1", port: 59099 }, // Container name
     ];
 
     let emulatorHost, emulatorPort, isRunning = false;

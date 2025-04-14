@@ -27,9 +27,9 @@ services:
       context: ../firebase
       dockerfile: Dockerfile
     ports:
-      - '4000:4000' # Firebase Emulator UI
-      - '8080:8080' # Firestore Emulator
-      - '9099:9099' # Auth Emulator
+      - '54000:54000' # Firebase Emulator UI
+      - '58080:58080' # Firestore Emulator
+      - '59099:59099' # Auth Emulator
     volumes:
       - ../firebase-data:/firebase-data
     networks:

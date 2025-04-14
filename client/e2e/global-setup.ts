@@ -77,7 +77,7 @@ async function globalSetup() {
         console.log("Testing Firebase Emulator connection...");
         if (process.env.VITE_USE_FIREBASE_EMULATOR === "true") {
             const emulatorHost = process.env.VITE_FIRESTORE_EMULATOR_HOST || "firebase-emulator";
-            const emulatorUiPort = process.env.VITE_FIREBASE_EMULATOR_UI_PORT || "4000";
+            const emulatorUiPort = process.env.VITE_FIREBASE_EMULATOR_UI_PORT || "54000";
 
             try {
                 // Emulator UI が応答するか確認

@@ -11,10 +11,7 @@ import {
     type User as FirebaseUser,
 } from "firebase/auth";
 import { getEnv } from "../lib/env";
-import {
-    getLogger,
-    log,
-} from "../lib/logger"; // log関数をインポート
+import { getLogger } from "../lib/logger"; // log関数をインポート
 
 const logger = getLogger();
 
@@ -148,7 +145,7 @@ export class UserManager {
 
         try {
             const emulatorHost = import.meta.env.VITE_AUTH_EMULATOR_HOST || "firebase-emulator";
-            const emulatorPort = parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT || "9099", 10);
+            const emulatorPort = parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT || "59099", 10);
 
             const host = isBrowser ? emulatorHost : "192.168.50.16";
             const port = emulatorPort;
@@ -192,13 +189,13 @@ export class UserManager {
 
         const emulatorConfigs = [
             // Firestoreが接続している設定を最優先
-            { host: firestoreHost || "192.168.50.16", port: 9099 },
-            { host: "192.168.50.16", port: 9099 },
+            { host: firestoreHost || "192.168.50.16", port: 59099 },
+            { host: "192.168.50.16", port: 59099 },
             // 以下は元の設定
-            { host: "firebase-emulator", port: 9099 },
-            { host: "localhost", port: 9099 },
-            { host: "127.0.0.1", port: 9099 },
-            { host: window.location.hostname, port: 9099 },
+            { host: "firebase-emulator", port: 59099 },
+            { host: "localhost", port: 59099 },
+            { host: "127.0.0.1", port: 59099 },
+            { host: window.location.hostname, port: 59099 },
         ];
 
         logger.info(
@@ -330,12 +327,12 @@ export class UserManager {
             // APIサーバーを通じて最後にユーザー作成を試みる
             try {
                 logger.info("Attempting to create test user via API server");
-                const result = await this._createTestUser("192.168.50.16", 9099);
+                const result = await this._createTestUser("192.168.50.16", 59099);
 
                 if (result) {
                     // エミュレータの設定を試みる
                     try {
-                        connectAuthEmulator(this.auth, "http://192.168.50.16:9099", { disableWarnings: true });
+                        connectAuthEmulator(this.auth, "http://192.168.50.16:59099", { disableWarnings: true });
                     }
                     catch (emulatorError) {
                         logger.warn("Failed to set up emulator, but continuing with login attempt", emulatorError);
