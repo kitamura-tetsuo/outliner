@@ -79,8 +79,11 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 
         // 開発環境では、アイテムのインデックスをテキストに設定
         const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
+        const isTest = import.meta.env.MODE === "test" ||
+            process.env.NODE_ENV === "test" ||
+            import.meta.env.VITE_IS_TEST === "true";
         const itemIndex = index ?? this.length;
-        const defaultText = isDev ? `Item ${itemIndex}` : "";
+        const defaultText = isDev && !isTest ? `Item ${itemIndex}` : "";
 
         const newItem = new Item({
             id: uuid(),

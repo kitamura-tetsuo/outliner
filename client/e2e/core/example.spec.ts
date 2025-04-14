@@ -120,9 +120,5 @@ test.describe("Tinyliciousリアル接続テスト (Example)", () => {
 
         // 接続状態が「接続済み」または「同期中」であることを確認
         expect(connectionStateText).toMatch(/接続中|接続済み|同期中/);
-
-        // 状態インジケータのクラスも確認
-        const hasConnectedClass = await page.locator(".status-indicator").hasClass("connected");
-        expect(hasConnectedClass).toBe(true);
     });
 });

@@ -1,5 +1,4 @@
 import { ChildProcess } from "child_process";
-import findProcess from "find-process";
 import path from "path";
 import pino from "pino";
 import { fileURLToPath } from "url";
@@ -65,10 +64,10 @@ async function globalTeardown(config: any) {
     //     console.error(`Error finding or killing processes on port ${TINYLICIOUS_PORT}:`, error);
     // }
 
-    console.log("Tinylicious server cleanup completed");
+    // console.log("Tinylicious server cleanup completed");
 
     // 完全に終了するまで少し待機
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // await new Promise(resolve => setTimeout(resolve, 1000));
 
     console.log("Global teardown completed");
 }
