@@ -3,8 +3,7 @@ image: mcr.microsoft.com/playwright:v1.51.0-noble
 variables:
   NODE_VERSION: '22'
   # Server Ports
-  TEST_SERVER_PORT: '7081'
-  TEST_API_PORT: '3000'
+  TEST_API_PORT: '7081'
   TEST_FLUID_PORT: '7082'
 
   # Firebase Emulator
@@ -17,7 +16,6 @@ variables:
   VITE_USE_API_AUTH: 'true'
   VITE_USE_TINYLICIOUS: 'true'
   VITE_FORCE_AZURE: 'false'
-  VITE_HOST: '0.0.0.0'
   VITE_PORT: '7080'
   VITE_HOST: 'localhost'
   VITE_API_BASE_URL: 'http://localhost:${TEST_API_PORT}'
@@ -57,7 +55,7 @@ e2e-tests:
     # SvelteKitサーバーの起動
     - npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} > logs/test-svelte-kit.log 2>&1 &
     # APIサーバーの起動
-    - npm run dev -- --host 0.0.0.0 --port ${TEST_SERVER_PORT} > logs/test-auth-service-tee.log 2>&1 &
+    - npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > logs/test-auth-service-tee.log 2>&1 &
     # Tinyliciousサーバーの起動
     - PORT=${TEST_FLUID_PORT} tinylicious > logs/tinylicious.log 2>&1 &
     # サーバーの起動待機

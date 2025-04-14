@@ -31,8 +31,10 @@ export default defineConfig({
     globalTeardown: path.join(__dirname, "./e2e/global-teardown.ts"),
 
     use: {
-        // テスト用ポートを明示的に設定
-        baseURL: `http://${process.env.VITE_HOST || VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+        // CI環境ではlocalhostを使用
+        baseURL: `http://${process.env.CI ? "localhost" : (process.env.VITE_HOST || VITE_HOST)}:${
+            process.env.TEST_PORT || TEST_PORT
+        }`,
         trace: "on-first-retry",
     },
 
