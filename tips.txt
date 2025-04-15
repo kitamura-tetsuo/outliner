@@ -42,3 +42,28 @@ npx tsc src/debug/checkTypes.ts --noEmit
 
 
 cd /workspace/server && npm run create-test-user
+
+
+
+
+ローカル環境で CI環境を再現してテストを行うには。
+.env を全て a.env等にリネームする。
+	Vite 辺りが自動的に .envを読み込むので、リネームして対象から外す。
+	CI環境には .envはない。環境変数は全て yamlから設定される。
+.gitlab-ci.yml
+	から先頭の 
+	image: mcr.microsoft.com/playwright:v1.51.0-noble
+		をコメントアウトする。
+	コメントアウトすることで、docker内での実行から、その場の bashでの実行に変わる。
+	デバッグするなら bashの方が楽なので。
+.gitlab-ci.yml
+	から 
+  script:
+		で
+    - 'npm run ci:test:e2e:ui'
+		を実行するように変える。
+    - 'npm run ci:test:e2e:xvfb'
+		はコメントアウトする。
+npx gitlab-ci-local
+	を実行する
+

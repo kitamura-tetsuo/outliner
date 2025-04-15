@@ -1,18 +1,17 @@
+/**
+ * @file auth.spec.ts
+ * @description 認証機能関連のテスト
+ * アプリケーションの認証フローをテストします。
+ * 開発環境での認証フローと、実際の認証状態の検証を行います。
+ * @playwright
+ */
+
 import {
     expect,
     test,
 } from "@playwright/test";
 
-/**
- * @file auth.spec.ts
- * @description 認証機能関連のテスト
- * アプリケーションの認証UI、特にGoogleログインボタンが正しく表示され機能することを確認します。
- * 実際の認証フローの検証、ログイン状態の確認などを行います。
- * @playwright
- * @title 認証機能テスト
- */
-
-test.describe("認証UI機能テスト", () => {
+test.describe("認証機能テスト", () => {
     test.beforeEach(async ({ page }) => {
         // テスト開始前に十分な時間を設定
         test.setTimeout(60000);
@@ -29,26 +28,53 @@ test.describe("認証UI機能テスト", () => {
     });
 
     /**
-     * @testcase Googleログインボタンが表示される
-     * @description Googleログイン用のボタンが画面上に正しく表示されることを確認するテスト
-     * @check 具体的なセレクタ(.google-btn)を使用してボタン要素を特定する
-     * @check ボタンが画面上に表示されることを確認する(最大30秒間待機)
-     * @check ボタンのテキスト内に「Google」という文字列が含まれているか確認する
+     * @testcase 開発者モードでのログインフロー
+     * @description 開発環境での認証フローが正常に動作することを確認
+     * @check ログアウト状態からスタート
+     * @check 開発者ログインボタンのクリックが可能
+     * @check メールアドレスとパスワードの入力が可能
+     * @check ログインボタンのクリックで認証が完了
+     * @check ログイン後にログアウトボタンが表示される
      */
-    test("Googleログインボタンが表示される", async ({ page }) => {
-        // より具体的なセレクタを使用して、Googleログインボタンのみに一致するようにする
-        const loginButton = page.locator(".google-btn");
+    test("開発者モードでログインフローが正常に動作する", async ({ page }) => {
+        // ログアウト状態を確保
+        await page.getByRole("button", { name: "ログアウト" }).click();
 
-        // ボタンが表示されるまで待機（最大30秒）
-        await expect(loginButton).toBeVisible({ timeout: 30000 });
-        console.log("Login button is visible");
+        // 開発者ログインフローの実行
+        await page.getByRole("button", { name: "開発者ログイン" }).click();
 
-        // ボタンのテキストをログ出力
-        const buttonText = await loginButton.textContent();
-        console.log("Button text:", buttonText);
+        // 認証情報の入力
+        await page.getByRole("textbox", { name: "メールアドレス" }).fill("test@example.com");
+        await page.getByRole("textbox", { name: "パスワード" }).fill("password");
 
-        // テキストの一部が含まれていることを確認（より柔軟な検証）
-        // 「Googleでログイン」または「Sign in with Google」などの文字列が含まれていれば合格
-        expect(buttonText?.includes("Google")).toBeTruthy();
+        // ログイン実行
+        await page.getByRole("button", { name: "開発環境でログイン" }).click();
+
+        // ログイン成功の確認
+        await expect(page.getByRole("button", { name: "ログアウト" })).toBeVisible();
+    });
+
+    /**
+     * @testcase ログイン状態の永続化
+     * @description ログイン後の状態が正しく保持されることを確認
+     * @check ログイン後にページをリロード
+     * @check ログイン状態が維持されている
+     * @check ユーザー情報が正しく表示される
+     */
+    test("ログイン状態が正しく保持される", async ({ page }) => {
+        // ログアウト状態を確保
+        await page.getByRole("button", { name: "ログアウト" }).click();
+
+        // 開発者ログインの実行
+        await page.getByRole("button", { name: "開発者ログイン" }).click();
+        await page.getByRole("textbox", { name: "メールアドレス" }).fill("test@example.com");
+        await page.getByRole("textbox", { name: "パスワード" }).fill("password");
+        await page.getByRole("button", { name: "開発環境でログイン" }).click();
+
+        // ページのリロード
+        await page.reload();
+
+        // ログイン状態の確認
+        await expect(page.getByRole("button", { name: "ログアウト" })).toBeVisible();
     });
 });
