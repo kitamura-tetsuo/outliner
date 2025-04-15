@@ -55,6 +55,7 @@ e2e-tests:
     VITE_TINYLICIOUS_PORT: '7082'
   before_script:
     - 'pwd'
+    - 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends default-jre'
     - 'echo "CI_PROJECT_DIR: ${CI_PROJECT_DIR}"'
     - 'mkdir -p ${CI_PROJECT_DIR}/logs/'
     - 'mkdir -p client/logs/'
