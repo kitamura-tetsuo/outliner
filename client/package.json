@@ -22,7 +22,9 @@
         "test:e2e:debug": "NODE_ENV=test dotenv -e .env.test -- playwright test --debug",
         "test:e2e:ui": "NODE_ENV=test dotenv -e .env.test -- playwright test --ui",
         "test:e2e:codegen": "NODE_ENV=test dotenv -e .env.test -- playwright codegen",
-        "test:e2e:xvfb": "NODE_ENV=test dotenv -e .env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npm run test:e2e"
+        "test:e2e:xvfb": "NODE_ENV=test dotenv -e .env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npm run test:e2e",
+        "ci:test:e2e": "playwright test",
+        "ci:test:e2e:xvfb": "xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npm run ci:test:e2e"
     },
     "devDependencies": {
         "@eslint/compat": "^1.2.5",
