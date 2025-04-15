@@ -29,6 +29,9 @@ variables:
   VITE_DEBUG_USER_ID: 'test-user'
   VITE_DEBUG_USER_NAME: 'Test User'
   VITE_FLUID_TOKEN_KEY: 'test-key'
+  AZURE_TENANT_ID: 'test-tenant-id'
+  AZURE_FLUID_RELAY_ENDPOINT: 'https://test-endpoint.fluidrelay.azure.com'
+  AZURE_PRIMARY_KEY: 'test-primary-key'
 
   # Server Environment Variables
   PORT: '${TEST_API_PORT}'
@@ -55,25 +58,25 @@ e2e-tests:
     - cd server
     - npm ci
     # Firebase Emulatorの起動
-    - firebase emulators:start --only auth,firestore --project demo-test --hub-port ${FIREBASE_EMULATOR_HUB} --auth-port ${FIREBASE_AUTH_EMULATOR_PORT} --firestore-port ${FIREBASE_FIRESTORE_EMULATOR_PORT} > ${CI_PROJECT_DIR}/logs/firebase-emulator.log 2>&1 &
-    # SvelteKitサーバーの起動
-    - npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} > ${CI_PROJECT_DIR}/logs/test-svelte-kit.log 2>&1 &
+    - firebase emulators:start --only auth,firestore --project demo-test > ${CI_PROJECT_DIR}/logs/firebase-emulator.log 2>&1 &
     # APIサーバーの起動
-    - npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${CI_PROJECT_DIR}/logs/test-auth-service-tee.log 2>&1 &
+    - npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${CI_PROJECT_DIR}/logs/auth-service-tee.log 2>&1 &
     # Tinyliciousサーバーの起動
     - PORT=${TEST_FLUID_PORT} tinylicious > ${CI_PROJECT_DIR}/logs/tinylicious.log 2>&1 &
-    # サーバーの起動待機
-    - sleep 30
     # クライアントの準備
     - cd ../client
     - npm ci
     - npx playwright install --with-deps chromium
+    # SvelteKitサーバーの起動
+    - npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} > ${CI_PROJECT_DIR}/logs/svelte-kit.log 2>&1 &
+    # サーバーの起動待機
+    - sleep 30
   script:
     - cd ${CI_PROJECT_DIR}/client
     - npm run test:e2e:xvfb
   after_script:
     - cd ${CI_PROJECT_DIR}
-    - cp -r /root/.npm/_logs/ ${CI_PROJECT_DIR}/logs/
+    - cp -r /root/.npm/_logs/ ${CI_PROJECT_DIR}/logs/npm/
   artifacts:
     when: on_failure
     paths:
