@@ -8,11 +8,13 @@ variables:
   # Server Ports
   TEST_API_PORT: '7081'
   TEST_FLUID_PORT: '7082'
+  VITE_TINYLICIOUS_PORT: '7082'
 
   # Firebase Emulator
-  FIREBASE_EMULATOR_HUB: '4400'
-  FIREBASE_AUTH_EMULATOR_PORT: '9099'
-  FIREBASE_FIRESTORE_EMULATOR_PORT: '8080'
+  VITE_FIREBASE_EMULATOR_UI_PORT: '54400'
+  VITE_FIREBASE_AUTH_EMULATOR_PORT: '59099'
+  VITE_FIREBASE_FIRESTORE_EMULATOR_PORT: '58080'
+  VITE_FIRESTORE_EMULATOR_HOST: '0.0.0.0:58080'
 
   # Client Environment Variables
   VITE_USE_FIREBASE_AUTH: 'true'
@@ -49,39 +51,45 @@ stages:
 
 e2e-tests:
   stage: test
+  variables:
+    VITE_TINYLICIOUS_PORT: '7082'
   before_script:
-    - pwd
-    - mkdir -p ${CI_PROJECT_DIR}/logs/
-    - mkdir -p client/logs/
-    - mkdir -p server/logs/
+    - 'pwd'
+    - 'echo "CI_PROJECT_DIR: ${CI_PROJECT_DIR}"'
+    - 'mkdir -p ${CI_PROJECT_DIR}/logs/'
+    - 'mkdir -p client/logs/'
+    - 'mkdir -p client/e2e/logs/'
+    - 'mkdir -p server/logs/'
     # Firebase CLIのインストール
-    - npm install -g firebase-tools
+    - 'npm install -g firebase-tools'
     # Tinyliciousのインストール
-    - npm install -g tinylicious
-    - npm install -g dotenv-cli
-    # サーバーサイドの準備
-    - cd server
-    - npm ci
+    - 'npm install -g tinylicious'
+    - 'npm install -g dotenv-cli'
+    - 'cd firebase'
     # Firebase Emulatorの起動
-    - firebase emulators:start --only auth,firestore --project demo-test > ${CI_PROJECT_DIR}/logs/firebase-emulator.log 2>&1 &
+    - 'firebase emulators:start --project demo-test > ${CI_PROJECT_DIR}/logs/firebase-emulator.log 2>&1 &'
+    # サーバーサイドの準備
+    - 'cd ../server'
+    - 'npm ci'
     # APIサーバーの起動
-    - npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${CI_PROJECT_DIR}/logs/auth-service-tee.log 2>&1 &
+    - 'npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${CI_PROJECT_DIR}/logs/auth-service-tee.log 2>&1 &'
     # Tinyliciousサーバーの起動
-    - PORT=${TEST_FLUID_PORT} tinylicious > ${CI_PROJECT_DIR}/logs/tinylicious.log 2>&1 &
+    - 'PORT=${TEST_FLUID_PORT} tinylicious > ${CI_PROJECT_DIR}/logs/tinylicious.log 2>&1 &'
     # クライアントの準備
-    - cd ../client
-    - npm ci
-    - npx playwright install --with-deps chromium
+    - 'cd ../client'
+    - 'npm ci'
+    - 'npx playwright install --with-deps chromium'
     # SvelteKitサーバーの起動
-    - npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} > ${CI_PROJECT_DIR}/logs/svelte-kit.log 2>&1 &
+    - 'npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} > ${CI_PROJECT_DIR}/logs/svelte-kit.log 2>&1 &'
     # サーバーの起動待機
-    - sleep 30
+    - 'sleep 30'
   script:
-    - cd ${CI_PROJECT_DIR}/client
-    - npm run ci:test:e2e:xvfb
+    - 'cd ${CI_PROJECT_DIR}/client'
+    - 'npm run ci:test:e2e:ui'
+    # - 'npm run ci:test:e2e:xvfb'
   after_script:
-    - cd ${CI_PROJECT_DIR}
-    - cp -r /root/.npm/_logs/ ${CI_PROJECT_DIR}/logs/npm/
+    - 'cd ${CI_PROJECT_DIR}'
+    - 'cp -r /root/.npm/_logs/ ${CI_PROJECT_DIR}/logs/npm/'
   artifacts:
     when: on_failure
     paths:
@@ -90,4 +98,6 @@ e2e-tests:
       - client/test-results/
       - client/playwright-report/
       - server/logs/
+      - firebase/firebase-debug.log
+      - firebase/firestore-debug.log
     expire_in: 1 week

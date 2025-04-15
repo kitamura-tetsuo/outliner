@@ -312,7 +312,558 @@ GitLab CIの設定を確認してみましょう。
 問題の原因が分かりました。複数の設定ファイルで異なるIPアドレスとホスト名が使用されています：
 
 1. `.gitlab-ci.yml`で`VITE_HOST`を`0.0.0.0`に設定
-2. `client/.env.test`で
+2. `client/.env.test`で`VITE_HOST`を`192.168.50.13`に設定
+3. `playwright.config.ts`で`process.env.CI`の場合に`localhost`を使用
+
+これらの設定の不一致が問題を引き起こしています。以下のように修正しましょう：
+
+---
+
+```diff
+    NODE_VERSION: '22'
+    # Server Ports
+-   TEST_SERVER_PORT: '7081'
++   TEST_SERVER_PORT: '7080'
+    TEST_API_PORT: '3000'
+-   TEST_FLUID_PORT: '7082'
++   TEST_FLUID_PORT: '7070'
+  
+    # Firebase Emulator
+    VITE_USE_TINYLICIOUS: 'true'
+    VITE_FORCE_AZURE: 'false'
+-   VITE_HOST: '0.0.0.0'
+-   VITE_PORT: '7080'
+    VITE_HOST: 'localhost'
++   VITE_PORT: '7070'
+    VITE_API_BASE_URL: 'http://localhost:${TEST_API_PORT}'
+    VITE_API_SERVER_URL: 'http://localhost:${TEST_API_PORT}'
+```
+
+---
+
+```diff
+      use: {
+          // テスト用ポートを明示的に設定
+-         // CI環境ではlocalhostを使用
+-         baseURL: `http://${process.env.CI ? "localhost" : (process.env.VITE_HOST || VITE_HOST)}:${
+-             process.env.TEST_PORT || TEST_PORT
+-         }`,
++         baseURL: `http://${process.env.VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+          trace: "on-first-retry",
+      },
+```
+
+---
+
+これらの変更により：
+
+1. GitLab CI環境では常に`localhost`を使用
+2. `playwright.config.ts`では環境変数`VITE_HOST`の値をそのまま使用
+3. 設定の一貫性が保たれる
+
+これで、GitLab CI環境でのE2Eテスト実行時に`localhost`が正しく使用されるはずです。
+
+---
+
+_**User**_
+
+node ➜ /workspace (main) $ sudo npx gitlab-ci-local
+Using fallback git user.name
+Using fallback git user.email
+e2e-tests before_script contains non string value
+
+---
+
+_**Assistant**_
+
+`.gitlab-ci.yml`の`before_script`セクションの書き方に問題があるようです。各コマンドを文字列として記述する必要があります。修正しましょう。
+
+---
+
+```diff
+    stage: test
+    before_script:
+-     - pwd
+-     - echo \"CI_PROJECT_DIR: ${CI_PROJECT_DIR}\"
+-     - mkdir -p ${CI_PROJECT_DIR}/logs/
+-     - mkdir -p client/logs/
+-     - mkdir -p client/e2e/logs/
+-     - mkdir -p server/logs/
++     - 'pwd'
++     - 'echo "CI_PROJECT_DIR: ${CI_PROJECT_DIR}"'
++     - 'mkdir -p ${CI_PROJECT_DIR}/logs/'
++     - 'mkdir -p client/logs/'
++     - 'mkdir -p client/e2e/logs/'
++     - 'mkdir -p server/logs/'
+      # Firebase CLIのインストール
+-     - npm install -g firebase-tools
++     - 'npm install -g firebase-tools'
+      # Tinyliciousのインストール
+-     - npm install -g tinylicious
+-     - npm install -g dotenv-cli
++     - 'npm install -g tinylicious'
++     - 'npm install -g dotenv-cli'
+      # サーバーサイドの準備
+-     - cd server
+-     - npm ci
++     - 'cd server'
++     - 'npm ci'
+      # Firebase Emulatorの起動
+-     # - firebase emulators:start --only auth,firestore --project demo-test > ${CI_PROJECT_DIR}/logs/firebase-emulator.log 2>&1 &
+-     - firebase emulators:start --project demo-test > ${CI_PROJECT_DIR}/logs/firebase-emulator.log 2>&1 &
++     - 'firebase emulators:start --project demo-test > ${CI_PROJECT_DIR}/logs/firebase-emulator.log 2>&1 &'
+      # APIサーバーの起動
+-     - npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${CI_PROJECT_DIR}/logs/auth-service-tee.log 2>&1 &
++     - 'npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${CI_PROJECT_DIR}/logs/auth-service-tee.log 2>&1 &'
+      # Tinyliciousサーバーの起動
+-     - PORT=${TEST_FLUID_PORT} tinylicious > ${CI_PROJECT_DIR}/logs/tinylicious.log 2>&1 &
++     - 'PORT=${TEST_FLUID_PORT} tinylicious > ${CI_PROJECT_DIR}/logs/tinylicious.log 2>&1 &'
+      # クライアントの準備
+-     - cd ../client
+-     - npm ci
+-     - npx playwright install --with-deps chromium
++     - 'cd ../client'
++     - 'npm ci'
++     - 'npx playwright install --with-deps chromium'
+      # SvelteKitサーバーの起動
+-     - npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} > ${CI_PROJECT_DIR}/logs/svelte-kit.log 2>&1 &
++     - 'npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} > ${CI_PROJECT_DIR}/logs/svelte-kit.log 2>&1 &'
+      # サーバーの起動待機
+-     - sleep 30
++     - 'sleep 30'
+    script:
+-     - cd ${CI_PROJECT_DIR}/client
+-     - npm run ci:test:e2e:xvfb
++     - 'cd ${CI_PROJECT_DIR}/client'
++     - 'npm run ci:test:e2e:xvfb'
+    after_script:
+-     - cd ${CI_PROJECT_DIR}
+-     - cp -r /root/.npm/_logs/ ${CI_PROJECT_DIR}/logs/npm/
++     - 'cd ${CI_PROJECT_DIR}'
++     - 'cp -r /root/.npm/_logs/ ${CI_PROJECT_DIR}/logs/npm/'
+    artifacts:
+      when: on_failure
+```
+
+---
+
+各コマンドをシングルクォートで囲んで文字列として記述しました。これで`gitlab-ci-local`のエラーは解決されるはずです。もう一度`gitlab-ci-local`を実行してみてください。
+
+---
+
+_**User**_
+
+gitlab ciにて、
+getFluidClient で
+import.meta.env.VITE_TINYLICIOUS_PORT
+が 7072 になる。
+原因を探して欲しい。
+
+---
+
+_**Assistant**_
+
+`VITE_TINYLICIOUS_PORT`の値が`7072`になる原因を探ります。
+
+---
+
+<details>
+            <summary>Searched codebase "getFluidClient VITE_TINYLICIOUS_PORT" • **25** results</summary>
+        
+| File | Lines |
+|------|-------|
+| `client/src/tests/utils/testSetup.ts` | L1-38 |
+| `client/src/lib/fluidService.ts` | L154-200 |
+| `client/src/lib/fluidService.ts` | L54-77 |
+| `client/e2e/globals.d.ts` | L38-90 |
+| `client/.env.example` | L1-21 |
+| `.gitlab-ci.yml` | L1-52 |
+| `client/package.json` | L30-82 |
+| `client/e2e/core/tinylicious.spec.ts` | L1-43 |
+| `client/src/components/ContainerSelector.svelte` | L33-84 |
+| `client/src/routes/+page.svelte` | L114-160 |
+| `client/src/stores/firestoreStore.ts` | L288-317 |
+| `client/src/fluid/fluidClient.ts` | L32-45 |
+| `client/src/lib/fluidService.ts` | L46-54 |
+| `client/.env.test` | L1-44 |
+| `README.md` | L1-51 |
+| `client/src/global.d.ts` | L1-19 |
+| `client/src/lib/env.ts` | L37-50 |
+| `client/src/stores/firestoreStore.ts` | L432-481 |
+| `client/src/lib/fluidService.ts` | L1-46 |
+| `client/e2e/globals.d.ts` | L1-21 |
+| `client/src/fluid/fluidClient.ts` | L173-177 |
+| `client/src/lib/fluidService.ts` | L244-249 |
+| `client/src/stores/fluidStore.svelte.ts` | L1-44 |
+| `client/src/stores/fluidStore.svelte.ts` | L44-45 |
+| `client/src/fluid/fluidClient.ts` | L177-182 |
+
+</details>
+
+---
+
+問題の原因が見つかりました。以下の点が問題です：
+
+1. `client/src/lib/fluidService.ts`で`VITE_TINYLICIOUS_PORT`を直接使用していますが、この値がGitLab CI環境で正しく設定されていない可能性があります。
+
+2. `.gitlab-ci.yml`では`VITE_TINYLICIOUS_PORT=7082`を設定していますが、この値がViteの環境変数として正しく渡されていない可能性があります。
+
+修正案として、以下の2つの対応を提案します：
+
+1. `client/src/lib/fluidService.ts`の修正：
+
+---
+
+```diff
+  export async function getFluidClient(userId?: string, containerId?: string): Promise<FluidInstances> {
+      if (useTinylicious) {
+-         const client = new TinyliciousClient({ connection: { port: import.meta.env.VITE_TINYLICIOUS_PORT } });
++         const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7082");
++         const client = new TinyliciousClient({ connection: { port } });
+          // const client = new TinyliciousClient({ connection: { port: 7082 } });
+          const createResponse = await client.createContainer(containerSchema, "2");
+```
+
+---
+
+2. `.gitlab-ci.yml`でViteの環境変数を確実に設定：
+
+---
+
+```diff
+  e2e-tests:
+    stage: test
++   variables:
++     VITE_TINYLICIOUS_PORT: '7082'
+    before_script:
+      - 'pwd'
+```
+
+---
+
+これらの変更により：
+
+1. `fluidService.ts`で環境変数が見つからない場合のフォールバック値を設定
+2. GitLab CIのジョブレベルで`VITE_TINYLICIOUS_PORT`を明示的に設定
+
+これで`VITE_TINYLICIOUS_PORT`の値が`7082`として正しく設定され、`7072`にフォールバックすることはなくなるはずです。
+
+---
+
+_**User**_
+
+import.meta.env
+と
+process.env
+の違い。
+
+---
+
+_**Assistant**_
+
+`import.meta.env`と`process.env`の主な違いを説明します：
+
+1. `import.meta.env`
+- Viteによって提供される環境変数
+- クライアントサイド（ブラウザ）でも使用可能
+- ビルド時に静的に置換される
+- `VITE_`プレフィックスの付いた環境変数のみが公開される
+- 開発時は`.env`ファイルから読み込まれる
+
+2. `process.env`
+- Node.js環境での環境変数
+- サーバーサイドでのみ使用可能
+- 実行時に動的に参照される
+- すべての環境変数にアクセス可能
+- GitLab CIなどのCI環境の環境変数はここに設定される
+
+現在の問題の場合：
+```typescript
+const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7082");
+```
+
+このコードでは：
+1. まずViteの環境変数を確認（クライアントサイド）
+2. 次にNode.jsの環境変数を確認（サーバーサイド）
+3. どちらもない場合はデフォルト値"7082"を使用
+
+GitLab CI環境では`process.env.VITE_TINYLICIOUS_PORT`が`7082`として設定されていますが、ブラウザ実行時には`import.meta.env.VITE_TINYLICIOUS_PORT`を使用する必要があります。
+
+修正案：
+```typescript
+const port = parseInt(
+    typeof window !== 'undefined' 
+        ? import.meta.env.VITE_TINYLICIOUS_PORT 
+        : process.env.VITE_TINYLICIOUS_PORT
+    || "7082"
+);
+```
+
+この修正により：
+- ブラウザ環境では`import.meta.env`を使用
+- Node.js環境では`process.env`を使用
+- どちらの環境でも適切な値が取得できる
+
+---
+
+_**User**_
+
+このコードはクライアントサイドで実行される。
+sveltekit が下記で起動される。
+cd client && npm run dev -- --host 0.0.0.0 --port ${VITE_PORT}
+
+この場合、.envの何かは読まれてる?
+
+---
+
+_**Assistant**_
+
+はい、SvelteKitの開発サーバー起動時（`npm run dev`）には、以下の順序で環境変数が読み込まれます：
+
+1. `.env`ファイルの読み込み順序：
+   - `.env`（デフォルト）
+   - `.env.local`（ローカルオーバーライド）
+   - `.env.development`（開発環境用）
+   - `.env.development.local`（ローカル開発環境用）
+
+2. コマンドライン引数やシステムの環境変数
+   ```bash
+   cd client && npm run dev -- --host 0.0.0.0 --port ${VITE_PORT}
+   ```
+   この場合、`VITE_PORT`はシステムの環境変数から読み込まれます。
+
+現在の問題を解決するために、以下を確認しましょう：
+
+---
+
+```bash
+cd client && ls -la .env*
+```
+
+```
+node ➜ /workspace (main) $ cd client && ls -la .env*
+-rw-r--r-- 1 node node 1283 Apr 14 05:18 .env
+-rw-rw-r-- 1 node node  648 Apr 13 10:56 .env.example
+-rw-rw-r-- 1 node node 1359 Apr 14 05:53 .env.test
+node ➜ /workspace/client (main) $
+```
+
+---
+
+`.env`ファイルの内容を確認しましょう：
+
+---
+
+Read file: client/.env
+
+---
+
+開発環境では：
+
+1. `.env`ファイルから：
+   - `VITE_TINYLICIOUS_PORT=7072`が設定されています
+   - この値が`import.meta.env.VITE_TINYLICIOUS_PORT`として利用可能になります
+
+2. GitLab CI環境では：
+   - `.gitlab-ci.yml`で`VITE_TINYLICIOUS_PORT=7082`を設定
+   - この値がViteによってクライアントサイドの`import.meta.env.VITE_TINYLICIOUS_PORT`として利用可能になります
+
+問題の解決策：
+
+1. `client/src/lib/fluidService.ts`を修正：
+```typescript
+const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || "7082");
+```
+
+`process.env`は不要です。なぜなら：
+- このコードはクライアントサイドで実行される
+- Viteが環境変数を`import.meta.env`として提供している
+- `.env`または`.gitlab-ci.yml`の値が`import.meta.env`に含まれる
+
+この修正により：
+- 開発環境では`.env`の`7072`
+- GitLab CI環境では`.gitlab-ci.yml`の`7082`
+が正しく使用されるはずです。
+
+---
+
+_**User**_
+
+SvelteKit は デフォルトで .envを読むのね。
+
+---
+
+_**Assistant**_
+
+はい、その通りです。SvelteKitはViteを使用しており、Viteのデフォルトの環境変数読み込み機能を継承しています。
+
+具体的な読み込み順序は：
+
+1. `process.env`（システムの環境変数）
+2. `.env`（基本設定）
+3. `.env.local`（ローカルオーバーライド、gitignore推奨）
+4. `.env.[mode]`（モード別設定、例：`.env.development`）
+5. `.env.[mode].local`（モード別ローカル設定）
+
+ただし重要な点として：
+- `VITE_`プレフィックスが付いた環境変数のみがクライアントサイドで使用可能
+- それ以外の環境変数はセキュリティのため、サーバーサイドでのみ使用可能
+
+例えば：
+```env
+# クライアントサイドで使用可能（import.meta.envで参照可能）
+VITE_API_URL=http://api.example.com
+
+# サーバーサイドでのみ使用可能
+SECRET_KEY=mysecret
+```
+
+このため、先ほどの`VITE_TINYLICIOUS_PORT`は`VITE_`プレフィックスが付いているので、自動的にクライアントサイドの`import.meta.env`で利用可能になっています。
+
+---
+
+_**User**_
+
+SvelteKit を testモードで起動するには。
+
+---
+
+_**Assistant**_
+
+SvelteKitをtestモードで起動するには、以下のいずれかの方法があります：
+
+1. `NODE_ENV=test`を設定して起動：
+
+---
+
+```bash
+cd client && NODE_ENV=test npm run dev -- --host 0.0.0.0 --port ${VITE_PORT}
+```
+
+```
+node ➜ /workspace/client (main) $ cd client && NODE_ENV=test npm run dev -- --host 0.0.0.0 --port ${VITE_PORT}
+cd: no such file or directory: client
+node ➜ /workspace/client (main) $
+```
+
+---
+
+すみません、既にclientディレクトリにいましたね。
+
+2. `dotenv-cli`を使用して`.env.test`を読み込む（推奨）：
+
+---
+
+```bash
+npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7080
+```
+
+```
+node ➜ /workspace/client (main) $ npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7080
+
+> outliner@0.0.1 dev
+> vite dev --host 0.0.0.0 --port 7080
+
+Using existing cloned repo
+ℹ [paraglide] Compiling Messagesinto /workspace/client/src/lib/paraglide/                                             
+error when starting dev server:
+Error: Port 7080 is already in use
+    at Server.onError (file:///workspace/client/node_modules/vite/dist/node/chunks/dep-DrOo5SEf.js:30664:18)
+    at Server.emit (node:events:518:28)
+    at emitErrorNT (node:net:1973:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+node ➜ /workspace/client (main) $
+```
+
+---
+
+ポートが使用中のようですね。実行中のプロセスを確認して停止しましょう：
+
+---
+
+```bash
+lsof -i :7080
+```
+
+```
+node ➜ /workspace/client (main) $ lsof -i :7080
+COMMAND  PID USER   FD   TYPE   DEVICE SIZE/OFF NODE NAME
+node    9023 node   52u  IPv4 15348176      0t0  TCP *:7080 (LISTEN)
+node ➜ /workspace/client (main) $
+```
+
+---
+
+```bash
+kill 9023
+```
+
+```
+node ➜ /workspace/client (main) $ kill 9023
+node ➜ /workspace/client (main) $
+```
+
+---
+
+では、再度testモードで起動してみましょう：
+
+---
+
+```bash
+npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7080
+```
+
+```
+node ➜ /workspace/client (main) $ npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7080
+
+> outliner@0.0.1 dev
+> vite dev --host 0.0.0.0 --port 7080
+
+Using existing cloned repo
+ℹ [paraglide] Compiling Messagesinto /workspace/client/src/lib/paraglide/                                             
+
+  VITE v6.2.4  ready in 2712 ms
+
+  ➜  Local:   http://localhost:7080/
+  ➜  Network: http://172.23.0.3:7080/
+  ➜  press h + enter to show help
+```
+
+---
+
+_**User**_
+
+ciでのテスト時と、localでのテスト時で環境変数を変えたいとしたら。
+ciは .gitlab-ci.yml に環境変数を書くのが一番わかり易いが、 .envがあると、Viteに上書きされるという事だね。
+つまり、gitには有効な .envを一切置かないのが分かりやすい。置くとしたら、 .env.example に留めた方が分かりやすい。
+
+---
+
+_**Assistant**_
+
+はい、その通りです！以下のような構成がベストプラクティスですね：
+
+1. Gitリポジトリに含めるもの：
+```
+├── .env.example          # 環境変数のテンプレート
+└── .gitlab-ci.yml       # CI用の環境変数定義
+```
+
+2. Gitリポジトリに含めないもの（.gitignoreに追加）：
+```
+.env                    # ローカル開発用
+.env.local             # ローカル固有の設定
+.env.test              # ローカルテスト用
+.env.production        # 本番環境用
+```
+
+この構成のメリット：
+1. CI環境の設定は`.gitlab-ci.yml`で完結
+2. ローカル環境の設定は`.env*`ファイルで完結
+3. 設定の衝突がない
+4. セキュリティ的にも安全（秘密鍵などをGitに含めない）
+
+現在の状態を整理しましょう：
 
 ---
 

@@ -62,11 +62,6 @@ const azureConfig = {
     endpoint: import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT || "https://us.fluidrelay.azure.com",
 };
 
-// Tinylicious設定(ローカル開発用)
-const tinyliciousConfig = {
-    endpoint: import.meta.env.VITE_TINYLICIOUS_ENDPOINT || "http://localhost:7072",
-};
-
 // 開発環境ではTinyliciousを使用する - 環境変数で強制的に切り替え可能
 const isTestEnvironment = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
 const useTinylicious = isTestEnvironment || // テスト環境では常にTinyliciousを使用
@@ -161,7 +156,9 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
 // AzureClientの取得（またはTinyliciousClient）
 export async function getFluidClient(userId?: string, containerId?: string): Promise<FluidInstances> {
     if (useTinylicious) {
-        const client = new TinyliciousClient({ connection: { port: import.meta.env.VITE_TINYLICIOUS_PORT } });
+        const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7082");
+        const client = new TinyliciousClient({ connection: { port } });
+        // const client = new TinyliciousClient({ connection: { port: 7082 } });
         const createResponse = await client.createContainer(containerSchema, "2");
         const container = createResponse.container;
         const containerID = await container.attach();

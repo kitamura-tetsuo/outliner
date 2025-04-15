@@ -10,6 +10,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     gnupg \
     lsb-release \
     xauth \
+    default-jre \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 # Install Docker CLI
@@ -29,6 +30,6 @@ RUN npm install -g dotenv-cli
 RUN curl -fsSL https://dprint.dev/install.sh | sh
 
 # Any additional customizations can go here
-    
+
 # Switch back to root for permissions compatibility with VSCode
 USER root
