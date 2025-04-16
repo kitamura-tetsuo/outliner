@@ -86,6 +86,7 @@ e2e-tests:
     - 'sleep 30'
   script:
     - 'cd ${CI_PROJECT_DIR}/client'
+    - 'npm run test:unit'
     # - 'npm run ci:test:e2e:ui'
     - 'npm run ci:test:e2e:xvfb'
   after_script:

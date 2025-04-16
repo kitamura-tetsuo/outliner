@@ -58,6 +58,14 @@ interface CallSite {
     getLineNumber(): number | null;
     getColumnNumber(): number | null;
     getFunctionName(): string | null;
+    getThis(): any;
+    getTypeName(): string | null;
+    getMethodName(): string | null;
+    getEvalOrigin(): string | undefined;
+    isToplevel(): boolean;
+    isEval(): boolean;
+    isNative(): boolean;
+    isConstructor(): boolean;
 }
 
 /**
@@ -134,7 +142,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
             }
 
             // 元のログメソッドを呼び出し
-            return originalMethod(...args);
+            return originalMethod.apply(logger, ["", ...args]);
         };
     });
 
@@ -317,7 +325,7 @@ export function log(
 
     // 2. Pinoロガーを使ってサーバーに送信（ログファイルに記録）
     const logger = getLogger(componentName, false); // コンソール出力せずサーバーに送信
-    logger[level](...args);
+    logger[level].apply(logger, ["", ...args]);
 }
 
 /**
