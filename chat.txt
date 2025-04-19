@@ -114,6 +114,11 @@ cd /workspace/client && npm run check
 を実行して、エラー又は警告を一つ修正して。
 
 
+cd /workspace/client && npm run test:unit
+を実行して、修正して。
+リンターエラーは下記で確認してから直して。
+cd /workspace/client && npm run check
+
 
 commit
 git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'

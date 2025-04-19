@@ -1,4 +1,12 @@
 // filepath: /workspace/client/src/tests/firestoreStore.test.ts
+import { vi } from "vitest";
+
+// Vi.js mocking setup
+vi.mock("../stores/firestoreStore", async () => {
+    const mockStore = await import("./mocks/mockFirestoreStore");
+    return { ...mockStore };
+});
+
 import { get } from "svelte/store";
 import {
     afterEach,
@@ -6,16 +14,10 @@ import {
     describe,
     expect,
     it,
-    vi,
 } from "vitest";
 import * as firestoreStore from "../stores/firestoreStore";
 import { setupMocks } from "./mocks";
-import * as mockStore from "./mocks/mockFirestoreStore";
-
-// Vi.js mocking setup
-vi.mock("../stores/firestoreStore", () => {
-    return { ...mockStore };
-});
+import { setupMockFirestore } from "./mocks/firestoreMock";
 
 describe("Firestore Store", () => {
     // Setup mock control functions
@@ -25,6 +27,14 @@ describe("Firestore Store", () => {
             defaultContainerId: "test-container-1",
             accessibleContainerIds: ["test-container-1", "test-container-2", "test-container-3"],
         },
+    });
+
+    beforeEach(() => {
+        setupMockFirestore({
+            userId: "test-user-id",
+            defaultContainerId: "test-container-1",
+            accessibleContainerIds: ["test-container-1", "test-container-2", "test-container-3"],
+        });
     });
 
     afterEach(() => {

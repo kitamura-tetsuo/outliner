@@ -1,4 +1,5 @@
 // filepath: /workspace/client/src/tests/mocks/index.ts
+import { vi } from "vitest";
 import { UserManager } from "../../auth/UserManager";
 import {
     resetMockFirestore,
@@ -7,12 +8,12 @@ import {
 
 // Mock for UserManager
 const mockUserManager = {
-    getCurrentUser: jest.fn().mockReturnValue({
+    getCurrentUser: vi.fn().mockReturnValue({
         id: "test-user-id",
         name: "Test User",
         email: "test@example.com",
     }),
-    addEventListener: jest.fn().mockImplementation(callback => {
+    addEventListener: vi.fn().mockImplementation(callback => {
         // Simulate auth state change notification
         callback({
             user: {
@@ -21,11 +22,11 @@ const mockUserManager = {
                 email: "test@example.com",
             },
         });
-        return jest.fn(); // Return mock unsubscribe function
+        return vi.fn(); // Return mock unsubscribe function
     }),
     auth: {
         currentUser: {
-            getIdToken: jest.fn().mockResolvedValue("mock-id-token"),
+            getIdToken: vi.fn().mockResolvedValue("mock-id-token"),
         },
     },
 };
@@ -36,14 +37,14 @@ export function setupMocks({
     firestore = {},
 } = {}) {
     // Mock UserManager singleton
-    jest.spyOn(UserManager, "getInstance").mockReturnValue(mockUserManager as any);
+    vi.spyOn(UserManager, "getInstance").mockReturnValue(mockUserManager as any);
 
     // Setup Firestore mock with optional initial data
     setupMockFirestore(firestore);
 
     // Mock fetch for API calls
     const originalFetch = global.fetch;
-    global.fetch = jest.fn().mockImplementation((url, options) => {
+    global.fetch = vi.fn().mockImplementation((url, options) => {
         if (url.includes("/api/save-container")) {
             return Promise.resolve({
                 ok: true,
@@ -74,7 +75,7 @@ export function setupMocks({
         resetFirestore: resetMockFirestore,
         resetAll: () => {
             resetMockFirestore();
-            jest.clearAllMocks();
+            vi.clearAllMocks();
             global.fetch = originalFetch;
         },
     };

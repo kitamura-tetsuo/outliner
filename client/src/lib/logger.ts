@@ -4,7 +4,13 @@ import pino from "pino";
 const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";
 
 // ブラウザのコンソールAPIを使用するかどうか
-const useConsoleAPI = typeof window !== "undefined" && typeof window.console !== "undefined";
+// テスト環境では常にtrueを返すようにする
+const isTestEnvironment = import.meta.env.NODE_ENV === "test" ||
+    import.meta.env.VITEST === "true" ||
+    (typeof process !== "undefined" && process.env?.NODE_ENV === "test");
+
+const useConsoleAPI = isTestEnvironment ||
+    (typeof window !== "undefined" && typeof window.console !== "undefined");
 
 // pino のインスタンス（ブラウザ用の設定）
 const baseLogger = pino({
@@ -76,7 +82,7 @@ function getCallerFile(): string {
     try {
         const err = new Error();
         // prepareStackTrace を上書きして、stack を CallSite の配列として取得
-        Error.prepareStackTrace = (_, stack: CallSite[]) => stack;
+        Error.prepareStackTrace = ((error: Error, stack: CallSite[]) => stack) as unknown as any;
         const stack = err.stack as unknown as CallSite[];
 
         // ロガーに関連するファイルパスとメソッド名
@@ -222,7 +228,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
 
                                 // スタイル付きのログを出力 - カスタムモジュール名がある場合のみそれを表示
                                 if (isCustomModule) {
-                                    console[consoleMethod as keyof Console](
+                                    (console[consoleMethod as keyof Console] as Function)(
                                         `%c[${sourceInfo}]%c [${module}]%c [${levelUpperCase}]:`,
                                         consoleStyles.fileInfo,
                                         consoleStyles.moduleName,
@@ -233,7 +239,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                 }
                                 else {
                                     // モジュール名がファイル名と同じ場合は一つだけ表示
-                                    console[consoleMethod as keyof Console](
+                                    (console[consoleMethod as keyof Console] as Function)(
                                         `%c[${sourceInfo}]%c [${levelUpperCase}]:`,
                                         consoleStyles.fileInfo,
                                         consoleStyles.levels[prop as keyof typeof consoleStyles.levels],
@@ -245,7 +251,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                             else {
                                 // 通常のメッセージ（オブジェクトなし）
                                 if (isCustomModule) {
-                                    console[consoleMethod as keyof Console](
+                                    (console[consoleMethod as keyof Console] as Function)(
                                         `%c[${sourceInfo}]%c [${module}]%c [${levelUpperCase}]:`,
                                         consoleStyles.fileInfo,
                                         consoleStyles.moduleName,
@@ -255,7 +261,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                 }
                                 else {
                                     // モジュール名がファイル名と同じ場合は一つだけ表示
-                                    console[consoleMethod as keyof Console](
+                                    (console[consoleMethod as keyof Console] as Function)(
                                         `%c[${sourceInfo}]%c [${levelUpperCase}]:`,
                                         consoleStyles.fileInfo,
                                         consoleStyles.levels[prop as keyof typeof consoleStyles.levels],
@@ -266,7 +272,10 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                         }
                         catch (e) {
                             // スタイル適用に失敗した場合は通常のフォーマットで表示
-                            console[consoleMethod as keyof Console](`[${file}] [${prop.toUpperCase()}]:`, ...args);
+                            (console[consoleMethod as keyof Console] as Function)(
+                                `[${file}] [${prop.toUpperCase()}]:`,
+                                ...args,
+                            );
                         }
                     };
                 }
@@ -307,7 +316,7 @@ export function log(
     // コンソールへ直接出力
     // componentName がファイル名と同じで重複している場合は、ファイル名の情報は含めない
     if (componentName === file.replace(/\.[jt]s$/, "")) {
-        console[consoleMethod as keyof Console](
+        (console[consoleMethod as keyof Console] as Function)(
             `%c[${componentName}]%c [${level.toUpperCase()}]:`,
             `color: #6699cc; font-weight: bold`,
             `color: ${levelColors[level]}; font-weight: bold`,
@@ -315,7 +324,7 @@ export function log(
         );
     }
     else {
-        console[consoleMethod as keyof Console](
+        (console[consoleMethod as keyof Console] as Function)(
             `%c[${componentName}]%c [${level.toUpperCase()}]:`,
             `color: #5cb85c; font-weight: bold`,
             `color: ${levelColors[level]}; font-weight: bold`,
@@ -364,7 +373,6 @@ function setupGlobalErrorHandlers(): void {
     window.onerror = (message, source, lineno, colno, error) => {
         const errorInfo = {
             type: "uncaught_exception",
-            message: String(message),
             source: source || "",
             line: lineno || 0,
             column: colno || 0,
