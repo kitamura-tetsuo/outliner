@@ -28,7 +28,7 @@ import {
 } from "../schema/app-schema";
 import {
     getDefaultContainerId,
-    saveContainerIdToServer as saveFirestoreContainerIdToServer,
+    saveFirestoreContainerIdToServer,
 } from "../services";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";
