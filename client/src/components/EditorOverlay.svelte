@@ -1,9 +1,21 @@
 <script lang="ts">
-import { onDestroy, onMount } from 'svelte';
-import { editorOverlayStore, type CursorPosition, type SelectionRange } from '../stores/EditorOverlayStore';
+import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore';
+import {
+	cursors,
+	selections,
+	setCursor,
+	startCursorBlink,
+	stopCursorBlink,
+	activeItemId as storeActiveItemId,
+	animationPaused as storeAnimationPaused,
+	cursorVisible as storeCursorVisible
+} from '../stores/EditorOverlayStore';
 
 // デバッグモード
 const DEBUG_MODE = false;
+// 上位へイベント dispatch
+const dispatch = createEventDispatcher();
 
 // カーソルの位置とアイテムの位置情報をマッピングするオブジェクト
 interface CursorPositionMap {
@@ -26,12 +38,14 @@ let positionMap = $state<CursorPositionMap>({});
 let allCursors = $state<CursorPosition[]>([]);
 // すべての選択範囲
 let allSelections = $state<SelectionRange[]>([]);
-// アクティブアイテムID
-let activeItemId = $state<string | null>(null);
-// ストアからカーソル点滅状態を取得
-let cursorVisible = $state(false);
-// ストアからアニメーション一時停止状態を取得
-let animationPaused = $state(false);
+// 隠しクリップボード用テキストエリア
+let clipboardRef: HTMLTextAreaElement;
+// アクティブアイテムID（storeからの反映用）
+let localActiveItemId = $state<string | null>(null);
+// カーソル表示状態（storeからの反映用）
+let localCursorVisible = $state(false);
+// アニメーション一時停止状態（storeからの反映用）
+let localAnimationPaused = $state(false);
 
 // DOM要素への参照
 let overlayRef: HTMLDivElement;
@@ -285,58 +299,40 @@ function debouncedUpdatePositionMap() {
     }, 100) as unknown as number;
 }
 
-// editorOverlayStore からのデータを監視し、状態を更新
-editorOverlayStore.subscribe(state => {
-    // アクティブアイテムが変わった場合
-    const activeItemChanged = state.activeItemId !== activeItemId;
-    
-    // 状態を更新
-    allCursors = Object.values(state.cursors);
-    allSelections = Object.values(state.selections);
-    const previousActiveItemId = activeItemId;
-    activeItemId = state.activeItemId;
-    cursorVisible = state.cursorVisible;
-    animationPaused = state.animationPaused;
-    
-    if (activeItemChanged) {
-        if (DEBUG_MODE) {
-            console.log(`Active item changed from ${previousActiveItemId} to ${state.activeItemId}`);
-        }
-        
-        // アイテム間移動時のカーソル位置更新を確実にするための処理
-        updatePositionMap();
-        
-        // アイテム間移動時は、カーソルを表示し、アニメーションを一時停止するようストアに通知
-        editorOverlayStore.startCursorBlink();
-        
-        // カーソルとセレクションが存在する場合は、再計算を強制
-        // 単一の遅延処理で、DOM更新が確実に完了した後に実行
-        setTimeout(() => {
-            updatePositionMap();
-            
-            // 現在のアクティブアイテムのカーソル情報を取得
-            const activeCursor = state.cursors["local"];
-            if (activeCursor && activeCursor.itemId === state.activeItemId) {
-                // カーソル位置を再設定して更新を促す（クリアはしない）
-                editorOverlayStore.setCursor({
-                    ...activeCursor,
-                    isActive: true
-                });
-                
-                // アイテム移動後にカーソル点滅を再開始（強制表示期間を含む）
-                editorOverlayStore.startCursorBlink();
-            }
-        }, 100); // 100msの遅延で十分なDOM更新時間を確保
-    } else {
-        // カーソル位置のみ更新された場合の処理
-        debouncedUpdatePositionMap();
-    }
+// store からのデータを反映するリアクティブ処理
+$effect(() => {
+  const activeChanged = storeActiveItemId !== localActiveItemId;
+  // store変数をlocal stateにコピー
+  allCursors = Object.values(cursors);
+  allSelections = Object.values(selections);
+  localActiveItemId = storeActiveItemId;
+  localCursorVisible = storeCursorVisible;
+  localAnimationPaused = storeAnimationPaused;
+  if (activeChanged) {
+    updatePositionMap();
+    startCursorBlink();
+    setTimeout(() => {
+      updatePositionMap();
+      const activeCursor = cursors['local'];
+      if (activeCursor && activeCursor.itemId === storeActiveItemId) {
+        setCursor({ ...activeCursor, isActive: true });
+        startCursorBlink();
+      }
+    }, 100);
+  } else {
+    debouncedUpdatePositionMap();
+  }
 });
 
 // MutationObserver を設定して DOM の変更を監視
 onMount(() => {
     // 初期位置マップの作成
     updatePositionMap();
+    
+    // copyイベントを監視
+    document.addEventListener('copy', handleCopy as EventListener);
+    // pasteイベントを監視 (マルチラインペースト)
+    document.addEventListener('paste', handlePaste as EventListener);
     
     // MutationObserverを単純化 - 変更検出後すぐに再計算するのではなく、
     // debounceを使用して頻度を制限
@@ -358,7 +354,7 @@ onMount(() => {
     // 初期状態でアクティブカーソルがある場合は、少し遅延してから点滅を開始
     setTimeout(() => {
         if (allCursors.some(cursor => cursor.isActive)) {
-            editorOverlayStore.startCursorBlink();
+            startCursorBlink();
         }
     }, 200);
 });
@@ -369,6 +365,11 @@ onDestroy(() => {
         mutationObserver.disconnect();
     }
     
+    // copyイベントリスナー解除
+    document.removeEventListener('copy', handleCopy as EventListener);
+    // pasteイベントリスナー解除
+    document.removeEventListener('paste', handlePaste as EventListener);
+    
     // イベントリスナーの削除
     window.removeEventListener('resize', debouncedUpdatePositionMap);
     window.removeEventListener('scroll', debouncedUpdatePositionMap);
@@ -377,32 +378,111 @@ onDestroy(() => {
     clearTimeout(updatePositionMapTimer);
     
     // カーソル点滅タイマーの停止
-    editorOverlayStore.stopCursorBlink();
+    stopCursorBlink();
 });
+
+// 複数アイテム選択をクリップボードにコピー
+function handleCopy(event: ClipboardEvent) {
+  // startOffsetとendOffsetが等しい範囲は対象外
+  const selections = allSelections.filter(sel => sel.startOffset !== sel.endOffset);
+  if (selections.length === 0) return;
+  event.preventDefault();
+  // アイテムDOM順にテキストを連結
+  const itemEls = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLDivElement[];
+  let copied = '';
+  for (const itemEl of itemEls) {
+    const itemId = itemEl.getAttribute('data-item-id');
+    // 開始または終了アイテムと一致するか
+    const sel = selections.find(s =>
+      s.startItemId === itemId || s.endItemId === itemId
+    );
+    if (sel) {
+      const textEl = itemEl.querySelector('.item-text') as HTMLElement;
+      const text = textEl?.textContent || '';
+      copied += text.substring(sel.startOffset, sel.endOffset) + '\n';
+    }
+  }
+  if (copied.endsWith('\n')) copied = copied.slice(0, -1);
+  // クリップボードに書き込み
+  if (event.clipboardData) {
+    event.clipboardData.setData('text/plain', copied);
+  }
+  // テスト・フォーカス保持のため、常に隠しtextareaを更新しフォーカス
+  if (clipboardRef) {
+    clipboardRef.value = copied;
+  }
+}
+
+// マルチラインペーストを上位に通知
+function handlePaste(event: ClipboardEvent) {
+  const text = event.clipboardData?.getData('text/plain') || '';
+  if (!text) return;
+  // 複数行テキストの場合はマルチアイテムペーストとみなす
+  if (text.includes('\n')) {
+    event.preventDefault();
+    const lines = text.split(/\r?\n/);
+    // 選択中の範囲を通知
+    dispatch('paste-multi-item', {
+      lines,
+      selections: allSelections.filter(s => s.startOffset !== s.endOffset),
+      activeItemId: localActiveItemId,
+    });
+  }
+}
 </script>
 
 <div class="editor-overlay" bind:this={overlayRef}>
+    <!-- 隠しクリップボード用textarea -->
+    <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
     <!-- 選択範囲のレンダリング -->
-    {#each allSelections as selection}
-        {#if selection.startOffset !== selection.endOffset}
-            {@const selectionRect = calculateSelectionPixelRange(selection.itemId, selection.startOffset, selection.endOffset, selection.isReversed)}
-            {#if selectionRect}
-                {@const isPageTitle = selection.itemId === "page-title"}
-                <div 
-                    class="selection" 
-                    class:page-title-selection={isPageTitle}
-                    class:selection-reversed={selection.isReversed}
-                    style="
-                        position: absolute;
-                        left: {selectionRect.left}px; 
-                        top: {selectionRect.top}px; 
-                        width: {selectionRect.width}px; 
-                        height: {isPageTitle ? '1.5em' : selectionRect.height}px;
-                        background-color: {selection.color ? `${selection.color}33` : 'rgba(0, 120, 215, 0.2)'};
-                        pointer-events: none;
-                    "
-                    title={selection.userName || ''}
-                ></div>
+    {#each allSelections as sel}
+        {#if sel.startOffset !== sel.endOffset}
+            {#if sel.startItemId === sel.endItemId}
+                <!-- 単一アイテム選択 -->
+                {@const rect = calculateSelectionPixelRange(sel.startItemId, sel.startOffset, sel.endOffset, sel.isReversed)}
+                {#if rect}
+                    {@const isPageTitle = sel.startItemId === "page-title"}
+                    <div
+                        class="selection"
+                        class:page-title-selection={isPageTitle}
+                        class:selection-reversed={sel.isReversed}
+                        style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; background-color:rgba(0, 120, 215, 0.2); pointer-events:none;"
+                    ></div>
+                {/if}
+            {:else}
+                <!-- マルチアイテム選択 -->
+                {@const allEls = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[]}
+                {@const ids = allEls.map(el => el.getAttribute('data-item-id')!)}
+                {@const sIdx = ids.indexOf(sel.startItemId)}
+                {@const eIdx = ids.indexOf(sel.endItemId)}
+                {@const forward = !sel.isReversed}
+                {@const startIdx = forward ? sIdx : eIdx}
+                {@const endIdx   = forward ? eIdx : sIdx}
+                {#each ids.slice(startIdx, endIdx + 1) as itemId}
+                    {@const textEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement}
+                    {@const len = textEl?.textContent?.length || 0}
+                    <!-- offset 計算: 開始アイテム, 終了アイテム, その他 -->
+                    {@const startOff = itemId === sel.startItemId
+                        ? (forward ? sel.startOffset : 0)
+                        : itemId === sel.endItemId
+                        ? (forward ? 0 : sel.endOffset)
+                        : 0}
+                    {@const endOff = itemId === sel.startItemId
+                        ? (forward ? len : sel.startOffset)
+                        : itemId === sel.endItemId
+                        ? (forward ? sel.endOffset : len)
+                        : len}
+                    {@const rect = calculateSelectionPixelRange(itemId, startOff, endOff, sel.isReversed)}
+                    {#if rect}
+                        {@const isPageTitle = itemId === 'page-title'}
+                        <div
+                            class="selection"
+                            class:page-title-selection={isPageTitle}
+                            class:selection-reversed={sel.isReversed}
+                            style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; background-color:rgba(0, 120, 215, 0.2); pointer-events:none;"
+                        ></div>
+                    {/if}
+                {/each}
             {/if}
         {/if}
     {/each}
@@ -427,16 +507,16 @@ onDestroy(() => {
                     pointer-events: none;
                     visibility: {!isActive ? 'visible' : null};
                     opacity: {!isActive ? 1 : null};
-                    animation-play-state: {isActive ? (animationPaused ? 'paused' : 'running') : 'paused'};
+                    animation-play-state: {isActive ? (localAnimationPaused ? 'paused' : 'running') : 'paused'};
                 "
                 title={cursor.userName || ''}
             ></div>
         {/if}
     {/each}
     
-    {#if DEBUG_MODE && activeItemId}
+    {#if DEBUG_MODE && localActiveItemId}
         <div class="debug-info">
-            カーソル位置: アイテム {activeItemId}
+            カーソル位置: アイテム {localActiveItemId}
             {#if allCursors.length > 0}
                 <br>オフセット: {allCursors[0].offset}
             {/if}
@@ -514,5 +594,13 @@ onDestroy(() => {
         opacity: 0; 
         visibility: hidden;
     }
+}
+
+.clipboard-textarea {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
 }
 </style> 

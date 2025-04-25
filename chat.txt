@@ -108,6 +108,16 @@ API serverのログがここにある。必要であれば、アクセス後に�
 
 
 
+cd /workspace/client && npm run test:e2e:xvfb
+で実行して、確認して。
+
+先ほどの
+カーソルの表示がされなくなった。
+コピーペーストが動かなくなった。
+を解決して。
+
+これの確認のテストが不足していたら追加して。
+
 
 Problems
 cd /workspace/client && npm run check

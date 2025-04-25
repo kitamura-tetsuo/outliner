@@ -3,7 +3,18 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { getLogger } from '../lib/logger';
 	import { Items } from '../schema/app-schema';
-	import { editorOverlayStore } from '../stores/EditorOverlayStore';
+	import {
+		addCursor,
+		clearCursorAndSelection,
+		clearCursorForItem,
+		getItemCursorsAndSelections,
+		setActiveItem,
+		setCursor,
+		setSelection,
+		startCursorBlink,
+		stopCursorBlink,
+		updateCursor
+	} from '../stores/EditorOverlayStore';
 	import type { OutlinerItemViewModel } from '../stores/OutlinerViewModel';
 	import { TreeSubscriber } from "../stores/TreeSubscriber";
 
@@ -117,8 +128,8 @@
 		}
 		
 		// カーソル位置をストアに設定
-		editorOverlayStore.setActiveItem(model.id);
-		editorOverlayStore.setCursor({
+		setActiveItem(model.id);
+		setCursor({
 			itemId: model.id,
 			offset: cursorPosition !== undefined ? cursorPosition : 0,
 			isActive: true,
@@ -126,7 +137,7 @@
 		});
 		
 		// カーソル点滅を開始
-		editorOverlayStore.startCursorBlink();
+		startCursorBlink();
 	}
 
 	/**
@@ -177,50 +188,36 @@
 		lastCursorPosition = currentSelectionDirection === 'forward' ? 
 			currentSelectionEnd : currentSelectionStart;
 
+		// アイテム間移動用のカスタムイベントを発火
+		if (event.key === 'ArrowUp' && isAtFirstLine()) {
+			event.preventDefault();
+			event.stopPropagation();
+			const cursorScreenX = calculateCursorScreenPosition(currentSelectionStart);
+			dispatch('navigate-to-item', {
+				direction: 'up',
+				itemId: model.id,
+				cursorScreenX,
+				fromItemId: model.id,
+				shiftKey: event.shiftKey
+			});
+			return;
+		}
+		if (event.key === 'ArrowDown' && isAtLastLine()) {
+			event.preventDefault();
+			event.stopPropagation();
+			const cursorScreenX = calculateCursorScreenPosition(currentSelectionStart);
+			dispatch('navigate-to-item', {
+				direction: 'down',
+				itemId: model.id,
+				cursorScreenX,
+				fromItemId: model.id,
+				shiftKey: event.shiftKey
+			});
+			return;
+		}
+
 		// 矢印キー処理
-		if (event.key === 'ArrowUp') {
-			if (isAtFirstLine()) {
-				// 最初の行にいる場合は上のアイテムに移動
-				event.preventDefault();
-				event.stopPropagation();
-				
-				const cursorScreenX = calculateCursorScreenPosition(currentSelectionStart);
-				
-				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-					console.log(`Up navigation from first line with cursor at ${currentSelectionStart}, screenX=${cursorScreenX}`);
-				}
-				
-				finishEditing();
-				dispatch("navigate-to-item", {
-					direction: "up",
-					itemId: model.id,
-					cursorScreenX,
-					fromItemId: model.id
-				});
-				return;
-			}
-		} else if (event.key === 'ArrowDown') {
-			if (isAtLastLine()) {
-				// 最後の行にいる場合は下のアイテムに移動
-				event.preventDefault();
-				event.stopPropagation();
-				
-				const cursorScreenX = calculateCursorScreenPosition(currentSelectionStart);
-				
-				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-					console.log(`Down navigation from last line with cursor at ${currentSelectionStart}, screenX=${cursorScreenX}`);
-				}
-				
-				finishEditing();
-				dispatch("navigate-to-item", {
-					direction: "down",
-					itemId: model.id,
-					cursorScreenX,
-					fromItemId: model.id
-				});
-				return;
-			}
-		} else if (event.key === 'ArrowLeft') {
+		if (event.key === 'ArrowLeft') {
 			if (currentSelectionStart === 0 && currentSelectionEnd === 0) {
 				// テキストの先頭にいる場合は左のアイテムに移動
 				event.preventDefault();
@@ -300,7 +297,7 @@
 		
 		// 矢印キー処理後のカーソル位置更新
 		if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
-			editorOverlayStore.startCursorBlink();
+			startCursorBlink();
 			requestAnimationFrame(() => {
 				if (!event.defaultPrevented) {
 					updateSelectionAndCursor(event.shiftKey);
@@ -417,14 +414,15 @@
 		if (currentStart === currentEnd) {
 			lastCursorPosition = currentStart;
 			
-			editorOverlayStore.setCursor({
+			setCursor({
 				itemId: model.id,
 				offset: currentStart,
 				isActive: true,
 				userId: 'local'
 			});
-			editorOverlayStore.setSelection({
-				itemId: model.id,
+			setSelection({
+				startItemId: model.id,
+				endItemId: model.id,
 				startOffset: 0,
 				endOffset: 0,
 				userId: 'local'
@@ -452,14 +450,15 @@
 			const cursorOffset = cursorAtStart ? currentStart : currentEnd;
 			lastCursorPosition = cursorOffset;
 			
-			editorOverlayStore.setCursor({
+			setCursor({
 				itemId: model.id,
 				offset: cursorOffset,
 				isActive: true,
 				userId: 'local'
 			});
-			editorOverlayStore.setSelection({
-				itemId: model.id,
+			setSelection({
+				startItemId: model.id,
+				endItemId: model.id,
 				startOffset: Math.min(currentStart, currentEnd),
 				endOffset: Math.max(currentStart, currentEnd),
 				userId: 'local',
@@ -492,31 +491,53 @@
 		}
 	}
 
-	function handleInput() {
-		// テキスト内容を更新
-		text.current = hiddenTextareaRef.value;
-		
-		// カーソル位置とセレクションを更新
-		const currentSelectionStart = hiddenTextareaRef.selectionStart || 0;
-		const currentSelectionEnd = hiddenTextareaRef.selectionEnd || 0;
-		
-		// カーソル位置を安全に更新するため、少し遅延
-		requestAnimationFrame(() => {
-			// セレクションとカーソル位置を更新
-			updateSelectionAndCursor();
-			
-			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-				console.log(`Input handled: selection=${currentSelectionStart}-${currentSelectionEnd}`);
-			}
-		});
+	// 隠し textarea からの入力を受け、マルチカーソル対応の insertText を適用する
+	function handleInput(event: any) {
+		const ev = event as InputEvent;
+		// insertText のみ多重挿入
+		if (ev.inputType === 'insertText' && ev.data) {
+			const ch = ev.data;
+			// このアイテムに紐づく全カーソル位置を取得
+			const cursors = getItemCursorsAndSelections(model.id).cursors;
+			// 後ろのオフセットから順に処理しないとズレるので降順ソート
+			cursors.sort((a, b) => b.offset - a.offset);
+
+			// SharedTree と text.current を immutably 更新
+			let newText = text.current;
+			cursors.forEach(c => {
+				newText = newText.slice(0, c.offset) + ch + newText.slice(c.offset);
+			});
+			text.current = newText;
+
+			// 各カーソル位置を挿入後の位置に更新
+			cursors.forEach(c => {
+				updateCursor({
+					...c,
+					offset: c.offset + ch.length,
+					isActive: true
+				});
+			});
+
+			// 隠し textarea の値も最新化
+			hiddenTextareaRef.value = newText;
+			// カーソル点滅
+			startCursorBlink();
+		} else {
+			// 通常入力は従来通り
+			text.current = hiddenTextareaRef.value;
+			requestAnimationFrame(() => {
+				updateSelectionAndCursor();
+			});
+		}
 	}
 
 	function finishEditing() {
 		isEditing = false;
-		editorOverlayStore.stopCursorBlink();
+		stopCursorBlink();
 		
-		editorOverlayStore.clearCursorAndSelection();
-		editorOverlayStore.setActiveItem(null);
+		// カーソルのみクリアし、跨いだ選択は残す
+		clearCursorForItem(model.id);
+		setActiveItem(null);
 	}
 
 	function addNewItem() {
@@ -538,7 +559,21 @@
 		}
 	}
 
+	// クリック時のハンドリング: Alt+Click でマルチカーソル追加、それ以外は編集開始
 	function handleClick(event: MouseEvent) {
+		// Alt+Click: 新しいカーソルを追加
+		if (event.altKey) {
+			// クリック位置に基づいてオフセット計算
+			const pos = getClickPosition(event, text.current);
+			addCursor({
+				itemId: model.id,
+				offset: pos,
+				isActive: true,
+				userId: 'local'
+			});
+			return;
+		}
+		// 通常クリック: 編集開始
 		startEditing(event);
 	}
 
@@ -559,7 +594,8 @@
 		
 		// カーソル位置を保持してアイテム間をナビゲートするためのイベントリスナー
 		const handleFocusItem = (event: CustomEvent) => {
-			const { cursorScreenX } = event.detail;
+			// shiftKeyと方向も取得
+			const { cursorScreenX, shiftKey, direction } = event.detail;
 			
 			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 				console.log(`Received focus-item event for ${model.id} with X: ${cursorScreenX}px`);
@@ -616,27 +652,35 @@
 					// まずフォーカスを設定（最優先）
 					hiddenTextareaRef.focus();
 					
-					// ローカル変数を更新
-					selectionStart = selectionEnd = textPosition;
-					lastSelectionStart = lastSelectionEnd = textPosition;
-					lastCursorPosition = textPosition;
+					// ローカル変数を更新 (shiftKey時はクロスアイテム選択拡張)
+					if (!shiftKey) {
+						selectionStart = selectionEnd = textPosition;
+						lastSelectionStart = lastSelectionEnd = textPosition;
+						lastCursorPosition = textPosition;
+					} else if (direction === 'down' || direction === 'right') {
+						// 次アイテム: 行頭からカーソル位置まで選択
+						selectionStart = 0;
+						selectionEnd = textPosition;
+						lastSelectionStart = 0;
+						lastSelectionEnd = textPosition;
+						lastCursorPosition = textPosition;
+					} else if (direction === 'up' || direction === 'left') {
+						// 前アイテム: カーソル位置から行末まで選択
+						selectionStart = textPosition;
+						selectionEnd = hiddenTextareaRef.value.length;
+						lastSelectionStart = textPosition;
+						lastSelectionEnd = hiddenTextareaRef.value.length;
+						lastCursorPosition = textPosition;
+					}
 					
 					// 再度カーソルが表示されていることを確認
-					editorOverlayStore.startCursorBlink();
+					startCursorBlink();
 					
-					// editorOverlayStoreにアクティブアイテムとカーソル位置を設定
-					editorOverlayStore.setActiveItem(model.id);
-					editorOverlayStore.setCursor({
+					// editorOverlayStoreにアクティブアイテムとカーソル位置を設定（選択範囲はOutlinerTree側で管理）
+					setCursor({
 						itemId: model.id,
 						offset: textPosition,
 						isActive: true,
-						userId: 'local'
-					});
-					
-					editorOverlayStore.setSelection({
-						itemId: model.id,
-						startOffset: textPosition,
-						endOffset: textPosition,
 						userId: 'local'
 					});
 					
@@ -682,7 +726,7 @@
 			}
 			document.removeEventListener('click', handleOutsideClick);
 			
-			editorOverlayStore.clearCursorAndSelection();
+			clearCursorAndSelection();
 		};
 	});
 
@@ -804,7 +848,7 @@
 			lastCursorPosition = safePosition;
 			
 			// ストアにカーソル位置を設定
-			editorOverlayStore.setCursor({
+			setCursor({
 				itemId: model.id,
 				offset: safePosition,
 				isActive: true,
@@ -812,8 +856,9 @@
 			});
 			
 			// 選択範囲をクリア
-			editorOverlayStore.setSelection({
-				itemId: model.id,
+			setSelection({
+				startItemId: model.id,
+				endItemId: model.id,
 				startOffset: 0,
 				endOffset: 0,
 				userId: 'local'
@@ -839,7 +884,7 @@
 		lastCursorPosition = end;
 		
 		updateSelectionAndCursor();
-		editorOverlayStore.startCursorBlink();
+		startCursorBlink();
 	}
 
 	// アイテムの編集を開始し、カーソル位置を指定する
@@ -870,8 +915,7 @@
 		
 		setSelectionPosition(cursorPosition);
 		
-		editorOverlayStore.setActiveItem(model.id);
-		editorOverlayStore.setCursor({
+		setCursor({
 			itemId: model.id,
 			offset: cursorPosition,
 			isActive: true,
@@ -879,7 +923,7 @@
 		});
 		
 		// 重要: カーソル点滅を開始
-		editorOverlayStore.startCursorBlink();
+		startCursorBlink();
 	}
 
 	// 他のアイテムに移動するイベントを発火する
@@ -971,14 +1015,15 @@
 	class:page-title={isPageTitle}
 	style="margin-left: {depth * 20}px"
 	tabindex="0"
-	onkeydown={handleItemKeyDown}
+	on:click={handleClick}
+	on:keydown={handleItemKeyDown}
 	bind:this={itemRef}
 	data-item-id={model.id}
 >
 	<div class="item-header">
 		{#if !isPageTitle}
 			{#if hasChildren}
-				<button class="collapse-btn" onclick={toggleCollapse}>
+				<button class="collapse-btn" on:click={toggleCollapse}>
 					{isCollapsed ? '▶' : '▼'}
 				</button>
 			{:else}
@@ -991,9 +1036,9 @@
 			<textarea
 				bind:this={hiddenTextareaRef}
 				class="hidden-textarea"
-				onkeydown={handleKeyDown}
-				oninput={handleInput}
-				onblur={finishEditing}
+				on:keydown={handleKeyDown}
+				on:input={handleInput}
+				on:blur={finishEditing}
 			></textarea>
 			
 			<!-- 表示用の要素 -->
@@ -1001,7 +1046,7 @@
 				bind:this={displayRef}
 				class="item-content"
 				class:page-title-content={isPageTitle}
-				onclick={handleClick}
+				on:click={handleClick}
 				class:editing={isEditing}
 			>
 				{#if text.current}
@@ -1018,10 +1063,10 @@
 
 		{#if !isPageTitle}
 			<div class="item-actions">
-				<button onclick={addNewItem} title="新しいアイテムを追加">+</button>
-				<button onclick={handleDelete} title="削除">×</button>
+				<button on:click={addNewItem} title="新しいアイテムを追加">+</button>
+				<button on:click={handleDelete} title="削除">×</button>
 				<button
-					onclick={toggleVote}
+					on:click={toggleVote}
 					class="vote-btn"
 					class:voted={model.votes.includes(currentUser)}
 					title="投票"

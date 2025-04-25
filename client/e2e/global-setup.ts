@@ -28,6 +28,17 @@ function startTinyliciousServer() {
 
     // ログファイルのパス
     const logFile = path.join(logDir, "tinylicious-server.log");
+    // ログファイルが存在しなければ作成
+    if (!fs.existsSync(logFile)) {
+        fs.writeFileSync(logFile, "");
+    }
+    // 権限を777に設定してアクセスエラーを回避
+    try {
+        fs.chmodSync(logFile, 0o777);
+    }
+    catch (e) {
+        console.warn(`Failed to chmod log file: ${e.message}`);
+    }
     const logStream = fs.createWriteStream(logFile, { flags: "a" });
 
     // Tinyliciousサーバーを起動
