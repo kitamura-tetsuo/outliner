@@ -424,7 +424,7 @@ function handlePaste(event: ClipboardEvent) {
 }
 </script>
 
-<div class="editor-overlay" bind:this={overlayRef}>
+<div class="editor-overlay" bind:this={overlayRef} class:paused={localAnimationPaused} class:visible={localCursorVisible}>
     <!-- 隠しクリップボード用textarea -->
     <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
     <!-- 選択範囲のレンダリング -->
@@ -516,7 +516,7 @@ function handlePaste(event: ClipboardEvent) {
 
 <style>
 .editor-overlay {
-    outline: 2px dashed red;  /* デバッグ: オーバーレイ領域を可視化 */
+    /* outline: 2px dashed red;  デバッグ用なので削除 */
     position: absolute;
     top: 0;
     left: 0;
@@ -524,8 +524,18 @@ function handlePaste(event: ClipboardEvent) {
     bottom: 0;
     pointer-events: none !important;
     z-index: 100;
-    background-color: rgba(255, 0, 0, 0.1) !important;  /* デバッグ: オーバーレイ背景 */
+    /* background-color: rgba(255, 0, 0, 0.1) !important; デバッグ用なので削除 */
     will-change: transform;
+}
+
+/* blink via JS-driven visibility */
+.editor-overlay .cursor.active {
+    opacity: 0;
+    visibility: hidden;
+}
+.editor-overlay.visible .cursor.active {
+    opacity: 1;
+    visibility: visible;
 }
 
 .cursor {
@@ -545,8 +555,7 @@ function handlePaste(event: ClipboardEvent) {
 }
 
 .cursor.active {
-    animation: blink 1.06s steps(1) infinite;
-    animation-play-state: running;
+    /* アニメーションはJS制御のvisibilityで同期 */
     pointer-events: none !important;
     border-color: yellow;  /* デバッグ: アクティブカーソル枠 */
 }
@@ -578,17 +587,6 @@ function handlePaste(event: ClipboardEvent) {
     font-size: 12px;
     z-index: 1000;
     pointer-events: none !important;
-}
-
-@keyframes blink {
-    0%, 49% { 
-        opacity: 1; 
-        visibility: visible;
-    }
-    50%, 100% { 
-        opacity: 0; 
-        visibility: hidden;
-    }
 }
 
 .clipboard-textarea {

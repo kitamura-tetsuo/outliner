@@ -95,20 +95,20 @@ class EditorOverlayStore {
     }
 
     startCursorBlink() {
+        // 同期点滅: windowのフォーカス中のみcursorVisibleを反転
         this.cursorVisible = true;
-        this.animationPaused = true;
-        clearTimeout(this.timerId);
-        this.timerId = setTimeout(() => {
+        clearInterval(this.timerId);
+        this.timerId = setInterval(() => {
             if (document.hasFocus()) {
-                this.animationPaused = false;
+                this.cursorVisible = !this.cursorVisible;
             }
-        }, 500);
+        }, 530);
     }
 
     stopCursorBlink() {
+        // 点滅停止: タイマークリアして表示状態をオンに
+        clearInterval(this.timerId);
         this.cursorVisible = true;
-        this.animationPaused = true;
-        clearTimeout(this.timerId);
     }
 
     clearCursorAndSelection(userId = "local") {

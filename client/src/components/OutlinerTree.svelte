@@ -111,8 +111,8 @@ function updateItemPositions() {
 
     // デバッグ用のログ
     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-        console.log("Heights:", itemHeights);
-        console.log("Positions:", itemPositions);
+        console.log("Heights:", $state.snapshot(itemHeights));
+        console.log("Positions:", $state.snapshot(itemPositions));
     }
 }
 

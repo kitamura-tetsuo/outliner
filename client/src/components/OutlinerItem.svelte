@@ -62,31 +62,54 @@
 	let lastHeight = 0;
 
 	function getClickPosition(event: MouseEvent, content: string): number {
-		const element = (event.currentTarget || event.target) as HTMLElement;
-		const rect = element.getBoundingClientRect();
-		const x = event.clientX - rect.left;
-
-		// クリック位置に最も近い文字位置を見つける
-		const span = document.createElement('span');
-		span.style.font = window.getComputedStyle(element).font;
-		document.body.appendChild(span);
-
-		let bestPosition = 0;
-		let minDistance = Infinity;
-
-		for (let i = 0; i <= content.length; i++) {
-			span.textContent = content.slice(0, i);
-			const width = span.getBoundingClientRect().width;
-			const distance = Math.abs(width - x);
-
-			if (distance < minDistance) {
-				minDistance = distance;
-				bestPosition = i;
+		const x = event.clientX;
+		const y = event.clientY;
+		// テキスト要素を特定
+		const textEl = displayRef.querySelector('.item-text') as HTMLElement;
+		// Caret APIを試す
+		if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
+			let range: Range | null = null;
+			if (document.caretRangeFromPoint) {
+				range = document.caretRangeFromPoint(x, y);
+			} else {
+				const posInfo = (document as any).caretPositionFromPoint(x, y);
+				if (posInfo) {
+					range = document.createRange();
+					range.setStart(posInfo.offsetNode, posInfo.offset);
+					range.collapse(true);
+				}
+			}
+			if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
+				// テキストノード内オフセットを返す
+				return Math.min(Math.max(0, range.startOffset), content.length);
 			}
 		}
-
+		// フォールバック: spanを使った幅測定
+		const rect = displayRef.getBoundingClientRect();
+		const relX = x - rect.left;
+		const span = document.createElement('span');
+		const style = window.getComputedStyle(textEl || displayRef);
+		span.style.fontFamily = style.fontFamily;
+		span.style.fontSize = style.fontSize;
+		span.style.fontWeight = style.fontWeight;
+		span.style.letterSpacing = style.letterSpacing;
+		span.style.whiteSpace = 'pre';
+		span.style.visibility = 'hidden';
+		span.style.position = 'absolute';
+		document.body.appendChild(span);
+		let best = 0;
+		let minDist = Infinity;
+		for (let i = 0; i <= content.length; i++) {
+			span.textContent = content.slice(0, i);
+			const w = span.getBoundingClientRect().width;
+			const d = Math.abs(w - relX);
+			if (d < minDist) {
+				minDist = d;
+				best = i;
+			}
+		}
 		document.body.removeChild(span);
-		return bestPosition;
+		return best;
 	}
 
 	function toggleCollapse() {
@@ -484,8 +507,64 @@
 	// 隠し textarea からの入力を受け、マルチカーソル対応の insertText を適用する
 	function handleInput(event: any) {
 		const ev = event as InputEvent;
-		// insertText のみ多重挿入
-		if (ev.inputType === 'insertText' && ev.data) {
+		// 範囲選択＋Delete の同時削除
+		const selStart = hiddenTextareaRef.selectionStart ?? 0;
+		const selEnd = hiddenTextareaRef.selectionEnd ?? 0;
+		if ((ev.inputType === 'deleteContentBackward' || ev.inputType === 'deleteContentForward') && selStart !== selEnd) {
+			// 選択範囲を削除
+			let newText = text.current;
+			newText = newText.slice(0, selStart) + newText.slice(selEnd);
+			text.current = newText;
+			hiddenTextareaRef.value = newText;
+			// カーソルをクリアして先頭位置に再生成
+			editorOverlayStore.clearCursorForItem(model.id);
+			editorOverlayStore.setActiveItem(model.id);
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: selStart,
+				isActive: true,
+				userId: 'local'
+			});
+			editorOverlayStore.startCursorBlink();
+			return;
+		}
+		// Enter の同時挿入
+		if (ev.inputType === 'insertLineBreak') {
+			const ch = '\n';
+			const cursors = editorOverlayStore.getItemCursorsAndSelections(model.id).cursors;
+			cursors.sort((a, b) => b.offset - a.offset);
+			let newText = text.current;
+			cursors.forEach(c => {
+				newText = newText.slice(0, c.offset) + ch + newText.slice(c.offset);
+			});
+			text.current = newText;
+			cursors.forEach(c => {
+				editorOverlayStore.updateCursor({ ...c, offset: c.offset + ch.length, isActive: true });
+			});
+			hiddenTextareaRef.value = newText;
+			editorOverlayStore.startCursorBlink();
+		}
+		// Backspace/Delete の同時削除
+		else if (ev.inputType === 'deleteContentBackward' || ev.inputType === 'deleteContentForward') {
+			const backward = ev.inputType === 'deleteContentBackward';
+			const cursors = editorOverlayStore.getItemCursorsAndSelections(model.id).cursors;
+			// バックワードは前方、小さいオフセット順。フォワードは後方、大きいオフセット順
+			cursors.sort((a, b) => backward ? a.offset - b.offset : b.offset - a.offset);
+			let newText = text.current;
+			cursors.forEach(c => {
+				let idx = c.offset;
+				const delPos = backward ? idx - 1 : idx;
+				if (delPos < 0 || delPos >= newText.length) return;
+				newText = newText.slice(0, delPos) + newText.slice(delPos + 1);
+				const newOffset = backward ? Math.max(0, idx - 1) : idx;
+				editorOverlayStore.updateCursor({ ...c, offset: newOffset, isActive: true });
+			});
+			text.current = newText;
+			hiddenTextareaRef.value = newText;
+			editorOverlayStore.startCursorBlink();
+		}
+		// 通常の入力 (insertText) は従来通り
+		else if (ev.inputType === 'insertText' && ev.data) {
 			const ch = ev.data;
 			// このアイテムに紐づく全カーソル位置を取得
 			const cursors = editorOverlayStore.getItemCursorsAndSelections(model.id).cursors;
@@ -513,7 +592,7 @@
 			// カーソル点滅
 			editorOverlayStore.startCursorBlink();
 		} else {
-			// 通常入力は従来通り
+			// 通常入力以外は従来通り
 			text.current = hiddenTextareaRef.value;
 			requestAnimationFrame(() => {
 				updateSelectionAndCursor();
@@ -553,17 +632,19 @@
 	function handleClick(event: MouseEvent) {
 		// Alt+Click: 新しいカーソルを追加
 		if (event.altKey) {
-			// クリック位置に基づいてオフセット計算
+			event.preventDefault();
+			event.stopPropagation();
 			const pos = getClickPosition(event, text.current);
-			editorOverlayStore.addCursor({
-				itemId: model.id,
-				offset: pos,
-				isActive: true,
-				userId: 'local'
-			});
+			const existing = editorOverlayStore.getItemCursorsAndSelections(model.id).cursors;
+			if (existing.some(c => c.offset === pos && c.userId === 'local')) {
+				return;
+			}
+			editorOverlayStore.addCursor({ itemId: model.id, offset: pos, isActive: true, userId: 'local' });
 			return;
 		}
 		// 通常クリック: 編集開始
+		event.preventDefault();
+		event.stopPropagation();
 		startEditing(event);
 	}
 
@@ -1028,7 +1109,6 @@
 				class="hidden-textarea"
 				on:keydown={handleKeyDown}
 				on:input={handleInput}
-				on:blur={finishEditing}
 			></textarea>
 			
 			<!-- 表示用の要素 -->
@@ -1036,7 +1116,6 @@
 				bind:this={displayRef}
 				class="item-content"
 				class:page-title-content={isPageTitle}
-				on:click={handleClick}
 				class:editing={isEditing}
 			>
 				{#if text.current}
