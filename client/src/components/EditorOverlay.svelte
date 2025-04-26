@@ -26,20 +26,14 @@ interface CursorPositionMap {
     };
 }
 
-// カーソルと選択範囲のマッピング情報
+// カーソル位置・選択範囲などの状態をリアクティブに管理
 let positionMap = $state<CursorPositionMap>({});
-// すべてのカーソル位置
 let allCursors = $state<CursorPosition[]>([]);
-// すべての選択範囲
 let allSelections = $state<SelectionRange[]>([]);
-// 隠しクリップボード用テキストエリア
 let clipboardRef: HTMLTextAreaElement;
-// アクティブアイテムID（storeからの反映用）
 let localActiveItemId = $state<string | null>(null);
-// カーソル表示状態（storeからの反映用）
-let localCursorVisible = $state(false);
-// アニメーション一時停止状態（storeからの反映用）
-let localAnimationPaused = $state(false);
+let localCursorVisible = $state<boolean>(false);
+let localAnimationPaused = $state<boolean>(false);
 
 // DOM要素への参照
 let overlayRef: HTMLDivElement;
@@ -75,16 +69,8 @@ function createMeasurementSpan(itemId: string, text: string): HTMLSpanElement {
 function calculateCursorPixelPosition(itemId: string, offset: number): { left: number; top: number } | null {
     const itemInfo = positionMap[itemId];
     if (!itemInfo) {
-        // アイテム情報がない場合、マップを更新してみる
-        updatePositionMap();
-        // 再度確認
-        if (!positionMap[itemId]) {
-            if (DEBUG_MODE) {
-                console.warn(`No item info found for ${itemId} after update`);
-            }
-            return null;
-        }
-        return calculateCursorPixelPosition(itemId, offset);
+        // アイテム情報がない場合は描画をスキップ
+        return null;
     }
     
     const { textElement } = itemInfo;
@@ -103,41 +89,33 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         
         // テキストの内容を取得
         const text = textElement.textContent || '';
+        // 折り返し対応: Range API を優先
+        const textNode = Array.from(textElement.childNodes).find(node => node.nodeType === Node.TEXT_NODE) as Text | undefined;
+        if (textNode) {
+            const range = document.createRange();
+            const safeOffset = Math.min(offset, textNode.textContent?.length || 0);
+            range.setStart(textNode, safeOffset);
+            range.setEnd(textNode, safeOffset);
+            const rects = range.getClientRects();
+            const caretRect = rects.length > 0 ? rects[0] : range.getBoundingClientRect();
+            const relativeLeft = caretRect.left - treeContainerRect.left;
+            const relativeTop = caretRect.top - treeContainerRect.top;
+            return { left: relativeLeft, top: relativeTop };
+        }
+        // フォールバック: 仮想spanで幅を測定
         const textBeforeCursor = text.substring(0, offset);
-        
-        // 仮想span要素を使用してオフセット位置のピクセル値を計算
         const span = createMeasurementSpan(itemId, textBeforeCursor);
-        
-        // 一時的に親要素に追加して測定
         textElement.parentElement?.appendChild(span);
         const cursorWidth = span.getBoundingClientRect().width;
         textElement.parentElement?.removeChild(span);
-        
-        // テキスト要素の左端からの距離
         const contentContainer = textElement.closest('.item-content-container');
         const contentRect = contentContainer?.getBoundingClientRect() || textRect;
-        
-        // ツリーコンテナを基準にした位置
         const contentLeft = contentRect.left - treeContainerRect.left;
-        
-        // テキスト要素内でのカーソル位置
         const relativeLeft = contentLeft + cursorWidth;
-        
-        // Y座標は常に最新の値を使用
-        const relativeTop = textRect.top - treeContainerRect.top + 3; // 微調整（+3px）
-        
+        const relativeTop = textRect.top - treeContainerRect.top + 3;
         if (DEBUG_MODE) {
-            console.log(`Cursor for ${itemId} at offset ${offset}:`, { 
-                relativeLeft, relativeTop, 
-                cursorWidth,
-                contentLeft,
-                textRectTop: textRect.top,
-                treeContainerTop: treeContainerRect.top,
-                offsetText: textBeforeCursor.replaceAll('\n', '\\n'),
-                fullText: text.replaceAll('\n', '\\n')
-            });
+            console.log(`Cursor for ${itemId} at offset ${offset}:`, { relativeLeft, relativeTop });
         }
-        
         return { left: relativeLeft, top: relativeTop };
     } catch (error) {
         console.error('Error calculating cursor position:', error);
@@ -295,26 +273,13 @@ function debouncedUpdatePositionMap() {
 
 // store からのデータを反映するリアクティブ処理
 $effect(() => {
-  const activeChanged = store.activeItemId !== localActiveItemId;
+  // DOM 更新を反映して positionMap を更新
+  updatePositionMap();
   allCursors = Object.values(store.cursors);
   allSelections = Object.values(store.selections);
   localActiveItemId = store.activeItemId;
   localCursorVisible = store.cursorVisible;
   localAnimationPaused = store.animationPaused;
-  if (activeChanged) {
-    updatePositionMap();
-    store.startCursorBlink();
-    setTimeout(() => {
-      updatePositionMap();
-      const activeCursor = store.cursors['local'];
-      if (activeCursor && activeCursor.itemId === store.activeItemId) {
-        store.setCursor({ ...activeCursor, isActive: true });
-        store.startCursorBlink();
-      }
-    }, 100);
-  } else {
-    debouncedUpdatePositionMap();
-  }
 });
 
 // MutationObserver を設定して DOM の変更を監視
@@ -424,11 +389,11 @@ function handlePaste(event: ClipboardEvent) {
 }
 </script>
 
-<div class="editor-overlay" bind:this={overlayRef} class:paused={localAnimationPaused} class:visible={localCursorVisible}>
+<div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={store.cursorVisible}>
     <!-- 隠しクリップボード用textarea -->
     <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
     <!-- 選択範囲のレンダリング -->
-    {#each allSelections as sel}
+    {#each Object.values(store.selections) as sel}
         {#if sel.startOffset !== sel.endOffset}
             {#if sel.startItemId === sel.endItemId}
                 <!-- 単一アイテム選択 -->
@@ -481,7 +446,7 @@ function handlePaste(event: ClipboardEvent) {
     {/each}
     
     <!-- カーソルのレンダリング -->
-    {#each allCursors as cursor}
+    {#each Object.values(store.cursors) as cursor}
         {@const cursorPos = calculateCursorPixelPosition(cursor.itemId, cursor.offset)}
         {#if cursorPos}
             {@const isPageTitle = cursor.itemId === "page-title"}

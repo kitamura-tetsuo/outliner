@@ -656,11 +656,8 @@
 			editorOverlayStore.addCursor({ itemId: model.id, offset: pos, isActive: true, userId: 'local' });
 			// アクティブアイテムを設定
 			editorOverlayStore.setActiveItem(model.id);
-			// グローバルテキストエリアにフォーカス
-			const gta = document.querySelector<HTMLTextAreaElement>('.global-textarea');
-			if (gta) {
-				gta.focus();
-			}
+			// 編集用隠し textarea にフォーカス
+			hiddenTextareaRef?.focus();
 			return;
 		}
 		// 通常クリック: 編集開始

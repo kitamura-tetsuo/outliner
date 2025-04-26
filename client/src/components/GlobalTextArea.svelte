@@ -1,13 +1,7 @@
 <script lang="ts">
-import { onMount } from "svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 
 let textareaRef: HTMLTextAreaElement;
-
-// 初期化: フォーカスとイベントハンドラの設定
-onMount(() => {
-    textareaRef?.focus();
-});
 
 // store.activeItemId 変化時に再フォーカス
 $effect(() => {

@@ -422,7 +422,278 @@ git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/
 
 _**Assistant**_
 
+```bash
+git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
+```
 
+```
+< ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
+diff --git a/client/src/components/GlobalTextArea.svelte b/client/src/components/GlobalTextArea.svelte
+index 52bd0bf..53b7f20 100644
+--- a/client/src/components/GlobalTextArea.svelte
++++ b/client/src/components/GlobalTextArea.svelte
+@@ -6,15 +6,37 @@ let textareaRef: HTMLTextAreaElement;
+ 
+ // 初期化: フォーカスとイベントハンドラの設定
+ onMount(() => {
+-    if (textareaRef) {
++    textareaRef?.focus();
++});
++
++// store.activeItemId 変化時に再フォーカス
++$effect(() => {
++    const id = store.activeItemId;
++    if (id && textareaRef) {
+         textareaRef.focus();
+     }
+ });
+ 
+ // キーダウンイベントをストアに伝搬
+ function handleKeyDown(event: any) {
+-    store.startCursorBlink();
+-    // その他キー操作はOutlinerItem側でstoreを通じてハンドリングされる想定
++    // マルチカーソルの左右移動
++    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
++        event.preventDefault();
++        const activeItemId = store.getActiveItem();
++        if (activeItemId) {
++            const { cursors } = store.getItemCursorsAndSelections(activeItemId);
++            cursors.forEach(c => {
++                const newOffset = event.key === "ArrowLeft"
++                    ? Math.max(0, c.offset - 1)
++                    : c.offset + 1;
++                store.updateCursor({ ...c, offset: newOffset, isActive: true });
++            });
++        }
++        store.startCursorBlink();
++    }
++    else {
++        store.startCursorBlink();
++    }
+ }
+ 
+ // 入力イベントをストア経由でテキスト更新
+diff --git a/client/src/components/OutlinerItem.svelte b/client/src/components/OutlinerItem.svelte
+index 8cf4ed9..6330b6d 100644
+--- a/client/src/components/OutlinerItem.svelte
++++ b/client/src/components/OutlinerItem.svelte
+@@ -185,8 +185,22 @@
+ 
+        // テキストエリア用のキーダウンハンドラ
+        function handleKeyDown(event: KeyboardEvent) {
++               // ←→キー押下時は既存カーソルを更新して追加を防止
++               if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
++                       event.preventDefault();
++                       event.stopPropagation();
++                       const { cursors } = editorOverlayStore.getItemCursorsAndSelections(model.id);
++                       cursors.forEach(c => {
++                               const newOffset = event.key === 'ArrowLeft'
++                                       ? Math.max(0, c.offset - 1)
++                                       : c.offset + 1;
++                               editorOverlayStore.updateCursor({ ...c, offset: newOffset, isActive: true });
++                       });
++                       editorOverlayStore.startCursorBlink();
++                       return;
++               }
+                if (!isEditing) return;
+-
++
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                        console.log(`KeyDown in item: ${model.id}, key: ${event.key}, shift: ${event.shiftKey}`);
+                }
+@@ -640,6 +654,13 @@
+                                return;
+                        }
+                        editorOverlayStore.addCursor({ itemId: model.id, offset: pos, isActive: true, userId: 'local' });
++                       // アクティブアイテムを設定
++                       editorOverlayStore.setActiveItem(model.id);
++                       // グローバルテキストエリアにフォーカス
++                       const gta = document.querySelector<HTMLTextAreaElement>('.global-textarea');
++                       if (gta) {
++                               gta.focus();
++                       }
+                        return;
+                }
+                // 通常クリック: 編集開始
+@@ -1085,9 +1106,7 @@
+        class="outliner-item"
+        class:page-title={isPageTitle}
+        style="margin-left: {depth * 20}px"
+-       tabindex="0"
+        on:click={handleClick}
+-       on:keydown={handleItemKeyDown}
+        bind:this={itemRef}
+        data-item-id={model.id}
+ >
+diff --git a/client/src/routes/+page.svelte b/client/src/routes/+page.svelte
+index d4ed85b..ebd1499 100644
+--- a/client/src/routes/+page.svelte
++++ b/client/src/routes/+page.svelte
+@@ -15,6 +15,7 @@ import { getDebugConfig } from "../lib/env";
+ import { getLogger } from "../lib/logger";
+ import { fluidStore } from "../stores/fluidStore.svelte";
+ 
++import GlobalTextArea from "../components/GlobalTextArea.svelte";
+ import OutlinerTree from "../components/OutlinerTree.svelte";
+ import {
+     createFluidClient,
+@@ -198,9 +199,9 @@ function toggleDebugPanel() {
+                     <!-- ページコンテンツ（右メインエリア） -->
+                     <div class="main-content">
+                         {#if store.currentPage}
+-                            <div class="page-container">
+-                                <OutlinerTree pageItem={store.currentPage} isReadOnly={false} />
+-                            </div>
++                            <!-- グローバルテキストエリアを一度だけマウント -->
++                            <GlobalTextArea />
++                            <OutlinerTree pageItem={store.currentPage} isReadOnly={false} />
+                         {:else}
+                             <div class="empty-state">
+                                 <p>ページを選択するか、新しいページを作成してください。</p>
+node ➜ /workspace (main) $
+```
+
+---
+
+```bash
+git commit -m "Enhance GlobalTextArea focus and arrow key navigation for multi-cursor; update OutlinerItem handlers; mount GlobalTextArea in +page.svelte"
+```
+
+```
+<ate OutlinerItem handlers; mount GlobalTextArea in +page.svelte"
+[main 5852497] Enhance GlobalTextArea focus and arrow key navigation for multi-cursor; update OutlinerItem handlers; mount GlobalTex
+tArea in +page.svelte
+ 5 files changed, 854 insertions(+), 12 deletions(-)
+ create mode 100644 .specstory/history/2025-04-26_06-14-git-commit-process-and-message-writing.md
+node ➜ /workspace (main) $
+```
+
+---
+
+コミットしました:  
+「Enhance GlobalTextArea focus and arrow key navigation for multi-cursor; update OutlinerItem handlers; mount GlobalTextArea in +page.svelte」  
+
+完了です。次に何をしましょうか？
+
+---
+
+_**User**_
+
+git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
+ で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。。
+
+
+---
+
+_**Assistant**_
+
+```bash
+git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
+```
+
+```
+node ➜ /workspace (main) $ git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(ex
+clude)/workspace/tips.txt'
+diff --git a/client/src/components/GlobalTextArea.svelte b/client/src/components/GlobalTextArea.svelte
+index 53b7f20..a882cb0 100644
+--- a/client/src/components/GlobalTextArea.svelte
++++ b/client/src/components/GlobalTextArea.svelte
+@@ -19,24 +19,60 @@ $effect(() => {
+ 
+ // キーダウンイベントをストアに伝搬
+ function handleKeyDown(event: any) {
+-    // マルチカーソルの左右移動
++    // ←→キー押下時のカーソル移動
+     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+         event.preventDefault();
+         const activeItemId = store.getActiveItem();
+-        if (activeItemId) {
+-            const { cursors } = store.getItemCursorsAndSelections(activeItemId);
+-            cursors.forEach(c => {
+-                const newOffset = event.key === "ArrowLeft"
+-                    ? Math.max(0, c.offset - 1)
+-                    : c.offset + 1;
+-                store.updateCursor({ ...c, offset: newOffset, isActive: true });
+-            });
++        if (!activeItemId) return;
++        const { cursors } = store.getItemCursorsAndSelections(activeItemId);
++        // 全カーソルが行頭なら前アイテムへ移動
++        if (event.key === "ArrowLeft" && cursors.every(c => c.offset === 0)) {
++            const els = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
++            const ids = els.map(el => el.getAttribute("data-item-id")!);
++            const idx = ids.indexOf(activeItemId);
++            if (idx > 0) {
++                const newId = ids[idx - 1];
++                store.clearCursorForItem(activeItemId);
++                store.setActiveItem(newId);
++                const textEl = document.querySelector(`[data-item-id="${newId}"] .item-text`) as HTMLElement;
++                const len = textEl?.textContent?.length || 0;
++                store.addCursor({ itemId: newId, offset: len, isActive: true, userId: "local" });
++                store.startCursorBlink();
++                return;
++            }
+         }
++        // 全カーソルが行末なら次アイテムへ移動
++        if (
++            event.key === "ArrowRight" && cursors.every(c => {
++                const curEl = document.querySelector(`[data-item-id="${activeItemId}"] .item-text`) as HTMLElement;
++                const curLen = curEl?.textContent?.length || 0;
++                return c.offset === curLen;
++            })
++        ) {
++            const els = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
++            const ids = els.map(el => el.getAttribute("data-item-id")!);
++            const idx = ids.indexOf(activeItemId);
++            if (idx >= 0 && idx < ids.length - 1) {
++                const newId = ids[idx + 1];
++                store.clearCursorForItem(activeItemId);
++                store.setActiveItem(newId);
++                store.addCursor({ itemId: newId, offset: 0, isActive: true, userId: "local" });
++                store.startCursorBlink();
++                return;
++            }
++        }
++        // 同アイテム内での左右移動
++        cursors.forEach(c => {
++            const newOffset = event.key === "ArrowLeft"
++                ? Math.max(0, c.offset - 1)
++                : c.offset + 1;
++            store.updateCursor({ ...c, offset: newOffset, isActive: true });
++        });
+         store.startCursorBlink();
++        return;
+     }
+-    else {
+-        store.startCursorBlink();
+-    }
++    // その他のキーは点滅のみ連動
++    store.startCursorBlink();
+ }
+ 
+ // 入力イベントをストア経由でテキスト更新
+node ➜ /workspace (main) $
+```
+
+---
+
+```bash
+git commit -m "Enhance arrow key navigation: cross-item cursor movement at line boundaries in GlobalTextArea"
+```
+
+```
+node ➜ /workspace (main) $ git commit -m "Enhance arrow key navigation: cross-item cursor movement at line boundaries in GlobalTextA
+rea"
+[main 3e231cd] Enhance arrow key navigation: cross-item cursor movement at line boundaries in GlobalTextArea
+ 3 files changed, 185 insertions(+), 12 deletions(-)
+node ➜ /workspace (main) $
+```
+
+---
+
+コミットしました：  
+「Enhance arrow key navigation: cross-item cursor movement at line boundaries in GlobalTextArea」  
+
+他にお手伝いできることはありますか？
 
 ---
 

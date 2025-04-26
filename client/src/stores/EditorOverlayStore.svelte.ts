@@ -33,7 +33,7 @@ export interface SelectionRange {
 
 // Svelte 5 ランタイムの runes マクロを利用 (import は不要)
 
-class EditorOverlayStore {
+export class EditorOverlayStore {
     cursors = $state<Record<string, CursorPosition>>({});
     selections = $state<Record<string, SelectionRange>>({});
     activeItemId = $state<string | null>(null);
@@ -95,29 +95,24 @@ class EditorOverlayStore {
     }
 
     startCursorBlink() {
-        // 同期点滅: windowのフォーカス中のみcursorVisibleを反転
         this.cursorVisible = true;
         clearInterval(this.timerId);
+        // 単純に toggle するので Node でも動作
         this.timerId = setInterval(() => {
-            if (document.hasFocus()) {
-                this.cursorVisible = !this.cursorVisible;
-            }
+            this.cursorVisible = !this.cursorVisible;
         }, 530);
     }
 
     stopCursorBlink() {
-        // 点滅停止: タイマークリアして表示状態をオンに
         clearInterval(this.timerId);
         this.cursorVisible = true;
     }
 
     clearCursorAndSelection(userId = "local") {
-        const newCursors = { ...this.cursors };
-        const newSelections = { ...this.selections };
-        delete newCursors[userId];
-        delete newSelections[userId];
-        this.cursors = newCursors;
-        this.selections = newSelections;
+        // 指定した userId のカーソルのみ削除、選択範囲はそのまま保持
+        this.cursors = Object.fromEntries(
+            Object.entries(this.cursors).filter(([_, c]) => c.userId !== userId),
+        );
     }
 
     clearCursorInstance(cursorId: string) {
