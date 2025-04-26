@@ -185,8 +185,22 @@
 
 	// テキストエリア用のキーダウンハンドラ
 	function handleKeyDown(event: KeyboardEvent) {
+		// ←→キー押下時は既存カーソルを更新して追加を防止
+		if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+			event.preventDefault();
+			event.stopPropagation();
+			const { cursors } = editorOverlayStore.getItemCursorsAndSelections(model.id);
+			cursors.forEach(c => {
+				const newOffset = event.key === 'ArrowLeft'
+					? Math.max(0, c.offset - 1)
+					: c.offset + 1;
+				editorOverlayStore.updateCursor({ ...c, offset: newOffset, isActive: true });
+			});
+			editorOverlayStore.startCursorBlink();
+			return;
+		}
 		if (!isEditing) return;
-		
+
 		if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 			console.log(`KeyDown in item: ${model.id}, key: ${event.key}, shift: ${event.shiftKey}`);
 		}
@@ -640,6 +654,13 @@
 				return;
 			}
 			editorOverlayStore.addCursor({ itemId: model.id, offset: pos, isActive: true, userId: 'local' });
+			// アクティブアイテムを設定
+			editorOverlayStore.setActiveItem(model.id);
+			// グローバルテキストエリアにフォーカス
+			const gta = document.querySelector<HTMLTextAreaElement>('.global-textarea');
+			if (gta) {
+				gta.focus();
+			}
 			return;
 		}
 		// 通常クリック: 編集開始
@@ -1085,9 +1106,7 @@
 	class="outliner-item"
 	class:page-title={isPageTitle}
 	style="margin-left: {depth * 20}px"
-	tabindex="0"
 	on:click={handleClick}
-	on:keydown={handleItemKeyDown}
 	bind:this={itemRef}
 	data-item-id={model.id}
 >

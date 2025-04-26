@@ -6,15 +6,37 @@ let textareaRef: HTMLTextAreaElement;
 
 // 初期化: フォーカスとイベントハンドラの設定
 onMount(() => {
-    if (textareaRef) {
+    textareaRef?.focus();
+});
+
+// store.activeItemId 変化時に再フォーカス
+$effect(() => {
+    const id = store.activeItemId;
+    if (id && textareaRef) {
         textareaRef.focus();
     }
 });
 
 // キーダウンイベントをストアに伝搬
 function handleKeyDown(event: any) {
-    store.startCursorBlink();
-    // その他キー操作はOutlinerItem側でstoreを通じてハンドリングされる想定
+    // マルチカーソルの左右移動
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        const activeItemId = store.getActiveItem();
+        if (activeItemId) {
+            const { cursors } = store.getItemCursorsAndSelections(activeItemId);
+            cursors.forEach(c => {
+                const newOffset = event.key === "ArrowLeft"
+                    ? Math.max(0, c.offset - 1)
+                    : c.offset + 1;
+                store.updateCursor({ ...c, offset: newOffset, isActive: true });
+            });
+        }
+        store.startCursorBlink();
+    }
+    else {
+        store.startCursorBlink();
+    }
 }
 
 // 入力イベントをストア経由でテキスト更新

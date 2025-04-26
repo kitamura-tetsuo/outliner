@@ -15,6 +15,7 @@ import { getDebugConfig } from "../lib/env";
 import { getLogger } from "../lib/logger";
 import { fluidStore } from "../stores/fluidStore.svelte";
 
+import GlobalTextArea from "../components/GlobalTextArea.svelte";
 import OutlinerTree from "../components/OutlinerTree.svelte";
 import {
     createFluidClient,
@@ -198,9 +199,9 @@ function toggleDebugPanel() {
                     <!-- ページコンテンツ（右メインエリア） -->
                     <div class="main-content">
                         {#if store.currentPage}
-                            <div class="page-container">
-                                <OutlinerTree pageItem={store.currentPage} isReadOnly={false} />
-                            </div>
+                            <!-- グローバルテキストエリアを一度だけマウント -->
+                            <GlobalTextArea />
+                            <OutlinerTree pageItem={store.currentPage} isReadOnly={false} />
                         {:else}
                             <div class="empty-state">
                                 <p>ページを選択するか、新しいページを作成してください。</p>
