@@ -1,16 +1,10 @@
 <script lang="ts">
 import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore';
-import {
-	cursors,
-	selections,
-	setCursor,
-	startCursorBlink,
-	stopCursorBlink,
-	activeItemId as storeActiveItemId,
-	animationPaused as storeAnimationPaused,
-	cursorVisible as storeCursorVisible
-} from '../stores/EditorOverlayStore';
+import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
+import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
+
+// store API (関数のみ)
+const { setCursor, startCursorBlink, stopCursorBlink, clearCursorForItem, setSelection } = store;
 
 // デバッグモード
 const DEBUG_MODE = false;
@@ -301,22 +295,21 @@ function debouncedUpdatePositionMap() {
 
 // store からのデータを反映するリアクティブ処理
 $effect(() => {
-  const activeChanged = storeActiveItemId !== localActiveItemId;
-  // store変数をlocal stateにコピー
-  allCursors = Object.values(cursors);
-  allSelections = Object.values(selections);
-  localActiveItemId = storeActiveItemId;
-  localCursorVisible = storeCursorVisible;
-  localAnimationPaused = storeAnimationPaused;
+  const activeChanged = store.activeItemId !== localActiveItemId;
+  allCursors = Object.values(store.cursors);
+  allSelections = Object.values(store.selections);
+  localActiveItemId = store.activeItemId;
+  localCursorVisible = store.cursorVisible;
+  localAnimationPaused = store.animationPaused;
   if (activeChanged) {
     updatePositionMap();
-    startCursorBlink();
+    store.startCursorBlink();
     setTimeout(() => {
       updatePositionMap();
-      const activeCursor = cursors['local'];
-      if (activeCursor && activeCursor.itemId === storeActiveItemId) {
-        setCursor({ ...activeCursor, isActive: true });
-        startCursorBlink();
+      const activeCursor = store.cursors['local'];
+      if (activeCursor && activeCursor.itemId === store.activeItemId) {
+        store.setCursor({ ...activeCursor, isActive: true });
+        store.startCursorBlink();
       }
     }, 100);
   } else {
@@ -354,7 +347,7 @@ onMount(() => {
     // 初期状態でアクティブカーソルがある場合は、少し遅延してから点滅を開始
     setTimeout(() => {
         if (allCursors.some(cursor => cursor.isActive)) {
-            startCursorBlink();
+            store.startCursorBlink();
         }
     }, 200);
 });
@@ -493,21 +486,18 @@ function handlePaste(event: ClipboardEvent) {
         {#if cursorPos}
             {@const isPageTitle = cursor.itemId === "page-title"}
             {@const isActive = cursor.isActive}
-            <!-- 常にカーソルをレンダリングし、アニメーションでの点滅を有効に -->
-            <div 
-                class="cursor" 
+            <!-- カーソル位置のみスタイルで指定し、点滅はCSSクラスに任せる -->
+            <div
+                class="cursor"
                 class:active={isActive}
                 class:page-title-cursor={isPageTitle}
                 style="
                     position: absolute;
-                    left: {cursorPos.left}px; 
-                    top: {cursorPos.top}px; 
+                    left: {cursorPos.left}px;
+                    top: {cursorPos.top}px;
                     height: {isPageTitle ? '1.5em' : positionMap[cursor.itemId]?.lineHeight || '1.2em'};
                     background-color: {cursor.color || '#0078d7'};
                     pointer-events: none;
-                    visibility: {!isActive ? 'visible' : null};
-                    opacity: {!isActive ? 1 : null};
-                    animation-play-state: {isActive ? (localAnimationPaused ? 'paused' : 'running') : 'paused'};
                 "
                 title={cursor.userName || ''}
             ></div>
@@ -526,6 +516,7 @@ function handlePaste(event: ClipboardEvent) {
 
 <style>
 .editor-overlay {
+    outline: 2px dashed red;  /* デバッグ: オーバーレイ領域を可視化 */
     position: absolute;
     top: 0;
     left: 0;
@@ -533,30 +524,35 @@ function handlePaste(event: ClipboardEvent) {
     bottom: 0;
     pointer-events: none !important;
     z-index: 100;
+    background-color: rgba(255, 0, 0, 0.1) !important;  /* デバッグ: オーバーレイ背景 */
     will-change: transform;
 }
 
 .cursor {
+    display: block;
     position: absolute;
     width: 2px;
     height: 1.2em;
     background-color: #0078d7;
     pointer-events: none !important;
     will-change: transform;
-    z-index: 200; /* より高い値を設定 */
+    z-index: 200;
+    border: 1px solid black;  /* デバッグ: カーソル枠 */
 }
 
 .page-title-cursor {
-    width: 3px; /* タイトル用のカーソルを少し太く */
+    width: 3px;
 }
 
 .cursor.active {
     animation: blink 1.06s steps(1) infinite;
     animation-play-state: running;
     pointer-events: none !important;
+    border-color: yellow;  /* デバッグ: アクティブカーソル枠 */
 }
 
 .selection {
+    display: none;
     position: absolute;
     background-color: rgba(0, 120, 215, 0.2);
     pointer-events: none !important;
@@ -564,12 +560,11 @@ function handlePaste(event: ClipboardEvent) {
 }
 
 .selection-reversed {
-    /* 逆方向選択の場合のスタイル調整（必要に応じて） */
     border-left: 1px solid rgba(0, 120, 215, 0.5);
 }
 
 .page-title-selection {
-    background-color: rgba(0, 120, 215, 0.15); /* タイトル用の選択範囲を少し薄く */
+    background-color: rgba(0, 120, 215, 0.15);
 }
 
 .debug-info {

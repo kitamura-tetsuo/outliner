@@ -9,19 +9,14 @@ import {
 	Item,
 	Items,
 } from "../schema/app-schema";
-import {
-	getActiveItem,
-	reset,
-	selections,
-	setActiveItem,
-	setSelection
-} from "../stores/EditorOverlayStore";
+import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
 import { OutlinerViewModel } from "../stores/OutlinerViewModel";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
 import EditorOverlay from "./EditorOverlay.svelte";
 import OutlinerItem from "./OutlinerItem.svelte";
+const { getActiveItem, reset, selections, setActiveItem, setSelection } = editorOverlayStore;
 
 const logger = getLogger();
 

@@ -3,18 +3,7 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { getLogger } from '../lib/logger';
 	import { Items } from '../schema/app-schema';
-	import {
-		addCursor,
-		clearCursorAndSelection,
-		clearCursorForItem,
-		getItemCursorsAndSelections,
-		setActiveItem,
-		setCursor,
-		setSelection,
-		startCursorBlink,
-		stopCursorBlink,
-		updateCursor
-	} from '../stores/EditorOverlayStore';
+	import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
 	import type { OutlinerItemViewModel } from '../stores/OutlinerViewModel';
 	import { TreeSubscriber } from "../stores/TreeSubscriber";
 
@@ -127,9 +116,10 @@
 			selectionStart = selectionEnd = cursorPosition;
 		}
 		
-		// カーソル位置をストアに設定
-		setActiveItem(model.id);
-		setCursor({
+		// 既存のカーソルをクリアしてからストアに設定
+		editorOverlayStore.clearCursorForItem(model.id);
+		editorOverlayStore.setActiveItem(model.id);
+		editorOverlayStore.setCursor({
 			itemId: model.id,
 			offset: cursorPosition !== undefined ? cursorPosition : 0,
 			isActive: true,
@@ -137,7 +127,7 @@
 		});
 		
 		// カーソル点滅を開始
-		startCursorBlink();
+		editorOverlayStore.startCursorBlink();
 	}
 
 	/**
@@ -297,7 +287,7 @@
 		
 		// 矢印キー処理後のカーソル位置更新
 		if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
-			startCursorBlink();
+			editorOverlayStore.startCursorBlink();
 			requestAnimationFrame(() => {
 				if (!event.defaultPrevented) {
 					updateSelectionAndCursor(event.shiftKey);
@@ -414,13 +404,13 @@
 		if (currentStart === currentEnd) {
 			lastCursorPosition = currentStart;
 			
-			setCursor({
+			editorOverlayStore.setCursor({
 				itemId: model.id,
 				offset: currentStart,
 				isActive: true,
 				userId: 'local'
 			});
-			setSelection({
+			editorOverlayStore.setSelection({
 				startItemId: model.id,
 				endItemId: model.id,
 				startOffset: 0,
@@ -450,13 +440,13 @@
 			const cursorOffset = cursorAtStart ? currentStart : currentEnd;
 			lastCursorPosition = cursorOffset;
 			
-			setCursor({
+			editorOverlayStore.setCursor({
 				itemId: model.id,
 				offset: cursorOffset,
 				isActive: true,
 				userId: 'local'
 			});
-			setSelection({
+			editorOverlayStore.setSelection({
 				startItemId: model.id,
 				endItemId: model.id,
 				startOffset: Math.min(currentStart, currentEnd),
@@ -498,7 +488,7 @@
 		if (ev.inputType === 'insertText' && ev.data) {
 			const ch = ev.data;
 			// このアイテムに紐づく全カーソル位置を取得
-			const cursors = getItemCursorsAndSelections(model.id).cursors;
+			const cursors = editorOverlayStore.getItemCursorsAndSelections(model.id).cursors;
 			// 後ろのオフセットから順に処理しないとズレるので降順ソート
 			cursors.sort((a, b) => b.offset - a.offset);
 
@@ -511,7 +501,7 @@
 
 			// 各カーソル位置を挿入後の位置に更新
 			cursors.forEach(c => {
-				updateCursor({
+				editorOverlayStore.updateCursor({
 					...c,
 					offset: c.offset + ch.length,
 					isActive: true
@@ -521,7 +511,7 @@
 			// 隠し textarea の値も最新化
 			hiddenTextareaRef.value = newText;
 			// カーソル点滅
-			startCursorBlink();
+			editorOverlayStore.startCursorBlink();
 		} else {
 			// 通常入力は従来通り
 			text.current = hiddenTextareaRef.value;
@@ -533,11 +523,11 @@
 
 	function finishEditing() {
 		isEditing = false;
-		stopCursorBlink();
+		editorOverlayStore.stopCursorBlink();
 		
 		// カーソルのみクリアし、跨いだ選択は残す
-		clearCursorForItem(model.id);
-		setActiveItem(null);
+		editorOverlayStore.clearCursorForItem(model.id);
+		editorOverlayStore.setActiveItem(null);
 	}
 
 	function addNewItem() {
@@ -565,7 +555,7 @@
 		if (event.altKey) {
 			// クリック位置に基づいてオフセット計算
 			const pos = getClickPosition(event, text.current);
-			addCursor({
+			editorOverlayStore.addCursor({
 				itemId: model.id,
 				offset: pos,
 				isActive: true,
@@ -674,10 +664,10 @@
 					}
 					
 					// 再度カーソルが表示されていることを確認
-					startCursorBlink();
+					editorOverlayStore.startCursorBlink();
 					
 					// editorOverlayStoreにアクティブアイテムとカーソル位置を設定（選択範囲はOutlinerTree側で管理）
-					setCursor({
+					editorOverlayStore.setCursor({
 						itemId: model.id,
 						offset: textPosition,
 						isActive: true,
@@ -726,7 +716,7 @@
 			}
 			document.removeEventListener('click', handleOutsideClick);
 			
-			clearCursorAndSelection();
+			editorOverlayStore.clearCursorAndSelection();
 		};
 	});
 
@@ -848,7 +838,7 @@
 			lastCursorPosition = safePosition;
 			
 			// ストアにカーソル位置を設定
-			setCursor({
+			editorOverlayStore.setCursor({
 				itemId: model.id,
 				offset: safePosition,
 				isActive: true,
@@ -856,7 +846,7 @@
 			});
 			
 			// 選択範囲をクリア
-			setSelection({
+			editorOverlayStore.setSelection({
 				startItemId: model.id,
 				endItemId: model.id,
 				startOffset: 0,
@@ -884,7 +874,7 @@
 		lastCursorPosition = end;
 		
 		updateSelectionAndCursor();
-		startCursorBlink();
+		editorOverlayStore.startCursorBlink();
 	}
 
 	// アイテムの編集を開始し、カーソル位置を指定する
@@ -915,7 +905,7 @@
 		
 		setSelectionPosition(cursorPosition);
 		
-		setCursor({
+		editorOverlayStore.setCursor({
 			itemId: model.id,
 			offset: cursorPosition,
 			isActive: true,
@@ -923,7 +913,7 @@
 		});
 		
 		// 重要: カーソル点滅を開始
-		startCursorBlink();
+		editorOverlayStore.startCursorBlink();
 	}
 
 	// 他のアイテムに移動するイベントを発火する
