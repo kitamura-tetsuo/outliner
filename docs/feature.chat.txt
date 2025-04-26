@@ -1,0 +1,57 @@
+### 📑 Context
+`docs/features.yaml` に定義されている **未テストの機能** に対して
+Vitest テストを追加してください。
+
+### ✅ Scope
+- **対象 Feature IDs**
+  - FTR-0012 – User can reset forgotten password
+  - FTR-0015 – Two-factor authentication  
+    （いずれも `status: implemented` かつ `tests: []`）
+
+### 🛠 Requirements
+1. テストファイルは `tests/feature/<FeatureID>.spec.ts` に置く  
+   例: `tests/feature/FTR-0012.spec.ts`
+2. 各ファイルの冒頭に次のメタを入れる  
+   ```ts
+   /** @feature FTR-0012
+    *  Title   : User can reset forgotten password
+    *  Source  : docs/features.yaml
+    */
+
+
+
+
+📄 依頼テンプレート（GitHub Issue／Pull-Request／Copilot Chat いずれでも可）
+
+## Task
+Convert the following plain-text table into new **cursor-movement** feature entries
+in `client-features.yaml`, **without touching any other sections**.
+
+## Source table
+```text
+基本のカーソル移動
+操作名 | ショートカットキー | 操作内容 (カーソル移動)
+左へ移動 | ← | カーソルを1文字左に移動します。
+右へ移動 | → | カーソルを1文字右に移動します。
+上へ移動 | ↑ | カーソルを1行上に移動します。
+下へ移動 | ↓ | カーソルを1行下に移動します。
+行頭に移動 | Home | 現在の行の先頭にカーソルを移動します。
+行末に移動 | End  | 現在の行の末尾にカーソルを移動します。
+
+YAML format
+
+Each entry should follow this schema exactly (keys in this order):
+
+- id: CLM-XXXX        # 4-digit sequential number, zero-padded
+  title: "<操作名>"
+  shortcut: "<ショートカットキー>"
+  description: "<操作内容>"
+  category: cursor-movement
+  status: drafted     # leave as drafted; dev will flip to implemented later
+  tests: []           # stay empty; separate issue will add spec files
+
+Use the next available ID after the current highest CLM-####.
+Append new items under the cursor-movement section; create the section if absent.
+Keep existing YAML indentation (2 spaces).
+Return a unified diff (```diff) so we can apply it with git apply.
+

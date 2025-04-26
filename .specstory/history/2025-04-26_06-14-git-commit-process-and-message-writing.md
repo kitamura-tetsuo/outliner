@@ -697,3 +697,450 @@ node ➜ /workspace (main) $
 
 ---
 
+_**User**_
+
+git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
+ で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。。
+
+---
+
+_**Assistant**_
+
+```bash
+git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
+```
+
+```
+-        
+-        // テキスト要素内でのカーソル位置
+         const relativeLeft = contentLeft + cursorWidth;
+-        
+-        // Y座標は常に最新の値を使用
+-        const relativeTop = textRect.top - treeContainerRect.top + 3; // 微調整（+3px）
+-        
++        const relativeTop = textRect.top - treeContainerRect.top + 3;
+         if (DEBUG_MODE) {
+-            console.log(`Cursor for ${itemId} at offset ${offset}:`, { 
+-                relativeLeft, relativeTop, 
+-                cursorWidth,
+-                contentLeft,
+-                textRectTop: textRect.top,
+-                treeContainerTop: treeContainerRect.top,
+-                offsetText: textBeforeCursor.replaceAll('\n', '\\n'),
+-                fullText: text.replaceAll('\n', '\\n')
+-            });
++            console.log(`Cursor for ${itemId} at offset ${offset}:`, { relativeLeft, relativeTop });
+         }
+-        
+         return { left: relativeLeft, top: relativeTop };
+     } catch (error) {
+         console.error('Error calculating cursor position:', error);
+@@ -295,26 +273,13 @@ function debouncedUpdatePositionMap() {
+ 
+ // store からのデータを反映するリアクティブ処理
+ $effect(() => {
+-  const activeChanged = store.activeItemId !== localActiveItemId;
++  // DOM 更新を反映して positionMap を更新
++  updatePositionMap();
+   allCursors = Object.values(store.cursors);
+   allSelections = Object.values(store.selections);
+   localActiveItemId = store.activeItemId;
+   localCursorVisible = store.cursorVisible;
+   localAnimationPaused = store.animationPaused;
+-  if (activeChanged) {
+-    updatePositionMap();
+-    store.startCursorBlink();
+-    setTimeout(() => {
+-      updatePositionMap();
+-      const activeCursor = store.cursors['local'];
+-      if (activeCursor && activeCursor.itemId === store.activeItemId) {
+-        store.setCursor({ ...activeCursor, isActive: true });
+-        store.startCursorBlink();
+-      }
+-    }, 100);
+-  } else {
+-    debouncedUpdatePositionMap();
+-  }
+ });
+ 
+ // MutationObserver を設定して DOM の変更を監視
+@@ -424,11 +389,11 @@ function handlePaste(event: ClipboardEvent) {
+ }
+ </script>
+ 
+-<div class="editor-overlay" bind:this={overlayRef} class:paused={localAnimationPaused} class:visible={localCursorVisible}>
++<div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={store.cursorVisible}>
+     <!-- 隠しクリップボード用textarea -->
+     <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
+     <!-- 選択範囲のレンダリング -->
+-    {#each allSelections as sel}
++    {#each Object.values(store.selections) as sel}
+         {#if sel.startOffset !== sel.endOffset}
+             {#if sel.startItemId === sel.endItemId}
+                 <!-- 単一アイテム選択 -->
+@@ -481,7 +446,7 @@ function handlePaste(event: ClipboardEvent) {
+     {/each}
+     
+     <!-- カーソルのレンダリング -->
+-    {#each allCursors as cursor}
++    {#each Object.values(store.cursors) as cursor}
+         {@const cursorPos = calculateCursorPixelPosition(cursor.itemId, cursor.offset)}
+         {#if cursorPos}
+             {@const isPageTitle = cursor.itemId === "page-title"}
+diff --git a/client/src/components/GlobalTextArea.svelte b/client/src/components/GlobalTextArea.svelte
+index a882cb0..7c26abb 100644
+--- a/client/src/components/GlobalTextArea.svelte
++++ b/client/src/components/GlobalTextArea.svelte
+@@ -1,14 +1,8 @@
+ <script lang="ts">
+-import { onMount } from "svelte";
+ import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
+ 
+ let textareaRef: HTMLTextAreaElement;
+ 
+-// 初期化: フォーカスとイベントハンドラの設定
+-onMount(() => {
+-    textareaRef?.focus();
+-});
+-
+ // store.activeItemId 変化時に再フォーカス
+ $effect(() => {
+     const id = store.activeItemId;
+diff --git a/client/src/components/OutlinerItem.svelte b/client/src/components/OutlinerItem.svelte
+index 6330b6d..f112290 100644
+--- a/client/src/components/OutlinerItem.svelte
++++ b/client/src/components/OutlinerItem.svelte
+@@ -656,11 +656,8 @@
+                        editorOverlayStore.addCursor({ itemId: model.id, offset: pos, isActive: true, userId: 'local' });
+                        // アクティブアイテムを設定
+                        editorOverlayStore.setActiveItem(model.id);
+-                       // グローバルテキストエリアにフォーカス
+-                       const gta = document.querySelector<HTMLTextAreaElement>('.global-textarea');
+-                       if (gta) {
+-                               gta.focus();
+-                       }
++                       // 編集用隠し textarea にフォーカス
++                       hiddenTextareaRef?.focus();
+                        return;
+                }
+                // 通常クリック: 編集開始
+diff --git a/client/src/stores/EditorOverlayStore.svelte.ts b/client/src/stores/EditorOverlayStore.svelte.ts
+index 6c2e173..a487b13 100644
+--- a/client/src/stores/EditorOverlayStore.svelte.ts
++++ b/client/src/stores/EditorOverlayStore.svelte.ts
+@@ -33,7 +33,7 @@ export interface SelectionRange {
+ 
+ // Svelte 5 ランタイムの runes マクロを利用 (import は不要)
+ 
+-class EditorOverlayStore {
++export class EditorOverlayStore {
+     cursors = $state<Record<string, CursorPosition>>({});
+     selections = $state<Record<string, SelectionRange>>({});
+     activeItemId = $state<string | null>(null);
+@@ -95,29 +95,24 @@ class EditorOverlayStore {
+     }
+ 
+     startCursorBlink() {
+-        // 同期点滅: windowのフォーカス中のみcursorVisibleを反転
+         this.cursorVisible = true;
+         clearInterval(this.timerId);
++        // 単純に toggle するので Node でも動作
+         this.timerId = setInterval(() => {
+-            if (document.hasFocus()) {
+-                this.cursorVisible = !this.cursorVisible;
+-            }
++            this.cursorVisible = !this.cursorVisible;
+         }, 530);
+     }
+ 
+     stopCursorBlink() {
+-        // 点滅停止: タイマークリアして表示状態をオンに
+         clearInterval(this.timerId);
+         this.cursorVisible = true;
+     }
+ 
+     clearCursorAndSelection(userId = "local") {
+-        const newCursors = { ...this.cursors };
+-        const newSelections = { ...this.selections };
+-        delete newCursors[userId];
+-        delete newSelections[userId];
+-        this.cursors = newCursors;
+-        this.selections = newSelections;
++        // 指定した userId のカーソルのみ削除、選択範囲はそのまま保持
++        this.cursors = Object.fromEntries(
++            Object.entries(this.cursors).filter(([_, c]) => c.userId !== userId),
++        );
+     }
+ 
+     clearCursorInstance(cursorId: string) {
+diff --git a/client/src/stores/EditorOverlayStore.test.ts b/client/src/stores/EditorOverlayStore.test.ts
+new file mode 100644
+index 0000000..056aaac
+--- /dev/null
++++ b/client/src/stores/EditorOverlayStore.test.ts
+@@ -0,0 +1,68 @@
++import {
++    afterEach,
++    beforeEach,
++    describe,
++    expect,
++    it,
++    vi,
++} from "vitest";
++import { EditorOverlayStore } from "./EditorOverlayStore.svelte";
++
++describe("EditorOverlayStore", () => {
++    let store: EditorOverlayStore;
++
++    beforeEach(() => {
++        store = new EditorOverlayStore();
++    });
++
++    it("初期状態が正しい", () => {
++        expect(store.cursors).toEqual({});
++        expect(store.selections).toEqual({});
++        expect(store.activeItemId).toBeNull();
++        expect(store.cursorVisible).toBe(true);
++        expect(store.animationPaused).toBe(false);
++    });
++
++    it("addCursor と removeCursor が動作する", () => {
++        const id = store.addCursor({ itemId: "foo", offset: 3, isActive: true, userId: "local" });
++        expect(typeof id).toBe("string");
++        expect(store.cursors[id]).toEqual({ cursorId: id, itemId: "foo", offset: 3, isActive: true, userId: "local" });
++        store.removeCursor(id);
++        expect(store.cursors[id]).toBeUndefined();
++    });
++
++    it("clearCursorForItem がアイテムの全カーソルをクリアする", () => {
++        const id1 = store.addCursor({ itemId: "X", offset: 1, isActive: false, userId: "local" });
++        const id2 = store.addCursor({ itemId: "X", offset: 2, isActive: true, userId: "local" });
++        expect(Object.values(store.cursors).filter(c => c.itemId === "X").length).toBe(2);
++        store.clearCursorForItem("X");
++        expect(Object.values(store.cursors).filter(c => c.itemId === "X").length).toBe(0);
++    });
++
++    it("setSelection と clearCursorAndSelection が動作する", () => {
++        store.setSelection({ startItemId: "Y", startOffset: 0, endItemId: "Y", endOffset: 5 });
++        expect(store.selections["Y"]).toMatchObject({ startOffset: 0, endOffset: 5 });
++        store.clearCursorAndSelection("Y");
++        // clearCursorAndSelection は userId をキーに removal するので、既存の selections はそのまま
++        expect(store.selections["Y"]).toBeDefined();
++    });
++
++    it("startCursorBlink と stopCursorBlink が cursorVisible をトグルする", () => {
++        vi.useFakeTimers();
++        store.startCursorBlink();
++        expect(store.cursorVisible).toBe(true);
++        vi.advanceTimersByTime(530);
++        expect(store.cursorVisible).toBe(false);
++        vi.advanceTimersByTime(530);
++        expect(store.cursorVisible).toBe(true);
++        store.stopCursorBlink();
++        expect(store.cursorVisible).toBe(true);
++        vi.useRealTimers();
++    });
++
++    afterEach(() => {
++        // タイマーや状態をリセット
++        vi.useRealTimers();
++        store.reset();
++    });
++});
+diff --git a/client/src/utils/textUtils.test.ts b/client/src/utils/textUtils.test.ts
+new file mode 100644
+index 0000000..b84fab1
+--- /dev/null
++++ b/client/src/utils/textUtils.test.ts
+@@ -0,0 +1,79 @@
++// @ts-ignore: jsdom に型定義がありません
++import { JSDOM } from "jsdom";
++import {
++    afterAll,
++    beforeAll,
++    describe,
++    expect,
++    it,
++} from "vitest";
++import {
++    getClickPosition,
++    pixelPositionToTextPosition,
++} from "./textUtils";
++
++let originalGetBoundingClientRect: any;
++let originalGetComputedStyle: any;
++
++beforeAll(() => {
++    // グローバルに DOM をセット
++    const dom = new JSDOM("<!DOCTYPE html><body></body>");
++    (global as any).window = dom.window;
++    (global as any).document = dom.window.document;
++    (global as any).Element = dom.window.Element;
++    (global as any).HTMLElement = dom.window.HTMLElement;
++    (global as any).Node = dom.window.Node;
++    // getBoundingClientRect をモック: textContent 長さ * 10px
++    originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
++    Element.prototype.getBoundingClientRect = function () {
++        const width = (this.textContent?.length || 0) * 10;
++        return { width, left: 0, top: 0, right: width, bottom: 0, height: 0, x: 0, y: 0, toJSON() {} };
++    };
++    // getComputedStyle の必要プロパティをモック
++    originalGetComputedStyle = window.getComputedStyle;
++    window.getComputedStyle = () => ({
++        fontFamily: "",
++        fontSize: "",
++        fontWeight: "",
++        letterSpacing: "",
++    } as any);
++});
++
++afterAll(() => {
++    // モック解除
++    Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
++    window.getComputedStyle = originalGetComputedStyle;
++});
++
++describe("getClickPosition", () => {
++    it("should return nearest index based on click x coordinate", () => {
++        const content = "abcdef";
++        const div = document.createElement("div");
++        div.textContent = content;
++        document.body.appendChild(div);
++
++        // クリック x=25 => 10*2=20 と 10*3=30 が最接近 (差5)、先に見つかる2が返る
++        const offset = getClickPosition(div, { clientX: 25, clientY: 0 } as MouseEvent, content);
++        expect(offset).toBe(2);
++
++        document.body.removeChild(div);
++    });
++});
++
++describe("pixelPositionToTextPosition", () => {
++    it("should map screenX to correct text offset", () => {
++        const content = "ABCDEFG";
++        const container = document.createElement("div");
++        const span = document.createElement("span");
++        span.className = "item-text";
++        span.textContent = content;
++        container.appendChild(span);
++        document.body.appendChild(container);
++
++        // screenX=55 => 10*5=50 と 10*6=60 の差が最小 5 => 5
++        const offset = pixelPositionToTextPosition(55, container);
++        expect(offset).toBe(5);
++
++        document.body.removeChild(container);
++    });
++});
+diff --git a/client/src/utils/textUtils.ts b/client/src/utils/textUtils.ts
+new file mode 100644
+index 0000000..b2b09ce
+--- /dev/null
++++ b/client/src/utils/textUtils.ts
+@@ -0,0 +1,83 @@
++// Utility functions for text measuring and cursor positioning
++
++// getClickPosition: Text Element と MouseEvent, content を受け取り、オフセットを返す
++export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content: string): number {
++    const x = event.clientX;
++    const y = event.clientY;
++    // Caret API を試す
++    if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
++        let range: Range | null = null;
++        if (document.caretRangeFromPoint) {
++            range = document.caretRangeFromPoint(x, y);
++        }
++        else {
++            const posInfo = (document as any).caretPositionFromPoint(x, y);
++            if (posInfo) {
++                range = document.createRange();
++                range.setStart(posInfo.offsetNode, posInfo.offset);
++                range.collapse(true);
++            }
++        }
++        if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
++            return Math.min(Math.max(0, range.startOffset), content.length);
++        }
++    }
++    // フォールバック: span を使って幅測定
++    const rect = textEl.getBoundingClientRect();
++    const relX = x - rect.left;
++    const span = document.createElement("span");
++    const style = window.getComputedStyle(textEl);
++    span.style.fontFamily = style.fontFamily;
++    span.style.fontSize = style.fontSize;
++    span.style.fontWeight = style.fontWeight;
++    span.style.letterSpacing = style.letterSpacing;
++    span.style.whiteSpace = "pre";
++    span.style.visibility = "hidden";
++    span.style.position = "absolute";
++    document.body.appendChild(span);
++    let best = 0;
++    let minDist = Infinity;
++    for (let i = 0; i <= content.length; i++) {
++        span.textContent = content.slice(0, i);
++        const w = span.getBoundingClientRect().width;
++        const d = Math.abs(w - relX);
++        if (d < minDist) {
++            minDist = d;
++            best = i;
++        }
++    }
++    document.body.removeChild(span);
++    return best;
++}
++
++// pixelPositionToTextPosition: 画面X座標と表示要素を受け取り、テキストオフセットを返す
++export function pixelPositionToTextPosition(screenX: number, displayRef: HTMLElement): number {
++    const textElement = displayRef.querySelector(".item-text") as HTMLElement;
++    if (!textElement) return 0;
++    const styles = window.getComputedStyle(textElement);
++    const span = document.createElement("span");
++    span.style.fontFamily = styles.fontFamily;
++    span.style.fontSize = styles.fontSize;
++    span.style.fontWeight = styles.fontWeight;
++    span.style.letterSpacing = styles.letterSpacing;
++    span.style.whiteSpace = "pre";
++    span.style.visibility = "hidden";
++    span.style.position = "absolute";
++    document.body.appendChild(span);
++    const rect = textElement.getBoundingClientRect();
++    const relativeX = screenX - rect.left;
++    const content = textElement.textContent || "";
++    let best = 0;
++    let minDist = Infinity;
++    for (let i = 0; i <= content.length; i++) {
++        span.textContent = content.substring(0, i);
++        const w = span.getBoundingClientRect().width;
++        const d = Math.abs(w - relativeX);
++        if (d < minDist) {
++            minDist = d;
++            best = i;
++        }
++    }
++    document.body.removeChild(span);
++    return best;
++}
+diff --git a/docs/feature-map.md b/docs/feature-map.md
+new file mode 100644
+index 0000000..fe34a42
+--- /dev/null
++++ b/docs/feature-map.md
+@@ -0,0 +1,4 @@
++# Feature ↔ Test Matrix
++| Feature | Title | Test files | Status |
++|---------|-------|------------|--------|
++| FTR-0012 | User can reset forgotten password | — | implemented |
+node ➜ /workspace (main) $
+```
+
+---
+
+Cancelled
+
+---
+
+
+
+---
+

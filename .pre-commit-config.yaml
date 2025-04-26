@@ -1,0 +1,16 @@
+# .pre-commit-config.yaml
+repos:
+  # ① 既存フックがあればそのまま残す
+  # ② “local” リポでカスタムフックを定義
+  - repo: local
+    hooks:
+      - id: feature-map
+        name: Generate feature-map.md from features.yaml
+        language: python # pre-commit が venv を用意してくれる
+        entry: python /workspace/scripts/gen_feature_map.py
+        pass_filenames: false # ファイル一覧をスクリプトに渡さない
+        always_run: true # 変更がなくても毎回実行
+        stages: [pre-commit] # commit 時のみ
+        additional_dependencies: # スクリプトが import するパッケージ
+          - loguru
+          - PyYAML

@@ -43,3 +43,7 @@ logs/
 
 firebase/firestore-debug.log
 .gitlab-ci-local
+
+# Python
+.venv/
+scripts/gen_feature_map.log

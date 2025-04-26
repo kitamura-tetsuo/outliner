@@ -11,6 +11,7 @@ RUN apt-get update && \
     lsb-release \
     xauth \
     default-jre \
+    python3.11-venv \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 # Install Docker CLI

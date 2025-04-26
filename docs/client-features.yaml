@@ -1,0 +1,12 @@
+- id: FTR-0012
+  title: User can reset forgotten password
+  status: implemented # draft / implemented / deprecated
+  components:
+    - routes/auth/forgot.svelte
+    - lib/email/resetPassword.ts
+  tests:
+    - tests/feature/FTR-0012.spec.ts
+  acceptance:
+    - 'ユーザーがメールアドレスを入力すると、リセットリンクが送信される'
+    - 'リンクは 30 分で失効する'
+    - '正しいトークンを送るとパスワードを再設定できる'
