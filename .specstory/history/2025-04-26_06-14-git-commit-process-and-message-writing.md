@@ -711,416 +711,151 @@ git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/
 ```
 
 ```
--        
--        // テキスト要素内でのカーソル位置
-         const relativeLeft = contentLeft + cursorWidth;
--        
--        // Y座標は常に最新の値を使用
--        const relativeTop = textRect.top - treeContainerRect.top + 3; // 微調整（+3px）
--        
-+        const relativeTop = textRect.top - treeContainerRect.top + 3;
-         if (DEBUG_MODE) {
--            console.log(`Cursor for ${itemId} at offset ${offset}:`, { 
--                relativeLeft, relativeTop, 
--                cursorWidth,
--                contentLeft,
--                textRectTop: textRect.top,
--                treeContainerTop: treeContainerRect.top,
--                offsetText: textBeforeCursor.replaceAll('\n', '\\n'),
--                fullText: text.replaceAll('\n', '\\n')
--            });
-+            console.log(`Cursor for ${itemId} at offset ${offset}:`, { relativeLeft, relativeTop });
-         }
--        
-         return { left: relativeLeft, top: relativeTop };
-     } catch (error) {
-         console.error('Error calculating cursor position:', error);
-@@ -295,26 +273,13 @@ function debouncedUpdatePositionMap() {
+node ➜ /workspace (main) $ git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
+diff --git a/.devcontainer/Dockerfile b/.devcontainer/Dockerfile
+index 44dde35..443c0e9 100644
+--- a/.devcontainer/Dockerfile
++++ b/.devcontainer/Dockerfile
+@@ -11,6 +11,7 @@ RUN apt-get update && \
+     lsb-release \
+     xauth \
+     default-jre \
++    python3.11-venv \
+     && apt-get clean -y && rm -rf /var/lib/apt/lists/*
  
- // store からのデータを反映するリアクティブ処理
- $effect(() => {
--  const activeChanged = store.activeItemId !== localActiveItemId;
-+  // DOM 更新を反映して positionMap を更新
-+  updatePositionMap();
-   allCursors = Object.values(store.cursors);
-   allSelections = Object.values(store.selections);
-   localActiveItemId = store.activeItemId;
-   localCursorVisible = store.cursorVisible;
-   localAnimationPaused = store.animationPaused;
--  if (activeChanged) {
--    updatePositionMap();
--    store.startCursorBlink();
--    setTimeout(() => {
--      updatePositionMap();
--      const activeCursor = store.cursors['local'];
--      if (activeCursor && activeCursor.itemId === store.activeItemId) {
--        store.setCursor({ ...activeCursor, isActive: true });
--        store.startCursorBlink();
--      }
--    }, 100);
--  } else {
--    debouncedUpdatePositionMap();
--  }
- });
+ # Install Docker CLI
+diff --git a/.gitignore b/.gitignore
+index b7164c9..2cd5f79 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -43,3 +43,7 @@ logs/
  
- // MutationObserver を設定して DOM の変更を監視
-@@ -424,11 +389,11 @@ function handlePaste(event: ClipboardEvent) {
- }
- </script>
- 
--<div class="editor-overlay" bind:this={overlayRef} class:paused={localAnimationPaused} class:visible={localCursorVisible}>
-+<div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={store.cursorVisible}>
-     <!-- 隠しクリップボード用textarea -->
-     <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
-     <!-- 選択範囲のレンダリング -->
--    {#each allSelections as sel}
-+    {#each Object.values(store.selections) as sel}
-         {#if sel.startOffset !== sel.endOffset}
-             {#if sel.startItemId === sel.endItemId}
-                 <!-- 単一アイテム選択 -->
-@@ -481,7 +446,7 @@ function handlePaste(event: ClipboardEvent) {
-     {/each}
-     
-     <!-- カーソルのレンダリング -->
--    {#each allCursors as cursor}
-+    {#each Object.values(store.cursors) as cursor}
-         {@const cursorPos = calculateCursorPixelPosition(cursor.itemId, cursor.offset)}
-         {#if cursorPos}
-             {@const isPageTitle = cursor.itemId === "page-title"}
-diff --git a/client/src/components/GlobalTextArea.svelte b/client/src/components/GlobalTextArea.svelte
-index a882cb0..7c26abb 100644
---- a/client/src/components/GlobalTextArea.svelte
-+++ b/client/src/components/GlobalTextArea.svelte
-@@ -1,14 +1,8 @@
- <script lang="ts">
--import { onMount } from "svelte";
- import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
- 
- let textareaRef: HTMLTextAreaElement;
- 
--// 初期化: フォーカスとイベントハンドラの設定
--onMount(() => {
--    textareaRef?.focus();
--});
--
- // store.activeItemId 変化時に再フォーカス
- $effect(() => {
-     const id = store.activeItemId;
-diff --git a/client/src/components/OutlinerItem.svelte b/client/src/components/OutlinerItem.svelte
-index 6330b6d..f112290 100644
---- a/client/src/components/OutlinerItem.svelte
-+++ b/client/src/components/OutlinerItem.svelte
-@@ -656,11 +656,8 @@
-                        editorOverlayStore.addCursor({ itemId: model.id, offset: pos, isActive: true, userId: 'local' });
-                        // アクティブアイテムを設定
-                        editorOverlayStore.setActiveItem(model.id);
--                       // グローバルテキストエリアにフォーカス
--                       const gta = document.querySelector<HTMLTextAreaElement>('.global-textarea');
--                       if (gta) {
--                               gta.focus();
--                       }
-+                       // 編集用隠し textarea にフォーカス
-+                       hiddenTextareaRef?.focus();
-                        return;
-                }
-                // 通常クリック: 編集開始
-diff --git a/client/src/stores/EditorOverlayStore.svelte.ts b/client/src/stores/EditorOverlayStore.svelte.ts
-index 6c2e173..a487b13 100644
---- a/client/src/stores/EditorOverlayStore.svelte.ts
-+++ b/client/src/stores/EditorOverlayStore.svelte.ts
-@@ -33,7 +33,7 @@ export interface SelectionRange {
- 
- // Svelte 5 ランタイムの runes マクロを利用 (import は不要)
- 
--class EditorOverlayStore {
-+export class EditorOverlayStore {
-     cursors = $state<Record<string, CursorPosition>>({});
-     selections = $state<Record<string, SelectionRange>>({});
-     activeItemId = $state<string | null>(null);
-@@ -95,29 +95,24 @@ class EditorOverlayStore {
-     }
- 
-     startCursorBlink() {
--        // 同期点滅: windowのフォーカス中のみcursorVisibleを反転
-         this.cursorVisible = true;
-         clearInterval(this.timerId);
-+        // 単純に toggle するので Node でも動作
-         this.timerId = setInterval(() => {
--            if (document.hasFocus()) {
--                this.cursorVisible = !this.cursorVisible;
--            }
-+            this.cursorVisible = !this.cursorVisible;
-         }, 530);
-     }
- 
-     stopCursorBlink() {
--        // 点滅停止: タイマークリアして表示状態をオンに
-         clearInterval(this.timerId);
-         this.cursorVisible = true;
-     }
- 
-     clearCursorAndSelection(userId = "local") {
--        const newCursors = { ...this.cursors };
--        const newSelections = { ...this.selections };
--        delete newCursors[userId];
--        delete newSelections[userId];
--        this.cursors = newCursors;
--        this.selections = newSelections;
-+        // 指定した userId のカーソルのみ削除、選択範囲はそのまま保持
-+        this.cursors = Object.fromEntries(
-+            Object.entries(this.cursors).filter(([_, c]) => c.userId !== userId),
-+        );
-     }
- 
-     clearCursorInstance(cursorId: string) {
-diff --git a/client/src/stores/EditorOverlayStore.test.ts b/client/src/stores/EditorOverlayStore.test.ts
+ firebase/firestore-debug.log
+ .gitlab-ci-local
++
++# Python
++.venv/
++scripts/gen_feature_map.log
+diff --git a/.pre-commit-config.yaml b/.pre-commit-config.yaml
 new file mode 100644
-index 0000000..056aaac
+index 0000000..eb10434
 --- /dev/null
-+++ b/client/src/stores/EditorOverlayStore.test.ts
-@@ -0,0 +1,68 @@
-+import {
-+    afterEach,
-+    beforeEach,
-+    describe,
-+    expect,
-+    it,
-+    vi,
-+} from "vitest";
-+import { EditorOverlayStore } from "./EditorOverlayStore.svelte";
++++ b/.pre-commit-config.yaml
+@@ -0,0 +1,16 @@
++# .pre-commit-config.yaml
++repos:
++  # ① 既存フックがあればそのまま残す
++  # ② “local” リポでカスタムフックを定義
++  - repo: local
++    hooks:
++      - id: feature-map
++        name: Generate feature-map.md from features.yaml
++        language: python # pre-commit が venv を用意してくれる
++        entry: python /workspace/scripts/gen_feature_map.py
++        pass_filenames: false # ファイル一覧をスクリプトに渡さない
++        always_run: true # 変更がなくても毎回実行
++        stages: [pre-commit] # commit 時のみ
++        additional_dependencies: # スクリプトが import するパッケージ
++          - loguru
++          - PyYAML
+diff --git a/chat.stach.txt b/chat.stach.txt
+index b3ba621..23134ba 100644
+--- a/chat.stach.txt
++++ b/chat.stach.txt
+@@ -12,4 +12,12 @@ http://localhost:5175 は開発サーバーのアドレスなので、単なる
+ 381行目、startOffsetが startLenになっているのを、カーソル位置になるようにして。
+ 
+ 画面上でのカーソル位置のx座標の変化が小さくなるようにして。
+-押しっぱなしの時は、押し始めの x座標との変化が小さくなるようにして。
+\ No newline at end of file
++押しっぱなしの時は、押し始めの x座標との変化が小さくなるようにして。
 +
-+describe("EditorOverlayStore", () => {
-+    let store: EditorOverlayStore;
 +
-+    beforeEach(() => {
-+        store = new EditorOverlayStore();
-+    });
 +
-+    it("初期状態が正しい", () => {
-+        expect(store.cursors).toEqual({});
-+        expect(store.selections).toEqual({});
-+        expect(store.activeItemId).toBeNull();
-+        expect(store.cursorVisible).toBe(true);
-+        expect(store.animationPaused).toBe(false);
-+    });
 +
-+    it("addCursor と removeCursor が動作する", () => {
-+        const id = store.addCursor({ itemId: "foo", offset: 3, isActive: true, userId: "local" });
-+        expect(typeof id).toBe("string");
-+        expect(store.cursors[id]).toEqual({ cursorId: id, itemId: "foo", offset: 3, isActive: true, userId: "local" });
-+        store.removeCursor(id);
-+        expect(store.cursors[id]).toBeUndefined();
-+    });
-+
-+    it("clearCursorForItem がアイテムの全カーソルをクリアする", () => {
-+        const id1 = store.addCursor({ itemId: "X", offset: 1, isActive: false, userId: "local" });
-+        const id2 = store.addCursor({ itemId: "X", offset: 2, isActive: true, userId: "local" });
-+        expect(Object.values(store.cursors).filter(c => c.itemId === "X").length).toBe(2);
-+        store.clearCursorForItem("X");
-+        expect(Object.values(store.cursors).filter(c => c.itemId === "X").length).toBe(0);
-+    });
-+
-+    it("setSelection と clearCursorAndSelection が動作する", () => {
-+        store.setSelection({ startItemId: "Y", startOffset: 0, endItemId: "Y", endOffset: 5 });
-+        expect(store.selections["Y"]).toMatchObject({ startOffset: 0, endOffset: 5 });
-+        store.clearCursorAndSelection("Y");
-+        // clearCursorAndSelection は userId をキーに removal するので、既存の selections はそのまま
-+        expect(store.selections["Y"]).toBeDefined();
-+    });
-+
-+    it("startCursorBlink と stopCursorBlink が cursorVisible をトグルする", () => {
-+        vi.useFakeTimers();
-+        store.startCursorBlink();
-+        expect(store.cursorVisible).toBe(true);
-+        vi.advanceTimersByTime(530);
-+        expect(store.cursorVisible).toBe(false);
-+        vi.advanceTimersByTime(530);
-+        expect(store.cursorVisible).toBe(true);
-+        store.stopCursorBlink();
-+        expect(store.cursorVisible).toBe(true);
-+        vi.useRealTimers();
-+    });
-+
-+    afterEach(() => {
-+        // タイマーや状態をリセット
-+        vi.useRealTimers();
-+        store.reset();
-+    });
-+});
-diff --git a/client/src/utils/textUtils.test.ts b/client/src/utils/textUtils.test.ts
++これで基本ロジックの正しさを担保できると思います。
++次はユーティリティ系のテストや、
++コンポーネントのインテグレーションテストに進みますか？
++それとも E2E を始めますか？
+diff --git a/docs/client-features.txt b/docs/client-features.txt
 new file mode 100644
-index 0000000..b84fab1
+index 0000000..65b0fdd
 --- /dev/null
-+++ b/client/src/utils/textUtils.test.ts
-@@ -0,0 +1,79 @@
-+// @ts-ignore: jsdom に型定義がありません
-+import { JSDOM } from "jsdom";
-+import {
-+    afterAll,
-+    beforeAll,
-+    describe,
-+    expect,
-+    it,
-+} from "vitest";
-+import {
-+    getClickPosition,
-+    pixelPositionToTextPosition,
-+} from "./textUtils";
++++ b/docs/client-features.txt
+@@ -0,0 +1,55 @@
++https://chatgpt.com/c/680b317e-e524-800f-944c-8c0c11650fad
 +
-+let originalGetBoundingClientRect: any;
-+let originalGetComputedStyle: any;
++基本のカーソル移動
++操作名 | ショートカットキー | 操作内容 (カーソル移動)
++左へ移動 | ← (左矢印) | カーソルを1文字左に移動します。
++右へ移動 | → (右矢印) | カーソルを1文字右に移動します。
++上へ移動 | ↑ (上矢印) | カーソルを1行上に移動します。
++下へ移動 | ↓ (下矢印) | カーソルを1行下に移動します。
++行頭に移動 | Home | 現在の行の先頭にカーソルを移動します。
++行末に移動 | End | 現在の行の末尾にカーソルを移動します。
++単語単位で左へ移動 | Ctrl + ← | 前の単語の先頭にカーソルを移動します。
++単語単位で右へ移動 | Ctrl + → | 次の単語の末尾にカーソルを移動します。
++対応する括弧に移動 | Ctrl + Shift + \ | カーソルを対応するブラケット（括弧）にジャンプします
++ドキュメント先頭に移動 | Ctrl + Home | ファイルの先頭にカーソルを移動します。
++ドキュメント末尾に移動 | Ctrl + End | ファイルの末尾にカーソルを移動します。
++1ページ上へ移動 | PageUp | カーソル位置から1画面分上へスクロールしつつ移動します。
++1ページ下へ移動 | PageDown | カーソル位置から1画面分下へスクロールしつつ移動します。
++1行上へスクロール (固定) | Ctrl + ↑ | カーソル位置を固定したまま1行分画面を上にスクロールします
++1行下へスクロール (固定) | Ctrl + ↓ | カーソル位置を固定したまま1行分画面を下にスクロールします
++1ページ上へスクロール (固定) | Alt + PageUp | カーソル位置を変えずに1画面分上へスクロールします
++1ページ下へスクロール (固定) | Alt + PageDown | カーソル位置を変えずに1画面分下へスクロールします
 +
-+beforeAll(() => {
-+    // グローバルに DOM をセット
-+    const dom = new JSDOM("<!DOCTYPE html><body></body>");
-+    (global as any).window = dom.window;
-+    (global as any).document = dom.window.document;
-+    (global as any).Element = dom.window.Element;
-+    (global as any).HTMLElement = dom.window.HTMLElement;
-+    (global as any).Node = dom.window.Node;
-+    // getBoundingClientRect をモック: textContent 長さ * 10px
-+    originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
-+    Element.prototype.getBoundingClientRect = function () {
-+        const width = (this.textContent?.length || 0) * 10;
-+        return { width, left: 0, top: 0, right: width, bottom: 0, height: 0, x: 0, y: 0, toJSON() {} };
-+    };
-+    // getComputedStyle の必要プロパティをモック
-+    originalGetComputedStyle = window.getComputedStyle;
-+    window.getComputedStyle = () => ({
-+        fontFamily: "",
-+        fontSize: "",
-+        fontWeight: "",
-+        letterSpacing: "",
-+    } as any);
-+});
++カーソル移動 + 選択 (Shift併用による範囲選択)
++操作名 | ショートカットキー | 操作内容 (選択範囲の拡大/縮小)
++左へ選択 (1文字) | Shift + ← | カーソル位置から左隣の文字を選択範囲に含めます。
++右へ選択 (1文字) | Shift + → | カーソル位置から右隣の文字を選択範囲に含めます。
++上へ選択 (1行) | Shift + ↑ | カーソル位置から1行上まで選択範囲を拡大します。
++下へ選択 (1行) | Shift + ↓ | カーソル位置から1行下まで選択範囲を拡大します。
++行頭まで選択 | Shift + Home | カーソル位置から行頭までを選択します。
++行末まで選択 | Shift + End | カーソル位置から行末までを選択します。
++単語単位で左へ選択 | Ctrl + Shift + ← | カーソル位置から前の単語の先頭まで選択範囲を拡大します。
++単語単位で右へ選択 | Ctrl + Shift + → | カーソル位置から次の単語の末尾まで選択範囲を拡大します。
++ドキュメント先頭まで選択 | Ctrl + Shift + Home | カーソル位置からファイル先頭までのテキストをすべて選択します。
++ドキュメント末尾まで選択 | Ctrl + Shift + End | カーソル位置からファイル末尾までのテキストをすべて選択します。
++1ページ上まで選択 | Shift + PageUp | カーソル位置から1画面分上の位置まで選択範囲を拡大します。
++1ページ下まで選択 | Shift + PageDown | カーソル位置から1画面分下の位置まで選択範囲を拡大します。
++選択範囲を拡大 | Shift + Alt + → | 現在の選択範囲を一段階拡大します（カーソル周辺の語やブロック全体を順次選択）
++選択範囲を縮小 | Shift + Alt + ← | 拡大した選択範囲を一段階縮小します
++現在の行を選択 | Ctrl + L | カーソルのある行全体を選択します
 +
-+afterAll(() => {
-+    // モック解除
-+    Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
-+    window.getComputedStyle = originalGetComputedStyle;
-+});
-+
-+describe("getClickPosition", () => {
-+    it("should return nearest index based on click x coordinate", () => {
-+        const content = "abcdef";
-+        const div = document.createElement("div");
-+        div.textContent = content;
-+        document.body.appendChild(div);
-+
-+        // クリック x=25 => 10*2=20 と 10*3=30 が最接近 (差5)、先に見つかる2が返る
-+        const offset = getClickPosition(div, { clientX: 25, clientY: 0 } as MouseEvent, content);
-+        expect(offset).toBe(2);
-+
-+        document.body.removeChild(div);
-+    });
-+});
-+
-+describe("pixelPositionToTextPosition", () => {
-+    it("should map screenX to correct text offset", () => {
-+        const content = "ABCDEFG";
-+        const container = document.createElement("div");
-+        const span = document.createElement("span");
-+        span.className = "item-text";
-+        span.textContent = content;
-+        container.appendChild(span);
-+        document.body.appendChild(container);
-+
-+        // screenX=55 => 10*5=50 と 10*6=60 の差が最小 5 => 5
-+        const offset = pixelPositionToTextPosition(55, container);
-+        expect(offset).toBe(5);
-+
-+        document.body.removeChild(container);
-+    });
-+});
-diff --git a/client/src/utils/textUtils.ts b/client/src/utils/textUtils.ts
++複数カーソル・矩形選択などの特殊操作
++操作名 | ショートカットキー | 操作内容 (複数カーソル・特殊選択)
++上にカーソル追加 | Ctrl + Alt + ↑ | カーソルを現在位置の上の行に追加します
++下にカーソル追加 | Ctrl + Alt + ↓ | カーソルを現在位置の下の行に追加します
++行末にカーソル追加 (選択行ごと) | Shift + Alt + I | 現在選択している複数行の各行末にカーソルを追加します
++任意の位置にカーソル追加 | Alt + マウスクリック | クリックした任意の位置に新たなカーソルを挿入します
++次の一致箇所を選択に追加 | Ctrl + D | 現在の選択と同じテキストの次の出現箇所を追加で選択します
++一致箇所をスキップして次を選択 | Ctrl + K,  then Ctrl + D | 最後に選択した箇所をスキップし、さらに次の一致箇所を選択に追加します
++選択範囲と一致する箇所を全て選択 | Ctrl + Shift + L | 現在の選択テキストと一致する全ての箇所を一括選択します
++現在の単語を全て選択 | Ctrl + F2 | カーソル直下の単語の全出現箇所にカーソルを追加します
++検索結果を全て選択 | Alt + Enter | 「検索」でヒットした全ての一致箇所にカーソルを配置します
++直前のカーソル操作を元に戻す | Ctrl + U | カーソル移動/選択の直前の操作を取り消します
++ボックス選択 (矩形選択) - マウス操作 | Shift + Alt を押しながらドラッグ | ドラッグした範囲を矩形選択します（選択範囲内の各行にカーソル）
++ボックス選択 (矩形選択) - キーボード操作 | Ctrl + Shift + Alt + 方向キー | カーソル位置を起点に方向キーで矩形選択を拡大します
++ボックス選択 (ページ単位拡張) | Ctrl + Shift + Alt + PgUp/PgDn | 矩形選択をページ単位で上方向/下方向に拡大します
+diff --git a/docs/client-features.yaml b/docs/client-features.yaml
 new file mode 100644
-index 0000000..b2b09ce
+index 0000000..e4524ca
 --- /dev/null
-+++ b/client/src/utils/textUtils.ts
-@@ -0,0 +1,83 @@
-+// Utility functions for text measuring and cursor positioning
-+
-+// getClickPosition: Text Element と MouseEvent, content を受け取り、オフセットを返す
-+export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content: string): number {
-+    const x = event.clientX;
-+    const y = event.clientY;
-+    // Caret API を試す
-+    if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
-+        let range: Range | null = null;
-+        if (document.caretRangeFromPoint) {
-+            range = document.caretRangeFromPoint(x, y);
-+        }
-+        else {
-+            const posInfo = (document as any).caretPositionFromPoint(x, y);
-+            if (posInfo) {
-+                range = document.createRange();
-+                range.setStart(posInfo.offsetNode, posInfo.offset);
-+                range.collapse(true);
-+            }
-+        }
-+        if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
-+            return Math.min(Math.max(0, range.startOffset), content.length);
-+        }
-+    }
-+    // フォールバック: span を使って幅測定
-+    const rect = textEl.getBoundingClientRect();
-+    const relX = x - rect.left;
-+    const span = document.createElement("span");
-+    const style = window.getComputedStyle(textEl);
-+    span.style.fontFamily = style.fontFamily;
-+    span.style.fontSize = style.fontSize;
-+    span.style.fontWeight = style.fontWeight;
-+    span.style.letterSpacing = style.letterSpacing;
-+    span.style.whiteSpace = "pre";
-+    span.style.visibility = "hidden";
-+    span.style.position = "absolute";
-+    document.body.appendChild(span);
-+    let best = 0;
-+    let minDist = Infinity;
-+    for (let i = 0; i <= content.length; i++) {
-+        span.textContent = content.slice(0, i);
-+        const w = span.getBoundingClientRect().width;
-+        const d = Math.abs(w - relX);
-+        if (d < minDist) {
-+            minDist = d;
-+            best = i;
-+        }
-+    }
-+    document.body.removeChild(span);
-+    return best;
-+}
-+
-+// pixelPositionToTextPosition: 画面X座標と表示要素を受け取り、テキストオフセットを返す
-+export function pixelPositionToTextPosition(screenX: number, displayRef: HTMLElement): number {
-+    const textElement = displayRef.querySelector(".item-text") as HTMLElement;
-+    if (!textElement) return 0;
-+    const styles = window.getComputedStyle(textElement);
-+    const span = document.createElement("span");
-+    span.style.fontFamily = styles.fontFamily;
-+    span.style.fontSize = styles.fontSize;
-+    span.style.fontWeight = styles.fontWeight;
-+    span.style.letterSpacing = styles.letterSpacing;
-+    span.style.whiteSpace = "pre";
-+    span.style.visibility = "hidden";
-+    span.style.position = "absolute";
-+    document.body.appendChild(span);
-+    const rect = textElement.getBoundingClientRect();
-+    const relativeX = screenX - rect.left;
-+    const content = textElement.textContent || "";
-+    let best = 0;
-+    let minDist = Infinity;
-+    for (let i = 0; i <= content.length; i++) {
-+        span.textContent = content.substring(0, i);
-+        const w = span.getBoundingClientRect().width;
-+        const d = Math.abs(w - relativeX);
-+        if (d < minDist) {
-+            minDist = d;
-+            best = i;
-+        }
-+    }
-+    document.body.removeChild(span);
-+    return best;
-+}
++++ b/docs/client-features.yaml
+@@ -0,0 +1,12 @@
++- id: FTR-0012
++  title: User can reset forgotten password
++  status: implemented # draft / implemented / deprecated
++  components:
++    - routes/auth/forgot.svelte
++    - lib/email/resetPassword.ts
++  tests:
++    - tests/feature/FTR-0012.spec.ts
++  acceptance:
++    - 'ユーザーがメールアドレスを入力すると、リセットリンクが送信される'
++    - 'リンクは 30 分で失効する'
++    - '正しいトークンを送るとパスワードを再設定できる'
 diff --git a/docs/feature-map.md b/docs/feature-map.md
 new file mode 100644
 index 0000000..fe34a42
@@ -1131,16 +866,189 @@ index 0000000..fe34a42
 +| Feature | Title | Test files | Status |
 +|---------|-------|------------|--------|
 +| FTR-0012 | User can reset forgotten password | — | implemented |
+diff --git a/docs/feature.chat.txt b/docs/feature.chat.txt
+new file mode 100644
+index 0000000..88969e0
+--- /dev/null
++++ b/docs/feature.chat.txt
+@@ -0,0 +1,57 @@
++### 📑 Context
++`docs/features.yaml` に定義されている **未テストの機能** に対して
++Vitest テストを追加してください。
++
++### ✅ Scope
++- **対象 Feature IDs**
++  - FTR-0012 – User can reset forgotten password
++  - FTR-0015 – Two-factor authentication  
++    （いずれも `status: implemented` かつ `tests: []`）
++
++### 🛠 Requirements
++1. テストファイルは `tests/feature/<FeatureID>.spec.ts` に置く  
++   例: `tests/feature/FTR-0012.spec.ts`
++2. 各ファイルの冒頭に次のメタを入れる  
++   ```ts
++   /** @feature FTR-0012
++    *  Title   : User can reset forgotten password
++    *  Source  : docs/features.yaml
++    */
++
++
++
++
++📄 依頼テンプレート（GitHub Issue／Pull-Request／Copilot Chat いずれでも可）
++
++## Task
++Convert the following plain-text table into new **cursor-movement** feature entries
++in `client-features.yaml`, **without touching any other sections**.
++
++## Source table
++```text
++基本のカーソル移動
++操作名 | ショートカットキー | 操作内容 (カーソル移動)
++左へ移動 | ← | カーソルを1文字左に移動します。
++右へ移動 | → | カーソルを1文字右に移動します。
++上へ移動 | ↑ | カーソルを1行上に移動します。
++下へ移動 | ↓ | カーソルを1行下に移動します。
++行頭に移動 | Home | 現在の行の先頭にカーソルを移動します。
++行末に移動 | End  | 現在の行の末尾にカーソルを移動します。
++
++YAML format
++
++Each entry should follow this schema exactly (keys in this order):
++
++- id: CLM-XXXX        # 4-digit sequential number, zero-padded
++  title: "<操作名>"
++  shortcut: "<ショートカットキー>"
++  description: "<操作内容>"
++  category: cursor-movement
++  status: drafted     # leave as drafted; dev will flip to implemented later
++  tests: []           # stay empty; separate issue will add spec files
++
++Use the next available ID after the current highest CLM-####.
++Append new items under the cursor-movement section; create the section if absent.
++Keep existing YAML indentation (2 spaces).
++Return a unified diff (```diff) so we can apply it with git apply.
++
+diff --git a/scripts/gen_feature_map.py b/scripts/gen_feature_map.py
+new file mode 100644
+index 0000000..94e9fed
+--- /dev/null
++++ b/scripts/gen_feature_map.py
+@@ -0,0 +1,85 @@
++#!/usr/bin/env python3
++# scripts/gen_feature_map.py
++"""
++Scan tests for `@feature` tags, merge with docs/features.yaml,
++and emit a Markdown table mapping features to test files.
++Now supports **multiple test-root directories**.
++"""
++
++from pathlib import Path
++import re, sys, yaml, subprocess
++from loguru import logger
++
++# ─────────────────────────  設定  ──────────────────────────
++ROOT        = Path(__file__).resolve().parent.parent
++YAML_SRC    = ROOT / "docs" / "client-features.yaml"
++# ★ 複数ディレクトリをリストで指定
++TEST_ROOTS  = [                                   # 任意で追記 / 上書き
++    ROOT / "client/e2e",                              # default
++    ROOT / "client/src/tests",                              # default
++    # ROOT / "server/tests",                    # 例: 追加したいときはアンコメント
++]
++MD_OUTFILE  = ROOT / "docs" / "feature-map.md"        # 出力先
++FEATURE_RE  = re.compile(r"@feature\s+(FTR-\d{4})", re.I)
++# ──────────────────────────────────────────────────────────
++
++# ---------- Loguru ----------
++logger.remove()
++logger.add(sys.stdout, format="<lvl>{message}</lvl>")
++logger.add(ROOT / "scripts" / "gen_feature_map.log", rotation="1 MB")
++
++# ---------- Helpers ----------
++
++def load_features():
++    data = yaml.safe_load(YAML_SRC.read_text(encoding="utf-8"))
++    return {f["id"]: f for f in data}
++
++
++def scan_tests():
++    """Walk through every directory in TEST_ROOTS and collect @feature tags."""
++    mapping: dict[str, list[str]] = {}
++
++    for root in TEST_ROOTS:
++        if not root.exists():
++            logger.warning(f"⚠  Test root not found: {root.relative_to(ROOT) if root.is_absolute() else root}")
++            continue
++
++        for path in root.rglob("*.spec.ts"):
++            ids = FEATURE_RE.findall(path.read_text(encoding="utf-8"))
++            for fid in ids:
++                mapping.setdefault(fid, []).append(str(path.relative_to(ROOT)))
++
++    return mapping
++
++# ---------- Main ----------
++
++def main() -> None:
++    features = load_features()
++    tests    = scan_tests()
++
++    # Markdown をバッファに貯める
++    lines: list[str] = []
++    lines.append("# Feature ↔ Test Matrix\n")
++    lines.append("| Feature | Title | Test files | Status |\n")
++    lines.append("|---------|-------|------------|--------|\n")
++
++    for fid, meta in sorted(features.items()):
++        test_links = "<br>".join(tests.get(fid, ["—"]))
++        lines.append(
++            f"| {fid} | {meta['title']} | {test_links} | {meta['status']} |\n"
++        )
++
++    md_text = "".join(lines)
++
++    # ファイルへ書き込み（差分がなければスキップ）
++    if not MD_OUTFILE.exists() or MD_OUTFILE.read_text(encoding="utf-8") != md_text:
++        MD_OUTFILE.write_text(md_text, encoding="utf-8")
++        logger.info(f"feature-map.md updated → {MD_OUTFILE.relative_to(ROOT)}")
++        # pre-commit から呼ばれた場合に備え、自動 add しておく
++        subprocess.run(["git", "add", str(MD_OUTFILE)], check=False)
++    else:
++        logger.info("feature-map.md already up-to-date ✔")
++
++
++if __name__ == "__main__":
++    main()
 node ➜ /workspace (main) $
 ```
 
 ---
 
-Cancelled
+```bash
+git commit -m "Support Python virtualenv, update gitignore, add pre-commit hook for feature-map generation, and initial feature docs"
+```
+
+```
+node ➜ /workspace (main) $ git commit -m "Support Python virtualenv, update gitignore, add pre-commit hook for feature-map generation, and initial feature docs"
+Generate feature-map.md from features.yaml...............................Passed
+[main 1abdfc0] Support Python virtualenv, update gitignore, add pre-commit hook for feature-map generation, and initial feature docs
+ 11 files changed, 691 insertions(+), 2 deletions(-)
+ create mode 100644 .pre-commit-config.yaml
+ create mode 100644 docs/client-features.txt
+ create mode 100644 docs/client-features.yaml
+ create mode 100644 docs/feature-map.md
+ create mode 100644 docs/feature.chat.txt
+ create mode 100644 scripts/gen_feature_map.py
+node ➜ /workspace (main) $
+```
 
 ---
 
+コミットしました:  
+「Support Python virtualenv, update gitignore, add pre-commit hook for feature-map generation, and initial feature docs」  
 
+他に何かご要望はありますか？
 
 ---
 

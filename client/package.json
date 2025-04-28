@@ -18,7 +18,7 @@
         "test": "NODE_ENV=test dotenv -e .env.test -- npm run test:unit && npm run test:e2e",
         "test:e2e": "mkdir -p e2e/logs && NODE_ENV=test dotenv -e .env.test -- playwright test",
         "test:e2e:debug": "mkdir -p e2e/logs && NODE_ENV=test dotenv -e .env.test -- playwright test --debug",
-        "test:e2e:ui": "mkdir -p e2e/logs && NODE_ENV=test dotenv -e .env.test -- playwright test --ui",
+        "test:e2e:ui": "mkdir -p e2e/logs && NODE_ENV=test dotenv -e .env.test -- playwright test --ui --ui-host=0.0.0.0 --ui-port=9323",
         "test:e2e:codegen": "mkdir -p e2e/logs && NODE_ENV=test dotenv -e .env.test -- playwright codegen",
         "test:e2e:xvfb": "mkdir -p e2e/logs && NODE_ENV=test dotenv -e .env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npm run test:e2e",
         "ci:test:e2e": "mkdir -p e2e/logs && playwright test",
@@ -30,7 +30,7 @@
         "@eslint/js": "^9.18.0",
         "@fluidframework/test-client-utils": "^1.4.0",
         "@fluidframework/tinylicious-client": "^2.30.0",
-        "@playwright/test": "^1.49.1",
+        "@playwright/test": "^1.52.0",
         "@sveltejs/adapter-auto": "^4.0.0",
         "@sveltejs/kit": "^2.16.0",
         "@sveltejs/vite-plugin-svelte": "^5.0.0",
@@ -73,7 +73,7 @@
         "dotenv": "^16.4.7",
         "firebase": "^11.5.0",
         "fluid-framework": "2.30.0",
-        "uuid": "^8.3.2",
-        "pino": "^8.15.0"
+        "pino": "^8.15.0",
+        "uuid": "^8.3.2"
     }
 }

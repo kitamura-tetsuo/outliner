@@ -67,3 +67,6 @@ cd /workspace/server && npm run create-test-user
 npx gitlab-ci-local
 	を実行する
 
+
+DOMから検索するにはデバッグコンソールで下記
+document.querySelectorAll('.cursor')

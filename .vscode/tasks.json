@@ -64,6 +64,12 @@
             "command": "node ${workspaceFolder}/scripts/kill-tinylicious.js",
             "problemMatcher": [],
             "group": "none"
+        },
+        {
+            "label": "clean-chrome-profile",
+            "type": "shell",
+            "command": "Remove-Item -Recurse -Force ${workspaceFolder}\\.vscode\\chrome-debug-profile"
+            // Windows の場合は PowerShell: "Remove-Item -Recurse -Force ${workspaceFolder}\\.vscode\\chrome-debug-profile"
         }
     ]
 }

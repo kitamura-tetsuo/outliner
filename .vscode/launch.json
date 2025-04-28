@@ -74,6 +74,16 @@
             ],
             "port": 9877,
             "urlFilter": "*192.168.50.13:7080*"
+            // "runtimeExecutable": "powershell.exe",
+            // "runtimeArgs": [
+            //     "-NoProfile",
+            //     "-Command",
+            //     "Remove-Item -Recurse -Force $env:USERPROFILE\\.vscode\\chrome-debug-profile; ",
+            //     "New-Item -ItemType Directory -Path $env:USERPROFILE\\.vscode\\chrome-debug-profile | Out-Null; ",
+            //     "Start-Process 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' ",
+            //     "--remote-debugging-port=9877 --user-data-dir=$env:USERPROFILE\\.vscode\\chrome-debug-profile"
+            // ],
+            // "console": "integratedTerminal"
         },
         {
             "type": "node",

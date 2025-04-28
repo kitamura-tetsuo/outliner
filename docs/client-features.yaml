@@ -10,3 +10,25 @@
     - 'ユーザーがメールアドレスを入力すると、リセットリンクが送信される'
     - 'リンクは 30 分で失効する'
     - '正しいトークンを送るとパスワードを再設定できる'
+- id: CLM-0001
+  title: 'クリックで編集モードに入る'
+  shortcut: 'クリック'
+  description: 'クリックで編集モードに入ります。'
+  category: cursor-movement
+  status: implemented
+  tests:
+    - client/e2e/core/CLM-0001.spec.ts
+  acceptance:
+    - 'クリックで編集モードに入る'
+    - '編集モードで文字入力が可能になる'
+    - 'カーソルが表示される'
+    - 'カーソルがクリック位置に表示される'
+    - 'カーソルが点滅する'
+- id: CLM-0002
+  title: '左へ移動'
+  shortcut: '←'
+  description: 'カーソルを1文字左に移動します。'
+  category: cursor-movement
+  status: implemented
+  tests:
+    - client/e2e/core/CLM-0002.spec.ts

@@ -5,5 +5,7 @@
 			"path": ".."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"window.title": "${activeEditorShort}${separator}${rootName}"
+	}
 }

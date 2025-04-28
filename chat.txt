@@ -32,15 +32,18 @@ http://192.168.50.13:7080/
 
 
 
+
 テストの動作確認をして下さい。
 
+cd /workspace/client && npx playwright test {test file path}
+にて、テストを実行できます。
+
 対象のテスト
-　/workspace/client/e2e/core/advanced-indent.spec.ts
-　"Should create and manipulate a deeply nested structure"
+　/workspace/client/e2e/core/CLM-0001.spec.ts
 
 手順
 　以下の手順に過不足があれば実行前に手順の改善案を出して下さい。
-　コマンドラインから、このテストを実行して下さい。
+　コマンドラインから、このテストをheadlessモードで実行して下さい。
 　エラーがなければそれで終了です。
 　エラーがある場合は続けて下さい。
 　このテストファイルを分析して、各テストケースの目的と確認すべき挙動を確認してください
@@ -52,14 +55,13 @@ http://192.168.50.13:7080/
 　テストレポートの表示はしないで下さい。
 　テストの修正をするか、コードの修正をするかは私が決めます。
 
-
 テスト用のサーバー
 　http://192.168.50.13:7080/
-クライアントのログがここにある。必要であれば、アクセス後にこちらを確認して。
+クライアントのログがここにあります。必要であれば、アクセス後にこちらを確認して下さい。
 　/workspace/client/logs/test-browser.log
-テスト用のSveltKit serverのログがここにある。必要であれば、アクセス後にこちらを確認して。
+テスト用のSveltKit serverのログがここにあります。必要であれば、アクセス後にこちらを確認して下さい。
 　/workspace/server/logs/test-svelte-kit.log
-API serverのログがここにある。必要であれば、アクセス後にこちらを確認して。
+API serverのログがここにあります。必要であれば、アクセス後にこちらを確認して下さい。
 　/workspace/server/logs/test-auth-service-tee.log
 
 
@@ -133,3 +135,9 @@ cd /workspace/client && npm run check
 commit
 git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
  で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。。
+
+
+
+
+
+document.querySelectorAll('.cursor')

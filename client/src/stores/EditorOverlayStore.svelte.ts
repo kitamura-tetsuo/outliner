@@ -1,3 +1,5 @@
+import { Cursor } from "../lib/Cursor"; // Cursor クラスを import
+
 // Exported types
 export interface CursorPosition {
     // 各カーソルインスタンスを一意に識別するID
@@ -35,12 +37,26 @@ export interface SelectionRange {
 
 export class EditorOverlayStore {
     cursors = $state<Record<string, CursorPosition>>({});
+    // Cursor インスタンスを保持する Map
+    private cursorInstances = new Map<string, Cursor>();
     selections = $state<Record<string, SelectionRange>>({});
     activeItemId = $state<string | null>(null);
     cursorVisible = $state<boolean>(true);
     animationPaused = $state<boolean>(false);
+    // GlobalTextArea の textarea 要素を保持
+    textareaRef = $state<HTMLTextAreaElement | null>(null);
 
     private timerId!: ReturnType<typeof setTimeout>;
+
+    // テキストエリア参照を設定
+    setTextareaRef(el: HTMLTextAreaElement | null) {
+        this.textareaRef = el;
+    }
+
+    // テキストエリア参照を取得
+    getTextareaRef(): HTMLTextAreaElement | null {
+        return this.textareaRef;
+    }
 
     private genUUID(): string {
         if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -57,17 +73,36 @@ export class EditorOverlayStore {
     }
 
     updateCursor(cursor: CursorPosition) {
+        // Map のインスタンスと同期
+        const inst = this.cursorInstances.get(cursor.cursorId);
+        if (inst) {
+            inst.itemId = cursor.itemId;
+            inst.offset = cursor.offset;
+            inst.isActive = cursor.isActive;
+            if (cursor.userId) inst.userId = cursor.userId;
+        }
         this.cursors = { ...this.cursors, [cursor.cursorId]: cursor };
     }
 
     addCursor(omitProps: Omit<CursorPosition, "cursorId">) {
         const newId = this.genUUID();
+        // Cursor インスタンスを生成して保持
+        const cursorInst = new Cursor(newId, {
+            itemId: omitProps.itemId,
+            offset: omitProps.offset,
+            isActive: omitProps.isActive,
+            userId: omitProps.userId ?? "local",
+        });
+        this.cursorInstances.set(newId, cursorInst);
         const newCursor: CursorPosition = { cursorId: newId, ...omitProps };
         this.updateCursor(newCursor);
         return newId;
     }
 
     removeCursor(cursorId: string) {
+        // Map からインスタンスを削除
+        this.cursorInstances.delete(cursorId);
+        // Reactive state からも削除
         const newCursors = { ...this.cursors };
         delete newCursors[cursorId];
         this.cursors = newCursors;
@@ -139,17 +174,39 @@ export class EditorOverlayStore {
 
     setCursor(cursorProps: Omit<CursorPosition, "cursorId">) {
         const id = this.genUUID();
+        // Cursor インスタンスを生成して保持
+        const cursorInst = new Cursor(id, {
+            itemId: cursorProps.itemId,
+            offset: cursorProps.offset,
+            isActive: cursorProps.isActive,
+            userId: cursorProps.userId ?? "local",
+        });
+        this.cursorInstances.set(id, cursorInst);
         const newCursor: CursorPosition = { cursorId: id, ...cursorProps };
         this.cursors = { ...this.cursors, [id]: newCursor };
         return id;
     }
 
     clearCursorForItem(itemId: string) {
+        // Map から一致するインスタンスを削除
+        for (const [cursorId, inst] of this.cursorInstances.entries()) {
+            if (inst.itemId === itemId) {
+                this.cursorInstances.delete(cursorId);
+            }
+        }
+        // Reactive state も更新
         Object.entries(this.cursors).forEach(([cursorId, cursor]: [string, CursorPosition]) => {
             if (cursor.itemId === itemId) {
-                this.removeCursor(cursorId);
+                const newCursors = { ...this.cursors };
+                delete newCursors[cursorId];
+                this.cursors = newCursors;
             }
         });
+    }
+
+    // 登録された Cursor インスタンスを取得する
+    getCursorInstances(): import("../lib/Cursor").Cursor[] {
+        return Array.from(this.cursorInstances.values());
     }
 }
 

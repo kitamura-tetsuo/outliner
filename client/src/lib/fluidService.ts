@@ -611,7 +611,8 @@ export async function createFluidClient(containerId?: string): Promise<FluidClie
 
             // 初期データとして最初のページを作成
             const project = appData.root as Project;
-            project.addPage("はじめてのページ", userId);
+            const root = project.addPage("はじめてのページ", userId);
+            root.items.addNode("");
 
             // 必要な全てのパラメータを設定してFluidClientインスタンスを作成
             const fluidClientParams = {

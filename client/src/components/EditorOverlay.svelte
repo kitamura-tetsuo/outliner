@@ -72,23 +72,26 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         // アイテム情報がない場合は描画をスキップ
         return null;
     }
-    
     const { textElement } = itemInfo;
-    
     // ツリーコンテナを取得
     const treeContainer = overlayRef.closest('.tree-container');
     if (!treeContainer) return null;
-    
     try {
         // 最新の位置情報を取得するため、常に新たに計測
         // テキスト要素の絶対位置
         const textRect = textElement.getBoundingClientRect();
-        
         // ツリーコンテナの絶対位置
         const treeContainerRect = treeContainer.getBoundingClientRect();
-        
         // テキストの内容を取得
         const text = textElement.textContent || '';
+        // 空テキストの場合は必ず左端
+        if (!text || text.length === 0) {
+            const contentContainer = textElement.closest('.item-content-container');
+            const contentRect = contentContainer?.getBoundingClientRect() || textRect;
+            const contentLeft = contentRect.left - treeContainerRect.left;
+            const relativeTop = textRect.top - treeContainerRect.top + 3;
+            return { left: contentLeft, top: relativeTop };
+        }
         // 折り返し対応: Range API を優先
         const textNode = Array.from(textElement.childNodes).find(node => node.nodeType === Node.TEXT_NODE) as Text | undefined;
         if (textNode) {
@@ -522,7 +525,7 @@ function handlePaste(event: ClipboardEvent) {
 .cursor.active {
     /* アニメーションはJS制御のvisibilityで同期 */
     pointer-events: none !important;
-    border-color: yellow;  /* デバッグ: アクティブカーソル枠 */
+    border-color: rgb(0, 0, 0);  /* デバッグ: アクティブカーソル枠 */
 }
 
 .selection {
