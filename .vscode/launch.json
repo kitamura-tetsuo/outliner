@@ -192,6 +192,19 @@
             "internalConsoleOptions": "neverOpen"
         },
         {
+            "name": "For Test Launch test:e2e:ui",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/client",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run",
+                "test:e2e:ui"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
             "type": "node",
             "request": "launch",
             "name": "Debug Firestore Sequential",
@@ -210,7 +223,8 @@
                 "Debug SvelteKit Server",
                 "For Test SvelteKit Server",
                 "For Test Debug Server",
-                "For Test Launch Tinylicious"
+                "For Test Launch Tinylicious",
+                "For Test Launch test:e2e:ui"
                 // "Launch Chrome against localhost"
             ],
             "stopAll": true,
@@ -221,7 +235,8 @@
             "configurations": [
                 "For Test SvelteKit Server",
                 "For Test Debug Server",
-                "For Test Launch Tinylicious"
+                "For Test Launch Tinylicious",
+                "For Test Launch test:e2e:ui"
             ],
             "stopAll": true,
             "preLaunchTask": "Kill Tinylicious Process"

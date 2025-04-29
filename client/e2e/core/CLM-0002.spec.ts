@@ -21,7 +21,9 @@ test.describe("CLM-0002: 左へ移動", () => {
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
         // 隠し textarea にフォーカスが当たるまで待機
-        await page.waitForSelector("textarea.hidden-textarea:focus");
+        await page.waitForSelector("textarea.global-textarea:focus");
+        // 文字入力が可能
+        await page.keyboard.type("Test data update");
     });
 
     test("ArrowLeftキーでカーソルが1文字左に移動する", async ({ page }) => {

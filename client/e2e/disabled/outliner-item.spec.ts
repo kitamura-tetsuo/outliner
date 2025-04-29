@@ -21,7 +21,7 @@ test.describe("OutlinerItem E2E", () => {
         // 隠し textarea がフォーカスされているか確認
         const isFocused = await page.evaluate(() => {
             const active = document.activeElement;
-            return active?.classList.contains("hidden-textarea");
+            return active?.classList.contains("global-textarea");
         });
         expect(isFocused).toBe(true);
         // 編集クラスが付与されているか確認

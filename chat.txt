@@ -133,8 +133,8 @@ cd /workspace/client && npm run check
 
 
 commit
-git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
- で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。。
+git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt' ':(exclude)/workspace/docs/feature.chat.txt'
+ で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。
 
 
 
