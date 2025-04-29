@@ -1,4 +1,31 @@
 ### 📑 Context
+`/workspace/docs/client-features.yaml` に定義されている下記機能を実装して、テストを作成・追加してください。
+IME-0001
+
+### 🛠 Requirements
+1. テスト内容に応じて、unit/e2e testを使い分けて書いて下さい。。
+  unit testは vitestを使用してください。
+  e2e testは playwright を使用してください。
+  一つの機能のテストは一つにして下さい。
+  UIのテストは e2eで実施して下さい。
+2. unit testのテストファイルはテスト対象と同じフォルダに置いて下さい。
+  unit testの拡張子は .spec.ts
+  e2e testは `/workspace/client/e2e/core/<FeatureID>.spec.ts` に置いて下さい。
+    例: `/workspace/client/e2e/core/FTR-0012.spec.ts`
+3. 各テストファイルの冒頭に次の例に沿ったメタを入れて下さい。
+   /** @feature FTR-0012
+    *  Title   : User can reset forgotten password
+    *  Source  : docs/client-features.yaml
+    */
+4. テストファイル作成後、client-features.yamlのテストを追加した機能 tests欄へ、テストファイルのパスを追加してください。
+
+他、必要な手順や情報があればご提案ください。指示のためのテンプレートを作成中です。
+
+
+
+
+
+### 📑 Context
 `/workspace/docs/client-features.yaml` に定義されている status: implementedであり、テストが空の機能に対してテストを作成・追加してください。
 
 ### 🛠 Requirements

@@ -4,9 +4,8 @@
 // FirestoreStore関連の関数をエクスポート
 export {
     getDefaultContainerId,
-    saveContainerId as saveFirestoreContainerId,
+    saveContainerId,
     saveContainerIdToServer as saveFirestoreContainerIdToServer,
-    type UserContainer,
     userContainer,
 } from "../stores/firestoreStore";
 
@@ -15,14 +14,6 @@ export {
     cleanupFluidClient,
     createFluidClient,
     createNewContainer,
-    getFluidClient,
-    handleConnectionError,
     initFluidClientWithAuth,
     loadContainer,
-    loadContainerId,
-    resetContainerId,
-    resetFluidClient,
-    saveContainerId,
-    saveContainerIdToServer,
-    serializeTreeNode,
 } from "../lib/fluidService";

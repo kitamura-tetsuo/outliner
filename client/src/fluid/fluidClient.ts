@@ -2,17 +2,13 @@ import {
     AzureClient,
     type AzureContainerServices,
 } from "@fluidframework/azure-client";
-import {
-    type ContainerSchema,
-    type IFluidContainer,
-} from "@fluidframework/fluid-static";
+import { type IFluidContainer } from "@fluidframework/fluid-static";
 import {
     TinyliciousClient,
     type TinyliciousContainerServices,
 } from "@fluidframework/tinylicious-client";
 import {
     ConnectionState,
-    SharedTree,
     type TreeView,
 } from "fluid-framework";
 import { UserManager } from "../auth/UserManager";
@@ -24,17 +20,10 @@ import {
 
 const logger = getLogger();
 
-// IdCompressorを有効にしたコンテナスキーマを定義
-export const containerSchema = {
-    initialObjects: {
-        appData: SharedTree,
-    },
-} as any satisfies ContainerSchema;
-
 /**
  * FluidClientの初期化パラメータ
  */
-export interface FluidClientParams {
+interface FluidClientParams {
     clientId: string;
     client: AzureClient | TinyliciousClient;
     container: IFluidContainer;
@@ -42,13 +31,6 @@ export interface FluidClientParams {
     appData: TreeView<typeof Project>;
     project: Project;
     services: any;
-}
-
-export interface IUser {
-    id: string;
-    name: string;
-    email?: string;
-    color: string;
 }
 
 export class FluidClient {
@@ -299,36 +281,6 @@ export class FluidClient {
 
         this.appData.dispose();
         this.container.dispose();
-    }
-
-    // ユーザー関連のメソッド
-    public loadSavedUser(): IUser | null {
-        try {
-            const savedUser = localStorage.getItem("fluidUser");
-            return savedUser ? JSON.parse(savedUser) : null;
-        }
-        catch (error) {
-            logger.error("Failed to load saved user:", error);
-            return null;
-        }
-    }
-
-    public async registerUser(user: IUser): Promise<IUser> {
-        // ユーザー情報を保存
-        const registeredUser = {
-            ...user,
-            id: crypto.randomUUID(),
-        };
-
-        try {
-            localStorage.setItem("fluidUser", JSON.stringify(registeredUser));
-            this.currentUser = registeredUser;
-            return registeredUser;
-        }
-        catch (error) {
-            logger.error("Failed to register user:", error);
-            throw new Error("ユーザー登録に失敗しました");
-        }
     }
 
     // 再接続を試みる

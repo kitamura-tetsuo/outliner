@@ -1,7 +1,5 @@
 import { FluidClient } from "../fluid/fluidClient";
-import { getLogger } from "../lib/logger";
 import { store } from "./store.svelte";
-const logger = getLogger();
 
 class GeneralStore {
     // FluidClientのインスタンスを保持するStore

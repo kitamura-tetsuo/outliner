@@ -10,6 +10,13 @@
     - 'ユーザーがメールアドレスを入力すると、リセットリンクが送信される'
     - 'リンクは 30 分で失効する'
     - '正しいトークンを送るとパスワードを再設定できる'
+- id: IME-0001
+  title: IMEを使用した日本語入力
+  status: draft # draft / implemented / deprecated
+  tests:
+    - client/e2e/core/IME-0001.spec.ts
+  acceptance:
+    - 'IMEを使用した日本語入力が可能になる'
 - id: CLM-0001
   title: 'クリックで編集モードに入る'
   shortcut: 'クリック'

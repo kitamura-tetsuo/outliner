@@ -2,7 +2,7 @@ import type { Item } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 
-export interface CursorOptions {
+interface CursorOptions {
     itemId: string;
     offset: number;
     isActive: boolean;
@@ -127,26 +127,10 @@ export class Cursor {
     }
 
     private navigateToItem(direction: "left" | "right") {
-        const x = this.calculateScreenX();
         // 前後アイテムへの移動はストア更新のみ行い、イベント発行はコンポーネントで処理
         store.clearCursorForItem(this.itemId);
         store.setActiveItem(this.itemId);
         store.startCursorBlink();
         // navigation event dispatch should be managed by GlobalTextArea or parent component
-    }
-
-    private calculateScreenX(): number | null {
-        const el = document.querySelector(`[data-item-id="${this.itemId}"] .item-text`) as HTMLElement;
-        if (!el) return null;
-        const range = document.createRange();
-        const textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
-        if (textNode && textNode.textContent) {
-            const pos = Math.min(this.offset, textNode.textContent.length);
-            range.setStart(textNode, pos);
-            range.setEnd(textNode, pos);
-            const rect = range.getBoundingClientRect();
-            return rect.left;
-        }
-        return null;
     }
 }

@@ -70,3 +70,7 @@ npx gitlab-ci-local
 
 DOMから検索するにはデバッグコンソールで下記
 document.querySelectorAll('.cursor')
+
+
+git 全バージョンの全文検索
+git grep -n "updateFluidClient" $(git rev-list --all) -- . ':(exclude)*.md'

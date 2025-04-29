@@ -1,25 +1,11 @@
 <script lang="ts">
 	import { Tree } from 'fluid-framework';
 	import { createEventDispatcher, onMount } from 'svelte';
-	import { getLogger } from '../lib/logger';
 	import { Items } from '../schema/app-schema';
 	import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
-	import type { OutlinerItemViewModel } from '../stores/OutlinerViewModel';
 	import { TreeSubscriber } from "../stores/TreeSubscriber";
 
-	const logger = getLogger();
 
-	interface Props {
-		// Props
-		model: OutlinerItemViewModel;
-		depth: number;
-		currentUser?: string;
-		isReadOnly?: boolean;
-		isCollapsed?: boolean;
-		hasChildren?: boolean;
-		isPageTitle?: boolean; // ページタイトルかどうか
-		index: number; // 追加：アイテムのインデックス
-	}
 
 	let { 
 		model, 
@@ -173,131 +159,6 @@
 		editorOverlayStore.startCursorBlink();
 	}
 
-	/**
-	 * テキスト内の指定された位置にあるキャレットの画面座標を計算します
-	 */
-	function getCaretScreenCoordinates(element: HTMLElement, position: number): { top: number, left: number } {
-		try {
-			// テキストノードを見つける
-			const textNode = Array.from(element.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-			
-			if (!textNode) {
-				// テキストノードが見つからない場合は要素の左上の座標を返す
-				const rect = element.getBoundingClientRect();
-				return { top: rect.top, left: rect.left };
-			}
-			
-			// 指定された位置にレンジをセット
-			const range = document.createRange();
-			range.setStart(textNode, Math.min(position, textNode.textContent?.length || 0));
-			range.setEnd(textNode, Math.min(position, textNode.textContent?.length || 0));
-			
-			// レンジの境界矩形を取得
-			const rect = range.getBoundingClientRect();
-			return { top: rect.top, left: rect.left };
-		} catch (error) {
-			console.error('Error calculating caret position:', error);
-			// エラーが発生した場合は要素の左上の座標を返す
-			const rect = element.getBoundingClientRect();
-			return { top: rect.top, left: rect.left };
-		}
-	}
-
-	// カーソルのスクリーン座標を計算する関数
-	function calculateCursorScreenPosition(cursorPos: number): number | null {
-		if (!displayRef) return null;
-		
-		const textElement = displayRef.querySelector('.item-text') as HTMLElement;
-		if (!textElement) return null;
-		
-		const currentText = text.current || '';
-		if (cursorPos < 0 || cursorPos > currentText.length) return null;
-		
-		try {
-			// 指定位置にレンジを作成
-			const textNode = Array.from(textElement.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-			
-			if (textNode && textNode.textContent === currentText) {
-				// テキストノードが見つかり、内容が一致する場合は直接レンジを使用
-				const range = document.createRange();
-				range.setStart(textNode, Math.min(cursorPos, textNode.textContent.length));
-				range.setEnd(textNode, Math.min(cursorPos, textNode.textContent.length));
-				const rect = range.getBoundingClientRect();
-				
-				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-					console.log(`Cursor position calculation using range: pos=${cursorPos}, x=${rect.left}`);
-				}
-				
-				return rect.left;
-			} else {
-				// レンジが使えない場合はspan要素を使った測定
-				const span = document.createElement('span');
-				span.style.font = window.getComputedStyle(textElement).font;
-				span.style.whiteSpace = 'pre';
-				span.style.visibility = 'hidden';
-				span.style.position = 'absolute';
-				document.body.appendChild(span);
-				
-				// カーソル位置までのテキストを計測
-				const textBeforeCursor = currentText.substring(0, cursorPos);
-				span.textContent = textBeforeCursor;
-				const textWidth = span.getBoundingClientRect().width;
-				
-				// テキスト要素の位置を取得
-				const textRect = textElement.getBoundingClientRect();
-				
-				// 絶対X座標を計算
-				const screenX = textRect.left + textWidth;
-				
-				// 片付け
-				document.body.removeChild(span);
-				
-				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-					console.log('Cursor screen position calculation using span:', {
-						textBeforeCursor,
-						textWidth,
-						textRectLeft: textRect.left,
-						screenX
-					});
-				}
-				
-				return screenX;
-			}
-		} catch (error) {
-			console.error('Error calculating cursor position:', error);
-			return null;
-		}
-	}
-
-	// テキストの最初の行にカーソルがあるか確認
-	function isAtFirstLine(): boolean {
-		const text = hiddenTextareaRef.value;
-		const position = hiddenTextareaRef.selectionStart || 0;
-		
-		// 位置が0なら確実に最初の行
-		if (position === 0) return true;
-		
-		// 位置までにある改行を数える
-		const textBeforeCursor = text.substring(0, position);
-		const hasNewLine = textBeforeCursor.includes('\n');
-		
-		return !hasNewLine; // 改行が無ければ最初の行
-	}
-
-	// テキストの最後の行にカーソルがあるか確認
-	function isAtLastLine(): boolean {
-		const text = hiddenTextareaRef.value;
-		const position = hiddenTextareaRef.selectionStart || 0;
-		
-		// 位置が末尾なら確実に最後の行
-		if (position === text.length) return true;
-		
-		// カーソル位置以降にある改行を数える
-		const textAfterCursor = text.substring(position);
-		const hasNewLine = textAfterCursor.includes('\n');
-		
-		return !hasNewLine; // 改行が無ければ最後の行
-	}
 
 	// カーソル位置と選択範囲を更新する共通関数
 	function updateSelectionAndCursor(isShiftKey = false) {
@@ -368,25 +229,6 @@
 	}
 
 	// アイテム全体のキーダウンイベントハンドラ
-	function handleItemKeyDown(event: KeyboardEvent) {
-		if (isEditing) return;
-
-		if (event.key === 'Tab') {
-			event.preventDefault();
-			event.stopPropagation();
-
-			if (event.shiftKey) {
-				dispatch('unindent', { itemId: model.id });
-				logger.info(`Unindent dispatched`);
-			} else {
-				dispatch('indent', { itemId: model.id });
-				logger.info(`Indent dispatched`);
-			}
-		} else if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			startEditing();
-		}
-	}
 
 	function finishEditing() {
 		isEditing = false;
@@ -752,58 +594,7 @@
 
 
 	// 他のアイテムに移動するイベントを発火する
-	function navigateToItem(direction: "up" | "down" | "left" | "right") {
-		// カーソル位置のスクリーンX座標を計算
-		let cursorScreenX: number | undefined = undefined;
-		
-		if (isEditing && hiddenTextareaRef && document.activeElement === hiddenTextareaRef) {
-			const cursorPosition = hiddenTextareaRef.selectionStart || 0;
-			
-			// カーソル位置のスクリーン座標を計算
-			const pos = calculateCursorScreenPosition(cursorPosition);
-			if (pos !== null) {
-				cursorScreenX = pos;
-				
-				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-					console.log(`Navigate ${direction}: cursor position=${cursorPosition}, screenX=${cursorScreenX}`);
-				}
-			}
-		}
-		
-		dispatch("navigate-to-item", {
-			direction,
-			itemId: model.id,
-			cursorScreenX,
-			fromItemId: model.id
-		});
-	}
 
-	function navigate(event: KeyboardEvent, direction: 'up' | 'down') {
-		if (isEditing) {
-			event.preventDefault();
-			
-			if (!hiddenTextareaRef) return;
-			
-			const cursorPosition = hiddenTextareaRef.selectionStart || 0;
-			
-			// カーソル位置のスクリーン座標を計算
-			const cursorScreenX = calculateCursorScreenPosition(cursorPosition);
-			
-			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-				console.log(`Navigate ${direction}: cursor position=${cursorPosition}, screenX=${cursorScreenX}`);
-			}
-			
-			// 編集を終了
-			finishEditing();
-			
-			// ナビゲーションイベントを発行
-			dispatch('navigate-to-item', {
-				direction,
-				cursorScreenX,
-				fromItemId: model.id
-			});
-		}
-	}
 
 	// ResizeObserverを使用して要素の高さ変更を監視
 	onMount(() => {

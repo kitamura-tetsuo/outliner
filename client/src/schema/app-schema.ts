@@ -115,6 +115,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 
 // 型検証ヘルパー
 {
+    // @ts-ignore: TS6133
     type _check = ValidateRecursiveSchema<typeof Items>;
 }
 

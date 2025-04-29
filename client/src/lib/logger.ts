@@ -415,7 +415,3 @@ function setupGlobalErrorHandlers(): void {
 if (typeof window !== "undefined") {
     setupGlobalErrorHandlers();
 }
-
-// 最終的にエクスポートするもののみを列挙（重複を避ける）
-export { logger, setupGlobalErrorHandlers };
-// getLoggerとlogはすでに直接exportされているので、ここでは再エクスポートしない

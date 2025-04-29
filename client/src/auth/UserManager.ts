@@ -24,7 +24,7 @@ export interface IUser {
 }
 
 // Fluid Relayトークンの型定義
-export interface IFluidToken {
+interface IFluidToken {
     token: string;
     user: {
         id: string;
@@ -35,12 +35,12 @@ export interface IFluidToken {
 }
 
 // 認証結果の型定義
-export interface IAuthResult {
+interface IAuthResult {
     user: IUser;
 }
 
 // 認証イベントリスナーの型定義
-export type AuthEventListener = (result: IAuthResult | null) => void;
+type AuthEventListener = (result: IAuthResult | null) => void;
 
 export class UserManager {
     private static instance: UserManager;
@@ -57,9 +57,8 @@ export class UserManager {
     };
 
     private apiBaseUrl = getEnv("VITE_API_BASE_URL", "http://localhost:7071");
-    private apiServerUrl = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
     private app = initializeApp(this.firebaseConfig);
-    private auth = getAuth(this.app);
+    auth = getAuth(this.app);
 
     private currentFluidToken: IFluidToken | null = null;
     private listeners: AuthEventListener[] = [];
@@ -234,9 +233,10 @@ export class UserManager {
                         return; // 成功したらループを抜ける
                     }
                     catch (reconnectError) {
-                        // メインの認証インスタンスの再接続に失敗した場合
+                        // unknown型のerrorからcodeを安全に取得
+                        const code = (reconnectError as any).code;
                         // この警告はエラーではなく、通常の動作の一部として扱う
-                        if (reconnectError.code === "auth/emulator-config-failed") {
+                        if (code === "auth/emulator-config-failed") {
                             // エミュレータ設定が既に行われている場合は問題なし
                             logger.info(
                                 `Auth emulator already configured, using successful login from ${host}:${port}`,
@@ -410,12 +410,6 @@ export class UserManager {
     private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<void> {
         try {
             logger.debug("User signed in", { uid: firebaseUser.uid });
-
-            // Firebase認証ユーザーからIDトークンを取得
-            const idToken = await firebaseUser.getIdToken();
-
-            // 認証情報をローカルストレージに保存する
-            // ...existing code...
 
             // ユーザーオブジェクトを作成
             const user: IUser = {

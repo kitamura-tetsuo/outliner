@@ -1,7 +1,11 @@
-import { initializeApp } from "firebase/app";
+import {
+    type FirebaseApp,
+    initializeApp,
+} from "firebase/app";
 import {
     connectFirestoreEmulator,
     doc,
+    Firestore,
     getDoc,
     getFirestore,
     onSnapshot,
@@ -28,7 +32,7 @@ const firebaseConfig = {
 };
 
 // ユーザーコンテナの型定義
-export interface UserContainer {
+interface UserContainer {
     userId: string;
     defaultContainerId?: string;
     accessibleContainerIds?: string[];
@@ -40,8 +44,8 @@ export interface UserContainer {
 export const userContainer: Writable<UserContainer | null> = writable(null);
 
 // Firestoreアプリとデータベースの初期化
-let app;
-let db;
+let app: FirebaseApp | undefined;
+let db: Firestore | undefined;
 
 // Firebaseアプリの初期化（一度だけ）
 try {
@@ -55,7 +59,7 @@ try {
     }
 
     // Firestoreインスタンスの取得
-    db = getFirestore(app);
+    db = getFirestore(app!);
 
     // テスト環境またはエミュレータ環境を検出して接続
     const isTestEnv = import.meta.env.MODE === "test" ||
@@ -100,7 +104,7 @@ catch (error) {
     // データベース接続に失敗した場合でもアプリが動作し続けられるように
     // 最低限の初期化だけを行う
     if (!db) {
-        db = getFirestore(app);
+        db = getFirestore(app!);
     }
 }
 
@@ -108,7 +112,7 @@ catch (error) {
 let unsubscribe: (() => void) | null = null;
 
 // Firestoreとの同期を開始する関数
-export function initFirestoreSync(): () => void {
+function initFirestoreSync(): () => void {
     // 以前のリスナーがあれば解除
     if (unsubscribe) {
         unsubscribe();
@@ -133,7 +137,7 @@ export function initFirestoreSync(): () => void {
 
     try {
         // ドキュメントへの参照を取得 (/userContainers/{userId})
-        const userContainerRef = doc(db, "userContainers", userId);
+        const userContainerRef = doc(db!, "userContainers", userId);
 
         // エラーハンドリングを強化したリアルタイム更新リスナー
         unsubscribe = onSnapshot(
@@ -390,7 +394,7 @@ export async function getUserContainers(): Promise<{ id: string; name?: string; 
 
         // ストアに値がない場合は直接Firestoreから取得
         const userId = currentUser.id;
-        const userContainerRef = doc(db, "userContainers", userId);
+        const userContainerRef = doc(db!, "userContainers", userId);
         const snapshot = await getDoc(userContainerRef);
 
         if (snapshot.exists()) {
@@ -409,7 +413,7 @@ export async function getUserContainers(): Promise<{ id: string; name?: string; 
             // アクセス可能なコンテナIDリストがあれば追加
             if (data.accessibleContainerIds && data.accessibleContainerIds.length > 0) {
                 // デフォルトコンテナと重複しないようにフィルタリング
-                const additionalContainers = data.accessibleContainerIds
+                const additionalContainers = (data.accessibleContainerIds as string[])
                     .filter(id => id !== data.defaultContainerId)
                     .map(id => ({
                         id,

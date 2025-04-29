@@ -13,7 +13,6 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
     const actual = await importOriginal();
 
     // loggerをカスタムタイプとして定義
-    type LoggerMethod = (...args: any[]) => void;
     type LoggerMock = {
         trace: Mock;
         debug: Mock;

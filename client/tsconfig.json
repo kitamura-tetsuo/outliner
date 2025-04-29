@@ -10,7 +10,9 @@
         "sourceMap": true,
         "strict": true,
         "moduleResolution": "bundler",
-        "types": ["@playwright/test"]
+        "types": ["@playwright/test"],
+        "noUnusedLocals": true // 未使用の変数・関数・importをエラーに
+        // "noUnusedParameters": true // 未使用のパラメータをエラーに
     }
     // Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
     // except $lib which is handled by https://svelte.dev/docs/kit/configuration#files

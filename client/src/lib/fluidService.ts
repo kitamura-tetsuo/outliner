@@ -70,7 +70,7 @@ const useTinylicious = isTestEnvironment || // テスト環境では常にTinyli
 
 // Fluid Frameworkがパスの不一致によるエラーを回避するため、
 // ContainerSchemaを直接インポートせずにオブジェクトとして定義
-export const containerSchema: ContainerSchema = {
+const containerSchema: ContainerSchema = {
     initialObjects: {
         appData: SharedTree,
     },
@@ -154,7 +154,7 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
 }
 
 // AzureClientの取得（またはTinyliciousClient）
-export async function getFluidClient(userId?: string, containerId?: string): Promise<FluidInstances> {
+async function getFluidClient(userId?: string, containerId?: string): Promise<FluidInstances> {
     if (useTinylicious) {
         const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7082");
         const client = new TinyliciousClient({ connection: { port } });
@@ -249,87 +249,14 @@ export async function getFluidClient(userId?: string, containerId?: string): Pro
     }
 }
 
-// 特定のクライアントをリセット
-export function resetFluidClient(containerId?: string, userId?: string): void {
-    if (!containerId && !userId) {
-        // 全クライアントをリセット
-        clientRegistry.clear();
-        resetContainerId();
-        log("fluidService", "debug", "Reset all AzureClients");
-        return;
-    }
-
-    // 同じロジックでキーを生成
-    const clientKey = createClientKey(userId, containerId);
-
-    if (clientRegistry.has(clientKey)) {
-        clientRegistry.delete(clientKey);
-        log("fluidService", "debug", `Reset AzureClient for ${clientKey.type}:${clientKey.id}`);
-    }
-    else {
-        log("fluidService", "debug", `No AzureClient found for ${clientKey.type}:${clientKey.id}`);
-    }
-}
-
-/**
- * Fluid Framework接続エラーを処理する
- * @param error エラーオブジェクト
- * @returns ユーザー向けエラーメッセージとステータスコード
- */
-export function handleConnectionError(error: any): { message: string; statusCode?: number; } {
-    log("fluidService", "error", "Connection error:", error);
-
-    // エラーメッセージの初期値
-    let message = "Azure Fluid Relayへの接続中にエラーが発生しました";
-    let statusCode = undefined;
-
-    // errorがResponseオブジェクトを含むか確認
-    if (error.response) {
-        statusCode = error.response.status;
-
-        // HTTPステータスコードに基づいて詳細なエラーメッセージを提供
-        switch (statusCode) {
-            case 401:
-            case 403:
-                message = "認証に失敗しました。トークンが無効または期限切れです。";
-                break;
-            case 404:
-                message = "指定されたコンテナが見つかりません。";
-                break;
-            case 429:
-                message = "リクエスト制限を超えました。しばらく待ってから再試行してください。";
-                break;
-            case 500:
-            case 502:
-            case 503:
-            case 504:
-                message = "サーバーエラーが発生しました。しばらく待ってから再試行してください。";
-                break;
-            default:
-                if (statusCode >= 400) {
-                    message = `エラーが発生しました (${statusCode})`;
-                }
-        }
-    }
-    else if (error.code === "ECONNABORTED") {
-        message = "接続がタイムアウトしました。ネットワーク接続を確認してください。";
-    }
-    else if (error.message) {
-        // エラーメッセージが存在する場合はそれを使用
-        message = `エラー: ${error.message}`;
-    }
-
-    return { message, statusCode };
-}
-
 // ローカルストレージのキー名
-export const CONTAINER_ID_STORAGE_KEY = "fluid_container_id";
+const CONTAINER_ID_STORAGE_KEY = "fluid_container_id";
 
 /**
  * ローカルストレージからコンテナIDを読み込む
  * @returns 保存されていたコンテナID、なければundefined
  */
-export function loadContainerId(): string | undefined {
+function loadContainerId(): string | undefined {
     if (typeof window !== "undefined") {
         const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
         if (savedContainerId) {
@@ -344,7 +271,7 @@ export function loadContainerId(): string | undefined {
  * コンテナIDをローカルストレージに保存
  * @param containerId 保存するコンテナID
  */
-export function saveContainerId(containerId: string): void {
+function saveContainerId(containerId: string): void {
     if (typeof window !== "undefined") {
         log("fluidService", "info", `Saving container ID locally: ${containerId}`);
         localStorage.setItem(CONTAINER_ID_STORAGE_KEY, containerId);
@@ -352,20 +279,10 @@ export function saveContainerId(containerId: string): void {
 }
 
 /**
- * コンテナIDをリセット（削除）する
- */
-export function resetContainerId(): void {
-    if (typeof window !== "undefined") {
-        log("fluidService", "info", "Resetting container ID");
-        localStorage.removeItem(CONTAINER_ID_STORAGE_KEY);
-    }
-}
-
-/**
  * コンテナIDをサーバー側に保存する
  * @param containerId 保存するコンテナID
  */
-export async function saveContainerIdToServer(containerId: string): Promise<boolean> {
+async function saveContainerIdToServer(containerId: string): Promise<boolean> {
     try {
         // バレルパターンを使用して関数を呼び出し
         const result = await saveFirestoreContainerIdToServer(containerId);
@@ -383,50 +300,6 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         // エラーが発生してもクリティカルではないので、処理は続行
         return false;
     }
-}
-
-/**
- * ツリーノードを再帰的にシリアライズする
- * @param node ツリーノード
- * @returns シリアライズされたノード
- */
-export function serializeTreeNode(node: any): any {
-    if (!node) return null;
-
-    // ID、テキスト、子アイテムなどの基本情報を収集
-    const result: any = {
-        id: node.id,
-        text: node.text,
-        hasChildren: node.items?.length > 0,
-    };
-
-    // 子アイテムを再帰的に処理
-    if (node.items && node.items.length > 0) {
-        result.children = [];
-        for (const child of node.items) {
-            result.children.push(serializeTreeNode(child));
-        }
-    }
-
-    return result;
-}
-
-// FluidClientの初期化状態を追跡するためのマップ
-type InitState = {
-    isInitializing: boolean;
-    initPromise: Promise<any> | null;
-};
-const clientInitStateMap = new Map<string, InitState>();
-
-/**
- * 新しいFluidClientインスタンスを作成して初期化する
- * @param containerId オプションのコンテナID
- * @returns 初期化された新しいFluidClientインスタンス
- * @deprecated 代わりに createFluidClient() を使用してください
- */
-export async function initializeFluidClient(containerId?: string): Promise<any> {
-    log("fluidService", "warn", "initializeFluidClient() is deprecated. Use createFluidClient() instead");
-    return createFluidClient(containerId);
 }
 
 /**
@@ -456,7 +329,6 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
         log("fluidService", "info", "Creating container with schema");
         const createResponse = await client.createContainer(containerSchema, "2");
         const container = createResponse.container;
-        const services = createResponse.services;
 
         // コンテナをアタッチして永続化（コンテナIDを取得）
         log("fluidService", "info", "Attaching container");
@@ -612,7 +484,7 @@ export async function createFluidClient(containerId?: string): Promise<FluidClie
             // 初期データとして最初のページを作成
             const project = appData.root as Project;
             const root = project.addPage("はじめてのページ", userId);
-            root.items.addNode("");
+            (root.items as Items).addNode("");
 
             // 必要な全てのパラメータを設定してFluidClientインスタンスを作成
             const fluidClientParams = {
@@ -661,7 +533,7 @@ export async function initFluidClientWithAuth() {
             else {
                 logger.info("ログアウトにより、Fluidクライアントをリセットします");
                 // ストアからの参照を削除
-                fluidStore.fluidClient = null;
+                fluidStore.fluidClient = undefined;
                 if (typeof window !== "undefined") {
                     delete (window as any).__FLUID_CLIENT__;
                 }
@@ -669,7 +541,7 @@ export async function initFluidClientWithAuth() {
         }
         catch (error) {
             logger.error("FluidClient初期化エラー:", error);
-            fluidStore.fluidClient = null;
+            fluidStore.fluidClient = undefined;
         }
     });
 
@@ -709,5 +581,5 @@ export function cleanupFluidClient() {
             logger.warn("FluidClient接続解除中のエラー:", e);
         }
     }
-    fluidStore.fluidClient = null;
+    fluidStore.fluidClient = undefined;
 }

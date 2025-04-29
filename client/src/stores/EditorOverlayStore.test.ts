@@ -32,8 +32,6 @@ describe("EditorOverlayStore", () => {
     });
 
     it("clearCursorForItem がアイテムの全カーソルをクリアする", () => {
-        const id1 = store.addCursor({ itemId: "X", offset: 1, isActive: false, userId: "local" });
-        const id2 = store.addCursor({ itemId: "X", offset: 2, isActive: true, userId: "local" });
         expect(Object.values(store.cursors).filter(c => c.itemId === "X").length).toBe(2);
         store.clearCursorForItem("X");
         expect(Object.values(store.cursors).filter(c => c.itemId === "X").length).toBe(0);

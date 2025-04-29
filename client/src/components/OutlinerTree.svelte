@@ -16,7 +16,7 @@ import { OutlinerViewModel } from "../stores/OutlinerViewModel";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
 import EditorOverlay from "./EditorOverlay.svelte";
 import OutlinerItem from "./OutlinerItem.svelte";
-const { getActiveItem, reset, selections, setActiveItem, setSelection } = editorOverlayStore;
+const { getActiveItem, reset, selections, setSelection } = editorOverlayStore;
 
 const logger = getLogger();
 
@@ -49,29 +49,9 @@ const viewModel = new OutlinerViewModel();
 // コンテナ要素への参照
 let containerRef: HTMLDivElement;
 
-// インデントオフセット（ピクセル単位）
-const INDENT_SIZE = 24;
 
 let itemHeights = $state<number[]>([]);
 let itemPositions = $state<number[]>([]);
-
-// タイトルをTreeSubscriberで監視
-const titleSubscriber = new TreeSubscriber<Item, string>(
-    pageItem,
-    "nodeChanged",
-    () => pageItem.text,
-    value => {
-        pageItem.text = value;
-    },
-);
-
-// TreeSubscriberを使って、アイテムを監視し変換する例
-// 第3引数に変換関数を渡すことで、戻り値の型を変更できます
-const itemChildrenCount = new TreeSubscriber<Item, number>(
-    pageItem,
-    "nodeChanged",
-    () => pageItem.items && Tree.is(pageItem.items, Items) ? pageItem.items.length : 0,
-);
 
 const displayItems = new TreeSubscriber<Items, DisplayItem[]>(
     pageItem.items as Items,
@@ -82,25 +62,10 @@ const displayItems = new TreeSubscriber<Items, DisplayItem[]>(
     },
 );
 
-// 変換結果を使った例
-let childCount = $derived(itemChildrenCount.current);
-
-// ページタイトル用のモデル
-let pageTitleViewModel = $state({
-    id: "page-title",
-    original: pageItem,
-    text: pageItem.text || "", // テキストはページアイテムから取得
-    author: pageItem.author || "",
-    created: pageItem.created || Date.now(), // number型として設定
-    lastChanged: pageItem.lastChanged || Date.now(), // number型として設定
-    votes: [],
-    children: [],
-});
-
 // アイテムの高さが変更されたときに位置を再計算
 function updateItemPositions() {
     let currentTop = 8; // 最初のアイテムの上部マージン
-    itemPositions = itemHeights.map((height, index) => {
+    itemPositions = itemHeights.map((height) => {
         const position = currentTop;
         // 最小高さ36pxを考慮
         const effectiveHeight = Math.max(height || 28, 28);
@@ -445,9 +410,6 @@ function focusItemWithPosition(itemId: string, cursorScreenX?: number, shiftKey 
             // 特殊なカーソル位置値を処理
             let cursorXValue = cursorScreenX;
 
-            // アイテム要素からOutlinerItemコンポーネントインスタンスへの参照を取得
-            const itemInstance = (item as any).__svelte?.OutlinerItem;
-
             // カスタムイベントを作成してアイテムに発火
             const event = new CustomEvent("focus-item", {
                 detail: {
@@ -497,13 +459,6 @@ function focusItemWithPosition(itemId: string, cursorScreenX?: number, shiftKey 
     }
 }
 
-// ページタイトルの編集を開始したときのハンドラ
-function handlePageTitleClick() {
-    if (isReadOnly) return;
-
-    // ページタイトルをアクティブに設定
-    setActiveItem("page-title");
-}
 
 // 同じ階層に新しいアイテムを追加するハンドラ
 function handleAddSibling(event: CustomEvent) {
@@ -529,18 +484,10 @@ function handleAddSibling(event: CustomEvent) {
     }
 }
 
-// ページタイトルの子アイテムとして追加する関数を修正
-function addNewItem() {
-    const items = pageItem.items;
-    if (!isReadOnly && items && Tree.is(items, Items)) {
-        // 先頭に追加
-        items.addNode(currentUser, 0);
-    }
-}
 
 // 複数行ペースト時に新規アイテムを追加
 function handlePasteMultiItem(event: CustomEvent) {
-    const { lines, selections, activeItemId } = event.detail;
+    const { lines, activeItemId } = event.detail;
     // 最初の選択アイテムをベースとする
     const firstItemId = activeItemId;
     const itemIndex = displayItems.current.findIndex(d => d.model.id === firstItemId);
@@ -633,10 +580,6 @@ function handlePasteMultiItem(event: CustomEvent) {
     background: #f5f5f5;
     border-bottom: 1px solid #ddd;
     flex-shrink: 0; /* ツールバーは縮まないように */
-}
-
-.title-container {
-    margin-bottom: 16px;
 }
 
 .actions {

@@ -8,7 +8,7 @@ import {
 const logger = getLogger();
 
 // ビューモデルのインターフェース
-export interface OutlinerItemViewModel {
+interface OutlinerItemViewModel {
     id: string;
     original: Item; // 元のFluidオブジェクトへの参照
     text: string;
@@ -47,59 +47,6 @@ export class OutlinerViewModel {
 
     // 更新中フラグ
     private _isUpdating = false;
-
-    // 監視中のアイテム
-    private _watchedItems: Items | null = null;
-
-    // 監視解除のためのアンサブスクライブ関数
-    private _unsubscribe: (() => void) | null = null;
-
-    // 変更通知のためのコールバック
-    private _onChange: (() => void) | null = null;
-
-    /**
-     * アイテムの変更を監視開始する
-     * @param items 監視対象のアイテムコレクション
-     * @param onChange 変更時に呼び出されるコールバック
-     */
-    watchItems(items: Items, onChange: () => void): void {
-        // 既に同じアイテムを監視中なら何もしない
-        if (this._watchedItems === items) return;
-
-        // 既存の監視を解除
-        this.unwatchItems();
-
-        // 新しい監視を設定
-        if (items) {
-            this._watchedItems = items;
-            this._onChange = onChange;
-
-            // Tree.onでアイテムの変更を監視
-            this._unsubscribe = Tree.on(items, "nodeChanged", () => {
-                // 変更があった時の処理
-                if (!this._isUpdating) {
-                    this.updateFromModel(items);
-                    if (this._onChange) this._onChange();
-                }
-            });
-
-            // 初回の更新
-            this.updateFromModel(items);
-            if (this._onChange) this._onChange();
-        }
-    }
-
-    /**
-     * アイテムの監視を停止する
-     */
-    unwatchItems(): void {
-        if (this._unsubscribe) {
-            this._unsubscribe();
-            this._unsubscribe = null;
-        }
-        this._watchedItems = null;
-        this._onChange = null;
-    }
 
     /**
      * データモデルからビューモデルを更新する
@@ -283,7 +230,6 @@ export class OutlinerViewModel {
      * リソースの解放
      */
     dispose(): void {
-        this.unwatchItems();
         this.viewModels.clear();
         this.visibleOrder = [];
         this.depthMap.clear();
