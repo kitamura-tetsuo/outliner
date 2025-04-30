@@ -321,7 +321,7 @@ function setupTinyliciousTestContainers() {
 }
 
 // ユーザーのコンテナリストを取得
-export async function getUserContainers(): Promise<{ id: string; name?: string; isDefault?: boolean; }[]> {
+export async function getUserContainers(): Promise<{ id: string; name: string; isDefault: boolean; }[]> {
     try {
         // E2E テスト環境の場合は Tinylicious 用のテストコンテナを使用
         if (setupTinyliciousTestContainers()) {

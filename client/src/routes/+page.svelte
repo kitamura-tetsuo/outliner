@@ -8,7 +8,6 @@ import { UserManager } from "../auth/UserManager";
 import AuthComponent from "../components/AuthComponent.svelte";
 import ContainerSelector from "../components/ContainerSelector.svelte";
 import EnvDebugger from "../components/EnvDebugger.svelte";
-import MissingEnvWarning from "../components/MissingEnvWarning.svelte";
 import NetworkErrorAlert from "../components/NetworkErrorAlert.svelte";
 import PageList from "../components/PageList.svelte";
 import { getDebugConfig } from "../lib/env";
@@ -27,7 +26,6 @@ const logger = getLogger();
 let error: string | null = $state(null);
 let project: any = $state(null);
 let rootItems: any = $state(null);
-let inputText = "";
 let debugInfo: any = $state({});
 let showDebugPanel = $state(false);
 let hostInfo = $state("");
@@ -36,10 +34,6 @@ let envConfig = getDebugConfig();
 let isAuthenticated = $state(false);
 let networkError: string | null = $state(null);
 let isInitializing = $state(false); // 非同期操作実行中のフラグ（必要な場合のみ使用）
-
-let currentUser = $derived(fluidStore.currentUser?.id ?? "anonymous");
-let isConnected = $derived(fluidStore.isConnected);
-let connectionState = $derived(fluidStore.connectionState);
 
 $effect(() => {
     if (isAuthenticated) {
@@ -273,9 +267,6 @@ function toggleDebugPanel() {
             {/if}
         </p>
 
-        <!-- 環境変数の警告 -->
-        <MissingEnvWarning />
-
         <!-- 環境変数デバッガー -->
         <EnvDebugger />
 
@@ -336,14 +327,6 @@ h1 {
 
 .disconnected {
     background: #f44336;
-}
-
-.container-info {
-    background: #f0f8ff;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    border-left: 4px solid #2196f3;
 }
 
 code {
@@ -447,13 +430,5 @@ pre {
 .new-container-button .icon {
     font-size: 1.2rem;
     margin-right: 0.5rem;
-}
-
-.container-info {
-    background: #f0f8ff;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    border-left: 4px solid #2196f3;
 }
 </style>

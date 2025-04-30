@@ -1,10 +1,7 @@
 <script lang="ts">
 import { run } from "svelte/legacy";
 
-import {
-    createEventDispatcher,
-    onMount,
-} from "svelte";
+import { onMount } from "svelte";
 import { TreeViewManager } from "../fluid/TreeViewManager";
 import {
     Item,
@@ -23,11 +20,8 @@ interface Props {
 let {
     project,
     rootItems,
-    currentPage = null,
     currentUser = "anonymous",
 }: Props = $props();
-
-const dispatch = createEventDispatcher();
 
 // 開発環境ではデフォルトのタイトルを提案
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
@@ -85,6 +79,8 @@ run(() => {
 
     <ul>
         {#each store?.pages?.current! as page}
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
             <li class:active={page === store.currentPage} onclick={() => selectPage(page)}>
                 <span class="page-title">{page.text || "無題のページ"}</span>
                 <span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>

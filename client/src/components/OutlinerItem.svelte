@@ -3,9 +3,18 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { Items } from '../schema/app-schema';
 	import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
+	import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 	import { TreeSubscriber } from "../stores/TreeSubscriber";
-
-
+	interface Props {
+		model: OutlinerItemViewModel;
+		depth?: number;
+		currentUser?: string;
+		isReadOnly?: boolean;
+		isCollapsed?: boolean;
+		hasChildren?: boolean;
+		isPageTitle?: boolean;
+		index: number;
+	}
 
 	let { 
 		model, 
@@ -22,8 +31,6 @@
 
 	// Stateの管理
 	let isEditing = $state(false);
-	let selectionStart = $state(0);
-	let selectionEnd = $state(0);
 	let lastSelectionStart = $state(0);
 	let lastSelectionEnd = $state(0);
 	let lastCursorPosition = $state(0);
@@ -142,7 +149,6 @@
 		if (cursorPosition !== undefined) {
 			// カーソル位置を textarea に設定
 			textareaEl.setSelectionRange(cursorPosition, cursorPosition);
-			selectionStart = selectionEnd = cursorPosition;
 		}
 		
 		// 既存のカーソルをクリアしてからストアに設定
@@ -166,8 +172,6 @@
 		
 		const currentStart = hiddenTextareaRef.selectionStart;
 		const currentEnd = hiddenTextareaRef.selectionEnd;
-		selectionStart = currentStart;
-		selectionEnd = currentEnd;
 		
 		if (currentStart === currentEnd) {
 			lastCursorPosition = currentStart;
@@ -359,20 +363,15 @@
 					
 					// ローカル変数を更新 (shiftKey時はクロスアイテム選択拡張)
 					if (!shiftKey) {
-						selectionStart = selectionEnd = textPosition;
 						lastSelectionStart = lastSelectionEnd = textPosition;
 						lastCursorPosition = textPosition;
 					} else if (direction === 'down' || direction === 'right') {
 						// 次アイテム: 行頭からカーソル位置まで選択
-						selectionStart = 0;
-						selectionEnd = textPosition;
 						lastSelectionStart = 0;
 						lastSelectionEnd = textPosition;
 						lastCursorPosition = textPosition;
 					} else if (direction === 'up' || direction === 'left') {
 						// 前アイテム: カーソル位置から行末まで選択
-						selectionStart = textPosition;
-						selectionEnd = hiddenTextareaRef.value.length;
 						lastSelectionStart = textPosition;
 						lastSelectionEnd = hiddenTextareaRef.value.length;
 						lastCursorPosition = textPosition;
@@ -548,7 +547,6 @@
 			}, 0);
 			
 			// ローカル変数を更新
-			selectionStart = selectionEnd = safePosition;
 			lastSelectionStart = lastSelectionEnd = safePosition;
 			lastCursorPosition = safePosition;
 			
@@ -582,8 +580,6 @@
 		if (!hiddenTextareaRef || !isEditing) return;
 		
 		hiddenTextareaRef.setSelectionRange(start, end);
-		selectionStart = start;
-		selectionEnd = end;
 		lastSelectionStart = start;
 		lastSelectionEnd = end;
 		lastCursorPosition = end;
@@ -626,18 +622,20 @@
 	});
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
 	class="outliner-item"
 	class:page-title={isPageTitle}
 	style="margin-left: {depth * 20}px"
-	on:click={handleClick}
+	onclick={handleClick}
 	bind:this={itemRef}
 	data-item-id={model.id}
 >
 	<div class="item-header">
 		{#if !isPageTitle}
 			{#if hasChildren}
-				<button class="collapse-btn" on:click={toggleCollapse}>
+				<button class="collapse-btn" onclick={toggleCollapse}>
 					{isCollapsed ? '▶' : '▼'}
 				</button>
 			{:else}
@@ -662,10 +660,10 @@
 
 		{#if !isPageTitle}
 			<div class="item-actions">
-				<button on:click={addNewItem} title="新しいアイテムを追加">+</button>
-				<button on:click={handleDelete} title="削除">×</button>
+				<button onclick={addNewItem} title="新しいアイテムを追加">+</button>
+				<button onclick={handleDelete} title="削除">×</button>
 				<button
-					on:click={toggleVote}
+					onclick={toggleVote}
 					class="vote-btn"
 					class:voted={model.votes.includes(currentUser)}
 					title="投票"
@@ -754,11 +752,6 @@
 		min-width: 1px;
 	}
     
-	.empty-text {
-		color: #999;
-		font-style: italic;
-	}
-
 	.item-actions {
 		display: flex;
 		gap: 4px;
@@ -803,10 +796,6 @@
 		color: #666;
 	}
     
-	.cursor, .selection {
-		display: none;
-	}
-
 	.title-text {
 		font-size: 1.5em;
 		font-weight: bold;

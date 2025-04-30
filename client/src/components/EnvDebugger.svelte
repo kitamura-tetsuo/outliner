@@ -1,26 +1,17 @@
 <script lang="ts">
 import { onMount } from "svelte";
-import {
-    getDebugConfig,
-    getEnv,
-} from "../lib/env";
+import { getDebugConfig } from "../lib/env";
 
 let debugConfig = getDebugConfig();
 let rawEnv = $state({});
-let currentConfig = {};
-let importMetaEnv = {};
+let importMetaEnv: Record<string, string> = {};
 let windowEnv = {};
 
 onMount(() => {
-    // Window.__ENV__から環境変数を取得
-    if (typeof window !== "undefined" && window.__ENV__) {
-        windowEnv = { ...window.__ENV__ };
-    }
-
     // import.meta.envから環境変数を取得
     if (typeof window !== "undefined" && import.meta?.env) {
         // 安全に環境変数をコピー（実際の値は表示しない）
-        const envVars = {};
+        const envVars: Record<string, string> = {};
         Object.keys(import.meta.env).forEach(key => {
             // APIキーなどの機密情報は表示しない
             if (key.includes("KEY") || key.includes("SECRET") || key.includes("TOKEN")) {

@@ -4,7 +4,7 @@ import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStor
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
 
 // store API (関数のみ)
-const { setCursor, startCursorBlink, stopCursorBlink, clearCursorForItem, setSelection } = store;
+const { stopCursorBlink } = store;
 
 // デバッグモード
 const DEBUG_MODE = false;

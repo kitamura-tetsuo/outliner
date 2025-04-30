@@ -39,8 +39,8 @@ function handleInput(event: Event) {
 <textarea
     bind:this={textareaRef}
     class="global-textarea"
-    on:keydown={handleKeyDown}
-    on:input={handleInput}
+    onkeydown={handleKeyDown}
+    oninput={handleInput}
 ></textarea>
 
 <style>

@@ -1,6 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte";
-import { FluidClient } from "../fluid/fluidClient";
+import { createFluidClient } from "../lib/fluidService";
 import { getLogger } from "../lib/logger";
 import { getUserContainers } from "../stores/firestoreStore";
 import { fluidStore } from "../stores/fluidStore.svelte";
@@ -119,10 +119,10 @@ async function reloadCurrentContainer() {
         error = null;
 
         // ファクトリーメソッドを使用して現在のコンテナを再ロード
-        const client = await FluidClient.create(currentContainerId);
+        const client = await createFluidClient(currentContainerId);
 
         // fluidClientストアを更新
-        updateFluidClient(client);
+        fluidStore.fluidClient = client;
     }
     catch (err) {
         console.error("コンテナ再ロードエラー:", err);

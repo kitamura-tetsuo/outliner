@@ -8,7 +8,7 @@ import {
 const logger = getLogger();
 
 // ビューモデルのインターフェース
-interface OutlinerItemViewModel {
+export interface OutlinerItemViewModel {
     id: string;
     original: Item; // 元のFluidオブジェクトへの参照
     text: string;
