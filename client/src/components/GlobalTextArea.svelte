@@ -34,6 +34,16 @@ function handleKeyDown(event: KeyboardEvent) {
 function handleInput(event: Event) {
     KeyEventHandler.handleInput(event);
 }
+
+// CompositionEnd イベントを KeyEventHandler へ委譲
+function handleCompositionEnd(event: CompositionEvent) {
+    KeyEventHandler.handleCompositionEnd(event);
+}
+
+// CompositionUpdate イベントを KeyEventHandler へ委譲
+function handleCompositionUpdate(event: CompositionEvent) {
+    KeyEventHandler.handleCompositionUpdate(event);
+}
 </script>
 
 <textarea
@@ -41,6 +51,8 @@ function handleInput(event: Event) {
     class="global-textarea"
     onkeydown={handleKeyDown}
     oninput={handleInput}
+    oncompositionupdate={handleCompositionUpdate}
+    oncompositionend={handleCompositionEnd}
 ></textarea>
 
 <style>

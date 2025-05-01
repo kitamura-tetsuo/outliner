@@ -14,4 +14,7 @@ Use Runes for reactive.
 
 Do not use createEventDispatcher.
 
-https://svelte.dev/llms.txt
+Do not use on:keydown, use onkeydown.
+Read https://svelte.dev/e/event_directive_deprecated.
+
+Read https://svelte.dev/llms.txt.

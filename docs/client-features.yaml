@@ -12,11 +12,13 @@
     - '正しいトークンを送るとパスワードを再設定できる'
 - id: IME-0001
   title: IMEを使用した日本語入力
-  status: draft # draft / implemented / deprecated
+  status: implemented # draft / implemented / deprecated
   tests:
     - client/e2e/core/IME-0001.spec.ts
   acceptance:
     - 'IMEを使用した日本語入力が可能になる'
+    - '入力途中の文字がカーソル位置に表示される'
+    - '変換候補がカーソル位置に表示される'
 - id: CLM-0001
   title: 'クリックで編集モードに入る'
   shortcut: 'クリック'
