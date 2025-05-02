@@ -17,9 +17,19 @@ test.describe("CLM-0002: 左へ移動", () => {
         await page.goto("/");
         // OutlinerItem がレンダリングされるのを待つ
         await page.waitForSelector(".outliner-item");
-        // 編集モードに入る
-        const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click({ force: true });
+
+        // ページタイトルを優先的に使用
+        const item = page.locator(".outliner-item.page-title");
+
+        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
+        if (await item.count() === 0) {
+            // テキスト内容で特定できるアイテムを探す
+            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
+            await visibleItems.first().locator(".item-content").click({ force: true });
+        } else {
+            await item.locator(".item-content").click({ force: true });
+        }
+
         // 隠し textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus");
         // 文字入力が可能
@@ -27,7 +37,14 @@ test.describe("CLM-0002: 左へ移動", () => {
     });
 
     test("ArrowLeftキーでカーソルが1文字左に移動する", async ({ page }) => {
-        const cursor = page.locator(".editor-overlay .cursor.active");
+        // 現在アクティブなアイテムを取得
+        const activeItem = page.locator(".outliner-item .item-content.editing");
+        await activeItem.waitFor({ state: 'visible' });
+
+        // 複数のカーソルがある場合は最初のものを使用
+        const cursor = page.locator(".editor-overlay .cursor.active").first();
+        await cursor.waitFor({ state: 'visible' });
+
         // 初期カーソル位置を取得
         const initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
 

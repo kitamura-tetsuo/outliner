@@ -19,6 +19,9 @@ const serverLogPath = path.join(serverLogDir, "auth-service.log");
 const isTestEnv = process.env.NODE_ENV === "test";
 const clientLogFileName = isTestEnv ? "test-browser.log" : "browser.log";
 const clientLogPath = path.join(clientLogDir, clientLogFileName);
+// telemetryログ用のファイルパス
+const telemetryLogFileName = isTestEnv ? "test-telemetry.log" : "telemetry.log";
+const telemetryLogPath = path.join(clientLogDir, telemetryLogFileName);
 
 // ログディレクトリを確認・作成
 function ensureLogDirectories() {
@@ -41,6 +44,7 @@ ensureLogDirectories();
 // ファイル転送用と整形表示用のログストリームを設定
 let serverLogStream = fs.createWriteStream(serverLogPath, { flags: "a" });
 let clientLogStream = fs.createWriteStream(clientLogPath, { flags: "a" });
+let telemetryLogStream = fs.createWriteStream(telemetryLogPath, { flags: "a" });
 let prettyStream = pretty({
     colorize: true,
     translateTime: "SYS:standard",
@@ -57,6 +61,17 @@ let clientLogger = pino(
     pino.multistream([
         { stream: clientLogStream }, // 生ログをクライアントログディレクトリに保存
         // { stream: prettyStream }    // 整形ログをコンソールに表示（必要な場合）
+    ]),
+);
+
+// telemetryログ用のロガー設定
+let telemetryLogger = pino(
+    {
+        level: "trace", // すべてのレベルのログを収集
+        timestamp: pino.stdTimeFunctions.isoTime,
+    },
+    pino.multistream([
+        { stream: telemetryLogStream }, // telemetryログを専用ファイルに保存
     ]),
 );
 
@@ -151,6 +166,18 @@ async function rotateClientLogs(maxBackups = 2) {
 }
 
 /**
+ * telemetryログファイルをローテーションする
+ * @param {number} maxBackups - 保持するバックアップ数
+ * @returns {Promise<boolean>} - 成功すればtrue
+ */
+async function rotateTelemetryLogs(maxBackups = 2) {
+    if (process.env.CI) {
+        maxBackups = Number.MAX_SAFE_INTEGER;
+    }
+    return rotateLogFile(telemetryLogPath, maxBackups);
+}
+
+/**
  * サーバーログファイルをローテーションする
  * @param {number} maxBackups - 保持するバックアップ数
  * @returns {Promise<boolean>} - 成功すればtrue
@@ -214,6 +241,48 @@ function refreshClientLogStream() {
 }
 
 /**
+ * telemetryログストリームを更新する
+ * ローテーション後に新しいストリームを作成するために使用
+ */
+function refreshTelemetryLogStream() {
+    try {
+        // 古いストリームを安全に閉じる
+        telemetryLogStream.end();
+
+        // 新しいストリームを作成
+        const newTelemetryLogStream = fs.createWriteStream(telemetryLogPath, { flags: "a" });
+
+        // モジュール内のグローバル変数を更新
+        telemetryLogStream = newTelemetryLogStream;
+
+        // 新しいmultistreamを作成
+        const newMultiStream = pino.multistream([
+            { stream: newTelemetryLogStream },
+        ]);
+
+        // 新しいロガーインスタンスを作成
+        const newLogger = pino(
+            {
+                level: "trace",
+                timestamp: pino.stdTimeFunctions.isoTime,
+            },
+            newMultiStream,
+        );
+
+        // 既存のロガーオブジェクトのプロパティを新しいロガーのものに置き換え
+        Object.assign(telemetryLogger, newLogger);
+
+        console.log("telemetryログストリームを更新しました");
+        return newTelemetryLogStream;
+    }
+    catch (error) {
+        console.error("telemetryログストリーム更新エラー:", error);
+        // エラーが発生した場合でも、新しいストリームを作成して返す
+        return fs.createWriteStream(telemetryLogPath, { flags: "a" });
+    }
+}
+
+/**
  * サーバーログストリームを更新する
  * ローテーション後に新しいストリームを作成するために使用
  */
@@ -268,11 +337,15 @@ function refreshServerLogStream() {
 module.exports = {
     serverLogger: logger,
     clientLogger,
+    telemetryLogger,
     rotateLogFile,
     rotateClientLogs,
+    rotateTelemetryLogs,
     rotateServerLogs,
     refreshClientLogStream,
+    refreshTelemetryLogStream,
     refreshServerLogStream,
     serverLogPath,
     clientLogPath,
+    telemetryLogPath,
 };

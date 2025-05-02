@@ -27,9 +27,9 @@ export class TreeViewManager {
      * @returns ルートレベルのページである場合true
      */
     public static isPageItem(item: Item): boolean {
-        // 親がItemsで、その親がnull（ルート）である場合はページ
+        // 親がItemsで、その親の親がProjectである場合はページ
         const parent = Tree.parent(item);
-        return Tree.is(parent, Items) && Tree.parent(parent) === null;
+        return Tree.is(parent, Items) && Tree.is(Tree.parent(parent), Project);
     }
 
     /**

@@ -42,7 +42,9 @@ test("Add Text button should add text to shared content", async ({ page }) => {
     await page.waitForSelector(".outliner-item", { timeout: 10000 });
 
     // 追加されたアイテムをクリックして編集モードに
-    const item = page.locator(".outliner-item").first();
+    // テキスト内容で特定できるアイテムを探す
+    const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
+    const item = visibleItems.first();
     await item.locator(".item-content").click({ force: true });
     await page.waitForTimeout(1000);
 
@@ -97,7 +99,9 @@ test("Adding text updates data structure", async ({ page }) => {
 
     // アイテムを追加して編集
     await page.click('button:has-text("アイテム追加")');
-    const item = page.locator(".outliner-item").first();
+    // テキスト内容で特定できるアイテムを探す
+    const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
+    const item = visibleItems.first();
     await item.locator(".item-content").click({ force: true });
     await page.keyboard.type("Test data update");
 

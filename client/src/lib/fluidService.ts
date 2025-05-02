@@ -36,6 +36,7 @@ import {
     getLogger,
     log,
 } from "./logger";
+import { createFluidConfigProvider, getTelemetryFilterLogger } from "./fluidTelemetryFilter";
 
 const logger = getLogger();
 
@@ -157,7 +158,12 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
 async function getFluidClient(userId?: string, containerId?: string): Promise<FluidInstances> {
     if (useTinylicious) {
         const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7082");
-        const client = new TinyliciousClient({ connection: { port } });
+        // telemetryを無効化するための設定を追加
+        const client = new TinyliciousClient({
+            connection: { port },
+            logger: getTelemetryFilterLogger(), // telemetryをフィルタリングするカスタムロガー
+            configProvider: createFluidConfigProvider(), // telemetry関連の機能を無効化する設定
+        });
         // const client = new TinyliciousClient({ connection: { port: 7082 } });
         const createResponse = await client.createContainer(containerSchema, "2");
         const container = createResponse.container;
@@ -208,8 +214,11 @@ async function getFluidClient(userId?: string, containerId?: string): Promise<Fl
         endpoint: azureConfig.endpoint,
     };
 
+    // telemetryを無効化するための設定を追加
     const clientProps = {
         connection: connectionConfig,
+        logger: getTelemetryFilterLogger(), // telemetryをフィルタリングするカスタムロガー
+        configProvider: createFluidConfigProvider(), // telemetry関連の機能を無効化する設定
     };
 
     try {

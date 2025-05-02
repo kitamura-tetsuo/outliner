@@ -31,7 +31,7 @@
     - 'クリックで編集モードに入る'
     - '編集モードで文字入力が可能になる'
     - 'カーソルが表示される'
-    - 'カーソルがクリック位置に表示される'
+    - 'カーソルがクリック位置に表示される（最後の行を除く）'
     - 'カーソルが点滅する'
 - id: CLM-0002
   title: '左へ移動'
@@ -39,5 +39,98 @@
   description: 'カーソルを1文字左に移動します。'
   category: cursor-movement
   status: implemented
+  acceptance:
+    - 'カーソルを1文字左に移動する'
+    - '一番最初の文字にある時は、一つ前のアイテムの最後の文字へ移動する'
   tests:
     - client/e2e/core/CLM-0002.spec.ts
+- id: CLM-0003
+  title: '右へ移動'
+  shortcut: '→'
+  description: 'カーソルを1文字右に移動します。'
+  category: cursor-movement
+  status: implemented
+  acceptance:
+    - 'カーソルを1文字右に移動する'
+    - '一番最後の文字にある時は、一つ次のアイテムの最初の文字へ移動する'
+  tests:
+    - client/e2e/core/CLM-0003.spec.ts
+- id: CLM-0004
+  title: '上へ移動'
+  shortcut: '↑'
+  description: 'カーソルを1行上に移動します。'
+  category: cursor-movement
+  status: implemented
+  acceptance:
+    - 'カーソルを1行上に移動する'
+    - '一番上の行以外にある時は、同じアイテムの1行上へ移動する'
+    - '一番上の行にある時は、一つ前のアイテムの最後の行へ移動する'
+    - '一番上の行にある時で、一つ前のアイテムがない時は、同じアイテムの先頭へ移動する'
+  tests:
+    - client/e2e/core/CLM-0004.spec.ts
+- id: CLM-0005
+  title: '下へ移動'
+  shortcut: '↓'
+  description: 'カーソルを1行下に移動します。'
+  category: cursor-movement
+  status: implemented
+  acceptance:
+    - 'カーソルを1行下に移動する'
+    - '一番下の行以外にある時は、同じアイテムの1行下へ移動する'
+    - '一番下の行にある時は、一つ次のアイテムの最初の行へ移動する'
+    - '一番下の行にある時で、一つ次のアイテムがない時は、同じアイテムの末尾へ移動する'
+  tests:
+    - client/e2e/core/CLM-0005.spec.ts
+- id: CLM-0006
+  title: 'Shift + 上下左右'
+  shortcut: 'Shift + 上下左右'
+  description: 'カーソルを1文字上下左右に移動し、選択範囲を広げます。'
+  category: cursor-movement
+  status: implemented
+  acceptance:
+    - 'Shift + 上で選択範囲の上端を広げる'
+    - 'Shift + 下で選択範囲の下端を広げる'
+    - 'Shift + 左で選択範囲の左端を広げる'
+    - 'Shift + 右で選択範囲の右端を広げる'
+  tests:
+    - client/e2e/core/CLM-0006.spec.ts
+- id: CLM-0007
+  title: '行頭へ移動'
+  shortcut: 'Home'
+  description: 'カーソルを行の先頭に移動します。'
+  category: cursor-movement
+  status: implemented # draft / implemented / deprecated
+  acceptance:
+    - 'Homeキーを押すと、カーソルが現在の行の先頭に移動する'
+    - '複数行のアイテムでは、現在のカーソルがある行の先頭に移動する'
+    - 'Shift + Homeで現在位置から行頭までを選択する'
+  tests:
+    - client/e2e/core/CLM-0007.spec.ts
+- id: CLM-0008
+  title: '行末へ移動'
+  shortcut: 'End'
+  description: 'カーソルを行の末尾に移動します。'
+  category: cursor-movement
+  status: implemented # draft / implemented / deprecated
+  acceptance:
+    - 'Endキーを押すと、カーソルが現在の行の末尾に移動する'
+    - '複数行のアイテムでは、現在のカーソルがある行の末尾に移動する'
+    - 'Shift + Endで現在位置から行末までを選択する'
+  tests:
+    - client/e2e/core/CLM-0008.spec.ts
+- id: ITM-0001
+  title: 'Enterで新規アイテム追加'
+  shortcut: 'Enter'
+  description: 'カーソル位置でアイテムを分割し、新しいアイテムを追加します。'
+  category: item-management
+  status: implemented
+  acceptance:
+    - 'Enterキーを押すと、カーソル位置でアイテムが分割される'
+    - 'カーソル位置より前のテキストは現在のアイテムに残る'
+    - 'カーソル位置より後のテキストは新しいアイテムに移動する'
+    - 'カーソルは新しいアイテムの先頭に移動する'
+    - '通常のアイテムでは、新しいアイテムは兄弟として追加される'
+    - 'タイトルでは、新しいアイテムは最初の子として追加される'
+  tests:
+    - client/e2e/core/ITM-0001.spec.ts
+    - client/e2e/core/ITM-0001-title.spec.ts

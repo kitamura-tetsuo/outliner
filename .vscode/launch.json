@@ -72,7 +72,7 @@
                 "**/lib/logger.*",
                 "**/node_modules/**"
             ],
-            "port": 9877,
+            // "port": 9877,
             "urlFilter": "*192.168.50.13:7080*"
             // "runtimeExecutable": "powershell.exe",
             // "runtimeArgs": [
@@ -224,7 +224,7 @@
                 "For Test SvelteKit Server",
                 "For Test Debug Server",
                 "For Test Launch Tinylicious",
-                "For Test Launch test:e2e:ui"
+                // "For Test Launch test:e2e:ui"
                 // "Launch Chrome against localhost"
             ],
             "stopAll": true,

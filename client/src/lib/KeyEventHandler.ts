@@ -9,30 +9,69 @@ export class KeyEventHandler {
      */
     static handleKeyDown(event: KeyboardEvent) {
         const cursorInstances = store.getCursorInstances();
-        switch (event.key) {
-            case "ArrowLeft":
-                cursorInstances.forEach(cursor => cursor.moveLeft());
-                break;
-            case "ArrowRight":
-                cursorInstances.forEach(cursor => cursor.moveRight());
-                break;
-            case "Backspace":
-                cursorInstances.forEach(cursor => cursor.deleteBackward());
-                break;
-            case "Delete":
-                cursorInstances.forEach(cursor => cursor.deleteForward());
-                break;
-            case "Enter":
-                if (event.shiftKey) {
+
+        // Shift キーが押されている場合は選択範囲を拡張
+        if (event.shiftKey) {
+            switch (event.key) {
+                case "ArrowLeft":
+                    cursorInstances.forEach(cursor => cursor.extendSelectionLeft());
+                    break;
+                case "ArrowRight":
+                    cursorInstances.forEach(cursor => cursor.extendSelectionRight());
+                    break;
+                case "ArrowUp":
+                    cursorInstances.forEach(cursor => cursor.extendSelectionUp());
+                    break;
+                case "ArrowDown":
+                    cursorInstances.forEach(cursor => cursor.extendSelectionDown());
+                    break;
+                case "Home":
+                    cursorInstances.forEach(cursor => cursor.extendSelectionToLineStart());
+                    break;
+                case "End":
+                    cursorInstances.forEach(cursor => cursor.extendSelectionToLineEnd());
+                    break;
+                case "Enter":
                     cursorInstances.forEach(cursor => cursor.insertLineBreak());
-                }
-                else {
+                    break;
+                default:
+                    return;
+            }
+        } else {
+            // 通常のカーソル移動
+            switch (event.key) {
+                case "ArrowLeft":
+                    cursorInstances.forEach(cursor => cursor.moveLeft());
+                    break;
+                case "ArrowRight":
+                    cursorInstances.forEach(cursor => cursor.moveRight());
+                    break;
+                case "ArrowUp":
+                    cursorInstances.forEach(cursor => cursor.moveUp());
+                    break;
+                case "ArrowDown":
+                    cursorInstances.forEach(cursor => cursor.moveDown());
+                    break;
+                case "Home":
+                    cursorInstances.forEach(cursor => cursor.moveToLineStart());
+                    break;
+                case "End":
+                    cursorInstances.forEach(cursor => cursor.moveToLineEnd());
+                    break;
+                case "Backspace":
+                    cursorInstances.forEach(cursor => cursor.deleteBackward());
+                    break;
+                case "Delete":
+                    cursorInstances.forEach(cursor => cursor.deleteForward());
+                    break;
+                case "Enter":
                     cursorInstances.forEach(cursor => cursor.insertLineBreak());
-                }
-                break;
-            default:
-                return;
+                    break;
+                default:
+                    return;
+            }
         }
+
         store.startCursorBlink();
         event.preventDefault();
         event.stopPropagation();

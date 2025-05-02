@@ -13,9 +13,12 @@ const { ScopeType, IUser } = require("@fluidframework/azure-client");
 const {
     serverLogger: logger,
     clientLogger,
+    telemetryLogger,
     rotateClientLogs,
+    rotateTelemetryLogs,
     rotateServerLogs,
     refreshClientLogStream,
+    refreshTelemetryLogStream,
     refreshServerLogStream,
 } = require("./utils/logger");
 
@@ -40,10 +43,15 @@ const periodicLogRotation = async () => {
     try {
         logger.info("Performing scheduled periodic log rotation");
         const clientRotated = await rotateClientLogs(2);
+        const telemetryRotated = await rotateTelemetryLogs(2);
         const serverRotated = await rotateServerLogs(2);
 
         if (clientRotated) {
             refreshClientLogStream();
+        }
+
+        if (telemetryRotated) {
+            refreshTelemetryLogStream();
         }
 
         if (serverRotated) {
@@ -53,6 +61,7 @@ const periodicLogRotation = async () => {
         logger.info(`Periodic log rotation completed: ${
             JSON.stringify({
                 clientRotated,
+                telemetryRotated,
                 serverRotated,
                 timestamp: new Date().toISOString(),
             })
@@ -488,28 +497,34 @@ app.post("/api/log", (req, res) => {
             source: "client",
         };
 
+        // telemetryログかどうかを判定
+        const isTelemetryLog = logData.isTelemetry === true;
+
+        // 適切なロガーを選択
+        const targetLogger = isTelemetryLog ? telemetryLogger : clientLogger;
+
         // レベルに応じたログ出力
         switch (logData.level.toLowerCase()) {
             case "trace":
-                clientLogger.trace(JSON.stringify(enrichedLog));
+                targetLogger.trace(JSON.stringify(enrichedLog));
                 break;
             case "debug":
-                clientLogger.info(JSON.stringify(enrichedLog));
+                targetLogger.debug(JSON.stringify(enrichedLog));
                 break;
             case "info":
-                clientLogger.info(JSON.stringify(enrichedLog));
+                targetLogger.info(JSON.stringify(enrichedLog));
                 break;
             case "warn":
-                clientLogger.warn(JSON.stringify(enrichedLog));
+                targetLogger.warn(JSON.stringify(enrichedLog));
                 break;
             case "error":
-                clientLogger.error(JSON.stringify(enrichedLog));
+                targetLogger.error(JSON.stringify(enrichedLog));
                 break;
             case "fatal":
-                clientLogger.fatal(JSON.stringify(enrichedLog));
+                targetLogger.fatal(JSON.stringify(enrichedLog));
                 break;
             default:
-                clientLogger.info(JSON.stringify(enrichedLog)); // デフォルトはinfoレベル
+                targetLogger.info(JSON.stringify(enrichedLog)); // デフォルトはinfoレベル
         }
 
         res.status(200).json({ success: true });
@@ -520,16 +535,84 @@ app.post("/api/log", (req, res) => {
     }
 });
 
+// telemetryログファイルの内容を取得するエンドポイント（開発環境のみ）
+if (isDevelopment) {
+    app.get("/api/telemetry-logs", (req, res) => {
+        try {
+            // telemetryログファイルが存在するか確認
+            if (!fs.existsSync(telemetryLogPath)) {
+                return res.status(404).json({ error: "Telemetryログファイルが見つかりません" });
+            }
+
+            // ファイルサイズを取得
+            const stats = fs.statSync(telemetryLogPath);
+            const fileSizeInBytes = stats.size;
+
+            // 大きすぎる場合は最後の部分だけ読み込む
+            const MAX_SIZE = 1024 * 1024; // 1MB
+            let position = Math.max(0, fileSizeInBytes - MAX_SIZE);
+            let length = fileSizeInBytes - position;
+
+            // ファイルを読み込む
+            fs.open(telemetryLogPath, "r", (err, fd) => {
+                if (err) {
+                    logger.error(`Telemetryログファイルを開けませんでした: ${err.message}`);
+                    return res.status(500).json({ error: "ファイルを開けませんでした" });
+                }
+
+                const buffer = Buffer.alloc(length);
+                fs.read(fd, buffer, 0, length, position, (err, bytesRead, buffer) => {
+                    fs.close(fd, () => {});
+
+                    if (err) {
+                        logger.error(`Telemetryログファイルの読み込みに失敗しました: ${err.message}`);
+                        return res.status(500).json({ error: "ファイルの読み込みに失敗しました" });
+                    }
+
+                    // バッファをテキストに変換
+                    const data = buffer.toString("utf8");
+
+                    // 各行をJSONオブジェクトに変換
+                    const lines = data.split("\n").filter(line => line.trim());
+                    const logs = lines.map(line => {
+                        try {
+                            return JSON.parse(line);
+                        } catch (e) {
+                            return { raw: line };
+                        }
+                    });
+
+                    res.status(200).json({
+                        logs,
+                        totalSize: fileSizeInBytes,
+                        readSize: bytesRead,
+                        truncated: position > 0,
+                    });
+                });
+            });
+        }
+        catch (error) {
+            logger.error(`Telemetryログ取得エラー: ${error.message}`);
+            res.status(500).json({ error: "Telemetryログの取得に失敗しました" });
+        }
+    });
+}
+
 // ログファイルをローテーションするエンドポイント
 app.post("/api/rotate-logs", async (req, res) => {
     try {
-        // クライアント・サーバーのログファイルをローテーション
+        // クライアント・telemetry・サーバーのログファイルをローテーション
         const clientRotated = await rotateClientLogs(2);
+        const telemetryRotated = await rotateTelemetryLogs(2);
         const serverRotated = await rotateServerLogs(2);
 
         // 新しいログストリームを作成（既存のストリームを閉じて再作成）
         if (clientRotated) {
             refreshClientLogStream();
+        }
+
+        if (telemetryRotated) {
+            refreshTelemetryLogStream();
         }
 
         if (serverRotated) {
@@ -539,6 +622,7 @@ app.post("/api/rotate-logs", async (req, res) => {
         res.status(200).json({
             success: true,
             clientRotated,
+            telemetryRotated,
             serverRotated,
             timestamp: new Date().toISOString(),
         });
@@ -547,6 +631,7 @@ app.post("/api/rotate-logs", async (req, res) => {
         logger.info(`ログファイルをローテーションしました: ${
             JSON.stringify({
                 clientRotated,
+                telemetryRotated,
                 serverRotated,
                 timestamp: new Date().toISOString(),
             })

@@ -7,6 +7,12 @@
 		}
 	],
 	"settings": {
-		"window.title": "${activeEditorShort}${separator}${rootName}"
+		"window.title": "${activeEditorShort}${separator}${rootName}",
+		"github.copilot.enable": {
+			"*": false,
+			"plaintext": true,
+			"markdown": false,
+			"scminput": false
+		}
 	}
 }

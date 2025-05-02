@@ -1,4 +1,7 @@
+import { Tree } from "fluid-framework";
 import type { Item } from "../schema/app-schema";
+import { Items } from "../schema/app-schema";
+import { TreeViewManager } from "../fluid/TreeViewManager";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 
@@ -31,6 +34,89 @@ export class Cursor {
         return this.searchItem(root, this.itemId);
     }
 
+    // 前のアイテムを探す
+    private findPreviousItem(): Item | undefined {
+        const root = generalStore.currentPage;
+        if (!root) return undefined;
+        return this.findPreviousItemRecursive(root, this.itemId);
+    }
+
+    private findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item): Item | undefined {
+        if (node.id === targetId) {
+            return prevItem;
+        }
+
+        // 子アイテムを配列として取得
+        const children: Item[] = [];
+        if (node.items && (node.items as Iterable<Item>)[Symbol.iterator]) {
+            for (const child of node.items as Iterable<Item>) {
+                children.push(child);
+            }
+        }
+
+        // 子アイテムを順番に処理
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+
+            // 現在の子がターゲットの場合、前の兄弟または親を返す
+            if (child.id === targetId) {
+                return i > 0 ? children[i - 1] : node;
+            }
+
+            // 子の子孫を再帰的に検索
+            const found = this.findPreviousItemRecursive(child, targetId, i > 0 ? children[i - 1] : node);
+            if (found) return found;
+        }
+
+        return undefined;
+    }
+
+    // 次のアイテムを探す
+    private findNextItem(): Item | undefined {
+        const root = generalStore.currentPage;
+        if (!root) return undefined;
+        return this.findNextItemRecursive(root, this.itemId);
+    }
+
+    private findNextItemRecursive(node: Item, targetId: string): Item | undefined {
+        if (node.id === targetId) {
+            // 子アイテムがあれば最初の子を返す
+            if (node.items && (node.items as Iterable<Item>)[Symbol.iterator]) {
+                const iterator = (node.items as Iterable<Item>)[Symbol.iterator]();
+                const first = iterator.next();
+                if (!first.done) return first.value;
+            }
+            return undefined; // 子がなければ兄弟を探す（呼び出し元で処理）
+        }
+
+        // 子アイテムを配列として取得
+        const children: Item[] = [];
+        if (node.items && (node.items as Iterable<Item>)[Symbol.iterator]) {
+            for (const child of node.items as Iterable<Item>) {
+                children.push(child);
+            }
+        }
+
+        // 子アイテムを順番に処理
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+
+            if (child.id === targetId) {
+                // ターゲットの次の兄弟があれば返す
+                if (i < children.length - 1) {
+                    return children[i + 1];
+                }
+                // 次の兄弟がなければ親の次の兄弟を探す（呼び出し元で処理）
+                return undefined;
+            }
+
+            const found = this.findNextItemRecursive(child, targetId);
+            if (found) return found;
+        }
+
+        return undefined;
+    }
+
     private searchItem(node: Item, id: string): Item | undefined {
         if (node.id === id) return node;
         for (const child of node.items as Iterable<Item>) {
@@ -50,13 +136,86 @@ export class Cursor {
         });
     }
 
+    // テキスト内の行数を計算
+    private countLines(text: string): number {
+        return text.split('\n').length;
+    }
+
+    // 指定した行の開始オフセットを取得
+    private getLineStartOffset(text: string, lineIndex: number): number {
+        const lines = text.split('\n');
+        let offset = 0;
+        for (let i = 0; i < lineIndex; i++) {
+            if (i < lines.length) {
+                offset += lines[i].length + 1; // +1 は改行文字分
+            }
+        }
+        return offset;
+    }
+
+    // 指定した行の終了オフセットを取得
+    private getLineEndOffset(text: string, lineIndex: number): number {
+        const lines = text.split('\n');
+        if (lineIndex >= lines.length) {
+            return text.length;
+        }
+
+        let offset = 0;
+        for (let i = 0; i <= lineIndex; i++) {
+            offset += lines[i].length;
+            if (i < lineIndex) {
+                offset += 1; // 改行文字分
+            }
+        }
+        return offset;
+    }
+
+    // 現在のオフセットが何行目かを取得
+    private getCurrentLineIndex(text: string, offset: number): number {
+        const lines = text.split('\n');
+        let currentOffset = 0;
+        for (let i = 0; i < lines.length; i++) {
+            const lineLength = lines[i].length + 1; // +1 は改行文字分
+            if (offset < currentOffset + lineLength) {
+                return i;
+            }
+            currentOffset += lineLength;
+        }
+        return lines.length - 1;
+    }
+
+    // 現在の行内での列位置を取得
+    private getCurrentColumn(text: string, offset: number): number {
+        const lineIndex = this.getCurrentLineIndex(text, offset);
+        const lineStartOffset = this.getLineStartOffset(text, lineIndex);
+        return offset - lineStartOffset;
+    }
+
     moveLeft() {
         if (this.offset > 0) {
             this.offset = Math.max(0, this.offset - 1);
         }
         else {
             // 行頭で前アイテムへ移動
-            this.navigateToItem("left");
+            const prevItem = this.findPreviousItem();
+            if (prevItem) {
+                const oldItemId = this.itemId;
+                this.itemId = prevItem.id;
+                this.offset = prevItem.text?.length || 0;
+                // アクティブアイテムを更新
+                // 古いアイテムのカーソルをクリアしてから新しいアイテムをアクティブに
+                store.clearCursorForItem(oldItemId);
+                store.setActiveItem(this.itemId);
+
+                // カスタムイベントを発行
+                if (typeof document !== 'undefined') {
+                    const event = new CustomEvent('navigate-to-item', {
+                        bubbles: true,
+                        detail: { direction: "left", fromItemId: oldItemId, toItemId: this.itemId }
+                    });
+                    document.dispatchEvent(event);
+                }
+            }
         }
         this.applyToStore();
     }
@@ -69,7 +228,127 @@ export class Cursor {
         }
         else {
             // 行末で次アイテムへ移動
-            this.navigateToItem("right");
+            const nextItem = this.findNextItem();
+            if (nextItem) {
+                const oldItemId = this.itemId;
+                this.itemId = nextItem.id;
+                this.offset = 0;
+                // アクティブアイテムを更新
+                // 古いアイテムのカーソルをクリアしてから新しいアイテムをアクティブに
+                store.clearCursorForItem(oldItemId);
+                store.setActiveItem(this.itemId);
+
+                // カスタムイベントを発行
+                if (typeof document !== 'undefined') {
+                    const event = new CustomEvent('navigate-to-item', {
+                        bubbles: true,
+                        detail: { direction: "right", fromItemId: oldItemId, toItemId: this.itemId }
+                    });
+                    document.dispatchEvent(event);
+                }
+            }
+        }
+        this.applyToStore();
+    }
+
+    moveUp() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = target.text || "";
+        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+        const currentColumn = this.getCurrentColumn(text, this.offset);
+
+        if (currentLineIndex > 0) {
+            // 同じアイテム内の上の行に移動
+            const prevLineIndex = currentLineIndex - 1;
+            const prevLineStart = this.getLineStartOffset(text, prevLineIndex);
+            const prevLineEnd = this.getLineEndOffset(text, prevLineIndex);
+            const prevLineLength = prevLineEnd - prevLineStart;
+
+            // 同じ列位置か行の長さの短い方に移動
+            this.offset = prevLineStart + Math.min(currentColumn, prevLineLength);
+        } else {
+            // 前のアイテムの最後の行に移動
+            const prevItem = this.findPreviousItem();
+            if (prevItem) {
+                const oldItemId = this.itemId;
+                const prevText = prevItem.text || "";
+                const prevLines = prevText.split('\n');
+                const lastLineIndex = prevLines.length - 1;
+                const lastLineStart = this.getLineStartOffset(prevText, lastLineIndex);
+                const lastLineLength = prevLines[lastLineIndex].length;
+
+                this.itemId = prevItem.id;
+                this.offset = lastLineStart + Math.min(currentColumn, lastLineLength);
+
+                // アクティブアイテムを更新
+                // 古いアイテムのカーソルをクリアしてから新しいアイテムをアクティブに
+                store.clearCursorForItem(oldItemId);
+                store.setActiveItem(this.itemId);
+
+                // カスタムイベントを発行
+                if (typeof document !== 'undefined') {
+                    const event = new CustomEvent('navigate-to-item', {
+                        bubbles: true,
+                        detail: { direction: "up", fromItemId: oldItemId, toItemId: this.itemId }
+                    });
+                    document.dispatchEvent(event);
+                }
+            } else {
+                // 前のアイテムがない場合は現在のアイテムの先頭に移動
+                this.offset = 0;
+            }
+        }
+        this.applyToStore();
+    }
+
+    moveDown() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = target.text || "";
+        const lines = text.split('\n');
+        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+        const currentColumn = this.getCurrentColumn(text, this.offset);
+
+        if (currentLineIndex < lines.length - 1) {
+            // 同じアイテム内の下の行に移動
+            const nextLineIndex = currentLineIndex + 1;
+            const nextLineStart = this.getLineStartOffset(text, nextLineIndex);
+            const nextLineEnd = this.getLineEndOffset(text, nextLineIndex);
+            const nextLineLength = nextLineEnd - nextLineStart;
+
+            // 同じ列位置か行の長さの短い方に移動
+            this.offset = nextLineStart + Math.min(currentColumn, nextLineLength);
+        } else {
+            // 次のアイテムの最初の行に移動
+            const nextItem = this.findNextItem();
+            if (nextItem) {
+                const oldItemId = this.itemId;
+                const nextText = nextItem.text || "";
+                const nextLineLength = nextText.indexOf('\n') >= 0 ?
+                    nextText.indexOf('\n') : nextText.length;
+
+                this.itemId = nextItem.id;
+                this.offset = Math.min(currentColumn, nextLineLength);
+                // アクティブアイテムを更新
+                // 古いアイテムのカーソルをクリアしてから新しいアイテムをアクティブに
+                store.clearCursorForItem(oldItemId);
+                store.setActiveItem(this.itemId);
+
+                // カスタムイベントを発行
+                if (typeof document !== 'undefined') {
+                    const event = new CustomEvent('navigate-to-item', {
+                        bubbles: true,
+                        detail: { direction: "down", fromItemId: oldItemId, toItemId: this.itemId }
+                    });
+                    document.dispatchEvent(event);
+                }
+            } else {
+                // 次のアイテムがない場合は現在のアイテムの末尾に移動
+                this.offset = text.length;
+            }
         }
         this.applyToStore();
     }
@@ -116,6 +395,87 @@ export class Cursor {
     }
 
     insertLineBreak() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = target.text || "";
+
+        // カーソル位置でテキストを分割
+        const beforeText = text.slice(0, this.offset);
+        const afterText = text.slice(this.offset);
+
+        // タイトルかどうかを判断
+        const isPageTitle = TreeViewManager.isPageItem(target);
+
+        if (isPageTitle) {
+            // タイトルの場合は最初の子として追加
+            if (target.items && Tree.is(target.items, Items)) {
+                // 現在のアイテムのテキストを更新（カーソル位置より前のテキスト）
+                target.updateText(beforeText);
+
+                // 新しいアイテムを作成（カーソル位置より後のテキスト）
+                const newItem = target.items.addNode(this.userId, 0);
+                newItem.updateText(afterText);
+
+                // カーソルを新しいアイテムの先頭に移動
+                const oldItemId = this.itemId;
+                this.itemId = newItem.id;
+                this.offset = 0;
+
+                // アクティブアイテムを更新
+                store.clearCursorForItem(oldItemId);
+                store.setActiveItem(this.itemId);
+
+                // カスタムイベントを発行
+                if (typeof document !== 'undefined') {
+                    const event = new CustomEvent('navigate-to-item', {
+                        bubbles: true,
+                        detail: { direction: "enter", fromItemId: target.id, toItemId: this.itemId }
+                    });
+                    document.dispatchEvent(event);
+                }
+
+                this.applyToStore();
+                return;
+            }
+        } else {
+            // 通常のアイテムの場合は兄弟として追加
+            const parent = Tree.parent(target);
+            if (parent && Tree.is(parent, Items)) {
+                // 現在のアイテムのインデックスを取得
+                const currentIndex = parent.indexOf(target);
+
+                // 現在のアイテムのテキストを更新（カーソル位置より前のテキスト）
+                target.updateText(beforeText);
+
+                // 新しいアイテムを作成（カーソル位置より後のテキスト）
+                const newItem = parent.addNode(this.userId, currentIndex + 1);
+                newItem.updateText(afterText);
+
+                // カーソルを新しいアイテムの先頭に移動
+                const oldItemId = this.itemId;
+                this.itemId = newItem.id;
+                this.offset = 0;
+
+                // アクティブアイテムを更新
+                store.clearCursorForItem(oldItemId);
+                store.setActiveItem(this.itemId);
+
+                // カスタムイベントを発行
+                if (typeof document !== 'undefined') {
+                    const event = new CustomEvent('navigate-to-item', {
+                        bubbles: true,
+                        detail: { direction: "enter", fromItemId: target.id, toItemId: this.itemId }
+                    });
+                    document.dispatchEvent(event);
+                }
+
+                this.applyToStore();
+                return;
+            }
+        }
+
+        // 親アイテムが見つからない場合は通常の改行を挿入
         this.insertText("\n");
     }
 
@@ -126,11 +486,503 @@ export class Cursor {
         }
     }
 
-    private navigateToItem(direction: "left" | "right") {
+    // 選択範囲を左に拡張
+    extendSelectionLeft() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // 現在の選択範囲を取得
+        const existingSelection = Object.values(store.selections).find(s =>
+            (s.startItemId === this.itemId || s.endItemId === this.itemId) &&
+            s.userId === this.userId
+        );
+
+        let startItemId, startOffset, endItemId, endOffset, isReversed;
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は拡張
+            if (existingSelection.isReversed) {
+                // 逆方向の選択範囲の場合、開始位置を移動
+                startItemId = existingSelection.startItemId;
+                startOffset = existingSelection.startOffset;
+
+                // カーソルを左に移動
+                const oldItemId = this.itemId;
+                const oldOffset = this.offset;
+                this.moveLeft();
+
+                endItemId = this.itemId;
+                endOffset = this.offset;
+                isReversed = true;
+
+                // 選択範囲が消滅した場合は方向を反転
+                if (startItemId === endItemId && startOffset === endOffset) {
+                    this.itemId = oldItemId;
+                    this.offset = oldOffset;
+                    this.moveLeft();
+
+                    startItemId = oldItemId;
+                    startOffset = oldOffset;
+                    endItemId = this.itemId;
+                    endOffset = this.offset;
+                    isReversed = true;
+                }
+            } else {
+                // 正方向の選択範囲の場合、終了位置を移動
+                endItemId = existingSelection.endItemId;
+                endOffset = existingSelection.endOffset;
+
+                // カーソルを左に移動
+                this.moveLeft();
+
+                startItemId = this.itemId;
+                startOffset = this.offset;
+                isReversed = false;
+
+                // 選択範囲が消滅した場合は方向を反転
+                if (startItemId === endItemId && startOffset === endOffset) {
+                    isReversed = true;
+                    const temp = startItemId;
+                    startItemId = endItemId;
+                    endItemId = temp;
+
+                    const tempOffset = startOffset;
+                    startOffset = endOffset;
+                    endOffset = tempOffset;
+                }
+            }
+        } else {
+            // 新規選択範囲の作成
+            startItemId = this.itemId;
+            startOffset = this.offset;
+
+            // カーソルを左に移動
+            this.moveLeft();
+
+            endItemId = this.itemId;
+            endOffset = this.offset;
+            isReversed = true;
+        }
+
+        // 選択範囲を設定
+        store.setSelection({
+            startItemId,
+            startOffset,
+            endItemId,
+            endOffset,
+            userId: this.userId,
+            isReversed
+        });
+    }
+
+    // 選択範囲を右に拡張
+    extendSelectionRight() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // 現在の選択範囲を取得
+        const existingSelection = Object.values(store.selections).find(s =>
+            (s.startItemId === this.itemId || s.endItemId === this.itemId) &&
+            s.userId === this.userId
+        );
+
+        let startItemId, startOffset, endItemId, endOffset, isReversed;
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は拡張
+            if (!existingSelection.isReversed) {
+                // 正方向の選択範囲の場合、終了位置を移動
+                startItemId = existingSelection.startItemId;
+                startOffset = existingSelection.startOffset;
+
+                // カーソルを右に移動
+                const oldItemId = this.itemId;
+                const oldOffset = this.offset;
+                this.moveRight();
+
+                endItemId = this.itemId;
+                endOffset = this.offset;
+                isReversed = false;
+
+                // 選択範囲が消滅した場合は方向を反転
+                if (startItemId === endItemId && startOffset === endOffset) {
+                    this.itemId = oldItemId;
+                    this.offset = oldOffset;
+                    this.moveRight();
+
+                    startItemId = oldItemId;
+                    startOffset = oldOffset;
+                    endItemId = this.itemId;
+                    endOffset = this.offset;
+                    isReversed = false;
+                }
+            } else {
+                // 逆方向の選択範囲の場合、開始位置を移動
+                endItemId = existingSelection.endItemId;
+                endOffset = existingSelection.endOffset;
+
+                // カーソルを右に移動
+                this.moveRight();
+
+                startItemId = this.itemId;
+                startOffset = this.offset;
+                isReversed = true;
+
+                // 選択範囲が消滅した場合は方向を反転
+                if (startItemId === endItemId && startOffset === endOffset) {
+                    isReversed = false;
+                    const temp = startItemId;
+                    startItemId = endItemId;
+                    endItemId = temp;
+
+                    const tempOffset = startOffset;
+                    startOffset = endOffset;
+                    endOffset = tempOffset;
+                }
+            }
+        } else {
+            // 新規選択範囲の作成
+            startItemId = this.itemId;
+            startOffset = this.offset;
+
+            // カーソルを右に移動
+            this.moveRight();
+
+            endItemId = this.itemId;
+            endOffset = this.offset;
+            isReversed = false;
+        }
+
+        // 選択範囲を設定
+        store.setSelection({
+            startItemId,
+            startOffset,
+            endItemId,
+            endOffset,
+            userId: this.userId,
+            isReversed
+        });
+    }
+
+    // 選択範囲を上に拡張
+    extendSelectionUp() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // 現在の選択範囲を取得
+        const existingSelection = Object.values(store.selections).find(s =>
+            (s.startItemId === this.itemId || s.endItemId === this.itemId) &&
+            s.userId === this.userId
+        );
+
+        let startItemId, startOffset, endItemId, endOffset, isReversed;
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は拡張
+            if (existingSelection.isReversed) {
+                // 逆方向の選択範囲の場合、開始位置を移動
+                startItemId = existingSelection.startItemId;
+                startOffset = existingSelection.startOffset;
+
+                // カーソルを上に移動
+                const oldItemId = this.itemId;
+                const oldOffset = this.offset;
+                this.moveUp();
+
+                endItemId = this.itemId;
+                endOffset = this.offset;
+                isReversed = true;
+            } else {
+                // 正方向の選択範囲の場合、終了位置を移動
+                endItemId = existingSelection.endItemId;
+                endOffset = existingSelection.endOffset;
+
+                // カーソルを上に移動
+                this.moveUp();
+
+                startItemId = this.itemId;
+                startOffset = this.offset;
+                isReversed = false;
+            }
+        } else {
+            // 新規選択範囲の作成
+            startItemId = this.itemId;
+            startOffset = this.offset;
+
+            // カーソルを上に移動
+            this.moveUp();
+
+            endItemId = this.itemId;
+            endOffset = this.offset;
+            isReversed = true;
+        }
+
+        // 選択範囲を設定
+        store.setSelection({
+            startItemId,
+            startOffset,
+            endItemId,
+            endOffset,
+            userId: this.userId,
+            isReversed
+        });
+    }
+
+    // 選択範囲を下に拡張
+    extendSelectionDown() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // 現在の選択範囲を取得
+        const existingSelection = Object.values(store.selections).find(s =>
+            (s.startItemId === this.itemId || s.endItemId === this.itemId) &&
+            s.userId === this.userId
+        );
+
+        let startItemId, startOffset, endItemId, endOffset, isReversed;
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は拡張
+            if (!existingSelection.isReversed) {
+                // 正方向の選択範囲の場合、終了位置を移動
+                startItemId = existingSelection.startItemId;
+                startOffset = existingSelection.startOffset;
+
+                // カーソルを下に移動
+                const oldItemId = this.itemId;
+                const oldOffset = this.offset;
+                this.moveDown();
+
+                endItemId = this.itemId;
+                endOffset = this.offset;
+                isReversed = false;
+            } else {
+                // 逆方向の選択範囲の場合、開始位置を移動
+                endItemId = existingSelection.endItemId;
+                endOffset = existingSelection.endOffset;
+
+                // カーソルを下に移動
+                this.moveDown();
+
+                startItemId = this.itemId;
+                startOffset = this.offset;
+                isReversed = true;
+            }
+        } else {
+            // 新規選択範囲の作成
+            startItemId = this.itemId;
+            startOffset = this.offset;
+
+            // カーソルを下に移動
+            this.moveDown();
+
+            endItemId = this.itemId;
+            endOffset = this.offset;
+            isReversed = false;
+        }
+
+        // 選択範囲を設定
+        store.setSelection({
+            startItemId,
+            startOffset,
+            endItemId,
+            endOffset,
+            userId: this.userId,
+            isReversed
+        });
+    }
+
+    // カーソルを行の先頭に移動
+    moveToLineStart() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = target.text || "";
+        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+
+        // 現在の行の開始位置に移動
+        this.offset = this.getLineStartOffset(text, currentLineIndex);
+        this.applyToStore();
+    }
+
+    // カーソルを行の末尾に移動
+    moveToLineEnd() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = target.text || "";
+        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+
+        // 現在の行の終了位置に移動
+        this.offset = this.getLineEndOffset(text, currentLineIndex);
+        this.applyToStore();
+    }
+
+    // 選択範囲を行頭まで拡張
+    extendSelectionToLineStart() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // 現在の選択範囲を取得
+        const existingSelection = Object.values(store.selections).find(s =>
+            (s.startItemId === this.itemId || s.endItemId === this.itemId) &&
+            s.userId === this.userId
+        );
+
+        let startItemId, startOffset, endItemId, endOffset, isReversed;
+        const text = target.text || "";
+        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+        const lineStartOffset = this.getLineStartOffset(text, currentLineIndex);
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は拡張
+            if (existingSelection.isReversed) {
+                // 逆方向の選択範囲の場合、開始位置を移動
+                startItemId = existingSelection.startItemId;
+                startOffset = existingSelection.startOffset;
+
+                // カーソルを行頭に移動
+                endItemId = this.itemId;
+                endOffset = lineStartOffset;
+                isReversed = true;
+            } else {
+                // 正方向の選択範囲の場合、終了位置を移動
+                endItemId = existingSelection.endItemId;
+                endOffset = existingSelection.endOffset;
+
+                // カーソルを行頭に移動
+                startItemId = this.itemId;
+                startOffset = lineStartOffset;
+                isReversed = false;
+            }
+        } else {
+            // 新規選択範囲の作成
+            startItemId = this.itemId;
+            startOffset = this.offset;
+
+            // 行頭までを選択
+            endItemId = this.itemId;
+            endOffset = lineStartOffset;
+            isReversed = this.offset > lineStartOffset;
+        }
+
+        // 選択範囲を設定
+        store.setSelection({
+            startItemId,
+            startOffset,
+            endItemId,
+            endOffset,
+            userId: this.userId,
+            isReversed
+        });
+    }
+
+    // 選択範囲を行末まで拡張
+    extendSelectionToLineEnd() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // 現在の選択範囲を取得
+        const existingSelection = Object.values(store.selections).find(s =>
+            (s.startItemId === this.itemId || s.endItemId === this.itemId) &&
+            s.userId === this.userId
+        );
+
+        let startItemId, startOffset, endItemId, endOffset, isReversed;
+        const text = target.text || "";
+        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+        const lineEndOffset = this.getLineEndOffset(text, currentLineIndex);
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は拡張
+            if (!existingSelection.isReversed) {
+                // 正方向の選択範囲の場合、終了位置を移動
+                startItemId = existingSelection.startItemId;
+                startOffset = existingSelection.startOffset;
+
+                // カーソルを行末に移動
+                endItemId = this.itemId;
+                endOffset = lineEndOffset;
+                isReversed = false;
+            } else {
+                // 逆方向の選択範囲の場合、開始位置を移動
+                endItemId = existingSelection.endItemId;
+                endOffset = existingSelection.endOffset;
+
+                // カーソルを行末に移動
+                startItemId = this.itemId;
+                startOffset = lineEndOffset;
+                isReversed = true;
+            }
+        } else {
+            // 新規選択範囲の作成
+            startItemId = this.itemId;
+            startOffset = this.offset;
+
+            // 行末までを選択
+            endItemId = this.itemId;
+            endOffset = lineEndOffset;
+            isReversed = this.offset > lineEndOffset;
+        }
+
+        // 選択範囲を設定
+        store.setSelection({
+            startItemId,
+            startOffset,
+            endItemId,
+            endOffset,
+            userId: this.userId,
+            isReversed
+        });
+    }
+
+    private navigateToItem(direction: "left" | "right" | "up" | "down") {
         // 前後アイテムへの移動はストア更新のみ行い、イベント発行はコンポーネントで処理
-        store.clearCursorForItem(this.itemId);
+        const oldItemId = this.itemId;
+
+        // アイテム間移動の処理
+        if (direction === "left") {
+            const prevItem = this.findPreviousItem();
+            if (prevItem) {
+                this.itemId = prevItem.id;
+                this.offset = prevItem.text?.length || 0;
+            }
+        } else if (direction === "right") {
+            const nextItem = this.findNextItem();
+            if (nextItem) {
+                this.itemId = nextItem.id;
+                this.offset = 0;
+            }
+        } else if (direction === "up") {
+            const prevItem = this.findPreviousItem();
+            if (prevItem) {
+                this.itemId = prevItem.id;
+                const prevText = prevItem.text || "";
+                const prevLines = prevText.split('\n');
+                const lastLineIndex = prevLines.length - 1;
+                const lastLineStart = this.getLineStartOffset(prevText, lastLineIndex);
+                this.offset = lastLineStart + Math.min(this.getCurrentColumn(prevText, this.offset), prevLines[lastLineIndex].length);
+            }
+        } else if (direction === "down") {
+            const nextItem = this.findNextItem();
+            if (nextItem) {
+                this.itemId = nextItem.id;
+                this.offset = Math.min(this.getCurrentColumn(nextItem.text || "", this.offset), (nextItem.text || "").length);
+            }
+        }
+
+        // アクティブアイテムを更新
+        store.clearCursorForItem(oldItemId);
         store.setActiveItem(this.itemId);
         store.startCursorBlink();
-        // navigation event dispatch should be managed by GlobalTextArea or parent component
+
+        // カスタムイベントを発行
+        if (typeof document !== 'undefined') {
+            const event = new CustomEvent('navigate-to-item', {
+                bubbles: true,
+                detail: { direction, fromItemId: oldItemId, toItemId: this.itemId }
+            });
+            document.dispatchEvent(event);
+        }
     }
 }

@@ -16,11 +16,32 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
     });
 
     test("入力途中の文字がカーソル位置に表示される", async ({ page }) => {
-        const item = page.locator(".outliner-item").first();
-        // 編集モードに入る
-        await item.locator(".item-content").click({ force: true });
+        // ページタイトルを優先的に使用
+        const item = page.locator(".outliner-item.page-title");
+
+        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
+        if (await item.count() === 0) {
+            // テキスト内容で特定できるアイテムを探す
+            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
+            await visibleItems.first().locator(".item-content").click({ force: true });
+        } else {
+            await item.locator(".item-content").click({ force: true });
+        }
+
+        // 編集モードに入ったことを確認
         const textarea = page.locator("textarea.global-textarea");
+        await textarea.waitFor({ state: 'visible' });
         await textarea.focus();
+
+        // 現在アクティブなアイテムを取得
+        const activeItem = page.locator(".outliner-item .item-content.editing");
+        await activeItem.waitFor({ state: 'visible' });
+
+        // アイテムのIDを取得して保存（後で同じアイテムを確実に特定するため）
+        const itemId = await activeItem.evaluate(el => {
+            const parent = el.closest('.outliner-item');
+            return parent ? parent.getAttribute('data-item-id') : null;
+        });
 
         // simulate composition events for intermediate text
         await page.evaluate(() => {
@@ -32,16 +53,37 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         await page.waitForTimeout(100);
 
         // 中間文字が表示されていることを確認
-        const interimText = await item.locator(".item-text").textContent();
+        const interimText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text").textContent();
         expect(interimText).toContain("にほん");
     });
 
     test("変換候補がカーソル位置に表示される", async ({ page }) => {
-        const item = page.locator(".outliner-item").first();
-        // 編集モードに入る
-        await item.locator(".item-content").click({ force: true });
+        // ページタイトルを優先的に使用
+        const item = page.locator(".outliner-item.page-title");
+
+        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
+        if (await item.count() === 0) {
+            // テキスト内容で特定できるアイテムを探す
+            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
+            await visibleItems.first().locator(".item-content").click({ force: true });
+        } else {
+            await item.locator(".item-content").click({ force: true });
+        }
+
+        // 編集モードに入ったことを確認
         const textarea = page.locator("textarea.global-textarea");
+        await textarea.waitFor({ state: 'visible' });
         await textarea.focus();
+
+        // 現在アクティブなアイテムを取得
+        const activeItem = page.locator(".outliner-item .item-content.editing");
+        await activeItem.waitFor({ state: 'visible' });
+
+        // アイテムのIDを取得して保存（後で同じアイテムを確実に特定するため）
+        const itemId = await activeItem.evaluate(el => {
+            const parent = el.closest('.outliner-item');
+            return parent ? parent.getAttribute('data-item-id') : null;
+        });
 
         // simulate composition events for intermediate and candidate text
         await page.evaluate(() => {
@@ -57,16 +99,37 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         await page.waitForTimeout(100);
 
         // 変換候補文字が表示されていることを確認
-        const candidateText = await item.locator(".item-text").textContent();
+        const candidateText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text").textContent();
         expect(candidateText).toContain("日本");
     });
 
     test("日本語IME入力が可能", async ({ page }) => {
-        const item = page.locator(".outliner-item").first();
-        // 編集モードに入る
-        await item.locator(".item-content").click({ force: true });
+        // ページタイトルを優先的に使用
+        const item = page.locator(".outliner-item.page-title");
+
+        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
+        if (await item.count() === 0) {
+            // テキスト内容で特定できるアイテムを探す
+            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
+            await visibleItems.first().locator(".item-content").click({ force: true });
+        } else {
+            await item.locator(".item-content").click({ force: true });
+        }
+
+        // 編集モードに入ったことを確認
         const textarea = page.locator("textarea.global-textarea");
+        await textarea.waitFor({ state: 'visible' });
         await textarea.focus();
+
+        // 現在アクティブなアイテムを取得
+        const activeItem = page.locator(".outliner-item .item-content.editing");
+        await activeItem.waitFor({ state: 'visible' });
+
+        // アイテムのIDを取得して保存（後で同じアイテムを確実に特定するため）
+        const itemId = await activeItem.evaluate(el => {
+            const parent = el.closest('.outliner-item');
+            return parent ? parent.getAttribute('data-item-id') : null;
+        });
 
         // simulate full composition events
         await page.evaluate(() => {
@@ -79,7 +142,7 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         await page.waitForTimeout(100);
 
         // 確定文字が反映されていることを確認
-        const finalText = await item.locator(".item-text").textContent();
+        const finalText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text").textContent();
         expect(finalText).toContain("日本");
     });
 });
