@@ -273,7 +273,7 @@ function handleUnindent(event: CustomEvent) {
 // アイテム間のナビゲーション処理
 function handleNavigateToItem(event: CustomEvent) {
     // Shift選択対応のため shiftKey と direction も取得
-    const { direction, cursorScreenX, fromItemId, shiftKey } = event.detail;
+    const { direction, cursorScreenX, fromItemId, toItemId, shiftKey } = event.detail;
     // Shiftなしの移動では既存の選択をクリア（非複数選択へ）
     if (!shiftKey) {
         reset();
@@ -281,8 +281,26 @@ function handleNavigateToItem(event: CustomEvent) {
 
     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
         console.log(
-            `Navigation event received: direction=${direction}, fromItemId=${fromItemId}, cursorScreenX=${cursorScreenX}`,
+            `Navigation event received: direction=${direction}, fromItemId=${fromItemId}, toItemId=${toItemId}, cursorScreenX=${cursorScreenX}`,
         );
+    }
+
+    // toItemIdが指定されている場合は、そのアイテムに直接フォーカスする
+    if (toItemId) {
+        // 上下方向の移動の場合、カーソル位置を適切に設定
+        if (direction === "up") {
+            // 前のアイテムの最後の行に移動
+            focusItemWithPosition(toItemId, Number.MAX_SAFE_INTEGER, shiftKey, direction);
+            return;
+        } else if (direction === "down") {
+            // 次のアイテムの最初の行に移動
+            focusItemWithPosition(toItemId, 0, shiftKey, direction);
+            return;
+        } else {
+            // 左右方向の移動
+            focusItemWithPosition(toItemId, direction === "left" ? Number.MAX_SAFE_INTEGER : 0, shiftKey, direction);
+            return;
+        }
     }
 
     // 左右方向の処理
@@ -464,11 +482,11 @@ function focusItemWithPosition(itemId: string, cursorScreenX?: number, shiftKey 
 function handleAddSibling(event: CustomEvent) {
     const { itemId } = event.detail;
     const currentIndex = displayItems.current.findIndex(item => item.model.id === itemId);
-    
+
     if (currentIndex >= 0) {
         const currentItem = displayItems.current[currentIndex];
         const parent = Tree.parent(currentItem.model.original);
-        
+
         if (parent && Tree.is(parent, Items)) {
             // 親アイテムが存在する場合、現在のアイテムの直後に追加
             const itemIndex = parent.indexOf(currentItem.model.original);

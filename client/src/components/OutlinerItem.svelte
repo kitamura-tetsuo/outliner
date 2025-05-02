@@ -355,31 +355,46 @@
 			// カーソル位置を決定
 			let textPosition = 0;
 
-			// 特殊な値の処理
-			if (cursorScreenX === Number.MAX_SAFE_INTEGER) {
-				// 末尾位置
+			// 方向に基づいてカーソル位置を設定
+			if (direction === 'up') {
+				// 上方向の移動の場合、末尾に配置
 				textPosition = text.current.length;
 				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-					console.log(`Using special MAX_SAFE_INTEGER value to position cursor at end: ${textPosition}`);
+					console.log(`Direction 'up': positioning cursor at end: ${textPosition}`);
 				}
-			} else if (cursorScreenX === 0) {
-				// 先頭位置
+			} else if (direction === 'down') {
+				// 下方向の移動の場合、先頭に配置
 				textPosition = 0;
 				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-					console.log(`Using special 0 value to position cursor at start`);
-				}
-			} else if (cursorScreenX !== undefined) {
-				// ピクセル座標からテキスト位置を計算
-				textPosition = pixelPositionToTextPosition(cursorScreenX);
-
-				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-					console.log(`Calculated text position ${textPosition} from X: ${cursorScreenX}`);
+					console.log(`Direction 'down': positioning cursor at start: ${textPosition}`);
 				}
 			} else {
-				// デフォルトは末尾
-				textPosition = text.current.length;
-				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-					console.log(`No cursor X provided, using text end: ${textPosition}`);
+				// 特殊な値の処理
+				if (cursorScreenX === Number.MAX_SAFE_INTEGER) {
+					// 末尾位置
+					textPosition = text.current.length;
+					if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+						console.log(`Using special MAX_SAFE_INTEGER value to position cursor at end: ${textPosition}`);
+					}
+				} else if (cursorScreenX === 0) {
+					// 先頭位置
+					textPosition = 0;
+					if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+						console.log(`Using special 0 value to position cursor at start`);
+					}
+				} else if (cursorScreenX !== undefined) {
+					// ピクセル座標からテキスト位置を計算
+					textPosition = pixelPositionToTextPosition(cursorScreenX);
+
+					if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+						console.log(`Calculated text position ${textPosition} from X: ${cursorScreenX}`);
+					}
+				} else {
+					// デフォルトは末尾
+					textPosition = text.current.length;
+					if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+						console.log(`No cursor X provided, using text end: ${textPosition}`);
+					}
 				}
 			}
 

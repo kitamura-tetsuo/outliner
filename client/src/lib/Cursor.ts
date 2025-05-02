@@ -280,8 +280,23 @@ export class Cursor {
             this.offset = prevLineStart + Math.min(currentColumn, prevLineLength);
             this.applyToStore();
         } else {
-            // 前のアイテムの最後の行に移動
-            this.navigateToItem("up");
+            // 前のアイテムを探す
+            const prevItem = this.findPreviousItem();
+
+            if (prevItem) {
+                // 前のアイテムの最後の行に移動
+                this.navigateToItem("up");
+            } else {
+                // 前のアイテムがない場合は、同じアイテムの先頭に移動
+                // 現在のオフセットが既に先頭の場合は何もしない
+                if (this.offset > 0) {
+                    this.offset = 0;
+                    this.applyToStore();
+
+                    // カーソルが正しく更新されたことを確認
+                    store.startCursorBlink();
+                }
+            }
         }
     }
 
@@ -305,8 +320,23 @@ export class Cursor {
             this.offset = nextLineStart + Math.min(currentColumn, nextLineLength);
             this.applyToStore();
         } else {
-            // 次のアイテムの最初の行に移動
-            this.navigateToItem("down");
+            // 次のアイテムを探す
+            const nextItem = this.findNextItem();
+
+            if (nextItem) {
+                // 次のアイテムの最初の行に移動
+                this.navigateToItem("down");
+            } else {
+                // 次のアイテムがない場合は、同じアイテムの末尾に移動
+                // 現在のオフセットが既に末尾の場合は何もしない
+                if (this.offset < text.length) {
+                    this.offset = text.length;
+                    this.applyToStore();
+
+                    // カーソルが正しく更新されたことを確認
+                    store.startCursorBlink();
+                }
+            }
         }
     }
 
@@ -927,6 +957,12 @@ export class Cursor {
                 newItemId = prevItem.id;
                 newOffset = prevItem.text?.length || 0;
                 itemChanged = true;
+            } else {
+                // 前のアイテムがない場合は、同じアイテムの先頭に移動
+                const target = this.findTarget();
+                if (target) {
+                    newOffset = 0;
+                }
             }
         } else if (direction === "right") {
             const nextItem = this.findNextItem();
@@ -934,6 +970,12 @@ export class Cursor {
                 newItemId = nextItem.id;
                 newOffset = 0;
                 itemChanged = true;
+            } else {
+                // 次のアイテムがない場合は、同じアイテムの末尾に移動
+                const target = this.findTarget();
+                if (target) {
+                    newOffset = target.text?.length || 0;
+                }
             }
         } else if (direction === "up") {
             const prevItem = this.findPreviousItem();
@@ -945,6 +987,9 @@ export class Cursor {
                 const lastLineStart = this.getLineStartOffset(prevText, lastLineIndex);
                 newOffset = lastLineStart + Math.min(this.getCurrentColumn(prevText, this.offset), prevLines[lastLineIndex].length);
                 itemChanged = true;
+            } else {
+                // 前のアイテムがない場合は、同じアイテムの先頭に移動
+                newOffset = 0;
             }
         } else if (direction === "down") {
             const nextItem = this.findNextItem();
@@ -952,6 +997,12 @@ export class Cursor {
                 newItemId = nextItem.id;
                 newOffset = Math.min(this.getCurrentColumn(nextItem.text || "", this.offset), (nextItem.text || "").length);
                 itemChanged = true;
+            } else {
+                // 次のアイテムがない場合は、同じアイテムの末尾に移動
+                const target = this.findTarget();
+                if (target) {
+                    newOffset = target.text?.length || 0;
+                }
             }
         }
 
@@ -988,12 +1039,18 @@ export class Cursor {
             if (typeof document !== 'undefined') {
                 const event = new CustomEvent('navigate-to-item', {
                     bubbles: true,
-                    detail: { direction, fromItemId: oldItemId, toItemId: this.itemId }
+                    detail: {
+                        direction,
+                        fromItemId: oldItemId,
+                        toItemId: this.itemId,
+                        cursorScreenX: 0 // カーソルのX座標（アイテム間移動時は0を指定）
+                    }
                 });
                 document.dispatchEvent(event);
             }
         } else {
             // アイテムが変更されなかった場合でも、カーソルの状態を更新
+            this.offset = newOffset;
             this.applyToStore();
             store.startCursorBlink();
         }
