@@ -127,6 +127,7 @@ export class Cursor {
     }
 
     private applyToStore() {
+        // 既存のカーソルを更新
         store.updateCursor({
             cursorId: this.cursorId,
             itemId: this.itemId,
@@ -134,6 +135,18 @@ export class Cursor {
             isActive: this.isActive,
             userId: this.userId,
         });
+
+        // カーソルインスタンスが存在しない場合は新しく作成
+        const inst = store.cursorInstances.get(this.cursorId);
+        if (!inst) {
+            const cursorId = store.setCursor({
+                itemId: this.itemId,
+                offset: this.offset,
+                isActive: this.isActive,
+                userId: this.userId
+            });
+            this.cursorId = cursorId;
+        }
     }
 
     // テキスト内の行数を計算
@@ -192,63 +205,38 @@ export class Cursor {
     }
 
     moveLeft() {
+        const target = this.findTarget();
+        if (!target) return;
+
         if (this.offset > 0) {
             this.offset = Math.max(0, this.offset - 1);
+            this.applyToStore();
+
+            // カーソルが正しく更新されたことを確認
+            store.startCursorBlink();
         }
         else {
             // 行頭で前アイテムへ移動
-            const prevItem = this.findPreviousItem();
-            if (prevItem) {
-                const oldItemId = this.itemId;
-                this.itemId = prevItem.id;
-                this.offset = prevItem.text?.length || 0;
-                // アクティブアイテムを更新
-                // 古いアイテムのカーソルをクリアしてから新しいアイテムをアクティブに
-                store.clearCursorForItem(oldItemId);
-                store.setActiveItem(this.itemId);
-
-                // カスタムイベントを発行
-                if (typeof document !== 'undefined') {
-                    const event = new CustomEvent('navigate-to-item', {
-                        bubbles: true,
-                        detail: { direction: "left", fromItemId: oldItemId, toItemId: this.itemId }
-                    });
-                    document.dispatchEvent(event);
-                }
-            }
+            this.navigateToItem("left");
         }
-        this.applyToStore();
     }
 
     moveRight() {
         const target = this.findTarget();
         const text = target?.text ?? "";
-        if (this.offset < text.length) {
+
+        // テキストが空でない場合のみオフセットを増加
+        if (text.length > 0 && this.offset < text.length) {
             this.offset = this.offset + 1;
+            this.applyToStore();
+
+            // カーソルが正しく更新されたことを確認
+            store.startCursorBlink();
         }
         else {
-            // 行末で次アイテムへ移動
-            const nextItem = this.findNextItem();
-            if (nextItem) {
-                const oldItemId = this.itemId;
-                this.itemId = nextItem.id;
-                this.offset = 0;
-                // アクティブアイテムを更新
-                // 古いアイテムのカーソルをクリアしてから新しいアイテムをアクティブに
-                store.clearCursorForItem(oldItemId);
-                store.setActiveItem(this.itemId);
-
-                // カスタムイベントを発行
-                if (typeof document !== 'undefined') {
-                    const event = new CustomEvent('navigate-to-item', {
-                        bubbles: true,
-                        detail: { direction: "right", fromItemId: oldItemId, toItemId: this.itemId }
-                    });
-                    document.dispatchEvent(event);
-                }
-            }
+            // 行末または空のテキストの場合は次アイテムへ移動
+            this.navigateToItem("right");
         }
-        this.applyToStore();
     }
 
     moveUp() {
@@ -268,39 +256,11 @@ export class Cursor {
 
             // 同じ列位置か行の長さの短い方に移動
             this.offset = prevLineStart + Math.min(currentColumn, prevLineLength);
+            this.applyToStore();
         } else {
             // 前のアイテムの最後の行に移動
-            const prevItem = this.findPreviousItem();
-            if (prevItem) {
-                const oldItemId = this.itemId;
-                const prevText = prevItem.text || "";
-                const prevLines = prevText.split('\n');
-                const lastLineIndex = prevLines.length - 1;
-                const lastLineStart = this.getLineStartOffset(prevText, lastLineIndex);
-                const lastLineLength = prevLines[lastLineIndex].length;
-
-                this.itemId = prevItem.id;
-                this.offset = lastLineStart + Math.min(currentColumn, lastLineLength);
-
-                // アクティブアイテムを更新
-                // 古いアイテムのカーソルをクリアしてから新しいアイテムをアクティブに
-                store.clearCursorForItem(oldItemId);
-                store.setActiveItem(this.itemId);
-
-                // カスタムイベントを発行
-                if (typeof document !== 'undefined') {
-                    const event = new CustomEvent('navigate-to-item', {
-                        bubbles: true,
-                        detail: { direction: "up", fromItemId: oldItemId, toItemId: this.itemId }
-                    });
-                    document.dispatchEvent(event);
-                }
-            } else {
-                // 前のアイテムがない場合は現在のアイテムの先頭に移動
-                this.offset = 0;
-            }
+            this.navigateToItem("up");
         }
-        this.applyToStore();
     }
 
     moveDown() {
@@ -321,36 +281,11 @@ export class Cursor {
 
             // 同じ列位置か行の長さの短い方に移動
             this.offset = nextLineStart + Math.min(currentColumn, nextLineLength);
+            this.applyToStore();
         } else {
             // 次のアイテムの最初の行に移動
-            const nextItem = this.findNextItem();
-            if (nextItem) {
-                const oldItemId = this.itemId;
-                const nextText = nextItem.text || "";
-                const nextLineLength = nextText.indexOf('\n') >= 0 ?
-                    nextText.indexOf('\n') : nextText.length;
-
-                this.itemId = nextItem.id;
-                this.offset = Math.min(currentColumn, nextLineLength);
-                // アクティブアイテムを更新
-                // 古いアイテムのカーソルをクリアしてから新しいアイテムをアクティブに
-                store.clearCursorForItem(oldItemId);
-                store.setActiveItem(this.itemId);
-
-                // カスタムイベントを発行
-                if (typeof document !== 'undefined') {
-                    const event = new CustomEvent('navigate-to-item', {
-                        bubbles: true,
-                        detail: { direction: "down", fromItemId: oldItemId, toItemId: this.itemId }
-                    });
-                    document.dispatchEvent(event);
-                }
-            } else {
-                // 次のアイテムがない場合は現在のアイテムの末尾に移動
-                this.offset = text.length;
-            }
+            this.navigateToItem("down");
         }
-        this.applyToStore();
     }
 
     insertText(ch: string) {
@@ -419,12 +354,19 @@ export class Cursor {
 
                 // カーソルを新しいアイテムの先頭に移動
                 const oldItemId = this.itemId;
+
+                // 全てのカーソルをクリアして単一カーソルモードを維持
+                store.clearCursorAndSelection(this.userId);
+
+                // 新しいアイテムとオフセットを設定
                 this.itemId = newItem.id;
                 this.offset = 0;
 
                 // アクティブアイテムを更新
-                store.clearCursorForItem(oldItemId);
                 store.setActiveItem(this.itemId);
+
+                // カーソル点滅を開始
+                store.startCursorBlink();
 
                 // カスタムイベントを発行
                 if (typeof document !== 'undefined') {
@@ -454,12 +396,19 @@ export class Cursor {
 
                 // カーソルを新しいアイテムの先頭に移動
                 const oldItemId = this.itemId;
+
+                // 全てのカーソルをクリアして単一カーソルモードを維持
+                store.clearCursorAndSelection(this.userId);
+
+                // 新しいアイテムとオフセットを設定
                 this.itemId = newItem.id;
                 this.offset = 0;
 
                 // アクティブアイテムを更新
-                store.clearCursorForItem(oldItemId);
                 store.setActiveItem(this.itemId);
+
+                // カーソル点滅を開始
+                store.startCursorBlink();
 
                 // カスタムイベントを発行
                 if (typeof document !== 'undefined') {
@@ -939,50 +888,86 @@ export class Cursor {
     private navigateToItem(direction: "left" | "right" | "up" | "down") {
         // 前後アイテムへの移動はストア更新のみ行い、イベント発行はコンポーネントで処理
         const oldItemId = this.itemId;
+        let newItemId = this.itemId; // デフォルトは現在のアイテム
+        let newOffset = this.offset; // デフォルトは現在のオフセット
+        let itemChanged = false;
 
         // アイテム間移動の処理
         if (direction === "left") {
             const prevItem = this.findPreviousItem();
             if (prevItem) {
-                this.itemId = prevItem.id;
-                this.offset = prevItem.text?.length || 0;
+                newItemId = prevItem.id;
+                newOffset = prevItem.text?.length || 0;
+                itemChanged = true;
             }
         } else if (direction === "right") {
             const nextItem = this.findNextItem();
             if (nextItem) {
-                this.itemId = nextItem.id;
-                this.offset = 0;
+                newItemId = nextItem.id;
+                newOffset = 0;
+                itemChanged = true;
             }
         } else if (direction === "up") {
             const prevItem = this.findPreviousItem();
             if (prevItem) {
-                this.itemId = prevItem.id;
+                newItemId = prevItem.id;
                 const prevText = prevItem.text || "";
                 const prevLines = prevText.split('\n');
                 const lastLineIndex = prevLines.length - 1;
                 const lastLineStart = this.getLineStartOffset(prevText, lastLineIndex);
-                this.offset = lastLineStart + Math.min(this.getCurrentColumn(prevText, this.offset), prevLines[lastLineIndex].length);
+                newOffset = lastLineStart + Math.min(this.getCurrentColumn(prevText, this.offset), prevLines[lastLineIndex].length);
+                itemChanged = true;
             }
         } else if (direction === "down") {
             const nextItem = this.findNextItem();
             if (nextItem) {
-                this.itemId = nextItem.id;
-                this.offset = Math.min(this.getCurrentColumn(nextItem.text || "", this.offset), (nextItem.text || "").length);
+                newItemId = nextItem.id;
+                newOffset = Math.min(this.getCurrentColumn(nextItem.text || "", this.offset), (nextItem.text || "").length);
+                itemChanged = true;
             }
         }
 
-        // アクティブアイテムを更新
-        store.clearCursorForItem(oldItemId);
-        store.setActiveItem(this.itemId);
-        store.startCursorBlink();
+        // アイテムが変更された場合のみ処理を実行
+        if (itemChanged) {
+            // 古いアイテムのカーソルを確実に削除
+            store.clearCursorForItem(oldItemId);
 
-        // カスタムイベントを発行
-        if (typeof document !== 'undefined') {
-            const event = new CustomEvent('navigate-to-item', {
-                bubbles: true,
-                detail: { direction, fromItemId: oldItemId, toItemId: this.itemId }
+            // 全てのカーソルをクリアして単一カーソルモードを維持
+            store.clearCursorAndSelection(this.userId);
+
+            // 新しいアイテムとオフセットを設定
+            this.itemId = newItemId;
+            this.offset = newOffset;
+
+            // アクティブアイテムを更新
+            store.setActiveItem(this.itemId);
+
+            // 新しいカーソルを作成（既存のカーソルを削除した後に新しいカーソルを作成）
+            const cursorId = store.setCursor({
+                itemId: this.itemId,
+                offset: this.offset,
+                isActive: true,
+                userId: this.userId
             });
-            document.dispatchEvent(event);
+
+            // cursorIdを更新
+            this.cursorId = cursorId;
+
+            // カーソル点滅を開始
+            store.startCursorBlink();
+
+            // カスタムイベントを発行
+            if (typeof document !== 'undefined') {
+                const event = new CustomEvent('navigate-to-item', {
+                    bubbles: true,
+                    detail: { direction, fromItemId: oldItemId, toItemId: this.itemId }
+                });
+                document.dispatchEvent(event);
+            }
+        } else {
+            // アイテムが変更されなかった場合でも、カーソルの状態を更新
+            this.applyToStore();
+            store.startCursorBlink();
         }
     }
 }

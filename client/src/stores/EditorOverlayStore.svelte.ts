@@ -38,7 +38,7 @@ export interface SelectionRange {
 export class EditorOverlayStore {
     cursors = $state<Record<string, CursorPosition>>({});
     // Cursor インスタンスを保持する Map
-    private cursorInstances = new Map<string, Cursor>();
+    cursorInstances = new Map<string, Cursor>();
     selections = $state<Record<string, SelectionRange>>({});
     activeItemId = $state<string | null>(null);
     cursorVisible = $state<boolean>(true);
@@ -76,12 +76,29 @@ export class EditorOverlayStore {
         // Map のインスタンスと同期
         const inst = this.cursorInstances.get(cursor.cursorId);
         if (inst) {
+            // 既存のインスタンスを更新
             inst.itemId = cursor.itemId;
             inst.offset = cursor.offset;
             inst.isActive = cursor.isActive;
             if (cursor.userId) inst.userId = cursor.userId;
+        } else {
+            // インスタンスが存在しない場合は新しく作成
+            const newInst = new Cursor(cursor.cursorId, {
+                itemId: cursor.itemId,
+                offset: cursor.offset,
+                isActive: cursor.isActive,
+                userId: cursor.userId ?? "local",
+            });
+            this.cursorInstances.set(cursor.cursorId, newInst);
         }
+
+        // Reactive state を更新
         this.cursors = { ...this.cursors, [cursor.cursorId]: cursor };
+
+        // アクティブアイテムを更新
+        if (cursor.isActive) {
+            this.setActiveItem(cursor.itemId);
+        }
     }
 
     addCursor(omitProps: Omit<CursorPosition, "cursorId">) {
@@ -145,6 +162,26 @@ export class EditorOverlayStore {
 
     clearCursorAndSelection(userId = "local") {
         // 指定した userId のカーソルのみ削除、選択範囲はそのまま保持
+
+        // 削除対象のカーソルIDを収集
+        const cursorIdsToRemove: string[] = [];
+
+        // Map から一致するインスタンスを特定
+        for (const [cursorId, inst] of this.cursorInstances.entries()) {
+            if (inst.userId === userId) {
+                cursorIdsToRemove.push(cursorId);
+            }
+        }
+
+        // 特定したカーソルをすべて削除
+        if (cursorIdsToRemove.length > 0) {
+            // Map からインスタンスを削除
+            cursorIdsToRemove.forEach(id => {
+                this.cursorInstances.delete(id);
+            });
+        }
+
+        // Reactive state を更新
         this.cursors = Object.fromEntries(
             Object.entries(this.cursors).filter(([_, c]) => c.userId !== userId),
         );
@@ -173,13 +210,40 @@ export class EditorOverlayStore {
     }
 
     setCursor(cursorProps: Omit<CursorPosition, "cursorId">) {
+        const userId = cursorProps.userId ?? "local";
+        const itemId = cursorProps.itemId;
+
+        // 同じユーザーの同じアイテムに対する既存のカーソルをクリア
+        const cursorIdsToRemove: string[] = [];
+        for (const [cursorId, inst] of this.cursorInstances.entries()) {
+            if (inst.userId === userId && inst.itemId === itemId) {
+                cursorIdsToRemove.push(cursorId);
+            }
+        }
+
+        // 特定したカーソルをすべて削除
+        if (cursorIdsToRemove.length > 0) {
+            // Map からインスタンスを削除
+            cursorIdsToRemove.forEach(id => {
+                this.cursorInstances.delete(id);
+            });
+
+            // Reactive state を更新
+            const newCursors = { ...this.cursors };
+            cursorIdsToRemove.forEach(id => {
+                delete newCursors[id];
+            });
+            this.cursors = newCursors;
+        }
+
+        // 新しいカーソルを作成
         const id = this.genUUID();
         // Cursor インスタンスを生成して保持
         const cursorInst = new Cursor(id, {
             itemId: cursorProps.itemId,
             offset: cursorProps.offset,
             isActive: cursorProps.isActive,
-            userId: cursorProps.userId ?? "local",
+            userId: userId,
         });
         this.cursorInstances.set(id, cursorInst);
         const newCursor: CursorPosition = { cursorId: id, ...cursorProps };
@@ -188,20 +252,30 @@ export class EditorOverlayStore {
     }
 
     clearCursorForItem(itemId: string) {
-        // Map から一致するインスタンスを削除
+        // 削除対象のカーソルIDを収集
+        const cursorIdsToRemove: string[] = [];
+
+        // Map から一致するインスタンスを特定
         for (const [cursorId, inst] of this.cursorInstances.entries()) {
             if (inst.itemId === itemId) {
-                this.cursorInstances.delete(cursorId);
+                cursorIdsToRemove.push(cursorId);
             }
         }
-        // Reactive state も更新
-        Object.entries(this.cursors).forEach(([cursorId, cursor]: [string, CursorPosition]) => {
-            if (cursor.itemId === itemId) {
-                const newCursors = { ...this.cursors };
-                delete newCursors[cursorId];
-                this.cursors = newCursors;
-            }
-        });
+
+        // 特定したカーソルをすべて削除
+        if (cursorIdsToRemove.length > 0) {
+            // Map からインスタンスを削除
+            cursorIdsToRemove.forEach(id => {
+                this.cursorInstances.delete(id);
+            });
+
+            // Reactive state を一度に更新
+            const newCursors = { ...this.cursors };
+            cursorIdsToRemove.forEach(id => {
+                delete newCursors[id];
+            });
+            this.cursors = newCursors;
+        }
     }
 
     // 登録された Cursor インスタンスを取得する

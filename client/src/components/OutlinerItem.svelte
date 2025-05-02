@@ -16,10 +16,10 @@
 		index: number;
 	}
 
-	let { 
-		model, 
-		depth = 0, 
-		currentUser = 'anonymous', 
+	let {
+		model,
+		depth = 0,
+		currentUser = 'anonymous',
 		isReadOnly = false,
 		isCollapsed = false,
 		hasChildren = false,
@@ -135,9 +135,9 @@
 		// テキスト内容を同期
 		textareaEl.value = text.current;
 		textareaEl.focus();
-		
+
 		let cursorPosition = initialCursorPosition;
-		
+
 		if (event) {
 			// クリック位置に基づいてカーソル位置を設定
 			cursorPosition = getClickPosition(event, text.current);
@@ -145,22 +145,36 @@
 			// デフォルトでは末尾にカーソルを配置（外部から指定がない場合のみ）
 			cursorPosition = text.current.length;
 		}
-		
+
 		if (cursorPosition !== undefined) {
 			// カーソル位置を textarea に設定
 			textareaEl.setSelectionRange(cursorPosition, cursorPosition);
 		}
-		
-		// 既存のカーソルをクリアしてからストアに設定
+
+		// 現在アクティブなアイテムのカーソルをクリア
+		const activeItemId = editorOverlayStore.getActiveItem();
+		if (activeItemId && activeItemId !== model.id) {
+			editorOverlayStore.clearCursorForItem(activeItemId);
+		}
+
+		// 全てのカーソルをクリアしてから新しいカーソルを設定
+		// Alt+Clickでのマルチカーソル追加以外では、常に単一カーソルになるようにする
+		editorOverlayStore.clearCursorAndSelection('local');
+
+		// 現在のアイテムの既存のカーソルをクリア
 		editorOverlayStore.clearCursorForItem(model.id);
+
+		// アクティブアイテムを設定
 		editorOverlayStore.setActiveItem(model.id);
+
+		// 新しいカーソルを設定
 		editorOverlayStore.setCursor({
 			itemId: model.id,
 			offset: cursorPosition !== undefined ? cursorPosition : 0,
 			isActive: true,
 			userId: 'local'
 		});
-		
+
 		// カーソル点滅を開始
 		editorOverlayStore.startCursorBlink();
 	}
@@ -169,13 +183,13 @@
 	// カーソル位置と選択範囲を更新する共通関数
 	function updateSelectionAndCursor(isShiftKey = false) {
 		if (!hiddenTextareaRef) return;
-		
+
 		const currentStart = hiddenTextareaRef.selectionStart;
 		const currentEnd = hiddenTextareaRef.selectionEnd;
-		
+
 		if (currentStart === currentEnd) {
 			lastCursorPosition = currentStart;
-			
+
 			editorOverlayStore.setCursor({
 				itemId: model.id,
 				offset: currentStart,
@@ -192,7 +206,7 @@
 		} else {
 			let cursorAtStart = false;
 			let isReversed = false;
-			
+
 			if (isShiftKey) {
 				if (currentStart !== lastSelectionStart) {
 					cursorAtStart = true;
@@ -208,10 +222,10 @@
 				isReversed = hiddenTextareaRef.selectionDirection === 'backward';
 				cursorAtStart = isReversed;
 			}
-			
+
 			const cursorOffset = cursorAtStart ? currentStart : currentEnd;
 			lastCursorPosition = cursorOffset;
-			
+
 			editorOverlayStore.setCursor({
 				itemId: model.id,
 				offset: cursorOffset,
@@ -227,7 +241,7 @@
 				isReversed: isReversed
 			});
 		}
-		
+
 		lastSelectionStart = currentStart;
 		lastSelectionEnd = currentEnd;
 	}
@@ -237,7 +251,7 @@
 	function finishEditing() {
 		isEditing = false;
 		editorOverlayStore.stopCursorBlink();
-		
+
 		// カーソルのみクリアし、跨いだ選択は残す
 		editorOverlayStore.clearCursorForItem(model.id);
 		editorOverlayStore.setActiveItem(null);
@@ -283,6 +297,20 @@
 		// 通常クリック: 編集開始
 		event.preventDefault();
 		event.stopPropagation();
+
+		// 現在アクティブなアイテムのカーソルをクリア
+		const activeItemId = editorOverlayStore.getActiveItem();
+		if (activeItemId) {
+			editorOverlayStore.clearCursorForItem(activeItemId);
+		}
+
+		// 全てのカーソルをクリア
+		editorOverlayStore.clearCursorAndSelection('local');
+
+		// 現在のアイテムの既存のカーソルをクリア
+		editorOverlayStore.clearCursorForItem(model.id);
+
+		// 編集開始
 		startEditing(event);
 	}
 
@@ -292,7 +320,7 @@
 			console.error('Hidden textarea reference is not available');
 			return;
 		}
-		
+
 		// クリック外のイベントリスナー
 		const handleOutsideClick = (e: MouseEvent) => {
 			if (isEditing && displayRef && !displayRef.contains(e.target as Node)) {
@@ -300,16 +328,16 @@
 			}
 		};
 		document.addEventListener('click', handleOutsideClick);
-		
+
 		// カーソル位置を保持してアイテム間をナビゲートするためのイベントリスナー
 		const handleFocusItem = (event: CustomEvent) => {
 			// shiftKeyと方向も取得
 			const { cursorScreenX, shiftKey, direction } = event.detail;
-			
+
 			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 				console.log(`Received focus-item event for ${model.id} with X: ${cursorScreenX}px`);
 			}
-			
+
 			// アイテムがすでに編集中の場合は処理を省略
 			if (isEditing) {
 				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
@@ -317,16 +345,16 @@
 				}
 				return;
 			}
-			
+
 			// 編集モードを開始
 			isEditing = true;
-			
+
 			// テキストエリアの内容を同期
 			hiddenTextareaRef.value = text.current;
-			
+
 			// カーソル位置を決定
 			let textPosition = 0;
-			
+
 			// 特殊な値の処理
 			if (cursorScreenX === Number.MAX_SAFE_INTEGER) {
 				// 末尾位置
@@ -343,7 +371,7 @@
 			} else if (cursorScreenX !== undefined) {
 				// ピクセル座標からテキスト位置を計算
 				textPosition = pixelPositionToTextPosition(cursorScreenX);
-				
+
 				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 					console.log(`Calculated text position ${textPosition} from X: ${cursorScreenX}`);
 				}
@@ -354,13 +382,13 @@
 					console.log(`No cursor X provided, using text end: ${textPosition}`);
 				}
 			}
-			
+
 			// 一連の処理をリクエストアニメーションフレームで最適化
 			requestAnimationFrame(() => {
 				try {
 					// まずフォーカスを設定（最優先）
 					hiddenTextareaRef.focus();
-					
+
 					// ローカル変数を更新 (shiftKey時はクロスアイテム選択拡張)
 					if (!shiftKey) {
 						lastSelectionStart = lastSelectionEnd = textPosition;
@@ -376,10 +404,10 @@
 						lastSelectionEnd = hiddenTextareaRef.value.length;
 						lastCursorPosition = textPosition;
 					}
-					
+
 					// 再度カーソルが表示されていることを確認
 					editorOverlayStore.startCursorBlink();
-					
+
 					// editorOverlayStoreにアクティブアイテムとカーソル位置を設定（選択範囲はOutlinerTree側で管理）
 					editorOverlayStore.setCursor({
 						itemId: model.id,
@@ -387,10 +415,10 @@
 						isActive: true,
 						userId: 'local'
 					});
-					
+
 					// カーソル位置設定を実行
 					setCaretPosition(textPosition);
-					
+
 					if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 						console.log(`Focus and cursor position set for item ${model.id} at position ${textPosition}`);
 					}
@@ -399,7 +427,7 @@
 				}
 			});
 		};
-		
+
 		// 編集完了イベントハンドラ
 		const handleFinishEdit = () => {
 			if (isEditing) {
@@ -409,19 +437,19 @@
 				finishEditing();
 			}
 		};
-		
+
 		// コンポーネント要素にイベントリスナーを追加
 		if (itemRef) {
 			itemRef.addEventListener('focus-item', handleFocusItem as EventListener);
 			itemRef.addEventListener('finish-edit', handleFinishEdit as EventListener);
-			
+
 			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 				console.log(`Added event listeners to item element with ID: ${model.id}`);
 			}
 		} else {
 			console.error(`itemRef is not available for ${model.id}`);
 		}
-		
+
 		// クリーンアップ関数
 		return () => {
 			if (itemRef) {
@@ -429,7 +457,7 @@
 				itemRef.removeEventListener('finish-edit', handleFinishEdit as EventListener);
 			}
 			document.removeEventListener('click', handleOutsideClick);
-			
+
 			editorOverlayStore.clearCursorAndSelection();
 		};
 	});
@@ -444,29 +472,29 @@
 			// 先頭位置を表す特殊値
 			return 0;
 		}
-		
+
 		if (!displayRef) return 0;
-		
+
 		const textElement = displayRef.querySelector('.item-text') as HTMLElement;
 		if (!textElement) return 0;
-		
+
 		const currentText = text.current || ''; // 現在のテキストを取得
 		if (currentText.length === 0) return 0;
-		
+
 		// テキスト要素の位置を取得
 		const textRect = textElement.getBoundingClientRect();
-		
+
 		// スクリーンX座標からテキスト要素相対位置を計算
 		const relativeX = screenX - textRect.left;
-		
+
 		if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 			console.log(`Converting pixel position: screenX=${screenX}, textLeft=${textRect.left}, relativeX=${relativeX}`);
 		}
-		
+
 		// 境界値チェック
 		if (relativeX <= 0) return 0;
 		if (relativeX >= textRect.width) return currentText.length;
-		
+
 		// 測定用のスパン要素を作成
 		const span = document.createElement('span');
 		span.style.font = window.getComputedStyle(textElement).font;
@@ -474,82 +502,82 @@
 		span.style.visibility = 'hidden';
 		span.style.position = 'absolute';
 		document.body.appendChild(span);
-		
+
 		let bestPos = 0;
 		let bestDistance = Infinity;
-		
+
 		// バイナリサーチでおおよその位置を特定
 		let left = 0;
 		let right = currentText.length;
-		
+
 		while (left <= right) {
 			const mid = Math.floor((left + right) / 2);
-			
+
 			span.textContent = currentText.substring(0, mid);
 			const width = span.getBoundingClientRect().width;
 			const distance = Math.abs(width - relativeX);
-			
+
 			if (distance < bestDistance) {
 				bestDistance = distance;
 				bestPos = mid;
 			}
-			
+
 			if (width < relativeX) {
 				left = mid + 1;
 			} else {
 				right = mid - 1;
 			}
 		}
-		
+
 		// 近傍をより詳細に探索
 		const rangeStart = Math.max(0, bestPos - 3);
 		const rangeEnd = Math.min(currentText.length, bestPos + 3);
-		
+
 		for (let i = rangeStart; i <= rangeEnd; i++) {
 			span.textContent = currentText.substring(0, i);
 			const width = span.getBoundingClientRect().width;
 			const distance = Math.abs(width - relativeX);
-			
+
 			if (distance < bestDistance) {
 				bestDistance = distance;
 				bestPos = i;
 			}
 		}
-		
+
 		document.body.removeChild(span);
-		
+
 		if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 			console.log(`Found best text position: ${bestPos} for text "${currentText}"`);
 		}
-		
+
 		return bestPos;
 	}
-	
+
 	// 指定したテキスト位置にカーソルを設定する関数
 	function setCaretPosition(position: number) {
 		if (!hiddenTextareaRef) return;
-		
+
 		try {
 			// 範囲内に収める
 			const safePosition = Math.min(Math.max(0, position), hiddenTextareaRef.value.length);
-			
+
 			// フォーカスを確保
 			hiddenTextareaRef.focus();
-			
+
 			// カーソル位置を設定（複数回試行）
 			hiddenTextareaRef.setSelectionRange(safePosition, safePosition, 'none');
-			
+
 			// 確実に設定されるよう、少し遅延後にもう一度試行
 			setTimeout(() => {
 				if (document.activeElement === hiddenTextareaRef) {
 					hiddenTextareaRef.setSelectionRange(safePosition, safePosition, 'none');
 				}
 			}, 0);
-			
+
 			// ローカル変数を更新
 			lastSelectionStart = lastSelectionEnd = safePosition;
 			lastCursorPosition = safePosition;
-			
+
 			// ストアにカーソル位置を設定
 			editorOverlayStore.setCursor({
 				itemId: model.id,
@@ -557,7 +585,7 @@
 				isActive: true,
 				userId: 'local'
 			});
-			
+
 			// 選択範囲をクリア
 			editorOverlayStore.setSelection({
 				startItemId: model.id,
@@ -566,7 +594,7 @@
 				endOffset: 0,
 				userId: 'local'
 			});
-			
+
 			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 				console.log(`Cursor position set to ${safePosition} in setCaretPosition function`);
 			}
@@ -578,12 +606,12 @@
 	// 外部から呼び出されるカーソル位置設定メソッド
 	export function setSelectionPosition(start: number, end: number = start) {
 		if (!hiddenTextareaRef || !isEditing) return;
-		
+
 		hiddenTextareaRef.setSelectionRange(start, end);
 		lastSelectionStart = start;
 		lastSelectionEnd = end;
 		lastCursorPosition = end;
-		
+
 		updateSelectionAndCursor();
 		editorOverlayStore.startCursorBlink();
 	}
@@ -599,7 +627,7 @@
 				const newHeight = entry.contentRect.height;
 				if (newHeight !== lastHeight) {
 					lastHeight = newHeight;
-					dispatch('resize', { 
+					dispatch('resize', {
 						index,
 						height: newHeight
 					});
@@ -682,7 +710,7 @@
 		padding-top: 4px;
 		padding-bottom: 4px;
 	}
-	
+
 	.page-title {
 		margin-bottom: 10px;
 	}
@@ -730,7 +758,7 @@
 		word-break: break-word;
 		width: 100%;
 	}
-	
+
 	.page-title-content {
 		font-size: 24px;
 		font-weight: bold;
@@ -739,7 +767,7 @@
 		margin-bottom: 8px;
 		padding-bottom: 8px;
 	}
-    
+
 	.item-content.editing {
 		outline: 1px solid #ccc;
 		background-color: rgba(0, 0, 0, 0.02);
@@ -751,7 +779,7 @@
 		display: inline-block;
 		min-width: 1px;
 	}
-    
+
 	.item-actions {
 		display: flex;
 		gap: 4px;
@@ -795,7 +823,7 @@
 		font-size: 0.7rem;
 		color: #666;
 	}
-    
+
 	.title-text {
 		font-size: 1.5em;
 		font-weight: bold;
@@ -811,4 +839,4 @@
 	.page-title-content {
 		font-size: 1.2em;
 	}
-</style> 
+</style>
