@@ -184,15 +184,38 @@ export class Cursor {
 
     // 現在のオフセットが何行目かを取得
     private getCurrentLineIndex(text: string, offset: number): number {
+        // テキストが空の場合は0を返す
+        if (!text) return 0;
+
         const lines = text.split('\n');
+
+        // オフセットがテキスト長を超える場合は最後の行を返す
+        if (offset >= text.length) {
+            return lines.length - 1;
+        }
+
         let currentOffset = 0;
         for (let i = 0; i < lines.length; i++) {
-            const lineLength = lines[i].length + 1; // +1 は改行文字分
+            const lineLength = lines[i].length;
+
+            // 現在の行内にオフセットがある場合
             if (offset < currentOffset + lineLength) {
                 return i;
             }
+
+            // 次の行に進む（改行文字を含む）
             currentOffset += lineLength;
+            if (i < lines.length - 1) {
+                currentOffset += 1; // 改行文字分
+            }
+
+            // 改行文字の位置にオフセットがある場合は次の行
+            if (offset === currentOffset && i < lines.length - 1) {
+                return i + 1;
+            }
         }
+
+        // デフォルトは最後の行
         return lines.length - 1;
     }
 

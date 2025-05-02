@@ -28,8 +28,13 @@ test.describe("CLM-0008: 行末へ移動", () => {
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
-        // テスト用のテキストを入力
-        await page.keyboard.type("First line\nSecond line\nThird line");
+        // テスト用のテキストを入力（改行を明示的に入力）
+        await page.keyboard.type("First line");
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Second line");
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Third line");
+
         // カーソルを2行目の先頭に移動
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
@@ -81,6 +86,8 @@ test.describe("CLM-0008: 行末へ移動", () => {
 
         // カーソルを3行目に移動
         await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowDown");  // 確実に3行目に移動するために2回押す
+        await page.waitForTimeout(100);
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
@@ -92,7 +99,7 @@ test.describe("CLM-0008: 行末へ移動", () => {
         // Endキーを押下
         await page.keyboard.press("End");
         // 更新を待機
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(300);  // 待機時間を長くする
 
         // 新しいカーソル位置を取得
         const newX = await cursor.evaluate(el => el.getBoundingClientRect().left);

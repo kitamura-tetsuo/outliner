@@ -28,8 +28,13 @@ test.describe("CLM-0007: 行頭へ移動", () => {
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
-        // テスト用のテキストを入力
-        await page.keyboard.type("First line\nSecond line\nThird line");
+        // テスト用のテキストを入力（改行を明示的に入力）
+        await page.keyboard.type("First line");
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Second line");
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Third line");
+
         // カーソルを2行目の途中に移動
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
