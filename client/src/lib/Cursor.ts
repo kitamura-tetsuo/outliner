@@ -174,12 +174,11 @@ export class Cursor {
         }
 
         let offset = 0;
-        for (let i = 0; i <= lineIndex; i++) {
-            offset += lines[i].length;
-            if (i < lineIndex) {
-                offset += 1; // 改行文字分
-            }
+        for (let i = 0; i < lineIndex; i++) {
+            offset += lines[i].length + 1; // +1 は改行文字分
         }
+        // 対象行の長さを加算（改行文字は含めない）
+        offset += lines[lineIndex].length;
         return offset;
     }
 
@@ -752,6 +751,9 @@ export class Cursor {
         // 現在の行の開始位置に移動
         this.offset = this.getLineStartOffset(text, currentLineIndex);
         this.applyToStore();
+
+        // カーソルが正しく更新されたことを確認
+        store.startCursorBlink();
     }
 
     // カーソルを行の末尾に移動
@@ -765,6 +767,9 @@ export class Cursor {
         // 現在の行の終了位置に移動
         this.offset = this.getLineEndOffset(text, currentLineIndex);
         this.applyToStore();
+
+        // カーソルが正しく更新されたことを確認
+        store.startCursorBlink();
     }
 
     // 選択範囲を行頭まで拡張
