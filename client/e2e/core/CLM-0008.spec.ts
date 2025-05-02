@@ -93,32 +93,48 @@ test.describe("CLM-0008: 行末へ移動", () => {
         const cursor = page.locator(".editor-overlay .cursor.active").first();
         await cursor.waitFor({ state: 'visible' });
 
-        // 初期カーソル位置を取得
-        const initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
-
         // Endキーを押下
         await page.keyboard.press("End");
         // 更新を待機
         await page.waitForTimeout(300);  // 待機時間を長くする
 
-        // 新しいカーソル位置を取得
-        const newX = await cursor.evaluate(el => el.getBoundingClientRect().left);
-
-        // カーソルが右に移動していることを確認
-        expect(newX).toBeGreaterThan(initialX);
-
         // カーソルの位置が行の末尾にあることを確認
-        const cursorOffset = await page.evaluate(() => {
-            const cursor = document.querySelector('.editor-overlay .cursor.active');
-            if (!cursor) return null;
-            const style = window.getComputedStyle(cursor);
+        const cursorPosition = await page.evaluate(() => {
+            const textarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
+            if (!textarea) return null;
+
+            // テキストの内容と現在のカーソル位置を取得
+            const text = textarea.value;
+            const position = textarea.selectionStart;
+
+            // 現在の行の範囲を特定
+            const lines = text.split('\n');
+            let currentLine = 0;
+            let currentPos = 0;
+
+            // 現在の行を特定
+            for (let i = 0; i < lines.length; i++) {
+                const lineLength = lines[i].length;
+                if (position <= currentPos + lineLength) {
+                    currentLine = i;
+                    break;
+                }
+                currentPos += lineLength + 1; // +1 は改行文字分
+            }
+
+            // 現在の行の末尾位置を計算
+            const lineEndPos = currentPos + lines[currentLine].length;
+
             return {
-                left: parseFloat(style.left),
-                top: parseFloat(style.top)
+                position,
+                lineEndPos,
+                isAtLineEnd: position === lineEndPos
             };
         });
 
-        expect(cursorOffset).not.toBeNull();
+        // カーソルが行末にあることを確認
+        expect(cursorPosition).not.toBeNull();
+        expect(cursorPosition?.isAtLineEnd).toBe(true);
     });
 
     test("Shift + Endで現在位置から行末までを選択する", async ({ page }) => {
