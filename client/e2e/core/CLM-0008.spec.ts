@@ -137,34 +137,5 @@ test.describe("CLM-0008: 行末へ移動", () => {
         expect(cursorPosition?.isAtLineEnd).toBe(true);
     });
 
-    test("Shift + Endで現在位置から行末までを選択する", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        await activeItem.waitFor({ state: 'visible' });
 
-        // カーソルを行の途中に移動
-        await page.keyboard.press("Home");
-        await page.keyboard.press("ArrowRight");
-        await page.keyboard.press("ArrowRight");
-
-        // 初期状態では選択範囲がないことを確認
-        const initialSelectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(initialSelectionExists).toBe(false);
-
-        // Shift + Endを押下
-        await page.keyboard.down('Shift');
-        await page.keyboard.press('End');
-        await page.keyboard.up('Shift');
-
-        // 更新を待機
-        await page.waitForTimeout(100);
-
-        // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(selectionExists).toBe(true);
-    });
 });

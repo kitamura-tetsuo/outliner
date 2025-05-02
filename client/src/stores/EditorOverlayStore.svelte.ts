@@ -160,9 +160,12 @@ export class EditorOverlayStore {
         this.cursorVisible = true;
     }
 
-    clearCursorAndSelection(userId = "local") {
-        // 指定した userId のカーソルのみ削除、選択範囲はそのまま保持
-
+    /**
+     * 指定したユーザーのカーソルをすべて削除する
+     * @param userId ユーザーID（デフォルトは"local"）
+     * @param clearSelections 選択範囲も削除するかどうか（デフォルトはfalse）
+     */
+    clearCursorAndSelection(userId = "local", clearSelections = false) {
         // 削除対象のカーソルIDを収集
         const cursorIdsToRemove: string[] = [];
 
@@ -185,6 +188,13 @@ export class EditorOverlayStore {
         this.cursors = Object.fromEntries(
             Object.entries(this.cursors).filter(([_, c]) => c.userId !== userId),
         );
+
+        // 選択範囲も削除する場合
+        if (clearSelections) {
+            this.selections = Object.fromEntries(
+                Object.entries(this.selections).filter(([_, s]) => s.userId !== userId),
+            );
+        }
     }
 
     clearCursorInstance(cursorId: string) {
@@ -209,6 +219,11 @@ export class EditorOverlayStore {
         return { cursors: itemCursors, selections: itemSelections, isActive };
     }
 
+    /**
+     * 新しいカーソルを設定する
+     * @param cursorProps カーソルのプロパティ
+     * @returns 新しいカーソルのID
+     */
     setCursor(cursorProps: Omit<CursorPosition, "cursorId">) {
         const userId = cursorProps.userId ?? "local";
         const itemId = cursorProps.itemId;
@@ -238,6 +253,7 @@ export class EditorOverlayStore {
 
         // 新しいカーソルを作成
         const id = this.genUUID();
+
         // Cursor インスタンスを生成して保持
         const cursorInst = new Cursor(id, {
             itemId: cursorProps.itemId,
@@ -246,8 +262,20 @@ export class EditorOverlayStore {
             userId: userId,
         });
         this.cursorInstances.set(id, cursorInst);
-        const newCursor: CursorPosition = { cursorId: id, ...cursorProps };
+
+        // Reactive state を更新
+        const newCursor: CursorPosition = {
+            cursorId: id,
+            ...cursorProps,
+            userId: userId // userId が undefined の場合に "local" を設定
+        };
         this.cursors = { ...this.cursors, [id]: newCursor };
+
+        // アクティブなカーソルの場合はアクティブアイテムを更新
+        if (cursorProps.isActive) {
+            this.setActiveItem(itemId);
+        }
+
         return id;
     }
 

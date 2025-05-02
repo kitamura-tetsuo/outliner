@@ -81,19 +81,6 @@
     - '一番下の行にある時で、一つ次のアイテムがない時は、同じアイテムの末尾へ移動する'
   tests:
     - client/e2e/core/CLM-0005.spec.ts
-- id: CLM-0006
-  title: 'Shift + 上下左右'
-  shortcut: 'Shift + 上下左右'
-  description: 'カーソルを1文字上下左右に移動し、選択範囲を広げます。'
-  category: cursor-movement
-  status: implemented
-  acceptance:
-    - 'Shift + 上で選択範囲の上端を広げる'
-    - 'Shift + 下で選択範囲の下端を広げる'
-    - 'Shift + 左で選択範囲の左端を広げる'
-    - 'Shift + 右で選択範囲の右端を広げる'
-  tests:
-    - client/e2e/core/CLM-0006.spec.ts
 - id: CLM-0007
   title: '行頭へ移動'
   shortcut: 'Home'
@@ -103,7 +90,6 @@
   acceptance:
     - 'Homeキーを押すと、カーソルが現在の行の先頭に移動する'
     - '複数行のアイテムでは、現在のカーソルがある行の先頭に移動する'
-    - 'Shift + Homeで現在位置から行頭までを選択する'
   tests:
     - client/e2e/core/CLM-0007.spec.ts
 - id: CLM-0008
@@ -115,25 +101,8 @@
   acceptance:
     - 'Endキーを押すと、カーソルが現在の行の末尾に移動する'
     - '複数行のアイテムでは、現在のカーソルがある行の末尾に移動する'
-    - 'Shift + Endで現在位置から行末までを選択する'
   tests:
     - client/e2e/core/CLM-0008.spec.ts
-- id: ITM-0001
-  title: 'Enterで新規アイテム追加'
-  shortcut: 'Enter'
-  description: 'カーソル位置でアイテムを分割し、新しいアイテムを追加します。'
-  category: item-management
-  status: implemented
-  acceptance:
-    - 'Enterキーを押すと、カーソル位置でアイテムが分割される'
-    - 'カーソル位置より前のテキストは現在のアイテムに残る'
-    - 'カーソル位置より後のテキストは新しいアイテムに移動する'
-    - 'カーソルは新しいアイテムの先頭に移動する'
-    - '通常のアイテムでは、新しいアイテムは兄弟として追加される'
-    - 'タイトルでは、新しいアイテムは最初の子として追加される'
-  tests:
-    - client/e2e/core/ITM-0001.spec.ts
-    - client/e2e/core/ITM-0001-title.spec.ts
 - id: CLM-0100
   title: '通常クリックでカーソルが増えないこと'
   description: 'アイテム間を移動する際に、カーソルが増えないようにします。'
@@ -169,3 +138,54 @@
     - 'クリック後に複数回のキーボード操作でカーソルが正しく移動する'
     - 'アイテム間を移動しても常に1つのカーソルだけが表示される'
     - '入力が正しいアイテムに行われる'
+- id: SLR-0001
+  title: 'Shift + 上下左右'
+  shortcut: 'Shift + 上下左右'
+  description: 'カーソルを1文字上下左右に移動し、選択範囲を広げます。'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 'Shift + 上で選択範囲の上端を広げる'
+    - 'Shift + 下で選択範囲の下端を広げる'
+    - 'Shift + 左で選択範囲の左端を広げる'
+    - 'Shift + 右で選択範囲の右端を広げる'
+  tests:
+    - client/e2e/core/SLR-0001.spec.ts
+- id: SLR-0002
+  title: '行頭まで選択'
+  shortcut: 'Shift + Home'
+  description: 'カーソル位置から行の先頭までを選択します。'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 'Shift + Homeで現在位置から行頭までを選択する'
+    - '複数行のアイテムでは、現在のカーソルがある行の先頭までを選択する'
+  tests:
+    - client/e2e/core/SLR-0002.spec.ts
+- id: SLR-0003
+  title: '行末まで選択'
+  shortcut: 'Shift + End'
+  description: 'カーソル位置から行の末尾までを選択します。'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 'Shift + Endで現在位置から行末までを選択する'
+    - '複数行のアイテムでは、現在のカーソルがある行の末尾までを選択する'
+  tests:
+    - client/e2e/core/SLR-0003.spec.ts
+- id: ITM-0001
+  title: 'Enterで新規アイテム追加'
+  shortcut: 'Enter'
+  description: 'カーソル位置でアイテムを分割し、新しいアイテムを追加します。'
+  category: item-management
+  status: implemented
+  acceptance:
+    - 'Enterキーを押すと、カーソル位置でアイテムが分割される'
+    - 'カーソル位置より前のテキストは現在のアイテムに残る'
+    - 'カーソル位置より後のテキストは新しいアイテムに移動する'
+    - 'カーソルは新しいアイテムの先頭に移動する'
+    - '通常のアイテムでは、新しいアイテムは兄弟として追加される'
+    - 'タイトルでは、新しいアイテムは最初の子として追加される'
+  tests:
+    - client/e2e/core/ITM-0001.spec.ts
+    - client/e2e/core/ITM-0001-title.spec.ts

@@ -117,6 +117,11 @@
 		dispatch('toggle-collapse', { itemId: model.id });
 	}
 
+	/**
+	 * 編集モードを開始し、カーソルを設定する
+	 * @param event マウスイベント（クリック位置からカーソル位置を計算）
+	 * @param initialCursorPosition 初期カーソル位置（指定がある場合）
+	 */
 	function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
 		if (isReadOnly) return;
 		isEditing = true;
@@ -168,7 +173,7 @@
 		editorOverlayStore.setActiveItem(model.id);
 
 		// 新しいカーソルを設定
-		editorOverlayStore.setCursor({
+		const cursorId = editorOverlayStore.setCursor({
 			itemId: model.id,
 			offset: cursorPosition !== undefined ? cursorPosition : 0,
 			isActive: true,
@@ -180,58 +185,52 @@
 	}
 
 
-	// カーソル位置と選択範囲を更新する共通関数
-	function updateSelectionAndCursor(isShiftKey = false) {
+	/**
+	 * カーソル位置と選択範囲を更新する共通関数
+	 */
+	function updateSelectionAndCursor() {
 		if (!hiddenTextareaRef) return;
 
 		const currentStart = hiddenTextareaRef.selectionStart;
 		const currentEnd = hiddenTextareaRef.selectionEnd;
 
+		// 選択範囲がない場合
 		if (currentStart === currentEnd) {
-			lastCursorPosition = currentStart;
-
+			// カーソル位置を設定
 			editorOverlayStore.setCursor({
 				itemId: model.id,
 				offset: currentStart,
 				isActive: true,
 				userId: 'local'
 			});
-			editorOverlayStore.setSelection({
-				startItemId: model.id,
-				endItemId: model.id,
-				startOffset: 0,
-				endOffset: 0,
-				userId: 'local'
-			});
-		} else {
-			let cursorAtStart = false;
-			let isReversed = false;
 
-			if (isShiftKey) {
-				if (currentStart !== lastSelectionStart) {
-					cursorAtStart = true;
-					isReversed = true;
-				} else if (currentEnd !== lastSelectionEnd) {
-					cursorAtStart = false;
-					isReversed = false;
-				} else {
-					cursorAtStart = lastCursorPosition === lastSelectionStart;
-					isReversed = cursorAtStart;
-				}
-			} else {
-				isReversed = hiddenTextareaRef.selectionDirection === 'backward';
-				cursorAtStart = isReversed;
+			// 選択範囲をクリア
+			const selections = Object.values(editorOverlayStore.selections).filter(s =>
+				s.userId === 'local' && s.startItemId === model.id && s.endItemId === model.id
+			);
+
+			if (selections.length > 0) {
+				// 選択範囲を削除
+				editorOverlayStore.selections = Object.fromEntries(
+					Object.entries(editorOverlayStore.selections).filter(([_, s]) =>
+						!(s.userId === 'local' && s.startItemId === model.id && s.endItemId === model.id)
+					)
+				);
 			}
+		} else {
+			// 選択範囲がある場合
+			const isReversed = hiddenTextareaRef.selectionDirection === 'backward';
+			const cursorOffset = isReversed ? currentStart : currentEnd;
 
-			const cursorOffset = cursorAtStart ? currentStart : currentEnd;
-			lastCursorPosition = cursorOffset;
-
+			// カーソル位置を設定
 			editorOverlayStore.setCursor({
 				itemId: model.id,
 				offset: cursorOffset,
 				isActive: true,
 				userId: 'local'
 			});
+
+			// 選択範囲を設定
 			editorOverlayStore.setSelection({
 				startItemId: model.id,
 				endItemId: model.id,
@@ -242,8 +241,11 @@
 			});
 		}
 
+		// ローカル変数を更新
 		lastSelectionStart = currentStart;
 		lastSelectionEnd = currentEnd;
+		lastCursorPosition = currentStart === currentEnd ? currentStart :
+			(hiddenTextareaRef.selectionDirection === 'backward' ? currentStart : currentEnd);
 	}
 
 	// アイテム全体のキーダウンイベントハンドラ
@@ -276,7 +278,10 @@
 		}
 	}
 
-	// クリック時のハンドリング: Alt+Click でマルチカーソル追加、それ以外は編集開始
+	/**
+	 * クリック時のハンドリング: Alt+Click でマルチカーソル追加、それ以外は編集開始
+	 * @param event マウスイベント
+	 */
 	function handleClick(event: MouseEvent) {
 		// Alt+Click: 新しいカーソルを追加
 		if (event.altKey) {
@@ -284,33 +289,33 @@
 			event.stopPropagation();
 			const pos = getClickPosition(event, text.current);
 			const existing = editorOverlayStore.getItemCursorsAndSelections(model.id).cursors;
+
+			// 同じ位置に既にカーソルがある場合は何もしない
 			if (existing.some(c => c.offset === pos && c.userId === 'local')) {
 				return;
 			}
-			editorOverlayStore.addCursor({ itemId: model.id, offset: pos, isActive: true, userId: 'local' });
+
+			// 新しいカーソルを追加
+			editorOverlayStore.addCursor({
+				itemId: model.id,
+				offset: pos,
+				isActive: true,
+				userId: 'local'
+			});
+
 			// アクティブアイテムを設定
 			editorOverlayStore.setActiveItem(model.id);
-			// 編集用隠し textarea にフォーカス
-			hiddenTextareaRef?.focus();
+
+			// グローバルテキストエリアにフォーカス
+			editorOverlayStore.getTextareaRef()?.focus();
 			return;
 		}
+
 		// 通常クリック: 編集開始
 		event.preventDefault();
 		event.stopPropagation();
 
-		// 現在アクティブなアイテムのカーソルをクリア
-		const activeItemId = editorOverlayStore.getActiveItem();
-		if (activeItemId) {
-			editorOverlayStore.clearCursorForItem(activeItemId);
-		}
-
-		// 全てのカーソルをクリア
-		editorOverlayStore.clearCursorAndSelection('local');
-
-		// 現在のアイテムの既存のカーソルをクリア
-		editorOverlayStore.clearCursorForItem(model.id);
-
-		// 編集開始
+		// 編集開始（内部でカーソルクリアと設定を行う）
 		startEditing(event);
 	}
 
