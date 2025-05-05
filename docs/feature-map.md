@@ -17,3 +17,7 @@
 | SLR-0001 | Shift + 上下左右 | — | implemented |
 | SLR-0002 | 行頭まで選択 | — | implemented |
 | SLR-0003 | 行末まで選択 | — | implemented |
+| SLR-0004 | マウスドラッグによる選択 | — | implemented |
+| SLR-0005 | 複数アイテムにまたがる選択 | — | implemented |
+| SLR-0006 | 複数アイテム選択範囲のコピー＆ペースト | — | implemented |
+| SLR-0007 | 複数アイテム選択範囲の削除 | — | implemented |

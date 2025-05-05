@@ -173,6 +173,50 @@
     - '複数行のアイテムでは、現在のカーソルがある行の末尾までを選択する'
   tests:
     - client/e2e/core/SLR-0003.spec.ts
+- id: SLR-0004
+  title: 'マウスドラッグによる選択'
+  description: 'マウスドラッグでテキストを選択します。'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 'マウスドラッグで単一アイテム内のテキストを選択できる'
+    - '選択範囲が視覚的に表示される'
+    - '選択範囲のテキストをコピーできる'
+  tests:
+    - client/e2e/core/SLR-0004.spec.ts
+- id: SLR-0005
+  title: '複数アイテムにまたがる選択'
+  description: '複数アイテムにまたがるテキスト選択機能'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 'Shift+上下キーで複数アイテムにまたがる選択範囲を作成できる'
+    - 'マウスドラッグで複数アイテムにまたがる選択範囲を作成できる'
+    - '複数アイテムにまたがる選択範囲が視覚的に表示される'
+  tests:
+    - client/e2e/core/SLR-0005.spec.ts
+- id: SLR-0006
+  title: '複数アイテム選択範囲のコピー＆ペースト'
+  description: '複数アイテムにまたがる選択範囲のコピー＆ペースト機能'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - '複数アイテムにまたがる選択範囲のテキストをコピーできる'
+    - 'コピーしたテキストを別の場所にペーストできる'
+    - '複数行テキストをペーストすると適切に複数アイテムに分割される'
+  tests:
+    - client/e2e/core/SLR-0006.spec.ts
+- id: SLR-0007
+  title: '複数アイテム選択範囲の削除'
+  description: '複数アイテムにまたがる選択範囲の削除機能'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - '複数アイテムにまたがる選択範囲をBackspace/Deleteキーで削除できる'
+    - '削除後、アイテムが適切に結合される'
+    - 'カーソル位置が適切に更新される'
+  tests:
+    - client/e2e/core/SLR-0007.spec.ts
 - id: ITM-0001
   title: 'Enterで新規アイテム追加'
   shortcut: 'Enter'

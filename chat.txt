@@ -141,3 +141,12 @@ git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/
 
 
 document.querySelectorAll('.cursor')
+
+
+ありがとうございます。
+
+セッションが長くなってきたので、セッションを新しくします。
+
+次のセッションであなたが続きの作業をスムーズに行えるように、最初に書くプロンプトを作成して下さい。
+次のセッションではまだ解決しきれないとしても、現状で認識している課題点を引き継いでください。
+

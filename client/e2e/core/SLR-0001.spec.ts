@@ -53,10 +53,16 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
+        const selectionExists = await page.evaluate(() => {
+            return document.querySelector('.editor-overlay .selection') !== null;
+        });
+        expect(selectionExists).toBe(true);
+
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
-            // 選択範囲のテキストを取得
-            const selection = window.getSelection();
-            return selection ? selection.toString() : '';
+            const store = (window as any).editorOverlayStore;
+            if (!store) return '';
+            return store.getSelectedText();
         });
 
         // 選択範囲が存在することを確認
@@ -67,11 +73,11 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.keyboard.press("Shift+ArrowRight");
         await page.waitForTimeout(300);
 
-        // 選択範囲が広がったことを確認
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const newSelectionText = await page.evaluate(() => {
-            // 選択範囲のテキストを取得
-            const selection = window.getSelection();
-            return selection ? selection.toString() : '';
+            const store = (window as any).editorOverlayStore;
+            if (!store) return '';
+            return store.getSelectedText();
         });
 
         // 選択範囲が広がったことを確認
@@ -97,10 +103,16 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
+        const selectionExists = await page.evaluate(() => {
+            return document.querySelector('.editor-overlay .selection') !== null;
+        });
+        expect(selectionExists).toBe(true);
+
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
-            // 選択範囲のテキストを取得
-            const selection = window.getSelection();
-            return selection ? selection.toString() : '';
+            const store = (window as any).editorOverlayStore;
+            if (!store) return '';
+            return store.getSelectedText();
         });
 
         // 選択範囲が存在することを確認
@@ -111,11 +123,11 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.keyboard.press("Shift+ArrowLeft");
         await page.waitForTimeout(300);
 
-        // 選択範囲が広がったことを確認
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const newSelectionText = await page.evaluate(() => {
-            // 選択範囲のテキストを取得
-            const selection = window.getSelection();
-            return selection ? selection.toString() : '';
+            const store = (window as any).editorOverlayStore;
+            if (!store) return '';
+            return store.getSelectedText();
         });
 
         // 選択範囲が広がったことを確認
@@ -136,10 +148,16 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
+        const selectionExists = await page.evaluate(() => {
+            return document.querySelector('.editor-overlay .selection') !== null;
+        });
+        expect(selectionExists).toBe(true);
+
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
-            // 選択範囲のテキストを取得
-            const selection = window.getSelection();
-            return selection ? selection.toString() : '';
+            const store = (window as any).editorOverlayStore;
+            if (!store) return '';
+            return store.getSelectedText();
         });
 
         // 選択範囲が存在することを確認
@@ -168,10 +186,16 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
+        const selectionExists = await page.evaluate(() => {
+            return document.querySelector('.editor-overlay .selection') !== null;
+        });
+        expect(selectionExists).toBe(true);
+
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
-            // 選択範囲のテキストを取得
-            const selection = window.getSelection();
-            return selection ? selection.toString() : '';
+            const store = (window as any).editorOverlayStore;
+            if (!store) return '';
+            return store.getSelectedText();
         });
 
         // 選択範囲が存在することを確認

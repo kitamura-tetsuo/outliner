@@ -126,8 +126,16 @@ export class EditorOverlayStore {
     }
 
     setSelection(selection: SelectionRange) {
-        const key = selection.startItemId;
+        // 選択範囲のキーを開始アイテムIDと終了アイテムIDの組み合わせにする
+        const key = `${selection.startItemId}-${selection.endItemId}-${selection.userId || 'local'}`;
         this.selections = { ...this.selections, [key]: selection };
+    }
+
+    /**
+     * すべての選択範囲をクリアする
+     */
+    clearSelections() {
+        this.selections = {};
     }
 
     setActiveItem(itemId: string | null) {
@@ -208,6 +216,29 @@ export class EditorOverlayStore {
         this.cursorVisible = true;
         this.animationPaused = false;
         clearTimeout(this.timerId);
+    }
+
+    /**
+     * 強制的に更新を行う
+     * 選択範囲やカーソルの表示が更新されない場合に使用
+     */
+    forceUpdate() {
+        // 選択範囲を一時的にクリアして再設定することで強制的に更新
+        const tempSelections = { ...this.selections };
+        this.selections = {};
+
+        // 少し待ってから再設定
+        setTimeout(() => {
+            this.selections = tempSelections;
+        }, 0);
+
+        // カーソルも同様に更新
+        const tempCursors = { ...this.cursors };
+        this.cursors = {};
+
+        setTimeout(() => {
+            this.cursors = tempCursors;
+        }, 0);
     }
 
     getItemCursorsAndSelections(itemId: string) {
@@ -310,6 +341,184 @@ export class EditorOverlayStore {
     getCursorInstances(): import("../lib/Cursor").Cursor[] {
         return Array.from(this.cursorInstances.values());
     }
+
+    /**
+     * 選択範囲内のテキストを取得する
+     * @param userId ユーザーID（デフォルトは"local"）
+     * @returns 選択範囲内のテキスト。選択範囲がない場合は空文字列を返す
+     */
+    getSelectedText(userId = "local"): string {
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`getSelectedText called for userId=${userId}`);
+        }
+
+        // テスト用に、window.editorOverlayStoreを設定
+        if (typeof window !== 'undefined') {
+            (window as any).editorOverlayStore = this;
+            (window as any).DEBUG_MODE = true;
+        }
+
+        // 指定されたユーザーの選択範囲を取得
+        const selections = Object.values(this.selections).filter(s => s.userId === userId || (!s.userId && userId === 'local'));
+        if (selections.length === 0) {
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`No selections found for userId=${userId}`);
+                console.log(`Available selections:`, this.selections);
+            }
+            return '';
+        }
+
+        let selectedText = '';
+
+        // 各選択範囲を処理
+        for (const sel of selections) {
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Processing selection:`, sel);
+            }
+
+            if (sel.startItemId === sel.endItemId) {
+                // 単一アイテム内の選択範囲
+                const textEl = document.querySelector(`[data-item-id="${sel.startItemId}"] .item-text`) as HTMLElement;
+                if (!textEl) {
+                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                        console.log(`Text element not found for item ${sel.startItemId}`);
+                    }
+                    continue;
+                }
+
+                const text = textEl.textContent || '';
+                const startOffset = Math.min(sel.startOffset, sel.endOffset);
+                const endOffset = Math.max(sel.startOffset, sel.endOffset);
+
+                // 選択範囲が有効かチェック
+                if (startOffset === endOffset) {
+                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                        console.log(`Empty selection for item ${sel.startItemId}`);
+                    }
+                    continue;
+                }
+
+                selectedText += text.substring(startOffset, endOffset);
+
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`Single item selection: "${text.substring(startOffset, endOffset)}"`);
+                }
+            } else {
+                // 複数アイテムにまたがる選択範囲
+                // 全てのアイテムを取得
+                const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
+
+                // アイテムIDとインデックスのマッピングを作成
+                const itemIdToIndex = new Map<string, number>();
+                allItems.forEach((el, index) => {
+                    const id = el.getAttribute('data-item-id');
+                    if (id) itemIdToIndex.set(id, index);
+                });
+
+                // アイテムIDの配列を作成
+                const allItemIds = Array.from(itemIdToIndex.keys());
+
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`All item IDs:`, allItemIds);
+                }
+
+                // 開始アイテムと終了アイテムのインデックスを取得
+                const sIdx = itemIdToIndex.get(sel.startItemId) ?? -1;
+                const eIdx = itemIdToIndex.get(sel.endItemId) ?? -1;
+
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`Start index: ${sIdx}, End index: ${eIdx}`);
+                }
+
+                // インデックスが見つからない場合はスキップ
+                if (sIdx === -1 || eIdx === -1) {
+                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                        console.log(`Invalid indices, skipping selection`);
+                    }
+                    continue;
+                }
+
+                // 選択範囲の方向を考慮
+                const isReversed = sel.isReversed || false;
+
+                // 選択範囲の開始と終了のインデックスを決定
+                const firstIdx = Math.min(sIdx, eIdx);
+                const lastIdx = Math.max(sIdx, eIdx);
+
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`First index: ${firstIdx}, Last index: ${lastIdx}, isReversed: ${isReversed}`);
+                }
+
+                // 選択範囲内の全てのアイテムを取得
+                const itemsInRange = allItems.slice(firstIdx, lastIdx + 1);
+
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`Items in range: ${itemsInRange.length}`);
+                    console.log(`Items in range:`, itemsInRange.map(item => item.getAttribute('data-item-id')));
+                }
+
+                // 選択範囲内の各アイテムを処理
+                for (let i = 0; i < itemsInRange.length; i++) {
+                    const item = itemsInRange[i];
+                    const itemId = item.getAttribute('data-item-id')!;
+                    const textEl = item.querySelector('.item-text') as HTMLElement;
+
+                    if (!textEl) {
+                        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                            console.log(`Text element not found for item ${itemId}`);
+                        }
+                        continue;
+                    }
+
+                    const text = textEl.textContent || '';
+                    const len = text.length;
+
+                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                        console.log(`Item ${i} (${itemId}) text: "${text}"`);
+                    }
+
+                    // オフセット計算
+                    let startOff = 0;
+                    let endOff = len;
+
+                    // 開始アイテム
+                    if (itemId === sel.startItemId) {
+                        startOff = sel.startOffset;
+                    }
+
+                    // 終了アイテム
+                    if (itemId === sel.endItemId) {
+                        endOff = sel.endOffset;
+                    }
+
+                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                        console.log(`Item ${i} (${itemId}) offsets: start=${startOff}, end=${endOff}`);
+                    }
+
+                    // テキストを追加
+                    const itemText = text.substring(startOff, endOff);
+                    selectedText += itemText;
+
+                    // 最後のアイテム以外は改行を追加
+                    if (i < itemsInRange.length - 1) {
+                        selectedText += '\n';
+                    }
+                }
+            }
+        }
+
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Final selected text: "${selectedText}"`);
+        }
+
+        return selectedText;
+    }
 }
 
 export const editorOverlayStore = new EditorOverlayStore();
+
+// テスト用にグローバルスコープに公開
+if (typeof window !== 'undefined') {
+    (window as any).editorOverlayStore = editorOverlayStore;
+}

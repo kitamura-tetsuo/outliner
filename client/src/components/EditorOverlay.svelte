@@ -344,33 +344,193 @@ onDestroy(() => {
 
 // 複数アイテム選択をクリップボードにコピー
 function handleCopy(event: ClipboardEvent) {
-  // startOffsetとendOffsetが等しい範囲は対象外
-  const selections = allSelections.filter(sel => sel.startOffset !== sel.endOffset);
+  // デバッグ情報
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    console.log(`handleCopy called`);
+  }
+
+  // 選択範囲がない場合は何もしない
+  const selections = allSelections.filter(sel =>
+    sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
+  );
+
   if (selections.length === 0) return;
+
+  // ブラウザのデフォルトコピー動作を防止
   event.preventDefault();
-  // アイテムDOM順にテキストを連結
-  const itemEls = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLDivElement[];
-  let copied = '';
-  for (const itemEl of itemEls) {
-    const itemId = itemEl.getAttribute('data-item-id');
-    // 開始または終了アイテムと一致するか
-    const sel = selections.find(s =>
-      s.startItemId === itemId || s.endItemId === itemId
-    );
-    if (sel) {
-      const textEl = itemEl.querySelector('.item-text') as HTMLElement;
-      const text = textEl?.textContent || '';
-      copied += text.substring(sel.startOffset, sel.endOffset) + '\n';
+
+  // EditorOverlayStoreのgetSelectedTextメソッドを使用
+  const store = (window as any).editorOverlayStore;
+  if (!store) {
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+      console.log(`EditorOverlayStore not found`);
+    }
+    return;
+  }
+
+  // 選択範囲のテキストを取得
+  const selectedText = store.getSelectedText('local');
+
+  // デバッグ情報
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    console.log(`Selected text from store: "${selectedText}"`);
+  }
+
+  // 選択範囲のテキストが取得できた場合
+  if (selectedText) {
+    // クリップボードに書き込み
+    if (event.clipboardData) {
+      event.clipboardData.setData('text/plain', selectedText);
+    }
+
+    // テスト・フォーカス保持のため、常に隠しtextareaを更新
+    if (clipboardRef) {
+      clipboardRef.value = selectedText;
+    }
+
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+      console.log(`Clipboard updated with: "${selectedText}"`);
+    }
+    return;
+  }
+
+  // 選択範囲のテキストが取得できなかった場合のフォールバック処理
+
+  // 単一アイテム内の選択範囲の場合
+  if (selections.length === 1 && selections[0].startItemId === selections[0].endItemId) {
+    const sel = selections[0];
+    const textEl = document.querySelector(`[data-item-id="${sel.startItemId}"] .item-text`) as HTMLElement;
+    if (!textEl) return;
+
+    const text = textEl.textContent || '';
+    const startOffset = Math.min(sel.startOffset, sel.endOffset);
+    const endOffset = Math.max(sel.startOffset, sel.endOffset);
+    const selectedText = text.substring(startOffset, endOffset);
+
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+      console.log(`Single item selection: "${selectedText}"`);
+    }
+
+    // クリップボードに書き込み
+    if (event.clipboardData) {
+      event.clipboardData.setData('text/plain', selectedText);
+    }
+
+    // テスト・フォーカス保持のため、常に隠しtextareaを更新
+    if (clipboardRef) {
+      clipboardRef.value = selectedText;
+    }
+    return;
+  }
+
+  // 複数アイテムにまたがる選択範囲の場合
+  // DOM上の順序でアイテムを取得
+  const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
+  const allItemIds = allItems.map(el => el.getAttribute('data-item-id')!);
+
+  let combinedText = '';
+
+  // 各選択範囲を処理
+  for (const sel of selections) {
+    // 単一アイテム内の選択範囲
+    if (sel.startItemId === sel.endItemId) {
+      const textEl = document.querySelector(`[data-item-id="${sel.startItemId}"] .item-text`) as HTMLElement;
+      if (!textEl) continue;
+
+      const text = textEl.textContent || '';
+      const startOffset = Math.min(sel.startOffset, sel.endOffset);
+      const endOffset = Math.max(sel.startOffset, sel.endOffset);
+
+      combinedText += text.substring(startOffset, endOffset);
+      if (combinedText && !combinedText.endsWith('\n')) {
+        combinedText += '\n';
+      }
+      continue;
+    }
+
+    // 複数アイテムにまたがる選択範囲
+    const startIdx = allItemIds.indexOf(sel.startItemId);
+    const endIdx = allItemIds.indexOf(sel.endItemId);
+
+    if (startIdx === -1 || endIdx === -1) {
+      if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Start or end item not found in DOM: startIdx=${startIdx}, endIdx=${endIdx}`);
+      }
+      continue;
+    }
+
+    // 選択範囲の方向を考慮
+    const isReversed = sel.isReversed || false;
+
+    // 開始と終了のインデックスを決定
+    const firstIdx = Math.min(startIdx, endIdx);
+    const lastIdx = Math.max(startIdx, endIdx);
+
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+      console.log(`Multi-item selection: firstIdx=${firstIdx}, lastIdx=${lastIdx}, isReversed=${isReversed}`);
+    }
+
+    // 選択範囲内の各アイテムを処理
+    for (let i = firstIdx; i <= lastIdx; i++) {
+      const item = allItems[i];
+      const itemId = item.getAttribute('data-item-id')!;
+      const textEl = item.querySelector('.item-text') as HTMLElement;
+
+      if (!textEl) continue;
+
+      const text = textEl.textContent || '';
+      const len = text.length;
+
+      // オフセット計算
+      let startOff = 0;
+      let endOff = len;
+
+      // 開始アイテム
+      if (itemId === sel.startItemId) {
+        startOff = sel.startOffset;
+      }
+
+      // 終了アイテム
+      if (itemId === sel.endItemId) {
+        endOff = sel.endOffset;
+      }
+
+      // デバッグ情報
+      if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Item ${i} (${itemId}) offsets: start=${startOff}, end=${endOff}, text="${text.substring(startOff, endOff)}"`);
+      }
+
+      // テキストを追加
+      combinedText += text.substring(startOff, endOff);
+
+      // 最後のアイテム以外は改行を追加
+      if (i < lastIdx) {
+        combinedText += '\n';
+      }
     }
   }
-  if (copied.endsWith('\n')) copied = copied.slice(0, -1);
-  // クリップボードに書き込み
-  if (event.clipboardData) {
-    event.clipboardData.setData('text/plain', copied);
+
+  // 最後の改行を削除（必要な場合）
+  if (combinedText.endsWith('\n')) {
+    combinedText = combinedText.slice(0, -1);
   }
-  // テスト・フォーカス保持のため、常に隠しtextareaを更新しフォーカス
-  if (clipboardRef) {
-    clipboardRef.value = copied;
+
+  // デバッグ情報
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    console.log(`Final combined text: "${combinedText}"`);
+  }
+
+  // クリップボードに書き込み
+  if (event.clipboardData && combinedText) {
+    event.clipboardData.setData('text/plain', combinedText);
+  }
+
+  // テスト・フォーカス保持のため、常に隠しtextareaを更新
+  if (clipboardRef && combinedText) {
+    clipboardRef.value = combinedText;
   }
 }
 
@@ -378,16 +538,73 @@ function handleCopy(event: ClipboardEvent) {
 function handlePaste(event: ClipboardEvent) {
   const text = event.clipboardData?.getData('text/plain') || '';
   if (!text) return;
+
+  // 選択範囲がある場合は、選択範囲を削除してからペースト
+  const selections = allSelections.filter(sel =>
+    sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
+  );
+
+  // デバッグ情報
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    console.log(`handlePaste called with text: "${text}"`);
+    console.log(`Current selections:`, selections);
+  }
+
   // 複数行テキストの場合はマルチアイテムペーストとみなす
   if (text.includes('\n')) {
     event.preventDefault();
     const lines = text.split(/\r?\n/);
+
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+      console.log(`Multi-line paste detected, lines:`, lines);
+      console.log(`Lines count: ${lines.length}`);
+      lines.forEach((line, i) => console.log(`Line ${i}: "${line}"`));
+    }
+
     // 選択中の範囲を通知
     dispatch('paste-multi-item', {
       lines,
-      selections: allSelections.filter(s => s.startOffset !== s.endOffset),
+      selections,
       activeItemId: localActiveItemId,
     });
+    return;
+  }
+
+  // 複数アイテムにまたがる選択範囲がある場合は、選択範囲を削除してからペースト
+  if (selections.some(sel => sel.startItemId !== sel.endItemId)) {
+    event.preventDefault();
+
+    // 単一行テキストを単一行配列として扱う
+    const lines = [text];
+
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+      console.log(`Multi-item selection paste detected, text: "${text}"`);
+    }
+
+    // 選択中の範囲を通知
+    dispatch('paste-multi-item', {
+      lines,
+      selections,
+      activeItemId: localActiveItemId,
+    });
+    return;
+  }
+
+  // 単一アイテム内の選択範囲がある場合も、選択範囲を削除してからペースト
+  if (selections.length > 0) {
+    // 選択範囲がある場合は、ブラウザのデフォルト動作に任せる
+    // Cursor.insertText()メソッドが選択範囲を削除してからテキストを挿入する
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+      console.log(`Single item selection paste, using default browser behavior`);
+    }
+    return;
+  }
+
+  // 選択範囲がない場合は、ブラウザのデフォルト動作に任せる
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    console.log(`No selection paste, using default browser behavior`);
   }
 }
 </script>
@@ -397,7 +614,7 @@ function handlePaste(event: ClipboardEvent) {
     <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
     <!-- 選択範囲のレンダリング -->
     {#each Object.values(store.selections) as sel}
-        {#if sel.startOffset !== sel.endOffset}
+        {#if sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId}
             {#if sel.startItemId === sel.endItemId}
                 <!-- 単一アイテム選択 -->
                 {@const rect = calculateSelectionPixelRange(sel.startItemId, sel.startOffset, sel.endOffset, sel.isReversed)}
@@ -416,34 +633,45 @@ function handlePaste(event: ClipboardEvent) {
                 {@const ids = allEls.map(el => el.getAttribute('data-item-id')!)}
                 {@const sIdx = ids.indexOf(sel.startItemId)}
                 {@const eIdx = ids.indexOf(sel.endItemId)}
-                {@const forward = !sel.isReversed}
-                {@const startIdx = forward ? sIdx : eIdx}
-                {@const endIdx   = forward ? eIdx : sIdx}
-                {#each ids.slice(startIdx, endIdx + 1) as itemId}
-                    {@const textEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement}
-                    {@const len = textEl?.textContent?.length || 0}
-                    <!-- offset 計算: 開始アイテム, 終了アイテム, その他 -->
-                    {@const startOff = itemId === sel.startItemId
-                        ? (forward ? sel.startOffset : 0)
-                        : itemId === sel.endItemId
-                        ? (forward ? 0 : sel.endOffset)
-                        : 0}
-                    {@const endOff = itemId === sel.startItemId
-                        ? (forward ? len : sel.startOffset)
-                        : itemId === sel.endItemId
-                        ? (forward ? sel.endOffset : len)
-                        : len}
-                    {@const rect = calculateSelectionPixelRange(itemId, startOff, endOff, sel.isReversed)}
-                    {#if rect}
-                        {@const isPageTitle = itemId === 'page-title'}
-                        <div
-                            class="selection"
-                            class:page-title-selection={isPageTitle}
-                            class:selection-reversed={sel.isReversed}
-                            style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; background-color:rgba(0, 120, 215, 0.2); pointer-events:none;"
-                        ></div>
-                    {/if}
-                {/each}
+
+                <!-- インデックスが見つからない場合はスキップ -->
+                {#if sIdx >= 0 && eIdx >= 0}
+                    {@const forward = !sel.isReversed}
+                    {@const startIdx = forward ? sIdx : eIdx}
+                    {@const endIdx   = forward ? eIdx : sIdx}
+
+                    <!-- 範囲内の各アイテムに選択範囲を描画 -->
+                    {#each ids.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1) as itemId}
+                        {@const textEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement}
+                        {@const len = textEl?.textContent?.length || 0}
+
+                        <!-- offset 計算: 開始アイテム, 終了アイテム, その他 -->
+                        {@const startOff = itemId === sel.startItemId
+                            ? (forward ? sel.startOffset : 0)
+                            : itemId === sel.endItemId
+                            ? (forward ? 0 : sel.endOffset)
+                            : 0}
+                        {@const endOff = itemId === sel.startItemId
+                            ? (forward ? len : sel.startOffset)
+                            : itemId === sel.endItemId
+                            ? (forward ? sel.endOffset : len)
+                            : len}
+
+                        <!-- 選択範囲が実際に存在する場合のみ描画 -->
+                        {#if startOff !== endOff}
+                            {@const rect = calculateSelectionPixelRange(itemId, startOff, endOff, sel.isReversed)}
+                            {#if rect}
+                                {@const isPageTitle = itemId === 'page-title'}
+                                <div
+                                    class="selection"
+                                    class:page-title-selection={isPageTitle}
+                                    class:selection-reversed={sel.isReversed}
+                                    style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; background-color:rgba(0, 120, 215, 0.2); pointer-events:none;"
+                                ></div>
+                            {/if}
+                        {/if}
+                    {/each}
+                {/if}
             {/if}
         {/if}
     {/each}
@@ -530,7 +758,6 @@ function handlePaste(event: ClipboardEvent) {
 }
 
 .selection {
-    display: none;
     position: absolute;
     background-color: rgba(0, 120, 215, 0.2);
     pointer-events: none !important;

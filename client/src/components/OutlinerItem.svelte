@@ -35,6 +35,10 @@
 	let lastSelectionEnd = $state(0);
 	let lastCursorPosition = $state(0);
 
+	// ドラッグ関連の状態
+	let isDragging = $state(false);
+	let dragStartPosition = $state(0);
+
 	let item = model.original;
 
 	const text = new TreeSubscriber(
@@ -217,6 +221,11 @@
 					)
 				);
 			}
+
+			// グローバルテキストエリアの選択範囲をクリア
+			if (hiddenTextareaRef) {
+				hiddenTextareaRef.setSelectionRange(currentStart, currentStart);
+			}
 		} else {
 			// 選択範囲がある場合
 			const isReversed = hiddenTextareaRef.selectionDirection === 'backward';
@@ -239,6 +248,15 @@
 				userId: 'local',
 				isReversed: isReversed
 			});
+
+			// グローバルテキストエリアの選択範囲を設定
+			if (hiddenTextareaRef) {
+				hiddenTextareaRef.setSelectionRange(
+					currentStart,
+					currentEnd,
+					isReversed ? 'backward' : 'forward'
+				);
+			}
 		}
 
 		// ローカル変数を更新
@@ -317,6 +335,167 @@
 
 		// 編集開始（内部でカーソルクリアと設定を行う）
 		startEditing(event);
+	}
+
+	/**
+	 * マウスダウン時のハンドリング: ドラッグ開始
+	 * @param event マウスイベント
+	 */
+	function handleMouseDown(event: MouseEvent) {
+		// 右クリックは無視
+		if (event.button !== 0) return;
+
+		// Shift+クリックの場合は選択範囲を拡張
+		if (event.shiftKey) {
+			event.preventDefault();
+			event.stopPropagation();
+
+			// 現在のアクティブアイテムを取得
+			const activeItemId = editorOverlayStore.getActiveItem();
+			if (!activeItemId) {
+				// アクティブアイテムがない場合は通常のクリック処理
+				startEditing(event);
+				return;
+			}
+
+			// 現在の選択範囲を取得
+			const existingSelection = Object.values(editorOverlayStore.selections).find(s =>
+				s.userId === 'local'
+			);
+
+			if (!existingSelection) {
+				// 選択範囲がない場合は通常のクリック処理
+				startEditing(event);
+				return;
+			}
+
+			// クリック位置を取得
+			const clickPosition = getClickPosition(event, text.current);
+
+			// 選択範囲を拡張
+			const isReversed = activeItemId === model.id ?
+				clickPosition < existingSelection.startOffset :
+				false;
+
+			editorOverlayStore.setSelection({
+				startItemId: existingSelection.startItemId,
+				startOffset: existingSelection.startOffset,
+				endItemId: model.id,
+				endOffset: clickPosition,
+				userId: 'local',
+				isReversed: isReversed
+			});
+
+			// カーソル位置を更新
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: clickPosition,
+				isActive: true,
+				userId: 'local'
+			});
+
+			// アクティブアイテムを設定
+			editorOverlayStore.setActiveItem(model.id);
+
+			// カーソル点滅を開始
+			editorOverlayStore.startCursorBlink();
+
+			return;
+		}
+
+		// 通常のマウスダウン: ドラッグ開始準備
+		const clickPosition = getClickPosition(event, text.current);
+		dragStartPosition = clickPosition;
+
+		// 編集モードを開始
+		if (!isEditing) {
+			startEditing(event);
+		}
+
+		// ドラッグ開始イベントを発火
+		dispatch('drag-start', {
+			itemId: model.id,
+			offset: clickPosition
+		});
+	}
+
+	/**
+	 * マウスムーブ時のハンドリング: ドラッグ中の選択範囲更新
+	 * @param event マウスイベント
+	 */
+	function handleMouseMove(event: MouseEvent) {
+		// 左ボタンが押されていない場合は無視
+		if (event.buttons !== 1) return;
+
+		// 編集中でない場合は無視
+		if (!isEditing) return;
+
+		// ドラッグ中フラグを設定
+		isDragging = true;
+
+		// 現在のマウス位置を取得
+		const currentPosition = getClickPosition(event, text.current);
+
+		// 選択範囲を更新
+		if (hiddenTextareaRef) {
+			const start = Math.min(dragStartPosition, currentPosition);
+			const end = Math.max(dragStartPosition, currentPosition);
+			const isReversed = currentPosition < dragStartPosition;
+
+			// テキストエリアの選択範囲を設定
+			hiddenTextareaRef.setSelectionRange(
+				start,
+				end,
+				isReversed ? 'backward' : 'forward'
+			);
+
+			// 選択範囲をストアに反映
+			editorOverlayStore.setSelection({
+				startItemId: model.id,
+				startOffset: start,
+				endItemId: model.id,
+				endOffset: end,
+				userId: 'local',
+				isReversed: isReversed
+			});
+
+			// カーソル位置を更新
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: isReversed ? start : end,
+				isActive: true,
+				userId: 'local'
+			});
+
+			// ドラッグイベントを発火
+			dispatch('drag', {
+				itemId: model.id,
+				offset: currentPosition
+			});
+		}
+	}
+
+	/**
+	 * マウスアップ時のハンドリング: ドラッグ終了
+	 */
+	function handleMouseUp() {
+		// ドラッグ中でない場合は無視
+		if (!isDragging) return;
+
+		// ドラッグ終了
+		isDragging = false;
+
+		// 選択範囲を確定
+		updateSelectionAndCursor();
+
+		// カーソル点滅を開始
+		editorOverlayStore.startCursorBlink();
+
+		// ドラッグ終了イベントを発火
+		dispatch('drag-end', {
+			itemId: model.id,
+			offset: lastCursorPosition
+		});
 	}
 
 	onMount(() => {
@@ -677,6 +856,9 @@
 	class:page-title={isPageTitle}
 	style="margin-left: {depth * 20}px"
 	onclick={handleClick}
+	onmousedown={handleMouseDown}
+	onmousemove={handleMouseMove}
+	onmouseup={handleMouseUp}
 	bind:this={itemRef}
 	data-item-id={model.id}
 >

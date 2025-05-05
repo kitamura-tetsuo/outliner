@@ -236,7 +236,7 @@
                 "For Test SvelteKit Server",
                 "For Test Debug Server",
                 "For Test Launch Tinylicious",
-                "For Test Launch test:e2e:ui"
+                // "For Test Launch test:e2e:ui"
             ],
             "stopAll": true,
             "preLaunchTask": "Kill Tinylicious Process"

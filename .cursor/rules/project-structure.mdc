@@ -72,7 +72,8 @@ Fluid クライアントが自動的にドキュメント同期 → データ受
 受信データを Runes ストアに格納 → 各コンポーネントが自動で再描画
 認証操作はクライアントでFirebaseログイン → client/src/auth/UserManager.ts → サーバー (server/auth-service.js) へ API リクエスト → 
 サーバー側でFirebase Admin 連携 → Fluid用JWT 発行 → クライアントでFluidログイン
-マルチカーソル対応であり、ブラウザのデフォルトの選択機能は使用していない。
+マルチカーソル対応にする為、ブラウザのデフォルトの選択機能は使用していない。
+選択領域は EditorOverlayで描画・管理する。
 
 OutlinerItem の位置は座標指定している。
 テスト時に、順序を page.locator(".outliner-item").nth(1) 等で取るのは機能しない。
