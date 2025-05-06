@@ -217,6 +217,43 @@
     - 'カーソル位置が適切に更新される'
   tests:
     - client/e2e/core/SLR-0007.spec.ts
+- id: SLR-0008
+  title: '選択範囲のエッジケース'
+  description: '選択範囲機能のエッジケースのテスト'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - '空のアイテムを含む選択範囲を作成できる'
+    - '長いテキストを含むアイテムの選択範囲を作成できる'
+    - '選択範囲の方向（正方向/逆方向）を切り替えることができる'
+    - '複数アイテムにまたがる選択範囲を削除した後、カーソル位置が適切に更新される'
+  tests:
+    - client/e2e/core/SLR-0008.spec.ts
+- id: SLR-0009
+  title: 'ドラッグ＆ドロップによるテキスト移動'
+  description: '選択範囲のテキストをドラッグ＆ドロップで移動する機能'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - '単一アイテム内の選択範囲をドラッグ＆ドロップで移動できる'
+    - '複数アイテムにまたがる選択範囲をドラッグ＆ドロップで移動できる'
+    - 'アイテム全体をドラッグ＆ドロップで移動できる'
+    - 'ドラッグ中に視覚的なフィードバックが表示される'
+    - 'ドロップ位置に応じて適切にテキストが挿入される'
+  tests:
+    - client/e2e/core/SLR-0009.spec.ts
+- id: SLR-0010
+  title: '選択範囲のフォーマット変更'
+  description: '選択範囲のテキストのフォーマット（太字、斜体、下線、取り消し線、コード）を変更する機能'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - '単一アイテム内の選択範囲のフォーマットを変更できる'
+    - '複数アイテムにまたがる選択範囲のフォーマットを変更できる'
+    - 'Scrapbox構文に準拠したフォーマットが適用される'
+    - 'キーボードショートカットでフォーマットを変更できる'
+  tests:
+    - client/e2e/core/SLR-0010.spec.ts
 - id: ITM-0001
   title: 'Enterで新規アイテム追加'
   shortcut: 'Enter'

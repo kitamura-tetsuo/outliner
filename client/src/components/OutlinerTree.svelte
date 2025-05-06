@@ -922,9 +922,432 @@ function updateDragSelection() {
     // アクティブアイテムを設定
     editorOverlayStore.setActiveItem(dragCurrentItemId);
 }
+
+// アイテムのドロップイベントハンドラ
+function handleItemDrop(event: CustomEvent) {
+    const { targetItemId, position, text, selection, sourceItemId } = event.detail;
+
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(`Drop event: targetItemId=${targetItemId}, position=${position}, sourceItemId=${sourceItemId}`);
+        console.log(`Text: "${text}"`);
+        console.log(`Selection:`, selection);
+    }
+
+    // 選択範囲がある場合は、選択範囲を削除してからドロップ
+    if (selection) {
+        // 選択範囲の削除処理
+        const startItemId = selection.startItemId;
+        const endItemId = selection.endItemId;
+
+        // 単一アイテム内の選択範囲
+        if (startItemId === endItemId) {
+            handleSingleItemSelectionDrop(selection, targetItemId, position, text);
+        } else {
+            // 複数アイテムにまたがる選択範囲
+            handleMultiItemSelectionDrop(selection, targetItemId, position, text);
+        }
+    } else if (sourceItemId) {
+        // 単一アイテム全体のドラッグ＆ドロップ
+        handleItemMoveDrop(sourceItemId, targetItemId, position);
+    } else {
+        // 外部からのテキストドロップ
+        handleExternalTextDrop(targetItemId, position, text);
+    }
+
+    // ドラッグ状態をリセット
+    isDragging = false;
+    dragStartItemId = null;
+    dragCurrentItemId = null;
+}
+
+// アイテムのドラッグ終了イベントハンドラ
+function handleItemDragEnd(event: CustomEvent) {
+    const { itemId } = event.detail;
+
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(`Drag end: itemId=${itemId}`);
+    }
+
+    // ドラッグ状態をリセット
+    isDragging = false;
+    dragStartItemId = null;
+    dragCurrentItemId = null;
+}
+
+// 単一アイテム内の選択範囲をドロップする
+function handleSingleItemSelectionDrop(selection: any, targetItemId: string, position: string, text: string) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`handleSingleItemSelectionDrop called with selection:`, selection);
+        console.log(`Target: itemId=${targetItemId}, position=${position}`);
+    }
+
+    const sourceItemId = selection.startItemId;
+    const startOffset = Math.min(selection.startOffset, selection.endOffset);
+    const endOffset = Math.max(selection.startOffset, selection.endOffset);
+
+    // ソースアイテムとターゲットアイテムのインデックスを取得
+    const sourceIndex = displayItems.current.findIndex(d => d.model.id === sourceItemId);
+    const targetIndex = displayItems.current.findIndex(d => d.model.id === targetItemId);
+
+    if (sourceIndex < 0 || targetIndex < 0) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`);
+        }
+        return;
+    }
+
+    // ソースアイテムのテキストを取得
+    const sourceItem = displayItems.current[sourceIndex].model.original;
+    const sourceText = sourceItem.text || '';
+
+    // ターゲットアイテムのテキストを取得
+    const targetItem = displayItems.current[targetIndex].model.original;
+    const targetText = targetItem.text || '';
+
+    // 選択範囲のテキストを取得
+    const selectedText = sourceText.substring(startOffset, endOffset);
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Selected text: "${selectedText}"`);
+    }
+
+    // ソースアイテムから選択範囲を削除
+    const newSourceText = sourceText.substring(0, startOffset) + sourceText.substring(endOffset);
+    sourceItem.text = newSourceText;
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Updated source text: "${newSourceText}"`);
+    }
+
+    // ターゲットアイテムに選択範囲を挿入
+    if (position === 'top') {
+        // アイテムの先頭に挿入
+        targetItem.text = selectedText + targetText;
+    } else if (position === 'bottom') {
+        // アイテムの末尾に挿入
+        targetItem.text = targetText + selectedText;
+    } else if (position === 'middle') {
+        // アイテムの中央に挿入（カーソル位置を計算）
+        const middleOffset = Math.floor(targetText.length / 2);
+        targetItem.text = targetText.substring(0, middleOffset) + selectedText + targetText.substring(middleOffset);
+    }
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Updated target text: "${targetItem.text}"`);
+    }
+
+    // カーソル位置を更新
+    editorOverlayStore.setCursor({
+        itemId: targetItemId,
+        offset: position === 'top' ? selectedText.length :
+                position === 'bottom' ? targetText.length + selectedText.length :
+                Math.floor(targetText.length / 2) + selectedText.length,
+        isActive: true,
+        userId: 'local'
+    });
+
+    // アクティブアイテムを設定
+    editorOverlayStore.setActiveItem(targetItemId);
+
+    // 選択範囲をクリア
+    editorOverlayStore.clearSelections();
+}
+
+// 複数アイテムにまたがる選択範囲をドロップする
+function handleMultiItemSelectionDrop(selection: any, targetItemId: string, position: string, text: string) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`handleMultiItemSelectionDrop called with selection:`, selection);
+        console.log(`Target: itemId=${targetItemId}, position=${position}`);
+    }
+
+    // 選択範囲の開始と終了アイテムを取得
+    const startItemId = selection.startItemId;
+    const endItemId = selection.endItemId;
+
+    // アイテムのインデックスを取得
+    const startIndex = displayItems.current.findIndex(d => d.model.id === startItemId);
+    const endIndex = displayItems.current.findIndex(d => d.model.id === endItemId);
+    const targetIndex = displayItems.current.findIndex(d => d.model.id === targetItemId);
+
+    if (startIndex < 0 || endIndex < 0 || targetIndex < 0) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Start, end, or target item not found: startIndex=${startIndex}, endIndex=${endIndex}, targetIndex=${targetIndex}`);
+        }
+        return;
+    }
+
+    // 選択範囲の方向を考慮
+    const isReversed = selection.isReversed || false;
+    const actualStartIndex = Math.min(startIndex, endIndex);
+    const actualEndIndex = Math.max(startIndex, endIndex);
+
+    // 選択範囲内のテキストを取得
+    const selectedText = text;
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Selected text: "${selectedText}"`);
+    }
+
+    const items = pageItem.items as Items;
+
+    // 選択範囲内のアイテムを削除（後ろから削除）
+    for (let i = actualEndIndex; i >= actualStartIndex; i--) {
+        if (i === actualStartIndex) {
+            // 開始アイテムは削除せず、テキストを更新
+            const startItem = displayItems.current[i].model.original;
+            startItem.text = '';
+
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Cleared first item text`);
+            }
+        } else {
+            // それ以外のアイテムは削除
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Removing item at index ${i}`);
+            }
+            items.removeAt(i);
+        }
+    }
+
+    // ターゲットアイテムのテキストを取得
+    const targetItem = displayItems.current[targetIndex].model.original;
+    const targetText = targetItem.text || '';
+
+    // 選択範囲のテキストを行に分割
+    const lines = selectedText.split('\n');
+
+    // ターゲットアイテムに選択範囲を挿入
+    if (position === 'top') {
+        // アイテムの先頭に挿入
+        targetItem.text = lines[0] + targetText;
+
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
+        }
+    } else if (position === 'bottom') {
+        // アイテムの末尾に挿入
+        targetItem.text = targetText + lines[0];
+
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
+        }
+    } else if (position === 'middle') {
+        // アイテムの中央に挿入（カーソル位置を計算）
+        const middleOffset = Math.floor(targetText.length / 2);
+        targetItem.text = targetText.substring(0, middleOffset) + lines[0] + targetText.substring(middleOffset);
+
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
+        }
+    }
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Updated target text: "${targetItem.text}"`);
+    }
+
+    // カーソル位置を更新
+    editorOverlayStore.setCursor({
+        itemId: targetItemId,
+        offset: position === 'top' ? lines[0].length :
+                position === 'bottom' ? targetText.length + lines[0].length :
+                Math.floor(targetText.length / 2) + lines[0].length,
+        isActive: true,
+        userId: 'local'
+    });
+
+    // アクティブアイテムを設定
+    editorOverlayStore.setActiveItem(targetItemId);
+
+    // 選択範囲をクリア
+    editorOverlayStore.clearSelections();
+}
+
+// アイテム全体を移動する
+function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position: string) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`handleItemMoveDrop called with sourceItemId=${sourceItemId}, targetItemId=${targetItemId}, position=${position}`);
+    }
+
+    // ソースアイテムとターゲットアイテムのインデックスを取得
+    const sourceIndex = displayItems.current.findIndex(d => d.model.id === sourceItemId);
+    const targetIndex = displayItems.current.findIndex(d => d.model.id === targetItemId);
+
+    if (sourceIndex < 0 || targetIndex < 0) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`);
+        }
+        return;
+    }
+
+    // ソースアイテムとターゲットアイテムが同じ場合は何もしない
+    if (sourceIndex === targetIndex) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Source and target are the same item, no action needed`);
+        }
+        return;
+    }
+
+    const items = pageItem.items as Items;
+
+    // ソースアイテムを取得
+    const sourceItem = displayItems.current[sourceIndex].model.original;
+    const sourceText = sourceItem.text || '';
+
+    // ターゲットの位置を計算
+    let targetPosition = targetIndex;
+    if (position === 'bottom') {
+        targetPosition = targetIndex + 1;
+    }
+
+    // ソースアイテムがターゲットより前にある場合、ターゲット位置を調整
+    if (sourceIndex < targetPosition) {
+        targetPosition--;
+    }
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Moving item from index ${sourceIndex} to index ${targetPosition}`);
+    }
+
+    // アイテムを移動
+    try {
+        // ソースアイテムを削除
+        items.removeAt(sourceIndex);
+
+        // 新しい位置にアイテムを追加
+        items.addNode(currentUser, targetPosition);
+        const newItem = items[targetPosition];
+        if (newItem) {
+            newItem.text = sourceText;
+        }
+
+        // カーソル位置を更新
+        editorOverlayStore.setCursor({
+            itemId: newItem.id,
+            offset: 0,
+            isActive: true,
+            userId: 'local'
+        });
+
+        // アクティブアイテムを設定
+        editorOverlayStore.setActiveItem(newItem.id);
+
+        // 選択範囲をクリア
+        editorOverlayStore.clearSelections();
+    } catch (error) {
+        console.error('Failed to move item:', error);
+    }
+}
+
+// 外部からのテキストをドロップする
+function handleExternalTextDrop(targetItemId: string, position: string, text: string) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`handleExternalTextDrop called with targetItemId=${targetItemId}, position=${position}`);
+        console.log(`Text: "${text}"`);
+    }
+
+    // ターゲットアイテムのインデックスを取得
+    const targetIndex = displayItems.current.findIndex(d => d.model.id === targetItemId);
+
+    if (targetIndex < 0) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Target item not found: targetIndex=${targetIndex}`);
+        }
+        return;
+    }
+
+    // ターゲットアイテムのテキストを取得
+    const targetItem = displayItems.current[targetIndex].model.original;
+    const targetText = targetItem.text || '';
+
+    // テキストを行に分割
+    const lines = text.split('\n');
+
+    const items = pageItem.items as Items;
+
+    // ターゲットアイテムにテキストを挿入
+    if (position === 'top') {
+        // アイテムの先頭に挿入
+        targetItem.text = lines[0] + targetText;
+
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
+        }
+    } else if (position === 'bottom') {
+        // アイテムの末尾に挿入
+        targetItem.text = targetText + lines[0];
+
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
+        }
+    } else if (position === 'middle') {
+        // アイテムの中央に挿入（カーソル位置を計算）
+        const middleOffset = Math.floor(targetText.length / 2);
+        targetItem.text = targetText.substring(0, middleOffset) + lines[0] + targetText.substring(middleOffset);
+
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
+        }
+    }
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Updated target text: "${targetItem.text}"`);
+    }
+
+    // カーソル位置を更新
+    editorOverlayStore.setCursor({
+        itemId: targetItemId,
+        offset: position === 'top' ? lines[0].length :
+                position === 'bottom' ? targetText.length + lines[0].length :
+                Math.floor(targetText.length / 2) + lines[0].length,
+        isActive: true,
+        userId: 'local'
+    });
+
+    // アクティブアイテムを設定
+    editorOverlayStore.setActiveItem(targetItemId);
+
+    // 選択範囲をクリア
+    editorOverlayStore.clearSelections();
+}
 </script>
 
-<div class="outliner" bind:this={containerRef}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<div class="outliner" bind:this={containerRef} onmousedown={handleTreeMouseDown} onmouseup={handleTreeMouseUp} role="application">
     <div class="toolbar">
         <div class="actions">
             {#if !isReadOnly}
@@ -958,6 +1381,8 @@ function updateDragSelection() {
                     on:add-sibling={handleAddSibling}
                     on:drag-start={handleItemDragStart}
                     on:drag={handleItemDrag}
+                    on:drop={handleItemDrop}
+                    on:drag-end={handleItemDragEnd}
                 />
             </div>
         {/each}

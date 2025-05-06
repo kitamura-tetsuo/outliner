@@ -53,3 +53,9 @@ https://chatgpt.com/c/680b317e-e524-800f-944c-8c0c11650fad
 ボックス選択 (矩形選択) - マウス操作 | Shift + Alt を押しながらドラッグ | ドラッグした範囲を矩形選択します（選択範囲内の各行にカーソル）
 ボックス選択 (矩形選択) - キーボード操作 | Ctrl + Shift + Alt + 方向キー | カーソル位置を起点に方向キーで矩形選択を拡大します
 ボックス選択 (ページ単位拡張) | Ctrl + Shift + Alt + PgUp/PgDn | 矩形選択をページ単位で上方向/下方向に拡大します
+
+フォーマットの仕様は下記をクローン。
+但し、テーブルをのぞく。
+https://scrapbox.io/help/Syntax
+実装の参考になるかもしれないサイト。
+https://scrapbox.io/shokai/%E6%AD%A3%E8%A6%8F%E8%A1%A8%E7%8F%BE%E3%81%AE%E5%A4%89%E5%BD%A2%E3%81%A7%E4%BD%9C%E3%82%8B%E7%8B%AC%E8%87%AA%E8%A8%98%E6%B3%95WiKi_Parser

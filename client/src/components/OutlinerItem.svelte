@@ -38,6 +38,9 @@
 	// ドラッグ関連の状態
 	let isDragging = $state(false);
 	let dragStartPosition = $state(0);
+	let isDragSelectionMode = $state(false);
+	let isDropTarget = $state(false);
+	let dropTargetPosition = $state<'top' | 'middle' | 'bottom' | null>(null);
 
 	let item = model.original;
 
@@ -498,6 +501,148 @@
 		});
 	}
 
+	/**
+	 * ドラッグ開始時のハンドリング
+	 * @param event ドラッグイベント
+	 */
+	function handleDragStart(event: DragEvent) {
+		// 選択範囲がある場合は選択範囲をドラッグ
+		const selection = Object.values(editorOverlayStore.selections).find(s =>
+			s.userId === 'local' && (s.startItemId === model.id || s.endItemId === model.id)
+		);
+
+		if (selection) {
+			// 選択範囲のテキストを取得
+			const selectedText = editorOverlayStore.getSelectedText('local');
+
+			// ドラッグデータを設定
+			if (event.dataTransfer) {
+				event.dataTransfer.setData('text/plain', selectedText);
+				event.dataTransfer.setData('application/x-outliner-selection', JSON.stringify(selection));
+				event.dataTransfer.effectAllowed = 'move';
+			}
+
+			// ドラッグ中フラグを設定
+			isDragging = true;
+			isDragSelectionMode = true;
+		} else {
+			// 単一アイテムのテキストをドラッグ
+			if (event.dataTransfer) {
+				event.dataTransfer.setData('text/plain', text.current);
+				event.dataTransfer.setData('application/x-outliner-item', model.id);
+				event.dataTransfer.effectAllowed = 'move';
+			}
+
+			// ドラッグ中フラグを設定
+			isDragging = true;
+			isDragSelectionMode = false;
+		}
+
+		// ドラッグ開始イベントを発火
+		dispatch('drag-start', {
+			itemId: model.id,
+			selection: selection || null
+		});
+	}
+
+	/**
+	 * ドラッグオーバー時のハンドリング
+	 * @param event ドラッグイベント
+	 */
+	function handleDragOver(event: DragEvent) {
+		// デフォルト動作を防止（ドロップを許可）
+		event.preventDefault();
+
+		// ドロップ効果を設定
+		if (event.dataTransfer) {
+			event.dataTransfer.dropEffect = 'move';
+		}
+
+		// ドロップターゲットの位置を計算
+		const rect = displayRef.getBoundingClientRect();
+		const y = event.clientY;
+		const relativeY = y - rect.top;
+		const height = rect.height;
+
+		// 上部、中央、下部のどこにドロップするかを決定
+		if (relativeY < height * 0.3) {
+			dropTargetPosition = 'top';
+		} else if (relativeY > height * 0.7) {
+			dropTargetPosition = 'bottom';
+		} else {
+			dropTargetPosition = 'middle';
+		}
+
+		// ドロップターゲットフラグを設定
+		isDropTarget = true;
+	}
+
+	/**
+	 * ドラッグエンター時のハンドリング
+	 * @param event ドラッグイベント
+	 */
+	function handleDragEnter(event: DragEvent) {
+		// デフォルト動作を防止
+		event.preventDefault();
+
+		// ドロップターゲットフラグを設定
+		isDropTarget = true;
+	}
+
+	/**
+	 * ドラッグリーブ時のハンドリング
+	 */
+	function handleDragLeave() {
+		// ドロップターゲットフラグをクリア
+		isDropTarget = false;
+		dropTargetPosition = null;
+	}
+
+	/**
+	 * ドロップ時のハンドリング
+	 * @param event ドラッグイベント
+	 */
+	function handleDrop(event: DragEvent) {
+		// デフォルト動作を防止
+		event.preventDefault();
+
+		// ドロップターゲットフラグをクリア
+		isDropTarget = false;
+
+		// ドロップデータを取得
+		if (!event.dataTransfer) return;
+
+		const plainText = event.dataTransfer.getData('text/plain');
+		const selectionData = event.dataTransfer.getData('application/x-outliner-selection');
+		const itemId = event.dataTransfer.getData('application/x-outliner-item');
+
+		// ドロップイベントを発火
+		dispatch('drop', {
+			targetItemId: model.id,
+			position: dropTargetPosition,
+			text: plainText,
+			selection: selectionData ? JSON.parse(selectionData) : null,
+			sourceItemId: itemId || null
+		});
+
+		// ドロップ位置をクリア
+		dropTargetPosition = null;
+	}
+
+	/**
+	 * ドラッグ終了時のハンドリング
+	 */
+	function handleDragEnd() {
+		// ドラッグ中フラグをクリア
+		isDragging = false;
+		isDragSelectionMode = false;
+
+		// ドラッグ終了イベントを発火
+		dispatch('drag-end', {
+			itemId: model.id
+		});
+	}
+
 	onMount(() => {
 		// テキストエリアがレンダリングされているか確認
 		if (!hiddenTextareaRef) {
@@ -880,6 +1025,18 @@
 				class="item-content"
 				class:page-title-content={isPageTitle}
 				class:editing={isEditing}
+				class:dragging={isDragging}
+				class:drop-target={isDropTarget}
+				class:drop-target-top={isDropTarget && dropTargetPosition === 'top'}
+				class:drop-target-bottom={isDropTarget && dropTargetPosition === 'bottom'}
+				class:drop-target-middle={isDropTarget && dropTargetPosition === 'middle'}
+				draggable={!isReadOnly}
+				ondragstart={handleDragStart}
+				ondragover={handleDragOver}
+				ondragenter={handleDragEnter}
+				ondragleave={handleDragLeave}
+				ondrop={handleDrop}
+				ondragend={handleDragEnd}
 			>
 					<span class="item-text" class:title-text={isPageTitle}>{text.current}</span>
 				{#if !isPageTitle && model.votes.length > 0}
@@ -1040,5 +1197,44 @@
 
 	.page-title-content {
 		font-size: 1.2em;
+	}
+
+	/* ドラッグ＆ドロップ関連のスタイル */
+	.item-content.dragging {
+		opacity: 0.7;
+		cursor: grabbing;
+	}
+
+	.item-content.drop-target {
+		position: relative;
+	}
+
+	.item-content.drop-target::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: 0;
+		height: 2px;
+		background-color: #0078d7;
+		z-index: 10;
+	}
+
+	.item-content.drop-target-top::before {
+		top: 0;
+	}
+
+	.item-content.drop-target-bottom::before {
+		bottom: 0;
+	}
+
+	.item-content.drop-target-middle::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: 2px;
+		background-color: #0078d7;
+		z-index: 10;
 	}
 </style>

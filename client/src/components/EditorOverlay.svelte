@@ -624,7 +624,8 @@ function handlePaste(event: ClipboardEvent) {
                         class="selection"
                         class:page-title-selection={isPageTitle}
                         class:selection-reversed={sel.isReversed}
-                        style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; background-color:rgba(0, 120, 215, 0.2); pointer-events:none;"
+                        class:selection-forward={!sel.isReversed}
+                        style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none;"
                     ></div>
                 {/if}
             {:else}
@@ -663,10 +664,11 @@ function handlePaste(event: ClipboardEvent) {
                             {#if rect}
                                 {@const isPageTitle = itemId === 'page-title'}
                                 <div
-                                    class="selection"
+                                    class="selection selection-multi-item"
                                     class:page-title-selection={isPageTitle}
-                                    class:selection-reversed={sel.isReversed}
-                                    style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; background-color:rgba(0, 120, 215, 0.2); pointer-events:none;"
+                                    class:selection-reversed={sel.isReversed && itemId === sel.startItemId}
+                                    class:selection-forward={!sel.isReversed && itemId === sel.endItemId}
+                                    style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none;"
                                 ></div>
                             {/if}
                         {/if}
@@ -744,7 +746,8 @@ function handlePaste(event: ClipboardEvent) {
     pointer-events: none !important;
     will-change: transform;
     z-index: 200;
-    border: 1px solid black;  /* デバッグ: カーソル枠 */
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.3); /* カーソルの視認性向上 */
+    border-radius: 1px; /* 微妙に角を丸くする */
 }
 
 .page-title-cursor {
@@ -754,22 +757,34 @@ function handlePaste(event: ClipboardEvent) {
 .cursor.active {
     /* アニメーションはJS制御のvisibilityで同期 */
     pointer-events: none !important;
-    border-color: rgb(0, 0, 0);  /* デバッグ: アクティブカーソル枠 */
 }
 
 .selection {
     position: absolute;
-    background-color: rgba(0, 120, 215, 0.2);
+    background-color: rgba(0, 120, 215, 0.25); /* コントラスト向上 */
     pointer-events: none !important;
     will-change: transform;
+    border-radius: 2px; /* 角を少し丸くして視認性向上 */
+    box-shadow: 0 0 0 1px rgba(0, 120, 215, 0.1); /* 微妙な影を追加 */
+    transition: background-color 0.1s ease; /* スムーズな色変更 */
 }
 
 .selection-reversed {
-    border-left: 1px solid rgba(0, 120, 215, 0.5);
+    border-left: 2px solid rgba(0, 120, 215, 0.7); /* 太く、より目立つ境界線 */
+}
+
+.selection-forward {
+    border-right: 2px solid rgba(0, 120, 215, 0.7); /* 正方向選択の視覚的区別 */
 }
 
 .page-title-selection {
-    background-color: rgba(0, 120, 215, 0.15);
+    background-color: rgba(0, 120, 215, 0.2);
+}
+
+/* 複数アイテム選択時の連続性を強調 */
+.selection-multi-item {
+    border-left: none;
+    border-right: none;
 }
 
 .debug-info {

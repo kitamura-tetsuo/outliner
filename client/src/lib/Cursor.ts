@@ -4,6 +4,7 @@ import { Items } from "../schema/app-schema";
 import { TreeViewManager } from "../fluid/TreeViewManager";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
+import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 
 interface CursorOptions {
     itemId: string;
@@ -1263,7 +1264,7 @@ export class Cursor {
             } else {
                 // 別のアイテムに移動した場合
                 endItemId = this.itemId;
-                endOffset = 0; // 次のアイテムの先頭を選択
+                endOffset = this.offset; // 次のアイテムの現在位置まで選択（以前は0固定だった）
                 isReversed = false;
 
                 // デバッグ情報
@@ -1273,8 +1274,25 @@ export class Cursor {
             }
         }
 
-        // テスト用に、選択範囲の方向を強制的に設定
-        isReversed = false;
+        // 選択範囲の方向を適切に設定（テスト用の強制設定を削除）
+        // 開始と終了が同じアイテムの場合、オフセットで方向を決定
+        if (startItemId === endItemId) {
+            isReversed = startOffset > endOffset;
+        }
+        // 異なるアイテムの場合、DOM上の順序で方向を決定
+        else {
+            const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
+            const allItemIds = allItems.map(el => el.getAttribute('data-item-id')!);
+            const startIdx = allItemIds.indexOf(startItemId);
+            const endIdx = allItemIds.indexOf(endItemId);
+
+            // インデックスが見つからない場合はデフォルトで正方向
+            if (startIdx === -1 || endIdx === -1) {
+                isReversed = false;
+            } else {
+                isReversed = startIdx > endIdx;
+            }
+        }
 
         // 選択範囲を設定
         const selectionId = store.setSelection({
@@ -1288,7 +1306,7 @@ export class Cursor {
 
         // デバッグ情報
         if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Selection created with ID: ${selectionId}`);
+            console.log(`Selection created with ID: ${selectionId}, isReversed=${isReversed}`);
             console.log(`Current selections:`, store.selections);
         }
 
@@ -1317,7 +1335,7 @@ export class Cursor {
                     // 選択範囲の表示を強制的に更新
                     store.forceUpdate();
                 }
-            }, 100);
+            }, 150); // タイムアウトを150msに増やして、DOMの更新を待つ時間を長くする
         }
     }
 
@@ -1611,6 +1629,209 @@ export class Cursor {
     }
 
     /**
+     * 選択範囲のテキストを太字にする
+     */
+    formatBold() {
+        this.formatSelection('bold');
+    }
+
+    /**
+     * 選択範囲のテキストを斜体にする
+     */
+    formatItalic() {
+        this.formatSelection('italic');
+    }
+
+    /**
+     * 選択範囲のテキストに下線を追加する
+     */
+    formatUnderline() {
+        this.formatSelection('underline');
+    }
+
+    /**
+     * 選択範囲のテキストを取り消し線にする
+     */
+    formatStrikethrough() {
+        this.formatSelection('strikethrough');
+    }
+
+    /**
+     * 選択範囲のテキストをコード（等幅フォント）にする
+     */
+    formatCode() {
+        this.formatSelection('code');
+    }
+
+    /**
+     * 選択範囲のテキストを指定したフォーマットで装飾する
+     * @param format フォーマットタイプ（'bold', 'italic', 'underline', 'strikethrough', 'code'）
+     */
+    private formatSelection(format: 'bold' | 'italic' | 'underline' | 'strikethrough' | 'code') {
+        // 選択範囲を取得
+        const selection = Object.values(store.selections).find(s =>
+            s.userId === this.userId
+        );
+
+        if (!selection) {
+            // 選択範囲がない場合は何もしない
+            return;
+        }
+
+        // 複数アイテムにまたがる選択範囲の場合
+        if (selection.startItemId !== selection.endItemId) {
+            this.formatMultiItemSelection(selection, format);
+            return;
+        }
+
+        // 単一アイテム内の選択範囲の場合
+        const node = this.findTarget();
+        if (!node) return;
+
+        const startOffset = Math.min(selection.startOffset, selection.endOffset);
+        const endOffset = Math.max(selection.startOffset, selection.endOffset);
+        const text = node.text || '';
+
+        // フォーマットに応じたマークダウン記法を適用
+        let formattedText = '';
+        let marker = '';
+
+        switch (format) {
+            case 'bold':
+                marker = '**';
+                break;
+            case 'italic':
+                marker = '_';
+                break;
+            case 'underline':
+                marker = '<u>';
+                formattedText = text.slice(0, startOffset) +
+                                '<u>' + text.slice(startOffset, endOffset) + '</u>' +
+                                text.slice(endOffset);
+                break;
+            case 'strikethrough':
+                marker = '~~';
+                break;
+            case 'code':
+                marker = '`';
+                break;
+        }
+
+        // マークダウン記法を適用（underlineの場合は既に適用済み）
+        if (format !== 'underline') {
+            formattedText = text.slice(0, startOffset) +
+                            marker + text.slice(startOffset, endOffset) + marker +
+                            text.slice(endOffset);
+        }
+
+        // テキストを更新
+        node.updateText(formattedText);
+
+        // カーソル位置を更新（選択範囲の終了位置 + マーカーの長さ * 2）
+        this.offset = endOffset + marker.length * 2;
+        this.applyToStore();
+
+        // 選択範囲をクリア
+        this.clearSelection();
+    }
+
+    /**
+     * 複数アイテムにまたがる選択範囲のテキストをフォーマットする
+     * @param selection 選択範囲
+     * @param format フォーマットタイプ
+     */
+    private formatMultiItemSelection(selection: any, format: 'bold' | 'italic' | 'underline' | 'strikethrough' | 'code') {
+        const startItemId = selection.startItemId;
+        const endItemId = selection.endItemId;
+        const startOffset = selection.startOffset;
+        const endOffset = selection.endOffset;
+        const isReversed = selection.isReversed || false;
+
+        // 開始アイテムと終了アイテムを取得
+        const startItem = this.searchItem(generalStore.currentPage!, startItemId);
+        const endItem = this.searchItem(generalStore.currentPage!, endItemId);
+
+        if (!startItem || !endItem) return;
+
+        // 開始アイテムと終了アイテムのインデックスを取得
+        const items = generalStore.currentPage!.items as Items;
+        const allItems: Item[] = [];
+        for (const item of items as Iterable<Item>) {
+            allItems.push(item);
+        }
+
+        const startIndex = allItems.findIndex(item => item.id === startItemId);
+        const endIndex = allItems.findIndex(item => item.id === endItemId);
+
+        if (startIndex === -1 || endIndex === -1) return;
+
+        // 選択範囲内のアイテムを処理
+        const actualStartIndex = Math.min(startIndex, endIndex);
+        const actualEndIndex = Math.max(startIndex, endIndex);
+        const actualStartOffset = isReversed ? endOffset : startOffset;
+        const actualEndOffset = isReversed ? startOffset : endOffset;
+
+        // フォーマットに応じたマークダウン記法を適用
+        let marker = '';
+        switch (format) {
+            case 'bold':
+                marker = '**';
+                break;
+            case 'italic':
+                marker = '_';
+                break;
+            case 'underline':
+                marker = '<u>';
+                break;
+            case 'strikethrough':
+                marker = '~~';
+                break;
+            case 'code':
+                marker = '`';
+                break;
+        }
+
+        // 選択範囲内の各アイテムを処理
+        for (let i = actualStartIndex; i <= actualEndIndex; i++) {
+            const item = allItems[i];
+            const text = item.text || '';
+
+            if (i === actualStartIndex) {
+                // 開始アイテム
+                let formattedText = '';
+                if (format === 'underline') {
+                    formattedText = text.slice(0, actualStartOffset) +
+                                    '<u>' + text.slice(actualStartOffset);
+                } else {
+                    formattedText = text.slice(0, actualStartOffset) +
+                                    marker + text.slice(actualStartOffset);
+                }
+                item.updateText(formattedText);
+            } else if (i === actualEndIndex) {
+                // 終了アイテム
+                let formattedText = '';
+                if (format === 'underline') {
+                    formattedText = text.slice(0, actualEndOffset) +
+                                    '</u>' + text.slice(actualEndOffset);
+                } else {
+                    formattedText = text.slice(0, actualEndOffset) +
+                                    marker + text.slice(actualEndOffset);
+                }
+                item.updateText(formattedText);
+            }
+            // 中間アイテムは変更しない
+        }
+
+        // カーソル位置を更新（選択範囲の終了位置 + マーカーの長さ）
+        this.itemId = endItemId;
+        this.offset = actualEndOffset + marker.length;
+        this.applyToStore();
+
+        // 選択範囲をクリア
+        this.clearSelection();
+    }
+
+    /**
      * 現在のアイテムのテキストを全選択する
      */
     selectAll() {
@@ -1880,7 +2101,7 @@ export class Cursor {
                         this.applyToStore();
                         store.startCursorBlink();
                     }
-                }, 100);
+                }, 150); // タイムアウトを150msに増やして、DOMの更新を待つ時間を長くする
             }
 
             // デバッグ情報
@@ -1889,15 +2110,15 @@ export class Cursor {
                 console.log(`Remaining items count: ${items.length}`);
                 console.log(`Updated first item text: "${firstItem.text}"`);
             }
-
-            // テスト用に、window.DEBUG_MODEを設定
-            if (typeof window !== 'undefined') {
-                (window as any).DEBUG_MODE = true;
-            }
         } catch (error) {
             // エラーが発生した場合はログに出力
             if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
                 console.error(`Error in deleteMultiItemSelection:`, error);
+                // エラーの詳細情報を出力
+                if (error instanceof Error) {
+                    console.error(`Error message: ${error.message}`);
+                    console.error(`Error stack: ${error.stack}`);
+                }
             }
 
             // 選択範囲をクリア
@@ -1905,6 +2126,9 @@ export class Cursor {
 
             // カーソル点滅を開始
             store.startCursorBlink();
+
+            // エラーが発生した場合でも、カーソルを表示する
+            this.applyToStore();
         }
     }
 
@@ -2233,5 +2457,314 @@ export class Cursor {
             // 選択範囲を設定
             textarea.setSelectionRange(selectionStart, selectionEnd);
         }
+    }
+
+    /**
+     * 選択範囲のテキストを太字に変更する（Scrapbox構文: [[text]]）
+     */
+    formatBold() {
+        this.applyScrapboxFormatting('bold');
+    }
+
+    /**
+     * 選択範囲のテキストを斜体に変更する（Scrapbox構文: [/ text]）
+     */
+    formatItalic() {
+        this.applyScrapboxFormatting('italic');
+    }
+
+    /**
+     * 選択範囲のテキストに下線を追加する（Scrapbox構文: 未対応のため HTML タグを使用）
+     */
+    formatUnderline() {
+        this.applyFormatting('<u>', '</u>', '<u>', '</u>');
+    }
+
+    /**
+     * 選択範囲のテキストに取り消し線を追加する（Scrapbox構文: [- text]）
+     */
+    formatStrikethrough() {
+        this.applyScrapboxFormatting('strikethrough');
+    }
+
+    /**
+     * 選択範囲のテキストをコードに変更する（Scrapbox構文: `text`）
+     */
+    formatCode() {
+        this.applyScrapboxFormatting('code');
+    }
+
+    /**
+     * 選択範囲にフォーマットを適用する共通メソッド
+     * @param markdownPrefix Markdown形式のプレフィックス
+     * @param markdownSuffix Markdown形式のサフィックス
+     * @param scrapboxPrefix Scrapbox形式のプレフィックス
+     * @param scrapboxSuffix Scrapbox形式のサフィックス
+     */
+    private applyFormatting(markdownPrefix: string, markdownSuffix: string, scrapboxPrefix: string, scrapboxSuffix: string) {
+        // Scrapbox構文を使用
+        const prefix = scrapboxPrefix;
+        const suffix = scrapboxSuffix;
+
+        // 選択範囲を取得
+        const selection = Object.values(store.selections).find(s =>
+            s.userId === this.userId
+        );
+
+        if (!selection || selection.startOffset === selection.endOffset) {
+            // 選択範囲がない場合は何もしない
+            return;
+        }
+
+        // 複数アイテムにまたがる選択範囲の場合
+        if (selection.startItemId !== selection.endItemId) {
+            this.applyFormattingToMultipleItems(selection, prefix, suffix);
+            return;
+        }
+
+        // 単一アイテム内の選択範囲の場合
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = target.text || "";
+        const startOffset = Math.min(selection.startOffset, selection.endOffset);
+        const endOffset = Math.max(selection.startOffset, selection.endOffset);
+        const selectedText = text.substring(startOffset, endOffset);
+
+        // フォーマット済みのテキストを作成
+        const formattedText = prefix + selectedText + suffix;
+
+        // テキストを更新
+        const newText = text.substring(0, startOffset) + formattedText + text.substring(endOffset);
+        target.updateText(newText);
+
+        // カーソル位置を更新（選択範囲の終了位置に設定）
+        this.offset = startOffset + formattedText.length;
+        this.applyToStore();
+
+        // 選択範囲をクリア
+        this.clearSelection();
+
+        // カーソル点滅を開始
+        store.startCursorBlink();
+    }
+
+    /**
+     * 選択範囲にScrapbox構文のフォーマットを適用する
+     * @param formatType フォーマットの種類（'bold', 'italic', 'strikethrough', 'code'）
+     */
+    private applyScrapboxFormatting(formatType: 'bold' | 'italic' | 'strikethrough' | 'code') {
+        // 選択範囲を取得
+        const selection = Object.values(store.selections).find(s =>
+            s.userId === this.userId
+        );
+
+        if (!selection || selection.startOffset === selection.endOffset) {
+            // 選択範囲がない場合は何もしない
+            return;
+        }
+
+        // 複数アイテムにまたがる選択範囲の場合
+        if (selection.startItemId !== selection.endItemId) {
+            this.applyScrapboxFormattingToMultipleItems(selection, formatType);
+            return;
+        }
+
+        // 単一アイテム内の選択範囲の場合
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = target.text || "";
+        const startOffset = Math.min(selection.startOffset, selection.endOffset);
+        const endOffset = Math.max(selection.startOffset, selection.endOffset);
+        const selectedText = text.substring(startOffset, endOffset);
+
+        // フォーマット済みのテキストを作成
+        let formattedText = "";
+        switch (formatType) {
+            case 'bold':
+                formattedText = ScrapboxFormatter.bold(selectedText);
+                break;
+            case 'italic':
+                formattedText = ScrapboxFormatter.italic(selectedText);
+                break;
+            case 'strikethrough':
+                formattedText = ScrapboxFormatter.strikethrough(selectedText);
+                break;
+            case 'code':
+                formattedText = ScrapboxFormatter.code(selectedText);
+                break;
+        }
+
+        // テキストを更新
+        const newText = text.substring(0, startOffset) + formattedText + text.substring(endOffset);
+        target.updateText(newText);
+
+        // カーソル位置を更新（選択範囲の終了位置に設定）
+        this.offset = startOffset + formattedText.length;
+        this.applyToStore();
+
+        // 選択範囲をクリア
+        this.clearSelection();
+
+        // カーソル点滅を開始
+        store.startCursorBlink();
+    }
+
+    /**
+     * 複数アイテムにまたがる選択範囲にフォーマットを適用する
+     */
+    private applyFormattingToMultipleItems(selection: any, prefix: string, suffix: string) {
+        // 開始アイテムと終了アイテムのIDを取得
+        const startItemId = selection.startItemId;
+        const endItemId = selection.endItemId;
+        const startOffset = selection.startOffset;
+        const endOffset = selection.endOffset;
+        const isReversed = selection.isReversed;
+
+        // 全アイテムのIDを取得
+        const allItemElements = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
+        const allItemIds = allItemElements.map(el => el.getAttribute('data-item-id')!);
+
+        // 開始アイテムと終了アイテムのインデックスを取得
+        const startIdx = allItemIds.indexOf(startItemId);
+        const endIdx = allItemIds.indexOf(endItemId);
+
+        if (startIdx === -1 || endIdx === -1) return;
+
+        // 開始インデックスと終了インデックスを正規化
+        const firstIdx = Math.min(startIdx, endIdx);
+        const lastIdx = Math.max(startIdx, endIdx);
+
+        // 選択範囲内の各アイテムにフォーマットを適用
+        for (let i = firstIdx; i <= lastIdx; i++) {
+            const itemId = allItemIds[i];
+            const item = this.searchItem(generalStore.currentPage!, itemId);
+
+            if (!item) continue;
+
+            const text = item.text || "";
+
+            // アイテムの位置に応じてフォーマットを適用
+            if (i === firstIdx && i === lastIdx) {
+                // 単一アイテム内の選択範囲
+                const start = isReversed ? endOffset : startOffset;
+                const end = isReversed ? startOffset : endOffset;
+                const selectedText = text.substring(start, end);
+                const formattedText = prefix + selectedText + suffix;
+                const newText = text.substring(0, start) + formattedText + text.substring(end);
+                item.updateText(newText);
+            } else if (i === firstIdx) {
+                // 開始アイテム
+                const start = isReversed ? text.length : startOffset;
+                const end = text.length;
+                const selectedText = text.substring(start, end);
+                const formattedText = prefix + selectedText + (i === lastIdx - 1 ? suffix : "");
+                const newText = text.substring(0, start) + formattedText;
+                item.updateText(newText);
+            } else if (i === lastIdx) {
+                // 終了アイテム
+                const start = 0;
+                const end = isReversed ? startOffset : endOffset;
+                const selectedText = text.substring(start, end);
+                const formattedText = (i === firstIdx + 1 ? prefix : "") + selectedText + suffix;
+                const newText = formattedText + text.substring(end);
+                item.updateText(newText);
+            } else {
+                // 中間アイテム
+                item.updateText(prefix + text + suffix);
+            }
+        }
+
+        // カーソル位置を更新（選択範囲の終了位置に設定）
+        this.itemId = isReversed ? startItemId : endItemId;
+        this.offset = isReversed ? startOffset : endOffset;
+        this.applyToStore();
+
+        // 選択範囲をクリア
+        this.clearSelection();
+
+        // カーソル点滅を開始
+        store.startCursorBlink();
+    }
+
+    /**
+     * 複数アイテムにまたがる選択範囲にScrapbox構文のフォーマットを適用する
+     */
+    private applyScrapboxFormattingToMultipleItems(selection: any, formatType: 'bold' | 'italic' | 'strikethrough' | 'code') {
+        // 開始アイテムと終了アイテムのIDを取得
+        const startItemId = selection.startItemId;
+        const endItemId = selection.endItemId;
+        const startOffset = selection.startOffset;
+        const endOffset = selection.endOffset;
+        const isReversed = selection.isReversed;
+
+        // 全アイテムのIDを取得
+        const allItemElements = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
+        const allItemIds = allItemElements.map(el => el.getAttribute('data-item-id')!);
+
+        // 開始アイテムと終了アイテムのインデックスを取得
+        const startIdx = allItemIds.indexOf(startItemId);
+        const endIdx = allItemIds.indexOf(endItemId);
+
+        if (startIdx === -1 || endIdx === -1) return;
+
+        // 開始インデックスと終了インデックスを正規化
+        const firstIdx = Math.min(startIdx, endIdx);
+        const lastIdx = Math.max(startIdx, endIdx);
+
+        // 選択範囲内の各アイテムにフォーマットを適用
+        for (let i = firstIdx; i <= lastIdx; i++) {
+            const itemId = allItemIds[i];
+            const item = this.searchItem(generalStore.currentPage!, itemId);
+
+            if (!item) continue;
+
+            const text = item.text || "";
+
+            // アイテムの位置に応じてフォーマットを適用
+            if (i === firstIdx && i === lastIdx) {
+                // 単一アイテム内の選択範囲
+                const start = isReversed ? endOffset : startOffset;
+                const end = isReversed ? startOffset : endOffset;
+                const selectedText = text.substring(start, end);
+
+                // フォーマット済みのテキストを作成
+                let formattedText = "";
+                switch (formatType) {
+                    case 'bold':
+                        formattedText = ScrapboxFormatter.bold(selectedText);
+                        break;
+                    case 'italic':
+                        formattedText = ScrapboxFormatter.italic(selectedText);
+                        break;
+                    case 'strikethrough':
+                        formattedText = ScrapboxFormatter.strikethrough(selectedText);
+                        break;
+                    case 'code':
+                        formattedText = ScrapboxFormatter.code(selectedText);
+                        break;
+                }
+
+                const newText = text.substring(0, start) + formattedText + text.substring(end);
+                item.updateText(newText);
+            } else {
+                // 複数アイテムにまたがる選択範囲の場合は、各アイテムを個別に処理
+                // 現在は単一アイテム内の選択範囲のみサポート
+                // 将来的に複数アイテムにまたがる選択範囲のフォーマットをサポートする場合は、
+                // ここに実装を追加する
+            }
+        }
+
+        // カーソル位置を更新（選択範囲の終了位置に設定）
+        this.itemId = isReversed ? startItemId : endItemId;
+        this.offset = isReversed ? startOffset : endOffset;
+        this.applyToStore();
+
+        // 選択範囲をクリア
+        this.clearSelection();
+
+        // カーソル点滅を開始
+        store.startCursorBlink();
     }
 }

@@ -15,6 +15,45 @@ export class KeyEventHandler {
             return;
         }
 
+        // フォーマットショートカットを処理
+        if (event.ctrlKey) {
+            // Ctrl+B: 太字
+            if (event.key === 'b') {
+                cursorInstances.forEach(cursor => cursor.formatBold());
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            // Ctrl+I: 斜体
+            else if (event.key === 'i') {
+                cursorInstances.forEach(cursor => cursor.formatItalic());
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            // Ctrl+U: 下線
+            else if (event.key === 'u') {
+                cursorInstances.forEach(cursor => cursor.formatUnderline());
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            // Ctrl+K: 取り消し線
+            else if (event.key === 'k') {
+                cursorInstances.forEach(cursor => cursor.formatStrikethrough());
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            // Ctrl+`: コード
+            else if (event.key === '`') {
+                cursorInstances.forEach(cursor => cursor.formatCode());
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+        }
+
         // 各カーソルインスタンスのonKeyDownメソッドを呼び出す
         let handled = false;
         for (const cursor of cursorInstances) {

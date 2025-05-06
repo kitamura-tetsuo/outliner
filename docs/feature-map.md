@@ -21,3 +21,6 @@
 | SLR-0005 | 複数アイテムにまたがる選択 | — | implemented |
 | SLR-0006 | 複数アイテム選択範囲のコピー＆ペースト | — | implemented |
 | SLR-0007 | 複数アイテム選択範囲の削除 | — | implemented |
+| SLR-0008 | 選択範囲のエッジケース | — | implemented |
+| SLR-0009 | ドラッグ＆ドロップによるテキスト移動 | — | implemented |
+| SLR-0010 | 選択範囲のフォーマット変更 | — | implemented |
