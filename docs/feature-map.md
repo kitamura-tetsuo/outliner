@@ -11,6 +11,7 @@
 | CLM-0100 | 通常クリックでカーソルが増えないこと | — | implemented |
 | CLM-0101 | アイテム間移動時のカーソル重複と入力分散問題 | — | implemented |
 | CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | — | implemented |
+| FMT-0001 | フォーマット表示 | — | drafted |
 | FTR-0012 | User can reset forgotten password | — | implemented |
 | IME-0001 | IMEを使用した日本語入力 | — | implemented |
 | ITM-0001 | Enterで新規アイテム追加 | — | implemented |
