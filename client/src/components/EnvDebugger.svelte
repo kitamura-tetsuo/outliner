@@ -6,6 +6,7 @@ let debugConfig = getDebugConfig();
 let rawEnv = $state({});
 let importMetaEnv: Record<string, string> = {};
 let windowEnv = {};
+let firebaseEmulatorInfo = $state({});
 
 onMount(() => {
     // import.meta.envから環境変数を取得
@@ -18,14 +19,31 @@ onMount(() => {
                 envVars[key] = "***REDACTED***";
             }
             else {
-                envVars[key] = import.meta.env[key] ? "[SET]" : "[NOT SET]";
+                envVars[key] = import.meta.env[key] || "[NOT SET]";
             }
         });
         importMetaEnv = envVars;
     }
 
+    // Firebase Emulator関連の情報を収集
+    if (typeof window !== "undefined") {
+        firebaseEmulatorInfo = {
+            VITE_USE_FIREBASE_EMULATOR: import.meta.env.VITE_USE_FIREBASE_EMULATOR,
+            VITE_FIRESTORE_EMULATOR_HOST: import.meta.env.VITE_FIRESTORE_EMULATOR_HOST,
+            VITE_FIRESTORE_EMULATOR_PORT: import.meta.env.VITE_FIRESTORE_EMULATOR_PORT,
+            VITE_AUTH_EMULATOR_HOST: import.meta.env.VITE_AUTH_EMULATOR_HOST,
+            VITE_AUTH_EMULATOR_PORT: import.meta.env.VITE_AUTH_EMULATOR_PORT,
+            VITE_FIREBASE_EMULATOR_HOST: import.meta.env.VITE_FIREBASE_EMULATOR_HOST,
+            VITE_FIREBASE_AUTH_EMULATOR_HOST: import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST,
+            // LocalStorageからの値も取得
+            localStorage_VITE_USE_FIREBASE_EMULATOR: window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR"),
+            localStorage_VITE_FIRESTORE_EMULATOR_HOST: window.localStorage?.getItem("VITE_FIRESTORE_EMULATOR_HOST"),
+            localStorage_VITE_AUTH_EMULATOR_HOST: window.localStorage?.getItem("VITE_AUTH_EMULATOR_HOST"),
+        };
+    }
+
     // 生の環境変数を設定
-    rawEnv = { importMetaEnv, windowEnv };
+    rawEnv = { importMetaEnv, windowEnv, firebaseEmulatorInfo };
 });
 </script>
 
@@ -38,14 +56,12 @@ onMount(() => {
     </div>
 
     <div class="env-section">
-        <h4>ヘルパー（env オブジェクト）</h4>
-        <pre>
-{JSON.stringify({
-    }, null, 2)}</pre>
+        <h4>Firebase Emulator設定</h4>
+        <pre>{JSON.stringify(firebaseEmulatorInfo, null, 2)}</pre>
     </div>
 
     <div class="env-section">
-        <h4>環境変数の取得方法</h4>
+        <h4>すべての環境変数</h4>
         <pre>{JSON.stringify(rawEnv, null, 2)}</pre>
     </div>
 </div>

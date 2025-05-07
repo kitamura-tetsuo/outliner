@@ -6,16 +6,12 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { setupTestPage } from "../helpers";
 
 test.describe("カーソル重複問題の検証", () => {
     test.beforeEach(async ({ page }) => {
-        // 認証状態を設定
-        await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
-        });
-        await page.goto("http://192.168.50.13:7080/");
-        // アウトライナーアイテムが表示されるのを待機
-        await page.waitForSelector(".outliner-item", { timeout: 10000 });
+        // ヘルパー関数を使用してテストページをセットアップ
+        await setupTestPage(page);
     });
 
     test("修正後：アイテム間をクリックで移動してもカーソルが1つだけ存在する", async ({ page }) => {

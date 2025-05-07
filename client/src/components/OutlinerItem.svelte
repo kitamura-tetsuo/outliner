@@ -5,6 +5,7 @@
 	import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
 	import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 	import { TreeSubscriber } from "../stores/TreeSubscriber";
+	import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
 	interface Props {
 		model: OutlinerItemViewModel;
 		depth?: number;
@@ -61,6 +62,20 @@
 
 	// グローバルテキストエリアの参照
 	let hiddenTextareaRef: HTMLTextAreaElement;
+
+	// アイテムにカーソルがあるかどうかを判定する
+	function hasActiveCursor(): boolean {
+		// 編集中の場合はカーソルがあると判断
+		if (isEditing) return true;
+
+		// アクティブなアイテムかどうか
+		const activeItemId = editorOverlayStore.getActiveItem();
+		if (activeItemId === model.id) return true;
+
+		// カーソルがあるかどうか
+		const cursors = editorOverlayStore.getItemCursorsAndSelections(model.id).cursors;
+		return cursors.length > 0;
+	}
 
 	// グローバル textarea 要素を参照にセット
 	onMount(() => {
@@ -1038,7 +1053,13 @@
 				ondrop={handleDrop}
 				ondragend={handleDragEnd}
 			>
-					<span class="item-text" class:title-text={isPageTitle}>{text.current}</span>
+				{#if hasActiveCursor()}
+					<!-- フォーカスがある場合：制御文字も表示し、フォーマットも適用 -->
+					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>{@html ScrapboxFormatter.formatWithControlChars(text.current)}</span>
+				{:else}
+					<!-- フォーカスがない場合：制御文字は非表示、フォーマットは適用 -->
+					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>{@html ScrapboxFormatter.formatToHtml(text.current)}</span>
+				{/if}
 				{#if !isPageTitle && model.votes.length > 0}
 					<span class="vote-count">{model.votes.length}</span>
 				{/if}
@@ -1197,6 +1218,54 @@
 
 	.page-title-content {
 		font-size: 1.2em;
+	}
+
+	/* フォーマットされたテキストのスタイル */
+	.item-text.formatted strong {
+		font-weight: bold;
+	}
+
+	.item-text.formatted em {
+		font-style: italic;
+	}
+
+	.item-text.formatted s {
+		text-decoration: line-through;
+	}
+
+	.item-text.formatted code {
+		font-family: monospace;
+		background-color: #f5f5f5;
+		padding: 0 4px;
+		border-radius: 3px;
+	}
+
+	/* リンクのスタイル */
+	.item-text.formatted a {
+		color: #0078d7;
+		text-decoration: none;
+	}
+
+	.item-text.formatted a:hover {
+		text-decoration: underline;
+	}
+
+
+
+	/* 引用のスタイル */
+	.item-text.formatted blockquote {
+		margin: 0;
+		padding-left: 10px;
+		border-left: 3px solid #ccc;
+		color: #666;
+		font-style: italic;
+	}
+
+	/* 制御文字のスタイル */
+	.control-char {
+		color: #aaa;
+		font-size: 0.9em;
+		opacity: 0.7;
 	}
 
 	/* ドラッグ＆ドロップ関連のスタイル */

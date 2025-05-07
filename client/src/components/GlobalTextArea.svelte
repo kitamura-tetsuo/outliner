@@ -44,6 +44,16 @@ function handleCompositionEnd(event: CompositionEvent) {
 function handleCompositionUpdate(event: CompositionEvent) {
     KeyEventHandler.handleCompositionUpdate(event);
 }
+
+// コピーイベントを KeyEventHandler へ委譲
+function handleCopy(event: ClipboardEvent) {
+    KeyEventHandler.handleCopy(event);
+}
+
+// ペーストイベントを KeyEventHandler へ委譲
+function handlePaste(event: ClipboardEvent) {
+    KeyEventHandler.handlePaste(event);
+}
 </script>
 
 <textarea
@@ -53,6 +63,8 @@ function handleCompositionUpdate(event: CompositionEvent) {
     oninput={handleInput}
     oncompositionupdate={handleCompositionUpdate}
     oncompositionend={handleCompositionEnd}
+    oncopy={handleCopy}
+    onpaste={handlePaste}
 ></textarea>
 
 <style>

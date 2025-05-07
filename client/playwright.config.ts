@@ -9,12 +9,22 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// テスト環境の設定
+// 環境変数TEST_ENVが'localhost'の場合はlocalhost環境、それ以外はデフォルト環境
+const isLocalhostEnv = process.env.TEST_ENV === 'localhost';
+
 // テスト用ポートを定義 - これを明示的に指定
-const TEST_PORT = "7080";
-// Tinylicious サーバーのポートを定義（PORT環境変数で設定されます）
-const TINYLICIOUS_PORT = "7082";
+const TEST_PORT = isLocalhostEnv ? "7090" : "7080";
+// Tinylicious サーバーのポートを定義
+const TINYLICIOUS_PORT = isLocalhostEnv ? "7092" : "7082";
 // ホストを定義
-const VITE_HOST = "localhost";
+const VITE_HOST = isLocalhostEnv ? "localhost" : "192.168.50.13";
+// 環境設定ファイルを定義
+const ENV_FILE = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
+
+console.log(`Using test environment: ${isLocalhostEnv ? 'localhost' : 'default'}`);
+console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
+console.log(`Environment file: ${ENV_FILE}`);
 
 export default defineConfig({
     testDir: "./e2e",
@@ -31,11 +41,15 @@ export default defineConfig({
     globalTeardown: path.join(__dirname, "./e2e/global-teardown.ts"),
 
     use: {
-        // CI環境ではlocalhostを使用
-        baseURL: `http://${process.env.CI ? "localhost" : (process.env.VITE_HOST || VITE_HOST)}:${
-            process.env.TEST_PORT || TEST_PORT
-        }`,
+        // Clipboard APIを有効にするためにlocalhostを使用
+        baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
         trace: "on-first-retry",
+        // クリップボードへのアクセスを許可
+        permissions: ['clipboard-read', 'clipboard-write'],
+        // ブラウザの起動オプションを設定
+        launchOptions: {
+            args: ['--allow-file-access-from-files', '--enable-clipboard-read', '--enable-clipboard-write']
+        },
     },
 
     projects: [

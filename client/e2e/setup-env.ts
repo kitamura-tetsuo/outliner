@@ -8,24 +8,30 @@ if (!process.env.CI) {
     // ES Modulesで__dirnameの代わりに現在のファイルのディレクトリを取得
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    // .env.testファイルのパス
-    const envTestPath = path.join(__dirname, "..", ".env.test");
+
+    // 環境変数に応じて適切な.envファイルを選択
+    const isLocalhostEnv = process.env.TEST_ENV === 'localhost';
+    const envFileName = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
+    const envFilePath = path.join(__dirname, "..", envFileName);
+
+    console.log(`Using test environment: ${isLocalhostEnv ? 'localhost' : 'default'}`);
+    console.log(`Loading environment from: ${envFilePath}`);
 
     // ファイルが存在するか確認
-    if (fs.existsSync(envTestPath)) {
-        console.log("Loading test environment from:", envTestPath);
+    if (fs.existsSync(envFilePath)) {
+        console.log(`Loading test environment from: ${envFilePath}`);
         // 環境変数を読み込む
-        const result = dotenv.config({ path: envTestPath, override: true });
+        const result = dotenv.config({ path: envFilePath, override: true });
 
         if (result.error) {
-            console.error("Error loading .env.test file:", result.error);
+            console.error(`Error loading ${envFileName} file:`, result.error);
         }
         else {
-            console.log("Successfully loaded test environment variables");
+            console.log(`Successfully loaded test environment variables from ${envFileName}`);
         }
     }
     else {
-        console.warn(".env.test file not found at:", envTestPath);
+        console.warn(`${envFileName} file not found at: ${envFilePath}`);
     }
 }
 

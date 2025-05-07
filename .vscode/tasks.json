@@ -59,6 +59,34 @@
             "problemMatcher": []
         },
         {
+            "label": "Run E2E Tests (Localhost)",
+            "type": "shell",
+            "command": "cd client && npm run test:e2e:localhost",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run E2E Tests with Debug (Localhost)",
+            "type": "shell",
+            "command": "cd client && npm run test:e2e:localhost:debug",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run E2E Tests with UI (Localhost)",
+            "type": "shell",
+            "command": "cd client && npm run test:e2e:localhost:ui",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run E2E Tests with xvfb (Localhost)",
+            "type": "shell",
+            "command": "cd client && npm run test:e2e:localhost:xvfb",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
             "label": "Kill Tinylicious Process",
             "type": "shell",
             "command": "node ${workspaceFolder}/scripts/kill-tinylicious.js",
@@ -70,6 +98,30 @@
             "type": "shell",
             "command": "Remove-Item -Recurse -Force ${workspaceFolder}\\.vscode\\chrome-debug-profile"
             // Windows の場合は PowerShell: "Remove-Item -Recurse -Force ${workspaceFolder}\\.vscode\\chrome-debug-profile"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Run Localhost E2E Tests",
+            "dependsOn": [
+                "Run E2E Tests (Localhost)"
+            ],
+            "dependsOrder": "sequence",
+            "group": {
+                "kind": "test",
+                "isDefault": false
+            }
+        },
+        {
+            "name": "Run Localhost E2E Tests with UI",
+            "dependsOn": [
+                "Run E2E Tests with UI (Localhost)"
+            ],
+            "dependsOrder": "sequence",
+            "group": {
+                "kind": "test",
+                "isDefault": false
+            }
         }
     ]
 }

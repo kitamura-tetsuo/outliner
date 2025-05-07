@@ -1,21 +1,13 @@
 /** @feature CLM-0100
- *  Title   : 通常クリックでカーソルが増えないこと
+ *  Title   : カーソル管理の基本機能
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { test, expect } from '@playwright/test';
+import { setupTestPage, waitForCursorVisible } from '../helpers';
 
 test.describe("カーソル管理テスト", () => {
     test.beforeEach(async ({ page }) => {
-        // 認証状態を設定
-        await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
-        });
-        await page.goto("/");
-        // アウトライナーアイテムが表示されるのを待機
-        await page.waitForSelector(".outliner-item", { timeout: 10000 });
+        await setupTestPage(page);
     });
 
     test("通常クリックでカーソル数が増えない", async ({ page }) => {

@@ -5,22 +5,23 @@
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against localhost",
-            "url": "http://192.168.50.13:7070",
+            "url": "http://localhost:7090",
             "webRoot": "${workspaceFolder}/client",
             "sourceMaps": true,
             "sourceMapPathOverrides": {
                 "webpack:///src/*": "${webRoot}/src/*",
-                "http://192.168.50.13:7070/src/*": "${webRoot}/src/*",
-                "http://192.168.50.13:7080/src/*": "${webRoot}/src/*",
+                "http:/localhost:7070/src/*": "${webRoot}/src/*",
+                "http:/localhost:7090/src/*": "${webRoot}/src/*",
                 "webpack:///./*": "${webRoot}/*",
                 "/./*": "${webRoot}/*",
                 "/*": "*",
                 "/src/*": "${webRoot}/src/*",
-                "192.168.50.13꞉7070/src/*": "${webRoot}/src/*",
-                "192.168.50.13꞉7080/src/*": "${webRoot}/src/*"
+                "localhost꞉7070/src/*": "${webRoot}/src/*",
+                "localhost꞉7090/src/*": "${webRoot}/src/*"
             },
             "skipFiles": [
                 "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
                 "**/node_modules/**"
             ],
             "port": 9876
@@ -45,6 +46,7 @@
             },
             "skipFiles": [
                 "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
                 "**/node_modules/**"
             ],
             "port": 9876,
@@ -70,6 +72,7 @@
             },
             "skipFiles": [
                 "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
                 "**/node_modules/**"
             ],
             // "port": 9877,
@@ -207,6 +210,83 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "For Localhost SvelteKit Server",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "npx dotenv-cli -e .env.localhost -- npm run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/localhost-svelte-kit.log"
+            ],
+            "localRoot": "${workspaceFolder}/client",
+            "env": {
+                "PORT": "7090"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "restart": true
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "For Localhost Debug Server",
+            "runtimeExecutable": "bash",
+            "localRoot": "${workspaceFolder}/server",
+            "runtimeArgs": [
+                "-c",
+                "cd ${workspaceFolder}/server && npx dotenv-cli -e .env.localhost -- npm run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/localhost-auth-service-tee.log"
+            ],
+            "env": {
+                "PORT": "7091"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "restart": true
+        },
+        {
+            "name": "For Localhost Launch Tinylicious",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/client",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "tinylicious"
+            ],
+            "env": {
+                "PORT": "7092"
+            },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost test server",
+            "url": "http://localhost:7090",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http://localhost:7090/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "localhost꞉7090/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
+                "**/node_modules/**"
+            ],
+            "port": 9878,
+            "urlFilter": "*localhost:7090*"
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Debug Firestore Sequential",
             "program": "${workspaceFolder}/server/firestore-sequential.js",
             "skipFiles": [
@@ -237,6 +317,16 @@
                 "For Test Debug Server",
                 "For Test Launch Tinylicious",
                 // "For Test Launch test:e2e:ui"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "Kill Tinylicious Process"
+        },
+        {
+            "name": "Localhost Test Servers",
+            "configurations": [
+                "For Localhost SvelteKit Server",
+                "For Localhost Debug Server",
+                "For Localhost Launch Tinylicious"
             ],
             "stopAll": true,
             "preLaunchTask": "Kill Tinylicious Process"

@@ -52,6 +52,18 @@ export class KeyEventHandler {
                 event.stopPropagation();
                 return;
             }
+            // Ctrl+C: コピー
+            else if (event.key === 'c') {
+                // コピーイベントはデフォルトの動作を許可
+                // handleCopyメソッドがClipboardEventを処理
+                return;
+            }
+            // Ctrl+V: ペースト
+            else if (event.key === 'v') {
+                // ペーストイベントはデフォルトの動作を許可
+                // handlePasteメソッドがClipboardEventを処理
+                return;
+            }
         }
 
         // 各カーソルインスタンスのonKeyDownメソッドを呼び出す
@@ -124,5 +136,105 @@ export class KeyEventHandler {
             cursorInstances.forEach(cursor => cursor.insertText(data));
         }
         KeyEventHandler.lastCompositionLength = 0;
+    }
+
+    /**
+     * コピーイベントを処理する
+     * @param event ClipboardEvent
+     */
+    static handleCopy(event: ClipboardEvent) {
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`KeyEventHandler.handleCopy called`);
+        }
+
+        // 選択範囲がない場合は何もしない
+        const selections = Object.values(store.selections).filter(sel =>
+            sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
+        );
+
+        if (selections.length === 0) return;
+
+        // ブラウザのデフォルトコピー動作を防止
+        event.preventDefault();
+
+        // 選択範囲のテキストを取得
+        const selectedText = store.getSelectedText('local');
+
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Selected text from store: "${selectedText}"`);
+        }
+
+        // 選択範囲のテキストが取得できた場合
+        if (selectedText) {
+            // クリップボードに書き込み
+            if (event.clipboardData) {
+                event.clipboardData.setData('text/plain', selectedText);
+            }
+
+            // グローバル変数に保存（テスト用）
+            if (typeof window !== 'undefined') {
+                (window as any).lastCopiedText = selectedText;
+            }
+
+            // デバッグ情報
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Clipboard updated with: "${selectedText}"`);
+            }
+            return;
+        }
+    }
+
+    /**
+     * ペーストイベントを処理する
+     * @param event ClipboardEvent
+     */
+    static handlePaste(event: ClipboardEvent) {
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`KeyEventHandler.handlePaste called`);
+        }
+
+        const text = event.clipboardData?.getData('text/plain') || '';
+        if (!text) return;
+
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Pasting text: "${text}"`);
+        }
+
+        // ブラウザのデフォルトペースト動作を防止
+        event.preventDefault();
+
+        // グローバル変数に保存（テスト用）
+        if (typeof window !== 'undefined') {
+            (window as any).lastPastedText = text;
+        }
+
+        // 選択範囲がある場合は、選択範囲を削除してからペースト
+        const selections = Object.values(store.selections).filter(sel =>
+            sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
+        );
+
+        // 複数行テキストの場合はマルチアイテムペーストとみなす
+        if (text.includes('\n')) {
+            const lines = text.split(/\r?\n/);
+
+            // デバッグ情報
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Multi-line paste detected, lines:`, lines);
+            }
+
+            // 複数行テキストの処理（現在は単純に最初の行のみを挿入）
+            const firstLine = lines[0] || '';
+            const cursorInstances = store.getCursorInstances();
+            cursorInstances.forEach(cursor => cursor.insertText(firstLine));
+            return;
+        }
+
+        // 単一行テキストの場合は、カーソル位置に挿入
+        const cursorInstances = store.getCursorInstances();
+        cursorInstances.forEach(cursor => cursor.insertText(text));
     }
 }

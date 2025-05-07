@@ -81,7 +81,7 @@ try {
         // ホスト名が指定されていない場合、もしくは 'firebase-emulator', 'localhost', '127.0.0.1' の場合は
         // 実際のIPアドレスを使用
 
-        const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "6480", 10);
+        const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "58080", 10);
 
         // エミュレーター接続情報をログに出力
         logger.info(`Connecting to Firestore emulator at ${emulatorHost}:${emulatorPort}`);
