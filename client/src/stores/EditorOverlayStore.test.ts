@@ -47,11 +47,27 @@ describe("EditorOverlayStore", () => {
     });
 
     it("setSelection と clearCursorAndSelection が動作する", () => {
-        store.setSelection({ startItemId: "Y", startOffset: 0, endItemId: "Y", endOffset: 5 });
-        expect(store.selections["Y"]).toMatchObject({ startOffset: 0, endOffset: 5 });
+        // setSelectionメソッドは選択範囲のキーを`${selection.startItemId}-${selection.endItemId}-${selection.userId || 'local'}`の形式で生成する
+        const selection = { startItemId: "Y", startOffset: 0, endItemId: "Y", endOffset: 5 };
+        store.setSelection(selection);
+
+        // 正しいキーで選択範囲を取得
+        const key = `${selection.startItemId}-${selection.endItemId}-local`;
+        expect(store.selections[key]).toMatchObject({ startOffset: 0, endOffset: 5 });
+
+        // clearCursorAndSelectionはuserIdをキーにremovalするので、アイテムIDを渡しても選択範囲は削除されない
         store.clearCursorAndSelection("Y");
-        // clearCursorAndSelection は userId をキーに removal するので、既存の selections はそのまま
-        expect(store.selections["Y"]).toBeDefined();
+        expect(store.selections[key]).toBeDefined();
+
+        // clearCursorAndSelectionの第2引数がfalseの場合は選択範囲は削除されない
+        store.clearCursorAndSelection("local", false);
+        expect(store.selections[key]).toBeDefined();
+
+        // clearSelectionForUserメソッドを使用して選択範囲を削除
+        store.clearSelectionForUser("local");
+
+        // 選択範囲が削除されたことを確認
+        expect(Object.keys(store.selections).length).toBe(0);
     });
 
     it("startCursorBlink と stopCursorBlink が cursorVisible をトグルする", () => {

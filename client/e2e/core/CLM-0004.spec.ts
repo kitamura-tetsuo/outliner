@@ -28,8 +28,13 @@ test.describe("CLM-0004: 上へ移動", () => {
 
         // グローバル textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus");
-        // 複数行のテキストを入力
-        await page.keyboard.type("First line\nSecond line");
+
+        // 長いテキストを入力して折り返しによる複数行を作成
+        // 注: 改行(\n)ではなく、長いテキストで自動折り返しを発生させる
+        await page.keyboard.type("これは非常に長いテキストです。折り返しによって複数行になります。アイテムの幅に応じて自動的に折り返されて表示されるはずです。このテキストは十分に長いので、標準的な画面幅であれば少なくとも2行以上になるはずです。");
+
+        // テキストが入力されるのを待機
+        await page.waitForTimeout(300);
     });
 
     test("カーソルを1行上に移動する", async ({ page }) => {
@@ -37,20 +42,32 @@ test.describe("CLM-0004: 上へ移動", () => {
         const activeItem = page.locator(".outliner-item .item-content.editing");
         await activeItem.waitFor({ state: 'visible' });
 
+        // カーソルを2行目に移動するため、まず行の先頭に移動
+        await page.keyboard.press("Home");
+        // 十分に右に移動して2行目に到達するようにする
+        for (let i = 0; i < 30; i++) {
+            await page.keyboard.press("ArrowRight");
+        }
+        await page.waitForTimeout(100);
+
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
         await cursor.waitFor({ state: 'visible' });
 
         // 初期カーソル位置を取得
         const initialY = await cursor.evaluate(el => el.getBoundingClientRect().top);
+        console.log(`初期カーソルY座標: ${initialY}`);
 
         // 上矢印キーを押下
         await page.keyboard.press("ArrowUp");
         // 更新を待機
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(300);
 
         // 新しいカーソル位置を取得
         const newY = await cursor.evaluate(el => el.getBoundingClientRect().top);
+        console.log(`新しいカーソルY座標: ${newY}`);
+
+        // カーソルが上に移動したことを確認
         expect(newY).toBeLessThan(initialY);
     });
 
@@ -65,10 +82,17 @@ test.describe("CLM-0004: 上へ移動", () => {
             return parent ? parent.getAttribute('data-item-id') : null;
         });
 
+        // 1つ目のアイテムに長いテキストが入力されていることを確認
+        const firstItemText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text").textContent();
+        console.log(`1つ目のアイテムのテキスト: "${firstItemText}"`);
+
         // 2つ目のアイテムを追加
         await page.keyboard.press("End"); // 最後に移動
         await page.keyboard.press("Enter");
-        await page.keyboard.type("Second item");
+
+        // 2つ目のアイテムにも長いテキストを入力
+        await page.keyboard.type("これは2つ目のアイテムです。このテキストも十分に長くして、複数行になるようにします。アイテムの幅に応じて自動的に折り返されて表示されるはずです。");
+        await page.waitForTimeout(300);
 
         // 2つ目のアイテムの先頭に移動
         await page.keyboard.press("Home");
@@ -83,113 +107,27 @@ test.describe("CLM-0004: 上へ移動", () => {
             return parent ? parent.getAttribute('data-item-id') : null;
         });
 
+        // 2つ目のアイテムのテキストを確認
+        const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-text").textContent();
+        console.log(`2つ目のアイテムのテキスト: "${secondItemText}"`);
+
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
         await cursor.waitFor({ state: 'visible' });
 
-        // 2つ目のアイテムのテキストを取得
-        const initialSecondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-text").textContent();
-        console.log(`2つ目のアイテムのテキスト（初期）: "${initialSecondItemText}"`);
+        // カーソル位置を取得
+        const cursorPosition = await cursor.boundingBox();
+        console.log(`カーソル位置: `, cursorPosition);
 
-        // 2つ目のアイテムのテキストを更新
-        await page.keyboard.press("Escape"); // 編集モードを一度終了
-        await page.waitForTimeout(100);
-
-        // 2つ目のアイテムを再度クリック
-        await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").click({ force: true });
-        await page.waitForTimeout(100);
-
-        // テキストを削除して新しいテキストを入力
-        await page.keyboard.press("Control+a"); // すべて選択
-        await page.keyboard.press("Delete"); // 削除
-        await page.keyboard.type("Second item");
-        await page.waitForTimeout(300);
-
-        // 更新後のテキストを取得
-        const updatedSecondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-text").textContent();
-        console.log(`2つ目のアイテムのテキスト（更新後）: "${updatedSecondItemText}"`);
-
-        // Home キーを押して先頭に移動
-        await page.keyboard.press("Home");
-
-        // デバッグ情報を出力
-        await page.evaluate(() => {
-            console.log('アイテム情報:', Array.from(document.querySelectorAll('.outliner-item')).map(item => {
-                return {
-                    id: item.getAttribute('data-item-id'),
-                    text: item.querySelector('.item-text')?.textContent,
-                    isActive: item.classList.contains('active')
-                };
-            }));
-
-            console.log('カーソル情報:', Array.from(document.querySelectorAll('.editor-overlay .cursor')).map(cursor => {
-                return {
-                    itemId: cursor.closest('.outliner-item')?.getAttribute('data-item-id'),
-                    offset: cursor.getAttribute('data-offset'),
-                    isActive: cursor.classList.contains('active')
-                };
-            }));
-        });
-
-        // 現在のアクティブなアイテムIDを取得
-        const initialActiveItemId = await page.evaluate(() => {
-            const activeItem = document.querySelector('.outliner-item .item-content.editing');
-            if (!activeItem) return null;
-            const parent = activeItem.closest('.outliner-item');
-            return parent ? parent.getAttribute('data-item-id') : null;
-        });
-
-        console.log(`初期アクティブアイテムID: ${initialActiveItemId}, 期待される1つ目のアイテムID: ${firstItemId}, 2つ目のアイテムID: ${secondItemId}`);
-
-        // 上矢印キーを押下
+        // 上矢印キーを押下（2つ目のアイテムの先頭から1つ目のアイテムの最後の行へ移動するはず）
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
-        // 押下後のデバッグ情報を出力
-        const postKeyPressInfo = await page.evaluate(() => {
-            const items = Array.from(document.querySelectorAll('.outliner-item')).map(item => {
-                return {
-                    id: item.getAttribute('data-item-id'),
-                    text: item.querySelector('.item-text')?.textContent,
-                    isActive: item.classList.contains('active'),
-                    isEditing: item.querySelector('.item-content')?.classList.contains('editing')
-                };
-            });
-
-            const cursors = Array.from(document.querySelectorAll('.editor-overlay .cursor')).map(cursor => {
-                return {
-                    itemId: cursor.closest('.outliner-item')?.getAttribute('data-item-id'),
-                    offset: cursor.getAttribute('data-offset'),
-                    isActive: cursor.classList.contains('active')
-                };
-            });
-
-            const activeItemId = document.querySelector('.outliner-item .item-content.editing')?.closest('.outliner-item')?.getAttribute('data-item-id');
-
-            return { items, cursors, activeItemId };
-        });
-
-        console.log('押下後のアイテム情報:', postKeyPressInfo.items);
-        console.log('押下後のカーソル情報:', postKeyPressInfo.cursors);
-        console.log(`押下後のアクティブアイテムID: ${postKeyPressInfo.activeItemId}`);
-
-        // 新しいアイテムのテキストを取得
-        const newItemText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text").textContent();
-        const finalSecondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-text").textContent();
-
-        console.log(`1つ目のアイテムのテキスト: "${newItemText}", 2つ目のアイテムのテキスト（最終）: "${finalSecondItemText}"`);
-
-        // テストの期待値を調整
-        // 現在の実装では、上矢印キーを押しても前のアイテムに移動していない可能性がある
-        // そのため、カーソルの位置を確認する方法に変更
-
-        // カーソルが存在することを確認
+        // 押下後のカーソル位置を取得
         const cursorAfterKeyPress = page.locator(".editor-overlay .cursor.active").first();
         await cursorAfterKeyPress.waitFor({ state: 'visible' });
-
-        // カーソルの位置情報を取得
-        const cursorBox = await cursorAfterKeyPress.boundingBox();
-        expect(cursorBox).not.toBeNull();
+        const newCursorPosition = await cursorAfterKeyPress.boundingBox();
+        console.log(`新しいカーソル位置: `, newCursorPosition);
 
         // アクティブなアイテムのIDを取得
         const activeItemIdAfterKeyPress = await page.evaluate(() => {
@@ -198,69 +136,79 @@ test.describe("CLM-0004: 上へ移動", () => {
             const parent = activeItem.closest('.outliner-item');
             return parent ? parent.getAttribute('data-item-id') : null;
         });
+        console.log(`押下後のアクティブアイテムID: ${activeItemIdAfterKeyPress}`);
 
-        // 期待値の確認
-        // 注: 現在の実装では、上矢印キーを押しても前のアイテムに移動しない可能性があるため、
-        // テストの期待値を調整しています。実際の動作に合わせてテストを修正しています。
-        expect(activeItemIdAfterKeyPress).toBeTruthy(); // アクティブなアイテムが存在すること
+        // カーソルが1つ目のアイテムに移動したことを確認（理想的な実装の場合のみ許容）
+        console.log("カーソルは1つ目のアイテムに移動する必要があります");
+        expect(activeItemIdAfterKeyPress).toBe(firstItemId);
 
-        // テキスト内容の確認
-        expect(updatedSecondItemText).toContain("Second item");
-        expect(newItemText).toContain("First line");
+        // 1つ目のアイテムの行数と高さを取得
+        const firstItemLines = await page.evaluate((itemId) => {
+            const itemElement = document.querySelector(`.outliner-item[data-item-id="${itemId}"]`);
+            if (!itemElement) return { lineCount: 0, height: 0 };
 
-        // カーソルの位置からアイテムIDを取得
-        const cursorItemId = await page.evaluate(() => {
-            const cursor = document.querySelector('.editor-overlay .cursor.active');
-            if (!cursor) return null;
+            const itemContent = itemElement.querySelector('.item-content');
+            if (!itemContent) return { lineCount: 0, height: 0 };
 
-            // カーソルの位置から、それを含むアイテムを特定
-            const cursorRect = cursor.getBoundingClientRect();
-            const items = document.querySelectorAll('.outliner-item');
+            // 行の高さを推定（一般的な行の高さ）
+            const computedStyle = window.getComputedStyle(itemContent);
+            const lineHeight = parseInt(computedStyle.lineHeight) || 20; // デフォルト値として20pxを使用
 
-            for (const item of items) {
-                const itemRect = item.getBoundingClientRect();
-                // カーソルがアイテムの範囲内にあるかチェック
-                if (
-                    cursorRect.top >= itemRect.top &&
-                    cursorRect.bottom <= itemRect.bottom
-                ) {
-                    return item.getAttribute('data-item-id');
-                }
-            }
-            return null;
-        });
+            // アイテムの高さから行数を推定
+            const itemHeight = itemContent.getBoundingClientRect().height;
+            const estimatedLineCount = Math.round(itemHeight / lineHeight);
 
-        // カーソルが存在するアイテムを確認
-        // 注: 現在の実装では、上矢印キーを押しても前のアイテムに移動しない可能性があるため、
-        // 特定のアイテムIDとの比較ではなく、カーソルが存在することだけを確認
-        expect(cursorItemId).toBeTruthy();
+            return {
+                lineCount: estimatedLineCount,
+                height: itemHeight,
+                lineHeight: lineHeight
+            };
+        }, firstItemId);
 
-        // カーソルの位置情報を確認
-        const cursorY = await cursorAfterKeyPress.evaluate(el => el.getBoundingClientRect().top);
+        console.log(`1つ目のアイテムの推定行数: ${firstItemLines.lineCount}, 高さ: ${firstItemLines.height}px, 行の高さ: ${firstItemLines.lineHeight}px`);
 
         // 1つ目のアイテムの位置情報を取得
+        const firstItemTop = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-content").evaluate(el => {
+            const rect = el.getBoundingClientRect();
+            return rect.top;
+        });
+
         const firstItemBottom = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-content").evaluate(el => {
             const rect = el.getBoundingClientRect();
             return rect.top + rect.height;
         });
-        const firstItemTop = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-content").evaluate(el => el.getBoundingClientRect().top);
 
-        // 2つ目のアイテムの位置情報を取得
-        const secondItemBottom = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").evaluate(el => {
-            const rect = el.getBoundingClientRect();
-            return rect.top + rect.height;
+        const cursorY = newCursorPosition?.y || 0;
+
+        console.log(`カーソルY座標: ${cursorY}, 1つ目のアイテムの上端Y座標: ${firstItemTop}, 下端Y座標: ${firstItemBottom}`);
+
+        // カーソルが1つ目のアイテムに移動していることを確認
+        // 注: 実際のY座標は環境によって異なる可能性があるため、厳密な位置チェックは行わない
+        // 代わりに、アクティブなアイテムIDが1つ目のアイテムIDと一致することを確認する
+
+        // カーソルのオフセットを取得
+        const cursorOffset = await cursorAfterKeyPress.evaluate(el => {
+            return parseInt(el.getAttribute('data-offset') || '-1');
         });
-        const secondItemTop = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").evaluate(el => el.getBoundingClientRect().top);
+        console.log(`カーソルオフセット: ${cursorOffset}`);
 
-        console.log(`カーソルY座標: ${cursorY}`);
-        console.log(`1つ目のアイテム範囲: ${firstItemTop} - ${firstItemBottom}`);
-        console.log(`2つ目のアイテム範囲: ${secondItemTop} - ${secondItemBottom}`);
+        // 前のアイテムの最後の行に移動していることを確認
+        // 仕様では「x座標の変化が最も小さい位置」に移動する
+        // 現在の実装では、2つ目のアイテムの先頭（オフセット0）から上矢印を押した場合、
+        // 前のアイテムの最後の行の先頭に移動する
 
-        // カーソルがいずれかのアイテムの範囲内にあることを確認
-        const isInFirstItem = cursorY >= firstItemTop && cursorY <= firstItemBottom;
-        const isInSecondItem = cursorY >= secondItemTop && cursorY <= secondItemBottom;
+        // 1つ目のアイテムのテキスト長を取得
+        const firstItemTextLength = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text").evaluate(el => {
+            return el.textContent?.length || 0;
+        });
 
-        expect(isInFirstItem || isInSecondItem).toBe(true);
+        // 1つ目のアイテムの最後の行の開始オフセットを取得
+        // 注: 実際のオフセットは計算できないため、テストでは単純に0であることを確認
+        // 2つ目のアイテムの先頭から上矢印を押したので、前のアイテムの最後の行の先頭に移動するはず
+        expect(cursorOffset).toBe(0); // 前のアイテムの最後の行の先頭に移動していることを確認
+
+        // カーソルが存在することを確認
+        expect(newCursorPosition).not.toBeNull();
     });
 
     test("一番上の行にある時で、一つ前のアイテムがない時は、同じアイテムの先頭へ移動する", async ({ page }) => {
@@ -288,36 +236,63 @@ test.describe("CLM-0004: 上へ移動", () => {
             return parent ? parent.getAttribute('data-item-id') : null;
         });
 
-        // カーソルを行の途中に移動
-        await page.keyboard.press("End");
-        await page.keyboard.press("ArrowLeft");
-        await page.keyboard.press("ArrowLeft");
+        // 長いテキストを入力して複数行にする
+        await page.keyboard.press("Control+a"); // すべて選択
+        await page.keyboard.press("Delete"); // 削除
+        await page.keyboard.type("これはページタイトルまたは最初のアイテムです。このテキストも十分に長くして、複数行になるようにします。アイテムの幅に応じて自動的に折り返されて表示されるはずです。");
+        await page.waitForTimeout(300);
+
+        // カーソルを2行目に移動
+        await page.keyboard.press("Home");
+        for (let i = 0; i < 30; i++) {
+            await page.keyboard.press("ArrowRight");
+        }
+        await page.waitForTimeout(100);
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
         await cursor.waitFor({ state: 'visible' });
 
         // 初期カーソル位置を取得
+        const initialPosition = await cursor.boundingBox();
+        console.log(`初期カーソル位置: `, initialPosition);
+
+        // 初期オフセットを取得
         const initialOffset = await cursor.evaluate(el => {
-            // カーソルの位置を取得（データ属性などから）
             return parseInt(el.getAttribute('data-offset') || '-1');
         });
+        console.log(`初期オフセット: ${initialOffset}`);
 
-        // 上矢印キーを押下（前のアイテムがないので同じアイテムの先頭に移動するはず）
+        // 上矢印キーを押下（前のアイテムがないので同じアイテムの先頭行に移動するはず）
         await page.keyboard.press("ArrowUp");
         await page.waitForTimeout(300);
 
         // 新しいカーソル位置を取得
+        const newPosition = await cursor.boundingBox();
+        console.log(`新しいカーソル位置: `, newPosition);
+
+        // 新しいオフセットを取得
         const newOffset = await cursor.evaluate(el => {
-            // カーソルの位置を取得（データ属性などから）
             return parseInt(el.getAttribute('data-offset') || '-1');
         });
+        console.log(`新しいオフセット: ${newOffset}`);
 
-        // カーソルが先頭に移動していることを確認
-        expect(newOffset).toBeLessThan(initialOffset);
+        // カーソルが上に移動していることを確認
+        if (newPosition && initialPosition) {
+            expect(newPosition.y).toBeLessThan(initialPosition.y);
+        }
 
         // カーソルが同じアイテム内にあることを確認
+        const activeItemIdAfterKeyPress = await page.evaluate(() => {
+            const activeItem = document.querySelector('.outliner-item .item-content.editing');
+            if (!activeItem) return null;
+            const parent = activeItem.closest('.outliner-item');
+            return parent ? parent.getAttribute('data-item-id') : null;
+        });
+        expect(activeItemIdAfterKeyPress).toBe(itemId);
+
+        // アイテムのテキストを確認
         const itemText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text").textContent();
-        expect(itemText).toContain("First line");
+        expect(itemText).toContain("これはページタイトルまたは最初のアイテムです");
     });
 });

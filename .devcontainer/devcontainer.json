@@ -15,7 +15,9 @@
                 "svelte.svelte-vscode",
                 "ms-vscode.vscode-websearchforcopilot",
                 "ms-vscode.copilot-mermaid-diagram",
-                "dprint.dprint"
+                "dprint.dprint",
+                "Augment.vscode-augment",
+                "ezforo.copy-relative-path-and-line-numbers"
             ]
         }
     },

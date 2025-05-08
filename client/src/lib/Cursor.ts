@@ -19,6 +19,8 @@ export class Cursor {
     offset: number;
     isActive: boolean;
     userId: string;
+    // 上下キー操作時に使用する初期列位置
+    private initialColumn: number | null = null;
 
     constructor(cursorId: string, opts: CursorOptions) {
         this.cursorId = cursorId;
@@ -249,7 +251,15 @@ export class Cursor {
         return offset - lineStartOffset;
     }
 
+    // 上下キー以外の操作が行われたときに初期列位置をリセット
+    private resetInitialColumn() {
+        this.initialColumn = null;
+    }
+
     moveLeft() {
+        // 上下キー以外の操作なので初期列位置をリセット
+        this.resetInitialColumn();
+
         const target = this.findTarget();
         if (!target) return;
 
@@ -267,6 +277,9 @@ export class Cursor {
     }
 
     moveRight() {
+        // 上下キー以外の操作なので初期列位置をリセット
+        this.resetInitialColumn();
+
         const target = this.findTarget();
         const text = target?.text ?? "";
 
@@ -297,9 +310,17 @@ export class Cursor {
         const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
         const currentColumn = this.getCurrentColumn(text, this.offset);
 
+        // 初期列位置を設定または更新
+        if (this.initialColumn === null) {
+            this.initialColumn = currentColumn;
+        }
+
+        // 使用する列位置（初期列位置または現在の列位置）
+        const targetColumn = this.initialColumn;
+
         // デバッグ情報
         if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Current line index: ${currentLineIndex}, column: ${currentColumn}, text: "${text}"`);
+            console.log(`Current line index: ${currentLineIndex}, column: ${currentColumn}, initialColumn: ${this.initialColumn}, text: "${text}"`);
         }
 
         if (currentLineIndex > 0) {
@@ -309,13 +330,13 @@ export class Cursor {
             const prevLineEnd = this.getLineEndOffset(text, prevLineIndex);
             const prevLineLength = prevLineEnd - prevLineStart;
 
-            // 同じ列位置か行の長さの短い方に移動
-            this.offset = prevLineStart + Math.min(currentColumn, prevLineLength);
+            // 初期列位置か行の長さの短い方に移動
+            this.offset = prevLineStart + Math.min(targetColumn, prevLineLength);
             this.applyToStore();
 
             // デバッグ情報
             if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                console.log(`Moved to previous line in same item: offset=${this.offset}`);
+                console.log(`Moved to previous line in same item: offset=${this.offset}, targetColumn=${targetColumn}`);
             }
         } else {
             // 前のアイテムを探す
@@ -335,12 +356,12 @@ export class Cursor {
                 const lastLineEnd = this.getLineEndOffset(prevText, lastLineIndex);
                 const lastLineLength = lastLineEnd - lastLineStart;
 
-                // 前のアイテムに移動
+                // 前のアイテムに移動（navigateToItemメソッドで初期列位置を考慮した移動を行う）
                 this.navigateToItem("up");
 
                 // デバッグ情報
                 if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`);
+                    console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}, targetColumn=${targetColumn}`);
                 }
             } else {
                 // 前のアイテムがない場合は、同じアイテムの先頭に移動
@@ -370,6 +391,19 @@ export class Cursor {
         const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
         const currentColumn = this.getCurrentColumn(text, this.offset);
 
+        // 初期列位置を設定または更新
+        if (this.initialColumn === null) {
+            this.initialColumn = currentColumn;
+        }
+
+        // 使用する列位置（初期列位置または現在の列位置）
+        const targetColumn = this.initialColumn;
+
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Current line index: ${currentLineIndex}, column: ${currentColumn}, initialColumn: ${this.initialColumn}, text: "${text}"`);
+        }
+
         if (currentLineIndex < lines.length - 1) {
             // 同じアイテム内の下の行に移動
             const nextLineIndex = currentLineIndex + 1;
@@ -377,16 +411,26 @@ export class Cursor {
             const nextLineEnd = this.getLineEndOffset(text, nextLineIndex);
             const nextLineLength = nextLineEnd - nextLineStart;
 
-            // 同じ列位置か行の長さの短い方に移動
-            this.offset = nextLineStart + Math.min(currentColumn, nextLineLength);
+            // 初期列位置か行の長さの短い方に移動
+            this.offset = nextLineStart + Math.min(targetColumn, nextLineLength);
             this.applyToStore();
+
+            // デバッグ情報
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Moved to next line in same item: offset=${this.offset}, targetColumn=${targetColumn}`);
+            }
         } else {
             // 次のアイテムを探す
             const nextItem = this.findNextItem();
 
             if (nextItem) {
-                // 次のアイテムの最初の行に移動
+                // 次のアイテムの最初の行に移動（navigateToItemメソッドで初期列位置を考慮した移動を行う）
                 this.navigateToItem("down");
+
+                // デバッグ情報
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}, targetColumn=${targetColumn}`);
+                }
             } else {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動
                 // 現在のオフセットが既に末尾の場合は何もしない
@@ -396,6 +440,11 @@ export class Cursor {
 
                     // カーソルが正しく更新されたことを確認
                     store.startCursorBlink();
+
+                    // デバッグ情報
+                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                        console.log(`Moved to end of current item: offset=${this.offset}`);
+                    }
                 }
             }
         }
@@ -406,6 +455,9 @@ export class Cursor {
      * @param ch 挿入するテキスト
      */
     insertText(ch: string) {
+        // 上下キー以外の操作なので初期列位置をリセット
+        this.resetInitialColumn();
+
         const node = this.findTarget();
         if (!node) return;
 
@@ -444,6 +496,9 @@ export class Cursor {
      * カーソル位置の前の文字を削除する
      */
     deleteBackward() {
+        // 上下キー以外の操作なので初期列位置をリセット
+        this.resetInitialColumn();
+
         const node = this.findTarget();
         if (!node) return;
 
@@ -495,6 +550,9 @@ export class Cursor {
      * カーソル位置の後の文字を削除する
      */
     deleteForward() {
+        // 上下キー以外の操作なので初期列位置をリセット
+        this.resetInitialColumn();
+
         const node = this.findTarget();
         if (!node) return;
 
@@ -2077,15 +2135,27 @@ export class Cursor {
                 const prevLines = prevText.split('\n');
                 const lastLineIndex = prevLines.length - 1;
                 const lastLineStart = this.getLineStartOffset(prevText, lastLineIndex);
-                const lastLineLength = prevLines[lastLineIndex].length;
+                const lastLineEnd = this.getLineEndOffset(prevText, lastLineIndex);
+                const lastLineLength = lastLineEnd - lastLineStart;
 
-                // 前のアイテムの最後の行の、現在の列位置に相当する位置に移動
-                newOffset = lastLineStart + Math.min(currentColumn, lastLineLength);
+                // x座標の変化が最も小さい位置を計算
+                // 初期列位置または現在の列位置に最も近い位置を選択
+                // 前のアイテムの最後の行の長さを超えないようにする
+                const targetColumn = Math.min(this.initialColumn !== null ? this.initialColumn : currentColumn, lastLineLength);
+                newOffset = lastLineStart + targetColumn;
+
+                // 特殊ケース: 現在のカーソルが行の先頭（オフセット0）にある場合は、
+                // 前のアイテムの最後の行の先頭に移動
+                if (this.offset === 0) {
+                    newOffset = lastLineStart;
+                }
+
                 itemChanged = true;
 
                 // デバッグ情報
+                console.log(`navigateToItem up - Moving to previous item's last line: itemId=${prevItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}`);
                 if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Moving up to previous item: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}`);
+                    console.log(`Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`);
                 }
             } else {
                 // 前のアイテムがない場合は、同じアイテムの先頭に移動
@@ -2101,14 +2171,32 @@ export class Cursor {
             if (nextItem) {
                 newItemId = nextItem.id;
                 const nextText = nextItem.text || "";
+                const nextLines = nextText.split('\n');
+                const firstLineIndex = 0;
+                const firstLineStart = this.getLineStartOffset(nextText, firstLineIndex);
+                const firstLineEnd = this.getLineEndOffset(nextText, firstLineIndex);
+                const firstLineLength = firstLineEnd - firstLineStart;
 
-                // 次のアイテムの先頭行の、現在の列位置に相当する位置に移動
-                newOffset = Math.min(currentColumn, nextText.indexOf('\n') >= 0 ? nextText.indexOf('\n') : nextText.length);
+                // x座標の変化が最も小さい位置を計算
+                // 初期列位置または現在の列位置に最も近い位置を選択
+                // 次のアイテムの最初の行の長さを超えないようにする
+                const targetColumn = Math.min(this.initialColumn !== null ? this.initialColumn : currentColumn, firstLineLength);
+                newOffset = firstLineStart + targetColumn;
+
+                // 特殊ケース: 現在のカーソルが行の末尾（オフセットがテキスト長）にある場合は、
+                // 次のアイテムの最初の行の末尾に移動
+                const currentTarget = this.findTarget();
+                const currentText = currentTarget?.text || "";
+                if (this.offset === currentText.length) {
+                    newOffset = firstLineEnd;
+                }
+
                 itemChanged = true;
 
                 // デバッグ情報
+                console.log(`navigateToItem down - Moving to next item's first line: itemId=${nextItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}`);
                 if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Moving down to next item: id=${nextItem.id}, newOffset=${newOffset}`);
+                    console.log(`Moving down to next item's first line: id=${nextItem.id}, firstLineIndex=${firstLineIndex}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`);
                 }
             } else {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動

@@ -9,6 +9,7 @@ import {
  * アプリケーションがTinyliciousサーバーと正常に接続できることを確認するためのテストです。
  * 実際の接続状態の検証、接続テストボタンの機能確認など、Fluid Frameworkの
  * 基本的な接続機能をテストします。
+ * このテストでは、デバッグページ(/debug)を使用してTinyliciousサーバーへの接続を確認します。
  * @playwright
  * @title Tinyliciousリアル接続テスト
  */
@@ -33,39 +34,74 @@ test.describe("Tinyliciousリアル接続テスト", () => {
         // 強制的にテスト用の環境変数を設定
         await page.addInitScript(() => {
             window.localStorage.setItem("VITE_USE_TINYLICIOUS", "true");
-            window.localStorage.setItem("VITE_TINYLICIOUS_PORT", "7082");
+            window.localStorage.setItem("VITE_TINYLICIOUS_PORT", "7092");
         });
 
-        await page.goto("/");
+        // デバッグページにアクセス
+        await page.goto("/debug");
 
         // ページが完全に読み込まれるまで待機
         await page.waitForLoadState("networkidle", { timeout: 30000 });
-    }); /**
+    });
+
+    /**
      * @testcase 実際のTinyliciousサーバーに接続できること
      * @description アプリケーションがTinyliciousサーバーに正常に接続できることを確認するテスト
-     * @check デバッグパネルを表示して接続状態を視覚的に確認する
+     * @check 接続テスト実行ボタンをクリックして接続を開始する
      * @check 接続状態が「接続済み」または「同期中」のいずれかであることを確認する
      * @check 接続状態インジケータが「connected」クラスを持っていることを確認する
      * @check スクリーンショットを撮影して接続状態を視覚的に記録する
      */
-
     test("実際のTinyliciousサーバーに接続できること", async ({ page }) => {
         console.log("Running real Tinylicious connection test");
 
-        // デバッグパネルを表示して接続状態を確認
-        await page.click('button:has-text("Show Debug")');
-        await page.waitForTimeout(2000); // 接続が確立するまで少し待つ
+        // 接続テスト実行ボタンをクリック
+        await page.click('button:has-text("接続テスト実行")');
+
+        // 接続が確立するまで少し待つ
+        await page.waitForTimeout(5000);
 
         // スクリーンショットを撮影（接続状態確認用）
-        await page.screenshot({ path: "test-results/tinylicious-real-connection.png", fullPage: true });
+        await page.screenshot({ path: "test-results/tinylicious-connection.png", fullPage: true });
 
         // 接続状態テキストを取得して確認
-        const connectionStateText = await page.locator(".connection-status span").textContent();
+        const connectionStateText = await page.locator("#connection-state-text").textContent();
         console.log("Connection state text:", connectionStateText);
-
-        await page.click('summary:has-text("デバッグ情報")');
 
         // 接続状態が「接続済み」または「同期中」であることを確認
         expect(connectionStateText).toMatch(/接続中|接続済み|同期中/);
+
+        // 接続インジケータが「connected」クラスを持っていることを確認
+        const hasConnectedClass = await page.evaluate(() => {
+            const indicator = document.querySelector('.status-indicator');
+            return indicator?.classList.contains('connected');
+        });
+
+        expect(hasConnectedClass).toBeTruthy();
+    });
+
+    /**
+     * @testcase デバッグ情報が表示されること
+     * @description デバッグページに必要な情報が表示されることを確認するテスト
+     * @check 環境設定情報が表示されていることを確認
+     * @check Fluidクライアント情報が表示されていることを確認
+     */
+    test("デバッグ情報が表示されること", async ({ page }) => {
+        // 接続テスト実行ボタンをクリック
+        await page.click('button:has-text("接続テスト実行")');
+
+        // 接続が確立するまで少し待つ
+        await page.waitForTimeout(5000);
+
+        // 環境設定情報が表示されていることを確認
+        const envConfigText = await page.locator("details:has-text('環境設定') pre").textContent();
+        expect(envConfigText).toBeTruthy();
+
+        // Fluidクライアント情報が表示されていることを確認
+        const fluidClientText = await page.locator("details:has-text('Fluidクライアント') pre").textContent();
+        expect(fluidClientText).toBeTruthy();
+
+        // スクリーンショットを撮影
+        await page.screenshot({ path: "test-results/debug-info.png", fullPage: true });
     });
 });

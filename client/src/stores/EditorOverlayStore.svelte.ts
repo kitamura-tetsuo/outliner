@@ -346,8 +346,17 @@ export class EditorOverlayStore {
         }
 
         // 指定されたユーザーの選択範囲を削除（通常の選択範囲と矩形選択の両方）
+        // 選択範囲のキーに含まれるuserIdとメソッドに渡すuserIdが一致するものを削除
         this.selections = Object.fromEntries(
-            Object.entries(this.selections).filter(([_, s]) => s.userId !== userId)
+            Object.entries(this.selections).filter(([key, s]) => {
+                // キーにuserIdが含まれているか確認
+                const keyIncludesUserId = key.includes(`-${userId}`);
+                // オブジェクトのuserIdプロパティが一致するか確認
+                const objectUserIdMatches = s.userId === userId || (!s.userId && userId === 'local');
+
+                // どちらかが一致する場合は削除対象
+                return !keyIncludesUserId && !objectUserIdMatches;
+            })
         );
 
         // デバッグ情報
@@ -355,7 +364,10 @@ export class EditorOverlayStore {
             console.log(`Selections after clearing:`, this.selections);
 
             // 選択範囲が正しくクリアされたか確認
-            const remainingSelections = Object.values(this.selections).filter(s => s.userId === userId);
+            const remainingSelections = Object.entries(this.selections).filter(([key, s]) =>
+                key.includes(`-${userId}`) || s.userId === userId || (!s.userId && userId === 'local')
+            );
+
             if (remainingSelections.length > 0) {
                 console.warn(`Warning: Some selections for userId=${userId} were not cleared:`, remainingSelections);
             } else {
