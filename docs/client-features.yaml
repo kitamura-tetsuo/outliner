@@ -377,6 +377,20 @@
   tests:
     - client/e2e/core/FMT-0005.spec.ts
 
+- id: FMT-0006
+  title: 'カーソル移動時のフォーマット表示の一貫性'
+  description: 'カーソル移動時にフォーマット表示が一貫して適切に切り替わることを確認します'
+  category: text-formatting
+  status: implemented
+  acceptance:
+    - 'カーソルがあるアイテムでは制御文字（[[]], [/], [-], `）が表示される'
+    - 'カーソルがないアイテムでは制御文字が非表示でフォーマットが適用される'
+    - 'タイトル（最初の行）は常にボールド表示される'
+    - 'リンク構文（[ text]]）が正しくリンクとして表示される'
+    - 'カーソル移動時に表示が適切に切り替わる'
+  tests:
+    - client/e2e/core/FMT-0006.spec.ts
+
 - id: TST-0001
   title: 'SharedTreeデータ検証ユーティリティ'
   description: 'テストにおいてSharedTreeの内容をJSONとして取得し、結果を厳密かつ簡易に判定するユーティリティ'

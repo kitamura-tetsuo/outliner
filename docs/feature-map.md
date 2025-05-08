@@ -17,6 +17,7 @@
 | FMT-0003 | 拡張フォーマット | — | implemented |
 | FMT-0004 | クリップボードからのペーストとフォーマット | — | implemented |
 | FMT-0005 | Visual Studio Codeのコピー/ペースト仕様 | — | implemented |
+| FMT-0006 | カーソル移動時のフォーマット表示の一貫性 | — | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
 | IME-0001 | IMEを使用した日本語入力 | — | implemented |
 | ITM-0001 | Enterで新規アイテム追加 | — | implemented |

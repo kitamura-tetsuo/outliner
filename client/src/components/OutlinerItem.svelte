@@ -31,10 +31,18 @@
 	const dispatch = createEventDispatcher();
 
 	// Stateの管理
-	let isEditing = $state(false);
+	let isEditing = $state(false); // 編集モードフラグ（将来的にはカーソル状態から導出する予定）
 	let lastSelectionStart = $state(0);
 	let lastSelectionEnd = $state(0);
 	let lastCursorPosition = $state(0);
+
+	// 注: 将来的には以下のように $derived を使用して isEditing を導出する予定
+	// let isEditing = $derived(() => {
+	//     const activeItemId = editorOverlayStore.getActiveItem();
+	//     if (activeItemId === model.id) return true;
+	//     const cursors = editorOverlayStore.getItemCursorsAndSelections(model.id).cursors;
+	//     return cursors.length > 0;
+	// });
 
 	// ドラッグ関連の状態
 	let isDragging = $state(false);
@@ -65,9 +73,16 @@
 
 	// アイテムにカーソルがあるかどうかを判定する
 	function hasActiveCursor(): boolean {
-		// 編集中の場合はカーソルがあると判断
+		// 現在は編集モードフラグも考慮
+		// 注: 将来的には isEditing フラグを削除し、以下のカーソル状態のみで判断する予定
 		if (isEditing) return true;
 
+		// カーソル状態に基づく判定（将来的にはこの部分のみを使用）
+		return hasCursorBasedOnState();
+	}
+
+	// カーソル状態のみに基づいて判定する関数（将来的に hasActiveCursor と統合予定）
+	function hasCursorBasedOnState(): boolean {
 		// アクティブなアイテムかどうか
 		const activeItemId = editorOverlayStore.getActiveItem();
 		if (activeItemId === model.id) return true;
@@ -146,6 +161,8 @@
 	 */
 	function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
 		if (isReadOnly) return;
+
+		// 編集モードフラグを設定（将来的にはカーソル状態から自動的に導出される予定）
 		isEditing = true;
 
 		// グローバル textarea を取得（ストアから、なければDOMからフォールバック）
@@ -298,6 +315,7 @@
 	// アイテム全体のキーダウンイベントハンドラ
 
 	function finishEditing() {
+		// 編集モードフラグをクリア（将来的にはカーソル状態から自動的に導出される予定）
 		isEditing = false;
 		editorOverlayStore.stopCursorBlink();
 
@@ -1390,6 +1408,10 @@
 		padding-bottom: 8px;
 	}
 
+	/*
+	編集中のスタイル - 将来的には削除予定
+	カーソルと選択範囲の視覚化が実装されたため、この枠線は冗長
+	*/
 	.item-content.editing {
 		outline: 1px solid #ccc;
 		background-color: rgba(0, 0, 0, 0.02);

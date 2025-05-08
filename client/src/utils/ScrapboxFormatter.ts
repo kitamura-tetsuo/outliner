@@ -2,7 +2,7 @@
  * フォーマットトークンを表すインターフェース
  */
 interface FormatToken {
-    type: "text" | "bold" | "italic" | "strikethrough" | "code" | "link" | "quote";
+    type: "text" | "bold" | "italic" | "strikethrough" | "code" | "link" | "internalLink" | "quote";
     content: string;
     children?: FormatToken[];
     start: number;
@@ -101,6 +101,7 @@ export class ScrapboxFormatter {
             { type: "strikethrough", start: "[-", end: "]", regex: /\[\-(.*?)\]/g },
             { type: "code", start: "`", end: "`", regex: /`(.*?)`/g },
             { type: "link", start: "[", end: "]", regex: /\[(https?:\/\/.*?)\]/g },
+            { type: "internalLink", start: "[", end: "]", regex: /\[([^\[\]\/\-][^\[\]]*?)\]/g },
             { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm }
         ];
 
@@ -243,6 +244,10 @@ export class ScrapboxFormatter {
                 case "link":
                     html += `<a href="${token.url}" target="_blank" rel="noopener noreferrer">${content}</a>`;
                     break;
+                case "internalLink":
+                    // 内部リンクは別ページへのリンクとして処理
+                    html += `<a href="#" class="internal-link">${content}</a>`;
+                    break;
                 case "quote":
                     html += `<blockquote>${content}</blockquote>`;
                     break;
@@ -314,10 +319,16 @@ export class ScrapboxFormatter {
                 return `<code>${escapeHtml(content)}</code>`;
             });
 
-            // リンク
+            // 外部リンク
             const linkRegex = /\[(https?:\/\/.*?)\]/g;
             input = input.replace(linkRegex, (match, url) => {
                 return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+            });
+
+            // 内部リンク - 外部リンクの後に処理する必要がある
+            const internalLinkRegex = /\[([^\[\]\/\-][^\[\]]*?)\]/g;
+            input = input.replace(internalLinkRegex, (match, text) => {
+                return `<a href="#${text}" class="internal-link">${text}</a>`;
             });
 
             return input;
@@ -386,8 +397,11 @@ export class ScrapboxFormatter {
         // コード
         html = html.replace(/(`)(.*?)(`)/g, '<span class="control-char">$1</span><code>$2</code><span class="control-char">$3</span>');
 
-        // リンク
+        // 外部リンク
         html = html.replace(/(\[)(https?:\/\/.*?)(\])/g, '<span class="control-char">$1</span><a href="$2" target="_blank" rel="noopener noreferrer">$2</a><span class="control-char">$3</span>');
+
+        // 内部リンク - 外部リンクの後に処理する必要がある
+        html = html.replace(/(\[)([^\[\]\/\-][^\[\]]*?)(\])/g, '<span class="control-char">$1</span><a href="#$2" class="internal-link">$2</a><span class="control-char">$3</span>');
 
         // 引用
         html = html.replace(/(^>\s)(.*?)$/gm, '<span class="control-char">$1</span><blockquote>$2</blockquote>');
@@ -406,14 +420,18 @@ export class ScrapboxFormatter {
         // 基本フォーマットの正規表現パターン
         const basicFormatPattern = /\[\[(.*?)\]\]|\[\/(.*?)\]|\[\-(.*?)\]|`(.*?)`/;
 
-        // リンクの正規表現パターン
+        // 外部リンクの正規表現パターン
         const linkPattern = /\[(https?:\/\/.*?)\]/;
+
+        // 内部リンクの正規表現パターン
+        const internalLinkPattern = /\[([^\[\]\/\-][^\[\]]*?)\]/;
 
         // 引用の正規表現パターン
         const quotePattern = /^>\s(.*?)$/m;
 
         return basicFormatPattern.test(text) ||
                linkPattern.test(text) ||
+               internalLinkPattern.test(text) ||
                quotePattern.test(text);
     }
 }
