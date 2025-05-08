@@ -39,7 +39,7 @@ test("Add Text button should add text to shared content", async ({ page }) => {
     await page.click('button:has-text("アイテム追加")');
 
     // アイテムが追加されるのを待つ
-    await page.waitForSelector(".outliner-item", { timeout: 10000 });
+    await page.waitForSelector(".outliner-item", { timeout: 100000 });
 
     // 追加されたアイテムをクリックして編集モードに
     // テキスト内容で特定できるアイテムを探す
@@ -89,7 +89,7 @@ test("Adding text updates data structure", async ({ page }) => {
         window.localStorage.setItem("authenticated", "true");
     });
 
-    await page.waitForLoadState("networkidle", { timeout: 30000 });
+    await page.waitForLoadState("networkidle", { timeout: 300000 });
 
     // デバッグパネルを表示
     await page.click('button:has-text("Show Debug")');

@@ -4,7 +4,7 @@
         "VITE_USE_TINYLICIOUS": "true",
         "VITE_FORCE_AZURE": "false",
         "VITE_IS_TEST": "true",
-        "DOTENV_CONFIG_PATH": ".env.test"
+        "DOTENV_CONFIG_PATH": ".env.localhost.test"
     },
     "playwright.reuseBrowser": true,
     "playwright.showTrace": true,
@@ -13,11 +13,13 @@
     "editor.codeActionsOnSave": {
         "source.fixAll.eslint": "explicit"
     },
-    "playwright.env.PLAYWRIGHT_TEST_BASE_URL": "http://192.168.50.13:7080",
+    "playwright.env.TEST_ENV": "localhost",
+    "playwright.env.PLAYWRIGHT_TEST_BASE_URL": "http://localhost:7090",
     "playwright.use.dotenv": true,
 
-    // localhost環境用の設定
-    // 以下のコメントを解除してTEST_ENVを設定することで、localhost環境でのテスト実行が可能になります
-    // "playwright.env.TEST_ENV": "localhost",
-    // "playwright.env.PLAYWRIGHT_TEST_BASE_URL": "http://localhost:7090"
+    // 192.168.50.13環境用の設定
+    // 以下のコメントを解除してTEST_ENVを削除することで、192.168.50.13環境でのテスト実行に戻せます
+    // "playwright.env.DOTENV_CONFIG_PATH": ".env.test",
+    // "playwright.env.PLAYWRIGHT_TEST_BASE_URL": "http://192.168.50.13:7080",
+    // // "playwright.env.TEST_ENV": "localhost", // この行を削除または無効化
 }

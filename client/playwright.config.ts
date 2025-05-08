@@ -11,7 +11,10 @@ const __dirname = path.dirname(__filename);
 
 // テスト環境の設定
 // 環境変数TEST_ENVが'localhost'の場合はlocalhost環境、それ以外はデフォルト環境
-const isLocalhostEnv = process.env.TEST_ENV === 'localhost';
+// VSCode Playwright拡張から実行する場合は環境変数が正しく渡らないため、直接trueに設定
+// 元の設定に戻す場合はこちらのコメントを外してください
+// const isLocalhostEnv = process.env.TEST_ENV === 'localhost';
+const isLocalhostEnv = true; // localhostを強制的に使用
 
 // テスト用ポートを定義 - これを明示的に指定
 const TEST_PORT = isLocalhostEnv ? "7090" : "7080";
@@ -63,6 +66,12 @@ export default defineConfig({
             // 認証テスト: 本番環境でのみ実行
             name: "auth",
             testDir: "./e2e/auth",
+            use: { ...devices["Desktop Chrome"] },
+        },
+        {
+            // ユーティリティテスト: 共通機能のテスト
+            name: "utils",
+            testDir: "./e2e/utils",
             use: { ...devices["Desktop Chrome"] },
         },
     ],

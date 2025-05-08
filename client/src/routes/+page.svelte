@@ -11,6 +11,7 @@ import EnvDebugger from "../components/EnvDebugger.svelte";
 import NetworkErrorAlert from "../components/NetworkErrorAlert.svelte";
 import PageList from "../components/PageList.svelte";
 import { getDebugConfig } from "../lib/env";
+import { setupGlobalDebugFunctions } from "../lib/debug";
 import { getLogger } from "../lib/logger";
 import { fluidStore } from "../stores/fluidStore.svelte";
 
@@ -41,6 +42,11 @@ $effect(() => {
         if (client?.container) {
             project = client.getProject();
             rootItems = client.getTree();
+
+            // デバッグ関数を初期化
+            if (browser) {
+                setupGlobalDebugFunctions(client);
+            }
         }
     }
 });

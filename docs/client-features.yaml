@@ -377,6 +377,25 @@
   tests:
     - client/e2e/core/FMT-0005.spec.ts
 
+- id: TST-0001
+  title: 'SharedTreeデータ検証ユーティリティ'
+  description: 'テストにおいてSharedTreeの内容をJSONとして取得し、結果を厳密かつ簡易に判定するユーティリティ'
+  category: testing
+  status: implemented
+  acceptance:
+    - 'SharedTreeのデータ構造をJSON形式で取得できる'
+    - '期待値と実際の値を厳密に比較できる'
+    - '期待値と実際の値を部分的に比較できる'
+    - '特定のパスのデータを検証できる'
+    - 'スナップショットを取得して後で比較できる'
+    - '特定のパスを無視して比較できる'
+    - 'ネストされた構造（親子関係）を正確に検証できる'
+  tests:
+    - client/e2e/utils/tree-validation.spec.ts
+  examples:
+    - client/e2e/utils/tree-validator-examples.ts
+    - client/e2e/utils/tree-validator-usage.md
+
 - id: ITM-0001
   title: 'Enterで新規アイテム追加'
   shortcut: 'Enter'

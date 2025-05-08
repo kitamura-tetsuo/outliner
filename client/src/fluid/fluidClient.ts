@@ -241,6 +241,26 @@ export class FluidClient {
     }
 
     /**
+     * SharedTreeの内容をJSON形式で取得する
+     * テストでの検証に使用できる形式で返す
+     * @param path 特定のパスのデータのみを取得する場合に指定（例: "items.0.text"）
+     * @returns JSON形式のデータ
+     */
+    getTreeAsJson(path?: string) {
+        const treeData = this.getAllData();
+        if (!path) return treeData;
+
+        // パスに基づいてデータを取得
+        const parts = path.split('.');
+        let result = treeData as any;
+        for (const part of parts) {
+            if (result === undefined || result === null) return null;
+            result = result[part];
+        }
+        return result;
+    }
+
+    /**
      * アイテムとその子アイテムを再帰的に処理するヘルパーメソッド
      * @param item 処理するアイテム
      * @returns 処理されたアイテムとその子アイテムを含むオブジェクト

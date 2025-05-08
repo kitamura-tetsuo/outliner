@@ -32,3 +32,4 @@
 | SLR-0010 | 選択範囲のフォーマット変更 | — | implemented |
 | SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | — | implemented |
 | SLR-0101 | ボックス選択（矩形選択）機能 - マウス | — | implemented |
+| TST-0001 | SharedTreeデータ検証ユーティリティ | — | implemented |
