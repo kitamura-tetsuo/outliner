@@ -271,6 +271,39 @@
     - '同じフォーマットを再度適用すると、フォーマットが解除される'
   tests:
     - client/e2e/core/SLR-0010.spec.ts
+- id: SLR-0100
+  title: 'ボックス選択（矩形選択）機能 - キーボード'
+  shortcut: 'Alt+Shift+矢印キー'
+  description: 'Alt+Shift+矢印キーによる矩形選択機能'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 'Alt+Shift+矢印キーで矩形選択を開始できる'
+    - '矩形選択の範囲を矢印キーで拡張できる'
+    - '矩形選択の範囲が視覚的に表示される'
+    - '複数アイテムにまたがる矩形選択を作成できる'
+    - 'Escキーで矩形選択をキャンセルできる'
+    - '矩形選択範囲のテキストをコピーできる'
+    - '矩形選択範囲にテキストをペーストできる'
+  tests:
+    - client/e2e/core/SLR-0100.spec.ts
+
+- id: SLR-0101
+  title: 'ボックス選択（矩形選択）機能 - マウス'
+  shortcut: 'Alt+Shift+ドラッグ'
+  description: 'Alt+Shift+マウスドラッグによる矩形選択機能'
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 'Alt+Shift+マウスドラッグで矩形選択を開始できる'
+    - '矩形選択の範囲がドラッグに合わせて拡張される'
+    - '矩形選択の範囲が視覚的に表示される'
+    - '複数アイテムにまたがる矩形選択を作成できる'
+    - '矩形選択範囲のテキストをコピーできる'
+    - '矩形選択範囲にテキストをペーストできる'
+    - '矩形選択範囲のテキストを削除できる'
+  tests:
+    - client/e2e/core/SLR-0101.spec.ts
 - id: FMT-0001
   title: 'フォーマット表示'
   description: 'Scrapbox構文のフォーマットを視覚的に表示する機能'
@@ -324,6 +357,25 @@
     - 'ペーストされたフォーマット構文が視覚的に正しく表示される'
   tests:
     - client/e2e/core/FMT-0004.spec.ts
+
+- id: FMT-0005
+  title: 'Visual Studio Codeのコピー/ペースト仕様'
+  description: 'Visual Studio Codeのコピー/ペースト仕様に準拠したクリップボード操作'
+  category: text-formatting
+  status: implemented
+  acceptance:
+    - 'シングルカーソル（通常選択）からシングルカーソルへのペーストが正しく機能する'
+    - 'シングルカーソル（通常選択）からマルチカーソルへのペースト（spread設定）が正しく機能する'
+    - 'シングルカーソル（通常選択）からマルチカーソルへのペースト（full設定）が正しく機能する'
+    - 'マルチカーソル（複数選択範囲）からシングルカーソルへのペーストが正しく機能する'
+    - 'マルチカーソル（複数選択範囲）からマルチカーソルへのペースト（spread設定）が正しく機能する'
+    - 'マルチカーソル（複数選択範囲）からマルチカーソルへのペースト（full設定）が正しく機能する'
+    - 'ボックス選択（矩形選択）からのペーストが正しく機能する'
+    - 'ボックス選択（矩形選択）へのペーストが正しく機能する'
+    - '複数行テキストをボックス選択（矩形選択）範囲にペーストすると、各行に対応する行が挿入される'
+    - 'ボックス選択（矩形選択）範囲へのペースト時に、選択範囲が適切に置き換えられる'
+  tests:
+    - client/e2e/core/FMT-0005.spec.ts
 
 - id: ITM-0001
   title: 'Enterで新規アイテム追加'

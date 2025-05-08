@@ -31,6 +31,14 @@ export interface SelectionRange {
     // 選択が逆方向か
     isReversed?: boolean;
     color?: string;
+    // 矩形選択（ボックス選択）かどうか
+    isBoxSelection?: boolean;
+    // 矩形選択の場合の各行の開始・終了オフセット
+    boxSelectionRanges?: Array<{
+        itemId: string;
+        startOffset: number;
+        endOffset: number;
+    }>;
 }
 
 // Svelte 5 ランタイムの runes マクロを利用 (import は不要)
@@ -101,8 +109,74 @@ export class EditorOverlayStore {
         }
     }
 
+    /**
+     * 新しいカーソルを追加する
+     * @param omitProps カーソルのプロパティ（cursorId以外）
+     * @returns 新しいカーソルのID
+     */
     addCursor(omitProps: Omit<CursorPosition, "cursorId">) {
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`EditorOverlayStore.addCursor called with:`, omitProps);
+            console.log(`Current cursors:`, this.cursors);
+            console.log(`Current cursor instances:`, Array.from(this.cursorInstances.keys()));
+        }
+
+        // 新しいカーソルIDを生成
         const newId = this.genUUID();
+
+        // 同じアイテムの同じ位置に既にカーソルがあるか確認（より厳密なチェック）
+        const existingCursor = Object.values(this.cursors).find(c =>
+            c.itemId === omitProps.itemId &&
+            c.offset === omitProps.offset &&
+            c.userId === (omitProps.userId ?? "local")
+        );
+
+        if (existingCursor) {
+            // デバッグ情報
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Cursor already exists at this position, returning existing ID: ${existingCursor.cursorId}`);
+            }
+
+            // 既存のカーソルを確実にアクティブにする
+            this.updateCursor({
+                ...existingCursor,
+                isActive: true
+            });
+
+            // カーソル点滅を開始
+            this.startCursorBlink();
+
+            // グローバルテキストエリアにフォーカスを確保
+            const textarea = this.getTextareaRef();
+            if (textarea) {
+                // フォーカスを確実に設定するための複数の試行
+                textarea.focus();
+
+                // requestAnimationFrameを使用してフォーカスを設定
+                requestAnimationFrame(() => {
+                    textarea.focus();
+
+                    // さらに確実にするためにsetTimeoutも併用
+                    setTimeout(() => {
+                        textarea.focus();
+
+                        // デバッグ情報
+                        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                            console.log(`Focus set after finding existing cursor. Active element is textarea: ${document.activeElement === textarea}`);
+                        }
+                    }, 10);
+                });
+            } else {
+                // テキストエリアが見つからない場合はエラーログ
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.error(`Global textarea not found in addCursor (existing cursor)`);
+                }
+            }
+
+            return existingCursor.cursorId;
+        }
+
         // Cursor インスタンスを生成して保持
         const cursorInst = new Cursor(newId, {
             itemId: omitProps.itemId,
@@ -111,8 +185,54 @@ export class EditorOverlayStore {
             userId: omitProps.userId ?? "local",
         });
         this.cursorInstances.set(newId, cursorInst);
-        const newCursor: CursorPosition = { cursorId: newId, ...omitProps };
+
+        // 新しいカーソルを作成
+        const newCursor: CursorPosition = {
+            cursorId: newId,
+            ...omitProps,
+            userId: omitProps.userId ?? "local" // userId が undefined の場合に "local" を設定
+        };
+
+        // カーソルを更新（reactive stateを更新）
         this.updateCursor(newCursor);
+
+        // グローバルテキストエリアにフォーカスを確保
+        const textarea = this.getTextareaRef();
+        if (textarea) {
+            // フォーカスを確実に設定するための複数の試行
+            textarea.focus();
+
+            // requestAnimationFrameを使用してフォーカスを設定
+            requestAnimationFrame(() => {
+                textarea.focus();
+
+                // さらに確実にするためにsetTimeoutも併用
+                setTimeout(() => {
+                    textarea.focus();
+
+                    // デバッグ情報
+                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                        console.log(`Focus set after adding new cursor. Active element is textarea: ${document.activeElement === textarea}`);
+                    }
+                }, 10);
+            });
+        } else {
+            // テキストエリアが見つからない場合はエラーログ
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.error(`Global textarea not found in addCursor (new cursor)`);
+            }
+        }
+
+        // カーソル点滅を開始
+        this.startCursorBlink();
+
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`New cursor added with ID: ${newId}`);
+            console.log(`Updated cursors:`, this.cursors);
+            console.log(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
+        }
+
         return newId;
     }
 
@@ -132,10 +252,116 @@ export class EditorOverlayStore {
     }
 
     /**
+     * 矩形選択（ボックス選択）を設定する
+     * @param startItemId 開始アイテムID
+     * @param startOffset 開始オフセット
+     * @param endItemId 終了アイテムID
+     * @param endOffset 終了オフセット
+     * @param boxSelectionRanges 各行の選択範囲
+     * @param userId ユーザーID（デフォルトは"local"）
+     */
+    setBoxSelection(
+        startItemId: string,
+        startOffset: number,
+        endItemId: string,
+        endOffset: number,
+        boxSelectionRanges: Array<{
+            itemId: string;
+            startOffset: number;
+            endOffset: number;
+        }>,
+        userId = "local"
+    ) {
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`setBoxSelection called with:`, {
+                startItemId,
+                startOffset,
+                endItemId,
+                endOffset,
+                boxSelectionRanges,
+                userId
+            });
+        }
+
+        // 引数の検証
+        if (!startItemId || !endItemId) {
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.error(`Invalid item IDs: startItemId=${startItemId}, endItemId=${endItemId}`);
+            }
+            return;
+        }
+
+        // 既存の選択範囲をクリア（同じユーザーの矩形選択のみ）
+        const existingBoxSelections = Object.entries(this.selections)
+            .filter(([_, s]) => s.userId === userId && s.isBoxSelection)
+            .map(([key, _]) => key);
+
+        if (existingBoxSelections.length > 0) {
+            const newSelections = { ...this.selections };
+            existingBoxSelections.forEach(key => {
+                delete newSelections[key];
+            });
+            this.selections = newSelections;
+        }
+
+        // 矩形選択を設定
+        const selection: SelectionRange = {
+            startItemId,
+            startOffset,
+            endItemId,
+            endOffset,
+            userId,
+            isBoxSelection: true,
+            boxSelectionRanges
+        };
+
+        // 選択範囲のキーを開始アイテムIDと終了アイテムIDの組み合わせにする
+        const key = `box-${startItemId}-${endItemId}-${userId}`;
+        this.selections = { ...this.selections, [key]: selection };
+
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Box selection set with key: ${key}`);
+            console.log(`Current selections:`, this.selections);
+        }
+    }
+
+    /**
      * すべての選択範囲をクリアする
      */
     clearSelections() {
         this.selections = {};
+    }
+
+    /**
+     * 指定したユーザーの選択範囲をクリアする
+     * @param userId ユーザーID（デフォルトは"local"）
+     */
+    clearSelectionForUser(userId = "local") {
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`clearSelectionForUser called with userId=${userId}`);
+            console.log(`Current selections before clearing:`, this.selections);
+        }
+
+        // 指定されたユーザーの選択範囲を削除（通常の選択範囲と矩形選択の両方）
+        this.selections = Object.fromEntries(
+            Object.entries(this.selections).filter(([_, s]) => s.userId !== userId)
+        );
+
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Selections after clearing:`, this.selections);
+
+            // 選択範囲が正しくクリアされたか確認
+            const remainingSelections = Object.values(this.selections).filter(s => s.userId === userId);
+            if (remainingSelections.length > 0) {
+                console.warn(`Warning: Some selections for userId=${userId} were not cleared:`, remainingSelections);
+            } else {
+                console.log(`All selections for userId=${userId} were successfully cleared`);
+            }
+        }
     }
 
     setActiveItem(itemId: string | null) {
@@ -172,36 +398,89 @@ export class EditorOverlayStore {
      * 指定したユーザーのカーソルをすべて削除する
      * @param userId ユーザーID（デフォルトは"local"）
      * @param clearSelections 選択範囲も削除するかどうか（デフォルトはfalse）
+     * @param preserveAltClick Alt+クリックで追加されたカーソルを保持するかどうか（デフォルトはfalse）
      */
-    clearCursorAndSelection(userId = "local", clearSelections = false) {
-        // 削除対象のカーソルIDを収集
-        const cursorIdsToRemove: string[] = [];
+    clearCursorAndSelection(userId = "local", clearSelections = false, preserveAltClick = false) {
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`clearCursorAndSelection called with userId=${userId}, clearSelections=${clearSelections}, preserveAltClick=${preserveAltClick}`);
+            console.log(`Current cursors before clearing:`, this.cursors);
+        }
 
-        // Map から一致するインスタンスを特定
-        for (const [cursorId, inst] of this.cursorInstances.entries()) {
-            if (inst.userId === userId) {
-                cursorIdsToRemove.push(cursorId);
+        // Alt+クリックで追加されたカーソルを保持する場合
+        if (preserveAltClick) {
+            // 削除対象のカーソルIDを収集（アクティブなカーソルのみ削除）
+            const cursorIdsToRemove: string[] = [];
+            const cursorIdsToKeep: string[] = [];
+
+            // Map から一致するインスタンスを特定
+            for (const [cursorId, inst] of this.cursorInstances.entries()) {
+                if (inst.userId === userId) {
+                    if (inst.isActive) {
+                        // アクティブなカーソルのみ削除
+                        cursorIdsToRemove.push(cursorId);
+                    } else {
+                        // 非アクティブなカーソルは保持
+                        cursorIdsToKeep.push(cursorId);
+                    }
+                }
             }
-        }
 
-        // 特定したカーソルをすべて削除
-        if (cursorIdsToRemove.length > 0) {
-            // Map からインスタンスを削除
-            cursorIdsToRemove.forEach(id => {
-                this.cursorInstances.delete(id);
-            });
-        }
+            // デバッグ情報
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Cursors to remove: ${cursorIdsToRemove.length}, Cursors to keep: ${cursorIdsToKeep.length}`);
+            }
 
-        // Reactive state を更新
-        this.cursors = Object.fromEntries(
-            Object.entries(this.cursors).filter(([_, c]) => c.userId !== userId),
-        );
+            // 特定したカーソルをすべて削除
+            if (cursorIdsToRemove.length > 0) {
+                // Map からインスタンスを削除
+                cursorIdsToRemove.forEach(id => {
+                    this.cursorInstances.delete(id);
+                });
+
+                // Reactive state を更新（保持するカーソルを除外）
+                this.cursors = Object.fromEntries(
+                    Object.entries(this.cursors).filter(([id, c]) =>
+                        c.userId !== userId || cursorIdsToKeep.includes(id)
+                    ),
+                );
+            }
+        } else {
+            // 通常の削除処理（すべてのカーソルを削除）
+            // 削除対象のカーソルIDを収集
+            const cursorIdsToRemove: string[] = [];
+
+            // Map から一致するインスタンスを特定
+            for (const [cursorId, inst] of this.cursorInstances.entries()) {
+                if (inst.userId === userId) {
+                    cursorIdsToRemove.push(cursorId);
+                }
+            }
+
+            // 特定したカーソルをすべて削除
+            if (cursorIdsToRemove.length > 0) {
+                // Map からインスタンスを削除
+                cursorIdsToRemove.forEach(id => {
+                    this.cursorInstances.delete(id);
+                });
+            }
+
+            // Reactive state を更新
+            this.cursors = Object.fromEntries(
+                Object.entries(this.cursors).filter(([_, c]) => c.userId !== userId),
+            );
+        }
 
         // 選択範囲も削除する場合
         if (clearSelections) {
             this.selections = Object.fromEntries(
                 Object.entries(this.selections).filter(([_, s]) => s.userId !== userId),
             );
+        }
+
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Cursors after clearing:`, this.cursors);
         }
     }
 
@@ -239,6 +518,33 @@ export class EditorOverlayStore {
         setTimeout(() => {
             this.cursors = tempCursors;
         }, 0);
+    }
+
+    /**
+     * デバッグ用: 現在のカーソル状態をログに出力
+     */
+    logCursorState() {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            const cursorInstances = this.getCursorInstances();
+            const cursors = Object.values(this.cursors);
+            console.log(`=== Cursor State Debug Info ===`);
+            console.log(`Current cursor instances: ${cursorInstances.length}`);
+            console.log(`Current cursors in store: ${cursors.length}`);
+            console.log(`Active item ID: ${this.getActiveItem()}`);
+            console.log(`Textarea reference exists: ${!!this.textareaRef}`);
+            if (this.textareaRef) {
+                console.log(`Textarea has focus: ${document.activeElement === this.textareaRef}`);
+            }
+            console.log(`Cursor instances:`, Array.from(this.cursorInstances.entries()).map(([id, cursor]) => ({
+                id,
+                itemId: cursor.itemId,
+                offset: cursor.offset,
+                isActive: cursor.isActive,
+                userId: cursor.userId
+            })));
+            console.log(`Cursors:`, cursors);
+            console.log(`=== End Debug Info ===`);
+        }
     }
 
     getItemCursorsAndSelections(itemId: string) {
@@ -377,7 +683,10 @@ export class EditorOverlayStore {
             }
 
             try {
-                if (sel.startItemId === sel.endItemId) {
+                if (sel.isBoxSelection && sel.boxSelectionRanges) {
+                    // 矩形選択（ボックス選択）の場合
+                    selectedText += this.getTextFromBoxSelection(sel);
+                } else if (sel.startItemId === sel.endItemId) {
                     // 単一アイテム内の選択範囲
                     selectedText += this.getTextFromSingleItemSelection(sel);
                 } else {
@@ -443,6 +752,101 @@ export class EditorOverlayStore {
         } else {
             return text.substring(startOffset, endOffset);
         }
+    }
+
+    /**
+     * 選択範囲からテキストを取得する
+     * @param sel 選択範囲
+     * @returns 選択範囲内のテキスト
+     */
+    getTextFromSelection(sel: SelectionRange): string {
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`getTextFromSelection called with:`, sel);
+        }
+
+        try {
+            if (sel.isBoxSelection && sel.boxSelectionRanges) {
+                // 矩形選択（ボックス選択）の場合
+                return this.getTextFromBoxSelection(sel);
+            } else if (sel.startItemId === sel.endItemId) {
+                // 単一アイテム内の選択範囲
+                return this.getTextFromSingleItemSelection(sel);
+            } else {
+                // 複数アイテムにまたがる選択範囲
+                return this.getTextFromMultiItemSelection(sel);
+            }
+        } catch (error) {
+            // エラーが発生した場合はログに出力
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.error(`Error in getTextFromSelection:`, error);
+                if (error instanceof Error) {
+                    console.error(`Error message: ${error.message}`);
+                    console.error(`Error stack: ${error.stack}`);
+                }
+            }
+            // エラーが発生した場合は空文字列を返す
+            return '';
+        }
+    }
+
+    /**
+     * 矩形選択（ボックス選択）からテキストを取得する
+     * @param sel 選択範囲
+     * @returns 選択範囲内のテキスト
+     */
+    private getTextFromBoxSelection(sel: SelectionRange): string {
+        if (!sel.boxSelectionRanges || sel.boxSelectionRanges.length === 0) {
+            return '';
+        }
+
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`getTextFromBoxSelection called with:`, sel);
+        }
+
+        // 各行のテキストを取得
+        const lines: string[] = [];
+
+        for (const range of sel.boxSelectionRanges) {
+            const textEl = document.querySelector(`[data-item-id="${range.itemId}"] .item-text`) as HTMLElement;
+            if (!textEl) {
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`Text element not found for item ${range.itemId}`);
+                }
+                lines.push(''); // 空行を追加
+                continue;
+            }
+
+            const text = textEl.textContent || '';
+            const startOffset = Math.min(range.startOffset, range.endOffset);
+            const endOffset = Math.max(range.startOffset, range.endOffset);
+
+            // 選択範囲が有効かチェック
+            if (startOffset === endOffset) {
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`Empty selection for item ${range.itemId}`);
+                }
+                lines.push(''); // 空行を追加
+                continue;
+            }
+
+            // オフセットが範囲内かチェック
+            if (startOffset < 0 || endOffset > text.length) {
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`Invalid offsets for item ${range.itemId}: startOffset=${startOffset}, endOffset=${endOffset}, text.length=${text.length}`);
+                }
+                // 範囲外の場合は修正
+                const safeStartOffset = Math.max(0, Math.min(text.length, startOffset));
+                const safeEndOffset = Math.max(0, Math.min(text.length, endOffset));
+                lines.push(text.substring(safeStartOffset, safeEndOffset));
+            } else {
+                lines.push(text.substring(startOffset, endOffset));
+            }
+        }
+
+        // VS Codeの矩形選択の場合、各行を改行で連結
+        return lines.join('\n');
     }
 
     /**

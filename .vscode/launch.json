@@ -214,7 +214,7 @@
             "runtimeExecutable": "bash",
             "runtimeArgs": [
                 "-c",
-                "npx dotenv-cli -e .env.localhost -- npm run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/localhost-svelte-kit.log"
+                "npx dotenv-cli -e .env.localhost -- npm run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
             ],
             "localRoot": "${workspaceFolder}/client",
             "env": {
@@ -234,7 +234,7 @@
             "localRoot": "${workspaceFolder}/server",
             "runtimeArgs": [
                 "-c",
-                "cd ${workspaceFolder}/server && npx dotenv-cli -e .env.localhost -- npm run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/localhost-auth-service-tee.log"
+                "cd ${workspaceFolder}/server && npx dotenv-cli -e .env.localhost -- npm run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
             ],
             "env": {
                 "PORT": "7091"

@@ -16,6 +16,7 @@
 | FMT-0002 | フォーマット組み合わせ | — | implemented |
 | FMT-0003 | 拡張フォーマット | — | implemented |
 | FMT-0004 | クリップボードからのペーストとフォーマット | — | implemented |
+| FMT-0005 | Visual Studio Codeのコピー/ペースト仕様 | — | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
 | IME-0001 | IMEを使用した日本語入力 | — | implemented |
 | ITM-0001 | Enterで新規アイテム追加 | — | implemented |
@@ -29,3 +30,5 @@
 | SLR-0008 | 選択範囲のエッジケース | — | implemented |
 | SLR-0009 | ドラッグ＆ドロップによるテキスト移動 | — | implemented |
 | SLR-0010 | 選択範囲のフォーマット変更 | — | implemented |
+| SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | — | implemented |
+| SLR-0101 | ボックス選択（矩形選択）機能 - マウス | — | implemented |

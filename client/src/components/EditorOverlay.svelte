@@ -7,7 +7,20 @@ import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte
 const { stopCursorBlink } = store;
 
 // デバッグモード
-const DEBUG_MODE = false;
+let DEBUG_MODE = $state(false);
+
+// デバッグモードの変更を監視して、グローバル変数を更新
+$effect(() => {
+    if (typeof window !== 'undefined') {
+        (window as any).DEBUG_MODE = DEBUG_MODE;
+        console.log(`Debug mode ${DEBUG_MODE ? 'enabled' : 'disabled'}`);
+
+        // カーソル状態をログに出力
+        if (DEBUG_MODE) {
+            store.logCursorState();
+        }
+    }
+});
 // 上位へイベント dispatch
 const dispatch = createEventDispatcher();
 
@@ -380,7 +393,83 @@ function handleCopy(event: ClipboardEvent) {
   if (selectedText) {
     // クリップボードに書き込み
     if (event.clipboardData) {
+      // プレーンテキスト形式
       event.clipboardData.setData('text/plain', selectedText);
+
+      // マルチカーソル選択の場合、VS Code固有のメタデータを追加
+      const cursorInstances = store.getCursorInstances();
+      if (cursorInstances.length > 1) {
+        // 各カーソルの選択テキストを取得
+        const multicursorText: string[] = [];
+
+        // 各カーソルの選択テキストを収集
+        cursorInstances.forEach((cursor: any) => {
+          const itemId = cursor.itemId;
+
+          // 該当するアイテムの選択範囲を探す
+          const selection = Object.values(store.selections).find((sel: any) =>
+            sel.startItemId === itemId || sel.endItemId === itemId
+          );
+
+          if (selection) {
+            // 選択範囲のテキストを取得
+            const selText = store.getTextFromSelection(selection);
+            if (selText) {
+              multicursorText.push(selText);
+            }
+          }
+        });
+
+        // マルチカーソルテキストが取得できた場合
+        if (multicursorText.length > 0) {
+          // VS Code固有のメタデータを設定
+          const vscodeMetadata = {
+            version: 1,
+            isFromEmptySelection: false,
+            multicursorText: multicursorText,
+            mode: 'plaintext',
+            pasteMode: 'spread' // デフォルトはspread
+          };
+
+          // メタデータをJSON文字列に変換
+          const vscodeMetadataStr = JSON.stringify(vscodeMetadata);
+
+          // VS Code固有のメタデータを設定
+          event.clipboardData.setData('application/vscode-editor', vscodeMetadataStr);
+
+          // デバッグ情報
+          if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`VS Code metadata added:`, vscodeMetadata);
+          }
+        }
+      }
+
+      // 矩形選択（ボックス選択）の場合
+      // 現在は実装されていないが、将来的に実装する可能性がある
+      // ここでは単純に複数行テキストとして処理
+      if (selectedText.includes('\n')) {
+        // 複数行テキストを検出
+        const lineCount = selectedText.split(/\r?\n/).length;
+
+        // VS Code固有のメタデータを設定
+        const vscodeMetadata = {
+          version: 1,
+          isFromEmptySelection: false,
+          mode: 'plaintext',
+          lineCount: lineCount
+        };
+
+        // メタデータをJSON文字列に変換
+        const vscodeMetadataStr = JSON.stringify(vscodeMetadata);
+
+        // VS Code固有のメタデータを設定
+        event.clipboardData.setData('application/vscode-editor', vscodeMetadataStr);
+
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+          console.log(`VS Code metadata added for multi-line text:`, vscodeMetadata);
+        }
+      }
     }
 
     // テスト・フォーカス保持のため、常に隠しtextareaを更新
@@ -610,12 +699,62 @@ function handlePaste(event: ClipboardEvent) {
 </script>
 
 <div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={store.cursorVisible}>
+    <!-- デバッグボタン -->
+    <button
+        class="debug-button"
+        class:active={DEBUG_MODE}
+        onclick={() => DEBUG_MODE = !DEBUG_MODE}
+        title="デバッグモードの切り替え"
+    >
+        D
+    </button>
+
     <!-- 隠しクリップボード用textarea -->
     <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
     <!-- 選択範囲のレンダリング -->
     {#each Object.values(store.selections) as sel}
         {#if sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId}
-            {#if sel.startItemId === sel.endItemId}
+            {#if sel.isBoxSelection && sel.boxSelectionRanges}
+                <!-- 矩形選択（ボックス選択）の場合 -->
+                {#each sel.boxSelectionRanges as range, index}
+                    {@const rect = calculateSelectionPixelRange(range.itemId, range.startOffset, range.endOffset, sel.isReversed)}
+                    {#if rect}
+                        {@const isPageTitle = range.itemId === "page-title"}
+                        {@const isFirstRange = index === 0}
+                        {@const isLastRange = index === sel.boxSelectionRanges.length - 1}
+                        {@const isStartItem = range.itemId === sel.startItemId}
+                        {@const isEndItem = range.itemId === sel.endItemId}
+
+                        <!-- 矩形選択範囲の背景 -->
+                        <div
+                            class="selection selection-box"
+                            class:page-title-selection={isPageTitle}
+                            class:selection-box-first={isFirstRange}
+                            class:selection-box-last={isLastRange}
+                            class:selection-box-start={isStartItem}
+                            class:selection-box-end={isEndItem}
+                            style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none;"
+                        ></div>
+
+                        <!-- 開始位置と終了位置のマーカー -->
+                        {#if isStartItem}
+                            <div
+                                class="selection-box-marker selection-box-start-marker"
+                                style="position:absolute; left:{rect.left - 2}px; top:{rect.top - 2}px; pointer-events:none;"
+                                title="選択開始位置"
+                            ></div>
+                        {/if}
+
+                        {#if isEndItem}
+                            <div
+                                class="selection-box-marker selection-box-end-marker"
+                                style="position:absolute; left:{rect.left + rect.width - 4}px; top:{rect.top + rect.height - 4}px; pointer-events:none;"
+                                title="選択終了位置"
+                            ></div>
+                        {/if}
+                    {/if}
+                {/each}
+            {:else if sel.startItemId === sel.endItemId}
                 <!-- 単一アイテム選択 -->
                 {@const rect = calculateSelectionPixelRange(sel.startItemId, sel.startOffset, sel.endOffset, sel.isReversed)}
                 {#if rect}
@@ -734,7 +873,7 @@ function handlePaste(event: ClipboardEvent) {
 }
 .editor-overlay.visible .cursor.active {
     opacity: 1;
-    visibility: visible;
+    visibility: visible !important;
 }
 
 .cursor {
@@ -787,6 +926,103 @@ function handlePaste(event: ClipboardEvent) {
     border-right: none;
 }
 
+/* 矩形選択（ボックス選択）のスタイル */
+.selection-box {
+    background-color: rgba(0, 120, 215, 0.2);
+    border: 1px dashed rgba(0, 120, 215, 0.7); /* 境界線の色を濃くして視認性向上 */
+    box-shadow: 0 0 3px rgba(0, 120, 215, 0.3); /* 微妙な影を追加 */
+    animation: box-selection-pulse 2s infinite ease-in-out; /* パルスアニメーション */
+}
+
+/* 矩形選択のパルスアニメーション */
+@keyframes box-selection-pulse {
+    0% {
+        background-color: rgba(0, 120, 215, 0.15);
+        border-color: rgba(0, 120, 215, 0.6);
+    }
+    50% {
+        background-color: rgba(0, 120, 215, 0.25);
+        border-color: rgba(0, 120, 215, 0.8);
+    }
+    100% {
+        background-color: rgba(0, 120, 215, 0.15);
+        border-color: rgba(0, 120, 215, 0.6);
+    }
+}
+
+/* 矩形選択の開始位置と終了位置のマーカー */
+.selection-box-marker {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    z-index: 201;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+/* 開始位置マーカー */
+.selection-box-start-marker {
+    background-color: #0078d7;
+    border: 1px solid white;
+    animation: marker-pulse 2s infinite ease-in-out;
+}
+
+/* 終了位置マーカー */
+.selection-box-end-marker {
+    background-color: #ff4081;
+    border: 1px solid white;
+    animation: marker-pulse 2s infinite ease-in-out reverse;
+}
+
+/* マーカーのパルスアニメーション */
+@keyframes marker-pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.8);
+        opacity: 0.7;
+    }
+}
+
+/* 矩形選択の最初と最後の行のスタイル */
+.selection-box-first {
+    border-top: 2px solid rgba(0, 120, 215, 0.9);
+}
+
+.selection-box-last {
+    border-bottom: 2px solid rgba(0, 120, 215, 0.9);
+}
+
+/* 矩形選択の開始アイテムと終了アイテムのスタイル */
+.selection-box-start {
+    border-left: 2px solid rgba(0, 120, 215, 0.9);
+}
+
+.selection-box-end {
+    border-right: 2px solid rgba(0, 120, 215, 0.9);
+}
+
+/* 矩形選択の更新時のスタイル */
+.selection-box-updating {
+    animation: box-selection-update 0.3s ease-out;
+}
+
+@keyframes box-selection-update {
+    0% {
+        background-color: rgba(0, 120, 215, 0.4);
+        border-color: rgba(0, 120, 215, 1);
+    }
+    100% {
+        background-color: rgba(0, 120, 215, 0.2);
+        border-color: rgba(0, 120, 215, 0.7);
+    }
+}
+
 .debug-info {
     position: fixed;
     bottom: 10px;
@@ -806,5 +1042,32 @@ function handlePaste(event: ClipboardEvent) {
     width: 1px;
     height: 1px;
     opacity: 0;
+}
+
+.debug-button {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    width: 30px;
+    height: 30px;
+    background-color: #333;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-weight: bold;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s, background-color 0.2s;
+    z-index: 1000;
+    pointer-events: auto !important;
+}
+
+.debug-button:hover {
+    opacity: 0.8;
+}
+
+.debug-button.active {
+    background-color: #f00;
+    opacity: 0.8;
 }
 </style>

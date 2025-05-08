@@ -1,24 +1,50 @@
-version: '3'
+version: "3.8"
 
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    volumes:
-      - ..:/workspace:cached
-      - /home/ubuntu/.ssh:/home/node/.ssh:cached
-      - /var/run/docker.sock:/var/run/docker.sock:cached
-    ports:
-      - '7070:7070'
-      - '7071:7071'
-      - '7072:7072'
-      - '7080:7080'
-      - '7081:7081'
-      - '7082:7082'
-    command: sleep infinity
+
     working_dir: /workspace
     user: node
+
+    volumes:
+      # 1️⃣  Project source as a bind-mount
+      - type: bind
+        source: ..
+        target: /workspace
+        consistency: cached
+
+      # 2️⃣  Mask client-side node_modules with an anonymous volume
+      - type: volume
+        source: node_modules_client
+        target: /workspace/client/node_modules
+        volume:
+          nocopy: true         # don’t copy any existing files
+
+      # 3️⃣  Mask server-side node_modules
+      - type: volume
+        source: node_modules_server
+        target: /workspace/server/node_modules
+        volume:
+          nocopy: true
+
+      # 4️⃣  Remaining bind-mounts
+      - type: bind
+        source: /home/ubuntu/.ssh
+        target: /home/node/.ssh
+        consistency: cached
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        consistency: cached
+
+    ports:
+      - "7070-7072:7070-7072"
+      - "7080-7082:7080-7082"
+
+    command: sleep infinity
     networks:
       - firebase-network
 
@@ -26,16 +52,20 @@ services:
     build:
       context: ../firebase
       dockerfile: Dockerfile
+    container_name: firebase-emulator
     ports:
-      - '54000:54000' # Firebase Emulator UI
-      - '58080:58080' # Firestore Emulator
-      - '59099:59099' # Auth Emulator
+      - "54000:54000"  # Emulator UI
+      - "58080:58080"  # Firestore
+      - "59099:59099"  # Auth
     volumes:
       - ../firebase-data:/firebase-data
     networks:
       - firebase-network
-    container_name: firebase-emulator
 
 networks:
   firebase-network:
     driver: bridge
+
+volumes:
+  node_modules_client:
+  node_modules_server:

@@ -29,7 +29,7 @@ export class Cursor {
     }
 
     // SharedTree 上の Item を再帰検索
-    private findTarget(): Item | undefined {
+    findTarget(): Item | undefined {
         const root = generalStore.currentPage;
         if (!root) return undefined;
         return this.searchItem(root, this.itemId);
@@ -128,6 +128,11 @@ export class Cursor {
     }
 
     private applyToStore() {
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Cursor.applyToStore called for cursorId=${this.cursorId}, itemId=${this.itemId}, offset=${this.offset}`);
+        }
+
         // 既存のカーソルを更新
         store.updateCursor({
             cursorId: this.cursorId,
@@ -147,6 +152,23 @@ export class Cursor {
                 userId: this.userId
             });
             this.cursorId = cursorId;
+        }
+
+        // アクティブアイテムを設定
+        if (this.isActive) {
+            store.setActiveItem(this.itemId);
+
+            // グローバルテキストエリアにフォーカスを設定
+            const textarea = store.getTextareaRef();
+            if (textarea) {
+                // フォーカスを確実に設定するための複数の試行
+                textarea.focus();
+
+                // requestAnimationFrameを使用してフォーカスを設定
+                requestAnimationFrame(() => {
+                    textarea.focus();
+                });
+            }
         }
     }
 
@@ -1628,208 +1650,14 @@ export class Cursor {
         }
     }
 
-    /**
-     * 選択範囲のテキストを太字にする
-     */
-    formatBold() {
-        this.formatSelection('bold');
-    }
+    // 注: formatBold, formatItalic, formatUnderline, formatStrikethrough, formatCode メソッドは
+    // 下部で再定義されているため、ここでの定義は削除しました。
 
-    /**
-     * 選択範囲のテキストを斜体にする
-     */
-    formatItalic() {
-        this.formatSelection('italic');
-    }
+    // 注: formatSelection メソッドは削除しました。
+    // 代わりに applyScrapboxFormatting メソッドを使用します。
 
-    /**
-     * 選択範囲のテキストに下線を追加する
-     */
-    formatUnderline() {
-        this.formatSelection('underline');
-    }
-
-    /**
-     * 選択範囲のテキストを取り消し線にする
-     */
-    formatStrikethrough() {
-        this.formatSelection('strikethrough');
-    }
-
-    /**
-     * 選択範囲のテキストをコード（等幅フォント）にする
-     */
-    formatCode() {
-        this.formatSelection('code');
-    }
-
-    /**
-     * 選択範囲のテキストを指定したフォーマットで装飾する
-     * @param format フォーマットタイプ（'bold', 'italic', 'underline', 'strikethrough', 'code'）
-     */
-    private formatSelection(format: 'bold' | 'italic' | 'underline' | 'strikethrough' | 'code') {
-        // 選択範囲を取得
-        const selection = Object.values(store.selections).find(s =>
-            s.userId === this.userId
-        );
-
-        if (!selection) {
-            // 選択範囲がない場合は何もしない
-            return;
-        }
-
-        // 複数アイテムにまたがる選択範囲の場合
-        if (selection.startItemId !== selection.endItemId) {
-            this.formatMultiItemSelection(selection, format);
-            return;
-        }
-
-        // 単一アイテム内の選択範囲の場合
-        const node = this.findTarget();
-        if (!node) return;
-
-        const startOffset = Math.min(selection.startOffset, selection.endOffset);
-        const endOffset = Math.max(selection.startOffset, selection.endOffset);
-        const text = node.text || '';
-
-        // フォーマットに応じたマークダウン記法を適用
-        let formattedText = '';
-        let marker = '';
-
-        switch (format) {
-            case 'bold':
-                marker = '**';
-                break;
-            case 'italic':
-                marker = '_';
-                break;
-            case 'underline':
-                marker = '<u>';
-                formattedText = text.slice(0, startOffset) +
-                                '<u>' + text.slice(startOffset, endOffset) + '</u>' +
-                                text.slice(endOffset);
-                break;
-            case 'strikethrough':
-                marker = '~~';
-                break;
-            case 'code':
-                marker = '`';
-                break;
-        }
-
-        // マークダウン記法を適用（underlineの場合は既に適用済み）
-        if (format !== 'underline') {
-            formattedText = text.slice(0, startOffset) +
-                            marker + text.slice(startOffset, endOffset) + marker +
-                            text.slice(endOffset);
-        }
-
-        // テキストを更新
-        node.updateText(formattedText);
-
-        // カーソル位置を更新（選択範囲の終了位置 + マーカーの長さ * 2）
-        this.offset = endOffset + marker.length * 2;
-        this.applyToStore();
-
-        // 選択範囲をクリア
-        this.clearSelection();
-    }
-
-    /**
-     * 複数アイテムにまたがる選択範囲のテキストをフォーマットする
-     * @param selection 選択範囲
-     * @param format フォーマットタイプ
-     */
-    private formatMultiItemSelection(selection: any, format: 'bold' | 'italic' | 'underline' | 'strikethrough' | 'code') {
-        const startItemId = selection.startItemId;
-        const endItemId = selection.endItemId;
-        const startOffset = selection.startOffset;
-        const endOffset = selection.endOffset;
-        const isReversed = selection.isReversed || false;
-
-        // 開始アイテムと終了アイテムを取得
-        const startItem = this.searchItem(generalStore.currentPage!, startItemId);
-        const endItem = this.searchItem(generalStore.currentPage!, endItemId);
-
-        if (!startItem || !endItem) return;
-
-        // 開始アイテムと終了アイテムのインデックスを取得
-        const items = generalStore.currentPage!.items as Items;
-        const allItems: Item[] = [];
-        for (const item of items as Iterable<Item>) {
-            allItems.push(item);
-        }
-
-        const startIndex = allItems.findIndex(item => item.id === startItemId);
-        const endIndex = allItems.findIndex(item => item.id === endItemId);
-
-        if (startIndex === -1 || endIndex === -1) return;
-
-        // 選択範囲内のアイテムを処理
-        const actualStartIndex = Math.min(startIndex, endIndex);
-        const actualEndIndex = Math.max(startIndex, endIndex);
-        const actualStartOffset = isReversed ? endOffset : startOffset;
-        const actualEndOffset = isReversed ? startOffset : endOffset;
-
-        // フォーマットに応じたマークダウン記法を適用
-        let marker = '';
-        switch (format) {
-            case 'bold':
-                marker = '**';
-                break;
-            case 'italic':
-                marker = '_';
-                break;
-            case 'underline':
-                marker = '<u>';
-                break;
-            case 'strikethrough':
-                marker = '~~';
-                break;
-            case 'code':
-                marker = '`';
-                break;
-        }
-
-        // 選択範囲内の各アイテムを処理
-        for (let i = actualStartIndex; i <= actualEndIndex; i++) {
-            const item = allItems[i];
-            const text = item.text || '';
-
-            if (i === actualStartIndex) {
-                // 開始アイテム
-                let formattedText = '';
-                if (format === 'underline') {
-                    formattedText = text.slice(0, actualStartOffset) +
-                                    '<u>' + text.slice(actualStartOffset);
-                } else {
-                    formattedText = text.slice(0, actualStartOffset) +
-                                    marker + text.slice(actualStartOffset);
-                }
-                item.updateText(formattedText);
-            } else if (i === actualEndIndex) {
-                // 終了アイテム
-                let formattedText = '';
-                if (format === 'underline') {
-                    formattedText = text.slice(0, actualEndOffset) +
-                                    '</u>' + text.slice(actualEndOffset);
-                } else {
-                    formattedText = text.slice(0, actualEndOffset) +
-                                    marker + text.slice(actualEndOffset);
-                }
-                item.updateText(formattedText);
-            }
-            // 中間アイテムは変更しない
-        }
-
-        // カーソル位置を更新（選択範囲の終了位置 + マーカーの長さ）
-        this.itemId = endItemId;
-        this.offset = actualEndOffset + marker.length;
-        this.applyToStore();
-
-        // 選択範囲をクリア
-        this.clearSelection();
-    }
+    // 注: formatMultiItemSelection メソッドは削除しました。
+    // 代わりに applyScrapboxFormattingToMultipleItems メソッドを使用します。
 
     /**
      * 現在のアイテムのテキストを全選択する
@@ -2306,12 +2134,30 @@ export class Cursor {
             // 移動前に古いアイテムのカーソルを確実に削除
             store.clearCursorForItem(oldItemId);
 
-            // 全てのカーソルをクリアして単一カーソルモードを維持
-            // 同じユーザーの他のカーソルも削除
-            store.clearCursorAndSelection(this.userId);
+            // 同じユーザーの他のカーソルも削除（単一カーソルモードを維持）
+            // 注意: 全てのカーソルをクリアするのではなく、同じユーザーのカーソルのみをクリア
+            const cursorsToRemove = Object.values(store.cursors)
+                .filter(c => c.userId === this.userId && c.cursorId !== this.cursorId)
+                .map(c => c.cursorId);
+
+            // デバッグ情報
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Removing cursors: ${cursorsToRemove.join(', ')}`);
+            }
+
+            // 選択範囲をクリア
+            store.clearSelectionForUser(this.userId);
 
             // 移動先アイテムの既存のカーソルも削除（重複防止）
-            store.clearCursorForItem(newItemId);
+            // 注意: 同じユーザーのカーソルのみを削除
+            const cursorsInTargetItem = Object.values(store.cursors)
+                .filter(c => c.itemId === newItemId && c.userId === this.userId)
+                .map(c => c.cursorId);
+
+            // デバッグ情報
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(', ')}`);
+            }
 
             // 新しいアイテムとオフセットを設定
             this.itemId = newItemId;

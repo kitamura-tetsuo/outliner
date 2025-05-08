@@ -12,7 +12,23 @@ let textareaRef: HTMLTextAreaElement;
 $effect(() => {
     const id = store.activeItemId;
     if (id && textareaRef) {
+        // フォーカスを確実に設定するための複数の試行
         textareaRef.focus();
+
+        // requestAnimationFrameを使用してフォーカスを設定
+        requestAnimationFrame(() => {
+            textareaRef.focus();
+
+            // さらに確実にするためにsetTimeoutも併用
+            setTimeout(() => {
+                textareaRef.focus();
+
+                // デバッグ情報
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`GlobalTextArea: focus set on activeItemId change. Active element is textarea: ${document.activeElement === textareaRef}`);
+                }
+            }, 10);
+        });
     }
 });
 
@@ -54,17 +70,34 @@ function handleCopy(event: ClipboardEvent) {
 function handlePaste(event: ClipboardEvent) {
     KeyEventHandler.handlePaste(event);
 }
+
+// フォーカス喪失時の処理を追加
+function handleBlur(_event: FocusEvent) {
+    const activeItemId = store.getActiveItem();
+    if (activeItemId) {
+        // フォーカスを確実に設定するための複数の試行
+        setTimeout(() => {
+            textareaRef.focus();
+
+            // デバッグ情報
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`GlobalTextArea: focus restored after blur. Active element is textarea: ${document.activeElement === textareaRef}`);
+            }
+        }, 10);
+    }
+}
 </script>
 
 <textarea
     bind:this={textareaRef}
     class="global-textarea"
-    onkeydown={handleKeyDown}
-    oninput={handleInput}
-    oncompositionupdate={handleCompositionUpdate}
-    oncompositionend={handleCompositionEnd}
-    oncopy={handleCopy}
-    onpaste={handlePaste}
+    on:keydown={handleKeyDown}
+    on:input={handleInput}
+    on:compositionupdate={handleCompositionUpdate}
+    on:compositionend={handleCompositionEnd}
+    on:copy={handleCopy}
+    on:paste={handlePaste}
+    on:blur={handleBlur}
 ></textarea>
 
 <style>

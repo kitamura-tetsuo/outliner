@@ -184,12 +184,23 @@
 			editorOverlayStore.clearCursorForItem(activeItemId);
 		}
 
-		// 全てのカーソルをクリアしてから新しいカーソルを設定
-		// Alt+Clickでのマルチカーソル追加以外では、常に単一カーソルになるようにする
-		editorOverlayStore.clearCursorAndSelection('local');
+		// Alt+Clickで追加されたカーソルを保持するかどうかを判断
+		// event が undefined または Alt キーが押されていない場合は通常の削除処理
+		const preserveAltClick = event?.altKey === true;
 
-		// 現在のアイテムの既存のカーソルをクリア
-		editorOverlayStore.clearCursorForItem(model.id);
+		// デバッグ情報
+		if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+			console.log(`startEditing called with preserveAltClick=${preserveAltClick}`);
+		}
+
+		// 全てのカーソルをクリアしてから新しいカーソルを設定
+		// Alt+Clickでのマルチカーソル追加の場合は、既存のカーソルを保持する
+		editorOverlayStore.clearCursorAndSelection('local', false, preserveAltClick);
+
+		// 現在のアイテムの既存のカーソルをクリア（Alt+Clickの場合は保持）
+		if (!preserveAltClick) {
+			editorOverlayStore.clearCursorForItem(model.id);
+		}
 
 		// アクティブアイテムを設定
 		editorOverlayStore.setActiveItem(model.id);
@@ -321,29 +332,67 @@
 	function handleClick(event: MouseEvent) {
 		// Alt+Click: 新しいカーソルを追加
 		if (event.altKey) {
+			// イベントの伝播を確実に停止
 			event.preventDefault();
 			event.stopPropagation();
-			const pos = getClickPosition(event, text.current);
-			const existing = editorOverlayStore.getItemCursorsAndSelections(model.id).cursors;
+			event.stopImmediatePropagation();
 
-			// 同じ位置に既にカーソルがある場合は何もしない
-			if (existing.some(c => c.offset === pos && c.userId === 'local')) {
-				return;
+			// クリック位置を取得
+			const pos = getClickPosition(event, text.current);
+
+			// デバッグ情報
+			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+				console.log(`Alt+Click on item ${model.id} at position ${pos}`);
+				// 現在のカーソル状態をログ
+				const cursorInstances = editorOverlayStore.getCursorInstances();
+				const cursors = Object.values(editorOverlayStore.cursors);
+				console.log(`Current cursor instances: ${cursorInstances.length}`);
+				console.log(`Current cursors in store: ${cursors.length}`);
+				console.log(`Active item ID: ${editorOverlayStore.getActiveItem()}`);
 			}
 
-			// 新しいカーソルを追加
-			editorOverlayStore.addCursor({
+			// 新しいカーソルを追加（既存のカーソルチェックはaddCursor内で行う）
+			const cursorId = editorOverlayStore.addCursor({
 				itemId: model.id,
 				offset: pos,
 				isActive: true,
 				userId: 'local'
 			});
 
+			// デバッグ情報
+			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+				console.log(`Added new cursor with ID ${cursorId} at position ${pos}`);
+			}
+
 			// アクティブアイテムを設定
 			editorOverlayStore.setActiveItem(model.id);
 
-			// グローバルテキストエリアにフォーカス
-			editorOverlayStore.getTextareaRef()?.focus();
+			// グローバルテキストエリアにフォーカス（より確実な方法）
+			const textarea = editorOverlayStore.getTextareaRef();
+			if (textarea) {
+				// フォーカスを確実に設定するための複数の試行
+				textarea.focus();
+
+				// requestAnimationFrameを使用してフォーカスを設定
+				requestAnimationFrame(() => {
+					textarea.focus();
+
+					// さらに確実にするためにsetTimeoutも併用
+					setTimeout(() => {
+						textarea.focus();
+
+						// フォーカスが設定されたかチェック
+						if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+							console.log(`Textarea has focus: ${document.activeElement === textarea}`);
+						}
+					}, 10);
+				});
+			} else {
+				console.error('Global textarea not found');
+			}
+
+			// カーソル点滅を開始
+			editorOverlayStore.startCursorBlink();
 			return;
 		}
 
@@ -454,7 +503,14 @@
 		// 現在のマウス位置を取得
 		const currentPosition = getClickPosition(event, text.current);
 
-		// 選択範囲を更新
+		// Alt+Shift+ドラッグの場合は矩形選択（ボックス選択）
+		if (event.altKey && event.shiftKey) {
+			// 矩形選択の処理
+			handleBoxSelection(event, currentPosition);
+			return;
+		}
+
+		// 通常の選択範囲を更新
 		if (hiddenTextareaRef) {
 			const start = Math.min(dragStartPosition, currentPosition);
 			const end = Math.max(dragStartPosition, currentPosition);
@@ -489,6 +545,192 @@
 			dispatch('drag', {
 				itemId: model.id,
 				offset: currentPosition
+			});
+		}
+	}
+
+	/**
+	 * 矩形選択（ボックス選択）の処理
+	 * @param event マウスイベント
+	 * @param currentPosition 現在のカーソル位置
+	 */
+	function handleBoxSelection(event: MouseEvent, currentPosition: number) {
+		// デバッグ情報
+		if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+			console.log(`handleBoxSelection called with currentPosition=${currentPosition}`);
+		}
+
+		// 矩形選択の開始位置と終了位置
+		const startX = Math.min(dragStartPosition, currentPosition);
+		const endX = Math.max(dragStartPosition, currentPosition);
+
+		// ドラッグの開始位置と現在位置のY座標
+		const dragStartY = event.clientY - event.movementY; // 前回のY座標
+		const currentY = event.clientY;
+
+		// 選択範囲のY座標の上限と下限
+		const topY = Math.min(dragStartY, currentY);
+		const bottomY = Math.max(dragStartY, currentY);
+
+		// 表示されているすべてのアイテムを取得
+		const allItems = Array.from(document.querySelectorAll('.outliner-item'));
+
+		// 矩形選択の範囲内にあるアイテムを特定
+		const itemsInRange: Array<{
+			itemId: string;
+			element: HTMLElement;
+			rect: DOMRect;
+		}> = [];
+
+		// 各アイテムについて、矩形選択の範囲内かどうかを判定
+		allItems.forEach(itemElement => {
+			const itemId = itemElement.getAttribute('data-item-id');
+			if (!itemId) return;
+
+			const rect = itemElement.getBoundingClientRect();
+
+			// アイテムが矩形選択の範囲内にあるかどうかを判定
+			// 現在のアイテムは常に含める
+			if (itemId === model.id || (rect.bottom >= topY && rect.top <= bottomY)) {
+				itemsInRange.push({
+					itemId,
+					element: itemElement as HTMLElement,
+					rect
+				});
+			}
+		});
+
+		// 矩形選択の範囲内にあるアイテムがない場合は何もしない
+		if (itemsInRange.length === 0) return;
+
+		// Y座標でソート
+		itemsInRange.sort((a, b) => a.rect.top - b.rect.top);
+
+		// 各アイテムの選択範囲を計算
+		const boxSelectionRanges: Array<{
+			itemId: string;
+			startOffset: number;
+			endOffset: number;
+		}> = [];
+
+		// 各アイテムについて、選択範囲を計算
+		itemsInRange.forEach(item => {
+			const textElement = item.element.querySelector('.item-text') as HTMLElement;
+			if (!textElement) return;
+
+			const textContent = textElement.textContent || '';
+
+			// 選択範囲の開始位置と終了位置を計算
+			// 各アイテムの文字位置を計算するためのより正確な方法
+			let itemStartOffset = startX;
+			let itemEndOffset = endX;
+
+			// テキスト内容に基づいて位置を調整
+			// 文字単位での位置計算を行う
+			if (item.itemId === model.id) {
+				// 現在のアイテムの場合は、ドラッグ開始位置と現在位置を使用
+				itemStartOffset = startX;
+				itemEndOffset = endX;
+			} else {
+				// 他のアイテムの場合は、テキスト内容に基づいて位置を計算
+				// 仮想的なクリックイベントを作成して位置を計算
+				const virtualEvent = new MouseEvent('click', {
+					clientX: event.clientX,
+					clientY: item.rect.top + (item.rect.height / 2) // アイテムの中央
+				});
+
+				// 水平方向の位置を計算
+				const rect = textElement.getBoundingClientRect();
+				const relX = event.clientX - rect.left;
+
+				// 文字単位での位置を計算
+				const span = document.createElement('span');
+				const style = window.getComputedStyle(textElement);
+				span.style.fontFamily = style.fontFamily;
+				span.style.fontSize = style.fontSize;
+				span.style.fontWeight = style.fontWeight;
+				span.style.letterSpacing = style.letterSpacing;
+				span.style.whiteSpace = 'pre';
+				span.style.visibility = 'hidden';
+				span.style.position = 'absolute';
+				document.body.appendChild(span);
+
+				// 開始位置を計算
+				let startPos = 0;
+				let minStartDist = Infinity;
+				for (let i = 0; i <= textContent.length; i++) {
+					span.textContent = textContent.slice(0, i);
+					const w = span.getBoundingClientRect().width;
+					const d = Math.abs(w - (relX - (endX - startX)));
+					if (d < minStartDist) {
+						minStartDist = d;
+						startPos = i;
+					}
+				}
+
+				// 終了位置を計算
+				let endPos = 0;
+				let minEndDist = Infinity;
+				for (let i = 0; i <= textContent.length; i++) {
+					span.textContent = textContent.slice(0, i);
+					const w = span.getBoundingClientRect().width;
+					const d = Math.abs(w - relX);
+					if (d < minEndDist) {
+						minEndDist = d;
+						endPos = i;
+					}
+				}
+
+				document.body.removeChild(span);
+
+				// 計算した位置を使用
+				itemStartOffset = Math.min(startPos, endPos);
+				itemEndOffset = Math.max(startPos, endPos);
+			}
+
+			// 範囲外の場合は修正
+			if (itemStartOffset < 0) itemStartOffset = 0;
+			if (itemEndOffset > textContent.length) itemEndOffset = textContent.length;
+
+			// 選択範囲が有効な場合のみ追加
+			if (itemStartOffset < itemEndOffset) {
+				boxSelectionRanges.push({
+					itemId: item.itemId,
+					startOffset: itemStartOffset,
+					endOffset: itemEndOffset
+				});
+			}
+		});
+
+		// 矩形選択を設定
+		if (boxSelectionRanges.length > 0) {
+			// 最初と最後のアイテムを取得
+			const firstItem = boxSelectionRanges[0];
+			const lastItem = boxSelectionRanges[boxSelectionRanges.length - 1];
+
+			// 矩形選択を設定
+			editorOverlayStore.setBoxSelection(
+				firstItem.itemId,
+				firstItem.startOffset,
+				lastItem.itemId,
+				lastItem.endOffset,
+				boxSelectionRanges,
+				'local'
+			);
+
+			// カーソル位置を更新
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: currentPosition,
+				isActive: true,
+				userId: 'local'
+			});
+
+			// ドラッグイベントを発火
+			dispatch('box-selection', {
+				startItemId: firstItem.itemId,
+				endItemId: lastItem.itemId,
+				ranges: boxSelectionRanges
 			});
 		}
 	}

@@ -74,3 +74,7 @@ document.querySelectorAll('.cursor')
 
 git 全バージョンの全文検索
 git grep -n "updateFluidClient" $(git rev-list --all) -- . ':(exclude)*.md'
+
+
+mutagen sync create --ignore-vcs --ignore node_modules/**,client/node_modules**,server/node_modules**,.venv/** C:\Users\kitam\src\outliner ubuntu@192.168.50.13:~/src/outliner
+
