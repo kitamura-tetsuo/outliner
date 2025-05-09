@@ -1,0 +1,79 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ],
+      "runtime": "nodejs22",
+      "v2": {
+        "minInstances": 0,
+        "maxInstances": 10,
+        "concurrency": 80,
+        "memory": "256MiB",
+        "timeoutSeconds": 60
+      }
+    }
+  ],
+  "hosting": {
+    "public": "build",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/fluid-token",
+        "function": "fluidToken"
+      },
+      {
+        "source": "/api/save-container",
+        "function": "saveContainer"
+      },
+      {
+        "source": "/api/get-user-containers",
+        "function": "getUserContainers"
+      },
+      {
+        "source": "/health",
+        "function": "health"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "emulators": {
+    "auth": {
+      "port": 59099,
+      "host": "127.0.0.1"
+    },
+    "firestore": {
+      "port": 58080,
+      "host": "127.0.0.1"
+    },
+    "functions": {
+      "port": 57070,
+      "host": "127.0.0.1"
+    },
+    "hosting": {
+      "port": 57000,
+      "host": "127.0.0.1"
+    },
+    "ui": {
+      "port": 54000,
+      "host": "127.0.0.1",
+      "enabled": true
+    }
+  }
+}

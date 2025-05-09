@@ -1,4 +1,37 @@
 {
+    "functions": {
+        "source": "./functions"
+    },
+    "hosting": {
+        "public": "client/build",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "rewrites": [
+            {
+                "source": "/api/fluid-token",
+                "function": "fluidToken"
+            },
+            {
+                "source": "/api/save-container",
+                "function": "saveContainer"
+            },
+            {
+                "source": "/api/get-user-containers",
+                "function": "getUserContainers"
+            },
+            {
+                "source": "/health",
+                "function": "health"
+            },
+            {
+                "source": "**",
+                "destination": "/index.html"
+            }
+        ]
+    },
     "emulators": {
         "auth": {
             "port": 59099,
@@ -6,6 +39,14 @@
         },
         "firestore": {
             "port": 58080,
+            "host": "0.0.0.0"
+        },
+        "functions": {
+            "port": 57070,
+            "host": "0.0.0.0"
+        },
+        "hosting": {
+            "port": 57000,
             "host": "0.0.0.0"
         },
         "ui": {

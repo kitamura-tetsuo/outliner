@@ -1,50 +1,148 @@
-# sv
+# Outliner
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Outlinerは、Azure Fluid Relayを使用したリアルタイム共同編集アプリケーションです。
 
-## Creating a project
+## 開発環境のセットアップ
 
-If you're seeing this, you've probably already done this step. Congrats!
+1. 依存関係をインストール:
 
 ```bash
-# create a new project in the current directory
-npx sv create
+# クライアント側の依存関係
+cd client
+npm install
 
-# create a new project in my-app
-npx sv create my-app
+# サーバー側の依存関係
+cd ../server
+npm install
+
+# Firebase Functions側の依存関係
+cd ../functions
+npm install
 ```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+2. 環境変数を設定:
 
 ```bash
+# クライアント側
+cd client
+cp .env.example .env
+
+# サーバー側
+cd ../server
+cp .env.example .env
+
+# Firebase Functions側
+cd ../functions
+cp .env.example .env
+```
+
+## 開発サーバーの起動
+
+### クライアント開発サーバー
+
+```bash
+cd client
 npm run dev
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-
-# to listen on all network interfaces (0.0.0.0)
-npm run dev -- --host 0.0.0.0
+# または、ネットワーク上で公開する場合
+npm run dev:host
 ```
 
-## Building
-
-To create a production version of your app:
+### 認証サーバー（開発用）
 
 ```bash
+cd server
+npm run dev
+```
+
+### Firebase Emulators（開発用）
+
+```bash
+cd firebase
+firebase emulators:start
+```
+
+## ビルドとデプロイ
+
+### クライアントのビルド
+
+```bash
+cd client
 npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+### Firebase Hosting + Functionsへのデプロイ
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+1. Firebase CLIをインストール:
 
-dev
-VITE_PORT=7070
-API=7071
-VITE_TINYLICIOUS_ENDPOINT=7072
+```bash
+npm install -g firebase-tools
+```
 
-test
-VITE_PORT=7080
-VITE_TINYLICIOUS_ENDPOINT=7082
+2. Firebaseにログイン:
+
+```bash
+firebase login
+```
+
+3. プロジェクトを選択:
+
+```bash
+firebase use your-project-id
+```
+
+4. 環境変数を設定:
+
+```bash
+# Azure Fluid Relay設定
+firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="https://us.fluidrelay.azure.com" azure.primary_key="your-primary-key"
+```
+
+5. クライアントをビルド:
+
+```bash
+cd client
+npm run build
+```
+
+6. デプロイ:
+
+```bash
+firebase deploy
+```
+
+## 環境変数
+
+### 開発環境
+
+- クライアント: `VITE_PORT=7070`
+- API: `PORT=7071`
+- Tinylicious: `VITE_TINYLICIOUS_ENDPOINT=7072`
+
+### テスト環境
+
+- クライアント: `VITE_PORT=7080`
+- Tinylicious: `VITE_TINYLICIOUS_ENDPOINT=7082`
+
+## Firebase Hosting + Functions
+
+Firebase Hosting + Functionsを使用する場合は、以下の設定が必要です：
+
+1. クライアント側の環境変数を更新:
+
+```bash
+cd client
+cp .env.firebase.example .env
+```
+
+2. Firebase Functionsの環境変数を設定:
+
+```bash
+firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="https://us.fluidrelay.azure.com" azure.primary_key="your-primary-key"
+```
+
+3. デプロイ:
+
+```bash
+firebase deploy
+```

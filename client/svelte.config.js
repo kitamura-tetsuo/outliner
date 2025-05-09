@@ -1,4 +1,4 @@
-import adapter from "@sveltejs/adapter-auto";
+import adapter from "@sveltejs/adapter-static";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import { mdsvex } from "mdsvex";
 
@@ -12,13 +12,14 @@ const config = {
     compilerOptions: { runes: true },
 
     kit: {
-        adapter: adapter(),
-        // csrf: {
-        // 	checkOrigin: true
-        // },
-        // csp: {
-        // 	mode: 'auto'
-        // }
+        adapter: adapter({
+            // Firebase Hostingのpublicディレクトリに出力
+            pages: '../build',
+            assets: '../build',
+            fallback: 'index.html',
+            precompress: false,
+            strict: true
+        })
     },
 
     extensions: [".svelte", ".svx"],

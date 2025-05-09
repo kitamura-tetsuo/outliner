@@ -41,9 +41,16 @@ client/logs/
 server/logs/
 logs/
 
-firebase/firestore-debug.log
+# GitLab CI
 .gitlab-ci-local
 
 # Python
 .venv/
 scripts/gen_feature_map.log
+
+# Firebase
+.firebase/
+firebase/firestore-debug.log
+client/firebase-debug.log
+functions/.runtimeconfig.json
+functions/firebase-debug.log
