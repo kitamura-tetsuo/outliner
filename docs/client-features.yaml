@@ -483,3 +483,15 @@
   tests:
     - client/e2e/core/ITM-0001.spec.ts
     - client/e2e/core/ITM-0001-title.spec.ts
+
+- id: APP-0001
+  title: '起動時にグローバルテキストエリアにフォーカスを設定'
+  description: 'アプリケーション起動時に自動的にグローバルテキストエリアにフォーカスを設定し、すぐに入力できるようにします。'
+  category: application
+  status: implemented
+  acceptance:
+    - 'アプリケーション起動時にグローバルテキストエリアにフォーカスが設定される'
+    - 'カーソルが表示される'
+    - 'ユーザーがクリックせずに直接テキスト入力が可能になる'
+  tests:
+    - client/e2e/core/APP-0001.spec.ts

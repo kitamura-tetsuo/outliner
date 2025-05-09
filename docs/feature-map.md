@@ -1,6 +1,7 @@
 # Feature ↔ Test Matrix
 | Feature | Title | Test files | Status |
 |---------|-------|------------|--------|
+| APP-0001 | 起動時にグローバルテキストエリアにフォーカスを設定 | — | implemented |
 | CLM-0001 | クリックで編集モードに入る | — | implemented |
 | CLM-0002 | 左へ移動 | — | implemented |
 | CLM-0003 | 右へ移動 | — | implemented |
