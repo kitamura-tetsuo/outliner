@@ -6,6 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("CLM-0008: 行末へ移動", () => {
     test.beforeEach(async ({ page }) => {
@@ -28,6 +30,9 @@ test.describe("CLM-0008: 行末へ移動", () => {
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
         // テスト用のテキストを入力（改行を明示的に入力）
         await page.keyboard.type("First line");
         await page.keyboard.press("Enter");
@@ -43,8 +48,15 @@ test.describe("CLM-0008: 行末へ移動", () => {
     });
 
     test("Endキーを押すと、カーソルが現在の行の末尾に移動する", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: 'visible' });
 
         // 複数のカーソルがある場合は最初のものを使用
@@ -80,8 +92,15 @@ test.describe("CLM-0008: 行末へ移動", () => {
     });
 
     test("複数行のアイテムでは、現在のカーソルがある行の末尾に移動する", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: 'visible' });
 
         // カーソルを3行目に移動

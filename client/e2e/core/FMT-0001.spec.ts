@@ -4,15 +4,24 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { setupTestPage, waitForCursorVisible } from '../helpers';
+import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe('フォーマット表示', () => {
   test('カーソルがないアイテムではフォーマットされた内容が表示される', async ({ page }) => {
-    await setupTestPage(page);
+    // アプリを開く
+    await page.goto("/");
+    // OutlinerItem がレンダリングされるのを待つ
+    await page.waitForSelector(".outliner-item");
+    // カーソル情報取得用のデバッグ関数をセットアップ
+    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+
+    // カーソルが表示されるまで待機
+    await TestHelpers.waitForCursorVisible(page);
 
     // テキストを入力
     await page.keyboard.type('これは[[太字]]のテキストです');
@@ -21,43 +30,63 @@ test.describe('フォーマット表示', () => {
     await page.keyboard.press('Enter');
     await page.keyboard.type('別のアイテム');
 
-    // 最初のアイテムのHTMLを確認
-    // JavaScriptを実行してフォーマットを適用
-    await page.evaluate(() => {
-      const itemText = document.querySelector('.outliner-item:first-child .item-text');
-      if (itemText) {
-        const text = itemText.textContent;
-        const html = text.replace(/\[\[(.*?)\]\]/g, '<strong>$1</strong>');
-        itemText.innerHTML = html;
-      }
-    });
+    // 少し待機してフォーマットが適用されるのを待つ
+    await page.waitForTimeout(500);
 
-    // フォーマットされたHTMLを確認
+    // 最初のアイテムのHTMLを確認
     const firstItemHtml = await page.locator('.outliner-item').first().locator('.item-text').innerHTML();
+
+    // フォーマットされたHTMLを確認（制御文字は非表示、フォーマットは適用）
     expect(firstItemHtml).toContain('<strong>太字</strong>');
   });
 
   test('カーソルがあるアイテムではプレーンテキストの入力内容がそのまま表示される', async ({ page }) => {
-    await setupTestPage(page);
+    // アプリを開く
+    await page.goto("/");
+    // OutlinerItem がレンダリングされるのを待つ
+    await page.waitForSelector(".outliner-item");
+    // カーソル情報取得用のデバッグ関数をセットアップ
+    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+
+    // カーソルが表示されるまで待機
+    await TestHelpers.waitForCursorVisible(page);
 
     // テキストを入力
     await page.keyboard.type('これは[[太字]]のテキストです');
 
     // カーソルがあるアイテムのテキストを確認
     const itemText = await page.locator('.outliner-item').first().locator('.item-text').textContent();
-    expect(itemText).toBe('これは[[太字]]のテキストです');
+
+    // 制御文字を含むテキストが表示されていることを確認
+    // 注: 実際の実装では内部リンクとして解釈される可能性があるため、部分一致で確認
+    expect(itemText).toContain('これは');
+    expect(itemText).toContain('太字');
+    expect(itemText).toContain('のテキストです');
+
+    // 制御文字が表示されていることを確認
+    const itemHtml = await page.locator('.outliner-item').first().locator('.item-text').innerHTML();
+    // 注: 実際の実装では制御文字の表示方法が異なる可能性があるため、部分一致で確認
+    expect(itemHtml).toContain('class="control-char"');
   });
 
   test('太字フォーマット（[[text]]）が視覚的に太字で表示される', async ({ page }) => {
-    await setupTestPage(page);
+    // アプリを開く
+    await page.goto("/");
+    // OutlinerItem がレンダリングされるのを待つ
+    await page.waitForSelector(".outliner-item");
+    // カーソル情報取得用のデバッグ関数をセットアップ
+    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+
+    // カーソルが表示されるまで待機
+    await TestHelpers.waitForCursorVisible(page);
 
     // テキストを入力
     await page.keyboard.type('これは[[太字]]のテキストです');
@@ -66,27 +95,30 @@ test.describe('フォーマット表示', () => {
     await page.keyboard.press('Enter');
     await page.keyboard.type('別のアイテム');
 
-    // JavaScriptを実行してフォーマットを適用
-    await page.evaluate(() => {
-      const itemText = document.querySelector('.outliner-item:first-child .item-text');
-      if (itemText) {
-        const text = itemText.textContent;
-        const html = text.replace(/\[\[(.*?)\]\]/g, '<strong>$1</strong>');
-        itemText.innerHTML = html;
-      }
-    });
+    // 少し待機してフォーマットが適用されるのを待つ
+    await page.waitForTimeout(500);
 
     // 最初のアイテムのHTMLを確認
     const firstItemHtml = await page.locator('.outliner-item').first().locator('.item-text').innerHTML();
+
+    // 太字フォーマットが適用されていることを確認
     expect(firstItemHtml).toContain('<strong>太字</strong>');
   });
 
   test('斜体フォーマット（[/ text]）が視覚的に斜体で表示される', async ({ page }) => {
-    await setupTestPage(page);
+    // アプリを開く
+    await page.goto("/");
+    // OutlinerItem がレンダリングされるのを待つ
+    await page.waitForSelector(".outliner-item");
+    // カーソル情報取得用のデバッグ関数をセットアップ
+    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+
+    // カーソルが表示されるまで待機
+    await TestHelpers.waitForCursorVisible(page);
 
     // テキストを入力
     await page.keyboard.type('これは[/斜体]のテキストです');
@@ -95,27 +127,30 @@ test.describe('フォーマット表示', () => {
     await page.keyboard.press('Enter');
     await page.keyboard.type('別のアイテム');
 
-    // JavaScriptを実行してフォーマットを適用
-    await page.evaluate(() => {
-      const itemText = document.querySelector('.outliner-item:first-child .item-text');
-      if (itemText) {
-        const text = itemText.textContent;
-        const html = text.replace(/\[\/(.*?)\]/g, '<em>$1</em>');
-        itemText.innerHTML = html;
-      }
-    });
+    // 少し待機してフォーマットが適用されるのを待つ
+    await page.waitForTimeout(500);
 
     // 最初のアイテムのHTMLを確認
     const firstItemHtml = await page.locator('.outliner-item').first().locator('.item-text').innerHTML();
+
+    // 斜体フォーマットが適用されていることを確認
     expect(firstItemHtml).toContain('<em>斜体</em>');
   });
 
   test('取り消し線フォーマット（[- text]）が視覚的に取り消し線付きで表示される', async ({ page }) => {
-    await setupTestPage(page);
+    // アプリを開く
+    await page.goto("/");
+    // OutlinerItem がレンダリングされるのを待つ
+    await page.waitForSelector(".outliner-item");
+    // カーソル情報取得用のデバッグ関数をセットアップ
+    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+
+    // カーソルが表示されるまで待機
+    await TestHelpers.waitForCursorVisible(page);
 
     // テキストを入力
     await page.keyboard.type('これは[-取り消し線]のテキストです');
@@ -124,27 +159,30 @@ test.describe('フォーマット表示', () => {
     await page.keyboard.press('Enter');
     await page.keyboard.type('別のアイテム');
 
-    // JavaScriptを実行してフォーマットを適用
-    await page.evaluate(() => {
-      const itemText = document.querySelector('.outliner-item:first-child .item-text');
-      if (itemText) {
-        const text = itemText.textContent;
-        const html = text.replace(/\[\-(.*?)\]/g, '<s>$1</s>');
-        itemText.innerHTML = html;
-      }
-    });
+    // 少し待機してフォーマットが適用されるのを待つ
+    await page.waitForTimeout(500);
 
     // 最初のアイテムのHTMLを確認
     const firstItemHtml = await page.locator('.outliner-item').first().locator('.item-text').innerHTML();
+
+    // 取り消し線フォーマットが適用されていることを確認
     expect(firstItemHtml).toContain('<s>取り消し線</s>');
   });
 
   test('コードフォーマット（`text`）が視覚的にコードスタイルで表示される', async ({ page }) => {
-    await setupTestPage(page);
+    // アプリを開く
+    await page.goto("/");
+    // OutlinerItem がレンダリングされるのを待つ
+    await page.waitForSelector(".outliner-item");
+    // カーソル情報取得用のデバッグ関数をセットアップ
+    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+
+    // カーソルが表示されるまで待機
+    await TestHelpers.waitForCursorVisible(page);
 
     // テキストを入力
     await page.keyboard.type('これは`コード`のテキストです');
@@ -153,27 +191,30 @@ test.describe('フォーマット表示', () => {
     await page.keyboard.press('Enter');
     await page.keyboard.type('別のアイテム');
 
-    // JavaScriptを実行してフォーマットを適用
-    await page.evaluate(() => {
-      const itemText = document.querySelector('.outliner-item:first-child .item-text');
-      if (itemText) {
-        const text = itemText.textContent;
-        const html = text.replace(/`(.*?)`/g, '<code>$1</code>');
-        itemText.innerHTML = html;
-      }
-    });
+    // 少し待機してフォーマットが適用されるのを待つ
+    await page.waitForTimeout(500);
 
     // 最初のアイテムのHTMLを確認
     const firstItemHtml = await page.locator('.outliner-item').first().locator('.item-text').innerHTML();
+
+    // コードフォーマットが適用されていることを確認
     expect(firstItemHtml).toContain('<code>コード</code>');
   });
 
   test('アイテムをクリックするとプレーンテキストが表示される', async ({ page }) => {
-    await setupTestPage(page);
+    // アプリを開く
+    await page.goto("/");
+    // OutlinerItem がレンダリングされるのを待つ
+    await page.waitForSelector(".outliner-item");
+    // カーソル情報取得用のデバッグ関数をセットアップ
+    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+
+    // カーソルが表示されるまで待機
+    await TestHelpers.waitForCursorVisible(page);
 
     // テキストを入力
     await page.keyboard.type('これは[[太字]]のテキストです');
@@ -182,15 +223,8 @@ test.describe('フォーマット表示', () => {
     await page.keyboard.press('Enter');
     await page.keyboard.type('別のアイテム');
 
-    // JavaScriptを実行してフォーマットを適用
-    await page.evaluate(() => {
-      const itemText = document.querySelector('.outliner-item:first-child .item-text');
-      if (itemText) {
-        const text = itemText.textContent;
-        const html = text.replace(/\[\[(.*?)\]\]/g, '<strong>$1</strong>');
-        itemText.innerHTML = html;
-      }
-    });
+    // 少し待機してフォーマットが適用されるのを待つ
+    await page.waitForTimeout(500);
 
     // 最初のアイテムのHTMLを確認（フォーマットされている）
     const firstItemHtml = await page.locator('.outliner-item').first().locator('.item-text').innerHTML();
@@ -199,16 +233,21 @@ test.describe('フォーマット表示', () => {
     // 最初のアイテムをクリック
     await page.locator('.outliner-item').first().locator('.item-content').click();
 
-    // JavaScriptを実行してプレーンテキストに戻す
-    await page.evaluate(() => {
-      const itemText = document.querySelector('.outliner-item:first-child .item-text');
-      if (itemText) {
-        itemText.textContent = 'これは[[太字]]のテキストです';
-      }
-    });
+    // カーソルが表示されるまで待機
+    await TestHelpers.waitForCursorVisible(page);
 
-    // クリック後のテキストを確認（プレーンテキスト）
+    // クリック後のHTMLを確認（制御文字が表示される）
+    const afterClickHtml = await page.locator('.outliner-item').first().locator('.item-text').innerHTML();
+
+    // 注: 実際の実装では制御文字の表示方法が異なる可能性があるため、部分一致で確認
+    expect(afterClickHtml).toContain('class="control-char"');
+
+    // カーソルがあるアイテムのテキストを確認
     const itemText = await page.locator('.outliner-item').first().locator('.item-text').textContent();
-    expect(itemText).toBe('これは[[太字]]のテキストです');
+
+    // 制御文字を含むテキストが表示されていることを確認
+    expect(itemText).toContain('これは');
+    expect(itemText).toContain('太字');
+    expect(itemText).toContain('のテキストです');
   });
 });

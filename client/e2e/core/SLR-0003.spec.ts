@@ -6,6 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("SLR-0003: 行末まで選択", () => {
     test.beforeEach(async ({ page }) => {
@@ -28,6 +30,9 @@ test.describe("SLR-0003: 行末まで選択", () => {
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
         // テスト用のテキストを入力（改行を明示的に入力）
         await page.keyboard.type("First line");
         await page.keyboard.press("Enter");
@@ -43,8 +48,15 @@ test.describe("SLR-0003: 行末まで選択", () => {
     });
 
     test("Shift + Endで現在位置から行末までを選択する", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: 'visible' });
 
         // カーソルを行の途中に移動
@@ -84,8 +96,15 @@ test.describe("SLR-0003: 行末まで選択", () => {
     });
 
     test.skip("複数行のアイテムでは、現在のカーソルがある行の末尾までを選択する", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: 'visible' });
 
         // カーソルを3行目に移動し、行の途中に配置

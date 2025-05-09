@@ -4,6 +4,8 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 /**
  * Visual Studio Codeのコピー/ペースト仕様に関するテスト
@@ -50,7 +52,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     await item.locator('.item-content').click();
 
     // カーソルが表示されるのを待つ
-    await page.waitForSelector('.cursor', { state: 'visible', timeout: 5000 });
+    await TestHelpers.waitForCursorVisible(page);
 
     // テキストを入力
     const testText = 'テスト用テキスト';
@@ -81,7 +83,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     await item.locator('.item-content').click();
 
     // カーソルが表示されるのを待つ
-    await page.waitForSelector('.cursor', { state: 'visible', timeout: 5000 });
+    await TestHelpers.waitForCursorVisible(page);
 
     // 複数行のテキストを入力
     await page.keyboard.type('1行目');
@@ -128,7 +130,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     await item.locator('.item-content').click();
 
     // カーソルが表示されるのを待つ
-    await page.waitForSelector('.cursor', { state: 'visible', timeout: 5000 });
+    await TestHelpers.waitForCursorVisible(page);
 
     // フォーマット文字列を入力
     const formattedText = 'これは[[太字]]と[/斜体]と[-取り消し線]と`コード`です';
@@ -173,7 +175,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     await item.locator('.item-content').click();
 
     // カーソルが表示されるのを待つ
-    await page.waitForSelector('.cursor', { state: 'visible', timeout: 5000 });
+    await TestHelpers.waitForCursorVisible(page);
 
     // テキストを入力
     const testText = 'コピーするテキスト';
@@ -233,7 +235,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     await item.locator('.item-content').click();
 
     // カーソルが表示されるのを待つ
-    await page.waitForSelector('.cursor', { state: 'visible', timeout: 5000 });
+    await TestHelpers.waitForCursorVisible(page);
 
     // テキストを入力
     const testText = 'コピー元テキスト';
@@ -275,7 +277,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     // 3つのアイテムを作成
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
-    await page.waitForSelector('.cursor', { state: 'visible', timeout: 5000 });
+    await TestHelpers.waitForCursorVisible(page);
 
     await page.keyboard.type('アイテム1');
     await page.keyboard.press('Enter');
@@ -357,7 +359,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     // 3つのアイテムを作成
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
-    await page.waitForSelector('.cursor', { state: 'visible', timeout: 5000 });
+    await TestHelpers.waitForCursorVisible(page);
 
     await page.keyboard.type('アイテム1');
     await page.keyboard.press('Enter');

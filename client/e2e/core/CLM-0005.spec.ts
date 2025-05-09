@@ -6,6 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("CLM-0005: 下へ移動", () => {
     test.beforeEach(async ({ page }) => {
@@ -28,6 +30,9 @@ test.describe("CLM-0005: 下へ移動", () => {
 
         // グローバル textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus");
+
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
         // 複数行のテキストを入力
         await page.keyboard.type("First line\nSecond line");
         // カーソルを1行目に移動
@@ -36,8 +41,15 @@ test.describe("CLM-0005: 下へ移動", () => {
     });
 
     test("カーソルを1行下に移動する", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: 'visible' });
 
         // 複数のカーソルがある場合は最初のものを使用
@@ -58,15 +70,16 @@ test.describe("CLM-0005: 下へ移動", () => {
     });
 
     test("一番下の行にある時は、一つ次のアイテムの最初の行へ移動する", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        await activeItem.waitFor({ state: 'visible' });
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
 
-        // アイテムのIDを取得して保存（後で同じアイテムを確実に特定するため）
-        const firstItemId = await activeItem.evaluate(el => {
-            const parent = el.closest('.outliner-item');
-            return parent ? parent.getAttribute('data-item-id') : null;
-        });
+        // アクティブなアイテムIDを取得
+        const firstItemId = await TestHelpers.getActiveItemId(page);
+        expect(firstItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
+        await activeItem.waitFor({ state: 'visible' });
 
         // カーソルを2行目に移動
         await page.keyboard.press("ArrowDown");
@@ -140,12 +153,12 @@ test.describe("CLM-0005: 下へ移動", () => {
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
-        // アイテムのIDを取得して保存
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        const itemId = await activeItem.evaluate(el => {
-            const parent = el.closest('.outliner-item');
-            return parent ? parent.getAttribute('data-item-id') : null;
-        });
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const itemId = await TestHelpers.getActiveItemId(page);
+        expect(itemId).not.toBeNull();
 
         // カーソルを行の途中に移動
         await page.keyboard.press("Home");

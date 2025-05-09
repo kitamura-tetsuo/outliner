@@ -7,6 +7,8 @@ import {
     test,
 } from "@playwright/test";
 import { setupTestPage } from "../helpers";
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("カーソル重複問題の検証", () => {
     test.beforeEach(async ({ page }) => {
@@ -17,11 +19,15 @@ test.describe("カーソル重複問題の検証", () => {
     test("修正後：アイテム間をクリックで移動してもカーソルが1つだけ存在する", async ({ page }) => {
         // 1. 最初のアイテムを3回クリック
         await page.locator(".item-content").first().click();
+        await TestHelpers.waitForCursorVisible(page);
         await page.locator(".item-content").first().click();
+        await TestHelpers.waitForCursorVisible(page);
         await page.locator(".item-content").first().click();
+        await TestHelpers.waitForCursorVisible(page);
 
         // 2. 2番目のアイテムをクリック
         await page.locator("div:nth-child(2) > .outliner-item > .item-header > .item-content-container > .item-content").click();
+        await TestHelpers.waitForCursorVisible(page);
 
         // 3. テキスト「123」を入力
         await page.keyboard.type("123");
@@ -45,6 +51,7 @@ test.describe("カーソル重複問題の検証", () => {
 
         // 7. 1番目のアイテムをクリック
         await page.locator(".item-content").first().click();
+        await TestHelpers.waitForCursorVisible(page);
 
         // 8. テキスト「456」を入力
         await page.keyboard.type("456");

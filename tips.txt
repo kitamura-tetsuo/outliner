@@ -76,5 +76,8 @@ git 全バージョンの全文検索
 git grep -n "updateFluidClient" $(git rev-list --all) -- . ':(exclude)*.md'
 
 
-mutagen sync create --ignore-vcs --ignore node_modules/**,client/node_modules**,server/node_modules**,.venv/** C:\Users\kitam\src\outliner ubuntu@192.168.50.13:~/src/outliner
+./mutagen sync monitor
+./mutagen sync list --long
+./mutagen sync terminate
+./mutagen sync create --ignore-vcs --ignore node_modules/**,client/node_modules**,server/node_modules**,.venv/**,client/.svelte-kit/**,client/playwright-report/**,client/logs/**,client/e2e/logs/**,server/logs/** C:\Users\kitam\src\outliner ubuntu@192.168.50.13:~/src/outliner
 

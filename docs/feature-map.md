@@ -34,3 +34,5 @@
 | SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | — | implemented |
 | SLR-0101 | ボックス選択（矩形選択）機能 - マウス | — | implemented |
 | TST-0001 | SharedTreeデータ検証ユーティリティ | — | implemented |
+| TST-0002 | カーソル情報検証ユーティリティ | — | implemented |
+| TST-0003 | テストヘルパーユーティリティ | — | implemented |

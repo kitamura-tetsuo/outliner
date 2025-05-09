@@ -7,6 +7,8 @@ import {
     test,
 } from "@playwright/test";
 import { setupTestPage } from "../helpers";
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 // このテストは時間がかかるため、タイムアウトを増やす
 test.setTimeout(60000);
@@ -42,8 +44,15 @@ test.describe("CLM-0007: 行頭へ移動", () => {
     });
 
     test("Homeキーを押すと、カーソルが現在の行の先頭に移動する", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: 'visible' });
 
         // 複数のカーソルがある場合は最初のものを使用
@@ -79,8 +88,15 @@ test.describe("CLM-0007: 行頭へ移動", () => {
     });
 
     test("複数行のアイテムでは、現在のカーソルがある行の先頭に移動する", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: 'visible' });
 
         // カーソルを3行目に移動

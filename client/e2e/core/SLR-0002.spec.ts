@@ -6,6 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0002: 行頭まで選択", () => {
     test.beforeEach(async ({ page }) => {
@@ -13,6 +15,8 @@ test.describe("SLR-0002: 行頭まで選択", () => {
         await page.goto("/");
         // OutlinerItem がレンダリングされるのを待つ
         await page.waitForSelector(".outliner-item");
+        // カーソル情報取得用のデバッグ関数をセットアップ
+        await TestHelpers.setupCursorDebugger(page);
 
         // ページタイトルを優先的に使用
         const item = page.locator(".outliner-item.page-title");
@@ -25,6 +29,9 @@ test.describe("SLR-0002: 行頭まで選択", () => {
         } else {
             await item.locator(".item-content").click({ force: true });
         }
+
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
@@ -44,9 +51,9 @@ test.describe("SLR-0002: 行頭まで選択", () => {
     });
 
     test("Shift + Homeで現在位置から行頭までを選択する", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        await activeItem.waitFor({ state: 'visible' });
+        // アクティブなアイテム要素を取得
+        const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
+        expect(activeItemLocator).not.toBeNull();
 
         // カーソルを行の途中に移動
         await page.keyboard.press("Home");
@@ -83,6 +90,11 @@ test.describe("SLR-0002: 行頭まで選択", () => {
 
         // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
+
+        // カーソル情報を取得して検証
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.cursorCount).toBe(1);
+        expect(cursorData.selectionCount).toBeGreaterThan(0);
     });
 
     test("複数行のアイテムでは、現在のカーソルがある行の先頭までを選択する", async ({ page }) => {
@@ -91,9 +103,9 @@ test.describe("SLR-0002: 行頭まで選択", () => {
             (window as any).DEBUG_MODE = true;
         });
 
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        await activeItem.waitFor({ state: 'visible' });
+        // アクティブなアイテム要素を取得
+        const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
+        expect(activeItemLocator).not.toBeNull();
 
         // テキストを一度クリアして、新しいテキストを入力
         await page.keyboard.press("Control+a");
@@ -127,16 +139,11 @@ test.describe("SLR-0002: 行頭まで選択", () => {
         expect(initialSelectionExists).toBe(false);
 
         // 現在のカーソル位置を確認
-        const cursorInfo = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
-            if (!store) return null;
-            const cursor = Object.values(store.cursors)[0];
-            return cursor ? { itemId: cursor.itemId, offset: cursor.offset } : null;
-        });
-        console.log('Current cursor position:', cursorInfo);
+        const cursorData = await CursorValidator.getCursorData(page);
+        console.log('Current cursor position:', cursorData.cursors[0]);
 
         // カーソルが行頭にない場合のみテストを続行
-        if (cursorInfo && cursorInfo.offset > 0) {
+        if (cursorData.cursors[0] && cursorData.cursors[0].offset > 0) {
             // Shift + Homeを押下
             await page.keyboard.down('Shift');
             await page.keyboard.press('Home');
@@ -163,6 +170,11 @@ test.describe("SLR-0002: 行頭まで選択", () => {
 
             // 選択範囲が存在することを確認
             expect(selectionText.length).toBeGreaterThan(0);
+
+            // カーソル情報を取得して検証
+            const updatedCursorData = await CursorValidator.getCursorData(page);
+            expect(updatedCursorData.cursorCount).toBe(1);
+            expect(updatedCursorData.selectionCount).toBeGreaterThan(0);
         } else {
             console.log('Skipping test because cursor is at line start');
             // テストをスキップするためのダミーアサーション

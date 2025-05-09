@@ -6,6 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("SLR-0004: マウスドラッグによる選択", () => {
     test.beforeEach(async ({ page }) => {
@@ -28,13 +30,23 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
         // テスト用のテキストを入力
         await page.keyboard.type("This is a test text for mouse drag selection");
     });
 
     test("マウスドラッグで単一アイテム内のテキストを選択できる", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`).locator(".item-content");
         await activeItem.waitFor({ state: 'visible' });
 
         // テキスト要素を取得
@@ -67,8 +79,15 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
     });
 
     test("選択範囲が視覚的に表示される", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`).locator(".item-content");
         await activeItem.waitFor({ state: 'visible' });
 
         // テキスト要素を取得
@@ -97,8 +116,15 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
     });
 
     test("選択範囲のテキストをコピーできる", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`).locator(".item-content");
         await activeItem.waitFor({ state: 'visible' });
 
         // テキスト要素を取得

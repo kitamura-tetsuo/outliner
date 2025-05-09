@@ -6,6 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("ITM-0001: タイトルでのEnterキー動作", () => {
     test.beforeEach(async ({ page }) => {
@@ -24,6 +26,9 @@ test.describe("ITM-0001: タイトルでのEnterキー動作", () => {
 
         // グローバル textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus");
+
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
         // テキストを入力
         await page.keyboard.type("Page Title Text");
     });

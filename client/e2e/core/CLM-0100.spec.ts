@@ -3,7 +3,9 @@
  *  Source  : docs/client-features.yaml
  */
 import { test, expect } from '@playwright/test';
-import { setupTestPage, waitForCursorVisible } from '../helpers';
+import { setupTestPage } from '../helpers';
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("カーソル管理テスト", () => {
     test.beforeEach(async ({ page }) => {
@@ -26,8 +28,8 @@ test.describe("カーソル管理テスト", () => {
         // 編集モードに入るまで待機
         await page.waitForSelector("textarea.global-textarea:focus");
 
-        // カーソル要素が表示されるのを待つ
-        await page.waitForSelector(".editor-overlay .cursor", { timeout: 5000 });
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
 
         // 初期カーソル数を確認
         const initialCursorCount = await page.evaluate(() => {

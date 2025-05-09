@@ -6,6 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0001: Shift + 上下左右", () => {
     test.beforeEach(async ({ page }) => {
@@ -13,6 +15,8 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.goto("/");
         // OutlinerItem がレンダリングされるのを待つ
         await page.waitForSelector(".outliner-item");
+        // カーソル情報取得用のデバッグ関数をセットアップ
+        await TestHelpers.setupCursorDebugger(page);
 
         // ページタイトルを優先的に使用
         const item = page.locator(".outliner-item.page-title");
@@ -26,6 +30,9 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
             await item.locator(".item-content").click({ force: true });
         }
 
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
         // グローバル textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus");
         // 複数行のテキストを入力
@@ -37,15 +44,17 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
     });
 
     test("Shift + 右で選択範囲の右端を広げる", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        await activeItem.waitFor({ state: 'visible' });
+        // アクティブなアイテム要素を取得
+        const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
+        expect(activeItemLocator).not.toBeNull();
 
         // 初期状態では選択範囲がないことを確認
         let selections = await page.locator(".editor-overlay .selection").count();
         expect(selections).toBe(0);
 
         // 選択前のテキスト内容を取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         const initialText = await activeItem.locator(".item-text").textContent();
 
         // Shift + 右矢印キーを押下
@@ -82,12 +91,17 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
 
         // 選択範囲が広がったことを確認
         expect(newSelectionText.length).toBeGreaterThan(selectionText.length);
+
+        // カーソル情報を取得して検証
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.cursorCount).toBe(1);
+        expect(cursorData.selectionCount).toBeGreaterThan(0);
     });
 
     test("Shift + 左で選択範囲の左端を広げる", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        await activeItem.waitFor({ state: 'visible' });
+        // アクティブなアイテム要素を取得
+        const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
+        expect(activeItemLocator).not.toBeNull();
 
         // カーソルを数文字右に移動
         await page.keyboard.press("ArrowRight");
@@ -132,12 +146,17 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
 
         // 選択範囲が広がったことを確認
         expect(newSelectionText.length).toBeGreaterThan(selectionText.length);
+
+        // カーソル情報を取得して検証
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.cursorCount).toBe(1);
+        expect(cursorData.selectionCount).toBeGreaterThan(0);
     });
 
     test("Shift + 下で選択範囲の下端を広げる", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        await activeItem.waitFor({ state: 'visible' });
+        // アクティブなアイテム要素を取得
+        const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
+        expect(activeItemLocator).not.toBeNull();
 
         // 初期状態では選択範囲がないことを確認
         let selections = await page.locator(".editor-overlay .selection").count();
@@ -167,12 +186,17 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         // 選択範囲が複数行にまたがっていることを確認
         const lines = selectionText.split('\n');
         expect(lines.length).toBeGreaterThanOrEqual(1);
+
+        // カーソル情報を取得して検証
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.cursorCount).toBe(1);
+        expect(cursorData.selectionCount).toBeGreaterThan(0);
     });
 
     test("Shift + 上で選択範囲の上端を広げる", async ({ page }) => {
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        await activeItem.waitFor({ state: 'visible' });
+        // アクティブなアイテム要素を取得
+        const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
+        expect(activeItemLocator).not.toBeNull();
 
         // カーソルを2行目に移動
         await page.keyboard.press("ArrowDown");
@@ -209,5 +233,10 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         // 選択範囲が複数行にまたがっていることを確認
         const lines = selectionText.split('\n');
         expect(lines.length).toBeGreaterThanOrEqual(1);
+
+        // カーソル情報を取得して検証
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.cursorCount).toBe(1);
+        expect(cursorData.selectionCount).toBeGreaterThan(0);
     });
 });

@@ -410,6 +410,63 @@
     - client/e2e/utils/tree-validator-examples.ts
     - client/e2e/utils/tree-validator-usage.md
 
+- id: TST-0002
+  title: 'カーソル情報検証ユーティリティ'
+  description: 'テストにおいてカーソル情報をJSONとして取得し、結果を厳密かつ簡易に判定するユーティリティ'
+  category: testing
+  status: implemented
+  acceptance:
+    - 'カーソル情報をJSON形式で取得できる'
+    - '期待値と実際の値を厳密に比較できる'
+    - '期待値と実際の値を部分的に比較できる'
+    - '特定のパスのデータを検証できる'
+    - 'スナップショットを取得して後で比較できる'
+    - 'カーソルの数を検証できる'
+    - 'アクティブなアイテムIDを検証できる'
+  tests:
+    - client/e2e/utils/cursor-validation.spec.ts
+  examples:
+    - client/e2e/utils/cursor-validator-examples.ts
+    - client/e2e/utils/cursor-validator-usage.md
+
+- id: TST-0003
+  title: 'テストヘルパーユーティリティ'
+  description: 'テストにおいてカーソル状態の検証を容易にするヘルパー関数群'
+  category: testing
+  status: implemented
+  acceptance:
+    - 'カーソルデバッグ機能をセットアップできる（setupCursorDebugger）'
+    - 'カーソルが表示されるまで待機できる（waitForCursorVisible）'
+    - 'アクティブなアイテムIDを取得できる（getActiveItemId）'
+    - 'アクティブなアイテム要素を取得できる（getActiveItemLocator）'
+    - 'アイテムをクリックして編集モードに入れる（clickItemToEdit）'
+    - 'class:editingセレクタの代わりにカーソル状態を検証できる'
+  tests:
+    - client/e2e/core/CLM-0001.spec.ts
+    - client/e2e/core/CLM-0002.spec.ts
+    - client/e2e/core/CLM-0003.spec.ts
+    - client/e2e/core/CLM-0004.spec.ts
+    - client/e2e/core/CLM-0005.spec.ts
+    - client/e2e/core/CLM-0007.spec.ts
+    - client/e2e/core/CLM-0008.spec.ts
+    - client/e2e/core/CLM-0100.spec.ts
+    - client/e2e/core/CLM-0101.spec.ts
+    - client/e2e/core/CLM-0103.spec.ts
+    - client/e2e/core/SLR-0003.spec.ts
+    - client/e2e/core/SLR-0004.spec.ts
+    - client/e2e/core/SLR-0005.spec.ts
+    - client/e2e/core/SLR-0010.spec.ts
+    - client/e2e/core/FMT-0005.spec.ts
+    - client/e2e/core/FMT-0006.spec.ts
+    - client/e2e/core/IME-0001.spec.ts
+    - client/e2e/core/ITM-0001.spec.ts
+    - client/e2e/core/ITM-0001-title.spec.ts
+    - client/e2e/core/add-text.spec.ts
+    - client/e2e/core/tinylicious.spec.ts
+    - client/e2e/auth/auth.spec.ts
+  examples:
+    - client/e2e/utils/testHelpers.ts
+
 - id: ITM-0001
   title: 'Enterで新規アイテム追加'
   shortcut: 'Enter'

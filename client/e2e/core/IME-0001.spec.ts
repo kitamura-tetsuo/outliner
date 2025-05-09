@@ -6,6 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("IME-0001: IMEを使用した日本語入力", () => {
     test.beforeEach(async ({ page }) => {
@@ -33,15 +35,12 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         await textarea.waitFor({ state: 'visible' });
         await textarea.focus();
 
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        await activeItem.waitFor({ state: 'visible' });
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
 
-        // アイテムのIDを取得して保存（後で同じアイテムを確実に特定するため）
-        const itemId = await activeItem.evaluate(el => {
-            const parent = el.closest('.outliner-item');
-            return parent ? parent.getAttribute('data-item-id') : null;
-        });
+        // アクティブなアイテムIDを取得
+        const itemId = await TestHelpers.getActiveItemId(page);
+        expect(itemId).not.toBeNull();
 
         // simulate composition events for intermediate text
         await page.evaluate(() => {
@@ -75,15 +74,12 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         await textarea.waitFor({ state: 'visible' });
         await textarea.focus();
 
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        await activeItem.waitFor({ state: 'visible' });
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
 
-        // アイテムのIDを取得して保存（後で同じアイテムを確実に特定するため）
-        const itemId = await activeItem.evaluate(el => {
-            const parent = el.closest('.outliner-item');
-            return parent ? parent.getAttribute('data-item-id') : null;
-        });
+        // アクティブなアイテムIDを取得
+        const itemId = await TestHelpers.getActiveItemId(page);
+        expect(itemId).not.toBeNull();
 
         // simulate composition events for intermediate and candidate text
         await page.evaluate(() => {
@@ -121,15 +117,12 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         await textarea.waitFor({ state: 'visible' });
         await textarea.focus();
 
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        await activeItem.waitFor({ state: 'visible' });
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
 
-        // アイテムのIDを取得して保存（後で同じアイテムを確実に特定するため）
-        const itemId = await activeItem.evaluate(el => {
-            const parent = el.closest('.outliner-item');
-            return parent ? parent.getAttribute('data-item-id') : null;
-        });
+        // アクティブなアイテムIDを取得
+        const itemId = await TestHelpers.getActiveItemId(page);
+        expect(itemId).not.toBeNull();
 
         // simulate full composition events
         await page.evaluate(() => {

@@ -106,7 +106,8 @@ async function globalSetup() {
 
         // 環境変数からTinyliciousエンドポイントを取得
         // TEST_ENVがlocalhostの場合は、localhost:7092を使用
-        const isLocalhostEnv = process.env.TEST_ENV === 'localhost';
+        // const isLocalhostEnv = process.env.TEST_ENV === 'localhost';
+        const isLocalhostEnv = true;
         const tinyliciousHost = process.env.VITE_TINYLICIOUS_HOST || (isLocalhostEnv ? "localhost" : "192.168.50.13");
         const tinyliciousPort = process.env.VITE_TINYLICIOUS_PORT || (isLocalhostEnv ? "7092" : "7082");
         const tinyliciousEndpoint = `http://${tinyliciousHost}:${tinyliciousPort}`;

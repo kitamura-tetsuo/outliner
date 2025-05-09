@@ -6,6 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
     test.beforeEach(async ({ page }) => {
@@ -27,6 +29,9 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         }
 
         await page.waitForSelector("textarea.global-textarea:focus");
+
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
 
         // テスト用のテキストを入力
         await page.keyboard.type("First item text");
@@ -52,8 +57,15 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
             (window as any).DEBUG_MODE = true;
         });
 
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: 'visible' });
 
         // 初期状態では選択範囲がないことを確認
@@ -172,6 +184,9 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
+
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
 
         // 最初のアイテムを取得
         const firstItem = page.locator(".outliner-item").nth(0);

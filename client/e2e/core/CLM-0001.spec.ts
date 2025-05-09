@@ -6,17 +6,17 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0001: クリックで編集モードに入る", () => {
     test.beforeEach(async ({ page }) => {
-        // // 認証状態をモック
-        // await page.addInitScript(() => {
-        //     window.localStorage.setItem("authenticated", "true");
-        // });
         // アプリを開く
         await page.goto("/");
         // OutlinerItem がレンダリングされるのを待つ
         await page.waitForSelector(".outliner-item");
+        // カーソル情報取得用のデバッグ関数をセットアップ
+        await TestHelpers.setupCursorDebugger(page);
     });
 
     test("非Altクリックで編集モードに入る", async ({ page }) => {
@@ -39,10 +39,13 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         });
         expect(isFocused).toBe(true);
 
-        // 編集クラスが付与されているか確認
-        // 現在アクティブなアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
-        expect(await activeItem.count()).toBe(1);
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // カーソル情報を取得して検証
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.cursorCount).toBe(1);
+        expect(cursorData.activeItemId).not.toBeNull();
     });
 
     test("編集モードで文字入力が可能", async ({ page }) => {
@@ -58,12 +61,19 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
             await item.locator(".item-content").click({ force: true });
         }
 
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const activeItemId = await TestHelpers.getActiveItemId(page);
+        expect(activeItemId).not.toBeNull();
+
         // 文字入力が可能
         await page.keyboard.type("Test data update");
 
         // 文字入力が反映されているか確認
-        // 現在編集中のアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         const text = await activeItem.locator(".item-text").textContent();
         expect(text).toContain("Test data update");
     });
@@ -90,6 +100,11 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         // カーソルが可視であることを確認
         const visible = await page.isVisible(".editor-overlay .cursor.active");
         expect(visible).toBe(true);
+
+        // カーソル情報を取得して検証
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.cursorCount).toBe(1);
+        expect(cursorData.activeItemId).not.toBeNull();
     });
 
     test("カーソルがクリック位置に表示される（最後の行を除く）", async ({ page }) => {
@@ -108,22 +123,24 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
 
         // 折り返しが発生する長いテキストを入力
         await testItem.locator(".item-content").click({ force: true });
+
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const itemId = await TestHelpers.getActiveItemId(page);
+        expect(itemId).not.toBeNull();
+
         const longText = "A".repeat(80);
         await page.locator(".global-textarea").fill(longText);
         await page.locator(".global-textarea").dispatchEvent("input");
         await page.waitForTimeout(100);
 
         // テキストが反映されているか確認
-        // 現在編集中のアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
         const text = await activeItem.locator(".item-text").textContent();
         expect(text).toContain("A".repeat(80));
-
-        // アイテムのIDを取得して保存（後で同じアイテムを確実に特定するため）
-        const itemId = await activeItem.evaluate(el => {
-            const parent = el.closest('.outliner-item');
-            return parent ? parent.getAttribute('data-item-id') : null;
-        });
 
         // Range APIでビジュアル上の各行の中央y座標を取得
         const visualLineYs = await activeItem.locator(".item-text").evaluate(el => {
@@ -188,22 +205,24 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
 
         // 折り返しが発生する長いテキストを入力
         await testItem.locator(".item-content").click({ force: true });
+
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // アクティブなアイテムIDを取得
+        const itemId = await TestHelpers.getActiveItemId(page);
+        expect(itemId).not.toBeNull();
+
         const longText = "A".repeat(80);
         await page.locator(".global-textarea").fill(longText);
         await page.locator(".global-textarea").dispatchEvent("input");
         await page.waitForTimeout(100);
 
         // テキストが反映されているか確認
-        // 現在編集中のアイテムを取得
-        const activeItem = page.locator(".outliner-item .item-content.editing");
+        // アクティブなアイテムを取得
+        const activeItem = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
         const text = await activeItem.locator(".item-text").textContent();
         expect(text).toContain("A".repeat(80));
-
-        // アイテムのIDを取得して保存（後で同じアイテムを確実に特定するため）
-        const itemId = await activeItem.evaluate(el => {
-            const parent = el.closest('.outliner-item');
-            return parent ? parent.getAttribute('data-item-id') : null;
-        });
 
         // Range APIでビジュアル上の各行の中央y座標を取得
         const visualLineYs = await activeItem.locator(".item-text").evaluate(el => {
@@ -276,6 +295,11 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
 
         // カーソル要素がDOMに追加されるまで待機
         await page.waitForSelector(".editor-overlay .cursor.active", { state: "attached" });
+
+        // カーソル情報を取得して検証
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.cursorCount).toBe(1);
+        expect(cursorData.activeItemId).not.toBeNull();
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();

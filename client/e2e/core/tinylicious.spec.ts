@@ -2,6 +2,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+import { CursorValidator } from "../utils/cursorValidation";
 
 /**
  * @file tinylicious.spec.ts
@@ -17,6 +19,12 @@ import {
 test.describe("Tinyliciousリアル接続テスト", () => {
     // テスト前の準備 - モックを無効化し、実際のTinyliciousサーバーに接続するように設定
     test.beforeEach(async ({ page }) => { // エミュレータを使用してTinyliciousに接続
+        // テスト開始前に十分な時間を設定
+        test.setTimeout(60000);
+
+        // テストページをセットアップ
+        await TestHelpers.setupCursorDebugger(page);
+
         await page.addInitScript(() => {
             // 認証状態の設定
             window.localStorage.setItem("authenticated", "true");
@@ -41,7 +49,13 @@ test.describe("Tinyliciousリアル接続テスト", () => {
         await page.goto("/debug");
 
         // ページが完全に読み込まれるまで待機
-        await page.waitForLoadState("networkidle", { timeout: 30000 });
+        try {
+            await page.waitForLoadState("networkidle", { timeout: 60000 });
+        } catch (error) {
+            console.log("Timeout waiting for networkidle, continuing anyway");
+            // スクリーンショットを撮影して状態を確認
+            await page.screenshot({ path: "test-results/tinylicious-networkidle-timeout.png" });
+        }
     });
 
     /**

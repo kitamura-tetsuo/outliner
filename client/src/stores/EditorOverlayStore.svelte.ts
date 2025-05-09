@@ -16,6 +16,13 @@ export interface CursorPosition {
     color?: string;
 }
 
+// グローバル型定義を拡張
+declare global {
+    interface Window {
+        editorOverlayStore?: EditorOverlayStore;
+    }
+}
+
 export interface SelectionRange {
     // 選択範囲の開始アイテムID
     startItemId: string;

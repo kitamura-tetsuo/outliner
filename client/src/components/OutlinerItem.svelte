@@ -31,18 +31,12 @@
 	const dispatch = createEventDispatcher();
 
 	// Stateの管理
-	let isEditing = $state(false); // 編集モードフラグ（将来的にはカーソル状態から導出する予定）
 	let lastSelectionStart = $state(0);
 	let lastSelectionEnd = $state(0);
 	let lastCursorPosition = $state(0);
 
-	// 注: 将来的には以下のように $derived を使用して isEditing を導出する予定
-	// let isEditing = $derived(() => {
-	//     const activeItemId = editorOverlayStore.getActiveItem();
-	//     if (activeItemId === model.id) return true;
-	//     const cursors = editorOverlayStore.getItemCursorsAndSelections(model.id).cursors;
-	//     return cursors.length > 0;
-	// });
+	// 注: 編集モードフラグはカーソル状態から導出されるため、独立した変数は不要
+	// 代わりに hasActiveCursor() 関数を使用
 
 	// ドラッグ関連の状態
 	let isDragging = $state(false);
@@ -73,15 +67,11 @@
 
 	// アイテムにカーソルがあるかどうかを判定する
 	function hasActiveCursor(): boolean {
-		// 現在は編集モードフラグも考慮
-		// 注: 将来的には isEditing フラグを削除し、以下のカーソル状態のみで判断する予定
-		if (isEditing) return true;
-
-		// カーソル状態に基づく判定（将来的にはこの部分のみを使用）
+		// カーソル状態に基づく判定
 		return hasCursorBasedOnState();
 	}
 
-	// カーソル状態のみに基づいて判定する関数（将来的に hasActiveCursor と統合予定）
+	// カーソル状態に基づいて判定する関数
 	function hasCursorBasedOnState(): boolean {
 		// アクティブなアイテムかどうか
 		const activeItemId = editorOverlayStore.getActiveItem();
@@ -155,15 +145,12 @@
 	}
 
 	/**
-	 * 編集モードを開始し、カーソルを設定する
+	 * カーソルを設定する
 	 * @param event マウスイベント（クリック位置からカーソル位置を計算）
 	 * @param initialCursorPosition 初期カーソル位置（指定がある場合）
 	 */
 	function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
 		if (isReadOnly) return;
-
-		// 編集モードフラグを設定（将来的にはカーソル状態から自動的に導出される予定）
-		isEditing = true;
 
 		// グローバル textarea を取得（ストアから、なければDOMからフォールバック）
 		let textareaEl = editorOverlayStore.getTextareaRef();
@@ -223,7 +210,7 @@
 		editorOverlayStore.setActiveItem(model.id);
 
 		// 新しいカーソルを設定
-		const cursorId = editorOverlayStore.setCursor({
+		editorOverlayStore.setCursor({
 			itemId: model.id,
 			offset: cursorPosition !== undefined ? cursorPosition : 0,
 			isActive: true,
@@ -315,8 +302,6 @@
 	// アイテム全体のキーダウンイベントハンドラ
 
 	function finishEditing() {
-		// 編集モードフラグをクリア（将来的にはカーソル状態から自動的に導出される予定）
-		isEditing = false;
 		editorOverlayStore.stopCursorBlink();
 
 		// カーソルのみクリアし、跨いだ選択は残す
@@ -493,7 +478,7 @@
 		dragStartPosition = clickPosition;
 
 		// 編集モードを開始
-		if (!isEditing) {
+		if (!hasCursorBasedOnState()) {
 			startEditing(event);
 		}
 
@@ -513,7 +498,7 @@
 		if (event.buttons !== 1) return;
 
 		// 編集中でない場合は無視
-		if (!isEditing) return;
+		if (!hasCursorBasedOnState()) return;
 
 		// ドラッグ中フラグを設定
 		isDragging = true;
@@ -927,7 +912,7 @@
 
 		// クリック外のイベントリスナー
 		const handleOutsideClick = (e: MouseEvent) => {
-			if (isEditing && displayRef && !displayRef.contains(e.target as Node)) {
+			if (hasCursorBasedOnState() && displayRef && !displayRef.contains(e.target as Node)) {
 				finishEditing();
 			}
 		};
@@ -943,15 +928,12 @@
 			}
 
 			// アイテムがすでに編集中の場合は処理を省略
-			if (isEditing) {
+			if (hasCursorBasedOnState()) {
 				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 					console.log(`Item ${model.id} is already in edit mode`);
 				}
 				return;
 			}
-
-			// 編集モードを開始
-			isEditing = true;
 
 			// テキストエリアの内容を同期
 			hiddenTextareaRef.value = text.current;
@@ -1049,7 +1031,7 @@
 
 		// 編集完了イベントハンドラ
 		const handleFinishEdit = () => {
-			if (isEditing) {
+			if (hasCursorBasedOnState()) {
 				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 					console.log(`Finishing edit for item ${model.id} via custom event`);
 				}
@@ -1224,7 +1206,7 @@
 
 	// 外部から呼び出されるカーソル位置設定メソッド
 	export function setSelectionPosition(start: number, end: number = start) {
-		if (!hiddenTextareaRef || !isEditing) return;
+		if (!hiddenTextareaRef || !hasCursorBasedOnState()) return;
 
 		hiddenTextareaRef.setSelectionRange(start, end);
 		lastSelectionStart = start;
@@ -1299,7 +1281,6 @@
 				bind:this={displayRef}
 				class="item-content"
 				class:page-title-content={isPageTitle}
-				class:editing={isEditing}
 				class:dragging={isDragging}
 				class:drop-target={isDropTarget}
 				class:drop-target-top={isDropTarget && dropTargetPosition === 'top'}
@@ -1408,14 +1389,7 @@
 		padding-bottom: 8px;
 	}
 
-	/*
-	編集中のスタイル - 将来的には削除予定
-	カーソルと選択範囲の視覚化が実装されたため、この枠線は冗長
-	*/
-	.item-content.editing {
-		outline: 1px solid #ccc;
-		background-color: rgba(0, 0, 0, 0.02);
-	}
+	/* 編集中のスタイルは削除 */
 
 	.item-text {
 		flex: 1;

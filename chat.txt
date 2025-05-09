@@ -135,6 +135,7 @@ cd /workspace/client && npm run check
 commit
 git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt' ':(exclude)/workspace/docs'
  で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。
+if there are not staged files, ignore them.
 
 
 
@@ -149,6 +150,8 @@ document.querySelectorAll('.cursor')
 
 次のセッションであなたが続きの作業をスムーズに行えるように、最初に書くプロンプトを作成して下さい。
 次のセッションではまだ解決しきれないとしても、現状で認識している課題点を引き継いでください。
+このセッションで行った内容を書く事よりも、次のセッションでの作業を効果的にするためのプロンプトを作成してください。
+このセッションで行った内容はgitのコメントの方へ別途記載します。
 
 順次作業を進めるようにとプロンプトに記載して下さい。
 

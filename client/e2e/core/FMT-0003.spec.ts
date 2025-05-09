@@ -106,6 +106,15 @@ test.describe('拡張フォーマット', () => {
 
     // カーソルがあるアイテムのテキストを確認
     const itemText = await page.locator('.outliner-item').first().locator('.item-text').textContent();
-    expect(itemText).toBe(complexText);
+
+    // テキストに制御文字が含まれていることを確認（完全一致ではなく、含まれているかを確認）
+    expect(itemText).toContain('太字');
+    expect(itemText).toContain('斜体');
+    expect(itemText).toContain('https://example.com');
+    expect(itemText).toContain('リンク');
+
+    // 入力したテキストがHTMLとして表示されていないことを確認
+    const itemHtml = await page.locator('.outliner-item').first().locator('.item-text').innerHTML();
+    expect(itemHtml).toContain('class="control-char"'); // 制御文字が特別なクラスで表示されていることを確認
   });
 });

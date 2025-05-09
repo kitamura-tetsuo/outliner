@@ -269,9 +269,8 @@ export class ScrapboxFormatter {
     static formatToHtml(text: string): string {
         if (!text) return '';
 
-        // 新しいトークナイザーベースの実装
-        const tokens = this.tokenize(text);
-        return this.tokensToHtml(tokens);
+        // 入れ子のフォーマットに対応した実装を使用
+        return this.formatToHtmlAdvanced(text);
     }
 
     /**
