@@ -1,0 +1,324 @@
+<script lang="ts">
+import { onMount, onDestroy } from "svelte";
+import { getLogger } from "$lib/logger";
+import { collectBacklinks, type Backlink } from "$lib/backlinkCollector";
+import { goto } from "$app/navigation";
+
+const logger = getLogger("BacklinkPanel");
+
+interface Props {
+    pageName: string;
+    projectName?: string;
+}
+
+let { pageName, projectName }: Props = $props();
+
+// バックリンク情報
+let backlinks = $state<Backlink[]>([]);
+let isLoading = $state(false);
+let isOpen = $state(false);
+let error = $state<string | null>(null);
+
+// バックリンクを読み込む
+async function loadBacklinks() {
+    if (!pageName) return;
+    
+    isLoading = true;
+    error = null;
+    
+    try {
+        // バックリンクを収集
+        backlinks = collectBacklinks(pageName);
+        logger.info(`Loaded ${backlinks.length} backlinks for page: ${pageName}`);
+    } catch (err) {
+        logger.error("Failed to load backlinks:", err);
+        error = "バックリンクの読み込みに失敗しました";
+        backlinks = [];
+    } finally {
+        isLoading = false;
+    }
+}
+
+// パネルの開閉を切り替える
+function togglePanel() {
+    isOpen = !isOpen;
+    
+    if (isOpen && backlinks.length === 0) {
+        loadBacklinks();
+    }
+}
+
+// バックリンク先のページに移動する
+function navigateToPage(pageId: string, pageName: string) {
+    if (!projectName) {
+        // プロジェクト名が指定されていない場合は現在のプロジェクトを使用
+        goto(`/${pageName}`);
+    } else {
+        goto(`/${projectName}/${pageName}`);
+    }
+}
+
+// バックリンクを再読み込みする
+function refreshBacklinks() {
+    loadBacklinks();
+}
+
+// コンポーネントがマウントされたときの処理
+onMount(() => {
+    // 初期状態では閉じておく
+    isOpen = false;
+});
+
+// コンポーネントが破棄されるときの処理
+onDestroy(() => {
+    // クリーンアップ処理
+});
+</script>
+
+<div class="backlink-panel">
+    <button 
+        onclick={togglePanel}
+        class="backlink-toggle-button"
+        class:active={isOpen}
+    >
+        <span class="backlink-count">{backlinks.length}</span>
+        <span class="backlink-label">バックリンク</span>
+        <span class="toggle-icon">{isOpen ? '▼' : '▶'}</span>
+    </button>
+    
+    {#if isOpen}
+        <div class="backlink-content">
+            <div class="backlink-header">
+                <h3>バックリンク</h3>
+                <button onclick={refreshBacklinks} class="refresh-button" title="再読み込み">
+                    ↻
+                </button>
+            </div>
+            
+            {#if isLoading}
+                <div class="backlink-loading">
+                    <div class="loader"></div>
+                    <p>読み込み中...</p>
+                </div>
+            {:else if error}
+                <div class="backlink-error">
+                    <p>{error}</p>
+                </div>
+            {:else if backlinks.length === 0}
+                <div class="backlink-empty">
+                    <p>このページへのリンクはありません</p>
+                </div>
+            {:else}
+                <ul class="backlink-list">
+                    {#each backlinks as backlink}
+                        <li class="backlink-item">
+                            <div class="backlink-source">
+                                <a 
+                                    href="javascript:void(0)" 
+                                    onclick={() => navigateToPage(backlink.sourcePageId, backlink.sourcePageName)}
+                                    class="source-page-link"
+                                >
+                                    {backlink.sourcePageName}
+                                </a>
+                            </div>
+                            <div class="backlink-context">
+                                {@html highlightLinkInContext(backlink.context, pageName)}
+                            </div>
+                        </li>
+                    {/each}
+                </ul>
+            {/if}
+        </div>
+    {/if}
+</div>
+
+<style>
+.backlink-panel {
+    margin-top: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.backlink-toggle-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: #f5f5f5;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.backlink-toggle-button:hover {
+    background-color: #e8e8e8;
+}
+
+.backlink-toggle-button.active {
+    background-color: #e0e0e0;
+}
+
+.backlink-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    background-color: #0078d7;
+    color: white;
+    border-radius: 12px;
+    font-size: 12px;
+    margin-right: 10px;
+    padding: 0 6px;
+}
+
+.backlink-label {
+    flex: 1;
+    font-weight: 500;
+}
+
+.toggle-icon {
+    font-size: 10px;
+    color: #666;
+}
+
+.backlink-content {
+    padding: 15px;
+    background-color: white;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.backlink-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.backlink-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.refresh-button {
+    background: none;
+    border: none;
+    color: #0078d7;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.refresh-button:hover {
+    background-color: #f0f0f0;
+}
+
+.backlink-loading,
+.backlink-error,
+.backlink-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    color: #666;
+}
+
+.backlink-error {
+    color: #d32f2f;
+}
+
+.loader {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #0078d7;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.backlink-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.backlink-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.backlink-item:last-child {
+    border-bottom: none;
+}
+
+.backlink-source {
+    margin-bottom: 5px;
+}
+
+.source-page-link {
+    color: #0078d7;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.source-page-link:hover {
+    text-decoration: underline;
+}
+
+.backlink-context {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.highlight {
+    background-color: #fff3cd;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+</style>
+
+<script context="module">
+// コンテキスト内のリンクをハイライトする
+function highlightLinkInContext(context: string, pageName: string): string {
+    if (!context || !pageName) return context;
+    
+    // 内部リンクの正規表現パターン
+    const internalLinkPattern = new RegExp(`\\[(${escapeHtml(pageName)})\\]`, 'gi');
+    
+    // プロジェクト内部リンクの正規表現パターン
+    const projectLinkPattern = new RegExp(`\\[\\/[^/]+\\/(${escapeHtml(pageName)})\\]`, 'gi');
+    
+    // リンクをハイライト
+    let result = context
+        .replace(internalLinkPattern, '<span class="highlight">[$1]</span>')
+        .replace(projectLinkPattern, '<span class="highlight">[/project/$1]</span>');
+    
+    return result;
+}
+
+// HTMLエスケープ
+function escapeHtml(text: string): string {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+</script>

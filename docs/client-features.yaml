@@ -391,6 +391,153 @@
   tests:
     - client/e2e/core/FMT-0006.spec.ts
 
+- id: FMT-0007
+  title: '内部リンク機能の表示'
+  description: '/project-name/page-name 形式の内部リンクをサポートする機能'
+  category: text-formatting
+  status: implemented
+  acceptance:
+    - '[page-name] 形式の内部リンクが正しく表示される'
+    - '[/project-name/page-name] 形式の内部リンクが正しく表示される'
+    - 'カーソルがあるアイテムでは内部リンクもプレーンテキストで表示される'
+    - 'カーソルがないアイテムでは内部リンクが視覚的にリンクとして表示される'
+  tests:
+    - client/e2e/core/FMT-0007.spec.ts
+
+- id: LNK-0001
+  title: '内部リンクのURL生成機能'
+  description: '内部リンクのURLが正しく生成される機能'
+  category: navigation
+  status: implemented
+  acceptance:
+    - '内部リンクのURLが正しく生成される'
+    - '内部リンクのHTMLが正しく生成される'
+    - '[page-name] 形式の内部リンクが /page-name のURLを生成する'
+    - '[/project-name/page-name] 形式の内部リンクが /project-name/page-name のURLを生成する'
+  tests:
+    - client/e2e/core/LNK-0001.spec.ts
+
+- id: LNK-0002
+  title: '内部リンクの機能検証'
+  description: '内部リンクが正しく機能することを確認する'
+  category: navigation
+  status: implemented
+  acceptance:
+    - '内部リンクのhref属性が正しく生成される'
+    - 'プロジェクト内部リンク（/project-name/page-name形式）のhref属性が正しく生成される'
+    - '内部リンクのクラスとテキストが正しく設定される'
+    - '様々な形式の内部リンクが正しく生成される'
+  tests:
+    - client/e2e/core/LNK-0002.spec.ts
+
+- id: LNK-0003
+  title: '内部リンクのナビゲーション機能'
+  description: '内部リンクをクリックして別のページに移動する機能'
+  category: navigation
+  status: implemented
+  acceptance:
+    - '内部リンクをクリックすると対応するページに移動する'
+    - 'プロジェクト内部リンク（/project-name/page-name形式）をクリックすると対応するページに移動する'
+    - 'URLを直接入力して内部リンク先のページにアクセスできる'
+    - '存在しないページへのリンクをクリックした場合も対応するURLに移動する'
+    - '内部リンクの形式が正しく生成される（[page-name]形式）'
+    - 'プロジェクト内部リンクの形式が正しく生成される（[/project-name/page-name]形式）'
+    - '内部リンクをクリックして遷移先のページ内容が正しく表示される'
+    - '存在しないページへの内部リンクをクリックした場合、新規ページが作成される'
+    - 'プロジェクト内部リンクをクリックして遷移先のページ内容が正しく表示される'
+  tests:
+    - client/e2e/core/LNK-0003.spec.ts
+  testcases:
+    - '内部リンクをクリックして別のページに移動する'
+    - 'URLを直接入力して内部リンク先のページにアクセスする'
+    - '実際のアプリケーションで内部リンクを作成する'
+    - '実際のアプリケーションでプロジェクト内部リンクを作成する'
+    - '内部リンクをクリックして遷移先のページ内容が正しく表示される'
+    - '存在しないページへの内部リンクをクリックした場合の挙動'
+    - 'プロジェクト内部リンクをクリックして遷移先のページ内容が正しく表示される'
+
+- id: LNK-0004
+  title: '仮ページ機能'
+  description: '存在しないページへのリンクをクリックした場合に仮ページを表示し、編集時のみ実際のページとして保存する機能'
+  category: navigation
+  status: implemented
+  acceptance:
+    - '存在しないページへのリンクをクリックした場合、仮ページを表示する'
+    - '仮ページであることを示すUIが表示される'
+    - '仮ページを編集した場合のみ、実際のページとして保存される'
+    - '仮ページにアクセスしただけでは、ページは作成されない'
+    - '仮ページが保存された後は、通常のページとして扱われる'
+    - '仮ページの通知UIが多言語対応している'
+    - '仮ページの通知UIにアクションボタン（作成/キャンセル）が表示される'
+  tests:
+    - client/e2e/core/LNK-0004.spec.ts
+  testcases:
+    - '存在しないページへのリンクをクリックした場合に仮ページが表示される'
+    - '仮ページを編集した場合に実際のページとして保存される'
+    - '仮ページにアクセスしただけではページが作成されないことを確認'
+    - '仮ページの通知UIが正しく表示される'
+    - '仮ページの通知UIのアクションボタンが機能する'
+
+- id: LNK-0005
+  title: 'リンクプレビュー機能'
+  description: '内部リンクにマウスオーバーした際にページ内容のプレビューを表示する機能'
+  category: navigation
+  status: implemented
+  acceptance:
+    - '内部リンクにマウスオーバーするとプレビューが表示される'
+    - 'プレビューにはページのタイトルと内容の一部が表示される'
+    - 'プレビューはマウスが離れると非表示になる'
+    - '存在しないページへのリンクの場合は、その旨が表示される'
+    - '別プロジェクトのページへのリンクの場合は、その旨が表示される'
+  tests:
+    - client/e2e/core/LNK-0005.spec.ts
+  testcases:
+    - '内部リンクにマウスオーバーするとプレビューが表示される'
+    - 'プレビューにページのタイトルと内容の一部が表示される'
+    - 'プレビューはマウスが離れると非表示になる'
+    - '存在しないページへのリンクの場合は、その旨が表示される'
+  notes:
+    - 'テスト環境ではマウスイベントが正確に動作しない場合があるため、TestHelpers.forceHoverEvent()とTestHelpers.forceLinkPreview()を使用してテストを安定化'
+
+- id: LNK-0006
+  title: 'リンク先ページの存在確認機能'
+  description: '内部リンクのリンク先ページが存在するかどうかを視覚的に区別する機能'
+  category: navigation
+  status: implemented
+  acceptance:
+    - '存在するページへのリンクと存在しないページへのリンクが視覚的に区別される'
+    - '存在しないページへのリンクは点線下線や異なる色で表示される'
+    - 'リンク先ページの存在確認は動的に更新される'
+  tests:
+    - client/e2e/core/LNK-0006.spec.ts
+  testcases:
+    - '存在するページへのリンクと存在しないページへのリンクが視覚的に区別される'
+    - '存在しないページへのリンクは点線下線や異なる色で表示される'
+    - 'ページが作成されると、リンクの表示が更新される'
+
+- id: LNK-0007
+  title: 'バックリンク機能'
+  description: 'あるページからリンクされているページの一覧を表示する機能'
+  category: navigation
+  status: implemented
+  acceptance:
+    - 'ページにバックリンクパネルが表示される'
+    - 'バックリンクパネルには、そのページへのリンクを含むページの一覧が表示される'
+    - 'バックリンクの数がバッジとして表示される'
+    - 'バックリンクパネルは開閉できる'
+    - 'バックリンクをクリックすると、リンク元のページに移動できる'
+    - 'バックリンクのコンテキスト（リンクを含む文脈）が表示される'
+  tests:
+    - client/e2e/core/LNK-0007.spec.ts
+  testcases:
+    - 'ページにバックリンクパネルが表示される'
+    - 'バックリンクパネルにリンク元ページの一覧が表示される'
+    - 'バックリンクの数がバッジとして表示される'
+    - 'バックリンクパネルを開閉できる'
+    - 'バックリンクをクリックするとリンク元ページに移動できる'
+  notes:
+    - 'テスト環境ではバックリンクパネルの開閉が正確に動作しない場合があるため、TestHelpers.openBacklinkPanel()を使用してテストを安定化'
+
 - id: TST-0001
   title: 'SharedTreeデータ検証ユーティリティ'
   description: 'テストにおいてSharedTreeの内容をJSONとして取得し、結果を厳密かつ簡易に判定するユーティリティ'
@@ -441,6 +588,11 @@
     - 'アクティブなアイテム要素を取得できる（getActiveItemLocator）'
     - 'アイテムをクリックして編集モードに入れる（clickItemToEdit）'
     - 'class:editingセレクタの代わりにカーソル状態を検証できる'
+    - 'マウスオーバーイベントを強制的にシミュレートできる（forceHoverEvent）'
+    - 'マウスアウトイベントを強制的にシミュレートできる（forceMouseOutEvent）'
+    - 'リンクプレビューを強制的に表示できる（forceLinkPreview）'
+    - 'バックリンクパネルを開くことができる（openBacklinkPanel）'
+    - 'DOM要素の可視性を強制的に確認できる（forceCheckVisibility）'
   tests:
     - client/e2e/core/CLM-0001.spec.ts
     - client/e2e/core/CLM-0002.spec.ts
@@ -495,3 +647,41 @@
     - 'ユーザーがクリックせずに直接テキスト入力が可能になる'
   tests:
     - client/e2e/core/APP-0001.spec.ts
+
+- id: TST-0004
+  title: 'テスト環境の改善'
+  description: 'テスト環境の安定性と信頼性を向上させるための改善'
+  category: testing
+  status: implemented
+  acceptance:
+    - 'テスト実行時のタイムアウト設定を延長し、テストの安定性を向上させる'
+    - '要素の検出待機のタイムアウト設定を延長し、テストの安定性を向上させる'
+    - 'マウスイベントが正確に動作しない場合に代替手段を提供する'
+    - 'DOM要素の検出と操作のためのヘルパー関数を提供する'
+    - 'テスト環境の制約を考慮したテスト条件の調整を行う'
+  tests:
+    - client/e2e/core/LNK-0005.spec.ts
+    - client/e2e/core/LNK-0007.spec.ts
+  notes:
+    - 'テスト環境ではマウスイベントやDOM要素の検出が不安定な場合があるため、専用のヘルパー関数を使用してテストを安定化'
+    - 'headlessモードでの実行時に一部の機能が正常に動作しない場合があるため、代替手段を提供'
+
+- id: TST-0005
+  title: 'テスト環境の初期化と準備'
+  description: 'テスト実行前の環境準備を改善し、テストの安定性と再現性を向上させる'
+  category: testing
+  status: implemented
+  acceptance:
+    - 'テスト実行前にプロジェクトとページを自動的に作成する仕組みを提供する'
+    - 'UI操作ではなくFluid APIを使用して直接データを作成することで安定性を向上させる'
+    - 'テスト間の依存関係を減らし、各テストが独立して実行できるようにする'
+    - 'テスト環境の初期化を一貫した方法で行うヘルパー関数を提供する'
+    - 'DOM要素の検出問題を解決するための改善されたヘルパー関数を提供する'
+  tests:
+    - client/e2e/utils/testHelpers.ts
+    - client/e2e/utils/linkTestHelpers.ts
+    - client/e2e/helpers.ts
+  notes:
+    - 'テスト環境では要素の検出が不安定な場合があるため、再試行機能を持つヘルパー関数を使用してテストを安定化'
+    - 'テストデータの作成にはUI操作ではなくFluid APIを使用し、テストの安定性を向上'
+    - 'テスト前の環境準備を標準化することで、テスト間の依存関係を減少'

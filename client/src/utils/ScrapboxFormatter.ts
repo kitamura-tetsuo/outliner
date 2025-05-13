@@ -97,10 +97,13 @@ export class ScrapboxFormatter {
         // フォーマットパターン
         const patterns = [
             { type: "bold", start: "[[", end: "]]", regex: /\[\[(.*?)\]\]/g },
+            // プロジェクト内部リンク（/project-name/page-name形式）- 斜体よりも先に処理
+            { type: "internalLink", start: "[/", end: "]", regex: /\[\/([\w\-\/]+)\]/g },
             { type: "italic", start: "[/", end: "]", regex: /\[\/(.*?)\]/g },
             { type: "strikethrough", start: "[-", end: "]", regex: /\[\-(.*?)\]/g },
             { type: "code", start: "`", end: "`", regex: /`(.*?)`/g },
             { type: "link", start: "[", end: "]", regex: /\[(https?:\/\/.*?)\]/g },
+            // 通常の内部リンク（page-name形式）
             { type: "internalLink", start: "[", end: "]", regex: /\[([^\[\]\/\-][^\[\]]*?)\]/g },
             { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm }
         ];
@@ -246,7 +249,36 @@ export class ScrapboxFormatter {
                     break;
                 case "internalLink":
                     // 内部リンクは別ページへのリンクとして処理
-                    html += `<a href="#" class="internal-link">${content}</a>`;
+                    // /project-name/page-name 形式かどうかを判断
+                    if (content.startsWith('/')) {
+                        // プロジェクト内部リンク
+                        // パスを分解してプロジェクト名とページ名を取得
+                        const parts = content.split('/').filter(p => p);
+                        if (parts.length >= 2) {
+                            const projectName = parts[0];
+                            const pageName = parts.slice(1).join('/');
+
+                            // ページの存在確認用のクラスを追加
+                            const existsClass = this.checkPageExists(pageName, projectName) ? 'page-exists' : 'page-not-exists';
+
+                            // LinkPreviewコンポーネントを使用
+                            html += `<span class="link-preview-wrapper">
+                                <a href="${content}" class="internal-link project-link ${existsClass}" data-project="${projectName}" data-page="${pageName}">${content}</a>
+                            </span>`;
+                        } else {
+                            // 不正なパス形式の場合は通常のリンクとして表示
+                            html += `<a href="${content}" class="internal-link project-link">${content}</a>`;
+                        }
+                    } else {
+                        // 通常の内部リンク
+                        // ページの存在確認用のクラスを追加
+                        const existsClass = this.checkPageExists(content) ? 'page-exists' : 'page-not-exists';
+
+                        // LinkPreviewコンポーネントを使用
+                        html += `<span class="link-preview-wrapper">
+                            <a href="/${content}" class="internal-link ${existsClass}" data-page="${content}">${content}</a>
+                        </span>`;
+                    }
                     break;
                 case "quote":
                     html += `<blockquote>${content}</blockquote>`;
@@ -300,7 +332,29 @@ export class ScrapboxFormatter {
                 return `<strong>${processFormat(content)}</strong>`;
             });
 
-            // 斜体
+            // プロジェクト内部リンク - 斜体よりも先に処理する必要がある
+            const projectLinkRegex = /\[\/([\w\-\/]+)\]/g;
+            input = input.replace(projectLinkRegex, (match, path) => {
+                // パスを分解してプロジェクト名とページ名を取得
+                const parts = path.split('/').filter(p => p);
+                if (parts.length >= 2) {
+                    const projectName = parts[0];
+                    const pageName = parts.slice(1).join('/');
+
+                    // ページの存在確認用のクラスを追加
+                    const existsClass = this.checkPageExists(pageName, projectName) ? 'page-exists' : 'page-not-exists';
+
+                    // LinkPreviewコンポーネントを使用
+                    return `<span class="link-preview-wrapper">
+                        <a href="/${path}" class="internal-link project-link ${existsClass}" data-project="${projectName}" data-page="${pageName}">${path}</a>
+                    </span>`;
+                } else {
+                    // 不正なパス形式の場合は通常のリンクとして表示
+                    return `<a href="/${path}" class="internal-link project-link">${path}</a>`;
+                }
+            });
+
+            // 斜体 - プロジェクト内部リンクの後に処理
             const italicRegex = /\[\/(.*?)\]/g;
             input = input.replace(italicRegex, (match, content) => {
                 return `<em>${processFormat(content)}</em>`;
@@ -324,10 +378,18 @@ export class ScrapboxFormatter {
                 return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
             });
 
-            // 内部リンク - 外部リンクの後に処理する必要がある
+            // プロジェクト内部リンクは上で処理済み
+
+            // 通常の内部リンク - 外部リンクの後に処理する必要がある
             const internalLinkRegex = /\[([^\[\]\/\-][^\[\]]*?)\]/g;
             input = input.replace(internalLinkRegex, (match, text) => {
-                return `<a href="#${text}" class="internal-link">${text}</a>`;
+                // ページの存在確認用のクラスを追加
+                const existsClass = this.checkPageExists(text) ? 'page-exists' : 'page-not-exists';
+
+                // LinkPreviewコンポーネントを使用
+                return `<span class="link-preview-wrapper">
+                    <a href="/${text}" class="internal-link ${existsClass}" data-page="${text}">${text}</a>
+                </span>`;
             });
 
             return input;
@@ -387,6 +449,9 @@ export class ScrapboxFormatter {
         // 太字
         html = html.replace(/(\[\[)(.*?)(\]\])/g, '<span class="control-char">$1</span><strong>$2</strong><span class="control-char">$3</span>');
 
+        // プロジェクト内部リンク - 斜体よりも先に処理する必要がある
+        html = html.replace(/(\[\/)([a-zA-Z0-9\-\/]+)(\])/g, '<span class="control-char">$1</span><a href="/$2" class="internal-link project-link">$2</a><span class="control-char">$3</span>');
+
         // 斜体
         html = html.replace(/(\[\/)(.+?)(\])/g, '<span class="control-char">$1</span><em>$2</em><span class="control-char">$3</span>');
 
@@ -399,8 +464,10 @@ export class ScrapboxFormatter {
         // 外部リンク
         html = html.replace(/(\[)(https?:\/\/.*?)(\])/g, '<span class="control-char">$1</span><a href="$2" target="_blank" rel="noopener noreferrer">$2</a><span class="control-char">$3</span>');
 
-        // 内部リンク - 外部リンクの後に処理する必要がある
-        html = html.replace(/(\[)([^\[\]\/\-][^\[\]]*?)(\])/g, '<span class="control-char">$1</span><a href="#$2" class="internal-link">$2</a><span class="control-char">$3</span>');
+        // プロジェクト内部リンクは上で処理済み
+
+        // 通常の内部リンク - 外部リンクの後に処理する必要がある
+        html = html.replace(/(\[)([^\[\]\/\-][^\[\]]*?)(\])/g, '<span class="control-char">$1</span><a href="/$2" class="internal-link">$2</a><span class="control-char">$3</span>');
 
         // 引用
         html = html.replace(/(^>\s)(.*?)$/gm, '<span class="control-char">$1</span><blockquote>$2</blockquote>');
@@ -425,12 +492,50 @@ export class ScrapboxFormatter {
         // 内部リンクの正規表現パターン
         const internalLinkPattern = /\[([^\[\]\/\-][^\[\]]*?)\]/;
 
+        // プロジェクト内部リンクの正規表現パターン
+        const projectLinkPattern = /\[\/([\w\-\/]+)\]/;
+
         // 引用の正規表現パターン
         const quotePattern = /^>\s(.*?)$/m;
 
         return basicFormatPattern.test(text) ||
                linkPattern.test(text) ||
                internalLinkPattern.test(text) ||
+               projectLinkPattern.test(text) ||
                quotePattern.test(text);
+    }
+
+    /**
+     * ページが存在するかどうかを確認する
+     * @param pageName ページ名
+     * @param projectName プロジェクト名（オプション）
+     * @returns ページが存在する場合はtrue
+     */
+    static checkPageExists(pageName: string, projectName?: string): boolean {
+        // 実装注意: このメソッドはクライアントサイドでのみ動作します
+        if (typeof window === 'undefined') return true;
+
+        // グローバルストアからページ情報を取得
+        const store = (window as any).appStore;
+        if (!store || !store.pages) return false;
+
+        // 現在のプロジェクトを取得
+        const currentProject = store.project;
+        if (!currentProject) return false;
+
+        // プロジェクト名が指定されている場合、現在のプロジェクトと一致するか確認
+        if (projectName && currentProject.title !== projectName) {
+            // 別プロジェクトのページは確認できないため、存在しないと仮定
+            return false;
+        }
+
+        // ページ名が一致するページを検索
+        for (const page of store.pages.current) {
+            if (page.text.toLowerCase() === pageName.toLowerCase()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

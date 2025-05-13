@@ -19,9 +19,17 @@
 | FMT-0004 | クリップボードからのペーストとフォーマット | — | implemented |
 | FMT-0005 | Visual Studio Codeのコピー/ペースト仕様 | — | implemented |
 | FMT-0006 | カーソル移動時のフォーマット表示の一貫性 | — | implemented |
+| FMT-0007 | 内部リンク機能の表示 | — | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
 | IME-0001 | IMEを使用した日本語入力 | — | implemented |
 | ITM-0001 | Enterで新規アイテム追加 | — | implemented |
+| LNK-0001 | 内部リンクのURL生成機能 | — | implemented |
+| LNK-0002 | 内部リンクの機能検証 | — | implemented |
+| LNK-0003 | 内部リンクのナビゲーション機能 | — | implemented |
+| LNK-0004 | 仮ページ機能 | — | implemented |
+| LNK-0005 | リンクプレビュー機能 | — | implemented |
+| LNK-0006 | リンク先ページの存在確認機能 | — | implemented |
+| LNK-0007 | バックリンク機能 | — | implemented |
 | SLR-0001 | Shift + 上下左右 | — | implemented |
 | SLR-0002 | 行頭まで選択 | — | implemented |
 | SLR-0003 | 行末まで選択 | — | implemented |
@@ -37,3 +45,5 @@
 | TST-0001 | SharedTreeデータ検証ユーティリティ | — | implemented |
 | TST-0002 | カーソル情報検証ユーティリティ | — | implemented |
 | TST-0003 | テストヘルパーユーティリティ | — | implemented |
+| TST-0004 | テスト環境の改善 | — | implemented |
+| TST-0005 | テスト環境の初期化と準備 | — | implemented |

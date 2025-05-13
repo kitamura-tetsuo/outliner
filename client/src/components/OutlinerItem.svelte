@@ -903,12 +903,18 @@
 		});
 	}
 
+	// 内部リンクのクリックイベントハンドラは削除
+	// SvelteKitのルーティングを使用して内部リンクを処理
+
 	onMount(() => {
 		// テキストエリアがレンダリングされているか確認
 		if (!hiddenTextareaRef) {
 			console.error('Hidden textarea reference is not available');
 			return;
 		}
+
+		// 内部リンクのクリックイベントリスナーは削除
+		// SvelteKitのルーティングを使用して内部リンクを処理
 
 		// クリック外のイベントリスナー
 		const handleOutsideClick = (e: MouseEvent) => {
@@ -1295,11 +1301,15 @@
 				ondragend={handleDragEnd}
 			>
 				{#if hasActiveCursor()}
-					<!-- フォーカスがある場合：制御文字も表示し、フォーマットも適用 -->
-					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>{@html ScrapboxFormatter.formatWithControlChars(text.current)}</span>
+					<!-- フォーカスがある場合：フォーマットを適用した上で制御文字を表示 -->
+					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>
+						{@html ScrapboxFormatter.formatWithControlChars(text.current)}
+					</span>
 				{:else}
 					<!-- フォーカスがない場合：制御文字は非表示、フォーマットは適用 -->
-					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>{@html ScrapboxFormatter.formatToHtml(text.current)}</span>
+					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>
+						{@html ScrapboxFormatter.formatToHtml(text.current)}
+					</span>
 				{/if}
 				{#if !isPageTitle && model.votes.length > 0}
 					<span class="vote-count">{model.votes.length}</span>
@@ -1500,10 +1510,13 @@
 	}
 
 	/* 制御文字のスタイル */
-	.control-char {
+	:global(.control-char) {
 		color: #aaa;
 		font-size: 0.9em;
 		opacity: 0.7;
+		background-color: #f8f8f8;
+		border-radius: 2px;
+		padding: 0 2px;
 	}
 
 	/* ドラッグ＆ドロップ関連のスタイル */

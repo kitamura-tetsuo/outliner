@@ -1,6 +1,4 @@
 <script lang="ts">
-import { run } from "svelte/legacy";
-
 import { onMount } from "svelte";
 import { TreeViewManager } from "../fluid/TreeViewManager";
 import {
@@ -9,19 +7,24 @@ import {
     Project,
 } from "../schema/app-schema";
 import { store } from "../stores/store.svelte";
+import { createEventDispatcher } from "svelte";
 
 interface Props {
     project: Project;
     rootItems: Items; // 最上位のアイテムリスト（ページリスト）
     currentPage?: Item | null; // 直接ページオブジェクトを受け取るように追加
     currentUser?: string;
+    onPageSelected?: (event: CustomEvent<{pageId: string, pageName: string}>) => void;
 }
 
 let {
     project,
     rootItems,
     currentUser = "anonymous",
+    onPageSelected
 }: Props = $props();
+
+const dispatch = createEventDispatcher();
 
 // 開発環境ではデフォルトのタイトルを提案
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
@@ -40,7 +43,25 @@ function handleCreatePage() {
 }
 
 function selectPage(page: Item) {
+    // ストアを更新
     store.currentPage = page;
+
+    // イベントを発火
+    if (onPageSelected) {
+        const event = new CustomEvent('pageSelected', {
+            detail: {
+                pageId: page.id,
+                pageName: page.text
+            }
+        });
+        onPageSelected(event);
+    }
+
+    // カスタムイベントをディスパッチ
+    dispatch('pageSelected', {
+        pageId: page.id,
+        pageName: page.text
+    });
 }
 
 // // ページリストの更新処理
@@ -62,11 +83,7 @@ onMount(() => {
 });
 
 // 初期表示時にリストを更新
-run(() => {
-    if (rootItems) {
-        // displayItems = [...rootItems];
-    }
-});
+// Svelte 5ではrunは不要になりました
 </script>
 
 <div class="page-list">

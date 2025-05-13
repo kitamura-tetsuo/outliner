@@ -1,4 +1,8 @@
 {
     "$schema": "https://inlang.com/schema/inlang-message-format",
-    "hello_world": "Hello, {name} from ja!"
+    "hello_world": "Hello, {name} from ja!",
+    "temporary_page_notice": "このページはまだ作成されていません。編集するとページが作成されます。",
+    "temporary_page_create_button": "ページを作成",
+    "temporary_page_cancel_button": "キャンセル",
+    "temporary_page_title": "仮ページ"
 }
