@@ -30,6 +30,10 @@ EXPOSE 54000
 EXPOSE 58080
 # Authentication
 EXPOSE 59099
+# Functions
+EXPOSE 57070
+# Hosting
+EXPOSE 57000
 
 # Start emulators and create test user
 CMD ["/firebase/scripts/init-firebase.sh"]
