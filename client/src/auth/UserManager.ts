@@ -56,7 +56,7 @@ export class UserManager {
         measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-FKSFRCT7GR",
     };
 
-    private apiBaseUrl = getEnv("VITE_API_BASE_URL", "http://localhost:7071");
+    private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57070");
     private app = initializeApp(this.firebaseConfig);
     auth = getAuth(this.app);
 
@@ -750,7 +750,7 @@ export class UserManager {
             if (containerId && this.currentFluidToken.containerId !== containerId) {
                 console.warn(
                     `[UserManager] Warning: Requested token for container ${containerId} ` +
-                        `but received token for ${this.currentFluidToken.containerId || "unspecified container"}`,
+                    `but received token for ${this.currentFluidToken.containerId || "unspecified container"}`,
                 );
             }
 

@@ -3,7 +3,7 @@ const admin = require("firebase-admin");
 const http = require("http");
 
 // Check if Firebase Auth emulator is running locally
-const checkEmulatorRunning = (port = 9099) => {
+const checkEmulatorRunning = (port = 59099) => {
     return new Promise(resolve => {
         const req = http.request({
             method: "GET",
@@ -33,9 +33,9 @@ const checkEmulatorRunning = (port = 9099) => {
 // Create a test user in Firebase Auth emulator
 const createTestUser = async () => {
     try {
-        // コンテナ内では localhost:9099 を使用
+        // コンテナ内では localhost:59099 を使用
         const emulatorHost = "localhost";
-        const emulatorPort = 9099;
+        const emulatorPort = 59099;
 
         console.log(`Checking emulator at ${emulatorHost}:${emulatorPort}...`);
 

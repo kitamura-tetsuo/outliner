@@ -123,13 +123,13 @@ function initFirestoreSync(): () => void {
     // ユーザーがログインしていない場合は早期リターン
     if (!currentUser) {
         logger.info("ユーザーがログインしていないため、Firestoreの監視を開始しません");
-        return () => {}; // 空のクリーンアップ関数を返す
+        return () => { }; // 空のクリーンアップ関数を返す
     }
 
     // ユーザーIDの存在確認を追加
     if (!currentUser.id) {
         logger.warn("ユーザーオブジェクトにIDがないため、Firestoreの監視を開始しません");
-        return () => {}; // 空のクリーンアップ関数を返す
+        return () => { }; // 空のクリーンアップ関数を返す
     }
 
     const userId = currentUser.id;
@@ -192,7 +192,7 @@ function initFirestoreSync(): () => void {
         // エラーが発生した場合でもTinyliciousテスト環境ではテスト用データをセットアップ
         setupTinyliciousTestContainers();
 
-        return () => {}; // 空のクリーンアップ関数を返す
+        return () => { }; // 空のクリーンアップ関数を返す
     }
 }
 
@@ -210,8 +210,11 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
             throw new Error("認証トークンを取得できません");
         }
 
-        // サーバーAPIを呼び出してコンテナIDを保存
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:7071";
+        // Firebase Functionsのエンドポイントを取得
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
+
+        // Firebase Functionsを呼び出してコンテナIDを保存
         const response = await fetch(`${apiBaseUrl}/api/save-container`, {
             method: "POST",
             headers: {
@@ -495,8 +498,11 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
             return false;
         }
 
-        // サーバーAPIを呼び出してコンテナIDを保存
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:7071";
+        // Firebase Functionsのエンドポイントを取得
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
+
+        // Firebase Functionsを呼び出してコンテナIDを保存
         const response = await fetch(`${apiBaseUrl}/api/save-container`, {
             method: "POST",
             headers: {

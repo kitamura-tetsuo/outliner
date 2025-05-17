@@ -16,7 +16,7 @@ export function getEnv(key: string, defaultValue: string = ""): string {
     // テスト環境専用の処理
     if (isTestEnv) {
         // テスト関連のログ出力
-        if (key === "VITE_USE_TINYLICIOUS" || key === "VITE_FORCE_AZURE" || key === "VITE_API_BASE_URL") {
+        if (key === "VITE_USE_TINYLICIOUS" || key === "VITE_FORCE_AZURE") {
             log("env", "debug", `Test environment detected, checking value for ${key}`);
         }
 
@@ -30,7 +30,6 @@ export function getEnv(key: string, defaultValue: string = ""): string {
         // テスト環境のデフォルト値
         if (key === "VITE_USE_TINYLICIOUS") return "true";
         if (key === "VITE_FORCE_AZURE") return "false";
-        if (key === "VITE_API_BASE_URL") return "http://localhost:7071";
     }
 
     return import.meta.env[key] || defaultValue;

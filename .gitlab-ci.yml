@@ -23,8 +23,6 @@ variables:
   VITE_FORCE_AZURE: 'false'
   VITE_PORT: '7080'
   VITE_HOST: 'localhost'
-  VITE_API_BASE_URL: 'http://localhost:${TEST_API_PORT}'
-  VITE_API_SERVER_URL: 'http://localhost:${TEST_API_PORT}'
   VITE_TINYLICIOUS_ENDPOINT: 'http://localhost:${TEST_FLUID_PORT}'
   VITE_FIRESTORE_EMULATOR_HOST: 'localhost'
   VITE_FIRESTORE_EMULATOR_PORT: '8080'
@@ -140,8 +138,8 @@ deploy-to-firebase:
       VITE_FORCE_AZURE=true
 
       # API設定 - Firebase Functionsのエンドポイント
-      VITE_API_BASE_URL=https://outliner-d57b0.web.app
       VITE_API_SERVER_URL=https://outliner-d57b0.web.app
+      VITE_FIREBASE_FUNCTIONS_URL=https://outliner-d57b0.web.app
 
       # Fluid Framework Telemetry設定
       VITE_DISABLE_FLUID_TELEMETRY=true

@@ -1,5 +1,10 @@
 #!/bin/bash
 # This script initializes the Firebase emulators and creates test users
+cd /firebase/functions
+npm ci
+# npm run serve
+
+cd /firebase
 
 # Start Firebase emulators in the background
 firebase emulators:start --project demo-test \
@@ -20,4 +25,4 @@ echo "Creating test user in Auth emulator..."
 node /firebase/scripts/create-test-user.js
 
 # Keep container running with the emulators
-wait
+sleep infinity
