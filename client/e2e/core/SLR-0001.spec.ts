@@ -10,33 +10,22 @@ import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0001: Shift + 上下左右", () => {
-    test.beforeEach(async ({ page }) => {
-        // アプリを開く
-        await page.goto("/");
-        // OutlinerItem がレンダリングされるのを待つ
-        await page.waitForSelector(".outliner-item");
-        // カーソル情報取得用のデバッグ関数をセットアップ
-        await TestHelpers.setupCursorDebugger(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // ページタイトルを優先的に使用
-        const item = page.locator(".outliner-item.page-title");
-
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
-        if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
-            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-            await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
-            await item.locator(".item-content").click({ force: true });
-        }
+        // 最初のアイテムを選択
+        const item = page.locator(".outliner-item").first();
+        await item.locator(".item-content").click({ force: true });
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
         // グローバル textarea にフォーカスが当たるまで待機
-        await page.waitForSelector("textarea.global-textarea:focus");
+        await page.waitForSelector("textarea.global-textarea:focus", { timeout: 10000 });
+
         // 複数行のテキストを入力
         await page.keyboard.type("First line\nSecond line\nThird line");
+
         // カーソルを先頭に移動
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
@@ -62,10 +51,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(selectionExists).toBe(true);
+        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
@@ -116,11 +102,18 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.keyboard.press("Shift+ArrowLeft");
         await page.waitForTimeout(300);
 
-        // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(selectionExists).toBe(true);
+        {
+            await page.waitForTimeout(300);
+            // カーソル情報を取得して検証
+            const cursorData = await CursorValidator.getCursorData(page);
+            expect(cursorData.cursorCount).toBe(1);
+            expect(cursorData.selectionCount).toBeGreaterThan(0);
+        }
+        // // 選択範囲が作成されたことを確認
+        // const selectionExists = await page.evaluate(() => {
+        //     return document.querySelector('.editor-overlay .selection') !== null;
+        // });
+        // expect(selectionExists).toBe(true);
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
@@ -147,10 +140,12 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         // 選択範囲が広がったことを確認
         expect(newSelectionText.length).toBeGreaterThan(selectionText.length);
 
-        // カーソル情報を取得して検証
-        const cursorData = await CursorValidator.getCursorData(page);
-        expect(cursorData.cursorCount).toBe(1);
-        expect(cursorData.selectionCount).toBeGreaterThan(0);
+        {
+            // カーソル情報を取得して検証
+            const cursorData = await CursorValidator.getCursorData(page);
+            expect(cursorData.cursorCount).toBe(1);
+            expect(cursorData.selectionCount).toBeGreaterThan(0);
+        }
     });
 
     test("Shift + 下で選択範囲の下端を広げる", async ({ page }) => {
@@ -164,13 +159,10 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
 
         // Shift + 下矢印キーを押下
         await page.keyboard.press("Shift+ArrowDown");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(3000);
 
         // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(selectionExists).toBe(true);
+        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
@@ -210,10 +202,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(selectionExists).toBe(true);
+        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {

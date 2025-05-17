@@ -10,36 +10,22 @@ import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         // デバッグモードを有効化
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
 
-        // テストページをセットアップ
-        await TestHelpers.setupCursorDebugger(page);
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // アプリを開く
-        await page.goto("/");
-        // OutlinerItem がレンダリングされるのを待つ
-        await page.waitForSelector(".outliner-item");
+        // 最初のアイテムを選択
+        const item = page.locator(".outliner-item").first();
+        await item.locator(".item-content").click({ force: true });
 
         // デバッグモードを有効化（ページ読み込み後）
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
-
-        // ページタイトルを優先的に使用
-        const item = page.locator(".outliner-item.page-title");
-
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
-        if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
-            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-            await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
-            await item.locator(".item-content").click({ force: true });
-        }
 
         // カーソルが表示されるのを待つ
         await TestHelpers.waitForCursorVisible(page);

@@ -6,18 +6,16 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         // デバッグモードを有効化
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
 
-        // アプリを開く
-        await page.goto("/");
-        // OutlinerItem がレンダリングされるのを待つ
-        await page.waitForSelector(".outliner-item");
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // デバッグモードを有効化（ページ読み込み後）
         await page.evaluate(() => {

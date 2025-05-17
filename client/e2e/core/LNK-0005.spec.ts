@@ -2,12 +2,6 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import {
-    setupTestPage,
-    waitForCursorVisible,
-    prepareTestEnvironment,
-    prepareTestProjectAndPage
-} from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 import { CursorValidator } from "../utils/cursorValidation";
@@ -20,35 +14,17 @@ import { LinkTestHelpers } from "../utils/linkTestHelpers";
  * @title リンクプレビュー機能
  */
 test.describe("LNK-0005: リンクプレビュー機能", () => {
+    let testPageName: string;
+    test.beforeEach(async ({ page }, testInfo) => {
+        const ret = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        testPageName = ret.pageName;
+    });
+
     /**
      * @testcase 内部リンクにマウスオーバーするとプレビューが表示される
      * @description 内部リンクにマウスオーバーするとプレビューが表示されることを確認するテスト
      */
     test("内部リンクにマウスオーバーするとプレビューが表示される", async ({ page }) => {
-        // テスト環境を準備
-        await prepareTestEnvironment(page);
-
-        // プロジェクト名とページ名を設定
-        const projectName = "test-project";
-        const testPageName = "test-page-" + Date.now().toString().slice(-6);
-        const sourcePageName = "source-page-" + Date.now().toString().slice(-6);
-
-        // テスト用のページを作成
-        await prepareTestProjectAndPage(page, projectName, testPageName, [
-            "これはテストページの内容です。",
-            "2行目のテキスト",
-            "3行目のテキスト"
-        ]);
-
-        // ソースページを作成
-        await prepareTestProjectAndPage(page, projectName, sourcePageName, [
-            "ソースページの内容です。",
-            `[${testPageName}]`
-        ]);
-
-        // ページが正しく読み込まれたことを確認
-        await page.waitForSelector(".outliner-item", { timeout: 10000 });
-
         // 内部リンクのフォーマットを強制的に適用
         await page.evaluate((pageName) => {
             // 全てのアウトライナーアイテムを取得
@@ -173,16 +149,11 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
      * @description プレビューにページのタイトルと内容の一部が表示されることを確認するテスト
      */
     test("プレビューにページのタイトルと内容の一部が表示される", async ({ page }) => {
-        // テスト環境を準備
-        await prepareTestEnvironment(page);
-
-        // プロジェクト名とページ名を設定
-        const projectName = "test-project";
         const testPageName = "content-page-" + Date.now().toString().slice(-6);
         const sourcePageName = "source-page-" + Date.now().toString().slice(-6);
 
         // テスト用のページを作成（長いコンテンツを持つページ）
-        await prepareTestProjectAndPage(page, projectName, testPageName, [
+        await TestHelpers.createTestPageViaAPI(page, testPageName, [
             "1行目: これはテストページの内容です。",
             "2行目: 複数行のテキストを入力します。",
             "3行目: プレビューに表示されるか確認します。",
@@ -192,7 +163,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
         ]);
 
         // ソースページを作成（リンクを含むページ）
-        await prepareTestProjectAndPage(page, projectName, sourcePageName, [
+        await TestHelpers.createTestPageViaAPI(page, sourcePageName, [
             "ソースページの内容です。",
             `[${testPageName}]`
         ]);
@@ -294,21 +265,16 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
      * @description プレビューはマウスが離れると非表示になることを確認するテスト
      */
     test("プレビューはマウスが離れると非表示になる", async ({ page }) => {
-        // テスト環境を準備
-        await prepareTestEnvironment(page);
-
-        // プロジェクト名とページ名を設定
-        const projectName = "test-project";
         const testPageName = "hover-page-" + Date.now().toString().slice(-6);
         const sourcePageName = "source-page-" + Date.now().toString().slice(-6);
 
         // テスト用のページを作成
-        await prepareTestProjectAndPage(page, projectName, testPageName, [
+        await TestHelpers.createTestPageViaAPI(page, testPageName, [
             "これはテストページの内容です。"
         ]);
 
         // ソースページを作成（リンクを含むページ）
-        await prepareTestProjectAndPage(page, projectName, sourcePageName, [
+        await TestHelpers.createTestPageViaAPI(page, sourcePageName, [
             "ソースページの内容です。",
             `[${testPageName}]`
         ]);
@@ -399,16 +365,11 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
      * @description 存在しないページへのリンクの場合は、その旨が表示されることを確認するテスト
      */
     test("存在しないページへのリンクの場合は、その旨が表示される", async ({ page }) => {
-        // テスト環境を準備
-        await prepareTestEnvironment(page);
-
-        // プロジェクト名とページ名を設定
-        const projectName = "test-project";
         const nonExistentPage = "non-existent-" + Date.now().toString().slice(-6);
         const sourcePageName = "source-page-" + Date.now().toString().slice(-6);
 
         // ソースページを作成（存在しないページへのリンクを含むページ）
-        await prepareTestProjectAndPage(page, projectName, sourcePageName, [
+        await TestHelpers.createTestPageViaAPI(page, sourcePageName, [
             "ソースページの内容です。",
             `[${nonExistentPage}]`
         ]);

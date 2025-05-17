@@ -27,7 +27,7 @@ export function setupTestEnvironment() {
         };
 
         // 認証済み状態にする
-        window.localStorage.setItem("authenticated", "true");
+
 
         // TinyliciousをFluid Relayサービスとして使用するための環境変数を設定
         window.localStorage.setItem("VITE_USE_TINYLICIOUS", "true");

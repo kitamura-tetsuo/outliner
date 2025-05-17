@@ -6,27 +6,25 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { setupTestPage } from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
 
 // このテストは時間がかかるため、タイムアウトを増やす
-test.setTimeout(60000);
+
 
 test.describe("CLM-0007: 行頭へ移動", () => {
-    test.beforeEach(async ({ page }) => {
-        // ヘルパー関数を使用してテストページをセットアップ
-        await setupTestPage(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // 最初のアイテムをクリック
-        await page.locator(".outliner-item").first().locator(".item-content").click({ force: true });
+        const item = page.locator(".outliner-item").first();
+        await item.locator(".item-content").click({ force: true });
 
-        // フォーカスが当たるまで待機（タイムアウトを短くする）
-        try {
-            await page.waitForSelector("textarea.global-textarea:focus", { timeout: 5000 });
-        } catch (e) {
-            console.log("テキストエリアのフォーカスを待機中にタイムアウトしました。処理を続行します。");
-        }
+        // グローバル textarea にフォーカスが当たるまで待機
+        await page.waitForSelector("textarea.global-textarea:focus");
+
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
 
         // テスト用のテキストを入力（改行を明示的に入力）
         await page.keyboard.type("First line");

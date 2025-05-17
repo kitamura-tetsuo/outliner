@@ -19,42 +19,42 @@ const baseLogger = pino({
         asObject: true, // ログをオブジェクトとして扱う
         write: {
             // Pino のデフォルトコンソール出力を無効化（カスタム出力のみを使用）
-            info: () => {},
-            debug: () => {},
-            error: () => {},
-            fatal: () => {},
-            warn: () => {},
-            trace: () => {},
-            log: () => {},
-            silent: () => {},
+            info: () => { },
+            debug: () => { },
+            error: () => { },
+            fatal: () => { },
+            warn: () => { },
+            trace: () => { },
+            log: () => { },
+            silent: () => { },
         },
-        transmit: {
-            level: "info", // このレベル以上のログをサーバーに送信
-            send: (level: string, logEvent: any) => {
-                // デバッグ用: 送信されるログデータを確認
-                if (import.meta.env.DEV) {
-                    // console.debug('ログ送信:', { level, logEvent });
-                }
+        // transmit: {
+        //     level: "info", // このレベル以上のログをサーバーに送信
+        //     send: (level: string, logEvent: any) => {
+        //         // デバッグ用: 送信されるログデータを確認
+        //         if (import.meta.env.DEV) {
+        //             // console.debug('ログ送信:', { level, logEvent });
+        //         }
 
-                // ログをサーバーに送信する処理
-                fetch(`${API_URL}/api/log`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        level,
-                        log: logEvent,
-                        timestamp: new Date().toISOString(),
-                        userAgent: navigator.userAgent,
-                    }),
-                    // エラー発生時でもリクエストを中断しない
-                    credentials: "omit",
-                    mode: "cors",
-                }).catch(err => {
-                    // 送信エラー時の処理
-                    console.error("ログ送信エラー:", err);
-                });
-            },
-        },
+        //         // ログをサーバーに送信する処理
+        //         fetch(`${API_URL}/api/log`, {
+        //             method: "POST",
+        //             headers: { "Content-Type": "application/json" },
+        //             body: JSON.stringify({
+        //                 level,
+        //                 log: logEvent,
+        //                 timestamp: new Date().toISOString(),
+        //                 userAgent: navigator.userAgent,
+        //             }),
+        //             // エラー発生時でもリクエストを中断しない
+        //             credentials: "omit",
+        //             mode: "cors",
+        //         }).catch(err => {
+        //             // 送信エラー時の処理
+        //             console.error("ログ送信エラー:", err);
+        //         });
+        //     },
+        // },
     },
 });
 
@@ -342,7 +342,7 @@ export function log(
  */
 function extractErrorDetails(
     error: Error | unknown,
-): { message: string; stack?: string; name?: string; [key: string]: any; } {
+): { message: string; stack?: string; name?: string;[key: string]: any; } {
     if (error instanceof Error) {
         return {
             message: error.message,

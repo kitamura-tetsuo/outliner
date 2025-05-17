@@ -4,11 +4,16 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { setupTestPage, waitForCursorVisible } from '../helpers';
+import { TestHelpers } from '../utils/testHelpers';
+
 
 test.describe('拡張フォーマット', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    await TestHelpers.prepareTestEnvironment(page, testInfo);
+  });
+
   test('リンクが正しく表示される', async ({ page }) => {
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -34,10 +39,8 @@ test.describe('拡張フォーマット', () => {
     expect(firstItemHtml).toContain('<a href="https://example.com"');
   });
 
-
-
   test('引用が正しく表示される', async ({ page }) => {
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -65,7 +68,7 @@ test.describe('拡張フォーマット', () => {
   });
 
   test('複合フォーマットが正しく表示される', async ({ page }) => {
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -94,7 +97,7 @@ test.describe('拡張フォーマット', () => {
   });
 
   test('カーソルがあるアイテムでは拡張フォーマットもプレーンテキストで表示される', async ({ page }) => {
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();

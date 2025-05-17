@@ -18,6 +18,16 @@ export class TreeValidator {
         });
     }
 
+    static async getTreePathData(page: Page, path?: string): Promise<any> {
+        // フォールバックなしで厳密に関数が存在することを確認
+        return page.evaluate(async (path) => {
+            if (typeof window.getFluidTreePathData !== "function") {
+                throw new Error("getFluidTreePathData function is not available");
+            }
+            return window.getFluidTreePathData(path);
+        }, path);
+    }
+
     /**
      * インデント操作後にツリー構造とUIが一致しているか検証する
      */

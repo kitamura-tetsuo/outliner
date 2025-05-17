@@ -6,35 +6,25 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0008: 選択範囲のエッジケース", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         // デバッグモードを有効化
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
 
-        // アプリを開く
-        await page.goto("/");
-        // OutlinerItem がレンダリングされるのを待つ
-        await page.waitForSelector(".outliner-item");
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
+
+        // 最初のアイテムを選択
+        const item = page.locator(".outliner-item").first();
+        await item.locator(".item-content").click({ force: true });
 
         // デバッグモードを有効化（ページ読み込み後）
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
-
-        // ページタイトルを優先的に使用
-        const item = page.locator(".outliner-item.page-title");
-
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
-        if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
-            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-            await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
-            await item.locator(".item-content").click({ force: true });
-        }
 
         await page.waitForSelector("textarea.global-textarea:focus");
     });
@@ -98,14 +88,9 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            const selections = Object.values((window as any).editorOverlayStore.selections);
-            console.log('Selections:', selections);
-            return selections.length > 0;
-        });
-
-        // 選択範囲が存在しない場合は、テストをスキップ
-        if (!selectionExists) {
+        try {
+            await expect(page.locator('.editor-overlay .selection')).toBeVisible({ timeout: 1000 });
+        } catch (e) {
             console.log("Selection not created, skipping test");
             return;
         }
@@ -204,14 +189,9 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            const selections = Object.values((window as any).editorOverlayStore.selections);
-            console.log('Selections:', selections);
-            return selections.length > 0;
-        });
-
-        // 選択範囲が存在しない場合は、テストをスキップ
-        if (!selectionExists) {
+        try {
+            await expect(page.locator('.editor-overlay .selection')).toBeVisible({ timeout: 1000 });
+        } catch (e) {
             console.log("Selection not created, skipping test");
             return;
         }
@@ -292,7 +272,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
                     writable: false,
                     value: {
                         getData: () => clipboardText,
-                        setData: () => {}
+                        setData: () => { }
                     }
                 });
 
@@ -368,10 +348,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
-        const forwardSelectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(forwardSelectionExists).toBe(true);
+        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
 
         // 選択範囲の方向を確認
         const forwardSelectionDirection = await page.evaluate(() => {
@@ -403,10 +380,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
-        const reverseSelectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(reverseSelectionExists).toBe(true);
+        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
 
         // 選択範囲の方向を確認
         const reverseSelectionDirection = await page.evaluate(() => {
@@ -492,14 +466,9 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            const selections = Object.values((window as any).editorOverlayStore.selections);
-            console.log('Selections:', selections);
-            return selections.length > 0;
-        });
-
-        // 選択範囲が存在しない場合は、テストをスキップ
-        if (!selectionExists) {
+        try {
+            await expect(page.locator('.editor-overlay .selection')).toBeVisible({ timeout: 1000 });
+        } catch (e) {
             console.log("Selection not created, skipping test");
             return;
         }

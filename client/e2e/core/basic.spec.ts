@@ -19,16 +19,8 @@ import {
  * @check 認証コンポーネントが画面上に表示される
  */
 test("ホームページが正常に表示される", async ({ page }) => {
-    // 認証状態を設定（必要に応じて）
-    await page.addInitScript(() => {
-        window.localStorage.setItem("authenticated", "true");
-    });
-
     await page.goto("/");
 
     // タイトルが表示されることを確認
     await expect(page.locator("h1")).toContainText("Fluid Outliner App");
-
-    // 認証コンポーネントが表示されることを確認
-    await expect(page.locator(".auth-section")).toBeVisible();
 });

@@ -19,7 +19,7 @@ const config = {
             fallback: 'index.html',
             precompress: false,
             strict: true
-        })
+        }),
     },
 
     extensions: [".svelte", ".svx"],

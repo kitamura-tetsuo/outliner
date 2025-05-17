@@ -5,10 +5,10 @@ import {
 } from "@playwright/test";
 
 test.describe("アウトライナー E2E テスト", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
         // アプリを開く
         await page.goto("/");

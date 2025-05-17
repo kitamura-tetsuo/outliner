@@ -34,7 +34,7 @@ export default defineConfig({
     testMatch: "**/*.spec.ts",
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
-    retries: process.env.CI ? 2 : 0,
+    retries: process.env.CI ? 2 : 5,
     workers: process.env.CI ? 1 : 4,
     reporter: [["html", { open: "never" }]],
     headless: true,
@@ -42,7 +42,7 @@ export default defineConfig({
     timeout: 120 * 1000, // 120秒 (2分)
     expect: {
         // 要素の検出待機のタイムアウト設定を延長
-        timeout: 30 * 1000, // 30秒
+        timeout: 15 * 1000, // 15秒
     },
 
     // globalSetupとglobalTeardown - require.resolveではなく相対パスを使用

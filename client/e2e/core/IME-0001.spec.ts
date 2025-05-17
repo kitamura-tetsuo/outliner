@@ -10,11 +10,8 @@ import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("IME-0001: IMEを使用した日本語入力", () => {
-    test.beforeEach(async ({ page }) => {
-        // アプリを開く
-        await page.goto("/");
-        // アウトライナーアイテムがレンダリングされるのを待機
-        await page.waitForSelector(".outliner-item");
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test("入力途中の文字がカーソル位置に表示される", async ({ page }) => {

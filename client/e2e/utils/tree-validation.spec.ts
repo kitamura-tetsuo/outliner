@@ -6,23 +6,13 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import {
-    createTestItems,
-    setupTestPage,
-    setupTreeDebugger,
-} from "../helpers";
 import { TreeValidator } from "./treeValidation";
+import { TestHelpers } from "./testHelpers";
 
 test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         // テストページをセットアップ
-        await setupTestPage(page);
-
-        // SharedTreeデータ取得用のデバッグ関数をセットアップ
-        await setupTreeDebugger(page);
-
-        // テスト用のアイテムを作成
-        await createTestItems(page, [
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "First item",
             "Second item",
             "Third item",

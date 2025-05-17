@@ -280,28 +280,7 @@ function setInitialFocus() {
 
 <div class="outliner-base" data-testid="outliner-base">
     {#if isTemporary}
-        <div class="temporary-page-notice bg-amber-100 p-4 mb-6 rounded-lg border-l-4 border-amber-500 shadow-md">
-            <div class="flex items-center mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h3 class="font-medium text-amber-800">{m.temporary_page_title()}</h3>
-            </div>
-            <p class="text-amber-700 mb-3">{m.temporary_page_notice()}</p>
-            <div class="flex space-x-2">
-                <button
-                    onclick={handleCreatePage}
-                    class="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors duration-200 text-sm font-medium"
-                >
-                    {m.temporary_page_create_button()}
-                </button>
-                <button
-                    onclick={handleCancel}
-                    class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors duration-200 text-sm font-medium"
-                >
-                    {m.temporary_page_cancel_button()}
-                </button>
-            </div>
+        <div class="temporary-page-notice bg-amber-100 p-4 mb-6 rounded-lg border-l-4 border-amber-500 shadow-md">isTemporary
         </div>
     {/if}
     <GlobalTextArea />

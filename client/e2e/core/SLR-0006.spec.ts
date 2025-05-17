@@ -6,23 +6,11 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペースト", () => {
-    test.beforeEach(async ({ page }) => {
-        // デバッグモードを有効化
-        await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
-        });
-
-        // アプリを開く
-        await page.goto("/");
-        // OutlinerItem がレンダリングされるのを待つ
-        await page.waitForSelector(".outliner-item");
-
-        // デバッグモードを有効化（ページ読み込み後）
-        await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
-        });
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // ページタイトルを優先的に使用
         const item = page.locator(".outliner-item.page-title");
@@ -341,7 +329,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
                     writable: false,
                     value: {
                         getData: () => clipboardText,
-                        setData: () => {}
+                        setData: () => { }
                     }
                 });
 
@@ -444,7 +432,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
                 writable: false,
                 value: {
                     getData: () => text,
-                    setData: () => {}
+                    setData: () => { }
                 }
             });
 

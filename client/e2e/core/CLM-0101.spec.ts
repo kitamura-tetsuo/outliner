@@ -6,14 +6,13 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { setupTestPage } from "../helpers";
+
 import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("カーソル重複問題の検証", () => {
-    test.beforeEach(async ({ page }) => {
-        // ヘルパー関数を使用してテストページをセットアップ
-        await setupTestPage(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test("修正後：アイテム間をクリックで移動してもカーソルが1つだけ存在する", async ({ page }) => {

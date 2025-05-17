@@ -2,10 +2,6 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import {
-    setupTestPage,
-    waitForCursorVisible,
-} from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 import { CursorValidator } from "../utils/cursorValidation";
@@ -17,6 +13,10 @@ import { CursorValidator } from "../utils/cursorValidation";
  * @title バックリンク機能
  */
 test.describe("LNK-0007: バックリンク機能", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
+    });
+
     /**
      * @testcase ページにバックリンクパネルが表示される
      * @description ページにバックリンクパネルが表示されることを確認するテスト
@@ -26,11 +26,11 @@ test.describe("LNK-0007: バックリンク機能", () => {
         test.skip(true, "テスト環境の制約によりスキップします");
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -75,11 +75,11 @@ test.describe("LNK-0007: バックリンク機能", () => {
         test.skip(true, "テスト環境の制約によりスキップします");
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -116,7 +116,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // バックリンクパネルの内容が表示されていることを確認
         const backlinkContent = page.locator(".backlink-content");
-        const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content");
+        const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
 
         if (!isContentVisible) {
             console.log("バックリンクパネルの内容が表示されていません。もう一度開くボタンをクリックします。");
@@ -131,37 +131,29 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // バックリンクリストが表示されていることを確認
         const backlinkList = page.locator(".backlink-list");
+        await expect(backlinkList).toBeVisible();
 
-        // 注: テスト環境ではバックリンクの収集が正確に動作しない場合があるため、
-        // バックリンクが表示されない場合はテストをスキップ
-        if (await backlinkList.count() > 0) {
-            await expect(backlinkList).toBeVisible();
+        // リンク元ページが表示されていることを確認
+        const sourcePageLink = backlinkList.locator(".source-page-link");
+        if (await sourcePageLink.count() > 0) {
+            await expect(sourcePageLink).toBeVisible();
 
-            // リンク元ページが表示されていることを確認
-            const sourcePageLink = backlinkList.locator(".source-page-link");
-            if (await sourcePageLink.count() > 0) {
-                await expect(sourcePageLink).toBeVisible();
+            // リンク元ページのコンテキストが表示されていることを確認
+            const backlinkContext = backlinkList.locator(".backlink-context");
+            if (await backlinkContext.count() > 0) {
+                await expect(backlinkContext).toBeVisible();
 
-                // リンク元ページのコンテキストが表示されていることを確認
-                const backlinkContext = backlinkList.locator(".backlink-context");
-                if (await backlinkContext.count() > 0) {
-                    await expect(backlinkContext).toBeVisible();
-
-                    // コンテキストにターゲットページ名が含まれているか確認
-                    const contextText = await backlinkContext.textContent();
-                    if (contextText) {
-                        // 大文字小文字を区別せずに検索
-                        expect(contextText.toLowerCase()).toContain(targetPageName.toLowerCase());
-                    }
-                } else {
-                    console.log("バックリンクコンテキストが見つかりませんでした。テスト環境の制約によりスキップします。");
+                // コンテキストにターゲットページ名が含まれているか確認
+                const contextText = await backlinkContext.textContent();
+                if (contextText) {
+                    // 大文字小文字を区別せずに検索
+                    expect(contextText.toLowerCase()).toContain(targetPageName.toLowerCase());
                 }
             } else {
-                console.log("ソースページリンクが見つかりませんでした。テスト環境の制約によりスキップします。");
+                console.log("バックリンクコンテキストが見つかりませんでした。テスト環境の制約によりスキップします。");
             }
         } else {
-            console.log("バックリンクリストが表示されませんでした。テスト環境の制約によりスキップします。");
-            test.skip();
+            console.log("ソースページリンクが見つかりませんでした。テスト環境の制約によりスキップします。");
         }
 
         // テスト成功
@@ -177,11 +169,11 @@ test.describe("LNK-0007: バックリンク機能", () => {
         test.skip(true, "テスト環境の制約によりスキップします");
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -230,11 +222,11 @@ test.describe("LNK-0007: バックリンク機能", () => {
         test.skip(true, "テスト環境の制約によりスキップします");
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -294,11 +286,11 @@ test.describe("LNK-0007: バックリンク機能", () => {
         test.skip(true, "テスト環境の制約によりスキップします");
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -335,7 +327,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // バックリンクパネルの内容が表示されていることを確認
         const backlinkContent = page.locator(".backlink-content");
-        const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content");
+        const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
 
         if (!isContentVisible) {
             console.log("バックリンクパネルの内容が表示されていません。もう一度開くボタンをクリックします。");
@@ -347,37 +339,24 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // バックリンクリストが表示されていることを確認
         const backlinkList = page.locator(".backlink-list");
+        // リンク元ページへのリンクをクリック
+        const sourcePageLink = backlinkList.locator(".source-page-link").first();
+        // リンクをクリック
+        await sourcePageLink.click();
+        await page.waitForTimeout(1000);
 
-        // 注: テスト環境ではバックリンクの収集が正確に動作しない場合があるため、
-        // バックリンクが表示されない場合はテストをスキップ
-        if (await backlinkList.count() > 0 && await TestHelpers.forceCheckVisibility(".backlink-list")) {
-            // リンク元ページへのリンクをクリック
-            const sourcePageLink = backlinkList.locator(".source-page-link").first();
-            if (await sourcePageLink.count() > 0) {
-                // リンクをクリック
-                await sourcePageLink.click();
-                await page.waitForTimeout(1000);
+        // 元のページに戻ったことを確認
+        const currentUrl = page.url();
 
-                // 元のページに戻ったことを確認
-                const currentUrl = page.url();
+        // URLが変更されたことを確認
+        expect(currentUrl).not.toContain(targetPageName);
 
-                // URLが変更されたことを確認
-                expect(currentUrl).not.toContain(targetPageName);
-
-                // 可能であれば元のURLと一致することを確認
-                if (sourceUrl) {
-                    // URLのパス部分だけを比較（クエリパラメータなどは無視）
-                    const currentPath = new URL(currentUrl).pathname;
-                    const sourcePath = new URL(sourceUrl).pathname;
-                    expect(currentPath).toBe(sourcePath);
-                }
-            } else {
-                console.log("バックリンクが見つかりませんでした。テスト環境の制約によりスキップします。");
-                test.skip();
-            }
-        } else {
-            console.log("バックリンクリストが表示されませんでした。テスト環境の制約によりスキップします。");
-            test.skip();
+        // 可能であれば元のURLと一致することを確認
+        if (sourceUrl) {
+            // URLのパス部分だけを比較（クエリパラメータなどは無視）
+            const currentPath = new URL(currentUrl).pathname;
+            const sourcePath = new URL(sourceUrl).pathname;
+            expect(currentPath).toBe(sourcePath);
         }
 
         // テスト成功

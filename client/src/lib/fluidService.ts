@@ -162,9 +162,8 @@ async function getFluidClient(userId?: string, containerId?: string): Promise<Fl
         const client = new TinyliciousClient({
             connection: { port },
             logger: getTelemetryFilterLogger(), // telemetryをフィルタリングするカスタムロガー
-            configProvider: createFluidConfigProvider(), // telemetry関連の機能を無効化する設定
+            // configProvider: createFluidConfigProvider(), // telemetry関連の機能を無効化する設定
         });
-        // const client = new TinyliciousClient({ connection: { port: 7082 } });
         const createResponse = await client.createContainer(containerSchema, "2");
         const container = createResponse.container;
         const containerID = await container.attach();
@@ -583,8 +582,8 @@ export function cleanupFluidClient() {
     if (fluidStore.fluidClient?.container) {
         try {
             // クライアントが接続状態のイベントハンドラを持っていれば解除
-            fluidStore.fluidClient.container.off("connected", () => {});
-            fluidStore.fluidClient.container.off("disconnected", () => {});
+            fluidStore.fluidClient.container.off("connected", () => { });
+            fluidStore.fluidClient.container.off("disconnected", () => { });
         }
         catch (e) {
             logger.warn("FluidClient接続解除中のエラー:", e);

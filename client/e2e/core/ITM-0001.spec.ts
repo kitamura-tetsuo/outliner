@@ -10,11 +10,8 @@ import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("ITM-0001: Enterで新規アイテム追加", () => {
-    test.beforeEach(async ({ page }) => {
-        // アプリを開く
-        await page.goto("/");
-        // OutlinerItem がレンダリングされるのを待つ
-        await page.waitForSelector(".outliner-item");
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // ページタイトルを優先的に使用
         const item = page.locator(".outliner-item.page-title");
@@ -97,7 +94,7 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         // 1つ目のアイテムにカーソル位置より前のテキストが残っていることを確認
         // 実際の動作に合わせてテストを修正
         expect(firstItemText).not.toBe("");
-        expect(firstItemText.length).toBeLessThan(initialText.length);
+        expect(firstItemText!.length).toBeLessThan(initialText!.length);
         expect(firstItemText).toContain("First part of text");
     });
 
@@ -128,29 +125,24 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
 
         // アイテム数を確認
         const itemCount = await page.locator(".outliner-item").count();
-        if (itemCount > 1) {
-            // カーソルが表示されるまで待機
-            await TestHelpers.waitForCursorVisible(page);
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
 
-            // アクティブなアイテムIDを取得（2つ目のアイテム）
-            const secondItemId = await TestHelpers.getActiveItemId(page);
-            expect(secondItemId).not.toBeNull();
+        // アクティブなアイテムIDを取得（2つ目のアイテム）
+        const secondItemId = await TestHelpers.getActiveItemId(page);
+        expect(secondItemId).not.toBeNull();
 
-            // アクティブなアイテムを取得
-            const newActiveItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
-            await newActiveItem.waitFor({ state: 'visible' });
+        // アクティブなアイテムを取得
+        const newActiveItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
+        await newActiveItem.waitFor({ state: 'visible' });
 
-            // 2つ目のアイテムのテキストを取得
-            const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-text").textContent();
+        // 2つ目のアイテムのテキストを取得
+        const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-text").textContent();
 
-            // 2つ目のアイテムにテキストが含まれていることを確認
-            expect(secondItemText).not.toBe("");
-            // テキストの内容は実装によって異なる可能性があるため、空でないことだけを確認
-            // expect(secondItemText).toContain("Second part of text");
-        } else {
-            // 2つ目のアイテムが作成されなかった場合はテストをスキップ
-            console.log("2つ目のアイテムが作成されませんでした。テストをスキップします。");
-        }
+        // 2つ目のアイテムにテキストが含まれていることを確認
+        expect(secondItemText).not.toBe("");
+        // テキストの内容は実装によって異なる可能性があるため、空でないことだけを確認
+        // expect(secondItemText).toContain("Second part of text");
     });
 
     test("カーソルは新しいアイテムの先頭に移動する", async ({ page }) => {
@@ -177,11 +169,6 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
 
         // アイテム数を確認
         const itemCount = await page.locator(".outliner-item").count();
-        if (itemCount <= 1) {
-            // 2つ目のアイテムが作成されなかった場合はテストをスキップ
-            console.log("2つ目のアイテムが作成されませんでした。テストをスキップします。");
-            return;
-        }
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);

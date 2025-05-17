@@ -11,12 +11,12 @@ import {
  */
 
 test.describe("Advanced indent/unindent functionality", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         // ホームページにアクセス
         await page.goto("/"); // エミュレータを使用するための設定とデバッグ関数の追加
         await page.addInitScript(() => {
             // エミュレータを使用するためモックは不要
-            window.localStorage.setItem("authenticated", "true");
+
 
             // テスト用に共有ツリー構造を厳格に取得する関数を追加
             window.getFluidTreeDebugData = function () {

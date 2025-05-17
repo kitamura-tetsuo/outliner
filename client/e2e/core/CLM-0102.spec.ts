@@ -6,15 +6,14 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { setupTestPage } from "../helpers";
+
 
 // このテストは時間がかかるため、タイムアウトを増やす
-test.setTimeout(60000);
+
 
 test.describe("空のテキストアイテムでのカーソル移動", () => {
-    test.beforeEach(async ({ page }) => {
-        // ヘルパー関数を使用してテストページをセットアップ
-        await setupTestPage(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test("空のテキストアイテムでのカーソル移動と複数回のキーボード操作", async ({ page }) => {

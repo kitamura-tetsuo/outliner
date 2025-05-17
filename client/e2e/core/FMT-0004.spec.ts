@@ -4,11 +4,16 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { setupTestPage, waitForCursorVisible } from '../helpers';
+
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe('フォーマット文字列の入力と表示', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    await TestHelpers.prepareTestEnvironment(page, testInfo);
+  });
+
   test('プレーンテキストの入力が正しく機能する', async ({ page }) => {
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -24,7 +29,7 @@ test.describe('フォーマット文字列の入力と表示', () => {
   });
 
   test('フォーマット構文を含むテキストの入力が正しく機能する', async ({ page }) => {
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -64,7 +69,7 @@ test.describe('フォーマット文字列の入力と表示', () => {
   });
 
   test('複数行テキストの入力が正しく機能する', async ({ page }) => {
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -155,7 +160,7 @@ test.describe('フォーマット文字列の入力と表示', () => {
     console.log(clipboardContent);
 
     // 本来のテストページに戻る
-    await setupTestPage(page);
+
     console.log('テストページに戻りました');
 
     // 最初のアイテムを選択して既存のテキストを入力
@@ -226,20 +231,8 @@ test.describe('フォーマット文字列の入力と表示', () => {
     await page.screenshot({ path: "test-results/clipboard-paste-test.png" });
     console.log('スクリーンショットを撮影しました');
 
-    // 期待される結果: 「前半部分ペーストされたテキスト後半部分」または「前半部分後半部分」にペーストされたテキストが含まれている
-    // 注: クリップボードの動作が環境によって異なるため、柔軟に検証
-    if (actualText === '前半部分|後半部分') {
-      console.log('ペーストが実行されていません。テストをスキップします。');
-      // テストをスキップ（失敗にしない）
-    } else if (actualText.includes('ペーストされたテキスト')) {
-      console.log('ペーストが成功しました！');
-      expect(actualText).toContain('ペーストされたテキスト');
-    } else {
-      console.log('期待値: "前半部分ペーストされたテキスト後半部分"');
-      console.log('ペーストが失敗しました。');
-      // 厳密な検証ではなく、テキストが変更されたことを確認
-      expect(actualText).not.toBe('前半部分|後半部分');
-    }
+    console.log('ペーストが成功しました！');
+    expect(actualText).toContain('ペーストされたテキスト');
   });
 
   /**
@@ -297,7 +290,7 @@ test.describe('フォーマット文字列の入力と表示', () => {
     console.log(clipboardContent);
 
     // テスト用ページにアクセス
-    await setupTestPage(page);
+
     console.log('テストページに戻りました');
 
     // 最初のアイテムを選択
@@ -358,30 +351,7 @@ test.describe('フォーマット文字列の入力と表示', () => {
     console.log('スクリーンショットを撮影しました');
 
     // ペーストされたテキストが含まれているか確認
-    if (itemText.includes(testText)) {
-      console.log('ペーストが成功しました！');
-      expect(itemText).toContain(testText);
-    } else {
-      console.log('ペーストが実行されていません。テストをスキップします。');
-      // テストをスキップ（失敗にしない）
-      // 代わりにクリップボードの内容が正しく取得できたことを確認
-      const clipboardCheck = await page.evaluate(async () => {
-        try {
-          const text = await navigator.clipboard.readText();
-          return text;
-        } catch (err) {
-          return null;
-        }
-      });
-      console.log(`最終確認のクリップボード内容: ${clipboardCheck}`);
-
-      if (clipboardCheck && clipboardCheck.includes(testText)) {
-        console.log('クリップボードの内容は正しいです');
-        expect(clipboardCheck).toContain(testText);
-      } else {
-        console.log('クリップボードの内容も取得できませんでした');
-        // テストを失敗させない
-      }
-    }
+    console.log('ペーストが成功しました！');
+    expect(itemText).toContain(testText);
   });
 });

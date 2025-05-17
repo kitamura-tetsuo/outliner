@@ -1,6 +1,7 @@
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { setupTestPage, setupTreeDebugger, waitForCursorVisible } from "../helpers";
+
+import { TestHelpers } from "./testHelpers";
 
 /**
  * 内部リンクのテスト用のヘルパー関数群
@@ -20,10 +21,10 @@ export class LinkTestHelpers {
         content: string[] = ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"]
     ): Promise<void> {
         // まずテストページをセットアップ（基本的なページを表示）
-        await setupTestPage(page);
+
 
         // TreeDebuggerをセットアップ
-        await setupTreeDebugger(page);
+        await TestHelpers.setupTreeDebugger(page);
 
         // FluidClientインスタンスが初期化されるのを待つ
         await page.waitForFunction(() => window.__FLUID_CLIENT__, { timeout: 30000 });
@@ -94,10 +95,10 @@ export class LinkTestHelpers {
         }>
     ): Promise<void> {
         // まずテストページをセットアップ（基本的なページを表示）
-        await setupTestPage(page);
+
 
         // TreeDebuggerをセットアップ
-        await setupTreeDebugger(page);
+        await TestHelpers.setupTreeDebugger(page);
 
         // FluidClientインスタンスが初期化されるのを待つ
         await page.waitForFunction(() => window.__FLUID_CLIENT__, { timeout: 30000 });
@@ -215,7 +216,7 @@ export class LinkTestHelpers {
         navigateToPage: boolean = false
     ): Promise<void> {
         // TreeDebuggerをセットアップ
-        await setupTreeDebugger(page);
+        await TestHelpers.setupTreeDebugger(page);
 
         // FluidClientインスタンスが初期化されるのを待つ
         await page.waitForFunction(() => window.__FLUID_CLIENT__, { timeout: 30000 });
@@ -250,7 +251,7 @@ export class LinkTestHelpers {
                 // プロジェクトが見つからない場合は新規作成
                 if (!project) {
                     project = rootProject.items.addNode("test-user");
-                    project.updateText(projectName);
+                    project!.updateText(projectName);
                 }
 
                 // ページを検索または作成

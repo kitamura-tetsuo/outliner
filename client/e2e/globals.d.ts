@@ -61,7 +61,7 @@ export const test = base.extend({
             window.localStorage.setItem("VITE_USE_TINYLICIOUS", "true");
 
             // 認証済み状態をシミュレート
-            window.localStorage.setItem("authenticated", "true");
+
 
             // テスト用のユーザーデータ
             window.mockUser = {

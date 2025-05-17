@@ -18,17 +18,11 @@ import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("Tinyliciousリアル接続テスト", () => {
     // テスト前の準備 - モックを無効化し、実際のTinyliciousサーバーに接続するように設定
-    test.beforeEach(async ({ page }) => { // エミュレータを使用してTinyliciousに接続
+    test.beforeEach(async ({ page }, testInfo) => { // エミュレータを使用してTinyliciousに接続
         // テスト開始前に十分な時間を設定
-        test.setTimeout(60000);
 
-        // テストページをセットアップ
-        await TestHelpers.setupCursorDebugger(page);
 
         await page.addInitScript(() => {
-            // 認証状態の設定
-            window.localStorage.setItem("authenticated", "true");
-
             // 接続状態のモックは削除（実際の接続状態を確認するため）
             // モックコンテナが接続済みであることをシミュレートしない
 
