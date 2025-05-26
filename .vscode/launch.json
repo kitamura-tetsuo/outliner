@@ -274,7 +274,7 @@
                 "emulators:start",
                 "--inspect-functions=9229",
                 "--only",
-                "functions,hosting"
+                "auth,firestore,functions,hosting"
             ],
             "env": {
                 "FIREBASE_DEBUG_MODE": "true"

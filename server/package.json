@@ -6,7 +6,9 @@
     "scripts": {
         "start": "node auth-service.js",
         "dev": "nodemon auth-service.js",
-        "create-test-user": "node utils/create-test-user.js"
+        "create-test-user": "node utils/create-test-user.js",
+        "test": "mocha tests/**/*.test.js --timeout 10000",
+        "test:emulator-wait": "mocha tests/auth-service-emulator-wait.test.js --timeout 10000"
     },
     "dependencies": {
         "@fluidframework/azure-client": "^2.0.0",

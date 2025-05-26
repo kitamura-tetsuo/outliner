@@ -95,101 +95,147 @@ catch (error) {
 
 // 注意: Azure Fluid Relay設定はFirebase Functionsに移行しました
 
-// Firebase初期化
-try {
-    // すでに初期化されている場合は一度削除
-    try {
-        const apps = admin.apps;
-        if (apps.length) {
-            logger.info("Firebase Admin SDK instance already exists, deleting...");
-            admin.app().delete().then(() => {
-                logger.info("Previous Firebase Admin SDK instance deleted");
-            });
+// Firebase emulatorの起動を待つ関数
+async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
+    const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST || process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
+
+    if (!isEmulator) {
+        logger.info("Firebase emulator not configured, skipping connection wait");
+        return;
+    }
+
+    logger.info(`Firebase emulator detected, waiting for connection... (max retries: ${maxRetries})`);
+
+    let retryCount = 0;
+    let delay = initialDelay;
+
+    while (retryCount < maxRetries) {
+        try {
+            logger.info(`Firebase connection attempt ${retryCount + 1}/${maxRetries}...`);
+
+            // Firebase Auth emulatorへの接続テスト
+            const listUsersResult = await admin.auth().listUsers(1);
+
+            logger.info(`Firebase emulator connection successful. Found users: ${listUsersResult.users.length}`);
+            if (listUsersResult.users.length > 0) {
+                logger.info(`First user: ${JSON.stringify({
+                    uid: listUsersResult.users[0].uid,
+                    email: listUsersResult.users[0].email,
+                    displayName: listUsersResult.users[0].displayName,
+                })}`);
+            }
+
+            return; // 成功した場合は関数を終了
+        } catch (error) {
+            retryCount++;
+
+            if (error.code === 'ECONNREFUSED' || error.message.includes('ECONNREFUSED')) {
+                logger.warn(`Firebase emulator not ready yet (attempt ${retryCount}/${maxRetries}): ${error.message}`);
+
+                if (retryCount < maxRetries) {
+                    logger.info(`Waiting ${delay}ms before next retry...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+
+                    // 指数バックオフ（最大遅延時間まで）
+                    delay = Math.min(delay * 1.5, maxDelay);
+                }
+            } else {
+                // ECONNREFUSED以外のエラーは即座に失敗とする
+                logger.error(`Firebase emulator connection failed with non-connection error: ${error.message}`);
+                throw error;
+            }
         }
     }
-    catch (deleteError) {
-        logger.warn(`Previous Firebase Admin SDK instance deletion failed: ${deleteError.message}`);
-    }
 
-    // Firebase Emulator環境変数のチェックと警告
-    const emulatorVariables = {
-        FIREBASE_EMULATOR_HOST: process.env.FIREBASE_EMULATOR_HOST,
-        FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST,
-        FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST,
-    };
+    throw new Error(`Firebase emulator connection failed after ${maxRetries} attempts`);
+}
 
-    const configuredEmulators = Object.entries(emulatorVariables)
-        .filter(([_, value]) => value)
-        .map(([name, value]) => `${name}=${value}`);
+// Firebase初期化を非同期関数でラップ
+async function initializeFirebase() {
+    try {
+        // すでに初期化されている場合は一度削除
+        try {
+            const apps = admin.apps;
+            if (apps.length) {
+                logger.info("Firebase Admin SDK instance already exists, deleting...");
+                admin.app().delete().then(() => {
+                    logger.info("Previous Firebase Admin SDK instance deleted");
+                });
+            }
+        }
+        catch (deleteError) {
+            logger.warn(`Previous Firebase Admin SDK instance deletion failed: ${deleteError.message}`);
+        }
 
-    if (configuredEmulators.length > 0) {
-        logger.warn(`⚠️ Firebase Emulator環境変数が設定されています。本番環境では問題になる可能性があります！`);
-        logger.warn(`設定されているEmulator環境変数: ${configuredEmulators.join(", ")}`);
-        logger.warn(`これらの環境変数は本来 .env.test に設定すべきもので、本番環境では設定しないでください。`);
-    }
+        // Firebase Emulator環境変数のチェックと警告
+        const emulatorVariables = {
+            FIREBASE_EMULATOR_HOST: process.env.FIREBASE_EMULATOR_HOST,
+            FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST,
+            FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST,
+        };
 
-    // 新しいインスタンスを初期化
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-    });
-    logger.info(`Firebase Admin SDK initialized successfully. Project ID: ${serviceAccount.project_id}`);
+        const configuredEmulators = Object.entries(emulatorVariables)
+            .filter(([_, value]) => value)
+            .map(([name, value]) => `${name}=${value}`);
 
-    // Firebase接続テスト - ユーザー一覧を取得して確認
-    if (isDevelopment) {
-        logger.info("Testing Firebase Admin SDK connection...");
-        admin.auth().listUsers(100)
-            .then(listUsersResult => {
-                logger.info(`Firebase connection test successful. Found users: ${listUsersResult.users.length}`);
-                if (listUsersResult.users.length > 0) {
-                    logger.info(`First user: ${JSON.stringify({
-                        uid: listUsersResult.users[0].uid,
-                        email: listUsersResult.users[0].email,
-                        displayName: listUsersResult.users[0].displayName,
-                    })
-                        }`);
-                }
-            })
-            .catch(listError => {
-                logger.error(`Firebase connection test failed: ${listError.message}`);
-            });
-    }
+        if (configuredEmulators.length > 0) {
+            logger.warn(`⚠️ Firebase Emulator環境変数が設定されています。本番環境では問題になる可能性があります！`);
+            logger.warn(`設定されているEmulator環境変数: ${configuredEmulators.join(", ")}`);
+            logger.warn(`これらの環境変数は本来 .env.test に設定すべきもので、本番環境では設定しないでください。`);
+        }
 
-    // FIREBASE_AUTH_EMULATOR_HOST 環境変数をチェック
-    if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
-        logger.warn(`Firebase Auth Emulator is configured: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
-    }
+        // 新しいインスタンスを初期化
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+        });
+        logger.info(`Firebase Admin SDK initialized successfully. Project ID: ${serviceAccount.project_id}`);
 
-    // 開発環境の場合は、テストユーザーをセットアップ
-    if (isDevelopment && devAuthHelper) {
-        devAuthHelper.setupTestUser()
-            .then(user => {
+        // Firebase接続テスト - エミュレータの起動を待つ
+        if (isDevelopment) {
+            try {
+                await waitForFirebaseEmulator();
+                logger.info("Firebase emulator connection established successfully");
+            } catch (error) {
+                logger.error(`Firebase emulator connection failed after retries: ${error.message}`);
+            }
+        }
+
+        // FIREBASE_AUTH_EMULATOR_HOST 環境変数をチェック
+        if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+            logger.warn(`Firebase Auth Emulator is configured: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
+        }
+
+        // 開発環境の場合は、テストユーザーをセットアップ（emulator起動待機後）
+        if (isDevelopment && devAuthHelper) {
+            try {
+                const user = await devAuthHelper.setupTestUser();
                 logger.info(`開発環境用テストユーザーをセットアップしました: ${user.email} (${user.uid})`);
 
                 // テストユーザーのセットアップ後、Firestoreエミュレータのデータをクリア
                 const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
                 if (isEmulator) {
-                    clearFirestoreEmulatorData()
-                        .then(cleared => {
-                            if (cleared) {
-                                logger.info("開発環境の Firestore エミュレータデータを消去しました");
-                            }
-                        })
-                        .catch(error => {
-                            logger.error(`Firestore エミュレータデータの消去に失敗しました: ${error.message}`);
-                        });
+                    try {
+                        const cleared = await clearFirestoreEmulatorData();
+                        if (cleared) {
+                            logger.info("開発環境の Firestore エミュレータデータを消去しました");
+                        }
+                    } catch (error) {
+                        logger.error(`Firestore エミュレータデータの消去に失敗しました: ${error.message}`);
+                    }
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 logger.warn(`テストユーザーのセットアップに失敗しました: ${error.message}`);
-            });
+            }
+        }
+
+    } catch (error) {
+        logger.error(`Firebase初期化エラー: ${error.message}`);
+        process.exit(1);
     }
-
-
 }
-catch (error) {
-    logger.error(`Firebase初期化エラー: ${error.message}`);
-    process.exit(1);
-}
+
+// Firebase初期化を実行
+initializeFirebase();
 
 const app = express();
 // CORS設定を強化

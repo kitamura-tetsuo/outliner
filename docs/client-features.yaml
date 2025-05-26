@@ -753,3 +753,50 @@
     - 'コンテナへのアクセス権がない場合は適切なエラーメッセージが表示される'
   tests:
     - client/e2e/core/USR-0002.spec.ts
+
+- id: API-0001
+  title: 'Firebase Functions APIサーバーの修正'
+  description: 'Firebase Functions APIサーバーのローカルテスト時のエラーを修正し、正常に動作するようにする機能'
+  category: api-server
+  status: implemented
+  acceptance:
+    - 'Firebase Functions エミュレーターが正常に起動する'
+    - 'ポート設定が正しく構成される（Hosting: 57000, Functions: 57070）'
+    - 'CORS設定が正しく構成され、クロスオリジンリクエストが正常に処理される'
+    - '環境変数が正しく読み込まれ、Azure Fluid Relay設定が適用される'
+    - 'ヘルスチェックエンドポイント（/health）が正常に応答する'
+    - 'fluid-tokenエンドポイント（/api/fluid-token）が認証エラーを適切に処理する'
+    - 'save-containerエンドポイント（/api/save-container）が認証エラーを適切に処理する'
+    - 'getUserContainersエンドポイント（/api/getUserContainers）が認証エラーを適切に処理する'
+    - 'deleteUserエンドポイント（/api/deleteUser）が認証エラーを適切に処理する'
+    - 'deleteContainerエンドポイント（/api/deleteContainer）が認証エラーを適切に処理する'
+    - '無効なHTTPメソッドに対して405エラーが返される'
+    - '必須パラメータが不足している場合に400エラーが返される'
+    - '認証に失敗した場合に401または500エラーが返される'
+    - 'Firebase Hosting経由でのリクエストが正しくFunctionsにルーティングされる'
+  tests:
+    - functions/test/firebase-functions.test.js
+  components:
+    - functions/index.js
+    - functions/.env
+    - firebase.json
+    - client/.env.localhost.test
+
+- id: API-0002
+  title: 'Firebase emulator起動待機機能'
+  description: 'Firebase emulatorの起動を待つリトライ機能により、ECONNREFUSED エラーを回避する機能'
+  category: api-server
+  status: implemented
+  acceptance:
+    - 'Firebase emulator環境変数が設定されている場合、emulatorの起動を待機する'
+    - 'ECONNREFUSED エラーが発生した場合、指数バックオフでリトライする'
+    - '最大30回のリトライを行い、初期遅延1秒、最大遅延10秒で待機する'
+    - 'Firebase Auth emulatorへの接続テストを行い、成功するまで待機する'
+    - 'emulator環境でない場合は待機をスキップする'
+    - 'ECONNREFUSED以外のエラーは即座に失敗とする'
+    - 'リトライ回数と遅延時間をログに出力する'
+    - '接続成功時にユーザー数とユーザー情報をログに出力する'
+  tests:
+    - server/test/auth-service-emulator-wait.test.js
+  components:
+    - server/auth-service.js

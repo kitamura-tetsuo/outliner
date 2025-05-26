@@ -54,3 +54,5 @@ firebase/firestore-debug.log
 client/firebase-debug.log
 functions/.runtimeconfig.json
 functions/firebase-debug.log
+firestore-debug.log
+firebase-debug.log

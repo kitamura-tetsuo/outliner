@@ -45,29 +45,6 @@ services:
       - "7080-7082:7080-7082"
 
     command: sleep infinity
-    networks:
-      - firebase-network
-
-  firebase-emulator:
-    build:
-      context: ../firebase
-      dockerfile: Dockerfile
-    container_name: firebase-emulator
-    ports:
-      - "54000:54000"  # Emulator UI
-      - "58080:58080"  # Firestore
-      - "59099:59099"  # Auth
-      - "57070:57070"  # Functions
-      - "57000:57000"  # Hosting
-    volumes:
-      - ../firebase-data:/firebase-data
-      - ../functions:/firebase/functions
-    networks:
-      - firebase-network
-
-networks:
-  firebase-network:
-    driver: bridge
 
 volumes:
   node_modules_client:
