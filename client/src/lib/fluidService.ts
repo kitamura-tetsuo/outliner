@@ -19,7 +19,7 @@ import {
     type ViewableTree,
 } from "fluid-framework";
 import { v4 as uuid } from "uuid";
-import { UserManager } from "../auth/UserManager";
+import { userManager } from "../auth/UserManager";
 import { FluidClient } from "../fluid/fluidClient";
 import {
     appTreeConfiguration,
@@ -37,6 +37,7 @@ import {
     log,
 } from "./logger";
 import { createFluidConfigProvider, getTelemetryFilterLogger } from "./fluidTelemetryFilter";
+import { AsyncLockManager } from "./lock";
 
 const logger = getLogger();
 
@@ -64,7 +65,8 @@ const azureConfig = {
 };
 
 // 開発環境ではTinyliciousを使用する - 環境変数で強制的に切り替え可能
-const isTestEnvironment = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
+const isTestEnvironment = import.meta.env.VITE_IS_TEST === "true" ||
+    import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
 const useTinylicious = isTestEnvironment || // テスト環境では常にTinyliciousを使用
     import.meta.env.VITE_USE_TINYLICIOUS === "true" ||
     (import.meta.env.DEV && import.meta.env.VITE_FORCE_AZURE !== "true");
@@ -76,6 +78,8 @@ const containerSchema: ContainerSchema = {
         appData: SharedTree,
     },
 } as any satisfies ContainerSchema;
+
+const lockManager = new AsyncLockManager();
 
 // キー生成ロジックを一元化する関数
 function createClientKey(userId?: string, containerId?: string): FluidClientKey {
@@ -89,7 +93,6 @@ function createClientKey(userId?: string, containerId?: string): FluidClientKey 
 async function getTokenProvider(userId?: string, containerId?: string): Promise<ITokenProvider> {
     if (!useTinylicious) {
         // Azureモードの場合はUserManagerからトークンを取得
-        const userManager = UserManager.getInstance();
 
         // 特定のコンテナID用のトークンが必要な場合
         if (containerId !== undefined) {
@@ -154,42 +157,17 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
     );
 }
 
-// AzureClientの取得（またはTinyliciousClient）
-async function getFluidClient(userId?: string, containerId?: string): Promise<FluidInstances> {
+async function createAzureOrTinyliciousClient(userId?: string, containerId?: string): Promise<TinyliciousClient | AzureClient> {
     if (useTinylicious) {
         const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7082");
         // telemetryを無効化するための設定を追加
         const client = new TinyliciousClient({
             connection: { port },
             logger: getTelemetryFilterLogger(), // telemetryをフィルタリングするカスタムロガー
-            configProvider: createFluidConfigProvider(), // telemetry関連の機能を無効化する設定
+            // configProvider: createFluidConfigProvider(), // telemetry関連の機能を無効化する設定
         });
-        // const client = new TinyliciousClient({ connection: { port: 7082 } });
-        const createResponse = await client.createContainer(containerSchema, "2");
-        const container = createResponse.container;
-        const containerID = await container.attach();
-        saveContainerId(containerID);
-        const appData = (container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
-        appData.initialize(Project.createInstance("Test Project"));
-        const project = appData.root as Project;
-        for (let i = 0; i < 3; i++) {
-            const page = project.addPage("Test Page", "test-user");
-            for (let j = 0; j < 3; j++) {
-                (page.items as Items).addNode("test-user");
-            }
-        }
-
-        return [client, container, createResponse.services, appData, project];
+        return client;
     }
-
-    // クライアントキーを生成
-    const clientKey = createClientKey(userId, containerId);
-
-    // 既存クライアントがあれば返す
-    if (containerId && clientRegistry.has(clientKey)) {
-        return clientRegistry.get(clientKey)!;
-    }
-
     let tokenProvider;
     try {
         // TokenProvider設定 - コンテナIDが指定されている場合はそれも渡す
@@ -199,7 +177,7 @@ async function getFluidClient(userId?: string, containerId?: string): Promise<Fl
         log(
             "fluidService",
             "error",
-            `Failed to getTokenProvider. retry without containerId. ${clientKey.type}:${clientKey.id}:`,
+            `Failed to getTokenProvider. retry without containerId. ${userId}:${containerId}:`,
             error,
         );
         containerId = undefined; // コンテナIDをクリアして再試行
@@ -220,42 +198,83 @@ async function getFluidClient(userId?: string, containerId?: string): Promise<Fl
         logger: getTelemetryFilterLogger(), // telemetryをフィルタリングするカスタムロガー
         configProvider: createFluidConfigProvider(), // telemetry関連の機能を無効化する設定
     };
+    const client = new AzureClient(clientProps);
+    return client;
+}
 
-    try {
-        // 新しいAzure Clientを作成して登録
-        log("fluidService", "info", `Creating new Fluid client for ${clientKey.type}:${clientKey.id}`);
-        const client = new AzureClient(clientProps);
+// AzureClientの取得（またはTinyliciousClient）
+export async function getFluidClient(containerId?: string): Promise<FluidInstances> {
+    // if (useTinylicious) {
+    //     const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7082");
+    //     // telemetryを無効化するための設定を追加
+    //     const client = new TinyliciousClient({
+    //         connection: { port },
+    //         logger: getTelemetryFilterLogger(), // telemetryをフィルタリングするカスタムロガー
+    //         // configProvider: createFluidConfigProvider(), // telemetry関連の機能を無効化する設定
+    //     });
+    //     const createResponse = await client.createContainer(containerSchema, "2");
+    //     const container = createResponse.container;
+    //     const containerID = await container.attach();
+    //     saveContainerId(containerID);
+    //     const appData = (container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+    //     appData.initialize(Project.createInstance("Test Project"));
+    //     const project = appData.root as Project;
+    //     for (let i = 0; i < 3; i++) {
+    //         const page = project.addPage("Test Page", "test-user");
+    //         for (let j = 0; j < 3; j++) {
+    //             (page.items as Items).addNode("test-user");
+    //         }
+    //     }
 
-        // コンテナIDがある場合はコンテナをロード、なければ新規作成
-        let container: IFluidContainer | undefined = undefined;
-        let services: AzureContainerServices | undefined = undefined;
-        let appData: TreeView<typeof Project> | undefined = undefined;
-        let project: Project | undefined = undefined;
+    //     return [client, container, createResponse.services, appData, project];
+    // }
 
-        if (containerId) {
-            // 既存のコンテナに接続
-            log("fluidService", "info", `Loading existing container: ${containerId}`);
-            const getResponse = await client.getContainer(containerId, containerSchema, "2");
-            container = getResponse.container;
-            services = getResponse.services;
-            appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+    return lockManager.runExclusive("getFluidClient", async () => {
+        const user = userManager.getCurrentUser();
+        // クライアントキーを生成
+        const clientKey = createClientKey(user?.id, containerId);
 
-            if (appData.compatibility.canInitialize) {
-                log("fluidService", "warn", "Something wrong with the container, initializing new project");
-                appData.initialize(Project.createInstance("新規プロジェクト"));
-            }
-            project = appData.root as Project;
+        // 既存クライアントがあれば返す
+        if (containerId && clientRegistry.has(clientKey)) {
+            return clientRegistry.get(clientKey)!;
         }
 
-        const result: FluidInstances = [client, container, services, appData, project];
+        try {
+            // 新しいAzure Clientを作成して登録
+            log("fluidService", "info", `Creating new Fluid client for ${clientKey.type}:${clientKey.id}`);
+            const client = await createAzureOrTinyliciousClient(user?.id, containerId);
 
-        clientRegistry.set(clientKey, result as any);
-        return result;
-    }
-    catch (error) {
-        log("fluidService", "error", `Failed to create Fluid client for ${clientKey.type}:${clientKey.id}:`, error);
-        throw error;
-    }
+            // コンテナIDがある場合はコンテナをロード、なければ新規作成
+            let container: IFluidContainer | undefined = undefined;
+            let services: AzureContainerServices | undefined = undefined;
+            let appData: TreeView<typeof Project> | undefined = undefined;
+            let project: Project | undefined = undefined;
+
+            if (containerId) {
+                // 既存のコンテナに接続
+                log("fluidService", "info", `Loading existing container: ${containerId}`);
+                const getResponse = await client.getContainer(containerId, containerSchema, "2");
+                container = getResponse.container;
+                services = getResponse.services;
+                appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+
+                if (appData.compatibility.canInitialize) {
+                    log("fluidService", "warn", "Something wrong with the container, initializing new project");
+                    appData.initialize(Project.createInstance("新規プロジェクト"));
+                }
+                project = appData.root as Project;
+            }
+
+            const result: FluidInstances = [client, container, services, appData, project];
+
+            clientRegistry.set(clientKey, result as any);
+            return result;
+        }
+        catch (error) {
+            log("fluidService", "error", `Failed to create Fluid client for ${clientKey.type}:${clientKey.id}:`, error);
+            throw error;
+        }
+    });
 }
 
 // ローカルストレージのキー名
@@ -266,6 +285,7 @@ const CONTAINER_ID_STORAGE_KEY = "fluid_container_id";
  * @returns 保存されていたコンテナID、なければundefined
  */
 function loadContainerId(): string | undefined {
+    if (isTestEnvironment) return undefined;
     if (typeof window !== "undefined") {
         const savedContainerId = localStorage.getItem(CONTAINER_ID_STORAGE_KEY);
         if (savedContainerId) {
@@ -312,6 +332,107 @@ async function saveContainerIdToServer(containerId: string): Promise<boolean> {
 }
 
 /**
+ * ユーザーがアクセス可能なコンテナIDのリストを取得する
+ * @returns コンテナIDのリストとデフォルトコンテナID
+ */
+export async function getUserContainers(): Promise<{ containers: string[], defaultContainerId: string | null }> {
+    try {
+        // ユーザー情報を取得
+        const userInfo = userManager.getCurrentUser();
+        const userId = userInfo?.id;
+
+        if (!userId) {
+            throw new Error("ユーザーがログインしていないため、コンテナリストを取得できません");
+        }
+
+        // Firebase IDトークンを取得
+        const idToken = await userManager.auth.currentUser?.getIdToken();
+        if (!idToken) {
+            throw new Error("認証トークンを取得できません");
+        }
+
+        // Firebase Functionsのエンドポイントを取得
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        log("fluidService", "info", `Getting user containers from Firebase Functions at ${apiBaseUrl}`);
+
+        // Firebase Functionsを呼び出してコンテナリストを取得
+        const response = await fetch(`${apiBaseUrl}/api/get-user-containers`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ idToken }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error: ${response.status} ${errorText}`);
+        }
+
+        const result = await response.json();
+        log("fluidService", "info", `Successfully got user containers for user ${userId}`);
+        return {
+            containers: result.containers || [],
+            defaultContainerId: result.defaultContainerId || null
+        };
+    }
+    catch (error) {
+        log("fluidService", "error", "Error getting user containers:", error);
+        return { containers: [], defaultContainerId: null };
+    }
+}
+
+/**
+ * コンテナを削除する
+ * @param containerId 削除するコンテナID
+ * @returns 削除が成功したかどうか
+ */
+export async function deleteContainer(containerId: string): Promise<boolean> {
+    try {
+        // ユーザー情報を取得
+
+        const userInfo = userManager.getCurrentUser();
+        const userId = userInfo?.id;
+
+        if (!userId) {
+            throw new Error("ユーザーがログインしていないため、コンテナを削除できません");
+        }
+
+        // Firebase IDトークンを取得
+        const idToken = await userManager.auth.currentUser?.getIdToken();
+        if (!idToken) {
+            throw new Error("認証トークンを取得できません");
+        }
+
+        // Firebase Functionsのエンドポイントを取得
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        log("fluidService", "info", `Deleting container ${containerId} via Firebase Functions at ${apiBaseUrl}`);
+
+        // Firebase Functionsを呼び出してコンテナを削除
+        const response = await fetch(`${apiBaseUrl}/api/delete-container`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ idToken, containerId }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error: ${response.status} ${errorText}`);
+        }
+
+        const result = await response.json();
+        log("fluidService", "info", `Successfully deleted container ${containerId}`);
+        return result.success === true;
+    }
+    catch (error) {
+        log("fluidService", "error", `Error deleting container ${containerId}:`, error);
+        return false;
+    }
+}
+
+/**
  * 新しいFluidコンテナを作成し、初期化されたFluidClientインスタンスを返す
  * @param containerName 作成するコンテナの名前（メタデータとして保存）
  * @returns 初期化されたFluidClientインスタンス
@@ -321,7 +442,6 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
         log("fluidService", "info", `Creating a new container: ${containerName}`);
 
         // ユーザー情報を取得
-        const userManager = UserManager.getInstance();
         const userInfo = userManager.getFluidUserInfo();
         const userId = userInfo?.id;
 
@@ -332,7 +452,7 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
         const clientId = uuid();
 
         // Fluid Frameworkのクライアントを初期化
-        const [client] = await getFluidClient(userId, "");
+        const [client] = await getFluidClient("");
 
         // 新規コンテナを作成
         log("fluidService", "info", "Creating container with schema");
@@ -341,40 +461,30 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
 
         // コンテナをアタッチして永続化（コンテナIDを取得）
         log("fluidService", "info", "Attaching container");
-        const newContainerId = await container.attach();
-        log("fluidService", "info", `Container created with ID: ${newContainerId}`);
+        const containerId = await container.attach();
+        log("fluidService", "info", `Container created with ID: ${containerId}`);
 
         // サーバーとローカルストレージにコンテナIDを保存
-        await saveContainerIdToServer(newContainerId);
-        saveContainerId(newContainerId);
+        await saveContainerIdToServer(containerId);
+        saveContainerId(containerId);
 
-        // 新しいFluidクライアントを取得
-        const [_, updatedContainer, updatedServices, appData, project] = await getFluidClient(
-            userId,
-            newContainerId,
-        );
+        const appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+        appData.initialize(Project.createInstance(containerName));
+        const project = appData.root as Project;
 
-        if (!updatedContainer || !appData || !project) {
-            throw new Error("FluidClientの初期化に失敗しました");
-        }
-
-        if (appData.compatibility.canInitialize) {
-            appData.initialize(Project.createInstance(containerName || "新規プロジェクト"));
-        }
-
-        // 初期データとして最初のページを作成
-        const projectRoot = appData.root as Project;
-        projectRoot.addPage("はじめてのページ", userId);
+        const result: FluidInstances = [client, container, createResponse.services, appData, project];
+        const clientKey = createClientKey(userId, containerId);
+        clientRegistry.set(clientKey, result as any);
 
         // 必要な全てのパラメータを設定してFluidClientインスタンスを作成
         const fluidClientParams = {
             clientId,
             client,
-            container: updatedContainer,
-            containerId: newContainerId,
+            container,
+            containerId,
             appData,
-            project: projectRoot,
-            services: updatedServices,
+            project,
+            services: createResponse.services,
         };
 
         // 新しいFluidClientインスタンスを返す
@@ -401,126 +511,158 @@ export async function loadContainer(containerId: string): Promise<any> {
 }
 
 /**
+ * プロジェクトタイトルからFluidClientインスタンスを取得する
+ * clientRegistryを走査して、Project.titleが一致するFluidClientを返す
+ * @param projectTitle プロジェクトタイトル
+ * @returns 初期化されたFluidClientインスタンス、見つからない場合はundefined
+ */
+export async function getFluidClientByProjectTitle(projectTitle: string): Promise<FluidClient | undefined> {
+    if (!projectTitle) {
+        throw new Error("プロジェクトタイトルが指定されていません");
+    }
+
+    log("fluidService", "info", `プロジェクトタイトルからFluidClientを取得: ${projectTitle}`);
+
+    // clientRegistryを走査して、Project.titleが一致するFluidClientを探す
+    const keys = clientRegistry.getAllKeys();
+
+    for (const key of keys) {
+        const instances = clientRegistry.get(key);
+        if (!instances) continue;
+
+        // FluidInstancesの5番目の要素がProject
+        const [_, __, ___, ____, project] = instances;
+
+        if (project && project.title === projectTitle) {
+            log("fluidService", "info", `プロジェクトタイトル「${projectTitle}」に一致するFluidClientを発見: ${key.id}`);
+            return createFluidClient(key.id);
+        }
+    }
+
+    log("fluidService", "warn", `プロジェクトタイトル「${projectTitle}」に一致するFluidClientが見つかりませんでした`);
+    return undefined;
+}
+
+/**
  * FluidClientインスタンスを作成する
  * すべてのプロパティが初期化されたインスタンスを返す
  * @param containerId 既存のコンテナID（省略すると新規作成かローカルストレージから復元）
  * @returns 完全に初期化されたFluidClientインスタンス
  */
 export async function createFluidClient(containerId?: string): Promise<FluidClient> {
-    try {
-        log("fluidService", "info", "Creating new FluidClient instance...");
+    return lockManager.runExclusive("createFluidClient", async () => {
+        try {
+            log("fluidService", "info", "Creating new FluidClient instance...");
 
-        // クライアントIDを生成
-        const clientId = uuid();
+            // クライアントIDを生成
+            const clientId = uuid();
 
-        // ユーザー情報を取得
-        const userManager = UserManager.getInstance();
-        const userInfo = userManager.getFluidUserInfo();
-        const userId = userInfo?.id;
+            // ユーザー情報を取得
+            const userInfo = userManager.getFluidUserInfo();
+            const userId = userInfo?.id;
 
-        if (!userId) {
-            throw new Error("ユーザーがログインしていないため、Fluidクライアントを作成できません");
-        }
+            if (!userId) {
+                throw new Error("ユーザーがログインしていないため、Fluidクライアントを作成できません");
+            }
 
-        // コンテナIDが指定されていない場合はローカルストレージから読み込みを試みる
-        let resolvedContainerId = containerId;
-        if (!resolvedContainerId) {
-            resolvedContainerId = loadContainerId();
-
-            // ローカルストレージからも取得できない場合はFirestoreから取得を試みる
+            // コンテナIDが指定されていない場合はローカルストレージから読み込みを試みる
+            let resolvedContainerId = containerId;
             if (!resolvedContainerId) {
-                const defaultId = await getDefaultContainerId();
-                // nullは許容しないようにundefinedに変換
-                resolvedContainerId = defaultId || undefined;
-            }
-        }
+                resolvedContainerId = loadContainerId();
 
-        // コンテナIDが解決できた場合は既存のコンテナをロード
-        if (resolvedContainerId) {
-            log("fluidService", "info", `Loading existing container with ID: ${resolvedContainerId}`);
-
-            // Fluidクライアントを取得
-            const [client, container, services, appData, project] = await getFluidClient(
-                userId,
-                resolvedContainerId,
-            );
-
-            if (!container || !appData || !project) {
-                throw new Error("コンテナのロードに失敗しました");
+                // ローカルストレージからも取得できない場合はFirestoreから取得を試みる
+                if (!resolvedContainerId) {
+                    const defaultId = await getDefaultContainerId();
+                    // nullは許容しないようにundefinedに変換
+                    resolvedContainerId = defaultId || undefined;
+                }
             }
 
-            // 必要な全てのパラメータを設定してFluidClientインスタンスを作成
-            const fluidClientParams = {
-                clientId,
-                client,
-                container,
-                containerId: resolvedContainerId,
-                appData,
-                project,
-                services,
-            };
+            // コンテナIDが解決できた場合は既存のコンテナをロード
+            if (resolvedContainerId) {
+                log("fluidService", "info", `Loading existing container with ID: ${resolvedContainerId}`);
 
-            // 新しいFluidClientインスタンスを返す
-            return new FluidClient(fluidClientParams);
-        }
-        else {
-            // コンテナIDが取得できない場合は新規コンテナを作成
-            log("fluidService", "info", "No container ID available, creating a new container");
+                // Fluidクライアントを取得
+                const [client, container, services, appData, project] = await getFluidClient(
+                    resolvedContainerId,
+                );
 
-            // Fluidクライアントの取得
-            const [client] = await getFluidClient(userId, "");
+                if (!container || !appData || !project) {
+                    throw new Error("コンテナのロードに失敗しました");
+                }
 
-            // 新規コンテナを作成
-            const createResponse = await client.createContainer(containerSchema, "2");
-            const container = createResponse.container;
-            const services = createResponse.services;
+                // 必要な全てのパラメータを設定してFluidClientインスタンスを作成
+                const fluidClientParams = {
+                    clientId,
+                    client,
+                    container,
+                    containerId: resolvedContainerId,
+                    appData,
+                    project,
+                    services,
+                };
 
-            // コンテナをアタッチして永続化
-            const newContainerId = await container.attach();
-            log("fluidService", "info", `Created new container with ID: ${newContainerId}`);
-
-            // サーバーとローカルストレージにコンテナIDを保存
-            await saveContainerIdToServer(newContainerId);
-            saveContainerId(newContainerId);
-
-            // SharedTreeデータを初期化
-            const appData = (container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
-
-            if (appData.compatibility.canInitialize) {
-                appData.initialize(Project.createInstance("新規プロジェクト"));
+                // 新しいFluidClientインスタンスを返す
+                return new FluidClient(fluidClientParams);
             }
+            // else {
+            //     // コンテナIDが取得できない場合は新規コンテナを作成
+            //     log("fluidService", "info", "No container ID available, creating a new container");
 
-            // 初期データとして最初のページを作成
-            const project = appData.root as Project;
-            const root = project.addPage("はじめてのページ", userId);
-            (root.items as Items).addNode("");
+            //     // Fluidクライアントの取得
+            //     const [client] = await getFluidClient(userId, "");
 
-            // 必要な全てのパラメータを設定してFluidClientインスタンスを作成
-            const fluidClientParams = {
-                clientId,
-                client,
-                container,
-                containerId: newContainerId,
-                appData,
-                project,
-                services,
-            };
+            //     // 新規コンテナを作成
+            //     const createResponse = await client.createContainer(containerSchema, "2");
+            //     const container = createResponse.container;
+            //     const services = createResponse.services;
 
-            // 新しいFluidClientインスタンスを返す
-            return new FluidClient(fluidClientParams);
+            //     // コンテナをアタッチして永続化
+            //     const newContainerId = await container.attach();
+            //     log("fluidService", "info", `Created new container with ID: ${newContainerId}`);
+
+            //     // サーバーとローカルストレージにコンテナIDを保存
+            //     await saveContainerIdToServer(newContainerId);
+            //     saveContainerId(newContainerId);
+
+            //     // SharedTreeデータを初期化
+            //     const appData = (container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+
+            //     if (appData.compatibility.canInitialize) {
+            //         appData.initialize(Project.createInstance("新規プロジェクト"));
+            //     }
+
+            //     // 初期データとして最初のページを作成
+            //     const project = appData.root as Project;
+            //     const root = project.addPage("はじめてのページ", userId);
+            //     (root.items as Items).addNode("");
+
+            //     // 必要な全てのパラメータを設定してFluidClientインスタンスを作成
+            //     const fluidClientParams = {
+            //         clientId,
+            //         client,
+            //         container,
+            //         containerId: newContainerId,
+            //         appData,
+            //         project,
+            //         services,
+            //     };
+
+            //     // 新しいFluidClientインスタンスを返す
+            //     return new FluidClient(fluidClientParams);
+            // }
         }
-    }
-    catch (error) {
-        log("fluidService", "error", "Failed to create FluidClient:", error);
-        throw error;
-    }
+        catch (error) {
+            log("fluidService", "error", "Failed to create FluidClient:", error);
+            throw error;
+        }
+    });
 }
 
 let unsubscribeAuth: (() => void) | null = null;
 
 // ユーザー認証状態の変更を監視して、FluidClientを初期化/更新する
 export async function initFluidClientWithAuth() {
-    const userManager = UserManager.getInstance();
 
     // 認証状態の変更を監視
     unsubscribeAuth = userManager.addEventListener(async authResult => {
@@ -583,8 +725,8 @@ export function cleanupFluidClient() {
     if (fluidStore.fluidClient?.container) {
         try {
             // クライアントが接続状態のイベントハンドラを持っていれば解除
-            fluidStore.fluidClient.container.off("connected", () => {});
-            fluidStore.fluidClient.container.off("disconnected", () => {});
+            fluidStore.fluidClient.container.off("connected", () => { });
+            fluidStore.fluidClient.container.off("disconnected", () => { });
         }
         catch (e) {
             logger.warn("FluidClient接続解除中のエラー:", e);

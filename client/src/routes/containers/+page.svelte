@@ -1,92 +1,91 @@
 <script lang="ts">
-import { goto } from "$app/navigation";
-import {
-    onDestroy,
-    onMount,
-} from "svelte";
-import { UserManager } from "../../auth/UserManager";
-import AuthComponent from "../../components/AuthComponent.svelte";
-import * as fluidService from "../../lib/fluidService";
-import { getLogger } from "../../lib/logger";
-import { saveContainerId } from "../../stores/firestoreStore";
-import { fluidStore } from "../../stores/fluidStore.svelte";
-const logger = getLogger();
+    import { goto } from "$app/navigation";
+    import { onDestroy, onMount } from "svelte";
+    import { userManager, UserManager } from "../../auth/UserManager";
+    import AuthComponent from "../../components/AuthComponent.svelte";
+    import * as fluidService from "../../lib/fluidService";
+    import { getLogger } from "../../lib/logger";
+    import { saveContainerId } from "../../stores/firestoreStore.svelte";
+    import { fluidStore } from "../../stores/fluidStore.svelte";
+    const logger = getLogger();
 
-let isLoading = $state(false);
-let error: string | null = $state(null);
-let success: string | null = $state(null);
-let containerName = $state("");
-let isAuthenticated = $state(false);
-let createdContainerId: string | null = $state(null);
+    let isLoading = $state(false);
+    let error: string | null = $state(null);
+    let success: string | null = $state(null);
+    let containerName = $state("");
+    let isAuthenticated = $state(false);
+    let createdContainerId: string | null = $state(null);
 
-// 認証成功時の処理
-async function handleAuthSuccess(authResult) {
-    logger.info("認証成功:", authResult);
-    isAuthenticated = true;
-}
-
-// 認証ログアウト時の処理
-function handleAuthLogout() {
-    logger.info("ログアウトしました");
-    isAuthenticated = false;
-}
-
-// 新規コンテナを作成する
-async function createNewContainer() {
-    if (!containerName.trim()) {
-        error = "アウトライナー名を入力してください";
-        return;
+    // 認証成功時の処理
+    async function handleAuthSuccess(authResult) {
+        logger.info("認証成功:", authResult);
+        isAuthenticated = true;
     }
 
-    isLoading = true;
-    error = null;
-    success = null;
+    // 認証ログアウト時の処理
+    function handleAuthLogout() {
+        logger.info("ログアウトしました");
+        isAuthenticated = false;
+    }
 
-    try {
-        // 現在のFluidClientインスタンスを破棄してリセット
-        const client = fluidStore.fluidClient;
-        if (client) {
-            client.dispose();
-            fluidStore.fluidClient = undefined;
+    // 新規コンテナを作成する
+    async function createNewContainer() {
+        if (!containerName.trim()) {
+            error = "アウトライナー名を入力してください";
+            return;
         }
 
-        // 新規コンテナを作成し、新しいFluidClientインスタンスを取得
-        const newClient = await fluidService.createNewContainer(containerName);
+        isLoading = true;
+        error = null;
+        success = null;
 
-        // 作成されたコンテナIDを取得
-        createdContainerId = newClient.containerId;
+        try {
+            // 現在のFluidClientインスタンスを破棄してリセット
+            const client = fluidStore.fluidClient;
+            if (client) {
+                client.dispose();
+                fluidStore.fluidClient = undefined;
+            }
 
-        // fluidClientストアを更新
-        fluidStore.fluidClient = newClient;
+            // 新規コンテナを作成し、新しいFluidClientインスタンスを取得
+            const newClient =
+                await fluidService.createNewContainer(containerName);
 
-        // サーバーに保存（デフォルトコンテナとして設定）
-        await saveContainerId(createdContainerId);
+            // 作成されたコンテナIDを取得
+            createdContainerId = newClient.containerId;
 
-        success = `新しいアウトライナーが作成されました！ (ID: ${createdContainerId})`;
+            // fluidClientストアを更新
+            fluidStore.fluidClient = newClient;
 
-        // 1.5秒後にメインページに移動
-        setTimeout(() => {
-            goto("/");
-        }, 1500);
+            // サーバーに保存（デフォルトコンテナとして設定）
+            await saveContainerId(createdContainerId);
+
+            success = `新しいアウトライナーが作成されました！ (ID: ${createdContainerId})`;
+
+            // 1.5秒後にメインページに移動
+            setTimeout(() => {
+                goto("/");
+            }, 1500);
+        } catch (err) {
+            console.error("新規アウトライナー作成エラー:", err);
+            error =
+                err instanceof Error
+                    ? err.message
+                    : "新規アウトライナーの作成中にエラーが発生しました。";
+        } finally {
+            isLoading = false;
+        }
     }
-    catch (err) {
-        console.error("新規アウトライナー作成エラー:", err);
-        error = err instanceof Error ? err.message : "新規アウトライナーの作成中にエラーが発生しました。";
-    }
-    finally {
-        isLoading = false;
-    }
-}
 
-onMount(() => {
-    // UserManagerの認証状態を確認
-    const userManager = UserManager.getInstance();
-    isAuthenticated = userManager.getCurrentUser() !== null;
-});
+    onMount(() => {
+        // UserManagerの認証状態を確認
 
-onDestroy(() => {
-    // 必要に応じてクリーンアップコード
-});
+        isAuthenticated = userManager.getCurrentUser() !== null;
+    });
+
+    onDestroy(() => {
+        // 必要に応じてクリーンアップコード
+    });
 </script>
 
 <svelte:head>
@@ -94,18 +93,28 @@ onDestroy(() => {
 </svelte:head>
 
 <main class="container mx-auto px-4 py-8">
-    <h1 class="mb-6 text-center text-3xl font-bold">新規アウトライナーの作成</h1>
+    <h1 class="mb-6 text-center text-3xl font-bold">
+        新規アウトライナーの作成
+    </h1>
 
     <div class="auth-section mb-8">
-        <AuthComponent onAuthSuccess={handleAuthSuccess} onAuthLogout={handleAuthLogout} />
+        <AuthComponent
+            onAuthSuccess={handleAuthSuccess}
+            onAuthLogout={handleAuthLogout}
+        />
     </div>
 
     {#if isAuthenticated}
         <div class="mx-auto max-w-md rounded-lg bg-white p-6 shadow-md">
-            <h2 class="mb-4 text-xl font-semibold">新しいアウトライナーを作成</h2>
+            <h2 class="mb-4 text-xl font-semibold">
+                新しいアウトライナーを作成
+            </h2>
 
             <div class="mb-4">
-                <label for="containerName" class="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                    for="containerName"
+                    class="mb-1 block text-sm font-medium text-gray-700"
+                >
                     アウトライナー名
                 </label>
                 <input
@@ -118,13 +127,19 @@ onDestroy(() => {
             </div>
 
             {#if error}
-                <div class="mb-4 rounded-md bg-red-100 p-3 text-red-700" role="alert">
+                <div
+                    class="mb-4 rounded-md bg-red-100 p-3 text-red-700"
+                    role="alert"
+                >
                     {error}
                 </div>
             {/if}
 
             {#if success}
-                <div class="mb-4 rounded-md bg-green-100 p-3 text-green-700" role="alert">
+                <div
+                    class="mb-4 rounded-md bg-green-100 p-3 text-green-700"
+                    role="alert"
+                >
                     {success}
                 </div>
             {/if}
@@ -148,7 +163,10 @@ onDestroy(() => {
             {#if createdContainerId}
                 <div class="mt-4 rounded-md bg-gray-100 p-3">
                     <p class="text-sm text-gray-700">
-                        作成されたコンテナID: <code class="rounded bg-gray-200 px-1 py-0.5">{createdContainerId}</code>
+                        作成されたコンテナID: <code
+                            class="rounded bg-gray-200 px-1 py-0.5"
+                            >{createdContainerId}</code
+                        >
                     </p>
                 </div>
             {/if}
@@ -173,5 +191,5 @@ onDestroy(() => {
 </main>
 
 <style>
-/* スタイリングが必要な場合は追加 */
+    /* スタイリングが必要な場合は追加 */
 </style>

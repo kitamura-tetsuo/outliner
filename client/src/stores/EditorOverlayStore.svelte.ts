@@ -678,11 +678,6 @@ export class EditorOverlayStore {
             console.log(`getSelectedText called for userId=${userId}`);
         }
 
-        // テスト用に、window.editorOverlayStoreを設定
-        if (typeof window !== 'undefined') {
-            (window as any).editorOverlayStore = this;
-        }
-
         // 指定されたユーザーの選択範囲を取得
         const selections = Object.values(this.selections).filter(s => s.userId === userId || (!s.userId && userId === 'local'));
         if (selections.length === 0) {

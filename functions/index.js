@@ -1,6 +1,6 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
-const cors = require("cors")({ origin: true });
+const cors = require("cors");
 const { generateToken } = require("@fluidframework/azure-service-utils");
 const { ScopeType } = require("@fluidframework/azure-client");
 const jwt = require("jsonwebtoken");
@@ -42,6 +42,16 @@ if (!azureConfig.endpoint) {
 if (!azureConfig.primaryKey) {
   logger.error("Azure Primary Key (AZURE_PRIMARY_KEY) が設定されていません。");
 }
+
+// CORSミドルウェアの設定
+const corsOptions = {
+  origin: "http://localhost:7090",
+  credentials: true,
+  methods: ["POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+const corsHandler = cors(corsOptions);
 
 // 設定値をログに出力（デバッグ用）
 logger.info("Azure Fluid Relay設定:", {
@@ -140,96 +150,105 @@ function generateAzureFluidToken(user, containerId = undefined) {
 }
 
 // Firebase認証トークン検証とFluid Relay JWT生成を一括処理するFunction
-exports.fluidToken = onRequest((req, res) => {
-  const azureConfig = {
-    tenantId: tenantId.value(),
-    endpoint: endpoint.value(),
-    primaryKey: primaryKey.value(),
-    secondaryKey: secondaryKey.value(),
-    activeKey: activeKey.value(),
-  };
-  return cors(req, res, async () => {
-    // POSTメソッド以外は拒否
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method Not Allowed" });
-    }
+exports.fluidToken = onRequest({ cors: false }, (req, res) => {
+  // 2-1) まずプリフライト & CORS ヘッダーを処理
+  return corsHandler(req, res, async () => {
+    // 2-2) プリフライト OPTIONS はここで終わり（204 か 200 を返す）
+    if (req.method === "OPTIONS") return res.status(204).end();
 
-    try {
-      const { idToken, containerId } = req.body;
-
-      if (!idToken) {
-        return res.status(400).json({ error: "ID token is required" });
+    const azureConfig = {
+      tenantId: tenantId.value(),
+      endpoint: endpoint.value(),
+      primaryKey: primaryKey.value(),
+      secondaryKey: secondaryKey.value(),
+      activeKey: activeKey.value(),
+    };
+    // 同じcorsHandlerを使用
+    return corsHandler(req, res, async () => {
+      res.set("Access-Control-Allow-Credentials", "true"); // 手動で追記
+      // POSTメソッド以外は拒否
+      if (req.method !== "POST") {
+        return res.status(405).json({ error: "Method Not Allowed" });
       }
 
-      // Firebase IDトークンを検証
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
-      const userId = decodedToken.uid;
+      try {
+        const { idToken, containerId } = req.body;
 
-      // ユーザーのコンテナ情報を取得
-      const userDoc = await userContainersCollection.doc(userId).get();
-
-      // ユーザーデータが存在しない場合のデフォルト値を設定
-      const userData = userDoc.exists ?
-        userDoc.data() :
-        { accessibleContainerIds: [] };
-      const accessibleContainerIds = userData.accessibleContainerIds || [];
-      const defaultContainerId = userData.defaultContainerId || null;
-
-      // 使用するコンテナIDを決定
-      let targetContainerId = containerId;
-
-      // コンテナIDが指定されていない場合はデフォルトを使用
-      if (!targetContainerId && defaultContainerId) {
-        logger.info(
-          `No container ID specified, using default container: ` +
-          `${defaultContainerId}`,
-        );
-        targetContainerId = defaultContainerId;
-      }
-
-      // コンテナIDが指定されている場合はアクセス権をチェック
-      if (targetContainerId) {
-        if (!accessibleContainerIds.includes(targetContainerId)) {
-          return res.status(403).json({
-            error: "Access to the container is denied",
-          });
+        if (!idToken) {
+          return res.status(400).json({ error: "ID token is required" });
         }
-      }
 
-      // Azure Fluid RelayのJWT生成
-      const jwt = generateAzureFluidToken({
-        uid: userId,
-        displayName:
-          decodedToken.name ||
-          decodedToken.displayName ||
-          "Anonymous User",
-      },
-        targetContainerId);
+        // Firebase IDトークンを検証
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const userId = decodedToken.uid;
 
-      // レスポンスを返す
-      return res.status(200).json({
-        token: jwt.token,
-        user: {
-          id: userId,
-          name: decodedToken.name ||
+        // ユーザーのコンテナ情報を取得
+        const userDoc = await userContainersCollection.doc(userId).get();
+
+        // ユーザーデータが存在しない場合のデフォルト値を設定
+        const userData = userDoc.exists ?
+          userDoc.data() :
+          { accessibleContainerIds: [] };
+        const accessibleContainerIds = userData.accessibleContainerIds || [];
+        const defaultContainerId = userData.defaultContainerId || null;
+
+        // 使用するコンテナIDを決定
+        let targetContainerId = containerId;
+
+        // コンテナIDが指定されていない場合はデフォルトを使用
+        if (!targetContainerId && defaultContainerId) {
+          logger.info(
+            `No container ID specified, using default container: ` +
+            `${defaultContainerId}`,
+          );
+          targetContainerId = defaultContainerId;
+        }
+
+        // コンテナIDが指定されている場合はアクセス権をチェック
+        if (targetContainerId) {
+          if (!accessibleContainerIds.includes(targetContainerId)) {
+            return res.status(403).json({
+              error: "Access to the container is denied",
+            });
+          }
+        }
+
+        // Azure Fluid RelayのJWT生成
+        const jwt = generateAzureFluidToken({
+          uid: userId,
+          displayName:
+            decodedToken.name ||
             decodedToken.displayName ||
             "Anonymous User",
         },
-        tenantId: azureConfig.tenantId,
-        containerId: targetContainerId,
-        defaultContainerId,
-        accessibleContainerIds,
-      });
-    } catch (error) {
-      logger.error(`Token validation error: ${error.message}`, { error });
-      return res.status(401).json({ error: "Authentication failed" });
-    }
+          targetContainerId);
+
+        // レスポンスを返す
+        return res.status(200).json({
+          token: jwt.token,
+          user: {
+            id: userId,
+            name: decodedToken.name ||
+              decodedToken.displayName ||
+              "Anonymous User",
+          },
+          tenantId: azureConfig.tenantId,
+          containerId: targetContainerId,
+          defaultContainerId,
+          accessibleContainerIds,
+        });
+      } catch (error) {
+        logger.error(`Token validation error: ${error.message}`, { error });
+        return res.status(401).json({ error: "Authentication failed" });
+      }
+    });
   });
 });
 
 // ユーザーのコンテナIDを保存するエンドポイント
 exports.saveContainer = onRequest((req, res) => {
-  return cors(req, res, async () => {
+  return corsHandler(req, res, async () => {
+    res.set("Access-Control-Allow-Credentials", "true"); // 手動で追記
     // POSTメソッド以外は拒否
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
@@ -330,7 +349,8 @@ exports.saveContainer = onRequest((req, res) => {
 
 // ユーザーがアクセス可能なコンテナIDのリストを取得するエンドポイント
 exports.getUserContainers = onRequest((req, res) => {
-  return cors(req, res, async () => {
+  return corsHandler(req, res, async () => {
+    res.set("Access-Control-Allow-Credentials", "true"); // 手動で追記
     // POSTメソッド以外は拒否
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
@@ -362,9 +382,192 @@ exports.getUserContainers = onRequest((req, res) => {
   });
 });
 
+// ユーザーを削除するエンドポイント
+exports.deleteUser = onRequest((req, res) => {
+  return corsHandler(req, res, async () => {
+    res.set("Access-Control-Allow-Credentials", "true"); // 手動で追記
+    // POSTメソッド以外は拒否
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
+    try {
+      const { idToken } = req.body;
+
+      if (!idToken) {
+        return res.status(400).json({ error: "ID token is required" });
+      }
+
+      // Firebaseトークンを検証
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const userId = decodedToken.uid;
+
+      try {
+        // Firestoreトランザクションを使用してユーザー関連データを削除
+        await db.runTransaction(async (transaction) => {
+          // ユーザーのコンテナ情報を取得
+          const userDocRef = userContainersCollection.doc(userId);
+          const userDoc = await transaction.get(userDocRef);
+
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            const accessibleContainerIds = userData.accessibleContainerIds || [];
+
+            // ユーザーがアクセス可能な各コンテナから、ユーザーIDを削除
+            for (const containerId of accessibleContainerIds) {
+              const containerDocRef = db.collection("containerUsers").doc(containerId);
+              const containerDoc = await transaction.get(containerDocRef);
+
+              if (containerDoc.exists) {
+                const containerData = containerDoc.data();
+                const accessibleUserIds = containerData.accessibleUserIds || [];
+
+                // ユーザーIDを削除
+                const updatedUserIds = accessibleUserIds.filter((id) => id !== userId);
+
+                if (updatedUserIds.length === 0) {
+                  // ユーザーがいなくなった場合はコンテナドキュメントを削除
+                  transaction.delete(containerDocRef);
+                } else {
+                  // ユーザーIDを更新
+                  transaction.update(containerDocRef, {
+                    accessibleUserIds: updatedUserIds,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                  });
+                }
+              }
+            }
+
+            // ユーザーのコンテナ情報を削除
+            transaction.delete(userDocRef);
+          }
+        });
+
+        // Firebase Authからユーザーを削除
+        await admin.auth().deleteUser(userId);
+
+        logger.info(`User ${userId} and related data deleted successfully`);
+        return res.status(200).json({ success: true });
+      } catch (firestoreError) {
+        logger.error(
+          `Firestore error while deleting user: ${firestoreError.message}`,
+          { error: firestoreError },
+        );
+        return res.status(500).json({
+          error: "Database error while deleting user",
+        });
+      }
+    } catch (error) {
+      logger.error(`Error deleting user: ${error.message}`, { error });
+      return res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+});
+
+// コンテナを削除するエンドポイント
+exports.deleteContainer = onRequest((req, res) => {
+  return corsHandler(req, res, async () => {
+    res.set("Access-Control-Allow-Credentials", "true"); // 手動で追記
+    // POSTメソッド以外は拒否
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
+    try {
+      const { idToken, containerId } = req.body;
+
+      if (!idToken) {
+        return res.status(400).json({ error: "ID token is required" });
+      }
+
+      if (!containerId) {
+        return res.status(400).json({ error: "Container ID is required" });
+      }
+
+      // Firebaseトークンを検証
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const userId = decodedToken.uid;
+
+      try {
+        // Firestoreトランザクションを使用してコンテナ関連データを削除
+        await db.runTransaction(async (transaction) => {
+          // コンテナ情報を取得
+          const containerDocRef = db.collection("containerUsers").doc(containerId);
+          const containerDoc = await transaction.get(containerDocRef);
+
+          if (!containerDoc.exists) {
+            throw new Error("Container not found");
+          }
+
+          const containerData = containerDoc.data();
+          const accessibleUserIds = containerData.accessibleUserIds || [];
+
+          // ユーザーがこのコンテナにアクセスできるか確認
+          if (!accessibleUserIds.includes(userId)) {
+            throw new Error("Access to the container is denied");
+          }
+
+          // コンテナにアクセスできる各ユーザーから、コンテナIDを削除
+          for (const accessUserId of accessibleUserIds) {
+            const userDocRef = userContainersCollection.doc(accessUserId);
+            const userDoc = await transaction.get(userDocRef);
+
+            if (userDoc.exists) {
+              const userData = userDoc.data();
+              const accessibleContainerIds = userData.accessibleContainerIds || [];
+
+              // コンテナIDを削除
+              const updatedContainerIds = accessibleContainerIds.filter((id) => id !== containerId);
+
+              // デフォルトコンテナの更新
+              let defaultContainerId = userData.defaultContainerId;
+              if (defaultContainerId === containerId) {
+                defaultContainerId = updatedContainerIds.length > 0 ? updatedContainerIds[0] : null;
+              }
+
+              transaction.update(userDocRef, {
+                accessibleContainerIds: updatedContainerIds,
+                defaultContainerId: defaultContainerId,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+            }
+          }
+
+          // コンテナドキュメントを削除
+          transaction.delete(containerDocRef);
+        });
+
+        logger.info(`Container ${containerId} deleted successfully`);
+        return res.status(200).json({ success: true });
+      } catch (firestoreError) {
+        logger.error(
+          `Firestore error while deleting container: ${firestoreError.message}`,
+          { error: firestoreError },
+        );
+
+        if (firestoreError.message === "Container not found") {
+          return res.status(404).json({ error: "Container not found" });
+        }
+
+        if (firestoreError.message === "Access to the container is denied") {
+          return res.status(403).json({ error: "Access to the container is denied" });
+        }
+
+        return res.status(500).json({
+          error: "Database error while deleting container",
+        });
+      }
+    } catch (error) {
+      logger.error(`Error deleting container: ${error.message}`, { error });
+      return res.status(500).json({ error: "Failed to delete container" });
+    }
+  });
+});
+
 // ヘルスチェックエンドポイント
 exports.health = onRequest((req, res) => {
-  return cors(req, res, async () => {
+  return corsHandler(req, res, async () => {
+    res.set("Access-Control-Allow-Credentials", "true"); // 手動で追記
     return res.status(200).json({
       status: "OK",
       timestamp: new Date().toISOString(),

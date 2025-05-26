@@ -685,3 +685,71 @@
     - 'テスト環境では要素の検出が不安定な場合があるため、再試行機能を持つヘルパー関数を使用してテストを安定化'
     - 'テストデータの作成にはUI操作ではなくFluid APIを使用し、テストの安定性を向上'
     - 'テスト前の環境準備を標準化することで、テスト間の依存関係を減少'
+
+- id: FLD-0001
+  title: 'プロジェクト名からFluidClientを取得する機能'
+  description: 'プロジェクト名をコンテナIDとして使用し、対応するFluidClientインスタンスを取得する機能'
+  category: fluid-service
+  status: implemented
+  acceptance:
+    - 'プロジェクト名からFluidClientインスタンスを取得できる'
+    - 'プロジェクト名が指定されていない場合はエラーを返す'
+    - '取得したFluidClientインスタンスを使用してプロジェクトデータにアクセスできる'
+    - 'プロジェクトレイアウトでこの機能を使用してプロジェクトデータを読み込める'
+  tests:
+    - client/e2e/core/FLD-0001.spec.ts
+
+- id: FLD-0002
+  title: 'プロジェクトタイトルからFluidClientを取得する機能'
+  description: 'clientRegistryを走査して、Project.titleが一致するFluidClientインスタンスを取得する機能'
+  category: fluid-service
+  status: implemented
+  acceptance:
+    - 'プロジェクトタイトルからFluidClientインスタンスを取得できる'
+    - 'プロジェクトタイトルが指定されていない場合はエラーを返す'
+    - 'プロジェクトタイトルに一致するFluidClientが見つからない場合はnullを返す'
+    - 'clientRegistryに登録されている全てのFluidClientを走査して一致するものを探す'
+    - '取得したFluidClientインスタンスを使用してプロジェクトデータにアクセスできる'
+  tests:
+    - client/e2e/core/FLD-0002.spec.ts
+
+- id: NAV-0001
+  title: 'プロジェクト選択とページナビゲーション'
+  description: 'ルートページでプロジェクトを選択した場合にプロジェクトページへ遷移し、プロジェクトページからページリストを通じて個別ページへ遷移する機能'
+  category: navigation
+  status: implemented
+  acceptance:
+    - 'ルートページ(/)でプロジェクトを選択すると、対応するプロジェクトページ(/[project_name])へ遷移する'
+    - 'プロジェクトページ(/[project_name])のページリストから、対応するページ(/[project_name]/[page_name])へ遷移するリンクが機能する'
+    - 'プロジェクト選択後、プロジェクト内のページ一覧が表示される'
+    - 'ページリストの各ページ名をクリックすると、そのページの内容が表示される'
+  tests:
+    - client/e2e/core/NAV-0001.spec.ts
+
+- id: USR-0001
+  title: 'ユーザー削除機能'
+  description: 'ユーザーアカウントとそれに関連するデータを削除する機能'
+  category: user-management
+  status: implemented
+  acceptance:
+    - 'ユーザーアカウントを削除できる'
+    - 'ユーザーに関連するコンテナ情報が削除される'
+    - 'ユーザーがアクセス可能だったコンテナからユーザーIDが削除される'
+    - 'ユーザーが最後のアクセス者だったコンテナは完全に削除される'
+    - 'Firebase Authからユーザーアカウントが削除される'
+  tests:
+    - client/e2e/core/USR-0001.spec.ts
+
+- id: USR-0002
+  title: 'コンテナ削除機能'
+  description: 'コンテナとそれに関連するデータを削除する機能'
+  category: container-management
+  status: implemented
+  acceptance:
+    - 'コンテナを削除できる'
+    - 'コンテナにアクセス可能だったユーザーのアクセス権からコンテナIDが削除される'
+    - 'コンテナがデフォルトコンテナだった場合、ユーザーのデフォルトコンテナが更新される'
+    - 'コンテナが存在しない場合は適切なエラーメッセージが表示される'
+    - 'コンテナへのアクセス権がない場合は適切なエラーメッセージが表示される'
+  tests:
+    - client/e2e/core/USR-0002.spec.ts

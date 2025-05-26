@@ -8,13 +8,11 @@ import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe('フォーマット表示', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    await TestHelpers.prepareTestEnvironment(page, testInfo);
+  });
+
   test('カーソルがないアイテムではフォーマットされた内容が表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -41,12 +39,6 @@ test.describe('フォーマット表示', () => {
   });
 
   test('カーソルがあるアイテムではプレーンテキストの入力内容がそのまま表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -74,12 +66,6 @@ test.describe('フォーマット表示', () => {
   });
 
   test('太字フォーマット（[[text]]）が視覚的に太字で表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -106,12 +92,6 @@ test.describe('フォーマット表示', () => {
   });
 
   test('斜体フォーマット（[/ text]）が視覚的に斜体で表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -138,12 +118,6 @@ test.describe('フォーマット表示', () => {
   });
 
   test('取り消し線フォーマット（[- text]）が視覚的に取り消し線付きで表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -170,12 +144,6 @@ test.describe('フォーマット表示', () => {
   });
 
   test('コードフォーマット（`text`）が視覚的にコードスタイルで表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -202,12 +170,6 @@ test.describe('フォーマット表示', () => {
   });
 
   test('アイテムをクリックするとプレーンテキストが表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();

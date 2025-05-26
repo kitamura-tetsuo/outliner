@@ -2,10 +2,6 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import {
-    setupTestPage,
-    waitForCursorVisible,
-} from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 import { CursorValidator } from "../utils/cursorValidation";
@@ -17,6 +13,10 @@ import { CursorValidator } from "../utils/cursorValidation";
  * @title リンク先ページの存在確認機能
  */
 test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
+    });
+
     /**
      * @testcase 存在するページへのリンクと存在しないページへのリンクが視覚的に区別される
      * @description 存在するページへのリンクと存在しないページへのリンクが視覚的に区別されることを確認するテスト
@@ -24,11 +24,11 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
     test("存在するページへのリンクと存在しないページへのリンクが視覚的に区別される", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -91,11 +91,11 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
     test("存在しないページへのリンクは点線下線や異なる色で表示される", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 存在しないページへのリンクを作成
         const nonExistentPage = "non-existent-style-" + Date.now().toString().slice(-6);
@@ -104,14 +104,14 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
 
         // 存在しないページへのリンク要素を取得
         const nonExistentLink = page.locator(`a.internal-link:has-text("${nonExistentPage}")`);
-        
+
         // リンクのクラスを確認
         await expect(nonExistentLink).toHaveClass(/page-not-exists/);
-        
+
         // スタイルを確認（CSSの適用を確認）
         // 注: Playwrightでは直接CSSプロパティを確認するのが難しいため、
         // クラスが適用されていることを確認するだけにします
-        
+
         // テスト成功
         console.log("存在しないページへのリンクは点線下線や異なる色で表示されるテストが成功しました。");
     });
@@ -123,11 +123,11 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
     test("ページが作成されると、リンクの表示が更新される", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -139,7 +139,7 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
 
         // 存在しないページへのリンク要素を取得
         const nonExistentLink = page.locator(`a.internal-link:has-text("${newPageName}")`);
-        
+
         // リンクのクラスを確認（存在しないページ）
         await expect(nonExistentLink).toHaveClass(/page-not-exists/);
 
@@ -182,16 +182,9 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
 
         // 存在するページへのリンク要素を取得
         const existingLink = page.locator(`a.internal-link:has-text("${newPageName}")`);
-        
+
         // リンクのクラスを確認（存在するページ）
-        // 注: テスト環境では動的な更新が反映されない場合があるため、
-        // クラスが変更されていない場合はテストをスキップ
-        try {
-            await expect(existingLink).toHaveClass(/page-exists/, { timeout: 5000 });
-            console.log("ページが作成されると、リンクの表示が更新されるテストが成功しました。");
-        } catch (error) {
-            console.log("リンクの表示が更新されませんでした。テスト環境の制約によりスキップします。");
-            test.skip();
-        }
+        await expect(existingLink).toHaveClass(/page-exists/, { timeout: 5000 });
+        console.log("ページが作成されると、リンクの表示が更新されるテストが成功しました。");
     });
 });

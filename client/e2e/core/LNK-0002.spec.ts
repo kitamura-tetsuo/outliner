@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { setupTestPage, waitForCursorVisible } from "../helpers";
+import { TestHelpers } from "../utils/testHelpers";
+import { waitForCursorVisible } from "../helpers";
 
 /**
  * @file LNK-0002.spec.ts
@@ -10,13 +11,17 @@ import { setupTestPage, waitForCursorVisible } from "../helpers";
  */
 
 test.describe("LNK-0002: 内部リンクのナビゲーション機能の実際の動作", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    await TestHelpers.prepareTestEnvironment(page, testInfo);
+  });
+
   /**
    * @testcase 内部リンクが正しく機能する
    * @description 内部リンクが正しく機能することを確認するテスト
    */
   test("内部リンクが正しく機能する", async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();
@@ -67,7 +72,7 @@ test.describe("LNK-0002: 内部リンクのナビゲーション機能の実際�
    */
   test("プロジェクト内部リンクが正しく機能する", async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();
@@ -119,7 +124,7 @@ test.describe("LNK-0002: 内部リンクのナビゲーション機能の実際�
    */
   test("内部リンクのURLが正しく生成される", async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();

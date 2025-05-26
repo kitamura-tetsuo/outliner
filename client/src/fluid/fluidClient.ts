@@ -11,7 +11,7 @@ import {
     ConnectionState,
     type TreeView,
 } from "fluid-framework";
-import { UserManager } from "../auth/UserManager";
+import { userManager } from "../auth/UserManager";
 import { getLogger } from "../lib/logger";
 import {
     Items,
@@ -134,7 +134,7 @@ export class FluidClient {
         onDisconnected?: () => void,
     ): () => void {
         if (!container) {
-            return () => {};
+            return () => { };
         }
 
         const connectedListener = () => {
@@ -224,7 +224,7 @@ export class FluidClient {
             treeCount: rootItems?.length || 0,
             treeFirstItem: hasItems ? rootItems[0]?.text || null : null,
             timeStamp: new Date().toISOString(),
-            currentUser: UserManager.getInstance().getCurrentUser(),
+            currentUser: userManager.getCurrentUser(),
         };
     }
 
@@ -311,7 +311,7 @@ export class FluidClient {
             // 現在のコンテナIDがある場合は、そのIDに特化したトークンを更新
             if (this.containerId) {
                 logger.info(`Refreshing token for container: ${this.containerId}`);
-                await UserManager.getInstance().refreshToken(this.containerId);
+                await userManager.refreshToken(this.containerId);
 
                 // 更新したトークンで再接続
                 if (this.container) {
@@ -321,7 +321,7 @@ export class FluidClient {
             }
             else {
                 // 一般的なトークン更新
-                const userManager = UserManager.getInstance();
+
                 await userManager.refreshToken();
 
                 if (this.container) {

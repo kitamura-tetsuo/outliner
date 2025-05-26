@@ -8,13 +8,11 @@ import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe('フォーマット組み合わせ', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    await TestHelpers.prepareTestEnvironment(page, testInfo);
+  });
+
   test('太字と斜体の組み合わせが正しく表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -47,12 +45,6 @@ test.describe('フォーマット組み合わせ', () => {
   });
 
   test('太字と取り消し線の組み合わせが正しく表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -85,12 +77,6 @@ test.describe('フォーマット組み合わせ', () => {
   });
 
   test('斜体とコードの組み合わせが正しく表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -123,12 +109,6 @@ test.describe('フォーマット組み合わせ', () => {
   });
 
   test('複数のフォーマットが入れ子になっている場合も正しく表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
@@ -167,12 +147,6 @@ test.describe('フォーマット組み合わせ', () => {
   });
 
   test('カーソルがあるアイテムでは組み合わせフォーマットもプレーンテキストで表示される', async ({ page }) => {
-    // アプリを開く
-    await page.goto("/");
-    // OutlinerItem がレンダリングされるのを待つ
-    await page.waitForSelector(".outliner-item");
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
 
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();

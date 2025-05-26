@@ -12,7 +12,7 @@ export class CursorValidator {
         // まず、デバッグ関数をセットアップ
         await page.evaluate(() => {
             // グローバルオブジェクトにデバッグ関数を追加
-            window.getCursorDebugData = function() {
+            window.getCursorDebugData = function () {
                 // EditorOverlayStoreインスタンスを取得
                 const editorOverlayStore = window.editorOverlayStore;
                 if (!editorOverlayStore) {
@@ -58,7 +58,7 @@ export class CursorValidator {
 
         // カーソル情報を取得
         return page.evaluate(() => {
-            return window.getCursorDebugData();
+            return window.getCursorDebugData!();
         });
     }
 

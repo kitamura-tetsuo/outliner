@@ -10,23 +10,12 @@ import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
-    test.beforeEach(async ({ page }) => {
-        // アプリを開く
-        await page.goto("/");
-        // OutlinerItem がレンダリングされるのを待つ
-        await page.waitForSelector(".outliner-item");
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // ページタイトルを優先的に使用
-        const item = page.locator(".outliner-item.page-title");
-
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
-        if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
-            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-            await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
-            await item.locator(".item-content").click({ force: true });
-        }
+        // 最初のアイテムを選択
+        const item = page.locator(".outliner-item").first();
+        await item.locator(".item-content").click({ force: true });
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
@@ -109,11 +98,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            console.log('Selections after arrow down:', Object.values((window as any).editorOverlayStore.selections));
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(selectionExists).toBe(true);
+        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
 
         // 少し待機して選択が反映されるのを待つ
         await page.waitForTimeout(300);
@@ -236,10 +221,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         });
 
         // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(selectionExists).toBe(true);
+        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {

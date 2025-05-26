@@ -27,7 +27,7 @@ USER node
 
 # Install Playwright
 RUN npx playwright install --with-deps
-RUN npm install -g dotenv-cli
+RUN npm install -g dotenv-cli firebase-tools
 RUN curl -fsSL https://dprint.dev/install.sh | sh
 
 # Any additional customizations can go here

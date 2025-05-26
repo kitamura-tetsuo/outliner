@@ -24,7 +24,10 @@
                 "**/lib/fluidTelemetryFilter.*",
                 "**/node_modules/**"
             ],
-            "port": 9876
+            "port": 9876,
+            "justMyCode": false,
+            "console": "internalConsole", // ← Debug Console に出す
+            "trace": true // どこで拾えない時の調査用
         },
         {
             "type": "chrome",
@@ -214,7 +217,7 @@
             "runtimeExecutable": "bash",
             "runtimeArgs": [
                 "-c",
-                "npx dotenv-cli -e .env.localhost -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
+                "npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
             ],
             "localRoot": "${workspaceFolder}/client",
             "env": {
@@ -235,7 +238,7 @@
             "localRoot": "${workspaceFolder}/server",
             "runtimeArgs": [
                 "-c",
-                "cd ${workspaceFolder}/server && npx dotenv-cli -e .env.localhost -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
+                "cd ${workspaceFolder}/server && npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
             ],
             "env": {
                 "PORT": "7091"
@@ -261,6 +264,36 @@
             },
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "For Localhost Debug Firebase Functions",
+            "runtimeExecutable": "firebase",
+            "args": [
+                "emulators:start",
+                "--inspect-functions=9229",
+                "--only",
+                "functions,hosting"
+            ],
+            "env": {
+                "FIREBASE_DEBUG_MODE": "true"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Debug Firebase Functions",
+            "port": 9229,
+            "restart": true,
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "postDebugTask": "Kill Firebase Emulator",
+            "outFiles": [
+                "${workspaceFolder}/functions/**/*.js"
+            ]
         },
         {
             "type": "chrome",
@@ -332,6 +365,25 @@
             ],
             "stopAll": true,
             "preLaunchTask": "Kill Tinylicious Process"
+        },
+        {
+            "name": "Localhost Test Servers with Firebase Functions",
+            "configurations": [
+                "For Localhost SvelteKit Server",
+                "For Localhost Debug Server",
+                "For Localhost Launch Tinylicious",
+                "For Localhost Debug Firebase Functions"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "Kill Tinylicious Process"
+        },
+        {
+            "name": "Debug Firebase Functions Only",
+            "configurations": [
+                "Debug Firebase Functions"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "Start Firebase Functions Emulator"
         }
     ]
 }

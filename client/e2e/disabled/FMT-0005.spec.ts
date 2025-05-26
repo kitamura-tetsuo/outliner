@@ -15,6 +15,10 @@ import { CursorValidator } from "../utils/cursorValidation";
  */
 
 test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    await TestHelpers.prepareTestEnvironment(page, testInfo);
+  });
+
   /**
    * 基本的なページアクセスをテスト
    */
@@ -285,34 +289,34 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     await page.keyboard.press('Enter');
     await page.keyboard.type('アイテム3');
 
-    // 複数行のテキストをグローバル変数に保存（クリップボードの代わり）
-    const multilineText = '1行目\n2行目\n3行目';
-    await page.evaluate((text) => {
-      window._multilineText = text;
-      console.log(`複数行テキストを保存: ${text}`);
-    }, multilineText);
+    // // 複数行のテキストをグローバル変数に保存（クリップボードの代わり）
+    // const multilineText = '1行目\n2行目\n3行目';
+    // await page.evaluate((text) => {
+    //   window._multilineText = text;
+    //   console.log(`複数行テキストを保存: ${text}`);
+    // }, multilineText);
 
-    // 各アイテムに対してペースト操作をシミュレート（spreadモード）
-    await page.evaluate(() => {
-      // グローバル変数から取得
-      const text = window._multilineText || '';
-      const lines = text.split('\n');
+    // // 各アイテムに対してペースト操作をシミュレート（spreadモード）
+    // await page.evaluate(() => {
+    //   // グローバル変数から取得
+    //   const text = window._multilineText || '';
+    //   const lines = text.split('\n');
 
-      // 各アイテムを取得
-      const items = document.querySelectorAll('.outliner-item');
+    //   // 各アイテムを取得
+    //   const items = document.querySelectorAll('.outliner-item');
 
-      // 各アイテムに対応する行を挿入（spreadモードをシミュレート）
-      for (let i = 0; i < Math.min(items.length, lines.length); i++) {
-        const item = items[i];
-        const itemText = item.querySelector('.item-text');
-        if (itemText) {
-          // 既存のテキストと行を結合
-          const existingText = itemText.textContent || '';
-          itemText.textContent = existingText + lines[i];
-          console.log(`アイテム${i+1}に挿入: ${lines[i]}`);
-        }
-      }
-    });
+    //   // 各アイテムに対応する行を挿入（spreadモードをシミュレート）
+    //   for (let i = 0; i < Math.min(items.length, lines.length); i++) {
+    //     const item = items[i];
+    //     const itemText = item.querySelector('.item-text');
+    //     if (itemText) {
+    //       // 既存のテキストと行を結合
+    //       const existingText = itemText.textContent || '';
+    //       itemText.textContent = existingText + lines[i];
+    //       console.log(`アイテム${i + 1}に挿入: ${lines[i]}`);
+    //     }
+    //   }
+    // });
 
     await page.waitForTimeout(500);
 
@@ -343,7 +347,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
    */
   test('マルチカーソルの実際の作成（Alt+クリック）', async ({ page }) => {
     // テストのタイムアウトを延長
-    test.setTimeout(60000);
+
     // アプリを開く
     await page.goto('/');
 
@@ -433,7 +437,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
 
           // イベントを発火
           itemContent.dispatchEvent(clickEvent);
-          console.log(`アイテム${i+1}にAlt+クリックイベントを発火`);
+          console.log(`アイテム${i + 1}にAlt+クリックイベントを発火`);
         }
       }
     });
@@ -457,17 +461,17 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
           // モックイベントを作成
           const mockEvent = {
             altKey: true,
-            preventDefault: () => {},
-            stopPropagation: () => {},
+            preventDefault: () => { },
+            stopPropagation: () => { },
             target: item.querySelector('.item-content')
           };
 
           // handleClick関数を直接呼び出す
           try {
             item.__svelte.handleClick(mockEvent);
-            console.log(`アイテム${i+1}のhandleClick関数を直接呼び出し`);
+            console.log(`アイテム${i + 1}のhandleClick関数を直接呼び出し`);
           } catch (err) {
-            console.error(`アイテム${i+1}のhandleClick呼び出しエラー:`, err);
+            console.error(`アイテム${i + 1}のhandleClick呼び出しエラー:`, err);
           }
         }
       }
@@ -505,9 +509,9 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
               isActive: true,
               userId: 'local'
             });
-            console.log(`アイテム${i+1}(${itemId})にカーソルを追加`);
+            console.log(`アイテム${i + 1}(${itemId})にカーソルを追加`);
           } catch (err) {
-            console.error(`アイテム${i+1}のカーソル追加エラー:`, err);
+            console.error(`アイテム${i + 1}のカーソル追加エラー:`, err);
           }
         }
       }
@@ -563,9 +567,9 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
 
         // 各アイテムにテストテキストが含まれていることを確認
         const hasTextInAllItems =
-          text1.includes(testText) &&
-          text2.includes(testText) &&
-          text3.includes(testText);
+          text1?.includes(testText) &&
+          text2?.includes(testText) &&
+          text3?.includes(testText);
 
         console.log(`全アイテムにテキストが入力されたか: ${hasTextInAllItems}`);
       }
@@ -580,7 +584,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
    */
   test('マルチカーソルペースト（spreadモードとfullモード）のシミュレーション', async ({ page }) => {
     // テストのタイムアウトを延長
-    test.setTimeout(60000);
+
     // アプリを開く
     await page.goto('/');
 
@@ -623,28 +627,28 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     // スクリーンショットを撮影（マルチカーソル作成後）
     await page.screenshot({ path: 'test-results/fmt-0005-multicursor-modes-before.png' });
 
-    // 1. spreadモードのシミュレーション
-    // 各アイテムに対応する行を挿入
-    await page.evaluate((text) => {
-      // グローバル変数に保存
-      window._multilineText = text;
+    // // 1. spreadモードのシミュレーション
+    // // 各アイテムに対応する行を挿入
+    // await page.evaluate((text) => {
+    //   // グローバル変数に保存
+    //   window._multilineText = text;
 
-      // 各アイテムを取得
-      const items = document.querySelectorAll('.outliner-item');
-      const lines = text.split('\n');
+    //   // 各アイテムを取得
+    //   const items = document.querySelectorAll('.outliner-item');
+    //   const lines = text.split('\n');
 
-      // spreadモードをシミュレート：各カーソルに対応する行を挿入
-      for (let i = 0; i < Math.min(items.length, lines.length); i++) {
-        const item = items[i];
-        const itemText = item.querySelector('.item-text');
-        if (itemText) {
-          // 既存のテキストと行を結合
-          const existingText = itemText.textContent || '';
-          itemText.textContent = existingText + lines[i];
-          console.log(`アイテム${i+1}に挿入（spread）: ${lines[i]}`);
-        }
-      }
-    }, multilineText);
+    //   // spreadモードをシミュレート：各カーソルに対応する行を挿入
+    //   for (let i = 0; i < Math.min(items.length, lines.length); i++) {
+    //     const item = items[i];
+    //     const itemText = item.querySelector('.item-text');
+    //     if (itemText) {
+    //       // 既存のテキストと行を結合
+    //       const existingText = itemText.textContent || '';
+    //       itemText.textContent = existingText + lines[i];
+    //       console.log(`アイテム${i + 1}に挿入（spread）: ${lines[i]}`);
+    //     }
+    //   }
+    // }, multilineText);
 
     await page.waitForTimeout(500);
 
@@ -707,27 +711,27 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     await page.keyboard.up('Alt');
     await page.waitForTimeout(500);
 
-    // 2. fullモードのシミュレーション
-    // 全てのアイテムに同じテキストを挿入
-    await page.evaluate((text) => {
-      // グローバル変数に保存
-      window._multilineText = text;
+    // // 2. fullモードのシミュレーション
+    // // 全てのアイテムに同じテキストを挿入
+    // await page.evaluate((text) => {
+    //   // グローバル変数に保存
+    //   window._multilineText = text;
 
-      // 各アイテムを取得
-      const items = document.querySelectorAll('.outliner-item');
+    //   // 各アイテムを取得
+    //   const items = document.querySelectorAll('.outliner-item');
 
-      // fullモードをシミュレート：全カーソルに同じテキストを挿入
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        const itemText = item.querySelector('.item-text');
-        if (itemText) {
-          // 既存のテキストとクリップボード全体を結合
-          const existingText = itemText.textContent || '';
-          itemText.textContent = existingText + text;
-          console.log(`アイテム${i+1}に挿入（full）: ${text}`);
-        }
-      }
-    }, multilineText);
+    //   // fullモードをシミュレート：全カーソルに同じテキストを挿入
+    //   for (let i = 0; i < items.length; i++) {
+    //     const item = items[i];
+    //     const itemText = item.querySelector('.item-text');
+    //     if (itemText) {
+    //       // 既存のテキストとクリップボード全体を結合
+    //       const existingText = itemText.textContent || '';
+    //       itemText.textContent = existingText + text;
+    //       console.log(`アイテム${i + 1}に挿入（full）: ${text}`);
+    //     }
+    //   }
+    // }, multilineText);
 
     await page.waitForTimeout(500);
 
@@ -770,7 +774,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
    */
   test('クリップボード内容と行数/カーソル数の不一致時の挙動', async ({ page }) => {
     // テストのタイムアウトを延長
-    test.setTimeout(60000);
+
     // アプリを開く
     await page.goto('/');
 
@@ -808,29 +812,29 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     const shortText = '1行目\n2行目\n3行目';
 
     // spreadモードのシミュレーション（行数 < カーソル数）
-    await page.evaluate((text) => {
-      // グローバル変数に保存
-      window._shortText = text;
+    // await page.evaluate((text) => {
+    //   // グローバル変数に保存
+    //   window._shortText = text;
 
-      // 各アイテムを取得
-      const items = document.querySelectorAll('.outliner-item');
-      const lines = text.split('\n');
+    //   // 各アイテムを取得
+    //   const items = document.querySelectorAll('.outliner-item');
+    //   const lines = text.split('\n');
 
-      // VS Codeの挙動をシミュレート：行数が足りない場合は繰り返し使用
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        const itemText = item.querySelector('.item-text');
-        if (itemText) {
-          // 行インデックスを計算（循環）
-          const lineIndex = i % lines.length;
+    //   // VS Codeの挙動をシミュレート：行数が足りない場合は繰り返し使用
+    //   for (let i = 0; i < items.length; i++) {
+    //     const item = items[i];
+    //     const itemText = item.querySelector('.item-text');
+    //     if (itemText) {
+    //       // 行インデックスを計算（循環）
+    //       const lineIndex = i % lines.length;
 
-          // 既存のテキストと行を結合
-          const existingText = itemText.textContent || '';
-          itemText.textContent = existingText + lines[lineIndex];
-          console.log(`アイテム${i+1}に挿入（行数<カーソル数）: ${lines[lineIndex]}`);
-        }
-      }
-    }, shortText);
+    //       // 既存のテキストと行を結合
+    //       const existingText = itemText.textContent || '';
+    //       itemText.textContent = existingText + lines[lineIndex];
+    //       console.log(`アイテム${i + 1}に挿入（行数<カーソル数）: ${lines[lineIndex]}`);
+    //     }
+    //   }
+    // }, shortText);
 
     await page.waitForTimeout(500);
 
@@ -842,16 +846,14 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     const countLessLines = await itemsLessLines.count();
 
     if (countLessLines >= 5) {
-      const texts = [];
       for (let i = 0; i < 5; i++) {
         const text = await itemsLessLines.nth(i).locator('.item-text').textContent();
-        texts.push(text);
 
         // 行が循環して使用されていることを確認
         const expectedLine = `${i % 3 + 1}行目`;
         expect(text).toContain(expectedLine);
 
-        console.log(`アイテム${i+1}（行数<カーソル数）: ${text}`);
+        console.log(`アイテム${i + 1}（行数<カーソル数）: ${text}`);
       }
     }
 
@@ -883,26 +885,26 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     const longText = '1行目\n2行目\n3行目\n4行目\n5行目';
 
     // spreadモードのシミュレーション（行数 > カーソル数）
-    await page.evaluate((text) => {
-      // グローバル変数に保存
-      window._longText = text;
+    // await page.evaluate((text) => {
+    //   // グローバル変数に保存
+    //   window._longText = text;
 
-      // 各アイテムを取得
-      const items = document.querySelectorAll('.outliner-item');
-      const lines = text.split('\n');
+    //   // 各アイテムを取得
+    //   const items = document.querySelectorAll('.outliner-item');
+    //   const lines = text.split('\n');
 
-      // VS Codeの挙動をシミュレート：余分な行は無視
-      for (let i = 0; i < Math.min(items.length, lines.length); i++) {
-        const item = items[i];
-        const itemText = item.querySelector('.item-text');
-        if (itemText) {
-          // 既存のテキストと行を結合
-          const existingText = itemText.textContent || '';
-          itemText.textContent = existingText + lines[i];
-          console.log(`アイテム${i+1}に挿入（行数>カーソル数）: ${lines[i]}`);
-        }
-      }
-    }, longText);
+    //   // VS Codeの挙動をシミュレート：余分な行は無視
+    //   for (let i = 0; i < Math.min(items.length, lines.length); i++) {
+    //     const item = items[i];
+    //     const itemText = item.querySelector('.item-text');
+    //     if (itemText) {
+    //       // 既存のテキストと行を結合
+    //       const existingText = itemText.textContent || '';
+    //       itemText.textContent = existingText + lines[i];
+    //       console.log(`アイテム${i + 1}に挿入（行数>カーソル数）: ${lines[i]}`);
+    //     }
+    //   }
+    // }, longText);
 
     await page.waitForTimeout(500);
 
@@ -914,10 +916,8 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     const countMoreLines = await itemsMoreLines.count();
 
     if (countMoreLines >= 3) {
-      const texts = [];
       for (let i = 0; i < 3; i++) {
         const text = await itemsMoreLines.nth(i).locator('.item-text').textContent();
-        texts.push(text);
 
         // 対応する行が挿入されていることを確認
         const expectedLine = `${i + 1}行目`;
@@ -929,7 +929,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
           expect(text).not.toContain('5行目');
         }
 
-        console.log(`アイテム${i+1}（行数>カーソル数）: ${text}`);
+        console.log(`アイテム${i + 1}（行数>カーソル数）: ${text}`);
       }
     }
   });
@@ -939,7 +939,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
    */
   test('ボックス選択（矩形選択）からのペースト', async ({ page }) => {
     // テストのタイムアウトを延長
-    test.setTimeout(60000);
+
     // アプリを開く
     await page.goto('/');
 
@@ -988,33 +988,33 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     await page.waitForTimeout(300);
 
     // 矩形選択からのペーストをシミュレート
-    await page.evaluate((text) => {
-      // グローバル変数に保存
-      window._boxSelectionText = text;
+    // await page.evaluate((text) => {
+    //   // グローバル変数に保存
+    //   window._boxSelectionText = text;
 
-      // 各アイテムを取得
-      const items = document.querySelectorAll('.outliner-item');
-      const lines = text.split('\n');
+    //   // 各アイテムを取得
+    //   const items = document.querySelectorAll('.outliner-item');
+    //   const lines = text.split('\n');
 
-      // 矩形選択からのペーストをシミュレート
-      for (let i = 0; i < Math.min(items.length, lines.length); i++) {
-        const item = items[i];
-        const itemText = item.querySelector('.item-text');
-        if (itemText) {
-          // 既存のテキストの途中に挿入（矩形選択の特徴）
-          const existingText = itemText.textContent || '';
-          const insertPosition = 5; // 「アイテム」の後に挿入
+    //   // 矩形選択からのペーストをシミュレート
+    //   for (let i = 0; i < Math.min(items.length, lines.length); i++) {
+    //     const item = items[i];
+    //     const itemText = item.querySelector('.item-text');
+    //     if (itemText) {
+    //       // 既存のテキストの途中に挿入（矩形選択の特徴）
+    //       const existingText = itemText.textContent || '';
+    //       const insertPosition = 5; // 「アイテム」の後に挿入
 
-          const newText =
-            existingText.substring(0, insertPosition) +
-            lines[i] +
-            existingText.substring(insertPosition);
+    //       const newText =
+    //         existingText.substring(0, insertPosition) +
+    //         lines[i] +
+    //         existingText.substring(insertPosition);
 
-          itemText.textContent = newText;
-          console.log(`アイテム${i+1}に矩形挿入: ${lines[i]}`);
-        }
-      }
-    }, boxSelectionText);
+    //       itemText.textContent = newText;
+    //       console.log(`アイテム${i + 1}に矩形挿入: ${lines[i]}`);
+    //     }
+    //   }
+    // }, boxSelectionText);
 
     await page.waitForTimeout(500);
 
@@ -1076,41 +1076,41 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
     await page.waitForTimeout(300);
 
     // 矩形選択からのペーストをシミュレート（列の置換）
-    const columnText =
-      'XXXX\n' +
-      'YYYY\n' +
-      'ZZZZ';
+    // const columnText =
+    //   'XXXX\n' +
+    //   'YYYY\n' +
+    //   'ZZZZ';
 
-    await page.evaluate((text) => {
-      // グローバル変数に保存
-      window._columnText = text;
+    // await page.evaluate((text) => {
+    //   // グローバル変数に保存
+    //   window._columnText = text;
 
-      // 各アイテムを取得
-      const items = document.querySelectorAll('.outliner-item');
-      const lines = text.split('\n');
+    //   // 各アイテムを取得
+    //   const items = document.querySelectorAll('.outliner-item');
+    //   const lines = text.split('\n');
 
-      // 矩形選択からのペーストをシミュレート（列の置換）
-      for (let i = 0; i < Math.min(items.length, lines.length); i++) {
-        const item = items[i];
-        const itemText = item.querySelector('.item-text');
-        if (itemText) {
-          // 既存のテキストの列を置換
-          const existingText = itemText.textContent || '';
+    //   // 矩形選択からのペーストをシミュレート（列の置換）
+    //   for (let i = 0; i < Math.min(items.length, lines.length); i++) {
+    //     const item = items[i];
+    //     const itemText = item.querySelector('.item-text');
+    //     if (itemText) {
+    //       // 既存のテキストの列を置換
+    //       const existingText = itemText.textContent || '';
 
-          // 「AAAA」「CCCC」「EEEE」の部分を置換
-          const columnStart = existingText.indexOf(':') + 2;
-          const columnEnd = columnStart + 4; // 4文字分
+    //       // 「AAAA」「CCCC」「EEEE」の部分を置換
+    //       const columnStart = existingText.indexOf(':') + 2;
+    //       const columnEnd = columnStart + 4; // 4文字分
 
-          const newText =
-            existingText.substring(0, columnStart) +
-            lines[i] +
-            existingText.substring(columnEnd);
+    //       const newText =
+    //         existingText.substring(0, columnStart) +
+    //         lines[i] +
+    //         existingText.substring(columnEnd);
 
-          itemText.textContent = newText;
-          console.log(`アイテム${i+1}の列を置換: ${lines[i]}`);
-        }
-      }
-    }, columnText);
+    //       itemText.textContent = newText;
+    //       console.log(`アイテム${i + 1}の列を置換: ${lines[i]}`);
+    //     }
+    //   }
+    // }, columnText);
 
     await page.waitForTimeout(500);
 
@@ -1142,7 +1142,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
    */
   test('ボックス選択（矩形選択）へのペースト', async ({ page }) => {
     // テストのタイムアウトを延長
-    test.setTimeout(60000);
+
     // アプリを開く
     await page.goto('/');
 
@@ -1297,7 +1297,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
    */
   test('ClipboardEventの詳細な挙動', async ({ page }) => {
     // テストのタイムアウトを延長
-    test.setTimeout(60000);
+
     // アプリを開く
     await page.goto('/');
 
@@ -1456,7 +1456,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
             if (itemText) {
               const existingText = itemText.textContent || '';
               itemText.textContent = existingText + multicursorText[i];
-              console.log(`アイテム${i+1}にマルチカーソルテキスト挿入: ${multicursorText[i]}`);
+              console.log(`アイテム${i + 1}にマルチカーソルテキスト挿入: ${multicursorText[i]}`);
             }
           }
         } catch (err) {
@@ -1496,7 +1496,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
    */
   test('マルチカーソル選択範囲のコピー＆ペースト', async ({ page }) => {
     // テストのタイムアウトを延長
-    test.setTimeout(60000);
+
     // アプリを開く
     await page.goto('/');
 
@@ -1679,7 +1679,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
 
           // 注: 実際のアプリケーションでは選択範囲はDOMを変更せずに
           // オーバーレイで表示されるため、これはシミュレーションです
-          console.log(`アイテム${i+1}の選択範囲: ${existingText.substring(startPos, endPos)}`);
+          console.log(`アイテム${i + 1}の選択範囲: ${existingText.substring(startPos, endPos)}`);
         }
       }
 
@@ -1727,7 +1727,7 @@ test.describe('Visual Studio Codeのコピー/ペースト仕様', () => {
 
       // 現在のアクティブアイテムを取得
       const activeItem = document.querySelector('.outliner-item.active') ||
-                         document.querySelectorAll('.outliner-item')[document.querySelectorAll('.outliner-item').length - 1];
+        document.querySelectorAll('.outliner-item')[document.querySelectorAll('.outliner-item').length - 1];
 
       if (activeItem) {
         const itemText = activeItem.querySelector('.item-text');

@@ -75,9 +75,13 @@ document.querySelectorAll('.cursor')
 git 全バージョンの全文検索
 git grep -n "updateFluidClient" $(git rev-list --all) -- . ':(exclude)*.md'
 
+& "C:\Program Files Online\mutagen\mutagen.exe" sync monitor --long
+& "C:\Program Files Online\mutagen\mutagen.exe" sync list --long
+& "C:\Program Files Online\mutagen\mutagen.exe" sync terminate sync_JFwY3mVfH7MC40bJuEQK2ZSTqDi41WgKc5HdMvDnmj5
+& "C:\Program Files Online\mutagen\mutagen.exe" sync create --ignore-vcs --ignore node_modules/**,client/node_modules**,server/node_modules**,functions/node_modules/**,.venv/**,client/.svelte-kit/**,client/playwright-report/**,client/logs/**,client/e2e/logs/**,server/logs/** C:\Users\kitam\src\outliner ubuntu@192.168.50.13:~/src/outliner
 
-./mutagen sync monitor
-./mutagen sync list --long
-./mutagen sync terminate
-./mutagen sync create --ignore-vcs --ignore node_modules/**,client/node_modules**,server/node_modules**,.venv/**,client/.svelte-kit/**,client/playwright-report/**,client/logs/**,client/e2e/logs/**,server/logs/** C:\Users\kitam\src\outliner ubuntu@192.168.50.13:~/src/outliner
-
+ 
+ & "C:\Program Files Online\mutagen\mutagen.exe" sync pause sync_Nb1lt2D93LWX7YO7tdNto2vVGQX9yXsnX8yJ89d491q
+ & rd /s /q "%USERPROFILE%\.mutagen\synchronization"
+ & ssh ubuntu@192.168.50.13 'rm -rf ~/.mutagen/synchronization'
+ & "C:\Program Files Online\mutagen\mutagen.exe" sync resume sync_Nb1lt2D93LWX7YO7tdNto2vVGQX9yXsnX8yJ89d491q

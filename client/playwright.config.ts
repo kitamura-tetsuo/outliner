@@ -42,7 +42,7 @@ export default defineConfig({
     timeout: 120 * 1000, // 120秒 (2分)
     expect: {
         // 要素の検出待機のタイムアウト設定を延長
-        timeout: 30 * 1000, // 30秒
+        timeout: 15 * 1000, // 15秒
     },
 
     // globalSetupとglobalTeardown - require.resolveではなく相対パスを使用

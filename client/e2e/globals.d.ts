@@ -51,17 +51,17 @@ export const test = base.extend({
             // Firebase エミュレーターを有効化
             window.localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
 
-            // エミュレーター接続情報（Docker Compose環境の場合）
-            window.localStorage.setItem("VITE_FIRESTORE_EMULATOR_HOST", "firebase-emulator");
-            window.localStorage.setItem("VITE_FIRESTORE_EMULATOR_PORT", "58080");
-            window.localStorage.setItem("VITE_AUTH_EMULATOR_HOST", "firebase-emulator");
-            window.localStorage.setItem("VITE_AUTH_EMULATOR_PORT", "59099");
+            // エミュレーター接続情報（環境変数から取得、デフォルトは192.168.50.13）
+            window.localStorage.setItem("VITE_FIRESTORE_EMULATOR_HOST", process.env.VITE_FIRESTORE_EMULATOR_HOST || "192.168.50.13");
+            window.localStorage.setItem("VITE_FIRESTORE_EMULATOR_PORT", process.env.VITE_FIRESTORE_EMULATOR_PORT || "58080");
+            window.localStorage.setItem("VITE_AUTH_EMULATOR_HOST", process.env.VITE_AUTH_EMULATOR_HOST || "192.168.50.13");
+            window.localStorage.setItem("VITE_AUTH_EMULATOR_PORT", process.env.VITE_AUTH_EMULATOR_PORT || "59099");
 
             // Tinylicious設定（必要に応じて）
             window.localStorage.setItem("VITE_USE_TINYLICIOUS", "true");
 
             // 認証済み状態をシミュレート
-            window.localStorage.setItem("authenticated", "true");
+
 
             // テスト用のユーザーデータ
             window.mockUser = {

@@ -13,6 +13,8 @@
 | CLM-0101 | アイテム間移動時のカーソル重複と入力分散問題 | — | implemented |
 | CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | — | implemented |
 | CLM-0103 | フォーマット文字列でのカーソル操作 | — | implemented |
+| FLD-0001 | プロジェクト名からFluidClientを取得する機能 | — | implemented |
+| FLD-0002 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
 | FMT-0001 | フォーマット表示 | — | implemented |
 | FMT-0002 | フォーマット組み合わせ | — | implemented |
 | FMT-0003 | 拡張フォーマット | — | implemented |
@@ -30,6 +32,7 @@
 | LNK-0005 | リンクプレビュー機能 | — | implemented |
 | LNK-0006 | リンク先ページの存在確認機能 | — | implemented |
 | LNK-0007 | バックリンク機能 | — | implemented |
+| NAV-0001 | プロジェクト選択とページナビゲーション | — | implemented |
 | SLR-0001 | Shift + 上下左右 | — | implemented |
 | SLR-0002 | 行頭まで選択 | — | implemented |
 | SLR-0003 | 行末まで選択 | — | implemented |
@@ -47,3 +50,5 @@
 | TST-0003 | テストヘルパーユーティリティ | — | implemented |
 | TST-0004 | テスト環境の改善 | — | implemented |
 | TST-0005 | テスト環境の初期化と準備 | — | implemented |
+| USR-0001 | ユーザー削除機能 | — | implemented |
+| USR-0002 | コンテナ削除機能 | — | implemented |

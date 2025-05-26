@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page, type Response } from "@playwright/test";
 import { CursorValidator } from "./cursorValidation";
 import { TreeValidator } from "./treeValidation";
 
@@ -7,13 +7,134 @@ import { TreeValidator } from "./treeValidation";
  */
 export class TestHelpers {
     /**
-     * カーソルデバッグ機能をセットアップする
+     * テスト環境を準備する
+     * 各テストの前に呼び出すことで、テスト環境を一貫した状態にする
+     * @param page Playwrightのページオブジェクト
+     * @returns 作成したプロジェクト名とページ名
+     */
+    public static async prepareTestEnvironment(page: Page, testInfo: any, lines: string[] = []): Promise<{ projectName: string; pageName: string }> {
+        // ホームページにアクセス
+        await page.goto("/");
+        await page.waitForLoadState("networkidle", { timeout: 60000 });
+
+        page.goto = async (
+            url: string,
+            options?: { referer?: string; timeout?: number; waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit" }
+        ): Promise<Response | null> => {
+            await page.evaluate(async (url) => {
+                while (!window.__SVELTE_GOTO__) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                window.__SVELTE_GOTO__(url);
+
+            }, url);
+            await expect(page).toHaveURL(url);
+            return null;
+        };
+
+        // デバッガーをセットアップ
+        await TestHelpers.setupTreeDebugger(page);
+        await TestHelpers.setupCursorDebugger(page);
+
+        // テストページをセットアップ
+        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines);
+    }
+
+
+    /**
+     * テスト用のプロジェクトとページをFluid API経由で作成する
+     * @param page Playwrightのページオブジェクト
+     * @param projectName プロジェクト名
+     * @param pageName ページ名
+     */
+    public static async createTestProjectAndPageViaAPI(page: Page, projectName: string, pageName: string, lines: string[] = []): Promise<void> {
+        // Fluid APIを使用してプロジェクトとページを作成
+        await page.evaluate(async ({ projectName }) => {
+            while (!window.__FLUID_STORE__) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            while (!window.__FLUID_STORE__.fluidClient) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            const fluidClient = window.__FLUID_STORE__.fluidClient;
+
+            if (!fluidClient) {
+                throw new Error("FluidClient instance not found");
+            }
+
+            try {
+                // プロジェクトとページのデータを取得
+                const appData = fluidClient.appData;
+                const project = appData.root;
+
+                // プロジェクト名を設定
+                project.title = projectName;
+                return { success: true };
+            } catch (error) {
+                console.error("Error creating project and page:", error);
+                throw error;
+            }
+        }, { projectName });
+
+        if (lines.length == 0) {
+            lines = [
+                "これはテスト用のページです。1",
+                "これはテスト用のページです。2",
+                "内部リンクのテスト: [test-link]"
+            ];
+        }
+
+        await TestHelpers.createTestPageViaAPI(page, pageName, lines);
+    }
+
+    /**
+     * テスト用のページをFluid API経由で作成する
+     * @param page Playwrightのページオブジェクト
+     * @param pageName ページ名
+     */
+    public static async createTestPageViaAPI(page: Page, pageName: string, lines: string[]): Promise<void> {
+        // Fluid APIを使用してページを作成
+        await page.evaluate(async ({ pageName, lines }) => {
+            while (!window.__FLUID_STORE__) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            const fluidClient = window.__FLUID_STORE__.fluidClient;
+
+            if (!fluidClient) {
+                throw new Error("FluidClient instance not found");
+            }
+
+            try {
+                // プロジェクトのデータを取得
+                const appData = fluidClient.appData;
+                const project = appData.root;
+
+                // ページを作成
+                const pageItem = project.addPage(pageName, "test-user");
+                const pageItems = pageItem.items;
+                for (const line of lines) {
+                    const item = pageItems.addNode("test-user");
+                    item.updateText(line);
+                }
+                return { success: true };
+            } catch (error) {
+                console.error("Error creating page:", error);
+                throw error;
+            }
+        }, { pageName, lines });
+
+        // 少し待機してデータが保存されるのを待つ
+        await page.waitForTimeout(1000);
+    }
+
+    /**
+     * カーソル情報取得用のデバッグ関数をセットアップする
      * @param page Playwrightのページオブジェクト
      */
-    public static async setupCursorDebugger(page: Page): Promise<void> {
-        await page.evaluate(() => {
+    private static async setupCursorDebugger(page: Page): Promise<void> {
+        await page.addInitScript(() => {
             // グローバルオブジェクトにデバッグ関数を追加
-            window.getCursorDebugData = function() {
+            window.getCursorDebugData = function () {
                 // EditorOverlayStoreインスタンスを取得
                 const editorOverlayStore = window.editorOverlayStore;
                 if (!editorOverlayStore) {
@@ -29,7 +150,13 @@ export class TestHelpers {
                     const cursorVisible = editorOverlayStore.cursorVisible;
 
                     // カーソルインスタンスの情報を取得
-                    const cursorInstances: Array<any> = [];
+                    const cursorInstances: Array<{
+                        cursorId: string;
+                        itemId: string;
+                        offset: number;
+                        isActive: boolean;
+                        userId: string;
+                    }> = [];
 
                     editorOverlayStore.cursorInstances.forEach((cursor: any, id: string) => {
                         cursorInstances.push({
@@ -56,76 +183,83 @@ export class TestHelpers {
                 }
             };
 
-            // 特定のパスのデータを取得する関数
-            window.getCursorPathData = function(path?: string) {
-                const data = window.getCursorDebugData();
-                if (!path) return data;
-
-                return path.split('.').reduce((prev, curr) => {
-                    return prev && prev[curr];
-                }, data);
-            };
-        });
-    }
-
-    /**
-     * SharedTreeデバッグ機能をセットアップする
-     * @param page Playwrightのページオブジェクト
-     */
-    public static async setupTreeDebugger(page: Page): Promise<void> {
-        await page.evaluate(() => {
-            // グローバルオブジェクトにデバッグ関数を追加
-            window.getFluidTreeDebugData = function() {
-                // generalStoreインスタンスを取得
-                const generalStore = window.generalStore;
-                if (!generalStore) {
-                    console.error("generalStore instance not found");
-                    return { error: "generalStore instance not found" };
+            // 拡張版のデバッグ関数 - 特定のパスのデータのみを取得
+            window.getCursorPathData = function (path) {
+                // EditorOverlayStoreインスタンスを取得
+                const editorOverlayStore = window.editorOverlayStore;
+                if (!editorOverlayStore) {
+                    return { error: "EditorOverlayStore instance not found" };
                 }
 
                 try {
-                    // ルートアイテムを取得
-                    const rootItem = generalStore.currentPage;
-                    if (!rootItem) {
-                        return { error: "Root item not found" };
+                    // 自分自身の関数を使用してカーソルデータを取得
+                    const cursorData = window.getCursorDebugData ? window.getCursorDebugData() : null;
+                    if (!cursorData) return null;
+                    if (!path) return cursorData;
+
+                    // パスに基づいてデータを取得
+                    const parts = path.split('.');
+                    let result = cursorData;
+                    for (const part of parts) {
+                        if (result === undefined || result === null) return null;
+                        result = result[part];
                     }
+                    return result;
+                } catch (error) {
+                    return { error: error.message || "Unknown error" };
+                }
+            };
+        });
 
-                    // アイテム数をカウント
-                    let itemCount = 0;
-                    const items: any[] = [];
+        // EditorOverlayStoreがグローバルに公開されていることを確認
+        // await page.waitForFunction(() => window.editorOverlayStore, { timeout: 5000 });
+    }
 
-                    // アイテムを再帰的に処理する関数
-                    function processItem(item: any, depth = 0): any {
-                        itemCount++;
-                        const result: any = {
-                            id: item.id,
-                            text: item.text,
-                            author: item.author,
-                            votes: item.votes || [],
-                            created: item.created,
-                            lastChanged: item.lastChanged
-                        };
+    /**
+     * SharedTreeデータ取得用のデバッグ関数をセットアップする
+     * @param page Playwrightのページオブジェクト
+     */
+    public static async setupTreeDebugger(page: Page): Promise<void> {
+        await page.addInitScript(() => {
+            // グローバルオブジェクトにデバッグ関数を追加
+            window.getFluidTreeDebugData = function () {
+                // グローバルFluidClientインスタンスを取得
+                const fluidClient = window.__FLUID_SERVICE__.getFluidClient();
+                if (!fluidClient) {
+                    console.error("FluidClient instance not found");
+                    return { error: "FluidClient instance not found" };
+                }
 
-                        // 子アイテムを処理
-                        if (item.items && typeof item.items[Symbol.iterator] === 'function') {
-                            result.items = [];
-                            for (const child of item.items) {
-                                result.items.push(processItem(child, depth + 1));
-                            }
-                        }
-
-                        return result;
-                    }
-
-                    // ルートアイテムから処理開始
-                    items.push(processItem(rootItem));
-
-                    return {
-                        itemCount,
-                        items
-                    };
+                try {
+                    // FluidClientのgetAllDataメソッドを使用してデータを取得
+                    const treeData = fluidClient.getAllData();
+                    return treeData;
                 } catch (error) {
                     console.error("Error getting tree data:", error);
+                    return { error: error.message || "Unknown error" };
+                }
+            };
+
+            // 拡張版のデバッグ関数 - 特定のパスのデータのみを取得
+            window.getFluidTreePathData = function (path) {
+                const fluidClient = window.__FLUID_SERVICE__.getFluidClient();
+                if (!fluidClient) {
+                    return { error: "FluidClient instance not found" };
+                }
+
+                try {
+                    const treeData = fluidClient.getAllData();
+                    if (!path) return treeData;
+
+                    // パスに基づいてデータを取得
+                    const parts = path.split('.');
+                    let result = treeData;
+                    for (const part of parts) {
+                        if (result === undefined || result === null) return null;
+                        result = result[part];
+                    }
+                    return result;
+                } catch (error) {
                     return { error: error.message || "Unknown error" };
                 }
             };
@@ -137,7 +271,7 @@ export class TestHelpers {
      * @param page Playwrightのページオブジェクト
      * @param timeout タイムアウト時間（ミリ秒）
      */
-    public static async waitForCursorVisible(page: Page, timeout = 5000): Promise<boolean> {
+    public static async waitForCursorVisible(page: Page, timeout = 15000): Promise<boolean> {
         try {
             await page.waitForFunction(() => {
                 const cursor = document.querySelector('.editor-overlay .cursor.active');
@@ -147,8 +281,134 @@ export class TestHelpers {
         } catch (error) {
             console.log("Timeout waiting for cursor to be visible, continuing anyway");
             // スクリーンショットを撮影して状態を確認
-            await page.screenshot({ path: "test-results/cursor-visible-timeout.png" });
+            await page.screenshot({ path: "client/test-results/cursor-visible-timeout.png" });
             return false;
+        }
+    }
+
+    /**
+     * プロジェクトページに移動する
+     * 既存のプロジェクトがあればそれを使用し、なければ新規作成する
+     * @param page Playwrightのページオブジェクト
+     * @returns プロジェクト名
+     */
+    public static async navigateToTestProjectPage(page: Page, testInfo, lines: string[]): Promise<{ projectName: string, pageName: string }> {
+
+        const projectName = `Test Project ${testInfo.workerIndex} ${Date.now()}`;
+        const pageName = `test-page-${Date.now()}`;
+        console.log("Creating new project:", projectName);
+        await TestHelpers.createTestProjectAndPageViaAPI(page, projectName, pageName, lines);
+
+        await page.goto(`/${projectName}/${pageName}`);
+
+        await page.waitForSelector(".outliner-item", { timeout: 30000 });
+        await page.waitForFunction(() => {
+            const textarea = document.querySelector<HTMLTextAreaElement>(".global-textarea");
+            return textarea !== null && document.activeElement === textarea;
+        }, { timeout: 5000 });
+
+        return { projectName, pageName };
+    }
+
+    /**
+     * アウトライナーアイテムが表示されるのを待つ
+     * @param page Playwrightのページオブジェクト
+     * @param timeout タイムアウト時間（ミリ秒）
+     */
+    public static async waitForOutlinerItems(page: Page, timeout = 30000): Promise<void> {
+        console.log("Waiting for outliner items to be visible...");
+
+        const startTime = Date.now();
+        let itemsVisible = false;
+
+        while (Date.now() - startTime < timeout && !itemsVisible) {
+            try {
+                // 現在のURLを確認
+                const currentUrl = page.url();
+                console.log("Current URL:", currentUrl);
+
+                // プロジェクトページに移動していない場合は、リダイレクトを待つ
+                if (!currentUrl.includes("/project/") && !currentUrl.includes("?project=")) {
+                    console.log("Not on a project page yet, waiting for redirect...");
+                    await page.waitForTimeout(1000);
+                    continue;
+                }
+
+                // アウトライナーアイテムが表示されるのを待つ
+                const itemCount = await page.locator(".outliner-item").count();
+                if (itemCount > 0) {
+                    console.log(`Found ${itemCount} outliner items`);
+                    itemsVisible = true;
+
+                    // SharedTreeが初期化されるのを待つ
+                    try {
+                        await page.waitForFunction(() => {
+                            return window.generalStore && window.generalStore.currentPage;
+                        }, { timeout: 5000 });
+                        console.log("SharedTree is initialized");
+                    } catch (e) {
+                        console.log("Timeout waiting for SharedTree initialization, continuing anyway");
+                    }
+
+                    // カーソルが初期化されるのを待つ
+                    try {
+                        await page.waitForFunction(() => {
+                            return window.editorOverlayStore;
+                        }, { timeout: 5000 });
+                        console.log("EditorOverlayStore is initialized");
+                    } catch (e) {
+                        console.log("Timeout waiting for EditorOverlayStore initialization, continuing anyway");
+                    }
+
+                    // 少し待機して安定させる
+                    await page.waitForTimeout(1000);
+                    break;
+                } else {
+                    // アイテムが見つからない場合は、ページの状態を確認
+                    console.log("No outliner items found yet, checking page state...");
+
+                    // ページのHTMLを確認
+                    const html = await page.content();
+                    if (html.includes("class=\"outliner-item\"")) {
+                        console.log("Outliner items found in HTML but not visible yet");
+                        // DOMには存在するが、まだ表示されていない可能性がある
+                        await page.waitForTimeout(1000);
+                    } else if (html.includes("class=\"page-loading\"") || html.includes("Loading...")) {
+                        console.log("Page is still loading");
+                        await page.waitForTimeout(1000);
+                    } else {
+                        // ページの内容を確認
+                        const bodyText = await page.textContent("body");
+                        console.log("Page content (first 200 chars):", bodyText?.substring(0, 200));
+
+                        // 新しいページを作成するボタンがあるか確認
+                        const newPageButton = page.getByText("新しいページ");
+                        if (await newPageButton.count() > 0) {
+                            console.log("Found 'New Page' button, clicking it");
+                            await newPageButton.click();
+                            await page.waitForTimeout(1000);
+                        } else {
+                            // 少し待機して再試行
+                            await page.waitForTimeout(2000);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log("Error while waiting for outliner items:", e.message);
+                await page.waitForTimeout(1000);
+            }
+        }
+
+        if (!itemsVisible) {
+            console.log("Timeout waiting for outliner items");
+            // スクリーンショットを撮影して状態を確認
+            await page.screenshot({ path: "client/test-results/outliner-items-timeout.png" });
+
+            // ページのHTMLを確認
+            const html = await page.content();
+            console.log("Page HTML (first 500 chars):", html.substring(0, 500));
+
+            // エラーはスローせず、テストを続行する
         }
     }
 
@@ -271,7 +531,7 @@ export class TestHelpers {
         }
 
         // リンクプレビュー表示関数を直接呼び出す
-        await page.evaluate((sel, text) => {
+        await page.evaluate(({ linkSelector: sel, linkText: text }) => {
             const link = document.querySelector(sel);
             if (!link) return;
 
@@ -283,7 +543,7 @@ export class TestHelpers {
             if (!pageName) return;
 
             // グローバルスコープにテスト用の関数を追加
-            window.__testShowLinkPreview = function(pageName: string, projectName?: string) {
+            window.__testShowLinkPreview = function (pageName: string, projectName?: string) {
                 // プレビュー要素を作成
                 const previewElement = document.createElement('div');
                 previewElement.className = 'link-preview-popup';
@@ -341,8 +601,8 @@ export class TestHelpers {
             };
 
             // プレビュー表示関数を呼び出す
-            window.__testShowLinkPreview(pageName, projectName);
-        }, linkSelector, linkText);
+            window.__testShowLinkPreview(pageName, projectName!);
+        }, { linkSelector, linkText });
 
         // プレビューが表示されるのを待機
         await page.waitForTimeout(500);
@@ -533,63 +793,7 @@ export class TestHelpers {
         return false;
     }
 
-    /**
-     * マウスアウトイベントを強制的に発火する
-     * @param page Playwrightのページオブジェクト
-     * @param selector 対象要素のセレクタ
-     */
-    public static async forceMouseOutEvent(page: Page, selector: string): Promise<void> {
-        // 内部リンク要素のセレクタが:has-text()を含む場合は、単純なセレクタに変換
-        if (selector.includes(':has-text(')) {
-            console.log('Converting complex selector to simple selector for mouseout event');
-            selector = '.internal-link';
-        }
-
-        await page.evaluate((sel) => {
-            // 要素を検索
-            const elements = document.querySelectorAll(sel);
-            if (elements.length > 0) {
-                elements.forEach(element => {
-                    // mouseoutイベントを作成
-                    const mouseoutEvent = new MouseEvent('mouseout', {
-                        bubbles: true,
-                        cancelable: true,
-                        view: window
-                    });
-
-                    // mouseleaveイベントを作成
-                    const mouseleaveEvent = new MouseEvent('mouseleave', {
-                        bubbles: true,
-                        cancelable: true,
-                        view: window
-                    });
-
-                    // イベントを発火
-                    element.dispatchEvent(mouseoutEvent);
-                    element.dispatchEvent(mouseleaveEvent);
-                });
-
-                // カスタムイベントも発火
-                const linkPreviewHideEvent = new CustomEvent('linkPreviewHide');
-                document.dispatchEvent(linkPreviewHideEvent);
-
-                console.log(`Forced mouseout/mouseleave events on ${elements.length} elements: ${sel}`);
-            } else {
-                console.log(`Element not found for mouseout event: ${sel}`);
-
-                // 要素が見つからない場合でも、カスタムイベントを発火
-                const linkPreviewHideEvent = new CustomEvent('linkPreviewHide');
-                document.dispatchEvent(linkPreviewHideEvent);
-
-                // プレビューポップアップを直接非表示にする
-                const popup = document.querySelector('.link-preview-popup');
-                if (popup) {
-                    (popup as HTMLElement).style.display = 'none';
-                    console.log('Forced hide of link preview popup');
-                }
-            }
-        }, selector);
-    }
+    // 注: 422行目に同名のメソッドが既に定義されているため、このメソッドは削除します
 }
 
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
@@ -599,5 +803,10 @@ declare global {
         getCursorPathData?: (path?: string) => any;
         getFluidTreeDebugData?: () => any;
         __testShowLinkPreview?: (pageName: string, projectName?: string) => HTMLElement;
+        fluidServerPort?: number;
+        _alertMessage?: string | null;
+        __FLUID_SERVICE__?: any;
+        __FLUID_STORE__?: any;
+        editorOverlayStore?: any;
     }
 }

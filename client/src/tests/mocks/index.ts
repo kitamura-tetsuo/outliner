@@ -1,6 +1,6 @@
 // filepath: /workspace/client/src/tests/mocks/index.ts
 import { vi } from "vitest";
-import { UserManager } from "../../auth/UserManager";
+import * as UserManagerModule from "../../auth/UserManager";
 import {
     resetMockFirestore,
     setupMockFirestore,
@@ -36,8 +36,8 @@ export function setupMocks({
     firebase = {},
     firestore = {},
 } = {}) {
-    // Mock UserManager singleton
-    vi.spyOn(UserManager, "getInstance").mockReturnValue(mockUserManager as any);
+    // Mock userManager instance
+    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(mockUserManager as any);
 
     // Setup Firestore mock with optional initial data
     setupMockFirestore(firestore);

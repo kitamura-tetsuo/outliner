@@ -7,20 +7,15 @@ import {
     test,
 } from "@playwright/test";
 import {
-    createTestItems,
-    setupCursorDebugger,
-    setupTestPage,
     waitForCursorVisible,
 } from "../helpers";
 import { CursorValidator } from "./cursorValidation";
+import { TestHelpers } from "./testHelpers";
 
 test.describe("CursorValidator: カーソル情報検証ユーティリティ", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         // テストページをセットアップ
-        await setupTestPage(page);
-
-        // テスト用のアイテムを作成
-        await createTestItems(page, [
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "First item",
             "Second item",
             "Third item",
@@ -32,9 +27,6 @@ test.describe("CursorValidator: カーソル情報検証ユーティリティ", 
         // 最初のアイテムをクリックしてカーソルを表示
         await page.locator(".outliner-item").first().click();
         await waitForCursorVisible(page);
-
-        // カーソル情報取得用のデバッグ関数をセットアップ
-        await setupCursorDebugger(page);
 
         // editorOverlayStoreがグローバルに公開されていることを確認
         await page.evaluate(() => {

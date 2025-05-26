@@ -9,7 +9,7 @@ import {
 } from "./firestoreMock";
 
 // Export the mock store with the same interface as the real store
-export const userContainer = mockUserContainer;
+export const firestoreStore = { userContainer: mockUserContainer };
 export const initFirestoreSync = mockInitFirestoreSync;
 export const saveContainerId = mockSaveContainerId;
 export const getDefaultContainerId = mockGetDefaultContainerId;

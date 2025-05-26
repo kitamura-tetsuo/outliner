@@ -14,12 +14,9 @@ import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("認証機能テスト", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         // テスト開始前に十分な時間を設定
-        test.setTimeout(60000);
 
-        // テストページをセットアップ
-        await TestHelpers.setupCursorDebugger(page);
 
         // ホームページにアクセス
         await page.goto("/");

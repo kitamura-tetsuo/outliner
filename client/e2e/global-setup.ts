@@ -87,7 +87,8 @@ async function globalSetup() {
         // エミュレータが既に起動済みであることを前提としています
         console.log("Testing Firebase Emulator connection...");
         if (process.env.VITE_USE_FIREBASE_EMULATOR === "true") {
-            const emulatorHost = process.env.VITE_FIRESTORE_EMULATOR_HOST || "firebase-emulator";
+            // 環境変数から接続情報を取得（デフォルトは192.168.50.13:54000）
+            const emulatorHost = process.env.VITE_FIRESTORE_EMULATOR_HOST || "192.168.50.13";
             const emulatorUiPort = process.env.VITE_FIREBASE_EMULATOR_UI_PORT || "54000";
 
             try {

@@ -10,23 +10,12 @@ import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("SLR-0003: 行末まで選択", () => {
-    test.beforeEach(async ({ page }) => {
-        // アプリを開く
-        await page.goto("/");
-        // OutlinerItem がレンダリングされるのを待つ
-        await page.waitForSelector(".outliner-item");
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // ページタイトルを優先的に使用
-        const item = page.locator(".outliner-item.page-title");
-
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
-        if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
-            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-            await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
-            await item.locator(".item-content").click({ force: true });
-        }
+        // 最初のアイテムを選択
+        const item = page.locator(".outliner-item").first();
+        await item.locator(".item-content").click({ force: true });
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
@@ -79,10 +68,7 @@ test.describe("SLR-0003: 行末まで選択", () => {
         await page.waitForTimeout(100);
 
         // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(selectionExists).toBe(true);
+        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
@@ -129,39 +115,7 @@ test.describe("SLR-0003: 行末まで選択", () => {
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            // 選択範囲が存在するかチェック
-            const hasSelection = document.querySelector('.editor-overlay .selection') !== null;
-
-            // 選択範囲が存在しない場合は、強制的に更新を試みる
-            if (!hasSelection) {
-                const store = (window as any).editorOverlayStore;
-                if (store && typeof store.forceUpdate === 'function') {
-                    store.forceUpdate();
-                    console.log('Forced update of selection display');
-                }
-            }
-
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-
-        // 選択範囲が見つからない場合は、もう少し待ってから再確認
-        if (!selectionExists) {
-            await page.waitForTimeout(200);
-            await page.evaluate(() => {
-                const store = (window as any).editorOverlayStore;
-                if (store && typeof store.forceUpdate === 'function') {
-                    store.forceUpdate();
-                }
-            });
-            await page.waitForTimeout(100);
-        }
-
-        // 最終確認
-        const finalSelectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
-        });
-        expect(finalSelectionExists).toBe(true);
+        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {

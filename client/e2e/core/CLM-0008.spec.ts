@@ -9,25 +9,18 @@ import {
 import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
 
+// テストのタイムアウトを設定（長めに設定）
+
+
 test.describe("CLM-0008: 行末へ移動", () => {
-    test.beforeEach(async ({ page }) => {
-        // アプリを開く
-        await page.goto("/");
-        // OutlinerItem がレンダリングされるのを待つ
-        await page.waitForSelector(".outliner-item");
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // ページタイトルを優先的に使用
-        const item = page.locator(".outliner-item.page-title");
+        // 最初のアイテムをクリック
+        const item = page.locator(".outliner-item").first();
+        await item.locator(".item-content").click({ force: true });
 
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
-        if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
-            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-            await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
-            await item.locator(".item-content").click({ force: true });
-        }
-
+        // グローバル textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus");
 
         // カーソルが表示されるまで待機

@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { setupTestPage, waitForCursorVisible } from "../helpers";
-import { TreeValidator } from "../utils/treeValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @file LNK-0001.spec.ts
@@ -11,32 +10,32 @@ import { TreeValidator } from "../utils/treeValidation";
  */
 
 test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    await TestHelpers.prepareTestEnvironment(page, testInfo);
+  });
   /**
    * @testcase 内部リンクのURLが正しく生成される
    * @description 内部リンクのURLが正しく生成されることを確認するテスト
    */
   test("内部リンクのURLが正しく生成される", async ({ page }) => {
-    // テストページをセットアップ
-    await setupTestPage(page);
-
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();
     await firstItem.locator(".item-content").click();
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
 
     // 通常の内部リンクを入力
     await page.keyboard.type("[test-page]");
 
     // 2つ目のアイテムを作成
     await page.keyboard.press("Enter");
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
 
     // プロジェクト内部リンクを入力
     await page.keyboard.type("[/project-name/page-name]");
 
     // 3つ目のアイテムをクリック（カーソルを最初のアイテムから離す）
     await page.keyboard.press("Enter");
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
     await page.keyboard.type("3つ目のアイテム");
 
     // 少し待機してリンクが表示されるのを待つ
@@ -64,27 +63,24 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
    * @description 内部リンクのHTMLが正しく生成されることを確認するテスト
    */
   test("内部リンクのHTMLが正しく生成される", async ({ page }) => {
-    // テストページをセットアップ
-    await setupTestPage(page);
-
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();
     await firstItem.locator(".item-content").click();
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
 
     // 通常の内部リンクを入力
     await page.keyboard.type("[test-page]");
 
     // 2つ目のアイテムを作成
     await page.keyboard.press("Enter");
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
 
     // プロジェクト内部リンクを入力
     await page.keyboard.type("[/project-name/page-name]");
 
     // 3つ目のアイテムをクリック（カーソルを最初のアイテムから離す）
     await page.keyboard.press("Enter");
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
     await page.keyboard.type("3つ目のアイテム");
 
     // 少し待機してリンクが表示されるのを待つ

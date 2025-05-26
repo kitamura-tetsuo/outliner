@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupTestPage } from '../helpers';
+import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * SLR-0101: ボックス選択（矩形選択）機能 - マウス
@@ -12,9 +12,8 @@ import { setupTestPage } from '../helpers';
  * 3. 矩形選択範囲にテキストをペースト
  */
 test.describe('マウスによる矩形選択テスト', () => {
-    test.beforeEach(async ({ page }) => {
-        // 共通セットアップ関数を使用
-        await setupTestPage(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test.afterEach(async () => {
@@ -23,7 +22,7 @@ test.describe('マウスによる矩形選択テスト', () => {
 
     test('Alt+Shift+マウスドラッグによる矩形選択', async ({ page }) => {
         // テストタイムアウトを延長
-        test.setTimeout(60000);
+
 
         // デバッグモードを有効化
         try {
@@ -34,191 +33,170 @@ test.describe('マウスによる矩形選択テスト', () => {
             console.log(`デバッグモード設定中にエラーが発生しました: ${error}`);
         }
 
-        // テストページが正しく読み込まれたか確認
-        try {
-            // 最初のアイテムが表示されるまで待機
-            await page.waitForSelector('.outliner-item', { timeout: 5000 });
-        } catch (error) {
-            console.log(`アイテムが見つかりません: ${error}`);
+        // 最初のアイテムが表示されるまで待機
+        await page.waitForSelector('.outliner-item', { timeout: 5000 });
 
-            // テストをスキップ
-            test.skip();
+        // 1. 初期状態の確認
+        // 最初のアイテムにテキストを入力
+        await page.locator('.outliner-item').first().click();
+        await page.keyboard.type('First line of text');
+
+        // Enterキーを押して新しいアイテムを作成
+        await page.keyboard.press('Enter');
+        await page.keyboard.type('Second line of text');
+
+        // Enterキーを押して新しいアイテムを作成
+        await page.keyboard.press('Enter');
+        await page.keyboard.type('Third line of text');
+
+        // 最初のアイテムをクリック
+        await page.locator('.outliner-item').first().click();
+
+        // 2. Alt+Shift+マウスドラッグで矩形選択を開始
+        // 最初のアイテムの位置を取得
+        const firstItemBounds = await page.locator('.outliner-item').first().boundingBox();
+        if (!firstItemBounds) {
+            console.log('最初のアイテムの位置を取得できませんでした。');
             return;
         }
 
-        // 1. 初期状態の確認
-        try {
-            // 最初のアイテムにテキストを入力
-            await page.locator('.outliner-item').first().click();
-            await page.keyboard.type('First line of text');
-
-            // Enterキーを押して新しいアイテムを作成
-            await page.keyboard.press('Enter');
-            await page.keyboard.type('Second line of text');
-
-            // Enterキーを押して新しいアイテムを作成
-            await page.keyboard.press('Enter');
-            await page.keyboard.type('Third line of text');
-
-            // 最初のアイテムをクリック
-            await page.locator('.outliner-item').first().click();
-
-            // 2. Alt+Shift+マウスドラッグで矩形選択を開始
-            // 最初のアイテムの位置を取得
-            const firstItemBounds = await page.locator('.outliner-item').first().boundingBox();
-            if (!firstItemBounds) {
-                console.log('最初のアイテムの位置を取得できませんでした。');
-                return;
-            }
-
-            // 2番目のアイテムの位置を取得
-            const secondItemBounds = await page.locator('.outliner-item').nth(1).boundingBox();
-            if (!secondItemBounds) {
-                console.log('2番目のアイテムの位置を取得できませんでした。');
-                return;
-            }
-
-            // Alt+Shiftキーを押しながらマウスドラッグ
-            await page.keyboard.down('Alt');
-            await page.keyboard.down('Shift');
-
-            // ドラッグ操作
-            await page.mouse.move(firstItemBounds.x + 5, firstItemBounds.y + firstItemBounds.height / 2);
-            await page.mouse.down();
-            await page.mouse.move(firstItemBounds.x + 10, secondItemBounds.y + secondItemBounds.height / 2, { steps: 10 });
-            await page.mouse.up();
-
-            // キーを離す
-            await page.keyboard.up('Shift');
-            await page.keyboard.up('Alt');
-
-            // 矩形選択が作成されたことを確認
-            const boxSelectionCount = await page.evaluate(() => {
-                if (!(window as any).editorOverlayStore) {
-                    console.log('editorOverlayStore not found');
-                    return 0;
-                }
-                const selections = Object.values((window as any).editorOverlayStore.selections);
-                const boxSelections = selections.filter((s: any) => s.isBoxSelection);
-                return boxSelections.length;
-            });
-            console.log(`矩形選択の数: ${boxSelectionCount}`);
-
-            // 矩形選択が作成されていなくてもテストを続行
-            if (boxSelectionCount === 0) {
-                console.log('矩形選択が作成されませんでした。テストをスキップします。');
-                return;
-            }
-
-            // 矩形選択が作成されたことを確認
-            expect(boxSelectionCount).toBe(1);
-
-            // 3. 矩形選択範囲のテキストをコピー
-            await page.keyboard.press('Control+c');
-
-            // クリップボードの内容を取得（Playwrightでは直接取得できないため、テキストエリアを使用）
-            await page.evaluate(() => {
-                const textarea = document.createElement('textarea');
-                textarea.id = 'clipboard-test';
-                document.body.appendChild(textarea);
-                textarea.focus();
-            });
-            await page.locator('#clipboard-test').focus();
-            await page.keyboard.press('Control+v');
-
-            // コピーされたテキストを取得
-            const copiedText = await page.locator('#clipboard-test').inputValue();
-            console.log(`コピーされたテキスト: "${copiedText}"`);
-
-            // コピーされたテキストが空でないことを確認
-            expect(copiedText.length).toBeGreaterThan(0);
-
-            // 4. 矩形選択範囲にテキストをペースト
-            // 再度矩形選択を作成
-            await page.keyboard.down('Alt');
-            await page.keyboard.down('Shift');
-
-            // ドラッグ操作
-            await page.mouse.move(firstItemBounds.x + 15, firstItemBounds.y + firstItemBounds.height / 2);
-            await page.mouse.down();
-            await page.mouse.move(firstItemBounds.x + 20, secondItemBounds.y + secondItemBounds.height / 2, { steps: 10 });
-            await page.mouse.up();
-
-            // キーを離す
-            await page.keyboard.up('Shift');
-            await page.keyboard.up('Alt');
-
-            // テキストをペースト
-            await page.keyboard.press('Control+v');
-
-            // 5. 矩形選択範囲のテキストを削除
-            // 再度矩形選択を作成
-            await page.keyboard.down('Alt');
-            await page.keyboard.down('Shift');
-
-            // ドラッグ操作
-            await page.mouse.move(firstItemBounds.x + 25, firstItemBounds.y + firstItemBounds.height / 2);
-            await page.mouse.down();
-            await page.mouse.move(firstItemBounds.x + 30, secondItemBounds.y + secondItemBounds.height / 2, { steps: 10 });
-            await page.mouse.up();
-
-            // キーを離す
-            await page.keyboard.up('Shift');
-            await page.keyboard.up('Alt');
-
-            // 削除
-            await page.keyboard.press('Delete');
-
-            // 6. Escキーで矩形選択をキャンセル
-            await page.keyboard.press('Escape');
-
-            // 明示的にcancelBoxSelectionを呼び出す
-            await page.evaluate(() => {
-                if ((window as any).KeyEventHandler && typeof (window as any).KeyEventHandler.cancelBoxSelection === 'function') {
-                    (window as any).KeyEventHandler.cancelBoxSelection();
-                    console.log('Explicitly called KeyEventHandler.cancelBoxSelection()');
-                } else {
-                    console.log('KeyEventHandler.cancelBoxSelection not available');
-                }
-
-                // 選択範囲を強制的にクリア
-                if ((window as any).editorOverlayStore) {
-                    (window as any).editorOverlayStore.clearSelections();
-                    console.log('Explicitly called editorOverlayStore.clearSelections()');
-                }
-            });
-
-            // 少し待機して選択範囲のクリアを確実にする
-            await page.waitForTimeout(100);
-
-            // 矩形選択がキャンセルされたことを確認
-            const boxSelectionCount2 = await page.evaluate(() => {
-                if (!(window as any).editorOverlayStore) {
-                    console.log('editorOverlayStore not found');
-                    return 0;
-                }
-                const selections = Object.values((window as any).editorOverlayStore.selections);
-                const boxSelections = selections.filter((s: any) => s.isBoxSelection);
-                console.log('Current selections after cancel:', selections);
-                console.log('Box selections after cancel:', boxSelections);
-                return boxSelections.length;
-            });
-            console.log(`キャンセル後の矩形選択の数: ${boxSelectionCount2}`);
-
-            // 矩形選択がキャンセルされたことを確認
-            expect(boxSelectionCount2).toBe(0);
-
-            // クリーンアップ
-            await page.evaluate(() => {
-                const textarea = document.getElementById('clipboard-test');
-                if (textarea) {
-                    textarea.remove();
-                }
-            });
-        } catch (error) {
-            console.log(`テスト実行中にエラーが発生しました: ${error}`);
-            // テストを失敗させずに続行
-            console.log('テストをスキップします。');
+        // 2番目のアイテムの位置を取得
+        const secondItemBounds = await page.locator('.outliner-item').nth(1).boundingBox();
+        if (!secondItemBounds) {
+            console.log('2番目のアイテムの位置を取得できませんでした。');
+            return;
         }
+
+        // Alt+Shiftキーを押しながらマウスドラッグ
+        await page.keyboard.down('Alt');
+        await page.keyboard.down('Shift');
+
+        // ドラッグ操作
+        await page.mouse.move(firstItemBounds.x + 5, firstItemBounds.y + firstItemBounds.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(firstItemBounds.x + 10, secondItemBounds.y + secondItemBounds.height / 2, { steps: 10 });
+        await page.mouse.up();
+
+        // キーを離す
+        await page.keyboard.up('Shift');
+        await page.keyboard.up('Alt');
+
+        // 矩形選択が作成されたことを確認
+        const boxSelectionCount = await page.evaluate(() => {
+            if (!(window as any).editorOverlayStore) {
+                console.log('editorOverlayStore not found');
+                return 0;
+            }
+            const selections = Object.values((window as any).editorOverlayStore.selections);
+            const boxSelections = selections.filter((s: any) => s.isBoxSelection);
+            return boxSelections.length;
+        });
+        console.log(`矩形選択の数: ${boxSelectionCount}`);
+
+        // 矩形選択が作成されたことを確認
+        expect(boxSelectionCount).toBe(1);
+
+        // 3. 矩形選択範囲のテキストをコピー
+        await page.keyboard.press('Control+c');
+
+        // クリップボードの内容を取得（Playwrightでは直接取得できないため、テキストエリアを使用）
+        await page.evaluate(() => {
+            const textarea = document.createElement('textarea');
+            textarea.id = 'clipboard-test';
+            document.body.appendChild(textarea);
+            textarea.focus();
+        });
+        await page.locator('#clipboard-test').focus();
+        await page.keyboard.press('Control+v');
+
+        // コピーされたテキストを取得
+        const copiedText = await page.locator('#clipboard-test').inputValue();
+        console.log(`コピーされたテキスト: "${copiedText}"`);
+
+        // コピーされたテキストが空でないことを確認
+        expect(copiedText.length).toBeGreaterThan(0);
+
+        // 4. 矩形選択範囲にテキストをペースト
+        // 再度矩形選択を作成
+        await page.keyboard.down('Alt');
+        await page.keyboard.down('Shift');
+
+        // ドラッグ操作
+        await page.mouse.move(firstItemBounds.x + 15, firstItemBounds.y + firstItemBounds.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(firstItemBounds.x + 20, secondItemBounds.y + secondItemBounds.height / 2, { steps: 10 });
+        await page.mouse.up();
+
+        // キーを離す
+        await page.keyboard.up('Shift');
+        await page.keyboard.up('Alt');
+
+        // テキストをペースト
+        await page.keyboard.press('Control+v');
+
+        // 5. 矩形選択範囲のテキストを削除
+        // 再度矩形選択を作成
+        await page.keyboard.down('Alt');
+        await page.keyboard.down('Shift');
+
+        // ドラッグ操作
+        await page.mouse.move(firstItemBounds.x + 25, firstItemBounds.y + firstItemBounds.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(firstItemBounds.x + 30, secondItemBounds.y + secondItemBounds.height / 2, { steps: 10 });
+        await page.mouse.up();
+
+        // キーを離す
+        await page.keyboard.up('Shift');
+        await page.keyboard.up('Alt');
+
+        // 削除
+        await page.keyboard.press('Delete');
+
+        // 6. Escキーで矩形選択をキャンセル
+        await page.keyboard.press('Escape');
+
+        // 明示的にcancelBoxSelectionを呼び出す
+        await page.evaluate(() => {
+            if ((window as any).KeyEventHandler && typeof (window as any).KeyEventHandler.cancelBoxSelection === 'function') {
+                (window as any).KeyEventHandler.cancelBoxSelection();
+                console.log('Explicitly called KeyEventHandler.cancelBoxSelection()');
+            } else {
+                console.log('KeyEventHandler.cancelBoxSelection not available');
+            }
+
+            // 選択範囲を強制的にクリア
+            if ((window as any).editorOverlayStore) {
+                (window as any).editorOverlayStore.clearSelections();
+                console.log('Explicitly called editorOverlayStore.clearSelections()');
+            }
+        });
+
+        // 少し待機して選択範囲のクリアを確実にする
+        await page.waitForTimeout(100);
+
+        // 矩形選択がキャンセルされたことを確認
+        const boxSelectionCount2 = await page.evaluate(() => {
+            if (!(window as any).editorOverlayStore) {
+                console.log('editorOverlayStore not found');
+                return 0;
+            }
+            const selections = Object.values((window as any).editorOverlayStore.selections);
+            const boxSelections = selections.filter((s: any) => s.isBoxSelection);
+            console.log('Current selections after cancel:', selections);
+            console.log('Box selections after cancel:', boxSelections);
+            return boxSelections.length;
+        });
+        console.log(`キャンセル後の矩形選択の数: ${boxSelectionCount2}`);
+
+        // 矩形選択がキャンセルされたことを確認
+        expect(boxSelectionCount2).toBe(0);
+
+        // クリーンアップ
+        await page.evaluate(() => {
+            const textarea = document.getElementById('clipboard-test');
+            if (textarea) {
+                textarea.remove();
+            }
+        });
     });
 });

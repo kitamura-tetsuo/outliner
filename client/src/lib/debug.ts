@@ -4,6 +4,9 @@
  */
 
 import { getLogger } from "./logger";
+import { goto } from "$app/navigation";
+import * as fluidService from "../lib/fluidService";
+import { fluidStore } from "../stores/fluidStore.svelte";
 
 const logger = getLogger();
 
@@ -11,38 +14,22 @@ const logger = getLogger();
  * グローバルデバッグ関数を設定する
  * @param fluidClient FluidClientインスタンス
  */
-export function setupGlobalDebugFunctions(fluidClient: any) {
+export function setupGlobalDebugFunctions(xfluidService: any) {
     if (typeof window === "undefined") return;
 
     // グローバルオブジェクトにFluidClientインスタンスを保存
-    (window as any).__FLUID_CLIENT__ = fluidClient;
+    (window as any).__FLUID_SERVICE__ = fluidService;
+    (window as any).__FLUID_STORE__ = fluidStore;
+    (window as any).__SVELTE_GOTO__ = goto;
 
     // SharedTreeのデータ構造を取得するデバッグ関数
-    window.getFluidTreeDebugData = function() {
-        if (!fluidClient) {
-            logger.error("FluidClient instance not available");
-            return { error: "FluidClient instance not available" };
-        }
-
-        try {
-            return fluidClient.getAllData();
-        } catch (error) {
-            logger.error("Error getting tree data:", error);
-            return { error: (error as Error).message || "Unknown error" };
-        }
+    window.getFluidTreeDebugData = function () {
+        return fluidStore.fluidClient!.getAllData();
     };
 
     // 特定のパスのデータを取得するデバッグ関数
-    window.getFluidTreePathData = function(path?: string) {
-        if (!fluidClient) {
-            return { error: "FluidClient instance not available" };
-        }
-
-        try {
-            return fluidClient.getTreeAsJson(path);
-        } catch (error) {
-            return { error: (error as Error).message || "Unknown error" };
-        }
+    window.getFluidTreePathData = function (path?: string) {
+        return fluidStore.fluidClient!.getTreeAsJson(path);
     };
 
     logger.debug("Global debug functions initialized");
@@ -53,6 +40,7 @@ declare global {
     interface Window {
         getFluidTreeDebugData?: () => any;
         getFluidTreePathData?: (path?: string) => any;
-        __FLUID_CLIENT__?: any;
+        __FLUID_SERVICE__?: any;
+        __FLUID_STORE__?: any;
     }
 }

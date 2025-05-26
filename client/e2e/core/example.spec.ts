@@ -15,12 +15,9 @@ import {
  */
 
 test.describe("Tinylicious接続テスト", () => { // すべてのテスト前に必要な設定を行う
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         // エミュレータを使用するための設定
         await page.addInitScript(() => {
-            // 認証済み状態をシミュレート
-            window.localStorage.setItem("authenticated", "true");
-
             // アラートを上書き
             window.alert = function (message) {
                 // @ts-ignore - テスト用に一時的にプロパティを追加

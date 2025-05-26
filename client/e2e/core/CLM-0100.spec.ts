@@ -3,13 +3,13 @@
  *  Source  : docs/client-features.yaml
  */
 import { test, expect } from '@playwright/test';
-import { setupTestPage } from '../helpers';
+
 import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe("カーソル管理テスト", () => {
-    test.beforeEach(async ({ page }) => {
-        await setupTestPage(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test("通常クリックでカーソル数が増えない", async ({ page }) => {

@@ -3,15 +3,19 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
-import { setupTestPage } from "../helpers";
+
 import { TreeValidator } from "../utils/treeValidation";
 import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
 
 test.describe('カーソル移動時のフォーマット表示の一貫性', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    await TestHelpers.prepareTestEnvironment(page, testInfo);
+  });
+
   test('カーソル移動時に制御文字の表示/非表示が適切に切り替わる', async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const firstItem = page.locator('.outliner-item').first();
@@ -68,7 +72,7 @@ test.describe('カーソル移動時のフォーマット表示の一貫性', ()
 
   test('タイトルは常にボールド表示される', async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // タイトルを選択
     const pageTitle = page.locator('.page-title');
@@ -106,7 +110,7 @@ test.describe('カーソル移動時のフォーマット表示の一貫性', ()
 
   test('外部リンク構文が正しく表示される', async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const firstItem = page.locator('.outliner-item').first();
@@ -140,7 +144,7 @@ test.describe('カーソル移動時のフォーマット表示の一貫性', ()
 
   test('内部リンク構文が正しく表示される', async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const firstItem = page.locator('.outliner-item').first();
@@ -175,12 +179,12 @@ test.describe('カーソル移動時のフォーマット表示の一貫性', ()
 
   test('SharedTreeデータが正しく保存される', async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // SharedTreeデータ取得用のデバッグ関数をセットアップ
     await page.addInitScript(() => {
       // グローバルオブジェクトにデバッグ関数を追加
-      window.getFluidTreeDebugData = function() {
+      window.getFluidTreeDebugData = function () {
         // グローバルFluidClientインスタンスを取得
         const fluidClient = window.__FLUID_CLIENT__;
         if (!fluidClient) {

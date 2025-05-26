@@ -98,6 +98,40 @@
             "type": "shell",
             "command": "Remove-Item -Recurse -Force ${workspaceFolder}\\.vscode\\chrome-debug-profile"
             // Windows の場合は PowerShell: "Remove-Item -Recurse -Force ${workspaceFolder}\\.vscode\\chrome-debug-profile"
+        },
+        {
+            "label": "npm: build - functions",
+            "type": "npm",
+            "script": "build",
+            "path": "functions",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "problemMatcher": "$tsc"
+        },
+        {
+            "label": "Kill Firebase Emulator",
+            "type": "shell",
+            "command": "pkill -f \"firebase emulators\" || true",
+            "problemMatcher": [],
+            "group": "none"
+        },
+        {
+            "label": "Start Firebase Functions Emulator",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/functions && firebase emulators:start --inspect-functions=9229 --only functions",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "custom",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "beginsPattern": "Starting emulators",
+                    "endsPattern": "All emulators ready"
+                }
+            }
         }
     ],
     "compounds": [

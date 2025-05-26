@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { setupTestPage, waitForCursorVisible } from "../helpers";
 import { TreeValidator } from "../utils/treeValidation";
+import { TestHelpers } from "../utils/testHelpers";
+import { waitForCursorVisible } from "../helpers";
 
 /**
  * @file FMT-0007.spec.ts
@@ -11,13 +12,17 @@ import { TreeValidator } from "../utils/treeValidation";
  */
 
 test.describe("FMT-0007: 内部リンク機能", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    await TestHelpers.prepareTestEnvironment(page, testInfo);
+  });
+
   /**
    * @testcase 通常の内部リンク構文が正しく表示される
    * @description [page-name] 形式の内部リンクが正しく表示されることを確認するテスト
    */
   test("通常の内部リンク構文が正しく表示される", async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();
@@ -54,7 +59,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
    */
   test("プロジェクト内部リンク構文が正しく表示される", async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();
@@ -92,7 +97,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
    */
   test("カーソルがあるアイテムでは内部リンクがプレーンテキストで表示される", async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();
@@ -129,7 +134,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
    */
   test("内部リンクのデータが正しく保存される", async ({ page }) => {
     // テストページをセットアップ
-    await setupTestPage(page);
+
 
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();

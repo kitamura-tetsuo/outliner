@@ -4,10 +4,10 @@ import {
 } from "@playwright/test";
 
 test.describe("マルチカーソル E2E テスト", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
         await page.goto("/");
         // アウトライナーアイテムが表示されるのを待機

@@ -2,7 +2,7 @@
 import { vi } from "vitest";
 
 // Vi.js mocking setup
-vi.mock("../stores/firestoreStore", async () => {
+vi.mock("../stores/firestoreStore.svelte", async () => {
     const mockStore = await import("./mocks/mockFirestoreStore");
     return { ...mockStore };
 });
@@ -15,7 +15,7 @@ import {
     expect,
     it,
 } from "vitest";
-import * as firestoreStore from "../stores/firestoreStore";
+import * as firestoreStore from "../stores/firestoreStore.svelte";
 import { setupMocks } from "./mocks";
 import { setupMockFirestore } from "./mocks/firestoreMock";
 
@@ -43,7 +43,7 @@ describe("Firestore Store", () => {
     });
 
     it("should provide container data through the store", () => {
-        const containerData = get(firestoreStore.userContainer);
+        const containerData = get(firestoreStore.firestoreStore.userContainer);
 
         expect(containerData).not.toBeNull();
         expect(containerData?.userId).toBe("test-user-id");

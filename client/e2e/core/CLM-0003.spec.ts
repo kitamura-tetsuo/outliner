@@ -10,13 +10,8 @@ import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0003: 右へ移動", () => {
-    test.beforeEach(async ({ page }) => {
-        // アプリを開く
-        await page.goto("/");
-        // OutlinerItem がレンダリングされるのを待つ
-        await page.waitForSelector(".outliner-item");
-        // カーソル情報取得用のデバッグ関数をセットアップ
-        await TestHelpers.setupCursorDebugger(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // 最初のアイテムを取得 (first()の代わりにページタイトルを使用)
         // ページが読み込まれた直後は最初のアイテムがページタイトルになる

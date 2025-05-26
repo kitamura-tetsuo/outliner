@@ -6,14 +6,17 @@ export {
     getDefaultContainerId,
     saveContainerId,
     saveContainerIdToServer as saveFirestoreContainerIdToServer,
-    userContainer,
-} from "../stores/firestoreStore";
+    firestoreStore,
+} from "../stores/firestoreStore.svelte";
 
 // FluidService関連の関数をエクスポート
 export {
     cleanupFluidClient,
     createFluidClient,
     createNewContainer,
+    deleteContainer,
+    getFluidClientByProjectTitle,
+    getUserContainers,
     initFluidClientWithAuth,
     loadContainer,
 } from "../lib/fluidService";

@@ -2,10 +2,6 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import {
-    setupTestPage,
-    waitForCursorVisible,
-} from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 import { CursorValidator } from "../utils/cursorValidation";
@@ -17,6 +13,10 @@ import { CursorValidator } from "../utils/cursorValidation";
  * @title 仮ページ機能
  */
 test.describe("LNK-0004: 仮ページ機能", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
+    });
+
     /**
      * @testcase 存在しないページへのリンクをクリックした場合に仮ページが表示される
      * @description 存在しないページへのリンクをクリックした場合に仮ページが表示されることを確認するテスト
@@ -24,11 +24,11 @@ test.describe("LNK-0004: 仮ページ機能", () => {
     test("存在しないページへのリンクをクリックした場合に仮ページが表示される", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -68,11 +68,11 @@ test.describe("LNK-0004: 仮ページ機能", () => {
     test("仮ページを編集した場合に実際のページとして保存される", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -136,11 +136,11 @@ test.describe("LNK-0004: 仮ページ機能", () => {
     test("仮ページにアクセスしただけではページが作成されないことを確認", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -195,11 +195,11 @@ test.describe("LNK-0004: 仮ページ機能", () => {
     test("仮ページの通知UIが正しく表示される", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -250,11 +250,11 @@ test.describe("LNK-0004: 仮ページ機能", () => {
     test("仮ページの通知UIのアクションボタンが機能する", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-            window.localStorage.setItem("authenticated", "true");
+
         });
 
         // テストページをセットアップ
-        await setupTestPage(page);
+
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();

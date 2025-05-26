@@ -54,14 +54,13 @@ const periodicLogRotation = async () => {
             refreshServerLogStream();
         }
 
-        logger.info(`Periodic log rotation completed: ${
-            JSON.stringify({
-                clientRotated,
-                telemetryRotated,
-                serverRotated,
-                timestamp: new Date().toISOString(),
-            })
-        }`);
+        logger.info(`Periodic log rotation completed: ${JSON.stringify({
+            clientRotated,
+            telemetryRotated,
+            serverRotated,
+            timestamp: new Date().toISOString(),
+        })
+            }`);
     }
     catch (error) {
         logger.error(`Error during periodic log rotation: ${error.message}`);
@@ -142,13 +141,12 @@ try {
             .then(listUsersResult => {
                 logger.info(`Firebase connection test successful. Found users: ${listUsersResult.users.length}`);
                 if (listUsersResult.users.length > 0) {
-                    logger.info(`First user: ${
-                        JSON.stringify({
-                            uid: listUsersResult.users[0].uid,
-                            email: listUsersResult.users[0].email,
-                            displayName: listUsersResult.users[0].displayName,
-                        })
-                    }`);
+                    logger.info(`First user: ${JSON.stringify({
+                        uid: listUsersResult.users[0].uid,
+                        email: listUsersResult.users[0].email,
+                        displayName: listUsersResult.users[0].displayName,
+                    })
+                        }`);
                 }
             })
             .catch(listError => {
@@ -166,11 +164,27 @@ try {
         devAuthHelper.setupTestUser()
             .then(user => {
                 logger.info(`開発環境用テストユーザーをセットアップしました: ${user.email} (${user.uid})`);
+
+                // テストユーザーのセットアップ後、Firestoreエミュレータのデータをクリア
+                const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
+                if (isEmulator) {
+                    clearFirestoreEmulatorData()
+                        .then(cleared => {
+                            if (cleared) {
+                                logger.info("開発環境の Firestore エミュレータデータを消去しました");
+                            }
+                        })
+                        .catch(error => {
+                            logger.error(`Firestore エミュレータデータの消去に失敗しました: ${error.message}`);
+                        });
+                }
             })
             .catch(error => {
                 logger.warn(`テストユーザーのセットアップに失敗しました: ${error.message}`);
             });
     }
+
+
 }
 catch (error) {
     logger.error(`Firebase初期化エラー: ${error.message}`);
@@ -201,6 +215,67 @@ app.get("/health", (req, res) => {
 const db = admin.firestore();
 const userContainersCollection = db.collection("userContainers");
 const containerUsersCollection = db.collection("containerUsers");
+
+// Firestore エミュレータのデータを全て消去する関数
+async function clearFirestoreEmulatorData() {
+    // エミュレータ環境でのみ実行
+    const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
+    if (!isEmulator) {
+        logger.warn("Firestore エミュレータが検出されなかったため、データ消去をスキップします");
+        return false;
+    }
+
+    try {
+        logger.info("Firestore エミュレータのデータを消去しています...");
+
+        // ルートコレクションを取得
+        const collections = await db.listCollections();
+
+        // 各コレクションのドキュメントを削除
+        for (const collection of collections) {
+            const collectionName = collection.id;
+            logger.info(`コレクション '${collectionName}' のドキュメントを削除しています...`);
+
+            const batchSize = 500;
+            const query = db.collection(collectionName).limit(batchSize);
+
+            await deleteQueryBatch(query);
+
+            logger.info(`コレクション '${collectionName}' のドキュメントを削除しました`);
+        }
+
+        logger.info("Firestore エミュレータのデータを全て消去しました");
+        return true;
+    } catch (error) {
+        logger.error(`Firestore エミュレータのデータ消去中にエラーが発生しました: ${error.message}`);
+        return false;
+    }
+}
+
+// バッチ処理でドキュメントを削除する関数
+async function deleteQueryBatch(query) {
+    const snapshot = await query.get();
+
+    // ドキュメントが存在しない場合は終了
+    if (snapshot.size === 0) {
+        return;
+    }
+
+    // バッチ処理でドキュメントを削除
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+
+    // 再帰的に残りのドキュメントを削除
+    if (snapshot.size > 0) {
+        await deleteQueryBatch(query);
+    }
+}
+
+// 注: テストユーザーのセットアップ後にデータクリアを行うため、ここでの実行は不要
 
 // 注意: /api/save-container エンドポイントはFirebase Functionsに移行しました
 // 注意: /api/get-user-containers エンドポイントはFirebase Functionsに移行しました
@@ -371,7 +446,7 @@ if (isDevelopment) {
 
                 const buffer = Buffer.alloc(length);
                 fs.read(fd, buffer, 0, length, position, (err, bytesRead, buffer) => {
-                    fs.close(fd, () => {});
+                    fs.close(fd, () => { });
 
                     if (err) {
                         logger.error(`Telemetryログファイルの読み込みに失敗しました: ${err.message}`);
@@ -437,14 +512,13 @@ app.post("/api/rotate-logs", async (req, res) => {
         });
 
         // 新しいログファイルに情報を記録
-        logger.info(`ログファイルをローテーションしました: ${
-            JSON.stringify({
-                clientRotated,
-                telemetryRotated,
-                serverRotated,
-                timestamp: new Date().toISOString(),
-            })
-        }`);
+        logger.info(`ログファイルをローテーションしました: ${JSON.stringify({
+            clientRotated,
+            telemetryRotated,
+            serverRotated,
+            timestamp: new Date().toISOString(),
+        })
+            }`);
     }
     catch (error) {
         logger.error(`ログローテーション中にエラーが発生しました: ${error.message}`);
