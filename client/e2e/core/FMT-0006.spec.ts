@@ -50,7 +50,8 @@ test.describe('カーソル移動時のフォーマット表示の一貫性', ()
     // 2つ目のアイテムのテキスト内容を確認（制御文字が非表示で内部リンクが適用されていること）
     const secondItem = page.locator('.outliner-item').nth(1);
     const secondItemTextWithoutCursor = await secondItem.locator('.item-text').innerHTML();
-    expect(secondItemTextWithoutCursor).toContain('class="internal-link">asd</a>');
+    expect(secondItemTextWithoutCursor).toContain('class="internal-link');
+    expect(secondItemTextWithoutCursor).toContain('>asd</a>');
     expect(secondItemTextWithoutCursor).toContain(']');
 
     // 最初のアイテムに戻る

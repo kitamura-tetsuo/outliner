@@ -90,6 +90,7 @@
                     store.currentPage = foundPage;
                     isTemporaryPage = false;
                     hasBeenEdited = false;
+                    logger.info(`Found existing page: ${pageName}`);
                 } else {
                     // プロジェクトは存在するが、ページが存在しない場合は仮ページを表示
                     isTemporaryPage = true;

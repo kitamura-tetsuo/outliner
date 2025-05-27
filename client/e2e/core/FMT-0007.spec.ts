@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { TreeValidator } from "../utils/treeValidation";
 import { TestHelpers } from "../utils/testHelpers";
-import { waitForCursorVisible } from "../helpers";
 
 /**
  * @file FMT-0007.spec.ts
@@ -27,21 +26,21 @@ test.describe("FMT-0007: 内部リンク機能", () => {
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();
     await firstItem.locator(".item-content").click();
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
 
     // 内部リンクテキストを入力
     await page.keyboard.type("[test-page]");
 
     // 2つ目のアイテムを作成
     await page.keyboard.press("Enter");
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
 
     // 別のテキストを入力
     await page.keyboard.type("別のアイテム");
 
     // 3つ目のアイテムをクリック（カーソルを最初のアイテムから離す）
     await page.keyboard.press("Enter");
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
     await page.keyboard.type("3つ目のアイテム");
 
     // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
@@ -64,21 +63,21 @@ test.describe("FMT-0007: 内部リンク機能", () => {
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();
     await firstItem.locator(".item-content").click();
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
 
     // プロジェクト内部リンクテキストを入力
     await page.keyboard.type("[/project-name/page-name]");
 
     // 2つ目のアイテムを作成
     await page.keyboard.press("Enter");
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
 
     // 別のテキストを入力
     await page.keyboard.type("別のアイテム");
 
     // 3つ目のアイテムをクリック（カーソルを最初のアイテムから離す）
     await page.keyboard.press("Enter");
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
     await page.keyboard.type("3つ目のアイテム");
 
     // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
@@ -102,21 +101,22 @@ test.describe("FMT-0007: 内部リンク機能", () => {
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();
     await firstItem.locator(".item-content").click();
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
 
     // 内部リンクテキストを入力
     await page.keyboard.type("[test-page]");
 
-    // カーソルがあるアイテムのテキスト内容を確認（プレーンテキストで表示されていること）
+    // カーソルがあるアイテムのテキスト内容を確認（制御文字が表示されていること）
     const firstItemTextWithCursor = await firstItem.locator(".item-text").innerHTML();
 
-    // プレーンテキストで表示されていることを確認
-    expect(firstItemTextWithCursor).toContain("[test-page]");
-    expect(firstItemTextWithCursor).not.toContain('href="/test-page"');
+    // 制御文字が表示されていることを確認
+    expect(firstItemTextWithCursor).toContain('class="control-char">[');
+    expect(firstItemTextWithCursor).toContain('class="control-char">]');
+    expect(firstItemTextWithCursor).toContain('href="/test-page"');
 
     // 2つ目のアイテムを作成してカーソルを移動
     await page.keyboard.press("Enter");
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
     await page.keyboard.type("別のアイテム");
 
     // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
@@ -139,14 +139,14 @@ test.describe("FMT-0007: 内部リンク機能", () => {
     // 最初のアイテムを選択
     const firstItem = page.locator(".outliner-item").first();
     await firstItem.locator(".item-content").click();
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
 
     // 通常の内部リンクを入力
     await page.keyboard.type("[test-page]");
 
     // 2つ目のアイテムを作成
     await page.keyboard.press("Enter");
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
 
     // プロジェクト内部リンクを入力
     await page.keyboard.type("[/project-name/page-name]");

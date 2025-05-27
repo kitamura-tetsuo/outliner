@@ -98,7 +98,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
+        await expect(page.locator('.editor-overlay .selection').first()).toBeVisible();
 
         // 少し待機して選択が反映されるのを待つ
         await page.waitForTimeout(300);
@@ -221,7 +221,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         });
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
+        await expect(page.locator('.editor-overlay .selection').first()).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {

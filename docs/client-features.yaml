@@ -687,31 +687,20 @@
     - 'テスト前の環境準備を標準化することで、テスト間の依存関係を減少'
 
 - id: FLD-0001
-  title: 'プロジェクト名からFluidClientを取得する機能'
-  description: 'プロジェクト名をコンテナIDとして使用し、対応するFluidClientインスタンスを取得する機能'
-  category: fluid-service
-  status: implemented
-  acceptance:
-    - 'プロジェクト名からFluidClientインスタンスを取得できる'
-    - 'プロジェクト名が指定されていない場合はエラーを返す'
-    - '取得したFluidClientインスタンスを使用してプロジェクトデータにアクセスできる'
-    - 'プロジェクトレイアウトでこの機能を使用してプロジェクトデータを読み込める'
-  tests:
-    - client/e2e/core/FLD-0001.spec.ts
-
-- id: FLD-0002
   title: 'プロジェクトタイトルからFluidClientを取得する機能'
-  description: 'clientRegistryを走査して、Project.titleが一致するFluidClientインスタンスを取得する機能'
+  description: 'clientRegistryを走査して、Project.titleが一致するFluidClientインスタンスを取得する機能。プロジェクトタイトルとFluid containerのIDは1:1の対応関係にある。'
   category: fluid-service
   status: implemented
   acceptance:
     - 'プロジェクトタイトルからFluidClientインスタンスを取得できる'
     - 'プロジェクトタイトルが指定されていない場合はエラーを返す'
-    - 'プロジェクトタイトルに一致するFluidClientが見つからない場合はnullを返す'
+    - 'プロジェクトタイトルに一致するFluidClientが見つからない場合はundefinedを返す'
     - 'clientRegistryに登録されている全てのFluidClientを走査して一致するものを探す'
     - '取得したFluidClientインスタンスを使用してプロジェクトデータにアクセスできる'
+    - 'プロジェクトレイアウトでこの機能を使用してプロジェクトデータを読み込める'
+    - '新しいプロジェクトを作成してからFluidClientを取得できる'
   tests:
-    - client/e2e/core/FLD-0002.spec.ts
+    - client/e2e/core/FLD-0001.spec.ts
 
 - id: NAV-0001
   title: 'プロジェクト選択とページナビゲーション'

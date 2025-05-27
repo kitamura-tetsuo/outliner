@@ -1,77 +1,90 @@
 import { expect, test } from '@playwright/test';
-import { TestHelpers } from '../utils/testHelpers';
+import { TestHelpers, FluidServiceHelper } from '../utils/testHelpers';
 
 /**
- * FLD-0001: プロジェクト名からFluidClientを取得する機能のテスト
- * 
- * このテストでは、プロジェクト名からFluidClientインスタンスを取得する機能をテストします。
- * プロジェクト名をコンテナIDとして使用し、対応するFluidClientインスタンスを取得できることを確認します。
+ * FLD-0001: プロジェクトタイトルからFluidClientを取得する機能のテスト
+ *
+ * このテストでは、プロジェクトタイトルからFluidClientインスタンスを取得する機能をテストします。
+ * プロジェクトタイトルに基づいて対応するFluidClientインスタンスを取得できることを確認します。
  */
-test.describe('FLD-0001: プロジェクト名からFluidClientを取得する機能', () => {
-    // テスト用のプロジェクト名
-    const testProjectName = `test-project-${Date.now()}`;
+test.describe('FLD-0001: プロジェクトタイトルからFluidClientを取得する機能', () => {
+    // テスト用のプロジェクトタイトル
+    const testProjectTitle = `test-project-${Date.now()}`;
 
     // テスト前の準備
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // ユーザーがログインしていることを確認
-
-        expect(userManager.getCurrentUser()).not.toBeNull();
+        const currentUser = await FluidServiceHelper.getCurrentUser(page);
+        expect(currentUser).not.toBeNull();
     });
 
-    test('プロジェクト名からFluidClientインスタンスを取得できる', async () => {
-        // プロジェクト名からFluidClientを取得
-        const fluidClient = await getFluidClientByProjectTitle(testProjectName);
+    test('プロジェクトタイトルからFluidClientインスタンスを取得できる', async ({ page }) => {
+        // テスト用のプロジェクトを作成
+        await FluidServiceHelper.createNewContainer(page, testProjectTitle);
+
+        // プロジェクトタイトルからFluidClientを取得
+        const fluidClientInfo = await FluidServiceHelper.getFluidClientByProjectTitle(page, testProjectTitle);
 
         // FluidClientインスタンスが正しく取得できたことを確認
-        expect(fluidClient).not.toBeNull();
-        expect(fluidClient.containerId).toBe(testProjectName);
+        expect(fluidClientInfo).not.toBeNull();
+        expect(fluidClientInfo.containerId).toBeDefined();
 
         // プロジェクトデータにアクセスできることを確認
-        const project = fluidClient.getProject();
-        expect(project).not.toBeNull();
+        expect(fluidClientInfo.project).not.toBeNull();
+        expect(fluidClientInfo.project.title).toBe(testProjectTitle);
     });
 
-    test('プロジェクト名が指定されていない場合はエラーを返す', async () => {
-        // 空のプロジェクト名でFluidClientを取得しようとするとエラーになることを確認
+    test('プロジェクトタイトルが指定されていない場合はエラーを返す', async ({ page }) => {
+        // 空のプロジェクトタイトルでFluidClientを取得しようとするとエラーになることを確認
         try {
-            await getFluidClientByProjectTitle('');
+            await FluidServiceHelper.getFluidClientByProjectTitle(page, '');
             // エラーが発生しなかった場合はテスト失敗
             expect(true).toBe(false);
         } catch (error) {
-            // エラーメッセージを確認
-            expect(error.message).toBe('プロジェクト名が指定されていません');
+            // エラーメッセージを確認（page.evaluateのエラーメッセージ形式を考慮）
+            expect(error.message).toContain('プロジェクトタイトルが指定されていません');
         }
     });
 
+    test('プロジェクトタイトルに一致するFluidClientが見つからない場合はundefinedを返す', async ({ page }) => {
+        // 存在しないプロジェクトタイトルでFluidClientを取得
+        const fluidClientInfo = await FluidServiceHelper.getFluidClientByProjectTitle(page, '存在しないプロジェクト');
+
+        // undefinedが返されることを確認
+        expect(fluidClientInfo).toBeUndefined();
+    });
+
     test('取得したFluidClientインスタンスを使用してプロジェクトデータにアクセスできる', async ({ page }) => {
-        // プロジェクト名からFluidClientを取得
-        const fluidClient = await getFluidClientByProjectTitle(testProjectName);
-        expect(fluidClient).not.toBeUndefined();
+        // テスト用のプロジェクトを作成
+        await FluidServiceHelper.createNewContainer(page, testProjectTitle);
+
+        // プロジェクトタイトルからFluidClientを取得
+        const fluidClientInfo = await FluidServiceHelper.getFluidClientByProjectTitle(page, testProjectTitle);
+        expect(fluidClientInfo).not.toBeUndefined();
 
         // プロジェクトデータを取得
-        const project = fluidClient!.getProject();
-        expect(project).not.toBeNull();
-
-        const treeData = fluidClient!.getTreeAsJson();
+        expect(fluidClientInfo.project).not.toBeNull();
+        expect(fluidClientInfo.project.title).toBe(testProjectTitle);
 
         // プロジェクトデータの基本構造を検証
-        expect(treeData.hasProperty('items')).toBe(true);
+        expect(fluidClientInfo.treeData.hasOwnProperty('items')).toBe(true);
     });
 
     test('プロジェクトレイアウトでこの機能を使用してプロジェクトデータを読み込める', async ({ page }) => {
-        // プロジェクトページに移動
-        await page.goto(`/${testProjectName}`);
+        // テスト用のプロジェクトを作成
+        await FluidServiceHelper.createNewContainer(page, testProjectTitle);
 
-        // ページが正しく読み込まれたことを確認
-        await expect(page).toHaveURL(new RegExp(`/${testProjectName}`));
+        // プロジェクトタイトルからFluidClientを取得
+        const fluidClientInfo = await FluidServiceHelper.getFluidClientByProjectTitle(page, testProjectTitle);
+        expect(fluidClientInfo).not.toBeNull();
 
-        // プロジェクトデータが読み込まれるまで待機
-        await page.waitForSelector('.project-container', { timeout: 10000 });
+        // FluidClientが正しく初期化されていることを確認
+        expect(fluidClientInfo.containerId).toBeDefined();
 
-        // プロジェクトデータが正しく表示されていることを確認
-        const projectTitle = await page.locator('.project-title').textContent();
-        expect(projectTitle).not.toBeNull();
+        // プロジェクトデータが正しく設定されていることを確認
+        expect(fluidClientInfo.project).not.toBeNull();
+        expect(fluidClientInfo.project.title).toBe(testProjectTitle);
     });
 });

@@ -251,6 +251,124 @@ export class Cursor {
         return offset - lineStartOffset;
     }
 
+    // 視覚的な行の情報を取得する
+    private getVisualLineInfo(itemId: string, offset: number): { lineIndex: number; lineStartOffset: number; lineEndOffset: number; totalLines: number; lines: Array<{ startOffset: number; endOffset: number; y: number }> } | null {
+        if (typeof window === 'undefined') return null;
+
+        const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
+        if (!itemElement) return null;
+
+        const textElement = itemElement.querySelector('.item-text') as HTMLElement;
+        if (!textElement) return null;
+
+        const text = textElement.textContent || '';
+        if (text.length === 0) {
+            return {
+                lineIndex: 0,
+                lineStartOffset: 0,
+                lineEndOffset: 0,
+                totalLines: 1,
+                lines: [{ startOffset: 0, endOffset: 0, y: 0 }]
+            };
+        }
+
+        // Range API を使用して視覚的な行を判定
+        const textNode = Array.from(textElement.childNodes).find(node => node.nodeType === Node.TEXT_NODE) as Text;
+        if (!textNode) return null;
+
+        try {
+            // 各文字位置での Y 座標を取得して行を判定
+            const lines: { startOffset: number; endOffset: number; y: number }[] = [];
+            let currentLineY: number | null = null;
+            let currentLineStart = 0;
+
+            // 1文字単位でサンプリングして正確な行境界を検出
+            const step = 1;
+
+            for (let i = 0; i <= text.length; i += step) {
+                const actualOffset = Math.min(i, text.length);
+                const range = document.createRange();
+                const safeOffset = Math.min(actualOffset, textNode.textContent?.length || 0);
+                range.setStart(textNode, safeOffset);
+                range.setEnd(textNode, safeOffset);
+
+                const rect = range.getBoundingClientRect();
+                const y = Math.round(rect.top);
+
+                if (currentLineY === null) {
+                    currentLineY = y;
+                } else if (Math.abs(y - currentLineY) > 2) { // 2px以上の差があれば新しい行（より精密に検出）
+                    // 新しい行が始まった
+                    lines.push({
+                        startOffset: currentLineStart,
+                        endOffset: Math.max(currentLineStart, actualOffset - 1), // 最低でも開始位置は含める
+                        y: currentLineY
+                    });
+                    currentLineStart = actualOffset;
+                    currentLineY = y;
+                }
+            }
+
+            // 最後の行を追加
+            if (currentLineY !== null) {
+                lines.push({
+                    startOffset: currentLineStart,
+                    endOffset: text.length,
+                    y: currentLineY
+                });
+            }
+
+            // 行が検出されなかった場合は単一行として扱う
+            if (lines.length === 0) {
+                lines.push({
+                    startOffset: 0,
+                    endOffset: text.length,
+                    y: textElement.getBoundingClientRect().top
+                });
+            }
+
+            // 現在のオフセットがどの行にあるかを判定
+            let currentLineIndex = 0;
+            for (let i = 0; i < lines.length; i++) {
+                if (offset >= lines[i].startOffset && offset <= lines[i].endOffset) {
+                    currentLineIndex = i;
+                    break;
+                }
+            }
+
+            // 範囲外の場合は最後の行に設定
+            if (currentLineIndex >= lines.length) {
+                currentLineIndex = lines.length - 1;
+            }
+
+            const currentLine = lines[currentLineIndex];
+            return {
+                lineIndex: currentLineIndex,
+                lineStartOffset: currentLine.startOffset,
+                lineEndOffset: currentLine.endOffset,
+                totalLines: lines.length,
+                lines: lines
+            };
+        } catch (error) {
+            console.error('Error getting visual line info:', error);
+            return null;
+        }
+    }
+
+    // 指定した視覚的な行のオフセット範囲を取得する
+    private getVisualLineOffsetRange(itemId: string, lineIndex: number): { startOffset: number; endOffset: number } | null {
+        const visualInfo = this.getVisualLineInfo(itemId, 0); // 任意のオフセットで行情報を取得
+        if (!visualInfo || lineIndex < 0 || lineIndex >= visualInfo.totalLines) {
+            return null;
+        }
+
+        const targetLine = visualInfo.lines[lineIndex];
+        return {
+            startOffset: targetLine.startOffset,
+            endOffset: targetLine.endOffset
+        };
+    }
+
     // 上下キー以外の操作が行われたときに初期列位置をリセット
     private resetInitialColumn() {
         this.initialColumn = null;
@@ -306,66 +424,77 @@ export class Cursor {
             console.log(`moveUp called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
-        const text = target.text || "";
-        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
-        const currentColumn = this.getCurrentColumn(text, this.offset);
+        // 視覚的な行の情報を取得
+        const visualLineInfo = this.getVisualLineInfo(this.itemId, this.offset);
+
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`getVisualLineInfo result:`, visualLineInfo);
+        }
+
+        if (!visualLineInfo) {
+            // フォールバック: 論理的な行での処理（改行文字ベース）
+            const text = target.text || "";
+            const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+            if (currentLineIndex > 0) {
+                const prevLineStart = this.getLineStartOffset(text, currentLineIndex - 1);
+                this.offset = prevLineStart;
+                this.applyToStore();
+                store.startCursorBlink();
+            } else {
+                this.navigateToItem("up");
+            }
+            return;
+        }
+
+        const { lineIndex, lineStartOffset, totalLines } = visualLineInfo;
+
+        // 現在の列位置を計算（視覚的な行内での位置）
+        const currentColumn = this.offset - lineStartOffset;
 
         // 初期列位置を設定または更新
         if (this.initialColumn === null) {
             this.initialColumn = currentColumn;
         }
 
-        // 使用する列位置（初期列位置または現在の列位置）
+        // 使用する列位置（初期列位置）
         const targetColumn = this.initialColumn;
 
         // デバッグ情報
         if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Current line index: ${currentLineIndex}, column: ${currentColumn}, initialColumn: ${this.initialColumn}, text: "${text}"`);
+            console.log(`Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`);
         }
 
-        if (currentLineIndex > 0) {
-            // 同じアイテム内の上の行に移動
-            const prevLineIndex = currentLineIndex - 1;
-            const prevLineStart = this.getLineStartOffset(text, prevLineIndex);
-            const prevLineEnd = this.getLineEndOffset(text, prevLineIndex);
-            const prevLineLength = prevLineEnd - prevLineStart;
+        if (lineIndex > 0) {
+            // 同じアイテム内の上の視覚的な行に移動
+            const prevLineRange = this.getVisualLineOffsetRange(this.itemId, lineIndex - 1);
+            if (prevLineRange) {
+                const prevLineLength = prevLineRange.endOffset - prevLineRange.startOffset;
+                // 初期列位置か行の長さの短い方に移動
+                this.offset = prevLineRange.startOffset + Math.min(targetColumn, prevLineLength);
+                this.applyToStore();
 
-            // 初期列位置か行の長さの短い方に移動
-            this.offset = prevLineStart + Math.min(targetColumn, prevLineLength);
-            this.applyToStore();
+                // デバッグ情報
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`Moved to previous visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`);
+                }
 
-            // デバッグ情報
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                console.log(`Moved to previous line in same item: offset=${this.offset}, targetColumn=${targetColumn}`);
+                // カーソル点滅を開始
+                store.startCursorBlink();
             }
         } else {
             // 前のアイテムを探す
             const prevItem = this.findPreviousItem();
-
             if (prevItem) {
-                // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Found previous item: id=${prevItem.id}, text="${prevItem.text}"`);
-                }
-
-                // 前のアイテムの最後の行に移動
-                const prevText = prevItem.text || "";
-                const prevLines = prevText.split('\n');
-                const lastLineIndex = prevLines.length - 1;
-                const lastLineStart = this.getLineStartOffset(prevText, lastLineIndex);
-                const lastLineEnd = this.getLineEndOffset(prevText, lastLineIndex);
-                const lastLineLength = lastLineEnd - lastLineStart;
-
-                // 前のアイテムに移動（navigateToItemメソッドで初期列位置を考慮した移動を行う）
+                // 前のアイテムの最後の視覚的な行に移動
                 this.navigateToItem("up");
 
                 // デバッグ情報
                 if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}, targetColumn=${targetColumn}`);
+                    console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
             } else {
                 // 前のアイテムがない場合は、同じアイテムの先頭に移動
-                // 現在のオフセットが既に先頭の場合は何もしない
                 if (this.offset > 0) {
                     this.offset = 0;
                     this.applyToStore();
@@ -386,54 +515,84 @@ export class Cursor {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
-        const lines = text.split('\n');
-        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
-        const currentColumn = this.getCurrentColumn(text, this.offset);
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`moveDown called for itemId=${this.itemId}, offset=${this.offset}`);
+        }
+
+        // 視覚的な行の情報を取得
+        const visualLineInfo = this.getVisualLineInfo(this.itemId, this.offset);
+
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`getVisualLineInfo result:`, visualLineInfo);
+        }
+
+        if (!visualLineInfo) {
+            // フォールバック: 論理的な行での処理（改行文字ベース）
+            const text = target.text || "";
+            const lines = text.split('\n');
+            const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+            if (currentLineIndex < lines.length - 1) {
+                const nextLineStart = this.getLineStartOffset(text, currentLineIndex + 1);
+                this.offset = nextLineStart;
+                this.applyToStore();
+                store.startCursorBlink();
+            } else {
+                this.navigateToItem("down");
+            }
+            return;
+        }
+
+        const { lineIndex, lineStartOffset, totalLines } = visualLineInfo;
+
+        // 現在の列位置を計算（視覚的な行内での位置）
+        const currentColumn = this.offset - lineStartOffset;
 
         // 初期列位置を設定または更新
         if (this.initialColumn === null) {
             this.initialColumn = currentColumn;
         }
 
-        // 使用する列位置（初期列位置または現在の列位置）
+        // 使用する列位置（初期列位置）
         const targetColumn = this.initialColumn;
 
         // デバッグ情報
         if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Current line index: ${currentLineIndex}, column: ${currentColumn}, initialColumn: ${this.initialColumn}, text: "${text}"`);
+            console.log(`Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`);
         }
 
-        if (currentLineIndex < lines.length - 1) {
-            // 同じアイテム内の下の行に移動
-            const nextLineIndex = currentLineIndex + 1;
-            const nextLineStart = this.getLineStartOffset(text, nextLineIndex);
-            const nextLineEnd = this.getLineEndOffset(text, nextLineIndex);
-            const nextLineLength = nextLineEnd - nextLineStart;
+        if (lineIndex < totalLines - 1) {
+            // 同じアイテム内の下の視覚的な行に移動
+            const nextLineRange = this.getVisualLineOffsetRange(this.itemId, lineIndex + 1);
+            if (nextLineRange) {
+                const nextLineLength = nextLineRange.endOffset - nextLineRange.startOffset;
+                // 初期列位置か行の長さの短い方に移動
+                this.offset = nextLineRange.startOffset + Math.min(targetColumn, nextLineLength);
+                this.applyToStore();
 
-            // 初期列位置か行の長さの短い方に移動
-            this.offset = nextLineStart + Math.min(targetColumn, nextLineLength);
-            this.applyToStore();
+                // デバッグ情報
+                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    console.log(`Moved to next visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`);
+                }
 
-            // デバッグ情報
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                console.log(`Moved to next line in same item: offset=${this.offset}, targetColumn=${targetColumn}`);
+                // カーソル点滅を開始
+                store.startCursorBlink();
             }
         } else {
             // 次のアイテムを探す
             const nextItem = this.findNextItem();
-
             if (nextItem) {
-                // 次のアイテムの最初の行に移動（navigateToItemメソッドで初期列位置を考慮した移動を行う）
+                // 次のアイテムの最初の視覚的な行に移動
                 this.navigateToItem("down");
 
                 // デバッグ情報
                 if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}, targetColumn=${targetColumn}`);
+                    console.log(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
             } else {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動
-                // 現在のオフセットが既に末尾の場合は何もしない
+                const text = target.text || "";
                 if (this.offset < text.length) {
                     this.offset = text.length;
                     this.applyToStore();

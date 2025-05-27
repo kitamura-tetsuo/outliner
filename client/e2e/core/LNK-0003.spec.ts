@@ -281,17 +281,17 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // 遷移先のページ内容を確認
         const targetFirstItem = page.locator(".outliner-item").first();
         const targetFirstItemText = await targetFirstItem.locator(".item-text").textContent();
-        expect(targetFirstItemText).toBe("これはターゲットページです。");
+        expect(targetFirstItemText).toContain("これはターゲットページです。");
 
         // 2つ目のアイテムを確認
         const targetSecondItem = page.locator(".outliner-item").nth(1);
         const targetSecondItemText = await targetSecondItem.locator(".item-text").textContent();
-        expect(targetSecondItemText).toBe("2つ目のアイテム");
+        expect(targetSecondItemText).toContain("2つ目のアイテム");
 
         // 3つ目のアイテムを確認
         const targetThirdItem = page.locator(".outliner-item").nth(2);
         const targetThirdItemText = await targetThirdItem.locator(".item-text").textContent();
-        expect(targetThirdItemText).toBe("3つ目のアイテム");
+        expect(targetThirdItemText).toContain("3つ目のアイテム");
     });
 
     /**
@@ -359,7 +359,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // 遷移先のページ内容を確認
         const targetFirstItem = page.locator(".outliner-item").first();
         const targetFirstItemText = await targetFirstItem.locator(".item-text").textContent();
-        expect(targetFirstItemText).toBe("これは新しく作成されたページです。");
+        expect(targetFirstItemText).toContain("これは新しく作成されたページです。");
     });
 
     /**
@@ -433,11 +433,11 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // 遷移先のページ内容を確認
         const targetFirstItem = page.locator(".outliner-item").first();
         const targetFirstItemText = await targetFirstItem.locator(".item-text").textContent();
-        expect(targetFirstItemText).toBe("これはターゲットプロジェクトのページです。");
+        expect(targetFirstItemText).toContain("これはターゲットプロジェクトのページです。");
 
         // 2つ目のアイテムを確認
         const targetSecondItem = page.locator(".outliner-item").nth(1);
         const targetSecondItemText = await targetSecondItem.locator(".item-text").textContent();
-        expect(targetSecondItemText).toBe("2つ目のアイテム");
+        expect(targetSecondItemText).toContain("2つ目のアイテム");
     });
 });

@@ -455,7 +455,27 @@ export class TestHelpers {
      */
     public static async forceMouseOutEvent(page: Page, selector: string): Promise<void> {
         await page.evaluate((sel) => {
-            const element = document.querySelector(sel);
+            let element: Element | null = null;
+
+            // :has-text()セレクタの場合は特別な処理
+            if (sel.includes(':has-text(')) {
+                const match = sel.match(/^(.+):has-text\("([^"]+)"\)$/);
+                if (match) {
+                    const baseSelector = match[1];
+                    const text = match[2];
+                    const elements = document.querySelectorAll(baseSelector);
+
+                    for (const el of elements) {
+                        if (el.textContent && el.textContent.includes(text)) {
+                            element = el;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                element = document.querySelector(sel);
+            }
+
             if (!element) {
                 console.error(`Element not found: ${sel}`);
                 return;
@@ -758,6 +778,123 @@ export class TestHelpers {
     // 注: 422行目に同名のメソッドが既に定義されているため、このメソッドは削除します
 }
 
+/**
+ * FluidServiceのテスト用ヘルパークラス
+ */
+export class FluidServiceHelper {
+
+
+    /**
+     * プロジェクトタイトルからFluidClientを取得する（既存のコンテナから検索）
+     * @param page Playwrightのページオブジェクト
+     * @param projectTitle プロジェクトタイトル
+     * @returns FluidClientの基本情報、見つからない場合はundefined
+     */
+    public static async getFluidClientByProjectTitle(page: Page, projectTitle: string): Promise<any> {
+        return await page.evaluate(async (title) => {
+            if (!title) {
+                throw new Error('プロジェクトタイトルが指定されていません');
+            }
+
+            const fluidService = window.__FLUID_SERVICE__;
+            if (!fluidService) {
+                throw new Error('FluidService not found');
+            }
+
+            const fluidClient = await fluidService.getFluidClientByProjectTitle(title);
+            if (!fluidClient) {
+                return undefined;
+            }
+
+            // シリアライズ可能な形式で返す
+            return {
+                containerId: fluidClient.containerId,
+                clientId: fluidClient.clientId,
+                project: {
+                    title: fluidClient.project.title
+                },
+                treeData: fluidClient.getTreeAsJson()
+            };
+        }, projectTitle);
+    }
+
+    /**
+     * 新しいコンテナを作成する
+     * @param page Playwrightのページオブジェクト
+     * @param containerName コンテナ名
+     * @returns FluidClientインスタンス
+     */
+    public static async createNewContainer(page: Page, containerName: string): Promise<any> {
+        return await page.evaluate(async (name) => {
+            const fluidService = window.__FLUID_SERVICE__;
+            if (!fluidService) {
+                throw new Error('FluidService not found');
+            }
+
+            return await fluidService.createNewContainer(name);
+        }, containerName);
+    }
+
+    /**
+     * FluidClientからプロジェクトデータを取得する
+     * @param page Playwrightのページオブジェクト
+     * @returns プロジェクトデータ
+     */
+    public static async getProjectFromFluidClient(page: Page): Promise<any> {
+        return await page.evaluate(() => {
+            const fluidStore = window.__FLUID_STORE__;
+            if (!fluidStore) {
+                throw new Error('FluidStore not found');
+            }
+
+            // 現在のFluidClientを取得
+            const fluidClient = fluidStore.fluidClient;
+            if (!fluidClient) {
+                throw new Error('FluidClient not found');
+            }
+
+            return fluidClient.getProject();
+        });
+    }
+
+    /**
+     * FluidClientからTreeデータを取得する
+     * @param page Playwrightのページオブジェクト
+     * @returns Treeデータ
+     */
+    public static async getTreeDataFromFluidClient(page: Page): Promise<any> {
+        return await page.evaluate(() => {
+            const fluidStore = window.__FLUID_STORE__;
+            if (!fluidStore) {
+                throw new Error('FluidStore not found');
+            }
+
+            const fluidClient = fluidStore.fluidClient;
+            if (!fluidClient) {
+                throw new Error('FluidClient not found');
+            }
+
+            return fluidClient.getTreeAsJson();
+        });
+    }
+
+    /**
+     * UserManagerから現在のユーザーを取得する
+     * @param page Playwrightのページオブジェクト
+     * @returns 現在のユーザー
+     */
+    public static async getCurrentUser(page: Page): Promise<any> {
+        return await page.evaluate(() => {
+            const userManager = window.__USER_MANAGER__;
+            if (!userManager) {
+                throw new Error('UserManager not found');
+            }
+
+            return userManager.getCurrentUser();
+        });
+    }
+}
+
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
 declare global {
     interface Window {
@@ -769,6 +906,7 @@ declare global {
         _alertMessage?: string | null;
         __FLUID_SERVICE__?: any;
         __FLUID_STORE__?: any;
+        __USER_MANAGER__?: any;
         editorOverlayStore?: any;
     }
 }

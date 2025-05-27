@@ -5,7 +5,6 @@
 
 import { test, expect } from '@playwright/test';
 import { TestHelpers } from "../utils/testHelpers";
-import { CursorValidator } from "../utils/cursorValidation";
 
 // テストのタイムアウトを設定
 
@@ -16,20 +15,10 @@ test.describe('フォーマット文字列でのカーソル操作', () => {
   });
 
   test('太字文字列内でのカーソル移動が正しく機能する', async ({ page }) => {
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
-    await TestHelpers.setupTreeDebugger(page);
-
-    // プロジェクトページに移動
-    const projectName = await TestHelpers.navigateToProjectPage(page);
-    console.log("Navigated to project:", projectName);
-
-    // スクリーンショットを撮影（プロジェクトページ表示後）
-    await page.screenshot({ path: `client/test-results/${projectName}/CLM-0103-bold-text.png` });
-
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+    await TestHelpers.waitForCursorVisible(page);
 
     // 太字を含むテキストを入力
     await page.keyboard.type('これは[[太字テキスト]]です');
@@ -62,20 +51,10 @@ test.describe('フォーマット文字列でのカーソル操作', () => {
   });
 
   test('複数のフォーマットが混在する文字列でのカーソル移動', async ({ page }) => {
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
-    await TestHelpers.setupTreeDebugger(page);
-
-    // プロジェクトページに移動
-    const projectName = await TestHelpers.navigateToProjectPage(page);
-    console.log("Navigated to project:", projectName);
-
-    // スクリーンショットを撮影（プロジェクトページ表示後）
-    await page.screenshot({ path: `client/test-results/${projectName}/CLM-0103-mixed-format.png` });
-
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+    await TestHelpers.waitForCursorVisible(page);
 
     // 複数のフォーマットを含むテキストを入力
     await page.keyboard.type('通常[[太字]][/斜体][-取り消し線]`コード`');
@@ -122,20 +101,10 @@ test.describe('フォーマット文字列でのカーソル操作', () => {
   });
 
   test('Home/Endキーがフォーマット文字列で正しく機能する', async ({ page }) => {
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
-    await TestHelpers.setupTreeDebugger(page);
-
-    // プロジェクトページに移動
-    const projectName = await TestHelpers.navigateToProjectPage(page);
-    console.log("Navigated to project:", projectName);
-
-    // スクリーンショットを撮影（プロジェクトページ表示後）
-    await page.screenshot({ path: `client/test-results/${projectName}/CLM-0103-home-end.png` });
-
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+    await TestHelpers.waitForCursorVisible(page);
 
     // フォーマットを含むテキストを入力
     await page.keyboard.type('これは[[太字テキスト]]です');
@@ -159,20 +128,10 @@ test.describe('フォーマット文字列でのカーソル操作', () => {
   });
 
   test('Shift+矢印キーによる選択がフォーマット文字列で正しく機能する', async ({ page }) => {
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
-    await TestHelpers.setupTreeDebugger(page);
-
-    // プロジェクトページに移動
-    const projectName = await TestHelpers.navigateToProjectPage(page);
-    console.log("Navigated to project:", projectName);
-
-    // スクリーンショットを撮影（プロジェクトページ表示後）
-    await page.screenshot({ path: `client/test-results/${projectName}/CLM-0103-shift-arrow.png` });
-
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+    await TestHelpers.waitForCursorVisible(page);
 
     // フォーマットを含むテキストを入力
     await page.keyboard.type('これは[[太字テキスト]]です');
@@ -203,20 +162,10 @@ test.describe('フォーマット文字列でのカーソル操作', () => {
   });
 
   test('フォーマット文字列内での単語単位の移動（Ctrl+矢印）', async ({ page }) => {
-    // カーソル情報取得用のデバッグ関数をセットアップ
-    await TestHelpers.setupCursorDebugger(page);
-    await TestHelpers.setupTreeDebugger(page);
-
-    // プロジェクトページに移動
-    const projectName = await TestHelpers.navigateToProjectPage(page);
-    console.log("Navigated to project:", projectName);
-
-    // スクリーンショットを撮影（プロジェクトページ表示後）
-    await page.screenshot({ path: `client/test-results/${projectName}/CLM-0103-ctrl-arrow.png` });
-
     // 最初のアイテムを選択
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
+    await TestHelpers.waitForCursorVisible(page);
 
     // 複数の単語を含むフォーマットテキストを入力
     await page.keyboard.type('これは [[太字 テキスト 単語]] と [/斜体 単語] です');

@@ -120,53 +120,10 @@ test.describe('フォーマット文字列の入力と表示', () => {
     // クリップボードへのアクセス権限を付与
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    // まずクリップボードテストページでクリップボードにテキストをセット
-    const textToPaste = 'ペーストされたテキスト';
-
-    // クリップボードテストページにアクセス
-    await page.goto('/clipboard-test');
-    await page.waitForSelector('#clipboard-text', { timeout: 10000 });
-    console.log('クリップボードテストページが読み込まれました');
-
-    // ページのログを確認
-    const logContent = await page.locator('#log').textContent();
-    console.log(`ページ初期ログ: ${logContent || 'なし'}`);
-
-    // テキストを入力してコピー
-    await page.locator('textarea[id="clipboard-text"]').fill(textToPaste);
-    console.log('テキストエリアにテキストを入力しました');
-
-    // コピーボタンをクリック
-    await page.locator('button:has-text("コピー")').first().click();
-    console.log('コピーボタンをクリックしました');
-
-    // 少し待機してコピー操作が完了するのを待つ
-    await page.waitForTimeout(2000);
-    console.log('クリップボードにテキストをセットしました:', textToPaste);
-
-    // 結果を確認
-    const resultText = await page.locator('.test-section').first().locator('.result').textContent();
-    console.log(`コピー結果: ${resultText}`);
-
-    // クリップボードの内容を直接確認
-    const clipboardContent = await page.evaluate(async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        return `クリップボードの内容: ${text}`;
-      } catch (err) {
-        return `クリップボードの読み取りに失敗: ${err.message}`;
-      }
-    });
-    console.log(clipboardContent);
-
-    // 本来のテストページに戻る
-
-    console.log('テストページに戻りました');
-
     // 最初のアイテムを選択して既存のテキストを入力
     const item = page.locator('.outliner-item').first();
     await item.locator('.item-content').click();
-    await waitForCursorVisible(page);
+    await TestHelpers.waitForCursorVisible(page);
     console.log('アイテムをクリックしました');
 
     await page.keyboard.type('前半部分|後半部分');
@@ -177,6 +134,31 @@ test.describe('フォーマット文字列の入力と表示', () => {
       await page.keyboard.press('ArrowLeft');
     }
     console.log('カーソルを | の位置に移動しました');
+
+    // まずクリップボードテストページでクリップボードにテキストをセット
+    const textToPaste = 'ペーストされたテキスト';
+
+    // 新しいタブでクリップボードテストページにアクセス
+    const clipboardPage = await context.newPage();
+    await clipboardPage.goto('/clipboard-test');
+    await clipboardPage.waitForSelector('#clipboard-text', { timeout: 10000 });
+    console.log('クリップボードテストページが読み込まれました');
+
+    // テキストを入力してコピー
+    await clipboardPage.locator('textarea[id="clipboard-text"]').fill(textToPaste);
+    console.log('テキストエリアにテキストを入力しました');
+
+    // コピーボタンをクリック
+    await clipboardPage.locator('button:has-text("コピー")').first().click();
+    console.log('コピーボタンをクリックしました');
+
+    // 少し待機してコピー操作が完了するのを待つ
+    await page.waitForTimeout(2000);
+    console.log('クリップボードにテキストをセットしました:', textToPaste);
+
+    // クリップボードページを閉じる
+    await clipboardPage.close();
+    console.log('クリップボードページを閉じました');
 
     // ペースト操作を実行（複数の方法を試す）
     console.log('ペースト操作を実行します...');
@@ -244,42 +226,45 @@ test.describe('フォーマット文字列の入力と表示', () => {
     // クリップボードへのアクセス権限を付与
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    // クリップボードテストページにアクセス
-    await page.goto('/clipboard-test');
-    await page.waitForSelector('#clipboard-text', { timeout: 10000 });
-    console.log('クリップボードテストページが読み込まれました');
-
-    // ページのログを確認
-    const logContent = await page.locator('#log').textContent();
-    console.log(`ページ初期ログ: ${logContent || 'なし'}`);
-
-    // クリップボード権限を確認
-    await page.locator('.test-section').nth(2).locator('button:has-text("クリップボード権限を確認")').click();
-    await page.waitForTimeout(1000);
-    const permissionResult = await page.locator('.test-section').nth(2).locator('.result').textContent();
-    console.log(`クリップボード権限: ${permissionResult}`);
+    // 最初のアイテムを選択
+    const item = page.locator('.outliner-item').first();
+    await item.locator('.item-content').click();
+    await TestHelpers.waitForCursorVisible(page);
+    console.log('アイテムをクリックしました');
 
     // テスト用のテキスト
     const testText = 'クリップボードテスト' + Date.now();
     console.log(`テスト用テキスト: ${testText}`);
 
+    // 新しいタブでクリップボードテストページにアクセス
+    const clipboardPage = await context.newPage();
+    await clipboardPage.goto('/clipboard-test');
+    await clipboardPage.waitForSelector('#clipboard-text', { timeout: 10000 });
+    console.log('クリップボードテストページが読み込まれました');
+
+    // クリップボード権限を確認
+    await clipboardPage.locator('.test-section').nth(2).locator('button:has-text("クリップボード権限を確認")').click();
+    await clipboardPage.waitForTimeout(1000);
+    const permissionResult = await clipboardPage.locator('.test-section').nth(2).locator('.result').textContent();
+    console.log(`クリップボード権限: ${permissionResult}`);
+
     // Playwrightテスト用セクションにテキストを入力
-    await page.locator('textarea[id="playwright-text"]').fill(testText);
+    await clipboardPage.locator('textarea[id="playwright-text"]').fill(testText);
     console.log('テキストエリアにテキストを入力しました');
 
     // コピーボタンをクリック
-    await page.locator('.test-section').nth(3).locator('button:has-text("コピー")').click();
+    await clipboardPage.locator('.test-section').nth(3).locator('button:has-text("コピー")').click();
     console.log('コピーボタンをクリックしました');
 
     // 少し待機してコピー操作が完了するのを待つ
-    await page.waitForTimeout(2000);
+    await clipboardPage.waitForTimeout(2000);
 
     // 結果を確認
-    const resultText = await page.locator('.test-section').nth(3).locator('.result').textContent();
+    const resultText = await clipboardPage.locator('.test-section').nth(3).locator('.result').textContent();
     console.log(`コピー結果: ${resultText}`);
 
     // クリップボードの内容を直接確認
-    const clipboardContent = await page.evaluate(async () => {
+    const clipboardContent = await clipboardPage.evaluate(async () => {
       try {
         const text = await navigator.clipboard.readText();
         return `クリップボードの内容: ${text}`;
@@ -289,15 +274,9 @@ test.describe('フォーマット文字列の入力と表示', () => {
     });
     console.log(clipboardContent);
 
-    // テスト用ページにアクセス
-
-    console.log('テストページに戻りました');
-
-    // 最初のアイテムを選択
-    const item = page.locator('.outliner-item').first();
-    await item.locator('.item-content').click();
-    await waitForCursorVisible(page);
-    console.log('アイテムをクリックしました');
+    // クリップボードページを閉じる
+    await clipboardPage.close();
+    console.log('クリップボードページを閉じました');
 
     // ペースト操作を実行（複数の方法を試す）
     console.log('ペースト操作を実行します...');
