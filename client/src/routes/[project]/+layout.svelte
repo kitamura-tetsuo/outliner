@@ -1,11 +1,10 @@
 <script lang="ts">
     import { browser } from "$app/environment";
     import { onDestroy, onMount } from "svelte";
-    import { UserManager } from "../../auth/UserManager";
+    import { userManager } from "../../auth/UserManager";
     import { getLogger } from "../../lib/logger";
     import { fluidStore } from "../../stores/fluidStore.svelte";
     import { getFluidClientByProjectTitle } from "../../services";
-    import { setupGlobalDebugFunctions } from "../../lib/debug";
 
     // プロジェクトレベルのレイアウト
     // このレイアウトは /[project] と /[project]/[page] の両方に適用されます
@@ -71,11 +70,6 @@
             if (client?.container) {
                 project = client.getProject();
                 rootItems = client.getTree();
-
-                // デバッグ関数を初期化
-                if (browser) {
-                    // setupGlobalDebugFunctions(client);
-                }
             }
         }
     });

@@ -1,14 +1,12 @@
 <script lang="ts">
-    import { browser } from "$app/environment";
     import { page } from "$app/stores";
     import { goto } from "$app/navigation";
     import { onDestroy, onMount } from "svelte";
-    import { UserManager } from "../../auth/UserManager";
+    import { userManager } from "../../auth/UserManager";
     import AuthComponent from "../../components/AuthComponent.svelte";
     import PageList from "../../components/PageList.svelte";
     import { getLogger } from "../../lib/logger";
     import { fluidStore } from "../../stores/fluidStore.svelte";
-    import { loadContainer } from "../../services";
     import { store } from "../../stores/store.svelte";
 
     const logger = getLogger("ProjectIndex");
@@ -18,7 +16,6 @@
 
     // ページの状態
     let error: string | null = $state(null);
-    let isLoading = $state(true);
     let isAuthenticated = $state(false);
     let projectNotFound = $state(false);
 
@@ -96,9 +93,17 @@
         />
     </div>
 
-    {#if isLoading}
-        <div class="flex justify-center py-8">
-            <div class="loader">読み込み中...</div>
+    {#if store.pages}
+        <div class="mt-6">
+            <h2 class="mb-4 text-xl font-semibold">ページ一覧</h2>
+            <div class="rounded-lg bg-white p-4 shadow-md">
+                <PageList
+                    currentUser={fluidStore.currentUser?.id || "anonymous"}
+                    project={store.project!}
+                    rootItems={store.pages.current}
+                    onPageSelected={handlePageSelected}
+                />
+            </div>
         </div>
     {:else if error}
         <div class="rounded-md bg-red-50 p-4">
@@ -158,18 +163,6 @@
                         </p>
                     </div>
                 </div>
-            </div>
-        </div>
-    {:else if store.pages}
-        <div class="mt-6">
-            <h2 class="mb-4 text-xl font-semibold">ページ一覧</h2>
-            <div class="rounded-lg bg-white p-4 shadow-md">
-                <PageList
-                    currentUser={fluidStore.currentUser?.id || "anonymous"}
-                    project={store.project!}
-                    rootItems={store.pages.current}
-                    onPageSelected={handlePageSelected}
-                />
             </div>
         </div>
     {:else}

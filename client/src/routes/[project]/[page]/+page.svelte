@@ -1,9 +1,8 @@
 <script lang="ts">
-    import { browser } from "$app/environment";
     import { page } from "$app/stores";
     import { goto } from "$app/navigation";
     import { onDestroy, onMount } from "svelte";
-    import { UserManager } from "../../../auth/UserManager";
+    import { userManager } from "../../../auth/UserManager";
     import AuthComponent from "../../../components/AuthComponent.svelte";
     import OutlinerBase from "../../../components/OutlinerBase.svelte";
     import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
@@ -279,6 +278,20 @@
         />
     </div>
 
+    {#if store.currentPage}
+        <!-- OutlinerBase コンポーネントでアウトライナーを表示 -->
+        <OutlinerBase
+            pageItem={store.currentPage}
+            isReadOnly={false}
+            isTemporary={isTemporaryPage}
+            onEdit={handleTemporaryPageEdited}
+        />
+
+        <!-- バックリンクパネル -->
+        {#if !isTemporaryPage}
+            <BacklinkPanel {pageName} {projectName} />
+        {/if}
+    {/if}
     {#if isLoading}
         <div class="flex justify-center py-8">
             <div class="loader">読み込み中...</div>
@@ -341,19 +354,6 @@
                 </div>
             </div>
         </div>
-    {:else if store.currentPage}
-        <!-- OutlinerBase コンポーネントでアウトライナーを表示 -->
-        <OutlinerBase
-            pageItem={store.currentPage}
-            isReadOnly={false}
-            isTemporary={isTemporaryPage}
-            onEdit={handleTemporaryPageEdited}
-        />
-
-        <!-- バックリンクパネル -->
-        {#if !isTemporaryPage}
-            <BacklinkPanel {pageName} {projectName} />
-        {/if}
     {:else}
         <div class="rounded-md bg-gray-50 p-4">
             <p class="text-gray-700">ページデータを読み込めませんでした。</p>

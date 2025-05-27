@@ -1,8 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { TestHelpers } from '../utils/testHelpers';
-import { TreeValidation } from '../utils/treeValidation';
-import { UserManager } from '../../src/auth/UserManager';
-import { getFluidClientByProjectTitle, createNewContainer } from '../../src/lib/fluidService';
+import { TreeValidator } from '../utils/treeValidation';
 
 /**
  * FLD-0002: プロジェクトタイトルからFluidClientを取得する機能のテスト
@@ -15,9 +13,8 @@ test.describe('FLD-0002: プロジェクトタイトルからFluidClientを取�
     const testProjectTitle = `テスト用プロジェクト-${Date.now()}`;
 
     // テスト前の準備
-    test.beforeEach(async ({ page }) => {
-        // テスト環境を準備
-        await TestHelpers.prepareTestEnvironment(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // ユーザーがログインしていることを確認
 
@@ -72,11 +69,9 @@ test.describe('FLD-0002: プロジェクトタイトルからFluidClientを取�
         expect(project).not.toBeNull();
         expect(project.title).toBe(testProjectTitle);
 
-        // TreeValidationを使用してプロジェクトデータを検証
         const treeData = fluidClient!.getTreeAsJson();
-        const treeValidation = new TreeValidation(treeData);
 
         // プロジェクトデータの基本構造を検証
-        expect(treeValidation.hasProperty('items')).toBe(true);
+        expect(treeData.hasProperty('items')).toBe(true);
     });
 });

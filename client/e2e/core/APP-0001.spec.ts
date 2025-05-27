@@ -59,6 +59,10 @@ test.describe("アプリケーション起動時のフォーカス設定", () =>
         expect(containsText).toBe(true);
 
         // フォーカスが設定されていることを確認
+        const hasFocus = await page.evaluate(() => {
+            const textarea = document.querySelector<HTMLTextAreaElement>(".global-textarea");
+            return textarea !== null && document.activeElement === textarea;
+        });
         expect(hasFocus).toBe(true);
     });
 });

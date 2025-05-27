@@ -3,7 +3,7 @@ const admin = require("firebase-admin");
 const { generateToken } = require("@fluidframework/azure-service-utils");
 const { ScopeType } = require("@fluidframework/azure-client");
 const jwt = require("jsonwebtoken");
-
+const { FieldValue } = require("firebase-admin/firestore");
 // ロガーの設定
 const logger = require("firebase-functions/logger");
 
@@ -280,7 +280,7 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
             defaultContainerId: containerId,
             accessibleContainerIds,
             updatedAt:
-              admin.firestore.FieldValue.serverTimestamp(),
+              FieldValue.serverTimestamp(),
           });
         } else {
           transaction.set(userDocRef, {
@@ -288,9 +288,9 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
             defaultContainerId: containerId,
             accessibleContainerIds: [containerId],
             createdAt:
-              admin.firestore.FieldValue.serverTimestamp(),
+              FieldValue.serverTimestamp(),
             updatedAt:
-              admin.firestore.FieldValue.serverTimestamp(),
+              FieldValue.serverTimestamp(),
           });
         }
 
@@ -305,14 +305,14 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
 
           transaction.update(containerDocRef, {
             accessibleUserIds,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         } else {
           transaction.set(containerDocRef, {
             containerId,
             accessibleUserIds: [userId],
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
           });
         }
       });
@@ -437,7 +437,7 @@ exports.deleteUser = onRequest({ cors: true }, async (req, res) => {
                 // ユーザーIDを更新
                 transaction.update(containerDocRef, {
                   accessibleUserIds: updatedUserIds,
-                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                  updatedAt: FieldValue.serverTimestamp(),
                 });
               }
             }
@@ -541,7 +541,7 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
             transaction.update(userDocRef, {
               accessibleContainerIds: updatedContainerIds,
               defaultContainerId: defaultContainerId,
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp(),
             });
           }
         }

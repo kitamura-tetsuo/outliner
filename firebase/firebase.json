@@ -23,6 +23,10 @@
                 "function": "getUserContainers"
             },
             {
+                "source": "/api/delete-user",
+                "function": "deleteUser"
+            },
+            {
                 "source": "/health",
                 "function": "health"
             },

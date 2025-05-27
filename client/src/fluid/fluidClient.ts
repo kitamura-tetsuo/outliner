@@ -42,7 +42,7 @@ export class FluidClient {
     public readonly containerId: string;
     public readonly appData: TreeView<typeof Project>;
     public readonly services: AzureContainerServices | TinyliciousContainerServices;
-    private readonly project: Project;
+    public readonly project: Project;
 
     // 接続ステータスの追跡
     private connectionListenerCleanup: (() => void) | null = null;
@@ -331,6 +331,21 @@ export class FluidClient {
         }
         catch (error) {
             logger.error("Reconnection failed:", error);
+        }
+    }
+
+    public async createPage(pageName: string, lines: string[]): Promise<void> {
+        try {
+            // ページを作成
+            const pageItem = this.project.addPage(pageName, "test-user");
+            const pageItems = pageItem.items as Items;
+            for (const line of lines) {
+                const item = pageItems.addNode("test-user");
+                item.updateText(line);
+            }
+        } catch (error) {
+            console.error("Error creating page:", error);
+            throw error;
         }
     }
 }

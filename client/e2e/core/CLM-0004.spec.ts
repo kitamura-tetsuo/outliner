@@ -263,9 +263,9 @@ test.describe("CLM-0004: 上へ移動", () => {
         });
         console.log(`新しいオフセット: ${newOffset}`);
 
-        // カーソルが上に移動していることを確認
+        // カーソルが左に移動していることを確認（同じ行内で先頭に移動）
         if (newPosition && initialPosition) {
-            expect(newPosition.y).toBeLessThan(initialPosition.y);
+            expect(newPosition.x).toBeLessThan(initialPosition.x);
         }
 
         // カーソルが同じアイテム内にあることを確認

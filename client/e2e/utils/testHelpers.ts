@@ -15,7 +15,6 @@ export class TestHelpers {
     public static async prepareTestEnvironment(page: Page, testInfo: any, lines: string[] = []): Promise<{ projectName: string; pageName: string }> {
         // ホームページにアクセス
         await page.goto("/");
-        await page.waitForLoadState("networkidle", { timeout: 60000 });
 
         page.goto = async (
             url: string,
@@ -48,34 +47,6 @@ export class TestHelpers {
      * @param pageName ページ名
      */
     public static async createTestProjectAndPageViaAPI(page: Page, projectName: string, pageName: string, lines: string[] = []): Promise<void> {
-        // Fluid APIを使用してプロジェクトとページを作成
-        await page.evaluate(async ({ projectName }) => {
-            while (!window.__FLUID_STORE__) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            while (!window.__FLUID_STORE__.fluidClient) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            const fluidClient = window.__FLUID_STORE__.fluidClient;
-
-            if (!fluidClient) {
-                throw new Error("FluidClient instance not found");
-            }
-
-            try {
-                // プロジェクトとページのデータを取得
-                const appData = fluidClient.appData;
-                const project = appData.root;
-
-                // プロジェクト名を設定
-                project.title = projectName;
-                return { success: true };
-            } catch (error) {
-                console.error("Error creating project and page:", error);
-                throw error;
-            }
-        }, { projectName });
-
         if (lines.length == 0) {
             lines = [
                 "これはテスト用のページです。1",
@@ -84,7 +55,17 @@ export class TestHelpers {
             ];
         }
 
-        await TestHelpers.createTestPageViaAPI(page, pageName, lines);
+        // Fluid APIを使用してプロジェクトとページを作成
+        await page.evaluate(async ({ projectName, pageName, lines }) => {
+            while (!window.__FLUID_STORE__) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            const fluidService = window.__FLUID_SERVICE__;
+            const fluidClient = await fluidService.createNewContainer(projectName);
+
+            fluidClient.createPage(pageName, lines);
+        }, { projectName, pageName, lines });
     }
 
     /**
@@ -103,28 +84,9 @@ export class TestHelpers {
             if (!fluidClient) {
                 throw new Error("FluidClient instance not found");
             }
-
-            try {
-                // プロジェクトのデータを取得
-                const appData = fluidClient.appData;
-                const project = appData.root;
-
-                // ページを作成
-                const pageItem = project.addPage(pageName, "test-user");
-                const pageItems = pageItem.items;
-                for (const line of lines) {
-                    const item = pageItems.addNode("test-user");
-                    item.updateText(line);
-                }
-                return { success: true };
-            } catch (error) {
-                console.error("Error creating page:", error);
-                throw error;
-            }
+            fluidClient.createPage(pageName, lines);
         }, { pageName, lines });
 
-        // 少し待機してデータが保存されるのを待つ
-        await page.waitForTimeout(1000);
     }
 
     /**
