@@ -2,8 +2,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @file tinylicious.spec.ts
@@ -20,7 +20,6 @@ test.describe("Tinyliciousリアル接続テスト", () => {
     // テスト前の準備 - モックを無効化し、実際のTinyliciousサーバーに接続するように設定
     test.beforeEach(async ({ page }, testInfo) => { // エミュレータを使用してTinyliciousに接続
         // テスト開始前に十分な時間を設定
-
 
         await page.addInitScript(() => {
             // 接続状態のモックは削除（実際の接続状態を確認するため）
@@ -45,7 +44,8 @@ test.describe("Tinyliciousリアル接続テスト", () => {
         // ページが完全に読み込まれるまで待機
         try {
             await page.waitForLoadState("networkidle", { timeout: 60000 });
-        } catch (error) {
+        }
+        catch (error) {
             console.log("Timeout waiting for networkidle, continuing anyway");
             // スクリーンショットを撮影して状態を確認
             await page.screenshot({ path: "test-results/tinylicious-networkidle-timeout.png" });
@@ -81,8 +81,8 @@ test.describe("Tinyliciousリアル接続テスト", () => {
 
         // 接続インジケータが「connected」クラスを持っていることを確認
         const hasConnectedClass = await page.evaluate(() => {
-            const indicator = document.querySelector('.status-indicator');
-            return indicator?.classList.contains('connected');
+            const indicator = document.querySelector(".status-indicator");
+            return indicator?.classList.contains("connected");
         });
 
         expect(hasConnectedClass).toBeTruthy();

@@ -9,7 +9,6 @@ test.describe("OutlinerItem E2E", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // 認証状態をモック
         await page.addInitScript(() => {
-
         });
         await page.goto("/");
         // OutlinerItem がレンダリングされるのを待つ

@@ -5,9 +5,11 @@
 _**User**_
 
 For the code present, we get this error:
+
 ```
 Unsupported Property
 ```
+
 How can I resolve this? If you propose a fix, please make it concise.
 
 ---
@@ -16,14 +18,14 @@ _**Assistant**_
 
 <details>
             <summary>Searched web "Svelte 5 Runes reactive" • **5** results</summary>
-        
-| Title | URL |
-|-------|-----|
-| Introducing runes | https://svelte.dev/blog/runes |
-| Svelte 5 migration guide • Docs | https://svelte.dev/docs/svelte/v5-migration-guide |
-| Runes in Svelte 5 \| CodeHints | https://codehints.io/svelte/runes |
+
+| Title                                             | URL                                                                                    |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Introducing runes                                 | https://svelte.dev/blog/runes                                                          |
+| Svelte 5 migration guide • Docs                   | https://svelte.dev/docs/svelte/v5-migration-guide                                      |
+| Runes in Svelte 5 \| CodeHints                    | https://codehints.io/svelte/runes                                                      |
 | Understanding Svelte 5 Runes: $derived vs $effect | https://dev.to/mikehtmlallthethings/understanding-svelte-5-runes-derived-vs-effect-1hh |
-| Svelte 5 – Introducing Runes | https://tildeloop.com/blog/svelte-5-introducing-runes/ |
+| Svelte 5 – Introducing Runes                      | https://tildeloop.com/blog/svelte-5-introducing-runes/                                 |
 
 </details>
 
@@ -62,16 +64,15 @@ _**Assistant**_
 _**User**_
 
 For the code present, we get this error:
+
 ```
 Unsupported Property
 ```
+
 How can I resolve this? If you propose a fix, please make it concise.
 
 ---
 
 _**Assistant**_
 
-
-
 ---
-

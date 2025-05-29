@@ -14,8 +14,6 @@ FlatOutlinerItem
 
 _**Assistant**_
 
-
-
 ---
 
 `FlatOutlinerItem`コンポーネントを絶対座標で配置し、インデントをUIの座標変化として実装するための変更を行います。
@@ -107,7 +105,6 @@ _**Assistant**_
 +     width: calc(100% - 32px - var(--item-depth) * ${INDENT_SIZE}px);  /* 幅を調整 */
 +     transition: left 0.2s ease, top 0.2s ease;  /* 位置変更時のアニメーション */
   }
-  
 ```
 
 ---
@@ -172,7 +169,6 @@ Svelteのスタイルセクションでは変数を使用するための正し�
 +     width: calc(100% - 32px - var(--item-depth) * 24px);  /* 幅を調整 */
 +     transition: left 0.2s ease, top 0.2s ease;  /* 位置変更時のアニメーション */
   }
-  
 ```
 
 ---
@@ -182,7 +178,6 @@ Svelteのスタイルセクションでは変数を使用するための正し�
 ---
 
 ```diff
-  
               logger.info(`Indented item under previous item`);
 + 
 +             // 表示アイテムを更新
@@ -227,7 +222,6 @@ Svelteのスタイルセクションでは変数を使用するための正し�
 -     }, 0);
 +     }, 300); // アニメーションのために少し長めの遅延
   }
-  
 ```
 
 ---
@@ -286,8 +280,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 インデント操作時のフォーカス設定部分を不要にするため、`handleUnindent`関数も同様にコメントアウトします。
@@ -295,7 +287,6 @@ _**Assistant**_
 ---
 
 ```diff
-  
               // アンインデント後にフォーカスを設定
 -             setTimeout(() => {
 -                 // 移動先の要素にフォーカス
@@ -431,8 +422,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 アニメーション待機を削除して、先行入力を可能にしましょう。
@@ -506,8 +495,6 @@ onItemsChangedでしか使われてなく、これはフォーカス維持のた
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -650,7 +637,6 @@ _**Assistant**_
 - // インデントオフセット（ピクセル単位）
 - const INDENT_SIZE = 24;
   </script>
-  
 ```
 
 ---
@@ -703,8 +689,6 @@ fluid-frameworkの要素なので、そちらの方が無限ループしたり�
 
 _**Assistant**_
 
-
-
 ---
 
 タイトルも`TreeSubscriber`で監視するように変更します。
@@ -733,7 +717,6 @@ _**Assistant**_
 -     }
 +     title = titleSubscriber.current;
   });
-  
 ```
 
 ---
@@ -743,7 +726,6 @@ _**Assistant**_
 ---
 
 ```diff
-  
   let currentUser = $state("anonymous");
 - let title = $state("");
   
@@ -782,8 +764,6 @@ TreeSubscriberオブジェクトにはcurrentプロパティは読み取り専�
 
 ---
 
-
-
 ---
 
 変更が必要な箇所を明示的にします。
@@ -791,7 +771,6 @@ TreeSubscriberオブジェクトにはcurrentプロパティは読み取り専�
 ---
 
 ```diff
-  
   let currentUser = $state("anonymous");
 + let title = $state("");
   
@@ -866,8 +845,6 @@ fluid-framework側にはどこで更新されたデータ場渡されている�
 
 _**Assistant**_
 
-
-
 ---
 
 タイトルの双方向バインディングに関する仕組みを説明します。
@@ -875,6 +852,7 @@ _**Assistant**_
 現在の実装では、2つの方向のデータフローが別々に定義されています：
 
 ### 1. Fluid Framework → Svelte UI
+
 ```typescript
 // タイトルをTreeSubscriberで監視
 const titleSubscriber = new TreeSubscriber<Item, string>(
@@ -892,6 +870,7 @@ $effect(() => {
 このコードで、Fluid Frameworkのデータが変更されると、`TreeSubscriber`が検知して`titleSubscriber.current`が更新され、`$effect`経由で`title`変数に反映されます。
 
 ### 2. Svelte UI → Fluid Framework
+
 ```typescript
 <input
     type="text"
@@ -899,7 +878,7 @@ $effect(() => {
     placeholder="ページタイトル"
     onblur={handleUpdateTitle}
     class="title-input"
-/>
+/>;
 
 function handleUpdateTitle() {
     if (pageItem && !isReadOnly) {
@@ -913,6 +892,7 @@ function handleUpdateTitle() {
 つまり、完全な自動的な双方向バインディングではなく、Fluid→Svelteは自動で、Svelte→Fluidはユーザーがフォーカスを外したタイミングで手動更新しています。
 
 重要なのは、両方向の更新が処理の循環を引き起こさない点です：
+
 1. ユーザーがタイトルを編集 → `title`変数が更新される
 2. ユーザーがフォーカスを外す → `pageItem.updateText(title)`が実行される
 3. Fluidが更新される → `titleSubscriber`が検知して`titleSubscriber.current`が更新される
@@ -923,12 +903,12 @@ function handleUpdateTitle() {
 
 _**User**_
 
-                <input
-                    type="text"
-                    bind:value={pageItem.text}
-                    placeholder="ページタイトル"
-                    class="title-input"
-                />
+    <input
+        type="text"
+        bind:value={pageItem.text}
+        placeholder="ページタイトル"
+        class="title-input"
+    />
 
 で完全な双方向バインディングが効くのでは。
 これでクラウドまで行くのだから、マジカルな気がするが。
@@ -936,8 +916,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -948,7 +926,6 @@ _**Assistant**_
 ---
 
 ```diff
-  
   let currentUser = $state("anonymous");
 - let title = $state("");
   
@@ -1005,8 +982,6 @@ _**Assistant**_
 
 ---
 
-
-
 ---
 
 問題は修正されていることを確認します。再度ファイルの一部を読み込んでみましょう。
@@ -1053,8 +1028,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 確かにご懸念は非常に理解できます。この「マジカルな連携」は以下のような潜在的な問題をはらんでいます：
@@ -1088,8 +1061,6 @@ svelteも、fluid-frameworkもマジカル志向のライブラリだから。
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -1171,8 +1142,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 どういたしまして！
@@ -1203,8 +1172,6 @@ private getter = (() => R)
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -1243,8 +1210,6 @@ private getter = (() => node as unknown as R): () => R,
 
 _**Assistant**_
 
-
-
 ---
 
 おっしゃる書き方 `private getter = (() => node as unknown as R): () => R` は構文的に正しくありません。TypeScriptでは以下のような方法で型を指定できます：
@@ -1252,16 +1217,19 @@ _**Assistant**_
 ### 正しい書き方のオプション:
 
 #### 1. 変数自体に型アノテーションを付ける（推奨）:
+
 ```typescript
 private getter: () => R = () => node as unknown as R;
 ```
 
 #### 2. 関数式内で戻り値の型を指定する:
+
 ```typescript
 private getter = (): R => node as unknown as R;
 ```
 
 #### 3. 型アサーションを使用:
+
 ```typescript
 private getter = (() => node as unknown as R) as () => R;
 ```
@@ -1280,8 +1248,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 はい、まさにその通りです！TypeScriptでは型と値の順番は以下のようになります：
@@ -1297,6 +1263,7 @@ private getter: () => R = () => node as unknown as R;
 これはTypeScriptの基本的な構文規則です。型アノテーションは変数名の後、値の前に配置します。
 
 あなたが試みられていた書き方：
+
 ```typescript
 private getter = (() => node as unknown as R): () => R;
 ```
@@ -1304,6 +1271,7 @@ private getter = (() => node as unknown as R): () => R;
 これは関数宣言時に戻り値の型を指定する文法に似ていますが（`function myFunc(): ReturnType {}`）、変数に関数を代入する場合は使えません。
 
 TypeScriptの構文を整理すると：
+
 1. 通常の変数： `const x: number = 5;`
 2. 関数変数： `const myFunc: (a: number) => string = (a) => a.toString();`
 3. 関数宣言： `function myFunc(a: number): string { return a.toString(); }`
@@ -1323,8 +1291,6 @@ vscode(monaco)等の webで利用可能なエディタが利用している手�
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -1588,7 +1554,7 @@ Model failed to call the tool with correct arguments.
 +     0%, 49% { opacity: 1; }
 +     50%, 100% { opacity: 0; }
 + }
-+ </style> 
++ </style>
 ```
 
 ---
@@ -2072,7 +2038,7 @@ FlatOutlinerItemを確認しました。隠しテキストエリアを使った�
 +         0%, 49% { opacity: 1; }
 +         50%, 100% { opacity: 0; }
 +     }
-+ </style> 
++ </style>
 ```
 
 ---
@@ -2155,7 +2121,6 @@ Read file: client/src/components/FlatOutlinerItemHiddenInput.svelte
 ---
 
 ```diff
-  
           <div class="item-actions">
 -             <button on:click={addNewItem} title="新しいアイテムを追加">+</button>
 -             <button on:click={handleDelete} title="削除">×</button>
@@ -2246,7 +2211,6 @@ Read file: client/src/components/FlatOutlinerItemHiddenInput.svelte
 +     
 +     return `<span class="selection" style="left: ${selectionLeft}px; width: ${selectionWidth}px;"></span>`;
   }
-  
 ```
 
 ---
@@ -2279,8 +2243,6 @@ FlatOutlinerItem へ統合して。
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -2736,7 +2698,7 @@ Read file: client/src/components/FlatOutlinerItem.svelte
 + 		0%, 49% { opacity: 1; }
 + 		50%, 100% { opacity: 0; }
   	}
-  </style> 
+  </style>
 ```
 
 ---
@@ -2776,8 +2738,6 @@ FlatOutlinerItemHiddenInput はもう不要?
 
 _**Assistant**_
 
-
-
 ---
 
 はい、FlatOutlinerItemHiddenInputはもう不要です。
@@ -2797,8 +2757,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -2941,7 +2899,7 @@ Read file: client/src/components/FlatOutlinerItem.svelte
 +         
 +         return { cursors, selections, isActive };
 +     });
-+ } 
++ }
 ```
 
 ---
@@ -2980,7 +2938,6 @@ Read file: client/src/components/FlatOutlinerItem.svelte
 +     z-index: 10;
 + }
   </style>
-  
 ```
 
 ---
@@ -3256,7 +3213,7 @@ Read file: client/src/components/FlatOutlinerItem.svelte
 +     0%, 49% { opacity: 1; }
 +     50%, 100% { opacity: 0; }
 + }
-+ </style> 
++ </style>
 ```
 
 ---
@@ -3477,7 +3434,7 @@ Read file: client/src/components/FlatOutlinerItem.svelte
 + 	.cursor, .selection {
 + 		display: none; /* オーバーレイに移動したため非表示に */
   	}
-  </style> 
+  </style>
 ```
 
 ---
@@ -3500,8 +3457,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -3545,7 +3500,6 @@ _**Assistant**_
 -     pointer-events: none;
 +     pointer-events: none !important;
   }
-  
 ```
 
 ---
@@ -4023,8 +3977,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 オーバーレイレイヤーのポインターイベントを修正しました。念のため`FlatOutlinerItem`コンポーネントでのクリックイベントが動作するかを確認しましょう。問題はテキストエリアの設定や位置にあるかもしれません。
@@ -4063,7 +4015,6 @@ Read file: client/src/components/FlatOutlinerItem.svelte
   		white-space: pre;
 + 		pointer-events: auto;
   	}
-  
 ```
 
 ---
@@ -4126,7 +4077,6 @@ Read file: client/src/stores/EditorOverlayStore.ts
 -     z-index: 10;
 +     z-index: 100; /* より高いz-indexに設定 */
   }
-  
 ```
 
 ---
@@ -4174,8 +4124,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 問題を修正していきます。まず、カーソル位置のずれと選択範囲の表示問題から対応します：
@@ -4183,7 +4131,6 @@ _**Assistant**_
 ---
 
 ```diff
-      
       // オフセット位置までのテキストを取得
 -     const textBeforeCursor = textElement.textContent?.substring(0, offset) || '';
 +     const text = textElement.textContent || '';
@@ -4278,7 +4225,6 @@ _**Assistant**_
 -     z-index: 100; /* より高いz-indexに設定 */
 +     z-index: 100;
   }
-  
 ```
 
 ---
@@ -4443,7 +4389,6 @@ _**Assistant**_
 -     font-size: 18px;
 +     margin-bottom: 16px;
   }
-  
 ```
 
 ---
@@ -4526,7 +4471,6 @@ _**Assistant**_
 + 		margin-bottom: 8px;
 + 		padding-bottom: 8px;
   	}
-      
 ```
 
 ---
@@ -4545,6 +4489,7 @@ _**Assistant**_
    - 不要なボタン（削除、投票など）をタイトルでは非表示に
 
 これらの変更により：
+
 - カーソルと選択範囲の表示がより正確になります
 - ページタイトルが他のアイテムと同じコンポーネントで扱えるようになり、一貫したエディタ体験を提供
 - 同じオーバーレイシステムがすべてのテキスト編集で利用されるため、コードがシンプルになります
@@ -4564,8 +4509,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 カーソル位置のずれとカーソルキー問題を修正しましょう。まず、問題を特定するためのデバッグモードを追加します：
@@ -4573,7 +4516,6 @@ _**Assistant**_
 ---
 
 ```diff
-  
   			logger.info('Tab key processed in textarea');
 + 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
 + 			// カーソルキーの処理は即時に選択範囲を更新
@@ -5013,6 +4955,7 @@ _**Assistant**_
 これらの変更により、カーソル位置のずれが修正され、カーソルキー操作でも正確に位置が更新されるようになったはずです。
 
 実際に使用してみて、問題がある場合は：
+
 1. どのような文字でずれが発生するか具体的に教えていただく
 2. デバッグモードを有効にして問題を詳細に診断する（`DEBUG_MODE = true`に変更）
 
@@ -5027,8 +4970,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -5099,7 +5040,6 @@ _**Assistant**_
 +         console.log("Position map updated:", newMap);
 +     }
   }
-  
 ```
 
 ---
@@ -5109,7 +5049,6 @@ _**Assistant**_
 ---
 
 ```diff
-      
       const { elementRect, textElement } = itemInfo;
 +     
 +     // テキスト要素の親コンテナ（.item-content-container）を取得
@@ -5262,7 +5201,6 @@ _**Assistant**_
       pointer-events: none !important;
 +     will-change: transform;
   }
-  
 ```
 
 ---
@@ -5298,8 +5236,6 @@ z軸は、どのアイテムを選んでも同じ位置に表示される。
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -5483,7 +5419,6 @@ _**Assistant**_
 ---
 
 ```diff
-  
   // デバッグモード
 - const DEBUG_MODE = false;
 + const DEBUG_MODE = true;
@@ -5616,7 +5551,6 @@ _**Assistant**_
   		transition: opacity 0.2s;
 + 		flex-shrink: 0; /* 幅を固定 */
   	}
-  
 ```
 
 ---
@@ -5626,7 +5560,6 @@ _**Assistant**_
 ---
 
 ```diff
-      
       const { textElement } = itemInfo;
 -     
 -     // アイテム要素を取得
@@ -5803,8 +5736,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 両方の問題を修正します：
@@ -5893,7 +5824,6 @@ containerRectプロパティのエラーを修正しましょう：
 ---
 
 ```diff
-  
   // デバッグモード
 - const DEBUG_MODE = true;
 + const DEBUG_MODE = false;
@@ -5915,6 +5845,7 @@ containerRectプロパティのエラーを修正しましょう：
    - 選択範囲のハイライトカラーも調整して見やすくしました。
 
 これらの変更により：
+
 - テキスト位置とカーソル位置の垂直方向のずれが修正され、より自然な位置に表示されます。
 - タイトルテキストの大きなフォントサイズに合わせて、カーソルと選択範囲の表示が最適化されます。
 
@@ -5930,8 +5861,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -5977,7 +5906,6 @@ _**Assistant**_
       color?: string;
 +     isReversed?: boolean;
   }
-  
 ```
 
 ---
@@ -6144,8 +6072,6 @@ shift押しながら、左のカーソルキーを押すと、領域は左に伸
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -6359,7 +6285,7 @@ _**Assistant**_
 - 		display: none; /* オーバーレイに移動したため非表示に */
 + 		display: none;
   	}
-  </style> 
+  </style>
 ```
 
 ---
@@ -6392,8 +6318,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 アイテム間をまたいだカーソル移動機能を実装します。
@@ -6401,7 +6325,6 @@ _**Assistant**_
 ---
 
 ```diff
-  
   			logger.info('Tab key processed in textarea');
 - 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
 + 		} else if (event.key === 'ArrowUp') {
@@ -6493,7 +6416,6 @@ _**Assistant**_
 + 		});
 + 	}
   </script>
-  
 ```
 
 ---
@@ -6762,8 +6684,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -7046,7 +6966,6 @@ Read file: client/src/components/EditorOverlay.svelte
 +         debouncedUpdatePositionMap();
 +     }
   });
-  
 ```
 
 ---
@@ -7084,8 +7003,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -7363,8 +7280,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 カーソルのオーバーレイが前のアイテムの位置のままになっている問題を修正します。EditorOverlayコンポーネントでY座標の更新を適切に行うようにします。
@@ -7516,8 +7431,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -7793,8 +7706,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 カーソル操作が効かなくなった問題を修正します。最近の変更によって、アイテム間移動時のカーソル位置更新処理が複雑になりすぎたことが原因と思われます。
@@ -7802,7 +7713,6 @@ _**Assistant**_
 ---
 
 ```diff
-          
           // アイテム間移動時のカーソル位置更新を確実にするための処理
 -         // アクティブなカーソル情報を保存
 -         const activeCursor = state.cursors[state.activeItemId];
@@ -7886,7 +7796,6 @@ _**Assistant**_
           debouncedUpdatePositionMap();
 -         }
       });
-      
 ```
 
 ---
@@ -7951,8 +7860,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -8187,8 +8094,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 X座標の絶対位置維持の問題を修正します。
@@ -8276,7 +8181,6 @@ X座標の絶対位置維持の問題を修正します。
 +             document.body.removeChild(span);
 +             return bestPosition;
           };
-  
 ```
 
 ---
@@ -8309,12 +8213,9 @@ _**User**_
 
 上下のアイテム間を移動する際に、画面上でのx座標の絶対位置を維持する様にして欲しい。
 
-
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -8640,7 +8541,6 @@ _**Assistant**_
 -         }
 -     }, 0);
   }
-  
 ```
 
 ---
@@ -8650,7 +8550,6 @@ _**Assistant**_
 ---
 
 ```diff
-  				
   				// カーソル位置の画面上のX座標を計算
 - 				const cursorScreenX = calculateCursorScreenPosition();
 + 				const cursorScreenX = calculateCursorScreenPosition(hiddenTextareaRef.selectionStart);
@@ -8764,7 +8663,6 @@ _**Assistant**_
 + 		});
 + 	}
   </script>
-  
 ```
 
 ---
@@ -8817,7 +8715,6 @@ focusItemWithPosition 関数がすでにスクリーンX座標を使用してカ
 ---
 
 ```diff
-  
   // グローバルなデバッグモード設定
 - window.DEBUG_MODE = false; // 必要に応じてtrueに設定
 + (window as any).DEBUG_MODE = false; // 必要に応じてtrueに設定
@@ -8959,7 +8856,6 @@ focusItemWithPosition 関数がすでにスクリーンX座標を使用してカ
 ---
 
 ```diff
-  
   			logger.info('Tab key processed in textarea');
 - 		} else if (event.key === 'ArrowUp') {
 - 			if (isAtFirstLine()) {
@@ -9099,7 +8995,6 @@ focusItemWithPosition 関数がすでにスクリーンX座標を使用してカ
 + 			return { x: rect.left, y: rect.top };
 + 		}
   	}
-  
 ```
 
 ---
@@ -9220,7 +9115,6 @@ linterエラーを修正します：
 + 		}
 + 	}
   </script>
-  
 ```
 
 ---
@@ -9521,7 +9415,6 @@ linterエラーを修正します：
 -     }, 10);
 +     }, 0);
   }
-  
 ```
 
 ---
@@ -9702,7 +9595,6 @@ linterエラーを修正します：
 ---
 
 ```diff
-  		
   		// コンポーネント要素にイベントリスナーを追加
 - 		const element = document.querySelector(`[data-item-id="${model.id}"]`);
 + 		const element = document.querySelector(`[data-item-id="${model.id}"]`) as HTMLElement;
@@ -9747,8 +9639,6 @@ linterエラーを修正します：
 Read file: client/src/stores/EditorOverlayStore.ts
 
 ---
-
-
 
 ---
 
@@ -9816,8 +9706,6 @@ Read file: client/src/components/FlatOutlinerItem.svelte
 
 ---
 
-
-
 ---
 
 Read file: client/src/components/FlatOutlinerItem.svelte
@@ -9883,7 +9771,6 @@ Read file: client/src/components/FlatOutlinerItem.svelte
 ---
 
 ```diff
-  		
   		// コンポーネント要素にイベントリスナーを追加
 - 		const element = document.querySelector(`[data-item-id="${model.id}"]`) as HTMLElement;
 + 		const element = itemRef;
@@ -9939,7 +9826,6 @@ Read file: client/src/components/FlatOutlinerItem.svelte
 ---
 
 ```diff
-  		
   		if (isEditing && hiddenTextareaRef && document.activeElement === hiddenTextareaRef) {
 - 			const selectionStart = hiddenTextareaRef.selectionStart || 0;
 + 			const cursorPosition = hiddenTextareaRef.selectionStart || 0;
@@ -9991,7 +9877,6 @@ Read file: client/src/components/FlatOutlinerItem.svelte
 - 				}
 + 				console.log(`Navigate ${direction}: cursor position=${cursorPosition}, screenX=${cursorScreenX}`);
   			}
-  			
 ```
 
 ---
@@ -10023,8 +9908,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 カーソル移動の問題を修正します。イベントリスナーの追加方法の問題が原因かもしれません。
@@ -10032,7 +9915,6 @@ _**Assistant**_
 ---
 
 ```diff
-  		
   		// コンポーネント要素にイベントリスナーを追加
 - 		const element = itemRef;
 + 		// DOMが確実に利用可能な場合のみイベントリスナーを追加
@@ -10161,13 +10043,11 @@ _**Assistant**_
 +         focusItemWithPosition("page-title", cursorScreenX);
 +     }
   }
-  
 ```
 
 ---
 
 ```diff
-  
   // グローバルなデバッグモード設定
 - (window as any).DEBUG_MODE = false; // 必要に応じてtrueに設定
 + (window as any).DEBUG_MODE = true; // デバッグのために一時的に有効化
@@ -10177,11 +10057,7 @@ _**Assistant**_
 
 ---
 
-
-
 ---
-
-
 
 ---
 
@@ -10190,7 +10066,6 @@ _**Assistant**_
 ---
 
 ```diff
-  
   	onMount(() => {
 + 		// テキストエリアがレンダリングされているか確認
 + 		if (!hiddenTextareaRef) {
@@ -10233,13 +10108,11 @@ _**Assistant**_
 + 				}
 + 			});
   			stopCursorBlink();
-  			
 ```
 
 ---
 
 ```diff
-  		
   		if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
 - 			console.log("KeyDown in item:", model.id, event.key);
 + 			console.log(`KeyDown in item: ${model.id}, key: ${event.key}, shift: ${event.shiftKey}`);
@@ -10405,12 +10278,9 @@ MCP使って、
 http://192.168.50.16:7080/
 から動作確認しつつ修正頼める?
 
-
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -10418,19 +10288,11 @@ _**Assistant**_
 
 ---
 
-
+---
 
 ---
 
-
-
 ---
-
-
-
----
-
-
 
 ---
 
@@ -10561,7 +10423,6 @@ _**Assistant**_
 - 			console.log(`Found best text position: ${bestPos}`);
 + 			console.log(`Found best text position: ${bestPos} for text "${currentText}"`);
   		}
-  		
 ```
 
 ---
@@ -10615,7 +10476,6 @@ _**Assistant**_
 + 			return null;
 + 		}
   	}
-  
 ```
 
 ---
@@ -10625,7 +10485,6 @@ _**Assistant**_
 ---
 
 ```diff
-  		
   		// クリック外のイベントリスナー
 - 		document.addEventListener('click', (e) => {
 + 		const handleOutsideClick = (e: MouseEvent) => {
@@ -10685,7 +10544,6 @@ _**Assistant**_
 - 			});
 + 			document.removeEventListener('click', handleOutsideClick);
   			stopCursorBlink();
-  			
 ```
 
 ---
@@ -10740,7 +10598,6 @@ _**Assistant**_
 -     }, 0);
 +     }, 10); // わずかな遅延を追加
   }
-  
 ```
 
 ---
@@ -10813,12 +10670,9 @@ Read file: client/src/stores/EditorOverlayStore.ts
 
 ---
 
-
-
 ---
 
 ```diff
-  
   // グローバルなデバッグモード設定
 - (window as any).DEBUG_MODE = true; // デバッグのために一時的に有効化
 + (window as any).DEBUG_MODE = false;
@@ -10851,6 +10705,7 @@ Read file: client/src/stores/EditorOverlayStore.ts
    - 問題の特定とデバッグが容易になるようにしました
 
 これらの修正により、カーソル移動がスムーズになり、以下の問題が解決されました：
+
 - カーソルが先頭に飛ぶ問題
 - 前のアイテムの末尾に一度カーソルが飛び、その後で先頭に飛ぶ問題
 - カーソル左/右でカーソルがロストする問題
@@ -10870,12 +10725,9 @@ _**User**_
 http://192.168.50.16:7080/
 から動作確認しつつ駄目ならもう一度修正して。
 
-
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -10958,7 +10810,6 @@ _**Assistant**_
   			}
 - 			}, 10);
   		};
-  		
 ```
 
 ---
@@ -11021,33 +10872,21 @@ _**Assistant**_
 + 		}
 + 		
   		if (!displayRef) return 0;
-  		
 ```
 
 ---
 
-
+---
 
 ---
 
-
-
 ---
 
-
-
 ---
-
-
-
----
-
-
 
 ---
 
 ```diff
-  
   // グローバルなデバッグモード設定
 - (window as any).DEBUG_MODE = false;
 + (window as any).DEBUG_MODE = true;
@@ -11057,12 +10896,9 @@ _**Assistant**_
 
 ---
 
-
-
 ---
 
 ```diff
-  			
   			// ナビゲーションイベントを発行
 - 			setTimeout(() => {
   			dispatch('navigate-to-item', {
@@ -11118,23 +10954,13 @@ _**Assistant**_
 
 ---
 
-
+---
 
 ---
 
-
-
 ---
 
-
-
 ---
-
-
-
----
-
-
 
 ---
 
@@ -11170,20 +10996,13 @@ _**Assistant**_
 -     }, 10); // わずかな遅延を追加
 +     }, 50); // 少し長めの遅延を追加して、前のアイテムの編集終了が確実に完了するようにする
   }
-  
 ```
 
 ---
 
-
-
 ---
 
-
-
 ---
-
-
 
 ---
 
@@ -11244,19 +11063,11 @@ _**Assistant**_
 
 ---
 
-
+---
 
 ---
 
-
-
 ---
-
-
-
----
-
-
 
 ---
 
@@ -11300,6 +11111,7 @@ _**Assistant**_
    - デバッグログを追加してイベントの流れを明確にしました
 
 これらの修正により、2つの問題が解決されました：
+
 1. 「カーソル上で、まずカーソルが先頭に飛ぶ」問題
 2. 「カーソル左は、先頭で左で、カーソルがロストする」問題
 
@@ -11319,12 +11131,9 @@ _**User**_
 http://192.168.50.16:7080/
 から動作確認しつつ駄目ならもう一度修正して。
 
-
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -11427,7 +11236,6 @@ _**Assistant**_
 + 		// イベント発火後にカーソル位置更新を予約
 + 		requestAnimationFrame(updateCursorPosition);
   	}
-  
 ```
 
 ---
@@ -11465,13 +11273,11 @@ _**Assistant**_
 + 		
 + 		return !hasNewLine; // 改行が無ければ最後の行
   	}
-  
 ```
 
 ---
 
 ```diff
-  
   	function handleInput() {
 + 		// テキスト内容を更新
   		text.current = hiddenTextareaRef.value;
@@ -11490,20 +11296,13 @@ _**Assistant**_
 + 			}
 + 		});
   	}
-  
 ```
 
 ---
 
-
-
 ---
 
-
-
 ---
-
-
 
 ---
 
@@ -11520,15 +11319,9 @@ _**Assistant**_
 
 ---
 
-
-
 ---
 
-
-
 ---
-
-
 
 ---
 
@@ -11581,17 +11374,13 @@ _**Assistant**_
 + 				}, 0);
 + 			}, 10);
   		};
-  		
 ```
 
 ---
 
-
-
 ---
 
 ```diff
-  		
   		try {
 + 			// フォーカスを確保
   			hiddenTextareaRef.focus();
@@ -11637,15 +11426,9 @@ _**Assistant**_
 
 ---
 
-
-
 ---
 
-
-
 ---
-
-
 
 ---
 
@@ -11688,20 +11471,13 @@ _**Assistant**_
 -     }, 50); // 少し長めの遅延を追加して、前のアイテムの編集終了が確実に完了するようにする
 +     }
   }
-  
 ```
 
 ---
 
-
-
 ---
 
-
-
 ---
-
-
 
 ---
 
@@ -11711,43 +11487,37 @@ _**Assistant**_
 
 <details>
             <summary>Listed current directory • **20** results</summary>
-        
-| Name |
-|-------|
-| 📁 `.specstory` |
-| 📁 `.git` |
-| 📁 `client` |
-| 📁 `test-results` |
-| 📁 `.cursor` |
-| 📄 `chat.txt` |
-| 📁 `firebase-data` |
-| 📄 `README.md` |
-| 📄 `dprint.json` |
-| 📁 `server` |
-| 📁 `firebase` |
-| 📄 `.gitignore` |
-| 📄 `tips.txt` |
-| 📁 `.vscode` |
-| 📁 `.devcontainer` |
-| 📄 `.eslintignore` |
+
+| Name                |
+| ------------------- |
+| 📁 `.specstory`     |
+| 📁 `.git`           |
+| 📁 `client`         |
+| 📁 `test-results`   |
+| 📁 `.cursor`        |
+| 📄 `chat.txt`       |
+| 📁 `firebase-data`  |
+| 📄 `README.md`      |
+| 📄 `dprint.json`    |
+| 📁 `server`         |
+| 📁 `firebase`       |
+| 📄 `.gitignore`     |
+| 📄 `tips.txt`       |
+| 📁 `.vscode`        |
+| 📁 `.devcontainer`  |
+| 📄 `.eslintignore`  |
 | 📄 `chat.stach.txt` |
-| 📁 `node_modules` |
-| 📁 `scripts` |
-| 📁 `.github` |
+| 📁 `node_modules`   |
+| 📁 `scripts`        |
+| 📁 `.github`        |
 
 </details>
 
 ---
 
-
-
 ---
 
-
-
 ---
-
-
 
 ---
 
@@ -11763,8 +11533,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -11825,7 +11593,6 @@ _**Assistant**_
 + 			logger.info('Tab key processed in textarea');
 + 			return;
   		}
-  		
 ```
 
 ---
@@ -12008,7 +11775,6 @@ _**Assistant**_
 + 				console.error('Error setting focus and cursor position:', error);
 + 			}
   		};
-  		
 ```
 
 ---
@@ -12018,7 +11784,6 @@ _**Assistant**_
 ---
 
 ```diff
-  		
   		try {
 + 			// 範囲内に収める
 + 			const safePosition = Math.min(Math.max(0, position), hiddenTextareaRef.value.length);
@@ -12078,14 +11843,12 @@ _**User**_
 
 変わらない。
 
-@https://github.com/microsoft/monaco-editor 
+@https://github.com/microsoft/monaco-editor
 でカーソルキーの処理の実装方法を確認してきてもらえる？
 
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -12095,95 +11858,95 @@ Monaco Editorのカーソルキー処理の実装を確認してみます。
 
 <details>
             <summary>Grep search for "Arrow(Left|Right|Up|Down)" • **4** files</summary>
-        
-| File | Line | Match |
-|------|------|-------|
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte` | L195 | `if (event.key === 'ArrowUp') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte` | L221 | `} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte` | L247 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte` | L273 | `} else if (event.key === 'ArrowRight') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte` | L324 | `if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4577 | `+ 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4672 | `- 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4754 | `+ 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4996 | `- カーソルキー（ArrowLeft、ArrowRightなど）の操作を検出して即座に位置情報を更新` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6187 | `} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6405 | `- 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6406 | `+ 		} else if (event.key === 'ArrowUp') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6411 | `+ 		} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6416 | `+ 		} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6421 | `+ 		} else if (event.key === 'ArrowRight') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6430 | `+ 		if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6786 | `} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6799 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L7112 | `} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8963 | `- 		} else if (event.key === 'ArrowUp') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8980 | `- 		} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8993 | `+ 		} else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L9010 | `+ 				direction: event.key === "ArrowUp" ? "up" : "down",` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L9019 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10064 | `} else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10074 | `+ 			const isFirstLineAndUp = event.key === 'ArrowUp' && isAtFirstLine();` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10075 | `+ 			const isLastLineAndDown = event.key === 'ArrowDown' && isAtLastLine();` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10093 | `direction: event.key === "ArrowUp" ? "up" : "down",` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10103 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10258 | `- 		} else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10260 | `- 			const isFirstLineAndUp = event.key === 'ArrowUp' && isAtFirstLine();` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10261 | `- 			const isLastLineAndDown = event.key === 'ArrowDown' && isAtLastLine();` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10265 | `+ 		} else if (event.key === 'ArrowUp') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10280 | `- 					direction: event.key === "ArrowUp" ? "up" : "down",` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10288 | `+ 		} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10295 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10311 | `} else if (event.key === 'ArrowRight') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10369 | `- 特にArrowUpとArrowDownの処理を分離し、それぞれの特性に合わせて処理するようにしました` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11352 | `} else if (event.key === 'ArrowUp') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11370 | `} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11388 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11397 | `} else if (event.key === 'ArrowRight') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11413 | `if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte` | L195 | `if (event.key === 'ArrowUp') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte` | L221 | `} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte` | L247 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte` | L273 | `} else if (event.key === 'ArrowRight') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte` | L324 | `if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4577 | `+ 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4672 | `- 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4754 | `+ 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4996 | `- カーソルキー（ArrowLeft、ArrowRightなど）の操作を検出して即座に位置情報を更新` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6187 | `} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6405 | `- 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6406 | `+ 		} else if (event.key === 'ArrowUp') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6411 | `+ 		} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6416 | `+ 		} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6421 | `+ 		} else if (event.key === 'ArrowRight') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6430 | `+ 		if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6786 | `} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6799 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L7112 | `} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8963 | `- 		} else if (event.key === 'ArrowUp') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8980 | `- 		} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8993 | `+ 		} else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L9010 | `+ 				direction: event.key === "ArrowUp" ? "up" : "down",` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L9019 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10064 | `} else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10074 | `+ 			const isFirstLineAndUp = event.key === 'ArrowUp' && isAtFirstLine();` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10075 | `+ 			const isLastLineAndDown = event.key === 'ArrowDown' && isAtLastLine();` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10093 | `direction: event.key === "ArrowUp" ? "up" : "down",` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10103 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10258 | `- 		} else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10260 | `- 			const isFirstLineAndUp = event.key === 'ArrowUp' && isAtFirstLine();` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10261 | `- 			const isLastLineAndDown = event.key === 'ArrowDown' && isAtLastLine();` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10265 | `+ 		} else if (event.key === 'ArrowUp') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10280 | `- 					direction: event.key === "ArrowUp" ? "up" : "down",` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10288 | `+ 		} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10295 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10311 | `} else if (event.key === 'ArrowRight') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10369 | `- 特にArrowUpとArrowDownの処理を分離し、それぞれの特性に合わせて処理するようにしました` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11352 | `} else if (event.key === 'ArrowUp') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11370 | `} else if (event.key === 'ArrowDown') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11388 | `} else if (event.key === 'ArrowLeft') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11397 | `} else if (event.key === 'ArrowRight') {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11413 | `if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {` |
+
+| File                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Line   | Match                                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte`                                                                                                              | L195   | `if (event.key === 'ArrowUp') {`                                                                                             |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte`                                                                                                              | L221   | `} else if (event.key === 'ArrowDown') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte`                                                                                                              | L247   | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte`                                                                                                              | L273   | `} else if (event.key === 'ArrowRight') {`                                                                                   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte`                                                                                                              | L324   | `if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {`   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4577  | `+ 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {`                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4672  | `- 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {`                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4754  | `+ 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {`                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4996  | `- カーソルキー（ArrowLeft、ArrowRightなど）の操作を検出して即座に位置情報を更新`                                            |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6187  | `} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {`                       |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6405  | `- 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {`                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6406  | `+ 		} else if (event.key === 'ArrowUp') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6411  | `+ 		} else if (event.key === 'ArrowDown') {`                                                                                  |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6416  | `+ 		} else if (event.key === 'ArrowLeft') {`                                                                                  |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6421  | `+ 		} else if (event.key === 'ArrowRight') {`                                                                                 |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6430  | `+ 		if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {` |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6786  | `} else if (event.key === 'ArrowDown') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6799  | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L7112  | `} else if (event.key === 'ArrowDown') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8963  | `- 		} else if (event.key === 'ArrowUp') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8980  | `- 		} else if (event.key === 'ArrowDown') {`                                                                                  |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8993  | `+ 		} else if (event.key === 'ArrowUp'                                                                                        |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L9010  | `+ 				direction: event.key === "ArrowUp" ? "up" : "down",`                                                                      |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L9019  | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10064 | `} else if (event.key === 'ArrowUp'                                                                                          |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10074 | `+ 			const isFirstLineAndUp = event.key === 'ArrowUp' && isAtFirstLine();`                                                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10075 | `+ 			const isLastLineAndDown = event.key === 'ArrowDown' && isAtLastLine();`                                                   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10093 | `direction: event.key === "ArrowUp" ? "up" : "down",`                                                                        |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10103 | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10258 | `- 		} else if (event.key === 'ArrowUp'                                                                                        |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10260 | `- 			const isFirstLineAndUp = event.key === 'ArrowUp' && isAtFirstLine();`                                                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10261 | `- 			const isLastLineAndDown = event.key === 'ArrowDown' && isAtLastLine();`                                                   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10265 | `+ 		} else if (event.key === 'ArrowUp') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10280 | `- 					direction: event.key === "ArrowUp" ? "up" : "down",`                                                                      |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10288 | `+ 		} else if (event.key === 'ArrowDown') {`                                                                                  |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10295 | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10311 | `} else if (event.key === 'ArrowRight') {`                                                                                   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10369 | `- 特にArrowUpとArrowDownの処理を分離し、それぞれの特性に合わせて処理するようにしました`                                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11352 | `} else if (event.key === 'ArrowUp') {`                                                                                      |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11370 | `} else if (event.key === 'ArrowDown') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11388 | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11397 | `} else if (event.key === 'ArrowRight') {`                                                                                   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11413 | `if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {`   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte`                                                                                                              | L195   | `if (event.key === 'ArrowUp') {`                                                                                             |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte`                                                                                                              | L221   | `} else if (event.key === 'ArrowDown') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte`                                                                                                              | L247   | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte`                                                                                                              | L273   | `} else if (event.key === 'ArrowRight') {`                                                                                   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/client/src/components/FlatOutlinerItem.svelte`                                                                                                              | L324   | `if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {`   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4577  | `+ 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {`                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4672  | `- 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {`                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4754  | `+ 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {`                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L4996  | `- カーソルキー（ArrowLeft、ArrowRightなど）の操作を検出して即座に位置情報を更新`                                            |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6187  | `} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {`                       |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6405  | `- 		} else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {`                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6406  | `+ 		} else if (event.key === 'ArrowUp') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6411  | `+ 		} else if (event.key === 'ArrowDown') {`                                                                                  |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6416  | `+ 		} else if (event.key === 'ArrowLeft') {`                                                                                  |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6421  | `+ 		} else if (event.key === 'ArrowRight') {`                                                                                 |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6430  | `+ 		if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {` |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6786  | `} else if (event.key === 'ArrowDown') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L6799  | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L7112  | `} else if (event.key === 'ArrowDown') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8963  | `- 		} else if (event.key === 'ArrowUp') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8980  | `- 		} else if (event.key === 'ArrowDown') {`                                                                                  |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L8993  | `+ 		} else if (event.key === 'ArrowUp'                                                                                        |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L9010  | `+ 				direction: event.key === "ArrowUp" ? "up" : "down",`                                                                      |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L9019  | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10064 | `} else if (event.key === 'ArrowUp'                                                                                          |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10074 | `+ 			const isFirstLineAndUp = event.key === 'ArrowUp' && isAtFirstLine();`                                                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10075 | `+ 			const isLastLineAndDown = event.key === 'ArrowDown' && isAtLastLine();`                                                   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10093 | `direction: event.key === "ArrowUp" ? "up" : "down",`                                                                        |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10103 | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10258 | `- 		} else if (event.key === 'ArrowUp'                                                                                        |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10260 | `- 			const isFirstLineAndUp = event.key === 'ArrowUp' && isAtFirstLine();`                                                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10261 | `- 			const isLastLineAndDown = event.key === 'ArrowDown' && isAtLastLine();`                                                   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10265 | `+ 		} else if (event.key === 'ArrowUp') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10280 | `- 					direction: event.key === "ArrowUp" ? "up" : "down",`                                                                      |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10288 | `+ 		} else if (event.key === 'ArrowDown') {`                                                                                  |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10295 | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10311 | `} else if (event.key === 'ArrowRight') {`                                                                                   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L10369 | `- 特にArrowUpとArrowDownの処理を分離し、それぞれの特性に合わせて処理するようにしました`                                     |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11352 | `} else if (event.key === 'ArrowUp') {`                                                                                      |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11370 | `} else if (event.key === 'ArrowDown') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11388 | `} else if (event.key === 'ArrowLeft') {`                                                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11397 | `} else if (event.key === 'ArrowRight') {`                                                                                   |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bus/workspace/.specstory/history/2025-04-10_02-52-flatoutlineritem%E3%81%AE%E5%BA%A7%E6%A8%99%E3%81%A8%E3%82%A4%E3%83%B3%E3%83%87%E3%83%B3%E3%83%88%E5%A4%89%E6%9B%B4.md` | L11413 | `if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) && !event.defaultPrevented) {`   |
 
 </details>
 
@@ -12636,7 +12399,6 @@ Monaco Editorの調査結果に基づき、隠しテキストエリアでのカ�
 + 			});
 + 		}
   	}
-  
 ```
 
 ---
@@ -12659,19 +12421,15 @@ Monaco Editorの実装では複雑な状態管理が行われていますが、�
 
 _**User**_
 
-			if (isAtFirstLine() && currentSelectionStart === 0) {
-				// 最初の行の先頭にいる場合は上のアイテムに移動
+    if (isAtFirstLine() && currentSelectionStart === 0) {
+    	// 最初の行の先頭にいる場合は上のアイテムに移動
 
 となっているが、こちらの意図としては、「最初の行にいる場合は上のアイテムに移動」
-			if (isAtFirstLine()) {
-
-
+if (isAtFirstLine()) {
 
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -12730,8 +12488,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -12814,8 +12570,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 タイトルの上および最後のアイテムの下へのナビゲーションを改善しましょう。
@@ -12897,8 +12651,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 カーソルの点滅は制御できます。FlatOutlinerItemコンポーネントでカーソルの点滅を管理する機能を実装または修正しましょう。
@@ -12941,7 +12693,6 @@ Read file: client/src/components/FlatOutlinerItem.svelte
   			}, 500) as unknown as number;
 + 		}, 750); // 初回点滅までを少し長めに設定
   	}
-  
 ```
 
 ---
@@ -13023,8 +12774,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -13170,7 +12919,6 @@ EditorOverlayStoreの`CursorPosition`インターフェースに`forceVisible`�
   				}
 + 			});
   		};
-  		
 ```
 
 ---
@@ -13219,16 +12967,12 @@ EditorOverlayコンポーネントの修正が必要です。カーソルを確�
 +         visibility: hidden;
 +     }
   }
-  </style> 
+  </style>
 ```
 
 ---
 
-
-
 ---
-
-
 
 ---
 
@@ -13237,7 +12981,6 @@ EditorOverlayコンポーネントの修正が必要です。カーソルを確�
 ---
 
 ```diff
-  
   <div class="editor-overlay" bind:this={overlayRef}>
 +     <!-- SVGフィルタ定義 (カーソルのハイライト効果用) -->
 +     <svg width="0" height="0" style="position: absolute;">
@@ -13277,11 +13020,7 @@ EditorOverlayコンポーネントの修正が必要です。カーソルを確�
 
 ---
 
-
-
 ---
-
-
 
 ---
 
@@ -13311,16 +13050,11 @@ EditorOverlayコンポーネントの修正が必要です。カーソルを確�
 -     cursorVisible = true;
 +     cursorVisible = true; // 停止時には必ず表示状態にする
   }
-  
 ```
 
 ---
 
-
-
 ---
-
-
 
 ---
 
@@ -13353,8 +13087,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -13410,7 +13142,6 @@ _**Assistant**_
 ---
 
 ```diff
-  
   @keyframes blink {
 -     0%, 100% {
 +     0%, 49% { 
@@ -13454,7 +13185,6 @@ _**Assistant**_
 -     cursorVisible = true; // 停止時には必ず表示状態にする
 +     cursorVisible = true;
   }
-  
 ```
 
 ---
@@ -13490,8 +13220,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 カーソルが移動直後に表示されるよう修正します：
@@ -13510,7 +13238,6 @@ _**Assistant**_
           }, 530) as unknown as number;
 +     }, 800); // 移動後0.8秒間はカーソルを表示したままにする
   }
-  
 ```
 
 ---
@@ -13576,7 +13303,6 @@ _**Assistant**_
           startCursorBlink();
 +     }
   });
-  
 ```
 
 ---
@@ -13607,8 +13333,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -13719,35 +13443,35 @@ CSS
 
 /* 点滅アニメーション */
 @keyframes blink {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
+0% {
+opacity: 1;
+}
+50% {
+opacity: 0;
+}
+100% {
+opacity: 1;
+}
 }
 
-/* 点滅する要素 */
+/* 点滅する要素 _/
 .blinking {
-  animation: blink 1s infinite; /* 1秒周期で無限に繰り返し */
-  animation-play-state: running; /* 最初はアニメーションが実行中 */
+animation: blink 1s infinite; /_ 1秒周期で無限に繰り返し _/
+animation-play-state: running; /_ 最初はアニメーションが実行中 */
 }
 
 JavaScript
 
 function pauseAndResumeAnimation() {
-  const element = document.getElementById('blinkingElement');
-  
-  // アニメーションを一時停止
-  element.style.animationPlayState = 'paused';
-  
-  // 0.5秒後にアニメーションを再開
-  setTimeout(() => {
-    element.style.animationPlayState = 'running';
-  }, 500); // 0.5秒後に再開
+const element = document.getElementById('blinkingElement');
+
+// アニメーションを一時停止
+element.style.animationPlayState = 'paused';
+
+// 0.5秒後にアニメーションを再開
+setTimeout(() => {
+element.style.animationPlayState = 'running';
+}, 500); // 0.5秒後に再開
 }
 
 解説：
@@ -13764,8 +13488,6 @@ animationPlayState の変更は svelteと親和性の高い方法でお願いし
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -13801,7 +13523,6 @@ _**Assistant**_
 +         animationPaused = false;
 +     }, 500); // 0.5秒後に再開
   }
-  
 ```
 
 ---
@@ -13826,7 +13547,6 @@ _**Assistant**_
       cursorVisible = true;
 +     animationPaused = true; // アニメーションを停止
   }
-  
 ```
 
 ---
@@ -13940,8 +13660,6 @@ box-shadow: 0 0 2px rgba(0, 120, 215, 0.8);
 
 _**Assistant**_
 
-
-
 ---
 
 点滅機能を修正し、box-shadowを削除します：
@@ -13954,7 +13672,6 @@ _**Assistant**_
 -     /* カーソルの可視性を高めるための追加スタイル */
 -     box-shadow: 0 0 2px rgba(0, 120, 215, 0.8);
   }
-  
 ```
 
 ---
@@ -13978,7 +13695,6 @@ _**Assistant**_
 ---
 
 ```diff
-  
   <div class="editor-overlay" bind:this={overlayRef}>
 -     <!-- SVGフィルタ定義 (カーソルのハイライト効果用) -->
 -     <svg width="0" height="0" style="position: absolute;">
@@ -14047,8 +13763,6 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
 
 両方のコンポーネントに`startCursorBlink`があり、競合が起きています。EditorOverlay.svelteを修正しましょう：
@@ -14108,15 +13822,11 @@ FlatOutlinerItemのstartCursorBlinkでカーソルを管理し、EditorOverlay�
 
 ---
 
-
-
 ---
 
 必要な変更が適用されませんでした。別の方法で試します：
 
 ---
-
-
 
 ---
 
@@ -14135,8 +13845,6 @@ _**User**_
 ---
 
 _**Assistant**_
-
-
 
 ---
 
@@ -14224,7 +13932,6 @@ EditorOverlayの点滅制御を修正します。startCursorBlink関数を残し
           }
 +     }, 200);
   });
-  
 ```
 
 ---
@@ -14253,14 +13960,10 @@ _**User**_
 let cursorVisible = $state(true);
 // アニメーション一時停止制御
 let animationPaused = $state(false);
-	function startCursorBlink() {
-
+function startCursorBlink() {
 
 は /workspace/client/src/stores/EditorOverlayStore.tsへ移動して。
 
 ---
 
-
-
 ---
-

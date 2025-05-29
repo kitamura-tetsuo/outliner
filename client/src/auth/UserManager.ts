@@ -171,8 +171,6 @@ export class UserManager {
         logger.info("[UserManager] Using Firebase auth emulator for testing");
     }
 
-
-
     // Firebase認証状態の監視
     private initAuthListener(): void {
         this.unsubscribeAuth = onAuthStateChanged(this.auth, async firebaseUser => {
@@ -257,7 +255,6 @@ export class UserManager {
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                 },
-                credentials: "include",
                 mode: "cors",
                 body: JSON.stringify(requestBody),
             });
@@ -529,7 +526,7 @@ export class UserManager {
             if (containerId && this.currentFluidToken.containerId !== containerId) {
                 console.warn(
                     `[UserManager] Warning: Requested token for container ${containerId} ` +
-                    `but received token for ${this.currentFluidToken.containerId || "unspecified container"}`,
+                        `but received token for ${this.currentFluidToken.containerId || "unspecified container"}`,
                 );
             }
 

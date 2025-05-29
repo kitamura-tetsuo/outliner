@@ -2,10 +2,10 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
-import { TreeValidator } from "../utils/treeValidation";
 import { CursorValidator } from "../utils/cursorValidation";
 import { LinkTestHelpers } from "../utils/linkTestHelpers";
+import { TestHelpers } from "../utils/testHelpers";
+import { TreeValidator } from "../utils/treeValidation";
 
 /**
  * @file LNK-0005.spec.ts
@@ -26,14 +26,14 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
      */
     test("内部リンクにマウスオーバーするとプレビューが表示される", async ({ page }) => {
         // 内部リンクのフォーマットを強制的に適用
-        await page.evaluate((pageName) => {
+        await page.evaluate(pageName => {
             // 全てのアウトライナーアイテムを取得
-            const items = document.querySelectorAll('.outliner-item');
+            const items = document.querySelectorAll(".outliner-item");
             console.log(`Found ${items.length} outliner items for formatting`);
 
             // 各アイテムのテキストを確認
-            items.forEach((item) => {
-                const textElement = item.querySelector('.item-text');
+            items.forEach(item => {
+                const textElement = item.querySelector(".item-text");
                 if (textElement) {
                     const text = textElement.textContent || "";
                     console.log(`Item text: "${text}"`);
@@ -43,16 +43,18 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
                         console.log(`Found internal link to ${pageName}`);
 
                         // HTMLを直接設定
-                        const html = text.replace(`[${pageName}]`,
+                        const html = text.replace(
+                            `[${pageName}]`,
                             `<span class="link-preview-wrapper">
                                 <a href="/${pageName}" class="internal-link" data-page="${pageName}">${pageName}</a>
-                            </span>`);
+                            </span>`,
+                        );
 
                         // HTMLを設定
                         textElement.innerHTML = html;
 
                         // フォーマット済みクラスを追加
-                        textElement.classList.add('formatted');
+                        textElement.classList.add("formatted");
                     }
                 }
             });
@@ -85,7 +87,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             console.log("テスト環境の制約により、内部リンクの検出をスキップして強制的にプレビューを表示します。");
             // 強制的にプレビューを表示
             await LinkTestHelpers.forceLinkPreview(page, testPageName);
-        } else {
+        }
+        else {
             console.log(`Link element found: ${linkSelector}`);
 
             // 通常のマウスオーバーを試みる
@@ -127,7 +130,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             if (await previewContent.count() > 0) {
                 const contentText = await previewContent.textContent();
                 expect(contentText).toBeTruthy();
-            } else {
+            }
+            else {
                 // 別のセレクタで試す
                 const paragraphs = previewElementAfterForce.locator("p");
                 if (await paragraphs.count() > 0) {
@@ -135,7 +139,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
                     expect(paragraphText).toBeTruthy();
                 }
             }
-        } else {
+        }
+        else {
             console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
             test.skip();
         }
@@ -159,13 +164,13 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             "3行目: プレビューに表示されるか確認します。",
             "4行目: 長いテキストの場合は一部だけ表示されるはずです。",
             "5行目: 5行目のテキスト",
-            "6行目: 6行目のテキスト"
+            "6行目: 6行目のテキスト",
         ]);
 
         // ソースページを作成（リンクを含むページ）
         await TestHelpers.createTestPageViaAPI(page, sourcePageName, [
             "ソースページの内容です。",
-            `[${testPageName}]`
+            `[${testPageName}]`,
         ]);
 
         // リンク要素を特定
@@ -195,7 +200,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             console.log("テスト環境の制約により、内部リンクの検出をスキップして強制的にプレビューを表示します。");
             // 強制的にプレビューを表示
             await LinkTestHelpers.forceLinkPreview(page, testPageName);
-        } else {
+        }
+        else {
             console.log(`Link element found: ${linkSelector}`);
 
             // 通常のマウスオーバーを試みる
@@ -243,7 +249,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
                     // 実際のコンテンツが表示されている場合
                     expect(contentText.includes("1行目") || contentText.includes("2行目")).toBeTruthy();
                 }
-            } else {
+            }
+            else {
                 // 別のセレクタで試す
                 const paragraphs = previewElementAfterForce.locator("p");
                 if (await paragraphs.count() > 0) {
@@ -251,7 +258,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
                     expect(paragraphText).toBeTruthy();
                 }
             }
-        } else {
+        }
+        else {
             console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
             test.skip();
         }
@@ -270,13 +278,13 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
 
         // テスト用のページを作成
         await TestHelpers.createTestPageViaAPI(page, testPageName, [
-            "これはテストページの内容です。"
+            "これはテストページの内容です。",
         ]);
 
         // ソースページを作成（リンクを含むページ）
         await TestHelpers.createTestPageViaAPI(page, sourcePageName, [
             "ソースページの内容です。",
-            `[${testPageName}]`
+            `[${testPageName}]`,
         ]);
 
         // リンク要素を特定
@@ -306,7 +314,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             console.log("テスト環境の制約により、内部リンクの検出をスキップして強制的にプレビューを表示します。");
             // 強制的にプレビューを表示
             await LinkTestHelpers.forceLinkPreview(page, testPageName);
-        } else {
+        }
+        else {
             console.log(`Link element found: ${linkSelector}`);
 
             // 通常のマウスオーバーを試みる
@@ -347,11 +356,15 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             // 非表示になっていなくてもテストを失敗させない
             const isStillVisible = await TestHelpers.forceCheckVisibility(".link-preview-popup", page);
             if (isStillVisible) {
-                console.log("プレビューが非表示になりませんでした。テスト環境の制約により、このステップはスキップします。");
-            } else {
+                console.log(
+                    "プレビューが非表示になりませんでした。テスト環境の制約により、このステップはスキップします。",
+                );
+            }
+            else {
                 await expect(previewElementAfterForce).not.toBeVisible();
             }
-        } else {
+        }
+        else {
             console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
             test.skip();
         }
@@ -371,7 +384,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
         // ソースページを作成（存在しないページへのリンクを含むページ）
         await TestHelpers.createTestPageViaAPI(page, sourcePageName, [
             "ソースページの内容です。",
-            `[${nonExistentPage}]`
+            `[${nonExistentPage}]`,
         ]);
 
         // リンク要素を特定
@@ -401,7 +414,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             console.log("テスト環境の制約により、内部リンクの検出をスキップして強制的にプレビューを表示します。");
             // 強制的にプレビューを表示（存在しないページ用）
             await LinkTestHelpers.forceLinkPreview(page, nonExistentPage, undefined, false);
-        } else {
+        }
+        else {
             console.log(`Link element found: ${linkSelector}`);
 
             // 通常のマウスオーバーを試みる
@@ -440,24 +454,35 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
                 const messageText = await notFoundMessage.textContent();
                 if (messageText && messageText.includes("見つかりません")) {
                     expect(messageText).toContain("見つかりません");
-                } else {
-                    console.log("「ページが見つかりません」というメッセージが表示されていませんが、プレビュー自体は表示されています。テスト環境の制約により、このステップはスキップします。");
                 }
-            } else {
+                else {
+                    console.log(
+                        "「ページが見つかりません」というメッセージが表示されていませんが、プレビュー自体は表示されています。テスト環境の制約により、このステップはスキップします。",
+                    );
+                }
+            }
+            else {
                 // 別のセレクタで試す
                 const paragraphs = previewElementAfterForce.locator("p");
                 if (await paragraphs.count() > 0) {
                     const paragraphText = await paragraphs.first().textContent();
                     if (paragraphText && paragraphText.includes("見つかりません")) {
                         expect(paragraphText).toContain("見つかりません");
-                    } else {
-                        console.log("「ページが見つかりません」というメッセージが表示されていませんが、プレビュー自体は表示されています。テスト環境の制約により、このステップはスキップします。");
                     }
-                } else {
-                    console.log("「ページが見つかりません」というメッセージが見つかりませんでした。テスト環境の制約により、このステップはスキップします。");
+                    else {
+                        console.log(
+                            "「ページが見つかりません」というメッセージが表示されていませんが、プレビュー自体は表示されています。テスト環境の制約により、このステップはスキップします。",
+                        );
+                    }
+                }
+                else {
+                    console.log(
+                        "「ページが見つかりません」というメッセージが見つかりませんでした。テスト環境の制約により、このステップはスキップします。",
+                    );
                 }
             }
-        } else {
+        }
+        else {
             console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
             test.skip();
         }

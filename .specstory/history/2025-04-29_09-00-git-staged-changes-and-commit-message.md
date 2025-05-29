@@ -5,7 +5,7 @@
 _**User**_
 
 git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
- で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。。
+で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。。
 
 ---
 
@@ -238,6 +238,7 @@ node ➜ /workspace (main) $
 コミットが完了しました:
 
 チャンジ概要 (英語):
+
 ```
 chore: add UI E2E launch config and update Playwright tests
 
@@ -245,4 +246,3 @@ Expose port 9323 in devcontainer.json; add VSCode launch config for test:e2e:ui;
 ```
 
 ---
-

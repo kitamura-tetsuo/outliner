@@ -2,9 +2,9 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
-import { CursorValidator } from "../utils/cursorValidation";
 
 /**
  * @file LNK-0006.spec.ts
@@ -24,11 +24,9 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
     test("存在するページへのリンクと存在しないページへのリンクが視覚的に区別される", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -97,9 +95,9 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
         }
 
         // クラスが適用されていない場合は、テストを一時的にスキップ
-        const existingLinkClass = await existingLink.getAttribute('class');
+        const existingLinkClass = await existingLink.getAttribute("class");
         console.log("Existing link class:", existingLinkClass);
-        if (!existingLinkClass?.includes('page-exists')) {
+        if (!existingLinkClass?.includes("page-exists")) {
             console.log("Page existence classes not applied. This might be due to implementation differences.");
             console.log("Skipping this test for now.");
             test.skip();
@@ -123,11 +121,9 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
     test("存在しないページへのリンクは点線下線や異なる色で表示される", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 存在しないページへのリンクを作成
         const nonExistentPage = "non-existent-style-" + Date.now().toString().slice(-6);
@@ -146,9 +142,9 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
         }
 
         // クラスが適用されていない場合は、テストを一時的にスキップ
-        const nonExistentLinkClass = await nonExistentLink.getAttribute('class');
+        const nonExistentLinkClass = await nonExistentLink.getAttribute("class");
         console.log("Non-existent link class:", nonExistentLinkClass);
-        if (!nonExistentLinkClass?.includes('page-not-exists')) {
+        if (!nonExistentLinkClass?.includes("page-not-exists")) {
             console.log("Page existence classes not applied. This might be due to implementation differences.");
             console.log("Skipping this test for now.");
             test.skip();
@@ -173,11 +169,9 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
     test("ページが作成されると、リンクの表示が更新される", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -199,9 +193,9 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
         }
 
         // クラスが適用されていない場合は、テストを一時的にスキップ
-        const nonExistentLinkClass = await nonExistentLink.getAttribute('class');
+        const nonExistentLinkClass = await nonExistentLink.getAttribute("class");
         console.log("New page link class:", nonExistentLinkClass);
-        if (!nonExistentLinkClass?.includes('page-not-exists')) {
+        if (!nonExistentLinkClass?.includes("page-not-exists")) {
             console.log("Page existence classes not applied. This might be due to implementation differences.");
             console.log("Skipping this test for now.");
             test.skip();

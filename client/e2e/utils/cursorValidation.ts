@@ -36,7 +36,7 @@ export class CursorValidator {
                             itemId: cursor.itemId,
                             offset: cursor.offset,
                             isActive: cursor.isActive,
-                            userId: cursor.userId
+                            userId: cursor.userId,
                         });
                     });
 
@@ -47,9 +47,10 @@ export class CursorValidator {
                         cursorVisible,
                         cursorInstances,
                         cursorCount: cursors.length,
-                        selectionCount: selections.length
+                        selectionCount: selections.length,
                     };
-                } catch (error) {
+                }
+                catch (error) {
                     console.error("Error getting cursor data:", error);
                     return { error: error.message || "Unknown error" };
                 }
@@ -75,7 +76,8 @@ export class CursorValidator {
         if (strict) {
             // 厳密比較モード - 完全に一致する必要がある
             expect(JSON.stringify(cursorData)).toBe(JSON.stringify(expectedData));
-        } else {
+        }
+        else {
             // 部分比較モード - 期待値のプロパティが全て含まれていればOK
             this.assertObjectContains(cursorData, expectedData);
         }
@@ -87,7 +89,7 @@ export class CursorValidator {
      * @param expected 期待値
      */
     private static assertObjectContains(actual: any, expected: any): void {
-        if (typeof expected !== 'object' || expected === null) {
+        if (typeof expected !== "object" || expected === null) {
             expect(actual).toEqual(expected);
             return;
         }
@@ -99,11 +101,13 @@ export class CursorValidator {
             for (let i = 0; i < expected.length; i++) {
                 if (i < actual.length) {
                     this.assertObjectContains(actual[i], expected[i]);
-                } else {
+                }
+                else {
                     throw new Error(`Expected array item at index ${i} not found in actual array`);
                 }
             }
-        } else {
+        }
+        else {
             for (const key in expected) {
                 expect(actual).toHaveProperty(key);
                 this.assertObjectContains(actual[key], expected[key]);
@@ -130,7 +134,7 @@ export class CursorValidator {
      * @returns パスに対応する値
      */
     private static getValueByPath(obj: any, path: string): any {
-        return path.split('.').reduce((prev, curr) => {
+        return path.split(".").reduce((prev, curr) => {
             return prev && prev[curr];
         }, obj);
     }
@@ -164,7 +168,7 @@ export class CursorValidator {
      */
     private static removeIgnoredPaths(obj: any, paths: string[]): any {
         for (const path of paths) {
-            const parts = path.split('.');
+            const parts = path.split(".");
             const lastPart = parts.pop()!;
             const parent = parts.reduce((prev, curr) => {
                 return prev && prev[curr];

@@ -6,7 +6,6 @@ _**User**_
 
 git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt' ':(exclude)/workspace/docs'
 
-
 ---
 
 _**Assistant**_
@@ -436,16 +435,15 @@ node ➜ /workspace (main) $
 
 以下のとおりステージの変更を確認し、コミットしました。
 
-- `.cursor/rules/` 以下にプロジェクト構造・テストルールを追加  
-- `GlobalTextArea.svelte` に IME の compositionupdate/compositionend イベントハンドラを追加  
-- `KeyEventHandler.ts` に IME コンポジション処理 (中間文字表示・確定文字挿入) を実装  
-- Playwright の e2e テストとして `IME-0001.spec.ts` を `client/e2e/core` に追加  
-- 不要となった Prettier 設定ファイルを削除  
+- `.cursor/rules/` 以下にプロジェクト構造・テストルールを追加
+- `GlobalTextArea.svelte` に IME の compositionupdate/compositionend イベントハンドラを追加
+- `KeyEventHandler.ts` に IME コンポジション処理 (中間文字表示・確定文字挿入) を実装
+- Playwright の e2e テストとして `IME-0001.spec.ts` を `client/e2e/core` に追加
+- 不要となった Prettier 設定ファイルを削除
 
-コミットメッセージ:  
-“Add IME composition handling for GlobalTextArea and update project rulings”  
+コミットメッセージ:\
+“Add IME composition handling for GlobalTextArea and update project rulings”
 
 次は E2E テストの実行確認や、他の警告修正などをご希望でしたらお知らせください。
 
 ---
-

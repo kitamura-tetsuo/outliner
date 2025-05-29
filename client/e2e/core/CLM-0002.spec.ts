@@ -21,7 +21,8 @@ test.describe("CLM-0002: 左へ移動", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -41,7 +42,7 @@ test.describe("CLM-0002: 左へ移動", () => {
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
-        await cursor.waitFor({ state: 'visible' });
+        await cursor.waitFor({ state: "visible" });
 
         // 初期カーソル位置を取得
         const initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);

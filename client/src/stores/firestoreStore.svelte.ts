@@ -34,7 +34,6 @@ export interface UserContainer {
 }
 
 class GeneralStore {
-
     // ユーザーコンテナのストア
     userContainer: UserContainer | null = $state(null);
 }
@@ -115,13 +114,13 @@ function initFirestoreSync(): () => void {
     // ユーザーがログインしていない場合は早期リターン
     if (!currentUser) {
         logger.info("ユーザーがログインしていないため、Firestoreの監視を開始しません");
-        return () => { }; // 空のクリーンアップ関数を返す
+        return () => {}; // 空のクリーンアップ関数を返す
     }
 
     // ユーザーIDの存在確認を追加
     if (!currentUser.id) {
         logger.warn("ユーザーオブジェクトにIDがないため、Firestoreの監視を開始しません");
-        return () => { }; // 空のクリーンアップ関数を返す
+        return () => {}; // 空のクリーンアップ関数を返す
     }
 
     const userId = currentUser.id;
@@ -169,7 +168,7 @@ function initFirestoreSync(): () => void {
     }
     catch (error) {
         logger.error("Firestore監視設定エラー:", error);
-        return () => { }; // 空のクリーンアップ関数を返す
+        return () => {}; // 空のクリーンアップ関数を返す
     }
 }
 
@@ -269,8 +268,6 @@ export async function getDefaultContainerId(): Promise<string | undefined> {
         return undefined;
     }
 }
-
-
 
 /**
  * コンテナIDをサーバー側に保存する

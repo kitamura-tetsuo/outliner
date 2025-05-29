@@ -6,8 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0004: マウスドラッグによる選択", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -36,7 +36,7 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`).locator(".item-content");
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // テキスト要素を取得
         const textElement = activeItem.locator(".item-text");
@@ -51,12 +51,12 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 
@@ -74,7 +74,7 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`).locator(".item-content");
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // テキスト要素を取得
         const textElement = activeItem.locator(".item-text");
@@ -89,7 +89,7 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲の要素が存在することを確認
-        const selectionElement = page.locator('.editor-overlay .selection');
+        const selectionElement = page.locator(".editor-overlay .selection");
         await expect(selectionElement).toBeVisible({ timeout: 5000 });
 
         // 選択範囲の要素のスタイルを確認
@@ -111,7 +111,7 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`).locator(".item-content");
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // テキスト要素を取得
         const textElement = activeItem.locator(".item-text");
@@ -126,12 +126,12 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲の要素が存在することを確認
-        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectedText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 
@@ -139,13 +139,13 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
         expect(selectedText.length).toBeGreaterThan(0);
 
         // コピー操作を実行
-        await page.keyboard.press('Control+c');
+        await page.keyboard.press("Control+c");
 
         // 新しいアイテムを追加
-        await page.keyboard.press('Enter');
+        await page.keyboard.press("Enter");
 
         // ペースト操作を実行
-        await page.keyboard.press('Control+v');
+        await page.keyboard.press("Control+v");
 
         // 少し待機してペーストが反映されるのを待つ
         await page.waitForTimeout(300);

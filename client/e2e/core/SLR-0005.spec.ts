@@ -6,8 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -55,11 +55,11 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // 初期状態では選択範囲がないことを確認
         const initialSelectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
+            return document.querySelector(".editor-overlay .selection") !== null;
         });
         expect(initialSelectionExists).toBe(false);
 
@@ -70,17 +70,17 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
             const cursor = Object.values(store.cursors)[0];
             return cursor ? { itemId: cursor.itemId, offset: cursor.offset } : null;
         });
-        console.log('Initial cursor position:', initialCursorInfo);
+        console.log("Initial cursor position:", initialCursorInfo);
 
         // アイテムの情報を確認
         await page.evaluate(() => {
-            const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
-            const allItemIds = allItems.map(el => el.getAttribute('data-item-id')!);
+            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
+            const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
             const allItemTexts = allItems.map(el => {
-                const textEl = el.querySelector('.item-text');
-                return textEl ? textEl.textContent : '';
+                const textEl = el.querySelector(".item-text");
+                return textEl ? textEl.textContent : "";
             });
-            console.log('All items:', allItemIds.map((id, i) => ({ id, text: allItemTexts[i] })));
+            console.log("All items:", allItemIds.map((id, i) => ({ id, text: allItemTexts[i] })));
         });
 
         // 最初のアイテムをクリックして選択
@@ -89,58 +89,61 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         await page.waitForTimeout(300);
 
         // Shift + 下矢印キーを2回押下して3つのアイテムを選択
-        await page.keyboard.down('Shift');
-        await page.keyboard.press('ArrowDown');
-        await page.keyboard.press('ArrowDown');
-        await page.keyboard.up('Shift');
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.up("Shift");
 
         // 少し待機して選択が反映されるのを待つ
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection').first()).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
         // 少し待機して選択が反映されるのを待つ
         await page.waitForTimeout(300);
 
         // 選択範囲の情報を確認
         await page.evaluate(() => {
-            console.log('Selections after second arrow down:', Object.values((window as any).editorOverlayStore.selections));
+            console.log(
+                "Selections after second arrow down:",
+                Object.values((window as any).editorOverlayStore.selections),
+            );
 
             // 選択範囲の詳細情報を表示
             const sel = Object.values((window as any).editorOverlayStore.selections)[0];
             if (sel) {
-                const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
-                const allItemIds = allItems.map(el => el.getAttribute('data-item-id')!);
+                const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
+                const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
 
-                console.log('Selection details:');
-                console.log('- startItemId:', sel.startItemId);
-                console.log('- endItemId:', sel.endItemId);
-                console.log('- startOffset:', sel.startOffset);
-                console.log('- endOffset:', sel.endOffset);
-                console.log('- isReversed:', sel.isReversed);
+                console.log("Selection details:");
+                console.log("- startItemId:", sel.startItemId);
+                console.log("- endItemId:", sel.endItemId);
+                console.log("- startOffset:", sel.startOffset);
+                console.log("- endOffset:", sel.endOffset);
+                console.log("- isReversed:", sel.isReversed);
 
-                console.log('Start item index:', allItemIds.indexOf(sel.startItemId));
-                console.log('End item index:', allItemIds.indexOf(sel.endItemId));
+                console.log("Start item index:", allItemIds.indexOf(sel.startItemId));
+                console.log("End item index:", allItemIds.indexOf(sel.endItemId));
             }
         });
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
 
             // 全てのアイテムのテキストを取得
-            const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
+            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
             const allItemTexts = allItems.map(el => {
-                const textEl = el.querySelector('.item-text');
-                return textEl ? textEl.textContent : '';
+                const textEl = el.querySelector(".item-text");
+                return textEl ? textEl.textContent : "";
             });
-            console.log('All item texts:', allItemTexts);
+            console.log("All item texts:", allItemTexts);
 
             // 選択範囲のテキストを取得
             const text = store.getSelectedText();
-            console.log('Selected text:', text);
+            console.log("Selected text:", text);
             return text;
         });
 
@@ -194,51 +197,54 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
 
         // 選択範囲の情報を確認
         await page.evaluate(() => {
-            console.log('Selections after keyboard selection:', Object.values((window as any).editorOverlayStore.selections));
+            console.log(
+                "Selections after keyboard selection:",
+                Object.values((window as any).editorOverlayStore.selections),
+            );
 
             // 選択範囲の詳細情報を表示
             const sel = Object.values((window as any).editorOverlayStore.selections)[0];
             if (sel) {
-                const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
-                const allItemIds = allItems.map(el => el.getAttribute('data-item-id')!);
+                const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
+                const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
                 const allItemTexts = allItems.map(el => {
-                    const textEl = el.querySelector('.item-text');
-                    return textEl ? textEl.textContent : '';
+                    const textEl = el.querySelector(".item-text");
+                    return textEl ? textEl.textContent : "";
                 });
 
-                console.log('All items:', allItemIds.map((id, i) => ({ id, text: allItemTexts[i] })));
+                console.log("All items:", allItemIds.map((id, i) => ({ id, text: allItemTexts[i] })));
 
-                console.log('Selection details:');
-                console.log('- startItemId:', sel.startItemId);
-                console.log('- endItemId:', sel.endItemId);
-                console.log('- startOffset:', sel.startOffset);
-                console.log('- endOffset:', sel.endOffset);
-                console.log('- isReversed:', sel.isReversed);
+                console.log("Selection details:");
+                console.log("- startItemId:", sel.startItemId);
+                console.log("- endItemId:", sel.endItemId);
+                console.log("- startOffset:", sel.startOffset);
+                console.log("- endOffset:", sel.endOffset);
+                console.log("- isReversed:", sel.isReversed);
 
-                console.log('Start item index:', allItemIds.indexOf(sel.startItemId));
-                console.log('End item index:', allItemIds.indexOf(sel.endItemId));
+                console.log("Start item index:", allItemIds.indexOf(sel.startItemId));
+                console.log("End item index:", allItemIds.indexOf(sel.endItemId));
             }
         });
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection').first()).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
 
             // 全てのアイテムのテキストを取得
-            const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
+            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
             const allItemTexts = allItems.map(el => {
-                const textEl = el.querySelector('.item-text');
-                return textEl ? textEl.textContent : '';
+                const textEl = el.querySelector(".item-text");
+                return textEl ? textEl.textContent : "";
             });
-            console.log('All item texts:', allItemTexts);
+            console.log("All item texts:", allItemTexts);
 
             // 選択範囲のテキストを取得
             const text = store.getSelectedText();
-            console.log('Selected text after keyboard selection:', text);
+            console.log("Selected text after keyboard selection:", text);
             return text;
         });
 
@@ -266,16 +272,16 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         await page.waitForTimeout(300);
 
         // Shift + 下矢印キーを2回押下して3つのアイテムを選択
-        await page.keyboard.down('Shift');
-        await page.keyboard.press('ArrowDown');
-        await page.keyboard.press('ArrowDown');
-        await page.keyboard.up('Shift');
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.up("Shift");
 
         // 少し待機して選択が反映されるのを待つ
         await page.waitForTimeout(500);
 
         // 選択範囲の要素が存在することを確認
-        const selectionElements = page.locator('.editor-overlay .selection');
+        const selectionElements = page.locator(".editor-overlay .selection");
 
         // 少なくとも1つの選択範囲要素が表示されていることを確認
         const count = await selectionElements.count();

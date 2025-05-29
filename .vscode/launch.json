@@ -273,8 +273,8 @@
             "args": [
                 "emulators:start",
                 "--inspect-functions=9229",
-                "--only",
-                "auth,firestore,functions,hosting"
+                "--project",
+                "outliner-d57b0"
             ],
             "env": {
                 "FIREBASE_DEBUG_MODE": "true"
@@ -338,7 +338,7 @@
                 "Debug SvelteKit Server",
                 "For Test SvelteKit Server",
                 "For Test Debug Server",
-                "For Test Launch Tinylicious",
+                "For Test Launch Tinylicious"
                 // "For Test Launch test:e2e:ui"
                 // "Launch Chrome against localhost"
             ],
@@ -350,7 +350,7 @@
             "configurations": [
                 "For Test SvelteKit Server",
                 "For Test Debug Server",
-                "For Test Launch Tinylicious",
+                "For Test Launch Tinylicious"
                 // "For Test Launch test:e2e:ui"
             ],
             "stopAll": true,

@@ -21,7 +21,8 @@ test.describe("CLM-0004: 上へ移動", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -29,7 +30,9 @@ test.describe("CLM-0004: 上へ移動", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // 長いテキストを入力して視覚的な折り返しを作成
-        await page.keyboard.type("これは非常に長いテキストです。折り返しによって複数行になります。アイテムの幅に応じて自動的に折り返されて表示されるはずです。このテキストは十分に長いので、標準的な画面幅であれば少なくとも2行以上になるはずです。");
+        await page.keyboard.type(
+            "これは非常に長いテキストです。折り返しによって複数行になります。アイテムの幅に応じて自動的に折り返されて表示されるはずです。このテキストは十分に長いので、標準的な画面幅であれば少なくとも2行以上になるはずです。",
+        );
 
         // テキストが入力されるのを待機
         await page.waitForTimeout(300);
@@ -47,7 +50,9 @@ test.describe("CLM-0004: 上へ移動", () => {
         expect(cursorData.activeItemId).not.toBeNull();
 
         // アクティブなアイテムの高さを確認して複数行になっているかチェック
-        const itemHeight = await page.locator(`.outliner-item[data-item-id="${cursorData.activeItemId}"]`).locator(".item-content").evaluate(el => {
+        const itemHeight = await page.locator(`.outliner-item[data-item-id="${cursorData.activeItemId}"]`).locator(
+            ".item-content",
+        ).evaluate(el => {
             const rect = el.getBoundingClientRect();
             const computedStyle = window.getComputedStyle(el);
             const lineHeight = parseInt(computedStyle.lineHeight) || 20;
@@ -70,23 +75,23 @@ test.describe("CLM-0004: 上へ移動", () => {
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
-        await cursor.waitFor({ state: 'visible' });
+        await cursor.waitFor({ state: "visible" });
 
         // 初期カーソル位置とオフセットを取得
         const initialPosition = await cursor.boundingBox();
-        const initialOffset = await cursor.evaluate(el => parseInt(el.getAttribute('data-offset') || '-1'));
+        const initialOffset = await cursor.evaluate(el => parseInt(el.getAttribute("data-offset") || "-1"));
         console.log(`初期カーソル位置:`, initialPosition);
         console.log(`初期オフセット: ${initialOffset}`);
 
         // 視覚的な行の情報をテスト
-        const visualLineInfo = await page.evaluate(({ itemId, offset }: { itemId: string; offset: number }) => {
+        const visualLineInfo = await page.evaluate(({ itemId, offset }: { itemId: string; offset: number; }) => {
             const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
             if (!itemElement) return null;
 
-            const textElement = itemElement.querySelector('.item-text') as HTMLElement;
+            const textElement = itemElement.querySelector(".item-text") as HTMLElement;
             if (!textElement) return null;
 
-            const text = textElement.textContent || '';
+            const text = textElement.textContent || "";
             console.log(`Text content: "${text}"`);
             console.log(`Text length: ${text.length}`);
             console.log(`Current offset: ${offset}`);
@@ -95,7 +100,7 @@ test.describe("CLM-0004: 上へ移動", () => {
             const textNode = Array.from(textElement.childNodes).find(node => node.nodeType === Node.TEXT_NODE) as Text;
             if (!textNode) return null;
 
-            const lines: { startOffset: number; endOffset: number; y: number }[] = [];
+            const lines: { startOffset: number; endOffset: number; y: number; }[] = [];
             let currentLineY: number | null = null;
             let currentLineStart = 0;
 
@@ -116,12 +121,13 @@ test.describe("CLM-0004: 上へ移動", () => {
 
                 if (currentLineY === null) {
                     currentLineY = y;
-                } else if (Math.abs(y - currentLineY) > 5) { // 5px以上の差があれば新しい行
+                }
+                else if (Math.abs(y - currentLineY) > 5) { // 5px以上の差があれば新しい行
                     // 新しい行が始まった
                     lines.push({
                         startOffset: currentLineStart,
                         endOffset: actualOffset - 1,
-                        y: currentLineY
+                        y: currentLineY,
                     });
                     console.log(`Line detected: start=${currentLineStart}, end=${actualOffset - 1}, y=${currentLineY}`);
                     currentLineStart = actualOffset;
@@ -134,7 +140,7 @@ test.describe("CLM-0004: 上へ移動", () => {
                 lines.push({
                     startOffset: currentLineStart,
                     endOffset: text.length,
-                    y: currentLineY
+                    y: currentLineY,
                 });
                 console.log(`Last line: start=${currentLineStart}, end=${text.length}, y=${currentLineY}`);
             }
@@ -152,7 +158,7 @@ test.describe("CLM-0004: 上へ移動", () => {
 
         // 新しいカーソル位置を取得
         const newPosition = await cursor.boundingBox();
-        const newOffset = await cursor.evaluate(el => parseInt(el.getAttribute('data-offset') || '-1'));
+        const newOffset = await cursor.evaluate(el => parseInt(el.getAttribute("data-offset") || "-1"));
         console.log(`新しいカーソル位置:`, newPosition);
         console.log(`新しいオフセット: ${newOffset}`);
 
@@ -160,11 +166,13 @@ test.describe("CLM-0004: 上へ移動", () => {
         if (newPosition && initialPosition) {
             if (newPosition.y < initialPosition.y) {
                 console.log("✓ カーソルが上に移動しました");
-            } else if (newPosition.y === initialPosition.y && newPosition.x !== initialPosition.x) {
+            }
+            else if (newPosition.y === initialPosition.y && newPosition.x !== initialPosition.x) {
                 console.log("⚠ カーソルは同じ行内で移動しました（視覚的な行の移動が機能していない可能性）");
                 // 視覚的な行の移動が実装されていない場合は、オフセットの変化で確認
                 expect(newOffset).not.toBe(initialOffset);
-            } else {
+            }
+            else {
                 console.log("✗ カーソルが移動していません");
                 expect(newPosition.y).toBeLessThan(initialPosition.y);
             }
@@ -181,7 +189,8 @@ test.describe("CLM-0004: 上へ移動", () => {
         expect(firstItemId).not.toBeNull();
 
         // 1つ目のアイテムに長いテキストが入力されていることを確認
-        const firstItemText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text").textContent();
+        const firstItemText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
+            .textContent();
         console.log(`1つ目のアイテムのテキスト: "${firstItemText}"`);
 
         // 2つ目のアイテムを追加
@@ -189,7 +198,9 @@ test.describe("CLM-0004: 上へ移動", () => {
         await page.keyboard.press("Enter");
 
         // 2つ目のアイテムにも長いテキストを入力
-        await page.keyboard.type("これは2つ目のアイテムです。このテキストも十分に長くして、複数行になるようにします。アイテムの幅に応じて自動的に折り返されて表示されるはずです。");
+        await page.keyboard.type(
+            "これは2つ目のアイテムです。このテキストも十分に長くして、複数行になるようにします。アイテムの幅に応じて自動的に折り返されて表示されるはずです。",
+        );
         await page.waitForTimeout(300);
 
         // 2つ目のアイテムの先頭に移動
@@ -205,12 +216,14 @@ test.describe("CLM-0004: 上へ移動", () => {
         expect(secondItemId).not.toBe(firstItemId);
 
         // 2つ目のアイテムのテキストを確認
-        const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-text").textContent();
+        const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(
+            ".item-text",
+        ).textContent();
         console.log(`2つ目のアイテムのテキスト: "${secondItemText}"`);
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
-        await cursor.waitFor({ state: 'visible' });
+        await cursor.waitFor({ state: "visible" });
 
         // カーソル位置を取得
         const cursorPosition = await cursor.boundingBox();
@@ -222,7 +235,7 @@ test.describe("CLM-0004: 上へ移動", () => {
 
         // 押下後のカーソル位置を取得
         const cursorAfterKeyPress = page.locator(".editor-overlay .cursor.active").first();
-        await cursorAfterKeyPress.waitFor({ state: 'visible' });
+        await cursorAfterKeyPress.waitFor({ state: "visible" });
         const newCursorPosition = await cursorAfterKeyPress.boundingBox();
         console.log(`新しいカーソル位置: `, newCursorPosition);
 
@@ -236,11 +249,11 @@ test.describe("CLM-0004: 上へ移動", () => {
         expect(activeItemIdAfterKeyPress).toBe(firstItemId);
 
         // 1つ目のアイテムの行数と高さを取得
-        const firstItemLines = await page.evaluate((itemId) => {
+        const firstItemLines = await page.evaluate(itemId => {
             const itemElement = document.querySelector(`.outliner-item[data-item-id="${itemId}"]`);
             if (!itemElement) return { lineCount: 0, height: 0 };
 
-            const itemContent = itemElement.querySelector('.item-content');
+            const itemContent = itemElement.querySelector(".item-content");
             if (!itemContent) return { lineCount: 0, height: 0 };
 
             // 行の高さを推定（一般的な行の高さ）
@@ -254,30 +267,38 @@ test.describe("CLM-0004: 上へ移動", () => {
             return {
                 lineCount: estimatedLineCount,
                 height: itemHeight,
-                lineHeight: lineHeight
+                lineHeight: lineHeight,
             };
         }, firstItemId);
 
-        console.log(`1つ目のアイテムの推定行数: ${firstItemLines.lineCount}, 高さ: ${firstItemLines.height}px, 行の高さ: ${firstItemLines.lineHeight}px`);
+        console.log(
+            `1つ目のアイテムの推定行数: ${firstItemLines.lineCount}, 高さ: ${firstItemLines.height}px, 行の高さ: ${firstItemLines.lineHeight}px`,
+        );
 
         // 1つ目のアイテムの位置情報を取得
-        const firstItemTop = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-content").evaluate(el => {
+        const firstItemTop = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(
+            ".item-content",
+        ).evaluate(el => {
             const rect = el.getBoundingClientRect();
             return rect.top;
         });
 
-        const firstItemBottom = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-content").evaluate(el => {
+        const firstItemBottom = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(
+            ".item-content",
+        ).evaluate(el => {
             const rect = el.getBoundingClientRect();
             return rect.top + rect.height;
         });
 
         const cursorY = newCursorPosition?.y || 0;
 
-        console.log(`カーソルY座標: ${cursorY}, 1つ目のアイテムの上端Y座標: ${firstItemTop}, 下端Y座標: ${firstItemBottom}`);
+        console.log(
+            `カーソルY座標: ${cursorY}, 1つ目のアイテムの上端Y座標: ${firstItemTop}, 下端Y座標: ${firstItemBottom}`,
+        );
 
         // カーソルのオフセットを取得
         const cursorOffset = await cursorAfterKeyPress.evaluate(el => {
-            return parseInt(el.getAttribute('data-offset') || '-1');
+            return parseInt(el.getAttribute("data-offset") || "-1");
         });
         console.log(`カーソルオフセット: ${cursorOffset}`);
 
@@ -307,7 +328,8 @@ test.describe("CLM-0004: 上へ移動", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -325,7 +347,9 @@ test.describe("CLM-0004: 上へ移動", () => {
         // 長いテキストを入力して複数行にする
         await page.keyboard.press("Control+a"); // すべて選択
         await page.keyboard.press("Delete"); // 削除
-        await page.keyboard.type("これはページタイトルまたは最初のアイテムです。このテキストも十分に長くして、複数行になるようにします。アイテムの幅に応じて自動的に折り返されて表示されるはずです。");
+        await page.keyboard.type(
+            "これはページタイトルまたは最初のアイテムです。このテキストも十分に長くして、複数行になるようにします。アイテムの幅に応じて自動的に折り返されて表示されるはずです。",
+        );
         await page.waitForTimeout(300);
 
         // カーソルを2行目に移動するため、まず行の先頭に移動
@@ -338,7 +362,7 @@ test.describe("CLM-0004: 上へ移動", () => {
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
-        await cursor.waitFor({ state: 'visible' });
+        await cursor.waitFor({ state: "visible" });
 
         // 初期カーソル位置を取得
         const initialPosition = await cursor.boundingBox();
@@ -346,7 +370,7 @@ test.describe("CLM-0004: 上へ移動", () => {
 
         // 初期オフセットを取得
         const initialOffset = await cursor.evaluate(el => {
-            return parseInt(el.getAttribute('data-offset') || '-1');
+            return parseInt(el.getAttribute("data-offset") || "-1");
         });
         console.log(`初期オフセット: ${initialOffset}`);
 
@@ -360,7 +384,7 @@ test.describe("CLM-0004: 上へ移動", () => {
 
         // 新しいオフセットを取得
         const newOffset = await cursor.evaluate(el => {
-            return parseInt(el.getAttribute('data-offset') || '-1');
+            return parseInt(el.getAttribute("data-offset") || "-1");
         });
         console.log(`新しいオフセット: ${newOffset}`);
 
@@ -375,7 +399,8 @@ test.describe("CLM-0004: 上へ移動", () => {
         expect(activeItemIdAfterKeyPress).toBe(itemId);
 
         // アイテムのテキストを確認
-        const itemText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text").textContent();
+        const itemText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text")
+            .textContent();
         expect(itemText).toContain("これはページタイトルまたは最初のアイテムです");
     });
 });

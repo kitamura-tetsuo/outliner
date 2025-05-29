@@ -18,10 +18,9 @@ export class LinkTestHelpers {
         page: Page,
         projectName: string,
         pageName: string,
-        content: string[] = ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"]
+        content: string[] = ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"],
     ): Promise<void> {
         // まずテストページをセットアップ（基本的なページを表示）
-
 
         // TreeDebuggerをセットアップ
         await TestHelpers.setupTreeDebugger(page);
@@ -69,7 +68,8 @@ export class LinkTestHelpers {
                 }
 
                 return { success: true };
-            } catch (error) {
+            }
+            catch (error) {
                 console.error("Error creating project and page:", error);
                 throw error;
             }
@@ -92,10 +92,9 @@ export class LinkTestHelpers {
                 pageName: string;
                 content?: string[];
             }>;
-        }>
+        }>,
     ): Promise<void> {
         // まずテストページをセットアップ（基本的なページを表示）
-
 
         // TreeDebuggerをセットアップ
         await TestHelpers.setupTreeDebugger(page);
@@ -104,7 +103,7 @@ export class LinkTestHelpers {
         await page.waitForFunction(() => window.__FLUID_CLIENT__, { timeout: 30000 });
 
         // Fluid APIを使用してプロジェクトとページを作成
-        await page.evaluate((projects) => {
+        await page.evaluate(projects => {
             // グローバルFluidClientインスタンスを取得
             const fluidClient = window.__FLUID_CLIENT__;
             if (!fluidClient) {
@@ -129,7 +128,8 @@ export class LinkTestHelpers {
                         // 最初のプロジェクトは既存のものを更新
                         project = existingProjects[0];
                         project.updateText(projectInfo.projectName);
-                    } else {
+                    }
+                    else {
                         // 新しいプロジェクトを作成
                         project = rootProject.items.addNode("test-user");
                         project.updateText(projectInfo.projectName);
@@ -150,7 +150,8 @@ export class LinkTestHelpers {
                             }
 
                             // 新しいアイテムを追加
-                            const content = pageInfo.content || ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"];
+                            const content = pageInfo.content ||
+                                ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"];
                             for (const text of content) {
                                 const item = pageItems.addNode("test-user");
                                 item.updateText(text);
@@ -160,7 +161,8 @@ export class LinkTestHelpers {
                 }
 
                 return { success: true };
-            } catch (error) {
+            }
+            catch (error) {
                 console.error("Error creating projects and pages:", error);
                 throw error;
             }
@@ -179,7 +181,7 @@ export class LinkTestHelpers {
     static async testInternalLinkNavigation(
         page: Page,
         linkSelector: string,
-        expectedUrl: string
+        expectedUrl: string,
     ): Promise<void> {
         // 現在のURLを保存
         const currentUrl = page.url();
@@ -213,7 +215,7 @@ export class LinkTestHelpers {
         projectName: string,
         pageName: string,
         content: string[] = ["テストページの内容です"],
-        navigateToPage: boolean = false
+        navigateToPage: boolean = false,
     ): Promise<void> {
         // TreeDebuggerをセットアップ
         await TestHelpers.setupTreeDebugger(page);
@@ -293,13 +295,14 @@ export class LinkTestHelpers {
                 return {
                     success: true,
                     projectId: project.id,
-                    pageId: page.id
+                    pageId: page.id,
                 };
-            } catch (error) {
+            }
+            catch (error) {
                 console.error("Error creating page:", error);
                 return {
                     success: false,
-                    error: error.message || "Unknown error"
+                    error: error.message || "Unknown error",
                 };
             }
         }, { projectName, pageName, content });
@@ -331,7 +334,7 @@ export class LinkTestHelpers {
     static async openPage(
         page: Page,
         projectName: string,
-        pageName: string
+        pageName: string,
     ): Promise<void> {
         // ページに移動
         await page.goto(`/${projectName}/${pageName}`);
@@ -353,10 +356,10 @@ export class LinkTestHelpers {
      * @param linkText リンクのテキスト
      */
     static async forceLinkPreview(page: Page, linkText: string): Promise<void> {
-        await page.evaluate((text) => {
+        await page.evaluate(text => {
             // リンク要素を取得
-            const linkElement = Array.from(document.querySelectorAll('a.internal-link')).find(
-                (el) => el.textContent === text
+            const linkElement = Array.from(document.querySelectorAll("a.internal-link")).find(
+                el => el.textContent === text,
             );
 
             if (!linkElement) {
@@ -365,20 +368,20 @@ export class LinkTestHelpers {
             }
 
             // カスタムイベントを発火
-            const mouseoverEvent = new MouseEvent('mouseover', {
+            const mouseoverEvent = new MouseEvent("mouseover", {
                 bubbles: true,
                 cancelable: true,
-                view: window
+                view: window,
             });
             linkElement.dispatchEvent(mouseoverEvent);
 
             // プレビュー要素を強制的に表示
             setTimeout(() => {
-                const previewElement = document.querySelector('.link-preview-popup');
+                const previewElement = document.querySelector(".link-preview-popup");
                 if (previewElement) {
-                    (previewElement as HTMLElement).style.display = 'block';
-                    (previewElement as HTMLElement).style.visibility = 'visible';
-                    (previewElement as HTMLElement).style.opacity = '1';
+                    (previewElement as HTMLElement).style.display = "block";
+                    (previewElement as HTMLElement).style.visibility = "visible";
+                    (previewElement as HTMLElement).style.opacity = "1";
                 }
             }, 100);
         }, linkText);
@@ -430,7 +433,8 @@ export class LinkTestHelpers {
                 item.updateText(newText);
 
                 return true;
-            } catch (error) {
+            }
+            catch (error) {
                 console.error("Error creating internal link:", error);
                 return false;
             }
@@ -447,9 +451,9 @@ export class LinkTestHelpers {
      */
     static async detectInternalLink(page: Page, linkText: string): Promise<boolean> {
         // リンク要素を検出
-        const linkCount = await page.evaluate((text) => {
-            const links = Array.from(document.querySelectorAll('a.internal-link')).filter(
-                (el) => el.textContent === text
+        const linkCount = await page.evaluate(text => {
+            const links = Array.from(document.querySelectorAll("a.internal-link")).filter(
+                el => el.textContent === text,
             );
             return links.length;
         }, linkText);
@@ -468,7 +472,7 @@ export class LinkTestHelpers {
         page: Page,
         pageName: string,
         projectName?: string,
-        pageExists: boolean = true
+        pageExists: boolean = true,
     ): Promise<void> {
         await page.evaluate(({ pageName, projectName, pageExists }) => {
             // グローバル関数が存在しない場合は作成
@@ -477,10 +481,10 @@ export class LinkTestHelpers {
                     console.log(`Forcing link preview for page: ${pageName} (exists: ${pageExists})`);
 
                     // プレビューポップアップを作成
-                    let popup = document.querySelector('.link-preview-popup');
+                    let popup = document.querySelector(".link-preview-popup");
                     if (!popup) {
-                        popup = document.createElement('div');
-                        popup.className = 'link-preview-popup';
+                        popup = document.createElement("div");
+                        popup.className = "link-preview-popup";
                         document.body.appendChild(popup);
                     }
 
@@ -493,7 +497,8 @@ export class LinkTestHelpers {
                                 <p>テスト用のプレビュー内容です。</p>
                             </div>
                         `;
-                    } else {
+                    }
+                    else {
                         // 存在しないページの場合
                         popup.innerHTML = `
                             <h3>${pageName}</h3>
@@ -504,15 +509,15 @@ export class LinkTestHelpers {
                     }
 
                     // スタイルを設定して表示
-                    (popup as HTMLElement).style.display = 'block';
-                    (popup as HTMLElement).style.position = 'fixed';
-                    (popup as HTMLElement).style.top = '100px';
-                    (popup as HTMLElement).style.left = '100px';
-                    (popup as HTMLElement).style.zIndex = '1000';
-                    (popup as HTMLElement).style.backgroundColor = '#fff';
-                    (popup as HTMLElement).style.border = '1px solid #ccc';
-                    (popup as HTMLElement).style.padding = '10px';
-                    (popup as HTMLElement).style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+                    (popup as HTMLElement).style.display = "block";
+                    (popup as HTMLElement).style.position = "fixed";
+                    (popup as HTMLElement).style.top = "100px";
+                    (popup as HTMLElement).style.left = "100px";
+                    (popup as HTMLElement).style.zIndex = "1000";
+                    (popup as HTMLElement).style.backgroundColor = "#fff";
+                    (popup as HTMLElement).style.border = "1px solid #ccc";
+                    (popup as HTMLElement).style.padding = "10px";
+                    (popup as HTMLElement).style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
 
                     return popup;
                 };
@@ -533,15 +538,15 @@ export class LinkTestHelpers {
     static async forceRenderInternalLinks(page: Page): Promise<void> {
         const result = await page.evaluate(() => {
             // 全てのアウトライナーアイテムを取得
-            const items = document.querySelectorAll('.outliner-item');
+            const items = document.querySelectorAll(".outliner-item");
             console.log(`Found ${items.length} outliner items`);
 
             let linksFound = 0;
             let linksProcessed = 0;
 
             // 各アイテムのテキストを再レンダリング
-            items.forEach((item) => {
-                const textElement = item.querySelector('.item-text');
+            items.forEach(item => {
+                const textElement = item.querySelector(".item-text");
                 if (textElement) {
                     // テキスト内容を取得
                     const text = textElement.textContent || "";
@@ -580,15 +585,16 @@ export class LinkTestHelpers {
                             html = html.replace(projectLinkPattern, (match, path) => {
                                 linksProcessed++;
                                 // パスを分解してプロジェクト名とページ名を取得
-                                const parts = path.split('/').filter(p => p);
+                                const parts = path.split("/").filter(p => p);
                                 if (parts.length >= 2) {
                                     const projectName = parts[0];
-                                    const pageName = parts.slice(1).join('/');
+                                    const pageName = parts.slice(1).join("/");
 
                                     return `<span class="link-preview-wrapper">
                                         <a href="/${path}" class="internal-link project-link" data-project="${projectName}" data-page="${pageName}">${path}</a>
                                     </span>`;
-                                } else {
+                                }
+                                else {
                                     return `<a href="/${path}" class="internal-link project-link">${path}</a>`;
                                 }
                             });
@@ -598,47 +604,47 @@ export class LinkTestHelpers {
                         textElement.innerHTML = html;
 
                         // フォーマット済みクラスを追加
-                        textElement.classList.add('formatted');
+                        textElement.classList.add("formatted");
                     }
                 }
             });
 
             // リンクにイベントリスナーを設定
             const setupLinkEventListeners = () => {
-                const links = document.querySelectorAll('a.internal-link');
+                const links = document.querySelectorAll("a.internal-link");
                 console.log(`Found ${links.length} internal links to setup event listeners`);
 
                 links.forEach(link => {
                     // 既に設定済みかどうかを確認するためのフラグ
-                    const hasListeners = link.getAttribute('data-link-listeners') === 'true';
+                    const hasListeners = link.getAttribute("data-link-listeners") === "true";
 
                     if (!hasListeners) {
                         // マウスオーバーイベントリスナーを追加
-                        link.addEventListener('mouseenter', (event) => {
-                            console.log('Link mouseenter event triggered');
+                        link.addEventListener("mouseenter", event => {
+                            console.log("Link mouseenter event triggered");
                             // データ属性からページ名を取得
-                            const pageName = link.getAttribute('data-page');
-                            const projectName = link.getAttribute('data-project');
+                            const pageName = link.getAttribute("data-page");
+                            const projectName = link.getAttribute("data-project");
 
                             if (pageName) {
                                 // リンクプレビュー表示のカスタムイベントを発火
-                                const customEvent = new CustomEvent('linkPreviewShow', {
-                                    detail: { pageName, projectName, element: link }
+                                const customEvent = new CustomEvent("linkPreviewShow", {
+                                    detail: { pageName, projectName, element: link },
                                 });
                                 document.dispatchEvent(customEvent);
                             }
                         });
 
                         // マウスアウトイベントリスナーを追加
-                        link.addEventListener('mouseleave', () => {
-                            console.log('Link mouseleave event triggered');
+                        link.addEventListener("mouseleave", () => {
+                            console.log("Link mouseleave event triggered");
                             // リンクプレビュー非表示のカスタムイベントを発火
-                            const customEvent = new CustomEvent('linkPreviewHide');
+                            const customEvent = new CustomEvent("linkPreviewHide");
                             document.dispatchEvent(customEvent);
                         });
 
                         // リスナーが設定されたことを示すフラグを設定
-                        link.setAttribute('data-link-listeners', 'true');
+                        link.setAttribute("data-link-listeners", "true");
                     }
                 });
 
@@ -654,22 +660,22 @@ export class LinkTestHelpers {
             // MutationObserverがない場合は作成
             if (!hasMutationObserver) {
                 // MutationObserverを作成
-                const observer = new MutationObserver((mutations) => {
+                const observer = new MutationObserver(mutations => {
                     let newLinksFound = false;
 
                     mutations.forEach(mutation => {
-                        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                        if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
                             mutation.addedNodes.forEach(node => {
                                 if (node.nodeType === Node.ELEMENT_NODE) {
                                     const element = node as Element;
 
                                     // 追加された要素自体が内部リンクかどうかを確認
-                                    if (element.classList && element.classList.contains('internal-link')) {
+                                    if (element.classList && element.classList.contains("internal-link")) {
                                         newLinksFound = true;
                                     }
 
                                     // 追加された要素内の内部リンクを検索
-                                    const links = element.querySelectorAll('.internal-link');
+                                    const links = element.querySelectorAll(".internal-link");
                                     if (links.length > 0) {
                                         newLinksFound = true;
                                     }
@@ -679,7 +685,7 @@ export class LinkTestHelpers {
                     });
 
                     if (newLinksFound) {
-                        console.log('New internal links found, setting up event listeners');
+                        console.log("New internal links found, setting up event listeners");
                         setupLinkEventListeners();
                     }
                 });
@@ -689,7 +695,7 @@ export class LinkTestHelpers {
                     childList: true,
                     subtree: true,
                     attributes: true,
-                    attributeFilter: ['class']
+                    attributeFilter: ["class"],
                 });
 
                 // グローバル変数に保存
@@ -701,7 +707,7 @@ export class LinkTestHelpers {
                 linksFound,
                 linksProcessed,
                 linksWithListeners,
-                hasMutationObserver
+                hasMutationObserver,
             };
         });
 

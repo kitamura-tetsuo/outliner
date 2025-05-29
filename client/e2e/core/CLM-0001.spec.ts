@@ -20,9 +20,9 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         // ページ内の要素を確認
         const elements = await page.evaluate(() => {
             return {
-                outlinerItems: document.querySelectorAll('.outliner-item').length,
-                pageTitle: document.querySelector('.outliner-item.page-title') ? true : false,
-                firstItem: document.querySelector('.outliner-item') ? true : false
+                outlinerItems: document.querySelectorAll(".outliner-item").length,
+                pageTitle: document.querySelector(".outliner-item.page-title") ? true : false,
+                firstItem: document.querySelector(".outliner-item") ? true : false,
             };
         });
         console.log("Page elements:", elements);
@@ -38,7 +38,8 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
             console.log("Clicked first visible item");
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
             console.log("Clicked page title item");
         }
@@ -75,7 +76,8 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
             console.log("Clicked first visible item for input test");
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
             console.log("Clicked page title item for input test");
         }
@@ -111,7 +113,8 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
             const text = await activeItem.locator(".item-text").textContent();
             console.log("Item text:", text);
             expect(text).toContain(testText);
-        } catch (e) {
+        }
+        catch (e) {
             console.log("Failed to verify item text:", e.message);
             // ページ内にテキストが含まれていることを確認（代替検証）
             const pageContent = await page.textContent("body");
@@ -129,7 +132,8 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
             console.log("Clicked first visible item for cursor test");
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
             console.log("Clicked page title item for cursor test");
         }
@@ -141,7 +145,8 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         try {
             await page.waitForSelector("textarea.global-textarea:focus", { timeout: 10000 });
             console.log("Global textarea is focused");
-        } catch (e) {
+        }
+        catch (e) {
             console.log("Failed to detect focused textarea:", e.message);
         }
 
@@ -149,7 +154,8 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         try {
             await page.waitForSelector(".editor-overlay .cursor.active", { state: "attached", timeout: 10000 });
             console.log("Cursor element is attached to DOM");
-        } catch (e) {
+        }
+        catch (e) {
             console.log("Failed to detect cursor element:", e.message);
         }
 
@@ -181,7 +187,8 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             testItem = visibleItems.first();
             console.log("Using first visible item for click position test");
-        } else {
+        }
+        else {
             testItem = item;
             console.log("Using page title item for click position test");
         }
@@ -276,7 +283,8 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             testItem = visibleItems.first();
             console.log("Using first visible item for last line test");
-        } else {
+        }
+        else {
             testItem = item;
             console.log("Using page title item for last line test");
         }
@@ -349,7 +357,7 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         // カーソル位置がテキストの末尾にあることを確認
         // テキストエリアの選択位置を取得
         const cursorPosition = await page.evaluate(() => {
-            const textarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             return textarea ? textarea.selectionStart : -1;
         });
 
@@ -370,7 +378,8 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
             console.log("Clicked first visible item for blink test");
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
             console.log("Clicked page title item for blink test");
         }

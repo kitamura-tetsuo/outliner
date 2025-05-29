@@ -2,8 +2,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 
 /**
@@ -33,7 +33,6 @@ test.describe("テキスト追加機能テスト", () => {
     test("Add Text button should add text to shared content", async ({ page }, testInfo) => {
         // テスト開始前に十分な時間を設定
 
-
         // アウトラインにアイテムを追加
         await page.click('button:has-text("アイテム追加")');
 
@@ -55,7 +54,8 @@ test.describe("テキスト追加機能テスト", () => {
             const cursorData = await CursorValidator.getCursorData(page);
             expect(cursorData.cursorCount).toBeGreaterThan(0);
             expect(cursorData.cursorVisible).toBe(true);
-        } else {
+        }
+        else {
             console.log("Cursor not visible, continuing test anyway");
         }
 
@@ -96,14 +96,15 @@ test.describe("テキスト追加機能テスト", () => {
         // ページが読み込まれるまで一時停止（Fluidが初期化されるのを待つ）
         try {
             await page.waitForLoadState("networkidle", { timeout: 60000 });
-        } catch (error) {
+        }
+        catch (error) {
             console.log("Timeout waiting for networkidle, continuing anyway");
             // スクリーンショットを撮影して状態を確認
             await page.screenshot({ path: "test-results/networkidle-timeout-2.png" });
         }
 
         // テキスト追加前の状態を確認
-        const initialDebugInfo = await TreeValidator.getTreeData(page);;
+        const initialDebugInfo = await TreeValidator.getTreeData(page);
 
         // アイテムを追加して編集
         await page.click('button:has-text("アイテム追加")');
@@ -122,7 +123,8 @@ test.describe("テキスト追加機能テスト", () => {
             const cursorData = await CursorValidator.getCursorData(page);
             expect(cursorData.cursorCount).toBeGreaterThan(0);
             expect(cursorData.cursorVisible).toBe(true);
-        } else {
+        }
+        else {
             console.log("Cursor not visible, continuing test anyway");
         }
 
@@ -132,7 +134,7 @@ test.describe("テキスト追加機能テスト", () => {
         await page.waitForTimeout(2000);
 
         // 更新後のDebugInfoを取得
-        const updatedDebugInfo = await TreeValidator.getTreeData(page);;
+        const updatedDebugInfo = await TreeValidator.getTreeData(page);
 
         // 変更の検出方法を変更
         if (initialDebugInfo === updatedDebugInfo) {

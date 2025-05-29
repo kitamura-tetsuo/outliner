@@ -2,10 +2,13 @@
  *  Title   : カーソル管理の基本機能
  *  Source  : docs/client-features.yaml
  */
-import { test, expect } from '@playwright/test';
+import {
+    expect,
+    test,
+} from "@playwright/test";
 
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("カーソル管理テスト", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -21,7 +24,8 @@ test.describe("カーソル管理テスト", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -33,7 +37,7 @@ test.describe("カーソル管理テスト", () => {
 
         // 初期カーソル数を確認
         const initialCursorCount = await page.evaluate(() => {
-            return document.querySelectorAll('.editor-overlay .cursor').length;
+            return document.querySelectorAll(".editor-overlay .cursor").length;
         });
         console.log(`初期カーソル数: ${initialCursorCount}`);
 
@@ -44,7 +48,7 @@ test.describe("カーソル管理テスト", () => {
 
         // Enter後のカーソル数を確認
         const cursorCountAfterEnter = await page.evaluate(() => {
-            return document.querySelectorAll('.editor-overlay .cursor').length;
+            return document.querySelectorAll(".editor-overlay .cursor").length;
         });
         console.log(`Enter後のカーソル数: ${cursorCountAfterEnter}`);
 
@@ -54,7 +58,7 @@ test.describe("カーソル管理テスト", () => {
 
         // 最初のアイテムクリック後のカーソル数を確認
         const cursorCountAfterFirstClick = await page.evaluate(() => {
-            return document.querySelectorAll('.editor-overlay .cursor').length;
+            return document.querySelectorAll(".editor-overlay .cursor").length;
         });
         console.log(`最初のアイテムクリック後のカーソル数: ${cursorCountAfterFirstClick}`);
 
@@ -67,7 +71,7 @@ test.describe("カーソル管理テスト", () => {
 
         // 2番目のアイテムクリック後のカーソル数を確認
         const cursorCountAfterSecondClick = await page.evaluate(() => {
-            return document.querySelectorAll('.editor-overlay .cursor').length;
+            return document.querySelectorAll(".editor-overlay .cursor").length;
         });
         console.log(`2番目のアイテムクリック後のカーソル数: ${cursorCountAfterSecondClick}`);
 
@@ -79,7 +83,7 @@ test.describe("カーソル管理テスト", () => {
 
         // 再度クリック後のカーソル数を確認
         const cursorCountAfterThirdClick = await page.evaluate(() => {
-            return document.querySelectorAll('.editor-overlay .cursor').length;
+            return document.querySelectorAll(".editor-overlay .cursor").length;
         });
         console.log(`再度クリック後のカーソル数: ${cursorCountAfterThirdClick}`);
 

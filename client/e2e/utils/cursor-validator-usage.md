@@ -21,8 +21,11 @@
 `CursorValidator` クラスを使用して、カーソル情報を取得し、検証することができます。
 
 ```typescript
+import {
+    setupCursorDebugger,
+    waitForCursorVisible,
+} from "../helpers";
 import { CursorValidator } from "./cursorValidation";
-import { setupCursorDebugger, waitForCursorVisible } from "../helpers";
 
 // カーソル情報取得用のデバッグ関数をセットアップ
 await setupCursorDebugger(page);
@@ -48,9 +51,9 @@ const expectedData = {
     cursorCount: 1,
     cursors: [
         {
-            isActive: true
-        }
-    ]
+            isActive: true,
+        },
+    ],
 };
 
 // 部分比較モードで検証
@@ -103,7 +106,8 @@ await page.waitForTimeout(100);
 try {
     await CursorValidator.compareWithSnapshot(page, snapshot);
     throw new Error("スナップショットが一致してしまいました");
-} catch (error) {
+}
+catch (error) {
     console.log("スナップショットが一致しないことを確認しました");
 }
 ```
@@ -180,29 +184,29 @@ E2Eテストでは、ユーザーの視点からの検証が重要なので、�
 
 ```json
 {
-  "cursors": [
-    {
-      "cursorId": "c1220e18-60ef-48c4-9c58-8731e89ccfb4",
-      "itemId": "69bb3616-50b0-475a-9713-36146086f50a",
-      "offset": 0,
-      "isActive": true,
-      "userId": "local"
-    }
-  ],
-  "selections": [],
-  "activeItemId": "69bb3616-50b0-475a-9713-36146086f50a",
-  "cursorVisible": true,
-  "cursorInstances": [
-    {
-      "cursorId": "c1220e18-60ef-48c4-9c58-8731e89ccfb4",
-      "itemId": "69bb3616-50b0-475a-9713-36146086f50a",
-      "offset": 0,
-      "isActive": true,
-      "userId": "local"
-    }
-  ],
-  "cursorCount": 1,
-  "selectionCount": 0
+    "cursors": [
+        {
+            "cursorId": "c1220e18-60ef-48c4-9c58-8731e89ccfb4",
+            "itemId": "69bb3616-50b0-475a-9713-36146086f50a",
+            "offset": 0,
+            "isActive": true,
+            "userId": "local"
+        }
+    ],
+    "selections": [],
+    "activeItemId": "69bb3616-50b0-475a-9713-36146086f50a",
+    "cursorVisible": true,
+    "cursorInstances": [
+        {
+            "cursorId": "c1220e18-60ef-48c4-9c58-8731e89ccfb4",
+            "itemId": "69bb3616-50b0-475a-9713-36146086f50a",
+            "offset": 0,
+            "isActive": true,
+            "userId": "local"
+        }
+    ],
+    "cursorCount": 1,
+    "selectionCount": 0
 }
 ```
 

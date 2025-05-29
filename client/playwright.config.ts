@@ -25,7 +25,7 @@ const VITE_HOST = isLocalhostEnv ? "localhost" : "192.168.50.13";
 // 環境設定ファイルを定義
 const ENV_FILE = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
 
-console.log(`Using test environment: ${isLocalhostEnv ? 'localhost' : 'default'}`);
+console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
 console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
 console.log(`Environment file: ${ENV_FILE}`);
 
@@ -54,10 +54,10 @@ export default defineConfig({
         baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
         trace: "on-first-retry",
         // クリップボードへのアクセスを許可
-        permissions: ['clipboard-read', 'clipboard-write'],
+        permissions: ["clipboard-read", "clipboard-write"],
         // ブラウザの起動オプションを設定
         launchOptions: {
-            args: ['--allow-file-access-from-files', '--enable-clipboard-read', '--enable-clipboard-write']
+            args: ["--allow-file-access-from-files", "--enable-clipboard-read", "--enable-clipboard-write"],
         },
     },
 

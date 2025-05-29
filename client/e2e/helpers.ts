@@ -1,12 +1,11 @@
-import type { Page } from '@playwright/test';
-
+import type { Page } from "@playwright/test";
 
 /**
  * カーソルが表示されるのを待つ
  * @param page Playwrightのページオブジェクト
  */
 export async function waitForCursorVisible(page: Page): Promise<void> {
-    await page.waitForSelector('.cursor', { state: 'visible' });
+    await page.waitForSelector(".cursor", { state: "visible" });
 }
 
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）

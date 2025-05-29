@@ -6,14 +6,15 @@ _**User**_
 
 Error: expect: Property 'then' not found.
 
-  46 |         // テキストの一部が含まれていることを確認（より柔軟な検証）
-  47 |         // 「Googleでログイン」または「Sign in with Google」などの文字列が含まれていれば合格
-> 48 |         await expect(page.getByRole("button", { name: "ログアウト" }).isVisible());
-     |               ^
-  49 |     });
-  50 | });
-  51 |
-    at /workspace/client/e2e/auth/auth.spec.ts:48:15
+46 | // テキストの一部が含まれていることを確認（より柔軟な検証）
+47 | // 「Googleでログイン」または「Sign in with Google」などの文字列が含まれていれば合格
+
+> 48 | await expect(page.getByRole("button", { name: "ログアウト" }).isVisible());
+> | ^
+> 49 | });
+> 50 | });
+> 51 |
+> at /workspace/client/e2e/auth/auth.spec.ts:48:15
 
 ---
 
@@ -39,15 +40,19 @@ Playwrightのテストコードにエラーが発生しているようですね�
 エラーを修正しました。問題の説明をさせていただきます：
 
 1. **元のコード**の問題点：
+
 ```typescript
 await expect(page.getByRole("button", { name: "ログアウト" }).isVisible());
 ```
+
 このコードでは、`isVisible()`メソッドの結果を`expect`に直接渡していました。これは正しくないPlaywrightのアサーション構文です。
 
 2. **修正後**のコード：
+
 ```typescript
 await expect(page.getByRole("button", { name: "ログアウト" })).toBeVisible();
 ```
+
 Playwrightの正しいアサーション構文を使用しています。`toBeVisible()`アサーションを使って要素の可視性をチェックします。
 
 この修正により、テストが正しく動作するようになるはずです。要素が表示されているかどうかを適切にチェックできます。
@@ -69,18 +74,18 @@ _**User**_
 　　以下のようなテストマニフェスト形式でテストケースの説明を先に作成してください。
 
 /**
- * @file advanced-indent.spec.ts
- * @description インデント操作のテスト
- * 
- * @testcase インデント増加時の階層変更
- * @check Tabキーでインデント増加すると、アイテムが親アイテムの子になることを確認
- * 
- * @testcase インデント減少時の階層変更
- * @check Shift+Tabキーでインデント減少すると、アイテムが親の兄弟になることを確認
- */
+
+- @file advanced-indent.spec.ts
+- @description インデント操作のテスト
+-
+- @testcase インデント増加時の階層変更
+- @check Tabキーでインデント増加すると、アイテムが親アイテムの子になることを確認
+-
+- @testcase インデント減少時の階層変更
+- @check Shift+Tabキーでインデント減少すると、アイテムが親の兄弟になることを確認
+  */
 
 全てのテストコードは git管理されているため、異常があれば元のファイルを復元可能です。
-
 
 ---
 
@@ -104,4 +109,4 @@ _**Assistant**_
 
 
 ---
-
+```

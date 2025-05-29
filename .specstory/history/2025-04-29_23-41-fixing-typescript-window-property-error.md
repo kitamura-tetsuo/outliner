@@ -5,9 +5,11 @@
 _**User**_
 
 For the code present, we get this error:
+
 ```
 Property '__ENV__' does not exist on type 'Window & typeof globalThis'.
 ```
+
 How can I resolve this? If you propose a fix, please make it concise.
 
 ---
@@ -21,9 +23,9 @@ TypeScript 側で `window.__ENV__` を認識させるには、グローバル宣
 export {};
 
 declare global {
-  interface Window {
-    __ENV__?: Record<string, string>;
-  }
+    interface Window {
+        __ENV__?: Record<string, string>;
+    }
 }
 ```
 
@@ -31,11 +33,11 @@ declare global {
 
 ```ts
 if (typeof window !== "undefined" && window.__ENV__) {
-  windowEnv = { ...window.__ENV__ };
+    windowEnv = { ...window.__ENV__ };
 }
 ```
 
-がエラーなくコンパイルされるようになります。  
+がエラーなくコンパイルされるようになります。
 
 ---
 
@@ -49,8 +51,8 @@ _**Assistant**_
 
 はい。型定義を入れて TS のエラーを消しても、ランタイム側で `window.__ENV__` に値をセットしない限りは常に `undefined` です。つまり…
 
-  1. 型定義（先ほどの `global.d.ts`）はあくまでコンパイル用  
-  2. 実際に環境変数を取るには、起動時に `window.__ENV__` を埋め込む必要がある  
+1. 型定義（先ほどの `global.d.ts`）はあくまでコンパイル用
+2. 実際に環境変数を取るには、起動時に `window.__ENV__` を埋め込む必要がある
 
 たとえば、`public/env.js` を用意して `index.html` の `<head>` で読み込み：
 
@@ -62,9 +64,9 @@ _**Assistant**_
 ```js
 // public/env.js
 window.__ENV__ = {
-  VITE_API_URL: import.meta.env.VITE_API_URL,
-  VITE_OTHER:      import.meta.env.VITE_OTHER,
-  // …必要なものを列挙
+    VITE_API_URL: import.meta.env.VITE_API_URL,
+    VITE_OTHER: import.meta.env.VITE_OTHER,
+    // …必要なものを列挙
 };
 ```
 
@@ -72,11 +74,11 @@ window.__ENV__ = {
 
 ```ts
 if (typeof window !== "undefined" && window.__ENV__) {
-  windowEnv = { ...window.__ENV__ };
+    windowEnv = { ...window.__ENV__ };
 }
 ```
 
-でちゃんと値が取れます。  
+でちゃんと値が取れます。\
 （Vite の `define` オプションでインジェクトする方法もありますが、上記がもっともシンプルです）
 
 ---
@@ -91,18 +93,22 @@ _**Assistant**_
 
 はい。標準のブラウザや Vite では `window.__ENV__` は用意されておらず、常に `undefined` です。環境変数はあくまで `import.meta.env` で参照するもので、もし `window.__ENV__` に入れたい場合は下記のように自前で注入する必要があります。
 
-例：`vite.config.ts` で定義してしまう方法  
+例：`vite.config.ts` で定義してしまう方法
+
 ```ts
 // vite.config.ts
-import { defineConfig, loadEnv } from 'vite';
+import {
+    defineConfig,
+    loadEnv,
+} from "vite";
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd());
-  return {
-    define: {
-      'window.__ENV__': JSON.stringify(env)
-    }
-  };
+    const env = loadEnv(mode, process.cwd());
+    return {
+        define: {
+            "window.__ENV__": JSON.stringify(env),
+        },
+    };
 });
 ```
 
@@ -113,10 +119,12 @@ export default defineConfig(({ mode }) => {
 _**User**_
 
 For the code present, we get this error:
+
 ```
 Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
   No index signature with a parameter of type 'string' was found on type '{}'.
 ```
+
 How can I resolve this? If you propose a fix, please make it concise.
 
 ---
@@ -133,7 +141,6 @@ Read file: client/src/components/EnvDebugger.svelte
 - let importMetaEnv = {};
 + let importMetaEnv: Record<string, string> = {};
   let windowEnv = {};
-  
 ```
 
 ```diff
@@ -154,9 +161,11 @@ Read file: client/src/components/EnvDebugger.svelte
 _**User**_
 
 For the code present, we get this error:
+
 ```
 Cannot find name 'Props'.
 ```
+
 How can I resolve this? If you propose a fix, please make it concise.
 
 ---
@@ -165,10 +174,10 @@ _**Assistant**_
 
 <details>
             <summary>Grep search for "}: Props" • **1** files</summary>
-        
-| File | Line | Match |
-|------|------|-------|
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/components/OutlinerItem.svelte` | L18 | `}: Props = $props();` |
+
+| File                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Line | Match                  |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------- |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/components/OutlinerItem.svelte` | L18  | `}: Props = $props();` |
 
 </details>
 
@@ -189,7 +198,7 @@ _**Assistant**_
 + 		index: number;
 + 	}
   
-  	let { 
+  	let {
 ```
 
 ---
@@ -201,9 +210,11 @@ _**Assistant**_
 _**User**_
 
 For the code present, we get this error:
+
 ```
 Cannot find name 'OutlinerItemViewModel'.
 ```
+
 How can I resolve this? If you propose a fix, please make it concise.
 
 ---
@@ -212,33 +223,33 @@ _**Assistant**_
 
 <details>
             <summary>Searched codebase "OutlinerItemViewModel" • **25** results</summary>
-        
-| File | Lines |
-|------|-------|
-| `client/src/stores/OutlinerViewModel.ts` | L26-73 |
-| `client/src/stores/OutlinerViewModel.ts` | L1-19 |
-| `client/src/stores/OutlinerViewModel.ts` | L211-220 |
-| `client/src/stores/OutlinerViewModel.ts` | L19-26 |
-| `client/src/stores/OutlinerViewModel.ts` | L185-204 |
-| `client/src/stores/OutlinerViewModel.ts` | L220-227 |
-| `client/src/stores/OutlinerViewModel.ts` | L153-167 |
-| `client/src/stores/OutlinerViewModel.ts` | L204-211 |
-| `client/src/stores/OutlinerViewModel.ts` | L84-117 |
-| `client/src/stores/OutlinerViewModel.ts` | L132-153 |
-| `client/src/stores/OutlinerViewModel.ts` | L167-185 |
-| `client/src/stores/OutlinerViewModel.ts` | L73-84 |
-| `client/src/stores/OutlinerViewModel.ts` | L117-132 |
+
+| File                                        | Lines    |
+| ------------------------------------------- | -------- |
+| `client/src/stores/OutlinerViewModel.ts`    | L26-73   |
+| `client/src/stores/OutlinerViewModel.ts`    | L1-19    |
+| `client/src/stores/OutlinerViewModel.ts`    | L211-220 |
+| `client/src/stores/OutlinerViewModel.ts`    | L19-26   |
+| `client/src/stores/OutlinerViewModel.ts`    | L185-204 |
+| `client/src/stores/OutlinerViewModel.ts`    | L220-227 |
+| `client/src/stores/OutlinerViewModel.ts`    | L153-167 |
+| `client/src/stores/OutlinerViewModel.ts`    | L204-211 |
+| `client/src/stores/OutlinerViewModel.ts`    | L84-117  |
+| `client/src/stores/OutlinerViewModel.ts`    | L132-153 |
+| `client/src/stores/OutlinerViewModel.ts`    | L167-185 |
+| `client/src/stores/OutlinerViewModel.ts`    | L73-84   |
+| `client/src/stores/OutlinerViewModel.ts`    | L117-132 |
 | `client/src/components/OutlinerTree.svelte` | L512-564 |
-| `client/src/components/OutlinerTree.svelte` | L1-56 |
+| `client/src/components/OutlinerTree.svelte` | L1-56    |
 | `client/src/components/OutlinerItem.svelte` | L689-825 |
-| `client/src/stores/OutlinerViewModel.ts` | L227-239 |
+| `client/src/stores/OutlinerViewModel.ts`    | L227-239 |
 | `client/src/components/OutlinerItem.svelte` | L584-645 |
-| `client/src/components/OutlinerTree.svelte` | L56-101 |
-| `client/src/components/OutlinerBase.svelte` | L1-29 |
-| `client/src/components/OutlinerItem.svelte` | L1-67 |
+| `client/src/components/OutlinerTree.svelte` | L56-101  |
+| `client/src/components/OutlinerBase.svelte` | L1-29    |
+| `client/src/components/OutlinerItem.svelte` | L1-67    |
 | `client/src/components/OutlinerTree.svelte` | L219-274 |
 | `client/src/components/OutlinerTree.svelte` | L153-193 |
-| `client/src/components/OutlinerItem.svelte` | L67-122 |
+| `client/src/components/OutlinerItem.svelte` | L67-122  |
 | `client/src/components/OutlinerItem.svelte` | L242-294 |
 
 </details>
@@ -249,17 +260,17 @@ Read file: client/src/stores/OutlinerViewModel.ts
 
 ---
 
-
-
 ---
 
 _**User**_
 
 For the code present, we get this error:
+
 ```
 `<div>` with a click handler must have an ARIA role
 https://svelte.dev/e/a11y_no_static_element_interactions
 ```
+
 How can I resolve this? If you propose a fix, please make it concise.
 
 ---
@@ -267,7 +278,6 @@ How can I resolve this? If you propose a fix, please make it concise.
 _**Assistant**_
 
 ```diff
-  
   <div
 + 	role="button"
 + 	tabindex="0"
@@ -297,7 +307,7 @@ _**Assistant**_
 
 ARIA Role（Accessible Rich Internet Applications Role）は、支援技術（スクリーンリーダーなど）に「この要素は何の役割を持っているか」を教えるための属性です。たとえば `role="button"` をつけると、見た目は `<div>` でも「ボタン」として認識されます。
 
-ただし、WCAG（Web Content Accessibility Guidelines）の観点から、クリック可能な要素にはキーボード操作も必須なので、`tabindex` を付けずに放置すると逆にアクセシビリティ違反になります。  
+ただし、WCAG（Web Content Accessibility Guidelines）の観点から、クリック可能な要素にはキーボード操作も必須なので、`tabindex` を付けずに放置すると逆にアクセシビリティ違反になります。\
 もしどうしても `<div>` のままにしたい場合は、Lint を無視するコメントを使う手があります。
 
 ```svelte
@@ -307,8 +317,8 @@ ARIA Role（Accessible Rich Internet Applications Role）は、支援技術（�
 
 本来は
 
-1. semantic な `<button>` に置き換う  
-2. もしくは `role="button"` ＋ `tabindex="0"` を付けてキーボード操作を有効にする  
+1. semantic な `<button>` に置き換う
+2. もしくは `role="button"` ＋ `tabindex="0"` を付けてキーボード操作を有効にする
 
 のいずれかをおすすめします。
 
@@ -331,12 +341,12 @@ _**Assistant**_
 
 テキスト表示部は実質「隠し textarea のラベル」なので、思い切って `<div>` を `<label>` に置き換えるのが一番シンプルです。
 
-1. 隠し textarea にIDを振る  
+1. 隠し textarea にIDを振る
    ```svelte
    <!-- GlobalTextArea.svelte -->
    <textarea id="global-textarea" class="global-textarea" … />
    ```
-2. 各行の表示を `<label>` にする  
+2. 各行の表示を `<label>` にする
    ```svelte
    <label
      class="outliner-item"
@@ -348,6 +358,7 @@ _**Assistant**_
      …表示内容…
    </label>
    ```
+
 これで、クリックすると自動的に隠し textarea にフォーカスが移り、a11y エラーも出なくなります。
 
 ---
@@ -362,20 +373,20 @@ _**Assistant**_
 
 `<div>` と `<label>` の主な違いは「要素の意味（セマンティクス）」と「既定の振る舞い」にあります。
 
-1. セマンティクス（意味づけ）  
-   - `<div>` は汎用的なコンテナ要素で、特に意味を持ちません。  
+1. セマンティクス（意味づけ）
+   - `<div>` は汎用的なコンテナ要素で、特に意味を持ちません。
    - `<label>` はフォームコントロール（`<input>` や `<textarea>`）に対する“ラベル”を表し、支援技術にも「このテキストはフォーム項目の説明だ」と伝わります。
 
-2. 既定の振る舞い  
-   - `<label for="対象ID">...</label>` をクリックすると、自動的に対応するフォームコントロールにフォーカスが移動します。  
+2. 既定の振る舞い
+   - `<label for="対象ID">...</label>` をクリックすると、自動的に対応するフォームコントロールにフォーカスが移動します。
    - `<div>` にはそうした連携機能がなく、フォーカスも持たないので、クリックしても何も起きません（もちろん JavaScript でイベントをハンドルすれば動かせますが、アクセシビリティとしては不十分です）。
 
-3. アクセシビリティ  
-   - `<label>` を使うとスクリーンリーダーに正しく認識され、キーボード操作やフォーカス管理をブラウザ任せでサポートできます。  
+3. アクセシビリティ
+   - `<label>` を使うとスクリーンリーダーに正しく認識され、キーボード操作やフォーカス管理をブラウザ任せでサポートできます。
    - `<div>` は特にサポートがなく、キーボードや支援技術への対応を自前で実装する必要があります。
 
-今回のように「隠し textarea にフォーカスを渡すだけ」の用途なら、  
-`<label for="global-textarea">…行のテキスト表示…</label>`  
+今回のように「隠し textarea にフォーカスを渡すだけ」の用途なら、\
+`<label for="global-textarea">…行のテキスト表示…</label>`\
 とすれば、余計な `role` や `tabindex`、`keydown` ハンドラを付けずともクリックでフォーカスが移動し、かつ a11y 警告が解消します。
 
 ---
@@ -388,7 +399,4 @@ _**User**_
 
 _**Assistant**_
 
-
-
 ---
-

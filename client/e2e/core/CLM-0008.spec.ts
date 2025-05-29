@@ -6,11 +6,10 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 // テストのタイムアウトを設定（長めに設定）
-
 
 test.describe("CLM-0008: 行末へ移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -50,11 +49,11 @@ test.describe("CLM-0008: 行末へ移動", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
-        await cursor.waitFor({ state: 'visible' });
+        await cursor.waitFor({ state: "visible" });
 
         // 初期カーソル位置を取得
         const initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
@@ -72,12 +71,12 @@ test.describe("CLM-0008: 行末へ移動", () => {
 
         // カーソルの位置が行の末尾にあることを確認
         const cursorOffset = await page.evaluate(() => {
-            const cursor = document.querySelector('.editor-overlay .cursor.active');
+            const cursor = document.querySelector(".editor-overlay .cursor.active");
             if (!cursor) return null;
             const style = window.getComputedStyle(cursor);
             return {
                 left: parseFloat(style.left),
-                top: parseFloat(style.top)
+                top: parseFloat(style.top),
             };
         });
 
@@ -94,25 +93,25 @@ test.describe("CLM-0008: 行末へ移動", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // カーソルを3行目に移動
         await page.keyboard.press("ArrowDown");
-        await page.keyboard.press("ArrowDown");  // 確実に3行目に移動するために2回押す
+        await page.keyboard.press("ArrowDown"); // 確実に3行目に移動するために2回押す
         await page.waitForTimeout(100);
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
-        await cursor.waitFor({ state: 'visible' });
+        await cursor.waitFor({ state: "visible" });
 
         // Endキーを押下
         await page.keyboard.press("End");
         // 更新を待機
-        await page.waitForTimeout(300);  // 待機時間を長くする
+        await page.waitForTimeout(300); // 待機時間を長くする
 
         // カーソルの位置が行の末尾にあることを確認
         const cursorPosition = await page.evaluate(() => {
-            const textarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             if (!textarea) return null;
 
             // テキストの内容と現在のカーソル位置を取得
@@ -120,7 +119,7 @@ test.describe("CLM-0008: 行末へ移動", () => {
             const position = textarea.selectionStart;
 
             // 現在の行の範囲を特定
-            const lines = text.split('\n');
+            const lines = text.split("\n");
             let currentLine = 0;
             let currentPos = 0;
 
@@ -140,7 +139,7 @@ test.describe("CLM-0008: 行末へ移動", () => {
             return {
                 position,
                 lineEndPos,
-                isAtLineEnd: position === lineEndPos
+                isAtLineEnd: position === lineEndPos,
             };
         });
 
@@ -148,6 +147,4 @@ test.describe("CLM-0008: 行末へ移動", () => {
         expect(cursorPosition).not.toBeNull();
         expect(cursorPosition?.isAtLineEnd).toBe(true);
     });
-
-
 });

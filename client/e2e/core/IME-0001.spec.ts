@@ -6,8 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("IME-0001: IMEを使用した日本語入力", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -23,13 +23,14 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
         }
 
         // 編集モードに入ったことを確認
         const textarea = page.locator("textarea.global-textarea");
-        await textarea.waitFor({ state: 'visible' });
+        await textarea.waitFor({ state: "visible" });
         await textarea.focus();
 
         // カーソルが表示されるまで待機
@@ -49,7 +50,8 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         await page.waitForTimeout(100);
 
         // 中間文字が表示されていることを確認
-        const interimText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text").textContent();
+        const interimText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text")
+            .textContent();
         expect(interimText).toContain("にほん");
     });
 
@@ -62,13 +64,14 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
         }
 
         // 編集モードに入ったことを確認
         const textarea = page.locator("textarea.global-textarea");
-        await textarea.waitFor({ state: 'visible' });
+        await textarea.waitFor({ state: "visible" });
         await textarea.focus();
 
         // カーソルが表示されるまで待機
@@ -92,7 +95,8 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         await page.waitForTimeout(100);
 
         // 変換候補文字が表示されていることを確認
-        const candidateText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text").textContent();
+        const candidateText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text")
+            .textContent();
         expect(candidateText).toContain("日本");
     });
 
@@ -105,13 +109,14 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
         }
 
         // 編集モードに入ったことを確認
         const textarea = page.locator("textarea.global-textarea");
-        await textarea.waitFor({ state: 'visible' });
+        await textarea.waitFor({ state: "visible" });
         await textarea.focus();
 
         // カーソルが表示されるまで待機
@@ -132,7 +137,8 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         await page.waitForTimeout(100);
 
         // 確定文字が反映されていることを確認
-        const finalText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text").textContent();
+        const finalText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text")
+            .textContent();
         expect(finalText).toContain("日本");
     });
 });

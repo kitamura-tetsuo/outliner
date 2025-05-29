@@ -1,7 +1,7 @@
 import { Tree } from "fluid-framework";
+import { TreeViewManager } from "../fluid/TreeViewManager";
 import type { Item } from "../schema/app-schema";
 import { Items } from "../schema/app-schema";
-import { TreeViewManager } from "../fluid/TreeViewManager";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
@@ -131,8 +131,10 @@ export class Cursor {
 
     private applyToStore() {
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Cursor.applyToStore called for cursorId=${this.cursorId}, itemId=${this.itemId}, offset=${this.offset}`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `Cursor.applyToStore called for cursorId=${this.cursorId}, itemId=${this.itemId}, offset=${this.offset}`,
+            );
         }
 
         // 既存のカーソルを更新
@@ -151,7 +153,7 @@ export class Cursor {
                 itemId: this.itemId,
                 offset: this.offset,
                 isActive: this.isActive,
-                userId: this.userId
+                userId: this.userId,
             });
             this.cursorId = cursorId;
         }
@@ -176,12 +178,12 @@ export class Cursor {
 
     // テキスト内の行数を計算
     private countLines(text: string): number {
-        return text.split('\n').length;
+        return text.split("\n").length;
     }
 
     // 指定した行の開始オフセットを取得
     private getLineStartOffset(text: string, lineIndex: number): number {
-        const lines = text.split('\n');
+        const lines = text.split("\n");
         let offset = 0;
         for (let i = 0; i < lineIndex; i++) {
             if (i < lines.length) {
@@ -193,7 +195,7 @@ export class Cursor {
 
     // 指定した行の終了オフセットを取得
     private getLineEndOffset(text: string, lineIndex: number): number {
-        const lines = text.split('\n');
+        const lines = text.split("\n");
         if (lineIndex >= lines.length) {
             return text.length;
         }
@@ -212,7 +214,7 @@ export class Cursor {
         // テキストが空の場合は0を返す
         if (!text) return 0;
 
-        const lines = text.split('\n');
+        const lines = text.split("\n");
 
         // オフセットがテキスト長を超える場合は最後の行を返す
         if (offset >= text.length) {
@@ -252,23 +254,32 @@ export class Cursor {
     }
 
     // 視覚的な行の情報を取得する
-    private getVisualLineInfo(itemId: string, offset: number): { lineIndex: number; lineStartOffset: number; lineEndOffset: number; totalLines: number; lines: Array<{ startOffset: number; endOffset: number; y: number }> } | null {
-        if (typeof window === 'undefined') return null;
+    private getVisualLineInfo(
+        itemId: string,
+        offset: number,
+    ): {
+        lineIndex: number;
+        lineStartOffset: number;
+        lineEndOffset: number;
+        totalLines: number;
+        lines: Array<{ startOffset: number; endOffset: number; y: number; }>;
+    } | null {
+        if (typeof window === "undefined") return null;
 
         const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
         if (!itemElement) return null;
 
-        const textElement = itemElement.querySelector('.item-text') as HTMLElement;
+        const textElement = itemElement.querySelector(".item-text") as HTMLElement;
         if (!textElement) return null;
 
-        const text = textElement.textContent || '';
+        const text = textElement.textContent || "";
         if (text.length === 0) {
             return {
                 lineIndex: 0,
                 lineStartOffset: 0,
                 lineEndOffset: 0,
                 totalLines: 1,
-                lines: [{ startOffset: 0, endOffset: 0, y: 0 }]
+                lines: [{ startOffset: 0, endOffset: 0, y: 0 }],
             };
         }
 
@@ -278,7 +289,7 @@ export class Cursor {
 
         try {
             // 各文字位置での Y 座標を取得して行を判定
-            const lines: { startOffset: number; endOffset: number; y: number }[] = [];
+            const lines: { startOffset: number; endOffset: number; y: number; }[] = [];
             let currentLineY: number | null = null;
             let currentLineStart = 0;
 
@@ -297,12 +308,13 @@ export class Cursor {
 
                 if (currentLineY === null) {
                     currentLineY = y;
-                } else if (Math.abs(y - currentLineY) > 2) { // 2px以上の差があれば新しい行（より精密に検出）
+                }
+                else if (Math.abs(y - currentLineY) > 2) { // 2px以上の差があれば新しい行（より精密に検出）
                     // 新しい行が始まった
                     lines.push({
                         startOffset: currentLineStart,
                         endOffset: Math.max(currentLineStart, actualOffset - 1), // 最低でも開始位置は含める
-                        y: currentLineY
+                        y: currentLineY,
                     });
                     currentLineStart = actualOffset;
                     currentLineY = y;
@@ -314,7 +326,7 @@ export class Cursor {
                 lines.push({
                     startOffset: currentLineStart,
                     endOffset: text.length,
-                    y: currentLineY
+                    y: currentLineY,
                 });
             }
 
@@ -323,7 +335,7 @@ export class Cursor {
                 lines.push({
                     startOffset: 0,
                     endOffset: text.length,
-                    y: textElement.getBoundingClientRect().top
+                    y: textElement.getBoundingClientRect().top,
                 });
             }
 
@@ -347,16 +359,20 @@ export class Cursor {
                 lineStartOffset: currentLine.startOffset,
                 lineEndOffset: currentLine.endOffset,
                 totalLines: lines.length,
-                lines: lines
+                lines: lines,
             };
-        } catch (error) {
-            console.error('Error getting visual line info:', error);
+        }
+        catch (error) {
+            console.error("Error getting visual line info:", error);
             return null;
         }
     }
 
     // 指定した視覚的な行のオフセット範囲を取得する
-    private getVisualLineOffsetRange(itemId: string, lineIndex: number): { startOffset: number; endOffset: number } | null {
+    private getVisualLineOffsetRange(
+        itemId: string,
+        lineIndex: number,
+    ): { startOffset: number; endOffset: number; } | null {
         const visualInfo = this.getVisualLineInfo(itemId, 0); // 任意のオフセットで行情報を取得
         if (!visualInfo || lineIndex < 0 || lineIndex >= visualInfo.totalLines) {
             return null;
@@ -365,7 +381,7 @@ export class Cursor {
         const targetLine = visualInfo.lines[lineIndex];
         return {
             startOffset: targetLine.startOffset,
-            endOffset: targetLine.endOffset
+            endOffset: targetLine.endOffset,
         };
     }
 
@@ -420,7 +436,7 @@ export class Cursor {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`moveUp called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
@@ -428,7 +444,7 @@ export class Cursor {
         const visualLineInfo = this.getVisualLineInfo(this.itemId, this.offset);
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
 
@@ -441,7 +457,8 @@ export class Cursor {
                 this.offset = prevLineStart;
                 this.applyToStore();
                 store.startCursorBlink();
-            } else {
+            }
+            else {
                 this.navigateToItem("up");
             }
             return;
@@ -461,8 +478,10 @@ export class Cursor {
         const targetColumn = this.initialColumn;
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
+            );
         }
 
         if (lineIndex > 0) {
@@ -475,14 +494,17 @@ export class Cursor {
                 this.applyToStore();
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Moved to previous visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`);
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        `Moved to previous visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
+                    );
                 }
 
                 // カーソル点滅を開始
                 store.startCursorBlink();
             }
-        } else {
+        }
+        else {
             // 前のアイテムを探す
             const prevItem = this.findPreviousItem();
             if (prevItem) {
@@ -490,10 +512,11 @@ export class Cursor {
                 this.navigateToItem("up");
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
-            } else {
+            }
+            else {
                 // 前のアイテムがない場合は、同じアイテムの先頭に移動
                 if (this.offset > 0) {
                     this.offset = 0;
@@ -503,7 +526,7 @@ export class Cursor {
                     store.startCursorBlink();
 
                     // デバッグ情報
-                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`Moved to start of current item: offset=${this.offset}`);
                     }
                 }
@@ -516,7 +539,7 @@ export class Cursor {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`moveDown called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
@@ -524,21 +547,22 @@ export class Cursor {
         const visualLineInfo = this.getVisualLineInfo(this.itemId, this.offset);
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
 
         if (!visualLineInfo) {
             // フォールバック: 論理的な行での処理（改行文字ベース）
             const text = target.text || "";
-            const lines = text.split('\n');
+            const lines = text.split("\n");
             const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
             if (currentLineIndex < lines.length - 1) {
                 const nextLineStart = this.getLineStartOffset(text, currentLineIndex + 1);
                 this.offset = nextLineStart;
                 this.applyToStore();
                 store.startCursorBlink();
-            } else {
+            }
+            else {
                 this.navigateToItem("down");
             }
             return;
@@ -558,8 +582,10 @@ export class Cursor {
         const targetColumn = this.initialColumn;
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
+            );
         }
 
         if (lineIndex < totalLines - 1) {
@@ -572,14 +598,17 @@ export class Cursor {
                 this.applyToStore();
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Moved to next visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`);
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        `Moved to next visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
+                    );
                 }
 
                 // カーソル点滅を開始
                 store.startCursorBlink();
             }
-        } else {
+        }
+        else {
             // 次のアイテムを探す
             const nextItem = this.findNextItem();
             if (nextItem) {
@@ -587,10 +616,11 @@ export class Cursor {
                 this.navigateToItem("down");
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
-            } else {
+            }
+            else {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動
                 const text = target.text || "";
                 if (this.offset < text.length) {
@@ -601,7 +631,7 @@ export class Cursor {
                     store.startCursorBlink();
 
                     // デバッグ情報
-                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`Moved to end of current item: offset=${this.offset}`);
                     }
                 }
@@ -640,7 +670,8 @@ export class Cursor {
 
             // 選択範囲をクリア
             this.clearSelection();
-        } else {
+        }
+        else {
             // 通常の挿入
             let txt = node.text;
             txt = txt.slice(0, this.offset) + ch + txt.slice(this.offset);
@@ -662,9 +693,7 @@ export class Cursor {
         if (!node) return;
 
         // 選択範囲がある場合は、選択範囲を削除
-        const selection = Object.values(store.selections).find(s =>
-            s.userId === this.userId
-        );
+        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
 
         if (selection && selection.startOffset !== selection.endOffset) {
             // 複数アイテムにまたがる選択範囲の場合
@@ -688,7 +717,8 @@ export class Cursor {
                 // 選択範囲をクリア
                 this.clearSelection();
             }
-        } else {
+        }
+        else {
             // 通常の削除
             if (this.offset > 0) {
                 let txt = node.text;
@@ -696,7 +726,8 @@ export class Cursor {
                 txt = txt.slice(0, pos) + txt.slice(pos + 1);
                 node.updateText(txt);
                 this.offset = Math.max(0, this.offset - 1);
-            } else {
+            }
+            else {
                 // 行頭で前アイテムとの結合
                 this.mergeWithPreviousItem();
             }
@@ -716,9 +747,7 @@ export class Cursor {
         if (!node) return;
 
         // 選択範囲がある場合は、選択範囲を削除
-        const selection = Object.values(store.selections).find(s =>
-            s.userId === this.userId
-        );
+        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
 
         if (selection && selection.startOffset !== selection.endOffset) {
             // 複数アイテムにまたがる選択範囲の場合
@@ -742,13 +771,15 @@ export class Cursor {
                 // 選択範囲をクリア
                 this.clearSelection();
             }
-        } else {
+        }
+        else {
             // 通常の削除
             let txt = node.text;
             if (this.offset < txt.length) {
                 txt = txt.slice(0, this.offset) + txt.slice(this.offset + 1);
                 node.updateText(txt);
-            } else {
+            }
+            else {
                 // 行末で次アイテムとの結合
                 this.mergeWithNextItem();
             }
@@ -789,7 +820,7 @@ export class Cursor {
             itemId: this.itemId,
             offset: this.offset,
             isActive: true,
-            userId: this.userId
+            userId: this.userId,
         });
     }
 
@@ -856,10 +887,10 @@ export class Cursor {
                 store.startCursorBlink();
 
                 // カスタムイベントを発行
-                if (typeof document !== 'undefined') {
-                    const event = new CustomEvent('navigate-to-item', {
+                if (typeof document !== "undefined") {
+                    const event = new CustomEvent("navigate-to-item", {
                         bubbles: true,
-                        detail: { direction: "enter", fromItemId: target.id, toItemId: this.itemId }
+                        detail: { direction: "enter", fromItemId: target.id, toItemId: this.itemId },
                     });
                     document.dispatchEvent(event);
                 }
@@ -867,7 +898,8 @@ export class Cursor {
                 this.applyToStore();
                 return;
             }
-        } else {
+        }
+        else {
             // 通常のアイテムの場合は兄弟として追加
             const parent = Tree.parent(target);
             if (parent && Tree.is(parent, Items)) {
@@ -898,10 +930,10 @@ export class Cursor {
                 store.startCursorBlink();
 
                 // カスタムイベントを発行
-                if (typeof document !== 'undefined') {
-                    const event = new CustomEvent('navigate-to-item', {
+                if (typeof document !== "undefined") {
+                    const event = new CustomEvent("navigate-to-item", {
                         bubbles: true,
-                        detail: { direction: "enter", fromItemId: target.id, toItemId: this.itemId }
+                        detail: { direction: "enter", fromItemId: target.id, toItemId: this.itemId },
                     });
                     document.dispatchEvent(event);
                 }
@@ -929,7 +961,7 @@ export class Cursor {
      */
     onKeyDown(event: KeyboardEvent): boolean {
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`onKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}`);
         }
 
@@ -940,7 +972,7 @@ export class Cursor {
         );
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Has selection: ${hasSelection}`);
             if (hasSelection) {
                 console.log(`Selections:`, Object.values(store.selections).filter(s => s.userId === this.userId));
@@ -950,16 +982,16 @@ export class Cursor {
         // Ctrl/Cmd キーが押されている場合は特殊操作
         if (event.ctrlKey || event.metaKey) {
             switch (event.key.toLowerCase()) {
-                case 'a': // 全選択
+                case "a": // 全選択
                     this.selectAll();
                     break;
-                case 'c': // コピー
+                case "c": // コピー
                     this.copySelectedText();
                     return true; // ブラウザのデフォルト動作を許可
-                case 'x': // カット
+                case "x": // カット
                     this.cutSelectedText();
                     return true; // ブラウザのデフォルト動作を許可
-                case 'v': // ペースト
+                case "v": // ペースト
                     // ペーストはブラウザのデフォルト動作に任せる
                     return true;
                 default:
@@ -993,14 +1025,16 @@ export class Cursor {
                 default:
                     return false;
             }
-        } else {
+        }
+        else {
             // 通常のカーソル移動
             switch (event.key) {
                 case "ArrowLeft":
                     if (hasSelection) {
                         // 選択範囲がある場合は、選択範囲の開始位置にカーソルを移動して選択範囲をクリア
                         this.clearSelection();
-                    } else {
+                    }
+                    else {
                         this.moveLeft();
                     }
                     break;
@@ -1008,7 +1042,8 @@ export class Cursor {
                     if (hasSelection) {
                         // 選択範囲がある場合は、選択範囲の終了位置にカーソルを移動して選択範囲をクリア
                         this.clearSelection();
-                    } else {
+                    }
+                    else {
                         this.moveRight();
                     }
                     break;
@@ -1048,12 +1083,14 @@ export class Cursor {
                             // 複数アイテムにまたがる選択範囲の場合
                             if (selection.startItemId !== selection.endItemId) {
                                 this.deleteMultiItemSelection(selection);
-                            } else {
+                            }
+                            else {
                                 // 単一アイテム内の選択範囲の場合
                                 this.deleteSelection();
                             }
                         }
-                    } else {
+                    }
+                    else {
                         // 通常のBackspace処理
                         this.deleteBackward();
                     }
@@ -1066,12 +1103,14 @@ export class Cursor {
                             // 複数アイテムにまたがる選択範囲の場合
                             if (selection.startItemId !== selection.endItemId) {
                                 this.deleteMultiItemSelection(selection);
-                            } else {
+                            }
+                            else {
                                 // 単一アイテム内の選択範囲の場合
                                 this.deleteSelection();
                             }
                         }
-                    } else {
+                    }
+                    else {
                         // 通常のDelete処理
                         this.deleteForward();
                     }
@@ -1084,7 +1123,8 @@ export class Cursor {
                             // 複数アイテムにまたがる選択範囲の場合
                             if (selection.startItemId !== selection.endItemId) {
                                 this.deleteMultiItemSelection(selection);
-                            } else {
+                            }
+                            else {
                                 // 単一アイテム内の選択範囲の場合
                                 this.deleteSelection();
                             }
@@ -1146,7 +1186,8 @@ export class Cursor {
                     endOffset = this.offset;
                     isReversed = true;
                 }
-            } else {
+            }
+            else {
                 // 正方向の選択範囲の場合、終了位置を移動
                 endItemId = existingSelection.endItemId;
                 endOffset = existingSelection.endOffset;
@@ -1170,7 +1211,8 @@ export class Cursor {
                     endOffset = tempOffset;
                 }
             }
-        } else {
+        }
+        else {
             // 新規選択範囲の作成
             startItemId = this.itemId;
             startOffset = this.offset;
@@ -1190,7 +1232,7 @@ export class Cursor {
             endItemId,
             endOffset,
             userId: this.userId,
-            isReversed
+            isReversed,
         });
 
         // グローバルテキストエリアの選択範囲を設定
@@ -1238,7 +1280,8 @@ export class Cursor {
                     endOffset = this.offset;
                     isReversed = false;
                 }
-            } else {
+            }
+            else {
                 // 逆方向の選択範囲の場合、開始位置を移動
                 endItemId = existingSelection.endItemId;
                 endOffset = existingSelection.endOffset;
@@ -1262,7 +1305,8 @@ export class Cursor {
                     endOffset = tempOffset;
                 }
             }
-        } else {
+        }
+        else {
             // 新規選択範囲の作成
             startItemId = this.itemId;
             startOffset = this.offset;
@@ -1282,7 +1326,7 @@ export class Cursor {
             endItemId,
             endOffset,
             userId: this.userId,
-            isReversed
+            isReversed,
         });
 
         // グローバルテキストエリアの選択範囲を設定
@@ -1330,7 +1374,8 @@ export class Cursor {
                     endOffset = oldOffset;
                     isReversed = false;
                 }
-            } else {
+            }
+            else {
                 // 正方向の選択範囲の場合、終了位置を移動
                 endItemId = existingSelection.endItemId;
                 endOffset = existingSelection.endOffset;
@@ -1357,7 +1402,8 @@ export class Cursor {
                     isReversed = true;
                 }
             }
-        } else {
+        }
+        else {
             // 新規選択範囲の作成
             startItemId = this.itemId;
             startOffset = this.offset;
@@ -1377,7 +1423,7 @@ export class Cursor {
             endItemId,
             endOffset,
             userId: this.userId,
-            isReversed
+            isReversed,
         });
 
         // グローバルテキストエリアの選択範囲を設定
@@ -1390,7 +1436,7 @@ export class Cursor {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`extendSelectionDown called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
@@ -1419,8 +1465,10 @@ export class Cursor {
                 isReversed = false;
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Extending forward selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`);
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        `Extending forward selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                    );
                 }
 
                 // 選択範囲が消滅した場合は方向を反転
@@ -1436,11 +1484,14 @@ export class Cursor {
                     isReversed = false;
 
                     // デバッグ情報
-                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                        console.log(`Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`);
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        console.log(
+                            `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                        );
                     }
                 }
-            } else {
+            }
+            else {
                 // 逆方向の選択範囲の場合、開始位置を移動
                 endItemId = existingSelection.endItemId;
                 endOffset = existingSelection.endOffset;
@@ -1455,8 +1506,10 @@ export class Cursor {
                 isReversed = true;
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Extending reversed selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`);
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        `Extending reversed selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                    );
                 }
 
                 // 選択範囲が消滅した場合は方向を反転
@@ -1472,12 +1525,15 @@ export class Cursor {
                     isReversed = false;
 
                     // デバッグ情報
-                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                        console.log(`Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`);
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        console.log(
+                            `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                        );
                     }
                 }
             }
-        } else {
+        }
+        else {
             // 新規選択範囲の作成
             startItemId = this.itemId;
             startOffset = this.offset;
@@ -1497,18 +1553,23 @@ export class Cursor {
                 isReversed = false;
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`New selection within same item: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`);
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        `New selection within same item: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                    );
                 }
-            } else {
+            }
+            else {
                 // 別のアイテムに移動した場合
                 endItemId = this.itemId;
                 endOffset = this.offset; // 次のアイテムの現在位置まで選択（以前は0固定だった）
                 isReversed = false;
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`New selection across items: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`);
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        `New selection across items: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                    );
                 }
             }
         }
@@ -1520,15 +1581,16 @@ export class Cursor {
         }
         // 異なるアイテムの場合、DOM上の順序で方向を決定
         else {
-            const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
-            const allItemIds = allItems.map(el => el.getAttribute('data-item-id')!);
+            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
+            const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
             const startIdx = allItemIds.indexOf(startItemId);
             const endIdx = allItemIds.indexOf(endItemId);
 
             // インデックスが見つからない場合はデフォルトで正方向
             if (startIdx === -1 || endIdx === -1) {
                 isReversed = false;
-            } else {
+            }
+            else {
                 isReversed = startIdx > endIdx;
             }
         }
@@ -1540,11 +1602,11 @@ export class Cursor {
             endItemId,
             endOffset,
             userId: this.userId,
-            isReversed
+            isReversed,
         });
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Selection created with ID: ${selectionId}, isReversed=${isReversed}`);
             console.log(`Current selections:`, store.selections);
         }
@@ -1553,10 +1615,10 @@ export class Cursor {
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
 
         // 選択範囲が正しく作成されたことを確認するために、DOMに反映されるまで少し待つ
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
             setTimeout(() => {
-                const selectionElements = document.querySelectorAll('.editor-overlay .selection');
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                const selectionElements = document.querySelectorAll(".editor-overlay .selection");
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
 
@@ -1568,7 +1630,7 @@ export class Cursor {
                         endItemId,
                         endOffset,
                         userId: this.userId,
-                        isReversed
+                        isReversed,
                     });
 
                     // 選択範囲の表示を強制的に更新
@@ -1616,7 +1678,7 @@ export class Cursor {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`extendSelectionToLineStart called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
@@ -1632,13 +1694,15 @@ export class Cursor {
         const lineStartOffset = this.getLineStartOffset(text, currentLineIndex);
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Current line index: ${currentLineIndex}, lineStartOffset: ${lineStartOffset}, text: "${text}"`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `Current line index: ${currentLineIndex}, lineStartOffset: ${lineStartOffset}, text: "${text}"`,
+            );
         }
 
         // 現在のカーソル位置が既に行頭にある場合は何もしない
         if (this.offset === lineStartOffset && !existingSelection) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Already at line start, no selection created`);
             }
             return;
@@ -1655,7 +1719,8 @@ export class Cursor {
                 endItemId = this.itemId;
                 endOffset = lineStartOffset;
                 isReversed = true;
-            } else {
+            }
+            else {
                 // 正方向の選択範囲の場合、終了位置を移動
                 endItemId = existingSelection.endItemId;
                 endOffset = existingSelection.endOffset;
@@ -1665,7 +1730,8 @@ export class Cursor {
                 startOffset = lineStartOffset;
                 isReversed = false;
             }
-        } else {
+        }
+        else {
             // 新規選択範囲の作成
             // 現在位置から行頭までを選択
             startItemId = this.itemId;
@@ -1676,8 +1742,9 @@ export class Cursor {
                 // 通常の場合（カーソルが行の途中にある）
                 startOffset = this.offset;
                 endOffset = lineStartOffset;
-                isReversed = true;  // 行頭に向かって選択するので逆方向
-            } else {
+                isReversed = true; // 行頭に向かって選択するので逆方向
+            }
+            else {
                 // カーソルが行頭にある場合（通常はここに入らない）
                 startOffset = lineStartOffset;
                 endOffset = this.offset;
@@ -1686,8 +1753,10 @@ export class Cursor {
         }
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
+            );
         }
 
         // 選択範囲を設定
@@ -1697,7 +1766,7 @@ export class Cursor {
             endItemId,
             endOffset,
             userId: this.userId,
-            isReversed
+            isReversed,
         });
 
         // カーソル位置を行頭に移動
@@ -1714,7 +1783,7 @@ export class Cursor {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`extendSelectionToLineEnd called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
@@ -1730,13 +1799,13 @@ export class Cursor {
         const lineEndOffset = this.getLineEndOffset(text, currentLineIndex);
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Current line index: ${currentLineIndex}, lineEndOffset: ${lineEndOffset}, text: "${text}"`);
         }
 
         // 現在のカーソル位置が既に行末にある場合は何もしない
         if (this.offset === lineEndOffset && !existingSelection) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Already at line end, no selection created`);
             }
             return;
@@ -1753,7 +1822,8 @@ export class Cursor {
                 endItemId = this.itemId;
                 endOffset = lineEndOffset;
                 isReversed = false;
-            } else {
+            }
+            else {
                 // 逆方向の選択範囲の場合、開始位置を移動
                 endItemId = existingSelection.endItemId;
                 endOffset = existingSelection.endOffset;
@@ -1763,7 +1833,8 @@ export class Cursor {
                 startOffset = lineEndOffset;
                 isReversed = true;
             }
-        } else {
+        }
+        else {
             // 新規選択範囲の作成
             startItemId = this.itemId;
             startOffset = this.offset;
@@ -1775,8 +1846,10 @@ export class Cursor {
         }
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
+            );
         }
 
         // 選択範囲を設定
@@ -1786,11 +1859,11 @@ export class Cursor {
             endItemId,
             endOffset,
             userId: this.userId,
-            isReversed
+            isReversed,
         });
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Selection created with ID: ${selectionId}`);
             console.log(`Current selections:`, store.selections);
         }
@@ -1803,10 +1876,10 @@ export class Cursor {
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
 
         // 選択範囲が正しく作成されたことを確認するために、DOMに反映されるまで少し待つ
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
             setTimeout(() => {
-                const selectionElements = document.querySelectorAll('.editor-overlay .selection');
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                const selectionElements = document.querySelectorAll(".editor-overlay .selection");
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
 
@@ -1818,7 +1891,7 @@ export class Cursor {
                         endItemId,
                         endOffset,
                         userId: this.userId,
-                        isReversed
+                        isReversed,
                     });
 
                     // 選択範囲の表示を強制的に更新
@@ -1828,9 +1901,9 @@ export class Cursor {
 
             // 追加の確認と更新
             setTimeout(() => {
-                const selectionElements = document.querySelectorAll('.editor-overlay .selection');
+                const selectionElements = document.querySelectorAll(".editor-overlay .selection");
                 if (selectionElements.length === 0) {
-                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`Selection still not visible after 100ms, forcing update again`);
                     }
 
@@ -1841,7 +1914,7 @@ export class Cursor {
                         endItemId,
                         endOffset,
                         userId: this.userId,
-                        isReversed
+                        isReversed,
                     });
 
                     // 強制的に更新
@@ -1860,7 +1933,7 @@ export class Cursor {
         if (selections.length > 0) {
             // 選択範囲を削除
             store.selections = Object.fromEntries(
-                Object.entries(store.selections).filter(([_, s]) => s.userId !== this.userId)
+                Object.entries(store.selections).filter(([_, s]) => s.userId !== this.userId),
             );
             // カーソル点滅を開始
             store.startCursorBlink();
@@ -1892,7 +1965,7 @@ export class Cursor {
             endItemId: this.itemId,
             endOffset: text.length,
             userId: this.userId,
-            isReversed: false
+            isReversed: false,
         });
 
         // グローバルテキストエリアの選択範囲を設定
@@ -1984,7 +2057,7 @@ export class Cursor {
         if (!selection) return;
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`deleteMultiItemSelection called for selection:`, selection);
         }
 
@@ -1999,7 +2072,7 @@ export class Cursor {
         const endItem = this.searchItem(generalStore.currentPage!, selection.endItemId);
 
         if (!startItem || !endItem) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Start or end item not found: startItem=${startItem}, endItem=${endItem}`);
             }
             return;
@@ -2012,14 +2085,14 @@ export class Cursor {
         let firstItem, lastItem, firstOffset, lastOffset;
 
         // DOM上の順序を取得
-        const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
-        const allItemIds = allItems.map(el => el.getAttribute('data-item-id')!);
+        const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
+        const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
 
         const startIdx = allItemIds.indexOf(selection.startItemId);
         const endIdx = allItemIds.indexOf(selection.endItemId);
 
         if (startIdx === -1 || endIdx === -1) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Start or end item not found in DOM: startIdx=${startIdx}, endIdx=${endIdx}`);
             }
             return;
@@ -2031,7 +2104,8 @@ export class Cursor {
             lastItem = endItem;
             firstOffset = selection.startOffset;
             lastOffset = selection.endOffset;
-        } else {
+        }
+        else {
             firstItem = endItem;
             lastItem = startItem;
             firstOffset = selection.endOffset;
@@ -2039,8 +2113,8 @@ export class Cursor {
         }
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Selection direction: ${isReversed ? 'reversed' : 'forward'}`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`Selection direction: ${isReversed ? "reversed" : "forward"}`);
             console.log(`First item: ${firstItem.id}, offset: ${firstOffset}`);
             console.log(`Last item: ${lastItem.id}, offset: ${lastOffset}`);
         }
@@ -2055,7 +2129,7 @@ export class Cursor {
 
         // 親が異なる場合は処理を中止（現在はサポート外）
         if (startParent !== endParent || !Tree.is(startParent, Items)) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Parents are different or not Items: startParent=${startParent}, endParent=${endParent}`);
             }
             return;
@@ -2066,14 +2140,14 @@ export class Cursor {
         const lastIndex = items.indexOf(lastItem);
 
         if (firstIndex === -1 || lastIndex === -1) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`First or last index not found: firstIndex=${firstIndex}, lastIndex=${lastIndex}`);
             }
             return;
         }
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`First index: ${firstIndex}, Last index: ${lastIndex}`);
         }
 
@@ -2087,7 +2161,7 @@ export class Cursor {
             const newLastText = lastText.substring(lastOffset);
 
             // デバッグ情報
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`First text: "${firstText}", New first text: "${newFirstText}"`);
                 console.log(`Last text: "${lastText}", New last text: "${newLastText}"`);
                 console.log(`Combined text will be: "${newFirstText + newLastText}"`);
@@ -2102,8 +2176,8 @@ export class Cursor {
                 }
             }
 
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                console.log(`Items to remove: ${itemsToRemove.join(', ')}`);
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Items to remove: ${itemsToRemove.join(", ")}`);
             }
 
             // 削除前に、削除対象アイテムのカーソルをクリア
@@ -2117,7 +2191,7 @@ export class Cursor {
             // 実際の削除処理（終了アイテムから開始アイテムの次まで）
             // 削除は終了アイテムから開始アイテムの方向に行う
             for (let i = lastIndex; i > firstIndex; i--) {
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Removing item at index ${i}`);
                 }
                 items.removeAt(i);
@@ -2138,9 +2212,9 @@ export class Cursor {
             store.startCursorBlink();
 
             // カーソルが表示されていることを確認
-            if (typeof window !== 'undefined') {
+            if (typeof window !== "undefined") {
                 setTimeout(() => {
-                    const cursorVisible = document.querySelector('.editor-overlay .cursor') !== null;
+                    const cursorVisible = document.querySelector(".editor-overlay .cursor") !== null;
                     if (!cursorVisible) {
                         // カーソルが表示されていない場合は、再度カーソルを設定
                         this.applyToStore();
@@ -2150,14 +2224,15 @@ export class Cursor {
             }
 
             // デバッグ情報
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`After deletion: cursor at itemId=${this.itemId}, offset=${this.offset}`);
                 console.log(`Remaining items count: ${items.length}`);
                 console.log(`Updated first item text: "${firstItem.text}"`);
             }
-        } catch (error) {
+        }
+        catch (error) {
             // エラーが発生した場合はログに出力
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Error in deleteMultiItemSelection:`, error);
                 // エラーの詳細情報を出力
                 if (error instanceof Error) {
@@ -2219,8 +2294,10 @@ export class Cursor {
      */
     private navigateToItem(direction: "left" | "right" | "up" | "down") {
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`navigateToItem called with direction=${direction}, itemId=${this.itemId}, offset=${this.offset}`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `navigateToItem called with direction=${direction}, itemId=${this.itemId}, offset=${this.offset}`,
+            );
         }
 
         // 前後アイテムへの移動はストア更新のみ行い、イベント発行はコンポーネントで処理
@@ -2235,7 +2312,7 @@ export class Cursor {
         const currentColumn = this.getCurrentColumn(currentText, this.offset);
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Current column: ${currentColumn}, current text: "${currentText}"`);
         }
 
@@ -2248,22 +2325,24 @@ export class Cursor {
                 itemChanged = true;
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
                 }
-            } else {
+            }
+            else {
                 // 前のアイテムがない場合は、同じアイテムの先頭に移動
                 const target = this.findTarget();
                 if (target) {
                     newOffset = 0;
 
                     // デバッグ情報
-                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                     }
                 }
             }
-        } else if (direction === "right") {
+        }
+        else if (direction === "right") {
             const nextItem = this.findNextItem();
             if (nextItem) {
                 newItemId = nextItem.id;
@@ -2271,27 +2350,29 @@ export class Cursor {
                 itemChanged = true;
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
                 }
-            } else {
+            }
+            else {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動
                 const target = this.findTarget();
                 if (target) {
                     newOffset = target.text?.length || 0;
 
                     // デバッグ情報
-                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
                 }
             }
-        } else if (direction === "up") {
+        }
+        else if (direction === "up") {
             const prevItem = this.findPreviousItem();
             if (prevItem) {
                 newItemId = prevItem.id;
                 const prevText = prevItem.text || "";
-                const prevLines = prevText.split('\n');
+                const prevLines = prevText.split("\n");
                 const lastLineIndex = prevLines.length - 1;
                 const lastLineStart = this.getLineStartOffset(prevText, lastLineIndex);
                 const lastLineEnd = this.getLineEndOffset(prevText, lastLineIndex);
@@ -2300,7 +2381,10 @@ export class Cursor {
                 // x座標の変化が最も小さい位置を計算
                 // 初期列位置または現在の列位置に最も近い位置を選択
                 // 前のアイテムの最後の行の長さを超えないようにする
-                const targetColumn = Math.min(this.initialColumn !== null ? this.initialColumn : currentColumn, lastLineLength);
+                const targetColumn = Math.min(
+                    this.initialColumn !== null ? this.initialColumn : currentColumn,
+                    lastLineLength,
+                );
                 newOffset = lastLineStart + targetColumn;
 
                 // 特殊ケース: 現在のカーソルが行の先頭（オフセット0）にある場合は、
@@ -2312,25 +2396,31 @@ export class Cursor {
                 itemChanged = true;
 
                 // デバッグ情報
-                console.log(`navigateToItem up - Moving to previous item's last line: itemId=${prevItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}`);
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`);
+                console.log(
+                    `navigateToItem up - Moving to previous item's last line: itemId=${prevItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}`,
+                );
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        `Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
+                    );
                 }
-            } else {
+            }
+            else {
                 // 前のアイテムがない場合は、同じアイテムの先頭に移動
                 newOffset = 0;
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                 }
             }
-        } else if (direction === "down") {
+        }
+        else if (direction === "down") {
             const nextItem = this.findNextItem();
             if (nextItem) {
                 newItemId = nextItem.id;
                 const nextText = nextItem.text || "";
-                const nextLines = nextText.split('\n');
+                const nextLines = nextText.split("\n");
                 const firstLineIndex = 0;
                 const firstLineStart = this.getLineStartOffset(nextText, firstLineIndex);
                 const firstLineEnd = this.getLineEndOffset(nextText, firstLineIndex);
@@ -2339,7 +2429,10 @@ export class Cursor {
                 // x座標の変化が最も小さい位置を計算
                 // 初期列位置または現在の列位置に最も近い位置を選択
                 // 次のアイテムの最初の行の長さを超えないようにする
-                const targetColumn = Math.min(this.initialColumn !== null ? this.initialColumn : currentColumn, firstLineLength);
+                const targetColumn = Math.min(
+                    this.initialColumn !== null ? this.initialColumn : currentColumn,
+                    firstLineLength,
+                );
                 newOffset = firstLineStart + targetColumn;
 
                 // 特殊ケース: 現在のカーソルが行の末尾（オフセットがテキスト長）にある場合は、
@@ -2353,18 +2446,23 @@ export class Cursor {
                 itemChanged = true;
 
                 // デバッグ情報
-                console.log(`navigateToItem down - Moving to next item's first line: itemId=${nextItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}`);
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Moving down to next item's first line: id=${nextItem.id}, firstLineIndex=${firstLineIndex}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`);
+                console.log(
+                    `navigateToItem down - Moving to next item's first line: itemId=${nextItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}`,
+                );
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        `Moving down to next item's first line: id=${nextItem.id}, firstLineIndex=${firstLineIndex}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
+                    );
                 }
-            } else {
+            }
+            else {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動
                 const target = this.findTarget();
                 if (target) {
                     newOffset = target.text?.length || 0;
 
                     // デバッグ情報
-                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
                 }
@@ -2374,7 +2472,7 @@ export class Cursor {
         // アイテムが変更された場合のみ処理を実行
         if (itemChanged) {
             // デバッグ情報
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
             }
 
@@ -2388,8 +2486,8 @@ export class Cursor {
                 .map(c => c.cursorId);
 
             // デバッグ情報
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                console.log(`Removing cursors: ${cursorsToRemove.join(', ')}`);
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Removing cursors: ${cursorsToRemove.join(", ")}`);
             }
 
             // 選択範囲をクリア
@@ -2402,8 +2500,8 @@ export class Cursor {
                 .map(c => c.cursorId);
 
             // デバッグ情報
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(', ')}`);
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
             }
 
             // 新しいアイテムとオフセットを設定
@@ -2418,7 +2516,7 @@ export class Cursor {
                 itemId: this.itemId,
                 offset: this.offset,
                 isActive: true,
-                userId: this.userId
+                userId: this.userId,
             });
 
             // cursorIdを更新
@@ -2428,26 +2526,27 @@ export class Cursor {
             store.startCursorBlink();
 
             // カスタムイベントを発行
-            if (typeof document !== 'undefined') {
-                const event = new CustomEvent('navigate-to-item', {
+            if (typeof document !== "undefined") {
+                const event = new CustomEvent("navigate-to-item", {
                     bubbles: true,
                     detail: {
                         direction,
                         fromItemId: oldItemId,
                         toItemId: this.itemId,
-                        cursorScreenX: 0 // カーソルのX座標（アイテム間移動時は0を指定）
-                    }
+                        cursorScreenX: 0, // カーソルのX座標（アイテム間移動時は0を指定）
+                    },
                 });
                 document.dispatchEvent(event);
             }
-        } else {
+        }
+        else {
             // アイテムが変更されなかった場合でも、カーソルの状態を更新
             this.offset = newOffset;
             this.applyToStore();
             store.startCursorBlink();
 
             // デバッグ情報
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Item not changed, updated offset: ${newOffset}`);
             }
         }
@@ -2462,7 +2561,7 @@ export class Cursor {
      */
     updateGlobalTextareaSelection(startItemId: string, startOffset: number, endItemId: string, endOffset: number) {
         // グローバルテキストエリアを取得
-        const textarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
+        const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
         if (!textarea) return;
 
         // アイテムのテキストを取得
@@ -2471,8 +2570,8 @@ export class Cursor {
 
         if (!startItemEl || !endItemEl) return;
 
-        const startItemText = startItemEl.textContent || '';
-        const endItemText = endItemEl.textContent || '';
+        const startItemText = startItemEl.textContent || "";
+        const endItemText = endItemEl.textContent || "";
 
         // 単一アイテム内の選択範囲の場合
         if (startItemId === endItemId) {
@@ -2481,11 +2580,12 @@ export class Cursor {
 
             // 選択範囲を設定
             textarea.setSelectionRange(startOffset, endOffset);
-        } else {
+        }
+        else {
             // 複数アイテムにまたがる選択範囲の場合
             // 全てのアイテムを取得
-            const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
-            const allItemIds = allItems.map(el => el.getAttribute('data-item-id')!);
+            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
+            const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
 
             // 開始アイテムと終了アイテムのインデックスを取得
             const startIdx = allItemIds.indexOf(startItemId);
@@ -2498,13 +2598,13 @@ export class Cursor {
             const lastIdx = Math.max(startIdx, endIdx);
 
             // 選択範囲内のアイテムのテキストを連結
-            let combinedText = '';
+            let combinedText = "";
             for (let i = firstIdx; i <= lastIdx; i++) {
                 const itemId = allItemIds[i];
                 const itemEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement;
                 if (itemEl) {
-                    combinedText += itemEl.textContent || '';
-                    if (i < lastIdx) combinedText += '\n';
+                    combinedText += itemEl.textContent || "";
+                    if (i < lastIdx) combinedText += "\n";
                 }
             }
 
@@ -2518,14 +2618,15 @@ export class Cursor {
             // 開始アイテムから開始位置までのテキスト長を計算
             if (startIdx === firstIdx) {
                 selectionStart = startOffset;
-            } else {
+            }
+            else {
                 // 開始アイテムが終了アイテムより後にある場合（逆方向選択）
                 let textBeforeStart = 0;
                 for (let i = firstIdx; i < startIdx; i++) {
                     const itemId = allItemIds[i];
                     const itemEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement;
                     if (itemEl) {
-                        textBeforeStart += (itemEl.textContent || '').length + 1; // +1 for newline
+                        textBeforeStart += (itemEl.textContent || "").length + 1; // +1 for newline
                     }
                 }
                 selectionStart = textBeforeStart + startOffset;
@@ -2538,11 +2639,12 @@ export class Cursor {
                     const itemId = allItemIds[i];
                     const itemEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement;
                     if (itemEl) {
-                        textBeforeEnd += (itemEl.textContent || '').length + 1; // +1 for newline
+                        textBeforeEnd += (itemEl.textContent || "").length + 1; // +1 for newline
                     }
                 }
                 selectionEnd = textBeforeEnd + endOffset;
-            } else {
+            }
+            else {
                 // 終了アイテムが開始アイテムより前にある場合（逆方向選択）
                 selectionEnd = endOffset;
             }
@@ -2556,35 +2658,35 @@ export class Cursor {
      * 選択範囲のテキストを太字に変更する（Scrapbox構文: [[text]]）
      */
     formatBold() {
-        this.applyScrapboxFormatting('bold');
+        this.applyScrapboxFormatting("bold");
     }
 
     /**
      * 選択範囲のテキストを斜体に変更する（Scrapbox構文: [/ text]）
      */
     formatItalic() {
-        this.applyScrapboxFormatting('italic');
+        this.applyScrapboxFormatting("italic");
     }
 
     /**
      * 選択範囲のテキストに下線を追加する（Scrapbox構文: 未対応のため HTML タグを使用）
      */
     formatUnderline() {
-        this.applyFormatting('<u>', '</u>', '<u>', '</u>');
+        this.applyFormatting("<u>", "</u>", "<u>", "</u>");
     }
 
     /**
      * 選択範囲のテキストに取り消し線を追加する（Scrapbox構文: [- text]）
      */
     formatStrikethrough() {
-        this.applyScrapboxFormatting('strikethrough');
+        this.applyScrapboxFormatting("strikethrough");
     }
 
     /**
      * 選択範囲のテキストをコードに変更する（Scrapbox構文: `text`）
      */
     formatCode() {
-        this.applyScrapboxFormatting('code');
+        this.applyScrapboxFormatting("code");
     }
 
     /**
@@ -2594,15 +2696,18 @@ export class Cursor {
      * @param scrapboxPrefix Scrapbox形式のプレフィックス
      * @param scrapboxSuffix Scrapbox形式のサフィックス
      */
-    private applyFormatting(markdownPrefix: string, markdownSuffix: string, scrapboxPrefix: string, scrapboxSuffix: string) {
+    private applyFormatting(
+        markdownPrefix: string,
+        markdownSuffix: string,
+        scrapboxPrefix: string,
+        scrapboxSuffix: string,
+    ) {
         // Scrapbox構文を使用
         const prefix = scrapboxPrefix;
         const suffix = scrapboxSuffix;
 
         // 選択範囲を取得
-        const selection = Object.values(store.selections).find(s =>
-            s.userId === this.userId
-        );
+        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
 
         if (!selection || selection.startOffset === selection.endOffset) {
             // 選択範囲がない場合は何もしない
@@ -2646,11 +2751,9 @@ export class Cursor {
      * 選択範囲にScrapbox構文のフォーマットを適用する
      * @param formatType フォーマットの種類（'bold', 'italic', 'strikethrough', 'code'）
      */
-    private applyScrapboxFormatting(formatType: 'bold' | 'italic' | 'strikethrough' | 'code') {
+    private applyScrapboxFormatting(formatType: "bold" | "italic" | "strikethrough" | "code") {
         // 選択範囲を取得
-        const selection = Object.values(store.selections).find(s =>
-            s.userId === this.userId
-        );
+        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
 
         if (!selection || selection.startOffset === selection.endOffset) {
             // 選択範囲がない場合は何もしない
@@ -2675,16 +2778,16 @@ export class Cursor {
         // フォーマット済みのテキストを作成
         let formattedText = "";
         switch (formatType) {
-            case 'bold':
+            case "bold":
                 formattedText = ScrapboxFormatter.bold(selectedText);
                 break;
-            case 'italic':
+            case "italic":
                 formattedText = ScrapboxFormatter.italic(selectedText);
                 break;
-            case 'strikethrough':
+            case "strikethrough":
                 formattedText = ScrapboxFormatter.strikethrough(selectedText);
                 break;
-            case 'code':
+            case "code":
                 formattedText = ScrapboxFormatter.code(selectedText);
                 break;
         }
@@ -2716,8 +2819,8 @@ export class Cursor {
         const isReversed = selection.isReversed;
 
         // 全アイテムのIDを取得
-        const allItemElements = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
-        const allItemIds = allItemElements.map(el => el.getAttribute('data-item-id')!);
+        const allItemElements = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
+        const allItemIds = allItemElements.map(el => el.getAttribute("data-item-id")!);
 
         // 開始アイテムと終了アイテムのインデックスを取得
         const startIdx = allItemIds.indexOf(startItemId);
@@ -2747,7 +2850,8 @@ export class Cursor {
                 const formattedText = prefix + selectedText + suffix;
                 const newText = text.substring(0, start) + formattedText + text.substring(end);
                 item.updateText(newText);
-            } else if (i === firstIdx) {
+            }
+            else if (i === firstIdx) {
                 // 開始アイテム
                 const start = isReversed ? text.length : startOffset;
                 const end = text.length;
@@ -2755,7 +2859,8 @@ export class Cursor {
                 const formattedText = prefix + selectedText + (i === lastIdx - 1 ? suffix : "");
                 const newText = text.substring(0, start) + formattedText;
                 item.updateText(newText);
-            } else if (i === lastIdx) {
+            }
+            else if (i === lastIdx) {
                 // 終了アイテム
                 const start = 0;
                 const end = isReversed ? startOffset : endOffset;
@@ -2763,7 +2868,8 @@ export class Cursor {
                 const formattedText = (i === firstIdx + 1 ? prefix : "") + selectedText + suffix;
                 const newText = formattedText + text.substring(end);
                 item.updateText(newText);
-            } else {
+            }
+            else {
                 // 中間アイテム
                 item.updateText(prefix + text + suffix);
             }
@@ -2784,7 +2890,10 @@ export class Cursor {
     /**
      * 複数アイテムにまたがる選択範囲にScrapbox構文のフォーマットを適用する
      */
-    private applyScrapboxFormattingToMultipleItems(selection: any, formatType: 'bold' | 'italic' | 'strikethrough' | 'code') {
+    private applyScrapboxFormattingToMultipleItems(
+        selection: any,
+        formatType: "bold" | "italic" | "strikethrough" | "code",
+    ) {
         // 開始アイテムと終了アイテムのIDを取得
         const startItemId = selection.startItemId;
         const endItemId = selection.endItemId;
@@ -2793,8 +2902,8 @@ export class Cursor {
         const isReversed = selection.isReversed;
 
         // 全アイテムのIDを取得
-        const allItemElements = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
-        const allItemIds = allItemElements.map(el => el.getAttribute('data-item-id')!);
+        const allItemElements = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
+        const allItemIds = allItemElements.map(el => el.getAttribute("data-item-id")!);
 
         // 開始アイテムと終了アイテムのインデックスを取得
         const startIdx = allItemIds.indexOf(startItemId);
@@ -2825,23 +2934,24 @@ export class Cursor {
                 // フォーマット済みのテキストを作成
                 let formattedText = "";
                 switch (formatType) {
-                    case 'bold':
+                    case "bold":
                         formattedText = ScrapboxFormatter.bold(selectedText);
                         break;
-                    case 'italic':
+                    case "italic":
                         formattedText = ScrapboxFormatter.italic(selectedText);
                         break;
-                    case 'strikethrough':
+                    case "strikethrough":
                         formattedText = ScrapboxFormatter.strikethrough(selectedText);
                         break;
-                    case 'code':
+                    case "code":
                         formattedText = ScrapboxFormatter.code(selectedText);
                         break;
                 }
 
                 const newText = text.substring(0, start) + formattedText + text.substring(end);
                 item.updateText(newText);
-            } else {
+            }
+            else {
                 // 複数アイテムにまたがる選択範囲の場合は、各アイテムを個別に処理
                 // 現在は単一アイテム内の選択範囲のみサポート
                 // 将来的に複数アイテムにまたがる選択範囲のフォーマットをサポートする場合は、

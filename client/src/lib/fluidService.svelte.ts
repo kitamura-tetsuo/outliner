@@ -15,9 +15,11 @@ import {
 } from "@fluidframework/tinylicious-client";
 import {
     SharedTree,
+    Tree,
     type TreeView,
     type ViewableTree,
 } from "fluid-framework";
+import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";
 import { FluidClient } from "../fluid/fluidClient";
@@ -33,11 +35,14 @@ import {
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";
 import {
+    createFluidConfigProvider,
+    getTelemetryFilterLogger,
+} from "./fluidTelemetryFilter";
+import { AsyncLockManager } from "./lock";
+import {
     getLogger,
     log,
 } from "./logger";
-import { createFluidConfigProvider, getTelemetryFilterLogger } from "./fluidTelemetryFilter";
-import { AsyncLockManager } from "./lock";
 
 const logger = getLogger();
 
@@ -54,6 +59,11 @@ type FluidInstances = [
     TreeView<typeof Project> | undefined,
     Project | undefined,
 ];
+
+class GeneralStore {
+    titleRegistry = new SvelteMap<string, string>();
+}
+export const firestoreStore = new GeneralStore();
 
 // シングルトンからマップ型に変更して複数クライアントを管理
 const clientRegistry = new CustomKeyMap<FluidClientKey, FluidInstances>();
@@ -87,6 +97,24 @@ function createClientKey(userId?: string, containerId?: string): FluidClientKey 
         return { type: "container", id: containerId };
     }
     return { type: "user", id: userId || "anonymous" };
+}
+
+async function loadTitle(containerId?: string) {
+    if (!containerId) return;
+
+    const instances = await getFluidClient(containerId);
+    Tree.on(instances[4]!, "nodeChanged", change => {
+        firestoreStore.titleRegistry.set(containerId, title);
+    });
+    const title = instances[4]!.title;
+    return firestoreStore.titleRegistry.set(containerId, title);
+    // return firestoreStore.titleRegistry.set(containerId, $state(title));
+}
+export function getProjectTitle(containerId: string): string {
+    const title = firestoreStore.titleRegistry.get(containerId);
+    if (!title) loadTitle(containerId);
+
+    return title || "";
 }
 
 // TokenProviderの取得
@@ -157,7 +185,10 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
     );
 }
 
-async function createAzureOrTinyliciousClient(userId?: string, containerId?: string): Promise<TinyliciousClient | AzureClient> {
+async function createAzureOrTinyliciousClient(
+    userId?: string,
+    containerId?: string,
+): Promise<TinyliciousClient | AzureClient> {
     if (useTinylicious) {
         const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7082");
         // telemetryを無効化するための設定を追加
@@ -267,7 +298,8 @@ export async function getFluidClient(containerId?: string): Promise<FluidInstanc
 
             const result: FluidInstances = [client, container, services, appData, project];
 
-            clientRegistry.set(clientKey, result as any);
+            clientRegistry.set(clientKey, result);
+            loadTitle(containerId);
             return result;
         }
         catch (error) {
@@ -335,7 +367,7 @@ async function saveContainerIdToServer(containerId: string): Promise<boolean> {
  * ユーザーがアクセス可能なコンテナIDのリストを取得する
  * @returns コンテナIDのリストとデフォルトコンテナID
  */
-export async function getUserContainers(): Promise<{ containers: string[], defaultContainerId: string | null }> {
+export async function getUserContainers(): Promise<{ containers: string[]; defaultContainerId: string | null; }> {
     try {
         // ユーザー情報を取得
         const userInfo = userManager.getCurrentUser();
@@ -373,7 +405,7 @@ export async function getUserContainers(): Promise<{ containers: string[], defau
         log("fluidService", "info", `Successfully got user containers for user ${userId}`);
         return {
             containers: result.containers || [],
-            defaultContainerId: result.defaultContainerId || null
+            defaultContainerId: result.defaultContainerId || null,
         };
     }
     catch (error) {
@@ -464,17 +496,14 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
         const containerId = await container.attach();
         log("fluidService", "info", `Container created with ID: ${containerId}`);
 
-        // サーバーとローカルストレージにコンテナIDを保存
-        await saveContainerIdToServer(containerId);
-        saveContainerId(containerId);
-
         const appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
         appData.initialize(Project.createInstance(containerName));
         const project = appData.root as Project;
 
         const result: FluidInstances = [client, container, createResponse.services, appData, project];
         const clientKey = createClientKey(userId, containerId);
-        clientRegistry.set(clientKey, result as any);
+        clientRegistry.set(clientKey, result);
+        loadTitle(containerId);
 
         // 必要な全てのパラメータを設定してFluidClientインスタンスを作成
         const fluidClientParams = {
@@ -486,6 +515,10 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
             project,
             services: createResponse.services,
         };
+
+        // サーバーとローカルストレージにコンテナIDを保存
+        await saveContainerIdToServer(containerId);
+        saveContainerId(containerId);
 
         // 新しいFluidClientインスタンスを返す
         return new FluidClient(fluidClientParams);
@@ -534,7 +567,11 @@ export async function getFluidClientByProjectTitle(projectTitle: string): Promis
         const [_, __, ___, ____, project] = instances;
 
         if (project && project.title === projectTitle) {
-            log("fluidService", "info", `プロジェクトタイトル「${projectTitle}」に一致するFluidClientを発見: ${key.id}`);
+            log(
+                "fluidService",
+                "info",
+                `プロジェクトタイトル「${projectTitle}」に一致するFluidClientを発見: ${key.id}`,
+            );
             return createFluidClient(key.id);
         }
     }
@@ -663,7 +700,6 @@ let unsubscribeAuth: (() => void) | null = null;
 
 // ユーザー認証状態の変更を監視して、FluidClientを初期化/更新する
 export async function initFluidClientWithAuth() {
-
     // 認証状態の変更を監視
     unsubscribeAuth = userManager.addEventListener(async authResult => {
         try {
@@ -725,8 +761,8 @@ export function cleanupFluidClient() {
     if (fluidStore.fluidClient?.container) {
         try {
             // クライアントが接続状態のイベントハンドラを持っていれば解除
-            fluidStore.fluidClient.container.off("connected", () => { });
-            fluidStore.fluidClient.container.off("disconnected", () => { });
+            fluidStore.fluidClient.container.off("connected", () => {});
+            fluidStore.fluidClient.container.off("disconnected", () => {});
         }
         catch (e) {
             logger.warn("FluidClient接続解除中のエラー:", e);

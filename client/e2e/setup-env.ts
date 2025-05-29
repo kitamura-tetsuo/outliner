@@ -10,11 +10,11 @@ if (!process.env.CI) {
     const __dirname = path.dirname(__filename);
 
     // 環境変数に応じて適切な.envファイルを選択
-    const isLocalhostEnv = process.env.TEST_ENV === 'localhost';
+    const isLocalhostEnv = process.env.TEST_ENV === "localhost";
     const envFileName = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
     const envFilePath = path.join(__dirname, "..", envFileName);
 
-    console.log(`Using test environment: ${isLocalhostEnv ? 'localhost' : 'default'}`);
+    console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
     console.log(`Loading environment from: ${envFilePath}`);
 
     // ファイルが存在するか確認

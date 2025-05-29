@@ -1,14 +1,14 @@
 {
-  "$schema": "https://unpkg.com/knip@latest/schema.json",
-  // エントリーポイントに .svelte を追加
-  "entry": [
-    "src/index.ts",         // 既存のエントリー
-    "src/routes/**/*.svelte" // SvelteKit のページも入口に
-  ],
-  // プロジェクト全体で .ts/.js に混じって .svelte を解析対象に
-  "project": [
-    "src/**/*.{ts,js,svelte}"
-  ],
-  // （任意） エントリーファイル自体の export もチェックしたい場合
-  "includeEntryExports": true
+    "$schema": "https://unpkg.com/knip@latest/schema.json",
+    // エントリーポイントに .svelte を追加
+    "entry": [
+        "src/index.ts", // 既存のエントリー
+        "src/routes/**/*.svelte" // SvelteKit のページも入口に
+    ],
+    // プロジェクト全体で .ts/.js に混じって .svelte を解析対象に
+    "project": [
+        "src/**/*.{ts,js,svelte}"
+    ],
+    // （任意） エントリーファイル自体の export もチェックしたい場合
+    "includeEntryExports": true
 }

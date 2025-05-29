@@ -6,11 +6,10 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 // このテストは時間がかかるため、タイムアウトを増やす
-
 
 test.describe("CLM-0007: 行頭へ移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -51,11 +50,11 @@ test.describe("CLM-0007: 行頭へ移動", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
-        await cursor.waitFor({ state: 'visible' });
+        await cursor.waitFor({ state: "visible" });
 
         // 初期カーソル位置を取得
         const initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
@@ -73,12 +72,12 @@ test.describe("CLM-0007: 行頭へ移動", () => {
 
         // カーソルの位置が行の先頭にあることを確認
         const cursorOffset = await page.evaluate(() => {
-            const cursor = document.querySelector('.editor-overlay .cursor.active');
+            const cursor = document.querySelector(".editor-overlay .cursor.active");
             if (!cursor) return null;
             const style = window.getComputedStyle(cursor);
             return {
                 left: parseFloat(style.left),
-                top: parseFloat(style.top)
+                top: parseFloat(style.top),
             };
         });
 
@@ -95,14 +94,14 @@ test.describe("CLM-0007: 行頭へ移動", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // カーソルを3行目に移動
         await page.keyboard.press("ArrowDown");
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
-        await cursor.waitFor({ state: 'visible' });
+        await cursor.waitFor({ state: "visible" });
 
         // 初期カーソル位置を取得
         const initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
@@ -120,17 +119,15 @@ test.describe("CLM-0007: 行頭へ移動", () => {
 
         // カーソルの位置が行の先頭にあることを確認
         const cursorOffset = await page.evaluate(() => {
-            const cursor = document.querySelector('.editor-overlay .cursor.active');
+            const cursor = document.querySelector(".editor-overlay .cursor.active");
             if (!cursor) return null;
             const style = window.getComputedStyle(cursor);
             return {
                 left: parseFloat(style.left),
-                top: parseFloat(style.top)
+                top: parseFloat(style.top),
             };
         });
 
         expect(cursorOffset).not.toBeNull();
     });
-
-
 });

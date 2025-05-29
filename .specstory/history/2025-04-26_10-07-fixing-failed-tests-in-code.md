@@ -6,37 +6,36 @@ _**User**_
 
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
 
- FAIL   server  src/components/OutlinerItem.test.ts > OutlinerItem Integration > 非Altクリックで編集モードに入る
+FAIL server src/components/OutlinerItem.test.ts > OutlinerItem Integration > 非Altクリックで編集モードに入る
 ReferenceError: document is not defined
- ❯ render node_modules/@testing-library/svelte/src/pure.js:63:52
-     61| 
-     62|   const baseElement =
-     63|     renderOptions.baseElement ?? options.target ?? document.body
-       |                                                    ^
-     64| 
-     65|   const queries = getQueriesForElement(baseElement, renderOptions.queries)
- ❯ src/components/OutlinerItem.test.ts:41:48
+❯ render node_modules/@testing-library/svelte/src/pure.js:63:52
+61|
+62| const baseElement =
+63| renderOptions.baseElement ?? options.target ?? document.body
+| ^
+64|
+65| const queries = getQueriesForElement(baseElement, renderOptions.queries)
+❯ src/components/OutlinerItem.test.ts:41:48
 
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
 
- FAIL   server  src/components/OutlinerItem.test.ts > OutlinerItem Integration > Alt+Clickでカーソルがstoreに追加される
+FAIL server src/components/OutlinerItem.test.ts > OutlinerItem Integration > Alt+Clickでカーソルがstoreに追加される
 ReferenceError: document is not defined
- ❯ render node_modules/@testing-library/svelte/src/pure.js:63:52
-     61| 
-     62|   const baseElement =
-     63|     renderOptions.baseElement ?? options.target ?? document.body
-       |                                                    ^
-     64| 
-     65|   const queries = getQueriesForElement(baseElement, renderOptions.queries)
- ❯ src/components/OutlinerItem.test.ts:57:31
+❯ render node_modules/@testing-library/svelte/src/pure.js:63:52
+61|
+62| const baseElement =
+63| renderOptions.baseElement ?? options.target ?? document.body
+| ^
+64|
+65| const queries = getQueriesForElement(baseElement, renderOptions.queries)
+❯ src/components/OutlinerItem.test.ts:57:31
 
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
 
-
- Test Files  1 failed | 6 passed (7)
-      Tests  2 failed | 19 passed (21)
-   Start at  09:57:19
-   Duration  8.11s (transform 3.44s, setup 1.06s, collect 10.14s, tests 324ms, environment 692ms, prepare 1.44s)
+Test Files 1 failed | 6 passed (7)
+Tests 2 failed | 19 passed (21)
+Start at 09:57:19
+Duration 8.11s (transform 3.44s, setup 1.06s, collect 10.14s, tests 324ms, environment 692ms, prepare 1.44s)
 
 テストが失敗しているので修正してください。
 
@@ -46,34 +45,34 @@ _**Assistant**_
 
 <details>
             <summary>Listed directory  • **25** results</summary>
-        
-| Name |
-|-------|
-| 📄 `chat.stach.txt` |
-| 📁 `client` |
-| 📄 `chat.txt` |
-| 📁 `.git` |
+
+| Name                       |
+| -------------------------- |
+| 📄 `chat.stach.txt`        |
+| 📁 `client`                |
+| 📄 `chat.txt`              |
+| 📁 `.git`                  |
 | 📄 `.cursorindexingignore` |
-| 📁 `.specstory` |
-| 📁 `tests` |
-| 📄 `playwright.config.ts` |
-| 📄 `.gitlab-ci.yml` |
-| 📄 `tips.txt` |
-| 📁 `server` |
-| 📄 `.gitignore` |
-| 📁 `.vscode` |
-| 📄 `README.md` |
-| 📁 `firebase` |
-| 📁 `.gitlab-ci-local` |
-| 📁 `logs` |
-| 📁 `test-results` |
-| 📁 `firebase-data` |
-| 📁 `.devcontainer` |
-| 📄 `dprint.json` |
-| 📁 `scripts` |
-| 📄 `.eslintignore` |
-| 📁 `.github` |
-| 📁 `.cursor` |
+| 📁 `.specstory`            |
+| 📁 `tests`                 |
+| 📄 `playwright.config.ts`  |
+| 📄 `.gitlab-ci.yml`        |
+| 📄 `tips.txt`              |
+| 📁 `server`                |
+| 📄 `.gitignore`            |
+| 📁 `.vscode`               |
+| 📄 `README.md`             |
+| 📁 `firebase`              |
+| 📁 `.gitlab-ci-local`      |
+| 📁 `logs`                  |
+| 📁 `test-results`          |
+| 📁 `firebase-data`         |
+| 📁 `.devcontainer`         |
+| 📄 `dprint.json`           |
+| 📁 `scripts`               |
+| 📄 `.eslintignore`         |
+| 📁 `.github`               |
+| 📁 `.cursor`               |
 
 </details>
 
@@ -81,23 +80,23 @@ _**Assistant**_
 
 <details>
             <summary>Listed directory server • **14** results</summary>
-        
-| Name |
-|-------|
-| 📁 `logs` |
-| 📄 `.env` |
-| 📄 `.env.test` |
-| 📁 `node_modules` |
-| 📄 `auth-service.js` |
-| 📄 `start-with-ngrok.js` |
-| 📄 `package-lock.json` |
-| 📁 `utils` |
-| 📄 `package.json` |
-| 📁 `scripts` |
-| 📁 `tests` |
+
+| Name                        |
+| --------------------------- |
+| 📁 `logs`                   |
+| 📄 `.env`                   |
+| 📄 `.env.test`              |
+| 📁 `node_modules`           |
+| 📄 `auth-service.js`        |
+| 📄 `start-with-ngrok.js`    |
+| 📄 `package-lock.json`      |
+| 📁 `utils`                  |
+| 📄 `package.json`           |
+| 📁 `scripts`                |
+| 📁 `tests`                  |
 | 📄 `firebase-adminsdk.json` |
-| 📄 `.env.example` |
-| 📄 `README.md` |
+| 📄 `.env.example`           |
+| 📄 `README.md`              |
 
 </details>
 
@@ -105,37 +104,37 @@ _**Assistant**_
 
 <details>
             <summary>Listed directory client • **28** results</summary>
-        
-| Name |
-|-------|
-| 📁 `logs` |
-| 📁 `project.inlang` |
-| 📁 `playwright-report` |
-| 📁 `test-results` |
-| 📁 `src` |
-| 📁 `tests` |
-| 📄 `package.json` |
-| 📄 `tsconfig.json` |
-| 📄 `vite.config.ts` |
-| 📄 `.env.test` |
-| 📁 `node_modules` |
-| 📁 `e2e` |
-| 📄 `playwright.config.ts` |
-| 📄 `.env` |
-| 📁 `.svelte-kit` |
-| 📄 `package-lock.json` |
-| 📁 `static` |
-| 📄 `svelte.config.js` |
-| 📄 `tailwind.config.js` |
+
+| Name                        |
+| --------------------------- |
+| 📁 `logs`                   |
+| 📁 `project.inlang`         |
+| 📁 `playwright-report`      |
+| 📁 `test-results`           |
+| 📁 `src`                    |
+| 📁 `tests`                  |
+| 📄 `package.json`           |
+| 📄 `tsconfig.json`          |
+| 📄 `vite.config.ts`         |
+| 📄 `.env.test`              |
+| 📁 `node_modules`           |
+| 📁 `e2e`                    |
+| 📄 `playwright.config.ts`   |
+| 📄 `.env`                   |
+| 📁 `.svelte-kit`            |
+| 📄 `package-lock.json`      |
+| 📁 `static`                 |
+| 📄 `svelte.config.js`       |
+| 📄 `tailwind.config.js`     |
 | 📄 `vitest-setup-client.ts` |
-| 📄 `eslint.config.js` |
-| 📁 `messages` |
-| 📄 `.npmrc` |
-| 📄 `.prettierignore` |
-| 📄 `.prettierrc` |
-| 📁 `.storybook` |
-| 📁 `.vscode` |
-| 📄 `.env.example` |
+| 📄 `eslint.config.js`       |
+| 📁 `messages`               |
+| 📄 `.npmrc`                 |
+| 📄 `.prettierignore`        |
+| 📄 `.prettierrc`            |
+| 📁 `.storybook`             |
+| 📁 `.vscode`                |
+| 📄 `.env.example`           |
 
 </details>
 
@@ -143,13 +142,13 @@ _**Assistant**_
 
 <details>
             <summary>Grep search for "OutlinerItem" • **1** files</summary>
-        
-| File | Line | Match |
-|------|------|-------|
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/components/OutlinerItem.test.ts` | L12 | `import OutlinerItem from "./OutlinerItem.svelte";` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/components/OutlinerItem.test.ts` | L27 | `describe("OutlinerItem Integration", () => {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/components/OutlinerItem.test.ts` | L40 | `const { getByText, container: cont } = render(OutlinerItem, {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/components/OutlinerItem.test.ts` | L56 | `const { getByText } = render(OutlinerItem, { props: { model: createModel(), depth: 0, index: 0 } });` |
+
+| File                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Line | Match                                                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------ |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/components/OutlinerItem.test.ts` | L12  | `import OutlinerItem from "./OutlinerItem.svelte";`                                                    |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/components/OutlinerItem.test.ts` | L27  | `describe("OutlinerItem Integration", () => {`                                                         |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/components/OutlinerItem.test.ts` | L40  | `const { getByText, container: cont } = render(OutlinerItem, {`                                        |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/components/OutlinerItem.test.ts` | L56  | `const { getByText } = render(OutlinerItem, { props: { model: createModel(), depth: 0, index: 0 } });` |
 
 </details>
 
@@ -161,8 +160,9 @@ Read file: client/vite.config.ts
 
 <details>
             <summary>Listed directory client/tests • **0** results</summary>
-        
+
 No results found
+
 </details>
 
 ---
@@ -173,28 +173,28 @@ Read file: client/src/components/OutlinerItem.test.ts
 
 <details>
             <summary>Listed directory client/src • **19** results</summary>
-        
-| Name |
-|-------|
-| 📁 `components` |
-| 📁 `utils` |
-| 📁 `stores` |
-| 📁 `lib` |
-| 📁 `tests` |
-| 📁 `routes` |
-| 📁 `schema` |
-| 📁 `auth` |
-| 📁 `stories` |
-| 📁 `services` |
-| 📁 `debug` |
-| 📄 `demo.spec.ts` |
-| 📁 `fluid` |
-| 📄 `global.d.ts` |
+
+| Name                 |
+| -------------------- |
+| 📁 `components`      |
+| 📁 `utils`           |
+| 📁 `stores`          |
+| 📁 `lib`             |
+| 📁 `tests`           |
+| 📁 `routes`          |
+| 📁 `schema`          |
+| 📁 `auth`            |
+| 📁 `stories`         |
+| 📁 `services`        |
+| 📁 `debug`           |
+| 📄 `demo.spec.ts`    |
+| 📁 `fluid`           |
+| 📄 `global.d.ts`     |
 | 📄 `hooks.server.ts` |
-| 📄 `hooks.ts` |
-| 📄 `app.css` |
-| 📄 `app.d.ts` |
-| 📄 `app.html` |
+| 📄 `hooks.ts`        |
+| 📄 `app.css`         |
+| 📄 `app.d.ts`        |
+| 📄 `app.html`        |
 
 </details>
 
@@ -267,25 +267,25 @@ Read file: client/src/components/OutlinerItem.test.ts
 +         expect(cursors.length).toBe(1);
 +         expect(cursors[0].itemId).toBe("item1");
 +     });
-+ }); 
++ });
 ```
 
 ---
 
 <details>
             <summary>Listed directory client/src/stores • **9** results</summary>
-        
-| Name |
-|-------|
-| 📄 `EditorOverlayStore.test.ts` |
-| 📄 `EditorOverlayStore.svelte.ts` |
+
+| Name                                   |
+| -------------------------------------- |
+| 📄 `EditorOverlayStore.test.ts`        |
+| 📄 `EditorOverlayStore.svelte.ts`      |
 | 📄 `.EditorOverlayStore.svelte.ts.swp` |
-| 📄 `firestoreStore.ts` |
-| 📄 `OutlinerViewModel.ts` |
-| 📄 `TreeSubscriber.ts` |
-| 📄 `createSubscribableState.ts` |
-| 📄 `fluidStore.svelte.ts` |
-| 📄 `store.svelte.ts` |
+| 📄 `firestoreStore.ts`                 |
+| 📄 `OutlinerViewModel.ts`              |
+| 📄 `TreeSubscriber.ts`                 |
+| 📄 `createSubscribableState.ts`        |
+| 📄 `fluidStore.svelte.ts`              |
+| 📄 `store.svelte.ts`                   |
 
 </details>
 
@@ -293,23 +293,23 @@ Read file: client/src/components/OutlinerItem.test.ts
 
 <details>
             <summary>Listed directory client/src/components • **14** results</summary>
-        
-| Name |
-|-------|
+
+| Name                             |
+| -------------------------------- |
 | 📄 `OutlinerItem.svelte.test.ts` |
-| 📄 `EditorOverlay.svelte` |
-| 📄 `OutlinerItem.svelte` |
-| 📄 `GlobalTextArea.svelte` |
-| 📄 `OutlinerItem.test.ts` |
-| 📄 `OutlinerTree.svelte` |
-| 📄 `MissingEnvWarning.svelte` |
-| 📄 `NetworkErrorAlert.svelte` |
-| 📄 `PageList.svelte` |
-| 📄 `TokenDebugger.svelte` |
-| 📄 `UserRegistration.svelte` |
-| 📄 `AuthComponent.svelte` |
-| 📄 `ContainerSelector.svelte` |
-| 📄 `EnvDebugger.svelte` |
+| 📄 `EditorOverlay.svelte`        |
+| 📄 `OutlinerItem.svelte`         |
+| 📄 `GlobalTextArea.svelte`       |
+| 📄 `OutlinerItem.test.ts`        |
+| 📄 `OutlinerTree.svelte`         |
+| 📄 `MissingEnvWarning.svelte`    |
+| 📄 `NetworkErrorAlert.svelte`    |
+| 📄 `PageList.svelte`             |
+| 📄 `TokenDebugger.svelte`        |
+| 📄 `UserRegistration.svelte`     |
+| 📄 `AuthComponent.svelte`        |
+| 📄 `ContainerSelector.svelte`    |
+| 📄 `EnvDebugger.svelte`          |
 
 </details>
 
@@ -325,22 +325,22 @@ jsdom環境でのみ実行すべきテストファイルをサーバー環境の
 
 <details>
             <summary>Listed directory client/src/components • **13** results</summary>
-        
-| Name |
-|-------|
+
+| Name                             |
+| -------------------------------- |
 | 📄 `OutlinerItem.svelte.test.ts` |
-| 📄 `EditorOverlay.svelte` |
-| 📄 `OutlinerItem.svelte` |
-| 📄 `GlobalTextArea.svelte` |
-| 📄 `OutlinerTree.svelte` |
-| 📄 `MissingEnvWarning.svelte` |
-| 📄 `NetworkErrorAlert.svelte` |
-| 📄 `PageList.svelte` |
-| 📄 `TokenDebugger.svelte` |
-| 📄 `UserRegistration.svelte` |
-| 📄 `AuthComponent.svelte` |
-| 📄 `ContainerSelector.svelte` |
-| 📄 `EnvDebugger.svelte` |
+| 📄 `EditorOverlay.svelte`        |
+| 📄 `OutlinerItem.svelte`         |
+| 📄 `GlobalTextArea.svelte`       |
+| 📄 `OutlinerTree.svelte`         |
+| 📄 `MissingEnvWarning.svelte`    |
+| 📄 `NetworkErrorAlert.svelte`    |
+| 📄 `PageList.svelte`             |
+| 📄 `TokenDebugger.svelte`        |
+| 📄 `UserRegistration.svelte`     |
+| 📄 `AuthComponent.svelte`        |
+| 📄 `ContainerSelector.svelte`    |
+| 📄 `EnvDebugger.svelte`          |
 
 </details>
 
@@ -365,25 +365,22 @@ _**Assistant**_
 
 <details>
             <summary>Listed directory client/e2e • **10** results</summary>
-        
-| Name |
-|-------|
-| 📄 `global-setup.ts` |
-| 📁 `core` |
-| 📁 `logs` |
-| 📄 `setup-env.ts` |
+
+| Name                    |
+| ----------------------- |
+| 📄 `global-setup.ts`    |
+| 📁 `core`               |
+| 📁 `logs`               |
+| 📄 `setup-env.ts`       |
 | 📄 `global-teardown.ts` |
-| 📄 `globals.d.ts` |
-| 📄 `example.spec.ts` |
-| 📁 `utils` |
-| 📁 `auth` |
-| 📄 `basic.spec.ts` |
+| 📄 `globals.d.ts`       |
+| 📄 `example.spec.ts`    |
+| 📁 `utils`              |
+| 📁 `auth`               |
+| 📄 `basic.spec.ts`      |
 
 </details>
 
 ---
 
-
-
 ---
-

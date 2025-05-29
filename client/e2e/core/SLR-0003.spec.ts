@@ -6,8 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0003: 行末まで選択", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -46,7 +46,7 @@ test.describe("SLR-0003: 行末まで選択", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // カーソルを行の途中に移動
         await page.keyboard.press("Home");
@@ -55,25 +55,25 @@ test.describe("SLR-0003: 行末まで選択", () => {
 
         // 初期状態では選択範囲がないことを確認
         const initialSelectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
+            return document.querySelector(".editor-overlay .selection") !== null;
         });
         expect(initialSelectionExists).toBe(false);
 
         // Shift + Endを押下
-        await page.keyboard.down('Shift');
-        await page.keyboard.press('End');
-        await page.keyboard.up('Shift');
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("End");
+        await page.keyboard.up("Shift");
 
         // 更新を待機
         await page.waitForTimeout(100);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 
@@ -91,7 +91,7 @@ test.describe("SLR-0003: 行末まで選択", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // カーソルを3行目に移動し、行の途中に配置
         await page.keyboard.press("ArrowDown");
@@ -102,25 +102,25 @@ test.describe("SLR-0003: 行末まで選択", () => {
 
         // 初期状態では選択範囲がないことを確認
         const initialSelectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
+            return document.querySelector(".editor-overlay .selection") !== null;
         });
         expect(initialSelectionExists).toBe(false);
 
         // Shift + Endを押下
-        await page.keyboard.down('Shift');
-        await page.keyboard.press('End');
-        await page.keyboard.up('Shift');
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("End");
+        await page.keyboard.up("Shift");
 
         // 更新を待機（十分な時間を確保）
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 

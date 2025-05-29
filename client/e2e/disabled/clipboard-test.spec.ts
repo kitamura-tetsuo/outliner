@@ -14,7 +14,7 @@ import {
 test.describe("クリップボードAPIテスト", () => {
     test.beforeEach(async ({ page, context }) => {
         // クリップボードへのアクセス権限を付与
-        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
         // クリップボードテスト用ページにアクセス（Svelteルートを使用）
         await page.goto("/clipboard-test");
@@ -24,8 +24,8 @@ test.describe("クリップボードAPIテスト", () => {
         console.log("クリップボードテストページが読み込まれました");
 
         // ページのログを確認
-        const logContent = await page.locator('#log').textContent();
-        console.log(`ページ初期ログ: ${logContent || 'なし'}`);
+        const logContent = await page.locator("#log").textContent();
+        console.log(`ページ初期ログ: ${logContent || "なし"}`);
     });
 
     /**
@@ -38,7 +38,7 @@ test.describe("クリップボードAPIテスト", () => {
         console.log("=== テスト開始: navigator.clipboard APIでコピー・ペーストができる ===");
 
         // クリップボードへのアクセス権限を付与
-        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        await context.grantPermissions(["clipboard-read", "clipboard-write"]);
         console.log("クリップボード権限を付与しました");
 
         // ページの状態を確認
@@ -71,15 +71,15 @@ test.describe("クリップボードAPIテスト", () => {
             console.log("1秒待機しました");
 
             // ページ上のログを取得
-            const logContent = await page.locator('#log').textContent();
+            const logContent = await page.locator("#log").textContent();
             console.log(`ページ上のログ: ${logContent}`);
 
             // 結果要素の存在を確認
-            const resultExists = await page.locator('.result').first().isVisible();
+            const resultExists = await page.locator(".result").first().isVisible();
             console.log(`結果要素は表示されていますか？: ${resultExists}`);
 
             if (resultExists) {
-                const resultContent = await page.locator('.result').first().textContent();
+                const resultContent = await page.locator(".result").first().textContent();
                 console.log(`結果の内容: ${resultContent}`);
             }
 
@@ -87,14 +87,15 @@ test.describe("クリップボードAPIテスト", () => {
             try {
                 await page.waitForSelector('.result:has-text("コピー成功")', { timeout: 5000 });
                 console.log("コピー成功のメッセージが表示されました");
-            } catch (err) {
+            }
+            catch (err) {
                 console.log(`コピー成功のメッセージが表示されませんでした: ${err.message}`);
                 // スクリーンショットを撮影
                 await page.screenshot({ path: "test-results/clipboard-test-copy-failed.png" });
             }
 
             // 結果テキストを取得
-            const resultText = await page.locator('.test-section').first().locator('.result').textContent();
+            const resultText = await page.locator(".test-section").first().locator(".result").textContent();
             console.log(`結果テキスト: ${resultText}`);
 
             // テキストエリアをクリア
@@ -116,7 +117,8 @@ test.describe("クリップボードAPIテスト", () => {
             // クリップボードの内容が変わっている可能性があるため、厳密な一致ではなく含まれているかを確認
             if (pastedText) {
                 console.log("ペーストされたテキストが存在します");
-            } else {
+            }
+            else {
                 console.log("ペーストされたテキストが空です");
             }
 
@@ -134,7 +136,8 @@ test.describe("クリップボードAPIテスト", () => {
 
             // テスト結果を緩和（失敗しないようにする）
             expect(true).toBe(true);
-        } catch (err) {
+        }
+        catch (err) {
             console.log(`テスト実行中にエラーが発生しました: ${err.message}`);
             await page.screenshot({ path: "test-results/clipboard-test-error.png" });
             throw err;
@@ -160,17 +163,19 @@ test.describe("クリップボードAPIテスト", () => {
             console.log("テキストエリアにテキストを入力しました");
 
             // 要素の存在を確認
-            const buttonExists = await page.locator('.test-section').nth(1).locator('button:has-text("コピー")').isVisible();
+            const buttonExists = await page.locator(".test-section").nth(1).locator('button:has-text("コピー")')
+                .isVisible();
             console.log(`コピーボタンは表示されていますか？: ${buttonExists}`);
 
             // 要素のテキストを確認
             if (buttonExists) {
-                const buttonText = await page.locator('.test-section').nth(1).locator('button:has-text("コピー")').textContent();
+                const buttonText = await page.locator(".test-section").nth(1).locator('button:has-text("コピー")')
+                    .textContent();
                 console.log(`ボタンのテキスト: ${buttonText}`);
             }
 
             // コピーボタンをクリック
-            await page.locator('.test-section').nth(1).locator('button:has-text("コピー")').click();
+            await page.locator(".test-section").nth(1).locator('button:has-text("コピー")').click();
             console.log("コピーボタンをクリックしました");
 
             // 少し待機
@@ -178,27 +183,30 @@ test.describe("クリップボードAPIテスト", () => {
             console.log("1秒待機しました");
 
             // ページ上のログを取得
-            const logContent = await page.locator('#log').textContent();
+            const logContent = await page.locator("#log").textContent();
             console.log(`ページ上のログ: ${logContent}`);
 
             // 結果要素の存在を確認
-            const resultExists = await page.locator('.test-section').nth(1).locator('.result').isVisible();
+            const resultExists = await page.locator(".test-section").nth(1).locator(".result").isVisible();
             console.log(`結果要素は表示されていますか？: ${resultExists}`);
 
             if (resultExists) {
-                const resultContent = await page.locator('.test-section').nth(1).locator('.result').textContent();
+                const resultContent = await page.locator(".test-section").nth(1).locator(".result").textContent();
                 console.log(`結果の内容: ${resultContent}`);
             }
 
             // 結果を確認（タイムアウトを短くして失敗してもテストを続行）
             try {
-                await page.waitForSelector('.test-section:nth-child(2) .result:has-text("コピー成功")', { timeout: 5000 });
+                await page.waitForSelector('.test-section:nth-child(2) .result:has-text("コピー成功")', {
+                    timeout: 5000,
+                });
                 console.log("コピー成功のメッセージが表示されました");
-            } catch (err) {
+            }
+            catch (err) {
                 console.log(`コピー成功のメッセージが表示されませんでした: ${err.message}`);
 
                 // 実際のセレクタを確認
-                const selector = '.test-section:nth-child(2)';
+                const selector = ".test-section:nth-child(2)";
                 const exists = await page.locator(selector).count() > 0;
                 console.log(`セレクタ '${selector}' は存在しますか？: ${exists}`);
 
@@ -208,12 +216,12 @@ test.describe("クリップボードAPIテスト", () => {
                 }
 
                 // 全てのテストセクションを確認
-                const sections = await page.locator('.test-section').count();
+                const sections = await page.locator(".test-section").count();
                 console.log(`テストセクションの数: ${sections}`);
 
                 for (let i = 0; i < sections; i++) {
-                    const sectionContent = await page.locator('.test-section').nth(i).textContent();
-                    console.log(`セクション ${i+1} の内容: ${sectionContent.substring(0, 50)}...`);
+                    const sectionContent = await page.locator(".test-section").nth(i).textContent();
+                    console.log(`セクション ${i + 1} の内容: ${sectionContent.substring(0, 50)}...`);
                 }
 
                 // スクリーンショットを撮影
@@ -221,7 +229,7 @@ test.describe("クリップボードAPIテスト", () => {
             }
 
             // 結果テキストを取得
-            const resultText = await page.locator('.test-section').nth(1).locator('.result').textContent();
+            const resultText = await page.locator(".test-section").nth(1).locator(".result").textContent();
             console.log(`結果テキスト: ${resultText}`);
 
             // スクリーンショットを撮影（デバッグ用）
@@ -230,7 +238,8 @@ test.describe("クリップボードAPIテスト", () => {
 
             // テスト結果を緩和（失敗しないようにする）
             expect(true).toBe(true);
-        } catch (err) {
+        }
+        catch (err) {
             console.log(`テスト実行中にエラーが発生しました: ${err.message}`);
             await page.screenshot({ path: "test-results/clipboard-test-execcommand-error.png" });
             throw err;
@@ -245,14 +254,14 @@ test.describe("クリップボードAPIテスト", () => {
      */
     test.skip("クリップボード権限を確認できる", async ({ page, context }) => {
         // クリップボードへのアクセス権限を付与
-        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
         // 権限確認ボタンをクリック
-        await page.locator('.test-section').nth(2).locator('button:has-text("クリップボード権限を確認")').click();
+        await page.locator(".test-section").nth(2).locator('button:has-text("クリップボード権限を確認")').click();
 
         // 結果を確認
-        await page.waitForSelector('.test-section:nth-child(3) .result');
-        const resultText = await page.locator('.test-section').nth(2).locator('.result').textContent();
+        await page.waitForSelector(".test-section:nth-child(3) .result");
+        const resultText = await page.locator(".test-section").nth(2).locator(".result").textContent();
 
         // 権限の状態を確認（granted または prompt のいずれかであるべき）
         expect(resultText).toMatch(/clipboard-read: (granted|prompt)/);
@@ -271,18 +280,18 @@ test.describe("クリップボードAPIテスト", () => {
      */
     test.skip("Playwrightからクリップボード操作ができる", async ({ page, context }) => {
         // クリップボードへのアクセス権限を付与
-        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
         // テスト用のテキスト
         const testText = "Playwrightからのテスト" + Date.now();
 
         // page.evaluateを使用してクリップボードにテキストを書き込む
-        await page.evaluate((text) => {
+        await page.evaluate(text => {
             return navigator.clipboard.writeText(text);
         }, testText);
 
         // ペーストボタンをクリック
-        await page.locator('.test-section').nth(3).locator('button:has-text("ペースト")').click();
+        await page.locator(".test-section").nth(3).locator('button:has-text("ペースト")').click();
 
         // ペーストされたテキストを確認
         await page.waitForSelector('.test-section:nth-child(4) .result:has-text("ペースト成功")');
@@ -294,7 +303,7 @@ test.describe("クリップボードAPIテスト", () => {
         await page.locator('textarea[id="playwright-text"]').fill(newText);
 
         // コピーボタンをクリック
-        await page.locator('.test-section').nth(3).locator('button:has-text("コピー")').click();
+        await page.locator(".test-section").nth(3).locator('button:has-text("コピー")').click();
 
         // 結果を確認
         await page.waitForSelector('.test-section:nth-child(4) .result:has-text("コピー成功")');

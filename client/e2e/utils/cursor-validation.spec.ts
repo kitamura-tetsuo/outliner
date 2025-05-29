@@ -6,9 +6,7 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import {
-    waitForCursorVisible,
-} from "../helpers";
+import { waitForCursorVisible } from "../helpers";
 import { CursorValidator } from "./cursorValidation";
 import { TestHelpers } from "./testHelpers";
 
@@ -30,19 +28,21 @@ test.describe("CursorValidator: カーソル情報検証ユーティリティ", 
 
         // editorOverlayStoreがグローバルに公開されていることを確認
         await page.evaluate(() => {
-            if (typeof window.editorOverlayStore === 'undefined') {
-                console.error('editorOverlayStore is not defined in window');
-            } else {
-                console.log('editorOverlayStore is available:', window.editorOverlayStore);
+            if (typeof window.editorOverlayStore === "undefined") {
+                console.error("editorOverlayStore is not defined in window");
+            }
+            else {
+                console.log("editorOverlayStore is available:", window.editorOverlayStore);
             }
         });
 
         // getCursorDebugData関数が利用可能であることを確認
         await page.evaluate(() => {
-            if (typeof window.getCursorDebugData !== 'function') {
-                console.error('getCursorDebugData is not defined in window');
-            } else {
-                console.log('getCursorDebugData is available');
+            if (typeof window.getCursorDebugData !== "function") {
+                console.error("getCursorDebugData is not defined in window");
+            }
+            else {
+                console.log("getCursorDebugData is available");
             }
         });
     });
@@ -62,10 +62,10 @@ test.describe("CursorValidator: カーソル情報検証ユーティリティ", 
 
         // 最初のカーソルの情報を確認
         const firstCursor = cursorData.cursors[0];
-        expect(firstCursor).toHaveProperty('cursorId');
-        expect(firstCursor).toHaveProperty('itemId');
-        expect(firstCursor).toHaveProperty('offset');
-        expect(firstCursor).toHaveProperty('isActive');
+        expect(firstCursor).toHaveProperty("cursorId");
+        expect(firstCursor).toHaveProperty("itemId");
+        expect(firstCursor).toHaveProperty("offset");
+        expect(firstCursor).toHaveProperty("isActive");
 
         console.log("Cursor data:", JSON.stringify(cursorData, null, 2));
     });
@@ -76,9 +76,9 @@ test.describe("CursorValidator: カーソル情報検証ユーティリティ", 
             cursorCount: 1,
             cursors: [
                 {
-                    isActive: true
-                }
-            ]
+                    isActive: true,
+                },
+            ],
         };
 
         // 部分比較モードで検証
@@ -117,7 +117,8 @@ test.describe("CursorValidator: カーソル情報検証ユーティリティ", 
             await CursorValidator.compareWithSnapshot(page, snapshot);
             // ここに到達したら失敗
             expect(false).toBeTruthy();
-        } catch (error) {
+        }
+        catch (error) {
             // エラーが発生することを期待
             expect(error).toBeTruthy();
         }

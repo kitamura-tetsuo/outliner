@@ -17,7 +17,6 @@ test.describe("Advanced indent/unindent functionality", () => {
         await page.addInitScript(() => {
             // エミュレータを使用するためモックは不要
 
-
             // テスト用に共有ツリー構造を厳格に取得する関数を追加
             window.getFluidTreeDebugData = function () {
                 // DOM構造からツリーデータを構築する明示的な実装

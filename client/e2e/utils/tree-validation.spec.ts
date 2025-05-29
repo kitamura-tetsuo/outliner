@@ -6,8 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TreeValidator } from "./treeValidation";
 import { TestHelpers } from "./testHelpers";
+import { TreeValidator } from "./treeValidation";
 
 test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -53,10 +53,10 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
                     text: "First item",
                     items: [
                         { text: "Second item" },
-                        { text: "Third item" }
-                    ]
-                }
-            ]
+                        { text: "Third item" },
+                    ],
+                },
+            ],
         };
 
         // 部分比較モードで検証
@@ -80,7 +80,7 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
 
         // 存在しないパスの検証（undefinedが返されるはず）
         const nonExistentPath = await page.evaluate(() => {
-            if (typeof window.getFluidTreePathData === 'function') {
+            if (typeof window.getFluidTreePathData === "function") {
                 return window.getFluidTreePathData("items.0.nonexistent");
             }
             return undefined;
@@ -107,7 +107,8 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
             await TreeValidator.compareWithSnapshot(page, snapshot);
             // ここに到達したら失敗
             expect(false).toBeTruthy();
-        } catch (error) {
+        }
+        catch (error) {
             // エラーが発生することを期待
             expect(error).toBeTruthy();
         }
@@ -118,7 +119,8 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
             await TreeValidator.compareWithSnapshot(page, snapshot, ["items.0.items.2"]);
             // ここに到達したら失敗
             expect(false).toBeTruthy();
-        } catch (error) {
+        }
+        catch (error) {
             // エラーが発生することを期待
             expect(error).toBeTruthy();
         }

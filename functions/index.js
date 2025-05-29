@@ -4,6 +4,25 @@ const { generateToken } = require("@fluidframework/azure-service-utils");
 const { ScopeType } = require("@fluidframework/azure-client");
 const jwt = require("jsonwebtoken");
 const { FieldValue } = require("firebase-admin/firestore");
+
+// CORS設定を共通化する関数
+function setCorsHeaders(req, res) {
+  const allowedOrigins = [
+    "http://localhost:7090",
+    "http://localhost:7091",
+    "http://localhost:7092",
+    "http://localhost:57000",
+    "https://outliner-d57b0.web.app"
+  ];
+
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.set("Access-Control-Allow-Origin", origin);
+  }
+
+  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
 // ロガーの設定
 const logger = require("firebase-functions/logger");
 
@@ -136,10 +155,7 @@ function generateAzureFluidToken(user, containerId = undefined) {
 // Firebase認証トークン検証とFluid Relay JWT生成を一括処理するFunction
 exports.fluidToken = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.set("Access-Control-Allow-Credentials", "true");
+  setCorsHeaders(req, res);
 
   // プリフライト OPTIONS リクエストの処理
   if (req.method === "OPTIONS") {
@@ -228,10 +244,7 @@ exports.fluidToken = onRequest({ cors: true }, async (req, res) => {
 // ユーザーのコンテナIDを保存するエンドポイント
 exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.set("Access-Control-Allow-Credentials", "true");
+  setCorsHeaders(req, res);
 
   // プリフライト OPTIONS リクエストの処理
   if (req.method === "OPTIONS") {
@@ -338,10 +351,7 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
 // ユーザーがアクセス可能なコンテナIDのリストを取得するエンドポイント
 exports.getUserContainers = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.set("Access-Control-Allow-Credentials", "true");
+  setCorsHeaders(req, res);
 
   // プリフライト OPTIONS リクエストの処理
   if (req.method === "OPTIONS") {
@@ -381,10 +391,7 @@ exports.getUserContainers = onRequest({ cors: true }, async (req, res) => {
 // ユーザーを削除するエンドポイント
 exports.deleteUser = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.set("Access-Control-Allow-Credentials", "true");
+  setCorsHeaders(req, res);
 
   // プリフライト OPTIONS リクエストの処理
   if (req.method === "OPTIONS") {
@@ -471,10 +478,7 @@ exports.deleteUser = onRequest({ cors: true }, async (req, res) => {
 // コンテナを削除するエンドポイント
 exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.set("Access-Control-Allow-Credentials", "true");
+  setCorsHeaders(req, res);
 
   // プリフライト OPTIONS リクエストの処理
   if (req.method === "OPTIONS") {
@@ -579,10 +583,7 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
 // ヘルスチェックエンドポイント
 exports.health = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.set("Access-Control-Allow-Credentials", "true");
+  setCorsHeaders(req, res);
 
   // プリフライト OPTIONS リクエストの処理
   if (req.method === "OPTIONS") {

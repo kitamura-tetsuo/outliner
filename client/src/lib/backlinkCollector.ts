@@ -1,13 +1,13 @@
 /**
  * バックリンク収集ユーティリティ
- * 
+ *
  * このモジュールは、ページへのバックリンク（他のページからのリンク）を収集するための機能を提供します。
  */
 
-import { getLogger } from "./logger";
-import { store } from "../stores/store.svelte";
 import type { Item } from "../schema/app-schema";
+import { store } from "../stores/store.svelte";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
+import { getLogger } from "./logger";
 
 const logger = getLogger("BacklinkCollector");
 
@@ -55,7 +55,7 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
                     sourcePageName: page.text,
                     sourceItemId: page.id,
                     sourceItemText: page.text,
-                    context: extractContext(page.text, normalizedTargetName)
+                    context: extractContext(page.text, normalizedTargetName),
                 });
             }
 
@@ -70,7 +70,7 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
                             sourcePageName: page.text,
                             sourceItemId: item.id,
                             sourceItemText: item.text,
-                            context: extractContext(item.text, normalizedTargetName)
+                            context: extractContext(item.text, normalizedTargetName),
                         });
                     }
                 }
@@ -79,7 +79,8 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
 
         logger.info(`Collected ${backlinks.length} backlinks for page: ${targetPageName}`);
         return backlinks;
-    } catch (error) {
+    }
+    catch (error) {
         logger.error(`Error collecting backlinks for page ${targetPageName}:`, error);
         return [];
     }
@@ -96,13 +97,16 @@ function containsLink(text: string, targetPageName: string): boolean {
 
     // 内部リンクの正規表現パターン
     // [page-name] 形式
-    const internalLinkPattern = new RegExp(`\\[${escapeRegExp(targetPageName)}\\]`, 'i');
+    const internalLinkPattern = new RegExp(`\\[${escapeRegExp(targetPageName)}\\]`, "i");
 
     // プロジェクト内部リンクの正規表現パターン
     // [/project-name/page-name] 形式
     // 現在のプロジェクト名を取得
-    const currentProject = store.project?.title || '';
-    const projectLinkPattern = new RegExp(`\\[\\/${escapeRegExp(currentProject)}\\/${escapeRegExp(targetPageName)}\\]`, 'i');
+    const currentProject = store.project?.title || "";
+    const projectLinkPattern = new RegExp(
+        `\\[\\/${escapeRegExp(currentProject)}\\/${escapeRegExp(targetPageName)}\\]`,
+        "i",
+    );
 
     return internalLinkPattern.test(text) || projectLinkPattern.test(text);
 }
@@ -114,11 +118,11 @@ function containsLink(text: string, targetPageName: string): boolean {
  * @returns コンテキスト文字列
  */
 function extractContext(text: string, targetPageName: string): string {
-    if (!text) return '';
+    if (!text) return "";
 
     // 内部リンクの正規表現パターン
-    const internalLinkPattern = new RegExp(`\\[${escapeRegExp(targetPageName)}\\]`, 'i');
-    const projectLinkPattern = new RegExp(`\\[\\/.+\\/${escapeRegExp(targetPageName)}\\]`, 'i');
+    const internalLinkPattern = new RegExp(`\\[${escapeRegExp(targetPageName)}\\]`, "i");
+    const projectLinkPattern = new RegExp(`\\[\\/.+\\/${escapeRegExp(targetPageName)}\\]`, "i");
 
     // リンクの位置を特定
     const internalMatch = text.match(internalLinkPattern);
@@ -130,7 +134,8 @@ function extractContext(text: string, targetPageName: string): string {
     if (internalMatch && internalMatch.index !== undefined) {
         linkPosition = internalMatch.index;
         linkLength = internalMatch[0].length;
-    } else if (projectMatch && projectMatch.index !== undefined) {
+    }
+    else if (projectMatch && projectMatch.index !== undefined) {
         linkPosition = projectMatch.index;
         linkLength = projectMatch[0].length;
     }
@@ -145,10 +150,10 @@ function extractContext(text: string, targetPageName: string): string {
 
     // 前後に「...」を追加（必要な場合）
     if (contextStart > 0) {
-        context = '...' + context;
+        context = "..." + context;
     }
     if (contextEnd < text.length) {
-        context = context + '...';
+        context = context + "...";
     }
 
     return context;
@@ -160,7 +165,7 @@ function extractContext(text: string, targetPageName: string): string {
  * @returns エスケープされた文字列
  */
 function escapeRegExp(string: string): string {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**

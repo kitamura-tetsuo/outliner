@@ -2,9 +2,9 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
-import { CursorValidator } from "../utils/cursorValidation";
 
 /**
  * @file LNK-0004.spec.ts
@@ -24,11 +24,9 @@ test.describe("LNK-0004: 仮ページ機能", () => {
     test("存在しないページへのリンクをクリックした場合に仮ページが表示される", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -68,11 +66,9 @@ test.describe("LNK-0004: 仮ページ機能", () => {
     test("仮ページを編集した場合に実際のページとして保存される", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -136,11 +132,9 @@ test.describe("LNK-0004: 仮ページ機能", () => {
     test("仮ページにアクセスしただけではページが作成されないことを確認", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -195,17 +189,15 @@ test.describe("LNK-0004: 仮ページ機能", () => {
     test("仮ページの通知UIが正しく表示される", async ({ page }) => {
         // コンソールメッセージをキャプチャ
         const consoleMessages: string[] = [];
-        page.on('console', msg => {
+        page.on("console", msg => {
             consoleMessages.push(`${msg.type()}: ${msg.text()}`);
         });
 
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -320,11 +312,9 @@ test.describe("LNK-0004: 仮ページ機能", () => {
     test("仮ページの通知UIのアクションボタンが機能する", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();

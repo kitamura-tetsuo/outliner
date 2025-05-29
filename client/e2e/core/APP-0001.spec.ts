@@ -1,6 +1,9 @@
-import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
+import {
+    expect,
+    test,
+} from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @testcase アプリケーション起動時にグローバルテキストエリアにフォーカスが設定される
@@ -25,10 +28,10 @@ test.describe("アプリケーション起動時のフォーカス設定", () =>
         // ページ内の要素を確認
         const elements = await page.evaluate(() => {
             return {
-                outlinerItems: document.querySelectorAll('.outliner-item').length,
-                pageTitle: document.querySelector('.outliner-item.page-title') ? true : false,
-                firstItem: document.querySelector('.outliner-item') ? true : false,
-                globalTextarea: document.querySelector('.global-textarea') ? true : false
+                outlinerItems: document.querySelectorAll(".outliner-item").length,
+                pageTitle: document.querySelector(".outliner-item.page-title") ? true : false,
+                firstItem: document.querySelector(".outliner-item") ? true : false,
+                globalTextarea: document.querySelector(".global-textarea") ? true : false,
             };
         });
         console.log("Page elements:", elements);

@@ -24,7 +24,8 @@ export async function fetchTelemetryLogs(): Promise<any[]> {
 
         const data = await response.json();
         return data.logs || [];
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Error fetching telemetry logs:", error);
         return [];
     }
@@ -37,7 +38,7 @@ export async function fetchTelemetryLogs(): Promise<any[]> {
 export async function printTelemetryLogs(): Promise<void> {
     try {
         const logs = await fetchTelemetryLogs();
-        
+
         if (logs.length === 0) {
             console.log("No telemetry logs found");
             return;
@@ -47,7 +48,8 @@ export async function printTelemetryLogs(): Promise<void> {
         logs.forEach((log, index) => {
             console.log(`[${index + 1}/${logs.length}]`, log);
         });
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Error printing telemetry logs:", error);
     }
 }
@@ -70,7 +72,8 @@ export async function rotateTelemetryLogs(): Promise<any> {
         }
 
         return await response.json();
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Error rotating logs:", error);
         return { success: false, error: String(error) };
     }

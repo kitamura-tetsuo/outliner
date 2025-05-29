@@ -7,8 +7,8 @@ import {
     test,
 } from "@playwright/test";
 
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("カーソル重複問題の検証", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -25,7 +25,8 @@ test.describe("カーソル重複問題の検証", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // 2. 2番目のアイテムをクリック
-        await page.locator("div:nth-child(2) > .outliner-item > .item-header > .item-content-container > .item-content").click();
+        await page.locator("div:nth-child(2) > .outliner-item > .item-header > .item-content-container > .item-content")
+            .click();
         await TestHelpers.waitForCursorVisible(page);
 
         // 3. テキスト「123」を入力
@@ -39,7 +40,8 @@ test.describe("カーソル重複問題の検証", () => {
         expect(cursorCount).toBe(1); // カーソルが1つだけ存在することを確認
 
         // 5. 2番目のアイテムのテキスト内容を確認
-        const secondItemText = await page.locator("div:nth-child(2) > .outliner-item").locator(".item-text").textContent();
+        const secondItemText = await page.locator("div:nth-child(2) > .outliner-item").locator(".item-text")
+            .textContent();
         console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
         expect(secondItemText).toContain("123"); // 2番目のアイテムに「123」が含まれていることを確認
 
@@ -61,7 +63,8 @@ test.describe("カーソル重複問題の検証", () => {
         expect(updatedFirstItemText).toContain("456"); // 1番目のアイテムに「456」が含まれていることを確認
 
         // 10. 2番目のアイテムのテキスト内容を再確認
-        const updatedSecondItemText = await page.locator("div:nth-child(2) > .outliner-item").locator(".item-text").textContent();
+        const updatedSecondItemText = await page.locator("div:nth-child(2) > .outliner-item").locator(".item-text")
+            .textContent();
         console.log(`更新後の2番目のアイテムのテキスト: ${updatedSecondItemText}`);
         expect(updatedSecondItemText).not.toContain("456"); // 2番目のアイテムに「456」が含まれていないことを確認
         expect(updatedSecondItemText).toContain("123"); // 2番目のアイテムには「123」が含まれていることを確認

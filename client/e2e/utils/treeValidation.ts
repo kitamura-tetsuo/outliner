@@ -20,7 +20,7 @@ export class TreeValidator {
 
     static async getTreePathData(page: Page, path?: string): Promise<any> {
         // フォールバックなしで厳密に関数が存在することを確認
-        return page.evaluate(async (path) => {
+        return page.evaluate(async path => {
             if (typeof window.getFluidTreePathData !== "function") {
                 throw new Error("getFluidTreePathData function is not available");
             }
@@ -97,7 +97,7 @@ export class TreeValidator {
                 }
 
                 // ルート要素の子アイテムを処理
-                const result: { children: any[] } = { children: [] };
+                const result: { children: any[]; } = { children: [] };
                 const rootItems = container.querySelectorAll(":scope > .outliner-item");
                 rootItems.forEach((item: Element) => {
                     const itemResult = parseNode(item);
@@ -157,7 +157,8 @@ export class TreeValidator {
         if (strict) {
             // 厳密比較モード - 完全に一致する必要がある
             expect(JSON.stringify(treeData)).toBe(JSON.stringify(expectedData));
-        } else {
+        }
+        else {
             // 部分比較モード - 期待値のプロパティが全て含まれていればOK
             this.assertObjectContains(treeData, expectedData);
         }
@@ -173,7 +174,7 @@ export class TreeValidator {
             return;
         }
 
-        if (typeof expected !== 'object') {
+        if (typeof expected !== "object") {
             expect(actual).toBe(expected);
             return;
         }
@@ -214,7 +215,7 @@ export class TreeValidator {
      * @returns パスに対応する値
      */
     private static getValueByPath(obj: any, path: string): any {
-        return path.split('.').reduce((prev, curr) => {
+        return path.split(".").reduce((prev, curr) => {
             return prev && prev[curr];
         }, obj);
     }
@@ -247,7 +248,7 @@ export class TreeValidator {
      */
     private static removeIgnoredPaths(obj: any, paths: string[]): any {
         for (const path of paths) {
-            const parts = path.split('.');
+            const parts = path.split(".");
             const lastPart = parts.pop()!;
             const parent = parts.reduce((prev, curr) => {
                 return prev && prev[curr];

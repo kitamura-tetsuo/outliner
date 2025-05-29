@@ -1,4 +1,8 @@
-import { expect, type Page, type Response } from "@playwright/test";
+import {
+    expect,
+    type Page,
+    type Response,
+} from "@playwright/test";
 import { CursorValidator } from "./cursorValidation";
 import { TreeValidator } from "./treeValidation";
 
@@ -12,20 +16,27 @@ export class TestHelpers {
      * @param page Playwrightのページオブジェクト
      * @returns 作成したプロジェクト名とページ名
      */
-    public static async prepareTestEnvironment(page: Page, testInfo: any, lines: string[] = []): Promise<{ projectName: string; pageName: string }> {
+    public static async prepareTestEnvironment(
+        page: Page,
+        testInfo: any,
+        lines: string[] = [],
+    ): Promise<{ projectName: string; pageName: string; }> {
         // ホームページにアクセス
         await page.goto("/");
 
         page.goto = async (
             url: string,
-            options?: { referer?: string; timeout?: number; waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit" }
+            options?: {
+                referer?: string;
+                timeout?: number;
+                waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit";
+            },
         ): Promise<Response | null> => {
-            await page.evaluate(async (url) => {
+            await page.evaluate(async url => {
                 while (!window.__SVELTE_GOTO__) {
                     await new Promise(resolve => setTimeout(resolve, 100));
                 }
                 window.__SVELTE_GOTO__(url);
-
             }, url);
             await expect(page).toHaveURL(url);
             return null;
@@ -39,19 +50,23 @@ export class TestHelpers {
         return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines);
     }
 
-
     /**
      * テスト用のプロジェクトとページをFluid API経由で作成する
      * @param page Playwrightのページオブジェクト
      * @param projectName プロジェクト名
      * @param pageName ページ名
      */
-    public static async createTestProjectAndPageViaAPI(page: Page, projectName: string, pageName: string, lines: string[] = []): Promise<void> {
+    public static async createTestProjectAndPageViaAPI(
+        page: Page,
+        projectName: string,
+        pageName: string,
+        lines: string[] = [],
+    ): Promise<void> {
         if (lines.length == 0) {
             lines = [
                 "これはテスト用のページです。1",
                 "これはテスト用のページです。2",
-                "内部リンクのテスト: [test-link]"
+                "内部リンクのテスト: [test-link]",
             ];
         }
 
@@ -86,7 +101,6 @@ export class TestHelpers {
             }
             fluidClient.createPage(pageName, lines);
         }, { pageName, lines });
-
     }
 
     /**
@@ -126,7 +140,7 @@ export class TestHelpers {
                             itemId: cursor.itemId,
                             offset: cursor.offset,
                             isActive: cursor.isActive,
-                            userId: cursor.userId
+                            userId: cursor.userId,
                         });
                     });
 
@@ -137,9 +151,10 @@ export class TestHelpers {
                         cursorVisible,
                         cursorInstances,
                         cursorCount: cursors.length,
-                        selectionCount: selections.length
+                        selectionCount: selections.length,
                     };
-                } catch (error) {
+                }
+                catch (error) {
                     console.error("Error getting cursor data:", error);
                     return { error: error.message || "Unknown error" };
                 }
@@ -160,14 +175,15 @@ export class TestHelpers {
                     if (!path) return cursorData;
 
                     // パスに基づいてデータを取得
-                    const parts = path.split('.');
+                    const parts = path.split(".");
                     let result = cursorData;
                     for (const part of parts) {
                         if (result === undefined || result === null) return null;
                         result = result[part];
                     }
                     return result;
-                } catch (error) {
+                }
+                catch (error) {
                     return { error: error.message || "Unknown error" };
                 }
             };
@@ -196,7 +212,8 @@ export class TestHelpers {
                     // FluidClientのgetAllDataメソッドを使用してデータを取得
                     const treeData = fluidClient.getAllData();
                     return treeData;
-                } catch (error) {
+                }
+                catch (error) {
                     console.error("Error getting tree data:", error);
                     return { error: error.message || "Unknown error" };
                 }
@@ -214,14 +231,15 @@ export class TestHelpers {
                     if (!path) return treeData;
 
                     // パスに基づいてデータを取得
-                    const parts = path.split('.');
+                    const parts = path.split(".");
                     let result = treeData;
                     for (const part of parts) {
                         if (result === undefined || result === null) return null;
                         result = result[part];
                     }
                     return result;
-                } catch (error) {
+                }
+                catch (error) {
                     return { error: error.message || "Unknown error" };
                 }
             };
@@ -236,11 +254,12 @@ export class TestHelpers {
     public static async waitForCursorVisible(page: Page, timeout = 15000): Promise<boolean> {
         try {
             await page.waitForFunction(() => {
-                const cursor = document.querySelector('.editor-overlay .cursor.active');
-                return cursor && window.getComputedStyle(cursor).opacity !== '0';
+                const cursor = document.querySelector(".editor-overlay .cursor.active");
+                return cursor && window.getComputedStyle(cursor).opacity !== "0";
             }, { timeout });
             return true;
-        } catch (error) {
+        }
+        catch (error) {
             console.log("Timeout waiting for cursor to be visible, continuing anyway");
             // スクリーンショットを撮影して状態を確認
             await page.screenshot({ path: "client/test-results/cursor-visible-timeout.png" });
@@ -254,8 +273,11 @@ export class TestHelpers {
      * @param page Playwrightのページオブジェクト
      * @returns プロジェクト名
      */
-    public static async navigateToTestProjectPage(page: Page, testInfo, lines: string[]): Promise<{ projectName: string, pageName: string }> {
-
+    public static async navigateToTestProjectPage(
+        page: Page,
+        testInfo,
+        lines: string[],
+    ): Promise<{ projectName: string; pageName: string; }> {
         const projectName = `Test Project ${testInfo.workerIndex} ${Date.now()}`;
         const pageName = `test-page-${Date.now()}`;
         console.log("Creating new project:", projectName);
@@ -308,7 +330,8 @@ export class TestHelpers {
                             return window.generalStore && window.generalStore.currentPage;
                         }, { timeout: 5000 });
                         console.log("SharedTree is initialized");
-                    } catch (e) {
+                    }
+                    catch (e) {
                         console.log("Timeout waiting for SharedTree initialization, continuing anyway");
                     }
 
@@ -318,27 +341,31 @@ export class TestHelpers {
                             return window.editorOverlayStore;
                         }, { timeout: 5000 });
                         console.log("EditorOverlayStore is initialized");
-                    } catch (e) {
+                    }
+                    catch (e) {
                         console.log("Timeout waiting for EditorOverlayStore initialization, continuing anyway");
                     }
 
                     // 少し待機して安定させる
                     await page.waitForTimeout(1000);
                     break;
-                } else {
+                }
+                else {
                     // アイテムが見つからない場合は、ページの状態を確認
                     console.log("No outliner items found yet, checking page state...");
 
                     // ページのHTMLを確認
                     const html = await page.content();
-                    if (html.includes("class=\"outliner-item\"")) {
+                    if (html.includes('class="outliner-item"')) {
                         console.log("Outliner items found in HTML but not visible yet");
                         // DOMには存在するが、まだ表示されていない可能性がある
                         await page.waitForTimeout(1000);
-                    } else if (html.includes("class=\"page-loading\"") || html.includes("Loading...")) {
+                    }
+                    else if (html.includes('class="page-loading"') || html.includes("Loading...")) {
                         console.log("Page is still loading");
                         await page.waitForTimeout(1000);
-                    } else {
+                    }
+                    else {
                         // ページの内容を確認
                         const bodyText = await page.textContent("body");
                         console.log("Page content (first 200 chars):", bodyText?.substring(0, 200));
@@ -349,13 +376,15 @@ export class TestHelpers {
                             console.log("Found 'New Page' button, clicking it");
                             await newPageButton.click();
                             await page.waitForTimeout(1000);
-                        } else {
+                        }
+                        else {
                             // 少し待機して再試行
                             await page.waitForTimeout(2000);
                         }
                     }
                 }
-            } catch (e) {
+            }
+            catch (e) {
                 console.log("Error while waiting for outliner items:", e.message);
                 await page.waitForTimeout(1000);
             }
@@ -418,7 +447,7 @@ export class TestHelpers {
      * @param selector 対象要素のセレクタ
      */
     public static async forceHoverEvent(page: Page, selector: string): Promise<void> {
-        await page.evaluate((sel) => {
+        await page.evaluate(sel => {
             const element = document.querySelector(sel);
             if (!element) {
                 console.error(`Element not found: ${sel}`);
@@ -426,18 +455,18 @@ export class TestHelpers {
             }
 
             // mouseenterイベントを強制的に発火
-            const mouseEnterEvent = new MouseEvent('mouseenter', {
+            const mouseEnterEvent = new MouseEvent("mouseenter", {
                 bubbles: true,
                 cancelable: true,
-                view: window
+                view: window,
             });
             element.dispatchEvent(mouseEnterEvent);
 
             // mousemoveイベントも発火
-            const mouseMoveEvent = new MouseEvent('mousemove', {
+            const mouseMoveEvent = new MouseEvent("mousemove", {
                 bubbles: true,
                 cancelable: true,
-                view: window
+                view: window,
             });
             element.dispatchEvent(mouseMoveEvent);
 
@@ -454,11 +483,11 @@ export class TestHelpers {
      * @param selector 対象要素のセレクタ
      */
     public static async forceMouseOutEvent(page: Page, selector: string): Promise<void> {
-        await page.evaluate((sel) => {
+        await page.evaluate(sel => {
             let element: Element | null = null;
 
             // :has-text()セレクタの場合は特別な処理
-            if (sel.includes(':has-text(')) {
+            if (sel.includes(":has-text(")) {
                 const match = sel.match(/^(.+):has-text\("([^"]+)"\)$/);
                 if (match) {
                     const baseSelector = match[1];
@@ -472,7 +501,8 @@ export class TestHelpers {
                         }
                     }
                 }
-            } else {
+            }
+            else {
                 element = document.querySelector(sel);
             }
 
@@ -482,10 +512,10 @@ export class TestHelpers {
             }
 
             // mouseleaveイベントを強制的に発火
-            const mouseLeaveEvent = new MouseEvent('mouseleave', {
+            const mouseLeaveEvent = new MouseEvent("mouseleave", {
                 bubbles: true,
                 cancelable: true,
-                view: window
+                view: window,
             });
             element.dispatchEvent(mouseLeaveEvent);
 
@@ -519,16 +549,16 @@ export class TestHelpers {
 
             // リンクプレビューハンドラーを直接呼び出す
             // データ属性からページ名を取得
-            const pageName = link.getAttribute('data-page');
-            const projectName = link.getAttribute('data-project');
+            const pageName = link.getAttribute("data-page");
+            const projectName = link.getAttribute("data-project");
 
             if (!pageName) return;
 
             // グローバルスコープにテスト用の関数を追加
             window.__testShowLinkPreview = function (pageName: string, projectName?: string) {
                 // プレビュー要素を作成
-                const previewElement = document.createElement('div');
-                previewElement.className = 'link-preview-popup';
+                const previewElement = document.createElement("div");
+                previewElement.className = "link-preview-popup";
 
                 // スタイルを適用
                 Object.entries({
@@ -544,34 +574,35 @@ export class TestHelpers {
                     overflow: "hidden",
                     fontSize: "14px",
                     top: "100px",
-                    left: "100px"
+                    left: "100px",
                 }).forEach(([key, value]) => {
                     previewElement.style[key as any] = value;
                 });
 
                 // コンテンツを追加
-                const titleElement = document.createElement('h3');
+                const titleElement = document.createElement("h3");
                 titleElement.textContent = pageName;
-                titleElement.style.fontSize = '16px';
-                titleElement.style.fontWeight = '600';
-                titleElement.style.margin = '0 0 8px 0';
-                titleElement.style.paddingBottom = '8px';
-                titleElement.style.borderBottom = '1px solid #eee';
+                titleElement.style.fontSize = "16px";
+                titleElement.style.fontWeight = "600";
+                titleElement.style.margin = "0 0 8px 0";
+                titleElement.style.paddingBottom = "8px";
+                titleElement.style.borderBottom = "1px solid #eee";
 
                 previewElement.appendChild(titleElement);
 
                 // ページが存在するかどうかを確認
-                const pageExists = link.classList.contains('page-exists');
+                const pageExists = link.classList.contains("page-exists");
 
                 if (pageExists) {
-                    const contentElement = document.createElement('div');
-                    contentElement.className = 'preview-items';
-                    contentElement.innerHTML = '<p>テストプレビューコンテンツ</p>';
+                    const contentElement = document.createElement("div");
+                    contentElement.className = "preview-items";
+                    contentElement.innerHTML = "<p>テストプレビューコンテンツ</p>";
                     previewElement.appendChild(contentElement);
-                } else {
-                    const notFoundElement = document.createElement('div');
-                    notFoundElement.className = 'preview-not-found';
-                    notFoundElement.innerHTML = '<p>ページが見つかりません</p>';
+                }
+                else {
+                    const notFoundElement = document.createElement("div");
+                    notFoundElement.className = "preview-not-found";
+                    notFoundElement.innerHTML = "<p>ページが見つかりません</p>";
                     previewElement.appendChild(notFoundElement);
                 }
 
@@ -596,17 +627,17 @@ export class TestHelpers {
      */
     public static async openBacklinkPanel(page: Page): Promise<void> {
         // バックリンクパネルのトグルボタンを探す
-        const toggleButton = page.locator('.backlink-toggle-button');
+        const toggleButton = page.locator(".backlink-toggle-button");
 
         // ボタンが存在するか確認
         const buttonExists = await toggleButton.count() > 0;
         if (!buttonExists) {
-            console.error('Backlink toggle button not found');
+            console.error("Backlink toggle button not found");
             return;
         }
 
         // パネルが既に開いているか確認
-        const isOpen = await toggleButton.evaluate(el => el.classList.contains('active'));
+        const isOpen = await toggleButton.evaluate(el => el.classList.contains("active"));
         if (!isOpen) {
             // ボタンをクリックしてパネルを開く
             await toggleButton.click();
@@ -628,9 +659,8 @@ export class TestHelpers {
         selector: string,
         page: Page,
         waitTime: number = 500,
-        retryCount: number = 3
+        retryCount: number = 3,
     ): Promise<boolean> {
-
         // 要素が表示されるまで待機
         if (waitTime > 0) {
             await page.waitForTimeout(waitTime);
@@ -645,20 +675,20 @@ export class TestHelpers {
                     console.log(`Element not found: ${selector} (attempt ${i + 1}/${retryCount})`);
 
                     // 内部リンクの場合は、強制的にレンダリングを試みる
-                    if (selector.includes('.internal-link') || selector.includes('.link-preview')) {
-                        console.log('Trying to force render internal links...');
+                    if (selector.includes(".internal-link") || selector.includes(".link-preview")) {
+                        console.log("Trying to force render internal links...");
                         await page.evaluate(() => {
                             // 内部リンクを含む可能性のあるテキスト要素を検索
-                            const textElements = document.querySelectorAll('.item-text');
+                            const textElements = document.querySelectorAll(".item-text");
                             console.log(`Found ${textElements.length} text elements to check for links`);
 
                             textElements.forEach(el => {
-                                const text = el.textContent || '';
+                                const text = el.textContent || "";
                                 // 内部リンクのパターンを検出
-                                if (text.includes('[') && text.includes(']')) {
-                                    console.log('Found potential link in:', text);
+                                if (text.includes("[") && text.includes("]")) {
+                                    console.log("Found potential link in:", text);
                                     // フォーマット済みクラスを追加して強制的にレンダリング
-                                    el.classList.add('formatted');
+                                    el.classList.add("formatted");
                                 }
                             });
                         });
@@ -672,24 +702,22 @@ export class TestHelpers {
                 }
 
                 // 要素の可視性を確認
-                const isVisible = await page.evaluate((sel) => {
+                const isVisible = await page.evaluate(sel => {
                     const element = document.querySelector(sel);
                     if (!element) return false;
 
                     // 要素が画面内に表示されているか確認
                     const rect = element.getBoundingClientRect();
-                    const isInViewport =
-                        rect.top >= 0 &&
+                    const isInViewport = rect.top >= 0 &&
                         rect.left >= 0 &&
                         rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
                         rect.right <= (window.innerWidth || document.documentElement.clientWidth);
 
                     // スタイルを確認
                     const style = window.getComputedStyle(element);
-                    const isVisibleStyle =
-                        style.display !== 'none' &&
-                        style.visibility !== 'hidden' &&
-                        style.opacity !== '0' &&
+                    const isVisibleStyle = style.display !== "none" &&
+                        style.visibility !== "hidden" &&
+                        style.opacity !== "0" &&
                         rect.height > 0 &&
                         rect.width > 0;
 
@@ -700,9 +728,9 @@ export class TestHelpers {
                     while (parent) {
                         const parentStyle = window.getComputedStyle(parent);
                         if (
-                            parentStyle.display === 'none' ||
-                            parentStyle.visibility === 'hidden' ||
-                            parentStyle.opacity === '0'
+                            parentStyle.display === "none" ||
+                            parentStyle.visibility === "hidden" ||
+                            parentStyle.opacity === "0"
                         ) {
                             isParentVisible = false;
                             break;
@@ -720,15 +748,15 @@ export class TestHelpers {
                 console.log(`Element found but not visible: ${selector} (attempt ${i + 1}/${retryCount})`);
 
                 // 内部リンクの場合は、強制的に表示を試みる
-                if (selector.includes('.link-preview-popup')) {
-                    console.log('Trying to force show link preview...');
-                    await page.evaluate((sel) => {
+                if (selector.includes(".link-preview-popup")) {
+                    console.log("Trying to force show link preview...");
+                    await page.evaluate(sel => {
                         const element = document.querySelector(sel);
                         if (element) {
                             // 強制的に表示
-                            (element as HTMLElement).style.display = 'block';
-                            (element as HTMLElement).style.visibility = 'visible';
-                            (element as HTMLElement).style.opacity = '1';
+                            (element as HTMLElement).style.display = "block";
+                            (element as HTMLElement).style.visibility = "visible";
+                            (element as HTMLElement).style.opacity = "1";
                         }
                     }, selector);
                 }
@@ -736,7 +764,8 @@ export class TestHelpers {
                 if (i < retryCount - 1) {
                     await page.waitForTimeout(300);
                 }
-            } catch (error) {
+            }
+            catch (error) {
                 console.error(`Error checking visibility for ${selector}:`, error);
                 if (i < retryCount - 1) {
                     await page.waitForTimeout(300);
@@ -757,7 +786,7 @@ export class TestHelpers {
     public static async waitForElementVisible(
         page: Page,
         selector: string,
-        timeout: number = 10000
+        timeout: number = 10000,
     ): Promise<boolean> {
         const startTime = Date.now();
 
@@ -782,8 +811,6 @@ export class TestHelpers {
  * FluidServiceのテスト用ヘルパークラス
  */
 export class FluidServiceHelper {
-
-
     /**
      * プロジェクトタイトルからFluidClientを取得する（既存のコンテナから検索）
      * @param page Playwrightのページオブジェクト
@@ -791,14 +818,14 @@ export class FluidServiceHelper {
      * @returns FluidClientの基本情報、見つからない場合はundefined
      */
     public static async getFluidClientByProjectTitle(page: Page, projectTitle: string): Promise<any> {
-        return await page.evaluate(async (title) => {
+        return await page.evaluate(async title => {
             if (!title) {
-                throw new Error('プロジェクトタイトルが指定されていません');
+                throw new Error("プロジェクトタイトルが指定されていません");
             }
 
             const fluidService = window.__FLUID_SERVICE__;
             if (!fluidService) {
-                throw new Error('FluidService not found');
+                throw new Error("FluidService not found");
             }
 
             const fluidClient = await fluidService.getFluidClientByProjectTitle(title);
@@ -811,9 +838,9 @@ export class FluidServiceHelper {
                 containerId: fluidClient.containerId,
                 clientId: fluidClient.clientId,
                 project: {
-                    title: fluidClient.project.title
+                    title: fluidClient.project.title,
                 },
-                treeData: fluidClient.getTreeAsJson()
+                treeData: fluidClient.getTreeAsJson(),
             };
         }, projectTitle);
     }
@@ -825,10 +852,10 @@ export class FluidServiceHelper {
      * @returns FluidClientインスタンス
      */
     public static async createNewContainer(page: Page, containerName: string): Promise<any> {
-        return await page.evaluate(async (name) => {
+        return await page.evaluate(async name => {
             const fluidService = window.__FLUID_SERVICE__;
             if (!fluidService) {
-                throw new Error('FluidService not found');
+                throw new Error("FluidService not found");
             }
 
             return await fluidService.createNewContainer(name);
@@ -844,13 +871,13 @@ export class FluidServiceHelper {
         return await page.evaluate(() => {
             const fluidStore = window.__FLUID_STORE__;
             if (!fluidStore) {
-                throw new Error('FluidStore not found');
+                throw new Error("FluidStore not found");
             }
 
             // 現在のFluidClientを取得
             const fluidClient = fluidStore.fluidClient;
             if (!fluidClient) {
-                throw new Error('FluidClient not found');
+                throw new Error("FluidClient not found");
             }
 
             return fluidClient.getProject();
@@ -866,12 +893,12 @@ export class FluidServiceHelper {
         return await page.evaluate(() => {
             const fluidStore = window.__FLUID_STORE__;
             if (!fluidStore) {
-                throw new Error('FluidStore not found');
+                throw new Error("FluidStore not found");
             }
 
             const fluidClient = fluidStore.fluidClient;
             if (!fluidClient) {
-                throw new Error('FluidClient not found');
+                throw new Error("FluidClient not found");
             }
 
             return fluidClient.getTreeAsJson();
@@ -887,7 +914,7 @@ export class FluidServiceHelper {
         return await page.evaluate(() => {
             const userManager = window.__USER_MANAGER__;
             if (!userManager) {
-                throw new Error('UserManager not found');
+                throw new Error("UserManager not found");
             }
 
             return userManager.getCurrentUser();

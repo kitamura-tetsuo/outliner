@@ -1,3 +1,4 @@
+import { type ViewableTree } from "fluid-framework";
 import {
     afterEach,
     beforeEach,
@@ -6,17 +7,13 @@ import {
     it,
     vi,
 } from "vitest";
-import * as fluidService from "./fluidService";
-import {
-    type ViewableTree,
-} from "fluid-framework";
 import {
     appTreeConfiguration,
     Project,
 } from "../schema/app-schema";
+import * as fluidService from "./fluidService";
 
 describe("fluidService", () => {
-
     beforeEach(() => {
     });
 
@@ -38,8 +35,9 @@ describe("fluidService", () => {
             // console.log("fluidService", "info", `Container created with ID: ${newContainerId}`);
 
             const getResponse = await client.getContainer(newContainerId, fluidService.containerSchema, "2");
-            console.log(getResponse.container)
-        } catch (error) {
+            console.log(getResponse.container);
+        }
+        catch (error) {
             console.error(error);
             expect(error).toBeUndefined();
         }
@@ -50,4 +48,3 @@ describe("fluidService", () => {
         vi.useRealTimers();
     });
 });
-

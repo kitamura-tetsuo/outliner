@@ -96,7 +96,8 @@ export class EditorOverlayStore {
             inst.offset = cursor.offset;
             inst.isActive = cursor.isActive;
             if (cursor.userId) inst.userId = cursor.userId;
-        } else {
+        }
+        else {
             // インスタンスが存在しない場合は新しく作成
             const newInst = new Cursor(cursor.cursorId, {
                 itemId: cursor.itemId,
@@ -123,7 +124,7 @@ export class EditorOverlayStore {
      */
     addCursor(omitProps: Omit<CursorPosition, "cursorId">) {
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`EditorOverlayStore.addCursor called with:`, omitProps);
             console.log(`Current cursors:`, this.cursors);
             console.log(`Current cursor instances:`, Array.from(this.cursorInstances.keys()));
@@ -141,14 +142,16 @@ export class EditorOverlayStore {
 
         if (existingCursor) {
             // デバッグ情報
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                console.log(`Cursor already exists at this position, returning existing ID: ${existingCursor.cursorId}`);
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(
+                    `Cursor already exists at this position, returning existing ID: ${existingCursor.cursorId}`,
+                );
             }
 
             // 既存のカーソルを確実にアクティブにする
             this.updateCursor({
                 ...existingCursor,
-                isActive: true
+                isActive: true,
             });
 
             // カーソル点滅を開始
@@ -169,14 +172,19 @@ export class EditorOverlayStore {
                         textarea.focus();
 
                         // デバッグ情報
-                        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                            console.log(`Focus set after finding existing cursor. Active element is textarea: ${document.activeElement === textarea}`);
+                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            console.log(
+                                `Focus set after finding existing cursor. Active element is textarea: ${
+                                    document.activeElement === textarea
+                                }`,
+                            );
                         }
                     }, 10);
                 });
-            } else {
+            }
+            else {
                 // テキストエリアが見つからない場合はエラーログ
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.error(`Global textarea not found in addCursor (existing cursor)`);
                 }
             }
@@ -197,7 +205,7 @@ export class EditorOverlayStore {
         const newCursor: CursorPosition = {
             cursorId: newId,
             ...omitProps,
-            userId: omitProps.userId ?? "local" // userId が undefined の場合に "local" を設定
+            userId: omitProps.userId ?? "local", // userId が undefined の場合に "local" を設定
         };
 
         // カーソルを更新（reactive stateを更新）
@@ -218,14 +226,19 @@ export class EditorOverlayStore {
                     textarea.focus();
 
                     // デバッグ情報
-                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                        console.log(`Focus set after adding new cursor. Active element is textarea: ${document.activeElement === textarea}`);
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        console.log(
+                            `Focus set after adding new cursor. Active element is textarea: ${
+                                document.activeElement === textarea
+                            }`,
+                        );
                     }
                 }, 10);
             });
-        } else {
+        }
+        else {
             // テキストエリアが見つからない場合はエラーログ
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Global textarea not found in addCursor (new cursor)`);
             }
         }
@@ -234,7 +247,7 @@ export class EditorOverlayStore {
         this.startCursorBlink();
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`New cursor added with ID: ${newId}`);
             console.log(`Updated cursors:`, this.cursors);
             console.log(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
@@ -254,7 +267,7 @@ export class EditorOverlayStore {
 
     setSelection(selection: SelectionRange) {
         // 選択範囲のキーを開始アイテムIDと終了アイテムIDの組み合わせにする
-        const key = `${selection.startItemId}-${selection.endItemId}-${selection.userId || 'local'}`;
+        const key = `${selection.startItemId}-${selection.endItemId}-${selection.userId || "local"}`;
         this.selections = { ...this.selections, [key]: selection };
     }
 
@@ -277,23 +290,23 @@ export class EditorOverlayStore {
             startOffset: number;
             endOffset: number;
         }>,
-        userId = "local"
+        userId = "local",
     ) {
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`setBoxSelection called with:`, {
                 startItemId,
                 startOffset,
                 endItemId,
                 endOffset,
                 boxSelectionRanges,
-                userId
+                userId,
             });
         }
 
         // 引数の検証
         if (!startItemId || !endItemId) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Invalid item IDs: startItemId=${startItemId}, endItemId=${endItemId}`);
             }
             return;
@@ -320,7 +333,7 @@ export class EditorOverlayStore {
             endOffset,
             userId,
             isBoxSelection: true,
-            boxSelectionRanges
+            boxSelectionRanges,
         };
 
         // 選択範囲のキーを開始アイテムIDと終了アイテムIDの組み合わせにする
@@ -328,7 +341,7 @@ export class EditorOverlayStore {
         this.selections = { ...this.selections, [key]: selection };
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Box selection set with key: ${key}`);
             console.log(`Current selections:`, this.selections);
         }
@@ -347,7 +360,7 @@ export class EditorOverlayStore {
      */
     clearSelectionForUser(userId = "local") {
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`clearSelectionForUser called with userId=${userId}`);
             console.log(`Current selections before clearing:`, this.selections);
         }
@@ -359,25 +372,26 @@ export class EditorOverlayStore {
                 // キーにuserIdが含まれているか確認
                 const keyIncludesUserId = key.includes(`-${userId}`);
                 // オブジェクトのuserIdプロパティが一致するか確認
-                const objectUserIdMatches = s.userId === userId || (!s.userId && userId === 'local');
+                const objectUserIdMatches = s.userId === userId || (!s.userId && userId === "local");
 
                 // どちらかが一致する場合は削除対象
                 return !keyIncludesUserId && !objectUserIdMatches;
-            })
+            }),
         );
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Selections after clearing:`, this.selections);
 
             // 選択範囲が正しくクリアされたか確認
             const remainingSelections = Object.entries(this.selections).filter(([key, s]) =>
-                key.includes(`-${userId}`) || s.userId === userId || (!s.userId && userId === 'local')
+                key.includes(`-${userId}`) || s.userId === userId || (!s.userId && userId === "local")
             );
 
             if (remainingSelections.length > 0) {
                 console.warn(`Warning: Some selections for userId=${userId} were not cleared:`, remainingSelections);
-            } else {
+            }
+            else {
                 console.log(`All selections for userId=${userId} were successfully cleared`);
             }
         }
@@ -409,8 +423,10 @@ export class EditorOverlayStore {
     }
 
     stopCursorBlink() {
-        clearInterval(this.timerId);
-        this.cursorVisible = true;
+        if (this) {
+            clearInterval(this.timerId);
+            this.cursorVisible = true;
+        }
     }
 
     /**
@@ -421,8 +437,10 @@ export class EditorOverlayStore {
      */
     clearCursorAndSelection(userId = "local", clearSelections = false, preserveAltClick = false) {
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`clearCursorAndSelection called with userId=${userId}, clearSelections=${clearSelections}, preserveAltClick=${preserveAltClick}`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `clearCursorAndSelection called with userId=${userId}, clearSelections=${clearSelections}, preserveAltClick=${preserveAltClick}`,
+            );
             console.log(`Current cursors before clearing:`, this.cursors);
         }
 
@@ -438,7 +456,8 @@ export class EditorOverlayStore {
                     if (inst.isActive) {
                         // アクティブなカーソルのみ削除
                         cursorIdsToRemove.push(cursorId);
-                    } else {
+                    }
+                    else {
                         // 非アクティブなカーソルは保持
                         cursorIdsToKeep.push(cursorId);
                     }
@@ -446,8 +465,10 @@ export class EditorOverlayStore {
             }
 
             // デバッグ情報
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                console.log(`Cursors to remove: ${cursorIdsToRemove.length}, Cursors to keep: ${cursorIdsToKeep.length}`);
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(
+                    `Cursors to remove: ${cursorIdsToRemove.length}, Cursors to keep: ${cursorIdsToKeep.length}`,
+                );
             }
 
             // 特定したカーソルをすべて削除
@@ -464,7 +485,8 @@ export class EditorOverlayStore {
                     ),
                 );
             }
-        } else {
+        }
+        else {
             // 通常の削除処理（すべてのカーソルを削除）
             // 削除対象のカーソルIDを収集
             const cursorIdsToRemove: string[] = [];
@@ -498,7 +520,7 @@ export class EditorOverlayStore {
         }
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Cursors after clearing:`, this.cursors);
         }
     }
@@ -543,7 +565,7 @@ export class EditorOverlayStore {
      * デバッグ用: 現在のカーソル状態をログに出力
      */
     logCursorState() {
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             const cursorInstances = this.getCursorInstances();
             const cursors = Object.values(this.cursors);
             console.log(`=== Cursor State Debug Info ===`);
@@ -554,13 +576,16 @@ export class EditorOverlayStore {
             if (this.textareaRef) {
                 console.log(`Textarea has focus: ${document.activeElement === this.textareaRef}`);
             }
-            console.log(`Cursor instances:`, Array.from(this.cursorInstances.entries()).map(([id, cursor]) => ({
-                id,
-                itemId: cursor.itemId,
-                offset: cursor.offset,
-                isActive: cursor.isActive,
-                userId: cursor.userId
-            })));
+            console.log(
+                `Cursor instances:`,
+                Array.from(this.cursorInstances.entries()).map(([id, cursor]) => ({
+                    id,
+                    itemId: cursor.itemId,
+                    offset: cursor.offset,
+                    isActive: cursor.isActive,
+                    userId: cursor.userId,
+                })),
+            );
             console.log(`Cursors:`, cursors);
             console.log(`=== End Debug Info ===`);
         }
@@ -623,7 +648,7 @@ export class EditorOverlayStore {
         const newCursor: CursorPosition = {
             cursorId: id,
             ...cursorProps,
-            userId: userId // userId が undefined の場合に "local" を設定
+            userId: userId, // userId が undefined の場合に "local" を設定
         };
         this.cursors = { ...this.cursors, [id]: newCursor };
 
@@ -674,25 +699,27 @@ export class EditorOverlayStore {
      */
     getSelectedText(userId = "local"): string {
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`getSelectedText called for userId=${userId}`);
         }
 
         // 指定されたユーザーの選択範囲を取得
-        const selections = Object.values(this.selections).filter(s => s.userId === userId || (!s.userId && userId === 'local'));
+        const selections = Object.values(this.selections).filter(s =>
+            s.userId === userId || (!s.userId && userId === "local")
+        );
         if (selections.length === 0) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`No selections found for userId=${userId}`);
                 console.log(`Available selections:`, this.selections);
             }
-            return '';
+            return "";
         }
 
-        let selectedText = '';
+        let selectedText = "";
 
         // 各選択範囲を処理
         for (const sel of selections) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Processing selection:`, sel);
             }
 
@@ -700,16 +727,19 @@ export class EditorOverlayStore {
                 if (sel.isBoxSelection && sel.boxSelectionRanges) {
                     // 矩形選択（ボックス選択）の場合
                     selectedText += this.getTextFromBoxSelection(sel);
-                } else if (sel.startItemId === sel.endItemId) {
+                }
+                else if (sel.startItemId === sel.endItemId) {
                     // 単一アイテム内の選択範囲
                     selectedText += this.getTextFromSingleItemSelection(sel);
-                } else {
+                }
+                else {
                     // 複数アイテムにまたがる選択範囲
                     selectedText += this.getTextFromMultiItemSelection(sel);
                 }
-            } catch (error) {
+            }
+            catch (error) {
                 // エラーが発生した場合はログに出力
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.error(`Error in getSelectedText:`, error);
                     if (error instanceof Error) {
                         console.error(`Error message: ${error.message}`);
@@ -721,7 +751,7 @@ export class EditorOverlayStore {
             }
         }
 
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Final selected text: "${selectedText}"`);
         }
 
@@ -736,34 +766,37 @@ export class EditorOverlayStore {
     private getTextFromSingleItemSelection(sel: SelectionRange): string {
         const textEl = document.querySelector(`[data-item-id="${sel.startItemId}"] .item-text`) as HTMLElement;
         if (!textEl) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Text element not found for item ${sel.startItemId}`);
             }
-            return '';
+            return "";
         }
 
-        const text = textEl.textContent || '';
+        const text = textEl.textContent || "";
         const startOffset = Math.min(sel.startOffset, sel.endOffset);
         const endOffset = Math.max(sel.startOffset, sel.endOffset);
 
         // 選択範囲が有効かチェック
         if (startOffset === endOffset) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Empty selection for item ${sel.startItemId}`);
             }
-            return '';
+            return "";
         }
 
         // オフセットが範囲内かチェック
         if (startOffset < 0 || endOffset > text.length) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                console.log(`Invalid offsets for item ${sel.startItemId}: startOffset=${startOffset}, endOffset=${endOffset}, text.length=${text.length}`);
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(
+                    `Invalid offsets for item ${sel.startItemId}: startOffset=${startOffset}, endOffset=${endOffset}, text.length=${text.length}`,
+                );
             }
             // 範囲外の場合は修正
             const safeStartOffset = Math.max(0, Math.min(text.length, startOffset));
             const safeEndOffset = Math.max(0, Math.min(text.length, endOffset));
             return text.substring(safeStartOffset, safeEndOffset);
-        } else {
+        }
+        else {
             return text.substring(startOffset, endOffset);
         }
     }
@@ -775,7 +808,7 @@ export class EditorOverlayStore {
      */
     getTextFromSelection(sel: SelectionRange): string {
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`getTextFromSelection called with:`, sel);
         }
 
@@ -783,16 +816,19 @@ export class EditorOverlayStore {
             if (sel.isBoxSelection && sel.boxSelectionRanges) {
                 // 矩形選択（ボックス選択）の場合
                 return this.getTextFromBoxSelection(sel);
-            } else if (sel.startItemId === sel.endItemId) {
+            }
+            else if (sel.startItemId === sel.endItemId) {
                 // 単一アイテム内の選択範囲
                 return this.getTextFromSingleItemSelection(sel);
-            } else {
+            }
+            else {
                 // 複数アイテムにまたがる選択範囲
                 return this.getTextFromMultiItemSelection(sel);
             }
-        } catch (error) {
+        }
+        catch (error) {
             // エラーが発生した場合はログに出力
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Error in getTextFromSelection:`, error);
                 if (error instanceof Error) {
                     console.error(`Error message: ${error.message}`);
@@ -800,7 +836,7 @@ export class EditorOverlayStore {
                 }
             }
             // エラーが発生した場合は空文字列を返す
-            return '';
+            return "";
         }
     }
 
@@ -811,11 +847,11 @@ export class EditorOverlayStore {
      */
     private getTextFromBoxSelection(sel: SelectionRange): string {
         if (!sel.boxSelectionRanges || sel.boxSelectionRanges.length === 0) {
-            return '';
+            return "";
         }
 
         // デバッグ情報
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`getTextFromBoxSelection called with:`, sel);
         }
 
@@ -825,42 +861,45 @@ export class EditorOverlayStore {
         for (const range of sel.boxSelectionRanges) {
             const textEl = document.querySelector(`[data-item-id="${range.itemId}"] .item-text`) as HTMLElement;
             if (!textEl) {
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Text element not found for item ${range.itemId}`);
                 }
-                lines.push(''); // 空行を追加
+                lines.push(""); // 空行を追加
                 continue;
             }
 
-            const text = textEl.textContent || '';
+            const text = textEl.textContent || "";
             const startOffset = Math.min(range.startOffset, range.endOffset);
             const endOffset = Math.max(range.startOffset, range.endOffset);
 
             // 選択範囲が有効かチェック
             if (startOffset === endOffset) {
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Empty selection for item ${range.itemId}`);
                 }
-                lines.push(''); // 空行を追加
+                lines.push(""); // 空行を追加
                 continue;
             }
 
             // オフセットが範囲内かチェック
             if (startOffset < 0 || endOffset > text.length) {
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`Invalid offsets for item ${range.itemId}: startOffset=${startOffset}, endOffset=${endOffset}, text.length=${text.length}`);
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        `Invalid offsets for item ${range.itemId}: startOffset=${startOffset}, endOffset=${endOffset}, text.length=${text.length}`,
+                    );
                 }
                 // 範囲外の場合は修正
                 const safeStartOffset = Math.max(0, Math.min(text.length, startOffset));
                 const safeEndOffset = Math.max(0, Math.min(text.length, endOffset));
                 lines.push(text.substring(safeStartOffset, safeEndOffset));
-            } else {
+            }
+            else {
                 lines.push(text.substring(startOffset, endOffset));
             }
         }
 
         // VS Codeの矩形選択の場合、各行を改行で連結
-        return lines.join('\n');
+        return lines.join("\n");
     }
 
     /**
@@ -876,50 +915,50 @@ export class EditorOverlayStore {
         const sIdx = itemIdToIndex.get(sel.startItemId) ?? -1;
         const eIdx = itemIdToIndex.get(sel.endItemId) ?? -1;
 
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Start index: ${sIdx}, End index: ${eIdx}`);
         }
 
         // インデックスが見つからない場合は空文字列を返す
         if (sIdx === -1 || eIdx === -1) {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Invalid indices, skipping selection`);
             }
-            return '';
+            return "";
         }
 
         // 選択範囲の開始と終了のインデックスを決定
         const firstIdx = Math.min(sIdx, eIdx);
         const lastIdx = Math.max(sIdx, eIdx);
 
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`First index: ${firstIdx}, Last index: ${lastIdx}, isReversed: ${sel.isReversed || false}`);
         }
 
         // 選択範囲内の全てのアイテムを取得
         const itemsInRange = allItems.slice(firstIdx, lastIdx + 1);
 
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Items in range: ${itemsInRange.length}`);
-            console.log(`Items in range:`, itemsInRange.map(item => item.getAttribute('data-item-id')));
+            console.log(`Items in range:`, itemsInRange.map(item => item.getAttribute("data-item-id")));
         }
 
-        let result = '';
+        let result = "";
 
         // 選択範囲内の各アイテムを処理
         for (let i = 0; i < itemsInRange.length; i++) {
             const item = itemsInRange[i];
-            const itemId = item.getAttribute('data-item-id')!;
-            const textEl = item.querySelector('.item-text') as HTMLElement;
+            const itemId = item.getAttribute("data-item-id")!;
+            const textEl = item.querySelector(".item-text") as HTMLElement;
 
             if (!textEl) {
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Text element not found for item ${itemId}`);
                 }
                 continue;
             }
 
-            const text = textEl.textContent || '';
+            const text = textEl.textContent || "";
             const len = text.length;
 
             // オフセット計算
@@ -943,7 +982,7 @@ export class EditorOverlayStore {
 
                 // 最後のアイテム以外は改行を追加
                 if (i < itemsInRange.length - 1) {
-                    result += '\n';
+                    result += "\n";
                 }
             }
         }
@@ -962,23 +1001,23 @@ export class EditorOverlayStore {
      * アイテムIDとインデックスのマッピングを取得する（キャッシュ付き）
      * @returns アイテムIDとインデックスのマッピング
      */
-    private getItemsMapping(): { itemIdToIndex: Map<string, number>; allItems: HTMLElement[] } {
+    private getItemsMapping(): { itemIdToIndex: Map<string, number>; allItems: HTMLElement[]; } {
         // キャッシュが有効かチェック（100ms以内に作成されたものは再利用）
         const now = Date.now();
         if (this._itemsMappingCache && now - this._itemsMappingCache.timestamp < 100) {
             return {
                 itemIdToIndex: this._itemsMappingCache.itemIdToIndex,
-                allItems: this._itemsMappingCache.allItems
+                allItems: this._itemsMappingCache.allItems,
             };
         }
 
         // 全てのアイテムを取得
-        const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
+        const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
 
         // アイテムIDとインデックスのマッピングを作成
         const itemIdToIndex = new Map<string, number>();
         allItems.forEach((el, index) => {
-            const id = el.getAttribute('data-item-id');
+            const id = el.getAttribute("data-item-id");
             if (id) itemIdToIndex.set(id, index);
         });
 
@@ -986,7 +1025,7 @@ export class EditorOverlayStore {
         this._itemsMappingCache = {
             itemIdToIndex,
             allItems,
-            timestamp: now
+            timestamp: now,
         };
 
         return { itemIdToIndex, allItems };
@@ -996,6 +1035,6 @@ export class EditorOverlayStore {
 export const editorOverlayStore = new EditorOverlayStore();
 
 // テスト用にグローバルスコープに公開
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
     (window as any).editorOverlayStore = editorOverlayStore;
 }

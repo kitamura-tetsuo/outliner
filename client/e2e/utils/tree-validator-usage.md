@@ -41,10 +41,10 @@ const expectedData = {
             text: "First item",
             items: [
                 { text: "Second item" },
-                { text: "Third item" }
-            ]
-        }
-    ]
+                { text: "Third item" },
+            ],
+        },
+    ],
 };
 
 // 部分比較モードで検証
@@ -97,7 +97,8 @@ await page.waitForTimeout(500);
 try {
     await TreeValidator.compareWithSnapshot(page, snapshot);
     throw new Error("スナップショットが一致してしまいました");
-} catch (error) {
+}
+catch (error) {
     console.log("スナップショットが一致しないことを確認しました");
 }
 ```
@@ -122,7 +123,8 @@ try {
     // 新しく追加されたアイテムのパスを無視
     await TreeValidator.compareWithSnapshot(page, snapshot, ["items.0.items.2"]);
     console.log("無視したパス以外は一致しました");
-} catch (error) {
+}
+catch (error) {
     console.error("無視したパス以外も変更されています");
 }
 ```
@@ -133,35 +135,35 @@ try {
 
 ```json
 {
-  "itemCount": 1,
-  "items": [
-    {
-      "id": "c1220e18-60ef-48c4-9c58-8731e89ccfb4",
-      "text": "First item",
-      "author": "3WMAjkxTZjVrZLlRHjtdUDgygHV0",
-      "votes": [],
-      "created": 1746710413970,
-      "lastChanged": 1746710414632,
-      "items": [
+    "itemCount": 1,
+    "items": [
         {
-          "id": "69bb3616-50b0-475a-9713-36146086f50a",
-          "text": "Second item",
-          "author": "local",
-          "votes": [],
-          "created": 1746710414633,
-          "lastChanged": 1746710414986
-        },
-        {
-          "id": "e5ee6ac8-4438-412c-aa3e-8cdfb2e342a5",
-          "text": "Third item",
-          "author": "local",
-          "votes": [],
-          "created": 1746710414988,
-          "lastChanged": 1746710415305
+            "id": "c1220e18-60ef-48c4-9c58-8731e89ccfb4",
+            "text": "First item",
+            "author": "3WMAjkxTZjVrZLlRHjtdUDgygHV0",
+            "votes": [],
+            "created": 1746710413970,
+            "lastChanged": 1746710414632,
+            "items": [
+                {
+                    "id": "69bb3616-50b0-475a-9713-36146086f50a",
+                    "text": "Second item",
+                    "author": "local",
+                    "votes": [],
+                    "created": 1746710414633,
+                    "lastChanged": 1746710414986
+                },
+                {
+                    "id": "e5ee6ac8-4438-412c-aa3e-8cdfb2e342a5",
+                    "text": "Third item",
+                    "author": "local",
+                    "votes": [],
+                    "created": 1746710414988,
+                    "lastChanged": 1746710415305
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }
 ```
 

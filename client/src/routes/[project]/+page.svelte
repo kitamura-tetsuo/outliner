@@ -1,67 +1,70 @@
 <script lang="ts">
-    import { page } from "$app/stores";
-    import { goto } from "$app/navigation";
-    import { onDestroy, onMount } from "svelte";
-    import { userManager } from "../../auth/UserManager";
-    import AuthComponent from "../../components/AuthComponent.svelte";
-    import PageList from "../../components/PageList.svelte";
-    import { getLogger } from "../../lib/logger";
-    import { fluidStore } from "../../stores/fluidStore.svelte";
-    import { store } from "../../stores/store.svelte";
+import { goto } from "$app/navigation";
+import { page } from "$app/stores";
+import {
+    onDestroy,
+    onMount,
+} from "svelte";
+import { userManager } from "../../auth/UserManager";
+import AuthComponent from "../../components/AuthComponent.svelte";
+import PageList from "../../components/PageList.svelte";
+import { getLogger } from "../../lib/logger";
+import { fluidStore } from "../../stores/fluidStore.svelte";
+import { store } from "../../stores/store.svelte";
 
-    const logger = getLogger("ProjectIndex");
+const logger = getLogger("ProjectIndex");
 
-    // URLパラメータを取得
-    let projectName = $state("");
+// URLパラメータを取得
+let projectName = $state("");
 
-    // ページの状態
-    let error: string | null = $state(null);
-    let isAuthenticated = $state(false);
-    let projectNotFound = $state(false);
+// ページの状態
+let error: string | null = $state(null);
+let isAuthenticated = $state(false);
+let projectNotFound = $state(false);
 
-    // URLパラメータを監視して更新
-    $effect(() => {
-        if ($page.params.project) {
-            projectName = $page.params.project;
-        }
-    });
-
-    // 認証成功時の処理
-    async function handleAuthSuccess(authResult: any) {
-        logger.info("認証成功:", authResult);
-        isAuthenticated = true;
+// URLパラメータを監視して更新
+$effect(() => {
+    if ($page.params.project) {
+        projectName = $page.params.project;
     }
+});
 
-    // 認証ログアウト時の処理
-    function handleAuthLogout() {
-        logger.info("ログアウトしました");
-        isAuthenticated = false;
+// 認証成功時の処理
+async function handleAuthSuccess(authResult: any) {
+    logger.info("認証成功:", authResult);
+    isAuthenticated = true;
+}
+
+// 認証ログアウト時の処理
+function handleAuthLogout() {
+    logger.info("ログアウトしました");
+    isAuthenticated = false;
+}
+
+// ページを選択したときの処理
+function handlePageSelected(event: CustomEvent) {
+    const pageId = event.detail.pageId;
+    const pageName = event.detail.pageName;
+
+    if (pageName) {
+        goto(`/${projectName}/${pageName}`);
     }
+}
 
-    // ページを選択したときの処理
-    function handlePageSelected(event: CustomEvent) {
-        const pageId = event.detail.pageId;
-        const pageName = event.detail.pageName;
+// ホームに戻る
+function goHome() {
+    goto("/");
+}
 
-        if (pageName) {
-            goto(`/${projectName}/${pageName}`);
-        }
-    }
+onMount(() => {
+    // UserManagerの認証状態を確認
 
-    // ホームに戻る
-    function goHome() {
-        goto("/");
-    }
+    isAuthenticated = userManager.getCurrentUser() !== null;
+});
 
-    onMount(() => {
-        // UserManagerの認証状態を確認
-
-        isAuthenticated = userManager.getCurrentUser() !== null;
-    });
-
-    onDestroy(() => {
-        // クリーンアップコード
-    });
+onDestroy(() => {
+    // クリーンアップコード
+});
 </script>
 
 <svelte:head>
@@ -175,22 +178,22 @@
 </main>
 
 <style>
-    .loader {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #3498db;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto;
-    }
+.loader {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
 
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
     }
+    100% {
+        transform: rotate(360deg);
+    }
+}
 </style>

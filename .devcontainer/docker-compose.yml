@@ -1,4 +1,4 @@
-version: "3.8"
+version: '3.8'
 
 services:
   app:
@@ -21,7 +21,7 @@ services:
         source: node_modules_client
         target: /workspace/client/node_modules
         volume:
-          nocopy: true         # don’t copy any existing files
+          nocopy: true # don’t copy any existing files
 
       # 3️⃣  Mask server-side node_modules
       - type: volume
@@ -41,8 +41,8 @@ services:
         consistency: cached
 
     ports:
-      - "7070-7072:7070-7072"
-      - "7080-7082:7080-7082"
+      - '7070-7072:7070-7072'
+      - '7080-7082:7080-7082'
 
     command: sleep infinity
 

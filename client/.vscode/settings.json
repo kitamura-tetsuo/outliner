@@ -15,8 +15,7 @@
     },
     "playwright.env.TEST_ENV": "localhost",
     "playwright.env.PLAYWRIGHT_TEST_BASE_URL": "http://localhost:7090",
-    "playwright.use.dotenv": true,
-
+    "playwright.use.dotenv": true
     // 192.168.50.13環境用の設定
     // 以下のコメントを解除してTEST_ENVを削除することで、192.168.50.13環境でのテスト実行に戻せます
     // "playwright.env.DOTENV_CONFIG_PATH": ".env.test",

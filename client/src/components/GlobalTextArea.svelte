@@ -24,8 +24,12 @@ $effect(() => {
                 textareaRef.focus();
 
                 // デバッグ情報
-                if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                    console.log(`GlobalTextArea: focus set on activeItemId change. Active element is textarea: ${document.activeElement === textareaRef}`);
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        `GlobalTextArea: focus set on activeItemId change. Active element is textarea: ${
+                            document.activeElement === textareaRef
+                        }`,
+                    );
                 }
             }, 10);
         });
@@ -80,8 +84,12 @@ function handleBlur(_event: FocusEvent) {
             textareaRef.focus();
 
             // デバッグ情報
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-                console.log(`GlobalTextArea: focus restored after blur. Active element is textarea: ${document.activeElement === textareaRef}`);
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(
+                    `GlobalTextArea: focus restored after blur. Active element is textarea: ${
+                        document.activeElement === textareaRef
+                    }`,
+                );
             }
         }, 10);
     }

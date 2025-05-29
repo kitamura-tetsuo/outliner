@@ -30,7 +30,8 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -71,23 +72,23 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
         await page.waitForTimeout(300);
 
         // テキストの一部を選択（Shift+右矢印キーを5回押下）
-        await page.keyboard.down('Shift');
+        await page.keyboard.down("Shift");
         for (let i = 0; i < 5; i++) {
-            await page.keyboard.press('ArrowRight');
+            await page.keyboard.press("ArrowRight");
         }
-        await page.keyboard.up('Shift');
+        await page.keyboard.up("Shift");
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
         const selectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
+            return document.querySelector(".editor-overlay .selection") !== null;
         });
         expect(selectionExists).toBe(true);
 
         // 選択範囲のテキストを取得
         const selectedText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 
@@ -100,7 +101,7 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
         // 選択範囲の削除と3つ目のアイテムへのペーストで代用
 
         // 選択範囲をコピー
-        await page.keyboard.press('Control+x');
+        await page.keyboard.press("Control+x");
         await page.waitForTimeout(300);
 
         // 3つ目のアイテムをクリックして選択
@@ -109,10 +110,10 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
         await page.waitForTimeout(300);
 
         // カーソルを行末に移動
-        await page.keyboard.press('End');
+        await page.keyboard.press("End");
 
         // ペースト
-        await page.keyboard.press('Control+v');
+        await page.keyboard.press("Control+v");
         await page.waitForTimeout(300);
 
         // 1つ目のアイテムのテキストを確認
@@ -156,11 +157,11 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
         await page.waitForTimeout(300);
 
         // 全選択
-        await page.keyboard.press('Control+a');
+        await page.keyboard.press("Control+a");
         await page.waitForTimeout(300);
 
         // コピーして削除
-        await page.keyboard.press('Control+x');
+        await page.keyboard.press("Control+x");
         await page.waitForTimeout(300);
 
         // 3つ目のアイテムをクリックして選択（2つ目が削除されたので、元の3つ目は1番目になる）
@@ -169,12 +170,12 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
         await page.waitForTimeout(300);
 
         // 行末に移動
-        await page.keyboard.press('End');
-        await page.keyboard.press('Enter');
+        await page.keyboard.press("End");
+        await page.keyboard.press("Enter");
         await page.waitForTimeout(300);
 
         // ペースト
-        await page.keyboard.press('Control+v');
+        await page.keyboard.press("Control+v");
         await page.waitForTimeout(500);
 
         // 最初の3つのアイテムのテキストを確認

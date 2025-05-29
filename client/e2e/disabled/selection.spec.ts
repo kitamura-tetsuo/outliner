@@ -8,7 +8,6 @@ test.describe("アウトライナー E2E テスト", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
         // アプリを開く
         await page.goto("/");

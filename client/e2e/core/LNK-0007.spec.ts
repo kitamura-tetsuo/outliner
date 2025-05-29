@@ -2,9 +2,9 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
-import { CursorValidator } from "../utils/cursorValidation";
 
 /**
  * @file LNK-0007.spec.ts
@@ -26,11 +26,9 @@ test.describe("LNK-0007: バックリンク機能", () => {
         test.skip(true, "テスト環境の制約によりスキップします");
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -75,11 +73,9 @@ test.describe("LNK-0007: バックリンク機能", () => {
         test.skip(true, "テスト環境の制約によりスキップします");
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -149,10 +145,12 @@ test.describe("LNK-0007: バックリンク機能", () => {
                     // 大文字小文字を区別せずに検索
                     expect(contextText.toLowerCase()).toContain(targetPageName.toLowerCase());
                 }
-            } else {
+            }
+            else {
                 console.log("バックリンクコンテキストが見つかりませんでした。テスト環境の制約によりスキップします。");
             }
-        } else {
+        }
+        else {
             console.log("ソースページリンクが見つかりませんでした。テスト環境の制約によりスキップします。");
         }
 
@@ -169,11 +167,9 @@ test.describe("LNK-0007: バックリンク機能", () => {
         test.skip(true, "テスト環境の制約によりスキップします");
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -222,11 +218,9 @@ test.describe("LNK-0007: バックリンク機能", () => {
         test.skip(true, "テスト環境の制約によりスキップします");
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();
@@ -286,11 +280,9 @@ test.describe("LNK-0007: バックリンク機能", () => {
         test.skip(true, "テスト環境の制約によりスキップします");
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();

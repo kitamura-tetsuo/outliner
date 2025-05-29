@@ -6,8 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-0001: タイトルでのEnterキー動作", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -16,7 +16,7 @@ test.describe("ITM-0001: タイトルでのEnterキー動作", () => {
         const pageTitle = page.locator(".outliner-item.page-title");
 
         // ページタイトルが存在することを確認
-        await pageTitle.waitFor({ state: 'visible' });
+        await pageTitle.waitFor({ state: "visible" });
 
         // ページタイトルをクリック
         await pageTitle.locator(".item-content").click({ force: true });
@@ -53,7 +53,7 @@ test.describe("ITM-0001: タイトルでのEnterキー動作", () => {
         // Y座標でソートして最初の子アイテムを見つける
         const childItems = await page.evaluate(() => {
             // ページタイトル以外のアイテムを取得
-            const items = Array.from(document.querySelectorAll('.outliner-item:not(.page-title)'));
+            const items = Array.from(document.querySelectorAll(".outliner-item:not(.page-title)"));
 
             // アイテムが見つからない場合は空配列を返す
             if (items.length === 0) return [];
@@ -70,8 +70,8 @@ test.describe("ITM-0001: タイトルでのEnterキー動作", () => {
                 const rect = item.getBoundingClientRect();
                 const marginLeft = window.getComputedStyle(item).marginLeft;
                 // テキスト要素を正確に取得
-                const textElement = item.querySelector('.item-text');
-                const text = textElement ? textElement.textContent || '' : '';
+                const textElement = item.querySelector(".item-text");
+                const text = textElement ? textElement.textContent || "" : "";
                 return { top: rect.top, left: rect.left, marginLeft, text };
             });
         });
@@ -110,7 +110,7 @@ test.describe("ITM-0001: タイトルでのEnterキー動作", () => {
         // Y座標でソートして最初の子アイテムを見つける
         const childItems = await page.evaluate(() => {
             // ページタイトル以外のアイテムを取得
-            const items = Array.from(document.querySelectorAll('.outliner-item:not(.page-title)'));
+            const items = Array.from(document.querySelectorAll(".outliner-item:not(.page-title)"));
 
             // アイテムが見つからない場合は空配列を返す
             if (items.length === 0) return [];
@@ -125,8 +125,8 @@ test.describe("ITM-0001: タイトルでのEnterキー動作", () => {
             // 各アイテムの情報を返す
             return items.map(item => {
                 // テキスト要素を正確に取得
-                const textElement = item.querySelector('.item-text');
-                const text = textElement ? textElement.textContent || '' : '';
+                const textElement = item.querySelector(".item-text");
+                const text = textElement ? textElement.textContent || "" : "";
                 return { text };
             });
         });
@@ -169,31 +169,36 @@ test.describe("ITM-0001: タイトルでのEnterキー動作", () => {
         await page.evaluate(() => {
             try {
                 // すべてのアイテムの情報をログに出力
-                console.log('すべてのアイテム:', Array.from(document.querySelectorAll('.outliner-item')).map(item => {
-                    return {
-                        id: item.id,
-                        className: item.className,
-                        text: item.querySelector('.item-text')?.textContent,
-                        isActive: item.classList.contains('active'),
-                        isPageTitle: item.classList.contains('page-title'),
-                        top: item.getBoundingClientRect().top
-                    };
-                }));
+                console.log(
+                    "すべてのアイテム:",
+                    Array.from(document.querySelectorAll(".outliner-item")).map(item => {
+                        return {
+                            id: item.id,
+                            className: item.className,
+                            text: item.querySelector(".item-text")?.textContent,
+                            isActive: item.classList.contains("active"),
+                            isPageTitle: item.classList.contains("page-title"),
+                            top: item.getBoundingClientRect().top,
+                        };
+                    }),
+                );
 
                 // カーソルの情報をログに出力
-                const cursor = document.querySelector('.editor-overlay .cursor.active');
+                const cursor = document.querySelector(".editor-overlay .cursor.active");
                 if (cursor) {
-                    console.log('カーソル情報:', {
-                        offset: cursor.getAttribute('data-offset'),
-                        parent: cursor.parentElement?.tagName
+                    console.log("カーソル情報:", {
+                        offset: cursor.getAttribute("data-offset"),
+                        parent: cursor.parentElement?.tagName,
                     });
-                } else {
-                    console.log('カーソルが見つかりません');
+                }
+                else {
+                    console.log("カーソルが見つかりません");
                 }
 
                 return true;
-            } catch (error) {
-                console.error('エラーが発生しました:', error);
+            }
+            catch (error) {
+                console.error("エラーが発生しました:", error);
                 return false;
             }
         });

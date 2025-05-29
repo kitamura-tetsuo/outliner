@@ -7,7 +7,6 @@ test.describe("OutlinerTree E2E", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
         await page.goto("/");
         // Outliner がレンダリングされるのを待つ

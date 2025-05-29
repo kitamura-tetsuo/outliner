@@ -7,7 +7,7 @@ interface FormatToken {
     children?: FormatToken[];
     start: number;
     end: number;
-    url?: string;        // リンク用
+    url?: string; // リンク用
 }
 
 /**
@@ -74,17 +74,18 @@ export class ScrapboxFormatter {
     static getFormatType(text: string): "bold" | "italic" | "strikethrough" | "code" | null {
         if (text.startsWith("[[") && text.endsWith("]]")) {
             return "bold";
-        } else if (text.startsWith("[/") && text.endsWith("]")) {
+        }
+        else if (text.startsWith("[/") && text.endsWith("]")) {
             return "italic";
-        } else if (text.startsWith("[-") && text.endsWith("]")) {
+        }
+        else if (text.startsWith("[-") && text.endsWith("]")) {
             return "strikethrough";
-        } else if (text.startsWith("`") && text.endsWith("`")) {
+        }
+        else if (text.startsWith("`") && text.endsWith("`")) {
             return "code";
         }
         return null;
     }
-
-
 
     /**
      * テキストをトークンに分解する
@@ -105,11 +106,11 @@ export class ScrapboxFormatter {
             { type: "link", start: "[", end: "]", regex: /\[(https?:\/\/.*?)\]/g },
             // 通常の内部リンク（page-name形式）
             { type: "internalLink", start: "[", end: "]", regex: /\[([^\[\]\/\-][^\[\]]*?)\]/g },
-            { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm }
+            { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm },
         ];
 
         // すべてのフォーマットマッチを見つける
-        const matches: { type: string; start: number; end: number; content: string; url?: string }[] = [];
+        const matches: { type: string; start: number; end: number; content: string; url?: string; }[] = [];
 
         // フォーマットのマッチを処理
         patterns.forEach(pattern => {
@@ -126,14 +127,15 @@ export class ScrapboxFormatter {
                         start: startIndex,
                         end: endIndex,
                         content: content,
-                        url: content
+                        url: content,
                     });
-                } else {
+                }
+                else {
                     matches.push({
                         type: pattern.type,
                         start: startIndex,
                         end: endIndex,
-                        content: content
+                        content: content,
                     });
                 }
             }
@@ -143,7 +145,7 @@ export class ScrapboxFormatter {
         matches.sort((a, b) => a.start - b.start);
 
         // 重複や入れ子のマッチを処理
-        const validMatches: { type: string; start: number; end: number; content: string }[] = [];
+        const validMatches: { type: string; start: number; end: number; content: string; }[] = [];
 
         for (const match of matches) {
             // 既存の有効なマッチと重複していないか確認
@@ -182,7 +184,7 @@ export class ScrapboxFormatter {
                     type: "text",
                     content: text.substring(lastIndex, match.start),
                     start: lastIndex,
-                    end: match.start
+                    end: match.start,
                 });
             }
 
@@ -191,7 +193,7 @@ export class ScrapboxFormatter {
                 type: match.type as "bold" | "italic" | "strikethrough" | "code",
                 content: match.content,
                 start: match.start,
-                end: match.end
+                end: match.end,
             });
 
             lastIndex = match.end;
@@ -203,7 +205,7 @@ export class ScrapboxFormatter {
                 type: "text",
                 content: text.substring(lastIndex),
                 start: lastIndex,
-                end: text.length
+                end: text.length,
             });
         }
 
@@ -219,14 +221,14 @@ export class ScrapboxFormatter {
         // HTMLエスケープ
         const escapeHtml = (str: string): string => {
             return str
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         };
 
-        let html = '';
+        let html = "";
 
         for (const token of tokens) {
             const content = escapeHtml(token.content);
@@ -250,29 +252,32 @@ export class ScrapboxFormatter {
                 case "internalLink":
                     // 内部リンクは別ページへのリンクとして処理
                     // /project-name/page-name 形式かどうかを判断
-                    if (content.startsWith('/')) {
+                    if (content.startsWith("/")) {
                         // プロジェクト内部リンク
                         // パスを分解してプロジェクト名とページ名を取得
-                        const parts = content.split('/').filter(p => p);
+                        const parts = content.split("/").filter(p => p);
                         if (parts.length >= 2) {
                             const projectName = parts[0];
-                            const pageName = parts.slice(1).join('/');
+                            const pageName = parts.slice(1).join("/");
 
                             // ページの存在確認用のクラスを追加
-                            const existsClass = this.checkPageExists(pageName, projectName) ? 'page-exists' : 'page-not-exists';
+                            const existsClass = this.checkPageExists(pageName, projectName) ? "page-exists"
+                                : "page-not-exists";
 
                             // LinkPreviewコンポーネントを使用
                             html += `<span class="link-preview-wrapper">
                                 <a href="${content}" class="internal-link project-link ${existsClass}" data-project="${projectName}" data-page="${pageName}">${content}</a>
                             </span>`;
-                        } else {
+                        }
+                        else {
                             // 不正なパス形式の場合は通常のリンクとして表示
                             html += `<a href="${content}" class="internal-link project-link">${content}</a>`;
                         }
-                    } else {
+                    }
+                    else {
                         // 通常の内部リンク
                         // ページの存在確認用のクラスを追加
-                        const existsClass = this.checkPageExists(content) ? 'page-exists' : 'page-not-exists';
+                        const existsClass = this.checkPageExists(content) ? "page-exists" : "page-not-exists";
 
                         // LinkPreviewコンポーネントを使用
                         html += `<span class="link-preview-wrapper">
@@ -299,7 +304,7 @@ export class ScrapboxFormatter {
      * @returns HTMLに変換されたテキスト
      */
     static formatToHtml(text: string): string {
-        if (!text) return '';
+        if (!text) return "";
 
         // 入れ子のフォーマットに対応した実装を使用
         return this.formatToHtmlAdvanced(text);
@@ -311,16 +316,16 @@ export class ScrapboxFormatter {
      * @returns HTMLに変換されたテキスト
      */
     static formatToHtmlAdvanced(text: string): string {
-        if (!text) return '';
+        if (!text) return "";
 
         // HTMLエスケープ
         const escapeHtml = (str: string): string => {
             return str
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         };
 
         // 再帰的にフォーマットを処理する関数
@@ -336,19 +341,20 @@ export class ScrapboxFormatter {
             const projectLinkRegex = /\[\/([\w\-\/]+)\]/g;
             input = input.replace(projectLinkRegex, (match, path) => {
                 // パスを分解してプロジェクト名とページ名を取得
-                const parts = path.split('/').filter(p => p);
+                const parts = path.split("/").filter(p => p);
                 if (parts.length >= 2) {
                     const projectName = parts[0];
-                    const pageName = parts.slice(1).join('/');
+                    const pageName = parts.slice(1).join("/");
 
                     // ページの存在確認用のクラスを追加
-                    const existsClass = this.checkPageExists(pageName, projectName) ? 'page-exists' : 'page-not-exists';
+                    const existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
 
                     // LinkPreviewコンポーネントを使用
                     return `<span class="link-preview-wrapper">
                         <a href="/${path}" class="internal-link project-link ${existsClass}" data-project="${projectName}" data-page="${pageName}">${path}</a>
                     </span>`;
-                } else {
+                }
+                else {
                     // 不正なパス形式の場合は通常のリンクとして表示
                     return `<a href="/${path}" class="internal-link project-link">${path}</a>`;
                 }
@@ -384,7 +390,7 @@ export class ScrapboxFormatter {
             const internalLinkRegex = /\[([^\[\]\/\-][^\[\]]*?)\]/g;
             input = input.replace(internalLinkRegex, (match, text) => {
                 // ページの存在確認用のクラスを追加
-                const existsClass = this.checkPageExists(text) ? 'page-exists' : 'page-not-exists';
+                const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
 
                 // LinkPreviewコンポーネントを使用
                 return `<span class="link-preview-wrapper">
@@ -397,7 +403,7 @@ export class ScrapboxFormatter {
 
         // 行ごとに処理するための関数
         const processLines = (lines: string[]): string => {
-            let result = '';
+            let result = "";
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
@@ -414,7 +420,7 @@ export class ScrapboxFormatter {
 
                 // 最後の行でなければ改行を追加
                 if (i < lines.length - 1) {
-                    result += '<br>';
+                    result += "<br>";
                 }
             }
 
@@ -422,7 +428,7 @@ export class ScrapboxFormatter {
         };
 
         // 行に分割して処理
-        const lines = text.split('\n');
+        const lines = text.split("\n");
         return processLines(lines);
     }
 
@@ -432,42 +438,63 @@ export class ScrapboxFormatter {
      * @returns HTMLに変換されたテキスト
      */
     static formatWithControlChars(text: string): string {
-        if (!text) return '';
+        if (!text) return "";
 
         // HTMLエスケープ
         const escapeHtml = (str: string): string => {
             return str
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         };
 
         let html = escapeHtml(text);
 
         // 太字
-        html = html.replace(/(\[\[)(.*?)(\]\])/g, '<span class="control-char">$1</span><strong>$2</strong><span class="control-char">$3</span>');
+        html = html.replace(
+            /(\[\[)(.*?)(\]\])/g,
+            '<span class="control-char">$1</span><strong>$2</strong><span class="control-char">$3</span>',
+        );
 
         // プロジェクト内部リンク - 斜体よりも先に処理する必要がある
-        html = html.replace(/(\[\/)([a-zA-Z0-9\-\/]+)(\])/g, '<span class="control-char">$1</span><a href="/$2" class="internal-link project-link">$2</a><span class="control-char">$3</span>');
+        html = html.replace(
+            /(\[\/)([a-zA-Z0-9\-\/]+)(\])/g,
+            '<span class="control-char">$1</span><a href="/$2" class="internal-link project-link">$2</a><span class="control-char">$3</span>',
+        );
 
         // 斜体
-        html = html.replace(/(\[\/)(.+?)(\])/g, '<span class="control-char">$1</span><em>$2</em><span class="control-char">$3</span>');
+        html = html.replace(
+            /(\[\/)(.+?)(\])/g,
+            '<span class="control-char">$1</span><em>$2</em><span class="control-char">$3</span>',
+        );
 
         // 取り消し線
-        html = html.replace(/(\[\-)(.+?)(\])/g, '<span class="control-char">$1</span><s>$2</s><span class="control-char">$3</span>');
+        html = html.replace(
+            /(\[\-)(.+?)(\])/g,
+            '<span class="control-char">$1</span><s>$2</s><span class="control-char">$3</span>',
+        );
 
         // コード
-        html = html.replace(/(`)(.*?)(`)/g, '<span class="control-char">$1</span><code>$2</code><span class="control-char">$3</span>');
+        html = html.replace(
+            /(`)(.*?)(`)/g,
+            '<span class="control-char">$1</span><code>$2</code><span class="control-char">$3</span>',
+        );
 
         // 外部リンク
-        html = html.replace(/(\[)(https?:\/\/.*?)(\])/g, '<span class="control-char">$1</span><a href="$2" target="_blank" rel="noopener noreferrer">$2</a><span class="control-char">$3</span>');
+        html = html.replace(
+            /(\[)(https?:\/\/.*?)(\])/g,
+            '<span class="control-char">$1</span><a href="$2" target="_blank" rel="noopener noreferrer">$2</a><span class="control-char">$3</span>',
+        );
 
         // プロジェクト内部リンクは上で処理済み
 
         // 通常の内部リンク - 外部リンクの後に処理する必要がある
-        html = html.replace(/(\[)([^\[\]\/\-][^\[\]]*?)(\])/g, '<span class="control-char">$1</span><a href="/$2" class="internal-link">$2</a><span class="control-char">$3</span>');
+        html = html.replace(
+            /(\[)([^\[\]\/\-][^\[\]]*?)(\])/g,
+            '<span class="control-char">$1</span><a href="/$2" class="internal-link">$2</a><span class="control-char">$3</span>',
+        );
 
         // 引用
         html = html.replace(/(^>\s)(.*?)$/gm, '<span class="control-char">$1</span><blockquote>$2</blockquote>');
@@ -499,10 +526,10 @@ export class ScrapboxFormatter {
         const quotePattern = /^>\s(.*?)$/m;
 
         return basicFormatPattern.test(text) ||
-               linkPattern.test(text) ||
-               internalLinkPattern.test(text) ||
-               projectLinkPattern.test(text) ||
-               quotePattern.test(text);
+            linkPattern.test(text) ||
+            internalLinkPattern.test(text) ||
+            projectLinkPattern.test(text) ||
+            quotePattern.test(text);
     }
 
     /**
@@ -513,7 +540,7 @@ export class ScrapboxFormatter {
      */
     static checkPageExists(pageName: string, projectName?: string): boolean {
         // 実装注意: このメソッドはクライアントサイドでのみ動作します
-        if (typeof window === 'undefined') return true;
+        if (typeof window === "undefined") return true;
 
         // グローバルストアからページ情報を取得
         const store = (window as any).appStore;

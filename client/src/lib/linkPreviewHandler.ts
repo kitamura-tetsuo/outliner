@@ -5,8 +5,8 @@
  * ScrapboxFormatterによって生成されたリンク要素に対して動作します。
  */
 
-import { store } from "../stores/store.svelte";
 import type { Item } from "../schema/app-schema";
+import { store } from "../stores/store.svelte";
 import { getLogger } from "./logger";
 
 const logger = getLogger("LinkPreviewHandler");
@@ -23,7 +23,7 @@ const PREVIEW_STYLES = {
     boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
     padding: "12px",
     overflow: "hidden",
-    fontSize: "14px"
+    fontSize: "14px",
 };
 
 // 現在表示中のプレビュー要素
@@ -82,8 +82,8 @@ function findPageByName(name: string): Item | null {
  * @returns プレビュー用のHTML要素
  */
 function createPreviewContent(pageName: string, projectName?: string): HTMLElement {
-    const previewElement = document.createElement('div');
-    previewElement.className = 'link-preview-popup';
+    const previewElement = document.createElement("div");
+    previewElement.className = "link-preview-popup";
 
     // スタイルを適用
     Object.entries(PREVIEW_STYLES).forEach(([key, value]) => {
@@ -94,8 +94,8 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
     if (projectName) {
         // 現在のプロジェクトと異なる場合は、プレビューを表示しない
         if (projectName !== store.project?.title) {
-            const errorDiv = document.createElement('div');
-            errorDiv.style.color = '#d32f2f';
+            const errorDiv = document.createElement("div");
+            errorDiv.style.color = "#d32f2f";
             errorDiv.textContent = "別プロジェクトのページはプレビューできません";
             previewElement.appendChild(errorDiv);
             return previewElement;
@@ -106,77 +106,79 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
     const foundPage = findPageByName(pageName);
     if (foundPage) {
         // ページが見つかった場合
-        const contentDiv = document.createElement('div');
+        const contentDiv = document.createElement("div");
 
         // タイトル
-        const titleElement = document.createElement('h3');
+        const titleElement = document.createElement("h3");
         titleElement.textContent = foundPage.text;
-        titleElement.style.fontSize = '16px';
-        titleElement.style.fontWeight = '600';
-        titleElement.style.margin = '0 0 8px 0';
-        titleElement.style.paddingBottom = '8px';
-        titleElement.style.borderBottom = '1px solid #eee';
-        titleElement.style.color = '#333';
+        titleElement.style.fontSize = "16px";
+        titleElement.style.fontWeight = "600";
+        titleElement.style.margin = "0 0 8px 0";
+        titleElement.style.paddingBottom = "8px";
+        titleElement.style.borderBottom = "1px solid #eee";
+        titleElement.style.color = "#333";
         contentDiv.appendChild(titleElement);
 
         // アイテム一覧
-        const itemsDiv = document.createElement('div');
-        itemsDiv.style.maxHeight = '220px';
-        itemsDiv.style.overflowY = 'auto';
+        const itemsDiv = document.createElement("div");
+        itemsDiv.style.maxHeight = "220px";
+        itemsDiv.style.overflowY = "auto";
 
         if (foundPage.items && (foundPage.items as any).length > 0) {
-            const ul = document.createElement('ul');
-            ul.style.margin = '0';
-            ul.style.padding = '0 0 0 20px';
+            const ul = document.createElement("ul");
+            ul.style.margin = "0";
+            ul.style.padding = "0 0 0 20px";
 
             // 最大5つまでのアイテムを表示
             const maxItems = Math.min(5, (foundPage.items as any).length);
             for (let i = 0; i < maxItems; i++) {
                 const item = (foundPage.items as any)[i];
                 if (item) {
-                    const li = document.createElement('li');
-                    li.textContent = item.text || '';
-                    li.style.marginBottom = '4px';
-                    li.style.color = '#555';
-                    li.style.lineHeight = '1.4';
+                    const li = document.createElement("li");
+                    li.textContent = item.text || "";
+                    li.style.marginBottom = "4px";
+                    li.style.color = "#555";
+                    li.style.lineHeight = "1.4";
                     ul.appendChild(li);
                 }
             }
 
             // 5つ以上ある場合は「...」を表示
             if ((foundPage.items as any).length > 5) {
-                const moreLi = document.createElement('li');
-                moreLi.textContent = '...';
-                moreLi.style.color = '#888';
-                moreLi.style.fontStyle = 'italic';
+                const moreLi = document.createElement("li");
+                moreLi.textContent = "...";
+                moreLi.style.color = "#888";
+                moreLi.style.fontStyle = "italic";
                 ul.appendChild(moreLi);
             }
 
             itemsDiv.appendChild(ul);
-        } else {
+        }
+        else {
             // アイテムがない場合
-            const emptyP = document.createElement('p');
-            emptyP.textContent = 'このページには内容がありません';
-            emptyP.style.color = '#888';
-            emptyP.style.fontStyle = 'italic';
-            emptyP.style.margin = '10px 0';
+            const emptyP = document.createElement("p");
+            emptyP.textContent = "このページには内容がありません";
+            emptyP.style.color = "#888";
+            emptyP.style.fontStyle = "italic";
+            emptyP.style.margin = "10px 0";
             itemsDiv.appendChild(emptyP);
         }
 
         contentDiv.appendChild(itemsDiv);
         previewElement.appendChild(contentDiv);
-    } else {
+    }
+    else {
         // ページが見つからない場合
-        const notFoundDiv = document.createElement('div');
-        notFoundDiv.style.color = '#d32f2f';
-        notFoundDiv.style.display = 'flex';
-        notFoundDiv.style.flexDirection = 'column';
-        notFoundDiv.style.alignItems = 'center';
-        notFoundDiv.style.justifyContent = 'center';
-        notFoundDiv.style.minHeight = '100px';
+        const notFoundDiv = document.createElement("div");
+        notFoundDiv.style.color = "#d32f2f";
+        notFoundDiv.style.display = "flex";
+        notFoundDiv.style.flexDirection = "column";
+        notFoundDiv.style.alignItems = "center";
+        notFoundDiv.style.justifyContent = "center";
+        notFoundDiv.style.minHeight = "100px";
 
-        const notFoundP = document.createElement('p');
-        notFoundP.textContent = 'ページが見つかりません';
+        const notFoundP = document.createElement("p");
+        notFoundP.textContent = "ページが見つかりません";
         notFoundDiv.appendChild(notFoundP);
 
         previewElement.appendChild(notFoundDiv);
@@ -256,7 +258,7 @@ function handleLinkMouseEnter(event: MouseEvent): void {
             currentPreview = previewElement;
 
             // プレビュー要素にもマウスイベントを設定
-            previewElement.addEventListener('mouseenter', () => {
+            previewElement.addEventListener("mouseenter", () => {
                 // プレビュー上にマウスがある場合は非表示タイマーをクリア
                 if (hideTimer !== null) {
                     window.clearTimeout(hideTimer);
@@ -264,7 +266,7 @@ function handleLinkMouseEnter(event: MouseEvent): void {
                 }
             });
 
-            previewElement.addEventListener('mouseleave', () => {
+            previewElement.addEventListener("mouseleave", () => {
                 // プレビューからマウスが離れたら非表示
                 hidePreview();
             });
@@ -307,14 +309,14 @@ let observer: MutationObserver | null = null;
  */
 function addLinkEventListeners(element: Element): void {
     // 既に設定済みかどうかを確認するためのフラグ
-    const hasListeners = element.getAttribute('data-link-listeners') === 'true';
+    const hasListeners = element.getAttribute("data-link-listeners") === "true";
 
     if (!hasListeners) {
-        element.addEventListener('mouseenter', handleLinkMouseEnter);
-        element.addEventListener('mouseleave', handleLinkMouseLeave);
+        element.addEventListener("mouseenter", handleLinkMouseEnter);
+        element.addEventListener("mouseleave", handleLinkMouseLeave);
 
         // リスナーが設定されたことを示すフラグを設定
-        element.setAttribute('data-link-listeners', 'true');
+        element.setAttribute("data-link-listeners", "true");
 
         logger.debug(`Link preview handlers added to ${element.textContent}`);
     }
@@ -327,7 +329,7 @@ function addLinkEventListeners(element: Element): void {
 export function setupLinkPreviewHandlers(): void {
     try {
         // 内部リンクを取得
-        const internalLinks = document.querySelectorAll('.internal-link');
+        const internalLinks = document.querySelectorAll(".internal-link");
 
         // 各リンクにイベントリスナーを設定
         internalLinks.forEach(link => {
@@ -340,8 +342,9 @@ export function setupLinkPreviewHandlers(): void {
         }
 
         logger.info(`Link preview handlers set up for ${internalLinks.length} links`);
-    } catch (error) {
-        logger.error('Error setting up link preview handlers:', error);
+    }
+    catch (error) {
+        logger.error("Error setting up link preview handlers:", error);
     }
 }
 
@@ -356,26 +359,26 @@ function setupMutationObserver(): void {
         }
 
         // 新しいObserverを作成
-        observer = new MutationObserver((mutations) => {
+        observer = new MutationObserver(mutations => {
             let newLinksFound = false;
 
             // 各変更を処理
             mutations.forEach(mutation => {
                 // 追加されたノードを処理
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
                     mutation.addedNodes.forEach(node => {
                         if (node.nodeType === Node.ELEMENT_NODE) {
                             // 追加された要素内の内部リンクを検索
                             const element = node as Element;
 
                             // 追加された要素自体が内部リンクかどうかを確認
-                            if (element.classList && element.classList.contains('internal-link')) {
+                            if (element.classList && element.classList.contains("internal-link")) {
                                 addLinkEventListeners(element);
                                 newLinksFound = true;
                             }
 
                             // 追加された要素内の内部リンクを検索
-                            const links = element.querySelectorAll('.internal-link');
+                            const links = element.querySelectorAll(".internal-link");
                             if (links.length > 0) {
                                 links.forEach(link => {
                                     addLinkEventListeners(link);
@@ -387,12 +390,13 @@ function setupMutationObserver(): void {
                 }
 
                 // 属性の変更を処理（クラスが変更された場合など）
-                if (mutation.type === 'attributes' &&
-                    mutation.attributeName === 'class' &&
-                    mutation.target.nodeType === Node.ELEMENT_NODE) {
-
+                if (
+                    mutation.type === "attributes" &&
+                    mutation.attributeName === "class" &&
+                    mutation.target.nodeType === Node.ELEMENT_NODE
+                ) {
                     const element = mutation.target as Element;
-                    if (element.classList && element.classList.contains('internal-link')) {
+                    if (element.classList && element.classList.contains("internal-link")) {
                         addLinkEventListeners(element);
                         newLinksFound = true;
                     }
@@ -400,7 +404,7 @@ function setupMutationObserver(): void {
             });
 
             if (newLinksFound) {
-                logger.debug('New internal links found and handlers added');
+                logger.debug("New internal links found and handlers added");
             }
         });
 
@@ -409,12 +413,13 @@ function setupMutationObserver(): void {
             childList: true,
             subtree: true,
             attributes: true,
-            attributeFilter: ['class']
+            attributeFilter: ["class"],
         });
 
-        logger.info('MutationObserver for link preview handlers set up');
-    } catch (error) {
-        logger.error('Error setting up MutationObserver:', error);
+        logger.info("MutationObserver for link preview handlers set up");
+    }
+    catch (error) {
+        logger.error("Error setting up MutationObserver:", error);
     }
 }
 
@@ -441,6 +446,6 @@ export function cleanupLinkPreviews(): void {
     if (observer) {
         observer.disconnect();
         observer = null;
-        logger.info('MutationObserver for link preview handlers cleaned up');
+        logger.info("MutationObserver for link preview handlers cleaned up");
     }
 }

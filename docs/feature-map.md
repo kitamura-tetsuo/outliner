@@ -34,6 +34,7 @@
 | LNK-0006 | リンク先ページの存在確認機能 | — | implemented |
 | LNK-0007 | バックリンク機能 | — | implemented |
 | NAV-0001 | プロジェクト選択とページナビゲーション | — | implemented |
+| NAV-0002 | プロジェクトページへのリンク機能 | — | implemented |
 | SLR-0001 | Shift + 上下左右 | — | implemented |
 | SLR-0002 | 行頭まで選択 | — | implemented |
 | SLR-0003 | 行末まで選択 | — | implemented |

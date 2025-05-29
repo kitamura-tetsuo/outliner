@@ -1,12 +1,15 @@
 /**
  * CursorValidator の使用例
- * 
+ *
  * このファイルには、CursorValidator クラスの使用例が含まれています。
  * テストでのカーソル情報の検証方法を示しています。
  */
 
 import { Page } from "@playwright/test";
-import { setupCursorDebugger, waitForCursorVisible } from "../helpers";
+import {
+    setupCursorDebugger,
+    waitForCursorVisible,
+} from "../helpers";
 import { CursorValidator } from "./cursorValidation";
 
 /**
@@ -43,9 +46,9 @@ export async function partialComparisonExample(page: Page): Promise<void> {
         cursorCount: 1,
         cursors: [
             {
-                isActive: true
-            }
-        ]
+                isActive: true,
+            },
+        ],
     };
 
     // 部分比較モードで検証
@@ -66,7 +69,7 @@ export async function strictComparisonExample(page: Page): Promise<void> {
 
     // 現在のデータを取得
     const currentData = await CursorValidator.getCursorData(page);
-    
+
     // 同じデータで厳密比較
     await CursorValidator.assertCursorData(page, currentData, true);
 }
@@ -104,19 +107,20 @@ export async function snapshotComparisonExample(page: Page): Promise<void> {
 
     // スナップショットを取得
     const snapshot = await CursorValidator.takeCursorSnapshot(page);
-    
+
     // 何も変更せずに比較（一致するはず）
     await CursorValidator.compareWithSnapshot(page, snapshot);
-    
+
     // カーソルを移動
     await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(100);
-    
+
     // 変更後は一致しないはず
     try {
         await CursorValidator.compareWithSnapshot(page, snapshot);
         throw new Error("スナップショットが一致してしまいました");
-    } catch (error) {
+    }
+    catch (error) {
         console.log("スナップショットが一致しないことを確認しました");
     }
 }

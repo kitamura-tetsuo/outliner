@@ -6,8 +6,7 @@ _**User**_
 
 commit
 git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
- で変更点を確認して、コミットメッセージを英語で書いて、コミットして。
-
+で変更点を確認して、コミットメッセージを英語で書いて、コミットして。
 
 ---
 
@@ -404,8 +403,8 @@ node ➜ /workspace (main) $
 
 ---
 
-変更点をコミットしました:  
-「Refactor editor overlay: remove debug CSS, implement JS-driven cursor blinking, add GlobalTextArea component, improve caret detection and multi-cursor handling, update debug logs」  
+変更点をコミットしました:\
+「Refactor editor overlay: remove debug CSS, implement JS-driven cursor blinking, add GlobalTextArea component, improve caret detection and multi-cursor handling, update debug logs」
 
 完了しました。次に何を行いますか？
 
@@ -415,8 +414,7 @@ _**User**_
 
 commit
 git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
- で変更点を確認して、コミットメッセージを英語で書いて、コミットして。
-
+で変更点を確認して、コミットメッセージを英語で書いて、コミットして。
 
 ---
 
@@ -570,8 +568,8 @@ node ➜ /workspace (main) $
 
 ---
 
-コミットしました:  
-「Enhance GlobalTextArea focus and arrow key navigation for multi-cursor; update OutlinerItem handlers; mount GlobalTextArea in +page.svelte」  
+コミットしました:\
+「Enhance GlobalTextArea focus and arrow key navigation for multi-cursor; update OutlinerItem handlers; mount GlobalTextArea in +page.svelte」
 
 完了です。次に何をしましょうか？
 
@@ -580,8 +578,7 @@ node ➜ /workspace (main) $
 _**User**_
 
 git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
- で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。。
-
+で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。。
 
 ---
 
@@ -690,8 +687,8 @@ node ➜ /workspace (main) $
 
 ---
 
-コミットしました：  
-「Enhance arrow key navigation: cross-item cursor movement at line boundaries in GlobalTextArea」  
+コミットしました：\
+「Enhance arrow key navigation: cross-item cursor movement at line boundaries in GlobalTextArea」
 
 他にお手伝いできることはありますか？
 
@@ -700,7 +697,7 @@ node ➜ /workspace (main) $
 _**User**_
 
 git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
- で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。。
+で変更点を確認して、コミットメッセージを英語で書いて、コミットして下さい。。
 
 ---
 
@@ -710,7 +707,7 @@ _**Assistant**_
 git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
 ```
 
-```
+````
 node ➜ /workspace (main) $ git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
 diff --git a/.devcontainer/Dockerfile b/.devcontainer/Dockerfile
 index 44dde35..443c0e9 100644
@@ -1021,7 +1018,7 @@ index 0000000..94e9fed
 +if __name__ == "__main__":
 +    main()
 node ➜ /workspace (main) $
-```
+````
 
 ---
 
@@ -1045,10 +1042,9 @@ node ➜ /workspace (main) $
 
 ---
 
-コミットしました:  
-「Support Python virtualenv, update gitignore, add pre-commit hook for feature-map generation, and initial feature docs」  
+コミットしました:\
+「Support Python virtualenv, update gitignore, add pre-commit hook for feature-map generation, and initial feature docs」
 
 他に何かご要望はありますか？
 
 ---
-

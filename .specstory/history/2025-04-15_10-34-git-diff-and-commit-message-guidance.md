@@ -5,8 +5,7 @@
 _**User**_
 
 git --no-pager diff --staged -- . ':(exclude)/workspace/.specstory' ':(exclude)/workspace/chat.txt' ':(exclude)/workspace/tips.txt'
- で変更点を確認して、コミットメッセージを英語で書いて、コミットして。
-
+で変更点を確認して、コミットメッセージを英語で書いて、コミットして。
 
 ---
 
@@ -168,7 +167,4 @@ node ➜ /workspace (main) $
 
 ---
 
-
-
 ---
-

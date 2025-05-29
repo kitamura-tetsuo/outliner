@@ -19,14 +19,14 @@ const baseLogger = pino({
         asObject: true, // ログをオブジェクトとして扱う
         write: {
             // Pino のデフォルトコンソール出力を無効化（カスタム出力のみを使用）
-            info: () => { },
-            debug: () => { },
-            error: () => { },
-            fatal: () => { },
-            warn: () => { },
-            trace: () => { },
-            log: () => { },
-            silent: () => { },
+            info: () => {},
+            debug: () => {},
+            error: () => {},
+            fatal: () => {},
+            warn: () => {},
+            trace: () => {},
+            log: () => {},
+            silent: () => {},
         },
         // transmit: {
         //     level: "info", // このレベル以上のログをサーバーに送信
@@ -342,7 +342,7 @@ export function log(
  */
 function extractErrorDetails(
     error: Error | unknown,
-): { message: string; stack?: string; name?: string;[key: string]: any; } {
+): { message: string; stack?: string; name?: string; [key: string]: any; } {
     if (error instanceof Error) {
         return {
             message: error.message,

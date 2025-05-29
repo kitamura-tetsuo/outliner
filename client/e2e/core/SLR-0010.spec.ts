@@ -6,8 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -56,11 +56,11 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
-        await page.keyboard.down('Shift');
+        await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
-            await page.keyboard.press('ArrowRight');
+            await page.keyboard.press("ArrowRight");
         }
-        await page.keyboard.up('Shift');
+        await page.keyboard.up("Shift");
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
@@ -68,7 +68,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(cursorData.selectionCount).toBeGreaterThan(0);
 
         // Ctrl+Bを押して太字に変更
-        await page.keyboard.press('Control+b');
+        await page.keyboard.press("Control+b");
         await page.waitForTimeout(300);
 
         // テキストが太字になったことを確認（Scrapbox構文: [[text]] または [* text]）
@@ -86,11 +86,11 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
-        await page.keyboard.down('Shift');
+        await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
-            await page.keyboard.press('ArrowRight');
+            await page.keyboard.press("ArrowRight");
         }
-        await page.keyboard.up('Shift');
+        await page.keyboard.up("Shift");
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
@@ -98,7 +98,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(cursorData.selectionCount).toBeGreaterThan(0);
 
         // Ctrl+Iを押して斜体に変更
-        await page.keyboard.press('Control+i');
+        await page.keyboard.press("Control+i");
         await page.waitForTimeout(300);
 
         // テキストが斜体になったことを確認（Scrapbox構文: [/ text]）
@@ -115,11 +115,11 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
-        await page.keyboard.down('Shift');
+        await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
-            await page.keyboard.press('ArrowRight');
+            await page.keyboard.press("ArrowRight");
         }
-        await page.keyboard.up('Shift');
+        await page.keyboard.up("Shift");
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
@@ -127,7 +127,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(cursorData.selectionCount).toBeGreaterThan(0);
 
         // Ctrl+Uを押して下線を追加
-        await page.keyboard.press('Control+u');
+        await page.keyboard.press("Control+u");
         await page.waitForTimeout(300);
 
         // テキストに下線が追加されたことを確認
@@ -146,11 +146,11 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
-        await page.keyboard.down('Shift');
+        await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
-            await page.keyboard.press('ArrowRight');
+            await page.keyboard.press("ArrowRight");
         }
-        await page.keyboard.up('Shift');
+        await page.keyboard.up("Shift");
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
@@ -158,7 +158,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(cursorData.selectionCount).toBeGreaterThan(0);
 
         // Ctrl+Kを押して取り消し線に変更
-        await page.keyboard.press('Control+k');
+        await page.keyboard.press("Control+k");
         await page.waitForTimeout(300);
 
         // テキストが取り消し線になったことを確認（Scrapbox構文: [- text]）
@@ -176,11 +176,11 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
-        await page.keyboard.down('Shift');
+        await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
-            await page.keyboard.press('ArrowRight');
+            await page.keyboard.press("ArrowRight");
         }
-        await page.keyboard.up('Shift');
+        await page.keyboard.up("Shift");
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
@@ -188,7 +188,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(cursorData.selectionCount).toBeGreaterThan(0);
 
         // Ctrl+`を押してコードに変更
-        await page.keyboard.press('Control+`');
+        await page.keyboard.press("Control+`");
         await page.waitForTimeout(300);
 
         // テキストがコードになったことを確認
@@ -206,14 +206,14 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
-        await page.keyboard.down('Shift');
+        await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
-            await page.keyboard.press('ArrowRight');
+            await page.keyboard.press("ArrowRight");
         }
 
         // Shift+Downで次のアイテムまで選択範囲を拡張
-        await page.keyboard.press('Shift+ArrowDown');
-        await page.keyboard.up('Shift');
+        await page.keyboard.press("Shift+ArrowDown");
+        await page.keyboard.up("Shift");
         await page.waitForTimeout(300);
 
         // 複数アイテムにまたがる選択範囲が作成されたことを確認
@@ -221,7 +221,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(cursorData.selectionCount).toBeGreaterThan(0);
 
         // Ctrl+Bを押して太字に変更
-        await page.keyboard.press('Control+b');
+        await page.keyboard.press("Control+b");
         await page.waitForTimeout(300);
 
         // 注: 複数アイテムにまたがる選択範囲のフォーマット変更は実装が難しいため、

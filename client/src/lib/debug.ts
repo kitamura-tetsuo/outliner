@@ -3,11 +3,11 @@
  * 開発環境でのみ使用する
  */
 
-import { getLogger } from "./logger";
 import { goto } from "$app/navigation";
-import * as fluidService from "../lib/fluidService";
-import { fluidStore } from "../stores/fluidStore.svelte";
 import { userManager } from "../auth/UserManager";
+import * as fluidService from "../lib/fluidService.svelte";
+import { fluidStore } from "../stores/fluidStore.svelte";
+import { getLogger } from "./logger";
 
 const logger = getLogger();
 

@@ -12,7 +12,6 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SLR-0002: 行頭まで選択", () => {
     // テストのタイムアウトを120秒に設定
 
-
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
@@ -54,25 +53,25 @@ test.describe("SLR-0002: 行頭まで選択", () => {
 
         // 初期状態では選択範囲がないことを確認
         const initialSelectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
+            return document.querySelector(".editor-overlay .selection") !== null;
         });
         expect(initialSelectionExists).toBe(false);
 
         // Shift + Homeを押下
-        await page.keyboard.down('Shift');
-        await page.keyboard.press('Home');
-        await page.keyboard.up('Shift');
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("Home");
+        await page.keyboard.up("Shift");
 
         // 更新を待機
         await page.waitForTimeout(100);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 
@@ -117,31 +116,31 @@ test.describe("SLR-0002: 行頭まで選択", () => {
 
         // 初期状態では選択範囲がないことを確認
         const initialSelectionExists = await page.evaluate(() => {
-            return document.querySelector('.editor-overlay .selection') !== null;
+            return document.querySelector(".editor-overlay .selection") !== null;
         });
         expect(initialSelectionExists).toBe(false);
 
         // 現在のカーソル位置を確認
         const cursorData = await CursorValidator.getCursorData(page);
-        console.log('Current cursor position:', cursorData.cursors[0]);
+        console.log("Current cursor position:", cursorData.cursors[0]);
 
         // Shift + Homeを押下
-        await page.keyboard.down('Shift');
-        await page.keyboard.press('Home');
-        await page.keyboard.up('Shift');
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("Home");
+        await page.keyboard.up("Shift");
 
         // 更新を待機
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             const text = store.getSelectedText();
-            console.log('Selected text:', text);
+            console.log("Selected text:", text);
             return text;
         });
 

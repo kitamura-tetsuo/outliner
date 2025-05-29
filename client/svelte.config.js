@@ -1,12 +1,12 @@
 import adapter from "@sveltejs/adapter-static";
-import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import { mdsvex } from "mdsvex";
+import sveltePreprocess from "svelte-preprocess";
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
     // Consult https://svelte.dev/docs/kit/integrations
     // for more information about preprocessors
-    preprocess: [vitePreprocess(), mdsvex()],
+    preprocess: [sveltePreprocess(), mdsvex()],
 
     // compilerOptions: { runes: true },
     compilerOptions: { runes: true },
@@ -14,11 +14,11 @@ const config = {
     kit: {
         adapter: adapter({
             // Firebase Hostingのpublicディレクトリに出力
-            pages: '../build',
-            assets: '../build',
-            fallback: 'index.html',
+            pages: "../build",
+            assets: "../build",
+            fallback: "index.html",
             precompress: false,
-            strict: true
+            strict: true,
         }),
     },
 

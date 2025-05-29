@@ -51,12 +51,12 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 
@@ -71,7 +71,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const newSelectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 
@@ -118,7 +118,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 
@@ -133,7 +133,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const newSelectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 
@@ -162,12 +162,12 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.waitForTimeout(3000);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 
@@ -176,7 +176,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         expect(selectionText).toContain("First line");
 
         // 選択範囲が複数行にまたがっていることを確認
-        const lines = selectionText.split('\n');
+        const lines = selectionText.split("\n");
         expect(lines.length).toBeGreaterThanOrEqual(1);
 
         // カーソル情報を取得して検証
@@ -202,12 +202,12 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator('.editor-overlay .selection')).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return '';
+            if (!store) return "";
             return store.getSelectedText();
         });
 
@@ -220,7 +220,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         expect(containsFirstLine || containsSecondLine).toBe(true);
 
         // 選択範囲が複数行にまたがっていることを確認
-        const lines = selectionText.split('\n');
+        const lines = selectionText.split("\n");
         expect(lines.length).toBeGreaterThanOrEqual(1);
 
         // カーソル情報を取得して検証

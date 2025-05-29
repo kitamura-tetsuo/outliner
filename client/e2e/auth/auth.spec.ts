@@ -10,13 +10,12 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("認証機能テスト", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // テスト開始前に十分な時間を設定
-
 
         // ホームページにアクセス
         await page.goto("/");
@@ -25,7 +24,8 @@ test.describe("認証機能テスト", () => {
         try {
             await page.waitForLoadState("networkidle", { timeout: 60000 });
             console.log("Page loaded, waiting for UI elements to stabilize...");
-        } catch (error) {
+        }
+        catch (error) {
             console.log("Timeout waiting for networkidle, continuing anyway");
             // スクリーンショットを撮影して状態を確認
             await page.screenshot({ path: "test-results/auth-networkidle-timeout.png" });

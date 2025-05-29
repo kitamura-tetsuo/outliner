@@ -134,7 +134,7 @@ export class FluidClient {
         onDisconnected?: () => void,
     ): () => void {
         if (!container) {
-            return () => { };
+            return () => {};
         }
 
         const connectedListener = () => {
@@ -251,7 +251,7 @@ export class FluidClient {
         if (!path) return treeData;
 
         // パスに基づいてデータを取得
-        const parts = path.split('.');
+        const parts = path.split(".");
         let result = treeData as any;
         for (const part of parts) {
             if (result === undefined || result === null) return null;
@@ -343,7 +343,8 @@ export class FluidClient {
                 const item = pageItems.addNode("test-user");
                 item.updateText(line);
             }
-        } catch (error) {
+        }
+        catch (error) {
             console.error("Error creating page:", error);
             throw error;
         }

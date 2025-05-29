@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte";
+import { createEventDispatcher } from "svelte";
 import { TreeViewManager } from "../fluid/TreeViewManager";
 import {
     Item,
@@ -7,21 +8,20 @@ import {
     Project,
 } from "../schema/app-schema";
 import { store } from "../stores/store.svelte";
-import { createEventDispatcher } from "svelte";
 
 interface Props {
     project: Project;
     rootItems: Items; // 最上位のアイテムリスト（ページリスト）
     currentPage?: Item | null; // 直接ページオブジェクトを受け取るように追加
     currentUser?: string;
-    onPageSelected?: (event: CustomEvent<{pageId: string, pageName: string}>) => void;
+    onPageSelected?: (event: CustomEvent<{ pageId: string; pageName: string; }>) => void;
 }
 
 let {
     project,
     rootItems,
     currentUser = "anonymous",
-    onPageSelected
+    onPageSelected,
 }: Props = $props();
 
 const dispatch = createEventDispatcher();
@@ -48,19 +48,19 @@ function selectPage(page: Item) {
 
     // イベントを発火
     if (onPageSelected) {
-        const event = new CustomEvent('pageSelected', {
+        const event = new CustomEvent("pageSelected", {
             detail: {
                 pageId: page.id,
-                pageName: page.text
-            }
+                pageName: page.text,
+            },
         });
         onPageSelected(event);
     }
 
     // カスタムイベントをディスパッチ
-    dispatch('pageSelected', {
+    dispatch("pageSelected", {
         pageId: page.id,
-        pageName: page.text
+        pageName: page.text,
     });
 }
 

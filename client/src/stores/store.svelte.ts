@@ -23,6 +23,6 @@ class GeneralStore {
 export const store = new GeneralStore();
 
 // グローバルに参照できるようにする（ScrapboxFormatter.tsからアクセスするため）
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
     (window as any).appStore = store;
 }

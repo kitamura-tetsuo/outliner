@@ -2,11 +2,9 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import {
-    waitForCursorVisible,
-} from "../helpers";
-import { TestHelpers } from "../utils/testHelpers";
+import { waitForCursorVisible } from "../helpers";
 import { LinkTestHelpers } from "../utils/linkTestHelpers";
+import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 
 /**
@@ -28,7 +26,6 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
     test("内部リンクをクリックして別のページに移動する", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // ホームページにアクセス
@@ -81,7 +78,6 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
     test("URLを直接入力して内部リンク先のページにアクセスする", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
-
         });
 
         // まずホームページにアクセス
@@ -217,7 +213,6 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
     test("内部リンクをクリックして遷移先のページ内容が正しく表示される", async ({ page }) => {
         // テストページをセットアップ
 
-
         // 最初のページのURLを保存
         const sourceUrl = page.url();
 
@@ -301,7 +296,6 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
     test("存在しないページへの内部リンクをクリックした場合の挙動", async ({ page }) => {
         // テストページをセットアップ
 
-
         // 最初のページのURLを保存
         const sourceUrl = page.url();
 
@@ -368,7 +362,6 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
      */
     test("プロジェクト内部リンクをクリックして遷移先のページ内容が正しく表示される", async ({ page }) => {
         // テストページをセットアップ
-
 
         // 最初のページのURLを保存
         const sourceUrl = page.url();

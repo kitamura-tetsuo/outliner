@@ -1,267 +1,298 @@
 <script lang="ts">
-    import { page } from "$app/stores";
-    import { goto } from "$app/navigation";
-    import { onDestroy, onMount } from "svelte";
-    import { userManager } from "../../../auth/UserManager";
-    import AuthComponent from "../../../components/AuthComponent.svelte";
-    import OutlinerBase from "../../../components/OutlinerBase.svelte";
-    import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
-    import { getLogger } from "../../../lib/logger";
-    import { fluidStore } from "../../../stores/fluidStore.svelte";
-    import { loadContainer } from "../../../services";
-    import { store } from "../../../stores/store.svelte";
-    import { Item, Items } from "../../../schema/app-schema";
-    import { v4 as uuid } from "uuid";
-    import { TreeViewManager } from "../../../fluid/TreeViewManager";
-    import {
-        setupLinkPreviewHandlers,
-        cleanupLinkPreviews,
-    } from "../../../lib/linkPreviewHandler";
+import { goto } from "$app/navigation";
+import { page } from "$app/stores";
+import {
+    onDestroy,
+    onMount,
+} from "svelte";
+import { v4 as uuid } from "uuid";
+import { userManager } from "../../../auth/UserManager";
+import AuthComponent from "../../../components/AuthComponent.svelte";
+import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
+import OutlinerBase from "../../../components/OutlinerBase.svelte";
+import { TreeViewManager } from "../../../fluid/TreeViewManager";
+import {
+    cleanupLinkPreviews,
+    setupLinkPreviewHandlers,
+} from "../../../lib/linkPreviewHandler";
+import { getLogger } from "../../../lib/logger";
+import {
+    Item,
+    Items,
+} from "../../../schema/app-schema";
+import { getFluidClientByProjectTitle } from "../../../services";
+import { fluidStore } from "../../../stores/fluidStore.svelte";
+import { store } from "../../../stores/store.svelte";
 
-    const logger = getLogger("ProjectPage");
+const logger = getLogger("ProjectPage");
 
-    // URLパラメータを取得
-    let projectName = $state("");
-    let pageName = $state("");
+// URLパラメータを取得
+let projectName = $state("");
+let pageName = $state("");
 
-    // ページの状態
-    let error: string | null = $state(null);
-    let isLoading = $state(true);
-    let isAuthenticated = $state(false);
-    let pageNotFound = $state(false);
-    let isTemporaryPage = $state(false); // 仮ページかどうかのフラグ
-    let hasBeenEdited = $state(false); // 仮ページが編集されたかどうかのフラグ
+// ページの状態
+let error: string | null = $state(null);
+let isLoading = $state(true);
+let isAuthenticated = $state(false);
+let pageNotFound = $state(false);
+let isTemporaryPage = $state(false); // 仮ページかどうかのフラグ
+let hasBeenEdited = $state(false); // 仮ページが編集されたかどうかのフラグ
 
-    // URLパラメータを監視して更新
-    $effect(() => {
-        if ($page.params.project) {
-            projectName = $page.params.project;
+// URLパラメータを監視して更新
+$effect(() => {
+    if ($page.params.project) {
+        projectName = $page.params.project;
+    }
+    if ($page.params.page) {
+        pageName = $page.params.page;
+    }
+
+    logger.info(`Loading project: ${projectName}, page: ${pageName}`);
+
+    // プロジェクトとページが指定されている場合、データを読み込む
+    if (projectName && pageName && isAuthenticated) {
+        loadProjectAndPage();
+    }
+});
+
+// 認証成功時の処理
+async function handleAuthSuccess(authResult: any) {
+    logger.info("認証成功:", authResult);
+    isAuthenticated = true;
+
+    // 認証成功後にプロジェクトとページを読み込む
+    if (projectName && pageName) {
+        loadProjectAndPage();
+    }
+}
+
+// 認証ログアウト時の処理
+function handleAuthLogout() {
+    logger.info("ログアウトしました");
+    isAuthenticated = false;
+}
+
+// プロジェクトとページを読み込む
+async function loadProjectAndPage() {
+    isLoading = true;
+    error = null;
+    pageNotFound = false;
+
+    try {
+        // コンテナを読み込む
+        const client = await getFluidClientByProjectTitle(projectName);
+
+        // fluidClientストアを更新
+        fluidStore.fluidClient = client;
+
+        // ページを検索
+        if (store.pages) {
+            const foundPage = findPageByName(pageName);
+            if (foundPage) {
+                store.currentPage = foundPage;
+                isTemporaryPage = false;
+                hasBeenEdited = false;
+                logger.info(`Found existing page: ${pageName}`);
+            }
+            else {
+                // プロジェクトは存在するが、ページが存在しない場合は仮ページを表示
+                isTemporaryPage = true;
+                hasBeenEdited = false;
+
+                // 仮ページ用の一時的なアイテムを作成（SharedTreeには追加しない）
+                const tempItem = createTemporaryItem(pageName);
+                store.currentPage = tempItem;
+
+                logger.info(`Creating temporary page: ${pageName}`);
+            }
         }
-        if ($page.params.page) {
-            pageName = $page.params.page;
+        else {
+            pageNotFound = true;
+            logger.error("No pages available");
         }
+    }
+    catch (err) {
+        console.error("Failed to load project and page:", err);
+        error = err instanceof Error
+            ? err.message
+            : "プロジェクトとページの読み込み中にエラーが発生しました。";
+    }
+    finally {
+        isLoading = false;
+    }
+}
 
-        logger.info(`Loading project: ${projectName}, page: ${pageName}`);
+// ページ名からページを検索する
+function findPageByName(name: string) {
+    if (!store.pages) return null;
 
-        // プロジェクトとページが指定されている場合、データを読み込む
-        if (projectName && pageName && isAuthenticated) {
-            loadProjectAndPage();
+    // ページ名が一致するページを検索
+    for (const page of store.pages.current) {
+        if (page.text.toLowerCase() === name.toLowerCase()) {
+            return page;
         }
+    }
+
+    return null;
+}
+
+/**
+ * 仮ページ用の一時的なアイテムを作成する
+ * このアイテムはSharedTreeには追加されない
+ * @param pageName ページ名
+ * @returns 一時的なアイテム
+ */
+function createTemporaryItem(pageName: string): Item {
+    const timeStamp = new Date().getTime();
+    const currentUser = fluidStore.currentUser?.id || "anonymous";
+
+    // 一時的なアイテムを作成
+    const tempItem = new Item({
+        id: `temp-${uuid()}`,
+        text: pageName,
+        author: currentUser,
+        votes: [],
+        created: timeStamp,
+        lastChanged: timeStamp,
+        // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題
+        items: new Items([]), // 子アイテムのための空のリスト
     });
 
-    // 認証成功時の処理
-    async function handleAuthSuccess(authResult: any) {
-        logger.info("認証成功:", authResult);
-        isAuthenticated = true;
+    return tempItem;
+}
 
-        // 認証成功後にプロジェクトとページを読み込む
-        if (projectName && pageName) {
-            loadProjectAndPage();
-        }
+/**
+ * 仮ページを実際のページとして保存する
+ */
+function saveTemporaryPage() {
+    if (!isTemporaryPage || !hasBeenEdited || !store.project) {
+        return;
     }
 
-    // 認証ログアウト時の処理
-    function handleAuthLogout() {
-        logger.info("ログアウトしました");
-        isAuthenticated = false;
-    }
-
-    // プロジェクトとページを読み込む
-    async function loadProjectAndPage() {
-        isLoading = true;
-        error = null;
-        pageNotFound = false;
-
-        try {
-            // TODO: プロジェクト名からコンテナIDを取得する処理を実装
-            // 現在はダミーのコンテナIDを使用
-            const containerId = projectName;
-
-            // コンテナを読み込む
-            const client = await loadContainer(containerId);
-
-            // fluidClientストアを更新
-            fluidStore.fluidClient = client;
-
-            // ページを検索
-            if (store.pages) {
-                const foundPage = findPageByName(pageName);
-                if (foundPage) {
-                    store.currentPage = foundPage;
-                    isTemporaryPage = false;
-                    hasBeenEdited = false;
-                    logger.info(`Found existing page: ${pageName}`);
-                } else {
-                    // プロジェクトは存在するが、ページが存在しない場合は仮ページを表示
-                    isTemporaryPage = true;
-                    hasBeenEdited = false;
-
-                    // 仮ページ用の一時的なアイテムを作成（SharedTreeには追加しない）
-                    const tempItem = createTemporaryItem(pageName);
-                    store.currentPage = tempItem;
-
-                    logger.info(`Creating temporary page: ${pageName}`);
-                }
-            } else {
-                pageNotFound = true;
-                logger.error("No pages available");
-            }
-        } catch (err) {
-            console.error("Failed to load project and page:", err);
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "プロジェクトとページの読み込み中にエラーが発生しました。";
-        } finally {
-            isLoading = false;
-        }
-    }
-
-    // ページ名からページを検索する
-    function findPageByName(name: string) {
-        if (!store.pages) return null;
-
-        // ページ名が一致するページを検索
-        for (const page of store.pages.current) {
-            if (page.text.toLowerCase() === name.toLowerCase()) {
-                return page;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * 仮ページ用の一時的なアイテムを作成する
-     * このアイテムはSharedTreeには追加されない
-     * @param pageName ページ名
-     * @returns 一時的なアイテム
-     */
-    function createTemporaryItem(pageName: string): Item {
-        const timeStamp = new Date().getTime();
+    try {
         const currentUser = fluidStore.currentUser?.id || "anonymous";
 
-        // 一時的なアイテムを作成
-        const tempItem = new Item({
-            id: `temp-${uuid()}`,
-            text: pageName,
-            author: currentUser,
-            votes: [],
-            created: timeStamp,
-            lastChanged: timeStamp,
-            // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題
-            items: new Items([]), // 子アイテムのための空のリスト
-        });
+        // 新しいページを作成
+        const newPage = TreeViewManager.addPage(
+            store.project,
+            pageName,
+            currentUser,
+        );
 
-        return tempItem;
-    }
+        // 仮ページの内容を新しいページにコピー
+        if (store.currentPage) {
+            newPage.updateText(pageName);
 
-    /**
-     * 仮ページを実際のページとして保存する
-     */
-    function saveTemporaryPage() {
-        if (!isTemporaryPage || !hasBeenEdited || !store.project) {
-            return;
-        }
-
-        try {
-            const currentUser = fluidStore.currentUser?.id || "anonymous";
-
-            // 新しいページを作成
-            const newPage = TreeViewManager.addPage(
-                store.project,
-                pageName,
-                currentUser,
-            );
-
-            // 仮ページの内容を新しいページにコピー
-            if (store.currentPage) {
-                newPage.updateText(pageName);
-
-                // 子アイテムがあれば、それも追加
-                // TypeScriptエラーを回避するためにキャストを使用
-                const tempItems = store.currentPage.items as unknown as Items;
-                if (tempItems && tempItems.length > 0) {
-                    for (let i = 0; i < tempItems.length; i++) {
-                        const item = tempItems[i] as Item;
-                        const newItems = newPage.items as unknown as Items;
-                        const newItem = newItems.addNode(currentUser);
-                        newItem.updateText(item.text);
-                    }
+            // 子アイテムがあれば、それも追加
+            // TypeScriptエラーを回避するためにキャストを使用
+            const tempItems = store.currentPage.items as unknown as Items;
+            if (tempItems && tempItems.length > 0) {
+                for (let i = 0; i < tempItems.length; i++) {
+                    const item = tempItems[i] as Item;
+                    const newItems = newPage.items as unknown as Items;
+                    const newItem = newItems.addNode(currentUser);
+                    newItem.updateText(item.text);
                 }
             }
-
-            // 現在のページを新しいページに更新
-            store.currentPage = newPage;
-
-            // 仮ページフラグをリセット
-            isTemporaryPage = false;
-            hasBeenEdited = false;
-
-            logger.info(`Temporary page saved as actual page: ${pageName}`);
-        } catch (error) {
-            logger.error("Failed to save temporary page:", error);
-        }
-    }
-
-    /**
-     * 仮ページが編集されたことを検知する
-     */
-    function handleTemporaryPageEdited() {
-        if (isTemporaryPage && !hasBeenEdited) {
-            hasBeenEdited = true;
-            logger.info(`Temporary page edited: ${pageName}`);
-
-            // 編集されたら実際のページとして保存
-            saveTemporaryPage();
         }
 
-        // ページ内容が更新されたため、リンクプレビューハンドラーを再設定
-        // DOMの更新を待つ
-        setTimeout(() => {
-            setupLinkPreviewHandlers();
-        }, 300);
+        // 現在のページを新しいページに更新
+        store.currentPage = newPage;
+
+        // 仮ページフラグをリセット
+        isTemporaryPage = false;
+        hasBeenEdited = false;
+
+        logger.info(`Temporary page saved as actual page: ${pageName}`);
+    }
+    catch (error) {
+        logger.error("Failed to save temporary page:", error);
+    }
+}
+
+/**
+ * 仮ページが編集されたことを検知する
+ */
+function handleTemporaryPageEdited() {
+    if (isTemporaryPage && !hasBeenEdited) {
+        hasBeenEdited = true;
+        logger.info(`Temporary page edited: ${pageName}`);
+
+        // 編集されたら実際のページとして保存
+        saveTemporaryPage();
     }
 
-    // ホームに戻る
-    function goHome() {
-        goto("/");
-    }
+    // ページ内容が更新されたため、リンクプレビューハンドラーを再設定
+    // DOMの更新を待つ
+    setTimeout(() => {
+        setupLinkPreviewHandlers();
+    }, 300);
+}
 
-    onMount(() => {
-        // UserManagerの認証状態を確認
+// ホームに戻る
+function goHome() {
+    goto("/");
+}
 
-        isAuthenticated = userManager.getCurrentUser() !== null;
+// プロジェクトページに戻る
+function goToProject() {
+    goto(`/${projectName}`);
+}
 
-        // ページ読み込み後にリンクプレビューハンドラーを設定
-        // DOMが完全に読み込まれるのを待つ
-        setTimeout(() => {
-            setupLinkPreviewHandlers();
-        }, 500);
-    });
+onMount(() => {
+    // UserManagerの認証状態を確認
 
-    onDestroy(() => {
-        // リンクプレビューのクリーンアップ
-        cleanupLinkPreviews();
-    });
+    isAuthenticated = userManager.getCurrentUser() !== null;
+
+    // ページ読み込み後にリンクプレビューハンドラーを設定
+    // DOMが完全に読み込まれるのを待つ
+    setTimeout(() => {
+        setupLinkPreviewHandlers();
+    }, 500);
+});
+
+onDestroy(() => {
+    // リンクプレビューのクリーンアップ
+    cleanupLinkPreviews();
+});
 </script>
 
 <svelte:head>
-    <title
-        >{pageName ? pageName : "ページ"} - {projectName
+    <title>
+        {pageName ? pageName : "ページ"} - {
+            projectName
             ? projectName
-            : "プロジェクト"} | Fluid Outliner</title
-    >
+            : "プロジェクト"
+        } | Fluid Outliner
+    </title>
 </svelte:head>
 
 <main class="container mx-auto px-4 py-8">
-    <div class="mb-4 flex items-center">
-        <button
-            onclick={goHome}
-            class="mr-4 text-blue-600 hover:text-blue-800 hover:underline"
-        >
-            ← ホームに戻る
-        </button>
+    <div class="mb-4">
+        <!-- パンくずナビゲーション -->
+        <nav class="mb-2 flex items-center text-sm text-gray-600">
+            <button
+                onclick={goHome}
+                class="text-blue-600 hover:text-blue-800 hover:underline"
+            >
+                ホーム
+            </button>
+            {#if projectName}
+                <span class="mx-2">/</span>
+                <button
+                    onclick={goToProject}
+                    class="text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                    {projectName}
+                </button>
+            {/if}
+            {#if pageName}
+                <span class="mx-2">/</span>
+                <span class="text-gray-900">{pageName}</span>
+            {/if}
+        </nav>
+
+        <!-- ページタイトル -->
         <h1 class="text-2xl font-bold">
             {#if projectName && pageName}
                 <span class="text-gray-600">{projectName} /</span> {pageName}
@@ -363,22 +394,22 @@
 </main>
 
 <style>
-    .loader {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #3498db;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto;
-    }
+.loader {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
 
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
     }
+    100% {
+        transform: rotate(360deg);
+    }
+}
 </style>

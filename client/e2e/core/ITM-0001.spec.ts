@@ -6,8 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-0001: Enterで新規アイテム追加", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -21,7 +21,8 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
+        }
+        else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -41,7 +42,7 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // カーソルを文の途中に移動
         await page.keyboard.press("Home");
@@ -73,7 +74,7 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // カーソルを文の途中に移動
         await page.keyboard.press("Home");
@@ -82,14 +83,16 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         }
 
         // 初期テキストを取得
-        const initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text").textContent();
+        const initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
+            .textContent();
 
         // Enterキーを押下
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
         // 1つ目のアイテムのテキストを取得
-        const firstItemText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text").textContent();
+        const firstItemText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
+            .textContent();
 
         // 1つ目のアイテムにカーソル位置より前のテキストが残っていることを確認
         // 実際の動作に合わせてテストを修正
@@ -108,7 +111,7 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // カーソルを文の途中に移動
         await page.keyboard.press("Home");
@@ -117,7 +120,8 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         }
 
         // 初期テキストを取得
-        const initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text").textContent();
+        const initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
+            .textContent();
 
         // Enterキーを押下
         await page.keyboard.press("Enter");
@@ -134,10 +138,12 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
 
         // アクティブなアイテムを取得
         const newActiveItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
-        await newActiveItem.waitFor({ state: 'visible' });
+        await newActiveItem.waitFor({ state: "visible" });
 
         // 2つ目のアイテムのテキストを取得
-        const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-text").textContent();
+        const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(
+            ".item-text",
+        ).textContent();
 
         // 2つ目のアイテムにテキストが含まれていることを確認
         expect(secondItemText).not.toBe("");
@@ -155,7 +161,7 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
 
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
-        await activeItem.waitFor({ state: 'visible' });
+        await activeItem.waitFor({ state: "visible" });
 
         // カーソルを文の途中に移動
         await page.keyboard.press("Home");
@@ -179,23 +185,23 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
 
         // アクティブなアイテムを取得
         const newActiveItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
-        await newActiveItem.waitFor({ state: 'visible' });
+        await newActiveItem.waitFor({ state: "visible" });
 
         // カーソルの位置を確認
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
 
         // カーソルが存在することを確認
-        await cursor.waitFor({ state: 'visible' });
+        await cursor.waitFor({ state: "visible" });
 
         // カーソルの位置からアクティブなアイテムを確認
         const cursorActiveItemId = await page.evaluate(() => {
-            const cursor = document.querySelector('.editor-overlay .cursor.active');
+            const cursor = document.querySelector(".editor-overlay .cursor.active");
             if (!cursor) return null;
 
             // カーソルの位置から、それを含むアイテムを特定
             const cursorRect = cursor.getBoundingClientRect();
-            const items = document.querySelectorAll('.outliner-item');
+            const items = document.querySelectorAll(".outliner-item");
 
             for (const item of items) {
                 const itemRect = item.getBoundingClientRect();
@@ -204,7 +210,7 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
                     cursorRect.top >= itemRect.top &&
                     cursorRect.bottom <= itemRect.bottom
                 ) {
-                    return item.getAttribute('data-item-id');
+                    return item.getAttribute("data-item-id");
                 }
             }
             return null;

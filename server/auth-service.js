@@ -54,13 +54,14 @@ const periodicLogRotation = async () => {
             refreshServerLogStream();
         }
 
-        logger.info(`Periodic log rotation completed: ${JSON.stringify({
-            clientRotated,
-            telemetryRotated,
-            serverRotated,
-            timestamp: new Date().toISOString(),
-        })
-            }`);
+        logger.info(`Periodic log rotation completed: ${
+            JSON.stringify({
+                clientRotated,
+                telemetryRotated,
+                serverRotated,
+                timestamp: new Date().toISOString(),
+            })
+        }`);
     }
     catch (error) {
         logger.error(`Error during periodic log rotation: ${error.message}`);
@@ -97,7 +98,8 @@ catch (error) {
 
 // Firebase emulatorの起動を待つ関数
 async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
-    const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST || process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
+    const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST || process.env.FIRESTORE_EMULATOR_HOST ||
+        process.env.FIREBASE_EMULATOR_HOST;
 
     if (!isEmulator) {
         logger.info("Firebase emulator not configured, skipping connection wait");
@@ -118,18 +120,21 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
 
             logger.info(`Firebase emulator connection successful. Found users: ${listUsersResult.users.length}`);
             if (listUsersResult.users.length > 0) {
-                logger.info(`First user: ${JSON.stringify({
-                    uid: listUsersResult.users[0].uid,
-                    email: listUsersResult.users[0].email,
-                    displayName: listUsersResult.users[0].displayName,
-                })}`);
+                logger.info(`First user: ${
+                    JSON.stringify({
+                        uid: listUsersResult.users[0].uid,
+                        email: listUsersResult.users[0].email,
+                        displayName: listUsersResult.users[0].displayName,
+                    })
+                }`);
             }
 
             return; // 成功した場合は関数を終了
-        } catch (error) {
+        }
+        catch (error) {
             retryCount++;
 
-            if (error.code === 'ECONNREFUSED' || error.message.includes('ECONNREFUSED')) {
+            if (error.code === "ECONNREFUSED" || error.message.includes("ECONNREFUSED")) {
                 logger.warn(`Firebase emulator not ready yet (attempt ${retryCount}/${maxRetries}): ${error.message}`);
 
                 if (retryCount < maxRetries) {
@@ -139,7 +144,8 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
                     // 指数バックオフ（最大遅延時間まで）
                     delay = Math.min(delay * 1.5, maxDelay);
                 }
-            } else {
+            }
+            else {
                 // ECONNREFUSED以外のエラーは即座に失敗とする
                 logger.error(`Firebase emulator connection failed with non-connection error: ${error.message}`);
                 throw error;
@@ -195,7 +201,8 @@ async function initializeFirebase() {
             try {
                 await waitForFirebaseEmulator();
                 logger.info("Firebase emulator connection established successfully");
-            } catch (error) {
+            }
+            catch (error) {
                 logger.error(`Firebase emulator connection failed after retries: ${error.message}`);
             }
         }
@@ -219,16 +226,18 @@ async function initializeFirebase() {
                         if (cleared) {
                             logger.info("開発環境の Firestore エミュレータデータを消去しました");
                         }
-                    } catch (error) {
+                    }
+                    catch (error) {
                         logger.error(`Firestore エミュレータデータの消去に失敗しました: ${error.message}`);
                     }
                 }
-            } catch (error) {
+            }
+            catch (error) {
                 logger.warn(`テストユーザーのセットアップに失敗しました: ${error.message}`);
             }
         }
-
-    } catch (error) {
+    }
+    catch (error) {
         logger.error(`Firebase初期化エラー: ${error.message}`);
         process.exit(1);
     }
@@ -292,7 +301,8 @@ async function clearFirestoreEmulatorData() {
 
         logger.info("Firestore エミュレータのデータを全て消去しました");
         return true;
-    } catch (error) {
+    }
+    catch (error) {
         logger.error(`Firestore エミュレータのデータ消去中にエラーが発生しました: ${error.message}`);
         return false;
     }
@@ -309,7 +319,7 @@ async function deleteQueryBatch(query) {
 
     // バッチ処理でドキュメントを削除
     const batch = db.batch();
-    snapshot.docs.forEach((doc) => {
+    snapshot.docs.forEach(doc => {
         batch.delete(doc.ref);
     });
 
@@ -492,7 +502,7 @@ if (isDevelopment) {
 
                 const buffer = Buffer.alloc(length);
                 fs.read(fd, buffer, 0, length, position, (err, bytesRead, buffer) => {
-                    fs.close(fd, () => { });
+                    fs.close(fd, () => {});
 
                     if (err) {
                         logger.error(`Telemetryログファイルの読み込みに失敗しました: ${err.message}`);
@@ -507,7 +517,8 @@ if (isDevelopment) {
                     const logs = lines.map(line => {
                         try {
                             return JSON.parse(line);
-                        } catch (e) {
+                        }
+                        catch (e) {
                             return { raw: line };
                         }
                     });
@@ -558,13 +569,14 @@ app.post("/api/rotate-logs", async (req, res) => {
         });
 
         // 新しいログファイルに情報を記録
-        logger.info(`ログファイルをローテーションしました: ${JSON.stringify({
-            clientRotated,
-            telemetryRotated,
-            serverRotated,
-            timestamp: new Date().toISOString(),
-        })
-            }`);
+        logger.info(`ログファイルをローテーションしました: ${
+            JSON.stringify({
+                clientRotated,
+                telemetryRotated,
+                serverRotated,
+                timestamp: new Date().toISOString(),
+            })
+        }`);
     }
     catch (error) {
         logger.error(`ログローテーション中にエラーが発生しました: ${error.message}`);

@@ -5,9 +5,11 @@
 _**User**_
 
 For the code present, we get this error:
+
 ```
 'error' is of type 'unknown'.
 ```
+
 How can I resolve this? If you propose a fix, please make it concise.
 
 ---
@@ -32,8 +34,8 @@ Typeエラーは `error` が `unknown` 型として扱われるため発生し�
 // ... existing code ...
 console.error("Server token debug error:", error);
 const message = error instanceof Error
-  ? error.message
-  : "サーバーからトークン情報を取得できませんでした";
+    ? error.message
+    : "サーバーからトークン情報を取得できませんでした";
 return { error: message };
 // ... existing code ...
 ```
@@ -45,9 +47,11 @@ return { error: message };
 _**User**_
 
 For the code present, we get this error:
+
 ```
 Argument of type 'Function' is not assignable to parameter of type '((unstable?: unknown) => void) | (() => void)'.
 ```
+
 How can I resolve this? If you propose a fix, please make it concise.
 
 ---
@@ -94,7 +98,6 @@ Read file: client/src/lib/subscriptionManager.ts
 ```
 
 ```diff
-  
           // キーが提供されていない場合、node+eventNameの組み合わせを使用
 -         const subscriptionKey = key || `${node.id || "unknown"}-${eventName}`;
 +         const id = (node as any).id ?? "unknown";
@@ -137,10 +140,10 @@ export class SubscriptionManager {
 }
 ```
 
-- `subscriptions` マップの型を `() => void` に変更  
-- `subscribe` の引数 `callback` を `(unstable?: unknown) => void` に変更  
-- `Function` を廃止し、メソッド戻り値も `() => void`  
-- `node.id` の型エラー回避は `any` キャストで対応  
+- `subscriptions` マップの型を `() => void` に変更
+- `subscribe` の引数 `callback` を `(unstable?: unknown) => void` に変更
+- `Function` を廃止し、メソッド戻り値も `() => void`
+- `node.id` の型エラー回避は `any` キャストで対応
 
 これで型エラーは解消します。
 
@@ -149,9 +152,11 @@ export class SubscriptionManager {
 _**User**_
 
 For the code present, we get this error:
+
 ```
 'root.items' is of type 'unknown'.
 ```
+
 How can I resolve this? If you propose a fix, please make it concise.
 
 ---
@@ -160,9 +165,9 @@ _**Assistant**_
 
 <details>
             <summary>Searched codebase "app-schema" • **1** results</summary>
-        
-| File |
-|------|
+
+| File        |
+| ----------- |
 | `undefined` |
 
 </details>
@@ -205,32 +210,31 @@ _**User**_
 /workspace/client/src/schema/app-schema.ts
 で
 export class Item extends sf.objectRecursive("Item", {
-    id: sf.string,
-    text: sf.string, // テキスト内容
-    author: sf.string,
-    votes: sf.array(sf.string),
-    created: sf.number,
-    lastChanged: sf.number,
-    items: () => Items, // 子アイテムを保持
-}) 
+id: sf.string,
+text: sf.string, // テキスト内容
+author: sf.string,
+votes: sf.array(sf.string),
+created: sf.number,
+lastChanged: sf.number,
+items: () => Items, // 子アイテムを保持
+})
 と定義しているのに、unknoun型になる理由は?
-
 
 ---
 
 _**Assistant**_
 
-Fluid Framework の `sf.objectRecursive` および `TreeViewConfiguration` 周りの型定義は現状ちょっと不完全で、スキーマで宣言したフィールドの型情報が TypeScript に正しく伝搬しない（Issue #22101 参照）ためです。  
+Fluid Framework の `sf.objectRecursive` および `TreeViewConfiguration` 周りの型定義は現状ちょっと不完全で、スキーマで宣言したフィールドの型情報が TypeScript に正しく伝搬しない（Issue #22101 参照）ためです。\
 つまり、
 
 ```ts
 export class Project extends sf.objectRecursive("Project", {
-  /* … */
-  items: () => Items,
-}) { /* … */ }
+    /* … */
+    items: () => Items,
+}) {/* … */}
 ```
 
-と書いてあっても、実際の `TreeView<typeof Project>` から返されるインスタンス上では `items` が `unknown` 扱いになってしまいます。  
+と書いてあっても、実際の `TreeView<typeof Project>` から返されるインスタンス上では `items` が `unknown` 扱いになってしまいます。\
 対策としては既に行ったように、
 
 ```ts
@@ -252,48 +256,55 @@ _**Assistant**_
 
 Type定義を補完する方法として、主に以下の２パターンがあります。
 
-1. 型エイリアス＋アサーションで局所的にキャスト  
+1. 型エイリアス＋アサーションで局所的にキャスト
+
 ```ts
 // fluidService.ts の先頭などでインポート
 import type { TreeView } from "fluid-framework";
-import type { Project, Items } from "../schema/app-schema";
+import type {
+    Items,
+    Project,
+} from "../schema/app-schema";
 
 // Project用の View 型を定義
 type ProjectTreeView = TreeView<typeof Project> & {
-  root: Project & { items: Items };
+    root: Project & { items: Items; };
 };
 
 // ...略...
 
 // View を生成する箇所でキャスト
 const appData = (container.initialObjects.appData as ViewableTree)
-  .viewWith(appTreeConfiguration) as ProjectTreeView;
+    .viewWith(appTreeConfiguration) as ProjectTreeView;
 
 // これで items が Items 型として扱える
 appData.root.items.addNode("author");
 ```
 
-2. Declaration Merging で外部モジュールを拡張  
-プロジェクトのどこかに `src/types/fluid-framework.d.ts` を作成して、以下を記述すると  
-`TreeView<typeof Project>` の `root` に対して常に `items: Items` が補完されます。
+2. Declaration Merging で外部モジュールを拡張\
+   プロジェクトのどこかに `src/types/fluid-framework.d.ts` を作成して、以下を記述すると\
+   `TreeView<typeof Project>` の `root` に対して常に `items: Items` が補完されます。
 
 ```ts
 // src/types/fluid-framework.d.ts
 import "fluid-framework";
-import type { Project, Items } from "../schema/app-schema";
+import type {
+    Items,
+    Project,
+} from "../schema/app-schema";
 
 declare module "fluid-framework" {
-  interface TreeView<T> {
-    // Project 用にマッチする場合のみ Items を付けたいなら条件型も使えますが、
-    // 手早く全 TreeView に加えるなら以下のように
-    root: T extends typeof Project ? (Project & { items: Items }) : unknown;
-  }
+    interface TreeView<T> {
+        // Project 用にマッチする場合のみ Items を付けたいなら条件型も使えますが、
+        // 手早く全 TreeView に加えるなら以下のように
+        root: T extends typeof Project ? (Project & { items: Items; }) : unknown;
+    }
 }
 ```
 
 ---
 
-1. の方法は局所的に “ここだけ Items として扱いたい” 場合に便利。  
+1. の方法は局所的に “ここだけ Items として扱いたい” 場合に便利。
 2. の方法はコード全体で `TreeView<typeof Project>` の `root.items` を毎回キャスト不要にしたい場合に有効です。
 
 ---
@@ -304,8 +315,9 @@ fluid-framework.d.ts
 を作ったら、
 error TS2314: Generic type 'TreeView<TSchema, T>' requires 2 type argument(s).
 
-27     TreeView: TreeView<any>;
-                 ~~~~~~~~~~~~~
+27 TreeView: TreeView<any>;
+
+````
 というエラーが出た。
 
 ---
@@ -317,15 +329,17 @@ _**Assistant**_
 ```ts
 // src/types/fluid-framework.d.ts
 import "fluid-framework";
-import type { Project, Items } from "../schema/app-schema";
+import type {
+    Items,
+    Project,
+} from "../schema/app-schema";
 
 declare module "fluid-framework" {
-  // TreeView<TSchema, TView> に対して root プロパティを上書き
-  interface TreeView<TSchema, TView> {
-    root: TSchema extends typeof Project
-      ? Project & { items: Items }
-      : TView;
-  }
+    // TreeView<TSchema, TView> に対して root プロパティを上書き
+    interface TreeView<TSchema, TView> {
+        root: TSchema extends typeof Project ? Project & { items: Items; }
+            : TView;
+    }
 }
 ```
 
@@ -337,8 +351,8 @@ _**User**_
 
 src/lib/fluidService.ts:223:22 - error TS2314: Generic type 'TreeView<TSchema, TView>' requires 2 type argument(s).
 
-223         let appData: TreeView<typeof Project> | undefined = undefined;
-                         ~~~~~~~~~~~~~~~~~~~~~~~~
+223 let appData: TreeView<typeof Project> | undefined = undefined;
+````
 
 ---
 
@@ -346,11 +360,11 @@ _**Assistant**_
 
 <details>
             <summary>Grep search for "let appData" • **2** files</summary>
-        
-| File | Line | Match |
-|------|------|-------|
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L222 | `let appData: TreeView<typeof Project> | undefined = undefined;` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L222 | `let appData: TreeView<typeof Project> | undefined = undefined;` |
+
+| File                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Line | Match                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | -------------------------------------- |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L222 | `let appData: TreeView<typeof Project> |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L222 | `let appData: TreeView<typeof Project> |
 
 </details>
 
@@ -358,11 +372,11 @@ _**Assistant**_
 
 <details>
             <summary>Grep search for "interface TreeView" • **2** files</summary>
-        
-| File | Line | Match |
-|------|------|-------|
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/types/fluid-framework.d.ts` | L9 | `interface TreeView<TSchema, TView> {` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/types/fluid-framework.d.ts` | L9 | `interface TreeView<TSchema, TView> {` |
+
+| File                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Line | Match                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- | -------------------------------------- |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/types/fluid-framework.d.ts` | L9   | `interface TreeView<TSchema, TView> {` |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/types/fluid-framework.d.ts` | L9   | `interface TreeView<TSchema, TView> {` |
 
 </details>
 
@@ -370,13 +384,13 @@ _**Assistant**_
 
 <details>
             <summary>Grep search for "TreeView<typeof Project" • **2** files</summary>
-        
-| File | Line | Match |
-|------|------|-------|
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L51 | `TreeView<typeof Project> | undefined,` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L222 | `let appData: TreeView<typeof Project> | undefined = undefined;` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L51 | `TreeView<typeof Project> | undefined,` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L222 | `let appData: TreeView<typeof Project> | undefined = undefined;` |
+
+| File                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Line | Match                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | -------------------------------------- |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L51  | `TreeView<typeof Project>              |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L222 | `let appData: TreeView<typeof Project> |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L51  | `TreeView<typeof Project>              |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L222 | `let appData: TreeView<typeof Project> |
 
 </details>
 
@@ -405,21 +419,20 @@ _**Assistant**_
 -         let appData: TreeView<typeof Project> | undefined = undefined;
 +         let appData: ViewableTree<typeof Project> | undefined = undefined;
           let project: Project | undefined = undefined;
-  
 ```
 
 ---
 
 <details>
             <summary>Grep search for "viewWith" • **2** files</summary>
-        
-| File | Line | Match |
-|------|------|-------|
+
+| File                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Line | Match                                                                                                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------------------------------------------------- |
 | `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L164 | `const appData = (container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L230 | `appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);` |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L230 | `appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);`      |
 | `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L596 | `const appData = (container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);` |
 | `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L164 | `const appData = (container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);` |
-| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L230 | `appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);` |
+| `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L230 | `appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);`      |
 | `vscode-remote://dev-container%2B7b22686f737450617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e6572222c226c6f63616c446f636b6572223a66616c73652c22636f6e66696746696c65223a7b22246d6964223a312c2270617468223a222f686f6d652f7562756e74752f7372632f6f75746c696e65722f2e646576636f6e7461696e65722f646576636f6e7461696e65722e6a736f6e222c22736368656d65223a227673636f64652d66696c65486f7374227d7d@ssh-remote%2Bnasn/workspace/client/src/lib/fluidService.ts` | L596 | `const appData = (container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);` |
 
 </details>
@@ -428,30 +441,30 @@ _**Assistant**_
 
 <details>
             <summary>Listed directory client/node_modules/fluid-framework • **21** results</summary>
-        
-| Name |
-|-------|
-| 📁 `node_modules` |
-| 📁 `lib` |
-| 📁 `dist` |
-| 📄 `legacy.d.ts` |
-| 📁 `src` |
-| 📄 `beta.d.ts` |
-| 📄 `alpha.d.ts` |
-| 📄 `README.md` |
-| 📁 `api-report` |
-| 📄 `CHANGELOG.md` |
-| 📄 `biome.jsonc` |
-| 📄 `tsdoc.json` |
-| 📄 `tsconfig.json` |
-| 📄 `tsconfig.cjs.json` |
-| 📄 `package.json` |
-| 📁 `api-extractor` |
-| 📄 `api-extractor.json` |
+
+| Name                         |
+| ---------------------------- |
+| 📁 `node_modules`            |
+| 📁 `lib`                     |
+| 📁 `dist`                    |
+| 📄 `legacy.d.ts`             |
+| 📁 `src`                     |
+| 📄 `beta.d.ts`               |
+| 📄 `alpha.d.ts`              |
+| 📄 `README.md`               |
+| 📁 `api-report`              |
+| 📄 `CHANGELOG.md`            |
+| 📄 `biome.jsonc`             |
+| 📄 `tsdoc.json`              |
+| 📄 `tsconfig.json`           |
+| 📄 `tsconfig.cjs.json`       |
+| 📄 `package.json`            |
+| 📁 `api-extractor`           |
+| 📄 `api-extractor.json`      |
 | 📄 `api-extractor-lint.json` |
-| 📄 `prettier.config.cjs` |
-| 📄 `.eslintrc.cjs` |
-| 📄 `LICENSE` |
+| 📄 `prettier.config.cjs`     |
+| 📄 `.eslintrc.cjs`           |
+| 📄 `LICENSE`                 |
 
 </details>
 
@@ -459,16 +472,18 @@ _**Assistant**_
 
 <details>
             <summary>Grep search for "ViewableTree" • **0** files</summary>
-        
+
 No results found
+
 </details>
 
 ---
 
 <details>
             <summary>Grep search for "type ViewableTree" • **0** files</summary>
-        
+
 No results found
+
 </details>
 
 ---
@@ -479,18 +494,18 @@ Could not resolve URI: Error: Unable to resolve nonexistent file 'vscode-remote:
 
 <details>
             <summary>Listed directory client/node_modules/fluid-framework/dist • **9** results</summary>
-        
-| Name |
-|-------|
-| 📄 `public.d.ts` |
-| 📄 `legacy.d.ts` |
-| 📄 `index.d.ts` |
-| 📄 `beta.d.ts` |
-| 📄 `alpha.d.ts` |
-| 📄 `index.js.map` |
+
+| Name                |
+| ------------------- |
+| 📄 `public.d.ts`    |
+| 📄 `legacy.d.ts`    |
+| 📄 `index.d.ts`     |
+| 📄 `beta.d.ts`      |
+| 📄 `alpha.d.ts`     |
+| 📄 `index.js.map`   |
 | 📄 `index.d.ts.map` |
-| 📄 `package.json` |
-| 📄 `index.js` |
+| 📄 `package.json`   |
+| 📄 `index.js`       |
 
 </details>
 
@@ -510,109 +525,109 @@ Could not resolve URI: Error: Unable to resolve nonexistent file 'vscode-remote:
 
 <details>
             <summary>Listed directory client/node_modules • **100** results</summary>
-        
-| Name |
-|-------|
-| 📁 `.vite` |
-| 📁 `.vite-temp` |
+
+| Name                                   |
+| -------------------------------------- |
+| 📁 `.vite`                             |
+| 📁 `.vite-temp`                        |
 | 📁 `.svelte2tsx-language-server-files` |
-| 📄 `.package-lock.json` |
-| 📁 `@rollup` |
-| 📁 `@tailwindcss` |
-| 📁 `@esbuild` |
-| 📁 `esbuild` |
-| 📁 `.bin` |
-| 📁 `date-fns` |
-| 📁 `rxjs` |
-| 📁 `firebase` |
-| 📁 `typescript` |
-| 📁 `lodash` |
-| 📁 `playwright-core` |
-| 📁 `prismjs` |
-| 📁 `jsdom` |
-| 📁 `svelte` |
-| 📁 `eslint` |
-| 📁 `classic-level` |
-| 📁 `prettier` |
-| 📁 `svelte-check` |
-| 📁 `playwright` |
-| 📁 `protobufjs` |
-| 📁 `pino` |
-| 📁 `axios` |
-| 📁 `yaml` |
-| 📁 `eslint-plugin-svelte` |
-| 📁 `vitest` |
-| 📁 `tldts` |
-| 📁 `rollup` |
-| 📁 `isomorphic-git` |
-| 📁 `prettier-plugin-tailwindcss` |
-| 📁 `posthog-node` |
-| 📁 `aria-query` |
-| 📁 `async` |
-| 📁 `mdsvex` |
-| 📁 `vite` |
-| 📁 `solid-js` |
-| 📁 `ajv` |
-| 📁 `tinylicious` |
-| 📁 `axobject-query` |
-| 📁 `engine.io-client` |
-| 📁 `socket.io-client` |
-| 📁 `jiti` |
-| 📁 `parse5` |
-| 📁 `tailwindcss` |
-| 📁 `cssstyle` |
-| 📁 `abstract-level` |
-| 📁 `bottleneck` |
-| 📁 `tldts-core` |
-| 📁 `socket.io` |
-| 📁 `svelte-eslint-parser` |
-| 📁 `pull-stream` |
-| 📁 `entities` |
-| 📁 `chai` |
-| 📁 `prettier-plugin-svelte` |
-| 📁 `uuid` |
-| 📁 `fluid-framework` |
-| 📁 `web-vitals` |
-| 📁 `pako` |
-| 📁 `vite-node` |
-| 📁 `nconf` |
-| 📁 `winston` |
-| 📁 `esquery` |
-| 📁 `ioredis` |
-| 📁 `uri-js` |
-| 📁 `jsrsasign` |
-| 📁 `enhanced-resolve` |
-| 📁 `yargs` |
-| 📁 `lru-cache` |
-| 📁 `dom-accessibility-api` |
-| 📁 `logform` |
-| 📁 `semver` |
-| 📁 `graphemer` |
-| 📁 `eslint-config-prettier` |
-| 📁 `js-yaml` |
-| 📁 `postcss-selector-parser` |
-| 📁 `readable-stream` |
-| 📁 `thread-stream` |
-| 📁 `consola` |
-| 📁 `fast-glob` |
-| 📁 `typescript-eslint` |
-| 📁 `concurrently` |
-| 📁 `undici-types` |
-| 📁 `loupe` |
-| 📁 `postcss` |
-| 📁 `rrweb-cssom` |
-| 📁 `object-inspect` |
-| 📁 `qs` |
-| 📁 `iconv-lite` |
-| 📁 `math-intrinsics` |
-| 📁 `engine.io` |
-| 📁 `long` |
-| 📁 `es-module-lexer` |
-| 📁 `events_pkg` |
-| 📁 `events` |
-| 📁 `tough-cookie` |
-| 📁 `sonic-boom` |
-| 📁 `engine.io-parser` |
+| 📄 `.package-lock.json`                |
+| 📁 `@rollup`                           |
+| 📁 `@tailwindcss`                      |
+| 📁 `@esbuild`                          |
+| 📁 `esbuild`                           |
+| 📁 `.bin`                              |
+| 📁 `date-fns`                          |
+| 📁 `rxjs`                              |
+| 📁 `firebase`                          |
+| 📁 `typescript`                        |
+| 📁 `lodash`                            |
+| 📁 `playwright-core`                   |
+| 📁 `prismjs`                           |
+| 📁 `jsdom`                             |
+| 📁 `svelte`                            |
+| 📁 `eslint`                            |
+| 📁 `classic-level`                     |
+| 📁 `prettier`                          |
+| 📁 `svelte-check`                      |
+| 📁 `playwright`                        |
+| 📁 `protobufjs`                        |
+| 📁 `pino`                              |
+| 📁 `axios`                             |
+| 📁 `yaml`                              |
+| 📁 `eslint-plugin-svelte`              |
+| 📁 `vitest`                            |
+| 📁 `tldts`                             |
+| 📁 `rollup`                            |
+| 📁 `isomorphic-git`                    |
+| 📁 `prettier-plugin-tailwindcss`       |
+| 📁 `posthog-node`                      |
+| 📁 `aria-query`                        |
+| 📁 `async`                             |
+| 📁 `mdsvex`                            |
+| 📁 `vite`                              |
+| 📁 `solid-js`                          |
+| 📁 `ajv`                               |
+| 📁 `tinylicious`                       |
+| 📁 `axobject-query`                    |
+| 📁 `engine.io-client`                  |
+| 📁 `socket.io-client`                  |
+| 📁 `jiti`                              |
+| 📁 `parse5`                            |
+| 📁 `tailwindcss`                       |
+| 📁 `cssstyle`                          |
+| 📁 `abstract-level`                    |
+| 📁 `bottleneck`                        |
+| 📁 `tldts-core`                        |
+| 📁 `socket.io`                         |
+| 📁 `svelte-eslint-parser`              |
+| 📁 `pull-stream`                       |
+| 📁 `entities`                          |
+| 📁 `chai`                              |
+| 📁 `prettier-plugin-svelte`            |
+| 📁 `uuid`                              |
+| 📁 `fluid-framework`                   |
+| 📁 `web-vitals`                        |
+| 📁 `pako`                              |
+| 📁 `vite-node`                         |
+| 📁 `nconf`                             |
+| 📁 `winston`                           |
+| 📁 `esquery`                           |
+| 📁 `ioredis`                           |
+| 📁 `uri-js`                            |
+| 📁 `jsrsasign`                         |
+| 📁 `enhanced-resolve`                  |
+| 📁 `yargs`                             |
+| 📁 `lru-cache`                         |
+| 📁 `dom-accessibility-api`             |
+| 📁 `logform`                           |
+| 📁 `semver`                            |
+| 📁 `graphemer`                         |
+| 📁 `eslint-config-prettier`            |
+| 📁 `js-yaml`                           |
+| 📁 `postcss-selector-parser`           |
+| 📁 `readable-stream`                   |
+| 📁 `thread-stream`                     |
+| 📁 `consola`                           |
+| 📁 `fast-glob`                         |
+| 📁 `typescript-eslint`                 |
+| 📁 `concurrently`                      |
+| 📁 `undici-types`                      |
+| 📁 `loupe`                             |
+| 📁 `postcss`                           |
+| 📁 `rrweb-cssom`                       |
+| 📁 `object-inspect`                    |
+| 📁 `qs`                                |
+| 📁 `iconv-lite`                        |
+| 📁 `math-intrinsics`                   |
+| 📁 `engine.io`                         |
+| 📁 `long`                              |
+| 📁 `es-module-lexer`                   |
+| 📁 `events_pkg`                        |
+| 📁 `events`                            |
+| 📁 `tough-cookie`                      |
+| 📁 `sonic-boom`                        |
+| 📁 `engine.io-parser`                  |
 
 </details>
 
@@ -620,38 +635,38 @@ Could not resolve URI: Error: Unable to resolve nonexistent file 'vscode-remote:
 
 <details>
             <summary>Listed directory client/node_modules/@fluidframework/tree • **29** results</summary>
-        
-| Name |
-|-------|
-| 📁 `node_modules` |
-| 📁 `src` |
-| 📁 `lib` |
-| 📁 `dist` |
-| 📄 `legacy.d.ts` |
-| 📄 `internal.d.ts` |
-| 📄 `beta.d.ts` |
-| 📄 `alpha.d.ts` |
-| 📄 `assertTagging.config.mjs` |
-| 📁 `api-report` |
-| 📁 `docs` |
-| 📄 `README.md` |
-| 📄 `DEV.md` |
-| 📄 `CHANGELOG.md` |
-| 📄 `biome.jsonc` |
-| 📄 `tsdoc.json` |
-| 📄 `tsconfig.json` |
-| 📄 `tsconfig.cjs.json` |
-| 📁 `.vscode` |
-| 📄 `package.json` |
-| 📁 `api-extractor` |
-| 📄 `api-extractor.json` |
-| 📄 `api-extractor-lint.json` |
+
+| Name                                           |
+| ---------------------------------------------- |
+| 📁 `node_modules`                              |
+| 📁 `src`                                       |
+| 📁 `lib`                                       |
+| 📁 `dist`                                      |
+| 📄 `legacy.d.ts`                               |
+| 📄 `internal.d.ts`                             |
+| 📄 `beta.d.ts`                                 |
+| 📄 `alpha.d.ts`                                |
+| 📄 `assertTagging.config.mjs`                  |
+| 📁 `api-report`                                |
+| 📁 `docs`                                      |
+| 📄 `README.md`                                 |
+| 📄 `DEV.md`                                    |
+| 📄 `CHANGELOG.md`                              |
+| 📄 `biome.jsonc`                               |
+| 📄 `tsdoc.json`                                |
+| 📄 `tsconfig.json`                             |
+| 📄 `tsconfig.cjs.json`                         |
+| 📁 `.vscode`                                   |
+| 📄 `package.json`                              |
+| 📁 `api-extractor`                             |
+| 📄 `api-extractor.json`                        |
+| 📄 `api-extractor-lint.json`                   |
 | 📄 `.dependency-cruiser-known-violations.json` |
-| 📄 `.mocharc.customBenchmarks.cjs` |
-| 📄 `.mocharc.cjs` |
-| 📄 `.eslintrc.cjs` |
-| 📄 `.dependency-cruiser.cjs` |
-| 📄 `LICENSE` |
+| 📄 `.mocharc.customBenchmarks.cjs`             |
+| 📄 `.mocharc.cjs`                              |
+| 📄 `.eslintrc.cjs`                             |
+| 📄 `.dependency-cruiser.cjs`                   |
+| 📄 `LICENSE`                                   |
 
 </details>
 
@@ -659,54 +674,54 @@ Could not resolve URI: Error: Unable to resolve nonexistent file 'vscode-remote:
 
 <details>
             <summary>Listed directory client/node_modules/@fluidframework/tree/dist • **45** results</summary>
-        
-| Name |
-|-------|
-| 📁 `simple-tree` |
-| 📁 `feature-libraries` |
-| 📁 `util` |
-| 📁 `external-utilities` |
-| 📄 `treeFactory.d.ts` |
-| 📁 `shared-tree` |
-| 📁 `shared-tree-core` |
-| 📄 `tableSchema.d.ts` |
-| 📄 `sharedTreeAttributes.d.ts` |
-| 📄 `serializableDomainSchema.d.ts` |
-| 📁 `core` |
-| 📄 `public.d.ts` |
-| 📄 `packageVersion.d.ts` |
-| 📁 `codec` |
-| 📄 `legacy.d.ts` |
-| 📄 `jsonDomainSchema.d.ts` |
-| 📄 `internalTypes.d.ts` |
-| 📄 `index.d.ts` |
-| 📄 `beta.d.ts` |
-| 📄 `alpha.d.ts` |
-| 📄 `treeFactory.js.map` |
-| 📄 `treeFactory.d.ts.map` |
-| 📄 `tableSchema.js.map` |
-| 📄 `tableSchema.d.ts.map` |
-| 📄 `sharedTreeAttributes.js.map` |
-| 📄 `sharedTreeAttributes.d.ts.map` |
-| 📄 `serializableDomainSchema.js.map` |
+
+| Name                                   |
+| -------------------------------------- |
+| 📁 `simple-tree`                       |
+| 📁 `feature-libraries`                 |
+| 📁 `util`                              |
+| 📁 `external-utilities`                |
+| 📄 `treeFactory.d.ts`                  |
+| 📁 `shared-tree`                       |
+| 📁 `shared-tree-core`                  |
+| 📄 `tableSchema.d.ts`                  |
+| 📄 `sharedTreeAttributes.d.ts`         |
+| 📄 `serializableDomainSchema.d.ts`     |
+| 📁 `core`                              |
+| 📄 `public.d.ts`                       |
+| 📄 `packageVersion.d.ts`               |
+| 📁 `codec`                             |
+| 📄 `legacy.d.ts`                       |
+| 📄 `jsonDomainSchema.d.ts`             |
+| 📄 `internalTypes.d.ts`                |
+| 📄 `index.d.ts`                        |
+| 📄 `beta.d.ts`                         |
+| 📄 `alpha.d.ts`                        |
+| 📄 `treeFactory.js.map`                |
+| 📄 `treeFactory.d.ts.map`              |
+| 📄 `tableSchema.js.map`                |
+| 📄 `tableSchema.d.ts.map`              |
+| 📄 `sharedTreeAttributes.js.map`       |
+| 📄 `sharedTreeAttributes.d.ts.map`     |
+| 📄 `serializableDomainSchema.js.map`   |
 | 📄 `serializableDomainSchema.d.ts.map` |
-| 📄 `packageVersion.js.map` |
-| 📄 `packageVersion.d.ts.map` |
-| 📄 `jsonDomainSchema.js.map` |
-| 📄 `jsonDomainSchema.d.ts.map` |
-| 📄 `internalTypes.js.map` |
-| 📄 `internalTypes.d.ts.map` |
-| 📄 `index.js.map` |
-| 📄 `index.d.ts.map` |
-| 📄 `package.json` |
-| 📄 `treeFactory.js` |
-| 📄 `tableSchema.js` |
-| 📄 `sharedTreeAttributes.js` |
-| 📄 `serializableDomainSchema.js` |
-| 📄 `packageVersion.js` |
-| 📄 `jsonDomainSchema.js` |
-| 📄 `internalTypes.js` |
-| 📄 `index.js` |
+| 📄 `packageVersion.js.map`             |
+| 📄 `packageVersion.d.ts.map`           |
+| 📄 `jsonDomainSchema.js.map`           |
+| 📄 `jsonDomainSchema.d.ts.map`         |
+| 📄 `internalTypes.js.map`              |
+| 📄 `internalTypes.d.ts.map`            |
+| 📄 `index.js.map`                      |
+| 📄 `index.d.ts.map`                    |
+| 📄 `package.json`                      |
+| 📄 `treeFactory.js`                    |
+| 📄 `tableSchema.js`                    |
+| 📄 `sharedTreeAttributes.js`           |
+| 📄 `serializableDomainSchema.js`       |
+| 📄 `packageVersion.js`                 |
+| 📄 `jsonDomainSchema.js`               |
+| 📄 `internalTypes.js`                  |
+| 📄 `index.js`                          |
 
 </details>
 
@@ -730,8 +745,9 @@ Read file: client/node_modules/@fluidframework/tree/dist/simple-tree/index.d.ts
 
 <details>
             <summary>Grep search for "ViewableTree" • **0** files</summary>
-        
+
 No results found
+
 </details>
 
 ---
@@ -742,109 +758,109 @@ Read file: client/node_modules/@fluidframework/tree/dist/simple-tree/api/index.d
 
 <details>
             <summary>Listed directory client/node_modules/@fluidframework/tree/dist/simple-tree/api • **100** results</summary>
-        
-| Name |
-|-------|
-| 📄 `viewSchemaToSimpleSchema.d.ts` |
-| 📄 `view.d.ts` |
-| 📄 `verboseTree.d.ts` |
-| 📄 `typesUnsafe.d.ts` |
-| 📄 `treeNodeApi.d.ts` |
-| 📄 `treeApiBeta.d.ts` |
-| 📄 `tree.d.ts` |
-| 📄 `transactionTypes.d.ts` |
-| 📄 `testRecursiveDomain.d.ts` |
-| 📄 `storedSchema.d.ts` |
-| 📄 `simpleTreeIndex.d.ts` |
-| 📄 `simpleSchemaToJsonSchema.d.ts` |
-| 📄 `schemaFromSimple.d.ts` |
-| 📄 `schemaFactoryRecursive.d.ts` |
-| 📄 `schemaFactoryAlpha.d.ts` |
-| 📄 `schemaFactory.d.ts` |
-| 📄 `schemaCreationUtilities.d.ts` |
-| 📄 `jsonSchema.d.ts` |
-| 📄 `index.d.ts` |
-| 📄 `identifierIndex.d.ts` |
-| 📄 `getSimpleSchema.d.ts` |
-| 📄 `getJsonSchema.d.ts` |
-| 📄 `customTree.d.ts` |
-| 📄 `create.d.ts` |
-| 📄 `conciseTree.d.ts` |
-| 📄 `viewSchemaToSimpleSchema.js.map` |
+
+| Name                                   |
+| -------------------------------------- |
+| 📄 `viewSchemaToSimpleSchema.d.ts`     |
+| 📄 `view.d.ts`                         |
+| 📄 `verboseTree.d.ts`                  |
+| 📄 `typesUnsafe.d.ts`                  |
+| 📄 `treeNodeApi.d.ts`                  |
+| 📄 `treeApiBeta.d.ts`                  |
+| 📄 `tree.d.ts`                         |
+| 📄 `transactionTypes.d.ts`             |
+| 📄 `testRecursiveDomain.d.ts`          |
+| 📄 `storedSchema.d.ts`                 |
+| 📄 `simpleTreeIndex.d.ts`              |
+| 📄 `simpleSchemaToJsonSchema.d.ts`     |
+| 📄 `schemaFromSimple.d.ts`             |
+| 📄 `schemaFactoryRecursive.d.ts`       |
+| 📄 `schemaFactoryAlpha.d.ts`           |
+| 📄 `schemaFactory.d.ts`                |
+| 📄 `schemaCreationUtilities.d.ts`      |
+| 📄 `jsonSchema.d.ts`                   |
+| 📄 `index.d.ts`                        |
+| 📄 `identifierIndex.d.ts`              |
+| 📄 `getSimpleSchema.d.ts`              |
+| 📄 `getJsonSchema.d.ts`                |
+| 📄 `customTree.d.ts`                   |
+| 📄 `create.d.ts`                       |
+| 📄 `conciseTree.d.ts`                  |
+| 📄 `viewSchemaToSimpleSchema.js.map`   |
 | 📄 `viewSchemaToSimpleSchema.d.ts.map` |
-| 📄 `view.js.map` |
-| 📄 `view.d.ts.map` |
-| 📄 `verboseTree.js.map` |
-| 📄 `verboseTree.d.ts.map` |
-| 📄 `typesUnsafe.js.map` |
-| 📄 `typesUnsafe.d.ts.map` |
-| 📄 `treeNodeApi.js.map` |
-| 📄 `treeNodeApi.d.ts.map` |
-| 📄 `treeApiBeta.js.map` |
-| 📄 `treeApiBeta.d.ts.map` |
-| 📄 `tree.js.map` |
-| 📄 `tree.d.ts.map` |
-| 📄 `transactionTypes.js.map` |
-| 📄 `transactionTypes.d.ts.map` |
-| 📄 `testRecursiveDomain.js.map` |
-| 📄 `testRecursiveDomain.d.ts.map` |
-| 📄 `storedSchema.js.map` |
-| 📄 `storedSchema.d.ts.map` |
-| 📄 `simpleTreeIndex.js.map` |
-| 📄 `simpleTreeIndex.d.ts.map` |
-| 📄 `simpleSchemaToJsonSchema.js.map` |
+| 📄 `view.js.map`                       |
+| 📄 `view.d.ts.map`                     |
+| 📄 `verboseTree.js.map`                |
+| 📄 `verboseTree.d.ts.map`              |
+| 📄 `typesUnsafe.js.map`                |
+| 📄 `typesUnsafe.d.ts.map`              |
+| 📄 `treeNodeApi.js.map`                |
+| 📄 `treeNodeApi.d.ts.map`              |
+| 📄 `treeApiBeta.js.map`                |
+| 📄 `treeApiBeta.d.ts.map`              |
+| 📄 `tree.js.map`                       |
+| 📄 `tree.d.ts.map`                     |
+| 📄 `transactionTypes.js.map`           |
+| 📄 `transactionTypes.d.ts.map`         |
+| 📄 `testRecursiveDomain.js.map`        |
+| 📄 `testRecursiveDomain.d.ts.map`      |
+| 📄 `storedSchema.js.map`               |
+| 📄 `storedSchema.d.ts.map`             |
+| 📄 `simpleTreeIndex.js.map`            |
+| 📄 `simpleTreeIndex.d.ts.map`          |
+| 📄 `simpleSchemaToJsonSchema.js.map`   |
 | 📄 `simpleSchemaToJsonSchema.d.ts.map` |
-| 📄 `schemaFromSimple.js.map` |
-| 📄 `schemaFromSimple.d.ts.map` |
-| 📄 `schemaFactoryRecursive.js.map` |
-| 📄 `schemaFactoryRecursive.d.ts.map` |
-| 📄 `schemaFactoryAlpha.js.map` |
-| 📄 `schemaFactoryAlpha.d.ts.map` |
-| 📄 `schemaFactory.js.map` |
-| 📄 `schemaFactory.d.ts.map` |
-| 📄 `schemaCreationUtilities.js.map` |
-| 📄 `schemaCreationUtilities.d.ts.map` |
-| 📄 `jsonSchema.js.map` |
-| 📄 `jsonSchema.d.ts.map` |
-| 📄 `index.js.map` |
-| 📄 `index.d.ts.map` |
-| 📄 `identifierIndex.js.map` |
-| 📄 `identifierIndex.d.ts.map` |
-| 📄 `getSimpleSchema.js.map` |
-| 📄 `getSimpleSchema.d.ts.map` |
-| 📄 `getJsonSchema.js.map` |
-| 📄 `getJsonSchema.d.ts.map` |
-| 📄 `customTree.js.map` |
-| 📄 `customTree.d.ts.map` |
-| 📄 `create.js.map` |
-| 📄 `create.d.ts.map` |
-| 📄 `conciseTree.js.map` |
-| 📄 `conciseTree.d.ts.map` |
-| 📄 `viewSchemaToSimpleSchema.js` |
-| 📄 `view.js` |
-| 📄 `verboseTree.js` |
-| 📄 `typesUnsafe.js` |
-| 📄 `treeNodeApi.js` |
-| 📄 `treeApiBeta.js` |
-| 📄 `tree.js` |
-| 📄 `transactionTypes.js` |
-| 📄 `testRecursiveDomain.js` |
-| 📄 `storedSchema.js` |
-| 📄 `simpleTreeIndex.js` |
-| 📄 `simpleSchemaToJsonSchema.js` |
-| 📄 `schemaFromSimple.js` |
-| 📄 `schemaFactoryRecursive.js` |
-| 📄 `schemaFactoryAlpha.js` |
-| 📄 `schemaFactory.js` |
-| 📄 `schemaCreationUtilities.js` |
-| 📄 `jsonSchema.js` |
-| 📄 `index.js` |
-| 📄 `identifierIndex.js` |
-| 📄 `getSimpleSchema.js` |
-| 📄 `getJsonSchema.js` |
-| 📄 `customTree.js` |
-| 📄 `create.js` |
-| 📄 `conciseTree.js` |
+| 📄 `schemaFromSimple.js.map`           |
+| 📄 `schemaFromSimple.d.ts.map`         |
+| 📄 `schemaFactoryRecursive.js.map`     |
+| 📄 `schemaFactoryRecursive.d.ts.map`   |
+| 📄 `schemaFactoryAlpha.js.map`         |
+| 📄 `schemaFactoryAlpha.d.ts.map`       |
+| 📄 `schemaFactory.js.map`              |
+| 📄 `schemaFactory.d.ts.map`            |
+| 📄 `schemaCreationUtilities.js.map`    |
+| 📄 `schemaCreationUtilities.d.ts.map`  |
+| 📄 `jsonSchema.js.map`                 |
+| 📄 `jsonSchema.d.ts.map`               |
+| 📄 `index.js.map`                      |
+| 📄 `index.d.ts.map`                    |
+| 📄 `identifierIndex.js.map`            |
+| 📄 `identifierIndex.d.ts.map`          |
+| 📄 `getSimpleSchema.js.map`            |
+| 📄 `getSimpleSchema.d.ts.map`          |
+| 📄 `getJsonSchema.js.map`              |
+| 📄 `getJsonSchema.d.ts.map`            |
+| 📄 `customTree.js.map`                 |
+| 📄 `customTree.d.ts.map`               |
+| 📄 `create.js.map`                     |
+| 📄 `create.d.ts.map`                   |
+| 📄 `conciseTree.js.map`                |
+| 📄 `conciseTree.d.ts.map`              |
+| 📄 `viewSchemaToSimpleSchema.js`       |
+| 📄 `view.js`                           |
+| 📄 `verboseTree.js`                    |
+| 📄 `typesUnsafe.js`                    |
+| 📄 `treeNodeApi.js`                    |
+| 📄 `treeApiBeta.js`                    |
+| 📄 `tree.js`                           |
+| 📄 `transactionTypes.js`               |
+| 📄 `testRecursiveDomain.js`            |
+| 📄 `storedSchema.js`                   |
+| 📄 `simpleTreeIndex.js`                |
+| 📄 `simpleSchemaToJsonSchema.js`       |
+| 📄 `schemaFromSimple.js`               |
+| 📄 `schemaFactoryRecursive.js`         |
+| 📄 `schemaFactoryAlpha.js`             |
+| 📄 `schemaFactory.js`                  |
+| 📄 `schemaCreationUtilities.js`        |
+| 📄 `jsonSchema.js`                     |
+| 📄 `index.js`                          |
+| 📄 `identifierIndex.js`                |
+| 📄 `getSimpleSchema.js`                |
+| 📄 `getJsonSchema.js`                  |
+| 📄 `customTree.js`                     |
+| 📄 `create.js`                         |
+| 📄 `conciseTree.js`                    |
 
 </details>
 
@@ -852,8 +868,9 @@ Read file: client/node_modules/@fluidframework/tree/dist/simple-tree/api/index.d
 
 <details>
             <summary>Grep search for "TreeView<" • **0** files</summary>
-        
+
 No results found
+
 </details>
 
 ---
@@ -864,30 +881,30 @@ Read file: client/node_modules/@fluidframework/tree/dist/simple-tree/api/tree.d.
 
 <details>
             <summary>Listed directory client/node_modules/fluid-framework • **21** results</summary>
-        
-| Name |
-|-------|
-| 📁 `node_modules` |
-| 📁 `lib` |
-| 📁 `dist` |
-| 📄 `legacy.d.ts` |
-| 📁 `src` |
-| 📄 `beta.d.ts` |
-| 📄 `alpha.d.ts` |
-| 📄 `README.md` |
-| 📁 `api-report` |
-| 📄 `CHANGELOG.md` |
-| 📄 `biome.jsonc` |
-| 📄 `tsdoc.json` |
-| 📄 `tsconfig.json` |
-| 📄 `tsconfig.cjs.json` |
-| 📄 `package.json` |
-| 📁 `api-extractor` |
-| 📄 `api-extractor.json` |
+
+| Name                         |
+| ---------------------------- |
+| 📁 `node_modules`            |
+| 📁 `lib`                     |
+| 📁 `dist`                    |
+| 📄 `legacy.d.ts`             |
+| 📁 `src`                     |
+| 📄 `beta.d.ts`               |
+| 📄 `alpha.d.ts`              |
+| 📄 `README.md`               |
+| 📁 `api-report`              |
+| 📄 `CHANGELOG.md`            |
+| 📄 `biome.jsonc`             |
+| 📄 `tsdoc.json`              |
+| 📄 `tsconfig.json`           |
+| 📄 `tsconfig.cjs.json`       |
+| 📄 `package.json`            |
+| 📁 `api-extractor`           |
+| 📄 `api-extractor.json`      |
 | 📄 `api-extractor-lint.json` |
-| 📄 `prettier.config.cjs` |
-| 📄 `.eslintrc.cjs` |
-| 📄 `LICENSE` |
+| 📄 `prettier.config.cjs`     |
+| 📄 `.eslintrc.cjs`           |
+| 📄 `LICENSE`                 |
 
 </details>
 
@@ -903,23 +920,25 @@ Read file: client/node_modules/fluid-framework/package.json
 interface TreeView<TSchema, TView> { … }
 ```
 
-と「２つのジェネリック型引数」を要求する形で上書きしてしまったためです。  
+と「２つのジェネリック型引数」を要求する形で上書きしてしまったためです。\
 本来 Fluid-framework がエクスポートしている `TreeView` は「１つのジェネリック」なので、以下のように上書き宣言を直してあげれば、元の `TreeView<typeof Project>` がそのまま使えるようになります。
 
 ```ts
 // src/types/fluid-framework.d.ts
 import "fluid-framework";
-import type { Project, Items } from "../schema/app-schema";
+import type {
+    Items,
+    Project,
+} from "../schema/app-schema";
 
 declare module "fluid-framework" {
-  // ← ジェネリックは１つだけ宣言する
-  interface TreeView<TSchema extends ImplicitFieldSchema = ImplicitFieldSchema> {
-    // Project のときだけ items: Items を正しく補完
-    readonly root: TSchema extends typeof Project
-      ? Project & { items: Items }
-      : // その他は元来の型に戻す
-        import("fluid-framework").TreeView<TSchema>["root"];
-  }
+    // ← ジェネリックは１つだけ宣言する
+    interface TreeView<TSchema extends ImplicitFieldSchema = ImplicitFieldSchema> {
+        // Project のときだけ items: Items を正しく補完
+        readonly root: TSchema extends typeof Project ? Project & { items: Items; }
+            // その他は元来の型に戻す
+            : import("fluid-framework").TreeView<TSchema>["root"];
+    }
 }
 ```
 
@@ -936,9 +955,11 @@ let appData: TreeView<typeof Project> | undefined = undefined;
 _**User**_
 
 For the code present, we get this error:
+
 ```
 'reconnectError' is of type 'unknown'.
 ```
+
 How can I resolve this? If you propose a fix, please make it concise.
 
 ---
@@ -966,7 +987,7 @@ _**Assistant**_
 // キャッチブロック内で
 const code = (reconnectError as any).code;
 if (code === "auth/emulator-config-failed") {
-  // …
+    // …
 }
 ```
 
@@ -984,23 +1005,12 @@ export interface IUser
 
 _**Assistant**_
 
-
+---
 
 ---
 
-
+---
 
 ---
 
-
-
 ---
-
-
-
----
-
-
-
----
-
