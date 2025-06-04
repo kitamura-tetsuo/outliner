@@ -1,0 +1,17 @@
+name: Sync to GitLab
+on:
+  push:
+    branches: [main]
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Push to GitLab
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}  # GitLab で発行した PAT (api scope)
+        run: |
+          git remote add gitlab https://oauth2:${GITLAB_TOKEN}@gitlab.com/kitamura.tetsuo/outliner.git
+          # --mirror でも良いが main だけならこれで十分
+          git push gitlab HEAD:main
