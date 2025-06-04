@@ -61,7 +61,11 @@ Ctrl+Cで全サーバーを停止できます。
 - Node.js がインストールされていること
 - npm パッケージがインストールされていること
 - Firebase CLI がインストールされていること（Firebase Functions使用時）
-- 必要な環境設定ファイル（.env.localhost.test）が存在すること
+- 初回実行前に環境設定ファイルを生成する
+
+```bash
+./scripts/setup-local-env.sh
+```
 
 ## ログファイル
 
