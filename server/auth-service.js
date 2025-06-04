@@ -10,6 +10,7 @@ const {
     serverLogger: logger,
     clientLogger,
     telemetryLogger,
+    telemetryLogPath,
     rotateClientLogs,
     rotateTelemetryLogs,
     rotateServerLogs,
