@@ -117,12 +117,12 @@ firebase deploy
 
 - クライアント: `VITE_PORT=7070`
 - API: `PORT=7071`
-- Tinylicious: `VITE_TINYLICIOUS_ENDPOINT=7072`
+- Tinylicious: `VITE_TINYLICIOUS_PORT=7072`
 
 ### テスト環境
 
 - クライアント: `VITE_PORT=7080`
-- Tinylicious: `VITE_TINYLICIOUS_ENDPOINT=7082`
+- Tinylicious: `VITE_TINYLICIOUS_PORT=7082`
 
 ## Firebase Hosting + Functions
 
