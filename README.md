@@ -146,3 +146,35 @@ firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="h
 ```bash
 firebase deploy
 ```
+
+## 使用しているオープンソースライブラリ
+
+このプロジェクトでは以下の主要なオープンソースライブラリを採用しています。
+
+- **SvelteKit** / **Svelte** - クライアント UI 開発に使用。
+- **Express** - 認証サーバーを構築。
+- **Firebase** - 認証やホスティングに利用。
+- **Fluid Framework** - リアルタイムコラボレーション機能の基盤。
+
+各ライブラリはMITやApacheなどのライセンスの下で公開されており、`package.json`に詳細が記載されています。
+
+## SSO ログイン手順（新入社員向け）
+
+1. 会社のSSOアカウントを取得後、社内管理者へGitHubユーザー名を連絡してください。
+2. リポジトリへのアクセス権が付与されたら、ブラウザで `/login` へアクセスしてSSOログインを完了します。
+3. 初回ログイン後はFirebase Authenticationにも自動登録されます。
+
+## テスト実行方法
+
+ユニットテストは `Vitest`、E2E テストは `Playwright` を使用しています。
+
+```bash
+# ユニットテスト
+cd client
+npm run test:unit
+
+# E2E テスト
+npm run test:e2e
+```
+
+自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
