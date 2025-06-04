@@ -24,12 +24,13 @@ const db = admin.firestore();
 const userContainersCollection = db.collection("userContainers");
 
 // Azure Fluid Relay設定
+// 実際の値を使用して設定を初期化
 const azureConfig = {
-  tenantId: tenantId,
-  endpoint: endpoint,
-  primaryKey: primaryKey,
-  secondaryKey: secondaryKey,
-  activeKey: activeKey,
+  tenantId: tenantId.value(),
+  endpoint: endpoint.value(),
+  primaryKey: primaryKey.value(),
+  secondaryKey: secondaryKey.value(),
+  activeKey: activeKey.value(),
 };
 
 // 必須の環境変数が設定されているか確認

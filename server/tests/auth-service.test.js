@@ -1,7 +1,6 @@
 const request = require("supertest");
 const path = require("path");
 const jwt = require("jsonwebtoken");
-const { MockFirebase } = require("mock-firebase-admin");
 
 // モックの設定
 jest.mock("firebase-admin", () => {
@@ -62,22 +61,19 @@ jest.mock("@fluidframework/azure-service-utils", () => ({
     }),
 }));
 
-// テスト前に.envファイルを読み込む
+// テスト用環境変数を設定
+process.env.AZURE_TENANT_ID = "test-tenant-id";
+process.env.AZURE_FLUID_RELAY_ENDPOINT = "https://test-endpoint.fluidrelay.azure.com";
+process.env.AZURE_PRIMARY_KEY = "test-primary-key";
+
+// テスト前に.envファイルを読み込む（存在しなくても無視）
 require("dotenv").config({ path: path.join(__dirname, "..", ".env.test") });
 
 // テスト対象のサーバーをインポート
 // 注意: このimport前にモックを設定する必要がある
-const app = require("../auth-service-test-helper");
+const app = require("./auth-service-test-helper");
 
 describe("認証サービスのテスト", () => {
-    // テスト前の準備
-    beforeAll(() => {
-        // 環境変数の設定
-        process.env.AZURE_TENANT_ID = "test-tenant-id";
-        process.env.AZURE_FLUID_RELAY_ENDPOINT = "https://test-endpoint.fluidrelay.azure.com";
-        process.env.AZURE_PRIMARY_KEY = "test-primary-key";
-    });
-
     // テスト後のクリーンアップ
     afterAll(() => {
         jest.resetAllMocks();
