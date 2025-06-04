@@ -28,6 +28,7 @@ copy_if_missing "$ROOT_DIR/client/.env.test" "$ROOT_DIR/client/.env.localhost.te
 
 # Server and functions env files
 copy_if_missing "$ROOT_DIR/server/.env.example" "$ROOT_DIR/server/.env"
+copy_if_missing "$ROOT_DIR/server/.env" "$ROOT_DIR/server/.env.localhost.test"
 copy_if_missing "$ROOT_DIR/functions/.env.example" "$ROOT_DIR/functions/.env"
 
 echo "Environment files are ready"
