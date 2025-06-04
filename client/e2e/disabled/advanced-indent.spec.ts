@@ -97,9 +97,6 @@ test.describe("Advanced indent/unindent functionality", () => {
             };
         });
 
-        // ページが読み込まれるのを待つ
-        await page.waitForLoadState("networkidle", { timeout: 30000 });
-
         // テスト前に確実にページが選択されていることを確認
         await ensurePageExists(page);
 

@@ -31,12 +31,12 @@ export class KeyEventHandler {
         const cursorInstances = store.getCursorInstances();
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(
-                `KeyEventHandler.handleKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}, altKey=${event.altKey}`,
-            );
-            console.log(`Current cursor instances: ${cursorInstances.length}`);
-        }
+        console.log(
+            `KeyEventHandler.handleKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}, altKey=${event.altKey}`,
+        );
+        console.log(`KeyEventHandler.handleKeyDown: event.target:`, event.target);
+        console.log(`KeyEventHandler.handleKeyDown: activeElement:`, document.activeElement);
+        console.log(`Current cursor instances: ${cursorInstances.length}`);
 
         // カーソルがない場合は処理しない
         if (cursorInstances.length === 0) {
@@ -129,14 +129,14 @@ export class KeyEventHandler {
             event.stopPropagation();
 
             // グローバルテキストエリアにフォーカスを確保
-            const textarea = store.getTextareaRef();
-            if (textarea) {
+            const globalTextarea = store.getTextareaRef();
+            if (globalTextarea) {
                 // フォーカスを確実に設定するための複数の試行
-                textarea.focus();
+                globalTextarea.focus();
 
                 // requestAnimationFrameを使用してフォーカスを設定
                 requestAnimationFrame(() => {
-                    textarea.focus();
+                    globalTextarea.focus();
                 });
             }
         }
@@ -158,13 +158,27 @@ export class KeyEventHandler {
         const inputEvent = event as InputEvent;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(
-                `KeyEventHandler.handleInput called with inputType=${inputEvent.inputType}, isComposing=${inputEvent.isComposing}`,
-            );
-            console.log(`Input data: "${inputEvent.data}"`);
-            console.log(`Current active element: ${document.activeElement?.tagName}`);
+        console.log(
+            `KeyEventHandler.handleInput called with inputType=${inputEvent.inputType}, isComposing=${inputEvent.isComposing}`,
+        );
+        console.log(`Input data: "${inputEvent.data}"`);
+        console.log(`Current active element: ${document.activeElement?.tagName}`);
+
+        // テキストエリアの現在の値を確認
+        const textareaRef = store.getTextareaRef();
+        if (textareaRef) {
+            console.log(`Textarea value: "${textareaRef.value}"`);
+            console.log(`Textarea selection: start=${textareaRef.selectionStart}, end=${textareaRef.selectionEnd}`);
+        } else {
+            console.log(`Textarea not found in KeyEventHandler.handleInput`);
         }
+
+        // カーソルインスタンスの状態を確認
+        const cursorInstances = store.getCursorInstances();
+        console.log(`Number of cursor instances: ${cursorInstances.length}`);
+        cursorInstances.forEach((cursor, index) => {
+            console.log(`Cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
+        });
 
         // IME composition中の入力は重複処理を避けるため無視する
         if (inputEvent.isComposing || inputEvent.inputType.startsWith("insertComposition")) {
@@ -173,8 +187,6 @@ export class KeyEventHandler {
             }
             return;
         }
-
-        const cursorInstances = store.getCursorInstances();
 
         // カーソルがない場合は処理しない
         if (cursorInstances.length === 0) {
@@ -191,26 +203,33 @@ export class KeyEventHandler {
         }
 
         // 各カーソルに入力を適用
-        cursorInstances.forEach(cursor => cursor.onInput(inputEvent));
+        console.log(`Applying input to ${cursorInstances.length} cursor instances`);
+        cursorInstances.forEach((cursor, index) => {
+            console.log(`Applying input to cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
+            cursor.onInput(inputEvent);
+        });
+
+        // onEdit コールバックを呼び出す
+        store.triggerOnEdit();
 
         // グローバルテキストエリアにフォーカスを確保
-        const textarea = store.getTextareaRef();
-        if (textarea) {
+        const textareaElement = store.getTextareaRef();
+        if (textareaElement) {
             // フォーカスを確実に設定するための複数の試行
-            textarea.focus();
+            textareaElement.focus();
 
             // requestAnimationFrameを使用してフォーカスを設定
             requestAnimationFrame(() => {
-                textarea.focus();
+                textareaElement.focus();
 
                 // さらに確実にするためにsetTimeoutも併用
                 setTimeout(() => {
-                    textarea.focus();
+                    textareaElement.focus();
 
                     // デバッグ情報
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(
-                            `Focus set after input. Active element is textarea: ${document.activeElement === textarea}`,
+                            `Focus set after input. Active element is textarea: ${document.activeElement === textareaElement}`,
                         );
                     }
                 }, 10);
@@ -1241,7 +1260,7 @@ export class KeyEventHandler {
     }
 }
 
-// テスト用にグローバルスコープに公開
+// テスト用にKeyEventHandlerをグローバルに公開
 if (typeof window !== "undefined") {
-    (window as any).KeyEventHandler = KeyEventHandler;
+    (window as any).__KEY_EVENT_HANDLER__ = KeyEventHandler;
 }

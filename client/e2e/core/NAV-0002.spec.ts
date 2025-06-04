@@ -45,7 +45,6 @@ test.describe("NAV-0002: プロジェクトページへのリンク機能", () =
         // プロジェクトページへのリンクをクリック
         const projectLink = page.locator(`nav button:has-text("${projectName}")`);
         await projectLink.click();
-        await page.waitForLoadState("networkidle");
 
         // プロジェクトページに遷移したことを確認
         await expect(page).toHaveURL(`/${projectName}`);
@@ -59,7 +58,6 @@ test.describe("NAV-0002: プロジェクトページへのリンク機能", () =
         // ホームへのリンクをクリック
         const homeLink = page.locator('nav button:has-text("ホーム")');
         await homeLink.click();
-        await page.waitForLoadState("networkidle");
 
         // ホームページに遷移したことを確認
         await expect(page).toHaveURL("/");

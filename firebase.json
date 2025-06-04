@@ -60,23 +60,23 @@
     "emulators": {
         "auth": {
             "port": 59099,
-            "host": "127.0.0.1"
+            "host": "0.0.0.0"
         },
         "firestore": {
             "port": 58080,
-            "host": "127.0.0.1"
+            "host": "0.0.0.0"
         },
         "functions": {
             "port": 57070,
-            "host": "127.0.0.1"
+            "host": "0.0.0.0"
         },
         "hosting": {
             "port": 57000,
-            "host": "127.0.0.1"
+            "host": "0.0.0.0"
         },
         "ui": {
             "port": 54000,
-            "host": "127.0.0.1",
+            "host": "0.0.0.0",
             "enabled": false
         }
     }

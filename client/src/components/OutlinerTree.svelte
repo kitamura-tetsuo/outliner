@@ -1,13 +1,13 @@
 <script lang="ts">
 import { Tree } from "fluid-framework";
 import {
-	onDestroy,
-	onMount,
+    onDestroy,
+    onMount,
 } from "svelte";
 import { getLogger } from "../lib/logger";
 import {
-	Item,
-	Items,
+    Item,
+    Items,
 } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
@@ -36,9 +36,10 @@ const logger = getLogger();
 interface Props {
     pageItem: Item; // ページとして表示する Item
     isReadOnly?: boolean;
+    onEdit?: () => void;
 }
 
-let { pageItem, isReadOnly = false }: Props = $props();
+let { pageItem, isReadOnly = false, onEdit }: Props = $props();
 
 let currentUser = $derived(fluidStore.currentUser?.id ?? 'anonymous');
 
@@ -63,8 +64,16 @@ const displayItems = new TreeSubscriber<Items, DisplayItem[]>(
     pageItem.items as Items,
     "treeChanged",
     () => {
+        console.log("OutlinerTree: displayItems transformer called");
+        console.log("OutlinerTree: pageItem exists:", !!pageItem);
+        console.log("OutlinerTree: pageItem.items exists:", !!pageItem.items);
+        console.log("OutlinerTree: pageItem.items length:", (pageItem.items as any)?.length || 0);
+
         viewModel.updateFromModel(pageItem);
-        return viewModel.getVisibleItems();
+        const visibleItems = viewModel.getVisibleItems();
+        console.log("OutlinerTree: visibleItems length:", visibleItems.length);
+
+        return visibleItems;
     },
 );
 
@@ -110,6 +119,9 @@ onMount(() => {
         currentUser = client.currentUser.id;
     }
 
+    // onEdit コールバックをストアに設定
+    editorOverlayStore.setOnEditCallback(onEdit || null);
+
     // 初期状態でアイテムの高さを初期化
     itemHeights = new Array(displayItems.current.length).fill(0);
 
@@ -152,6 +164,9 @@ $effect(() => {
 });
 
 onDestroy(() => {
+    // onEdit コールバックをクリア
+    editorOverlayStore.setOnEditCallback(null);
+
     // リソースを解放
     viewModel.dispose();
 });

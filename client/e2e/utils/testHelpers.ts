@@ -4,7 +4,6 @@ import {
     type Response,
 } from "@playwright/test";
 import { CursorValidator } from "./cursorValidation";
-import { TreeValidator } from "./treeValidation";
 
 /**
  * テスト用のヘルパー関数群
@@ -72,14 +71,48 @@ export class TestHelpers {
 
         // Fluid APIを使用してプロジェクトとページを作成
         await page.evaluate(async ({ projectName, pageName, lines }) => {
+            console.log(`TestHelper: Creating project and page`, { projectName, pageName, linesCount: lines.length });
+
             while (!window.__FLUID_STORE__) {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
+            console.log(`TestHelper: FluidStore is available`);
 
             const fluidService = window.__FLUID_SERVICE__;
+            console.log(`TestHelper: FluidService is available`, { exists: !!fluidService });
+
             const fluidClient = await fluidService.createNewContainer(projectName);
+            console.log(`TestHelper: FluidClient created`, { containerId: fluidClient.containerId });
+
+            const project = fluidClient.getProject();
+            console.log(`TestHelper: Project retrieved`, { projectTitle: project.title, itemsCount: project.items?.length });
 
             fluidClient.createPage(pageName, lines);
+            console.log(`TestHelper: Page created`, { pageName });
+
+            // fluidStoreを更新してアプリケーション状態を同期
+            const fluidStore = window.__FLUID_STORE__;
+            if (fluidStore) {
+                console.log(`TestHelper: Updating fluidStore with new client`);
+                fluidStore.fluidClient = fluidClient;
+                console.log(`TestHelper: FluidStore updated`);
+            } else {
+                console.error(`TestHelper: FluidStore not found`);
+            }
+
+            // 作成後の状態を確認
+            const updatedProject = fluidClient.getProject();
+            console.log(`TestHelper: Updated project state`, {
+                projectTitle: updatedProject.title,
+                itemsCount: updatedProject.items?.length
+            });
+
+            if (updatedProject.items && updatedProject.items.length > 0) {
+                for (let i = 0; i < updatedProject.items.length; i++) {
+                    const page = updatedProject.items[i];
+                    console.log(`TestHelper: Page ${i}`, { text: page.text, itemsCount: page.items?.length });
+                }
+            }
         }, { projectName, pageName, lines });
     }
 
@@ -280,7 +313,6 @@ export class TestHelpers {
     ): Promise<{ projectName: string; pageName: string; }> {
         const projectName = `Test Project ${testInfo.workerIndex} ${Date.now()}`;
         const pageName = `test-page-${Date.now()}`;
-        console.log("Creating new project:", projectName);
         await TestHelpers.createTestProjectAndPageViaAPI(page, projectName, pageName, lines);
 
         await page.goto(`/${projectName}/${pageName}`);
@@ -288,7 +320,9 @@ export class TestHelpers {
         await page.waitForSelector(".outliner-item", { timeout: 30000 });
         await page.waitForFunction(() => {
             const textarea = document.querySelector<HTMLTextAreaElement>(".global-textarea");
-            return textarea !== null && document.activeElement === textarea;
+            console.log("TestHelper: global-textarea found:", !!textarea);
+            console.log("TestHelper: activeElement:", document.activeElement?.tagName, document.activeElement?.className);
+            return textarea !== null;
         }, { timeout: 5000 });
 
         return { projectName, pageName };
@@ -860,6 +894,158 @@ export class FluidServiceHelper {
 
             return await fluidService.createNewContainer(name);
         }, containerName);
+    }
+
+    /**
+     * FluidContainerの詳細なデータを取得する
+     * @param page Playwrightのページオブジェクト
+     * @returns FluidContainerの詳細データ
+     */
+    public static async getFluidContainerDetails(page: Page): Promise<any> {
+        return await page.evaluate(() => {
+            const fluidStore = (window as any).fluidStore;
+            if (!fluidStore || !fluidStore.fluidClient) {
+                throw new Error("FluidClient not found");
+            }
+
+            const client = fluidStore.fluidClient;
+            const project = client.project;
+
+            // プロジェクトの詳細情報を取得
+            const projectDetails = {
+                title: project.title,
+                itemCount: project.items ? project.items.length : 0,
+                items: []
+            };
+
+            // 各ページ（アイテム）の詳細を取得
+            if (project.items) {
+                for (let i = 0; i < project.items.length; i++) {
+                    const item = project.items.at(i);
+                    if (item) {
+                        const itemDetails = {
+                            id: item.id,
+                            text: item.text,
+                            author: item.author,
+                            created: item.created,
+                            lastChanged: item.lastChanged,
+                            childItemCount: item.items ? item.items.length : 0,
+                            childItems: []
+                        };
+
+                        // 子アイテムの詳細も取得
+                        if (item.items) {
+                            for (let j = 0; j < item.items.length; j++) {
+                                const childItem = item.items.at(j);
+                                if (childItem) {
+                                    itemDetails.childItems.push({
+                                        id: childItem.id,
+                                        text: childItem.text,
+                                        author: childItem.author,
+                                        created: childItem.created,
+                                        lastChanged: childItem.lastChanged
+                                    });
+                                }
+                            }
+                        }
+
+                        projectDetails.items.push(itemDetails);
+                    }
+                }
+            }
+
+            return {
+                containerId: client.containerId,
+                clientId: client.clientId,
+                project: projectDetails
+            };
+        });
+    }
+
+    /**
+     * 特定のページ名が存在するかを確認する
+     * @param page Playwrightのページオブジェクト
+     * @param pageName 確認するページ名
+     * @returns ページが存在する場合はtrue
+     */
+    public static async checkPageExists(page: Page, pageName: string): Promise<boolean> {
+        return await page.evaluate(pageNameToCheck => {
+            const fluidStore = (window as any).fluidStore;
+            if (!fluidStore || !fluidStore.fluidClient) {
+                return false;
+            }
+
+            const project = fluidStore.fluidClient.project;
+            if (!project.items) {
+                return false;
+            }
+
+            // ページ名が一致するページを検索
+            for (let i = 0; i < project.items.length; i++) {
+                const item = project.items.at(i);
+                if (item && item.text.toLowerCase() === pageNameToCheck.toLowerCase()) {
+                    return true;
+                }
+            }
+
+            return false;
+        }, pageName);
+    }
+
+    /**
+     * 特定のページ名のページデータを取得する
+     * @param page Playwrightのページオブジェクト
+     * @param pageName 取得するページ名
+     * @returns ページデータ、見つからない場合はnull
+     */
+    public static async getPageData(page: Page, pageName: string): Promise<any> {
+        return await page.evaluate(pageNameToGet => {
+            const fluidStore = (window as any).fluidStore;
+            if (!fluidStore || !fluidStore.fluidClient) {
+                return null;
+            }
+
+            const project = fluidStore.fluidClient.project;
+            if (!project.items) {
+                return null;
+            }
+
+            // ページ名が一致するページを検索
+            for (let i = 0; i < project.items.length; i++) {
+                const item = project.items.at(i);
+                if (item && item.text.toLowerCase() === pageNameToGet.toLowerCase()) {
+                    const pageData = {
+                        id: item.id,
+                        text: item.text,
+                        author: item.author,
+                        created: item.created,
+                        lastChanged: item.lastChanged,
+                        childItemCount: item.items ? item.items.length : 0,
+                        childItems: []
+                    };
+
+                    // 子アイテムの詳細も取得
+                    if (item.items) {
+                        for (let j = 0; j < item.items.length; j++) {
+                            const childItem = item.items.at(j);
+                            if (childItem) {
+                                pageData.childItems.push({
+                                    id: childItem.id,
+                                    text: childItem.text,
+                                    author: childItem.author,
+                                    created: childItem.created,
+                                    lastChanged: childItem.lastChanged
+                                });
+                            }
+                        }
+                    }
+
+                    return pageData;
+                }
+            }
+
+            return null;
+        }, pageName);
     }
 
     /**

@@ -25,9 +25,9 @@ const VITE_HOST = isLocalhostEnv ? "localhost" : "192.168.50.13";
 // 環境設定ファイルを定義
 const ENV_FILE = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
 
-console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
-console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
-console.log(`Environment file: ${ENV_FILE}`);
+// console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
+// console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
+// console.log(`Environment file: ${ENV_FILE}`);
 
 export default defineConfig({
     testDir: "./e2e",
@@ -39,14 +39,14 @@ export default defineConfig({
     reporter: [["html", { open: "never" }]],
     headless: true,
     // テスト実行時のタイムアウト設定を延長
-    timeout: 120 * 1000, // 120秒 (2分)
+    timeout: 30 * 1000, // 30秒
     expect: {
         // 要素の検出待機のタイムアウト設定を延長
         timeout: 15 * 1000, // 15秒
     },
 
     // globalSetupとglobalTeardown - require.resolveではなく相対パスを使用
-    globalSetup: path.join(__dirname, "./e2e/global-setup.ts"),
+    globalSetup: "./e2e/global-setup.ts",
     globalTeardown: path.join(__dirname, "./e2e/global-teardown.ts"),
 
     use: {

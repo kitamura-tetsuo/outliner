@@ -10,13 +10,18 @@ import { TestHelpers } from "./testHelpers";
 import { TreeValidator } from "./treeValidation";
 
 test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", () => {
+    let actualPageTitle: string;
+
     test.beforeEach(async ({ page }, testInfo) => {
         // テストページをセットアップ
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        const result = await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "First item",
             "Second item",
             "Third item",
         ]);
+
+        // 実際のページタイトルを保存
+        actualPageTitle = result.pageName;
 
         // 少し待機してデータが反映されるのを待つ
         await page.waitForTimeout(500);
@@ -50,8 +55,9 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
             itemCount: 1,
             items: [
                 {
-                    text: "First item",
+                    text: actualPageTitle, // 実際のページタイトルを使用
                     items: [
+                        { text: "First item" },
                         { text: "Second item" },
                         { text: "Third item" },
                     ],
@@ -74,9 +80,10 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
     test("assertTreePath: 特定のパスのデータを検証できる", async ({ page }) => {
         // 実際のデータ構造に合わせたパスで検証
         await TreeValidator.assertTreePath(page, "itemCount", 1);
-        await TreeValidator.assertTreePath(page, "items.0.text", "First item");
-        await TreeValidator.assertTreePath(page, "items.0.items.0.text", "Second item");
-        await TreeValidator.assertTreePath(page, "items.0.items.1.text", "Third item");
+        await TreeValidator.assertTreePath(page, "items.0.text", actualPageTitle); // 実際のページタイトルを使用
+        await TreeValidator.assertTreePath(page, "items.0.items.0.text", "First item");
+        await TreeValidator.assertTreePath(page, "items.0.items.1.text", "Second item");
+        await TreeValidator.assertTreePath(page, "items.0.items.2.text", "Third item");
 
         // 存在しないパスの検証（undefinedが返されるはず）
         const nonExistentPath = await page.evaluate(() => {

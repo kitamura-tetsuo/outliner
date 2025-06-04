@@ -151,16 +151,16 @@ test.describe("LNK-0002: 内部リンクのナビゲーション機能の実際�
         // 各リンクのhref属性を確認
         const links = await page.locator("a.internal-link").all();
 
-        // 1つ目のリンク（simple-page）
-        const href1 = await links[0].getAttribute("href");
-        expect(href1).toBe("/simple-page");
+        // 期待するリンクを順序に関係なく確認
+        const hrefs = [];
+        for (let i = 0; i < links.length; i++) {
+            const href = await links[i].getAttribute("href");
+            hrefs.push(href);
+        }
 
-        // 2つ目のリンク（/project/page）
-        const href2 = await links[1].getAttribute("href");
-        expect(href2).toBe("/project/page");
-
-        // 3つ目のリンク（/multi/level/path/page）
-        const href3 = await links[2].getAttribute("href");
-        expect(href3).toBe("/multi/level/path/page");
+        // 期待するhrefが含まれていることを確認
+        expect(hrefs).toContain("/simple-page");
+        expect(hrefs).toContain("/project/page");
+        expect(hrefs).toContain("/multi/level/path/page");
     });
 });

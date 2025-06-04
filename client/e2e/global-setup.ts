@@ -1,4 +1,3 @@
-import { chromium } from "@playwright/test";
 import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
@@ -66,77 +65,6 @@ function startTinyliciousServer() {
 async function globalSetup() {
     console.log("Starting global setup...");
 
-    // // Tinyliciousサーバーを起動
-    // try {
-    //     tinyliciousProcess = startTinyliciousServer();
-    //     // サーバーが起動するまで少し待機
-    //     await new Promise(resolve => setTimeout(resolve, 5000));
-
-    //     global.__TINYLICIOUS_PROCESS__ = tinyliciousProcess;
-    // }
-    // catch (err) {
-    //     console.error("Failed to start Tinylicious server:", err);
-    // }
-
-    // ブラウザインスタンスを作成
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
-
-    try {
-        // Firebase Emulatorの起動確認（オプション）
-        // エミュレータが既に起動済みであることを前提としています
-        console.log("Testing Firebase Emulator connection...");
-        if (process.env.VITE_USE_FIREBASE_EMULATOR === "true") {
-            // 環境変数から接続情報を取得（デフォルトは192.168.50.13:54000）
-            const emulatorHost = process.env.VITE_FIRESTORE_EMULATOR_HOST || "192.168.50.13";
-            const emulatorUiPort = process.env.VITE_FIREBASE_EMULATOR_UI_PORT || "54000";
-
-            try {
-                // Emulator UI が応答するか確認
-                await page.goto(`http://${emulatorHost}:${emulatorUiPort}`, { timeout: 5000 });
-                console.log("Firebase Emulator UI is accessible");
-            }
-            catch (err) {
-                console.warn(`Firebase Emulator UI check failed: ${err.message}`);
-                console.warn("Tests may still work if emulator is running but UI is not accessible");
-            }
-        }
-
-        // Tinylicious サーバーの起動確認
-        console.log("Testing Tinylicious server connection...");
-
-        // 環境変数からTinyliciousエンドポイントを取得
-        // TEST_ENVがlocalhostの場合は、localhost:7092を使用
-        const isLocalhostEnv = process.env.TEST_ENV === "localhost";
-        // const tinyliciousHost = process.env.VITE_TINYLICIOUS_HOST || (isLocalhostEnv ? "localhost" : "192.168.50.13");
-        // const tinyliciousPort = process.env.VITE_TINYLICIOUS_PORT || (isLocalhostEnv ? "7092" : "7082");
-        // const isLocalhostEnv = true;
-        const tinyliciousHost = "localhost";
-        const tinyliciousPort = "7092";
-        const tinyliciousEndpoint = `http://${tinyliciousHost}:${tinyliciousPort}`;
-
-        console.log(`Using Tinylicious endpoint: ${tinyliciousEndpoint}`);
-
-        try {
-            // Tinylicious が応答するか確認
-            await page.goto(tinyliciousEndpoint, { timeout: 5000 });
-            console.log("Tinylicious server is accessible");
-        }
-        catch (err) {
-            console.warn(`Tinylicious server check failed: ${err.message}`);
-            console.warn("Tests may fail if Tinylicious server is not running");
-        }
-
-        // localStorage設定はスキップ - SecurityErrorの原因になるため
-        console.log("Skipping localStorage initialization to avoid SecurityError");
-    }
-    catch (err) {
-        console.error("Global setup failed:", err);
-    }
-    finally {
-        await browser.close();
-        console.log("Global setup completed");
-    }
 }
 
 export default globalSetup;

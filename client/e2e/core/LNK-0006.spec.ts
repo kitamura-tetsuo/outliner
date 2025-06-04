@@ -2,9 +2,7 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
-import { TreeValidator } from "../utils/treeValidation";
 
 /**
  * @file LNK-0006.spec.ts
@@ -34,13 +32,49 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
         // テスト用の存在するページ名を生成
         const existingPageName = "existing-page-" + Date.now().toString().slice(-6);
 
-        // テスト用のページを作成
-        await page.keyboard.type(`[${existingPageName}]`);
+        // 最初のアイテムをクリック
+        const firstItem = page.locator(".outliner-item").first();
+        await firstItem.locator(".item-content").click();
+        await page.waitForTimeout(500);
+
+        // LNK-0003で使用した成功パターンを適用してリンクを作成
+        await page.evaluate((pageName) => {
+            const editorStore = (window as any).editorOverlayStore;
+            if (editorStore) {
+                const cursorInstances = editorStore.getCursorInstances();
+                if (cursorInstances.length > 0) {
+                    const cursor = cursorInstances[0];
+                    console.log('Using cursor.insertText to insert link');
+
+                    // 現在のテキストをクリア
+                    const target = cursor.findTarget();
+                    if (target) {
+                        target.updateText('');
+                        cursor.offset = 0;
+                    }
+
+                    // 内部リンクを挿入
+                    cursor.insertText(`[${pageName}]`);
+                    console.log('Link inserted via cursor.insertText');
+                } else {
+                    console.log('No cursor instances found');
+                }
+            } else {
+                console.log('editorOverlayStore not found');
+            }
+        }, existingPageName);
+
+        await page.waitForTimeout(500);
+
+        // 新しいアイテムを作成してカーソルを離す
         await page.keyboard.press("Enter");
+        await page.waitForTimeout(500);
+        await page.keyboard.type("別のアイテム");
         await page.waitForTimeout(500);
 
         // リンクをクリックして新しいページに移動
-        await page.click(`text=${existingPageName}`);
+        const linkElement = page.locator(`a.internal-link:has-text("${existingPageName}")`).first();
+        await linkElement.click();
         await page.waitForTimeout(1000);
 
         // 開発者ログインボタンをクリック
@@ -67,7 +101,47 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
 
         // 存在しないページへのリンクを作成
         const nonExistentPage = "non-existent-" + Date.now().toString().slice(-6);
-        await page.keyboard.type(`[${nonExistentPage}]`);
+
+        // 新しいアイテムを作成
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(500);
+
+        // 現在のアイテムにフォーカスを設定
+        const currentItem = page.locator(".outliner-item").last();
+        await currentItem.locator(".item-content").click();
+        await page.waitForTimeout(500);
+
+        // 存在しないページへのリンクを挿入
+        await page.evaluate((pageName) => {
+            const editorStore = (window as any).editorOverlayStore;
+            if (editorStore) {
+                const cursorInstances = editorStore.getCursorInstances();
+                if (cursorInstances.length > 0) {
+                    const cursor = cursorInstances[0];
+                    console.log('Using cursor.insertText to insert non-existent link');
+
+                    // 現在のテキストをクリア
+                    const target = cursor.findTarget();
+                    if (target) {
+                        target.updateText('');
+                        cursor.offset = 0;
+                    }
+
+                    // 存在しないページへのリンクを挿入
+                    cursor.insertText(`[${pageName}]`);
+                    console.log('Non-existent link inserted via cursor.insertText');
+                } else {
+                    console.log('No cursor instances found');
+                }
+            } else {
+                console.log('editorOverlayStore not found');
+            }
+        }, nonExistentPage);
+
+        await page.waitForTimeout(500);
+
+        // カーソルを離す
+        await page.keyboard.press("Escape");
         await page.waitForTimeout(500);
 
         // ページ存在確認の状態をデバッグ

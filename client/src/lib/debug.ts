@@ -26,12 +26,18 @@ export function setupGlobalDebugFunctions(xfluidService: any) {
 
     // SharedTreeのデータ構造を取得するデバッグ関数
     window.getFluidTreeDebugData = function () {
-        return fluidStore.fluidClient!.getAllData();
+        if (!fluidStore.fluidClient) {
+            throw new Error("FluidClient is not initialized. Please wait for the client to be ready.");
+        }
+        return fluidStore.fluidClient.getAllData();
     };
 
     // 特定のパスのデータを取得するデバッグ関数
     window.getFluidTreePathData = function (path?: string) {
-        return fluidStore.fluidClient!.getTreeAsJson(path);
+        if (!fluidStore.fluidClient) {
+            throw new Error("FluidClient is not initialized. Please wait for the client to be ready.");
+        }
+        return fluidStore.fluidClient.getTreeAsJson(path);
     };
 
     logger.debug("Global debug functions initialized");

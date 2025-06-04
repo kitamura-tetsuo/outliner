@@ -8,9 +8,13 @@ class GeneralStore {
         return this._fluidClient;
     }
     public set fluidClient(v: FluidClient | undefined) {
+        console.log(`fluidStore: Setting fluidClient`, { exists: !!v, containerId: v?.containerId });
         this._fluidClient = v;
         if (v) {
-            store.project = v.getProject();
+            const project = v.getProject();
+            console.log(`fluidStore: Got project from client`, { projectExists: !!project, projectTitle: project?.title });
+            store.project = project;
+            console.log(`fluidStore: Set store.project`, { storeProjectExists: !!store.project });
         }
     }
 

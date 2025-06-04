@@ -10,29 +10,15 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("認証機能テスト", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // テスト開始前に十分な時間を設定
+        // テスト環境を準備（認証コンポーネントが表示されるページに移動）
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // ホームページにアクセス
-        await page.goto("/");
-
-        // ページが完全に読み込まれるまで待機
-        try {
-            await page.waitForLoadState("networkidle", { timeout: 60000 });
-            console.log("Page loaded, waiting for UI elements to stabilize...");
-        }
-        catch (error) {
-            console.log("Timeout waiting for networkidle, continuing anyway");
-            // スクリーンショットを撮影して状態を確認
-            await page.screenshot({ path: "test-results/auth-networkidle-timeout.png" });
-        }
-
-        // UIが安定するまでさらに待機
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // 認証コンポーネントが表示されるまで待機
+        await page.waitForSelector(".auth-container", { timeout: 10000 });
     });
 
     /**
@@ -45,21 +31,31 @@ test.describe("認証機能テスト", () => {
      * @check ログイン後にログアウトボタンが表示される
      */
     test("開発者モードでログインフローが正常に動作する", async ({ page }) => {
-        // ログアウト状態を確保
-        await page.getByRole("button", { name: "ログアウト" }).click();
+        // 既にログインしている場合はログアウト
+        const logoutButton = page.locator("button.logout-btn");
+        if (await logoutButton.isVisible()) {
+            await logoutButton.click();
+            // ログアウト処理が完了するまで待機
+            await page.waitForSelector("button.dev-toggle", { timeout: 10000 });
+        }
 
-        // 開発者ログインフローの実行
-        await page.getByRole("button", { name: "開発者ログイン" }).click();
+        // 開発者ログインボタンをクリック
+        const devToggleButton = page.locator("button.dev-toggle");
+        await expect(devToggleButton).toBeVisible();
+        await devToggleButton.click();
+
+        // 開発者ログインフォームが表示されるまで待機
+        await page.waitForSelector(".dev-login-form", { timeout: 5000 });
 
         // 認証情報の入力
-        await page.getByRole("textbox", { name: "メールアドレス" }).fill("test@example.com");
-        await page.getByRole("textbox", { name: "パスワード" }).fill("password");
+        await page.locator("#email").fill("test@example.com");
+        await page.locator("#password").fill("password");
 
         // ログイン実行
-        await page.getByRole("button", { name: "開発環境でログイン" }).click();
+        await page.locator("button.dev-login-btn").click();
 
-        // ログイン成功の確認
-        await expect(page.getByRole("button", { name: "ログアウト" })).toBeVisible();
+        // ログイン成功の確認（ログアウトボタンが表示される）
+        await expect(page.locator("button.logout-btn")).toBeVisible({ timeout: 10000 });
     });
 
     /**
@@ -70,19 +66,33 @@ test.describe("認証機能テスト", () => {
      * @check ユーザー情報が正しく表示される
      */
     test("ログイン状態が正しく保持される", async ({ page }) => {
-        // ログアウト状態を確保
-        await page.getByRole("button", { name: "ログアウト" }).click();
+        // 既にログインしている場合はログアウト
+        const logoutButton = page.locator("button.logout-btn");
+        if (await logoutButton.isVisible()) {
+            await logoutButton.click();
+            // ログアウト処理が完了するまで待機
+            await page.waitForSelector("button.dev-toggle", { timeout: 10000 });
+        }
 
         // 開発者ログインの実行
-        await page.getByRole("button", { name: "開発者ログイン" }).click();
-        await page.getByRole("textbox", { name: "メールアドレス" }).fill("test@example.com");
-        await page.getByRole("textbox", { name: "パスワード" }).fill("password");
-        await page.getByRole("button", { name: "開発環境でログイン" }).click();
+        const devToggleButton = page.locator("button.dev-toggle");
+        await devToggleButton.click();
+        await page.waitForSelector(".dev-login-form", { timeout: 5000 });
+
+        await page.locator("#email").fill("test@example.com");
+        await page.locator("#password").fill("password");
+        await page.locator("button.dev-login-btn").click();
+
+        // ログイン成功を確認
+        await expect(page.locator("button.logout-btn")).toBeVisible({ timeout: 10000 });
 
         // ページのリロード
         await page.reload();
 
-        // ログイン状態の確認
-        await expect(page.getByRole("button", { name: "ログアウト" })).toBeVisible();
+        // 認証コンポーネントが再度表示されるまで待機
+        await page.waitForSelector(".auth-container", { timeout: 10000 });
+
+        // ログイン状態が維持されていることを確認
+        await expect(page.locator("button.logout-btn")).toBeVisible({ timeout: 10000 });
     });
 });

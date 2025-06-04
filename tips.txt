@@ -85,3 +85,12 @@ git grep -n "updateFluidClient" $(git rev-list --all) -- . ':(exclude)*.md'
  & rd /s /q "%USERPROFILE%\.mutagen\synchronization"
  & ssh ubuntu@192.168.50.13 'rm -rf ~/.mutagen/synchronization'
  & "C:\Program Files Online\mutagen\mutagen.exe" sync resume sync_Nb1lt2D93LWX7YO7tdNto2vVGQX9yXsnX8yJ89d491q
+
+
+firebase emulators:start --project outliner-d57b0
+cd /workspace/server && npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log
+PORT=7092 npx tinylicious
+npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log
+
+
+cmd /c "npx playwright test --reporter=list > all-tests-final.txt 2>&1"

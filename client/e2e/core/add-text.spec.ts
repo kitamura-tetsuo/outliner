@@ -91,18 +91,6 @@ test.describe("テキスト追加機能テスト", () => {
      * @check ページを再読み込みしても入力したデータが保持されていることを確認する
      */
     test("Adding text updates data structure", async ({ page }) => {
-        // テスト開始前に十分な時間を設定
-
-        // ページが読み込まれるまで一時停止（Fluidが初期化されるのを待つ）
-        try {
-            await page.waitForLoadState("networkidle", { timeout: 60000 });
-        }
-        catch (error) {
-            console.log("Timeout waiting for networkidle, continuing anyway");
-            // スクリーンショットを撮影して状態を確認
-            await page.screenshot({ path: "test-results/networkidle-timeout-2.png" });
-        }
-
         // テキスト追加前の状態を確認
         const initialDebugInfo = await TreeValidator.getTreeData(page);
 

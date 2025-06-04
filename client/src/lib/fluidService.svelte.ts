@@ -25,8 +25,7 @@ import { userManager } from "../auth/UserManager";
 import { FluidClient } from "../fluid/fluidClient";
 import {
     appTreeConfiguration,
-    Items,
-    Project,
+    Project
 } from "../schema/app-schema";
 import {
     getDefaultContainerId,
@@ -103,7 +102,7 @@ async function loadTitle(containerId?: string) {
     if (!containerId) return;
 
     const instances = await getFluidClient(containerId);
-    Tree.on(instances[4]!, "nodeChanged", change => {
+    Tree.on(instances[4]!, "nodeChanged", () => {
         firestoreStore.titleRegistry.set(containerId, title);
     });
     const title = instances[4]!.title;
@@ -558,13 +557,16 @@ export async function getFluidClientByProjectTitle(projectTitle: string): Promis
 
     // clientRegistryを走査して、Project.titleが一致するFluidClientを探す
     const keys = clientRegistry.getAllKeys();
+    log("fluidService", "debug", `clientRegistryのキー数: ${keys.length}`);
 
     for (const key of keys) {
         const instances = clientRegistry.get(key);
         if (!instances) continue;
 
         // FluidInstancesの5番目の要素がProject
-        const [_, __, ___, ____, project] = instances;
+        const [client, container, services, appData, project] = instances;
+
+        log("fluidService", "debug", `プロジェクトを確認中: ${project?.title} (キー: ${key.id})`);
 
         if (project && project.title === projectTitle) {
             log(
@@ -572,11 +574,34 @@ export async function getFluidClientByProjectTitle(projectTitle: string): Promis
                 "info",
                 `プロジェクトタイトル「${projectTitle}」に一致するFluidClientを発見: ${key.id}`,
             );
-            return createFluidClient(key.id);
+
+            // 必要なプロパティが存在することを確認
+            if (!container || !appData) {
+                log("fluidService", "error", `FluidInstancesに必要なプロパティが不足しています: container=${!!container}, appData=${!!appData}`);
+                continue;
+            }
+
+            // 既存のFluidInstancesから直接FluidClientを作成
+            const clientId = uuid();
+            const fluidClientParams = {
+                clientId,
+                client,
+                container,
+                containerId: key.id,
+                appData,
+                project,
+                services,
+            };
+
+            return new FluidClient(fluidClientParams);
         }
     }
 
     log("fluidService", "warn", `プロジェクトタイトル「${projectTitle}」に一致するFluidClientが見つかりませんでした`);
+    log("fluidService", "debug", `利用可能なプロジェクト: ${keys.map(key => {
+        const instances = clientRegistry.get(key);
+        return instances?.[4]?.title || 'unknown';
+    }).join(', ')}`);
     return undefined;
 }
 

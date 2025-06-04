@@ -40,6 +40,8 @@ let hasBeenEdited = $state(false); // 仮ページが編集されたかどうか
 
 // URLパラメータを監視して更新
 $effect(() => {
+    logger.info(`URL params effect triggered: project=${$page.params.project}, page=${$page.params.page}`);
+
     if ($page.params.project) {
         projectName = $page.params.project;
     }
@@ -47,11 +49,14 @@ $effect(() => {
         pageName = $page.params.page;
     }
 
-    logger.info(`Loading project: ${projectName}, page: ${pageName}`);
+    logger.info(`Updated params: project="${projectName}", page="${pageName}", isAuthenticated=${isAuthenticated}`);
 
     // プロジェクトとページが指定されている場合、データを読み込む
     if (projectName && pageName && isAuthenticated) {
+        logger.info(`Calling loadProjectAndPage()`);
         loadProjectAndPage();
+    } else {
+        logger.info(`Skipping loadProjectAndPage: projectName=${!!projectName}, pageName=${!!pageName}, isAuthenticated=${isAuthenticated}`);
     }
 });
 
@@ -62,7 +67,10 @@ async function handleAuthSuccess(authResult: any) {
 
     // 認証成功後にプロジェクトとページを読み込む
     if (projectName && pageName) {
+        logger.info(`Auth success: calling loadProjectAndPage for project="${projectName}", page="${pageName}"`);
         loadProjectAndPage();
+    } else {
+        logger.info(`Auth success: skipping loadProjectAndPage, projectName="${projectName}", pageName="${pageName}"`);
     }
 }
 
@@ -78,15 +86,44 @@ async function loadProjectAndPage() {
     error = null;
     pageNotFound = false;
 
+    logger.info(`Loading project and page: project="${projectName}", page="${pageName}"`);
+
     try {
         // コンテナを読み込む
         const client = await getFluidClientByProjectTitle(projectName);
+        logger.info(`FluidClient loaded for project: ${projectName}`);
 
         // fluidClientストアを更新
         fluidStore.fluidClient = client;
+        logger.info(`FluidStore updated with client`);
+        logger.info(`FluidStore.fluidClient exists: ${!!fluidStore.fluidClient}`);
+
+        // プロジェクトの設定を待つ
+        let retryCount = 0;
+        const maxRetries = 10;
+        while (!store.project && retryCount < maxRetries) {
+            logger.info(`Waiting for store.project to be set... retry ${retryCount + 1}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            retryCount++;
+        }
+
+        logger.info(`Store.project exists: ${!!store.project}`);
+        logger.info(`Store.pages exists: ${!!store.pages}`);
+
+        if (store.project) {
+            logger.info(`Project title: "${store.project.title}"`);
+            const items = store.project.items as any;
+            logger.info(`Project items count: ${items?.length || 0}`);
+        }
 
         // ページを検索
         if (store.pages) {
+            logger.info(`Available pages count: ${store.pages.current.length}`);
+            for (let i = 0; i < store.pages.current.length; i++) {
+                const page = store.pages.current[i];
+                logger.info(`Page ${i}: "${page.text}"`);
+            }
+
             const foundPage = findPageByName(pageName);
             if (foundPage) {
                 store.currentPage = foundPage;
@@ -108,7 +145,13 @@ async function loadProjectAndPage() {
         }
         else {
             pageNotFound = true;
-            logger.error("No pages available");
+            logger.error("No pages available - store.pages is null/undefined");
+            logger.error(`store.project exists: ${!!store.project}`);
+            if (store.project) {
+                logger.error(`store.project.items exists: ${!!store.project.items}`);
+                const items = store.project.items as any;
+                logger.error(`store.project.items length: ${items?.length || 0}`);
+            }
         }
     }
     catch (err) {
@@ -126,13 +169,18 @@ async function loadProjectAndPage() {
 function findPageByName(name: string) {
     if (!store.pages) return null;
 
+    logger.info(`Searching for page: "${name}"`);
+
     // ページ名が一致するページを検索
     for (const page of store.pages.current) {
+        logger.info(`Checking page: "${page.text}" against "${name}"`);
         if (page.text.toLowerCase() === name.toLowerCase()) {
+            logger.info(`Found matching page: "${page.text}"`);
             return page;
         }
     }
 
+    logger.info(`No matching page found for: "${name}"`);
     return null;
 }
 
@@ -146,6 +194,8 @@ function createTemporaryItem(pageName: string): Item {
     const timeStamp = new Date().getTime();
     const currentUser = fluidStore.currentUser?.id || "anonymous";
 
+    logger.info(`Creating temporary item for page: ${pageName}, user: ${currentUser}`);
+
     // 一時的なアイテムを作成
     const tempItem = new Item({
         id: `temp-${uuid()}`,
@@ -158,6 +208,7 @@ function createTemporaryItem(pageName: string): Item {
         items: new Items([]), // 子アイテムのための空のリスト
     });
 
+    logger.info(`Created temporary item with ID: ${tempItem.id}`);
     return tempItem;
 }
 
@@ -166,11 +217,13 @@ function createTemporaryItem(pageName: string): Item {
  */
 function saveTemporaryPage() {
     if (!isTemporaryPage || !hasBeenEdited || !store.project) {
+        logger.info(`saveTemporaryPage skipped: isTemporaryPage=${isTemporaryPage}, hasBeenEdited=${hasBeenEdited}, project=${!!store.project}`);
         return;
     }
 
     try {
         const currentUser = fluidStore.currentUser?.id || "anonymous";
+        logger.info(`Saving temporary page: ${pageName} by user: ${currentUser}`);
 
         // 新しいページを作成
         const newPage = TreeViewManager.addPage(
@@ -178,26 +231,33 @@ function saveTemporaryPage() {
             pageName,
             currentUser,
         );
+        logger.info(`Created new page with ID: ${newPage.id}`);
 
         // 仮ページの内容を新しいページにコピー
         if (store.currentPage) {
-            newPage.updateText(pageName);
+            // 一時的なページの現在のテキストを保持
+            const currentText = store.currentPage.text || pageName;
+            newPage.updateText(currentText);
+            logger.info(`Updated page text to: ${currentText}`);
 
             // 子アイテムがあれば、それも追加
             // TypeScriptエラーを回避するためにキャストを使用
             const tempItems = store.currentPage.items as unknown as Items;
             if (tempItems && tempItems.length > 0) {
+                logger.info(`Copying ${tempItems.length} child items`);
                 for (let i = 0; i < tempItems.length; i++) {
                     const item = tempItems[i] as Item;
                     const newItems = newPage.items as unknown as Items;
                     const newItem = newItems.addNode(currentUser);
                     newItem.updateText(item.text);
+                    logger.info(`Copied item ${i}: ${item.text}`);
                 }
             }
         }
 
         // 現在のページを新しいページに更新
         store.currentPage = newPage;
+        logger.info(`Updated store.currentPage to new page`);
 
         // 仮ページフラグをリセット
         isTemporaryPage = false;
@@ -214,6 +274,8 @@ function saveTemporaryPage() {
  * 仮ページが編集されたことを検知する
  */
 function handleTemporaryPageEdited() {
+    logger.info(`handleTemporaryPageEdited called: isTemporaryPage=${isTemporaryPage}, hasBeenEdited=${hasBeenEdited}`);
+
     if (isTemporaryPage && !hasBeenEdited) {
         hasBeenEdited = true;
         logger.info(`Temporary page edited: ${pageName}`);
@@ -311,6 +373,9 @@ onDestroy(() => {
     </div>
 
     {#if store.currentPage}
+        <!-- デバッグ用ログ -->
+        {logger.info(`Rendering OutlinerBase: pageItem.id=${store.currentPage.id}, isTemporary=${isTemporaryPage}, onEdit=${!!handleTemporaryPageEdited}`)}
+
         <!-- OutlinerBase コンポーネントでアウトライナーを表示 -->
         <OutlinerBase
             pageItem={store.currentPage}
@@ -323,6 +388,9 @@ onDestroy(() => {
         {#if !isTemporaryPage}
             <BacklinkPanel {pageName} {projectName} />
         {/if}
+    {:else}
+        <!-- デバッグ用ログ -->
+        {logger.info(`OutlinerBase not rendered: store.currentPage=${!!store.currentPage}`)}
     {/if}
     {#if isLoading}
         <div class="flex justify-center py-8">

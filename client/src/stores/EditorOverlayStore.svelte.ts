@@ -60,6 +60,8 @@ export class EditorOverlayStore {
     animationPaused = $state<boolean>(false);
     // GlobalTextArea の textarea 要素を保持
     textareaRef = $state<HTMLTextAreaElement | null>(null);
+    // onEdit コールバック
+    onEditCallback: (() => void) | null = null;
 
     private timerId!: ReturnType<typeof setTimeout>;
 
@@ -71,6 +73,23 @@ export class EditorOverlayStore {
     // テキストエリア参照を取得
     getTextareaRef(): HTMLTextAreaElement | null {
         return this.textareaRef;
+    }
+
+    // onEdit コールバックを設定
+    setOnEditCallback(callback: (() => void) | null) {
+        this.onEditCallback = callback;
+    }
+
+    // onEdit コールバックを取得
+    getOnEditCallback(): (() => void) | null {
+        return this.onEditCallback;
+    }
+
+    // onEdit コールバックを呼び出す
+    triggerOnEdit() {
+        if (this.onEditCallback) {
+            this.onEditCallback();
+        }
     }
 
     private genUUID(): string {

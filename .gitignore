@@ -56,3 +56,5 @@ functions/.runtimeconfig.json
 functions/firebase-debug.log
 firestore-debug.log
 firebase-debug.log
+
+client/test-output.txt/

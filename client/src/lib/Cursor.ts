@@ -171,7 +171,26 @@ export class Cursor {
                 // requestAnimationFrameを使用してフォーカスを設定
                 requestAnimationFrame(() => {
                     textarea.focus();
+
+                    // さらに確実にするためにsetTimeoutも併用
+                    setTimeout(() => {
+                        textarea.focus();
+
+                        // デバッグ情報
+                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            console.log(
+                                `Cursor.applyToStore: Focus set. Active element is textarea: ${
+                                    document.activeElement === textarea
+                                }`,
+                            );
+                        }
+                    }, 10);
                 });
+            } else {
+                // テキストエリアが見つからない場合はエラーログ
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.error(`Cursor.applyToStore: Global textarea not found`);
+                }
             }
         }
     }
@@ -648,7 +667,13 @@ export class Cursor {
         this.resetInitialColumn();
 
         const node = this.findTarget();
-        if (!node) return;
+        if (!node) {
+            console.error(`insertText: Target item not found for itemId: ${this.itemId}`);
+            return;
+        }
+
+        console.log(`insertText: Inserting "${ch}" at offset ${this.offset} in item ${this.itemId}`);
+        console.log(`insertText: Current text: "${node.text}"`);
 
         // 選択範囲がある場合は、選択範囲を削除してからテキストを挿入
         const selection = Object.values(store.selections).find(s =>
@@ -670,6 +695,8 @@ export class Cursor {
 
             // 選択範囲をクリア
             this.clearSelection();
+
+            console.log(`insertText: Updated text with selection: "${txt}"`);
         }
         else {
             // 通常の挿入
@@ -677,9 +704,22 @@ export class Cursor {
             txt = txt.slice(0, this.offset) + ch + txt.slice(this.offset);
             node.updateText(txt);
             this.offset += ch.length;
+
+            console.log(`insertText: Updated text: "${txt}"`);
         }
 
         this.applyToStore();
+
+        // onEdit コールバックを呼び出す
+        store.triggerOnEdit();
+
+        // グローバルテキストエリアの値も同期
+        const textarea = store.getTextareaRef();
+        if (textarea) {
+            textarea.value = node.text;
+            textarea.setSelectionRange(this.offset, this.offset);
+            console.log(`insertText: Synced textarea value: "${textarea.value}"`);
+        }
     }
 
     /**
@@ -949,8 +989,45 @@ export class Cursor {
 
     onInput(event: InputEvent) {
         const data = event.data;
+        console.log(`Cursor.onInput called for item ${this.itemId}, data: "${data}", inputType: ${event.inputType}`);
+        console.log(`Cursor.onInput: Current cursor state - itemId: ${this.itemId}, offset: ${this.offset}, isActive: ${this.isActive}`);
+
+        // テキストエリア全体の値を取得して同期
+        const textarea = store.getTextareaRef();
+        if (textarea) {
+            const textareaValue = textarea.value;
+            console.log(`Textarea value: "${textareaValue}"`);
+
+            // テキストエリアの値でSharedTreeのアイテムテキストを更新
+            const node = this.findTarget();
+            if (node) {
+                console.log(`Current item text: "${node.text}"`);
+                if (textareaValue !== node.text) {
+                    console.log(`Updating item text from "${node.text}" to "${textareaValue}"`);
+                    node.updateText(textareaValue);
+
+                    // カーソル位置をテキストエリアの選択位置に合わせる
+                    const selectionStart = textarea.selectionStart || 0;
+                    this.offset = selectionStart;
+                    this.applyToStore();
+
+                    // onEdit コールバックを呼び出す
+                    store.triggerOnEdit();
+                    return;
+                }
+            } else {
+                console.error(`Cursor.onInput: Target item not found for itemId: ${this.itemId}`);
+            }
+        } else {
+            console.error(`Cursor.onInput: Global textarea not found`);
+        }
+
+        // フォールバック: event.dataがある場合は従来の処理
         if (data) {
+            console.log(`Inserting text via fallback: "${data}"`);
             this.insertText(data);
+        } else {
+            console.log(`No data to insert`);
         }
     }
 
@@ -1940,14 +2017,7 @@ export class Cursor {
         }
     }
 
-    // 注: formatBold, formatItalic, formatUnderline, formatStrikethrough, formatCode メソッドは
-    // 下部で再定義されているため、ここでの定義は削除しました。
-
-    // 注: formatSelection メソッドは削除しました。
-    // 代わりに applyScrapboxFormatting メソッドを使用します。
-
-    // 注: formatMultiItemSelection メソッドは削除しました。
-    // 代わりに applyScrapboxFormattingToMultipleItems メソッドを使用します。
+    // フォーマットメソッドは下部で定義されています
 
     /**
      * 現在のアイテムのテキストを全選択する

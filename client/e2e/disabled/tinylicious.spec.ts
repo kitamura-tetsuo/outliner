@@ -2,8 +2,6 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { CursorValidator } from "../utils/cursorValidation";
-import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @file tinylicious.spec.ts
@@ -40,16 +38,6 @@ test.describe("Tinyliciousリアル接続テスト", () => {
 
         // デバッグページにアクセス
         await page.goto("/debug");
-
-        // ページが完全に読み込まれるまで待機
-        try {
-            await page.waitForLoadState("networkidle", { timeout: 60000 });
-        }
-        catch (error) {
-            console.log("Timeout waiting for networkidle, continuing anyway");
-            // スクリーンショットを撮影して状態を確認
-            await page.screenshot({ path: "test-results/tinylicious-networkidle-timeout.png" });
-        }
     });
 
     /**

@@ -94,6 +94,7 @@
 		const y = event.clientY;
 		// テキスト要素を特定
 		const textEl = displayRef.querySelector('.item-text') as HTMLElement;
+
 		// Caret APIを試す
 		if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
 			let range: Range | null = null;
@@ -112,11 +113,20 @@
 				return Math.min(Math.max(0, range.startOffset), content.length);
 			}
 		}
+
 		// フォールバック: spanを使った幅測定
-		const rect = displayRef.getBoundingClientRect();
+		// テキスト要素がない場合はコンテンツ全体を使用
+		const targetElement = textEl || displayRef;
+		const rect = targetElement.getBoundingClientRect();
 		const relX = x - rect.left;
+
+		// クリック位置がテキスト領域外の場合の処理
+		if (relX < 0) {
+			return 0; // テキストの左側をクリックした場合は先頭
+		}
+
 		const span = document.createElement('span');
-		const style = window.getComputedStyle(textEl || displayRef);
+		const style = window.getComputedStyle(targetElement);
 		span.style.fontFamily = style.fontFamily;
 		span.style.fontSize = style.fontSize;
 		span.style.fontWeight = style.fontWeight;
@@ -125,8 +135,12 @@
 		span.style.visibility = 'hidden';
 		span.style.position = 'absolute';
 		document.body.appendChild(span);
+
 		let best = 0;
 		let minDist = Infinity;
+		let totalWidth = 0;
+
+		// 各文字位置での幅を測定
 		for (let i = 0; i <= content.length; i++) {
 			span.textContent = content.slice(0, i);
 			const w = span.getBoundingClientRect().width;
@@ -135,8 +149,19 @@
 				minDist = d;
 				best = i;
 			}
+			// 最後の文字位置での幅を記録
+			if (i === content.length) {
+				totalWidth = w;
+			}
 		}
+
 		document.body.removeChild(span);
+
+		// テキストの右側をクリックした場合は末尾に配置
+		if (relX > totalWidth) {
+			return content.length;
+		}
+
 		return best;
 	}
 
@@ -154,8 +179,10 @@
 
 		// グローバル textarea を取得（ストアから、なければDOMからフォールバック）
 		let textareaEl = editorOverlayStore.getTextareaRef();
+		console.log('OutlinerItem startEditing: textareaEl from store:', !!textareaEl);
 		if (!textareaEl) {
 			textareaEl = document.querySelector('.global-textarea') as HTMLTextAreaElement | null;
+			console.log('OutlinerItem startEditing: textareaEl from DOM:', !!textareaEl);
 			if (!textareaEl) {
 				console.error('Global textarea not found');
 				return;
@@ -163,9 +190,28 @@
 			// ストアに再登録
 			editorOverlayStore.setTextareaRef(textareaEl);
 		}
-		// テキスト内容を同期
-		textareaEl.value = text.current;
+
+		// グローバルテキストエリアにフォーカスを設定（最優先）
 		textareaEl.focus();
+		console.log('OutlinerItem startEditing: Focus set to global textarea, activeElement:', document.activeElement === textareaEl);
+
+		// フォーカス確保のための追加試行
+		requestAnimationFrame(() => {
+			textareaEl.focus();
+			console.log('OutlinerItem startEditing: RAF focus set, activeElement:', document.activeElement === textareaEl);
+
+			setTimeout(() => {
+				textareaEl.focus();
+				const isFocused = document.activeElement === textareaEl;
+				console.log('OutlinerItem startEditing: Final focus set, focused:', isFocused);
+			}, 10);
+		});
+		// テキスト内容を同期
+		console.log('OutlinerItem startEditing: setting textarea value to:', text.current);
+		textareaEl.value = text.current;
+		console.log('OutlinerItem startEditing: calling focus()');
+		textareaEl.focus();
+		console.log('OutlinerItem startEditing: focus called, activeElement:', document.activeElement?.tagName, document.activeElement?.className);
 
 		let cursorPosition = initialCursorPosition;
 
@@ -210,15 +256,25 @@
 		editorOverlayStore.setActiveItem(model.id);
 
 		// 新しいカーソルを設定
-		editorOverlayStore.setCursor({
+		const cursorId = editorOverlayStore.setCursor({
 			itemId: model.id,
 			offset: cursorPosition !== undefined ? cursorPosition : 0,
 			isActive: true,
 			userId: 'local'
 		});
 
+		console.log('OutlinerItem startEditing: Cursor set with ID:', cursorId, 'at position:', cursorPosition);
+
 		// カーソル点滅を開始
 		editorOverlayStore.startCursorBlink();
+
+		// フォーカスを再確認
+		if (document.activeElement !== textareaEl) {
+			console.log('OutlinerItem startEditing: Re-focusing textarea');
+			textareaEl.focus();
+		}
+
+		console.log('OutlinerItem startEditing: Final state - activeElement:', document.activeElement === textareaEl, 'cursorId:', cursorId);
 	}
 
 
@@ -1454,7 +1510,6 @@
 
 	.title-text {
 		font-size: 1.5em;
-		font-weight: bold;
 		color: #333;
 	}
 
