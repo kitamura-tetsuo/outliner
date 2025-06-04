@@ -11,7 +11,7 @@ import {
     appTreeConfiguration,
     Project,
 } from "../schema/app-schema";
-import * as fluidService from "./fluidService";
+import * as fluidService from "./fluidService.svelte";
 
 describe("fluidService", () => {
     beforeEach(() => {
@@ -32,10 +32,11 @@ describe("fluidService", () => {
             // コンテナをアタッチして永続化（コンテナIDを取得）
             // console.log("fluidService", "info", "Attaching container");
             const newContainerId = await container.attach();
-            // console.log("fluidService", "info", `Container created with ID: ${newContainerId}`);
+            console.log("fluidService", "info", `Container created with ID: ${newContainerId}`);
 
-            const getResponse = await client.getContainer(newContainerId, fluidService.containerSchema, "2");
-            console.log(getResponse.container);
+            // client.getContainer(newContainerId, fluidService.containerSchema, "2"); does not work with tinylicious.
+            // const getResponse = await client.getContainer(newContainerId, fluidService.containerSchema, "2");
+            // console.log(getResponse.container);
         }
         catch (error) {
             console.error(error);

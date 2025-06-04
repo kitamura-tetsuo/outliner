@@ -82,7 +82,7 @@ const useTinylicious = isTestEnvironment || // テスト環境では常にTinyli
 
 // Fluid Frameworkがパスの不一致によるエラーを回避するため、
 // ContainerSchemaを直接インポートせずにオブジェクトとして定義
-const containerSchema: ContainerSchema = {
+export const containerSchema: ContainerSchema = {
     initialObjects: {
         appData: SharedTree,
     },
