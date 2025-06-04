@@ -22,7 +22,7 @@ alwaysApply: true
 5. テスト作成後はテストがパスするまでテストの実行とテスト又は実装の修正を繰り返して下さい。
   unit testの実行: cd /workspace/client && npm run test:unit
   e2e testの実行: cd /workspace/client && npm run test:e2e:xvfb
-6. 実行状況の確認が有効であれば、playwrite MCP経由で実行状況を確認してください。
+6. 実行状況の確認が有効であれば、playwright MCP経由で実行状況を確認してください。
   テスト用のサーバー
     http://192.168.50.13:7080/
   クライアントのログがここにあります。必要であれば、アクセス後にこちらを確認して下さい。
