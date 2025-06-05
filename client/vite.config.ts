@@ -8,16 +8,23 @@ import {
 } from "vite";
 
 export default defineConfig(({ mode }) => {
+    // dotenvxで環境変数を読み込み
+    const dotenvx = require("@dotenvx/dotenvx");
+
     // デフォルトの環境変数を読み込み
     process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
 
     // テスト環境の場合は.env.testから環境変数を上書き
     if (mode === "test" || process.env.NODE_ENV === "test") {
         console.log("Loading test environment variables from .env.test");
+        dotenvx.config({ path: [".env.test"] });
         process.env = {
             ...process.env,
             ...loadEnv("test", process.cwd(), ""),
         };
+    } else if (mode === "development") {
+        console.log("Loading development environment variables from .env.development");
+        dotenvx.config({ path: [".env.development"] });
     }
 
     return {

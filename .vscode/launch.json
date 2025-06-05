@@ -137,7 +137,7 @@
             "localRoot": "${workspaceFolder}/server",
             "runtimeArgs": [
                 "-c",
-                "cd ${workspaceFolder}/server && npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7081 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
+                "cd ${workspaceFolder}/server && npx dotenvx run --env-file=.env.test -- npm run dev -- --host 0.0.0.0 --port 7081 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
             ],
             "env": {
                 "PORT": "7081"
@@ -170,7 +170,7 @@
             "runtimeExecutable": "bash",
             "runtimeArgs": [
                 "-c",
-                "npx dotenv-cli -e .env.test -- npm run dev -- --host 0.0.0.0 --port 7080 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
+                "npx dotenvx run --env-file=.env.test -- npm run dev -- --host 0.0.0.0 --port 7080 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
             ],
             "localRoot": "${workspaceFolder}/client",
             "env": {
@@ -217,7 +217,7 @@
             "runtimeExecutable": "bash",
             "runtimeArgs": [
                 "-c",
-                "npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
+                "npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
             ],
             "localRoot": "${workspaceFolder}/client",
             "env": {
@@ -238,7 +238,7 @@
             "localRoot": "${workspaceFolder}/server",
             "runtimeArgs": [
                 "-c",
-                "cd ${workspaceFolder}/server && npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
+                "cd ${workspaceFolder}/server && npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
             ],
             "env": {
                 "PORT": "7091"
