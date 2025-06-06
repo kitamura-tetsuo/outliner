@@ -18,7 +18,7 @@ set +a
 
 
 # Install necessary global packages and tools
-npm install -g firebase-tools tinylicious dotenv-cli cross-env || true
+npm install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
 curl -fsSL https://dprint.dev/install.sh | sh
 if ! command -v cross-env >/dev/null; then
   echo "cross-env not found after global install; attempting local install"
@@ -45,6 +45,11 @@ npm ci
 cd ${ROOT_DIR}/client
 npm ci
 npx -y playwright install --with-deps chromium
+
+if ! command -v lsof >/dev/null; then
+  echo "Installing lsof for port management"
+  apt-get update && apt-get install -y lsof
+fi
 
 chmod +x ${ROOT_DIR}/scripts/kill_ports.sh
 ${ROOT_DIR}/scripts/kill_ports.sh
