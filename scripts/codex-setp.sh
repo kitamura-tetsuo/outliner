@@ -1,5 +1,11 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+set -euo pipefail
+
+# ポート番号のデフォルト値
+: "${TEST_FLUID_PORT:=7092}"
+: "${TEST_API_PORT:=7091}"
+: "${VITE_PORT:=7090}"
 
 chmod +x ${ROOT_DIR}/scripts/setup-local-env.sh
 ${ROOT_DIR}/scripts/setup-local-env.sh
@@ -9,7 +15,7 @@ source ${ROOT_DIR}/server/.env
 source ${ROOT_DIR}/client/.env
 set +a
 
-npm install -g firebase-tools tinylicious dotenv-cli
+npm install -g firebase-tools tinylicious dotenv-cli cross-env
 curl -fsSL https://dprint.dev/install.sh | sh
 
 pwd
@@ -21,8 +27,12 @@ mkdir -p ${ROOT_DIR}/logs/
 mkdir -p client/logs/
 mkdir -p client/e2e/logs/
 mkdir -p server/logs/
+mkdir -p functions/logs/
     # サーバーサイドの準備
 cd ${ROOT_DIR}/server
+npm ci
+    # Firebase Functionsの準備
+cd ${ROOT_DIR}/functions
 npm ci
     # クライアントの準備
 cd ${ROOT_DIR}/client
