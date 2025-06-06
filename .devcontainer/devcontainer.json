@@ -38,6 +38,7 @@
         57070,
         57000
     ],
+    "postStartCommand": "bash /workspace/outliner/scripts/codex-setp.sh",
     // node ユーザーとして接続
     "remoteUser": "node"
 }

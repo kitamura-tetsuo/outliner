@@ -69,6 +69,7 @@ Prioritize performance.
 - User has set up test users in server/auth-service.js and wants to clear all Firestore emulator data during development.
 - Always use environment variables for emulator host configuration instead of hardcoding IP addresses like 192.168.50.13, as CI environments will have different host values.
 - User prefers fixing import.meta environment variable loading issues at the root cause rather than using error handling workarounds.
+- Always run `scripts/codex-setp.sh` when the container starts to set up local test services.
 
 # Cursor and Selection Management
 - Key files: Cursor.ts, EditorOverlay.svelte, EditorOverlayStore.svelte.ts, OutlinerItem.svelte.
