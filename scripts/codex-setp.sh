@@ -15,8 +15,13 @@ source ${ROOT_DIR}/server/.env
 source ${ROOT_DIR}/client/.env
 set +a
 
+
+# Install necessary global packages and tools
 npm install -g firebase-tools tinylicious dotenv-cli cross-env
 curl -fsSL https://dprint.dev/install.sh | sh
+# Install xvfb to enable headless browser testing with xvfb-run
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends xvfb
 
 pwd
 echo "ROOT_DIR: ${ROOT_DIR}"
