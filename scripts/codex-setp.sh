@@ -51,6 +51,11 @@ if ! command -v lsof >/dev/null; then
   apt-get update && apt-get install -y lsof
 fi
 
+if ! command -v xvfb-run >/dev/null; then
+  echo "Installing xvfb for headless browser tests"
+  apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends xvfb
+fi
+
 chmod +x ${ROOT_DIR}/scripts/kill_ports.sh
 ${ROOT_DIR}/scripts/kill_ports.sh
 
