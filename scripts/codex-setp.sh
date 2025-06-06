@@ -1,3 +1,4 @@
+#!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -euo pipefail
@@ -17,11 +18,12 @@ set +a
 
 
 # Install necessary global packages and tools
-npm install -g firebase-tools tinylicious dotenv-cli cross-env
+npm install -g firebase-tools tinylicious dotenv-cli cross-env || true
 curl -fsSL https://dprint.dev/install.sh | sh
-# Install xvfb to enable headless browser testing with xvfb-run
-apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends xvfb
+if ! command -v cross-env >/dev/null; then
+  echo "cross-env not found after global install; attempting local install"
+  npm install -g cross-env
+fi
 
 pwd
 echo "ROOT_DIR: ${ROOT_DIR}"
