@@ -419,13 +419,7 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         expect(cursorData.cursorCount).toBe(1);
         expect(cursorData.activeItemId).not.toBeNull();
 
-        // 複数のカーソルがある場合は最初のものを使用
-        const cursor = page.locator(".editor-overlay .cursor.active").first();
-        const initialOpacity = await cursor.evaluate(el => window.getComputedStyle(el).opacity);
-
-        // 次の点滅状態まで待機
-        await page.waitForTimeout(600);
-        const nextOpacity = await cursor.evaluate(el => window.getComputedStyle(el).opacity);
-        expect(initialOpacity).not.toBe(nextOpacity);
+        // カーソルの点滅を検証
+        await CursorValidator.assertCursorBlink(page, 600);
     });
 });

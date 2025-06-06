@@ -200,6 +200,111 @@ export class CursorValidator {
         const cursorData = await this.getCursorData(page);
         expect(cursorData.activeItemId).toBe(expectedItemId);
     }
+
+    /**
+     * DOM上のカーソル要素の詳細情報を取得する
+     * @param page Playwrightのページオブジェクト
+     * @returns カーソル要素の詳細情報
+     */
+    static async getDOMCursorInfo(page: Page): Promise<{
+        totalCursors: number;
+        activeCursors: number;
+        cursorDetails: Array<{
+            index: number;
+            isActive: boolean;
+            position: { left: string; top: string };
+            dataOffset: string | null;
+        }>;
+    }> {
+        return await page.evaluate(() => {
+            const cursors = Array.from(document.querySelectorAll(".cursor"));
+            const activeCursors = Array.from(document.querySelectorAll(".cursor.active"));
+
+            return {
+                totalCursors: cursors.length,
+                activeCursors: activeCursors.length,
+                cursorDetails: cursors.map((cursor, index) => ({
+                    index,
+                    isActive: cursor.classList.contains("active"),
+                    position: {
+                        left: (cursor as HTMLElement).style.left,
+                        top: (cursor as HTMLElement).style.top
+                    },
+                    dataOffset: cursor.getAttribute("data-offset")
+                }))
+            };
+        });
+    }
+
+    /**
+     * カーソルの重複問題を検証する（CLM-0101用）
+     * @param page Playwrightのページオブジェクト
+     * @param expectedCount 期待されるカーソル数
+     * @param stepDescription ステップの説明
+     */
+    static async validateCursorState(page: Page, expectedCount: number, stepDescription: string): Promise<void> {
+        const domInfo = await this.getDOMCursorInfo(page);
+
+        console.log(`${stepDescription}:`);
+        console.log(`  総カーソル数: ${domInfo.totalCursors}`);
+        console.log(`  アクティブカーソル数: ${domInfo.activeCursors}`);
+        console.log(`  カーソル詳細:`, domInfo.cursorDetails);
+
+        // カーソルが期待数と一致することを確認
+        expect(domInfo.totalCursors).toBe(expectedCount);
+        expect(domInfo.activeCursors).toBeLessThanOrEqual(1); // アクティブカーソルは最大1つ
+    }
+
+    /**
+     * アクティブカーソルの数を検証する
+     * @param page Playwrightのページオブジェクト
+     * @param expectedCount 期待されるアクティブカーソル数
+     */
+    static async assertActiveCursorCount(page: Page, expectedCount: number): Promise<void> {
+        const domInfo = await this.getDOMCursorInfo(page);
+        expect(domInfo.activeCursors).toBe(expectedCount);
+    }
+
+    /**
+     * カーソルが最大1つまでしか存在しないことを検証する
+     * @param page Playwrightのページオブジェクト
+     */
+    static async assertSingleCursor(page: Page): Promise<void> {
+        const domInfo = await this.getDOMCursorInfo(page);
+        expect(domInfo.totalCursors).toBeLessThanOrEqual(1);
+        expect(domInfo.activeCursors).toBeLessThanOrEqual(1);
+    }
+
+    /**
+     * カーソルの点滅を検証する
+     * @param page Playwrightのページオブジェクト
+     * @param waitTime 点滅状態変化を待つ時間（ミリ秒）
+     */
+    static async assertCursorBlink(page: Page, waitTime: number = 600): Promise<void> {
+        // アクティブカーソルが存在することを確認
+        const initialDomInfo = await this.getDOMCursorInfo(page);
+        expect(initialDomInfo.activeCursors).toBeGreaterThan(0);
+
+        // 初期の透明度を取得
+        const initialOpacity = await page.evaluate(() => {
+            const cursor = document.querySelector(".editor-overlay .cursor.active");
+            return cursor ? window.getComputedStyle(cursor).opacity : null;
+        });
+        expect(initialOpacity).not.toBeNull();
+
+        // 点滅状態変化を待つ
+        await page.waitForTimeout(waitTime);
+
+        // 変化後の透明度を取得
+        const nextOpacity = await page.evaluate(() => {
+            const cursor = document.querySelector(".editor-overlay .cursor.active");
+            return cursor ? window.getComputedStyle(cursor).opacity : null;
+        });
+        expect(nextOpacity).not.toBeNull();
+
+        // 透明度が変化していることを確認（点滅している）
+        expect(initialOpacity).not.toBe(nextOpacity);
+    }
 }
 
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）

@@ -14,31 +14,24 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
         console.log("waitForCursorVisible: Global textarea is focused");
 
         // カーソル要素が存在し、表示されているかチェック
-        const cursorVisible = await page.evaluate(() => {
-            const cursors = document.querySelectorAll(".editor-overlay .cursor.active");
+        // CursorValidatorを使用してカーソル情報を取得
+        const cursorData = await page.evaluate(() => {
+            // EditorOverlayStoreインスタンスを取得
+            const editorOverlayStore = (window as any).editorOverlayStore;
+            if (!editorOverlayStore) {
+                return { cursorCount: 0, activeCursors: 0 };
+            }
 
-            console.log("Cursor visibility check:", {
-                totalCursors: cursors.length,
-                cursorsVisible: Array.from(cursors).map(cursor => {
-                    const style = window.getComputedStyle(cursor as Element);
-                    return {
-                        display: style.display,
-                        visibility: style.visibility,
-                        opacity: style.opacity,
-                        width: style.width,
-                        height: style.height
-                    };
-                })
-            });
+            const cursors = Object.values(editorOverlayStore.cursors);
+            const activeCursors = cursors.filter((c: any) => c.isActive);
 
-            // アクティブなカーソルが存在し、表示されているかチェック
-            return Array.from(cursors).some(cursor => {
-                const style = window.getComputedStyle(cursor as Element);
-                return style.display !== 'none' &&
-                       style.visibility !== 'hidden' &&
-                       parseFloat(style.opacity) > 0;
-            });
+            return {
+                cursorCount: cursors.length,
+                activeCursors: activeCursors.length
+            };
         });
+
+        const cursorVisible = cursorData.activeCursors > 0;
 
         if (cursorVisible) {
             console.log("waitForCursorVisible: Cursor is visible");

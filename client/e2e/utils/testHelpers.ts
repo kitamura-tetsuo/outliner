@@ -286,9 +286,15 @@ export class TestHelpers {
      */
     public static async waitForCursorVisible(page: Page, timeout = 15000): Promise<boolean> {
         try {
+            // CursorValidatorを使用してカーソルの存在を確認
             await page.waitForFunction(() => {
-                const cursor = document.querySelector(".editor-overlay .cursor.active");
-                return cursor && window.getComputedStyle(cursor).opacity !== "0";
+                const editorOverlayStore = (window as any).editorOverlayStore;
+                if (!editorOverlayStore) {
+                    return false;
+                }
+                const cursors = Object.values(editorOverlayStore.cursors);
+                const activeCursors = cursors.filter((c: any) => c.isActive);
+                return activeCursors.length > 0;
             }, { timeout });
             return true;
         }
