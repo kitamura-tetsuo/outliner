@@ -20,8 +20,16 @@ export class TestHelpers {
         testInfo: any,
         lines: string[] = [],
     ): Promise<{ projectName: string; pageName: string; }> {
-        // ホームページにアクセス
+        // ホームページにアクセスしてアプリの初期化を待つ
         await page.goto("/");
+
+        // ページが完全に初期化されるのを待機
+        await page.waitForFunction(() => {
+            return (
+                (window as any).__FLUID_STORE__ !== undefined &&
+                (window as any).__SVELTE_GOTO__ !== undefined
+            );
+        });
 
         page.goto = async (
             url: string,
@@ -114,6 +122,11 @@ export class TestHelpers {
                 }
             }
         }, { projectName, pageName, lines });
+
+        // FluidClient が設定されるまで待機
+        await page.waitForFunction(() => {
+            return (window as any).__FLUID_STORE__?.fluidClient !== undefined;
+        });
     }
 
     /**
