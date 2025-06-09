@@ -293,7 +293,7 @@ onDestroy(() => {
 }
 </style>
 
-<script context="module">
+<script lang="ts" context="module">
 // コンテキスト内のリンクをハイライトする
 function highlightLinkInContext(context: string, pageName: string): string {
     if (!context || !pageName) return context;
