@@ -3,6 +3,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -euo pipefail
 
+wait_for_port() {
+  local port="$1"
+  local retry=60
+  echo "Waiting for port ${port}..."
+  while ! nc -z localhost "${port}" >/dev/null 2>&1; do
+    sleep 1
+    retry=$((retry-1))
+    if [ ${retry} -le 0 ]; then
+      echo "Timeout waiting for port ${port}"
+      exit 1
+    fi
+  done
+  echo "Port ${port} is ready"
+}
+
 # ポート番号のデフォルト値
 : "${TEST_FLUID_PORT:=7092}"
 : "${TEST_API_PORT:=7091}"
@@ -44,6 +59,7 @@ npm ci
     # クライアントの準備
 cd ${ROOT_DIR}/client
 npm ci
+npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
 npx -y playwright install --with-deps chromium
 
 if ! command -v lsof >/dev/null; then
@@ -75,3 +91,8 @@ npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${ROOT_DIR}/logs/auth-se
 cd ${ROOT_DIR}/client
     # SvelteKitサーバーの起動
 npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} > ${ROOT_DIR}/logs/svelte-kit.log 2>&1 &
+
+wait_for_port ${TEST_API_PORT}
+wait_for_port ${TEST_FLUID_PORT}
+wait_for_port ${VITE_PORT}
+wait_for_port 57000
