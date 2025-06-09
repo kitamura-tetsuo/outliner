@@ -52,25 +52,23 @@ mkdir -p server/logs/
 mkdir -p functions/logs/
     # サーバーサイドの準備
 cd ${ROOT_DIR}/server
+rm -rf node_modules
 npm ci
     # Firebase Functionsの準備
 cd ${ROOT_DIR}/functions
+rm -rf node_modules
 npm ci
     # クライアントの準備
 cd ${ROOT_DIR}/client
+rm -rf node_modules
 npm ci
 npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
 npx -y playwright install --with-deps chromium
 
-if ! command -v lsof >/dev/null; then
-  echo "Installing lsof for port management"
-  apt-get update && apt-get install -y lsof
-fi
-
-if ! command -v xvfb-run >/dev/null; then
-  echo "Installing xvfb for headless browser tests"
-  apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends xvfb
-fi
+# Ensure required OS utilities are available
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+  lsof xvfb > /dev/null
 
 chmod +x ${ROOT_DIR}/scripts/kill_ports.sh
 ${ROOT_DIR}/scripts/kill_ports.sh
