@@ -33,7 +33,8 @@ set +a
 
 
 # Install necessary global packages and tools
-npm install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
+npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
+
 curl -fsSL https://dprint.dev/install.sh | sh
 if ! command -v cross-env >/dev/null; then
   echo "cross-env not found after global install; attempting local install"
@@ -53,15 +54,15 @@ mkdir -p functions/logs/
     # サーバーサイドの準備
 cd ${ROOT_DIR}/server
 rm -rf node_modules
-npm ci
+npm --proxy='' --https-proxy='' ci
     # Firebase Functionsの準備
 cd ${ROOT_DIR}/functions
 rm -rf node_modules
-npm ci
+npm --proxy='' --https-proxy='' ci
     # クライアントの準備
 cd ${ROOT_DIR}/client
 rm -rf node_modules
-npm ci
+npm --proxy='' --https-proxy='' ci
 npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
 npx -y playwright install --with-deps chromium
 
