@@ -33,12 +33,16 @@ set +a
 
 
 # Install necessary global packages and tools
-npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
+if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
+  npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
+fi
 
-curl -fsSL https://dprint.dev/install.sh | sh
+if ! command -v dprint >/dev/null; then
+  curl -fsSL https://dprint.dev/install.sh | sh
+fi
 if ! command -v cross-env >/dev/null; then
   echo "cross-env not found after global install; attempting local install"
-  npm install -g cross-env
+  npm install -g cross-env || true
 fi
 
 pwd
@@ -51,25 +55,32 @@ mkdir -p client/logs/
 mkdir -p client/e2e/logs/
 mkdir -p server/logs/
 mkdir -p functions/logs/
+npm_ci_if_needed() {
+  if [ ! -d node_modules ]; then
+    npm --proxy='' --https-proxy='' ci
+  fi
+}
+
     # サーバーサイドの準備
 cd ${ROOT_DIR}/server
-rm -rf node_modules
-npm --proxy='' --https-proxy='' ci
+npm_ci_if_needed
     # Firebase Functionsの準備
 cd ${ROOT_DIR}/functions
-rm -rf node_modules
-npm --proxy='' --https-proxy='' ci
+npm_ci_if_needed
     # クライアントの準備
 cd ${ROOT_DIR}/client
-rm -rf node_modules
-npm --proxy='' --https-proxy='' ci
-npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
+npm_ci_if_needed
+if [ -d node_modules ]; then
+  npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
+fi
 
 # Ensure required OS utilities are available before installing Playwright to
 # avoid apt lock conflicts when using --with-deps
-apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
-  lsof xvfb > /dev/null
+if ! command -v lsof >/dev/null || ! command -v xvfb-run >/dev/null; then
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+    lsof xvfb > /dev/null
+fi
 
 npx -y playwright install --with-deps chromium
 
