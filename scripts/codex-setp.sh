@@ -64,12 +64,14 @@ cd ${ROOT_DIR}/client
 rm -rf node_modules
 npm --proxy='' --https-proxy='' ci
 npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
-npx -y playwright install --with-deps chromium
 
-# Ensure required OS utilities are available
+# Ensure required OS utilities are available before installing Playwright to
+# avoid apt lock conflicts when using --with-deps
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
   lsof xvfb > /dev/null
+
+npx -y playwright install --with-deps chromium
 
 chmod +x ${ROOT_DIR}/scripts/kill_ports.sh
 ${ROOT_DIR}/scripts/kill_ports.sh
