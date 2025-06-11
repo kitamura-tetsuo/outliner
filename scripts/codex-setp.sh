@@ -22,6 +22,7 @@ wait_for_port() {
 : "${TEST_FLUID_PORT:=7092}"
 : "${TEST_API_PORT:=7091}"
 : "${VITE_PORT:=7090}"
+: "${FIREBASE_PROJECT_ID:=outliner-d57b0}"
 
 chmod +x ${ROOT_DIR}/scripts/setup-local-env.sh
 ${ROOT_DIR}/scripts/setup-local-env.sh
@@ -35,6 +36,10 @@ fi
 export NODE_ENV=test
 export TEST_ENV=localhost
 set +a
+
+FIREBASE_PROJECT_ID="outliner-d57b0"
+export FIREBASE_PROJECT_ID
+export VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
 
 
 # Install necessary global packages and tools
@@ -91,6 +96,11 @@ npx -y playwright install --with-deps chromium
 
 chmod +x ${ROOT_DIR}/scripts/kill_ports.sh
 ${ROOT_DIR}/scripts/kill_ports.sh || true
+# Ensure Firebase emulator ports are free
+lsof -ti :59099 2>/dev/null | xargs -r kill -9 || true
+lsof -ti :58080 2>/dev/null | xargs -r kill -9 || true
+lsof -ti :57000 2>/dev/null | xargs -r kill -9 || true
+lsof -ti :4400 2>/dev/null | xargs -r kill -9 || true
 
 
     # Tinyliciousサーバーの起動
@@ -98,7 +108,7 @@ PORT=${TEST_FLUID_PORT} tinylicious > ${ROOT_DIR}/logs/tinylicious.log 2>&1 &
 
     # Firebase Emulatorの起動
 cd ${ROOT_DIR}/firebase
-firebase emulators:start --project demo-test > ${ROOT_DIR}/logs/firebase-emulator.log 2>&1 &
+firebase emulators:start --project ${FIREBASE_PROJECT_ID} > ${ROOT_DIR}/logs/firebase-emulator.log 2>&1 &
 
     # APIサーバーの起動
 cd ${ROOT_DIR}/server
