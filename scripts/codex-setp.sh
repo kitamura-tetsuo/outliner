@@ -29,6 +29,11 @@ ${ROOT_DIR}/scripts/setup-local-env.sh
 set -a
 source ${ROOT_DIR}/server/.env
 source ${ROOT_DIR}/client/.env
+if [ -f ${ROOT_DIR}/client/.env.test ]; then
+  source ${ROOT_DIR}/client/.env.test
+fi
+export NODE_ENV=test
+export TEST_ENV=localhost
 set +a
 
 
@@ -85,7 +90,7 @@ fi
 npx -y playwright install --with-deps chromium
 
 chmod +x ${ROOT_DIR}/scripts/kill_ports.sh
-${ROOT_DIR}/scripts/kill_ports.sh
+${ROOT_DIR}/scripts/kill_ports.sh || true
 
 
     # Tinyliciousサーバーの起動
@@ -101,8 +106,11 @@ npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${ROOT_DIR}/logs/auth-se
 
     # クライアントの準備
 cd ${ROOT_DIR}/client
-    # SvelteKitサーバーの起動
-npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} > ${ROOT_DIR}/logs/svelte-kit.log 2>&1 &
+    # SvelteKitサーバーの起動 (test mode)
+cross-env NODE_ENV=test TEST_ENV=localhost \
+  dotenvx run --env-file=${ROOT_DIR}/client/.env.test -- \
+  npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} \
+  > ${ROOT_DIR}/logs/svelte-kit.log 2>&1 &
 
 wait_for_port ${TEST_API_PORT}
 wait_for_port ${TEST_FLUID_PORT}
