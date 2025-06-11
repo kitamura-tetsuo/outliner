@@ -23,6 +23,7 @@ Use undefined instead of null.
 Do not create duplicate functions in multiple locations. 
 The use of page.waitForLoadState("networkidle"); is prohibited. 
 Process synchronously whenever possible.
+Please write git branch names, commit messages, etc. in English.
 
 # ⚙️ Development workflow 
 At the end of your work, create the first prompt for the next session so you can continue smoothly. Even if issues remain, carry over the known problems. Focus on writing a prompt that makes the next session effective rather than describing today’s work. 
