@@ -479,6 +479,17 @@ export class TestHelpers {
     }
 
     /**
+     * 指定インデックスのアイテムIDを取得する
+     */
+    public static async getItemIdByIndex(page: Page, index: number): Promise<string | null> {
+        return await page.evaluate((i) => {
+            const items = document.querySelectorAll('.outliner-item');
+            const target = items[i] as HTMLElement | undefined;
+            return target?.dataset.itemId ?? null;
+        }, index);
+    }
+
+    /**
      * アイテムをクリックして編集モードに入る
      * @param page Playwrightのページオブジェクト
      * @param itemSelector アイテムを特定するセレクタ
