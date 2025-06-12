@@ -35,6 +35,7 @@ if [ -f ${ROOT_DIR}/client/.env.test ]; then
 fi
 export NODE_ENV=test
 export TEST_ENV=localhost
+export LIX_SDK_POSTHOG_TOKEN=""
 set +a
 
 FIREBASE_PROJECT_ID="outliner-d57b0"
@@ -92,7 +93,9 @@ if ! command -v lsof >/dev/null || ! command -v xvfb-run >/dev/null; then
     lsof xvfb > /dev/null
 fi
 
-npx -y playwright install --with-deps chromium
+if [ ! -f "$HOME/.cache/ms-playwright/chromium_headless_shell-1176/chrome-linux/headless_shell" ]; then
+  npx -y playwright install --with-deps chromium
+fi
 
 chmod +x ${ROOT_DIR}/scripts/kill_ports.sh
 ${ROOT_DIR}/scripts/kill_ports.sh || true
