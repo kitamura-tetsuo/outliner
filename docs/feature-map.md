@@ -15,6 +15,7 @@
 | CLM-0101 | アイテム間移動時のカーソル重複と入力分散問題 | — | implemented |
 | CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | — | implemented |
 | CLM-0103 | フォーマット文字列でのカーソル操作 | — | implemented |
+| COL-0001 | 他ユーザーのカーソル表示 | — | implemented |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
 | FMT-0001 | フォーマット表示 | — | implemented |
 | FMT-0002 | フォーマット組み合わせ | — | implemented |
