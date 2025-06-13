@@ -3,6 +3,7 @@ import { TreeViewManager } from "../fluid/TreeViewManager";
 import type { Item } from "../schema/app-schema";
 import { Items } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
+import { fluidStore } from "../stores/fluidStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 
@@ -145,6 +146,18 @@ export class Cursor {
             isActive: this.isActive,
             userId: this.userId,
         });
+
+        // 変更を他ユーザーへ通知
+        const client = fluidStore.fluidClient;
+        if (client) {
+            client.broadcastCursorPosition({
+                cursorId: this.cursorId,
+                itemId: this.itemId,
+                offset: this.offset,
+                isActive: this.isActive,
+                userId: this.userId,
+            });
+        }
 
         // カーソルインスタンスが存在しない場合は新しく作成
         const inst = store.cursorInstances.get(this.cursorId);

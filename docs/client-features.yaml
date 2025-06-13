@@ -803,3 +803,14 @@
     - server/test/auth-service-emulator-wait.test.js
   components:
     - server/auth-service.js
+
+- id: COL-0001
+  title: '他ユーザーのカーソル表示'
+  description: '複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する'
+  category: collaboration
+  status: implemented
+  acceptance:
+    - '他ユーザーがカーソルを移動すると、その位置が表示される'
+    - 'Fluid Framework の signal 機能でカーソル位置を同期する'
+  tests:
+    - client/e2e/core/COL-0001.spec.ts
