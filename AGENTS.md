@@ -71,6 +71,7 @@ Prioritize performance.
 - Always use environment variables for emulator host configuration instead of hardcoding IP addresses like 192.168.50.13, as CI environments will have different host values.
 - User prefers fixing import.meta environment variable loading issues at the root cause rather than using error handling workarounds.
 - Always run `scripts/codex-setp.sh` when the container starts to set up local test services.
+- The setup script temporarily unsets HTTP_PROXY and HTTPS_PROXY and sets `npm_config_http-proxy=''` so npm ignores proxy settings.
 
 # Cursor and Selection Management
 - Key files: Cursor.ts, EditorOverlay.svelte, EditorOverlayStore.svelte.ts, OutlinerItem.svelte.

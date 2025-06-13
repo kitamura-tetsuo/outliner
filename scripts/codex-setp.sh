@@ -3,6 +3,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -euo pipefail
 
+# Disable proxy settings for npm and related tools
+unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy || true
+export npm_config_http-proxy=''
+export npm_config_https-proxy=''
+
 wait_for_port() {
   local port="$1"
   local retry=60
