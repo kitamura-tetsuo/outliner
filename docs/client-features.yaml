@@ -853,6 +853,13 @@
   description: 'ページ間のリンクを視覚化するグラフ表示機能'
   category: navigation
   status: draft
+- id: VCM-001
+  title: Multi-Cursor Editing
+  description: 複数カーソルを同時に操作して編集できる機能
+  category: cursor-management
+  status: draft
+  tests:
+    - client/e2e/new/VCM-001.spec.ts
 
 - id: SRE-001
   title: Advanced Search & Replace
@@ -863,6 +870,7 @@
     - client/src/lib/search/index.ts
     - client/src/components/SearchPanel.svelte
     - client/src/routes/[project]/[page]/+page.svelte
+  status: draft
   tests:
     - client/e2e/new/SRE-001.spec.ts
 
@@ -873,6 +881,18 @@
   status: implemented
   tests:
     - client/e2e/new/DBW-001.spec.ts
+
+  status: draft
+  tests:
+    - client/e2e/new/DBW-001.spec.ts
+
+- id: FFI-001
+  title: Fluid Framework Integration
+  description: Fluid Frameworkを用いたリアルタイム同期機能の拡張
+  category: fluid-integration
+  status: draft
+  tests:
+    - client/e2e/new/FFI-001.spec.ts
 
 - id: GRF-001
   title: Graph View
