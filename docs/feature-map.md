@@ -20,7 +20,6 @@
 | DBW-0001 | Client-Side WASM DB | — | draft |
 | DBW-001 | Client-Side SQL Database | — | draft |
 | FFI-0001 | Fluid Framework Integration | — | draft |
-| FFI-001 | Fluid Framework Integration | — | draft |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
 | FMT-0001 | フォーマット表示 | client/e2e/core/FMT-0001.spec.ts | implemented |
 | FMT-0002 | フォーマット組み合わせ | client/e2e/core/FMT-0002.spec.ts | implemented |
