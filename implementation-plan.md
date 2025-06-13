@@ -65,6 +65,65 @@
 - docs/client-features.yaml の更新
 - 新機能の使用方法のドキュメント作成
 
+## 6. Multi-Cursor Editing
+
+### マイルストーン
+- ローカルで複数カーソルを生成・移動できるようにする
+- 複数カーソルでの同時テキスト編集操作を実装
+- 他ユーザーとのカーソル同期により共同編集を強化
+
+### 依存関係
+- Selection Range 機能の安定化
+- Fluid Framework の signal 機能
+
+## 7. Advanced Search & Replace
+
+### マイルストーン
+- クライアントサイド全文検索エンジンの導入
+- 検索UIと結果ハイライトの実装
+- 一括置換と履歴管理の追加
+- WASM DB との連携による高速検索
+
+### 依存関係
+- Client-Side WASM DB の実装
+- ページ・アイテムデータの正規化
+
+## 8. Client-Side WASM DB
+
+### マイルストーン
+- WebAssembly 版データベースのセットアップ
+- オフライン時の読み書きキャッシュ機構
+- Fluid とのデータ同期ロジック構築
+- 高速全文検索用インデックス生成
+
+### 依存関係
+- Service Worker との連携
+- Fluid Framework Integration
+
+## 9. Fluid Framework Integration
+
+### マイルストーン
+- Fluid Framework の最新バージョンへの更新
+- SharedTree への移行とデータモデル整理
+- Signal を活用したリアルタイム機能拡充
+- WASM DB と同期するロジック実装
+
+### 依存関係
+- Client-Side WASM DB
+- Multi-Cursor Editing の仕様確定
+
+## 10. Graph View
+
+### マイルストーン
+- ページ間リンクを解析してグラフ構造を生成
+- D3.js などを用いたインタラクティブ表示
+- グラフからページを開くナビゲーション機能
+- リアルタイム更新と編集機能
+
+### 依存関係
+- Fluid Framework Integration
+- Advanced Search & Replace
+
 ## 6. 新規機能の概要
 
 ### VCM-001 Multi-Cursor Editing
