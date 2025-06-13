@@ -18,6 +18,10 @@ npm install
 # Firebase Functions側の依存関係
 cd ../functions
 npm install
+
+# Python依存関係 (feature-map スクリプト用)
+cd ..
+pip install -r scripts/requirements.txt
 ```
 
 2. 環境変数を設定:
