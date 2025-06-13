@@ -20,7 +20,8 @@ TEST_ROOTS  = [                                   # 任意で追記 / 上書き
     # ROOT / "server/tests",                    # 例: 追加したいときはアンコメント
 ]
 MD_OUTFILE  = ROOT / "docs" / "feature-map.md"        # 出力先
-FEATURE_RE  = re.compile(r"@feature\s+(FTR-\d{4})", re.I)
+# Accept any capitalized prefix like CLM-0001 or API-0123
+FEATURE_RE  = re.compile(r"@feature\s+([A-Z]+-\d{3,4})", re.I)
 # ──────────────────────────────────────────────────────────
 
 # ---------- Loguru ----------
