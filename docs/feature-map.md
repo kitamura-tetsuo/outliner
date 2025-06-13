@@ -15,7 +15,9 @@
 | CLM-0101 | アイテム間移動時のカーソル重複と入力分散問題 | client/e2e/core/CLM-0101.spec.ts | implemented |
 | CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | client/e2e/core/CLM-0102.spec.ts | implemented |
 | CLM-0103 | フォーマット文字列でのカーソル操作 | client/e2e/core/CLM-0103.spec.ts | implemented |
-| COL-0001 | 他ユーザーのカーソル表示 | client/e2e/core/COL-0001.spec.ts | implemented |
+| COL-0001 | 他ユーザーのカーソル表示 | — | implemented |
+| DBW-0001 | Client-Side WASM DB | — | draft |
+| FFI-0001 | Fluid Framework Integration | — | draft |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
 | FMT-0001 | フォーマット表示 | client/e2e/core/FMT-0001.spec.ts | implemented |
 | FMT-0002 | フォーマット組み合わせ | client/e2e/core/FMT-0002.spec.ts | implemented |
@@ -25,6 +27,8 @@
 | FMT-0006 | カーソル移動時のフォーマット表示の一貫性 | client/e2e/core/FMT-0006.spec.ts | implemented |
 | FMT-0007 | 内部リンク機能の表示 | — | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
+| FTR-0013 | Use environment variables in min page | — | implemented |
+| GVI-0001 | Graph View | — | draft |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
 | ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
 | LNK-0001 | 内部リンクのURL生成機能 | — | implemented |
@@ -34,6 +38,7 @@
 | LNK-0005 | リンクプレビュー機能 | — | implemented |
 | LNK-0006 | リンク先ページの存在確認機能 | — | implemented |
 | LNK-0007 | バックリンク機能 | — | implemented |
+| MCE-0001 | Multi-Cursor Editing | — | draft |
 | NAV-0001 | プロジェクト選択とページナビゲーション | client/e2e/core/NAV-0001.spec.ts | implemented |
 | NAV-0002 | プロジェクトページへのリンク機能 | — | implemented |
 | SLR-0001 | Shift + 上下左右 | client/e2e/core/SLR-0001.spec.ts | implemented |
@@ -48,6 +53,7 @@
 | SLR-0010 | 選択範囲のフォーマット変更 | client/e2e/core/SLR-0010.spec.ts | implemented |
 | SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | — | implemented |
 | SLR-0101 | ボックス選択（矩形選択）機能 - マウス | — | implemented |
+| SRP-0001 | 高度な検索と置換 | — | draft |
 | TST-0001 | SharedTreeデータ検証ユーティリティ | client/e2e/utils/tree-validation.spec.ts | implemented |
 | TST-0002 | カーソル情報検証ユーティリティ | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | テストヘルパーユーティリティ | — | implemented |
