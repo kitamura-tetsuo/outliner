@@ -814,3 +814,42 @@
     - 'Fluid Framework の signal 機能でカーソル位置を同期する'
   tests:
     - client/e2e/core/COL-0001.spec.ts
+- id: VCM-001
+  title: Multi-Cursor Editing
+  description: 複数カーソルを同時に操作して編集できる機能
+  category: cursor-management
+  status: draft
+  tests:
+    - client/e2e/new/VCM-001.spec.ts
+
+- id: SRE-001
+  title: Advanced Search & Replace
+  description: 正規表現や範囲指定に対応した検索・置換機能
+  category: search
+  status: draft
+  tests:
+    - client/e2e/new/SRE-001.spec.ts
+
+- id: DBW-001
+  title: Client-Side SQL Database
+  description: IndexedDB上にSQLデータベースを構築し、オフラインでページを保存できる機能
+  category: database
+  status: draft
+  tests:
+    - client/e2e/new/DBW-001.spec.ts
+
+- id: FFI-001
+  title: Fluid Framework Integration
+  description: Fluid Frameworkを用いたリアルタイム同期機能の拡張
+  category: fluid-integration
+  status: draft
+  tests:
+    - client/e2e/new/FFI-001.spec.ts
+
+- id: GRF-001
+  title: Graph View
+  description: 項目間のリンクをグラフ表示するビューを提供
+  category: visualization
+  status: draft
+  tests:
+    - client/e2e/new/GRF-001.spec.ts
