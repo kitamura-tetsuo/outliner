@@ -35,12 +35,14 @@ if [ -f ${ROOT_DIR}/client/.env.test ]; then
 fi
 export NODE_ENV=test
 export TEST_ENV=localhost
-export LIX_SDK_POSTHOG_TOKEN=""
 set +a
 
 FIREBASE_PROJECT_ID="outliner-d57b0"
 export FIREBASE_PROJECT_ID
 export VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+
+# Skip Paraglide compile in tests
+: "${SKIP_PARAGLIDE_COMPILE:=1}"
 
 
 # Install necessary global packages and tools
@@ -81,8 +83,8 @@ npm_ci_if_needed
     # クライアントの準備
 cd ${ROOT_DIR}/client
 npm_ci_if_needed
-if [ -d node_modules ]; then
-  npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
+if [ -z "${SKIP_PARAGLIDE_COMPILE}" ] && [ -d node_modules ]; then
+  npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide || true
 fi
 
 # Ensure required OS utilities are available before installing Playwright to
@@ -93,9 +95,7 @@ if ! command -v lsof >/dev/null || ! command -v xvfb-run >/dev/null; then
     lsof xvfb > /dev/null
 fi
 
-if [ ! -f "$HOME/.cache/ms-playwright/chromium_headless_shell-1176/chrome-linux/headless_shell" ]; then
-  npx -y playwright install --with-deps chromium
-fi
+npx -y playwright install --with-deps chromium
 
 chmod +x ${ROOT_DIR}/scripts/kill_ports.sh
 ${ROOT_DIR}/scripts/kill_ports.sh || true
