@@ -815,12 +815,6 @@
   tests:
     - client/e2e/core/COL-0001.spec.ts
 
-- id: MCE-0001
-  title: 'Multi-Cursor Editing'
-  description: '複数のカーソルを使って同時に編集できる機能'
-  category: collaboration
-  status: draft
-
 - id: SRP-0001
   title: '高度な検索と置換'
   description: '全文検索および一括置換を行う機能'
@@ -844,3 +838,27 @@
   description: 'ページ間のリンクを視覚化するグラフ表示機能'
   category: navigation
   status: draft
+
+- id: SRE-001
+  title: Advanced Search & Replace
+  description: 正規表現や範囲指定に対応した検索・置換機能
+  category: search
+  status: draft
+  tests:
+    - client/e2e/new/SRE-001.spec.ts
+
+- id: DBW-001
+  title: Client-Side SQL Database
+  description: IndexedDB上にSQLデータベースを構築し、オフラインでページを保存できる機能
+  category: database
+  status: draft
+  tests:
+    - client/e2e/new/DBW-001.spec.ts
+
+- id: GRF-001
+  title: Graph View
+  description: 項目間のリンクをグラフ表示するビューを提供
+  category: visualization
+  status: draft
+  tests:
+    - client/e2e/new/GRF-001.spec.ts

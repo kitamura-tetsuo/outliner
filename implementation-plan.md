@@ -123,3 +123,25 @@
 ### 依存関係
 - Fluid Framework Integration
 - Advanced Search & Replace
+
+## 6. 新規機能の概要
+
+### VCM-001 Multi-Cursor Editing
+- 複数カーソルを任意の位置に追加して同時編集する
+- 選択や入力操作を全カーソルに適用する
+
+### SRE-001 Advanced Search & Replace
+- 正規表現を用いた検索と一括置換をサポート
+- 複数ページを対象にした検索UIを提供する
+
+### DBW-001 Client-Side SQL Database
+- IndexedDB上で動作するSQLデータベースを導入する
+- オフラインでもページデータを保存し、復帰時に同期する
+
+### FFI-001 Fluid Framework Integration
+- Fluid Frameworkのコンテナ管理機能を共通モジュール化
+- リアルタイム同期処理を他機能から簡単に利用できるようにする
+
+### GRF-001 Graph View
+- ページ間リンクをグラフとして可視化するビューを追加
+- ノード選択で対応ページへ遷移できるようにする
