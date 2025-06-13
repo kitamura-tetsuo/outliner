@@ -814,3 +814,33 @@
     - 'Fluid Framework の signal 機能でカーソル位置を同期する'
   tests:
     - client/e2e/core/COL-0001.spec.ts
+
+- id: MCE-0001
+  title: 'Multi-Cursor Editing'
+  description: '複数のカーソルを使って同時に編集できる機能'
+  category: collaboration
+  status: draft
+
+- id: SRP-0001
+  title: '高度な検索と置換'
+  description: '全文検索および一括置換を行う機能'
+  category: navigation
+  status: draft
+
+- id: DBW-0001
+  title: 'Client-Side WASM DB'
+  description: 'オフライン操作と高速検索を実現するWebAssemblyデータベース'
+  category: application
+  status: draft
+
+- id: FFI-0001
+  title: 'Fluid Framework Integration'
+  description: 'Fluid Frameworkを全面的に統合しリアルタイム機能を強化'
+  category: fluid-service
+  status: draft
+
+- id: GVI-0001
+  title: 'Graph View'
+  description: 'ページ間のリンクを視覚化するグラフ表示機能'
+  category: navigation
+  status: draft
