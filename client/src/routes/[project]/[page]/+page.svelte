@@ -10,6 +10,7 @@ import { userManager } from "../../../auth/UserManager";
 import AuthComponent from "../../../components/AuthComponent.svelte";
 import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
 import OutlinerBase from "../../../components/OutlinerBase.svelte";
+import SearchPanel from "../../../components/SearchPanel.svelte";
 import { TreeViewManager } from "../../../fluid/TreeViewManager";
 import {
     cleanupLinkPreviews,
@@ -383,6 +384,7 @@ onDestroy(() => {
             isTemporary={isTemporaryPage}
             onEdit={handleTemporaryPageEdited}
         />
+        <SearchPanel />
 
         <!-- バックリンクパネル -->
         {#if !isTemporaryPage}

@@ -19,8 +19,8 @@
   },
   "main": "index.js",
   "dependencies": {
-    "@fluidframework/azure-client": "^2.0.0",
-    "@fluidframework/azure-service-utils": "^1.1.0",
+    "@fluidframework/azure-client": "^2.42.0",
+    "@fluidframework/azure-service-utils": "^2.42.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "firebase": "^11.8.1",

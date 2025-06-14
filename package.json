@@ -1,4 +1,7 @@
 {
+    "scripts": {
+        "test": "bash scripts/run-tests.sh"
+    },
     "dependencies": {
         "@playwright/test": "^1.52.0"
     }

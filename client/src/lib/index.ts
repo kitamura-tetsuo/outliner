@@ -2,6 +2,7 @@
 
 // Fluid Framework Telemetryフィルタを初期化
 import "./fluidTelemetryInit";
+export * as search from "./search";
 
 // 開発モードのみ適用する場合
 if (import.meta.env.MODE === "development") {
