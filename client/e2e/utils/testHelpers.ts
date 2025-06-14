@@ -20,8 +20,16 @@ export class TestHelpers {
         testInfo: any,
         lines: string[] = [],
     ): Promise<{ projectName: string; pageName: string; }> {
-        // ホームページにアクセス
+        // ホームページにアクセスしてアプリの初期化を待つ
         await page.goto("/");
+
+        // ページが完全に初期化されるのを待機
+        await page.waitForFunction(() => {
+            return (
+                (window as any).__FLUID_STORE__ !== undefined &&
+                (window as any).__SVELTE_GOTO__ !== undefined
+            );
+        });
 
         page.goto = async (
             url: string,
@@ -161,6 +169,11 @@ export class TestHelpers {
                 }
             }
         }, { projectName, pageName, lines });
+
+        // FluidClient が設定されるまで待機
+        await page.waitForFunction(() => {
+            return (window as any).__FLUID_STORE__?.fluidClient !== undefined;
+        });
     }
 
     /**
@@ -515,6 +528,17 @@ export class TestHelpers {
         if (!activeItemId) return null;
 
         return page.locator(`.outliner-item[data-item-id="${activeItemId}"] .item-content`);
+    }
+
+    /**
+     * 指定インデックスのアイテムIDを取得する
+     */
+    public static async getItemIdByIndex(page: Page, index: number): Promise<string | null> {
+        return await page.evaluate((i) => {
+            const items = document.querySelectorAll('.outliner-item');
+            const target = items[i] as HTMLElement | undefined;
+            return target?.dataset.itemId ?? null;
+        }, index);
     }
 
     /**

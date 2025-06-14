@@ -4,32 +4,35 @@
 | API-0001 | Firebase Functions APIサーバーの修正 | — | implemented |
 | API-0002 | Firebase emulator起動待機機能 | — | implemented |
 | APP-0001 | プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定 | — | implemented |
-| CLM-0001 | クリックで編集モードに入る | — | implemented |
-| CLM-0002 | 左へ移動 | — | implemented |
-| CLM-0003 | 右へ移動 | — | implemented |
-| CLM-0004 | 上へ移動 | — | implemented |
-| CLM-0005 | 下へ移動 | — | implemented |
-| CLM-0007 | 行頭へ移動 | — | implemented |
-| CLM-0008 | 行末へ移動 | — | implemented |
-| CLM-0100 | 通常クリックでカーソルが増えないこと | — | implemented |
-| CLM-0101 | アイテム間移動時のカーソル重複と入力分散問題 | — | implemented |
-| CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | — | implemented |
-| CLM-0103 | フォーマット文字列でのカーソル操作 | — | implemented |
-| DFT-0001 | Fluid Framework ブランチ機能（下書き作成・マージ） | — | implemented |
-| DFT-0002 | Firebase FunctionsからFluid Frameworkアクセス機能 | — | implemented |
-| DFT-0003 | テスト用コア書き込み機能 | — | implemented |
-| DFT-0004 | スケジュール公開機能 | — | implemented |
+| CHT-001 | Chart Component | — | implemented |
+| CLM-0001 | クリックで編集モードに入る | client/e2e/core/CLM-0001.spec.ts | implemented |
+| CLM-0002 | 左へ移動 | client/e2e/core/CLM-0002.spec.ts | implemented |
+| CLM-0003 | 右へ移動 | client/e2e/core/CLM-0003.spec.ts | implemented |
+| CLM-0004 | 上へ移動 | client/e2e/core/CLM-0004.spec.ts | implemented |
+| CLM-0005 | 下へ移動 | client/e2e/core/CLM-0005.spec.ts | implemented |
+| CLM-0007 | 行頭へ移動 | client/e2e/core/CLM-0007.spec.ts | implemented |
+| CLM-0008 | 行末へ移動 | client/e2e/core/CLM-0008.spec.ts | implemented |
+| CLM-0100 | 通常クリックでカーソルが増えないこと | client/e2e/core/CLM-0100.spec.ts | implemented |
+| CLM-0101 | アイテム間移動時のカーソル重複と入力分散問題 | client/e2e/core/CLM-0101.spec.ts | implemented |
+| CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | client/e2e/core/CLM-0102.spec.ts | implemented |
+| CLM-0103 | フォーマット文字列でのカーソル操作 | client/e2e/core/CLM-0103.spec.ts | implemented |
+| COL-0001 | 他ユーザーのカーソル表示 | client/e2e/core/COL-0001.spec.ts | implemented |
+| DBW-0001 | Client-Side WASM DB | — | draft |
+| DBW-001 | Client-Side SQL Database | — | draft |
+| FFI-0001 | Fluid Framework Integration | — | implemented |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
-| FMT-0001 | フォーマット表示 | — | implemented |
-| FMT-0002 | フォーマット組み合わせ | — | implemented |
-| FMT-0003 | 拡張フォーマット | — | implemented |
-| FMT-0004 | クリップボードからのペーストとフォーマット | — | implemented |
-| FMT-0005 | Visual Studio Codeのコピー/ペースト仕様 | — | implemented |
-| FMT-0006 | カーソル移動時のフォーマット表示の一貫性 | — | implemented |
+| FMT-0001 | フォーマット表示 | client/e2e/core/FMT-0001.spec.ts | implemented |
+| FMT-0002 | フォーマット組み合わせ | client/e2e/core/FMT-0002.spec.ts | implemented |
+| FMT-0003 | 拡張フォーマット | client/e2e/core/FMT-0003.spec.ts | implemented |
+| FMT-0004 | クリップボードからのペーストとフォーマット | client/e2e/core/FMT-0004.spec.ts | implemented |
+| FMT-0005 | Visual Studio Codeのコピー/ペースト仕様 | client/e2e/disabled/FMT-0005.spec.ts | implemented |
+| FMT-0006 | カーソル移動時のフォーマット表示の一貫性 | client/e2e/core/FMT-0006.spec.ts | implemented |
 | FMT-0007 | 内部リンク機能の表示 | — | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
-| IME-0001 | IMEを使用した日本語入力 | — | implemented |
-| ITM-0001 | Enterで新規アイテム追加 | — | implemented |
+| GRF-001 | Graph View | — | implemented |
+| GVI-0001 | Graph View | — | draft |
+| IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
+| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
 | LNK-0001 | 内部リンクのURL生成機能 | — | implemented |
 | LNK-0002 | 内部リンクの機能検証 | — | implemented |
 | LNK-0003 | 内部リンクのナビゲーション機能 | — | implemented |
@@ -37,27 +40,26 @@
 | LNK-0005 | リンクプレビュー機能 | — | implemented |
 | LNK-0006 | リンク先ページの存在確認機能 | — | implemented |
 | LNK-0007 | バックリンク機能 | — | implemented |
-| NAV-0001 | プロジェクト選択とページナビゲーション | — | implemented |
+| NAV-0001 | プロジェクト選択とページナビゲーション | client/e2e/core/NAV-0001.spec.ts | implemented |
 | NAV-0002 | プロジェクトページへのリンク機能 | — | implemented |
-| PERF-0001 | スケジュール公開パフォーマンス最適化 | — | implemented |
-| SLR-0001 | Shift + 上下左右 | — | implemented |
-| SLR-0002 | 行頭まで選択 | — | implemented |
-| SLR-0003 | 行末まで選択 | — | implemented |
-| SLR-0004 | マウスドラッグによる選択 | — | implemented |
-| SLR-0005 | 複数アイテムにまたがる選択 | — | implemented |
-| SLR-0006 | 複数アイテム選択範囲のコピー＆ペースト | — | implemented |
-| SLR-0007 | 複数アイテム選択範囲の削除 | — | implemented |
-| SLR-0008 | 選択範囲のエッジケース | — | implemented |
-| SLR-0009 | ドラッグ＆ドロップによるテキスト移動 | — | implemented |
-| SLR-0010 | 選択範囲のフォーマット変更 | — | implemented |
+| SLR-0001 | Shift + 上下左右 | client/e2e/core/SLR-0001.spec.ts | implemented |
+| SLR-0002 | 行頭まで選択 | client/e2e/core/SLR-0002.spec.ts | implemented |
+| SLR-0003 | 行末まで選択 | client/e2e/core/SLR-0003.spec.ts | implemented |
+| SLR-0004 | マウスドラッグによる選択 | client/e2e/core/SLR-0004.spec.ts | implemented |
+| SLR-0005 | 複数アイテムにまたがる選択 | client/e2e/core/SLR-0005.spec.ts | implemented |
+| SLR-0006 | 複数アイテム選択範囲のコピー＆ペースト | client/e2e/core/SLR-0006.spec.ts | implemented |
+| SLR-0007 | 複数アイテム選択範囲の削除 | client/e2e/core/SLR-0007.spec.ts | implemented |
+| SLR-0008 | 選択範囲のエッジケース | client/e2e/core/SLR-0008.spec.ts | implemented |
+| SLR-0009 | ドラッグ＆ドロップによるテキスト移動 | client/e2e/core/SLR-0009.spec.ts | implemented |
+| SLR-0010 | 選択範囲のフォーマット変更 | client/e2e/core/SLR-0010.spec.ts | implemented |
 | SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | — | implemented |
 | SLR-0101 | ボックス選択（矩形選択）機能 - マウス | — | implemented |
-| TST-0001 | SharedTreeデータ検証ユーティリティ | — | implemented |
-| TST-0002 | カーソル情報検証ユーティリティ | — | implemented |
+| SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts | implemented |
+| SRP-0001 | 高度な検索と置換 | — | draft |
+| TST-0001 | SharedTreeデータ検証ユーティリティ | client/e2e/utils/tree-validation.spec.ts | implemented |
+| TST-0002 | カーソル情報検証ユーティリティ | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | テストヘルパーユーティリティ | — | implemented |
 | TST-0004 | テスト環境の改善 | — | implemented |
 | TST-0005 | テスト環境の初期化と準備 | — | implemented |
-| UI-0001 | スケジュール公開ダイアログUI | — | implemented |
-| UI-0002 | スケジュール状態表示UI | — | implemented |
 | USR-0001 | ユーザー削除機能 | — | implemented |
 | USR-0002 | コンテナ削除機能 | — | implemented |

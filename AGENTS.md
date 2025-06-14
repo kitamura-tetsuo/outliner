@@ -1,6 +1,13 @@
 # 📄 Documentation & Specifications
 
 Record every feature in docs\client-features.yaml.
+**Before running any tests, execute `scripts/codex-setp.sh`.** This script ensures
+all required services are running, starting the Firebase emulator
+automatically if it is not already active.
+
+- While multiple AIs may code in parallel, review documents frequently to avoid overlapping features or contradictory explanations.
+- Continuously reference and update past best practices so they remain current.
+- Keep the implementation plan documentation updated whenever changes occur.
 
 # 🧪 Test implementation and execution policy
 
@@ -27,6 +34,7 @@ Use undefined instead of null.
 Do not create duplicate functions in multiple locations.
 The use of page.waitForLoadState("networkidle"); is prohibited.
 Process synchronously whenever possible.
+Please write git branch names, commit messages, etc. in English.
 
 # ⚙️ Development workflow
 

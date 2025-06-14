@@ -100,7 +100,6 @@
   status: implemented # draft / implemented / deprecated
   acceptance:
     - 'Endキーを押すと、カーソルが現在の行の末尾に移動する'
-    - '複数行のアイテムでは、現在のカーソルがある行の末尾に移動する'
   tests:
     - client/e2e/core/CLM-0008.spec.ts
 - id: CLM-0100
@@ -804,142 +803,83 @@
   components:
     - server/auth-service.js
 
-- id: DFT-0001
-  title: 'Fluid Framework ブランチ機能（下書き作成・マージ）'
-  description: 'Fluid Framework v2.41.0のgetBranch関数とTreeViewConfigurationAlphaを使用して下書き用のブランチを作成し、メインブランチにマージする機能'
-  category: draft-functionality
+- id: COL-0001
+  title: '他ユーザーのカーソル表示'
+  description: '複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する'
+  category: collaboration
   status: implemented
   acceptance:
-    - 'TreeViewConfigurationAlphaを使用してSchematizingSimpleTreeViewを作成できる'
-    - 'getBranch関数を使用してSharedTreeからブランチを作成できる'
-    - 'ブランチは元のSharedTreeとは独立したデータ構造を持つ'
-    - 'ブランチに対してデータの読み書きができる'
-    - 'ブランチのデータは元のSharedTreeに影響しない'
-    - 'ブランチからJSONデータを取得できる'
-    - 'ブランチのメタデータ（作成日時、作成者など）を管理できる'
-    - 'ブランチの一意識別子を生成できる'
-    - 'ブランチをメインブランチにマージできる'
-    - 'マージ時にrebase、merge、commit、apply操作を試行する'
-    - 'Fluid Framework標準操作が利用できない場合は手動同期でフォールバックする'
-    - 'TreeAlpha.branchは0x9b1エラーで失敗することを確認する（期待される動作）'
+    - '他ユーザーがカーソルを移動すると、その位置が表示される'
+    - 'Fluid Framework の signal 機能でカーソル位置を同期する'
   tests:
-    - client/e2e/core/DFT-0001.spec.ts
-  components:
-    - client/src/lib/draftService.svelte.ts
-    - client/src/types/draft-types.ts
-    - client/src/schema/app-schema.ts
+    - client/e2e/core/COL-0001.spec.ts
 
-- id: DFT-0002
-  title: 'Firebase FunctionsからFluid Frameworkアクセス機能'
-  description: 'Firebase FunctionsからFluid Frameworkのコンテナにアクセスし、データを読み書きする機能'
-  category: draft-functionality
-  status: implemented
-  acceptance:
-    - 'Firebase FunctionsからFluid Frameworkクライアントを作成できる'
-    - 'Firebase FunctionsからSharedTreeコンテナにアクセスできる'
-    - 'Firebase FunctionsからSharedTreeにデータを書き込める'
-    - 'Firebase FunctionsからSharedTreeのデータを読み取れる'
-    - '認証トークンを使用してFluid Frameworkにアクセスできる'
-    - 'エラーハンドリングが適切に実装されている'
-  tests:
-    - functions/test/DFT-0002.test.js
-  components:
-    - functions/src/fluidService.js
-    - functions/src/draftPublisher.js
+- id: SRP-0001
+  title: '高度な検索と置換'
+  description: '全文検索および一括置換を行う機能'
+  category: navigation
+  status: draft
 
-- id: DFT-0003
-  title: 'テスト用コア書き込み機能'
-  description: 'フォークからFirebase Functionsを経由してFluid Frameworkに書き込むコア機能のテスト実装'
-  category: draft-functionality
-  status: implemented
-  acceptance:
-    - 'フォークデータをFirebase Functionsに送信できる'
-    - 'Firebase FunctionsでフォークデータをSharedTreeに書き込める'
-    - '書き込み後のSharedTreeデータが期待通りになる'
-    - 'エラーが発生した場合に適切にハンドリングされる'
-    - 'テスト環境でエンドツーエンドの動作確認ができる'
-  tests:
-    - client/e2e/core/DFT-0003.spec.ts
-    - functions/test/DFT-0003.test.js
-  components:
-    - client/src/lib/draftService.svelte.ts
-    - functions/src/draftPublisher.js
-    - functions/index.js
+- id: DBW-0001
+  title: 'Client-Side WASM DB'
+  description: 'オフライン操作と高速検索を実現するWebAssemblyデータベース'
+  category: application
+  status: draft
 
-- id: DFT-0004
-  title: 'スケジュール公開機能'
-  description: '指定時刻に下書きを自動公開するスケジュール機能。Cloud Tasksを使用してFirebase Functionsを実行し、フォークデータをメインブランチにマージする'
-  category: draft-functionality
+- id: FFI-0001
+  title: 'Fluid Framework Integration'
+  description: 'Fluid Frameworkを全面的に統合しリアルタイム機能を強化'
+  category: fluid-service
   status: implemented
-  acceptance:
-    - '下書き作成時にスケジュール公開時刻を設定できる'
-    - 'Cloud Tasksでスケジュールタスクを作成できる'
-    - '指定時刻にFirebase Functionsが自動実行される'
-    - 'Firebase Functionsからフォークデータを取得できる'
-    - 'フォークデータをメインブランチに正常にマージできる'
-    - 'スケジュール公開の状態を追跡できる'
-    - 'エラー発生時に適切にリトライ・通知される'
-    - 'スケジュールのキャンセル・変更ができる'
-  tests:
-    - client/e2e/core/DFT-0004.spec.ts
-    - functions/test/DFT-0004.test.js
   components:
-    - client/src/lib/scheduleService.svelte.ts
-    - functions/src/scheduledPublisher.js
-    - functions/src/cloudTasksService.js
-    - client/src/types/schedule-types.ts
+    - client/src/lib/fluidService.ts
+    - client/src/lib/wasmDb.ts
+    - client/src/fluid/fluidClient.ts
+  tests:
+    - client/e2e/core/FFI-0001.spec.ts
 
-- id: UI-0001
-  title: 'スケジュール公開ダイアログUI'
-  description: 'スケジュール公開のためのダイアログUIコンポーネント。日時選択、リトライ設定、バリデーション機能を提供'
-  category: user-interface
-  status: implemented
-  acceptance:
-    - 'ダイアログが正しく表示される'
-    - '日時入力フィールドが正しく動作する'
-    - 'リトライ設定の表示・非表示が正しく切り替わる'
-    - '入力値のバリデーションが正しく動作する'
-    - '複数の方法でダイアログを閉じることができる'
-    - 'スケジュール作成処理が正しく実行される'
-    - 'エラー時に適切なメッセージが表示される'
-  tests:
-    - client/e2e/core/UI-0001.spec.ts
-  components:
-    - client/src/components/SchedulePublishDialog.svelte
+- id: GVI-0001
+  title: 'Graph View'
+  description: 'ページ間のリンクを視覚化するグラフ表示機能'
+  category: navigation
+  status: draft
 
-- id: UI-0002
-  title: 'スケジュール状態表示UI'
-  description: '下書きのスケジュール状態を表示するUIコンポーネント。ステータス表示、時刻表示、編集・キャンセル機能を提供'
-  category: user-interface
+- id: SRE-001
+  title: Advanced Search & Replace
+  description: 正規表現や範囲指定に対応した検索・置換機能
+  category: search
   status: implemented
-  acceptance:
-    - 'スケジュール状態が正しく表示される'
-    - 'ステータスに応じたアイコンと色分けが表示される'
-    - '実行予定時刻が適切な形式で表示される'
-    - '残り時間が正しく計算・表示される'
-    - 'コンパクト表示モードが正しく動作する'
-    - 'スケジュール編集・キャンセル操作が正しく動作する'
-    - 'リトライ回数が表示される'
-  tests:
-    - client/e2e/core/UI-0002.spec.ts
   components:
-    - client/src/components/ScheduleStatus.svelte
+    - client/src/lib/search/index.ts
+    - client/src/components/SearchPanel.svelte
+    - client/src/routes/[project]/[page]/+page.svelte
+  tests:
+    - client/e2e/new/SRE-001.spec.ts
 
-- id: PERF-0001
-  title: 'スケジュール公開パフォーマンス最適化'
-  description: '大量データでのスケジュール公開性能測定と同時処理の最適化。メモリ使用量とレスポンス時間の改善'
-  category: performance
-  status: implemented
-  acceptance:
-    - '1000個のアイテムを持つ下書きでも5秒以内でスケジュール作成が完了する'
-    - '5つのスケジュールを同時作成しても10秒以内で完了する'
-    - '複数回の操作でメモリリークが発生しない（10MB以下の増加）'
-    - '平均操作時間が2秒以内、最大操作時間が5秒以内'
-    - '100個のスケジュール一覧が3秒以内で表示される'
-    - 'リアルタイム更新が平均100ms以内で完了する'
+- id: DBW-001
+  title: Client-Side SQL Database
+  description: IndexedDB上にSQLデータベースを構築し、オフラインでページを保存できる機能
+  category: database
+  status: draft
   tests:
-    - client/e2e/core/PERF-0001.spec.ts
+    - client/e2e/new/DBW-001.spec.ts
+
+- id: GRF-001
+  title: Graph View
+  description: 項目間のリンクをグラフ表示するビューを提供
+  category: visualization
+  status: implemented
   components:
-    - client/src/lib/scheduleService.svelte.ts
-    - client/src/components/SchedulePublishDialog.svelte
-    - client/src/components/ScheduleStatus.svelte
+    - src/components/GraphView.svelte
+    - src/routes/graph/+page.svelte
+  tests:
+    - client/e2e/new/GRF-001.spec.ts
+
+- id: CHT-001
+  title: Chart Component
+  description: 保存されたデータをグラフ表示するチャートコンポーネント
+  category: visualization
+  status: implemented
+  components:
+    - src/components/ChartComponent.svelte
+  tests: []

@@ -3,36 +3,31 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -euo pipefail
 
+# Ensure nvm environment is loaded so globally installed node tools are in PATH
+if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+  . "$HOME/.nvm/nvm.sh"
+fi
+
 wait_for_port() {
   local port="$1"
-  local retry=30
+  local retry=60
   echo "Waiting for port ${port}..."
-  while ! (nc -z localhost "${port}" >/dev/null 2>&1 || nc -z 127.0.0.1 "${port}" >/dev/null 2>&1); do
-    echo "Port ${port} not ready yet, retrying... (${retry} attempts left)"
-    sleep 2
+  while ! nc -z localhost "${port}" >/dev/null 2>&1; do
+    sleep 1
     retry=$((retry-1))
     if [ ${retry} -le 0 ]; then
       echo "Timeout waiting for port ${port}"
-      echo "Checking if process is still running..."
-      local port_check=$(netstat -tulpn | grep ":${port}")
-      if [ -n "$port_check" ]; then
-        echo "Port ${port} is listening:"
-        echo "$port_check"
-        echo "Port ${port} is listening, considering it ready"
-        return 0
-      else
-        echo "No process found on port ${port}"
-        return 1
-      fi
+      exit 1
     fi
   done
   echo "Port ${port} is ready"
 }
 
 # ポート番号のデフォルト値
-: "${TEST_FLUID_PORT:=7095}"
-: "${TEST_API_PORT:=7094}"
-: "${VITE_PORT:=7093}"
+: "${TEST_FLUID_PORT:=7092}"
+: "${TEST_API_PORT:=7091}"
+: "${VITE_PORT:=7090}"
+: "${FIREBASE_PROJECT_ID:=outliner-d57b0}"
 
 chmod +x ${ROOT_DIR}/scripts/setup-local-env.sh
 ${ROOT_DIR}/scripts/setup-local-env.sh
@@ -40,15 +35,32 @@ ${ROOT_DIR}/scripts/setup-local-env.sh
 set -a
 source ${ROOT_DIR}/server/.env
 source ${ROOT_DIR}/client/.env
+if [ -f ${ROOT_DIR}/client/.env.test ]; then
+  source ${ROOT_DIR}/client/.env.test
+fi
+export NODE_ENV=test
+export TEST_ENV=localhost
 set +a
+
+FIREBASE_PROJECT_ID="outliner-d57b0"
+export FIREBASE_PROJECT_ID
+export VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+
+# Skip Paraglide compile in tests
+: "${SKIP_PARAGLIDE_COMPILE:=}"
 
 
 # Install necessary global packages and tools
-npm install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
-curl -fsSL https://dprint.dev/install.sh | sh
+if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
+  npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
+fi
+
+if ! command -v dprint >/dev/null; then
+  curl -fsSL https://dprint.dev/install.sh | sh
+fi
 if ! command -v cross-env >/dev/null; then
   echo "cross-env not found after global install; attempting local install"
-  npm install -g cross-env
+  npm install -g cross-env || true
 fi
 
 pwd
@@ -61,74 +73,67 @@ mkdir -p client/logs/
 mkdir -p client/e2e/logs/
 mkdir -p server/logs/
 mkdir -p functions/logs/
+npm_ci_if_needed() {
+  if [ ! -d node_modules ]; then
+    npm --proxy='' --https-proxy='' ci
+  fi
+}
+
     # サーバーサイドの準備
 cd ${ROOT_DIR}/server
-rm -rf node_modules || true
-npm ci
+npm_ci_if_needed
     # Firebase Functionsの準備
 cd ${ROOT_DIR}/functions
-rm -rf node_modules || true
-npm ci
+npm_ci_if_needed
     # クライアントの準備
 cd ${ROOT_DIR}/client
-rm -rf node_modules || true
-npm ci
-npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
-npx -y playwright install --with-deps chromium
+npm_ci_if_needed
+if [ -z "${SKIP_PARAGLIDE_COMPILE}" ] && [ -d node_modules ]; then
+  npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide || true
+fi
 
-# Ensure required OS utilities are available
-sudo apt-get update
-DEBIAN_FRONTEND=noninteractive sudo apt-get -y install --no-install-recommends \
-  lsof xvfb > /dev/null
+# Ensure required OS utilities are available before installing Playwright to
+# avoid apt lock conflicts when using --with-deps
+if ! command -v lsof >/dev/null || ! command -v xvfb-run >/dev/null; then
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+    lsof xvfb > /dev/null
+fi
+
+npx -y playwright install --with-deps chromium
 
 chmod +x ${ROOT_DIR}/scripts/kill_ports.sh
 ${ROOT_DIR}/scripts/kill_ports.sh || true
 
-echo "Starting services..."
-
-    # Tinyliciousサーバーの起動
-echo "Starting Tinylicious on port ${TEST_FLUID_PORT}..."
-cd ${ROOT_DIR}
-PORT=${TEST_FLUID_PORT} tinylicious > ${ROOT_DIR}/logs/tinylicious.log 2>&1 &
-TINYLICIOUS_PID=$!
-echo "Tinylicious started with PID: $TINYLICIOUS_PID"
-sleep 2
-
-    # Firebase Emulatorの起動
-echo "Starting Firebase Emulator..."
-cd ${ROOT_DIR}
-if [ -d "firebase" ]; then
-    cd ${ROOT_DIR}/firebase
-    firebase emulators:start --project demo-test > ${ROOT_DIR}/logs/firebase-emulator.log 2>&1 &
-    FIREBASE_PID=$!
-    echo "Firebase Emulator started with PID: $FIREBASE_PID"
-    sleep 3
+# Start Firebase emulators only if not already running
+if nc -z localhost 59099 >/dev/null 2>&1; then
+  echo "Firebase emulator already running"
 else
-    echo "Firebase directory not found, skipping Firebase Emulator"
+  echo "Starting Firebase emulator..."
+  cd ${ROOT_DIR}/firebase
+  firebase emulators:start --project ${FIREBASE_PROJECT_ID} \
+    > ${ROOT_DIR}/logs/firebase-emulator.log 2>&1 &
+  cd ${ROOT_DIR}
 fi
 
+# Tinyliciousサーバーの起動
+PORT=${TEST_FLUID_PORT} tinylicious > ${ROOT_DIR}/logs/tinylicious.log 2>&1 &
+
     # APIサーバーの起動
-echo "Starting API server on port ${TEST_API_PORT}..."
 cd ${ROOT_DIR}/server
-npm run dev -- --host 0.0.0.0 --port=${TEST_API_PORT} > ${ROOT_DIR}/logs/auth-service-tee.log 2>&1 &
-API_PID=$!
-echo "API server started with PID: $API_PID"
-sleep 3
+npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${ROOT_DIR}/logs/auth-service-tee.log 2>&1 &
 
-    # SvelteKitサーバーの起動
-echo "Starting SvelteKit server on port ${VITE_PORT}..."
+    # クライアントの準備
 cd ${ROOT_DIR}/client
-npm run dev -- --host 0.0.0.0 --port=${VITE_PORT} > ${ROOT_DIR}/logs/svelte-kit.log 2>&1 &
-SVELTE_PID=$!
-echo "SvelteKit server started with PID: $SVELTE_PID"
-sleep 3
+    # SvelteKitサーバーの起動 (test mode)
+cross-env NODE_ENV=test TEST_ENV=localhost \
+  dotenvx run --env-file=${ROOT_DIR}/client/.env.test -- \
+  npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} \
+  > ${ROOT_DIR}/logs/svelte-kit.log 2>&1 &
 
-echo "Waiting for services to start..."
-wait_for_port ${TEST_FLUID_PORT}
 wait_for_port ${TEST_API_PORT}
+wait_for_port ${TEST_FLUID_PORT}
 wait_for_port ${VITE_PORT}
-
-echo "All services are ready!"
-echo "Tinylicious: http://localhost:${TEST_FLUID_PORT}"
-echo "API Server: http://localhost:${TEST_API_PORT}"
-echo "SvelteKit: http://localhost:${VITE_PORT}"
+wait_for_port 57000
+wait_for_port 59099
+wait_for_port 58080

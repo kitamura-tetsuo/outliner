@@ -13,6 +13,7 @@ import {
 } from "fluid-framework";
 import { userManager } from "../auth/UserManager";
 import { getLogger } from "../lib/logger";
+import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import {
     Items,
     Project,
@@ -67,6 +68,7 @@ export class FluidClient {
         // 接続状態監視を設定
         this.setupConnectionMonitoring();
         this._setupDebugEventListeners();
+        this._setupCursorSignalHandlers();
     }
 
     // 接続状態の監視を設定
@@ -207,6 +209,29 @@ export class FluidClient {
         this.container.on("op", (op: any) => {
             logger.debug("Operation received:", op);
         });
+    }
+
+    // カーソル同期用のシグナルハンドラ設定
+    private _setupCursorSignalHandlers() {
+        if (!this.container) return;
+        this.container.on("signal", (message: any, local: boolean) => {
+            if (local) return;
+            if (message.type === "cursor") {
+                const data = message.content;
+                if (data && typeof data === "object") {
+                    editorOverlayStore.updateCursor(data);
+                }
+            }
+        });
+    }
+
+    // 他ユーザーへカーソル位置を通知
+    public broadcastCursorPosition(cursor: any) {
+        try {
+            this.container?.deltaManager.submitSignal("cursor", cursor);
+        } catch (e) {
+            logger.warn("Failed to broadcast cursor position", e);
+        }
     }
 
     // デバッグ用のヘルパーメソッド
