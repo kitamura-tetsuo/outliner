@@ -20,4 +20,4 @@ export {
     getUserContainers,
     initFluidClientWithAuth,
     loadContainer,
-} from "../lib/fluidService.svelte";
+} from "../lib/fluidService";
