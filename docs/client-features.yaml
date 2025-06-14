@@ -860,7 +860,7 @@
   title: Client-Side SQL Database
   description: IndexedDB上にSQLデータベースを構築し、オフラインでページを保存できる機能
   category: database
-  status: draft
+  status: implemented
   tests:
     - client/e2e/new/DBW-001.spec.ts
 
