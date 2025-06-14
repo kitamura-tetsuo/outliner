@@ -99,19 +99,20 @@ npx -y playwright install --with-deps chromium
 
 chmod +x ${ROOT_DIR}/scripts/kill_ports.sh
 ${ROOT_DIR}/scripts/kill_ports.sh || true
-# Ensure Firebase emulator ports are free
-lsof -ti :59099 2>/dev/null | xargs -r kill -9 || true
-lsof -ti :58080 2>/dev/null | xargs -r kill -9 || true
-lsof -ti :57000 2>/dev/null | xargs -r kill -9 || true
-lsof -ti :4400 2>/dev/null | xargs -r kill -9 || true
 
+# Start Firebase emulators only if not already running
+if nc -z localhost 59099 >/dev/null 2>&1; then
+  echo "Firebase emulator already running"
+else
+  echo "Starting Firebase emulator..."
+  cd ${ROOT_DIR}/firebase
+  firebase emulators:start --project ${FIREBASE_PROJECT_ID} \
+    > ${ROOT_DIR}/logs/firebase-emulator.log 2>&1 &
+  cd ${ROOT_DIR}
+fi
 
-    # Tinyliciousサーバーの起動
+# Tinyliciousサーバーの起動
 PORT=${TEST_FLUID_PORT} tinylicious > ${ROOT_DIR}/logs/tinylicious.log 2>&1 &
-
-    # Firebase Emulatorの起動
-cd ${ROOT_DIR}/firebase
-firebase emulators:start --project ${FIREBASE_PROJECT_ID} > ${ROOT_DIR}/logs/firebase-emulator.log 2>&1 &
 
     # APIサーバーの起動
 cd ${ROOT_DIR}/server
