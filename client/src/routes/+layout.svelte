@@ -13,7 +13,7 @@ import "../app.css";
 import "$lib";
 import { userManager } from "../auth/UserManager";
 import { setupGlobalDebugFunctions } from "../lib/debug";
-import * as fluidService from "../lib/fluidService.svelte";
+import * as fluidService from "../lib/fluidService";
 import {
     cleanupFluidClient,
     initFluidClientWithAuth,
