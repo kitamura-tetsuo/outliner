@@ -6,6 +6,7 @@
 import { goto } from "$app/navigation";
 import { userManager } from "../auth/UserManager";
 import * as fluidService from "../lib/fluidService.svelte";
+import * as dbService from "../lib/db/dbService";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { getLogger } from "./logger";
 
@@ -22,6 +23,7 @@ export function setupGlobalDebugFunctions(xfluidService: any) {
     (window as any).__FLUID_SERVICE__ = fluidService;
     (window as any).__FLUID_STORE__ = fluidStore;
     (window as any).__USER_MANAGER__ = userManager;
+    (window as any).__DB_SERVICE__ = dbService;
     (window as any).__SVELTE_GOTO__ = goto;
 
     // SharedTreeのデータ構造を取得するデバッグ関数
@@ -51,5 +53,6 @@ declare global {
         __FLUID_SERVICE__?: any;
         __FLUID_STORE__?: any;
         __USER_MANAGER__?: any;
+        __DB_SERVICE__?: any;
     }
 }

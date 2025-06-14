@@ -1,4 +1,5 @@
 # 📄 Documentation & Specifications
+**Always run `scripts/codex-setp.sh` before executing any tests to start local services.**
 Record every feature in docs\client-features.yaml.
 - While multiple AIs may code in parallel, review documents frequently to avoid overlapping features or contradictory explanations.
 - Continuously reference and update past best practices so they remain current.
