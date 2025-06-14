@@ -864,6 +864,18 @@
   title: Graph View
   description: 項目間のリンクをグラフ表示するビューを提供
   category: visualization
-  status: draft
+  status: implemented
+  components:
+    - src/components/GraphView.svelte
+    - src/routes/graph/+page.svelte
   tests:
     - client/e2e/new/GRF-001.spec.ts
+
+- id: CHT-001
+  title: Chart Component
+  description: 保存されたデータをグラフ表示するチャートコンポーネント
+  category: visualization
+  status: implemented
+  components:
+    - src/components/ChartComponent.svelte
+  tests: []
