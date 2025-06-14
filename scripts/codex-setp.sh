@@ -42,7 +42,7 @@ export FIREBASE_PROJECT_ID
 export VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
 
 # Skip Paraglide compile in tests
-: "${SKIP_PARAGLIDE_COMPILE:=1}"
+: "${SKIP_PARAGLIDE_COMPILE:=}"
 
 
 # Install necessary global packages and tools
