@@ -18,7 +18,7 @@
 | CLM-0103 | フォーマット文字列でのカーソル操作 | client/e2e/core/CLM-0103.spec.ts | implemented |
 | COL-0001 | 他ユーザーのカーソル表示 | client/e2e/core/COL-0001.spec.ts | implemented |
 | DBW-0001 | Client-Side WASM DB | — | draft |
-| DBW-001 | Client-Side SQL Database | — | draft |
+| DBW-001 | Client-Side SQL Database | client/e2e/new/DBW-001.spec.ts | implemented |
 | FFI-0001 | Fluid Framework Integration | — | implemented |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
 | FMT-0001 | フォーマット表示 | client/e2e/core/FMT-0001.spec.ts | implemented |

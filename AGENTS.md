@@ -1,5 +1,6 @@
 # 📄 Documentation & Specifications
 
+**Always run `scripts/codex-setp.sh` before executing any tests to start local services.**
 Record every feature in docs\client-features.yaml.
 **Before running any tests, execute `scripts/codex-setp.sh`.** This script ensures
 all required services are running, starting the Firebase emulator

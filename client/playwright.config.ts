@@ -81,7 +81,7 @@ export default defineConfig({
             use: { ...devices["Desktop Chrome"] },
         },
         {
-            // 新機能テスト: draft 機能などの検証用
+            // 新機能テスト: DB などの追加機能、draft 機能などの検証用
             name: "new",
             testDir: "./e2e/new",
             use: { ...devices["Desktop Chrome"] },
