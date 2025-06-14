@@ -100,7 +100,6 @@
   status: implemented # draft / implemented / deprecated
   acceptance:
     - 'Endキーを押すと、カーソルが現在の行の末尾に移動する'
-    - '複数行のアイテムでは、現在のカーソルがある行の末尾に移動する'
   tests:
     - client/e2e/core/CLM-0008.spec.ts
 - id: CLM-0100

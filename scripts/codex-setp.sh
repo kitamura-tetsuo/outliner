@@ -3,6 +3,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -euo pipefail
 
+# Ensure nvm environment is loaded so globally installed node tools are in PATH
+if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+  . "$HOME/.nvm/nvm.sh"
+fi
+
 wait_for_port() {
   local port="$1"
   local retry=60

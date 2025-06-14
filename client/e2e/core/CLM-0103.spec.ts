@@ -18,8 +18,10 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
     test("太字文字列内でのカーソル移動が正しく機能する", async ({ page }) => {
         // ページタイトル以外のアイテムを選択（2番目のアイテム）
-        const item = page.locator(".outliner-item").nth(1);
-        await item.locator(".item-content").click();
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId).not.toBeNull();
+        const item = page.locator(`.outliner-item[data-item-id="${secondItemId}"] .item-content`);
+        await item.click();
         await TestHelpers.waitForCursorVisible(page);
 
         // 太字を含むテキストを入力
