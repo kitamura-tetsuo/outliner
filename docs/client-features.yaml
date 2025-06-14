@@ -883,3 +883,16 @@
   components:
     - src/components/ChartComponent.svelte
   tests: []
+
+- id: TBL-0001
+  title: Editable JOIN Table
+  description: SQL query results editable via Fluid Framework and SQLite cache
+  category: table
+  status: draft
+  components:
+    - src/components/EditableQueryGrid.svelte
+    - src/components/QueryEditor.svelte
+    - src/components/ChartPanel.svelte
+  tests:
+    - src/tests/sqlService.test.ts
+    - src/tests/editMapper.test.ts

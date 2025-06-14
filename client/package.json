@@ -86,12 +86,14 @@
         "@fluidframework/sequence": "^2.42.0",
         "@fluidframework/tree": "^2.42.0",
         "@inlang/paraglide-sveltekit": "^0.15.5",
+        "d3": "^7.9.0",
+        "echarts": "^5.6.0",
         "firebase": "^11.5.0",
         "fluid-framework": "2.42.0",
         "kysely": "^0.28.2",
         "pino": "^8.15.0",
-        "d3": "^7.9.0",
         "sqlite-wasm-kysely": "^0.3.0",
-        "uuid": "^8.3.2"
+        "uuid": "^8.3.2",
+        "wx-svelte-grid": "^2.1.5"
     }
 }

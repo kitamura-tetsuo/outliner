@@ -63,3 +63,4 @@
 | TST-0005 | テスト環境の初期化と準備 | — | implemented |
 | USR-0001 | ユーザー削除機能 | — | implemented |
 | USR-0002 | コンテナ削除機能 | — | implemented |
+| TBL-0001 | Editable JOIN Table | src/tests/sqlService.test.ts, src/tests/editMapper.test.ts | draft |
