@@ -26,14 +26,14 @@
         "test:e2e:clipboard": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test --reporter=list e2e/core/FMT-0004.spec.ts",
         "ci:test:e2e": "playwright test --reporter=list",
         "ci:test:e2e:ui": "playwright test --ui --reporter=list",
-        "ci:test:e2e:xvfb": "xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npm run ci:test:e2e --reporter=list"
+        "ci:test:e2e:xvfb": "xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npm run ci:test:e2e"
     },
     "devDependencies": {
         "@dotenvx/dotenvx": "^1.44.1",
         "@eslint/compat": "^1.2.5",
         "@eslint/js": "^9.18.0",
         "@fluidframework/test-client-utils": "^1.4.0",
-        "@fluidframework/tinylicious-client": "^2.30.0",
+        "@fluidframework/tinylicious-client": "^2.41.0",
         "@inlang/message-lint-rule-empty-pattern": "^1.4.8",
         "@inlang/message-lint-rule-identical-pattern": "^1.5.9",
         "@inlang/message-lint-rule-missing-translation": "^1.4.8",
@@ -81,13 +81,13 @@
     },
     "dependencies": {
         "@dotenvx/dotenvx": "^1.44.1",
-        "@fluidframework/azure-client": "^2.30.0",
-        "@fluidframework/fluid-static": "^2.30.0",
-        "@fluidframework/sequence": "^2.30.0",
-        "@fluidframework/tree": "^2.30.0",
+        "@fluidframework/azure-client": "^2.41.0",
+        "@fluidframework/fluid-static": "^2.41.0",
+        "@fluidframework/sequence": "^2.41.0",
+        "@fluidframework/tree": "^2.41.0",
         "@inlang/paraglide-sveltekit": "^0.15.5",
         "firebase": "^11.5.0",
-        "fluid-framework": "2.30.0",
+        "fluid-framework": "^2.41.0",
         "pino": "^8.15.0",
         "uuid": "^8.3.2"
     }

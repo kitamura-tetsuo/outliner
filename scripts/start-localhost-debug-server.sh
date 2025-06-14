@@ -15,4 +15,4 @@ cd /workspace/server
 export PORT=7091
 
 # デバッグサーバーを起動（ログ出力付き）
-npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log
+npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log

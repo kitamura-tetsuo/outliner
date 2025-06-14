@@ -25,7 +25,8 @@ import { userManager } from "../auth/UserManager";
 import { FluidClient } from "../fluid/fluidClient";
 import {
     appTreeConfiguration,
-    Project
+    createAppTreeConfigurationAlpha,
+    Project,
 } from "../schema/app-schema";
 import {
     getDefaultContainerId,
@@ -189,7 +190,7 @@ async function createAzureOrTinyliciousClient(
     containerId?: string,
 ): Promise<TinyliciousClient | AzureClient> {
     if (useTinylicious) {
-        const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7082");
+        const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7092");
         // telemetryを無効化するための設定を追加
         const client = new TinyliciousClient({
             connection: { port },
@@ -235,7 +236,7 @@ async function createAzureOrTinyliciousClient(
 // AzureClientの取得（またはTinyliciousClient）
 export async function getFluidClient(containerId?: string): Promise<FluidInstances> {
     // if (useTinylicious) {
-    //     const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7082");
+    //     const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7092");
     //     // telemetryを無効化するための設定を追加
     //     const client = new TinyliciousClient({
     //         connection: { port },
@@ -286,7 +287,21 @@ export async function getFluidClient(containerId?: string): Promise<FluidInstanc
                 const getResponse = await client.getContainer(containerId, containerSchema, "2");
                 container = getResponse.container;
                 services = getResponse.services;
-                appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+                // TreeViewConfigurationAlphaを試行してからフォールバック
+                try {
+                    const alphaConfig = await createAppTreeConfigurationAlpha();
+                    appData = (container!.initialObjects.appData as ViewableTree).viewWith(alphaConfig);
+                    log("fluidService", "info", "Successfully created TreeView with TreeViewConfigurationAlpha");
+                }
+                catch (alphaError) {
+                    log(
+                        "fluidService",
+                        "warn",
+                        "Failed to use TreeViewConfigurationAlpha, falling back to regular TreeViewConfiguration:",
+                        alphaError,
+                    );
+                    appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+                }
 
                 if (appData.compatibility.canInitialize) {
                     log("fluidService", "warn", "Something wrong with the container, initializing new project");
@@ -474,10 +489,17 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
 
         // ユーザー情報を取得
         const userInfo = userManager.getFluidUserInfo();
-        const userId = userInfo?.id;
+        let userId = userInfo?.id;
 
+        // テスト環境でユーザーIDが取得できない場合はテスト用のIDを使用
         if (!userId) {
-            throw new Error("ユーザーがログインしていないため、新規コンテナを作成できません");
+            if (isTestEnvironment) {
+                userId = "test-user-id";
+                log("fluidService", "info", "Using test user ID for container creation in test environment");
+            }
+            else {
+                throw new Error("ユーザーがログインしていないため、新規コンテナを作成できません");
+            }
         }
 
         const clientId = uuid();
@@ -495,7 +517,26 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
         const containerId = await container.attach();
         log("fluidService", "info", `Container created with ID: ${containerId}`);
 
-        const appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+        // TreeViewConfigurationAlphaを試行してからフォールバック
+        let appData: TreeView<typeof Project>;
+        try {
+            const alphaConfig = await createAppTreeConfigurationAlpha();
+            appData = (container!.initialObjects.appData as ViewableTree).viewWith(alphaConfig);
+            log(
+                "fluidService",
+                "info",
+                "Successfully created TreeView with TreeViewConfigurationAlpha for new container",
+            );
+        }
+        catch (alphaError) {
+            log(
+                "fluidService",
+                "warn",
+                "Failed to use TreeViewConfigurationAlpha for new container, falling back to regular TreeViewConfiguration:",
+                alphaError,
+            );
+            appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+        }
         appData.initialize(Project.createInstance(containerName));
         const project = appData.root as Project;
 
@@ -577,7 +618,11 @@ export async function getFluidClientByProjectTitle(projectTitle: string): Promis
 
             // 必要なプロパティが存在することを確認
             if (!container || !appData) {
-                log("fluidService", "error", `FluidInstancesに必要なプロパティが不足しています: container=${!!container}, appData=${!!appData}`);
+                log(
+                    "fluidService",
+                    "error",
+                    `FluidInstancesに必要なプロパティが不足しています: container=${!!container}, appData=${!!appData}`,
+                );
                 continue;
             }
 
@@ -598,10 +643,16 @@ export async function getFluidClientByProjectTitle(projectTitle: string): Promis
     }
 
     log("fluidService", "warn", `プロジェクトタイトル「${projectTitle}」に一致するFluidClientが見つかりませんでした`);
-    log("fluidService", "debug", `利用可能なプロジェクト: ${keys.map(key => {
-        const instances = clientRegistry.get(key);
-        return instances?.[4]?.title || 'unknown';
-    }).join(', ')}`);
+    log(
+        "fluidService",
+        "debug",
+        `利用可能なプロジェクト: ${
+            keys.map(key => {
+                const instances = clientRegistry.get(key);
+                return instances?.[4]?.title || "unknown";
+            }).join(", ")
+        }`,
+    );
     return undefined;
 }
 

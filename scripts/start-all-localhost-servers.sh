@@ -2,6 +2,7 @@
 
 # 全てのLocalhostサーバーを起動するスクリプト
 # VSCodeのlaunch.jsonの"Localhost Test Servers with Firebase Functions"に対応
+# 4つのサーバーを起動: SvelteKit(7090), Debug Server(7091), Tinylicious(7092), Firebase Functions
 
 echo "Starting all Localhost servers..."
 

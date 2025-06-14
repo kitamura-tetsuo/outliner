@@ -15,4 +15,4 @@ cd /workspace/client
 export PORT=7090
 
 # SvelteKitサーバーを起動（ログ出力付き）
-npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log
+npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log

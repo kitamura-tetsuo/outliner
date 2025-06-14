@@ -595,3 +595,226 @@ exports.health = onRequest({ cors: true }, async (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// 下書き公開機能をインポート
+const { publishDraft, publishDraftScheduled, publishDraftTest } = require("./src/draftPublisher");
+
+// スケジュール公開機能をインポート
+const {
+  publishScheduledDraft,
+  createCloudTask,
+  deleteCloudTask
+} = require("./src/scheduledPublisher");
+
+// 下書き公開エンドポイント
+exports.publishDraft = onRequest({ cors: true }, async (req, res) => {
+  // CORS設定
+  setCorsHeaders(req, res);
+
+  // プリフライト OPTIONS リクエストの処理
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  // POSTメソッド以外は拒否
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    const { draftId, containerId, projectData, idToken } = req.body;
+
+    logger.info("Received publishDraft request", {
+      draftId,
+      containerId,
+      hasProjectData: !!projectData,
+      hasIdToken: !!idToken,
+      requestBody: JSON.stringify(req.body).substring(0, 500)
+    });
+
+    if (!draftId || !containerId || !projectData || !idToken) {
+      logger.error("Missing required fields", {
+        draftId: !!draftId,
+        containerId: !!containerId,
+        projectData: !!projectData,
+        idToken: !!idToken
+      });
+      return res.status(400).json({
+        error: "Missing required fields: draftId, containerId, projectData, idToken"
+      });
+    }
+
+    // テスト環境かどうかを判定
+    const isTestEnvironment = process.env.NODE_ENV === "test" ||
+                             process.env.FUNCTIONS_EMULATOR === "true";
+
+    let result;
+    if (isTestEnvironment) {
+      result = await publishDraftTest(req.body);
+    } else {
+      result = await publishDraft(req.body);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    logger.error(`Error publishing draft: ${error.message}`, { error });
+    return res.status(500).json({ error: "Failed to publish draft" });
+  }
+});
+
+// 指定時刻下書き公開エンドポイント（Cloud Tasks用）
+exports.publishDraftScheduled = onRequest({ cors: true }, async (req, res) => {
+  // CORS設定
+  setCorsHeaders(req, res);
+
+  // プリフライト OPTIONS リクエストの処理
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  // POSTメソッド以外は拒否
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    const { draftId, containerId, projectData, authorId } = req.body;
+
+    if (!draftId || !containerId || !projectData || !authorId) {
+      return res.status(400).json({
+        error: "Missing required fields: draftId, containerId, projectData, authorId"
+      });
+    }
+
+    const result = await publishDraftScheduled(req.body);
+    return res.status(200).json(result);
+  } catch (error) {
+    logger.error(`Error publishing scheduled draft: ${error.message}`, { error });
+    return res.status(500).json({ error: "Failed to publish scheduled draft" });
+  }
+});
+
+// スケジュール公開エンドポイント（Cloud Tasksから呼び出される）
+exports.publishScheduledDraft = onRequest({ cors: true }, async (req, res) => {
+  // CORS設定
+  setCorsHeaders(req, res);
+
+  // プリフライト OPTIONS リクエストの処理
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  // POSTメソッド以外は拒否
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    logger.info("Received publishScheduledDraft request", {
+      body: JSON.stringify(req.body).substring(0, 500)
+    });
+
+    const result = await publishScheduledDraft(req.body);
+    return res.status(200).json(result);
+  } catch (error) {
+    logger.error(`Error in publishScheduledDraft: ${error.message}`, { error });
+    return res.status(500).json({
+      success: false,
+      error: "Failed to publish scheduled draft",
+      message: error.message
+    });
+  }
+});
+
+// Cloud Tasksタスク作成エンドポイント
+exports.createCloudTask = onRequest({ cors: true }, async (req, res) => {
+  // CORS設定
+  setCorsHeaders(req, res);
+
+  // プリフライト OPTIONS リクエストの処理
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  // POSTメソッド以外は拒否
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    const { taskName, scheduleTime, targetUrl, payload, retryConfig } = req.body;
+
+    if (!taskName || !scheduleTime || !targetUrl || !payload) {
+      return res.status(400).json({
+        error: "Missing required fields: taskName, scheduleTime, targetUrl, payload"
+      });
+    }
+
+    const taskOptions = {
+      taskName,
+      scheduleTime,
+      targetUrl,
+      payload,
+      httpMethod: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      retryConfig,
+    };
+
+    const taskId = await createCloudTask(taskOptions);
+
+    logger.info("Cloud Task created successfully", { taskName, taskId });
+    return res.status(200).json({
+      success: true,
+      taskId
+    });
+  } catch (error) {
+    logger.error(`Error creating Cloud Task: ${error.message}`, { error });
+    return res.status(500).json({
+      success: false,
+      error: "Failed to create Cloud Task",
+      message: error.message
+    });
+  }
+});
+
+// Cloud Tasksタスク削除エンドポイント
+exports.deleteCloudTask = onRequest({ cors: true }, async (req, res) => {
+  // CORS設定
+  setCorsHeaders(req, res);
+
+  // プリフライト OPTIONS リクエストの処理
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  // DELETEメソッド以外は拒否
+  if (req.method !== "DELETE") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    const { taskId } = req.body;
+
+    if (!taskId) {
+      return res.status(400).json({
+        error: "Missing required field: taskId"
+      });
+    }
+
+    const success = await deleteCloudTask(taskId);
+
+    logger.info("Cloud Task deleted successfully", { taskId });
+    return res.status(200).json({
+      success
+    });
+  } catch (error) {
+    logger.error(`Error deleting Cloud Task: ${error.message}`, { error });
+    return res.status(500).json({
+      success: false,
+      error: "Failed to delete Cloud Task",
+      message: error.message
+    });
+  }
+});

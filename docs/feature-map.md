@@ -15,6 +15,10 @@
 | CLM-0101 | アイテム間移動時のカーソル重複と入力分散問題 | — | implemented |
 | CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | — | implemented |
 | CLM-0103 | フォーマット文字列でのカーソル操作 | — | implemented |
+| DFT-0001 | Fluid Framework ブランチ機能（下書き作成・マージ） | — | implemented |
+| DFT-0002 | Firebase FunctionsからFluid Frameworkアクセス機能 | — | implemented |
+| DFT-0003 | テスト用コア書き込み機能 | — | implemented |
+| DFT-0004 | スケジュール公開機能 | — | implemented |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
 | FMT-0001 | フォーマット表示 | — | implemented |
 | FMT-0002 | フォーマット組み合わせ | — | implemented |
@@ -35,6 +39,7 @@
 | LNK-0007 | バックリンク機能 | — | implemented |
 | NAV-0001 | プロジェクト選択とページナビゲーション | — | implemented |
 | NAV-0002 | プロジェクトページへのリンク機能 | — | implemented |
+| PERF-0001 | スケジュール公開パフォーマンス最適化 | — | implemented |
 | SLR-0001 | Shift + 上下左右 | — | implemented |
 | SLR-0002 | 行頭まで選択 | — | implemented |
 | SLR-0003 | 行末まで選択 | — | implemented |
@@ -52,5 +57,7 @@
 | TST-0003 | テストヘルパーユーティリティ | — | implemented |
 | TST-0004 | テスト環境の改善 | — | implemented |
 | TST-0005 | テスト環境の初期化と準備 | — | implemented |
+| UI-0001 | スケジュール公開ダイアログUI | — | implemented |
+| UI-0002 | スケジュール状態表示UI | — | implemented |
 | USR-0001 | ユーザー削除機能 | — | implemented |
 | USR-0002 | コンテナ削除機能 | — | implemented |

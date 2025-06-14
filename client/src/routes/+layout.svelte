@@ -132,16 +132,33 @@ onMount(() => {
         // 認証状態を確認
         isAuthenticated = userManager.getCurrentUser() !== null;
 
-        if (isAuthenticated) {
-            // デバッグ関数を初期化
+        // テスト環境では常にデバッグ関数を初期化
+        const isTestEnv = import.meta.env.MODE === "test" ||
+            process.env.NODE_ENV === "test" ||
+            import.meta.env.VITE_IS_TEST === "true";
+
+        if (isTestEnv) {
+            // テスト環境では認証状態に関係なくデバッグ関数を初期化
             setupGlobalDebugFunctions(fluidService);
+            logger.info("テスト環境のため、デバッグ関数を初期化しました");
+
+            // テスト環境ではUserManagerをグローバルに公開
+            (window as any).__USER_MANAGER__ = userManager;
+            logger.info("テスト環境のため、UserManagerをグローバルに公開しました");
+        }
+
+        if (isAuthenticated) {
+            // デバッグ関数を初期化（テスト環境以外）
+            if (!isTestEnv) {
+                setupGlobalDebugFunctions(fluidService);
+            }
         }
         else {
             // 認証状態の変更を監視
             userManager.addEventListener(authResult => {
                 isAuthenticated = authResult !== null;
                 // デバッグ関数を初期化
-                if (isAuthenticated && browser) {
+                if (isAuthenticated && browser && !isTestEnv) {
                     setupGlobalDebugFunctions(fluidService);
                     const isTestEnv = import.meta.env.MODE === "test" ||
                         process.env.NODE_ENV === "test" ||

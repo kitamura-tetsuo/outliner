@@ -10,9 +10,11 @@
     "logs": "firebase functions:log",
     "build": "echo 'No build step required for JavaScript functions'",
     "debug": "firebase --debug emulators:start --inspect-functions=9229 --only auth,firestore,functions,hosting --project demo-test",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test": "mocha test/**/*.test.js --timeout 10000",
+    "test:watch": "mocha test/**/*.test.js --timeout 10000 --watch",
+    "test:coverage": "jest --coverage",
+    "test:jest": "jest",
+    "setup-cloud-tasks": "node scripts/setup-cloud-tasks.js"
   },
   "engines": {
     "node": "22"
@@ -21,6 +23,8 @@
   "dependencies": {
     "@fluidframework/azure-client": "^2.0.0",
     "@fluidframework/azure-service-utils": "^1.1.0",
+    "@fluidframework/tinylicious-client": "^2.30.0",
+    "@google-cloud/tasks": "^5.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "firebase": "^11.8.1",
@@ -30,10 +34,12 @@
   },
   "devDependencies": {
     "axios": "^1.6.0",
+    "chai": "^4.3.10",
     "eslint": "^8.15.0",
     "eslint-config-google": "^0.14.0",
     "firebase-functions-test": "^3.1.0",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "mocha": "^10.2.0"
   },
   "private": true
 }

@@ -41,12 +41,55 @@ export class TestHelpers {
             return null;
         };
 
+        // テスト用認証を実行
+        await TestHelpers.authenticateTestUser(page);
+
         // デバッガーをセットアップ
         await TestHelpers.setupTreeDebugger(page);
         await TestHelpers.setupCursorDebugger(page);
 
         // テストページをセットアップ
         return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines);
+    }
+
+    /**
+     * テスト用ユーザーで認証を行う
+     * @param page Playwrightのページオブジェクト
+     */
+    public static async authenticateTestUser(page: Page): Promise<void> {
+        console.log("TestHelper: Authenticating test user...");
+
+        // テスト用認証を実行
+        await page.evaluate(async () => {
+            // UserManagerが利用可能になるまで待機
+            while (!window.__USER_MANAGER__) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            const userManager = window.__USER_MANAGER__;
+            console.log("TestHelper: UserManager is available");
+
+            // テスト環境用のメール/パスワードでログイン
+            const testEmail = "test@example.com";
+            const testPassword = "password";
+
+            try {
+                await userManager.loginWithEmailPassword(testEmail, testPassword);
+                console.log("TestHelper: Test user authentication successful");
+            }
+            catch (error) {
+                console.error("TestHelper: Authentication failed:", error);
+                throw error;
+            }
+        });
+
+        // 認証完了まで待機
+        await page.waitForFunction(() => {
+            const userManager = (window as any).__USER_MANAGER__;
+            return userManager && userManager.getCurrentUser() !== null;
+        }, { timeout: 10000 });
+
+        console.log("TestHelper: Test user authentication completed");
     }
 
     /**
@@ -85,7 +128,10 @@ export class TestHelpers {
             console.log(`TestHelper: FluidClient created`, { containerId: fluidClient.containerId });
 
             const project = fluidClient.getProject();
-            console.log(`TestHelper: Project retrieved`, { projectTitle: project.title, itemsCount: project.items?.length });
+            console.log(`TestHelper: Project retrieved`, {
+                projectTitle: project.title,
+                itemsCount: project.items?.length,
+            });
 
             fluidClient.createPage(pageName, lines);
             console.log(`TestHelper: Page created`, { pageName });
@@ -96,7 +142,8 @@ export class TestHelpers {
                 console.log(`TestHelper: Updating fluidStore with new client`);
                 fluidStore.fluidClient = fluidClient;
                 console.log(`TestHelper: FluidStore updated`);
-            } else {
+            }
+            else {
                 console.error(`TestHelper: FluidStore not found`);
             }
 
@@ -104,7 +151,7 @@ export class TestHelpers {
             const updatedProject = fluidClient.getProject();
             console.log(`TestHelper: Updated project state`, {
                 projectTitle: updatedProject.title,
-                itemsCount: updatedProject.items?.length
+                itemsCount: updatedProject.items?.length,
             });
 
             if (updatedProject.items && updatedProject.items.length > 0) {
@@ -314,10 +361,11 @@ export class TestHelpers {
      */
     public static async navigateToTestProjectPage(
         page: Page,
-        testInfo,
+        testInfo: any,
         lines: string[],
     ): Promise<{ projectName: string; pageName: string; }> {
-        const projectName = `Test Project ${testInfo.workerIndex} ${Date.now()}`;
+        const workerIndex = testInfo?.workerIndex || 0;
+        const projectName = `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = `test-page-${Date.now()}`;
         await TestHelpers.createTestProjectAndPageViaAPI(page, projectName, pageName, lines);
 
@@ -327,7 +375,11 @@ export class TestHelpers {
         await page.waitForFunction(() => {
             const textarea = document.querySelector<HTMLTextAreaElement>(".global-textarea");
             console.log("TestHelper: global-textarea found:", !!textarea);
-            console.log("TestHelper: activeElement:", document.activeElement?.tagName, document.activeElement?.className);
+            console.log(
+                "TestHelper: activeElement:",
+                document.activeElement?.tagName,
+                document.activeElement?.className,
+            );
             return textarea !== null;
         }, { timeout: 5000 });
 
@@ -921,7 +973,7 @@ export class FluidServiceHelper {
             const projectDetails = {
                 title: project.title,
                 itemCount: project.items ? project.items.length : 0,
-                items: []
+                items: [],
             };
 
             // 各ページ（アイテム）の詳細を取得
@@ -936,7 +988,7 @@ export class FluidServiceHelper {
                             created: item.created,
                             lastChanged: item.lastChanged,
                             childItemCount: item.items ? item.items.length : 0,
-                            childItems: []
+                            childItems: [],
                         };
 
                         // 子アイテムの詳細も取得
@@ -949,7 +1001,7 @@ export class FluidServiceHelper {
                                         text: childItem.text,
                                         author: childItem.author,
                                         created: childItem.created,
-                                        lastChanged: childItem.lastChanged
+                                        lastChanged: childItem.lastChanged,
                                     });
                                 }
                             }
@@ -963,7 +1015,7 @@ export class FluidServiceHelper {
             return {
                 containerId: client.containerId,
                 clientId: client.clientId,
-                project: projectDetails
+                project: projectDetails,
             };
         });
     }
@@ -1027,7 +1079,7 @@ export class FluidServiceHelper {
                         created: item.created,
                         lastChanged: item.lastChanged,
                         childItemCount: item.items ? item.items.length : 0,
-                        childItems: []
+                        childItems: [],
                     };
 
                     // 子アイテムの詳細も取得
@@ -1040,7 +1092,7 @@ export class FluidServiceHelper {
                                     text: childItem.text,
                                     author: childItem.author,
                                     created: childItem.created,
-                                    lastChanged: childItem.lastChanged
+                                    lastChanged: childItem.lastChanged,
                                 });
                             }
                         }

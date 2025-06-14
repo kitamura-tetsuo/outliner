@@ -163,3 +163,30 @@ export class Project extends sf.objectRecursive("Project", {
 export const appTreeConfiguration = new TreeViewConfiguration(
     { schema: Project },
 );
+
+/**
+ * Alpha APIを使用したTreeViewConfiguration
+ * getBranch関数で使用するSchematizingSimpleTreeViewを作成するために必要
+ */
+export async function createAppTreeConfigurationAlpha() {
+    try {
+        const fluidAlpha = await import("fluid-framework/alpha");
+        const TreeViewConfigurationAlpha = (fluidAlpha as any).TreeViewConfigurationAlpha;
+
+        if (TreeViewConfigurationAlpha) {
+            // @ts-ignore - Alpha APIの型定義が不完全
+            return new TreeViewConfigurationAlpha({ schema: Project });
+        }
+        else {
+            console.warn("TreeViewConfigurationAlpha not found, falling back to regular TreeViewConfiguration");
+            return appTreeConfiguration;
+        }
+    }
+    catch (error) {
+        console.warn(
+            "Failed to load TreeViewConfigurationAlpha, falling back to regular TreeViewConfiguration:",
+            error,
+        );
+        return appTreeConfiguration;
+    }
+}

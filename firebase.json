@@ -48,6 +48,14 @@
                 "function": "deleteUser"
             },
             {
+                "source": "/api/publish-draft",
+                "function": "publishDraft"
+            },
+            {
+                "source": "/api/publish-draft-scheduled",
+                "function": "publishDraftScheduled"
+            },
+            {
                 "source": "/health",
                 "function": "health"
             },

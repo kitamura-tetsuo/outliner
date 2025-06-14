@@ -1,18 +1,19 @@
-const { describe, it, expect, beforeAll, afterAll } = require("@jest/globals");
+const { describe, it, beforeEach, afterEach } = require("mocha");
+const { expect } = require("chai");
 const axios = require("axios");
 
 describe("Firebase Functions HTTP API Tests", () => {
-    const baseURL = "http://localhost:57070/demo-test/us-central1"; // Firebase Functions エミュレーターのURL
+    const baseURL = "http://localhost:57070/outliner-d57b0/us-central1"; // Firebase Functions エミュレーターのURL
     let testIdToken;
     let testContainerId;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         // テスト用のデータを設定
         testIdToken = "test-invalid-token";
         testContainerId = "test-container-id";
     });
 
-    afterAll(async () => {
+    afterEach(async () => {
         // クリーンアップ処理
     });
 
@@ -21,17 +22,14 @@ describe("Firebase Functions HTTP API Tests", () => {
             try {
                 const response = await axios.get(`${baseURL}/health`);
 
-                expect(response.status).toBe(200);
-                expect(response.data).toEqual(
-                    expect.objectContaining({
-                        status: "OK",
-                        timestamp: expect.any(String),
-                    })
-                );
+                expect(response.status).to.equal(200);
+                expect(response.data).to.be.an("object");
+                expect(response.data.status).to.equal("OK");
+                expect(response.data.timestamp).to.be.a("string");
             } catch (error) {
                 // エミュレーターが動いていない場合はスキップ
                 console.warn("Firebase Emulator not running, skipping test");
-                expect(true).toBe(true);
+                expect(true).to.be.true;
             }
         });
 
@@ -39,11 +37,11 @@ describe("Firebase Functions HTTP API Tests", () => {
             try {
                 const response = await axios.options(`${baseURL}/health`);
 
-                expect(response.status).toBe(204);
+                expect(response.status).to.equal(204);
             } catch (error) {
                 // エミュレーターが動いていない場合はスキップ
                 console.warn("Firebase Emulator not running, skipping test");
-                expect(true).toBe(true);
+                expect(true).to.be.true;
             }
         });
     });
@@ -56,15 +54,15 @@ describe("Firebase Functions HTTP API Tests", () => {
                     // containerId is missing
                 });
                 // リクエストが成功した場合はテスト失敗
-                expect(true).toBe(false);
+                expect.fail("Request should have failed");
             } catch (error) {
                 if (error.response) {
-                    expect(error.response.status).toBe(400);
-                    expect(error.response.data).toEqual({ error: "Container ID is required" });
+                    expect(error.response.status).to.equal(400);
+                    expect(error.response.data).to.deep.equal({ error: "Container ID is required" });
                 } else {
                     // エミュレーターが動いていない場合はスキップ
                     console.warn("Firebase Emulator not running, skipping test");
-                    expect(true).toBe(true);
+                    expect(true).to.be.true;
                 }
             }
         });
@@ -76,15 +74,15 @@ describe("Firebase Functions HTTP API Tests", () => {
                     containerId: testContainerId,
                 });
                 // リクエストが成功した場合はテスト失敗
-                expect(true).toBe(false);
+                expect.fail("Request should have failed");
             } catch (error) {
                 if (error.response) {
-                    expect(error.response.status).toBe(500);
-                    expect(error.response.data).toEqual({ error: "Failed to save container ID" });
+                    expect(error.response.status).to.equal(500);
+                    expect(error.response.data).to.deep.equal({ error: "Failed to save container ID" });
                 } else {
                     // エミュレーターが動いていない場合はスキップ
                     console.warn("Firebase Emulator not running, skipping test");
-                    expect(true).toBe(true);
+                    expect(true).to.be.true;
                 }
             }
         });
@@ -93,15 +91,15 @@ describe("Firebase Functions HTTP API Tests", () => {
             try {
                 await axios.get(`${baseURL}/saveContainer`);
                 // リクエストが成功した場合はテスト失敗
-                expect(true).toBe(false);
+                expect.fail("Request should have failed");
             } catch (error) {
                 if (error.response) {
-                    expect(error.response.status).toBe(405);
-                    expect(error.response.data).toEqual({ error: "Method Not Allowed" });
+                    expect(error.response.status).to.equal(405);
+                    expect(error.response.data).to.deep.equal({ error: "Method Not Allowed" });
                 } else {
                     // エミュレーターが動いていない場合はスキップ
                     console.warn("Firebase Emulator not running, skipping test");
-                    expect(true).toBe(true);
+                    expect(true).to.be.true;
                 }
             }
         });
@@ -114,15 +112,15 @@ describe("Firebase Functions HTTP API Tests", () => {
                     idToken: "invalid-token",
                 });
                 // リクエストが成功した場合はテスト失敗
-                expect(true).toBe(false);
+                expect.fail("Request should have failed");
             } catch (error) {
                 if (error.response) {
-                    expect(error.response.status).toBe(500);
-                    expect(error.response.data).toEqual({ error: "Failed to get user containers" });
+                    expect(error.response.status).to.equal(500);
+                    expect(error.response.data).to.deep.equal({ error: "Failed to get user containers" });
                 } else {
                     // エミュレーターが動いていない場合はスキップ
                     console.warn("Firebase Emulator not running, skipping test");
-                    expect(true).toBe(true);
+                    expect(true).to.be.true;
                 }
             }
         });

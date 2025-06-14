@@ -234,6 +234,11 @@ export class UserManager {
         };
     }
 
+    // Firebase Authenticationのユーザーオブジェクトを直接取得する関数
+    public getFirebaseUser(): any | null {
+        return this.auth.currentUser;
+    }
+
     // Fluid Relayトークンを取得
     private async getFluidToken(idToken: string, containerId?: string): Promise<IFluidToken> {
         try {
