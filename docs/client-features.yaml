@@ -848,7 +848,11 @@
   title: Advanced Search & Replace
   description: 正規表現や範囲指定に対応した検索・置換機能
   category: search
-  status: draft
+  status: implemented
+  components:
+    - client/src/lib/search/index.ts
+    - client/src/components/SearchPanel.svelte
+    - client/src/routes/[project]/[page]/+page.svelte
   tests:
     - client/e2e/new/SRE-001.spec.ts
 
