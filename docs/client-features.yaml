@@ -100,7 +100,6 @@
   status: implemented # draft / implemented / deprecated
   acceptance:
     - 'Endキーを押すと、カーソルが現在の行の末尾に移動する'
-    - '複数行のアイテムでは、現在のカーソルがある行の末尾に移動する'
   tests:
     - client/e2e/core/CLM-0008.spec.ts
 - id: CLM-0100
@@ -831,7 +830,13 @@
   title: 'Fluid Framework Integration'
   description: 'Fluid Frameworkを全面的に統合しリアルタイム機能を強化'
   category: fluid-service
-  status: draft
+  status: implemented
+  components:
+    - client/src/lib/fluidService.ts
+    - client/src/lib/wasmDb.ts
+    - client/src/fluid/fluidClient.ts
+  tests:
+    - client/e2e/core/FFI-0001.spec.ts
 
 - id: GVI-0001
   title: 'Graph View'
