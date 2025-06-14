@@ -9,7 +9,7 @@ import {
     userManager,
 } from "../../auth/UserManager";
 import AuthComponent from "../../components/AuthComponent.svelte";
-import * as fluidService from "../../lib/fluidService.svelte";
+import * as fluidService from "../../lib/fluidService";
 import { getLogger } from "../../lib/logger";
 import { saveContainerId } from "../../stores/firestoreStore.svelte";
 import { fluidStore } from "../../stores/fluidStore.svelte";

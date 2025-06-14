@@ -5,7 +5,7 @@
 
 import { goto } from "$app/navigation";
 import { userManager } from "../auth/UserManager";
-import * as fluidService from "../lib/fluidService.svelte";
+import * as fluidService from "../lib/fluidService";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { getLogger } from "./logger";
 
