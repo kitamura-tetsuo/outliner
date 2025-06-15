@@ -77,9 +77,10 @@ logger.info("Azure Fluid Relay設定:", {
  * @param {string} user.uid - ユーザーID
  * @param {string} user.displayName - ユーザー表示名
  * @param {string} containerId - コンテナID（オプション）
+ * @param {'owner' | 'editor' | 'viewer'} role - ユーザーのロール
  * @return {Object} 生成されたトークン情報
  */
-function generateAzureFluidToken(user, containerId = undefined) {
+function generateAzureFluidToken(user, containerId = undefined, role = 'viewer') { // Default to 'viewer' if role not specified, though it should be.
   // グローバルのazureConfigを使用
   // 使用するキーを決定
   const keyToUse = azureConfig.activeKey === "secondary" &&
@@ -112,14 +113,18 @@ function generateAzureFluidToken(user, containerId = undefined) {
       name: user.displayName || "Anonymous",
     };
 
+    let scopes;
+    if (role === 'owner' || role === 'editor') {
+      scopes = [ScopeType.DocRead, ScopeType.DocWrite, ScopeType.SummaryWrite];
+    } else { // viewer
+      scopes = [ScopeType.DocRead, ScopeType.SummaryWrite];
+    }
+    logger.info(`Generating token for user ${user.uid} with role ${role} and scopes: ${scopes.join(', ')} for container ${containerId}`);
+
     const token = generateToken(
       azureConfig.tenantId, // テナントID
       keyToUse, // 署名キー
-      [
-        ScopeType.DocRead,
-        ScopeType.DocWrite,
-        ScopeType.SummaryWrite,
-      ], // 権限スコープ
+      scopes, // 権限スコープ based on role
       containerId, // コンテナID (指定されていれば)
       fluidUser,
     );
@@ -178,62 +183,58 @@ exports.fluidToken = onRequest({ cors: true }, async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
+    // containerId must be provided by the client
+    if (!containerId) {
+      logger.warn(`User ${userId} requested token without specifying containerId.`);
+      return res.status(400).json({ error: "Container ID is required." });
+    }
+
     // ユーザーのコンテナ情報を取得
     const userDoc = await userContainersCollection.doc(userId).get();
 
-    // ユーザーデータが存在しない場合のデフォルト値を設定
-    const userData = userDoc.exists ?
-      userDoc.data() :
-      { accessibleContainerIds: [] };
-    const accessibleContainerIds = userData.accessibleContainerIds || [];
-    const defaultContainerId = userData.defaultContainerId || null;
-
-    // 使用するコンテナIDを決定
-    let targetContainerId = containerId;
-
-    // コンテナIDが指定されていない場合はデフォルトを使用
-    if (!targetContainerId && defaultContainerId) {
-      logger.info(
-        `No container ID specified, using default container: ` +
-        `${defaultContainerId}`,
-      );
-      targetContainerId = defaultContainerId;
+    if (!userDoc.exists) {
+      logger.warn(`User document not found for UID: ${userId}. Denying token.`);
+      return res.status(404).json({ error: "User data not found." });
     }
 
-    // コンテナIDが指定されている場合はアクセス権をチェック
-    if (targetContainerId) {
-      if (!accessibleContainerIds.includes(targetContainerId)) {
-        return res.status(403).json({
-          error: "Access to the container is denied",
-        });
-      }
+    const userData = userDoc.data();
+    const accessibleContainers = userData.accessibleContainers || [];
+
+    const targetContainerAccess = accessibleContainers.find(c => c.id === containerId);
+
+    if (!targetContainerAccess) {
+      logger.warn(`User ${userId} does not have access to container ${containerId}. Denying token.`);
+      return res.status(403).json({
+        error: `Access to container ${containerId} is denied.`,
+      });
     }
+
+    const userRoleForContainer = targetContainerAccess.role;
+    logger.info(`User ${userId} has role '${userRoleForContainer}' for container ${containerId}.`);
 
     // Azure設定はグローバルのazureConfigを使用
 
     // Azure Fluid RelayのJWT生成
-    const jwt = generateAzureFluidToken({
-      uid: userId,
-      displayName:
-        decodedToken.name ||
-        decodedToken.displayName ||
-        "Anonymous User",
-    },
-      targetContainerId);
+    const fluidTokenData = generateAzureFluidToken(
+      {
+        uid: userId,
+        displayName: decodedToken.name || decodedToken.displayName || "Anonymous User",
+      },
+      containerId, // Use the validated containerId
+      userRoleForContainer // Pass the determined role
+    );
 
     // レスポンスを返す
     return res.status(200).json({
-      token: jwt.token,
+      token: fluidTokenData.token,
       user: {
         id: userId,
-        name: decodedToken.name ||
-          decodedToken.displayName ||
-          "Anonymous User",
+        name: decodedToken.name || decodedToken.displayName || "Anonymous User",
       },
       tenantId: azureConfig.tenantId,
-      containerId: targetContainerId,
-      defaultContainerId,
-      accessibleContainerIds,
+      containerId: containerId, // Return the specific containerId for which token was issued
+      // defaultContainerId: userData.defaultContainerId, // Consider if this is still needed
+      // accessibleContainers: accessibleContainers, // Consider if this is still needed
     });
   } catch (error) {
     logger.error(`Token validation error: ${error.message}`, { error });
@@ -595,6 +596,11 @@ exports.health = onRequest({ cors: true }, async (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Project Sharing
+exports.shareProject = require("./src/shareProject").shareProject;
+exports.manageProjectMembers = require("./src/manageProjectMembers").manageProjectMembers;
+exports.getProjectMembers = require("./src/getProjectMembers").getProjectMembers;
 
 // 下書き公開機能をインポート
 const { publishDraft, publishDraftScheduled, publishDraftTest } = require("./src/draftPublisher");

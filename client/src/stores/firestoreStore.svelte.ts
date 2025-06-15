@@ -28,7 +28,7 @@ const firebaseConfig = {
 export interface UserContainer {
     userId: string;
     defaultContainerId?: string;
-    accessibleContainerIds?: string[];
+    accessibleContainers?: Array<{ id: string; role: 'owner' | 'editor' | 'viewer' }>;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -140,7 +140,7 @@ function initFirestoreSync(): () => void {
                     const containerData: UserContainer = {
                         userId: data.userId,
                         defaultContainerId: data.defaultContainerId,
-                        accessibleContainerIds: data.accessibleContainerIds || [],
+                        accessibleContainers: data.accessibleContainers || [],
                         createdAt: data.createdAt?.toDate() || new Date(),
                         updatedAt: data.updatedAt?.toDate() || new Date(),
                     };
@@ -286,17 +286,44 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
             logger.info("Test environment detected, saving container ID to mock store");
 
             // 新しいコンテナデータを作成または更新
+            const newContainerEntry = { id: containerId, role: 'owner' as const };
+            let updatedAccessibleContainers = firestoreStore.userContainer?.accessibleContainers ?
+                [...firestoreStore.userContainer.accessibleContainers] : [];
+
+            // Check if the containerId already exists in accessibleContainers
+            const existingEntryIndex = updatedAccessibleContainers.findIndex(c => c.id === containerId);
+            if (existingEntryIndex !== -1) {
+                // If it exists, update its role to 'owner' if it's not already
+                if (updatedAccessibleContainers[existingEntryIndex].role !== 'owner') {
+                    updatedAccessibleContainers[existingEntryIndex] = { ...updatedAccessibleContainers[existingEntryIndex], role: 'owner' };
+                }
+            } else {
+                // If it doesn't exist, add it
+                updatedAccessibleContainers.push(newContainerEntry);
+            }
+
+            // Ensure no duplicates if logic somehow led to it (though findIndex should prevent it)
+            // And ensure defaultContainerId is present as owner
+            const uniqueAccessibleContainers = updatedAccessibleContainers.filter((c, index, self) =>
+                index === self.findIndex((t) => t.id === c.id)
+            );
+            if (!uniqueAccessibleContainers.find(c => c.id === containerId && c.role === 'owner')) {
+                 // This case should ideally not be hit if above logic is correct
+                const idx = uniqueAccessibleContainers.findIndex(c=> c.id === containerId);
+                if (idx !== -1) uniqueAccessibleContainers[idx].role = 'owner';
+                else uniqueAccessibleContainers.push({id: containerId, role: 'owner'});
+            }
+
+
             const updatedData = firestoreStore.userContainer ? {
                 ...firestoreStore.userContainer,
                 defaultContainerId: containerId,
-                accessibleContainerIds: firestoreStore.userContainer.accessibleContainerIds
-                    ? [...new Set([...firestoreStore.userContainer.accessibleContainerIds, containerId])]
-                    : [containerId],
+                accessibleContainers: uniqueAccessibleContainers,
                 updatedAt: new Date(),
             } : {
-                userId: "test-user-id",
+                userId: "test-user-id", // Make sure this is a string
                 defaultContainerId: containerId,
-                accessibleContainerIds: [containerId],
+                accessibleContainers: [newContainerEntry],
                 createdAt: new Date(),
                 updatedAt: new Date(),
             };
@@ -356,6 +383,190 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         return false;
     }
 }
+
+/**
+ * Shares a project with another user.
+ * @param projectIdToShare The ID of the project/container to share.
+ * @param targetUserEmail The email address of the user to share with.
+ * @param roleToAssign The role to assign ('editor' or 'viewer').
+ * @returns True if sharing was successful, false otherwise.
+ */
+export async function shareProject(
+    projectIdToShare: string,
+    targetUserEmail: string,
+    roleToAssign: 'editor' | 'viewer'
+): Promise<boolean> {
+    try {
+        const currentUser = userManager.getCurrentUser();
+        if (!currentUser) {
+            logger.warn("Cannot share project: User not logged in.");
+            return false;
+        }
+
+        const idToken = await userManager.auth.currentUser?.getIdToken();
+        if (!idToken) {
+            logger.warn("Cannot share project: Firebase user not available or ID token missing.");
+            return false;
+        }
+
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        const response = await fetch(`${apiBaseUrl}/api/share-project`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                idToken,
+                projectIdToShare,
+                targetUserEmail,
+                roleToAssign,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            logger.error(`Error sharing project: ${response.status} ${errorText}`);
+            // Consider parsing errorText if backend sends structured JSON errors
+            return false;
+        }
+
+        const result = await response.json();
+        if (result.success) {
+            logger.info(`Project ${projectIdToShare} shared successfully with ${targetUserEmail} as ${roleToAssign}.`);
+            // Firestore real-time updates should handle local state changes.
+            // If immediate local update is needed, one might re-fetch or optimistically update.
+            return true;
+        } else {
+            logger.error(`Failed to share project: ${result.error || 'Unknown error from server.'}`);
+            return false;
+        }
+    } catch (error) {
+        logger.error("Exception while sharing project:", error);
+        return false;
+    }
+}
+
+/**
+ * Manages a member of a project (updates role or removes).
+ * @param projectId The ID of the project/container.
+ * @param targetUserId The Firebase UID of the user to manage.
+ * @param action The action to perform: 'updateRole' or 'removeMember'.
+ * @param newRole The new role to assign (required for 'updateRole').
+ * @returns True if the action was successful, false otherwise.
+ */
+export async function manageProjectMember(
+    projectId: string,
+    targetUserId: string,
+    action: 'updateRole' | 'removeMember',
+    newRole?: 'editor' | 'viewer'
+): Promise<boolean> {
+    try {
+        const currentUser = userManager.getCurrentUser();
+        if (!currentUser) {
+            logger.warn("Cannot manage project member: User not logged in.");
+            return false;
+        }
+
+        const idToken = await userManager.auth.currentUser?.getIdToken();
+        if (!idToken) {
+            logger.warn("Cannot manage project member: Firebase user not available or ID token missing.");
+            return false;
+        }
+
+        if (action === 'updateRole' && !newRole) {
+            logger.warn("manageProjectMember: 'newRole' is required for 'updateRole' action.");
+            return false;
+        }
+
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        const requestBody: any = {
+            idToken,
+            projectId,
+            targetUserId,
+            action,
+        };
+        if (action === 'updateRole') {
+            requestBody.newRole = newRole;
+        }
+
+        const response = await fetch(`${apiBaseUrl}/api/manage-project-members`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            logger.error(`Error managing project member: ${response.status} ${errorText}`);
+            return false;
+        }
+
+        const result = await response.json();
+        if (result.success) {
+            logger.info(`Successfully performed action '${action}' for user ${targetUserId} in project ${projectId}.`);
+            // Firestore real-time updates should handle local state changes.
+            return true;
+        } else {
+            logger.error(`Failed to manage project member: ${result.error || 'Unknown error from server.'}`);
+            return false;
+        }
+    } catch (error) {
+        logger.error("Exception while managing project member:", error);
+        return false;
+    }
+}
+
+export interface ProjectMember {
+    id: string;
+    email?: string; // Email might be missing or failed to fetch for some users
+    role: 'owner' | 'editor' | 'viewer';
+    displayName?: string | null; // displayName can be null
+}
+
+/**
+ * Fetches a list of members for a given project by calling the backend API.
+ * @param projectId The ID of the project/container.
+ * @returns A promise that resolves to an array of project members.
+ */
+export async function getProjectMembers(projectId: string): Promise<ProjectMember[]> {
+    try {
+        const currentUser = userManager.getCurrentUser();
+        if (!currentUser) {
+            logger.warn("getProjectMembers: User not logged in.");
+            return [];
+        }
+        const idToken = await userManager.auth.currentUser?.getIdToken();
+        if (!idToken) {
+            logger.warn("getProjectMembers: Could not retrieve idToken.");
+            return [];
+        }
+
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        const response = await fetch(`${apiBaseUrl}/api/get-project-members`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken, projectId }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            logger.error(`getProjectMembers: API error ${response.status}: ${errorText}`);
+            return [];
+        }
+
+        const data = await response.json();
+        // The backend is expected to return { members: Array<ProjectMember> }
+        if (data.members && Array.isArray(data.members)) {
+            logger.info(`Successfully fetched ${data.members.length} members for project ${projectId}`);
+            return data.members as ProjectMember[];
+        } else {
+            logger.error("getProjectMembers: API response did not contain a valid members array.", data);
+            return [];
+        }
+    } catch (error) {
+        logger.error("getProjectMembers: Exception occurred.", error);
+        return [];
+    }
+}
+
 
 // アプリ起動時に自動的に初期化
 if (typeof window !== "undefined") {

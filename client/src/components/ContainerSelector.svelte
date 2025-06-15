@@ -33,13 +33,15 @@ let error = $state<string | null>(null);
 
 let containers = $derived.by<Array<Container>>(() => {
     const userContainer = firestoreStore.userContainer;
-    if (!userContainer || !userContainer.accessibleContainerIds) {
+    if (!userContainer || !userContainer.accessibleContainers) {
         return [];
     }
-    return userContainer.accessibleContainerIds.map((id: string) => ({
-        id,
-        name: getProjectTitle(id),
-        isDefault: false,
+    // The accessibleContainers is now an array of objects: { id: string, role: string }
+    return userContainer.accessibleContainers.map(containerAccess => ({
+        id: containerAccess.id,
+        name: getProjectTitle(containerAccess.id), // Assuming getProjectTitle can derive name from ID
+        isDefault: containerAccess.id === userContainer.defaultContainerId,
+        // role: containerAccess.role // Role is available if needed for UI cues
     }));
 });
 // 現在ロード中のコンテナIDを表示

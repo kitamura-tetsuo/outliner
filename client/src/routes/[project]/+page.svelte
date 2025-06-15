@@ -8,11 +8,18 @@ import {
 import { userManager } from "../../auth/UserManager";
 import AuthComponent from "../../components/AuthComponent.svelte";
 import PageList from "../../components/PageList.svelte";
+import ShareProjectModal from "../../components/ShareProjectModal.svelte";
+import ProjectMembersList from "../../components/ProjectMembersList.svelte";
 import { getLogger } from "../../lib/logger";
 import { fluidStore } from "../../stores/fluidStore.svelte";
 import { store } from "../../stores/store.svelte";
+import { firestoreStore } from "../../stores/firestoreStore.svelte"; // Corrected import
 
 const logger = getLogger("ProjectIndex");
+
+// For project sharing and member management modals
+let isShareModalOpen = $state(false);
+let isMembersModalOpen = $state(false);
 
 // URLパラメータを取得
 let projectName = $state("");
@@ -23,11 +30,20 @@ let isAuthenticated = $state(false);
 let projectNotFound = $state(false);
 
 // URLパラメータを監視して更新
+let projectId = $state(""); // Renamed from projectName for clarity with component props
 $effect(() => {
     if ($page.params.project) {
-        projectName = $page.params.project;
+        projectName = $page.params.project; // Keep original projectName if used elsewhere extensively
+        projectId = $page.params.project;   // Use projectId for new components
     }
 });
+
+const currentUserRole = $derived(() => {
+    if (!firestoreStore.userContainer?.accessibleContainers || !projectId) return null;
+    const projectAccess = firestoreStore.userContainer.accessibleContainers.find(p => p.id === projectId);
+    return projectAccess?.role;
+});
+
 
 // 認証成功時の処理
 async function handleAuthSuccess(authResult: any) {
@@ -86,7 +102,31 @@ onDestroy(() => {
                 プロジェクト
             {/if}
         </h1>
+
+        <!-- Share and Manage Members Buttons -->
+        {#if projectId && currentUserRole === 'owner'}
+            <div class="ml-auto flex space-x-2">
+                <button
+                    onclick={() => isShareModalOpen = true}
+                    class="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                    Share Project
+                </button>
+                <button
+                    onclick={() => isMembersModalOpen = true}
+                    class="rounded-md bg-gray-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                >
+                    Manage Members
+                </button>
+            </div>
+        {/if}
     </div>
+
+    <!-- Modals -->
+    {#if projectId}
+        <ShareProjectModal bind:isOpen={isShareModalOpen} {projectId} />
+        <ProjectMembersList bind:isOpen={isMembersModalOpen} {projectId} />
+    {/if}
 
     <!-- 認証コンポーネント -->
     <div class="auth-section mb-6">

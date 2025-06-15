@@ -921,6 +921,86 @@ export class TestHelpers {
     }
 
     // 注: 422行目に同名のメソッドが既に定義されているため、このメソッドは削除します
+
+    // New helper methods for general UI interaction (login, logout, navigation, modals)
+    // Default timeout for navigation and critical visibility checks
+    static DEFAULT_NAV_TIMEOUT = 15000;
+
+    public static async login(page: Page, email: string, password?: string) {
+        // Navigate to home and ensure page is ready, potentially handling existing login
+        await page.goto('/', { waitUntil: 'networkidle', timeout: this.DEFAULT_NAV_TIMEOUT });
+
+        const authComponent = page.locator('div.auth-section'); // Assuming AuthComponent.svelte structure
+
+        const logoutButtonVisible = await page.locator('button:has-text("Logout")').isVisible();
+        if (logoutButtonVisible) {
+            // Check if already logged in as the target user. This requires a way to see current user's email.
+            // For now, we'll assume if Logout is visible, we might need to logout first if not the right user.
+            // This part is tricky without knowing exactly how logged-in user email is displayed.
+            // A simple approach: always logout if logout button is visible and then login.
+            // More advanced: check if current user is target user.
+            // console.log(`Logout button visible. Attempting logout first for clean login.`);
+            await this.logout(page); // Call the logout helper
+            await page.goto('/', { waitUntil: 'networkidle', timeout: this.DEFAULT_NAV_TIMEOUT }); // Re-navigate after logout
+        }
+
+        if (await authComponent.isVisible()) {
+            const loginButton = authComponent.locator('button:has-text("Login")');
+            if (await loginButton.isVisible()) {
+                await loginButton.click();
+            }
+            await page.locator('input[type="email"]').fill(email);
+            if (password) { // Password is now truly optional for this helper
+                await page.locator('input[type="password"]').fill(password);
+            } else {
+                 // Assuming if no password, it's for specific test accounts that might not need it (e.g. emulator auto-users)
+                 // Or relying on Firebase's behavior for test accounts if password field can be skipped.
+                 // If password field is mandatory and no password given, this might fail.
+                 // For robust test users, always provide a (dummy) password.
+                 // For this example, we'll assume test@example.com needs 'password'
+                 if (email === "test@example.com" && !password) {
+                    await page.locator('input[type="password"]').fill("password");
+                 }
+            }
+            await page.getByRole('button', { name: /Sign In|Login/i }).last().click();
+            await expect(page.locator('button:has-text("Logout")')).toBeVisible({ timeout: this.DEFAULT_NAV_TIMEOUT });
+        } else {
+            console.warn('AuthComponent not found or login elements not visible during login attempt.');
+        }
+    }
+
+    public static async logout(page: Page) {
+        const logoutButton = page.locator('button:has-text("Logout")');
+        if (await logoutButton.isVisible()) {
+            await logoutButton.click();
+            await expect(page.locator('button:has-text("Login")').or(page.locator('button:has-text("Sign In")'))).toBeVisible({ timeout: this.DEFAULT_NAV_TIMEOUT });
+        } else {
+            // If logout button is not visible, we might already be logged out.
+            // Navigate to home to ensure a consistent state for login prompt visibility.
+            await page.goto('/', { waitUntil: 'networkidle', timeout: this.DEFAULT_NAV_TIMEOUT });
+            // Verify login prompt is visible to confirm logged-out state.
+            await expect(page.locator('button:has-text("Login")').or(page.locator('button:has-text("Sign In")'))).toBeVisible({ timeout: this.DEFAULT_NAV_TIMEOUT });
+        }
+    }
+
+    public static async navigateToProject(page: Page, projectNameOrId: string) {
+        await page.goto(`/${projectNameOrId}`, { waitUntil: 'networkidle', timeout: this.DEFAULT_NAV_TIMEOUT });
+        await expect(page.locator(`h1:has-text("${projectNameOrId}")`)).toBeVisible({ timeout: this.DEFAULT_NAV_TIMEOUT });
+    }
+
+    public static async openShareModal(page: Page) {
+        await page.getByRole('button', { name: 'Share Project' }).click();
+        const shareModal = page.locator('div.fixed.inset-0.bg-black.bg-opacity-50:has(h2:has-text("Share Project"))');
+        await expect(shareModal).toBeVisible();
+        await expect(shareModal.locator('h2:has-text("Share Project")')).toBeVisible();
+    }
+
+    public static async openManageMembersModal(page: Page) {
+        await page.getByRole('button', { name: 'Manage Members' }).click();
+        const membersModal = page.locator('div.fixed.inset-0.bg-black.bg-opacity-50:has(h2:has-text("Project Members"))');
+        await expect(membersModal).toBeVisible();
+        await expect(membersModal.locator('h2:has-text("Project Members")')).toBeVisible();
+    }
 }
 
 /**
