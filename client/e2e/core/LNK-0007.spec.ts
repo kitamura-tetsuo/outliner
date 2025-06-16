@@ -22,43 +22,43 @@ test.describe("LNK-0007: バックリンク機能", () => {
      * @description ページにバックリンクパネルが表示されることを確認するテスト
      */
     test("ページにバックリンクパネルが表示される", async ({ page }) => {
-        // テスト環境の制約により、このテストはスキップします
-        test.skip(true, "テスト環境の制約によりスキップします");
-        // 認証状態を設定
-        await page.addInitScript(() => {
-        });
-
-        // テストページをセットアップ
-
-        // 最初のページのURLを保存
-        const sourceUrl = page.url();
-
-        // テスト用のターゲットページ名を生成
+        // テスト用のプロジェクトとページを作成
+        const projectName = "test-project-" + Date.now().toString().slice(-6);
         const targetPageName = "target-page-" + Date.now().toString().slice(-6);
 
-        // テスト用のページを作成
-        await page.keyboard.type(`[${targetPageName}]`);
-        await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
+        // プロジェクトを作成
+        const fluidClient = await TestHelpers.createTestProject(page, projectName);
 
-        // リンクをクリックして新しいページに移動
-        await page.click(`text=${targetPageName}`);
+        // ターゲットページを作成
+        await TestHelpers.createTestPage(page, fluidClient, targetPageName, [
+            "これはターゲットページの内容です。"
+        ]);
+
+        // ターゲットページに移動
+        await page.goto(`/${projectName}/${targetPageName}`);
         await page.waitForTimeout(1000);
 
-        // 開発者ログインボタンをクリック
+        // 認証が必要な場合はログイン
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(1000);
         }
 
-        // 新しいページにテキストを入力
-        await page.keyboard.type("これはターゲットページの内容です。");
-        await page.waitForTimeout(500);
+        // ページが読み込まれるまで待機
+        await page.waitForTimeout(1000);
 
         // バックリンクパネルが表示されていることを確認
         const backlinkPanel = page.locator(".backlink-panel");
         await expect(backlinkPanel).toBeVisible();
+
+        // バックリンクトグルボタンが表示されていることを確認
+        const toggleButton = page.locator(".backlink-toggle-button");
+        await expect(toggleButton).toBeVisible();
+
+        // バックリンクカウントが表示されていることを確認
+        const backlinkCount = page.locator(".backlink-count");
+        await expect(backlinkCount).toBeVisible();
 
         // テスト成功
         console.log("ページにバックリンクパネルが表示されるテストが成功しました。");
@@ -69,42 +69,39 @@ test.describe("LNK-0007: バックリンク機能", () => {
      * @description バックリンクパネルにリンク元ページの一覧が表示されることを確認するテスト
      */
     test("バックリンクパネルにリンク元ページの一覧が表示される", async ({ page }) => {
-        // テスト環境の制約により、このテストはスキップします
-        test.skip(true, "テスト環境の制約によりスキップします");
-        // 認証状態を設定
-        await page.addInitScript(() => {
-        });
+        // テスト用のプロジェクトとページを作成
+        const projectName = "test-project-" + Date.now().toString().slice(-6);
+        const sourcePageName = "source-page-" + Date.now().toString().slice(-6);
+        const targetPageName = "target-page-" + Date.now().toString().slice(-6);
 
-        // テストページをセットアップ
+        // プロジェクトを作成
+        const fluidClient = await TestHelpers.createTestProject(page, projectName);
 
-        // 最初のページのURLを保存
-        const sourceUrl = page.url();
+        // ソースページを作成（ターゲットページへのリンクを含む）
+        await TestHelpers.createTestPage(page, fluidClient, sourcePageName, [
+            `これはソースページです。`,
+            `ターゲットページへのリンク: [${targetPageName}]`,
+            `その他の内容です。`
+        ]);
 
-        // 最初のページのタイトルを取得
-        const sourceTitle = await page.locator("h1").textContent();
+        // ターゲットページを作成
+        await TestHelpers.createTestPage(page, fluidClient, targetPageName, [
+            "これはターゲットページの内容です。"
+        ]);
 
-        // テスト用のターゲットページ名を生成
-        const targetPageName = "backlink-target-" + Date.now().toString().slice(-6);
-
-        // テスト用のページを作成
-        await page.keyboard.type(`[${targetPageName}]`);
-        await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
-
-        // リンクをクリックして新しいページに移動
-        await page.click(`text=${targetPageName}`);
+        // ターゲットページに移動
+        await page.goto(`/${projectName}/${targetPageName}`);
         await page.waitForTimeout(1000);
 
-        // 開発者ログインボタンをクリック
+        // 認証が必要な場合はログイン
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(1000);
         }
 
-        // 新しいページにテキストを入力
-        await page.keyboard.type("これはターゲットページの内容です。");
-        await page.waitForTimeout(500);
+        // ページが読み込まれるまで待機
+        await page.waitForTimeout(1000);
 
         // バックリンクパネルを開く
         await TestHelpers.openBacklinkPanel(page);
@@ -112,17 +109,6 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // バックリンクパネルの内容が表示されていることを確認
         const backlinkContent = page.locator(".backlink-content");
-        const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
-
-        if (!isContentVisible) {
-            console.log("バックリンクパネルの内容が表示されていません。もう一度開くボタンをクリックします。");
-            // もう一度トグルボタンをクリックしてみる
-            const toggleButton = page.locator(".backlink-toggle-button");
-            await toggleButton.click();
-            await page.waitForTimeout(500);
-        }
-
-        // バックリンクパネルの内容が表示されていることを確認
         await expect(backlinkContent).toBeVisible();
 
         // バックリンクリストが表示されていることを確認
@@ -131,28 +117,19 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // リンク元ページが表示されていることを確認
         const sourcePageLink = backlinkList.locator(".source-page-link");
-        if (await sourcePageLink.count() > 0) {
-            await expect(sourcePageLink).toBeVisible();
+        await expect(sourcePageLink).toBeVisible();
 
-            // リンク元ページのコンテキストが表示されていることを確認
-            const backlinkContext = backlinkList.locator(".backlink-context");
-            if (await backlinkContext.count() > 0) {
-                await expect(backlinkContext).toBeVisible();
+        // ソースページ名が正しく表示されていることを確認
+        const linkText = await sourcePageLink.textContent();
+        expect(linkText).toBe(sourcePageName);
 
-                // コンテキストにターゲットページ名が含まれているか確認
-                const contextText = await backlinkContext.textContent();
-                if (contextText) {
-                    // 大文字小文字を区別せずに検索
-                    expect(contextText.toLowerCase()).toContain(targetPageName.toLowerCase());
-                }
-            }
-            else {
-                console.log("バックリンクコンテキストが見つかりませんでした。テスト環境の制約によりスキップします。");
-            }
-        }
-        else {
-            console.log("ソースページリンクが見つかりませんでした。テスト環境の制約によりスキップします。");
-        }
+        // リンク元ページのコンテキストが表示されていることを確認
+        const backlinkContext = backlinkList.locator(".backlink-context");
+        await expect(backlinkContext).toBeVisible();
+
+        // コンテキストにターゲットページ名が含まれているか確認
+        const contextText = await backlinkContext.textContent();
+        expect(contextText).toContain(`[${targetPageName}]`);
 
         // テスト成功
         console.log("バックリンクパネルにリンク元ページの一覧が表示されるテストが成功しました。");
@@ -163,47 +140,52 @@ test.describe("LNK-0007: バックリンク機能", () => {
      * @description バックリンクの数がバッジとして表示されることを確認するテスト
      */
     test("バックリンクの数がバッジとして表示される", async ({ page }) => {
-        // テスト環境の制約により、このテストはスキップします
-        test.skip(true, "テスト環境の制約によりスキップします");
-        // 認証状態を設定
-        await page.addInitScript(() => {
-        });
+        // テスト用のプロジェクトとページを作成
+        const projectName = "test-project-" + Date.now().toString().slice(-6);
+        const sourcePageName1 = "source-page-1-" + Date.now().toString().slice(-6);
+        const sourcePageName2 = "source-page-2-" + Date.now().toString().slice(-6);
+        const targetPageName = "target-page-" + Date.now().toString().slice(-6);
 
-        // テストページをセットアップ
+        // プロジェクトを作成
+        const fluidClient = await TestHelpers.createTestProject(page, projectName);
 
-        // 最初のページのURLを保存
-        const sourceUrl = page.url();
+        // 複数のソースページを作成（ターゲットページへのリンクを含む）
+        await TestHelpers.createTestPage(page, fluidClient, sourcePageName1, [
+            `これは最初のソースページです。`,
+            `ターゲットページへのリンク: [${targetPageName}]`
+        ]);
 
-        // テスト用のターゲットページ名を生成
-        const targetPageName = "badge-target-" + Date.now().toString().slice(-6);
+        await TestHelpers.createTestPage(page, fluidClient, sourcePageName2, [
+            `これは2番目のソースページです。`,
+            `同じターゲットページへのリンク: [${targetPageName}]`
+        ]);
 
-        // テスト用のページを作成
-        await page.keyboard.type(`[${targetPageName}]`);
-        await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
+        // ターゲットページを作成
+        await TestHelpers.createTestPage(page, fluidClient, targetPageName, [
+            "これはターゲットページの内容です。"
+        ]);
 
-        // リンクをクリックして新しいページに移動
-        await page.click(`text=${targetPageName}`);
+        // ターゲットページに移動
+        await page.goto(`/${projectName}/${targetPageName}`);
         await page.waitForTimeout(1000);
 
-        // 開発者ログインボタンをクリック
+        // 認証が必要な場合はログイン
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(1000);
         }
 
-        // 新しいページにテキストを入力
-        await page.keyboard.type("これはターゲットページの内容です。");
-        await page.waitForTimeout(500);
+        // ページが読み込まれるまで待機
+        await page.waitForTimeout(1000);
 
         // バックリンクの数を表示するバッジが表示されていることを確認
         const backlinkCount = page.locator(".backlink-count");
         await expect(backlinkCount).toBeVisible();
 
-        // バッジに数字が表示されていることを確認
+        // バッジに正しい数字が表示されていることを確認（2つのソースページからのリンク）
         const countText = await backlinkCount.textContent();
-        expect(countText).toMatch(/\d+/);
+        expect(countText).toBe("2");
 
         // テスト成功
         console.log("バックリンクの数がバッジとして表示されるテストが成功しました。");
@@ -214,39 +196,31 @@ test.describe("LNK-0007: バックリンク機能", () => {
      * @description バックリンクパネルを開閉できることを確認するテスト
      */
     test("バックリンクパネルを開閉できる", async ({ page }) => {
-        // テスト環境の制約により、このテストはスキップします
-        test.skip(true, "テスト環境の制約によりスキップします");
-        // 認証状態を設定
-        await page.addInitScript(() => {
-        });
+        // テスト用のプロジェクトとページを作成
+        const projectName = "test-project-" + Date.now().toString().slice(-6);
+        const targetPageName = "target-page-" + Date.now().toString().slice(-6);
 
-        // テストページをセットアップ
+        // プロジェクトを作成
+        const fluidClient = await TestHelpers.createTestProject(page, projectName);
 
-        // 最初のページのURLを保存
-        const sourceUrl = page.url();
+        // ターゲットページを作成
+        await TestHelpers.createTestPage(page, fluidClient, targetPageName, [
+            "これはターゲットページの内容です。"
+        ]);
 
-        // テスト用のターゲットページ名を生成
-        const targetPageName = "toggle-target-" + Date.now().toString().slice(-6);
-
-        // テスト用のページを作成
-        await page.keyboard.type(`[${targetPageName}]`);
-        await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
-
-        // リンクをクリックして新しいページに移動
-        await page.click(`text=${targetPageName}`);
+        // ターゲットページに移動
+        await page.goto(`/${projectName}/${targetPageName}`);
         await page.waitForTimeout(1000);
 
-        // 開発者ログインボタンをクリック
+        // 認証が必要な場合はログイン
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(1000);
         }
 
-        // 新しいページにテキストを入力
-        await page.keyboard.type("これはターゲットページの内容です。");
-        await page.waitForTimeout(500);
+        // ページが読み込まれるまで待機
+        await page.waitForTimeout(1000);
 
         // 初期状態ではバックリンクパネルの内容が非表示であることを確認
         const backlinkContent = page.locator(".backlink-content");
@@ -260,12 +234,18 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // バックリンクパネルの内容が表示されていることを確認
         await expect(backlinkContent).toBeVisible();
 
+        // トグルボタンがアクティブ状態になっていることを確認
+        await expect(toggleButton).toHaveClass(/active/);
+
         // もう一度トグルボタンをクリック
         await toggleButton.click();
         await page.waitForTimeout(500);
 
         // バックリンクパネルの内容が非表示になっていることを確認
         await expect(backlinkContent).not.toBeVisible();
+
+        // トグルボタンがアクティブ状態でなくなっていることを確認
+        await expect(toggleButton).not.toHaveClass(/active/);
 
         // テスト成功
         console.log("バックリンクパネルを開閉できるテストが成功しました。");
@@ -276,80 +256,63 @@ test.describe("LNK-0007: バックリンク機能", () => {
      * @description バックリンクをクリックするとリンク元ページに移動できることを確認するテスト
      */
     test("バックリンクをクリックするとリンク元ページに移動できる", async ({ page }) => {
-        // テスト環境の制約により、このテストはスキップします
-        test.skip(true, "テスト環境の制約によりスキップします");
-        // 認証状態を設定
-        await page.addInitScript(() => {
-        });
+        // テスト用のプロジェクトとページを作成
+        const projectName = "test-project-" + Date.now().toString().slice(-6);
+        const sourcePageName = "source-page-" + Date.now().toString().slice(-6);
+        const targetPageName = "target-page-" + Date.now().toString().slice(-6);
 
-        // テストページをセットアップ
+        // プロジェクトを作成
+        const fluidClient = await TestHelpers.createTestProject(page, projectName);
 
-        // 最初のページのURLを保存
-        const sourceUrl = page.url();
+        // ソースページを作成（ターゲットページへのリンクを含む）
+        await TestHelpers.createTestPage(page, fluidClient, sourcePageName, [
+            `これはソースページです。`,
+            `ターゲットページへのリンク: [${targetPageName}]`
+        ]);
 
-        // 最初のページのタイトルを取得
-        const sourceTitle = await page.locator("h1").textContent();
+        // ターゲットページを作成
+        await TestHelpers.createTestPage(page, fluidClient, targetPageName, [
+            "これはターゲットページの内容です。"
+        ]);
 
-        // テスト用のターゲットページ名を生成
-        const targetPageName = "click-target-" + Date.now().toString().slice(-6);
-
-        // テスト用のページを作成
-        await page.keyboard.type(`[${targetPageName}]`);
-        await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
-
-        // リンクをクリックして新しいページに移動
-        await page.click(`text=${targetPageName}`);
+        // ターゲットページに移動
+        await page.goto(`/${projectName}/${targetPageName}`);
         await page.waitForTimeout(1000);
 
-        // 開発者ログインボタンをクリック
+        // 認証が必要な場合はログイン
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(1000);
         }
 
-        // 新しいページにテキストを入力
-        await page.keyboard.type("これはターゲットページの内容です。");
-        await page.waitForTimeout(500);
+        // ページが読み込まれるまで待機
+        await page.waitForTimeout(1000);
 
         // バックリンクパネルを開く
         await TestHelpers.openBacklinkPanel(page);
         await page.waitForTimeout(500);
 
-        // バックリンクパネルの内容が表示されていることを確認
-        const backlinkContent = page.locator(".backlink-content");
-        const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
-
-        if (!isContentVisible) {
-            console.log("バックリンクパネルの内容が表示されていません。もう一度開くボタンをクリックします。");
-            // もう一度トグルボタンをクリックしてみる
-            const toggleButton = page.locator(".backlink-toggle-button");
-            await toggleButton.click();
-            await page.waitForTimeout(500);
-        }
-
         // バックリンクリストが表示されていることを確認
         const backlinkList = page.locator(".backlink-list");
+        await expect(backlinkList).toBeVisible();
+
         // リンク元ページへのリンクをクリック
         const sourcePageLink = backlinkList.locator(".source-page-link").first();
+        await expect(sourcePageLink).toBeVisible();
+
         // リンクをクリック
         await sourcePageLink.click();
         await page.waitForTimeout(1000);
 
-        // 元のページに戻ったことを確認
+        // ソースページに移動したことを確認
         const currentUrl = page.url();
-
-        // URLが変更されたことを確認
+        expect(currentUrl).toContain(sourcePageName);
         expect(currentUrl).not.toContain(targetPageName);
 
-        // 可能であれば元のURLと一致することを確認
-        if (sourceUrl) {
-            // URLのパス部分だけを比較（クエリパラメータなどは無視）
-            const currentPath = new URL(currentUrl).pathname;
-            const sourcePath = new URL(sourceUrl).pathname;
-            expect(currentPath).toBe(sourcePath);
-        }
+        // ページタイトルが正しく表示されていることを確認
+        const pageTitle = page.locator("h1");
+        await expect(pageTitle).toContainText(sourcePageName);
 
         // テスト成功
         console.log("バックリンクをクリックするとリンク元ページに移動できるテストが成功しました。");
