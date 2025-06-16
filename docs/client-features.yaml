@@ -824,7 +824,14 @@
   title: 'Client-Side WASM DB'
   description: 'オフライン操作と高速検索を実現するWebAssemblyデータベース'
   category: application
-  status: draft
+  status: implemented
+  components:
+    - client/src/lib/wasmDb.ts
+    - client/src/lib/db/dbService.ts
+    - client/src/lib/db/sqliteWorker.ts
+  tests:
+    - client/src/tests/wasmDb.test.ts
+    - client/e2e/new/DBW-0001.spec.ts
 
 - id: FFI-0001
   title: 'Fluid Framework Integration'
@@ -842,7 +849,14 @@
   title: 'Graph View'
   description: 'ページ間のリンクを視覚化するグラフ表示機能'
   category: navigation
-  status: draft
+  status: implemented
+  components:
+    - client/src/components/GraphView.svelte
+    - client/src/routes/graph/+page.svelte
+    - client/src/lib/graph.ts
+  tests:
+    - client/src/tests/graph.test.ts
+    - client/e2e/new/GVI-0001.spec.ts
 
 - id: SRE-001
   title: Advanced Search & Replace
