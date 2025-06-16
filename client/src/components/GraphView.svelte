@@ -3,34 +3,19 @@ import { onMount } from 'svelte';
 import { goto } from '$app/navigation';
 import * as d3 from 'd3';
 import { store } from '../stores/store.svelte';
+import { buildGraphData, type GraphNode, type GraphLink } from '../lib/graph';
 
-interface NodeData {
-    id: string;
-    title: string;
-}
-interface LinkData {
-    source: string;
-    target: string;
-}
+type NodeData = GraphNode;
+type LinkData = GraphLink;
 
 let nodes: NodeData[] = [];
 let links: LinkData[] = [];
 
-function buildGraphData() {
+function updateGraphData() {
     const pages = store.pages.current ?? [];
-    nodes = pages.map(p => ({ id: p.id, title: p.text }));
-    links = [];
-    const internalLinkRegex = /\[([^\[\]\/\-][^\[\]]*?)\]/g;
-    for (const page of pages) {
-        let match;
-        while ((match = internalLinkRegex.exec(page.text))) {
-            const targetTitle = match[1];
-            const target = pages.find(p => p.text === targetTitle);
-            if (target) {
-                links.push({ source: page.id, target: target.id });
-            }
-        }
-    }
+    const result = buildGraphData(pages);
+    nodes = result.nodes;
+    links = result.links;
 }
 
 function renderGraph() {
@@ -112,7 +97,7 @@ function renderGraph() {
 }
 
 function updateGraph() {
-    buildGraphData();
+    updateGraphData();
     renderGraph();
 }
 
