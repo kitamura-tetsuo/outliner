@@ -13,7 +13,8 @@ vi.mock('../auth/UserManager', () => ({
                 getIdToken: vi.fn()
             }
         },
-        getCurrentUser: vi.fn()
+        getCurrentUser: vi.fn(),
+        addEventListener: vi.fn().mockReturnValue(() => {})
     }
 }));
 
@@ -31,7 +32,7 @@ vi.mock('../lib/logger', () => ({
 global.fetch = vi.fn();
 
 describe('firestoreStore.svelte.ts - Sharing and Member Management', () => {
-    const mockApiBaseUrl = 'http://localhost:57070'; // Or from import.meta.env.VITE_FIREBASE_FUNCTIONS_URL
+    const mockApiBaseUrl = 'http://localhost:57000'; // Matches .env.test
 
     beforeEach(() => {
         // Reset mocks before each test
@@ -41,13 +42,13 @@ describe('firestoreStore.svelte.ts - Sharing and Member Management', () => {
         (userManager.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue({ uid: 'test-user' });
         (userManager.auth.currentUser.getIdToken as ReturnType<typeof vi.fn>).mockResolvedValue('mock-id-token');
 
-        // Mock import.meta.env
-        vi.stubGlobal('importMetaEnv', { VITE_FIREBASE_FUNCTIONS_URL: mockApiBaseUrl });
+        // Ensure environment variable is set for API base URL
+        process.env.VITE_FIREBASE_FUNCTIONS_URL = mockApiBaseUrl;
 
     });
 
     afterEach(() => {
-         vi.unstubAllGlobals();
+        delete process.env.VITE_FIREBASE_FUNCTIONS_URL;
     });
 
     describe('shareProject', () => {
