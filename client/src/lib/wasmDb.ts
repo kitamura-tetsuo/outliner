@@ -4,6 +4,7 @@ import {
     createInMemoryDatabase,
     loadDatabaseInMemory,
     contentFromDatabase,
+    type SqliteWasmDatabase,
 } from "sqlite-wasm-kysely";
 
 interface DB {
@@ -14,12 +15,13 @@ interface DB {
 }
 
 let dbPromise: Promise<Kysely<DB>> | null = null;
+let currentDatabase: SqliteWasmDatabase | null = null;
 const STORAGE_KEY = "wasm_db";
 
 async function open(): Promise<Kysely<DB>> {
     if (!dbPromise) {
         dbPromise = (async () => {
-            let database;
+            let database: SqliteWasmDatabase | undefined;
             if (typeof window !== "undefined") {
                 const stored = localStorage.getItem(STORAGE_KEY);
                 if (stored) {
@@ -31,6 +33,7 @@ async function open(): Promise<Kysely<DB>> {
                 database = await createInMemoryDatabase({ readOnly: false });
                 await database.exec("CREATE TABLE IF NOT EXISTS containers (id TEXT PRIMARY KEY, title TEXT)");
             }
+            currentDatabase = database;
             return new Kysely<DB>({ dialect: createDialect({ database }) });
         })();
     }
@@ -38,8 +41,8 @@ async function open(): Promise<Kysely<DB>> {
 }
 
 async function persist(db: Kysely<DB>) {
-    if (typeof window === "undefined") return;
-    const binary = contentFromDatabase((db as any).dialect.config.database);
+    if (typeof window === "undefined" || !currentDatabase) return;
+    const binary = contentFromDatabase(currentDatabase);
     const base64 = btoa(String.fromCharCode(...binary));
     localStorage.setItem(STORAGE_KEY, base64);
 }

@@ -818,7 +818,7 @@
   title: '高度な検索と置換'
   description: '全文検索および一括置換を行う機能'
   category: navigation
-  status: draft
+  status: implemented
 
 - id: DBW-0001
   title: 'Client-Side WASM DB'
@@ -883,3 +883,21 @@
   components:
     - src/components/ChartComponent.svelte
   tests: []
+
+- id: TBL-0001
+  title: Editable JOIN Table
+  description: SQL query results editable via Fluid Framework and SQLite cache
+  category: table
+  status: implemented
+  components:
+    - src/components/EditableQueryGrid.svelte
+    - src/components/QueryEditor.svelte
+    - src/components/ChartPanel.svelte
+  services:
+    - src/services/queryStore.ts
+    - src/services/syncWorker.ts
+  tests:
+    - src/tests/sqlService.test.ts
+    - src/tests/editMapper.test.ts
+    - src/tests/syncWorker.test.ts
+    - client/e2e/new/TBL-0001.spec.ts
