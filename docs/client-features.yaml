@@ -10,6 +10,16 @@
     - 'ユーザーがメールアドレスを入力すると、リセットリンクが送信される'
     - 'リンクは 30 分で失効する'
     - '正しいトークンを送るとパスワードを再設定できる'
+- id: FTR-0013
+  title: 'Use environment variables in min page'
+  status: implemented
+  components:
+    - client/src/routes/min/+page.svelte
+    - client/.env.example
+  tests: []
+  acceptance:
+    - 'Firebase config values come from VITE_FIREBASE_* variables'
+    - 'Token verification URL uses VITE_TOKEN_VERIFY_URL'
 - id: IME-0001
   title: IMEを使用した日本語入力
   status: implemented # draft / implemented / deprecated

@@ -38,8 +38,8 @@ async function signIn() {
         idToken = await result.user.getIdToken(true);
         console.log("取得した ID Token:", idToken);
 
-        // バックエンドの検証エンドポイントへ送信
-        const response = await fetch("http://localhost:3000/verify", {
+        const verifyUrl = import.meta.env.VITE_TOKEN_VERIFY_URL;
+        const response = await fetch(verifyUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token: idToken }),
