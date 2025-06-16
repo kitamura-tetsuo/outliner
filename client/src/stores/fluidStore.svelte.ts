@@ -45,3 +45,6 @@ class GeneralStore {
     }
 }
 export const fluidStore = new GeneralStore();
+if (typeof window !== 'undefined') {
+    (window as any).__FLUID_STORE__ = fluidStore;
+}

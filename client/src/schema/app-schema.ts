@@ -170,7 +170,8 @@ export const appTreeConfiguration = new TreeViewConfiguration(
  */
 export async function createAppTreeConfigurationAlpha() {
     try {
-        const fluidAlpha = await import("fluid-framework/alpha");
+        const importer: any = (globalThis as any).import || ((p: string) => import(p));
+        const fluidAlpha = await importer("fluid-framework/alpha");
         const TreeViewConfigurationAlpha = (fluidAlpha as any).TreeViewConfigurationAlpha;
 
         if (TreeViewConfigurationAlpha) {

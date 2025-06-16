@@ -2,7 +2,7 @@ import {
     AzureClient,
     type AzureContainerServices,
 } from "@fluidframework/azure-client";
-import { type IFluidContainer } from "@fluidframework/fluid-static";
+import { type IFluidContainer } from "fluid-framework";
 import {
     TinyliciousClient,
     type TinyliciousContainerServices,

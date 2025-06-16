@@ -11,6 +11,9 @@ import { fluidStore } from "../stores/fluidStore.svelte";
 import { getLogger } from "./logger";
 
 const logger = getLogger();
+if (typeof window !== 'undefined') {
+    (window as any).__SVELTE_GOTO__ = goto;
+}
 
 /**
  * グローバルデバッグ関数を設定する

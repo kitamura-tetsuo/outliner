@@ -4,10 +4,7 @@ import {
     type AzureRemoteConnectionConfig,
     type ITokenProvider,
 } from "@fluidframework/azure-client";
-import {
-    type ContainerSchema,
-    type IFluidContainer,
-} from "@fluidframework/fluid-static";
+import type { ContainerSchema, IFluidContainer } from "@fluidframework/fluid-static";
 import { InsecureTokenProvider } from "@fluidframework/test-client-utils";
 import {
     TinyliciousClient,
@@ -17,8 +14,8 @@ import {
     SharedTree,
     Tree,
     type TreeView,
-    type ViewableTree,
 } from "fluid-framework";
+import type { ViewableTree } from "@fluidframework/tree";
 import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";

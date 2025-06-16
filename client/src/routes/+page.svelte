@@ -1,9 +1,20 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { onMount } from "svelte";
 import ContainerSelector from "../components/ContainerSelector.svelte";
 import { getLogger } from "../lib/logger";
 import { loadContainer } from "../services";
 import { fluidStore } from "../stores/fluidStore.svelte";
+
+if (typeof window !== 'undefined') {
+    (window as any).__FLUID_STORE__ = fluidStore;
+    (window as any).__SVELTE_GOTO__ = goto;
+}
+
+onMount(() => {
+    (window as any).__FLUID_STORE__ = fluidStore;
+    (window as any).__SVELTE_GOTO__ = goto;
+});
 
 const logger = getLogger("HomePage");
 

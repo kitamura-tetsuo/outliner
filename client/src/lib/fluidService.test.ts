@@ -1,4 +1,4 @@
-import { type ViewableTree } from "fluid-framework";
+import type { ViewableTree } from "@fluidframework/tree";
 import {
     afterEach,
     beforeEach,

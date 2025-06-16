@@ -1,6 +1,7 @@
 import { TinyliciousClient } from "@fluidframework/tinylicious-client";
-import { ContainerSchema } from "@fluidframework/fluid-static";
-import { SharedTree, ViewableTree } from "fluid-framework";
+import type { ContainerSchema } from "@fluidframework/fluid-static";
+import { SharedTree } from "fluid-framework";
+import type { ViewableTree } from "@fluidframework/tree";
 import { v4 as uuid } from "uuid";
 import { appTreeConfiguration, Project } from "../schema/app-schema";
 import { FluidClient } from "../fluid/fluidClient";

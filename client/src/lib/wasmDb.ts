@@ -39,7 +39,9 @@ async function open(): Promise<Kysely<DB>> {
 
 async function persist(db: Kysely<DB>) {
     if (typeof window === "undefined") return;
-    const binary = contentFromDatabase((db as any).dialect.config.database);
+    const database = (db as any).dialect?.config?.database;
+    if (!database) return;
+    const binary = contentFromDatabase(database);
     const base64 = btoa(String.fromCharCode(...binary));
     localStorage.setItem(STORAGE_KEY, base64);
 }

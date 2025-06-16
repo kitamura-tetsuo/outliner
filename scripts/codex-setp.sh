@@ -134,6 +134,8 @@ cross-env NODE_ENV=test TEST_ENV=localhost \
 wait_for_port ${TEST_API_PORT}
 wait_for_port ${TEST_FLUID_PORT}
 wait_for_port ${VITE_PORT}
-wait_for_port 57000
+if [ -z "${SKIP_FUNCTIONS_WAIT:-}" ]; then
+  wait_for_port 57000
+fi
 wait_for_port 59099
 wait_for_port 58080
