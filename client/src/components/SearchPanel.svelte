@@ -16,7 +16,7 @@ let replaceText = $state("");
 let useRegex = $state(false);
 let resultsCount = $state(0);
 
-let searchInput: HTMLInputElement | null = null;
+let searchInput: HTMLInputElement | undefined = $state();
 
 function close() {
     isOpen = false;
@@ -65,13 +65,13 @@ onDestroy(() => {
             class="search-input"
             placeholder="Search"
             bind:value={query}
-            on:keydown={e => e.key === "Enter" && runSearch()}
+            onkeydown={e => e.key === "Enter" && runSearch()}
         />
         <input
             class="replace-input"
             placeholder="Replace"
             bind:value={replaceText}
-            on:keydown={e => e.key === "Enter" && runReplaceAll()}
+            onkeydown={e => e.key === "Enter" && runReplaceAll()}
         />
         <label><input type="checkbox" bind:checked={useRegex} />Regex</label>
         <button class="replace-all-btn" onclick={runReplaceAll}>Replace All</button>

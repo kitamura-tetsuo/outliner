@@ -49,7 +49,13 @@ async function killProcessOnPort(port) {
         }
     }
     catch (error) {
-        console.error(`Error checking or killing process on port ${port}:`, error);
+        // Only log error if it's not just "no process found"
+        if (error.code !== 1 || error.stdout || error.stderr) {
+            console.error(`Error checking or killing process on port ${port}:`, error.message);
+        }
+        else {
+            console.log(`No process found on port ${port}`);
+        }
         return false;
     }
 }

@@ -1,22 +1,25 @@
 <script lang="ts">
-import { Grid } from 'wx-svelte-grid';
-import type { ColumnMeta } from '../services/sqlService';
-import { mapEdit } from '../services/editMapper';
-import { createEventDispatcher } from 'svelte';
+import { Grid } from "wx-svelte-grid";
+import { mapEdit } from "../services/editMapper";
+import type { ColumnMeta } from "../services/sqlService";
 
-export let rows: any[] = [];
-export let columns: ColumnMeta[] = [];
-
-const dispatch = createEventDispatcher();
+type Props = {
+    rows?: any[];
+    columns?: ColumnMeta[];
+    onedit?: (info: any) => void;
+};
+let { rows = [], columns = [], onedit }: Props = $props();
 
 function onEdit(e: any) {
     const { rowIndex, columnIndex, value } = e.detail;
     const row = rows[rowIndex];
     const info = mapEdit(columns, row, columnIndex, value);
-    if (info) dispatch('edit', info);
+    if (info && onedit) onedit(info);
 }
 </script>
 
-<Grid {rows}
-    columns={columns.map(c => ({ field: c.column || '', headerName: c.column || '', editable: !!(c.table && c.column) }))}
-    on:cellEditCommit={onEdit} />
+<Grid
+    {rows}
+    columns={columns.map(c => ({ field: c.column || "", headerName: c.column || "", editable: !!(c.table && c.column) }))}
+    on:cellEditCommit={onEdit}
+/>

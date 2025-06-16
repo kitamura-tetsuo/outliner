@@ -15,8 +15,9 @@ let wasmSearch: undefined | ((text: string, pattern: string, options: SearchOpti
 async function loadWasm() {
     if (wasmSearch) return;
     try {
-        const mod = await import("../../wasm-db/search");
-        wasmSearch = mod.search;
+        // use @vite-ignore so build doesn't fail if wasm module is absent
+        const mod = await import(/* @vite-ignore */ "../../wasm-db/search").catch(() => null);
+        if (mod) wasmSearch = (mod as any).search;
     }
     catch (e) {
         // wasm db not available, fall back to js

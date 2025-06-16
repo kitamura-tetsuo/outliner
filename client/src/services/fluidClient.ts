@@ -1,5 +1,8 @@
+import type {
+    ContainerSchema,
+    IFluidContainer,
+} from "@fluidframework/fluid-static";
 import { TinyliciousClient } from "@fluidframework/tinylicious-client";
-import { ContainerSchema, IFluidContainer } from "@fluidframework/fluid-static";
 import { SharedMap } from "fluid-framework";
 
 export interface UpdateCellArgs {

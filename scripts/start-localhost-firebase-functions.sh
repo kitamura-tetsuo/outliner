@@ -1,15 +1,16 @@
 #!/bin/bash
 
-# For Localhost Debug Firebase Functions
-# Firebaseエミュレーターを起動
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "Starting Localhost Firebase Functions Emulator..."
+# Load common configuration and functions
+source "${SCRIPT_DIR}/common-config.sh"
+source "${SCRIPT_DIR}/common-functions.sh"
 
-# ワークスペースルートに移動
-cd /workspace
-
-# 環境変数を設定
+# Set debug mode
 export FIREBASE_DEBUG_MODE=true
 
-# Firebaseエミュレーターを起動（デバッグモード）
-firebase emulators:start --inspect-functions=9229 --project outliner-d57b0
+# Start Firebase emulator with debug mode
+echo "Starting Firebase Functions Emulator with debug mode..."
+cd "${ROOT_DIR}/firebase"
+firebase emulators:start --inspect-functions=9229 --project ${FIREBASE_PROJECT_ID}

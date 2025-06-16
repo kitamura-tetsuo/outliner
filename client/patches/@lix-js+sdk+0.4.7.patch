@@ -1,0 +1,24 @@
+diff --git a/node_modules/@lix-js/sdk/dist/services/telemetry/capture.js b/node_modules/@lix-js/sdk/dist/services/telemetry/capture.js
+index 7ab8781..ecb39a9 100644
+--- a/node_modules/@lix-js/sdk/dist/services/telemetry/capture.js
++++ b/node_modules/@lix-js/sdk/dist/services/telemetry/capture.js
+@@ -5,6 +5,9 @@ import { ENV_VARIABLES } from "../env-variables/index.js";
+  * - manually calling the PostHog API because the SDKs were not platform angostic (and generally bloated)
+  */
+ export const capture = async (event, args) => {
++    if (process.env.DISABLE_POSTHOG) {
++        return;
++    }
+     if (ENV_VARIABLES.LIX_SDK_POSTHOG_TOKEN === undefined) {
+         return;
+     }
+@@ -42,6 +45,9 @@ export const capture = async (event, args) => {
+  * Otherwise, the project will not be visible in the PostHog dashboard.
+  */
+ const identifyLix = async (args) => {
++    if (process.env.DISABLE_POSTHOG) {
++        return;
++    }
+     // do not send events if the token is not set
+     // (assuming this eases testing)
+     if (ENV_VARIABLES.LIX_SDK_POSTHOG_TOKEN === undefined) {

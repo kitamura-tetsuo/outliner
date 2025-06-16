@@ -4,10 +4,7 @@ import {
     type AzureRemoteConnectionConfig,
     type ITokenProvider,
 } from "@fluidframework/azure-client";
-import {
-    type ContainerSchema,
-    type IFluidContainer,
-} from "@fluidframework/fluid-static";
+import type { ContainerSchema, IFluidContainer } from "@fluidframework/fluid-static";
 import { InsecureTokenProvider } from "@fluidframework/test-client-utils";
 import {
     TinyliciousClient,
@@ -17,8 +14,8 @@ import {
     SharedTree,
     Tree,
     type TreeView,
-    type ViewableTree,
 } from "fluid-framework";
+import type { ViewableTree } from "@fluidframework/tree";
 import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";
@@ -76,7 +73,8 @@ const azureConfig = {
 
 // 開発環境ではTinyliciousを使用する - 環境変数で強制的に切り替え可能
 const isTestEnvironment = import.meta.env.VITE_IS_TEST === "true" ||
-    import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
+    import.meta.env.MODE === "test" ||
+    (typeof process !== "undefined" && process.env.NODE_ENV === "test");
 const useTinylicious = isTestEnvironment || // テスト環境では常にTinyliciousを使用
     import.meta.env.VITE_USE_TINYLICIOUS === "true" ||
     (import.meta.env.DEV && import.meta.env.VITE_FORCE_AZURE !== "true");
@@ -190,7 +188,13 @@ async function createAzureOrTinyliciousClient(
     containerId?: string,
 ): Promise<TinyliciousClient | AzureClient> {
     if (useTinylicious) {
-        const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7092");
+        // テスト環境では.env.testファイルから環境変数を読み取る
+        const envPort = isTestEnvironment && typeof process !== "undefined"
+            ? process.env.VITE_TINYLICIOUS_PORT
+            : import.meta.env.VITE_TINYLICIOUS_PORT;
+        const port = parseInt(envPort || "7092");
+        log("fluidService", "info", `Using Tinylicious port: ${port} (test env: ${isTestEnvironment})`);
+
         // telemetryを無効化するための設定を追加
         const client = new TinyliciousClient({
             connection: { port },
@@ -236,7 +240,7 @@ async function createAzureOrTinyliciousClient(
 // AzureClientの取得（またはTinyliciousClient）
 export async function getFluidClient(containerId?: string): Promise<FluidInstances> {
     // if (useTinylicious) {
-    //     const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7092");
+    //     const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7094");
     //     // telemetryを無効化するための設定を追加
     //     const client = new TinyliciousClient({
     //         connection: { port },
