@@ -3,6 +3,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 const { setupNgrokUrl } = require("./utils/ngrok-helper");
 
+// Local host configuration
+const LOCAL_HOST = process.env.LOCAL_HOST || "localhost";
+
 // サーバーとngrokのプロセスを格納するオブジェクト
 const processes = {
     ngrok: null,
@@ -163,7 +166,7 @@ async function start() {
 
         console.log("\n=====================================================");
         console.log("アプリケーションが正常に起動しました！");
-        console.log(`バックエンドサーバー: http://192.168.50.13:${port}`);
+        console.log(`バックエンドサーバー: http://${LOCAL_HOST}:${port}`);
         if (ngrokUrl) {
             console.log(`パブリックURL: ${ngrokUrl}`);
         }
