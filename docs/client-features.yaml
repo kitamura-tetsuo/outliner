@@ -893,6 +893,10 @@
     - src/components/EditableQueryGrid.svelte
     - src/components/QueryEditor.svelte
     - src/components/ChartPanel.svelte
+  services:
+    - src/services/queryStore.ts
+    - src/services/syncWorker.ts
   tests:
     - src/tests/sqlService.test.ts
     - src/tests/editMapper.test.ts
+    - src/tests/syncWorker.test.ts
