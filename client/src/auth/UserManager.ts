@@ -45,18 +45,18 @@ type AuthEventListener = (result: IAuthResult | null) => void;
 export class UserManager {
     // Firebase 設定
     private firebaseConfig = {
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCikgn1YY06j6ZlAJPYab1FIOKSQAuzcH4",
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "outliner-d57b0.firebaseapp.com",
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "outliner-d57b0",
-        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "outliner-d57b0.firebasestorage.app",
-        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "560407608873",
-        appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:560407608873:web:147817f4a93a4678606638",
-        measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-FKSFRCT7GR",
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-api-key",
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "demo-project.firebaseapp.com",
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project",
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "demo-project.appspot.com",
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "000000000000",
+        appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:000000000000:web:0000000000000000000000",
+        measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",
     };
 
     private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57070");
-    private app = initializeApp(this.firebaseConfig);
-    auth = getAuth(this.app);
+    private app: any;
+    auth: any;
 
     private currentFluidToken: IFluidToken | null = null;
     private listeners: AuthEventListener[] = [];
@@ -72,6 +72,18 @@ export class UserManager {
     constructor() {
         logger.debug("Initializing...");
 
+        // サーバーサイドレンダリング環境かどうかを判定
+        const isSSR = typeof window === "undefined";
+
+        if (isSSR) {
+            logger.info("Running in SSR environment, skipping Firebase initialization");
+            return;
+        }
+
+        // Firebase アプリとAuthを初期化
+        this.app = initializeApp(this.firebaseConfig);
+        this.auth = getAuth(this.app);
+
         this.initAuthListener();
 
         // テスト環境の検出
@@ -82,9 +94,6 @@ export class UserManager {
         const useEmulator = isTestEnv ||
             import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true" ||
             (typeof window !== "undefined" && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true");
-
-        // サーバーサイドレンダリング環境かどうかを判定
-        const isSSR = typeof window === "undefined";
 
         // Firebase Auth Emulatorに接続
         if (useEmulator) {
@@ -102,7 +111,7 @@ export class UserManager {
                     logger.error("Failed to connect to Auth emulator, authentication may not work", error);
 
                     // SSR環境ではエラーをスローしない（クライアント側でリトライできるように）
-                    if (!isSSR) {
+                    if (typeof window !== "undefined") {
                         throw error;
                     }
                     else {
@@ -115,7 +124,7 @@ export class UserManager {
                 logger.error("Failed to connect to Auth emulator:", err);
 
                 // SSR環境ではエラーをスローしない
-                if (!isSSR) {
+                if (typeof window !== "undefined") {
                     throw err;
                 }
                 else {
@@ -131,8 +140,8 @@ export class UserManager {
     // Firebase Auth Emulatorに接続
     private connectToFirebaseEmulator(): boolean {
         try {
-            // 環境変数から接続情報を取得（デフォルトは192.168.50.13:59099）
-            const host = import.meta.env.VITE_AUTH_EMULATOR_HOST || "192.168.50.13";
+            // 環境変数から接続情報を取得（デフォルトはlocalhost:59099）
+            const host = import.meta.env.VITE_AUTH_EMULATOR_HOST || "localhost";
             const port = parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT || "59099", 10);
 
             logger.info(`Connecting to Firebase Auth emulator at ${host}:${port}`);
@@ -173,6 +182,11 @@ export class UserManager {
 
     // Firebase認証状態の監視
     private initAuthListener(): void {
+        if (!this.auth) {
+            logger.warn("Auth not initialized, skipping auth listener setup");
+            return;
+        }
+
         this.unsubscribeAuth = onAuthStateChanged(this.auth, async firebaseUser => {
             if (firebaseUser) {
                 await this.handleUserSignedIn(firebaseUser);
@@ -223,6 +237,8 @@ export class UserManager {
 
     // ユーザー情報を取得する関数
     public getCurrentUser(): IUser | null {
+        if (!this.auth) return null;
+
         const firebaseUser = this.auth.currentUser;
         if (!firebaseUser) return null;
 
@@ -394,6 +410,7 @@ export class UserManager {
 
     // Firebaseに認証済みかどうかを確認
     public isAuthenticated(): boolean {
+        if (!this.auth) return false;
         return !!this.auth.currentUser;
     }
 

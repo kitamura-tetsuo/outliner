@@ -9,11 +9,11 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("TBL-0001: Editable JOIN Table", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [], false);
-        await page.goto("/join-table");
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [], false, true);
+        await page.goto("/join-table", { waitUntil: "domcontentloaded" });
     });
 
     test("editable join table loads", async ({ page }) => {
-        await expect(page).toHaveURL('/join-table');
+        await expect(page).toHaveURL("/join-table");
     });
 });

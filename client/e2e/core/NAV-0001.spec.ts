@@ -28,7 +28,7 @@ test.describe("NAV-0001: プロジェクト選択とページナビゲーショ�
         // プロジェクトページのタイトルを確認
         await page.waitForSelector("h1", { timeout: 10000 });
         const pageTitle = await page.locator("h1").textContent();
-        expect(pageTitle?.trim()).toBe("プロジェクト");
+        expect(pageTitle?.trim()).toBe(projectName);
 
         // 2. ページへの遷移確認
         await page.goto(`/${projectName}/${pageName}`);

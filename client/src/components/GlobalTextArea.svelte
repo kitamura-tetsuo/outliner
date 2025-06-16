@@ -134,13 +134,13 @@ function handleBlur(_event: FocusEvent) {
 <textarea
     bind:this={textareaRef}
     class="global-textarea"
-    on:keydown={handleKeyDown}
-    on:input={handleInput}
-    on:compositionupdate={handleCompositionUpdate}
-    on:compositionend={handleCompositionEnd}
-    on:copy={handleCopy}
-    on:paste={handlePaste}
-    on:blur={handleBlur}
+    onkeydown={handleKeyDown}
+    oninput={handleInput}
+    oncompositionupdate={handleCompositionUpdate}
+    oncompositionend={handleCompositionEnd}
+    oncopy={handleCopy}
+    onpaste={handlePaste}
+    onblur={handleBlur}
 ></textarea>
 
 <style>

@@ -1,9 +1,9 @@
-import type { FluidTableClient } from './fluidClient';
-import type { SqlService } from './sqlService';
+import type { FluidTableClient } from "./fluidClient";
+import type { SqlService } from "./sqlService";
 
 export function startSync(client: FluidTableClient, sql: SqlService, onChange?: () => void) {
     if (!client.tables) return;
-    client.tables.on('valueChanged', async () => {
+    client.tables.on("valueChanged", async () => {
         // naive approach: rebuild cache from Fluid data
         // iterate tables -> rows -> columns
         for (const [tableId, table] of Array.from(client.tables!.entries())) {

@@ -1,15 +1,15 @@
 <script lang="ts">
-import { onMount } from 'svelte';
-import { browser } from '$app/environment';
+import { browser } from "$app/environment";
+import { onMount } from "svelte";
 
-type Props = { option?: any };
+type Props = { option?: any; };
 let { option = undefined }: Props = $props();
 let chartEl: HTMLDivElement;
 let chart: any;
 
 onMount(async () => {
     if (!browser) return;
-    const echarts = await import('echarts');
+    const echarts = await import("echarts");
     chart = echarts.init(chartEl);
     if (option) chart.setOption(option, { notMerge: true });
 });

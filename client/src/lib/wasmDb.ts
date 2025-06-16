@@ -1,9 +1,9 @@
 import { Kysely } from "kysely";
 import {
+    contentFromDatabase,
     createDialect,
     createInMemoryDatabase,
     loadDatabaseInMemory,
-    contentFromDatabase,
     type SqliteWasmDatabase,
 } from "sqlite-wasm-kysely";
 
@@ -57,7 +57,7 @@ export async function saveContainerMeta(id: string, title: string) {
     await persist(db);
 }
 
-export async function getAllContainerMeta(): Promise<{ id: string; title: string }[]> {
+export async function getAllContainerMeta(): Promise<{ id: string; title: string; }[]> {
     const db = await open();
     return await db.selectFrom("containers").selectAll().execute();
 }
