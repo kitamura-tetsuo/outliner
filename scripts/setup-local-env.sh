@@ -23,11 +23,9 @@ VITE_USE_TINYLICIOUS=true
 EOV
     echo "Created client/.env.test"
 fi
-copy_if_missing "$ROOT_DIR/client/.env.test" "$ROOT_DIR/client/.env.localhost.test"
 
 # Server and functions env files
 copy_if_missing "$ROOT_DIR/server/.env.test" "$ROOT_DIR/server/.env"
-copy_if_missing "$ROOT_DIR/server/.env" "$ROOT_DIR/server/.env.localhost.test"
 copy_if_missing "$ROOT_DIR/functions/.env.test" "$ROOT_DIR/functions/.env"
 
 echo "Environment files are ready"

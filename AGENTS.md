@@ -77,6 +77,30 @@ Prioritize performance.
 
 # Test Environment Configuration
 
+## Port Configuration
+
+**MANDATORY PORT ASSIGNMENTS - ALWAYS USE THESE PORTS:**
+
+**Emulator Environment (for development and testing of most features):**
+
+- 7090: SvelteKit server
+- 7091: API server
+- 7092: Tinylicious server
+
+**Cloud Environment (for exceptional features requiring production environment):**
+
+- 7070: SvelteKit server
+- 7071: API server
+- 7072: Tinylicious server
+
+**Port Usage Rules:**
+
+- If ports are occupied by other processes, terminate those processes and restart servers on the specified ports
+- Never use alternative ports - always use the designated port numbers above
+- When SvelteKit server is unresponsive, first verify that the client build passes before investigating server startup issues
+
+## General Configuration
+
 - E2E tests should run on both Windows and Ubuntu, with configurations for localhost (7090/7091/7092).
 - Firebase emulators run in Docker containers.
 - Firebase Auth emulator should be called only once at 192.168.50.13:59099, and duplicate environment variables like VITE_AUTH_EMULATOR_HOST and VITE_FIREbase_EMULATOR_HOST should be consolidated.

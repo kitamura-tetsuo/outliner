@@ -1,9 +1,9 @@
 import { Kysely } from "kysely";
 import {
+    contentFromDatabase,
     createDialect,
     createInMemoryDatabase,
     loadDatabaseInMemory,
-    contentFromDatabase,
 } from "sqlite-wasm-kysely";
 
 interface DB {
@@ -39,7 +39,15 @@ async function open(): Promise<Kysely<DB>> {
 
 async function persist(db: Kysely<DB>) {
     if (typeof window === "undefined") return;
-    const binary = contentFromDatabase((db as any).dialect.config.database);
+
+    // テスト環境では config が undefined の場合があるため、安全にアクセス
+    const dialectConfig = (db as any).dialect?.config;
+    if (!dialectConfig?.database) {
+        console.warn("[wasmDb] Database config not available, skipping persistence");
+        return;
+    }
+
+    const binary = contentFromDatabase(dialectConfig.database);
     const base64 = btoa(String.fromCharCode(...binary));
     localStorage.setItem(STORAGE_KEY, base64);
 }
@@ -54,7 +62,7 @@ export async function saveContainerMeta(id: string, title: string) {
     await persist(db);
 }
 
-export async function getAllContainerMeta(): Promise<{ id: string; title: string }[]> {
+export async function getAllContainerMeta(): Promise<{ id: string; title: string; }[]> {
     const db = await open();
     return await db.selectFrom("containers").selectAll().execute();
 }

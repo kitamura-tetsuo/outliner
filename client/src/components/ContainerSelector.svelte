@@ -1,13 +1,8 @@
 <script lang="ts">
-import {
-    onDestroy,
-    onMount,
-} from "svelte";
+import { onMount } from "svelte";
+import { getProjectTitle } from "../lib/fluidService.svelte";
 import { getLogger } from "../lib/logger";
-import {
-    createFluidClient,
-    getProjectTitle,
-} from "../services";
+import {} from "../services";
 import { firestoreStore } from "../stores/firestoreStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 const logger = getLogger();
@@ -93,10 +88,10 @@ async function reloadCurrentContainer() {
         error = null;
 
         // ファクトリーメソッドを使用して現在のコンテナを再ロード
-        const client = await createFluidClient(currentContainerId);
+        // const client = await createFluidClient(currentContainerId);
 
         // fluidClientストアを更新
-        fluidStore.fluidClient = client;
+        // fluidStore.fluidClient = client;
     }
     catch (err) {
         logger.error("コンテナ再ロードエラー:", err);

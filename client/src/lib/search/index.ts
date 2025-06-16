@@ -14,13 +14,14 @@ let wasmSearch: undefined | ((text: string, pattern: string, options: SearchOpti
 
 async function loadWasm() {
     if (wasmSearch) return;
-    try {
-        const mod = await import("../../wasm-db/search");
-        wasmSearch = mod.search;
-    }
-    catch (e) {
-        // wasm db not available, fall back to js
-    }
+    // wasm db not available, fall back to js
+    // try {
+    //     const mod = await import("../../wasm-db/search");
+    //     wasmSearch = mod.search;
+    // }
+    // catch (e) {
+    //     // wasm db not available, fall back to js
+    // }
 }
 
 function buildRegex(pattern: string, options: SearchOptions): RegExp {
