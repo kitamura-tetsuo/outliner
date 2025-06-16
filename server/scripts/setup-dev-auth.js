@@ -5,22 +5,25 @@ const path = require("path");
 const fs = require("fs");
 const { serverLogger: logger } = require("../utils/logger");
 
-// サービスアカウントJSONファイルのパス
-const serviceAccountPath = path.join(__dirname, "..", "firebase-adminsdk.json");
-
 // Firebase Admin SDKの初期化
 async function initializeFirebase() {
     try {
         // Check if already initialized
         if (admin.apps.length === 0) {
-            // JSONファイルからFirebase認証情報を読み込む
-            const serviceAccount = require(serviceAccountPath);
+            const serviceAccount = {
+                projectId: process.env.FIREBASE_PROJECT_ID,
+                privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
+                privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                clientId: process.env.FIREBASE_CLIENT_ID,
+                clientX509CertUrl: process.env.FIREBASE_CLIENT_CERT_URL,
+            };
 
             admin.initializeApp({
                 credential: admin.credential.cert(serviceAccount),
             });
 
-            logger.info(`Firebase Admin SDK initialized with project: ${serviceAccount.project_id}`);
+            logger.info(`Firebase Admin SDK initialized with project: ${serviceAccount.projectId}`);
         }
         else {
             logger.info("Firebase Admin SDK already initialized");
