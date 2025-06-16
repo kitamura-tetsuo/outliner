@@ -2,12 +2,6 @@ import {
     defineConfig,
     devices,
 } from "@playwright/test";
-import path from "path";
-import { fileURLToPath } from "url";
-
-// ESモジュールで__dirnameを使うための設定
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // テスト環境の設定
 // 環境変数TEST_ENVが'localhost'の場合はlocalhost環境、それ以外はデフォルト環境
@@ -17,13 +11,13 @@ const __dirname = path.dirname(__filename);
 const isLocalhostEnv = true; // localhostを強制的に使用
 
 // テスト用ポートを定義 - これを明示的に指定
-const TEST_PORT = isLocalhostEnv ? "7090" : "7080";
+const TEST_PORT = isLocalhostEnv ? "7093" : "7080";
 // Tinylicious サーバーのポートを定義
-const TINYLICIOUS_PORT = isLocalhostEnv ? "7092" : "7082";
+const TINYLICIOUS_PORT = isLocalhostEnv ? "7094" : "7082";
 // ホストを定義
 const VITE_HOST = isLocalhostEnv ? "localhost" : "192.168.50.13";
 // 環境設定ファイルを定義
-const ENV_FILE = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
+const ENV_FILE = ".env.test";
 
 // console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
 // console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
@@ -37,7 +31,6 @@ export default defineConfig({
     retries: process.env.CI ? 2 : 0,
     workers: process.env.CI ? 1 : 4,
     reporter: [["html", { open: "never" }]],
-    headless: true,
     // テスト実行時のタイムアウト設定を延長
     timeout: 30 * 1000, // 30秒
     expect: {
@@ -47,12 +40,13 @@ export default defineConfig({
 
     // globalSetupとglobalTeardown - require.resolveではなく相対パスを使用
     globalSetup: "./e2e/global-setup.ts",
-    globalTeardown: path.join(__dirname, "./e2e/global-teardown.ts"),
+    globalTeardown: "./e2e/global-teardown.ts",
 
     use: {
         // Clipboard APIを有効にするためにlocalhostを使用
         baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
         trace: "on-first-retry",
+        headless: true,
         // クリップボードへのアクセスを許可
         permissions: ["clipboard-read", "clipboard-write"],
         // ブラウザの起動オプションを設定

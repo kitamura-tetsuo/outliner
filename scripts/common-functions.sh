@@ -1,0 +1,167 @@
+#!/bin/bash
+# Common functions for all scripts
+
+# Ensure nvm environment is loaded so globally installed node tools are in PATH
+load_nvm() {
+  if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+    . "$HOME/.nvm/nvm.sh"
+  fi
+}
+
+# Wait for a port to become available
+wait_for_port() {
+  local port="$1"
+  local retry=120  # Increased timeout to 2 minutes
+  echo "Waiting for port ${port}..."
+  while ! nc -z localhost "${port}" >/dev/null 2>&1; do
+    sleep 1
+    retry=$((retry-1))
+    if [ ${retry} -le 0 ]; then
+      echo "Timeout waiting for port ${port}"
+      return 1  # Return error instead of exit to allow script to continue
+    fi
+  done
+  echo "Port ${port} is ready"
+}
+
+# Create log directories
+create_log_directories() {
+  for dir in "${LOG_DIRS[@]}"; do
+    mkdir -p "${dir}"
+  done
+}
+
+# Install npm dependencies if needed
+npm_ci_if_needed() {
+  if [ ! -d node_modules ]; then
+    npm --proxy='' --https-proxy='' ci
+  fi
+}
+
+# Kill processes on specified ports using the JavaScript script
+kill_ports() {
+  echo "Starting cleanup of development processes..."
+  cd "${ROOT_DIR}"
+  node scripts/kill-tinylicious.js
+  return 0
+}
+
+# Install global packages if needed
+install_global_packages() {
+  if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
+    npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
+  fi
+
+  if ! command -v dprint >/dev/null; then
+    curl -fsSL https://dprint.dev/install.sh | sh
+  fi
+  
+  if ! command -v cross-env >/dev/null; then
+    echo "cross-env not found after global install; attempting local install"
+    npm install -g cross-env || true
+  fi
+}
+
+# Install OS utilities if needed
+install_os_utilities() {
+  if ! command -v lsof >/dev/null || ! command -v xvfb-run >/dev/null; then
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+      lsof xvfb > /dev/null
+  fi
+}
+
+# Setup environment files
+setup_environment_files() {
+  chmod +x "${ROOT_DIR}/scripts/setup-local-env.sh"
+  "${ROOT_DIR}/scripts/setup-local-env.sh"
+  
+  set -a
+  source "${ROOT_DIR}/server/.env"
+  source "${ROOT_DIR}/client/.env"
+  if [ -f "${ROOT_DIR}/client/.env.test" ]; then
+    source "${ROOT_DIR}/client/.env.test"
+  fi
+  set +a
+}
+
+# Install all npm dependencies
+install_all_dependencies() {
+  echo "Installing dependencies..."
+  
+  # Server dependencies
+  cd "${ROOT_DIR}/server"
+  npm_ci_if_needed
+  
+  # Firebase Functions dependencies
+  cd "${ROOT_DIR}/functions"
+  npm_ci_if_needed
+  
+  # Client dependencies
+  cd "${ROOT_DIR}/client"
+  npm_ci_if_needed
+  
+  # Compile Paraglide if needed
+  if [ -z "${SKIP_PARAGLIDE_COMPILE}" ] && [ -d node_modules ]; then
+    npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide || true
+  fi
+  
+  cd "${ROOT_DIR}"
+}
+
+# Start Firebase emulator
+start_firebase_emulator() {
+  if nc -z localhost ${FIREBASE_AUTH_PORT} >/dev/null 2>&1; then
+    echo "Firebase emulator already running, stopping it first..."
+    kill_ports
+    sleep 2
+  fi
+
+  echo "Starting Firebase emulator..."
+  cd "${ROOT_DIR}"
+  firebase emulators:start --project ${FIREBASE_PROJECT_ID} 2>&1 | tee "${ROOT_DIR}/server/logs/firebase-emulator.log" &
+  cd "${ROOT_DIR}"
+}
+
+# Start Tinylicious server
+start_tinylicious() {
+  echo "Starting Tinylicious server on port ${TEST_FLUID_PORT}..."
+  cd "${ROOT_DIR}/client"
+  PORT=${TEST_FLUID_PORT} npx tinylicious 2>&1 | tee "${ROOT_DIR}/server/logs/tinylicious.log" &
+  cd "${ROOT_DIR}"
+}
+
+# Start API server
+start_api_server() {
+  echo "Starting API server on port ${TEST_API_PORT}..."
+  cd "${ROOT_DIR}/server"
+  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} 2>&1 | tee "${ROOT_DIR}/server/logs/test-auth-service-tee.log" &
+  cd "${ROOT_DIR}"
+}
+
+# Start SvelteKit server
+start_sveltekit_server() {
+  echo "Starting SvelteKit server on port ${VITE_PORT}..."
+  cd "${ROOT_DIR}/client"
+  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${VITE_PORT} 2>&1 | tee "${ROOT_DIR}/server/logs/test-svelte-kit.log" &
+  cd "${ROOT_DIR}"
+}
+
+# Wait for all required ports
+wait_for_all_ports() {
+  local failed_ports=()
+  for port in "${REQUIRED_PORTS[@]}"; do
+    if ! wait_for_port ${port}; then
+      failed_ports+=("${port}")
+      echo "Warning: Port ${port} is not ready"
+    fi
+  done
+
+  if [ ${#failed_ports[@]} -gt 0 ]; then
+    echo "Warning: The following ports are not ready: ${failed_ports[*]}"
+    echo "Some services may not be available"
+    return 1
+  fi
+
+  return 0
+}

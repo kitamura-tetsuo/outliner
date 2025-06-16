@@ -13,11 +13,11 @@ import "../app.css";
 import "$lib";
 import { userManager } from "../auth/UserManager";
 import { setupGlobalDebugFunctions } from "../lib/debug";
-import * as fluidService from "../lib/fluidService";
-import {
-    cleanupFluidClient,
-    initFluidClientWithAuth,
-} from "../services";
+import * as fluidService from "../lib/fluidService.svelte";
+// import {
+//     cleanupFluidClient,
+//     initFluidClientWithAuth,
+// } from "../services";
 
 let { children } = $props();
 const logger = getLogger("AppLayout");
@@ -168,36 +168,36 @@ onMount(() => {
                         (async () => {
                             try {
                                 // ユーザーのコンテナリストを取得
-                                const { containers } = await fluidService.getUserContainers();
+                                // const { containers } = await fluidService.getUserContainers();
 
                                 // 既存のコンテナを削除
-                                for (const containerId of containers) {
-                                    try {
-                                        logger.info(
-                                            `テスト環境のため、コンテナを削除します: ${containerId}`,
-                                        );
-                                        const success = await fluidService.deleteContainer(
-                                            containerId,
-                                        );
+                                // for (const containerId of containers) {
+                                //     try {
+                                //         logger.info(
+                                //             `テスト環境のため、コンテナを削除します: ${containerId}`,
+                                //         );
+                                //         const success = await fluidService.deleteContainer(
+                                //             containerId,
+                                //         );
 
-                                        if (success) {
-                                            logger.info(
-                                                `コンテナを削除しました: ${containerId}`,
-                                            );
-                                        }
-                                        else {
-                                            logger.warn(
-                                                `コンテナの削除に失敗しました: ${containerId}`,
-                                            );
-                                        }
-                                    }
-                                    catch (error) {
-                                        logger.error(
-                                            `コンテナ削除エラー: ${containerId}`,
-                                            error,
-                                        );
-                                    }
-                                }
+                                //         if (success) {
+                                //             logger.info(
+                                //                 `コンテナを削除しました: ${containerId}`,
+                                //             );
+                                //         }
+                                //         else {
+                                //             logger.warn(
+                                //                 `コンテナの削除に失敗しました: ${containerId}`,
+                                //             );
+                                //         }
+                                //     }
+                                //     catch (error) {
+                                //         logger.error(
+                                //             `コンテナ削除エラー: ${containerId}`,
+                                //             error,
+                                //         );
+                                //     }
+                                // }
 
                                 // 新しいテスト用コンテナを作成
                                 const pageName = "test-page";
@@ -221,19 +221,19 @@ onMount(() => {
             });
         }
 
-        initFluidClientWithAuth();
+        // initFluidClientWithAuth();
 
         // ブラウザ終了時のイベントリスナーを登録
-        window.addEventListener("beforeunload", handleBeforeUnload);
+        // window.addEventListener("beforeunload", handleBeforeUnload);
 
         // visibilitychangeイベントリスナーを登録（追加の保険）
-        document.addEventListener(
-            "visibilitychange",
-            handleVisibilityChange,
-        );
+        // document.addEventListener(
+        //     "visibilitychange",
+        //     handleVisibilityChange,
+        // );
 
         // 定期的なログローテーションを設定
-        rotationInterval = schedulePeriodicLogRotation();
+        // rotationInterval = schedulePeriodicLogRotation();
     }
 });
 
@@ -242,18 +242,18 @@ onDestroy(() => {
     // ブラウザ環境でのみ実行
     if (browser) {
         // イベントリスナーを削除
-        window.removeEventListener("beforeunload", handleBeforeUnload);
-        document.removeEventListener(
-            "visibilitychange",
-            handleVisibilityChange,
-        );
+        // window.removeEventListener("beforeunload", handleBeforeUnload);
+        // document.removeEventListener(
+        //     "visibilitychange",
+        //     handleVisibilityChange,
+        // );
 
-        cleanupFluidClient();
+        // cleanupFluidClient();
 
         // 定期的なログローテーションの解除
-        if (rotationInterval) {
-            clearInterval(rotationInterval);
-        }
+        // if (rotationInterval) {
+        //     clearInterval(rotationInterval);
+        // }
     }
 });
 </script>

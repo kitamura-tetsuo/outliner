@@ -1,15 +1,14 @@
 #!/bin/bash
 
-# For Localhost Launch Tinylicious
-# ポート7092でTinyliciousサーバーを起動
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "Starting Localhost Tinylicious Server on port 7092..."
+# Load common configuration and functions
+source "${SCRIPT_DIR}/common-config.sh"
+source "${SCRIPT_DIR}/common-functions.sh"
 
-# クライアントディレクトリに移動
-cd /workspace/client
+# Start Tinylicious server
+start_tinylicious
 
-# 環境変数を設定
-export PORT=7092
-
-# Tinyliciousサーバーを起動
-npx tinylicious
+# Wait for the server to be ready
+wait_for_port ${TEST_FLUID_PORT}

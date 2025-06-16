@@ -132,8 +132,25 @@ export class TestHelpers {
             const fluidService = window.__FLUID_SERVICE__;
             console.log(`TestHelper: FluidService is available`, { exists: !!fluidService });
 
-            const fluidClient = await fluidService.createNewContainer(projectName);
-            console.log(`TestHelper: FluidClient created`, { containerId: fluidClient.containerId });
+            // 環境変数の確認
+            console.log(`TestHelper: Environment check - checking Tinylicious configuration`);
+            console.log(`TestHelper: Current URL:`, window.location.href);
+            console.log(`TestHelper: User agent:`, navigator.userAgent);
+
+            let fluidClient;
+            try {
+                fluidClient = await fluidService.createNewContainer(projectName);
+                console.log(`TestHelper: FluidClient created`, { containerId: fluidClient.containerId });
+            }
+            catch (error) {
+                console.error(`TestHelper: Failed to create FluidClient:`, error);
+                console.error(`TestHelper: Error details:`, {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name,
+                });
+                throw error;
+            }
 
             const project = fluidClient.getProject();
             console.log(`TestHelper: Project retrieved`, {
@@ -534,8 +551,8 @@ export class TestHelpers {
      * 指定インデックスのアイテムIDを取得する
      */
     public static async getItemIdByIndex(page: Page, index: number): Promise<string | null> {
-        return await page.evaluate((i) => {
-            const items = document.querySelectorAll('.outliner-item');
+        return await page.evaluate(i => {
+            const items = document.querySelectorAll(".outliner-item");
             const target = items[i] as HTMLElement | undefined;
             return target?.dataset.itemId ?? null;
         }, index);
