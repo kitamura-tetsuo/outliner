@@ -130,6 +130,66 @@ export class TestHelpers {
     }
 
     /**
+     * テスト用のプロジェクトを作成する
+     * @param page Playwrightのページオブジェクト
+     * @param projectName プロジェクト名
+     * @returns FluidClientインスタンス
+     */
+    public static async createTestProject(page: Page, projectName: string): Promise<any> {
+        return await page.evaluate(async (name) => {
+            const fluidService = window.__FLUID_SERVICE__;
+            if (!fluidService) {
+                throw new Error("FluidService not found");
+            }
+
+            const fluidClient = await fluidService.createNewContainer(name);
+            return {
+                containerId: fluidClient.containerId,
+                clientId: fluidClient.clientId,
+                project: {
+                    title: fluidClient.project.title,
+                }
+            };
+        }, projectName);
+    }
+
+    /**
+     * テスト用のページを作成する
+     * @param page Playwrightのページオブジェクト
+     * @param fluidClient FluidClientインスタンス
+     * @param pageName ページ名
+     * @param lines ページの内容（行の配列）
+     */
+    public static async createTestPage(page: Page, fluidClient: any, pageName: string, lines: string[] = []): Promise<void> {
+        await page.evaluate(async ({ pageName, lines }) => {
+            const fluidService = window.__FLUID_SERVICE__;
+            if (!fluidService) {
+                throw new Error("FluidService not found");
+            }
+
+            // 現在のFluidClientを取得
+            const currentClient = fluidService.getCurrentFluidClient();
+            if (!currentClient) {
+                throw new Error("Current FluidClient not found");
+            }
+
+            const project = currentClient.project;
+            if (!project) {
+                throw new Error("Project not found");
+            }
+
+            // ページを作成
+            const newPage = project.addPage(pageName, "test-user");
+
+            // 各行をアイテムとして追加
+            for (const line of lines) {
+                const newItem = newPage.items.addNode("test-user");
+                newItem.updateText(line);
+            }
+        }, { pageName, lines });
+    }
+
+    /**
      * テスト用のページをFluid API経由で作成する
      * @param page Playwrightのページオブジェクト
      * @param pageName ページ名
