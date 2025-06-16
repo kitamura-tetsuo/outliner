@@ -11,17 +11,58 @@ load_nvm() {
 # Wait for a port to become available
 wait_for_port() {
   local port="$1"
-  local retry=120  # Increased timeout to 2 minutes
+  local retry=180  # Increased timeout to 3 minutes
+  local check_interval=1
+  local last_check_time=0
+  
   echo "Waiting for port ${port}..."
-  while ! nc -z localhost "${port}" >/dev/null 2>&1; do
-    sleep 1
-    retry=$((retry-1))
-    if [ ${retry} -le 0 ]; then
-      echo "Timeout waiting for port ${port}"
-      return 1  # Return error instead of exit to allow script to continue
+  
+  while [ ${retry} -gt 0 ]; do
+    # Try multiple methods to check port availability
+    local port_available=false
+    
+    # Method 1: netcat check
+    if nc -z localhost "${port}" >/dev/null 2>&1; then
+      port_available=true
     fi
+    
+    # Method 2: curl check for HTTP services (if netcat fails)
+    if [ "$port_available" = false ]; then
+      if curl -s --connect-timeout 2 "http://localhost:${port}/" >/dev/null 2>&1; then
+        port_available=true
+      fi
+    fi
+    
+    # Method 3: lsof check (if both above fail)
+    if [ "$port_available" = false ]; then
+      if command -v lsof >/dev/null && lsof -i ":${port}" >/dev/null 2>&1; then
+        port_available=true
+      fi
+    fi
+    
+    if [ "$port_available" = true ]; then
+      echo "Port ${port} is ready"
+      return 0
+    fi
+    
+    # Progress indicator every 10 seconds
+    if [ $((retry % 10)) -eq 0 ]; then
+      echo "Still waiting for port ${port}... (${retry} seconds remaining)"
+    fi
+    
+    sleep ${check_interval}
+    retry=$((retry-1))
   done
-  echo "Port ${port} is ready"
+  
+  echo "Timeout waiting for port ${port} after 3 minutes"
+  echo "Debug: Checking what's running on port ${port}..."
+  if command -v lsof >/dev/null; then
+    lsof -i ":${port}" || echo "No process found on port ${port}"
+  fi
+  if command -v netstat >/dev/null; then
+    netstat -tlnp | grep ":${port} " || echo "Port ${port} not found in netstat"
+  fi
+  return 1  # Return error instead of exit to allow script to continue
 }
 
 # Create log directories
