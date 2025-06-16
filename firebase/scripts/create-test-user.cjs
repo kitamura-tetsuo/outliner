@@ -58,32 +58,52 @@ const createTestUser = async () => {
         process.env.FIREBASE_AUTH_EMULATOR_HOST = `${emulatorHost}:${emulatorPort}`;
         console.log(`Setting Auth emulator host to: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
 
-        const testEmail = "test@example.com";
-        const testPassword = "password";
+        // 複数のテストユーザーを作成
+        const testUsers = [
+            { email: "test@example.com", password: "password", displayName: "Test User" },
+            { email: "owner-mgr@example.com", password: "passwordMgr", displayName: "Owner Manager" },
+            { email: "rolechange@example.com", password: "passwordRoleChange", displayName: "Role Change User" },
+            { email: "toberemoved@example.com", password: "passwordToBeRemoved", displayName: "To Be Removed User" },
+            { email: "editor-non@example.com", password: "passwordEditorNonOwner", displayName: "Editor Non Owner" },
+            { email: "owner-a@example.com", password: "passwordOwnerA", displayName: "Owner A" },
+            { email: "editor-b@example.com", password: "passwordEditorB", displayName: "Editor B" },
+        ];
 
-        // ユーザーが既に存在するか確認
-        try {
-            const userRecord = await admin.auth().getUserByEmail(testEmail);
-            console.log(`Test user already exists: ${userRecord.uid}`);
-            return userRecord;
-        }
-        catch (error) {
-            // ユーザーが存在しない場合は作成を続行
-            if (error.code !== "auth/user-not-found") {
-                throw error;
+        const createdUsers = [];
+
+        for (const userData of testUsers) {
+            try {
+                // ユーザーが既に存在するか確認
+                try {
+                    const userRecord = await admin.auth().getUserByEmail(userData.email);
+                    console.log(`Test user already exists: ${userData.email} (${userRecord.uid})`);
+                    createdUsers.push(userRecord);
+                    continue;
+                }
+                catch (error) {
+                    // ユーザーが存在しない場合は作成を続行
+                    if (error.code !== "auth/user-not-found") {
+                        throw error;
+                    }
+                }
+
+                // テストユーザーを作成
+                const userRecord = await admin.auth().createUser({
+                    email: userData.email,
+                    password: userData.password,
+                    displayName: userData.displayName,
+                    emailVerified: true,
+                });
+
+                console.log(`Successfully created test user: ${userData.email} (${userRecord.uid})`);
+                createdUsers.push(userRecord);
+            }
+            catch (error) {
+                console.error(`Error creating user ${userData.email}:`, error);
             }
         }
 
-        // テストユーザーを作成
-        const userRecord = await admin.auth().createUser({
-            email: testEmail,
-            password: testPassword,
-            displayName: "Test User",
-            emailVerified: true,
-        });
-
-        console.log(`Successfully created test user: ${userRecord.uid}`);
-        return userRecord;
+        return createdUsers;
     }
     catch (error) {
         console.error("Error creating test user:", error);

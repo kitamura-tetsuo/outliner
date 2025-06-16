@@ -4,6 +4,7 @@
         "test": "bash scripts/run-tests.sh"
     },
     "dependencies": {
-        "@playwright/test": "^1.52.0"
+        "@playwright/test": "^1.52.0",
+        "firebase-admin": "^13.4.0"
     }
 }

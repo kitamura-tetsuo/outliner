@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import AuthComponent from "../components/AuthComponent.svelte";
 import ContainerSelector from "../components/ContainerSelector.svelte";
 import { getLogger } from "../lib/logger";
 import { loadContainer } from "../services";
@@ -43,6 +44,11 @@ async function handleContainerSelected(
 
 <main>
     <h1>Fluid Outliner App</h1>
+
+    <!-- 認証コンポーネント -->
+    <div class="auth-section mb-6">
+        <AuthComponent />
+    </div>
 
     <div class="welcome-message">
         <p>Fluid Outlinerへようこそ！</p>
