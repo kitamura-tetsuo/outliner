@@ -10,14 +10,4 @@ export {
 } from "../stores/firestoreStore.svelte";
 
 // FluidService関連の関数をエクスポート
-export {
-    cleanupFluidClient,
-    createFluidClient,
-    createNewContainer,
-    deleteContainer,
-    getFluidClientByProjectTitle,
-    getProjectTitle,
-    getUserContainers,
-    initFluidClientWithAuth,
-    loadContainer,
-} from "../lib/fluidService";
+export { createNewContainer, listContainers, loadContainer } from "../lib/fluidService";

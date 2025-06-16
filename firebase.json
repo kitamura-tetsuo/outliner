@@ -66,6 +66,7 @@
         ]
     },
     "emulators": {
+        "singleProjectMode": false,
         "auth": {
             "port": 59099,
             "host": "0.0.0.0"

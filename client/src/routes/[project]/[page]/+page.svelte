@@ -21,7 +21,7 @@ import {
     Item,
     Items,
 } from "../../../schema/app-schema";
-import { getFluidClientByProjectTitle } from "../../../services";
+// import { getFluidClientByProjectTitle } from "../../../services";
 import { fluidStore } from "../../../stores/fluidStore.svelte";
 import { store } from "../../../stores/store.svelte";
 
@@ -56,8 +56,11 @@ $effect(() => {
     if (projectName && pageName && isAuthenticated) {
         logger.info(`Calling loadProjectAndPage()`);
         loadProjectAndPage();
-    } else {
-        logger.info(`Skipping loadProjectAndPage: projectName=${!!projectName}, pageName=${!!pageName}, isAuthenticated=${isAuthenticated}`);
+    }
+    else {
+        logger.info(
+            `Skipping loadProjectAndPage: projectName=${!!projectName}, pageName=${!!pageName}, isAuthenticated=${isAuthenticated}`,
+        );
     }
 });
 
@@ -70,7 +73,8 @@ async function handleAuthSuccess(authResult: any) {
     if (projectName && pageName) {
         logger.info(`Auth success: calling loadProjectAndPage for project="${projectName}", page="${pageName}"`);
         loadProjectAndPage();
-    } else {
+    }
+    else {
         logger.info(`Auth success: skipping loadProjectAndPage, projectName="${projectName}", pageName="${pageName}"`);
     }
 }
@@ -91,11 +95,11 @@ async function loadProjectAndPage() {
 
     try {
         // コンテナを読み込む
-        const client = await getFluidClientByProjectTitle(projectName);
-        logger.info(`FluidClient loaded for project: ${projectName}`);
+        // const client = await getFluidClientByProjectTitle(projectName);
+        // logger.info(`FluidClient loaded for project: ${projectName}`);
 
         // fluidClientストアを更新
-        fluidStore.fluidClient = client;
+        // fluidStore.fluidClient = client;
         logger.info(`FluidStore updated with client`);
         logger.info(`FluidStore.fluidClient exists: ${!!fluidStore.fluidClient}`);
 
@@ -218,7 +222,10 @@ function createTemporaryItem(pageName: string): Item {
  */
 function saveTemporaryPage() {
     if (!isTemporaryPage || !hasBeenEdited || !store.project) {
-        logger.info(`saveTemporaryPage skipped: isTemporaryPage=${isTemporaryPage}, hasBeenEdited=${hasBeenEdited}, project=${!!store.project}`);
+        logger.info(
+            `saveTemporaryPage skipped: isTemporaryPage=${isTemporaryPage}, hasBeenEdited=${hasBeenEdited}, project=${!!store
+                .project}`,
+        );
         return;
     }
 
@@ -375,7 +382,11 @@ onDestroy(() => {
 
     {#if store.currentPage}
         <!-- デバッグ用ログ -->
-        {logger.info(`Rendering OutlinerBase: pageItem.id=${store.currentPage.id}, isTemporary=${isTemporaryPage}, onEdit=${!!handleTemporaryPageEdited}`)}
+        {
+            logger.info(
+                `Rendering OutlinerBase: pageItem.id=${store.currentPage.id}, isTemporary=${isTemporaryPage}, onEdit=${!!handleTemporaryPageEdited}`,
+            )
+        }
 
         <!-- OutlinerBase コンポーネントでアウトライナーを表示 -->
         <OutlinerBase
@@ -391,8 +402,7 @@ onDestroy(() => {
             <BacklinkPanel {pageName} {projectName} />
         {/if}
     {:else}
-        <!-- デバッグ用ログ -->
-        {logger.info(`OutlinerBase not rendered: store.currentPage=${!!store.currentPage}`)}
+        <!-- デバッグ用ログ --> {logger.info(`OutlinerBase not rendered: store.currentPage=${!!store.currentPage}`)}
     {/if}
     {#if isLoading}
         <div class="flex justify-center py-8">

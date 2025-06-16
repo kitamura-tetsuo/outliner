@@ -6,7 +6,6 @@
 import { goto } from "$app/navigation";
 import { userManager } from "../auth/UserManager";
 import * as dbService from "../lib/db/dbService";
-import * as fluidService from "../lib/fluidService";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { getLogger } from "./logger";
 
@@ -17,12 +16,12 @@ if (typeof window !== 'undefined') {
 
 /**
  * グローバルデバッグ関数を設定する
- * @param fluidClient FluidClientインスタンス
+ * @param fluidService FluidServiceインスタンス
  */
-export function setupGlobalDebugFunctions(xfluidService: any) {
+export function setupGlobalDebugFunctions(fluidService: any) {
     if (typeof window === "undefined") return;
 
-    // グローバルオブジェクトにFluidClientインスタンスを保存
+    // グローバルオブジェクトにFluidServiceインスタンスを保存
     (window as any).__FLUID_SERVICE__ = fluidService;
     (window as any).__FLUID_STORE__ = fluidStore;
     (window as any).__USER_MANAGER__ = userManager;

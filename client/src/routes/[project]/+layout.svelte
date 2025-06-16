@@ -1,12 +1,11 @@
 <script lang="ts">
-import { browser } from "$app/environment";
 import {
     onDestroy,
     onMount,
 } from "svelte";
 import { userManager } from "../../auth/UserManager";
 import { getLogger } from "../../lib/logger";
-import { getFluidClientByProjectTitle } from "../../services";
+// import { getFluidClientByProjectTitle } from "../../services";
 import { fluidStore } from "../../stores/fluidStore.svelte";
 
 // プロジェクトレベルのレイアウト
@@ -51,10 +50,10 @@ async function loadProject() {
         const projectName = data.project;
         // プロジェクト名からFluidClientを取得
         logger.info(`プロジェクト名からFluidClientを取得: ${projectName}`);
-        const client = await getFluidClientByProjectTitle(projectName);
+        // const client = await getFluidClientByProjectTitle(projectName);
 
         // fluidClientストアを更新
-        fluidStore.fluidClient = client;
+        // fluidStore.fluidClient = client;
     }
     catch (err) {
         console.error("Failed to load project:", err);

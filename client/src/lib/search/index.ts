@@ -18,7 +18,8 @@ async function loadWasm() {
         // use @vite-ignore so build doesn't fail if wasm module is absent
         const mod = await import(/* @vite-ignore */ "../../wasm-db/search").catch(() => null);
         if (mod) wasmSearch = (mod as any).search;
-    } catch (e) {
+    }
+    catch (e) {
         // wasm db not available, fall back to js
     }
 }
