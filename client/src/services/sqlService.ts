@@ -1,5 +1,4 @@
-import { createDialect } from 'sqlite-wasm-kysely';
-import { createInMemoryDatabase, SqliteWasmDatabase } from 'sqlite-wasm-kysely/dist/util';
+import { createDialect, createInMemoryDatabase, type SqliteWasmDatabase } from 'sqlite-wasm-kysely';
 import { Kysely } from 'kysely';
 
 export interface ColumnMeta {
@@ -21,27 +20,30 @@ export class SqlService {
 
     async exec(sql: string) {
         await this.init();
-        await this.db!.executeQuery(sql);
+        this.sqlite!.exec(sql);
     }
 
     async query(sql: string): Promise<{ rows: any[]; columnsMeta: ColumnMeta[] }> {
         await this.init();
-        const stmt = (this.sqlite as any).prepare(sql);
+        const stmt = this.sqlite!.prepare(sql);
         const sqlite3 = this.sqlite!.sqlite3;
-        const ptr = (stmt as any).pointer;
+        const ptr = stmt.pointer;
         const columnsMeta: ColumnMeta[] = [];
-        const count = (stmt as any).columnCount();
+        const count = stmt.columnCount;
         for (let i = 0; i < count; i++) {
-            const table = sqlite3.capi.sqlite3_column_table_name(ptr, i) ?? null;
-            const column = sqlite3.capi.sqlite3_column_origin_name(ptr, i) ?? null;
-            const dbName = sqlite3.capi.sqlite3_column_database_name(ptr, i) ?? null;
+            const tableFn = sqlite3.capi.sqlite3_column_table_name as any;
+            const columnFn = sqlite3.capi.sqlite3_column_origin_name as any;
+            const dbFn = sqlite3.capi.sqlite3_column_database_name as any;
+            const table = typeof tableFn === 'function' ? tableFn(ptr, i) : null;
+            const column = typeof columnFn === 'function' ? columnFn(ptr, i) : null;
+            const dbName = typeof dbFn === 'function' ? dbFn(ptr, i) : null;
             columnsMeta.push({ table, column, db: dbName });
         }
         const rows: any[] = [];
-        while ((stmt as any).step()) {
-            rows.push((stmt as any).get());
+        while (stmt.step()) {
+            rows.push(stmt.get({}));
         }
-        (stmt as any).free();
+        stmt.finalize();
         return { rows, columnsMeta };
     }
 }
