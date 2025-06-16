@@ -42,6 +42,17 @@ cd ../functions
 cp .env.example .env
 ```
 
+### .envファイルの暗号化
+
+開発用の環境変数ファイルは [`dotenvx`](https://dotenvx.com/) を使って暗号化します。
+初回セットアップ後に以下を実行して `.env.development` を暗号化してください。
+
+```bash
+npx @dotenvx/dotenvx encrypt --env-file server/.env.development
+```
+
+復号化が必要な場合は `decrypt` サブコマンドを使用します。
+
 ## 開発サーバーの起動
 
 ### クライアント開発サーバー
@@ -182,6 +193,7 @@ npm run test:unit
 # E2E テスト
 npm run test:e2e
 ```
+テストの前には `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
 

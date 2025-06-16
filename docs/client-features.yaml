@@ -853,3 +853,69 @@
   description: 'ページ間のリンクを視覚化するグラフ表示機能'
   category: navigation
   status: draft
+
+- id: SRE-001
+  title: Advanced Search & Replace
+  description: 正規表現や範囲指定に対応した検索・置換機能
+  category: search
+  status: implemented
+  components:
+    - client/src/lib/search/index.ts
+    - client/src/components/SearchPanel.svelte
+    - client/src/routes/[project]/[page]/+page.svelte
+  tests:
+    - client/e2e/new/SRE-001.spec.ts
+
+- id: DBW-001
+  title: Client-Side SQL Database
+  description: IndexedDB上にSQLデータベースを構築し、オフラインでページを保存できる機能
+  category: database
+  status: implemented
+  tests:
+    - client/e2e/new/DBW-001.spec.ts
+
+- id: GRF-001
+  title: Graph View
+  description: 項目間のリンクをグラフ表示するビューを提供
+  category: visualization
+  status: implemented
+  components:
+    - src/components/GraphView.svelte
+    - src/routes/graph/+page.svelte
+  tests:
+    - client/e2e/new/GRF-001.spec.ts
+
+- id: CHT-001
+  title: Chart Component
+  description: 保存されたデータをグラフ表示するチャートコンポーネント
+  category: visualization
+  status: implemented
+  components:
+    - src/components/ChartComponent.svelte
+  tests: []
+
+- id: TBL-0001
+  title: Editable JOIN Table
+  description: SQL query results editable via Fluid Framework and SQLite cache
+  category: table
+  status: implemented
+  components:
+    - src/components/EditableQueryGrid.svelte
+    - src/components/QueryEditor.svelte
+    - src/components/ChartPanel.svelte
+  services:
+    - src/services/queryStore.ts
+    - src/services/syncWorker.ts
+  tests:
+    - src/tests/sqlService.test.ts
+    - src/tests/editMapper.test.ts
+    - src/tests/syncWorker.test.ts
+    - client/e2e/new/TBL-0001.spec.ts
+
+- id: SEC-0001
+  title: Dotenvx encrypted env files
+  description: Use dotenvx to encrypt server environment files
+  category: security
+  status: implemented
+  components: []
+  tests: []
