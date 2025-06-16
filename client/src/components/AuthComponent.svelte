@@ -27,7 +27,9 @@ let email = $state("test@example.com");
 let password = $state("password");
 
 // 環境チェック
-const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development";
+const isDevelopment = import.meta.env.DEV ||
+    import.meta.env.MODE === "development" ||
+    import.meta.env.VITE_IS_TEST === "true";
 
 // リスナー解除用の関数
 let unsubscribe: (() => void) | null = null;

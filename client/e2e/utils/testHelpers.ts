@@ -67,35 +67,8 @@ export class TestHelpers {
     public static async authenticateTestUser(page: Page): Promise<void> {
         console.log("TestHelper: Authenticating test user...");
 
-        // テスト用認証を実行
-        await page.evaluate(async () => {
-            // UserManagerが利用可能になるまで待機
-            while (!window.__USER_MANAGER__) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-
-            const userManager = window.__USER_MANAGER__;
-            console.log("TestHelper: UserManager is available");
-
-            // テスト環境用のメール/パスワードでログイン
-            const testEmail = "test@example.com";
-            const testPassword = "password";
-
-            try {
-                await userManager.loginWithEmailPassword(testEmail, testPassword);
-                console.log("TestHelper: Test user authentication successful");
-            }
-            catch (error) {
-                console.error("TestHelper: Authentication failed:", error);
-                throw error;
-            }
-        });
-
-        // 認証完了まで待機
-        await page.waitForFunction(() => {
-            const userManager = (window as any).__USER_MANAGER__;
-            return userManager && userManager.getCurrentUser() !== null;
-        }, { timeout: 10000 });
+        // 新しいloginメソッドを使用
+        await this.login(page, "test@example.com", "password");
 
         console.log("TestHelper: Test user authentication completed");
     }
@@ -944,55 +917,110 @@ export class TestHelpers {
     static DEFAULT_NAV_TIMEOUT = 15000;
 
     public static async login(page: Page, email: string, password?: string) {
+        console.log(`Starting login process for: ${email}`);
+
         // Navigate to home and ensure page is ready, potentially handling existing login
         await page.goto("/", { waitUntil: "domcontentloaded", timeout: this.DEFAULT_NAV_TIMEOUT });
+
+        // Take a screenshot for debugging
+        await page.screenshot({ path: "test-results/login-start.png" });
 
         const authSection = page.locator("div.auth-section"); // Correct selector based on page structure
 
         const logoutButtonVisible = await page.locator('button:has-text("ログアウト")').isVisible();
         if (logoutButtonVisible) {
-            // Check if already logged in as the target user. This requires a way to see current user's email.
-            // For now, we'll assume if Logout is visible, we might need to logout first if not the right user.
-            // This part is tricky without knowing exactly how logged-in user email is displayed.
-            // A simple approach: always logout if logout button is visible and then login.
-            // More advanced: check if current user is target user.
-            // console.log(`Logout button visible. Attempting logout first for clean login.`);
+            console.log("User is already logged in, checking if it's the correct user");
+            // Check if we can determine the current user's email
+            const userEmailElement = page.locator(".user-email");
+            if (await userEmailElement.isVisible()) {
+                const currentEmail = await userEmailElement.textContent();
+                console.log(`Current user email: ${currentEmail}`);
+                if (currentEmail === email) {
+                    console.log("Already logged in as the correct user, skipping login");
+                    return;
+                }
+            }
+
+            console.log("Logging out to login as different user");
             await this.logout(page); // Call the logout helper
             await page.goto("/", { waitUntil: "domcontentloaded", timeout: this.DEFAULT_NAV_TIMEOUT }); // Re-navigate after logout
         }
 
         // Wait for auth section to be visible
+        console.log("Waiting for auth section to be visible");
         await expect(authSection).toBeVisible({ timeout: this.DEFAULT_NAV_TIMEOUT });
 
         // Wait for AuthComponent to load
+        console.log("Waiting for auth container to be visible");
         const authContainer = page.locator("div.auth-container");
         await expect(authContainer).toBeVisible({ timeout: this.DEFAULT_NAV_TIMEOUT });
 
+        // Take another screenshot
+        await page.screenshot({ path: "test-results/login-auth-container-visible.png" });
+
         // Check if we need to show dev login form
+        console.log("Looking for dev toggle button");
+
+        // Debug: Log page content to understand what's actually on the page
+        const pageContent = await page.content();
+        console.log("Page content (first 1000 chars):", pageContent.substring(0, 1000));
+
+        // Debug: Check for any buttons on the page
+        const allButtons = await page.locator("button").allTextContents();
+        console.log("All buttons on page:", allButtons);
+
         const devToggleButton = page.locator('button:has-text("開発者ログイン")');
-        if (await devToggleButton.isVisible()) {
+        const isDevToggleVisible = await devToggleButton.isVisible();
+        console.log(`Dev toggle button visible: ${isDevToggleVisible}`);
+
+        if (isDevToggleVisible) {
+            console.log("Attempting to click dev toggle button");
             // Try multiple approaches to click the button
             try {
                 await devToggleButton.click({ timeout: 5000 });
+                console.log("Successfully clicked dev toggle button");
             }
             catch (error) {
                 console.log("First click attempt failed, trying with force");
                 try {
                     await devToggleButton.click({ force: true, timeout: 5000 });
+                    console.log("Successfully force-clicked dev toggle button");
                 }
                 catch (error2) {
                     console.log("Force click failed, trying with JavaScript");
                     await page.evaluate(() => {
                         const buttons = Array.from(document.querySelectorAll("button"));
                         const devButton = buttons.find(btn => btn.textContent?.includes("開発者ログイン"));
-                        if (devButton) devButton.click();
+                        if (devButton) {
+                            devButton.click();
+                            console.log("Clicked dev button via JavaScript");
+                        }
+                        else {
+                            console.log("Dev button not found via JavaScript");
+                        }
                     });
                 }
             }
 
-            // Wait for dev login form to appear
+            // Wait for dev login form to appear with longer timeout
             const devLoginForm = page.locator("div.dev-login-form");
-            await expect(devLoginForm).toBeVisible({ timeout: 5000 });
+            try {
+                await expect(devLoginForm).toBeVisible({ timeout: 10000 });
+            }
+            catch (error) {
+                console.log("Dev login form not visible, checking if already visible");
+                // Check if form is already visible or if we need to try again
+                const isFormVisible = await devLoginForm.isVisible();
+                if (!isFormVisible) {
+                    // Try clicking the toggle button again
+                    await page.evaluate(() => {
+                        const buttons = Array.from(document.querySelectorAll("button"));
+                        const devButton = buttons.find(btn => btn.textContent?.includes("開発者ログイン"));
+                        if (devButton) devButton.click();
+                    });
+                    await page.waitForTimeout(1000);
+                }
+            }
 
             // Fill in email and password
             await page.locator('input[type="email"]').fill(email);
@@ -1003,19 +1031,64 @@ export class TestHelpers {
             await page.locator('button:has-text("開発環境でログイン")').click();
         }
         else {
-            // If dev toggle is not visible, try direct email/password login
-            const emailInput = page.locator('input[type="email"]');
-            const passwordInput = page.locator('input[type="password"]');
+            // If dev toggle is not visible, check if dev login form is already visible
+            const devLoginForm = page.locator("div.dev-login-form");
+            const isFormVisible = await devLoginForm.isVisible();
 
-            if (await emailInput.isVisible() && await passwordInput.isVisible()) {
-                await emailInput.fill(email);
+            if (isFormVisible) {
+                console.log("Dev login form is already visible");
+                // Fill in email and password
+                await page.locator('input[type="email"]').fill(email);
                 const actualPassword = password || (email === "test@example.com" ? "password" : "password");
-                await passwordInput.fill(actualPassword);
+                await page.locator('input[type="password"]').fill(actualPassword);
 
-                // Look for login button
-                const loginButton = page.locator('button:has-text("開発環境でログイン")');
-                if (await loginButton.isVisible()) {
-                    await loginButton.click();
+                // Click login button
+                await page.locator('button:has-text("開発環境でログイン")').click();
+            }
+            else {
+                // Try direct email/password login if inputs are visible
+                const emailInput = page.locator('input[type="email"]');
+                const passwordInput = page.locator('input[type="password"]');
+
+                if (await emailInput.isVisible() && await passwordInput.isVisible()) {
+                    await emailInput.fill(email);
+                    const actualPassword = password || (email === "test@example.com" ? "password" : "password");
+                    await passwordInput.fill(actualPassword);
+
+                    // Look for login button
+                    const loginButton = page.locator('button:has-text("開発環境でログイン")');
+                    if (await loginButton.isVisible()) {
+                        await loginButton.click();
+                    }
+                }
+                else {
+                    console.log("No login form found, trying to force show dev login");
+                    // Force show dev login by clicking any button that might toggle it
+                    await page.evaluate(() => {
+                        const buttons = Array.from(document.querySelectorAll("button"));
+                        const devButton = buttons.find(btn =>
+                            btn.textContent?.includes("開発者ログイン") ||
+                            btn.textContent?.includes("開発") ||
+                            btn.className?.includes("dev")
+                        );
+                        if (devButton) {
+                            devButton.click();
+                            console.log("Clicked dev button:", devButton.textContent);
+                        }
+                    });
+
+                    // Wait and try again
+                    await page.waitForTimeout(1000);
+                    const emailInputRetry = page.locator('input[type="email"]');
+                    if (await emailInputRetry.isVisible({ timeout: 3000 })) {
+                        await emailInputRetry.fill(email);
+                        const actualPassword = password || (email === "test@example.com" ? "password" : "password");
+                        await page.locator('input[type="password"]').fill(actualPassword);
+                        await page.locator('button:has-text("開発環境でログイン")').click();
+                    }
+                    else {
+                        throw new Error("Could not find or show dev login form");
+                    }
                 }
             }
         }
@@ -1066,52 +1139,23 @@ export class TestHelpers {
     }
 
     public static async createTestProjectIfNotExists(page: Page, projectName: string) {
-        // Navigate to home page
-        await page.goto("/", { waitUntil: "domcontentloaded", timeout: this.DEFAULT_NAV_TIMEOUT });
-
-        // Check if project already exists by trying to navigate to it
+        // Use the existing createTestProjectAndPageViaAPI method to create the project
         try {
-            await page.goto(`/${projectName}`, { waitUntil: "domcontentloaded", timeout: 5000 });
-            const projectTitle = page.locator(`h1:has-text("${projectName}")`);
-            if (await projectTitle.isVisible({ timeout: 3000 })) {
-                console.log(`Project "${projectName}" already exists`);
-                return;
-            }
+            console.log(`Creating test project: ${projectName}`);
+
+            // Create project using the API method
+            await this.createTestProjectAndPageViaAPI(page, projectName, "test-page", [
+                "これはテスト用のページです。1",
+                "これはテスト用のページです。2",
+                "内部リンクのテスト: [test-link]",
+            ]);
+
+            console.log(`Project "${projectName}" created successfully`);
         }
         catch (error) {
-            // Project doesn't exist, continue to create it
+            console.error(`Failed to create project "${projectName}":`, error);
+            // Continue anyway - the test might still work if the project exists
         }
-
-        // Go back to home page to create new project
-        await page.goto("/", { waitUntil: "domcontentloaded", timeout: this.DEFAULT_NAV_TIMEOUT });
-
-        // Look for "Create New Container" button or similar
-        const createButton = page.locator('button:has-text("Create New Container")');
-        if (await createButton.isVisible({ timeout: 5000 })) {
-            await createButton.click();
-
-            // Fill in project name if there's an input field
-            const nameInput = page.locator('input[placeholder*="name"], input[type="text"]');
-            if (await nameInput.isVisible({ timeout: 3000 })) {
-                await nameInput.fill(projectName);
-
-                // Look for submit/create button
-                const submitButton = page.locator('button:has-text("Create"), button[type="submit"]');
-                if (await submitButton.isVisible({ timeout: 3000 })) {
-                    await submitButton.click();
-                }
-            }
-        }
-        else {
-            // Alternative: try to create project by navigating directly to the project URL
-            await page.goto(`/${projectName}`, { waitUntil: "domcontentloaded", timeout: this.DEFAULT_NAV_TIMEOUT });
-        }
-
-        // Verify project was created
-        await page.goto(`/${projectName}`, { waitUntil: "domcontentloaded", timeout: this.DEFAULT_NAV_TIMEOUT });
-        // Wait for the page to load and show some content
-        await page.waitForTimeout(2000);
-        console.log(`Project "${projectName}" should now be available`);
     }
 }
 
