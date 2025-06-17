@@ -438,7 +438,8 @@
     - "複数行テキストをボックス選択（矩形選択）範囲にペーストすると、各行に対応する行が挿入される"
     - "ボックス選択（矩形選択）範囲へのペースト時に、選択範囲が適切に置き換えられる"
   tests:
-    - client/e2e/disabled/FMT-0005.spec.ts
+    - client/e2e/core/FMT-0005.spec.ts
+    - client/e2e/core/FMT-0005-multicursor.spec.ts
   notes: Partially refactored (basic clipboard test improved, complex simulations commented out). File move blocked. Env exec pending.
 
 - id: FMT-0006
@@ -671,7 +672,8 @@
     - client/e2e/core/SLR-0004.spec.ts
     - client/e2e/core/SLR-0005.spec.ts
     - client/e2e/core/SLR-0010.spec.ts
-    - client/e2e/disabled/FMT-0005.spec.ts
+    - client/e2e/core/FMT-0005.spec.ts
+    - client/e2e/core/FMT-0005-multicursor.spec.ts
     - client/e2e/core/FMT-0006.spec.ts
     - client/e2e/core/IME-0001.spec.ts
     - client/e2e/core/ITM-0001.spec.ts

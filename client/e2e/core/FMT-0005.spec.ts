@@ -258,6 +258,7 @@ test.describe("Visual Studio Codeのコピー/ペースト仕様", () => {
         // await page.screenshot({ path: "test-results/fmt-0005-direct-input.png" });
 
         // 結果を確認
+        // 結果を確認
         const items = page.locator(".outliner-item");
         const firstItemText = await items.nth(0).locator(".item-text").textContent();
         const secondItemText = await items.nth(1).locator(".item-text").textContent();
@@ -270,38 +271,4 @@ test.describe("Visual Studio Codeのコピー/ペースト仕様", () => {
         // console.log(`2番目のアイテム: ${secondItemText}`);
     });
 
-    // TODO: Refactor or reimplement these complex simulation tests.
-    /*
-    test("マルチカーソルペースト（spread設定）のシミュレーション", async ({ page }) => {
-        // ... (original test content)
-    });
-
-    test("マルチカーソルの実際の作成（Alt+クリック）", async ({ page }) => {
-        // ... (original test content)
-    });
-
-    test("マルチカーソルペースト（spreadモードとfullモード）のシミュレーション", async ({ page }) => {
-        // ... (original test content)
-    });
-
-    test("クリップボード内容と行数/カーソル数の不一致時の挙動", async ({ page }) => {
-        // ... (original test content)
-    });
-
-    test("ボックス選択（矩形選択）からのペースト", async ({ page }) => {
-        // ... (original test content)
-    });
-
-    test("ボックス選択（矩形選択）へのペースト", async ({ page }) => {
-        // ... (original test content)
-    });
-
-    test("ClipboardEventの詳細な挙動", async ({ page }) => {
-        // ... (original test content)
-    });
-
-    test("マルチカーソル選択範囲のコピー＆ペースト", async ({ page }) => {
-        // ... (original test content)
-    });
-    */
 });
