@@ -12,9 +12,17 @@ interface Props {
 }
 
 let { data = [] }: Props = $props();
+let mounted = false;
 
 onMount(() => {
+    mounted = true;
     render();
+});
+
+$effect(() => {
+    if (mounted) {
+        render();
+    }
 });
 
 function render() {

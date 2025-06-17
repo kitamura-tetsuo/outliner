@@ -1788,15 +1788,53 @@ export class DraftService {
             if (branch.forest && typeof branch.forest === "object") {
                 logger.info("Attempting to extract from branch.forest");
 
-                // forestの構造を調査
-                const forestKeys = Object.keys(branch.forest);
-                logger.info("Forest structure", { forestKeys: forestKeys.slice(0, 10) });
+                const nodes: any[] = Array.isArray(branch.forest)
+                    ? branch.forest
+                    : Object.values(branch.forest);
+                let extracted = false;
 
-                // forestから実際のデータを抽出する実装は今後追加
-                // 現在は構造の調査のみ
-                // TODO: forestからitemsを抽出する実装を追加
-                items; // 未使用警告を回避
-                return false;
+                nodes.forEach((node, nodeIndex) => {
+                    if (!node || typeof node !== "object") {
+                        return;
+                    }
+
+                    if (Array.isArray(node.items)) {
+                        node.items.forEach((item: any, itemIndex: number) => {
+                            items.push(
+                                this.convertBranchItemToStandardFormat(
+                                    item,
+                                    `branch-forest-${nodeIndex}-${itemIndex}`,
+                                ),
+                            );
+                        });
+                        extracted = true;
+                    }
+                    else if (node.items && typeof node.items === "object" && typeof node.items.length === "number") {
+                        for (let i = 0; i < node.items.length; i++) {
+                            const item = node.items[i];
+                            if (item) {
+                                items.push(
+                                    this.convertBranchItemToStandardFormat(
+                                        item,
+                                        `branch-forest-${nodeIndex}-${i}`,
+                                    ),
+                                );
+                            }
+                        }
+                        extracted = true;
+                    }
+                    else if (node.text || node.title) {
+                        items.push(
+                            this.convertBranchItemToStandardFormat(
+                                node,
+                                `branch-forest-${nodeIndex}`,
+                            ),
+                        );
+                        extracted = true;
+                    }
+                });
+
+                return extracted;
             }
             return false;
         }

@@ -3,7 +3,8 @@ require("dotenv").config();
 const fetch = require("node-fetch");
 
 // APIサーバーのURL
-const API_BASE_URL = process.env.API_BASE_URL || "http://192.168.50.16:7071";
+const LOCAL_HOST = process.env.LOCAL_HOST || "localhost";
+const API_BASE_URL = process.env.API_BASE_URL || `http://${LOCAL_HOST}:7091`;
 
 // テスト用認証情報
 const testCredentials = {

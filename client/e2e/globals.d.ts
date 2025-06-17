@@ -57,10 +57,10 @@ export const test = base.extend({
             // Firebase エミュレーターを有効化
             window.localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
 
-            // エミュレーター接続情報（環境変数から取得、デフォルトは192.168.50.13）
+            // エミュレーター接続情報（環境変数から取得、デフォルトはlocalhost）
             window.localStorage.setItem(
                 "VITE_FIRESTORE_EMULATOR_HOST",
-                process.env.VITE_FIRESTORE_EMULATOR_HOST || "192.168.50.13",
+                process.env.VITE_FIRESTORE_EMULATOR_HOST || "localhost",
             );
             window.localStorage.setItem(
                 "VITE_FIRESTORE_EMULATOR_PORT",
@@ -68,7 +68,7 @@ export const test = base.extend({
             );
             window.localStorage.setItem(
                 "VITE_AUTH_EMULATOR_HOST",
-                process.env.VITE_AUTH_EMULATOR_HOST || "192.168.50.13",
+                process.env.VITE_AUTH_EMULATOR_HOST || "localhost",
             );
             window.localStorage.setItem("VITE_AUTH_EMULATOR_PORT", process.env.VITE_AUTH_EMULATOR_PORT || "59099");
 

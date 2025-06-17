@@ -15,13 +15,13 @@ import { userManager } from "../auth/UserManager";
 import { getLogger } from "../lib/logger";
 const logger = getLogger();
 const firebaseConfig = {
-    apiKey: "AIzaSyCikgn1YY06j6ZlAJPYab1FIOKSQAuzcH4",
-    authDomain: "outliner-d57b0.firebaseapp.com",
-    projectId: "outliner-d57b0",
-    storageBucket: "outliner-d57b0.firebasestorage.app",
-    messagingSenderId: "560407608873",
-    appId: "1:560407608873:web:147817f4a93a4678606638",
-    measurementId: "G-FKSFRCT7GR",
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // ユーザーコンテナの型定義
@@ -70,8 +70,8 @@ try {
 
     // Firebase Emulatorに接続
     if (useEmulator) {
-        // 環境変数から接続情報を取得（デフォルトは192.168.50.13:58080）
-        const emulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || "192.168.50.13";
+        // 環境変数から接続情報を取得（デフォルトはlocalhost:58080）
+        const emulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || "localhost";
         const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "58080", 10);
 
         // エミュレーター接続情報をログに出力

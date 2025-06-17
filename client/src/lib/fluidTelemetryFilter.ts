@@ -8,7 +8,7 @@ import { getLogger } from "./logger";
 const disableTelemetry = import.meta.env.VITE_DISABLE_FLUID_TELEMETRY === "true";
 
 // APIサーバーのURLを取得
-const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";
+const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7091";
 
 /**
  * フィルタされたtelemetryログをサーバーに送信する関数

@@ -90,7 +90,8 @@ onMount(() => {
         // ホスト情報を取得 - ブラウザ環境でのみ実行
         if (browser) {
             hostInfo = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
-            portInfo = window.location.port || "7070/default";
+            // エミュレータ利用時は 7090、クラウド環境では 7070
+            portInfo = window.location.port || "7090/default";
             console.info("Running on host:", hostInfo);
         }
 

@@ -10,6 +10,16 @@
     - 'ユーザーがメールアドレスを入力すると、リセットリンクが送信される'
     - 'リンクは 30 分で失効する'
     - '正しいトークンを送るとパスワードを再設定できる'
+- id: FTR-0013
+  title: 'Use environment variables in min page'
+  status: implemented
+  components:
+    - client/src/routes/min/+page.svelte
+    - client/.env.example
+  tests: []
+  acceptance:
+    - 'Firebase config values come from VITE_FIREBASE_* variables'
+    - 'Token verification URL uses VITE_TOKEN_VERIFY_URL'
 - id: IME-0001
   title: IMEを使用した日本語入力
   status: implemented # draft / implemented / deprecated
@@ -803,6 +813,19 @@
   components:
     - server/auth-service.js
 
+- id: API-0003
+  title: 'コンテナユーザー一覧取得の管理者チェック'
+  description: '/api/get-container-users で管理者権限を検証する機能'
+  category: api-server
+  status: implemented
+  acceptance:
+    - '管理者ロールを持つトークンでユーザー一覧を取得できる'
+    - '管理者でない場合は 403 エラーが返る'
+  tests:
+    - server/tests/get-container-users-admin.test.js
+  components:
+    - server/auth-service.js
+
 - id: COL-0001
   title: '他ユーザーのカーソル表示'
   description: '複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する'
@@ -824,7 +847,14 @@
   title: 'Client-Side WASM DB'
   description: 'オフライン操作と高速検索を実現するWebAssemblyデータベース'
   category: application
-  status: draft
+  status: implemented
+  components:
+    - client/src/lib/wasmDb.ts
+    - client/src/lib/db/dbService.ts
+    - client/src/lib/db/sqliteWorker.ts
+  tests:
+    - client/src/tests/wasmDb.test.ts
+    - client/e2e/new/DBW-0001.spec.ts
 
 - id: FFI-0001
   title: 'Fluid Framework Integration'
@@ -842,7 +872,14 @@
   title: 'Graph View'
   description: 'ページ間のリンクを視覚化するグラフ表示機能'
   category: navigation
-  status: draft
+  status: implemented
+  components:
+    - client/src/components/GraphView.svelte
+    - client/src/routes/graph/+page.svelte
+    - client/src/lib/graph.ts
+  tests:
+    - client/src/tests/graph.test.ts
+    - client/e2e/new/GVI-0001.spec.ts
 
 - id: SRE-001
   title: Advanced Search & Replace
@@ -882,7 +919,8 @@
   status: implemented
   components:
     - src/components/ChartComponent.svelte
-  tests: []
+  tests:
+    - client/e2e/new/CHT-001.spec.ts
 
 - id: TBL-0001
   title: Editable JOIN Table
@@ -925,6 +963,10 @@
     - '編集マッピングが正しく動作する'
     - '空データを適切に処理する'
     - '複数セル編集が正しく処理される'
+    - 'セル編集機能が正しく動作する'
+    - 'グリッドの表示とデータバインディングが正しく機能する'
+    - 'メタデータに基づいて編集可能性が制御される'
+    - '編集後にFluidFrameworkに正しくデータが送信される'
 
 - id: TBL-0003
   title: SQL クエリ実行テスト
@@ -967,6 +1009,10 @@
     - 'チャートインタラクションが動作する'
     - '複数のチャートタイプをサポートする'
     - '大量データでのパフォーマンスが適切'
+    - 'データ変更時にチャートが自動更新される'
+    - 'EChartsが正しく初期化される'
+    - 'チャートオプションが正しく適用される'
+    - 'チャートの描画パフォーマンスが適切である'
 
 - id: SHR-0001
   title: プロジェクト共有テスト
@@ -1064,3 +1110,49 @@
     - '同時編集競合を適切に処理する'
     - 'ブラウザ互換性問題を適切に処理する'
     - '段階的劣化を適切に処理する'
+
+- id: TBL-0005
+  title: queryStore.ts の詳細テスト
+  description: queryStoreの複雑なSQLクエリ処理、エラーハンドリング、ストア状態管理の詳細テスト
+  category: table
+  status: implemented
+  acceptance:
+    - '複雑なSQLクエリが正しく処理される'
+    - 'エラーハンドリングが適切に機能する'
+    - 'ストアの状態管理が正しく動作する'
+    - 'リアクティブな更新が正しく機能する'
+    - 'メモリリークが発生しない'
+  tests:
+    - client/src/tests/queryStore.advanced.test.ts
+
+- id: TBL-0006
+  title: FluidTableClient の統合テスト
+  description: FluidTableClientのコンテナ作成・接続、データ同期、複数クライアント間同期の統合テスト
+  category: table
+  status: implemented
+  acceptance:
+    - 'Fluidコンテナの作成と接続が正しく機能する'
+    - 'テーブルデータの同期が正しく動作する'
+    - '複数クライアント間でのデータ同期が機能する'
+    - 'セル更新がFluidFrameworkを通じて同期される'
+    - '接続エラー時の復旧処理が正しく動作する'
+  tests:
+    - client/src/tests/fluidTableClient.integration.test.ts
+
+- id: BRF-0001
+  title: Branch forest item extraction
+  description: DraftService can convert branch.forest nodes into items
+  category: draft
+  status: implemented
+  components:
+    - client/src/lib/draftService.svelte.ts
+  tests:
+    - client/src/lib/draftService.svelte.spec.ts
+
+- id: SEC-0001
+  title: Dotenvx encrypted env files
+  description: Use dotenvx to encrypt server environment files
+  category: security
+  status: implemented
+  components: []
+  tests: []
