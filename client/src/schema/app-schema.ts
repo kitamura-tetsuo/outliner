@@ -21,7 +21,7 @@ const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120003");
 export class Item extends sf.objectRecursive("Item", {
     id: sf.string,
     text: sf.string, // テキスト内容
-    embed: sf.any,
+    // embed: sf.any, // Temporarily commented out to test if it's the cause of the error
     author: sf.string,
     votes: sf.array(sf.string),
     created: sf.number,

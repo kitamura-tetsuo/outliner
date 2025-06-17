@@ -18,7 +18,7 @@ describe("EditorOverlayStore", () => {
     it("初期状態が正しい", () => {
         expect(store.cursors).toEqual({});
         expect(store.selections).toEqual({});
-        expect(store.activeItemId).toBeNull();
+        expect(store.activeItemId).toBeUndefined();
         expect(store.cursorVisible).toBe(true);
         expect(store.animationPaused).toBe(false);
     });

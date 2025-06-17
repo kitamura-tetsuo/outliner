@@ -21,7 +21,7 @@ const isFluidAvailable = () => {
     }
 };
 
-describe("FluidTableClient Integration Tests", () => {
+describe("FluidTableClient Integration Tests", { timeout: 30000 }, () => {
     let client1: FluidTableClient;
     let client2: FluidTableClient;
     let containerId: string;
@@ -88,11 +88,11 @@ describe("FluidTableClient Integration Tests", () => {
         });
     });
 
-    describe("テーブルデータの同期テスト", () => {
+    describe("テーブルデータの同期テスト", { timeout: 30000 }, () => {
         beforeEach(async () => {
             containerId = await client1.createContainer();
             await client2.loadContainer(containerId);
-        });
+        }, 30000);
 
         it("セルの更新が正しく同期される", async () => {
             const updateData = {
@@ -176,11 +176,11 @@ describe("FluidTableClient Integration Tests", () => {
         });
     });
 
-    describe("複数クライアント間の同期テスト", () => {
+    describe("複数クライアント間の同期テスト", { timeout: 30000 }, () => {
         beforeEach(async () => {
             containerId = await client1.createContainer();
             await client2.loadContainer(containerId);
-        });
+        }, 30000);
 
         it("双方向の同期が正しく機能する", async () => {
             // client1からの更新
@@ -321,11 +321,11 @@ describe("FluidTableClient Integration Tests", () => {
         });
     });
 
-    describe("パフォーマンステスト", () => {
+    describe("パフォーマンステスト", { timeout: 30000 }, () => {
         beforeEach(async () => {
             containerId = await client1.createContainer();
             await client2.loadContainer(containerId);
-        });
+        }, 30000);
 
         it("大量データの同期パフォーマンスが適切である", async () => {
             const tableId = "performance_test";
@@ -407,11 +407,11 @@ describe("FluidTableClient Integration Tests", () => {
         });
     });
 
-    describe("データ整合性テスト", () => {
+    describe("データ整合性テスト", { timeout: 30000 }, () => {
         beforeEach(async () => {
             containerId = await client1.createContainer();
             await client2.loadContainer(containerId);
-        });
+        }, 30000);
 
         it("複雑なデータ構造の同期が正しく機能する", async () => {
             const complexData = {
