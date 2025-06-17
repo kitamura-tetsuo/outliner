@@ -7,19 +7,16 @@ import {
 // 環境変数TEST_ENVが'localhost'の場合はlocalhost環境、それ以外はデフォルト環境
 // VSCode Playwright拡張から実行する場合は環境変数が正しく渡らないため、直接trueに設定
 // 元の設定に戻す場合はこちらのコメントを外してください
-// const isLocalhostEnv = process.env.TEST_ENV === 'localhost';
-const isLocalhostEnv = true; // localhostを強制的に使用
-
-// テスト用ポートを定義 - これを明示的に指定
-const TEST_PORT = isLocalhostEnv ? "7093" : "7080";
-// Tinylicious サーバーのポートを定義
-const TINYLICIOUS_PORT = isLocalhostEnv ? "7094" : "7082";
-// ホストを定義
-const VITE_HOST = isLocalhostEnv ? "localhost" : "192.168.50.13";
+// テスト用ポートを環境変数から取得（デフォルトは7093）
+const TEST_PORT = process.env.TEST_PORT || "7093";
+// Tinylicious サーバーのポートを環境変数から取得（デフォルトは7094）
+const TINYLICIOUS_PORT = process.env.VITE_TINYLICIOUS_PORT || "7094";
+// ホストを環境変数から取得（デフォルトはlocalhost）
+const VITE_HOST = process.env.VITE_HOST || "localhost";
 // 環境設定ファイルを定義
 const ENV_FILE = ".env.test";
 
-// console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
+// console.log(`Using test environment: ${VITE_HOST}`);
 // console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
 // console.log(`Environment file: ${ENV_FILE}`);
 
@@ -83,7 +80,7 @@ export default defineConfig({
     ],
     // webServer: {
     //     command: `npx dotenv -e .env.test -- npm run dev -- --host 0.0.0.0 --port ${TEST_PORT}`,
-    //     url: `http://192.168.50.13:${TEST_PORT}`,
+    //     url: `http://${VITE_HOST}:${TEST_PORT}`,
     //     reuseExistingServer: !process.env.CI,
     //     env: {
     //         NODE_ENV: "test",
