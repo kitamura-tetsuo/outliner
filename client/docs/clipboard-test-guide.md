@@ -35,6 +35,8 @@ npm run test:e2e:localhost:debug e2e/core/FMT-0004.spec.ts
 # UIモードでクリップボードテストを実行
 npm run test:e2e:localhost:ui e2e/core/FMT-0004.spec.ts
 ```
+テストを実行する前に必ず `scripts/codex-setp.sh` を実行してください。
+Playwright テストは `scripts/run-tests.sh <spec>` を利用して 1 ファイルずつ実行します。
 
 ## テストの内容
 

@@ -204,7 +204,10 @@ npm run test:unit
 
 # E2E テスト
 npm run test:e2e
+
+# Playwright テストを 1 ファイルずつ実行する場合
+scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 ```
-テストの前には `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
+テスト実行前に必ず `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
