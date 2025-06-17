@@ -155,6 +155,7 @@ firebase deploy
 ### テスト環境
 
 - クライアント: `VITE_PORT=7090`
+- Playwright: `PORT=7090` (override when running e2e tests)
 - Tinylicious: `VITE_TINYLICIOUS_PORT=7092`
 - Firebase Functions Host: `VITE_FIREBASE_FUNCTIONS_HOST=localhost`
 - Firebase Functions Port: `VITE_FIREBASE_FUNCTIONS_PORT=57070`
@@ -213,6 +214,8 @@ npm run test:e2e
 
 # Playwright テストを 1 ファイルずつ実行する場合
 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
+# 環境変数 `PORT` を指定して別ポートで実行する例
+PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 ```
 テスト実行前に必ず `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
 

@@ -33,12 +33,15 @@
 | FMT-0006 | カーソル移動時のフォーマット表示の一貫性 | client/e2e/core/FMT-0006.spec.ts | implemented |
 | FMT-0007 | 内部リンク機能の表示 | — | implemented |
 | FTR-0012 | User can reset forgotten password | client/e2e/core/FTR-0012.spec.ts | implemented |
-| FTR-0013 | Use environment variables in min page | — | implemented |
+| FTR-0013 | Use environment variables in min page | client/e2e/core/FTR-0013.spec.ts | implemented |
+| FTR-0014 | Configurable host and port via environment variables | — | implemented |
+| FTR-0016 | Configurable Playwright port via PORT env | client/e2e/new/FTR-0016.spec.ts | implemented |
 | GRF-001 | Graph View | — | implemented |
 | GVI-0001 | Graph View | — | implemented |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
-| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
+| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001.spec.ts<br>client/e2e/core/ITM-0001-title.spec.ts | implemented |
 | LNK-0001 | 内部リンクのURL生成機能 | — | implemented |
+| LOG-0001 | Log test servers to files only | server/tests/server-log-file.test.js | implemented |
 | LNK-0002 | 内部リンクの機能検証 | — | implemented |
 | LNK-0003 | 内部リンクのナビゲーション機能 | — | implemented |
 | LNK-0004 | 仮ページ機能 | — | implemented |
