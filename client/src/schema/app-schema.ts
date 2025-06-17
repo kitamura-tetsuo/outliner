@@ -187,7 +187,7 @@ export const appTreeConfiguration = new TreeViewConfiguration(
  */
 export async function createAppTreeConfigurationAlpha() {
     try {
-        const dynamicImport = (globalThis as any).import ?? ((m: string) => import(m));
+        const dynamicImport = (globalThis as any).import ?? ((m: string) => import(/* @vite-ignore */ m));
         const fluidAlpha = await dynamicImport("fluid-framework/alpha");
         const TreeViewConfigurationAlpha = (fluidAlpha as any).TreeViewConfigurationAlpha;
 

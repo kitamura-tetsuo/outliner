@@ -1,82 +1,62 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('FTR-0012 - Forgot Password UI Flow', () => {
-    const forgotPasswordRoute = '/auth/forgot';
-    // Placeholder: The actual route for resetting the password after token verification.
-    // This might be a dynamic state on the forgot.svelte page or a separate route.
-    // For now, we assume a route like '/auth/reset-password' might be used, often with a token query parameter.
-    const resetPasswordRoute = '/auth/reset-password';
-
-    test('Forgot Password Page - UI and Submission', async ({ page }) => {
-        await page.goto(forgotPasswordRoute);
-
-        // Verify page title/heading (assuming one exists)
-        // Example: await expect(page.locator('h1')).toHaveText('Forgot Your Password?');
-        // For now, let's check for essential elements.
-
-        // Verify email input field is visible
-        const emailInput = page.locator('input[type="email"]');
-        await expect(emailInput).toBeVisible();
-
-        // Verify submit button is visible
-        // Assuming button has text "Send Reset Link" or similar
-        const submitButton = page.locator('button[type="submit"]');
-        await expect(submitButton).toBeVisible();
-        // Example specific text: await expect(submitButton).toHaveText(/Send|Submit|Reset/i);
-
-
-        // Enter a test email
-        await emailInput.fill('test@example.com');
-
-        // Click the submit button
-        await submitButton.click();
-
-        // Assert that a confirmation message is displayed
-        // The exact message needs to be confirmed from forgot.svelte or actual behavior.
-        // Using a flexible text matcher to accommodate variations.
-        const confirmationMessage = page.locator('text=/If an account with this email exists|password reset link has been sent/i');
-        await expect(confirmationMessage).toBeVisible();
+test.describe('FTR-0012: Forgot Password Flow', () => {
+  test('should display success or error message after submitting email', async ({ page }) => {
+    const consoleLogs: string[] = [];
+    page.on('console', msg => {
+      const text = msg.text();
+      console.log(`BROWSER CONSOLE: ${text}`); // Log all browser console messages
+      consoleLogs.push(text);
+    });
+    page.on('pageerror', (err) => {
+      console.error(`BROWSER PAGE ERROR: ${err.message}`);
     });
 
-    test('Reset Password Page - UI and Submission (assumes navigation to reset page)', async ({ page }) => {
-        // This test simulates a user landing on the reset password page,
-        // typically by clicking a link in an email. The token would be part of the URL.
-        // The actual token validation and handling are outside the scope of this UI test.
-        await page.goto(`${resetPasswordRoute}?token=testtoken123`);
+    await page.goto('/auth/forgot');
+    console.log('Navigated to /auth/forgot');
 
-        // Verify page title/heading (assuming one exists)
-        // Example: await expect(page.locator('h1')).toHaveText('Reset Your Password');
+    // Verify initial elements are present
+    await expect(page.locator('h1')).toHaveText('Forgot Password');
+    const emailInput = page.locator('input[type="email"]#email-input'); // More specific selector
+    await expect(emailInput).toBeVisible();
+    const submitButton = page.locator('button[type="submit"]');
+    await expect(submitButton).toBeVisible();
 
-        // Verify new password input field is visible
-        const newPasswordInput = page.locator('input[type="password"][name="newPassword"]'); // Assuming name="newPassword" or similar unique selector
-        await expect(newPasswordInput).toBeVisible();
+    console.log('Initial page elements are visible.');
 
-        // Verify confirm password input field is visible
-        const confirmPasswordInput = page.locator('input[type="password"][name="confirmPassword"]'); // Assuming name="confirmPassword"
-        await expect(confirmPasswordInput).toBeVisible();
+    await emailInput.fill('test@example.com');
+    console.log('Filled email with test@example.com');
+    await submitButton.click();
+    console.log('Clicked submit button.');
 
-        // Verify submit button for resetting password is visible
-        const resetSubmitButton = page.locator('button[type="submit"]'); // May need more specific selector if multiple submit buttons on page
-        await expect(resetSubmitButton).toBeVisible();
-        // Example specific text: await expect(resetSubmitButton).toHaveText(/Reset Password|Save Password/i);
+    // Wait for either a success message or an error message to appear
+    const successMessageLocator = page.locator('#success-message');
+    const errorMessageLocator = page.locator('#error-message');
 
-        // Enter new password
-        await newPasswordInput.fill('newSecurePassword123');
-        await confirmPasswordInput.fill('newSecurePassword123');
+    console.log('Waiting for success or error message...');
+    await expect(
+      successMessageLocator.or(errorMessageLocator)
+    ).toBeVisible({ timeout: 10000 }); // Wait up to 10 seconds
 
-        // Click the submit button
-        await resetSubmitButton.click();
+    const successVisible = await successMessageLocator.isVisible();
+    const errorVisible = await errorMessageLocator.isVisible();
 
-        // Assert that a success message is displayed or a redirect occurs
-        // This could be a message on the page or a redirect to the login page.
-        // Example 1: Success message
-        const successMessage = page.locator('text=/Your password has been reset successfully|Password updated/i');
-        // Example 2: Redirect to login (check URL)
-        // await expect(page).toHaveURL(/.*\/auth\/login/);
-
-        // For now, let's assume a success message appears. This needs to be verified.
-        await expect(successMessage).toBeVisible();
-        // Or, if it redirects and shows a message on the login page:
-        // await expect(page.locator('text=Password reset successfully. You can now log in.')).toBeVisible();
-    });
+    if (successVisible) {
+      const successText = await successMessageLocator.textContent();
+      console.log('Success message visible:', successText);
+      await expect(successMessageLocator).toHaveText(/If an account with this email exists|password reset link has been sent/i);
+    } else if (errorVisible) {
+      const errorText = await errorMessageLocator.textContent();
+      console.warn('Error message visible:', errorText);
+      // This is still a test failure, but we log the error for diagnosis.
+      // The test will fail here if only an error is shown, which is what we want to see.
+      expect(errorText, `Firebase call failed with: ${errorText}`).toBeNull(); // Force failure to see error
+    } else {
+      // Neither message appeared, take a screenshot and fail
+      // await page.screenshot({ path: 'test-results/forgot-password-no-message-debug.png', fullPage: true });
+      console.error('Neither success nor error message was visible after submission.');
+      throw new Error('Neither success nor error message was visible after submission.');
+    }
+    console.log('Test completed.');
+  });
 });

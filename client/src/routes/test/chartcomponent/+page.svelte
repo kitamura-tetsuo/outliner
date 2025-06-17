@@ -1,5 +1,5 @@
 <script lang="ts">
-    import ChartComponent from '../../../../components/ChartComponent.svelte';
+    import ChartComponent from '../../../components/ChartComponent.svelte';
 
     const sampleData = [
         { label: 'Apple', value: 100 },

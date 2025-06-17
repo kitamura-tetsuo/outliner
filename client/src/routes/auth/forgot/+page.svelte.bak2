@@ -1,0 +1,63 @@
+<script lang="ts">
+  console.log('[forgot.svelte] Script executing. Firebase auth imported.');
+  import { auth } from "../../../lib/firebase"; // Assuming firebase auth is initialized here
+  import { sendPasswordResetEmail } from "firebase/auth";
+
+  let email: string = $state("");
+  let message: string = $state("");
+  let error: string = $state("");
+  let loading: boolean = $state(false);
+
+  async function handleSubmit(event: Event) {
+    event.preventDefault(); // Explicitly prevent default
+    loading = true;
+    error = "";
+    message = "";
+    try {
+      // Firebase provides a direct way to send password reset emails.
+      // No custom UserManager method may be needed for this specific action
+      // unless it wraps additional logic.
+      await sendPasswordResetEmail(auth, email);
+      message = "Password reset email sent. Please check your inbox.";
+    } catch (e: any) {
+      error = e.message;
+    } finally {
+      loading = false;
+    }
+  }
+</script>
+
+<div class="container">
+  <h1>Forgot Password</h1>
+  <form onsubmit={handleSubmit}>
+    <div>
+      <label for="email">Email Address</label>
+      <input type="email" id="email" bind:value={email} required />
+    </div>
+    <button type="submit" disabled={loading}>
+      {loading ? "Sending..." : "Send Password Reset Email"}
+    </button>
+    {#if message}
+      <p class="message">{message}</p>
+    {/if}
+    {#if error}
+      <p class="error">{error}</p>
+    {/if}
+  </form>
+</div>
+
+<style>
+  .container {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  .message {
+    color: green;
+  }
+  .error {
+    color: red;
+  }
+</style>

@@ -44,6 +44,17 @@ export default defineConfig({
         env: {
             NODE_ENV: "development", // Use development instead of test
             VITE_PORT: TEST_PORT,
+            // Override with plain text values for testing, similar to .env.test
+            VITE_FIREBASE_API_KEY: "demo-api-key",
+            VITE_FIREBASE_AUTH_DOMAIN: "demo-project.firebaseapp.com",
+            VITE_FIREBASE_PROJECT_ID: "demo-project",
+            VITE_FIREBASE_STORAGE_BUCKET: "demo-project.appspot.com",
+            VITE_FIREBASE_MESSAGING_SENDER_ID: "000000000000",
+            VITE_FIREBASE_APP_ID: "1:000000000000:web:0000000000000000000000",
+            VITE_FIREBASE_MEASUREMENT_ID: "G-XXXXXXXXXX", // Optional
+            VITE_USE_FIREBASE_EMULATOR: "true", // Important for tests
+            VITE_FIREBASE_AUTH_EMULATOR_HOST: "localhost",
+            VITE_AUTH_EMULATOR_PORT: "59099", // Standard test port from .env.test
         },
         stdout: "pipe",
         stderr: "pipe",

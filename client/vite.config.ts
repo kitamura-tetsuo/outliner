@@ -28,6 +28,9 @@ export default defineConfig(async ({ mode }) => {
     }
 
     return {
+    optimizeDeps: {
+      include: ['sqlite-wasm-kysely']
+    },
         plugins: [
             tailwindcss(),
             sveltekit(),

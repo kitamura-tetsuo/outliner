@@ -1,5 +1,4 @@
-import { createDialect } from 'sqlite-wasm-kysely';
-import { createInMemoryDatabase } from 'sqlite-wasm-kysely/dist/util';
+import { createDialect, createInMemoryDatabase } from 'sqlite-wasm-kysely';
 import { Kysely } from 'kysely';
 
 interface Page {
