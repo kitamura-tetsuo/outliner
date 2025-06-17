@@ -16,7 +16,7 @@ interface Props {
     onscheduled?: (event: { taskId: string; scheduledAt: number; }) => void;
 }
 
-const { isOpen = $bindable(false), draftId, containerId, draftTitle = "", editingTaskId, onclose, onscheduled }: Props =
+let { isOpen = $bindable(false), draftId, containerId, draftTitle = "", editingTaskId, onclose, onscheduled }: Props =
     $props();
 
 let scheduledDate = $state("");

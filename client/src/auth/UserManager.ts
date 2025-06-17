@@ -69,8 +69,10 @@ export class UserManager {
     private isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development" ||
         process.env.NODE_ENV === "development";
 
+    private initialized = false;
+
     constructor() {
-        logger.debug("Initializing...");
+        logger.debug("UserManager constructor called");
 
         // サーバーサイドレンダリング環境かどうかを判定
         const isSSR = typeof window === "undefined";
@@ -80,60 +82,98 @@ export class UserManager {
             return;
         }
 
-        // Firebase アプリとAuthを初期化
-        this.app = initializeApp(this.firebaseConfig);
-        this.auth = getAuth(this.app);
+        // テスト環境で認証が無効化されている場合はスキップ
+        const authDisabled = import.meta.env.VITE_DISABLE_AUTH_FOR_TESTS === "true";
+        if (authDisabled) {
+            logger.info("Authentication disabled for tests, skipping Firebase initialization");
+            return;
+        }
 
-        this.initAuthListener();
+        // 初期化を遅延させる（必要時に初期化）
+        logger.info("UserManager created, Firebase initialization will be deferred until needed");
+    }
 
-        // テスト環境の検出
-        const isTestEnv = import.meta.env.MODE === "test" ||
-            process.env.NODE_ENV === "test" ||
-            import.meta.env.VITE_IS_TEST === "true";
+    // Firebase初期化を遅延実行
+    private async ensureInitialized(): Promise<boolean> {
+        if (this.initialized) {
+            return true;
+        }
 
-        const useEmulator = isTestEnv ||
-            import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true" ||
-            (typeof window !== "undefined" && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true");
+        // サーバーサイドレンダリング環境かどうかを判定
+        const isSSR = typeof window === "undefined";
+        if (isSSR) {
+            logger.info("Running in SSR environment, cannot initialize Firebase");
+            return false;
+        }
 
-        // Firebase Auth Emulatorに接続
-        if (useEmulator) {
-            logger.info("Connecting to Auth emulator");
-            try {
-                const connected = this.connectToFirebaseEmulator();
-                if (connected) {
-                    logger.info("Successfully connected to Auth emulator");
-                    // テスト環境では自動的にテストユーザーでログイン
-                    this._setupMockUser();
-                }
-                else {
-                    // エミュレーター接続に失敗した場合
-                    const error = new Error("Failed to connect to Firebase Auth emulator");
-                    logger.error("Failed to connect to Auth emulator, authentication may not work", error);
+        // テスト環境で認証が無効化されている場合はスキップ
+        const authDisabled = import.meta.env.VITE_DISABLE_AUTH_FOR_TESTS === "true";
+        if (authDisabled) {
+            logger.info("Authentication disabled for tests, skipping Firebase initialization");
+            return false;
+        }
 
-                    // SSR環境ではエラーをスローしない（クライアント側でリトライできるように）
-                    if (typeof window !== "undefined") {
-                        throw error;
+        try {
+            logger.debug("Initializing Firebase...");
+
+            // Firebase アプリとAuthを初期化
+            this.app = initializeApp(this.firebaseConfig);
+            this.auth = getAuth(this.app);
+
+            this.initAuthListener();
+
+            // テスト環境の検出
+            const isTestEnv = import.meta.env.MODE === "test" ||
+                process.env.NODE_ENV === "test" ||
+                import.meta.env.VITE_IS_TEST === "true";
+
+            const useEmulator = isTestEnv ||
+                import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true" ||
+                (typeof window !== "undefined" &&
+                    window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true");
+
+            // Firebase Auth Emulatorに接続
+            if (useEmulator) {
+                logger.info("Connecting to Auth emulator");
+                try {
+                    const connected = this.connectToFirebaseEmulator();
+                    if (connected) {
+                        logger.info("Successfully connected to Auth emulator");
+                        // テスト環境では自動的にテストユーザーでログイン
+                        this._setupMockUser();
                     }
                     else {
-                        logger.info("Running in SSR environment, will retry connection on client side");
+                        // エミュレーター接続に失敗した場合
+                        const error = new Error("Failed to connect to Firebase Auth emulator");
+                        logger.error("Failed to connect to Auth emulator, authentication may not work", error);
+                        throw error;
                     }
                 }
-            }
-            catch (err) {
-                // エミュレーターに接続できない場合
-                logger.error("Failed to connect to Auth emulator:", err);
-
-                // SSR環境ではエラーをスローしない
-                if (typeof window !== "undefined") {
+                catch (err) {
+                    // エミュレーターに接続できない場合
+                    logger.error("Failed to connect to Auth emulator:", err);
                     throw err;
                 }
-                else {
-                    logger.info("Running in SSR environment, will retry connection on client side");
-                }
             }
+            else {
+                this.loadSavedUser();
+            }
+
+            this.initialized = true;
+            logger.info("Firebase initialization completed successfully");
+            return true;
         }
-        else {
-            this.loadSavedUser();
+        catch (firebaseError) {
+            logger.error("Firebase initialization failed:", firebaseError);
+            // テスト環境ではFirebaseエラーを無視
+            const isTestEnv = import.meta.env.MODE === "test" ||
+                process.env.NODE_ENV === "test" ||
+                import.meta.env.VITE_IS_TEST === "true";
+            if (isTestEnv) {
+                logger.warn("Firebase initialization failed in test environment, continuing without authentication");
+                return false;
+            }
+            throw firebaseError;
         }
     }
 
@@ -315,6 +355,11 @@ export class UserManager {
 
     // Googleでログイン
     public async loginWithGoogle(): Promise<void> {
+        const initialized = await this.ensureInitialized();
+        if (!initialized || !this.auth) {
+            throw new Error("Firebase authentication not available");
+        }
+
         try {
             const provider = new GoogleAuthProvider();
             await signInWithPopup(this.auth, provider);
@@ -328,6 +373,11 @@ export class UserManager {
 
     // メールアドレスとパスワードでログイン（開発環境用）
     public async loginWithEmailPassword(email: string, password: string): Promise<void> {
+        const initialized = await this.ensureInitialized();
+        if (!initialized || !this.auth) {
+            throw new Error("Firebase authentication not available");
+        }
+
         try {
             logger.info(`[UserManager] Attempting email/password login for: ${email}`);
 
@@ -371,6 +421,11 @@ export class UserManager {
 
     // ログアウト
     public async logout(): Promise<void> {
+        if (!this.auth) {
+            logger.warn("Auth not initialized, cannot logout");
+            return;
+        }
+
         try {
             await signOut(this.auth);
             // ログアウト処理はonAuthStateChangedで検知される
@@ -385,8 +440,8 @@ export class UserManager {
     public addEventListener(listener: AuthEventListener): () => void {
         this.listeners.push(listener);
 
-        // 既に認証済みの場合は即座に通知
-        if (this.auth.currentUser && this.currentFluidToken) {
+        // 既に認証済みの場合は即座に通知（authが初期化されている場合のみ）
+        if (this.auth && this.auth.currentUser && this.currentFluidToken) {
             listener({
                 user: this.getCurrentUser()!,
             });

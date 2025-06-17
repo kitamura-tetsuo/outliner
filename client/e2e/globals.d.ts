@@ -18,6 +18,12 @@ interface Window {
     };
     _alertMessage?: string | null;
     mockContainerConnected?: boolean;
+    __JOIN_TABLE__?: {
+        fluid?: any;
+        store?: any;
+        sql?: any;
+        chartOption?: any;
+    };
 }
 
 declare namespace jest {

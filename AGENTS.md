@@ -9,6 +9,8 @@ automatically if it is not already active.
 - While multiple AIs may code in parallel, review documents frequently to avoid overlapping features or contradictory explanations.
 - Continuously reference and update past best practices so they remain current.
 - Keep the implementation plan documentation updated whenever changes occur.
+- When the implementation of a logically grouped feature is complete and its tests pass, commit and push the related files to Git as needed.
+- Write commit messages properly in English.
 
 # 🧪 Test implementation and execution policy
 
@@ -18,6 +20,11 @@ Do not embed code that skips tests.
 Do not use mocks in tests.
 Run tests in headless mode.
 Fix one test file at a time and run tests after each fix to confirm.
+Please add e2e tests for all implemented features.
+Also, please do not finish until all other E2E tests pass.
+Please check whether other parts have deteriorated due to the addition of functions.
+The E2E test I didn't add used to pass.
+Please modify the implementation and tests related to the failing test so that the test passes.
 
 # 🔍 How to deal with test failures
 
@@ -169,6 +176,6 @@ Prioritize performance.
 
 # AI Collaboration Guidelines
 
-- 並行してAIがコーディングする中で、一部で機能の重複やドキュメントの重複・齟齬が起こる場合があります。
-- 過去のベストプラクティスの参照・記録・更新を都度行ってください。
-- 随時、実装計画のドキュメントの更新をして下さい。
+- While AI is coding in parallel, there may be some duplication of functions or document duplication/inconsistency.
+- Please refer to, record, and update past best practices from time to time.
+- Please update the implementation plan document from time to time.

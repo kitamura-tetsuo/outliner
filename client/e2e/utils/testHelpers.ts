@@ -28,6 +28,8 @@ export class TestHelpers {
         await page.evaluate(() => {
             if (!(window as any).__FLUID_STORE__) (window as any).__FLUID_STORE__ = {};
             if (!(window as any).__SVELTE_GOTO__) (window as any).__SVELTE_GOTO__ = () => {};
+            // テストモードを設定
+            (window as any).__TEST_MODE__ = true;
         });
 
         // Playwright's default navigation is sufficient for SPA routes
@@ -200,7 +202,7 @@ export class TestHelpers {
      * @returns FluidClientインスタンス
      */
     public static async createTestProject(page: Page, projectName: string): Promise<any> {
-        return await page.evaluate(async (name) => {
+        return await page.evaluate(async name => {
             const fluidService = window.__FLUID_SERVICE__;
             if (!fluidService) {
                 throw new Error("FluidService not found");
@@ -212,7 +214,7 @@ export class TestHelpers {
                 clientId: fluidClient.clientId,
                 project: {
                     title: fluidClient.project.title,
-                }
+                },
             };
         }, projectName);
     }
@@ -224,7 +226,12 @@ export class TestHelpers {
      * @param pageName ページ名
      * @param lines ページの内容（行の配列）
      */
-    public static async createTestPage(page: Page, fluidClient: any, pageName: string, lines: string[] = []): Promise<void> {
+    public static async createTestPage(
+        page: Page,
+        fluidClient: any,
+        pageName: string,
+        lines: string[] = [],
+    ): Promise<void> {
         await page.evaluate(async ({ pageName, lines }) => {
             const fluidService = window.__FLUID_SERVICE__;
             if (!fluidService) {

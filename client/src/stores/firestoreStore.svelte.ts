@@ -359,31 +359,38 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
 
 // アプリ起動時に自動的に初期化
 if (typeof window !== "undefined") {
-    let cleanup: (() => void) | null = null;
+    // テスト環境で認証が無効化されている場合はFirestore同期をスキップ
+    const authDisabled = import.meta.env.VITE_DISABLE_AUTH_FOR_TESTS === "true";
+    if (authDisabled) {
+        logger.info("Authentication disabled for tests, skipping Firestore sync initialization");
+    }
+    else {
+        let cleanup: (() => void) | null = null;
 
-    // 認証状態が変更されたときに Firestore 同期を初期化/クリーンアップ
-    const unsubscribeAuth = userManager.addEventListener(authResult => {
-        // 前回のクリーンアップがあれば実行
-        if (cleanup) {
-            cleanup();
-            cleanup = null;
-        }
+        // 認証状態が変更されたときに Firestore 同期を初期化/クリーンアップ
+        const unsubscribeAuth = userManager.addEventListener(authResult => {
+            // 前回のクリーンアップがあれば実行
+            if (cleanup) {
+                cleanup();
+                cleanup = null;
+            }
 
-        // 認証されていればリスナーを設定
-        if (authResult) {
-            cleanup = initFirestoreSync();
-        }
-        else {
-            // 未認証の場合はコンテナを空にする
-            firestoreStore.userContainer = null;
-        }
-    });
+            // 認証されていればリスナーを設定
+            if (authResult) {
+                cleanup = initFirestoreSync();
+            }
+            else {
+                // 未認証の場合はコンテナを空にする
+                firestoreStore.userContainer = null;
+            }
+        });
 
-    // ページアンロード時のクリーンアップ
-    window.addEventListener("beforeunload", () => {
-        if (cleanup) {
-            cleanup();
-        }
-        unsubscribeAuth();
-    });
+        // ページアンロード時のクリーンアップ
+        window.addEventListener("beforeunload", () => {
+            if (cleanup) {
+                cleanup();
+            }
+            unsubscribeAuth();
+        });
+    }
 }

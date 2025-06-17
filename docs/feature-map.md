@@ -19,6 +19,7 @@
 | COL-0001 | 他ユーザーのカーソル表示 | client/e2e/disabled/COL-0001.spec.ts | implemented |
 | DBW-0001 | Client-Side WASM DB | — | draft |
 | DBW-001 | Client-Side SQL Database | client/e2e/new/DBW-001.spec.ts | implemented |
+| ERR-0001 | エラーハンドリングテスト | client/e2e/new/ERR-0001.spec.ts | implemented |
 | FFI-0001 | Fluid Framework Integration | — | implemented |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
 | FMT-0001 | フォーマット表示 | client/e2e/core/FMT-0001.spec.ts | implemented |
@@ -42,6 +43,9 @@
 | LNK-0007 | バックリンク機能 | — | implemented |
 | NAV-0001 | プロジェクト選択とページナビゲーション | client/e2e/core/NAV-0001.spec.ts | implemented |
 | NAV-0002 | プロジェクトページへのリンク機能 | — | implemented |
+| PERF-0001 | パフォーマンステスト | client/e2e/new/PERF-0001.spec.ts | implemented |
+| SHR-0001 | プロジェクト共有テスト | client/e2e/new/SHR-0001.spec.ts | implemented |
+| SHR-0002 | リアルタイム共有テスト | client/e2e/new/SHR-0002.spec.ts | implemented |
 | SLR-0001 | Shift + 上下左右 | client/e2e/core/SLR-0001.spec.ts | implemented |
 | SLR-0002 | 行頭まで選択 | client/e2e/core/SLR-0002.spec.ts | implemented |
 | SLR-0003 | 行末まで選択 | client/e2e/core/SLR-0003.spec.ts | implemented |
@@ -57,6 +61,9 @@
 | SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts | implemented |
 | SRP-0001 | 高度な検索と置換 | — | implemented |
 | TBL-0001 | Editable JOIN Table | client/e2e/new/TBL-0001.spec.ts | implemented |
+| TBL-0002 | EditableQueryGrid 詳細テスト | client/e2e/new/TBL-0002.spec.ts | implemented |
+| TBL-0003 | SQL クエリ実行テスト | client/e2e/new/TBL-0003.spec.ts | implemented |
+| TBL-0004 | チャート連携テスト | client/e2e/new/TBL-0004.spec.ts | implemented |
 | TST-0001 | SharedTreeデータ検証ユーティリティ | client/e2e/utils/tree-validation.spec.ts | implemented |
 | TST-0002 | カーソル情報検証ユーティリティ | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | テストヘルパーユーティリティ | — | implemented |

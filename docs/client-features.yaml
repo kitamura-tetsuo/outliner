@@ -901,3 +901,166 @@
     - src/tests/editMapper.test.ts
     - src/tests/syncWorker.test.ts
     - client/e2e/new/TBL-0001.spec.ts
+
+- id: TBL-0002
+  title: EditableQueryGrid 詳細テスト
+  description: EditableQueryGridコンポーネントの包括的なテスト。セル編集、読み取り専用制御、データ型別編集、イベント発火の確認
+  category: table
+  status: implemented
+  components:
+    - src/components/EditableQueryGrid.svelte
+  services:
+    - src/services/editMapper.ts
+    - src/services/sqlService.ts
+  tests:
+    - client/e2e/new/TBL-0002.spec.ts
+  acceptance:
+    - 'グリッドが初期データを正しく表示する'
+    - '編集可能なセルと読み取り専用セルを正しく識別する'
+    - 'セル編集が正しいイベントを発火する'
+    - '読み取り専用セルは編集できない'
+    - 'データ型検証が正しく動作する'
+    - 'ストアデータ変更時にグリッドが更新される'
+    - 'カラムメタデータが正しく適用される'
+    - '編集マッピングが正しく動作する'
+    - '空データを適切に処理する'
+    - '複数セル編集が正しく処理される'
+
+- id: TBL-0003
+  title: SQL クエリ実行テスト
+  description: 複雑なJOINクエリ、エラーハンドリング、パフォーマンス測定を含むSQLクエリ実行の詳細テスト
+  category: table
+  status: implemented
+  components:
+    - src/services/sqlService.ts
+  tests:
+    - client/e2e/new/TBL-0003.spec.ts
+  acceptance:
+    - '基本的なSQLクエリが正しく実行される'
+    - '複雑なJOINクエリが正しく処理される'
+    - 'SQLエラーが適切にハンドリングされる'
+    - 'カラムメタデータが正しく抽出される'
+    - 'クエリパフォーマンスが測定できる'
+    - '集計関数とGROUP BYが正しく動作する'
+    - 'サブクエリとウィンドウ関数がサポートされる'
+    - 'トランザクション処理が正しく動作する'
+    - '様々なデータ型が正しく処理される'
+
+- id: TBL-0004
+  title: チャート連携テスト
+  description: データ変更時の自動更新、複数チャートタイプ、インタラクティブ機能のテスト
+  category: table
+  status: implemented
+  components:
+    - src/components/ChartPanel.svelte
+  services:
+    - src/services/queryStore.ts
+  tests:
+    - client/e2e/new/TBL-0004.spec.ts
+  acceptance:
+    - 'チャートがデータで初期化される'
+    - 'データ変更時にチャートが更新される'
+    - '様々なデータ型を正しく処理する'
+    - 'ウィンドウリサイズに対応する'
+    - '空データを適切に処理する'
+    - 'チャート設定が正しく構成される'
+    - 'チャートインタラクションが動作する'
+    - '複数のチャートタイプをサポートする'
+    - '大量データでのパフォーマンスが適切'
+
+- id: SHR-0001
+  title: プロジェクト共有テスト
+  description: 共有リンク生成、権限管理、アクセス制御のテスト実装
+  category: sharing
+  status: implemented
+  components:
+    - src/components/ShareDialog.svelte
+    - src/components/ProjectHeader.svelte
+  services:
+    - src/services/sharingService.ts
+    - src/services/permissionService.ts
+  tests:
+    - client/e2e/new/SHR-0001.spec.ts
+  acceptance:
+    - 'プロジェクトを作成して共有できる'
+    - '共有リンクを生成できる'
+    - '共有権限を設定できる'
+    - '共有リンク経由でアクセスできる'
+    - '共有アクセスを取り消しできる'
+    - 'ユーザーをプロジェクトに招待できる'
+    - 'プロジェクト共有履歴を追跡する'
+    - '共有プロジェクトで正しい権限を表示する'
+    - 'プロジェクトオーナーが共有ユーザーを管理できる'
+    - '共有プロジェクトでリアルタイム協業をサポートする'
+
+- id: SHR-0002
+  title: リアルタイム共有テスト
+  description: 同時編集、競合解決、カーソル同期のテスト実装
+  category: sharing
+  status: implemented
+  components:
+    - src/components/CollaborationIndicator.svelte
+    - src/components/UserPresence.svelte
+  services:
+    - src/services/fluidService.ts
+    - src/services/presenceService.ts
+    - src/services/conflictResolver.ts
+  tests:
+    - client/e2e/new/SHR-0002.spec.ts
+  acceptance:
+    - '複数ユーザーが同時編集できる'
+    - 'カーソル位置が同期される'
+    - '競合解決が正しく動作する'
+    - 'ユーザープレゼンスが表示される'
+    - 'リアルタイムチャート更新が動作する'
+    - 'オフライン/オンライン同期が動作する'
+    - 'ユーザーが離脱・再参加できる'
+
+- id: PERF-0001
+  title: パフォーマンステスト
+  description: 大量データ処理、メモリ使用量、描画速度のパフォーマンステスト
+  category: performance
+  status: implemented
+  components:
+    - src/components/EditableQueryGrid.svelte
+    - src/components/ChartPanel.svelte
+  services:
+    - src/services/sqlService.ts
+    - src/services/queryStore.ts
+    - src/services/fluidService.ts
+  tests:
+    - client/e2e/new/PERF-0001.spec.ts
+  acceptance:
+    - '大量データセットのパフォーマンスが適切'
+    - 'グリッド描画パフォーマンスが適切'
+    - 'チャート描画パフォーマンスが適切'
+    - 'メモリ使用量が監視される'
+    - '並行操作のパフォーマンスが適切'
+    - '大量データでのスクロールパフォーマンスが適切'
+    - 'Fluid同期のパフォーマンスが適切'
+
+- id: ERR-0001
+  title: エラーハンドリングテスト
+  description: ネットワーク障害、データ破損、権限エラーのエラーハンドリングテスト
+  category: error-handling
+  status: implemented
+  components:
+    - src/components/ErrorBoundary.svelte
+    - src/components/NetworkStatus.svelte
+  services:
+    - src/services/errorHandler.ts
+    - src/services/networkMonitor.ts
+    - src/services/validationService.ts
+  tests:
+    - client/e2e/new/ERR-0001.spec.ts
+  acceptance:
+    - 'ネットワーク接続エラーを適切に処理する'
+    - 'SQL構文エラーを適切に処理する'
+    - 'データ破損を適切に処理する'
+    - '権限エラーを適切に処理する'
+    - 'Fluid Framework接続エラーを適切に処理する'
+    - 'メモリオーバーフローを適切に処理する'
+    - 'チャート描画エラーを適切に処理する'
+    - '同時編集競合を適切に処理する'
+    - 'ブラウザ互換性問題を適切に処理する'
+    - '段階的劣化を適切に処理する'
