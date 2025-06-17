@@ -939,6 +939,15 @@
     - src/tests/syncWorker.test.ts
     - client/e2e/new/TBL-0001.spec.ts
 
+- id: BRF-0001
+  title: Branch forest item extraction
+  description: DraftService can convert branch.forest nodes into items
+  category: draft
+  status: implemented
+  components:
+    - client/src/lib/draftService.svelte.ts
+  tests:
+    - client/src/lib/draftService.svelte.spec.ts
 - id: SEC-0001
   title: Dotenvx encrypted env files
   description: Use dotenvx to encrypt server environment files
