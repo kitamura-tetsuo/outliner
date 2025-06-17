@@ -1232,6 +1232,7 @@
     - "メモリリークが発生しない"
   tests:
     - client/src/tests/queryStore.advanced.test.ts
+    - client/e2e/new/TBL-0005.spec.ts
 
 - id: TBL-0006
   title: FluidTableClient の統合テスト
