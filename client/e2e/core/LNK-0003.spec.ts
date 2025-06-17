@@ -269,8 +269,10 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const itemCount = await allItems.count();
         console.log(`Total items: ${itemCount}`);
 
-        for (let i = 0; i < itemCount; i++) {
-            const item = allItems.nth(i);
+        const itemHandles = await allItems.elementHandles();
+        for (const [i, handle] of itemHandles.entries()) {
+            const itemId = await handle.getAttribute("data-item-id");
+            const item = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
             const itemText = await item.textContent();
             console.log(`Item ${i}: "${itemText}"`);
         }
@@ -280,11 +282,11 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const linkCount = await allLinks.count();
         console.log(`Total internal links: ${linkCount}`);
 
-        for (let i = 0; i < linkCount; i++) {
-            const link = allLinks.nth(i);
-            const linkHref = await link.getAttribute("href");
-            const linkText = await link.textContent();
-            const linkClass = await link.getAttribute("class");
+        const linkHandles = await allLinks.elementHandles();
+        for (const [i, handle] of linkHandles.entries()) {
+            const linkHref = await handle.getAttribute("href");
+            const linkText = await handle.textContent();
+            const linkClass = await handle.getAttribute("class");
             console.log(`Link ${i}: href="${linkHref}", text="${linkText}", class="${linkClass}"`);
         }
 
@@ -433,8 +435,10 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const itemCount = await allItems.count();
         console.log(`Total items: ${itemCount}`);
 
-        for (let i = 0; i < itemCount; i++) {
-            const item = allItems.nth(i);
+        const itemHandles2 = await allItems.elementHandles();
+        for (const [i, handle] of itemHandles2.entries()) {
+            const itemId = await handle.getAttribute("data-item-id");
+            const item = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
             const itemText = await item.textContent();
             console.log(`Item ${i}: "${itemText}"`);
         }
@@ -444,11 +448,11 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const linkCount = await allLinks.count();
         console.log(`Total internal links: ${linkCount}`);
 
-        for (let i = 0; i < linkCount; i++) {
-            const link = allLinks.nth(i);
-            const linkHref = await link.getAttribute("href");
-            const linkText = await link.textContent();
-            const linkClass = await link.getAttribute("class");
+        const linkHandles2 = await allLinks.elementHandles();
+        for (const [i, handle] of linkHandles2.entries()) {
+            const linkHref = await handle.getAttribute("href");
+            const linkText = await handle.textContent();
+            const linkClass = await handle.getAttribute("class");
             console.log(`Link ${i}: href="${linkHref}", text="${linkText}", class="${linkClass}"`);
         }
 
@@ -556,7 +560,8 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         if (itemCount > 1) {
             // 2番目のアイテムが作成された場合
-            const secondItem = page.locator(".outliner-item").nth(1);
+            const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+            const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
             const itemText = await secondItem.textContent();
             console.log("Item text after programmatic creation:", itemText);
             expect(itemText).toContain("これはターゲットページです。");
@@ -697,7 +702,8 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         if (itemCount > 1) {
             // 2番目のアイテムが作成された場合
-            const secondItem = page.locator(".outliner-item").nth(1);
+            const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+            const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
             const itemText = await secondItem.textContent();
             console.log(`Item text after programmatic creation: "${itemText}"`);
             expect(itemText).toContain("これは新しく作成されたページです。");
