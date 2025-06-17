@@ -7,6 +7,8 @@
   tests:
     - tests/feature/FTR-0012.spec.ts
     - client/e2e/core/FTR-0012.spec.ts
+    - client/e2e/auth/FTR-0012-forgot-password.spec.ts # UI structure only
+  notes: "Frontend components (forgot.svelte, lib/email/resetPassword.ts) appear to be missing. Test execution blocked."
   acceptance:
     - "ユーザーがメールアドレスを入力すると、リセットリンクが送信される"
     - "リンクは 30 分で失効する"
@@ -437,6 +439,7 @@
     - "ボックス選択（矩形選択）範囲へのペースト時に、選択範囲が適切に置き換えられる"
   tests:
     - client/e2e/disabled/FMT-0005.spec.ts
+  notes: Partially refactored (basic clipboard test improved, complex simulations commented out). File move blocked. Env exec pending.
 
 - id: FMT-0006
   title: "カーソル移動時のフォーマット表示の一貫性"
@@ -888,6 +891,8 @@
     - "Fluid Framework の signal 機能でカーソル位置を同期する"
   tests:
     - client/e2e/disabled/COL-0001.spec.ts
+    - client/e2e/collaboration/COL-0001.spec.ts
+  notes: Logic fixed, env exec pending.
 
 - id: SRP-0001
   title: "高度な検索と置換"
@@ -897,7 +902,7 @@
 
 - id: DBW-0001
   title: "Client-Side WASM DB"
-  description: "オフライン操作と高速検索を実現するWebAssemblyデータベース"
+  description: "Stores container metadata via wasmDb.ts (localStorage SQLite WASM). オフライン操作と高速検索を実現するWebAssemblyデータベース"
   category: application
   status: implemented
   components:
@@ -905,6 +910,7 @@
     - client/src/lib/db/dbService.ts
     - client/src/lib/db/sqliteWorker.ts
   tests:
+    - client/src/lib/__tests__/wasmDb.test.ts # unit test for wasmDb.ts
     - client/src/tests/wasmDb.test.ts
     - client/e2e/new/DBW-0001.spec.ts
 
@@ -919,12 +925,13 @@
     - client/src/fluid/fluidClient.ts
   tests:
     - client/e2e/disabled/FFI-0001.spec.ts
+  notes: Logic fixed, file move blocked. Env exec pending.
 
 - id: GVI-0001
   title: "Graph View"
   description: "ページ間のリンクを視覚化するグラフ表示機能"
   category: navigation
-  status: implemented
+  status: superseded
   components:
     - client/src/components/GraphView.svelte
     - client/src/routes/graph/+page.svelte
@@ -932,6 +939,7 @@
   tests:
     - client/src/tests/graph.test.ts
     - client/e2e/new/GVI-0001.spec.ts
+  notes: "Superseded by GRF-001."
 
 - id: SRE-001
   title: Advanced Search & Replace
@@ -993,6 +1001,7 @@
   components:
     - src/components/ChartComponent.svelte
   tests:
+    - client/e2e/core/CHT-001.spec.ts
     - client/e2e/new/CHT-001.spec.ts
 
 - id: TBL-0001

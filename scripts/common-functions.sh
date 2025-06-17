@@ -99,25 +99,68 @@ kill_ports() {
 # Install global packages if needed
 install_global_packages() {
   if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
-    npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
+    sudo npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
   fi
 
-  if ! command -v dprint >/dev/null; then
-    curl -fsSL https://dprint.dev/install.sh | sh
-  fi
+  # if ! command -v dprint >/dev/null; then
+  #   curl -fsSL https://dprint.dev/install.sh | sudo sh
+  # fi
   
   if ! command -v cross-env >/dev/null; then
     echo "cross-env not found after global install; attempting local install"
-    npm install -g cross-env || true
+    sudo npm install -g cross-env || true
   fi
 }
 
 # Install OS utilities if needed
 install_os_utilities() {
-  if ! command -v lsof >/dev/null || ! command -v xvfb-run >/dev/null; then
-    apt-get update
-    DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
-      lsof xvfb > /dev/null
+  # For Playwright's --with-deps chromium
+  local playwright_deps=(
+    libatk1.0-0
+    libatk-bridge2.0-0
+    libcups2
+    libdbus-1-3
+    libdrm2
+    libgbm1
+    libgtk-3-0
+    libnspr4
+    libnss3
+    libx11-6
+    libx11-xcb1
+    libxcb1
+    libxcomposite1
+    libxdamage1
+    libxext6
+    libxfixes3
+    libxrandr2
+    libxtst6
+    ca-certificates
+    fonts-liberation
+    lsb-release
+    xdg-utils
+    wget
+  )
+
+  # For original lsof and xvfb
+  local original_deps=(
+    lsof
+    xvfb
+  )
+
+  # Check if any dependency is missing
+  local needs_install=false
+  for dep in "${original_deps[@]}" "${playwright_deps[@]}"; do
+    if ! dpkg -s "${dep}" >/dev/null 2>&1; then
+      needs_install=true
+      break
+    fi
+  done
+
+  if [ "$needs_install" = true ]; then
+    sudo apt-get update
+    DEBIAN_FRONTEND=noninteractive sudo apt-get -y install --no-install-recommends \
+      "${original_deps[@]}" \
+      "${playwright_deps[@]}"
   fi
 }
 
@@ -152,9 +195,9 @@ install_all_dependencies() {
   npm_ci_if_needed
   
   # Compile Paraglide if needed
-  if [ -z "${SKIP_PARAGLIDE_COMPILE}" ] && [ -d node_modules ]; then
-    npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide || true
-  fi
+  # if [ -z "${SKIP_PARAGLIDE_COMPILE}" ] && [ -d node_modules ]; then
+  #   npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
+  # fi
   
   cd "${ROOT_DIR}"
 }
