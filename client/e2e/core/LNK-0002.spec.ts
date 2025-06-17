@@ -1,3 +1,7 @@
+/** @feature LNK-0002
+ *  Title   : 内部リンクの機能検証
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,

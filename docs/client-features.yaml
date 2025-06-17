@@ -436,7 +436,7 @@
     - "複数行テキストをボックス選択（矩形選択）範囲にペーストすると、各行に対応する行が挿入される"
     - "ボックス選択（矩形選択）範囲へのペースト時に、選択範囲が適切に置き換えられる"
   tests:
-    - client/e2e/core/FMT-0005.spec.ts
+    - client/e2e/disabled/FMT-0005.spec.ts
 
 - id: FMT-0006
   title: "カーソル移動時のフォーマット表示の一貫性"
@@ -668,7 +668,7 @@
     - client/e2e/core/SLR-0004.spec.ts
     - client/e2e/core/SLR-0005.spec.ts
     - client/e2e/core/SLR-0010.spec.ts
-    - client/e2e/core/FMT-0005.spec.ts
+    - client/e2e/disabled/FMT-0005.spec.ts
     - client/e2e/core/FMT-0006.spec.ts
     - client/e2e/core/IME-0001.spec.ts
     - client/e2e/core/ITM-0001.spec.ts
@@ -887,7 +887,7 @@
     - "他ユーザーがカーソルを移動すると、その位置が表示される"
     - "Fluid Framework の signal 機能でカーソル位置を同期する"
   tests:
-    - client/e2e/core/COL-0001.spec.ts
+    - client/e2e/disabled/COL-0001.spec.ts
 
 - id: SRP-0001
   title: "高度な検索と置換"
@@ -918,7 +918,7 @@
     - client/src/lib/wasmDb.ts
     - client/src/fluid/fluidClient.ts
   tests:
-    - client/e2e/core/FFI-0001.spec.ts
+    - client/e2e/disabled/FFI-0001.spec.ts
 
 - id: GVI-0001
   title: "Graph View"
@@ -1149,7 +1149,7 @@
     - src/services/queryStore.ts
     - src/services/fluidService.ts
   tests:
-    - client/e2e/new/PERF-0001.spec.ts
+    - client/e2e/disabled/PERF-0001.spec.ts
   acceptance:
     - "大量データセットのパフォーマンスが適切"
     - "グリッド描画パフォーマンスが適切"

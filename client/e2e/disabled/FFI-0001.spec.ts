@@ -1,3 +1,7 @@
+/** @feature FFI-0001
+ *  Title   : Fluid Framework Integration
+ *  Source  : docs/client-features.yaml
+ */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 

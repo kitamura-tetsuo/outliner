@@ -1,3 +1,7 @@
+/** @feature NAV-0001
+ *  Title   : プロジェクト選択とページナビゲーション
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,

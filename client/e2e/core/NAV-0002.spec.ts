@@ -1,3 +1,7 @@
+/** @feature NAV-0002
+ *  Title   : プロジェクトページへのリンク機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
