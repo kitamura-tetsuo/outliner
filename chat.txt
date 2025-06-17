@@ -213,3 +213,7 @@ document.querySelectorAll('.cursor')
 まず、テスト用の folkを作成し、functionへ渡し、functionから fluid frameworkへ書き込むコア部分から実装とテストを始めてください。
 下書き機能の実装を続行してください。
 
+https://github.com/kitamura-tetsuo/outliner/pull/60
+のコンフリクトを解消して、マージして下さい。
+大規模な変更であるので、単純に一方を残しても機能しない場合があります。
+関連する箇所の整合を確認しながらコンフリクトを解消して下さい。
