@@ -9,10 +9,7 @@ test.describe("CHT-001: Chart Component", () => {
     });
 
     test("chart renders page item counts", async ({ page }) => {
-        const pageCount = await page.evaluate(() => {
-            const store = (window as any).appStore;
-            return store.pages.current.length;
-        });
+        const pageCount = await TestHelpers.getPageCount(page);
         await expect(page.locator("svg#chart-svg rect")).toHaveCount(pageCount);
     });
 
@@ -20,7 +17,7 @@ test.describe("CHT-001: Chart Component", () => {
         const newPageName = `p-${Date.now()}`;
         await TestHelpers.createTestPageViaAPI(page, newPageName, []);
         await page.goto("/graph", { waitUntil: "domcontentloaded" });
-        const pageCount = await page.evaluate(() => (window as any).appStore.pages.current.length);
+        const pageCount = await TestHelpers.getPageCount(page);
         await expect(page.locator("svg#chart-svg rect")).toHaveCount(pageCount);
     });
 });

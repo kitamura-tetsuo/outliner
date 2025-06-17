@@ -49,7 +49,8 @@ function render() {
         .attr("y", d => y(d.value))
         .attr("width", x.bandwidth())
         .attr("height", d => height - y(d.value))
-        .attr("fill", "#4caf50");
+        .attr("fill", "#4caf50")
+        .attr("data-label", d => d.label);
 
     svg.append("g")
         .attr("transform", `translate(0,${height})`)

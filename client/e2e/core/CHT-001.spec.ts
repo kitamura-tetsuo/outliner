@@ -23,7 +23,7 @@ test.describe('CHT-001 - ChartComponent E2E Tests', () => {
 
         // Verify Bars
         // D3 usually renders bars as <rect> elements
-        const bars = chartSvg.locator('rect.bar'); // Assuming bars have a class 'bar'
+        const bars = chartSvg.locator('rect[data-label]');
         await expect(bars).toHaveCount(3); // Based on sampleData length
 
         // Verify Axes (basic check)
@@ -57,17 +57,15 @@ test.describe('CHT-001 - ChartComponent E2E Tests', () => {
 
         // Check if the 'Banana' bar (expected to be the tallest) has the largest height.
         // This requires getting all bar heights and comparing.
-        let maxHeight = 0;
-        for (let i = 0; i < 3; i++) {
-            const barHeight = await bars.nth(i).getAttribute('height');
-            const height = parseFloat(barHeight || '0');
-            if (height > maxHeight) {
-                maxHeight = height;
-            }
+        const heights: number[] = [];
+        for (const bar of await bars.all()) {
+            const h = parseFloat((await bar.getAttribute('height')) || '0');
+            heights.push(h);
         }
+        const maxHeight = Math.max(...heights);
 
-        const bananaBarIndex = 1; // Banana is the second item in sampleData
-        const bananaBarHeight = parseFloat(await bars.nth(bananaBarIndex).getAttribute('height') || '0');
+        const bananaBar = chartSvg.locator('rect[data-label="Banana"]');
+        const bananaBarHeight = parseFloat(await bananaBar.getAttribute('height') || '0');
         expect(bananaBarHeight).toBe(maxHeight);
 
     });

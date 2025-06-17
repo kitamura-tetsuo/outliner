@@ -42,24 +42,7 @@ test.describe("TBL-0001: Editable JOIN Table", () => {
         await page.waitForTimeout(2000); // グリッドの描画完了を待つ
 
         // wx-svelte-gridの実際のセル構造を確認（.wx-cellクラス使用）
-        const cellInfo = await page.evaluate(() => {
-            const container = document.querySelector('[data-testid="editable-grid"]');
-            if (!container) return null;
-
-            const cells = container.querySelectorAll(".wx-cell");
-            const dataCells = Array.from(cells).filter(cell => {
-                const role = cell.getAttribute("role");
-                const text = cell.textContent?.trim() || "";
-                // ヘッダーセルではなく、かつヘッダーテキストでもないセルを選択
-                return role !== "columnheader" && !["tbl_pk", "value", "num"].includes(text);
-            });
-
-            return {
-                cellCount: cells.length,
-                dataCellCount: dataCells.length,
-                firstDataCellText: dataCells[0]?.textContent?.trim() || null,
-            };
-        });
+        const cellInfo = await TestHelpers.getEditableGridCellInfo(page);
 
         console.log("Cell info:", cellInfo);
         expect(cellInfo).toBeDefined();
@@ -76,7 +59,7 @@ test.describe("TBL-0001: Editable JOIN Table", () => {
             return (window as any).__JOIN_TABLE__ && (window as any).__JOIN_TABLE__.chartOption;
         }, { timeout: 5000 });
 
-        const chartOption = await page.evaluate(() => (window as any).__JOIN_TABLE__.chartOption);
+        const chartOption = await TestHelpers.getJoinTableChartOption(page);
         expect(chartOption).toBeDefined();
         expect(chartOption.xAxis).toBeDefined();
         expect(chartOption.yAxis).toBeDefined();
