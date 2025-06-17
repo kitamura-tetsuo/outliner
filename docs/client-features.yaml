@@ -1,7 +1,8 @@
 - id: FTR-0012
   title: User can reset forgotten password
-  status: implemented # draft / implemented / deprecated
+  status: implemented
   components:
+    - client/src/routes/auth/forgot.svelte
     - client/src/routes/auth/forgot/+page.svelte
     - client/src/routes/auth/reset-password/+page.svelte
     - client/src/lib/email/resetPassword.ts

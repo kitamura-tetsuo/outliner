@@ -37,10 +37,8 @@ test.describe('FTR-0012 - Forgot Password UI Flow', () => {
     });
 
     test('Reset Password Page - UI and Submission (assumes navigation to reset page)', async ({ page }) => {
-        // This test simulates a user landing on the reset password page,
-        // typically by clicking a link in an email. The token would be part of the URL.
-        // The actual token validation and handling are outside the scope of this UI test.
-        await page.goto(`${resetPasswordRoute}?token=testtoken123`);
+        // Simulate user landing on the reset password page with a token
+        await page.goto(`${resetPasswordRoute}?oobCode=testtoken123`);
 
         // Verify page title/heading (assuming one exists)
         // Example: await expect(page.locator('h1')).toHaveText('Reset Your Password');
