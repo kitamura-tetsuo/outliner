@@ -1217,7 +1217,8 @@
   category: security
   status: implemented
   components: []
-  tests: []
+  tests:
+    - server/tests/sec-0001-env.test.js
 
 - id: LOG-0001
   title: Log test servers to files only
