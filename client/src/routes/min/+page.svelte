@@ -13,13 +13,13 @@ import { initializeApp } from "firebase/app";
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 
 const firebaseConfig = {
-    apiKey: "AIzaSyClVfX5Cw0XpitovZCEYQznHi2csreCUOc",
-    authDomain: "outliner2-566e4.firebaseapp.com",
-    projectId: "outliner2-566e4",
-    storageBucket: "outliner2-566e4.firebasestorage.app",
-    messagingSenderId: "279816831957",
-    appId: "1:279816831957:web:f5a041b4c774d8e005b35c",
-    measurementId: "G-4DMNV26YHN",
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
@@ -38,8 +38,8 @@ async function signIn() {
         idToken = await result.user.getIdToken(true);
         console.log("取得した ID Token:", idToken);
 
-        // バックエンドの検証エンドポイントへ送信
-        const response = await fetch("http://localhost:3000/verify", {
+        const verifyUrl = import.meta.env.VITE_TOKEN_VERIFY_URL;
+        const response = await fetch(verifyUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token: idToken }),

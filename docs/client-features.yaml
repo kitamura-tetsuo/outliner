@@ -10,6 +10,16 @@
     - 'ユーザーがメールアドレスを入力すると、リセットリンクが送信される'
     - 'リンクは 30 分で失効する'
     - '正しいトークンを送るとパスワードを再設定できる'
+- id: FTR-0013
+  title: 'Use environment variables in min page'
+  status: implemented
+  components:
+    - client/src/routes/min/+page.svelte
+    - client/.env.example
+  tests: []
+  acceptance:
+    - 'Firebase config values come from VITE_FIREBASE_* variables'
+    - 'Token verification URL uses VITE_TOKEN_VERIFY_URL'
 - id: IME-0001
   title: IMEを使用した日本語入力
   status: implemented # draft / implemented / deprecated
@@ -803,6 +813,19 @@
   components:
     - server/auth-service.js
 
+- id: API-0003
+  title: 'コンテナユーザー一覧取得の管理者チェック'
+  description: '/api/get-container-users で管理者権限を検証する機能'
+  category: api-server
+  status: implemented
+  acceptance:
+    - '管理者ロールを持つトークンでユーザー一覧を取得できる'
+    - '管理者でない場合は 403 エラーが返る'
+  tests:
+    - server/tests/get-container-users-admin.test.js
+  components:
+    - server/auth-service.js
+
 - id: COL-0001
   title: '他ユーザーのカーソル表示'
   description: '複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する'
@@ -824,7 +847,14 @@
   title: 'Client-Side WASM DB'
   description: 'オフライン操作と高速検索を実現するWebAssemblyデータベース'
   category: application
-  status: draft
+  status: implemented
+  components:
+    - client/src/lib/wasmDb.ts
+    - client/src/lib/db/dbService.ts
+    - client/src/lib/db/sqliteWorker.ts
+  tests:
+    - client/src/tests/wasmDb.test.ts
+    - client/e2e/new/DBW-0001.spec.ts
 
 - id: FFI-0001
   title: 'Fluid Framework Integration'
@@ -842,7 +872,14 @@
   title: 'Graph View'
   description: 'ページ間のリンクを視覚化するグラフ表示機能'
   category: navigation
-  status: draft
+  status: implemented
+  components:
+    - client/src/components/GraphView.svelte
+    - client/src/routes/graph/+page.svelte
+    - client/src/lib/graph.ts
+  tests:
+    - client/src/tests/graph.test.ts
+    - client/e2e/new/GVI-0001.spec.ts
 
 - id: SRE-001
   title: Advanced Search & Replace
@@ -911,3 +948,10 @@
     - client/src/lib/draftService.svelte.ts
   tests:
     - client/src/lib/draftService.svelte.spec.ts
+- id: SEC-0001
+  title: Dotenvx encrypted env files
+  description: Use dotenvx to encrypt server environment files
+  category: security
+  status: implemented
+  components: []
+  tests: []

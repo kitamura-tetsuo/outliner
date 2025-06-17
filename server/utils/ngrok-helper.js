@@ -3,6 +3,9 @@ const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
 
+// Local host configuration
+const LOCAL_HOST = process.env.LOCAL_HOST || "localhost";
+
 // .envファイルのパス
 const envPath = path.join(__dirname, "..", ".env");
 
@@ -13,7 +16,7 @@ const envPath = path.join(__dirname, "..", ".env");
 async function getNgrokPublicUrl() {
     try {
         // ngrokのAPIからトンネル情報を取得
-        const response = await axios.get("http://192.168.50.13:4040/api/tunnels");
+        const response = await axios.get(`http://${LOCAL_HOST}:4040/api/tunnels`);
         const tunnels = response.data.tunnels;
 
         // HTTPS URLを探す
