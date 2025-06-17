@@ -16,7 +16,8 @@
   components:
     - client/src/routes/min/+page.svelte
     - client/.env.example
-  tests: []
+  tests:
+    - client/e2e/core/FTR-0013.spec.ts
 
 - id: FTR-0014
   title: Configurable host and port via environment variables
