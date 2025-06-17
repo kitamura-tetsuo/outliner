@@ -26,9 +26,10 @@ test.describe("マルチカーソル ペースト", () => {
         await page.keyboard.type("third");
 
         // add multi cursors via Alt+click
-        await items.nth(0).locator(".item-text").click({ modifiers: ["Alt"] });
-        await items.nth(1).locator(".item-text").click({ modifiers: ["Alt"] });
-        await items.nth(2).locator(".item-text").click({ modifiers: ["Alt"] });
+        for (const i of [0, 1, 2]) {
+            const locator = await TestHelpers.getItemLocatorByIndex(page, i);
+            await locator!.locator(".item-text").click({ modifiers: ["Alt"] });
+        }
 
         // dispatch paste event with VSCode metadata
         const lines = ["A", "B", "C"];
@@ -45,9 +46,10 @@ test.describe("マルチカーソル ペースト", () => {
         }, lines);
 
         await page.waitForTimeout(500);
-        await expect(items.nth(0).locator(".item-text")).toHaveText(/A/);
-        await expect(items.nth(1).locator(".item-text")).toHaveText(/B/);
-        await expect(items.nth(2).locator(".item-text")).toHaveText(/C/);
+        for (const [i, ch] of ["A", "B", "C"].entries()) {
+            const locator = await TestHelpers.getItemLocatorByIndex(page, i);
+            await expect(locator!.locator(".item-text")).toHaveText(new RegExp(ch));
+        }
     });
 
     test("シングルカーソルからマルチカーソルへのペースト(full)", async ({ page }) => {
@@ -58,8 +60,10 @@ test.describe("マルチカーソル ペースト", () => {
         await page.keyboard.press("Enter");
         await page.keyboard.type("two");
 
-        await items.nth(0).locator(".item-text").click({ modifiers: ["Alt"] });
-        await items.nth(1).locator(".item-text").click({ modifiers: ["Alt"] });
+        for (const i of [0, 1]) {
+            const locator = await TestHelpers.getItemLocatorByIndex(page, i);
+            await locator!.locator(".item-text").click({ modifiers: ["Alt"] });
+        }
 
         const lines = ["X", "Y"];
         await page.evaluate((lines) => {
@@ -76,7 +80,9 @@ test.describe("マルチカーソル ペースト", () => {
 
         await page.waitForTimeout(500);
         const expected = "X\nY";
-        await expect(items.nth(0).locator(".item-text")).toHaveText(expected);
-        await expect(items.nth(1).locator(".item-text")).toHaveText(expected);
+        for (const i of [0, 1]) {
+            const locator = await TestHelpers.getItemLocatorByIndex(page, i);
+            await expect(locator!.locator(".item-text")).toHaveText(expected);
+        }
     });
 });
