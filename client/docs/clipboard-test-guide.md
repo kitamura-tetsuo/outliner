@@ -36,7 +36,13 @@ npm run test:e2e:localhost:debug e2e/core/FMT-0004.spec.ts
 npm run test:e2e:localhost:ui e2e/core/FMT-0004.spec.ts
 ```
 テストを実行する前に必ず `scripts/codex-setp.sh` を実行してください。
+This sets up Firebase emulators and other services required for the tests.
 Playwright テストは `scripts/run-tests.sh <spec>` を利用して 1 ファイルずつ実行します。
+
+### Test Guidelines
+
+- 要素取得には `data-item-id` 属性を利用し、`.nth()` の使用は避けます。
+- 画面状態の取得や DOM 操作は `TestHelpers` を介して行い、`page.evaluate` を直接書かないようにします。
 
 ## テストの内容
 
