@@ -822,3 +822,62 @@ exports.deleteCloudTask = onRequest({ cors: true }, async (req, res) => {
     });
   }
 });
+
+// Send password reset email
+exports.sendResetPassword = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    const actionCodeSettings = {
+      url: process.env.PASSWORD_RESET_REDIRECT || 'http://localhost:7090/auth/reset-password',
+      handleCodeInApp: false,
+    };
+    await admin.auth().generatePasswordResetLink(email, actionCodeSettings);
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    logger.error(`Failed to send reset link: ${error.message}`, { error });
+    return res.status(500).json({ error: 'Failed to send reset link' });
+  }
+});
+
+// Confirm password reset
+exports.confirmResetPassword = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+  try {
+    const { oobCode, newPassword } = req.body;
+    if (!oobCode || !newPassword) {
+      return res.status(400).json({ error: 'Missing fields' });
+    }
+    // Using Firebase Auth REST API as admin SDK does not support confirmPasswordReset
+    const apiKey = process.env.FIREBASE_API_KEY;
+    const url = `https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=${apiKey}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oobCode, newPassword })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text);
+    }
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    logger.error(`Failed to reset password: ${error.message}`, { error });
+    return res.status(500).json({ error: 'Failed to reset password' });
+  }
+});

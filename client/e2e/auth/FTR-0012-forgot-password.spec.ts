@@ -2,9 +2,6 @@ import { test, expect } from '@playwright/test';
 
 test.describe('FTR-0012 - Forgot Password UI Flow', () => {
     const forgotPasswordRoute = '/auth/forgot';
-    // Placeholder: The actual route for resetting the password after token verification.
-    // This might be a dynamic state on the forgot.svelte page or a separate route.
-    // For now, we assume a route like '/auth/reset-password' might be used, often with a token query parameter.
     const resetPasswordRoute = '/auth/reset-password';
 
     test('Forgot Password Page - UI and Submission', async ({ page }) => {
