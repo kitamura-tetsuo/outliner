@@ -86,7 +86,13 @@ const serviceAccount = {
     client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
 };
 
-if (!serviceAccount.project_id || !serviceAccount.private_key) {
+// Emulator環境では秘密鍵のチェックをスキップ
+const isEmulatorEnvironment = process.env.USE_FIREBASE_EMULATOR === "true" ||
+    process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+    process.env.FIRESTORE_EMULATOR_HOST ||
+    process.env.FIREBASE_EMULATOR_HOST;
+
+if (!serviceAccount.project_id || (!serviceAccount.private_key && !isEmulatorEnvironment)) {
     logger.error("Firebase service account environment variables are not properly configured.");
     process.exit(1);
 }
@@ -188,9 +194,20 @@ async function initializeFirebase() {
         }
 
         // 新しいインスタンスを初期化
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-        });
+        // Emulator環境では認証情報なしで初期化
+        if (
+            isEmulatorEnvironment &&
+            (!serviceAccount.private_key || serviceAccount.private_key.includes("Your Private Key Here"))
+        ) {
+            admin.initializeApp({
+                projectId: serviceAccount.project_id,
+            });
+        }
+        else {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+            });
+        }
         logger.info(`Firebase Admin SDK initialized successfully. Project ID: ${serviceAccount.project_id}`);
 
         // Firebase接続テスト - エミュレータの起動を待つ
