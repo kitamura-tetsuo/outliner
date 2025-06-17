@@ -218,8 +218,14 @@ scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 ```
 テスト実行前に必ず `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
+This script must run **before every test** to ensure all services are available.
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
+
+### E2E テストのガイドライン
+
+- `.nth()` などの位置指定は使わず、必ず `data-item-id` 属性を用いて要素を取得します。
+- DOM へアクセスする場合は `TestHelpers` 経由で実行し、`page.evaluate` を直接書かないようにします。
 
 ### Feature Map の更新
 
