@@ -1206,4 +1206,5 @@
   category: security
   status: implemented
   components: []
-  tests: []
+  tests:
+    - server/tests/sec-0001-env.test.js
