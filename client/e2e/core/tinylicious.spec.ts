@@ -1,4 +1,7 @@
-/** @feature TIN-0000 */
+/** @feature TIN-0000
+ *  Title   : Tinyliciousリアル接続テスト
+ *  Source  : docs/client-features.yaml
+ */
 // File in disabled/ as it requires a running Tinylicious server and proper test environment config.
 import {
     expect,
