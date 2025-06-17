@@ -138,7 +138,7 @@ describe("Logger", () => {
             DEV: true,
             NODE_ENV: "test",
             VITEST: "true",
-            VITE_API_SERVER_URL: "http://localhost:7071",
+            VITE_API_SERVER_URL: "http://localhost:7091",
         };
     });
 

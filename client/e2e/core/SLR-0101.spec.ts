@@ -1,3 +1,7 @@
+/** @feature SLR-0101
+ *  Title   : ボックス選択（矩形選択）機能 - マウス
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
@@ -64,7 +68,8 @@ test.describe("マウスによる矩形選択テスト", () => {
         }
 
         // 2番目のアイテムの位置を取得
-        const secondItemBounds = await page.locator(".outliner-item").nth(1).boundingBox();
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItemBounds = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).boundingBox();
         if (!secondItemBounds) {
             console.log("2番目のアイテムの位置を取得できませんでした。");
             return;

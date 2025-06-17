@@ -27,7 +27,7 @@ let isAuthenticated = $state(false);
 let error: string | null = $state(null);
 
 // APIサーバーのURLを取得
-const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
+const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7091");
 
 /**
  * ログファイルをローテーションする関数

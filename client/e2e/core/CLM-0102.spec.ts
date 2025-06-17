@@ -118,7 +118,8 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
             // 2番目のアイテムが表示されるまで待機（タイムアウトを短くする）
             try {
                 await page.waitForSelector(".outliner-item:nth-child(2)", { timeout: 5000 });
-                const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+                const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+                const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-text").textContent();
                 console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
                 expect(secondItemText).toContain("Test text 2"); // 2番目のアイテムに入力したテキストが含まれていることを確認
             }

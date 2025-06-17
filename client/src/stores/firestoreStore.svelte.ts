@@ -15,13 +15,13 @@ import { userManager } from "../auth/UserManager";
 import { getLogger } from "../lib/logger";
 const logger = getLogger();
 const firebaseConfig = {
-    apiKey: "AIzaSyCikgn1YY06j6ZlAJPYab1FIOKSQAuzcH4",
-    authDomain: "outliner-d57b0.firebaseapp.com",
-    projectId: "outliner-d57b0",
-    storageBucket: "outliner-d57b0.firebasestorage.app",
-    messagingSenderId: "560407608873",
-    appId: "1:560407608873:web:147817f4a93a4678606638",
-    measurementId: "G-FKSFRCT7GR",
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // ユーザーコンテナの型定義
@@ -35,7 +35,7 @@ export interface UserContainer {
 
 class GeneralStore {
     // ユーザーコンテナのストア
-    userContainer: UserContainer | null = $state(null);
+    userContainer: UserContainer | undefined = $state(undefined);
 }
 export const firestoreStore = new GeneralStore();
 
@@ -70,8 +70,8 @@ try {
 
     // Firebase Emulatorに接続
     if (useEmulator) {
-        // 環境変数から接続情報を取得（デフォルトは192.168.50.13:58080）
-        const emulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || "192.168.50.13";
+        // 環境変数から接続情報を取得（デフォルトはlocalhost:58080）
+        const emulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || "localhost";
         const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "58080", 10);
 
         // エミュレーター接続情報をログに出力
@@ -100,14 +100,14 @@ catch (error) {
 }
 
 // リスナーの解除関数
-let unsubscribe: (() => void) | null = null;
+let unsubscribe: (() => void) | undefined = undefined;
 
 // Firestoreとの同期を開始する関数
 function initFirestoreSync(): () => void {
     // 以前のリスナーがあれば解除
     if (unsubscribe) {
         unsubscribe();
-        unsubscribe = null;
+        unsubscribe = undefined;
     }
 
     const currentUser = userManager.getCurrentUser();
@@ -162,7 +162,7 @@ function initFirestoreSync(): () => void {
         return () => {
             if (unsubscribe) {
                 unsubscribe();
-                unsubscribe = null;
+                unsubscribe = undefined;
             }
         };
     }
@@ -187,7 +187,9 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
         }
 
         // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        const functionsHost = import.meta.env.VITE_FIREBASE_FUNCTIONS_HOST || "localhost";
+        const functionsPort = import.meta.env.VITE_FIREBASE_FUNCTIONS_PORT || "57070";
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || `http://${functionsHost}:${functionsPort}`;
         logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
@@ -327,7 +329,9 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         }
 
         // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        const functionsHost = import.meta.env.VITE_FIREBASE_FUNCTIONS_HOST || "localhost";
+        const functionsPort = import.meta.env.VITE_FIREBASE_FUNCTIONS_PORT || "57070";
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || `http://${functionsHost}:${functionsPort}`;
         logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
@@ -359,31 +363,38 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
 
 // アプリ起動時に自動的に初期化
 if (typeof window !== "undefined") {
-    let cleanup: (() => void) | null = null;
+    // テスト環境で認証が無効化されている場合はFirestore同期をスキップ
+    const authDisabled = import.meta.env.VITE_DISABLE_AUTH_FOR_TESTS === "true";
+    if (authDisabled) {
+        logger.info("Authentication disabled for tests, skipping Firestore sync initialization");
+    }
+    else {
+        let cleanup: (() => void) | undefined = undefined;
 
-    // 認証状態が変更されたときに Firestore 同期を初期化/クリーンアップ
-    const unsubscribeAuth = userManager.addEventListener(authResult => {
-        // 前回のクリーンアップがあれば実行
-        if (cleanup) {
-            cleanup();
-            cleanup = null;
-        }
+        // 認証状態が変更されたときに Firestore 同期を初期化/クリーンアップ
+        const unsubscribeAuth = userManager.addEventListener(authResult => {
+            // 前回のクリーンアップがあれば実行
+            if (cleanup) {
+                cleanup();
+                cleanup = undefined;
+            }
 
-        // 認証されていればリスナーを設定
-        if (authResult) {
-            cleanup = initFirestoreSync();
-        }
-        else {
-            // 未認証の場合はコンテナを空にする
-            firestoreStore.userContainer = null;
-        }
-    });
+            // 認証されていればリスナーを設定
+            if (authResult) {
+                cleanup = initFirestoreSync();
+            }
+            else {
+                // 未認証の場合はコンテナを空にする
+                firestoreStore.userContainer = undefined;
+            }
+        });
 
-    // ページアンロード時のクリーンアップ
-    window.addEventListener("beforeunload", () => {
-        if (cleanup) {
-            cleanup();
-        }
-        unsubscribeAuth();
-    });
+        // ページアンロード時のクリーンアップ
+        window.addEventListener("beforeunload", () => {
+            if (cleanup) {
+                cleanup();
+            }
+            unsubscribeAuth();
+        });
+    }
 }

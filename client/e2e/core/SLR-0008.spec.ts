@@ -53,7 +53,8 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         });
 
         // 最初のアイテムをクリックして選択
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
@@ -159,7 +160,8 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         });
 
         // 最初のアイテムをクリックして選択
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItemId2 = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId2}"]`);
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
@@ -250,7 +252,8 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         }, selectionText);
 
         // 2つ目のアイテムをクリックして選択
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
@@ -342,7 +345,8 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         });
 
         // 最初のアイテムをクリックして選択
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItemId3 = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId3}"]`);
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
@@ -374,7 +378,8 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await page.waitForTimeout(300);
 
         // 2つ目のアイテムをクリックして選択
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId2 = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId2}"]`);
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 

@@ -65,7 +65,8 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 2つ目のアイテムを取得
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
 
         // 2つ目のアイテムをクリックして選択
         await secondItem.locator(".item-content").click({ force: true });
@@ -122,8 +123,10 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         expect(afterCount).toBeLessThan(beforeCount);
 
         // 残りのアイテムのテキストを確認
-        const firstItemTextAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
-        const secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
+        const secondItemIdAfterDel = await TestHelpers.getItemIdByIndex(page, 1);
+        const firstItemTextAfter = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text").textContent();
+        const secondItemTextAfter = await page.locator(`.outliner-item[data-item-id="${secondItemIdAfterDel}"]`).locator(".item-text").textContent();
 
         // テキストが存在することを確認
         expect(firstItemTextAfter || "").toBeTruthy();
@@ -138,7 +141,8 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 2つ目のアイテムを取得
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId2 = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId2}"]`);
 
         // 2つ目のアイテムをクリックして選択
         await secondItem.locator(".item-content").click({ force: true });
@@ -199,8 +203,10 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         expect(afterCount).toBeLessThan(beforeCount);
 
         // 残りのアイテムのテキストを確認
-        const firstItemTextAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
-        const secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+        const firstItemId2 = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItemTextAfter = await page.locator(`.outliner-item[data-item-id="${firstItemId2}"]`).locator(".item-text").textContent();
+        const secondItemIdAfterDel2 = afterCount > 1 ? await TestHelpers.getItemIdByIndex(page, 1) : null;
+        const secondItemTextAfter = secondItemIdAfterDel2 ? await page.locator(`.outliner-item[data-item-id="${secondItemIdAfterDel2}"]`).locator(".item-text").textContent() : null;
 
         // テキストが存在することを確認
         expect(firstItemTextAfter || "").toBeTruthy();
@@ -219,7 +225,8 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 2つ目のアイテムを取得
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId3 = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId3}"]`);
 
         // 2つ目のアイテムをクリックして選択
         await secondItem.locator(".item-content").click({ force: true });
@@ -280,7 +287,8 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         expect(afterCount).toBeLessThan(beforeCount);
 
         // 結合されたアイテムのテキストを確認
-        const secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+        const secondItemIdAfterMerge = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItemTextAfter = await page.locator(`.outliner-item[data-item-id="${secondItemIdAfterMerge}"]`).locator(".item-text").textContent();
 
         // 結合されたテキストが正しいことを確認（前半部分と後半部分が結合されている）
         expect(secondItemTextAfter).toContain("Sec");
@@ -295,7 +303,8 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 最初のアイテムを取得
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItemId3 = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId3}"]`);
 
         // 最初のアイテムをクリックして選択
         await firstItem.locator(".item-content").click({ force: true });
@@ -355,7 +364,8 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.keyboard.type("INSERTED");
 
         // 入力されたテキストが正しい位置に挿入されたことを確認
-        const firstItemTextAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
+        const firstItemIdAfterInsert = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItemTextAfter = await page.locator(`.outliner-item[data-item-id="${firstItemIdAfterInsert}"]`).locator(".item-text").textContent();
 
         // 入力されたテキストが正しい位置に挿入されていることを確認
         expect(firstItemTextAfter).toContain("INSERTED");

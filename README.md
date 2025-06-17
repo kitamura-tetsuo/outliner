@@ -35,10 +35,26 @@ cp .env.example .env
 cd ../server
 cp .env.example .env
 
+# ネットワーク経由でアクセスする場合は .env の `LOCAL_HOST` にローカル IP を設定
+
 # Firebase Functions側
 cd ../functions
 cp .env.example .env
 ```
+
+### .envファイルの暗号化
+
+開発用の環境変数ファイルは [`dotenvx`](https://dotenvx.com/) を使って暗号化します。
+初回セットアップ後に以下を実行して `.env.development` を暗号化してください。
+
+```bash
+npx @dotenvx/dotenvx encrypt --env-file server/.env.development
+```
+
+暗号化キーは `.env.keys` に保存されます。このファイルはリポジトリに含めないよう
+`.gitignore` にエントリがあることを確認してください。
+
+復号化が必要な場合は `decrypt` サブコマンドを使用します。
 
 ## 開発サーバーの起動
 
@@ -119,14 +135,30 @@ firebase deploy
 
 ### 開発環境
 
-- クライアント: `VITE_PORT=7070`
-- API: `PORT=7071`
-- Tinylicious: `VITE_TINYLICIOUS_PORT=7072`
+クラウド上のサービスを利用する場合と、Firebase Emulator を利用する場合で使用するポートが異なります。
+
+- **クラウド環境アクセス用**
+  - クライアント: `VITE_PORT=7070`
+  - API: `PORT=7071`
+  - Tinylicious: `VITE_TINYLICIOUS_PORT=7072`
+  - Firebase Functions はデバッグのためローカルを利用します
+  - Firebase Functions Host: `VITE_FIREBASE_FUNCTIONS_HOST=localhost`
+  - Firebase Functions Port: `VITE_FIREBASE_FUNCTIONS_PORT=57070`
+
+- **エミュレータ利用時**
+  - クライアント: `VITE_PORT=7090`
+  - API: `PORT=7091`
+  - Tinylicious: `VITE_TINYLICIOUS_PORT=7092`
+  - Firebase Functions Host: `VITE_FIREBASE_FUNCTIONS_HOST=localhost`
+  - Firebase Functions Port: `VITE_FIREBASE_FUNCTIONS_PORT=57070`
 
 ### テスト環境
 
-- クライアント: `VITE_PORT=7080`
-- Tinylicious: `VITE_TINYLICIOUS_PORT=7082`
+- クライアント: `VITE_PORT=7090`
+- Playwright: `PORT=7090` (override when running e2e tests)
+- Tinylicious: `VITE_TINYLICIOUS_PORT=7092`
+- Firebase Functions Host: `VITE_FIREBASE_FUNCTIONS_HOST=localhost`
+- Firebase Functions Port: `VITE_FIREBASE_FUNCTIONS_PORT=57070`
 
 ## Firebase Hosting + Functions
 
@@ -179,6 +211,39 @@ npm run test:unit
 
 # E2E テスト
 npm run test:e2e
+
+# Playwright テストを 1 ファイルずつ実行する場合
+scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
+# 環境変数 `PORT` を指定して別ポートで実行する例
+PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 ```
+テスト実行前に必ず `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
+
+### Feature Map の更新
+
+テストファイルや `docs/client-features.yaml` を変更した後は、機能とテストの対応表を更新するため次のコマンドを実行してください。
+
+```bash
+python scripts/gen_feature_map.py
+git add docs/feature-map.md
+```
+
+生成された `docs/feature-map.md` もコミットに含めることで、常に最新の機能一覧を共有できます。
+
+## Using encrypted .env files
+
+Encrypted `.env` files created with `dotenvx` can be used directly when running
+commands. Prepend `npx dotenvx run --env-file=<file>` to your usual command.
+
+```bash
+# Development
+npx dotenvx run --env-file=server/.env.development npm run dev
+
+# Testing
+npx dotenvx run --env-file=server/.env.test npm run test:e2e
+
+# Deployment
+npx dotenvx run --env-file=server/.env.production firebase deploy
+```

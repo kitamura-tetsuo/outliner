@@ -72,6 +72,15 @@ create_log_directories() {
   done
 }
 
+# Remove all files in log directories
+clear_log_files() {
+  for dir in "${LOG_DIRS[@]}"; do
+    if [ -d "${dir}" ]; then
+      rm -rf "${dir}"/* 2>/dev/null || true
+    fi
+  done
+}
+
 # Install npm dependencies if needed
 npm_ci_if_needed() {
   if [ ! -d node_modules ]; then
@@ -203,7 +212,7 @@ start_firebase_emulator() {
 
   echo "Starting Firebase emulator..."
   cd "${ROOT_DIR}"
-  firebase emulators:start --project ${FIREBASE_PROJECT_ID} 2>&1 | tee "${ROOT_DIR}/server/logs/firebase-emulator.log" &
+  firebase emulators:start --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
   cd "${ROOT_DIR}"
 }
 
@@ -211,7 +220,7 @@ start_firebase_emulator() {
 start_tinylicious() {
   echo "Starting Tinylicious server on port ${TEST_FLUID_PORT}..."
   cd "${ROOT_DIR}/client"
-  PORT=${TEST_FLUID_PORT} npx tinylicious 2>&1 | tee "${ROOT_DIR}/server/logs/tinylicious.log" &
+  PORT=${TEST_FLUID_PORT} npx tinylicious > "${ROOT_DIR}/server/logs/tinylicious.log" 2>&1 &
   cd "${ROOT_DIR}"
 }
 
@@ -219,7 +228,7 @@ start_tinylicious() {
 start_api_server() {
   echo "Starting API server on port ${TEST_API_PORT}..."
   cd "${ROOT_DIR}/server"
-  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} 2>&1 | tee "${ROOT_DIR}/server/logs/test-auth-service-tee.log" &
+  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} </dev/null > "${ROOT_DIR}/server/logs/test-auth-service-tee.log" 2>&1 &
   cd "${ROOT_DIR}"
 }
 
@@ -227,7 +236,7 @@ start_api_server() {
 start_sveltekit_server() {
   echo "Starting SvelteKit server on port ${VITE_PORT}..."
   cd "${ROOT_DIR}/client"
-  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${VITE_PORT} 2>&1 | tee "${ROOT_DIR}/server/logs/test-svelte-kit.log" &
+  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${VITE_PORT} </dev/null > "${ROOT_DIR}/server/logs/test-svelte-kit.log" 2>&1 &
   cd "${ROOT_DIR}"
 }
 

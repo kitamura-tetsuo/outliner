@@ -3,10 +3,13 @@ const { spawn } = require("child_process");
 const path = require("path");
 const { setupNgrokUrl } = require("./utils/ngrok-helper");
 
+// Local host configuration
+const LOCAL_HOST = process.env.LOCAL_HOST || "localhost";
+
 // サーバーとngrokのプロセスを格納するオブジェクト
 const processes = {
-    ngrok: null,
-    server: null,
+    ngrok: undefined,
+    server: undefined,
 };
 
 // 終了時のクリーンアップ
@@ -47,13 +50,13 @@ function startNgrok(port) {
         processes.ngrok = ngrok;
 
         let ngrokOutput = "";
-        let timeout = null;
+        let timeout = undefined;
 
         // 3秒経過してもURL取得できなかったらAPIから取得を試みる
         timeout = setTimeout(async () => {
             console.log("ngrokの起動を待機しています...");
             resolve(true); // 次のステップに進む
-        }, 7071);
+        }, 7091);
 
         ngrok.stdout.on("data", data => {
             ngrokOutput += data.toString();
@@ -65,7 +68,7 @@ function startNgrok(port) {
         });
 
         ngrok.on("close", code => {
-            processes.ngrok = null;
+            processes.ngrok = undefined;
             console.log(`ngrokが終了しました（コード: ${code}）`);
 
             if (code !== 0 && processes.server) {
@@ -105,7 +108,7 @@ function startServer() {
         });
 
         server.on("close", code => {
-            processes.server = null;
+            processes.server = undefined;
             console.log(`サーバーが終了しました（コード: ${code}）`);
 
             if (code !== 0 && processes.ngrok) {
@@ -129,7 +132,7 @@ function startServer() {
  */
 async function start() {
     try {
-        const port = process.env.PORT || 7071;
+        const port = process.env.PORT || 7091;
 
         // ngrokを起動
         const ngrokStarted = await startNgrok(port);
@@ -163,7 +166,7 @@ async function start() {
 
         console.log("\n=====================================================");
         console.log("アプリケーションが正常に起動しました！");
-        console.log(`バックエンドサーバー: http://192.168.50.13:${port}`);
+        console.log(`バックエンドサーバー: http://${LOCAL_HOST}:${port}`);
         if (ngrokUrl) {
             console.log(`パブリックURL: ${ngrokUrl}`);
         }

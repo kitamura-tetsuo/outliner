@@ -1,3 +1,7 @@
+/** @feature LNK-0006
+ *  Title   : リンク先ページの存在確認機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
@@ -38,29 +42,31 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
         await page.waitForTimeout(500);
 
         // LNK-0003で使用した成功パターンを適用してリンクを作成
-        await page.evaluate((pageName) => {
+        await page.evaluate(pageName => {
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    console.log('Using cursor.insertText to insert link');
+                    console.log("Using cursor.insertText to insert link");
 
                     // 現在のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
-                        target.updateText('');
+                        target.updateText("");
                         cursor.offset = 0;
                     }
 
                     // 内部リンクを挿入
                     cursor.insertText(`[${pageName}]`);
-                    console.log('Link inserted via cursor.insertText');
-                } else {
-                    console.log('No cursor instances found');
+                    console.log("Link inserted via cursor.insertText");
                 }
-            } else {
-                console.log('editorOverlayStore not found');
+                else {
+                    console.log("No cursor instances found");
+                }
+            }
+            else {
+                console.log("editorOverlayStore not found");
             }
         }, existingPageName);
 
@@ -112,29 +118,31 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
         await page.waitForTimeout(500);
 
         // 存在しないページへのリンクを挿入
-        await page.evaluate((pageName) => {
+        await page.evaluate(pageName => {
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    console.log('Using cursor.insertText to insert non-existent link');
+                    console.log("Using cursor.insertText to insert non-existent link");
 
                     // 現在のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
-                        target.updateText('');
+                        target.updateText("");
                         cursor.offset = 0;
                     }
 
                     // 存在しないページへのリンクを挿入
                     cursor.insertText(`[${pageName}]`);
-                    console.log('Non-existent link inserted via cursor.insertText');
-                } else {
-                    console.log('No cursor instances found');
+                    console.log("Non-existent link inserted via cursor.insertText");
                 }
-            } else {
-                console.log('editorOverlayStore not found');
+                else {
+                    console.log("No cursor instances found");
+                }
+            }
+            else {
+                console.log("editorOverlayStore not found");
             }
         }, nonExistentPage);
 
@@ -161,22 +169,12 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
         const existingLink = page.locator(`a.internal-link:has-text("${existingPageName}")`);
 
         // リンクが見つからない場合は、テストを一時的にスキップ
-        if (await existingLink.count() === 0) {
-            console.log("Existing page link not found. This might be due to implementation differences.");
-            console.log("Skipping this test for now.");
-            test.skip();
-            return;
-        }
+        expect(await existingLink.count()).toBeGreaterThan(0);
 
         // クラスが適用されていない場合は、テストを一時的にスキップ
         const existingLinkClass = await existingLink.getAttribute("class");
         console.log("Existing link class:", existingLinkClass);
-        if (!existingLinkClass?.includes("page-exists")) {
-            console.log("Page existence classes not applied. This might be due to implementation differences.");
-            console.log("Skipping this test for now.");
-            test.skip();
-            return;
-        }
+        expect(existingLinkClass?.includes("page-exists")).toBe(true);
 
         await expect(existingLink).toHaveClass(/page-exists/);
 
@@ -208,22 +206,12 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
         const nonExistentLink = page.locator(`a.internal-link:has-text("${nonExistentPage}")`);
 
         // リンクが見つからない場合は、テストを一時的にスキップ
-        if (await nonExistentLink.count() === 0) {
-            console.log("Non-existent page link not found. This might be due to implementation differences.");
-            console.log("Skipping this test for now.");
-            test.skip();
-            return;
-        }
+        expect(await nonExistentLink.count()).toBeGreaterThan(0);
 
         // クラスが適用されていない場合は、テストを一時的にスキップ
         const nonExistentLinkClass = await nonExistentLink.getAttribute("class");
         console.log("Non-existent link class:", nonExistentLinkClass);
-        if (!nonExistentLinkClass?.includes("page-not-exists")) {
-            console.log("Page existence classes not applied. This might be due to implementation differences.");
-            console.log("Skipping this test for now.");
-            test.skip();
-            return;
-        }
+        expect(nonExistentLinkClass?.includes("page-not-exists")).toBe(true);
 
         // リンクのクラスを確認
         await expect(nonExistentLink).toHaveClass(/page-not-exists/);
@@ -259,22 +247,12 @@ test.describe("LNK-0006: リンク先ページの存在確認機能", () => {
         const nonExistentLink = page.locator(`a.internal-link:has-text("${newPageName}")`);
 
         // リンクが見つからない場合は、テストを一時的にスキップ
-        if (await nonExistentLink.count() === 0) {
-            console.log("New page link not found. This might be due to implementation differences.");
-            console.log("Skipping this test for now.");
-            test.skip();
-            return;
-        }
+        expect(await nonExistentLink.count()).toBeGreaterThan(0);
 
         // クラスが適用されていない場合は、テストを一時的にスキップ
         const nonExistentLinkClass = await nonExistentLink.getAttribute("class");
         console.log("New page link class:", nonExistentLinkClass);
-        if (!nonExistentLinkClass?.includes("page-not-exists")) {
-            console.log("Page existence classes not applied. This might be due to implementation differences.");
-            console.log("Skipping this test for now.");
-            test.skip();
-            return;
-        }
+        expect(nonExistentLinkClass?.includes("page-not-exists")).toBe(true);
 
         // リンクのクラスを確認（存在しないページ）
         await expect(nonExistentLink).toHaveClass(/page-not-exists/);

@@ -3,7 +3,8 @@ require("dotenv").config();
 const fetch = require("node-fetch");
 
 // APIサーバーのURL
-const API_BASE_URL = process.env.API_BASE_URL || "http://192.168.50.16:7071";
+const LOCAL_HOST = process.env.LOCAL_HOST || "localhost";
+const API_BASE_URL = process.env.API_BASE_URL || `http://${LOCAL_HOST}:7091`;
 
 // テスト用認証情報
 const testCredentials = {
@@ -47,7 +48,7 @@ async function testEmailPasswordLogin() {
 
         const loginData = await loginResponse.json();
         console.log(`${colors.green}ログイン成功!${colors.reset}`);
-        console.log(`ユーザー: ${JSON.stringify(loginData.user, null, 2)}`);
+        console.log(`ユーザー: ${JSON.stringify(loginData.user, undefined, 2)}`);
 
         if (!loginData.customToken) {
             console.error(`${colors.red}カスタムトークンが返されませんでした${colors.reset}`);
@@ -90,7 +91,7 @@ async function testEmailPasswordLogin() {
         const fluidTokenData = await fluidTokenResponse.json();
         console.log(`${colors.green}Fluidトークン取得成功!${colors.reset}`);
         console.log(`テナントID: ${fluidTokenData.tenantId}`);
-        console.log(`ユーザー: ${JSON.stringify(fluidTokenData.user, null, 2)}`);
+        console.log(`ユーザー: ${JSON.stringify(fluidTokenData.user, undefined, 2)}`);
 
         if (fluidTokenData.token) {
             console.log(`${colors.green}トークン検証に成功しました！${colors.reset}`);

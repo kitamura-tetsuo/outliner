@@ -192,7 +192,7 @@ function generateAzureFluidToken(user, containerId = undefined) {
             name: user.displayName || "Anonymous",
         },
         tenantId: azureConfig.tenantId,
-        containerId: containerId || null,
+        containerId: containerId || undefined,
     };
 }
 

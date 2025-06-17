@@ -6,13 +6,13 @@ variables:
   VITE_USE_FIREBASE_EMULATOR: 'true'
 
   # Server Ports
-  TEST_API_PORT: '7081'
-  TEST_FLUID_PORT: '7082'
-  VITE_TINYLICIOUS_PORT: '7082'
+  TEST_API_PORT: '7091'
+  TEST_FLUID_PORT: '7092'
+  VITE_TINYLICIOUS_PORT: '7092'
 
   # Firebase Emulator
   VITE_FIREBASE_EMULATOR_UI_PORT: '54400'
-  VITE_AUTH_EMULATOR_HOST: 'localhost'
+  VITE_FIREBASE_AUTH_EMULATOR_HOST: 'localhost'
   VITE_AUTH_EMULATOR_PORT: '59099'
   VITE_FIRESTORE_EMULATOR_HOST: 'localhost'
   VITE_FIRESTORE_EMULATOR_PORT: '58080'
@@ -22,7 +22,7 @@ variables:
   VITE_USE_API_AUTH: 'true'
   VITE_USE_TINYLICIOUS: 'true'
   VITE_FORCE_AZURE: 'false'
-  VITE_PORT: '7080'
+  VITE_PORT: '7090'
   VITE_HOST: 'localhost'
   VITE_TINYLICIOUS_ENDPOINT: 'http://localhost:${TEST_FLUID_PORT}'
 
@@ -39,7 +39,7 @@ variables:
 
   # Server Environment Variables
   PORT: '${TEST_API_PORT}'
-  CORS_ORIGIN: 'http://localhost:7070,http://localhost:7080'
+  CORS_ORIGIN: 'http://localhost:7090'
   NODE_ENV: 'test'
   SESSION_SECRET: 'test-session-secret'
 
@@ -50,7 +50,7 @@ stages:
 e2e-tests:
   stage: test
   variables:
-    VITE_TINYLICIOUS_PORT: '7082'
+    VITE_TINYLICIOUS_PORT: '7092'
   before_script:
     - 'pwd'
     - 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends default-jre'

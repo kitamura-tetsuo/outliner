@@ -1,3 +1,7 @@
+/** @feature LNK-0004
+ *  Title   : 仮ページ機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
@@ -103,23 +107,25 @@ test.describe("LNK-0004: 仮ページ機能", () => {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    console.log('Using cursor.insertText to insert text');
+                    console.log("Using cursor.insertText to insert text");
 
                     // 現在のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
-                        target.updateText('');
+                        target.updateText("");
                         cursor.offset = 0;
                     }
 
                     // 新しいテキストを挿入
-                    cursor.insertText('これは編集された仮ページです。');
-                    console.log('Text inserted via cursor.insertText');
-                } else {
-                    console.log('No cursor instances found');
+                    cursor.insertText("これは編集された仮ページです。");
+                    console.log("Text inserted via cursor.insertText");
                 }
-            } else {
-                console.log('editorOverlayStore not found');
+                else {
+                    console.log("No cursor instances found");
+                }
+            }
+            else {
+                console.log("editorOverlayStore not found");
             }
         });
 
@@ -330,12 +336,7 @@ test.describe("LNK-0004: 仮ページ機能", () => {
         const createButton = page.locator(".temporary-page-notice button:has-text('ページを作成')");
 
         // ボタンが見つからない場合は、テストを一時的にスキップ
-        if (await createButton.count() === 0) {
-            console.log("Create page button not found. This might be due to implementation differences.");
-            console.log("Skipping this test for now.");
-            test.skip();
-            return;
-        }
+        expect(await createButton.count()).toBeGreaterThan(0);
 
         await createButton.click();
 

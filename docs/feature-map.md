@@ -4,7 +4,9 @@
 |---------|-------|------------|--------|
 | API-0001 | Firebase Functions APIサーバーの修正 | — | implemented |
 | API-0002 | Firebase emulator起動待機機能 | — | implemented |
+| API-0003 | コンテナユーザー一覧取得の管理者チェック | — | implemented |
 | APP-0001 | プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定 | client/e2e/core/APP-0001.spec.ts | implemented |
+| BRF-0001 | Branch forest item extraction | — | implemented |
 | CHT-001 | Chart Component | — | implemented |
 | CLM-0001 | クリックで編集モードに入る | client/e2e/core/CLM-0001.spec.ts | implemented |
 | CLM-0002 | 左へ移動 | client/e2e/core/CLM-0002.spec.ts | implemented |
@@ -17,9 +19,11 @@
 | CLM-0101 | アイテム間移動時のカーソル重複と入力分散問題 | client/e2e/core/CLM-0101.spec.ts | implemented |
 | CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | client/e2e/core/CLM-0102.spec.ts | implemented |
 | CLM-0103 | フォーマット文字列でのカーソル操作 | client/e2e/core/CLM-0103.spec.ts | implemented |
-| COL-0001 | 他ユーザーのカーソル表示 | client/e2e/collaboration/COL-0001.spec.ts <br> Note: Logic fixed, env exec pending. | implemented |
+| COL-0001 | 他ユーザーのカーソル表示 | client/e2e/disabled/COL-0001.spec.ts<br>client/e2e/collaboration/COL-0001.spec.ts <br> Note: Logic fixed, env exec pending. | implemented |
 | DBW-0001 | Client-Side WASM DB | client/src/lib/__tests__/wasmDb.test.ts (unit) <br> Note: Stores container metadata via wasmDb.ts. | implemented |
 | DBW-001 | Client-Side SQL Database | client/e2e/new/DBW-001.spec.ts | implemented |
+| EMB-0001 | Outliner Table & Chart Embedding | client/e2e/new/EMB-0001.spec.ts | implemented |
+| ERR-0001 | エラーハンドリングテスト | client/e2e/new/ERR-0001.spec.ts | implemented |
 | FFI-0001 | Fluid Framework Integration | client/e2e/disabled/FFI-0001.spec.ts <br> Note: Logic fixed, file move blocked. Env exec pending. | implemented |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | client/e2e/core/FLD-0001.spec.ts | implemented |
 | FMT-0001 | フォーマット表示 | client/e2e/core/FMT-0001.spec.ts | implemented |
@@ -28,21 +32,29 @@
 | FMT-0004 | クリップボードからのペーストとフォーマット | client/e2e/core/FMT-0004.spec.ts | implemented |
 | FMT-0005 | Visual Studio Codeのコピー/ペースト仕様 | client/e2e/disabled/FMT-0005.spec.ts <br> Note: Partially refactored, complex simulations commented. File move blocked. Env exec pending. | implemented |
 | FMT-0006 | カーソル移動時のフォーマット表示の一貫性 | client/e2e/core/FMT-0006.spec.ts | implemented |
-| FMT-0007 | 内部リンク機能の表示 | — | implemented |
-| FTR-0012 | User can reset forgotten password | client/e2e/auth/FTR-0012-forgot-password.spec.ts (UI structure) <br> Note: Frontend components seem missing. Test execution blocked. | implemented |
+| FMT-0007 | 内部リンク機能の表示 | client/e2e/core/FMT-0007.spec.ts | implemented |
+| FTR-0012 | User can reset forgotten password | client/e2e/core/FTR-0012.spec.ts<br>client/e2e/auth/FTR-0012-forgot-password.spec.ts (UI structure) <br> Note: Frontend components seem missing. Test execution blocked. | implemented |
+| FTR-0013 | Use environment variables in min page | client/e2e/core/FTR-0013.spec.ts | implemented |
+| FTR-0014 | Configurable host and port via environment variables | — | implemented |
+| FTR-0016 | Configurable Playwright port via PORT env | client/e2e/new/FTR-0016.spec.ts | implemented |
 | GRF-001 | Graph View | — | implemented |
 | GVI-0001 | Graph View | — | superseded by GRF-001 |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
-| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
-| LNK-0001 | 内部リンクのURL生成機能 | — | implemented |
-| LNK-0002 | 内部リンクの機能検証 | — | implemented |
-| LNK-0003 | 内部リンクのナビゲーション機能 | — | implemented |
-| LNK-0004 | 仮ページ機能 | — | implemented |
-| LNK-0005 | リンクプレビュー機能 | — | implemented |
-| LNK-0006 | リンク先ページの存在確認機能 | — | implemented |
-| LNK-0007 | バックリンク機能 | — | implemented |
+| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001.spec.ts<br>client/e2e/core/ITM-0001-title.spec.ts | implemented |
+| LNK-0001 | 内部リンクのURL生成機能 | client/e2e/core/LNK-0001.spec.ts | implemented |
+| LNK-0002 | 内部リンクの機能検証 | client/e2e/core/LNK-0002.spec.ts | implemented |
+| LNK-0003 | 内部リンクのナビゲーション機能 | client/e2e/core/LNK-0003.spec.ts | implemented |
+| LNK-0004 | 仮ページ機能 | client/e2e/core/LNK-0004.spec.ts | implemented |
+| LNK-0005 | リンクプレビュー機能 | client/e2e/core/LNK-0005.spec.ts | implemented |
+| LNK-0006 | リンク先ページの存在確認機能 | client/e2e/core/LNK-0006.spec.ts | implemented |
+| LNK-0007 | バックリンク機能 | client/e2e/core/LNK-0007.spec.ts | implemented |
+| LOG-0001 | Log test servers to files only | server/tests/server-log-file.test.js | implemented |
 | NAV-0001 | プロジェクト選択とページナビゲーション | client/e2e/core/NAV-0001.spec.ts | implemented |
 | NAV-0002 | プロジェクトページへのリンク機能 | client/e2e/core/NAV-0002.spec.ts | implemented |
+| PERF-0001 | パフォーマンステスト | client/e2e/new/PERF-0001.spec.ts<br>client/e2e/disabled/PERF-0001.spec.ts | implemented |
+| SEC-0001 | Dotenvx encrypted env files | — | implemented |
+| SHR-0001 | プロジェクト共有テスト | client/e2e/new/SHR-0001.spec.ts | implemented |
+| SHR-0002 | リアルタイム共有テスト | client/e2e/new/SHR-0002.spec.ts | implemented |
 | SLR-0001 | Shift + 上下左右 | client/e2e/core/SLR-0001.spec.ts | implemented |
 | SLR-0002 | 行頭まで選択 | client/e2e/core/SLR-0002.spec.ts | implemented |
 | SLR-0003 | 行末まで選択 | client/e2e/core/SLR-0003.spec.ts | implemented |
@@ -55,9 +67,16 @@
 | SLR-0010 | 選択範囲のフォーマット変更 | client/e2e/core/SLR-0010.spec.ts | implemented |
 | SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | client/e2e/core/SLR-0100.spec.ts | implemented |
 | SLR-0101 | ボックス選択（矩形選択）機能 - マウス | client/e2e/core/SLR-0101.spec.ts | implemented |
+| SRC-0001 | Basic Search Panel | client/e2e/new/SRC-0001.spec.ts | implemented |
+| SRC-0002 | Replace All via Search Panel | client/e2e/new/SRC-0002.spec.ts | implemented |
 | SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts | implemented |
 | SRP-0001 | 高度な検索と置換 | — | implemented |
 | TBL-0001 | Editable JOIN Table | client/e2e/new/TBL-0001.spec.ts | implemented |
+| TBL-0002 | EditableQueryGrid 詳細テスト | client/e2e/new/TBL-0002.spec.ts | implemented |
+| TBL-0003 | SQL クエリ実行テスト | client/e2e/new/TBL-0003.spec.ts | implemented |
+| TBL-0004 | チャート連携テスト | client/e2e/new/TBL-0004.spec.ts | implemented |
+| TBL-0005 | queryStore.ts の詳細テスト | — | implemented |
+| TBL-0006 | FluidTableClient の統合テスト | — | implemented |
 | TST-0001 | SharedTreeデータ検証ユーティリティ | client/e2e/utils/tree-validation.spec.ts | implemented |
 | TST-0002 | カーソル情報検証ユーティリティ | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | テストヘルパーユーティリティ | — | implemented |

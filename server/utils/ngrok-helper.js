@@ -3,17 +3,20 @@ const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
 
+// Local host configuration
+const LOCAL_HOST = process.env.LOCAL_HOST || "localhost";
+
 // .envファイルのパス
 const envPath = path.join(__dirname, "..", ".env");
 
 /**
  * ngrokのAPI経由で現在のパブリックURLを取得
- * @returns {Promise<string|null>} ngrokのパブリックURL
+ * @returns {Promise<string | undefined>} ngrokのパブリックURL
  */
 async function getNgrokPublicUrl() {
     try {
         // ngrokのAPIからトンネル情報を取得
-        const response = await axios.get("http://192.168.50.13:4040/api/tunnels");
+        const response = await axios.get(`http://${LOCAL_HOST}:4040/api/tunnels`);
         const tunnels = response.data.tunnels;
 
         // HTTPS URLを探す
@@ -31,12 +34,12 @@ async function getNgrokPublicUrl() {
         }
 
         console.warn("アクティブなngrokトンネルが見つかりません");
-        return null;
+        return undefined;
     }
     catch (error) {
         console.error("ngrok APIにアクセスできません:", error.message);
         console.error("ngrokが起動しているか確認してください");
-        return null;
+        return undefined;
     }
 }
 
@@ -87,7 +90,7 @@ function updateEnvCallbackUrl(ngrokUrl) {
 
 /**
  * ngrokのパブリックURLを取得して.envファイルを更新
- * @returns {Promise<string|null>} 更新されたngrokのURL
+ * @returns {Promise<string | undefined>} 更新されたngrokのURL
  */
 async function setupNgrokUrl() {
     const ngrokUrl = await getNgrokPublicUrl();
@@ -99,7 +102,7 @@ async function setupNgrokUrl() {
         }
     }
 
-    return null;
+    return undefined;
 }
 
 module.exports = {

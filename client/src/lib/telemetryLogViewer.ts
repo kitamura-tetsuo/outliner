@@ -3,7 +3,7 @@
  */
 
 // APIサーバーのURLを取得
-const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";
+const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7091";
 
 /**
  * telemetryログを取得する関数

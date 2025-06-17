@@ -21,6 +21,7 @@ const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120003");
 export class Item extends sf.objectRecursive("Item", {
     id: sf.string,
     text: sf.string, // テキスト内容
+    embed: sf.any,
     author: sf.string,
     votes: sf.array(sf.string),
     created: sf.number,
@@ -88,6 +89,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
         const newItem = new Item({
             id: uuid(),
             text: defaultText, // 開発環境ではインデックスを含むテキスト
+            embed: undefined,
             author,
             votes: [],
             created: timeStamp,

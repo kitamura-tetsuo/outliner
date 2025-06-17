@@ -83,7 +83,8 @@ test.describe("CLM-0003: 右へ移動", () => {
         await page.keyboard.type("Second item");
 
         // 2つ目のアイテムが存在することを確認
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await secondItem.waitFor({ state: "visible" });
 
         // 2つ目のアイテムのテキスト内容を確認

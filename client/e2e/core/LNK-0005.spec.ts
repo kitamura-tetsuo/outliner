@@ -1,3 +1,7 @@
+/** @feature LNK-0005
+ *  Title   : リンクプレビュー機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
@@ -141,8 +145,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             }
         }
         else {
-            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
-            test.skip();
+            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約により失敗します。");
+            expect(false).toBe(true);
         }
 
         // テスト成功
@@ -260,8 +264,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             }
         }
         else {
-            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
-            test.skip();
+            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約により失敗します。");
+            expect(false).toBe(true);
         }
 
         // テスト成功
@@ -365,8 +369,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             }
         }
         else {
-            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
-            test.skip();
+            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約により失敗します。");
+            expect(false).toBe(true);
         }
 
         // テスト成功
@@ -483,8 +487,8 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             }
         }
         else {
-            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
-            test.skip();
+            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約により失敗します。");
+            expect(false).toBe(true);
         }
 
         // テスト成功

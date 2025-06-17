@@ -45,17 +45,18 @@ test.describe("DFT-0003: テスト用コア書き込み機能", () => {
 
         // Firebase Functionsエンドポイントが利用可能かチェック
         let endpointAvailable = false;
+        const functionsHost = process.env.VITE_FIREBASE_FUNCTIONS_HOST || "localhost";
+        const functionsPort = process.env.VITE_FIREBASE_FUNCTIONS_PORT || "57070";
+        const functionsUrl = process.env.VITE_FIREBASE_FUNCTIONS_URL || `http://${functionsHost}:${functionsPort}`;
         try {
-            const response = await page.request.get("http://127.0.0.1:5100/demo-test/us-central1/health");
+            const response = await page.request.get(`${functionsUrl}/demo-test/us-central1/health`);
             endpointAvailable = response.ok();
         }
         catch (error) {
             console.log("Firebase Functions endpoint check failed:", error.message);
         }
 
-        if (!endpointAvailable) {
-            test.skip("Firebase Functions エミュレーターが利用できません");
-        }
+        expect(endpointAvailable).toBe(true);
 
         // 下書きを公開（Firebase Functionsに送信）
         const publishResult = await page.evaluate(async draftId => {
@@ -144,8 +145,7 @@ test.describe("DFT-0003: テスト用コア書き込み機能", () => {
             expect(updatedData.itemCount).toBeGreaterThanOrEqual(originalData.itemCount);
         }
         else {
-            // Firebase Functionsが利用できない場合はスキップ
-            test.skip("Firebase Functions エミュレーターが利用できません");
+            expect(false).toBe(true); // Firebase Functions emulator unavailable
         }
     });
 
@@ -216,7 +216,7 @@ test.describe("DFT-0003: テスト用コア書き込み機能", () => {
             }
         }
         else {
-            test.skip("Firebase Functions エミュレーターが利用できません");
+            expect(false).toBe(true); // Firebase Functions emulator unavailable
         }
     });
 

@@ -55,33 +55,33 @@ export class EditorOverlayStore {
     // Cursor インスタンスを保持する Map
     cursorInstances = new Map<string, Cursor>();
     selections = $state<Record<string, SelectionRange>>({});
-    activeItemId = $state<string | null>(null);
+    activeItemId = $state<string | undefined>(undefined);
     cursorVisible = $state<boolean>(true);
     animationPaused = $state<boolean>(false);
     // GlobalTextArea の textarea 要素を保持
-    textareaRef = $state<HTMLTextAreaElement | null>(null);
+    textareaRef = $state<HTMLTextAreaElement | undefined>(undefined);
     // onEdit コールバック
-    onEditCallback: (() => void) | null = null;
+    onEditCallback: (() => void) | undefined = undefined;
 
     private timerId!: ReturnType<typeof setTimeout>;
 
     // テキストエリア参照を設定
-    setTextareaRef(el: HTMLTextAreaElement | null) {
+    setTextareaRef(el: HTMLTextAreaElement | undefined) {
         this.textareaRef = el;
     }
 
     // テキストエリア参照を取得
-    getTextareaRef(): HTMLTextAreaElement | null {
+    getTextareaRef(): HTMLTextAreaElement | undefined {
         return this.textareaRef;
     }
 
     // onEdit コールバックを設定
-    setOnEditCallback(callback: (() => void) | null) {
+    setOnEditCallback(callback: (() => void) | undefined) {
         this.onEditCallback = callback;
     }
 
     // onEdit コールバックを取得
-    getOnEditCallback(): (() => void) | null {
+    getOnEditCallback(): (() => void) | undefined {
         return this.onEditCallback;
     }
 
@@ -96,7 +96,7 @@ export class EditorOverlayStore {
         if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
             return crypto.randomUUID();
         }
-        const bytes = (typeof crypto !== "undefined" ? crypto.getRandomValues(new Uint8Array(16)) : null) ||
+        const bytes = (typeof crypto !== "undefined" ? crypto.getRandomValues(new Uint8Array(16)) : undefined) ||
             new Uint8Array(16);
         bytes[6] = (bytes[6] & 0x0f) | 0x40;
         bytes[8] = (bytes[8] & 0x3f) | 0x80;
@@ -416,11 +416,11 @@ export class EditorOverlayStore {
         }
     }
 
-    setActiveItem(itemId: string | null) {
+    setActiveItem(itemId: string | undefined) {
         this.activeItemId = itemId;
     }
 
-    getActiveItem(): string | null {
+    getActiveItem(): string | undefined {
         return this.activeItemId;
     }
 
@@ -551,7 +551,7 @@ export class EditorOverlayStore {
     reset() {
         this.cursors = {};
         this.selections = {};
-        this.activeItemId = null;
+        this.activeItemId = undefined;
         this.cursorVisible = true;
         this.animationPaused = false;
         clearTimeout(this.timerId);
@@ -1014,7 +1014,7 @@ export class EditorOverlayStore {
         itemIdToIndex: Map<string, number>;
         allItems: HTMLElement[];
         timestamp: number;
-    } | null = null;
+    } | undefined = undefined;
 
     /**
      * アイテムIDとインデックスのマッピングを取得する（キャッシュ付き）
