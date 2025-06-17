@@ -1177,3 +1177,28 @@
   status: implemented
   components: []
   tests: []
+
+- id: ALS-0001
+  title: Alias items link by ID
+  description: Items can reference other tree items by ID and stay linked when moved
+  category: linking
+  status: implemented
+  components:
+    - client/src/schema/app-schema.ts
+    - client/src/stores/OutlinerViewModel.ts
+    - client/src/components/OutlinerItem.svelte
+  tests:
+    - client/src/tests/alias.test.ts
+
+- id: ALS-0002
+  title: Alias subtree editing and link path
+  description: Alias items display the path to their target and edits under an alias update the target item
+  category: linking
+  status: implemented
+  components:
+    - client/src/utils/treeUtils.ts
+    - client/src/stores/OutlinerViewModel.ts
+    - client/src/components/OutlinerItem.svelte
+  tests:
+    - client/e2e/core/ALS-0002.spec.ts
+    - client/src/tests/alias.test.ts

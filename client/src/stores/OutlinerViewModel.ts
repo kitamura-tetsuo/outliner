@@ -4,6 +4,8 @@ import {
     Item,
     Items,
 } from "../schema/app-schema";
+import { store } from "./store.svelte";
+import { findItemById } from "../utils/treeUtils";
 
 const logger = getLogger();
 
@@ -88,18 +90,18 @@ export class OutlinerViewModel {
 
         // 既存のビューモデルを更新または新規作成
         const existingViewModel = this.viewModels.get(item.id);
+        const displayText = this.resolveItemText(item);
         if (existingViewModel) {
             // プロパティを更新（参照は維持）
-            existingViewModel.text = item.text;
+            existingViewModel.text = displayText;
             existingViewModel.votes = [...item.votes];
             existingViewModel.lastChanged = item.lastChanged;
-        }
-        else {
+        } else {
             // 新しいビューモデルを作成
             this.viewModels.set(item.id, {
                 id: item.id,
                 original: item,
-                text: item.text,
+                text: displayText,
                 votes: [...item.votes],
                 author: item.author,
                 created: item.created,
@@ -111,9 +113,28 @@ export class OutlinerViewModel {
         this.parentMap.set(item.id, parentId);
 
         // 子アイテムも処理
-        if (item.items && Tree.is(item.items, Items)) {
+        if (item.aliasId) {
+            const project = store.project;
+            const target = project ? findItemById(project.items as Items, item.aliasId) : undefined;
+            if (target && target.items && Tree.is(target.items, Items)) {
+                this.ensureViewModelsItemsExist(target.items, item.id);
+            }
+        } else if (item.items && Tree.is(item.items, Items)) {
             this.ensureViewModelsItemsExist(item.items, item.id);
         }
+    }
+
+    private resolveItemText(item: Item): string {
+        if (item.aliasId) {
+            const project = store.project;
+            if (project) {
+                const found = findItemById(project.items as Items, item.aliasId);
+                if (found) {
+                    return found.text;
+                }
+            }
+        }
+        return item.text;
     }
     /**
      * 表示順序と深度を再計算する
@@ -147,8 +168,21 @@ export class OutlinerViewModel {
         this.depthMap.set(item.id, depth);
 
         // 子アイテムを処理（折りたたまれていない場合のみ）
-        if (item.items && Tree.is(item.items, Items) && !this.collapsedMap.get(item.id)) {
-            this.recalculateOrderAndDepth(item.items, depth + 1, item.id);
+        if (!this.collapsedMap.get(item.id)) {
+            let children: Items | null = null;
+            if (item.aliasId) {
+                const project = store.project;
+                const target = project ? findItemById(project.items as Items, item.aliasId) : undefined;
+                if (target && target.items && Tree.is(target.items, Items)) {
+                    children = target.items;
+                }
+            } else if (item.items && Tree.is(item.items, Items)) {
+                children = item.items;
+            }
+
+            if (children) {
+                this.recalculateOrderAndDepth(children, depth + 1, item.id);
+            }
         }
     }
 

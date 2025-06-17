@@ -25,6 +25,7 @@ export class Item extends sf.objectRecursive("Item", {
     votes: sf.array(sf.string),
     created: sf.number,
     lastChanged: sf.number,
+    aliasId: sf.string,
     items: () => Items, // 子アイテムを保持
 }) {
     // テキスト更新時にタイムスタンプも更新
@@ -92,6 +93,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
             votes: [],
             created: timeStamp,
             lastChanged: timeStamp,
+            aliasId: "",
             // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
             items: new Items([]), // 子アイテムのための空のリスト
         });
@@ -110,6 +112,19 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
             this.insertAtEnd(newItem);
         }
         return newItem;
+    };
+
+    /**
+     * Create an alias node referencing another item by ID.
+     * @param target The target item to alias
+     * @param author Author of the alias item
+     * @param index Optional index to insert at
+     */
+    public readonly addAliasNode = (target: Item, author: string, index?: number) => {
+        const item = this.addNode(author, index);
+        item.text = target.text;
+        item.aliasId = target.id;
+        return item;
     };
 }
 

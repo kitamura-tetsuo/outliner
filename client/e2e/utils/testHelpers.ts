@@ -280,6 +280,25 @@ export class TestHelpers {
         }, { pageName, lines });
     }
 
+    /** Update item text by ID */
+    public static async updateItemText(page: Page, itemId: string, text: string): Promise<void> {
+        await page.evaluate(({ itemId, text }) => {
+            const find = (items: any, id: string): any => {
+                for (const it of items) {
+                    if (it.id === id) return it;
+                    if (it.items) {
+                        const r = find(it.items, id);
+                        if (r) return r;
+                    }
+                }
+                return undefined;
+            };
+            const project = window.__FLUID_STORE__.fluidClient.getProject();
+            const target = find(project.items, itemId);
+            target?.updateText(text);
+        }, { itemId, text });
+    }
+
     /**
      * カーソル情報取得用のデバッグ関数をセットアップする
      * @param page Playwrightのページオブジェクト
