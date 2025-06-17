@@ -26,6 +26,7 @@ Also, please do not finish until all other E2E tests pass.
 Please check whether other parts have deteriorated due to the addition of functions.
 The E2E test I didn't add used to pass.
 Please modify the implementation and tests related to the failing test so that the test passes.
+- If the code coverage of the created feature is insufficient, add tests to improve it.
 
 # 🔍 How to deal with test failures
 
