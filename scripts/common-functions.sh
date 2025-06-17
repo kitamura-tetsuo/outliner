@@ -185,7 +185,7 @@ start_tinylicious() {
 start_api_server() {
   echo "Starting API server on port ${TEST_API_PORT}..."
   cd "${ROOT_DIR}/server"
-  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} 2>&1 | tee "${ROOT_DIR}/server/logs/test-auth-service-tee.log" &
+  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} </dev/null 2>&1 | tee "${ROOT_DIR}/server/logs/test-auth-service-tee.log" &
   cd "${ROOT_DIR}"
 }
 
@@ -193,7 +193,7 @@ start_api_server() {
 start_sveltekit_server() {
   echo "Starting SvelteKit server on port ${VITE_PORT}..."
   cd "${ROOT_DIR}/client"
-  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${VITE_PORT} 2>&1 | tee "${ROOT_DIR}/server/logs/test-svelte-kit.log" &
+  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${VITE_PORT} </dev/null 2>&1 | tee "${ROOT_DIR}/server/logs/test-svelte-kit.log" &
   cd "${ROOT_DIR}"
 }
 
