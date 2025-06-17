@@ -187,7 +187,9 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
         }
 
         // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        const functionsHost = import.meta.env.VITE_FIREBASE_FUNCTIONS_HOST || "localhost";
+        const functionsPort = import.meta.env.VITE_FIREBASE_FUNCTIONS_PORT || "57070";
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || `http://${functionsHost}:${functionsPort}`;
         logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
@@ -327,7 +329,9 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         }
 
         // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        const functionsHost = import.meta.env.VITE_FIREBASE_FUNCTIONS_HOST || "localhost";
+        const functionsPort = import.meta.env.VITE_FIREBASE_FUNCTIONS_PORT || "57070";
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || `http://${functionsHost}:${functionsPort}`;
         logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
