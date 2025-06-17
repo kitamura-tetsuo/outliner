@@ -6,6 +6,7 @@
     - lib/email/resetPassword.ts
   tests:
     - tests/feature/FTR-0012.spec.ts
+    - client/e2e/core/FTR-0012.spec.ts
   acceptance:
     - "ユーザーがメールアドレスを入力すると、リセットリンクが送信される"
     - "リンクは 30 分で失効する"
