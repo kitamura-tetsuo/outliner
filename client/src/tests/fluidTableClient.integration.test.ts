@@ -14,7 +14,7 @@ const isFluidAvailable = () => {
     }
 };
 
-describe.skip('FluidTableClient Integration Tests', () => {
+describe('FluidTableClient Integration Tests', () => {
     let client1: FluidTableClient;
     let client2: FluidTableClient;
     let containerId: string;
@@ -26,18 +26,18 @@ describe.skip('FluidTableClient Integration Tests', () => {
 
     afterEach(async () => {
         // クリーンアップ
-        if (client1?.container) {
-            try {
-                client1.container.dispose();
-            } catch (error) {
-                // エラーは無視
-            }
-        }
-        if (client2?.container) {
-            try {
-                client2.container.dispose();
-            } catch (error) {
-                // エラーは無視
+        for (const client of [client1, client2]) {
+            if (client?.container) {
+                try {
+                    client.disconnect();
+                    await client.container.dispose();
+                } catch (error) {
+                    // エラーは無視
+                } finally {
+                    client.container = undefined;
+                    client.tables = undefined as any;
+                    client.containerId = undefined;
+                }
             }
         }
     });
