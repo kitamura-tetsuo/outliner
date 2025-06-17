@@ -229,7 +229,7 @@ test.describe("Visual Studio Codeのコピー/ペースト仕様", () => {
     /**
      * ClipboardEventを使用したコピー＆ペーストをテスト
      */
-    test("直接テキスト入力によるシミュレーション", async ({ page }) => {
+    test("Clipboard APIを使用したペースト", async ({ page }) => {
         // アプリを開く
         await page.goto("/");
 
@@ -249,17 +249,18 @@ test.describe("Visual Studio Codeのコピー/ペースト仕様", () => {
 
         // 新しいアイテムを作成
         await page.keyboard.press("Enter");
-         await TestHelpers.waitForOutlinerItems(page, 2);
+        await TestHelpers.waitForOutlinerItems(page, 2);
 
-
-        // 2番目のアイテムに直接テキストを入力（ペーストをシミュレート）
+        // クリップボードにテキストを書き込む
         const pasteText = "ペーストされたテキスト";
-        await page.keyboard.type(pasteText); // This types into the newly created (now active) second item
+        await page.evaluate(async (text) => {
+            await navigator.clipboard.writeText(text);
+        }, pasteText);
 
-        // スクリーンショットを撮影（デバッグ用）
-        // await page.screenshot({ path: "test-results/fmt-0005-direct-input.png" });
+        // 2番目のアイテムがフォーカスされている状態でペースト
+        const isMac = process.platform === "darwin";
+        await page.keyboard.press(isMac ? "Meta+V" : "Control+V");
 
-        // 結果を確認
         // 結果を確認
         const firstId = await TestHelpers.getItemIdByIndex(page, 0);
         const secondId = await TestHelpers.getItemIdByIndex(page, 1);
@@ -269,9 +270,6 @@ test.describe("Visual Studio Codeのコピー/ペースト仕様", () => {
         // 各アイテムのテキストが正しいことを確認
         expect(firstItemText).toBe(testText);
         expect(secondItemText).toBe(pasteText);
-
-        // console.log(`1番目のアイテム: ${firstItemText}`);
-        // console.log(`2番目のアイテム: ${secondItemText}`);
     });
 
 });
