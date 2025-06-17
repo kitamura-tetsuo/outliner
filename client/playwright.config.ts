@@ -1,7 +1,4 @@
-import {
-    defineConfig,
-    devices,
-} from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
 const TEST_PORT = process.env.TEST_PORT || process.env.VITE_PORT || "7090";
 const VITE_HOST = process.env.VITE_HOST || "localhost";
@@ -12,7 +9,8 @@ console.log(`- Host: ${VITE_HOST}`);
 
 export default defineConfig({
     testDir: "./e2e",
-    testMatch: ["basic-simple.spec.ts", "new/TBL-*.spec.ts"], // Run basic tests and table tests
+    // Run all Playwright tests in the e2e folder
+    testMatch: "**/*.spec.ts",
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: 0,

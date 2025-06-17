@@ -21,6 +21,7 @@
 | COL-0001 | 他ユーザーのカーソル表示 | client/e2e/disabled/COL-0001.spec.ts | implemented |
 | DBW-0001 | Client-Side WASM DB | — | implemented |
 | DBW-001 | Client-Side SQL Database | client/e2e/new/DBW-001.spec.ts | implemented |
+| EMB-0001 | Outliner Table & Chart Embedding | client/e2e/new/EMB-0001.spec.ts | implemented |
 | ERR-0001 | エラーハンドリングテスト | client/e2e/new/ERR-0001.spec.ts | implemented |
 | FFI-0001 | Fluid Framework Integration | — | implemented |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
@@ -62,6 +63,8 @@
 | SLR-0010 | 選択範囲のフォーマット変更 | client/e2e/core/SLR-0010.spec.ts | implemented |
 | SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | — | implemented |
 | SLR-0101 | ボックス選択（矩形選択）機能 - マウス | — | implemented |
+| SRC-0001 | Basic Search Panel | client/e2e/new/SRC-0001.spec.ts | implemented |
+| SRC-0002 | Replace All via Search Panel | client/e2e/new/SRC-0002.spec.ts | implemented |
 | SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts | implemented |
 | SRP-0001 | 高度な検索と置換 | — | implemented |
 | TBL-0001 | Editable JOIN Table | client/e2e/new/TBL-0001.spec.ts | implemented |
