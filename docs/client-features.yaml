@@ -803,6 +803,19 @@
   components:
     - server/auth-service.js
 
+- id: API-0003
+  title: 'コンテナユーザー一覧取得の管理者チェック'
+  description: '/api/get-container-users で管理者権限を検証する機能'
+  category: api-server
+  status: implemented
+  acceptance:
+    - '管理者ロールを持つトークンでユーザー一覧を取得できる'
+    - '管理者でない場合は 403 エラーが返る'
+  tests:
+    - server/tests/get-container-users-admin.test.js
+  components:
+    - server/auth-service.js
+
 - id: COL-0001
   title: '他ユーザーのカーソル表示'
   description: '複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する'

@@ -350,7 +350,11 @@ app.post("/api/get-container-users", async (req, res) => {
         const decodedToken = await admin.auth().verifyIdToken(idToken);
         const userId = decodedToken.uid;
 
-        // TODO: 管理者権限チェックを追加する場合はここに実装
+        // 管理者権限チェック
+        const isAdmin = decodedToken.role === "admin";
+        if (!isAdmin) {
+            return res.status(403).json({ error: "Admin privileges required" });
+        }
 
         const containerDoc = await containerUsersCollection.doc(containerId).get();
 
