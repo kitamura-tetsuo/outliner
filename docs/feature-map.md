@@ -2,6 +2,8 @@
 <!-- Note: Some E2E tests in client/e2e/disabled/ have been refactored but remain disabled due to flakiness or environment issues. Their file paths in this map might not reflect their current disabled status if they were previously active. -->
 | Feature | Title | Test files | Status |
 |---------|-------|------------|--------|
+| ALS-0001 | Alias items link by ID | client/e2e/core/ALS-0001.spec.ts | implemented |
+| ALS-0002 | Alias subtree editing and path link | client/e2e/core/ALS-0002.spec.ts | implemented |
 | API-0001 | Firebase Functions APIサーバーの修正 | — | implemented |
 | API-0002 | Firebase emulator起動待機機能 | — | implemented |
 | API-0003 | コンテナユーザー一覧取得の管理者チェック | — | implemented |

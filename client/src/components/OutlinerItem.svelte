@@ -5,9 +5,11 @@
 	import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
 	import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 	import { TreeSubscriber } from "../stores/TreeSubscriber";
-import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
-import TableEmbed from './TableEmbed.svelte';
-import ChartEmbed from './ChartEmbed.svelte';
+	import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
+	import { store } from '../stores/store.svelte';
+	import { findItemById, getItemPath } from '../utils/treeUtils';
+	import TableEmbed from './TableEmbed.svelte';
+	import ChartEmbed from './ChartEmbed.svelte';
 	interface Props {
 		model: OutlinerItemViewModel;
 		depth?: number;
@@ -47,16 +49,54 @@ import ChartEmbed from './ChartEmbed.svelte';
 	let isDropTarget = $state(false);
 	let dropTargetPosition = $state<'top' | 'middle' | 'bottom' | null>(null);
 
-	let item = model.original;
+        let item = model.original;
+        let aliasPath = $state("");
+        let aliasUrl = $state("");
 
-	const text = new TreeSubscriber(
+        function getAliasText(id: string): string {
+                const project = store.project;
+                if (!project) return "";
+                const target = findItemById(project.items as Items, id);
+                return target ? target.text : "";
+        }
+
+        function getAliasTarget(id: string) {
+                const project = store.project;
+                if (!project) return undefined;
+                return findItemById(project.items as Items, id);
+        }
+
+        $effect(() => {
+                if (!item.aliasId) {
+                        aliasPath = "";
+                        aliasUrl = "";
+                        return;
+                }
+                const project = store.project;
+                if (!project) return;
+                const info = getItemPath(project, item.aliasId);
+                if (info) {
+                        aliasPath = info.path.join(" / ");
+                        aliasUrl = `/${project.title}/${info.pageName}`;
+                } else {
+                        aliasPath = "";
+                        aliasUrl = "";
+                }
+        });
+
+        const text = new TreeSubscriber(
     item,
     "nodeChanged",
-    () => item.text,
+    () => item.aliasId ? getAliasText(item.aliasId) : item.text,
     value => {
-			item.text = value;
+                        if (item.aliasId) {
+                            const target = getAliasTarget(item.aliasId);
+                            if (target) target.updateText(value);
+                        } else {
+                            item.updateText(value);
+                        }
     }
-	);
+        );
 
 	// 表示エリアのref
 	let displayRef: HTMLDivElement;
@@ -367,24 +407,28 @@ import ChartEmbed from './ChartEmbed.svelte';
 		editorOverlayStore.setActiveItem(null);
 	}
 
-	function addNewItem() {
-		if (!isReadOnly && model.original.items && Tree.is(model.original.items, Items)) {
-			model.original.items.addNode(currentUser,0);
-		}
-	}
+        function addNewItem() {
+                if (isReadOnly) return;
+                let target = item.aliasId ? getAliasTarget(item.aliasId) : model.original;
+                if (target && target.items && Tree.is(target.items, Items)) {
+                        target.items.addNode(currentUser,0);
+                }
+        }
 
-	function handleDelete() {
-		if (isReadOnly) return;
-		if (confirm('このアイテムを削除しますか？')) {
-			model.original.delete();
-		}
-	}
+        function handleDelete() {
+                if (isReadOnly) return;
+                if (confirm('このアイテムを削除しますか？')) {
+                        const target = item.aliasId ? getAliasTarget(item.aliasId) : model.original;
+                        target?.delete();
+                }
+        }
 
-	function toggleVote() {
-		if (!isReadOnly) {
-			model.original.toggleVote(currentUser);
-		}
-	}
+        function toggleVote() {
+                if (!isReadOnly) {
+                        const target = item.aliasId ? getAliasTarget(item.aliasId) : model.original;
+                        target?.toggleVote(currentUser);
+                }
+        }
 
 	/**
 	 * クリック時のハンドリング: Alt+Click でマルチカーソル追加、それ以外は編集開始
@@ -1368,18 +1412,21 @@ import ChartEmbed from './ChartEmbed.svelte';
 					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>
 						{@html ScrapboxFormatter.formatToHtml(text.current)}
 					</span>
-                                {/if}
-                                {#if !isPageTitle && model.votes.length > 0}
-                                        <span class="vote-count">{model.votes.length}</span>
-                                {/if}
-                        </div>
+				{/if}
+				{#if item.aliasId && aliasPath}
+					<a class="alias-path" href={aliasUrl}>{aliasPath}</a>
+				{/if}
+				{#if !isPageTitle && model.votes.length > 0}
+					<span class="vote-count">{model.votes.length}</span>
+				{/if}
+			</div>
 
-                        {#if model.embed?.type === 'table'}
-                                <TableEmbed query={model.embed.query} />
-                        {:else if model.embed?.type === 'chart'}
-                                <ChartEmbed option={model.embed.option} />
-                        {/if}
-                </div>
+			{#if model.embed?.type === 'table'}
+				<TableEmbed query={model.embed.query} />
+			{:else if model.embed?.type === 'chart'}
+				<ChartEmbed option={model.embed.option} />
+			{/if}
+		</div>
 
 		{#if !isPageTitle}
 			<div class="item-actions">
@@ -1557,9 +1604,15 @@ import ChartEmbed from './ChartEmbed.svelte';
 		text-decoration: none;
 	}
 
-	.item-text.formatted a:hover {
-		text-decoration: underline;
-	}
+        .item-text.formatted a:hover {
+                text-decoration: underline;
+        }
+
+        .alias-path {
+                font-size: 0.8em;
+                color: #888;
+                margin-left: 4px;
+        }
 
 
 
