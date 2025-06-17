@@ -49,7 +49,7 @@ cd /workspace/client && npm run test:e2e:xvfb
 
 
 
-http://192.168.50.13:7080/
+http://localhost:7080/
 はテスト用のサーバー
 
 
@@ -69,7 +69,7 @@ cd /workspace/client && npx playwright test {test file path}
 　エラーがなければそれで終了です。
 　エラーがある場合は続けて下さい。
 　このテストファイルを分析して、各テストケースの目的と確認すべき挙動を確認してください
-　playwright-mcpを使用して、headedブラウザでテスト環境（http://192.168.50.13:7080/）にアクセスしてください
+　playwright-mcpを使用して、headedブラウザでテスト環境（http://localhost:7080/）にアクセスしてください
 　テストコードをトレースして、実際にブラウザで手動でテストコードの内容を行って下さい。
 　期待通りに動作するか確認してください。
 　異常があれば原因の説明をしてください。
@@ -78,7 +78,7 @@ cd /workspace/client && npx playwright test {test file path}
 　テストの修正をするか、コードの修正をするかは私が決めます。
 
 テスト用のサーバー
-　http://192.168.50.13:7080/
+　http://localhost:7080/
 クライアントのログがここにあります。必要であれば、アクセス後にこちらを確認して下さい。
 　/workspace/client/logs/test-browser.log
 テスト用のSveltKit serverのログがここにあります。必要であれば、アクセス後にこちらを確認して下さい。
@@ -94,7 +94,7 @@ API serverのログがここにあります。必要であれば、アクセス�
 
 
 開発用のサーバー
-http://192.168.50.13:7070/
+http://localhost:7070/
 へアクセスして、正常に動作していることを確認して。
 クライアントのログがここにある。必要であれば、アクセス後にこちらを確認して。
 /workspace/client/logs/browser.log

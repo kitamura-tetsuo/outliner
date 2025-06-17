@@ -18,6 +18,8 @@ echo "Loading NVM..."
 load_nvm
 echo "Creating log directories..."
 create_log_directories
+echo "Clearing old log files..."
+clear_log_files
 echo "Setting up environment files..."
 setup_environment_files
 

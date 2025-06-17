@@ -19,7 +19,7 @@ test.describe("ユーザー削除機能 (USR-0001)", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test.skip("ユーザーを削除できること", async ({ page, request }) => {
+    test("ユーザーを削除できること", async ({ page, request }) => {
         // テスト用のユーザーを作成
         const testEmail = `test-user-${Date.now()}@example.com`;
         const testPassword = "Test@123456";
@@ -153,7 +153,7 @@ test.describe("ユーザー削除機能 (USR-0001)", () => {
         expect(userContainersData.containers).toContain(containerData.containerId);
     });
 
-    test.skip("存在しないユーザーを削除しようとした場合のエラー処理", async ({ page, request }) => {
+    test("存在しないユーザーを削除しようとした場合のエラー処理", async ({ page, request }) => {
         // 存在しないユーザーIDのトークンを作成（実際には不可能なので、有効なトークンを改変）
         const nonExistentIdToken = "invalid_token_" + Date.now();
 
