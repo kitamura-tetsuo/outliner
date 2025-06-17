@@ -30,39 +30,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
      */
     test("内部リンクにマウスオーバーするとプレビューが表示される", async ({ page }) => {
         // 内部リンクのフォーマットを強制的に適用
-        await page.evaluate(pageName => {
-            // 全てのアウトライナーアイテムを取得
-            const items = document.querySelectorAll(".outliner-item");
-            console.log(`Found ${items.length} outliner items for formatting`);
-
-            // 各アイテムのテキストを確認
-            items.forEach(item => {
-                const textElement = item.querySelector(".item-text");
-                if (textElement) {
-                    const text = textElement.textContent || "";
-                    console.log(`Item text: "${text}"`);
-
-                    // 内部リンクのパターンを検出
-                    if (text.includes(`[${pageName}]`)) {
-                        console.log(`Found internal link to ${pageName}`);
-
-                        // HTMLを直接設定
-                        const html = text.replace(
-                            `[${pageName}]`,
-                            `<span class="link-preview-wrapper">
-                                <a href="/${pageName}" class="internal-link" data-page="${pageName}">${pageName}</a>
-                            </span>`,
-                        );
-
-                        // HTMLを設定
-                        textElement.innerHTML = html;
-
-                        // フォーマット済みクラスを追加
-                        textElement.classList.add("formatted");
-                    }
-                }
-            });
-        }, testPageName);
+        await TestHelpers.applyInternalLinkFormat(page, testPageName);
 
         // リンク要素を特定
         const linkSelector = `a.internal-link:has-text("${testPageName}")`;
