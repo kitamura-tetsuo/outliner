@@ -66,6 +66,7 @@
     - client/e2e/core/USR-0001.spec.ts
     - client/e2e/core/USR-0002.spec.ts
     - client/e2e/core/FTR-0014.spec.ts
+    - client/e2e/new/FTR-0014.spec.ts
 - id: FTR-0016
   title: Playwright config supports PORT env variable
   description: The E2E test server port can be set via PORT environment variable with fallback to 7090.
