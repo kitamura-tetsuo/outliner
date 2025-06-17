@@ -208,3 +208,19 @@ npm run test:e2e
 テストの前には `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
+
+## Using encrypted .env files
+
+Encrypted `.env` files created with `dotenvx` can be used directly when running
+commands. Prepend `npx dotenvx run --env-file=<file>` to your usual command.
+
+```bash
+# Development
+npx dotenvx run --env-file=server/.env.development npm run dev
+
+# Testing
+npx dotenvx run --env-file=server/.env.test npm run test:e2e
+
+# Deployment
+npx dotenvx run --env-file=server/.env.production firebase deploy
+```
