@@ -2,13 +2,13 @@
   title: User can reset forgotten password
   status: implemented # draft / implemented / deprecated
   components:
-    - routes/auth/forgot.svelte
-    - lib/email/resetPassword.ts
+    - client/src/routes/auth/forgot/+page.svelte
+    - client/src/routes/auth/reset-password/+page.svelte
+    - client/src/lib/email/resetPassword.ts
   tests:
     - tests/feature/FTR-0012.spec.ts
     - client/e2e/core/FTR-0012.spec.ts
-    - client/e2e/auth/FTR-0012-forgot-password.spec.ts # UI structure only
-  notes: "Frontend components (forgot.svelte, lib/email/resetPassword.ts) appear to be missing. Test execution blocked."
+    - client/e2e/auth/FTR-0012-forgot-password.spec.ts
   acceptance:
     - "ユーザーがメールアドレスを入力すると、リセットリンクが送信される"
     - "リンクは 30 分で失効する"
