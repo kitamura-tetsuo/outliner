@@ -227,10 +227,9 @@ PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 
 ```bash
 python scripts/gen_feature_map.py
-git add docs/feature-map.md
 ```
 
-生成された `docs/feature-map.md` もコミットに含めることで、常に最新の機能一覧を共有できます。
+`docs/feature-map.md` は自動生成されるファイルで Git 管理には含めません。
 
 ## Using encrypted .env files
 

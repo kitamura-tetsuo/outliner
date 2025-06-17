@@ -2,6 +2,7 @@
 
 **Always run `scripts/codex-setp.sh` before executing any tests to start local services.**
 Record every feature in docs\client-features.yaml.
+docs/feature-map.md is generated automatically from client-features.yaml and should not be committed or created manually.
 **Before running any tests, execute `scripts/codex-setp.sh`.** This script ensures
 all required services are running, starting the Firebase emulator
 automatically if it is not already active.
