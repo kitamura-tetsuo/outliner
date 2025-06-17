@@ -17,7 +17,8 @@ YAML_SRC    = ROOT / "docs" / "client-features.yaml"
 TEST_ROOTS  = [                                   # 任意で追記 / 上書き
     ROOT / "client/e2e",                              # default
     ROOT / "client/src/tests",                              # default
-    # ROOT / "server/tests",                    # 例: 追加したいときはアンコメント
+    ROOT / "server/tests",                    # include server-side tests
+    ROOT / "functions/test",                  # include Firebase Functions tests
 ]
 MD_OUTFILE  = ROOT / "docs" / "feature-map.md"        # 出力先
 # Accept any capitalized prefix like CLM-0001 or API-0123
@@ -46,6 +47,10 @@ def scan_tests():
             continue
 
         for path in root.rglob("*.spec.ts"):
+            ids = FEATURE_RE.findall(path.read_text(encoding="utf-8"))
+            for fid in ids:
+                mapping.setdefault(fid, []).append(str(path.relative_to(ROOT)))
+        for path in root.rglob("*.spec.js"):
             ids = FEATURE_RE.findall(path.read_text(encoding="utf-8"))
             for fid in ids:
                 mapping.setdefault(fid, []).append(str(path.relative_to(ROOT)))

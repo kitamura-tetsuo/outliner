@@ -1,3 +1,4 @@
+/** @feature LNK-0006 */
 import {
     expect,
     test,

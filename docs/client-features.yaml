@@ -5,7 +5,7 @@
     - routes/auth/forgot.svelte
     - lib/email/resetPassword.ts
   tests:
-    - tests/feature/FTR-0012.spec.ts
+    - client/e2e/core/FTR-0012.spec.ts
   acceptance:
     - "ユーザーがメールアドレスを入力すると、リセットリンクが送信される"
     - "リンクは 30 分で失効する"
@@ -16,7 +16,8 @@
   components:
     - client/src/routes/min/+page.svelte
     - client/.env.example
-  tests: []
+  tests:
+    - client/e2e/core/FTR-0013.spec.ts
 
 - id: FTR-0014
   title: Configurable host and port via environment variables
@@ -1174,7 +1175,7 @@
     - "リアクティブな更新が正しく機能する"
     - "メモリリークが発生しない"
   tests:
-    - client/src/tests/queryStore.advanced.test.ts
+    - client/src/tests/queryStore.advanced.spec.ts
 
 - id: TBL-0006
   title: FluidTableClient の統合テスト
@@ -1188,7 +1189,7 @@
     - "セル更新がFluidFrameworkを通じて同期される"
     - "接続エラー時の復旧処理が正しく動作する"
   tests:
-    - client/src/tests/fluidTableClient.integration.test.ts
+    - client/src/tests/fluidTableClient.integration.spec.ts
 
 - id: BRF-0001
   title: Branch forest item extraction
