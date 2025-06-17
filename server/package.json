@@ -8,7 +8,8 @@
         "dev": "nodemon auth-service.js",
         "create-test-user": "node utils/create-test-user.js",
         "test": "mocha tests/**/*.test.js --timeout 10000",
-        "test:emulator-wait": "mocha tests/auth-service-emulator-wait.test.js --timeout 10000"
+        "test:emulator-wait": "mocha tests/auth-service-emulator-wait.test.js --timeout 10000",
+        "test:coverage": "nyc mocha tests/**/*.test.js --timeout 10000"
     },
     "dependencies": {
         "@dotenvx/dotenvx": "^1.44.1",
@@ -28,7 +29,28 @@
         "chai": "^5.2.0",
         "mocha": "^11.6.0",
         "nodemon": "^2.0.22",
+        "nyc": "^15.1.0",
         "sinon": "^21.0.0",
         "supertest": "^7.1.1"
+    },
+    "nyc": {
+        "all": true,
+        "reporter": [
+            "text",
+            "lcov",
+            "html"
+        ],
+        "report-dir": "./coverage/mocha",
+        "include": [
+            "auth-service.js",
+            "utils/**/*.js"
+        ],
+        "exclude": [
+            "tests/**",
+            "scripts/**",
+            "start-with-ngrok.js",
+            "**/*.test.js",
+            "**/*.spec.js"
+        ]
     }
 }

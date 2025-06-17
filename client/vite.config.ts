@@ -51,9 +51,31 @@ export default defineConfig(async ({ mode }) => {
             sourcemap: true,
         },
         test: {
-            workspace: [
+            // Add coverage configuration here
+            coverage: {
+                provider: 'v8', // or 'istanbul'
+                reporter: ['text', 'html', 'lcov'],
+                reportsDirectory: './coverage/vitest', // Output directory for coverage reports
+                all: true, // Include all files, not just tested ones
+                include: ['src/**/*.{js,ts,svelte}'], // Specify files to include in coverage
+                exclude: [ // Specify files/patterns to exclude
+                    'src/lib/paraglide/**',
+                    'src/app.d.ts',
+                    'src/hooks.server.ts',
+                    'src/hooks.ts',
+                    'src/generated/**',
+                    'src/**/*.test.{js,ts}',
+                    'src/**/*.spec.{js,ts}',
+                    'src/**/mocks/**',
+                    'src/**/stories/**', // Exclude storybook files
+                    'src/routes/**/+page*.{ts,svelte}', // Exclude SvelteKit route files that are mostly markup
+                    'src/routes/**/+layout*.{ts,svelte}',
+                    'src/routes/**/+error*.{ts,svelte}',
+                ],
+            },
+            projects: [
                 {
-                    extends: "./vite.config.ts",
+                    extends: "./vite.config.ts", // This might be problematic
                     plugins: [svelteTesting()],
 
                     test: {

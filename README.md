@@ -202,24 +202,79 @@ firebase deploy
 
 ## テスト実行方法
 
-ユニットテストは `Vitest`、E2E テストは `Playwright` を使用しています。
+本プロジェクトでは、アプリケーションの各部分（クライアント、Firebase Functions、サーバー）に対してユニットテストが用意されています。
+テストカバレッジレポートも生成可能です。
 
-```bash
-# ユニットテスト
-cd client
-npm run test:unit
+テスト実行前に、必要に応じて各ディレクトリ（`client`, `functions`, `server`）で `npm install` を実行し、依存関係をインストールしてください。
+また、一部のテスト（特にクライアントの連携テスト）はFirebase EmulatorやTinyliciousサーバーなどのローカルサービスが起動していることを前提とする場合があります。詳細は各テストスイートのドキュメントや `scripts/codex-setp.sh` を参照してください。
 
-# E2E テスト
-npm run test:e2e
+### クライアント (client)
 
-# Playwright テストを 1 ファイルずつ実行する場合
-scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
-# 環境変数 `PORT` を指定して別ポートで実行する例
-PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
-```
-テスト実行前に必ず `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
+クライアントサイドのテストは [Vitest](https://vitest.dev/) を使用しています。
 
-自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
+-   **ユニットテストの実行:**
+    ```bash
+    cd client
+    npm run test:unit
+    ```
+    このコマンドはテストを実行し、同時にカバレッジレポートを生成します（`--coverage` フラグが含まれているため）。
+
+-   **カバレッジレポートの確認:**
+    -   テキストサマリー: コンソールに出力されます。
+    -   HTMLレポート: `client/coverage/vitest/index.html` をブラウザで開いて確認できます。
+    -   LCOVレポート: `client/coverage/vitest/lcov.info` (CIや外部ツール連携用)
+
+-   **E2Eテスト:**
+    E2Eテストは [Playwright](https://playwright.dev/) を使用しています。
+    ```bash
+    cd client
+    npm run test:e2e
+    ```
+    特定のE2Eテストファイルを実行する場合:
+    ```bash
+    # client ディレクトリのルートから実行
+    npx playwright test e2e/your-spec-file.spec.ts
+    # またはプロジェクトルートからスクリプト経由で
+    # scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
+    ```
+
+### Firebase Functions (functions)
+
+Firebase Functionsのテストは [Jest](https://jestjs.io/) を使用しています。
+
+-   **テストの実行:**
+    ```bash
+    cd functions
+    npm test
+    ```
+
+-   **カバレッジレポートの生成と確認:**
+    ```bash
+    cd functions
+    npm run test:coverage
+    ```
+    -   テキストサマリー: コンソールに出力されます。
+    -   HTMLレポート: `functions/coverage/index.html` をブラウザで開いて確認できます。
+    -   LCOVレポート: `functions/coverage/lcov.info`
+
+### サーバー (server)
+
+サーバーサイドのテストは [Mocha](https://mochajs.org/) と [Chai](https://www.chaijs.com/) を使用し、カバレッジは [NYC (Istanbul)](https://istanbul.js.org/) で収集します。
+
+-   **テストの実行:**
+    ```bash
+    cd server
+    npm test
+    ```
+
+-   **カバレッジレポートの生成と確認:**
+    ```bash
+    cd server
+    npm run test:coverage
+    ```
+    -   テキストサマリー: コンソールに出力されます。
+    -   HTMLレポート: `server/coverage/mocha/index.html` をブラウザで開いて確認できます。
+    -   LCOVレポート: `server/coverage/mocha/lcov.info`
 
 ### Feature Map の更新
 

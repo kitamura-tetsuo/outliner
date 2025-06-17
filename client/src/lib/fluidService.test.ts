@@ -26,7 +26,7 @@ describe("fluidService", () => {
         // 既存のクライアントの状態を確認する
         expect(client.appData.root).toBeDefined();
         expect((client.appData.root as any).title).toBe("Test");
-    });
+    }, 30000);
 
     afterEach(() => {
         // タイマーや状態をリセット

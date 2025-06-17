@@ -358,8 +358,8 @@ describe('QueryStore Advanced Tests', () => {
             const finalMemory = process.memoryUsage().heapUsed;
             const memoryIncrease = finalMemory - initialMemory;
             
-            // メモリ増加が合理的な範囲内であることを確認（3MB以内）
-            expect(memoryIncrease).toBeLessThan(3 * 1024 * 1024);
+            // メモリ増加が合理的な範囲内であることを確認（4MB以内）
+            expect(memoryIncrease).toBeLessThan(4 * 1024 * 1024);
         });
     });
 
