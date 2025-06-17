@@ -1081,6 +1081,17 @@ export class FluidServiceHelper {
         }, containerName);
     }
 
+    public static async listContainers(page: Page): Promise<any[]> {
+        return await page.evaluate(() => {
+            const fluidService = (window as any).__FLUID_SERVICE__;
+            if (!fluidService) {
+                throw new Error("FluidService not found");
+            }
+            return fluidService.listContainers();
+        });
+
+    }
+
     /**
      * FluidContainerの詳細なデータを取得する
      * @param page Playwrightのページオブジェクト
