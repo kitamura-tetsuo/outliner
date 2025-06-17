@@ -219,3 +219,19 @@ git add docs/feature-map.md
 ```
 
 生成された `docs/feature-map.md` もコミットに含めることで、常に最新の機能一覧を共有できます。
+
+## Using encrypted .env files
+
+Encrypted `.env` files created with `dotenvx` can be used directly when running
+commands. Prepend `npx dotenvx run --env-file=<file>` to your usual command.
+
+```bash
+# Development
+npx dotenvx run --env-file=server/.env.development npm run dev
+
+# Testing
+npx dotenvx run --env-file=server/.env.test npm run test:e2e
+
+# Deployment
+npx dotenvx run --env-file=server/.env.production firebase deploy
+```
