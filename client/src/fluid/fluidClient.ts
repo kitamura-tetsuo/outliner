@@ -46,10 +46,10 @@ export class FluidClient {
     public readonly project: Project;
 
     // 接続ステータスの追跡
-    private connectionListenerCleanup: (() => void) | null = null;
+    private connectionListenerCleanup: (() => void) | undefined = undefined;
     private connectionRetryCount = 0;
     private readonly MAX_RETRY_COUNT = 3;
-    currentUser: { id: string; } | null = null;
+    currentUser: { id: string; } | undefined = undefined;
 
     /**
      * コンストラクタ - 必要なパラメータを全て受け取る
@@ -247,7 +247,7 @@ export class FluidClient {
             containerId: this.containerId,
             treeData: this.appData?.root ? this.getAllData() : {},
             treeCount: rootItems?.length || 0,
-            treeFirstItem: hasItems ? rootItems[0]?.text || null : null,
+            treeFirstItem: hasItems ? rootItems[0]?.text || undefined : undefined,
             timeStamp: new Date().toISOString(),
             currentUser: userManager.getCurrentUser(),
         };
@@ -279,7 +279,7 @@ export class FluidClient {
         const parts = path.split(".");
         let result = treeData as any;
         for (const part of parts) {
-            if (result === undefined || result === null) return null;
+            if (result === undefined) return undefined;
             result = result[part];
         }
         return result;
@@ -321,7 +321,7 @@ export class FluidClient {
     public dispose() {
         if (this.connectionListenerCleanup) {
             this.connectionListenerCleanup();
-            this.connectionListenerCleanup = null;
+            this.connectionListenerCleanup = undefined;
         }
 
         this.appData.dispose();

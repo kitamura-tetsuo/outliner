@@ -32,13 +32,14 @@
 | FMT-0005 | Visual Studio Codeのコピー/ペースト仕様 | client/e2e/disabled/FMT-0005.spec.ts | implemented |
 | FMT-0006 | カーソル移動時のフォーマット表示の一貫性 | client/e2e/core/FMT-0006.spec.ts | implemented |
 | FMT-0007 | 内部リンク機能の表示 | client/e2e/core/FMT-0007.spec.ts | implemented |
-| FTR-0012 | User can reset forgotten password | — | implemented |
-| FTR-0013 | Use environment variables in min page | — | implemented |
+| FTR-0012 | User can reset forgotten password | client/e2e/core/FTR-0012.spec.ts | implemented |
+| FTR-0013 | Use environment variables in min page | client/e2e/core/FTR-0013.spec.ts | implemented |
 | FTR-0014 | Configurable host and port via environment variables | — | implemented |
+| FTR-0016 | Configurable Playwright port via PORT env | client/e2e/new/FTR-0016.spec.ts | implemented |
 | GRF-001 | Graph View | — | implemented |
 | GVI-0001 | Graph View | — | implemented |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
-| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
+| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001.spec.ts<br>client/e2e/core/ITM-0001-title.spec.ts | implemented |
 | LNK-0001 | 内部リンクのURL生成機能 | client/e2e/core/LNK-0001.spec.ts | implemented |
 | LNK-0002 | 内部リンクの機能検証 | client/e2e/core/LNK-0002.spec.ts | implemented |
 | LNK-0003 | 内部リンクのナビゲーション機能 | client/e2e/core/LNK-0003.spec.ts | implemented |
@@ -46,7 +47,8 @@
 | LNK-0005 | リンクプレビュー機能 | client/e2e/core/LNK-0005.spec.ts | implemented |
 | LNK-0006 | リンク先ページの存在確認機能 | client/e2e/core/LNK-0006.spec.ts | implemented |
 | LNK-0007 | バックリンク機能 | client/e2e/core/LNK-0007.spec.ts | implemented |
-| NAV-0001 | プロジェクト選択とページナビゲーション | client/e2e/core/NAV-0001.spec.ts<br>client/e2e/core/NAV-0001.spec.ts | implemented |
+| LOG-0001 | Log test servers to files only | server/tests/server-log-file.test.js | implemented |
+| NAV-0001 | プロジェクト選択とページナビゲーション | client/e2e/core/NAV-0001.spec.ts | implemented |
 | NAV-0002 | プロジェクトページへのリンク機能 | client/e2e/core/NAV-0002.spec.ts | implemented |
 | PERF-0001 | パフォーマンステスト | client/e2e/new/PERF-0001.spec.ts<br>client/e2e/disabled/PERF-0001.spec.ts | implemented |
 | SEC-0001 | Dotenvx encrypted env files | — | implemented |

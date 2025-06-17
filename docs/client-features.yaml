@@ -6,6 +6,7 @@
     - lib/email/resetPassword.ts
   tests:
     - tests/feature/FTR-0012.spec.ts
+    - client/e2e/core/FTR-0012.spec.ts
   acceptance:
     - "ユーザーがメールアドレスを入力すると、リセットリンクが送信される"
     - "リンクは 30 分で失効する"
@@ -16,7 +17,19 @@
   components:
     - client/src/routes/min/+page.svelte
     - client/.env.example
-  tests: []
+  tests:
+    - client/e2e/core/FTR-0013.spec.ts
+
+- id: LOG-0001
+  title: Log test servers to files only
+  description: Servers started by codex-setp.sh log output exclusively to files to keep console output clean
+  category: developer-experience
+  status: implemented
+  components:
+    - scripts/common-functions.sh
+    - scripts/codex-setp.sh
+  tests:
+    - server/tests/server-log-file.test.js
 
 - id: FTR-0014
   title: Configurable host and port via environment variables
@@ -35,6 +48,15 @@
     - client/e2e/core/DFT-0003.spec.ts
     - client/e2e/core/USR-0001.spec.ts
     - client/e2e/core/USR-0002.spec.ts
+- id: FTR-0016
+  title: Playwright config supports PORT env variable
+  description: The E2E test server port can be set via PORT environment variable with fallback to 7090.
+  category: configuration
+  status: implemented
+  components:
+    - playwright.config.ts
+  tests:
+    - client/e2e/new/FTR-0016.spec.ts
 - id: EMB-0001
   title: Outliner Table & Chart Embedding
   description: Notion-like table and chart blocks can be embedded in any outliner item
@@ -1015,6 +1037,7 @@
     - "空データを適切に処理する"
     - "複数セル編集が正しく処理される"
     - "セル編集機能が正しく動作する"
+    - "各セルにdata-item-id属性が付与される"
     - "グリッドの表示とデータバインディングが正しく機能する"
     - "メタデータに基づいて編集可能性が制御される"
     - "編集後にFluidFrameworkに正しくデータが送信される"
@@ -1206,4 +1229,16 @@
   category: security
   status: implemented
   components: []
-  tests: []
+  tests:
+    - server/tests/sec-0001-env.test.js
+
+- id: LOG-0001
+  title: Log test servers to files only
+  description: Servers started by codex-setp.sh log output exclusively to files to keep console output clean
+  category: developer-experience
+  status: implemented
+  components:
+    - scripts/common-functions.sh
+    - scripts/codex-setp.sh
+  tests:
+    - server/tests/server-log-file.test.js
