@@ -40,12 +40,12 @@ export default defineConfig(async ({ mode }) => {
             // エミュレータ利用時は 7090、クラウド環境では環境変数で上書き
             port: parseInt(process.env.VITE_PORT || "7090"),
             strictPort: true,
-            host: process.env.VITE_HOST || "192.168.50.13",
+            host: process.env.VITE_HOST || "localhost",
         },
         preview: {
             port: parseInt(process.env.VITE_PORT || "7090"),
             strictPort: true,
-            host: process.env.VITE_HOST || "192.168.50.13",
+            host: process.env.VITE_HOST || "localhost",
         },
         build: {
             sourcemap: true,

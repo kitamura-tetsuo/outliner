@@ -51,6 +51,9 @@ cp .env.example .env
 npx @dotenvx/dotenvx encrypt --env-file server/.env.development
 ```
 
+暗号化キーは `.env.keys` に保存されます。このファイルはリポジトリに含めないよう
+`.gitignore` にエントリがあることを確認してください。
+
 復号化が必要な場合は `decrypt` サブコマンドを使用します。
 
 ## 開発サーバーの起動

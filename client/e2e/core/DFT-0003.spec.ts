@@ -53,9 +53,7 @@ test.describe("DFT-0003: テスト用コア書き込み機能", () => {
             console.log("Firebase Functions endpoint check failed:", error.message);
         }
 
-        if (!endpointAvailable) {
-            test.skip("Firebase Functions エミュレーターが利用できません");
-        }
+        expect(endpointAvailable).toBe(true);
 
         // 下書きを公開（Firebase Functionsに送信）
         const publishResult = await page.evaluate(async draftId => {
@@ -144,8 +142,7 @@ test.describe("DFT-0003: テスト用コア書き込み機能", () => {
             expect(updatedData.itemCount).toBeGreaterThanOrEqual(originalData.itemCount);
         }
         else {
-            // Firebase Functionsが利用できない場合はスキップ
-            test.skip("Firebase Functions エミュレーターが利用できません");
+            expect(false).toBe(true); // Firebase Functions emulator unavailable
         }
     });
 
@@ -216,7 +213,7 @@ test.describe("DFT-0003: テスト用コア書き込み機能", () => {
             }
         }
         else {
-            test.skip("Firebase Functions エミュレーターが利用できません");
+            expect(false).toBe(true); // Firebase Functions emulator unavailable
         }
     });
 

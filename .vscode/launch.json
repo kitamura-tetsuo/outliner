@@ -33,19 +33,20 @@
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against dev server",
-            "url": "http://192.168.50.13:7090",
+            "url": "http://localhost:7070",
             "webRoot": "${workspaceFolder}/client",
             "sourceMaps": true,
             "sourceMapPathOverrides": {
                 "webpack:///src/*": "${webRoot}/src/*",
-                "http://192.168.50.13:7090/src/*": "${webRoot}/src/*",
-                "http://192.168.50.13:7090/src/*": "${webRoot}/src/*",
+
+                "http://localhost:7070/src/*": "${webRoot}/src/*",
+                "http://localhost:7080/src/*": "${webRoot}/src/*",
                 "webpack:///./*": "${webRoot}/*",
                 "/./*": "${webRoot}/*",
                 "/*": "*",
                 "/src/*": "${webRoot}/src/*",
-                "192.168.50.13꞉7090/src/*": "${webRoot}/src/*",
-                "192.168.50.13꞉7090/src/*": "${webRoot}/src/*"
+                "localhost꞉7070/src/*": "${webRoot}/src/*",
+                "localhost꞉7080/src/*": "${webRoot}/src/*"
             },
             "skipFiles": [
                 "**/lib/logger.*",
@@ -53,25 +54,25 @@
                 "**/node_modules/**"
             ],
             "port": 9876,
-            "urlFilter": "*192.168.50.13:7090*"
+            "urlFilter": "*localhost:7070*"
         },
         {
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against test server",
-            "url": "http://192.168.50.13:7090",
+            "url": "http://localhost:7080",
             "webRoot": "${workspaceFolder}/client",
             "sourceMaps": true,
             "sourceMapPathOverrides": {
                 "webpack:///src/*": "${webRoot}/src/*",
-                "http://192.168.50.13:7090/src/*": "${webRoot}/src/*",
-                "http://192.168.50.13:7090/src/*": "${webRoot}/src/*",
+                "http://localhost:7070/src/*": "${webRoot}/src/*",
+                "http://localhost:7080/src/*": "${webRoot}/src/*",
                 "webpack:///./*": "${webRoot}/*",
                 "/./*": "${webRoot}/*",
                 "/*": "*",
                 "/src/*": "${webRoot}/src/*",
-                "192.168.50.13꞉7090/src/*": "${webRoot}/src/*",
-                "192.168.50.13꞉7090/src/*": "${webRoot}/src/*"
+                "localhost꞉7070/src/*": "${webRoot}/src/*",
+                "localhost꞉7080/src/*": "${webRoot}/src/*"
             },
             "skipFiles": [
                 "**/lib/logger.*",
@@ -79,7 +80,7 @@
                 "**/node_modules/**"
             ],
             // "port": 9877,
-            "urlFilter": "*192.168.50.13:7090*"
+            "urlFilter": "*localhost:7080*"
             // "runtimeExecutable": "powershell.exe",
             // "runtimeArgs": [
             //     "-NoProfile",

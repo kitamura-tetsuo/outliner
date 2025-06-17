@@ -940,6 +940,77 @@
     - src/tests/syncWorker.test.ts
     - client/e2e/new/TBL-0001.spec.ts
 
+- id: TBL-0002
+  title: EditableQueryGrid 詳細テスト
+  description: EditableQueryGridコンポーネントのセル編集、読み取り専用制御、データバインディング機能の詳細テスト
+  category: table
+  status: implemented
+  acceptance:
+    - 'セル編集機能が正しく動作する'
+    - '読み取り専用セルが編集できない'
+    - 'グリッドの表示とデータバインディングが正しく機能する'
+    - '編集イベントが正しく発火する'
+    - 'メタデータに基づいて編集可能性が制御される'
+    - '編集後にFluidFrameworkに正しくデータが送信される'
+  tests:
+    - client/e2e/new/TBL-0002.spec.ts
+
+- id: TBL-0003
+  title: SQL クエリ実行テスト
+  description: 複雑なSQLクエリの実行、エラーハンドリング、パフォーマンス測定の詳細テスト
+  category: table
+  status: implemented
+  acceptance:
+    - '複雑なJOINクエリが正しく実行される'
+    - 'SQLエラーが適切にハンドリングされる'
+    - 'クエリ実行のパフォーマンスが測定される'
+    - 'メタデータが正しく抽出される'
+    - '大量データでのクエリ実行が安定している'
+  tests:
+    - client/src/tests/sqlService.advanced.test.ts
+
+- id: TBL-0004
+  title: チャート連携テスト
+  description: データ変更時のチャート自動更新、複数チャートタイプ、EChartsの初期化テスト
+  category: table
+  status: implemented
+  acceptance:
+    - 'データ変更時にチャートが自動更新される'
+    - '複数のチャートタイプが正しく表示される'
+    - 'EChartsが正しく初期化される'
+    - 'チャートオプションが正しく適用される'
+    - 'チャートの描画パフォーマンスが適切である'
+  tests:
+    - client/e2e/new/TBL-0004.spec.ts
+
+- id: TBL-0005
+  title: queryStore.ts の詳細テスト
+  description: queryStoreの複雑なSQLクエリ処理、エラーハンドリング、ストア状態管理の詳細テスト
+  category: table
+  status: implemented
+  acceptance:
+    - '複雑なSQLクエリが正しく処理される'
+    - 'エラーハンドリングが適切に機能する'
+    - 'ストアの状態管理が正しく動作する'
+    - 'リアクティブな更新が正しく機能する'
+    - 'メモリリークが発生しない'
+  tests:
+    - client/src/tests/queryStore.advanced.test.ts
+
+- id: TBL-0006
+  title: FluidTableClient の統合テスト
+  description: FluidTableClientのコンテナ作成・接続、データ同期、複数クライアント間同期の統合テスト
+  category: table
+  status: implemented
+  acceptance:
+    - 'Fluidコンテナの作成と接続が正しく機能する'
+    - 'テーブルデータの同期が正しく動作する'
+    - '複数クライアント間でのデータ同期が機能する'
+    - 'セル更新がFluidFrameworkを通じて同期される'
+    - '接続エラー時の復旧処理が正しく動作する'
+  tests:
+    - client/src/tests/fluidTableClient.integration.test.ts
+
 - id: BRF-0001
   title: Branch forest item extraction
   description: DraftService can convert branch.forest nodes into items
@@ -949,6 +1020,7 @@
     - client/src/lib/draftService.svelte.ts
   tests:
     - client/src/lib/draftService.svelte.spec.ts
+
 - id: SEC-0001
   title: Dotenvx encrypted env files
   description: Use dotenvx to encrypt server environment files

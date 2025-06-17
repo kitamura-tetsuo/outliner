@@ -3,7 +3,9 @@
 |---------|-------|------------|--------|
 | API-0001 | Firebase Functions APIサーバーの修正 | — | implemented |
 | API-0002 | Firebase emulator起動待機機能 | — | implemented |
+| API-0003 | コンテナユーザー一覧取得の管理者チェック | — | implemented |
 | APP-0001 | プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定 | — | implemented |
+| BRF-0001 | Branch forest item extraction | — | implemented |
 | CHT-001 | Chart Component | — | implemented |
 | CLM-0001 | クリックで編集モードに入る | client/e2e/core/CLM-0001.spec.ts | implemented |
 | CLM-0002 | 左へ移動 | client/e2e/core/CLM-0002.spec.ts | implemented |
@@ -17,7 +19,7 @@
 | CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | client/e2e/core/CLM-0102.spec.ts | implemented |
 | CLM-0103 | フォーマット文字列でのカーソル操作 | client/e2e/core/CLM-0103.spec.ts | implemented |
 | COL-0001 | 他ユーザーのカーソル表示 | client/e2e/disabled/COL-0001.spec.ts | implemented |
-| DBW-0001 | Client-Side WASM DB | — | draft |
+| DBW-0001 | Client-Side WASM DB | — | implemented |
 | DBW-001 | Client-Side SQL Database | client/e2e/new/DBW-001.spec.ts | implemented |
 | FFI-0001 | Fluid Framework Integration | — | implemented |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
@@ -29,10 +31,11 @@
 | FMT-0006 | カーソル移動時のフォーマット表示の一貫性 | client/e2e/core/FMT-0006.spec.ts | implemented |
 | FMT-0007 | 内部リンク機能の表示 | — | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
+| FTR-0013 | Use environment variables in min page | — | implemented |
 | GRF-001 | Graph View | — | implemented |
-| GVI-0001 | Graph View | — | draft |
+| GVI-0001 | Graph View | — | implemented |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
-| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
+| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001.spec.ts<br>client/e2e/core/ITM-0001-title.spec.ts | implemented |
 | LNK-0001 | 内部リンクのURL生成機能 | — | implemented |
 | LNK-0002 | 内部リンクの機能検証 | — | implemented |
 | LNK-0003 | 内部リンクのナビゲーション機能 | — | implemented |
@@ -42,6 +45,7 @@
 | LNK-0007 | バックリンク機能 | — | implemented |
 | NAV-0001 | プロジェクト選択とページナビゲーション | client/e2e/core/NAV-0001.spec.ts | implemented |
 | NAV-0002 | プロジェクトページへのリンク機能 | — | implemented |
+| SEC-0001 | Dotenvx encrypted env files | — | implemented |
 | SLR-0001 | Shift + 上下左右 | client/e2e/core/SLR-0001.spec.ts | implemented |
 | SLR-0002 | 行頭まで選択 | client/e2e/core/SLR-0002.spec.ts | implemented |
 | SLR-0003 | 行末まで選択 | client/e2e/core/SLR-0003.spec.ts | implemented |

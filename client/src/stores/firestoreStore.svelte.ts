@@ -70,8 +70,8 @@ try {
 
     // Firebase Emulatorに接続
     if (useEmulator) {
-        // 環境変数から接続情報を取得（デフォルトは192.168.50.13:58080）
-        const emulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || "192.168.50.13";
+        // 環境変数から接続情報を取得（デフォルトはlocalhost:58080）
+        const emulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || "localhost";
         const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "58080", 10);
 
         // エミュレーター接続情報をログに出力
