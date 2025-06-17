@@ -16,7 +16,7 @@ let tinyliciousProcess = null;
 
 // Tinyliciousサーバーを起動する関数
 function startTinyliciousServer() {
-    const tinyliciousPort = process.env.VITE_TINYLICIOUS_PORT || "7082";
+    const tinyliciousPort = process.env.VITE_TINYLICIOUS_PORT || "7092";
     console.log(`Starting Tinylicious server on port ${tinyliciousPort}...`);
 
     // プロセス起動前にログディレクトリを確認して作成

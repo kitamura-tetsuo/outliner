@@ -247,7 +247,7 @@ const app = express();
 // CORS設定を強化
 app.use(cors({
     origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",").map(origin => origin.trim())
-        : ["http://localhost:7070"], // カンマ区切りで複数オリジンをサポート
+        : ["http://localhost:7090"], // カンマ区切りで複数オリジンをサポート
     methods: ["GET", "POST", "OPTIONS"], // OPTIONSメソッドを追加(プリフライトリクエスト対応)
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"], // 許可するヘッダーを明示
@@ -676,7 +676,7 @@ app.post("/api/create-test-user", async (req, res) => {
 
 // 注意: generateAzureFluidToken 関数はFirebase Functionsに移行しました
 
-const PORT = process.env.PORT || 7071;
+const PORT = process.env.PORT || 7091;
 app.listen(PORT, () => {
     logger.info(`Auth service running on port ${PORT}`);
     logger.info(`CORS origin: ${process.env.CORS_ORIGIN || "*"}`);

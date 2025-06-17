@@ -30,7 +30,7 @@ export function setupTestEnvironment() {
 
         // TinyliciousをFluid Relayサービスとして使用するための環境変数を設定
         window.localStorage.setItem("VITE_USE_TINYLICIOUS", "true");
-        window.localStorage.setItem("VITE_TINYLICIOUS_PORT", "7082");
+        window.localStorage.setItem("VITE_TINYLICIOUS_PORT", "7092");
 
         logger.info("Test environment setup completed. Using MockFluidClient with Tinylicious.");
     }

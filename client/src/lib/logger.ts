@@ -1,7 +1,7 @@
 import pino from "pino";
 
 // 環境変数からAPIサーバーURLを取得（デフォルトはlocalhostの認証サーバー）
-const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";
+const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7091";
 
 // ブラウザのコンソールAPIを使用するかどうか
 // テスト環境では常にtrueを返すようにする

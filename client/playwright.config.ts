@@ -11,9 +11,9 @@ import {
 const isLocalhostEnv = true; // localhostを強制的に使用
 
 // テスト用ポートを定義 - これを明示的に指定
-const TEST_PORT = isLocalhostEnv ? "7093" : "7080";
+const TEST_PORT = "7090";
 // Tinylicious サーバーのポートを定義
-const TINYLICIOUS_PORT = isLocalhostEnv ? "7094" : "7082";
+const TINYLICIOUS_PORT = "7092";
 // ホストを定義
 const VITE_HOST = isLocalhostEnv ? "localhost" : "192.168.50.13";
 // 環境設定ファイルを定義
