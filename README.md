@@ -35,6 +35,8 @@ cp .env.example .env
 cd ../server
 cp .env.example .env
 
+# ネットワーク経由でアクセスする場合は .env の `LOCAL_HOST` にローカル IP を設定
+
 # Firebase Functions側
 cd ../functions
 cp .env.example .env

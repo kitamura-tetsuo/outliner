@@ -24,6 +24,7 @@ cp .env.example .env
 3. 環境変数を設定:
    - Azure Fluid Relay設定（テナントID、エンドポイント、プライマリキー）
    - サーバー設定（ポート、CORS設定など）
+   - `LOCAL_HOST` をローカルネットワークのIPアドレスに設定（デフォルトは`localhost`）
 
 4. Firebase Admin SDK JSONファイルをダウンロードして配置:
    - `firebase-adminsdk.json` をこのディレクトリに配置
