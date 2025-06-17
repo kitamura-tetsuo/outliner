@@ -18,6 +18,17 @@
     - client/.env.example
   tests: []
 
+- id: LOG-0001
+  title: Log test servers to files only
+  description: Servers started by codex-setp.sh log output exclusively to files to keep console output clean
+  category: developer-experience
+  status: implemented
+  components:
+    - scripts/common-functions.sh
+    - scripts/codex-setp.sh
+  tests:
+    - server/tests/server-log-file.test.js
+
 - id: FTR-0014
   title: Configurable host and port via environment variables
   description: Default service hosts and ports are configurable through environment variables with fallbacks.
@@ -1207,3 +1218,14 @@
   status: implemented
   components: []
   tests: []
+
+- id: LOG-0001
+  title: Log test servers to files only
+  description: Servers started by codex-setp.sh log output exclusively to files to keep console output clean
+  category: developer-experience
+  status: implemented
+  components:
+    - scripts/common-functions.sh
+    - scripts/codex-setp.sh
+  tests:
+    - server/tests/server-log-file.test.js
