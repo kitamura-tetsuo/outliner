@@ -37,12 +37,13 @@ export default defineConfig(async ({ mode }) => {
             }),
         ],
         server: {
-            port: parseInt(process.env.VITE_PORT || "7070"),
+            // エミュレータ利用時は 7090、クラウド環境では環境変数で上書き
+            port: parseInt(process.env.VITE_PORT || "7090"),
             strictPort: true,
             host: process.env.VITE_HOST || "localhost",
         },
         preview: {
-            port: parseInt(process.env.VITE_PORT || "7070"),
+            port: parseInt(process.env.VITE_PORT || "7090"),
             strictPort: true,
             host: process.env.VITE_HOST || "localhost",
         },

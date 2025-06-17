@@ -41,8 +41,9 @@ services:
         consistency: cached
 
     ports:
+      # Cloud dev environment
       - '7070-7072:7070-7072'
-      - '7080-7082:7080-7082'
+      # Emulator environment
       - '7090-7092:7090-7092'
       - '9323:9323'
       - '54000:54000'

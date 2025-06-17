@@ -135,14 +135,23 @@ firebase deploy
 
 ### 開発環境
 
-- クライアント: `VITE_PORT=7070`
-- API: `PORT=7071`
-- Tinylicious: `VITE_TINYLICIOUS_PORT=7072`
+クラウド上のサービスを利用する場合と、Firebase Emulator を利用する場合で使用するポートが異なります。
+
+- **クラウド環境アクセス用**
+  - クライアント: `VITE_PORT=7070`
+  - API: `PORT=7071`
+  - Tinylicious: `VITE_TINYLICIOUS_PORT=7072`
+  - Firebase Functions はデバッグのためローカルを利用します
+
+- **エミュレータ利用時**
+  - クライアント: `VITE_PORT=7090`
+  - API: `PORT=7091`
+  - Tinylicious: `VITE_TINYLICIOUS_PORT=7092`
 
 ### テスト環境
 
-- クライアント: `VITE_PORT=7080`
-- Tinylicious: `VITE_TINYLICIOUS_PORT=7082`
+- クライアント: `VITE_PORT=7090`
+- Tinylicious: `VITE_TINYLICIOUS_PORT=7092`
 
 ## Firebase Hosting + Functions
 
