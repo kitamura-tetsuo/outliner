@@ -11,7 +11,7 @@ const envPath = path.join(__dirname, "..", ".env");
 
 /**
  * ngrokのAPI経由で現在のパブリックURLを取得
- * @returns {Promise<string|null>} ngrokのパブリックURL
+ * @returns {Promise<string | undefined>} ngrokのパブリックURL
  */
 async function getNgrokPublicUrl() {
     try {
@@ -34,12 +34,12 @@ async function getNgrokPublicUrl() {
         }
 
         console.warn("アクティブなngrokトンネルが見つかりません");
-        return null;
+        return undefined;
     }
     catch (error) {
         console.error("ngrok APIにアクセスできません:", error.message);
         console.error("ngrokが起動しているか確認してください");
-        return null;
+        return undefined;
     }
 }
 
@@ -90,7 +90,7 @@ function updateEnvCallbackUrl(ngrokUrl) {
 
 /**
  * ngrokのパブリックURLを取得して.envファイルを更新
- * @returns {Promise<string|null>} 更新されたngrokのURL
+ * @returns {Promise<string | undefined>} 更新されたngrokのURL
  */
 async function setupNgrokUrl() {
     const ngrokUrl = await getNgrokPublicUrl();
@@ -102,7 +102,7 @@ async function setupNgrokUrl() {
         }
     }
 
-    return null;
+    return undefined;
 }
 
 module.exports = {
