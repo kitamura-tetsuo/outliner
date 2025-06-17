@@ -2,8 +2,8 @@ import type {
     ContainerSchema,
     IFluidContainer,
 } from "@fluidframework/fluid-static";
+import { SharedMap } from "@fluidframework/map";
 import { TinyliciousClient } from "@fluidframework/tinylicious-client";
-import { SharedMap } from "fluid-framework";
 
 export interface UpdateCellArgs {
     tableId: string;
@@ -54,17 +54,57 @@ export class FluidTableClient {
 
     updateCell({ tableId, rowId, column, value }: UpdateCellArgs) {
         if (!this.tables) throw new Error("tables map not ready");
-        let table = this.tables.get(tableId) as SharedMap | undefined;
-        if (!table) {
-            table = new SharedMap();
-            this.tables.set(tableId, table);
+
+        // フラットなキー構造を使用: "tableId:rowId:column"
+        const cellKey = `${tableId}:${rowId}:${column}`;
+        this.tables.set(cellKey, value);
+    }
+
+    getCell(tableId: string, rowId: string, column: string): any {
+        if (!this.tables) throw new Error("tables map not ready");
+
+        const cellKey = `${tableId}:${rowId}:${column}`;
+        return this.tables.get(cellKey);
+    }
+
+    getAllCells(tableId: string): Map<string, any> {
+        if (!this.tables) throw new Error("tables map not ready");
+
+        const result = new Map<string, any>();
+        const prefix = `${tableId}:`;
+
+        for (const [key, value] of this.tables) {
+            if (key.startsWith(prefix)) {
+                const cellKey = key.substring(prefix.length); // "rowId:column"
+                result.set(cellKey, value);
+            }
         }
-        let row = table.get(rowId) as SharedMap | undefined;
-        if (!row) {
-            row = new SharedMap();
-            table.set(rowId, row);
+
+        return result;
+    }
+
+    // テスト用のヘルパーメソッド: ネストしたMap構造をシミュレート
+    getTableAsNestedMap(tableId: string): Map<string, Map<string, any>> | undefined {
+        if (!this.tables) throw new Error("tables map not ready");
+
+        const result = new Map<string, Map<string, any>>();
+        const prefix = `${tableId}:`;
+        let hasData = false;
+
+        for (const [key, value] of this.tables) {
+            if (key.startsWith(prefix)) {
+                hasData = true;
+                const cellKey = key.substring(prefix.length); // "rowId:column"
+                const [rowId, column] = cellKey.split(":");
+
+                if (!result.has(rowId)) {
+                    result.set(rowId, new Map<string, any>());
+                }
+                result.get(rowId)!.set(column, value);
+            }
         }
-        row.set(column, value);
+
+        return hasData ? result : undefined;
     }
 
     private setupSignalHandlers() {

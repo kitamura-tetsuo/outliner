@@ -1,6 +1,10 @@
 const { describe, it, before } = require("mocha");
 const { expect } = require("chai");
-const request = require("supertest")(`http://localhost:${process.env.TEST_API_PORT || 7091}`);
+const apiPort = process.env.TEST_API_PORT;
+if (!apiPort) {
+  throw new Error("TEST_API_PORT env var is required");
+}
+const request = require("supertest")(`http://localhost:${apiPort}`);
 
 describe("Auth service integration", function () {
   this.timeout(10000);
