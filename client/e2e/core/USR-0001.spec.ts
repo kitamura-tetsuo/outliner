@@ -1,3 +1,7 @@
+/** @feature USR-0001
+ *  Title   : ユーザー削除機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,

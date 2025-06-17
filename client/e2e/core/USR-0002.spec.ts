@@ -1,3 +1,7 @@
+/** @feature USR-0002
+ *  Title   : コンテナ削除機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,

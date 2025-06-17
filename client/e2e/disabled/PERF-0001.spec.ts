@@ -1,3 +1,7 @@
+/** @feature PERF-0001
+ *  Title   : パフォーマンステスト
+ *  Source  : docs/client-features.yaml
+ */
 /**
  * PERF-0001: スケジュール公開パフォーマンステスト
  * 大量データでのスケジュール公開性能と同時処理の最適化をテストする
