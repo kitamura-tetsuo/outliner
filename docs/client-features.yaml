@@ -33,6 +33,51 @@
   tests:
     - server/tests/server-log-file.test.js
 
+- id: ADV-0000
+  title: Advanced indent and unindent
+  category: editing
+  status: implemented
+  components:
+    - client/src/components/OutlinerTree.svelte
+    - client/src/components/OutlinerItem.svelte
+  tests:
+    - client/e2e/new/ADV-0000.spec.ts
+  acceptance:
+    - "Tab/Shift+Tab correctly change item hierarchy"
+
+- id: MUL-0000
+  title: Multi-cursor editing
+  category: editing
+  status: implemented
+  components:
+    - client/src/components/EditorOverlay.svelte
+  tests:
+    - client/e2e/new/MUL-0000.spec.ts
+  acceptance:
+    - "Alt+Click adds additional cursors"
+
+- id: OUT-0000
+  title: Outliner tree item operations
+  category: core
+  status: implemented
+  components:
+    - client/src/components/OutlinerTree.svelte
+  tests:
+    - client/e2e/new/OUT-0000.spec.ts
+  acceptance:
+    - "Toolbar buttons add and delete items"
+
+- id: TIN-0000
+  title: Tinylicious connectivity
+  category: integration
+  status: implemented
+  components:
+    - client/src/routes/debug/+page.svelte
+  tests:
+    - client/e2e/new/TIN-0000.spec.ts
+  acceptance:
+    - "Application connects to Tinylicious server"
+
 - id: FTR-0014
   title: Configurable host and port via environment variables
   description: Default service hosts and ports are configurable through environment variables with fallbacks.
@@ -1169,7 +1214,7 @@
     - src/services/queryStore.ts
     - src/services/fluidService.ts
   tests:
-    - client/e2e/disabled/PERF-0001.spec.ts
+    - client/e2e/new/PERF-0001.spec.ts
   acceptance:
     - "大量データセットのパフォーマンスが適切"
     - "グリッド描画パフォーマンスが適切"
