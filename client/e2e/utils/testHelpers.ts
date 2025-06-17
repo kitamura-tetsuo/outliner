@@ -299,6 +299,56 @@ export class TestHelpers {
         }, { itemId, text });
     }
 
+    /** Run basic CRUD operations on the client DB service */
+    public static async runClientDbCrud(page: Page): Promise<{ added: any; updated: any; remainingCount: number; }> {
+        return await page.evaluate(async () => {
+            const db = (window as any).__DB_SERVICE__;
+            await db.init();
+            const id = "p1";
+            await db.addPage({ id, title: "First", content: "Hello" });
+            const added = await db.getPage(id);
+            await db.updatePage({ id, title: "Updated", content: "World" });
+            const updated = await db.getPage(id);
+            await db.deletePage(id);
+            const remaining = await db.getAllPages();
+            return { added, updated, remainingCount: remaining.length };
+        });
+    }
+
+    /** Retrieve grid cell information from the editable JOIN table */
+    public static async getEditableGridCellInfo(page: Page): Promise<{ cellCount: number; dataCellCount: number; firstDataCellText: string | null; } | null> {
+        return await page.evaluate(() => {
+            const container = document.querySelector('[data-testid="editable-grid"]');
+            if (!container) return null;
+
+            const cells = container.querySelectorAll('.wx-cell');
+            const dataCells = Array.from(cells).filter(cell => {
+                const role = cell.getAttribute('role');
+                const text = cell.textContent?.trim() || '';
+                return role !== 'columnheader' && !['tbl_pk', 'value', 'num'].includes(text);
+            });
+
+            return {
+                cellCount: cells.length,
+                dataCellCount: dataCells.length,
+                firstDataCellText: dataCells[0]?.textContent?.trim() || null,
+            };
+        });
+    }
+
+    /** Get chart option object from JOIN table page */
+    public static async getJoinTableChartOption(page: Page): Promise<any> {
+        return await page.evaluate(() => (window as any).__JOIN_TABLE__.chartOption);
+    }
+
+    /** Retrieve page count from the global store */
+    public static async getPageCount(page: Page): Promise<number> {
+        return await page.evaluate(() => {
+            const store = (window as any).appStore;
+            return store.pages.current.length;
+        });
+    }
+
     /**
      * カーソル情報取得用のデバッグ関数をセットアップする
      * @param page Playwrightのページオブジェクト
