@@ -76,8 +76,6 @@ def main() -> None:
     if not MD_OUTFILE.exists() or MD_OUTFILE.read_text(encoding="utf-8") != md_text:
         MD_OUTFILE.write_text(md_text, encoding="utf-8")
         logger.info(f"feature-map.md updated → {MD_OUTFILE.relative_to(ROOT)}")
-        # pre-commit から呼ばれた場合に備え、自動 add しておく
-        subprocess.run(["git", "add", str(MD_OUTFILE)], check=False)
     else:
         logger.info("feature-map.md already up-to-date ✔")
 
