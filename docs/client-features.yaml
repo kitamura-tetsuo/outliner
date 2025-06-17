@@ -91,6 +91,8 @@
   acceptance:
     - "Firebase config values come from VITE_FIREBASE_* variables"
     - "Token verification URL uses VITE_TOKEN_VERIFY_URL"
+    - "Editable grid shows 6 data cells and first cell text is '1'"
+    - "Chart option includes bar series with values [1,2]"
 - id: IME-0001
   title: IMEを使用した日本語入力
   status: implemented # draft / implemented / deprecated
