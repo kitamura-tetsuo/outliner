@@ -402,7 +402,9 @@ export async function getUserContainers(): Promise<{ containers: string[]; defau
         }
 
         // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        const functionsHost = import.meta.env.VITE_FIREBASE_FUNCTIONS_HOST || "localhost";
+        const functionsPort = import.meta.env.VITE_FIREBASE_FUNCTIONS_PORT || "57070";
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || `http://${functionsHost}:${functionsPort}`;
         log("fluidService", "info", `Getting user containers from Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナリストを取得
@@ -455,7 +457,9 @@ export async function deleteContainer(containerId: string): Promise<boolean> {
         }
 
         // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        const functionsHost = import.meta.env.VITE_FIREBASE_FUNCTIONS_HOST || "localhost";
+        const functionsPort = import.meta.env.VITE_FIREBASE_FUNCTIONS_PORT || "57070";
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || `http://${functionsHost}:${functionsPort}`;
         log("fluidService", "info", `Deleting container ${containerId} via Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナを削除

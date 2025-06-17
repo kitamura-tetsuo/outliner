@@ -22,13 +22,17 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
      * @testcase 内部リンクをクリックして別のページに移動する
      * @description 内部リンクをクリックして別のページに移動することを確認するテスト
      */
-    test("内部リンクをクリックして別のページに移動する", async ({ page }) => {
+const host = process.env.VITE_HOST || "localhost";
+const port = process.env.VITE_PORT || "7090";
+const baseUrl = `http://${host}:${port}`;
+
+test("内部リンクをクリックして別のページに移動する", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
         });
 
         // ホームページにアクセス
-        await page.goto("http://localhost:7090/");
+        await page.goto(`${baseUrl}/`);
 
         // ページが読み込まれるのを待つ
         await page.waitForSelector("body", { timeout: 10000 });
@@ -80,7 +84,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         });
 
         // まずホームページにアクセス
-        await page.goto("http://localhost:7090/");
+        await page.goto(`${baseUrl}/`);
 
         // ページが読み込まれるのを待つ
         await page.waitForSelector("body", { timeout: 10000 });
@@ -93,7 +97,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const randomPage = "page-" + Date.now().toString().slice(-6);
 
         // ページに移動
-        await page.goto(`http://localhost:7090/${randomPage}`);
+        await page.goto(`${baseUrl}/${randomPage}`);
 
         // 新しいURLに遷移するのを待つ
         await page.waitForURL(`**/${randomPage}`, { timeout: 10000 });
@@ -775,7 +779,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const pageName = "target-page-" + Date.now().toString().slice(-6);
 
         // 直接ターゲットページにアクセス
-        await page.goto(`http://localhost:7090/${projectName}/${pageName}`);
+        await page.goto(`${baseUrl}/${projectName}/${pageName}`);
 
         // ページが読み込まれるのを待つ
         await page.waitForSelector("body", { timeout: 10000 });
@@ -821,7 +825,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         await page.keyboard.type(`[/${projectName}/${pageName}]`);
 
         // 直接URLを使用して再度遷移
-        await page.goto(`http://localhost:7090/${projectName}/${pageName}`);
+        await page.goto(`${baseUrl}/${projectName}/${pageName}`);
 
         // ページが読み込まれるのを待つ
         await page.waitForSelector(".outliner-item", { timeout: 10000 });
