@@ -744,6 +744,28 @@ export class TestHelpers {
     }
 
     /**
+     * 現在表示されているアイテムの階層情報を取得する
+     */
+    public static async getItemStructure(page: Page): Promise<Array<{ depth: number; text: string; top: number }>> {
+        return await page.evaluate(() => {
+            const items = Array.from(document.querySelectorAll('.item-container')) as HTMLElement[];
+            return items.map(item => ({
+                depth: parseInt(getComputedStyle(item).getPropertyValue('--item-depth')) || 0,
+                text: item.querySelector('.item-text')?.textContent?.trim() || '',
+                top: parseInt((item as HTMLElement).style.top) || 0,
+            }));
+        });
+    }
+
+    /** Check if connection indicator has connected class */
+    public static async connectionIndicatorIsConnected(page: Page): Promise<boolean> {
+        return await page.evaluate(() => {
+            const indicator = document.querySelector('.status-indicator');
+            return indicator?.classList.contains('connected') ?? false;
+        });
+    }
+
+    /**
      * アイテムをクリックして編集モードに入る
      * @param page Playwrightのページオブジェクト
      * @param itemSelector アイテムを特定するセレクタ
