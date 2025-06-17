@@ -5,7 +5,9 @@
 	import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
 	import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 	import { TreeSubscriber } from "../stores/TreeSubscriber";
-	import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
+import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
+import TableEmbed from './TableEmbed.svelte';
+import ChartEmbed from './ChartEmbed.svelte';
 	interface Props {
 		model: OutlinerItemViewModel;
 		depth?: number;
@@ -1366,12 +1368,18 @@
 					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>
 						{@html ScrapboxFormatter.formatToHtml(text.current)}
 					</span>
-				{/if}
-				{#if !isPageTitle && model.votes.length > 0}
-					<span class="vote-count">{model.votes.length}</span>
-				{/if}
-			</div>
-		</div>
+                                {/if}
+                                {#if !isPageTitle && model.votes.length > 0}
+                                        <span class="vote-count">{model.votes.length}</span>
+                                {/if}
+                        </div>
+
+                        {#if model.embed?.type === 'table'}
+                                <TableEmbed query={model.embed.query} />
+                        {:else if model.embed?.type === 'chart'}
+                                <ChartEmbed option={model.embed.option} />
+                        {/if}
+                </div>
 
 		{#if !isPageTitle}
 			<div class="item-actions">
