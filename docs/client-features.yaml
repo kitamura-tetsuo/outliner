@@ -35,6 +35,15 @@
     - client/e2e/core/DFT-0003.spec.ts
     - client/e2e/core/USR-0001.spec.ts
     - client/e2e/core/USR-0002.spec.ts
+- id: FTR-0016
+  title: Playwright config supports PORT env variable
+  description: The E2E test server port can be set via PORT environment variable with fallback to 7090.
+  category: configuration
+  status: implemented
+  components:
+    - playwright.config.ts
+  tests:
+    - client/e2e/new/FTR-0016.spec.ts
 - id: EMB-0001
   title: Outliner Table & Chart Embedding
   description: Notion-like table and chart blocks can be embedded in any outliner item
