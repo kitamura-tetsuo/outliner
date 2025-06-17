@@ -1,7 +1,7 @@
 <script lang="ts">
 // @ts-ignore
 import { Grid } from "wx-svelte-grid";
-import { onMount, afterUpdate, tick } from "svelte";
+import { onMount, tick } from "svelte"; // Removed afterUpdate
 import { mapEdit } from "../services/editMapper";
 import type { ColumnMeta } from "../services/sqlService";
 
@@ -60,8 +60,18 @@ function applyDataAttributes() {
     });
 }
 
-onMount(applyDataAttributes);
-afterUpdate(applyDataAttributes);
+onMount(applyDataAttributes); // Keep onMount for initial setup
+
+// Use $effect to re-apply attributes when gridRows or columns change
+$effect(() => {
+    applyDataAttributes();
+    // Explicitly depend on gridRows and columns if necessary,
+    // though $effect should pick them up if they are used by applyDataAttributes indirectly
+    // or if applyDataAttributes is called due to changes in them.
+    // Forcing dependency if auto-detection is not enough:
+    gridRows;
+    columns;
+});
 </script>
 
 <div data-testid="editable-grid" class="wx-grid-container">

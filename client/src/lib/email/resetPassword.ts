@@ -44,4 +44,3 @@ export async function validateResetToken(oobCode: string): Promise<void> {
         throw new Error(`Invalid token: ${msg}`);
     }
 }
-

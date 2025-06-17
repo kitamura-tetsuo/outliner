@@ -8,7 +8,7 @@ import { FluidTableClient } from "../services/fluidClient";
 import { createQueryStore } from "../services/queryStore";
 import { startSync } from "../services/syncWorker";
 
-export let query: string = "SELECT id as tbl_pk, value, num FROM tbl";
+let { query = "SELECT id as tbl_pk, value, num FROM tbl" }: { query?: string } = $props();
 
 let sql: SqlService;
 let fluid: FluidTableClient;
