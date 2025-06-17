@@ -264,7 +264,7 @@ test.describe("TBL-0002: EditableQueryGrid 詳細テスト", () => {
         expect(cellCount).toBeGreaterThanOrEqual(2); // 最低2つのセルがあることを確認
 
         // 最後のセル（数値列と想定）をダブルクリック
-        const numericCell = cells.nth(cellCount - 1);
+        const numericCell = page.locator('[data-item-id="cell-0-2"]');
         await numericCell.dblclick();
 
         // 数値を入力
@@ -558,7 +558,7 @@ test.describe("TBL-0002: EditableQueryGrid 詳細テスト", () => {
         // 最大3つのセルを編集
         const editCount = Math.min(cellCount, 3);
         for (let i = 0; i < editCount; i++) {
-            const cell = cells.nth(i);
+            const cell = page.locator(`[data-item-id="cell-0-${i}"]`);
             await cell.dblclick();
 
             const newValue = `edited-${i}-${Date.now()}`;
