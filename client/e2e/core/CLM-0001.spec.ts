@@ -18,13 +18,7 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         console.log("Current URL:", url);
 
         // ページ内の要素を確認
-        const elements = await page.evaluate(() => {
-            return {
-                outlinerItems: document.querySelectorAll(".outliner-item").length,
-                pageTitle: document.querySelector(".outliner-item.page-title") ? true : false,
-                firstItem: document.querySelector(".outliner-item") ? true : false,
-            };
-        });
+        const elements = await TestHelpers.getPageElementsInfo(page);
         console.log("Page elements:", elements);
     });
 
@@ -48,10 +42,7 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         await page.screenshot({ path: "client/test-results/CLM-0001-after-click.png" });
 
         // 隠し textarea がフォーカスされているか確認
-        const isFocused = await page.evaluate(() => {
-            const active = document.activeElement;
-            return active?.classList.contains("global-textarea");
-        });
+        const isFocused = await TestHelpers.isGlobalTextareaFocused(page);
         console.log("Global textarea focused:", isFocused);
         expect(isFocused).toBe(true);
 
