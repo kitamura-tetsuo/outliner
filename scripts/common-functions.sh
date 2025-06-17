@@ -72,6 +72,15 @@ create_log_directories() {
   done
 }
 
+# Remove all files in log directories
+clear_log_files() {
+  for dir in "${LOG_DIRS[@]}"; do
+    if [ -d "${dir}" ]; then
+      rm -rf "${dir}"/* 2>/dev/null || true
+    fi
+  done
+}
+
 # Install npm dependencies if needed
 npm_ci_if_needed() {
   if [ ! -d node_modules ]; then
