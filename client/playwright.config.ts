@@ -1,9 +1,5 @@
-import {
-    defineConfig,
-    devices,
-} from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
-// テスト環境の設定 - AGENTS.mdの指定に従い7090ポートを使用
 const TEST_PORT = "7090";
 const VITE_HOST = "localhost";
 
@@ -13,7 +9,8 @@ console.log(`- Host: ${VITE_HOST}`);
 
 export default defineConfig({
     testDir: "./e2e",
-    testMatch: ["basic-simple.spec.ts", "new/TBL-*.spec.ts"], // Run basic tests and table tests
+    // Run all Playwright tests in the e2e folder
+    testMatch: "**/*.spec.ts",
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: 0,

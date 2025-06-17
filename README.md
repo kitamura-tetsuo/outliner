@@ -204,7 +204,37 @@ npm run test:unit
 
 # E2E テスト
 npm run test:e2e
+
+# Playwright テストを 1 ファイルずつ実行する場合
+scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 ```
-テストの前には `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
+テスト実行前に必ず `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
+
+### Feature Map の更新
+
+テストファイルや `docs/client-features.yaml` を変更した後は、機能とテストの対応表を更新するため次のコマンドを実行してください。
+
+```bash
+python scripts/gen_feature_map.py
+git add docs/feature-map.md
+```
+
+生成された `docs/feature-map.md` もコミットに含めることで、常に最新の機能一覧を共有できます。
+
+## Using encrypted .env files
+
+Encrypted `.env` files created with `dotenvx` can be used directly when running
+commands. Prepend `npx dotenvx run --env-file=<file>` to your usual command.
+
+```bash
+# Development
+npx dotenvx run --env-file=server/.env.development npm run dev
+
+# Testing
+npx dotenvx run --env-file=server/.env.test npm run test:e2e
+
+# Deployment
+npx dotenvx run --env-file=server/.env.production firebase deploy
+```
