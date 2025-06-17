@@ -53,7 +53,8 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
 
     test("複数アイテムにまたがる選択範囲のテキストをコピーできる", async ({ page }) => {
         // 最初のアイテムを取得
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
 
         // 最初のアイテムをクリックして選択
         await firstItem.locator(".item-content").click({ force: true });
@@ -66,7 +67,8 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         });
 
         // 2つ目のアイテムをクリックして選択
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
@@ -186,7 +188,8 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         });
 
         // 2つ目のアイテムを取得
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId2 = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId2}"]`);
 
         // 2つ目のアイテムをクリックして選択
         await secondItem.locator(".item-content").click({ force: true });
@@ -298,7 +301,8 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         });
 
         // 3つ目のアイテムをクリック
-        const thirdItem = page.locator(".outliner-item").nth(2);
+        const thirdItemId = await TestHelpers.getItemIdByIndex(page, 2);
+        const thirdItem = page.locator(`.outliner-item[data-item-id="${thirdItemId}"]`);
         await thirdItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
@@ -395,7 +399,8 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         });
 
         // 最初のアイテムを取得
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItemId2 = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId2}"]`);
 
         // 最初のアイテムをクリックして選択
         await firstItem.locator(".item-content").click({ force: true });

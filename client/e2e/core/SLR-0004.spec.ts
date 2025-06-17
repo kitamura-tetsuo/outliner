@@ -151,7 +151,8 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
         await page.waitForTimeout(300);
 
         // 新しいアイテムのテキストを取得
-        const newItem = page.locator(".outliner-item").nth(1);
+        const newItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const newItem = page.locator(`.outliner-item[data-item-id="${newItemId}"]`);
         const newItemText = await newItem.locator(".item-text").textContent();
 
         // ペーストされたテキストが存在することを確認

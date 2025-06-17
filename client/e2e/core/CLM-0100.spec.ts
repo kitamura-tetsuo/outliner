@@ -66,7 +66,8 @@ test.describe("カーソル管理テスト", () => {
         expect(cursorCountAfterFirstClick).toBeLessThanOrEqual(initialCursorCount);
 
         // 2番目のアイテムをクリック
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await secondItem.locator(".item-content").click({ force: true });
 
         // 2番目のアイテムクリック後のカーソル数を確認

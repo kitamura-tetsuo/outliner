@@ -134,7 +134,8 @@ test.describe("FMT-0007: 内部リンク機能", () => {
      */
     test("内部リンクのデータが正しく保存される", async ({ page }) => {
         // ページタイトル以外のアイテムを選択（2番目のアイテム）
-        const firstItem = page.locator(".outliner-item").nth(1);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
