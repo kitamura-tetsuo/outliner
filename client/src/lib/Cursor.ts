@@ -2069,26 +2069,26 @@ export class Cursor {
         const selection = Object.values(store.selections).find(s => s.userId === this.userId);
         if (!selection) return;
 
-        // 同一アイテム内の選択範囲の場合
+        let textToCopy = "";
+
         if (selection.startItemId === selection.endItemId) {
-            const target = this.findTarget();
+            const target = this.searchItem(generalStore.currentPage!, selection.startItemId);
             if (!target) return;
 
             const text = target.text || "";
             const startOffset = Math.min(selection.startOffset, selection.endOffset);
             const endOffset = Math.max(selection.startOffset, selection.endOffset);
 
-            // 選択範囲のテキストを取得
-            const selectedText = text.substring(startOffset, endOffset);
-
-            // クリップボードにコピー（ブラウザのデフォルト動作に任せる）
-            // 実際のコピーはブラウザが行うので、ここでは何もしない
-            return;
+            textToCopy = text.substring(startOffset, endOffset);
+        }
+        else {
+            // 複数アイテムにまたがる選択範囲の場合はストアから取得
+            textToCopy = store.getSelectedText(this.userId);
         }
 
-        // 複数アイテムにまたがる選択範囲の場合
-        // 実際のコピーはEditorOverlay.svelteのhandleCopyで処理されるため、
-        // ここでは何もしない
+        if (textToCopy && typeof navigator !== "undefined" && navigator.clipboard) {
+            navigator.clipboard.writeText(textToCopy).catch(() => { /* noop */ });
+        }
     }
 
     /**
@@ -2097,6 +2097,9 @@ export class Cursor {
     cutSelectedText() {
         const selection = Object.values(store.selections).find(s => s.userId === this.userId);
         if (!selection) return;
+
+        // コピーしてから削除する
+        this.copySelectedText();
 
         // 同一アイテム内の選択範囲の場合
         if (selection.startItemId === selection.endItemId) {
