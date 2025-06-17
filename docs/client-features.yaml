@@ -17,6 +17,19 @@
     - client/src/routes/min/+page.svelte
     - client/.env.example
   tests: []
+
+- id: EMB-0001
+  title: Outliner Table & Chart Embedding
+  description: Notion-like table and chart blocks can be embedded in any outliner item
+  category: table
+  status: implemented
+  components:
+    - client/src/components/TableEmbed.svelte
+    - client/src/components/ChartEmbed.svelte
+    - client/src/components/OutlinerItem.svelte
+    - client/src/schema/app-schema.ts
+  tests:
+    - client/e2e/new/EMB-0001.spec.ts
   acceptance:
     - "Firebase config values come from VITE_FIREBASE_* variables"
     - "Token verification URL uses VITE_TOKEN_VERIFY_URL"
