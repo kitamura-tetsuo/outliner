@@ -1,3 +1,4 @@
+/** @feature FTR-0016 */
 import { expect, test } from "@playwright/test";
 
 /**

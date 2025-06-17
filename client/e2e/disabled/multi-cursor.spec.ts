@@ -1,3 +1,4 @@
+/** @feature MUL-0000 */
 // Test for multi-cursor functionality.
 import {
     expect,
