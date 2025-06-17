@@ -694,6 +694,55 @@ export class TestHelpers {
         }, index);
     }
 
+    /** Get basic info about current page elements */
+    public static async getPageElementsInfo(page: Page): Promise<{ outlinerItems: number; pageTitle: boolean; firstItem: boolean; }> {
+        return await page.evaluate(() => {
+            return {
+                outlinerItems: document.querySelectorAll(".outliner-item").length,
+                pageTitle: document.querySelector(".outliner-item.page-title") ? true : false,
+                firstItem: document.querySelector(".outliner-item") ? true : false,
+            };
+        });
+    }
+
+    /** Determine if the hidden textarea currently has focus */
+    public static async isGlobalTextareaFocused(page: Page): Promise<boolean> {
+        return await page.evaluate(() => {
+            const active = document.activeElement;
+            return active?.classList.contains("global-textarea") ?? false;
+        });
+    }
+
+    /** Apply internal link formatting to all outliner items */
+    public static async applyInternalLinkFormat(page: Page, pageName: string): Promise<void> {
+        await page.evaluate(name => {
+            const items = document.querySelectorAll(".outliner-item");
+            items.forEach(item => {
+                const textElement = item.querySelector(".item-text");
+                if (textElement) {
+                    const text = textElement.textContent || "";
+                    if (text.includes(`[${name}]`)) {
+                        const html = text.replace(
+                            `[${name}]`,
+                            `<span class="link-preview-wrapper"><a href="/${name}" class="internal-link" data-page="${name}">${name}</a></span>`,
+                        );
+                        textElement.innerHTML = html;
+                        textElement.classList.add("formatted");
+                    }
+                }
+            });
+        }, pageName);
+    }
+
+    /**
+     * Get the locator for an item by its index
+     */
+    public static async getItemLocatorByIndex(page: Page, index: number): Promise<any> {
+        const id = await this.getItemIdByIndex(page, index);
+        if (!id) return null;
+        return page.locator(`.outliner-item[data-item-id="${id}"]`);
+    }
+
     /**
      * アイテムをクリックして編集モードに入る
      * @param page Playwrightのページオブジェクト

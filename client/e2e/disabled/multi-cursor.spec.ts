@@ -4,6 +4,7 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("マルチカーソル E2E テスト", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -35,7 +36,8 @@ test.describe("マルチカーソル E2E テスト", () => {
         await expect(page.locator(cursorSelector)).toHaveCount(1, { timeout: 7000 });
 
         // 2番目のアイテムにAlt+Click
-        await items.nth(1).locator(".item-text").click({ modifiers: ["Alt"] });
+        const second = await TestHelpers.getItemLocatorByIndex(page, 1);
+        await second!.locator(".item-text").click({ modifiers: ["Alt"] });
         await expect(page.locator(cursorSelector)).toHaveCount(2, { timeout: 7000 });
 
         // 再度1番目にAlt+Clickしても重複しない (or toggles off, then on if it's a toggle behavior)

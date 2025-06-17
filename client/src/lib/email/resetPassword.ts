@@ -31,3 +31,17 @@ export async function resetPassword(oobCode: string, newPassword: string): Promi
         throw new Error(`Failed to reset password: ${msg}`);
     }
 }
+
+export async function validateResetToken(oobCode: string): Promise<void> {
+    const url = `${getFunctionsBaseUrl()}/api/validate-reset-token`;
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oobCode })
+    });
+    if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(`Invalid token: ${msg}`);
+    }
+}
+

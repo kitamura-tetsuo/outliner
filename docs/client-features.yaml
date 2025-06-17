@@ -1,7 +1,8 @@
 - id: FTR-0012
   title: User can reset forgotten password
-  status: implemented # draft / implemented / deprecated
+  status: implemented
   components:
+    - client/src/routes/auth/forgot.svelte
     - client/src/routes/auth/forgot/+page.svelte
     - client/src/routes/auth/reset-password/+page.svelte
     - client/src/lib/email/resetPassword.ts
@@ -33,6 +34,20 @@
   tests:
     - server/tests/server-log-file.test.js
 
+- id: EMU-0001
+  title: Unified Auth emulator environment variable
+  description: Client, server and functions all use FIREBASE_AUTH_EMULATOR_HOST to locate the Firebase Auth emulator
+  category: configuration
+  status: implemented
+  components:
+    - client/src/auth/UserManager.ts
+    - client/src/components/EnvDebugger.svelte
+    - server/auth-service.js
+    - functions/test/env.js
+    - functions/test/setup.js
+  tests:
+    - client/e2e/new/EMU-0001.spec.ts
+
 - id: FTR-0014
   title: Configurable host and port via environment variables
   description: Default service hosts and ports are configurable through environment variables with fallbacks.
@@ -51,6 +66,7 @@
     - client/e2e/core/USR-0001.spec.ts
     - client/e2e/core/USR-0002.spec.ts
     - client/e2e/core/FTR-0014.spec.ts
+    - client/e2e/new/FTR-0014.spec.ts
 - id: FTR-0016
   title: Playwright config supports PORT env variable
   description: The E2E test server port can be set via PORT environment variable with fallback to 7090.
@@ -899,9 +915,7 @@
     - "他ユーザーがカーソルを移動すると、その位置が表示される"
     - "Fluid Framework の signal 機能でカーソル位置を同期する"
   tests:
-    - client/e2e/disabled/COL-0001.spec.ts
     - client/e2e/collaboration/COL-0001.spec.ts
-  notes: Logic fixed, env exec pending.
 
 - id: SRP-0001
   title: "高度な検索と置換"
@@ -934,9 +948,9 @@
     - client/src/fluid/fluidClient.ts
     - client/src/lib/debug.ts
   tests:
-    - client/e2e/new/FFI-0001.spec.ts
+    - client/e2e/core/FFI-0001.spec.ts
     - client/src/lib/fluidService.test.ts
-  notes: Logic fixed, file move blocked. Env exec pending.
+  notes: File moved to active suite. Run scripts/codex-setp.sh before testing.
 
 - id: GVI-0001
   title: "Graph View"

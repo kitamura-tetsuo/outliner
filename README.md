@@ -144,6 +144,7 @@ firebase deploy
   - Firebase Functions はデバッグのためローカルを利用します
   - Firebase Functions Host: `VITE_FIREBASE_FUNCTIONS_HOST=localhost`
   - Firebase Functions Port: `VITE_FIREBASE_FUNCTIONS_PORT=57070`
+  - Firebase Auth Emulator: `FIREBASE_AUTH_EMULATOR_HOST=localhost:59099`
 
 - **エミュレータ利用時**
   - クライアント: `VITE_PORT=7090`
@@ -159,6 +160,7 @@ firebase deploy
 - Tinylicious: `VITE_TINYLICIOUS_PORT=7092`
 - Firebase Functions Host: `VITE_FIREBASE_FUNCTIONS_HOST=localhost`
 - Firebase Functions Port: `VITE_FIREBASE_FUNCTIONS_PORT=57070`
+- Firebase Auth Emulator: `FIREBASE_AUTH_EMULATOR_HOST=localhost:59099`
 
 ## Firebase Hosting + Functions
 
@@ -226,6 +228,8 @@ npm run test:unit
 
 # Playwright テストを 1 ファイルずつ実行する場合
 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
+# Example: run the collaboration cursor test
+scripts/run-tests.sh client/e2e/collaboration/COL-0001.spec.ts
 # 環境変数 `PORT` を指定して別ポートで実行する例
 PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 ```
