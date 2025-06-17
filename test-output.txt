@@ -1,10 +1,14 @@
-[1A[2K[2m[WebServer] [22mnpm error Missing script: "dev"
-[2m[WebServer] [22mnpm error
-[2m[WebServer] [22mnpm error To see a list of scripts, run:
-[2m[WebServer] [22mnpm error   npm run
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+E2E Test Configuration:
+- Test port: 7090
+- Host: localhost
 
-[1A[2K[2m[WebServer] [22mnpm error A complete log of this run can be found in: /home/node/.npm/_logs/2025-06-15T23_02_02_920Z-debug-0.log
+Running 1 test using 1 worker
 
-Error: Process from config.webServer was not able to start. Exit code: 1
+E2E Test Configuration:
+- Test port: 7090
+- Host: localhost
+テスト実行時のURL: http://localhost:7090/
+  ✓  1 [basic] › e2e/core/port.spec.ts:24:5 › テスト環境ポート検証 › アプリケーションがポート7090で動作していること (636ms)
 
-[1A[2K
+  1 passed (2.2s)
