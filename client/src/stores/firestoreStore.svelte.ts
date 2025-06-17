@@ -35,7 +35,7 @@ export interface UserContainer {
 
 class GeneralStore {
     // ユーザーコンテナのストア
-    userContainer: UserContainer | null = $state(null);
+    userContainer: UserContainer | undefined = $state(undefined);
 }
 export const firestoreStore = new GeneralStore();
 
@@ -100,14 +100,14 @@ catch (error) {
 }
 
 // リスナーの解除関数
-let unsubscribe: (() => void) | null = null;
+let unsubscribe: (() => void) | undefined = undefined;
 
 // Firestoreとの同期を開始する関数
 function initFirestoreSync(): () => void {
     // 以前のリスナーがあれば解除
     if (unsubscribe) {
         unsubscribe();
-        unsubscribe = null;
+        unsubscribe = undefined;
     }
 
     const currentUser = userManager.getCurrentUser();
@@ -162,7 +162,7 @@ function initFirestoreSync(): () => void {
         return () => {
             if (unsubscribe) {
                 unsubscribe();
-                unsubscribe = null;
+                unsubscribe = undefined;
             }
         };
     }
@@ -187,7 +187,9 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
         }
 
         // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        const functionsHost = import.meta.env.VITE_FIREBASE_FUNCTIONS_HOST || "localhost";
+        const functionsPort = import.meta.env.VITE_FIREBASE_FUNCTIONS_PORT || "57070";
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || `http://${functionsHost}:${functionsPort}`;
         logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
@@ -327,7 +329,9 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         }
 
         // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        const functionsHost = import.meta.env.VITE_FIREBASE_FUNCTIONS_HOST || "localhost";
+        const functionsPort = import.meta.env.VITE_FIREBASE_FUNCTIONS_PORT || "57070";
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || `http://${functionsHost}:${functionsPort}`;
         logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
@@ -365,14 +369,14 @@ if (typeof window !== "undefined") {
         logger.info("Authentication disabled for tests, skipping Firestore sync initialization");
     }
     else {
-        let cleanup: (() => void) | null = null;
+        let cleanup: (() => void) | undefined = undefined;
 
         // 認証状態が変更されたときに Firestore 同期を初期化/クリーンアップ
         const unsubscribeAuth = userManager.addEventListener(authResult => {
             // 前回のクリーンアップがあれば実行
             if (cleanup) {
                 cleanup();
-                cleanup = null;
+                cleanup = undefined;
             }
 
             // 認証されていればリスナーを設定
@@ -381,7 +385,7 @@ if (typeof window !== "undefined") {
             }
             else {
                 // 未認証の場合はコンテナを空にする
-                firestoreStore.userContainer = null;
+                firestoreStore.userContainer = undefined;
             }
         });
 

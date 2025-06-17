@@ -38,7 +38,7 @@ export class SqlService {
             const columnName = stmt.getColumnName(i);
             const { table, column } = this.parseColumnMetadata(sql, columnName);
             columnsMeta.push({
-                table: table || "tbl", // デフォルトテーブル名として"tbl"を使用
+                table: table, // nullを許可し、計算カラムではnullを設定
                 column: column || columnName,
                 db: "main", // データベース名を明示的に設定
             });
@@ -61,40 +61,9 @@ export class SqlService {
             return { table: tablePrefix, column: "id" };
         }
 
-        // 計算カラムや定数の場合
-        if (
-            columnName.includes("_") && (
-                columnName.includes("count") ||
-                columnName.includes("sum") ||
-                columnName.includes("avg") ||
-                columnName.includes("max") ||
-                columnName.includes("min") ||
-                columnName.includes("constant") ||
-                columnName.includes("double")
-            )
-        ) {
+        // 計算カラムや定数の場合（より厳密に判定）
+        if (this.isCalculatedColumn(columnName, sqlLower)) {
             return { table: null, column: columnName };
-        }
-
-        // SELECT句からエイリアスとテーブル情報を抽出
-        const selectMatch = sqlLower.match(/select\s+(.*?)\s+from/s);
-        if (selectMatch) {
-            const selectClause = selectMatch[1];
-            const columns = selectClause.split(",").map(col => col.trim());
-
-            for (const col of columns) {
-                // "table.column as alias" パターン
-                const aliasMatch = col.match(/(\w+)\.(\w+)\s+as\s+(\w+)/);
-                if (aliasMatch && aliasMatch[3] === columnName) {
-                    return { table: aliasMatch[1], column: aliasMatch[2] };
-                }
-
-                // "table.column" パターン
-                const tableColumnMatch = col.match(/(\w+)\.(\w+)/);
-                if (tableColumnMatch && tableColumnMatch[2] === columnName) {
-                    return { table: tableColumnMatch[1], column: tableColumnMatch[2] };
-                }
-            }
         }
 
         // FROM句とJOIN句からテーブル情報を抽出
@@ -109,14 +78,50 @@ export class SqlService {
         }
 
         // JOIN句の処理
-        const joinMatches = sqlLower.matchAll(/join\s+(\w+)(?:\s+(\w+))?/g);
+        const joinMatches = sqlLower.matchAll(/(?:inner\s+|left\s+|right\s+|full\s+)?join\s+(\w+)(?:\s+(\w+))?/g);
         for (const joinMatch of joinMatches) {
             const tableName = joinMatch[1];
             const alias = joinMatch[2] || tableName;
             tableAliases.set(alias, tableName);
         }
 
-        // カラム名からテーブルを推測
+        // SELECT句からエイリアスとテーブル情報を抽出
+        const selectMatch = sqlLower.match(/select\s+(.*?)\s+from/s);
+        if (selectMatch) {
+            const selectClause = selectMatch[1];
+            const columns = selectClause.split(",").map(col => col.trim());
+
+            for (const col of columns) {
+                // "table.column as alias" パターン
+                const aliasMatch = col.match(/(\w+)\.(\w+)\s+as\s+(\w+)/);
+                if (aliasMatch && aliasMatch[3] === columnName) {
+                    const aliasName = aliasMatch[1];
+                    const actualTableName = tableAliases.get(aliasName) || aliasName;
+                    return { table: actualTableName, column: aliasMatch[2] };
+                }
+
+                // "table.column" パターン（エイリアスなし）
+                const tableColumnMatch = col.match(/(\w+)\.(\w+)$/);
+                if (tableColumnMatch && tableColumnMatch[2] === columnName) {
+                    const aliasName = tableColumnMatch[1];
+                    const actualTableName = tableAliases.get(aliasName) || aliasName;
+                    return { table: actualTableName, column: tableColumnMatch[2] };
+                }
+            }
+        }
+
+        // 特別なケース（エイリアス付きカラム名）
+        if (columnName === "user_id") {
+            return { table: "users", column: "id" };
+        }
+        if (columnName === "order_id") {
+            return { table: "orders", column: "id" };
+        }
+        if (columnName === "user_name") {
+            return { table: "users", column: "name" };
+        }
+
+        // カラム名からテーブルを推測（最後の手段）
         for (const [alias, tableName] of tableAliases) {
             // エイリアス付きカラム名
             if (columnName.startsWith(alias + "_")) {
@@ -124,23 +129,68 @@ export class SqlService {
                 return { table: tableName, column: actualColumn };
             }
 
-            // 直接的なカラム名マッチング
+            // 直接的なカラム名マッチング（共通カラム名の場合）
             if (this.isCommonColumn(columnName)) {
                 // 最初に見つかったテーブルを使用
                 return { table: tableName, column: columnName };
             }
         }
 
-        // 特別なケース
-        if (columnName === "user_id") {
-            return { table: "users", column: "id" };
-        }
-        if (columnName === "order_id") {
-            return { table: "orders", column: "id" };
+        // デフォルト（テーブル情報が特定できない場合）
+        return { table: null, column: columnName };
+    }
+
+    private isCalculatedColumn(columnName: string, sqlLower: string): boolean {
+        // カラム名に計算を示すキーワードが含まれている場合のみ計算カラムとする
+        const calculatedKeywords = [
+            "count",
+            "sum",
+            "avg",
+            "max",
+            "min",
+            "total",
+            "double",
+            "constant",
+            "row_count",
+        ];
+
+        // カラム名自体に計算を示すキーワードが含まれている場合
+        if (calculatedKeywords.some(keyword => columnName.includes(keyword))) {
+            return true;
         }
 
-        // デフォルト
-        return { table: null, column: columnName };
+        // SELECT句で明示的に計算式として定義されているかチェック
+        const selectMatch = sqlLower.match(/select\s+(.*?)\s+from/s);
+        if (selectMatch) {
+            const selectClause = selectMatch[1];
+            const columns = selectClause.split(",").map(col => col.trim());
+
+            for (const col of columns) {
+                // "expression as alias" パターンで、aliasがcolumnNameと一致する場合
+                const aliasMatch = col.match(/(.+)\s+as\s+(\w+)/);
+                if (aliasMatch && aliasMatch[2] === columnName) {
+                    const expression = aliasMatch[1].trim();
+
+                    // 集計関数や計算式のパターン
+                    const calculatedPatterns = [
+                        /count\s*\(/i,
+                        /sum\s*\(/i,
+                        /avg\s*\(/i,
+                        /max\s*\(/i,
+                        /min\s*\(/i,
+                        /\*\s*\d+/, // 乗算
+                        /\+\s*\d+/, // 加算
+                        /-\s*\d+/, // 減算
+                        /\/\s*\d+/, // 除算
+                        /'[^']*'/, // 文字列定数
+                    ];
+
+                    return calculatedPatterns.some(pattern => pattern.test(expression));
+                }
+            }
+        }
+
+        return false;
     }
 
     private isCommonColumn(columnName: string): boolean {

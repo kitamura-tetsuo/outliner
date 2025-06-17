@@ -1,3 +1,7 @@
+/** @feature USR-0002
+ *  Title   : コンテナ削除機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
@@ -20,6 +24,13 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
+    const host = process.env.VITE_HOST || "localhost";
+    const port = process.env.VITE_PORT || "7090";
+    const apiHost = process.env.VITE_FIREBASE_FUNCTIONS_HOST || host;
+    const apiPort = process.env.VITE_FIREBASE_FUNCTIONS_PORT || "57070";
+    const clientBase = `http://${host}:${port}`;
+    const baseUrl = process.env.VITE_FIREBASE_FUNCTIONS_URL || `http://${apiHost}:${apiPort}`;
+
     test("コンテナを削除できること", async ({ page, request }) => {
         // テスト用のユーザーを作成
         const testEmail = `test-user-${Date.now()}@example.com`;
@@ -27,7 +38,7 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         const testDisplayName = `Test User ${Date.now()}`;
 
         // Firebase Authでテストユーザーを作成
-        const createUserResponse = await request.post("http://localhost:57000/api/create-test-user", {
+        const createUserResponse = await request.post(`${baseUrl}/api/create-test-user`, {
             data: {
                 email: testEmail,
                 password: testPassword,
@@ -45,7 +56,7 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         const otherTestPassword = "Test@123456";
         const otherTestDisplayName = `Other Test User ${Date.now()}`;
 
-        const createOtherUserResponse = await request.post("http://localhost:7090/api/create-test-user", {
+        const createOtherUserResponse = await request.post(`${baseUrl}/api/create-test-user`, {
             data: {
                 email: otherTestEmail,
                 password: otherTestPassword,
@@ -58,16 +69,16 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         const otherTestUserId = createOtherUserData.uid;
 
         // テストユーザーでログイン
-        await page.goto("http://localhost:7090/auth/login");
+        await page.goto(`${clientBase}/auth/login`);
         await page.fill('input[type="email"]', testEmail);
         await page.fill('input[type="password"]', testPassword);
         await page.click('button[type="submit"]');
 
         // ログイン成功を確認
-        await page.waitForURL("http://localhost:7090/");
+        await page.waitForURL(`${clientBase}/`);
 
         // テストコンテナを作成
-        const createContainerResponse = await request.post("http://localhost:7090/api/fluid-token", {
+        const createContainerResponse = await request.post(`${baseUrl}/api/fluid-token`, {
             data: {
                 idToken: await page.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
             },
@@ -79,7 +90,7 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         const containerToDelete = containerData.containerId;
 
         // コンテナをユーザーに関連付け
-        const saveContainerResponse = await request.post("http://localhost:7090/api/save-container", {
+        const saveContainerResponse = await request.post(`${baseUrl}/api/save-container`, {
             data: {
                 idToken: await page.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
                 containerId: containerToDelete,
@@ -89,7 +100,7 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         expect(saveContainerResponse.ok()).toBeTruthy();
 
         // 別のコンテナも作成して関連付け（デフォルトコンテナ更新のテスト用）
-        const createContainer2Response = await request.post("http://localhost:7090/api/fluid-token", {
+        const createContainer2Response = await request.post("${clientBase}/api/fluid-token", {
             data: {
                 idToken: await page.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
             },
@@ -99,7 +110,7 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         const container2Data = await createContainer2Response.json();
         expect(container2Data).toHaveProperty("containerId");
 
-        const saveContainer2Response = await request.post("http://localhost:7090/api/save-container", {
+        const saveContainer2Response = await request.post("${clientBase}/api/save-container", {
             data: {
                 idToken: await page.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
                 containerId: container2Data.containerId,
@@ -112,13 +123,13 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         const otherContext = await page.context().browser().newContext();
         const otherPage = await otherContext.newPage();
 
-        await otherPage.goto("http://localhost:7090/auth/login");
+        await otherPage.goto("${clientBase}/auth/login");
         await otherPage.fill('input[type="email"]', otherTestEmail);
         await otherPage.fill('input[type="password"]', otherTestPassword);
         await otherPage.click('button[type="submit"]');
 
         // 他のユーザーにも削除予定のコンテナを関連付け
-        const saveContainerForOtherResponse = await request.post("http://localhost:7090/api/save-container", {
+        const saveContainerForOtherResponse = await request.post("${clientBase}/api/save-container", {
             data: {
                 idToken: await otherPage.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
                 containerId: containerToDelete,
@@ -131,7 +142,7 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         await otherContext.close();
 
         // コンテナ削除APIを呼び出し
-        const deleteContainerResponse = await request.post("http://localhost:7090/api/delete-container", {
+        const deleteContainerResponse = await request.post("${clientBase}/api/delete-container", {
             data: {
                 idToken: await page.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
                 containerId: containerToDelete,
@@ -143,7 +154,7 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         expect(deleteContainerData).toHaveProperty("success", true);
 
         // ユーザーのコンテナリストを取得して、削除したコンテナが含まれていないことを確認
-        const getUserContainersResponse = await request.post("http://localhost:7090/api/get-user-containers", {
+        const getUserContainersResponse = await request.post("${clientBase}/api/get-user-containers", {
             data: {
                 idToken: await page.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
             },
@@ -158,16 +169,16 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         expect(userContainersData.defaultContainerId).toBe(container2Data.containerId);
 
         // 他のユーザーでログインして、コンテナリストを確認
-        await page.goto("http://localhost:7090/auth/login");
+        await page.goto("${clientBase}/auth/login");
         await page.fill('input[type="email"]', otherTestEmail);
         await page.fill('input[type="password"]', otherTestPassword);
         await page.click('button[type="submit"]');
 
         // ログイン成功を確認
-        await page.waitForURL("http://localhost:7090/");
+        await page.waitForURL("${clientBase}/");
 
         // 他のユーザーのコンテナリストを取得
-        const getOtherUserContainersResponse = await request.post("http://localhost:7090/api/get-user-containers", {
+        const getOtherUserContainersResponse = await request.post("${clientBase}/api/get-user-containers", {
             data: {
                 idToken: await page.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
             },
@@ -190,7 +201,7 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         const testDisplayName = `Test User ${Date.now()}`;
 
         // Firebase Authでテストユーザーを作成
-        const createUserResponse = await request.post("http://localhost:7090/api/create-test-user", {
+        const createUserResponse = await request.post("${clientBase}/api/create-test-user", {
             data: {
                 email: testEmail,
                 password: testPassword,
@@ -201,17 +212,17 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         expect(createUserResponse.ok()).toBeTruthy();
 
         // テストユーザーでログイン
-        await page.goto("http://localhost:7090/auth/login");
+        await page.goto("${clientBase}/auth/login");
         await page.fill('input[type="email"]', testEmail);
         await page.fill('input[type="password"]', testPassword);
         await page.click('button[type="submit"]');
 
         // ログイン成功を確認
-        await page.waitForURL("http://localhost:7090/");
+        await page.waitForURL("${clientBase}/");
 
         // 存在しないコンテナIDを指定してコンテナ削除APIを呼び出し
         const nonExistentContainerId = "non-existent-container-" + Date.now();
-        const deleteContainerResponse = await request.post("http://localhost:7090/api/delete-container", {
+        const deleteContainerResponse = await request.post("${clientBase}/api/delete-container", {
             data: {
                 idToken: await page.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
                 containerId: nonExistentContainerId,
@@ -236,7 +247,7 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         const testDisplayName2 = `Test User 2 ${Date.now()}`;
 
         // 1人目のユーザーを作成
-        const createUser1Response = await request.post("http://localhost:7090/api/create-test-user", {
+        const createUser1Response = await request.post("${clientBase}/api/create-test-user", {
             data: {
                 email: testEmail1,
                 password: testPassword1,
@@ -247,7 +258,7 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         expect(createUser1Response.ok()).toBeTruthy();
 
         // 2人目のユーザーを作成
-        const createUser2Response = await request.post("http://localhost:7090/api/create-test-user", {
+        const createUser2Response = await request.post("${clientBase}/api/create-test-user", {
             data: {
                 email: testEmail2,
                 password: testPassword2,
@@ -258,16 +269,16 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         expect(createUser2Response.ok()).toBeTruthy();
 
         // 1人目のユーザーでログイン
-        await page.goto("http://localhost:7090/auth/login");
+        await page.goto("${clientBase}/auth/login");
         await page.fill('input[type="email"]', testEmail1);
         await page.fill('input[type="password"]', testPassword1);
         await page.click('button[type="submit"]');
 
         // ログイン成功を確認
-        await page.waitForURL("http://localhost:7090/");
+        await page.waitForURL("${clientBase}/");
 
         // 1人目のユーザーでコンテナを作成
-        const createContainerResponse = await request.post("http://localhost:7090/api/fluid-token", {
+        const createContainerResponse = await request.post("${clientBase}/api/fluid-token", {
             data: {
                 idToken: await page.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
             },
@@ -279,7 +290,7 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         const containerId = containerData.containerId;
 
         // コンテナをユーザーに関連付け
-        const saveContainerResponse = await request.post("http://localhost:7090/api/save-container", {
+        const saveContainerResponse = await request.post("${clientBase}/api/save-container", {
             data: {
                 idToken: await page.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
                 containerId: containerId,
@@ -289,16 +300,16 @@ test.describe("コンテナ削除機能 (USR-0002)", () => {
         expect(saveContainerResponse.ok()).toBeTruthy();
 
         // 2人目のユーザーでログイン
-        await page.goto("http://localhost:7090/auth/login");
+        await page.goto("${clientBase}/auth/login");
         await page.fill('input[type="email"]', testEmail2);
         await page.fill('input[type="password"]', testPassword2);
         await page.click('button[type="submit"]');
 
         // ログイン成功を確認
-        await page.waitForURL("http://localhost:7090/");
+        await page.waitForURL("${clientBase}/");
 
         // 2人目のユーザーで1人目のユーザーのコンテナを削除しようとする
-        const deleteContainerResponse = await request.post("http://localhost:7090/api/delete-container", {
+        const deleteContainerResponse = await request.post("${clientBase}/api/delete-container", {
             data: {
                 idToken: await page.evaluate(() => localStorage.getItem("firebase:authUser:*:idToken")),
                 containerId: containerId,

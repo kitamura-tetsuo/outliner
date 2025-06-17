@@ -1,3 +1,7 @@
+/** @feature LNK-0004
+ *  Title   : 仮ページ機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,

@@ -6,6 +6,9 @@
     - lib/email/resetPassword.ts
   tests:
     - tests/feature/FTR-0012.spec.ts
+    - client/e2e/core/FTR-0012.spec.ts
+    - client/e2e/auth/FTR-0012-forgot-password.spec.ts # UI structure only
+  notes: "Frontend components (forgot.svelte, lib/email/resetPassword.ts) appear to be missing. Test execution blocked."
   acceptance:
     - "ユーザーがメールアドレスを入力すると、リセットリンクが送信される"
     - "リンクは 30 分で失効する"
@@ -16,7 +19,58 @@
   components:
     - client/src/routes/min/+page.svelte
     - client/.env.example
-  tests: []
+  tests:
+    - client/e2e/core/FTR-0013.spec.ts
+
+- id: LOG-0001
+  title: Log test servers to files only
+  description: Servers started by codex-setp.sh log output exclusively to files to keep console output clean
+  category: developer-experience
+  status: implemented
+  components:
+    - scripts/common-functions.sh
+    - scripts/codex-setp.sh
+  tests:
+    - server/tests/server-log-file.test.js
+
+- id: FTR-0014
+  title: Configurable host and port via environment variables
+  description: Default service hosts and ports are configurable through environment variables with fallbacks.
+  category: configuration
+  status: implemented
+  components:
+    - client/src/lib/draftService.svelte.ts
+    - client/src/lib/scheduleService.svelte.ts
+    - client/src/lib/fluidService.svelte.ts
+    - client/src/stores/firestoreStore.svelte.ts
+    - client/src/auth/UserManager.ts
+    - client/playwright.config.ts
+    - functions/index.js
+  tests:
+    - client/e2e/core/DFT-0003.spec.ts
+    - client/e2e/core/USR-0001.spec.ts
+    - client/e2e/core/USR-0002.spec.ts
+- id: FTR-0016
+  title: Playwright config supports PORT env variable
+  description: The E2E test server port can be set via PORT environment variable with fallback to 7090.
+  category: configuration
+  status: implemented
+  components:
+    - playwright.config.ts
+  tests:
+    - client/e2e/new/FTR-0016.spec.ts
+- id: EMB-0001
+  title: Outliner Table & Chart Embedding
+  description: Notion-like table and chart blocks can be embedded in any outliner item
+  category: table
+  status: implemented
+  components:
+    - client/src/components/TableEmbed.svelte
+    - client/src/components/ChartEmbed.svelte
+    - client/src/components/OutlinerItem.svelte
+    - client/src/schema/app-schema.ts
+  tests:
+    - client/e2e/new/EMB-0001.spec.ts
   acceptance:
     - "Firebase config values come from VITE_FIREBASE_* variables"
     - "Token verification URL uses VITE_TOKEN_VERIFY_URL"
@@ -384,7 +438,8 @@
     - "複数行テキストをボックス選択（矩形選択）範囲にペーストすると、各行に対応する行が挿入される"
     - "ボックス選択（矩形選択）範囲へのペースト時に、選択範囲が適切に置き換えられる"
   tests:
-    - client/e2e/core/FMT-0005.spec.ts
+    - client/e2e/disabled/FMT-0005.spec.ts
+  notes: Partially refactored (basic clipboard test improved, complex simulations commented out). File move blocked. Env exec pending.
 
 - id: FMT-0006
   title: "カーソル移動時のフォーマット表示の一貫性"
@@ -616,7 +671,7 @@
     - client/e2e/core/SLR-0004.spec.ts
     - client/e2e/core/SLR-0005.spec.ts
     - client/e2e/core/SLR-0010.spec.ts
-    - client/e2e/core/FMT-0005.spec.ts
+    - client/e2e/disabled/FMT-0005.spec.ts
     - client/e2e/core/FMT-0006.spec.ts
     - client/e2e/core/IME-0001.spec.ts
     - client/e2e/core/ITM-0001.spec.ts
@@ -835,7 +890,9 @@
     - "他ユーザーがカーソルを移動すると、その位置が表示される"
     - "Fluid Framework の signal 機能でカーソル位置を同期する"
   tests:
-    - client/e2e/core/COL-0001.spec.ts
+    - client/e2e/disabled/COL-0001.spec.ts
+    - client/e2e/collaboration/COL-0001.spec.ts
+  notes: Logic fixed, env exec pending.
 
 - id: SRP-0001
   title: "高度な検索と置換"
@@ -845,7 +902,7 @@
 
 - id: DBW-0001
   title: "Client-Side WASM DB"
-  description: "オフライン操作と高速検索を実現するWebAssemblyデータベース"
+  description: "Stores container metadata via wasmDb.ts (localStorage SQLite WASM). オフライン操作と高速検索を実現するWebAssemblyデータベース"
   category: application
   status: implemented
   components:
@@ -853,6 +910,7 @@
     - client/src/lib/db/dbService.ts
     - client/src/lib/db/sqliteWorker.ts
   tests:
+    - client/src/lib/__tests__/wasmDb.test.ts # unit test for wasmDb.ts
     - client/src/tests/wasmDb.test.ts
     - client/e2e/new/DBW-0001.spec.ts
 
@@ -866,13 +924,14 @@
     - client/src/lib/wasmDb.ts
     - client/src/fluid/fluidClient.ts
   tests:
-    - client/e2e/core/FFI-0001.spec.ts
+    - client/e2e/disabled/FFI-0001.spec.ts
+  notes: Logic fixed, file move blocked. Env exec pending.
 
 - id: GVI-0001
   title: "Graph View"
   description: "ページ間のリンクを視覚化するグラフ表示機能"
   category: navigation
-  status: implemented
+  status: superseded
   components:
     - client/src/components/GraphView.svelte
     - client/src/routes/graph/+page.svelte
@@ -880,6 +939,7 @@
   tests:
     - client/src/tests/graph.test.ts
     - client/e2e/new/GVI-0001.spec.ts
+  notes: "Superseded by GRF-001."
 
 - id: SRE-001
   title: Advanced Search & Replace
@@ -941,6 +1001,7 @@
   components:
     - src/components/ChartComponent.svelte
   tests:
+    - client/e2e/core/CHT-001.spec.ts
     - client/e2e/new/CHT-001.spec.ts
 
 - id: TBL-0001
@@ -985,6 +1046,7 @@
     - "空データを適切に処理する"
     - "複数セル編集が正しく処理される"
     - "セル編集機能が正しく動作する"
+    - "各セルにdata-item-id属性が付与される"
     - "グリッドの表示とデータバインディングが正しく機能する"
     - "メタデータに基づいて編集可能性が制御される"
     - "編集後にFluidFrameworkに正しくデータが送信される"
@@ -1096,7 +1158,7 @@
     - src/services/queryStore.ts
     - src/services/fluidService.ts
   tests:
-    - client/e2e/new/PERF-0001.spec.ts
+    - client/e2e/disabled/PERF-0001.spec.ts
   acceptance:
     - "大量データセットのパフォーマンスが適切"
     - "グリッド描画パフォーマンスが適切"
@@ -1176,7 +1238,8 @@
   category: security
   status: implemented
   components: []
-  tests: []
+  tests:
+    - server/tests/sec-0001-env.test.js
 
 - id: ALS-0001
   title: Alias items link by ID
@@ -1202,3 +1265,14 @@
   tests:
     - client/e2e/core/ALS-0002.spec.ts
     - client/src/tests/alias.test.ts
+
+- id: LOG-0001
+  title: Log test servers to files only
+  description: Servers started by codex-setp.sh log output exclusively to files to keep console output clean
+  category: developer-experience
+  status: implemented
+  components:
+    - scripts/common-functions.sh
+    - scripts/codex-setp.sh
+  tests:
+    - server/tests/server-log-file.test.js

@@ -1,3 +1,7 @@
+/** @feature LNK-0001
+ *  Title   : 内部リンクのURL生成機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
@@ -53,7 +57,8 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         expect(firstItemText).toContain('href="/test-page"');
 
         // 2つ目のアイテムのテキスト内容を確認（プロジェクト内部リンクが適用されていること）
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         const secondItemText = await secondItem.locator(".item-text").innerHTML();
 
         // プロジェクト内部リンクが適用されていることを確認
@@ -96,7 +101,8 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         expect(firstItemHTML).toMatch(/<a href="\/test-page"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page<\/a>/);
 
         // 2つ目のアイテムのHTML内容を確認
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         const secondItemHTML = await secondItem.locator(".item-text").innerHTML();
 
         // プロジェクト内部リンクのHTMLが正しく生成されていることを確認

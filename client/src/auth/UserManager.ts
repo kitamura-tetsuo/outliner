@@ -54,7 +54,11 @@ export class UserManager {
         measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",
     };
 
-    private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57070");
+    private apiBaseUrl = (() => {
+        const host = getEnv("VITE_FIREBASE_FUNCTIONS_HOST", "localhost");
+        const port = getEnv("VITE_FIREBASE_FUNCTIONS_PORT", "57070");
+        return getEnv("VITE_FIREBASE_FUNCTIONS_URL", `http://${host}:${port}`);
+    })();
     private app: any;
     auth: any;
 
@@ -181,7 +185,8 @@ export class UserManager {
     private connectToFirebaseEmulator(): boolean {
         try {
             // 環境変数から接続情報を取得（デフォルトはlocalhost:59099）
-            const host = import.meta.env.VITE_AUTH_EMULATOR_HOST || "localhost";
+            const host =
+                import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || "localhost";
             const port = parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT || "59099", 10);
 
             logger.info(`Connecting to Firebase Auth emulator at ${host}:${port}`);

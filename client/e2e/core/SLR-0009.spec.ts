@@ -67,7 +67,8 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
         expect(itemCount).toBeGreaterThanOrEqual(3);
 
         // 最初のアイテムをクリックして選択
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
@@ -105,7 +106,8 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
         await page.waitForTimeout(300);
 
         // 3つ目のアイテムをクリックして選択
-        const thirdItem = page.locator(".outliner-item").nth(2);
+        const thirdItemId = await TestHelpers.getItemIdByIndex(page, 2);
+        const thirdItem = page.locator(`.outliner-item[data-item-id="${thirdItemId}"]`);
         await thirdItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
@@ -147,14 +149,15 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
         expect(itemCount).toBeGreaterThanOrEqual(3);
 
         // 各アイテムのテキストを取得（最初の3つのアイテムのみ）
-        const firstItemText = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
-        const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
-        const thirdItemText = await page.locator(".outliner-item").nth(2).locator(".item-text").textContent();
+        const firstItemText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text").textContent();
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-text").textContent();
+        const thirdItemText = await page.locator(`.outliner-item[data-item-id="${thirdItemId}"]`).locator(".item-text").textContent();
 
         console.log(`Initial items: 1="${firstItemText}", 2="${secondItemText}", 3="${thirdItemText}"`);
 
         // 2つ目のアイテムを削除
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
@@ -167,7 +170,8 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
         await page.waitForTimeout(300);
 
         // 3つ目のアイテムをクリックして選択（2つ目が削除されたので、元の3つ目は1番目になる）
-        const thirdItem = page.locator(".outliner-item").nth(1);
+        const thirdItemIdAfterDeletion = await TestHelpers.getItemIdByIndex(page, 1);
+        const thirdItem = page.locator(`.outliner-item[data-item-id="${thirdItemIdAfterDeletion}"]`);
         await thirdItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
@@ -181,18 +185,20 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
         await page.waitForTimeout(500);
 
         // 最初の3つのアイテムのテキストを確認
-        const firstItemAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent() || "";
+        const firstItemAfter = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text").textContent() || "";
 
         // 2つ目と3つ目のアイテムが存在する場合のみテキストを取得
         let secondItemAfter = "";
         let thirdItemAfter = "";
 
         if (await page.locator(".outliner-item").count() > 1) {
-            secondItemAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent() || "";
+            const secondItemIdAfter = await TestHelpers.getItemIdByIndex(page, 1);
+            secondItemAfter = await page.locator(`.outliner-item[data-item-id="${secondItemIdAfter}"]`).locator(".item-text").textContent() || "";
         }
 
         if (await page.locator(".outliner-item").count() > 2) {
-            thirdItemAfter = await page.locator(".outliner-item").nth(2).locator(".item-text").textContent() || "";
+            const thirdItemIdAfter = await TestHelpers.getItemIdByIndex(page, 2);
+            thirdItemAfter = await page.locator(`.outliner-item[data-item-id="${thirdItemIdAfter}"]`).locator(".item-text").textContent() || "";
         }
 
         console.log(`Items after: 1="${firstItemAfter}", 2="${secondItemAfter}", 3="${thirdItemAfter}"`);

@@ -84,7 +84,8 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         });
 
         // 最初のアイテムをクリックして選択
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
@@ -177,7 +178,8 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // 最初のアイテムを取得
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItemId2 = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId2}"]`);
         const firstItemText = firstItem.locator(".item-text");
 
         // 最初のアイテムをクリックして選択状態をリセット
@@ -265,7 +267,8 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
 
     test("複数アイテムにまたがる選択範囲が視覚的に表示される", async ({ page }) => {
         // 最初のアイテムを取得
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItemId3 = await TestHelpers.getItemIdByIndex(page, 0);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId3}"]`);
 
         // 最初のアイテムをクリックして選択
         await firstItem.locator(".item-content").click({ force: true });

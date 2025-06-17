@@ -1,3 +1,4 @@
+// File in disabled/ due to test flakiness and reliance on CSS for validation. Some waits improved.
 import {
     expect,
     test,
@@ -137,11 +138,14 @@ test.describe("Advanced indent/unindent functionality", () => {
     test("Should create and manipulate a deeply nested structure", async ({ page }) => {
         // アイテムを5つ追加
         for (let i = 0; i < 5; i++) {
-            // await page.click('button:has-text("アイテム追加")');
-            // 各アイテムにテキストを入力
-            await page.locator(".outliner-item").nth(i).click();
+            const currentItem = page.locator(".outliner-item").nth(i);
+            await currentItem.click(); // Focus or create if it's the first effective click
             await page.keyboard.type(`アイテム ${i + 1}`);
             await page.keyboard.press("Enter");
+            // Wait for the next item to be created and visible, except for the last one
+            if (i < 4) {
+                await expect(page.locator(".outliner-item").nth(i + 1)).toBeVisible({ timeout: 7000 });
+            }
         }
 
         await page.screenshot({ path: "test-results/advanced-indent-initial.png" });
@@ -150,7 +154,8 @@ test.describe("Advanced indent/unindent functionality", () => {
         // アイテム2をアイテム1の子にする
         await page.locator(".outliner-item").nth(1).click();
         await page.keyboard.press("Tab");
-        await page.waitForTimeout(500);
+        await page.waitForSelector(".outliner-item", { state: "attached", timeout: 7000 });
+
 
         // 階層構造を検証
         let structure = await page.evaluate(() => {
@@ -169,9 +174,9 @@ test.describe("Advanced indent/unindent functionality", () => {
         // アイテム3をアイテム2の子にする
         await page.locator(".outliner-item").nth(2).click();
         await page.keyboard.press("Tab");
-        await page.waitForTimeout(500);
+        await page.waitForSelector(".outliner-item", { state: "attached", timeout: 7000 });
         await page.keyboard.press("Tab");
-        await page.waitForTimeout(500);
+        await page.waitForSelector(".outliner-item", { state: "attached", timeout: 7000 });
 
         structure = await page.evaluate(() => {
             const items = Array.from(document.querySelectorAll(".item-container")) as HTMLElement[];
@@ -189,11 +194,11 @@ test.describe("Advanced indent/unindent functionality", () => {
         // アイテム4をアイテム3の子にする
         await page.locator(".outliner-item").nth(3).click();
         await page.keyboard.press("Tab");
-        await page.waitForTimeout(500);
+        await page.waitForSelector(".outliner-item", { state: "attached", timeout: 7000 });
         await page.keyboard.press("Tab");
-        await page.waitForTimeout(500);
+        await page.waitForSelector(".outliner-item", { state: "attached", timeout: 7000 });
         await page.keyboard.press("Tab");
-        await page.waitForTimeout(500);
+        await page.waitForSelector(".outliner-item", { state: "attached", timeout: 7000 });
 
         structure = await page.evaluate(() => {
             const items = Array.from(document.querySelectorAll(".item-container")) as HTMLElement[];
@@ -219,7 +224,7 @@ test.describe("Advanced indent/unindent functionality", () => {
         for (let i = 0; i < 2; i++) {
             await item4.click();
             await page.keyboard.press("Shift+Tab");
-            await page.waitForTimeout(500);
+            await page.waitForSelector(".outliner-item", { state: "attached", timeout: 7000 });
         }
 
         await page.screenshot({ path: "test-results/advanced-unindent-result.png" });

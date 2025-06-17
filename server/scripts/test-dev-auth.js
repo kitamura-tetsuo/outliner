@@ -48,7 +48,7 @@ async function testEmailPasswordLogin() {
 
         const loginData = await loginResponse.json();
         console.log(`${colors.green}ログイン成功!${colors.reset}`);
-        console.log(`ユーザー: ${JSON.stringify(loginData.user, null, 2)}`);
+        console.log(`ユーザー: ${JSON.stringify(loginData.user, undefined, 2)}`);
 
         if (!loginData.customToken) {
             console.error(`${colors.red}カスタムトークンが返されませんでした${colors.reset}`);
@@ -91,7 +91,7 @@ async function testEmailPasswordLogin() {
         const fluidTokenData = await fluidTokenResponse.json();
         console.log(`${colors.green}Fluidトークン取得成功!${colors.reset}`);
         console.log(`テナントID: ${fluidTokenData.tenantId}`);
-        console.log(`ユーザー: ${JSON.stringify(fluidTokenData.user, null, 2)}`);
+        console.log(`ユーザー: ${JSON.stringify(fluidTokenData.user, undefined, 2)}`);
 
         if (fluidTokenData.token) {
             console.log(`${colors.green}トークン検証に成功しました！${colors.reset}`);

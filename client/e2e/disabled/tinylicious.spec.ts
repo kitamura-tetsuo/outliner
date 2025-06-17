@@ -1,3 +1,4 @@
+// File in disabled/ as it requires a running Tinylicious server and proper test environment config.
 import {
     expect,
     test,
@@ -16,24 +17,17 @@ import {
 
 test.describe("Tinyliciousリアル接続テスト", () => {
     // テスト前の準備 - モックを無効化し、実際のTinyliciousサーバーに接続するように設定
-    test.beforeEach(async ({ page }, testInfo) => { // エミュレータを使用してTinyliciousに接続
-        // テスト開始前に十分な時間を設定
+    test.beforeEach(async ({ page }, testInfo) => {
+        // The test should rely on environment being properly configured
+        // (e.g., via .env.test or by codex-setp.sh) to use Tinylicious.
+        // localStorage overrides for VITE_USE_TINYLICIOUS are removed.
 
         await page.addInitScript(() => {
-            // 接続状態のモックは削除（実際の接続状態を確認するため）
-            // モックコンテナが接続済みであることをシミュレートしない
-
-            // アラートをキャプチャしてテストで確認できるようにする
+            // アラートをキャプチャしてテストで確認できるようにする (kept for potential debugging)
             window.alert = function (message) {
-                window._alertMessage = message;
+                (window as any)._alertMessage = message;
                 console.log("Alert:", message);
             };
-        });
-
-        // 強制的にテスト用の環境変数を設定
-        await page.addInitScript(() => {
-            window.localStorage.setItem("VITE_USE_TINYLICIOUS", "true");
-            window.localStorage.setItem("VITE_TINYLICIOUS_PORT", "7092");
         });
 
         // デバッグページにアクセス
@@ -54,18 +48,16 @@ test.describe("Tinyliciousリアル接続テスト", () => {
         // 接続テスト実行ボタンをクリック
         await page.click('button:has-text("接続テスト実行")');
 
-        // 接続が確立するまで少し待つ
-        await page.waitForTimeout(5000);
+        // 接続が確立するのを待つ
+        await expect(page.locator("#connection-state-text"))
+            .toMatch(/接続中|接続済み|同期中/, { timeout: 10000 });
 
         // スクリーンショットを撮影（接続状態確認用）
-        await page.screenshot({ path: "test-results/tinylicious-connection.png", fullPage: true });
+        // await page.screenshot({ path: "test-results/tinylicious-connection.png", fullPage: true });
 
-        // 接続状態テキストを取得して確認
+        // 接続状態テキストを取得して確認 (already checked by expect().toMatch())
         const connectionStateText = await page.locator("#connection-state-text").textContent();
         console.log("Connection state text:", connectionStateText);
-
-        // 接続状態が「接続済み」または「同期中」であることを確認
-        expect(connectionStateText).toMatch(/接続中|接続済み|同期中/);
 
         // 接続インジケータが「connected」クラスを持っていることを確認
         const hasConnectedClass = await page.evaluate(() => {
@@ -83,21 +75,19 @@ test.describe("Tinyliciousリアル接続テスト", () => {
      * @check Fluidクライアント情報が表示されていることを確認
      */
     test("デバッグ情報が表示されること", async ({ page }) => {
-        // 接続テスト実行ボタンをクリック
+        // 接続テスト実行ボタンをクリック (This might not be strictly necessary if debug info loads without it,
+        // but keeping it consistent with the original test logic for now)
         await page.click('button:has-text("接続テスト実行")');
 
-        // 接続が確立するまで少し待つ
-        await page.waitForTimeout(5000);
+        // Wait for debug sections to be visible and contain text
+        await expect(page.locator("details:has-text('環境設定') pre")).toBeVisible({ timeout: 10000 });
+        await expect(page.locator("details:has-text('環境設定') pre")).not.toBeEmpty({ timeout: 5000 });
 
-        // 環境設定情報が表示されていることを確認
-        const envConfigText = await page.locator("details:has-text('環境設定') pre").textContent();
-        expect(envConfigText).toBeTruthy();
+        await expect(page.locator("details:has-text('Fluidクライアント') pre")).toBeVisible({ timeout: 10000 });
+        await expect(page.locator("details:has-text('Fluidクライアント') pre")).not.toBeEmpty({ timeout: 5000 });
 
-        // Fluidクライアント情報が表示されていることを確認
-        const fluidClientText = await page.locator("details:has-text('Fluidクライアント') pre").textContent();
-        expect(fluidClientText).toBeTruthy();
 
         // スクリーンショットを撮影
-        await page.screenshot({ path: "test-results/debug-info.png", fullPage: true });
+        // await page.screenshot({ path: "test-results/debug-info.png", fullPage: true });
     });
 });

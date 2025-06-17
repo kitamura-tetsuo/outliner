@@ -1,3 +1,7 @@
+/** @feature LNK-0003
+ *  Title   : 内部リンクのナビゲーション機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
@@ -22,13 +26,17 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
      * @testcase 内部リンクをクリックして別のページに移動する
      * @description 内部リンクをクリックして別のページに移動することを確認するテスト
      */
-    test("内部リンクをクリックして別のページに移動する", async ({ page }) => {
+const host = process.env.VITE_HOST || "localhost";
+const port = process.env.VITE_PORT || "7090";
+const baseUrl = `http://${host}:${port}`;
+
+test("内部リンクをクリックして別のページに移動する", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
         });
 
         // ホームページにアクセス
-        await page.goto("http://localhost:7090/");
+        await page.goto(`${baseUrl}/`);
 
         // ページが読み込まれるのを待つ
         await page.waitForSelector("body", { timeout: 10000 });
@@ -80,7 +88,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         });
 
         // まずホームページにアクセス
-        await page.goto("http://localhost:7090/");
+        await page.goto(`${baseUrl}/`);
 
         // ページが読み込まれるのを待つ
         await page.waitForSelector("body", { timeout: 10000 });
@@ -93,7 +101,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const randomPage = "page-" + Date.now().toString().slice(-6);
 
         // ページに移動
-        await page.goto(`http://localhost:7090/${randomPage}`);
+        await page.goto(`${baseUrl}/${randomPage}`);
 
         // 新しいURLに遷移するのを待つ
         await page.waitForURL(`**/${randomPage}`, { timeout: 10000 });
@@ -269,8 +277,10 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const itemCount = await allItems.count();
         console.log(`Total items: ${itemCount}`);
 
-        for (let i = 0; i < itemCount; i++) {
-            const item = allItems.nth(i);
+        const itemHandles = await allItems.elementHandles();
+        for (const [i, handle] of itemHandles.entries()) {
+            const itemId = await handle.getAttribute("data-item-id");
+            const item = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
             const itemText = await item.textContent();
             console.log(`Item ${i}: "${itemText}"`);
         }
@@ -280,11 +290,11 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const linkCount = await allLinks.count();
         console.log(`Total internal links: ${linkCount}`);
 
-        for (let i = 0; i < linkCount; i++) {
-            const link = allLinks.nth(i);
-            const linkHref = await link.getAttribute("href");
-            const linkText = await link.textContent();
-            const linkClass = await link.getAttribute("class");
+        const linkHandles = await allLinks.elementHandles();
+        for (const [i, handle] of linkHandles.entries()) {
+            const linkHref = await handle.getAttribute("href");
+            const linkText = await handle.textContent();
+            const linkClass = await handle.getAttribute("class");
             console.log(`Link ${i}: href="${linkHref}", text="${linkText}", class="${linkClass}"`);
         }
 
@@ -433,8 +443,10 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const itemCount = await allItems.count();
         console.log(`Total items: ${itemCount}`);
 
-        for (let i = 0; i < itemCount; i++) {
-            const item = allItems.nth(i);
+        const itemHandles2 = await allItems.elementHandles();
+        for (const [i, handle] of itemHandles2.entries()) {
+            const itemId = await handle.getAttribute("data-item-id");
+            const item = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
             const itemText = await item.textContent();
             console.log(`Item ${i}: "${itemText}"`);
         }
@@ -444,11 +456,11 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const linkCount = await allLinks.count();
         console.log(`Total internal links: ${linkCount}`);
 
-        for (let i = 0; i < linkCount; i++) {
-            const link = allLinks.nth(i);
-            const linkHref = await link.getAttribute("href");
-            const linkText = await link.textContent();
-            const linkClass = await link.getAttribute("class");
+        const linkHandles2 = await allLinks.elementHandles();
+        for (const [i, handle] of linkHandles2.entries()) {
+            const linkHref = await handle.getAttribute("href");
+            const linkText = await handle.textContent();
+            const linkClass = await handle.getAttribute("class");
             console.log(`Link ${i}: href="${linkHref}", text="${linkText}", class="${linkClass}"`);
         }
 
@@ -556,7 +568,8 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         if (itemCount > 1) {
             // 2番目のアイテムが作成された場合
-            const secondItem = page.locator(".outliner-item").nth(1);
+            const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+            const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
             const itemText = await secondItem.textContent();
             console.log("Item text after programmatic creation:", itemText);
             expect(itemText).toContain("これはターゲットページです。");
@@ -697,7 +710,8 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         if (itemCount > 1) {
             // 2番目のアイテムが作成された場合
-            const secondItem = page.locator(".outliner-item").nth(1);
+            const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+            const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
             const itemText = await secondItem.textContent();
             console.log(`Item text after programmatic creation: "${itemText}"`);
             expect(itemText).toContain("これは新しく作成されたページです。");
@@ -775,7 +789,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const pageName = "target-page-" + Date.now().toString().slice(-6);
 
         // 直接ターゲットページにアクセス
-        await page.goto(`http://localhost:7090/${projectName}/${pageName}`);
+        await page.goto(`${baseUrl}/${projectName}/${pageName}`);
 
         // ページが読み込まれるのを待つ
         await page.waitForSelector("body", { timeout: 10000 });
@@ -821,7 +835,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         await page.keyboard.type(`[/${projectName}/${pageName}]`);
 
         // 直接URLを使用して再度遷移
-        await page.goto(`http://localhost:7090/${projectName}/${pageName}`);
+        await page.goto(`${baseUrl}/${projectName}/${pageName}`);
 
         // ページが読み込まれるのを待つ
         await page.waitForSelector(".outliner-item", { timeout: 10000 });

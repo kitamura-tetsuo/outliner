@@ -40,7 +40,8 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         // 空のアイテムを作成
 
         // 3つ目のアイテムをクリック（カーソルを最初のアイテムから離す）
-        const thirdItem = page.locator(".outliner-item").nth(2);
+        const thirdItemId = await TestHelpers.getItemIdByIndex(page, 2);
+        const thirdItem = page.locator(`.outliner-item[data-item-id="${thirdItemId}"]`);
         await thirdItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
@@ -49,7 +50,8 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         expect(firstItemTextWithoutCursor).toContain("<strong>aasdd</strong>");
 
         // 2つ目のアイテムのテキスト内容を確認（制御文字が非表示で内部リンクが適用されていること）
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         const secondItemTextWithoutCursor = await secondItem.locator(".item-text").innerHTML();
         expect(secondItemTextWithoutCursor).toContain('class="internal-link');
         expect(secondItemTextWithoutCursor).toContain(">asd</a>");
@@ -187,7 +189,8 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
 
     test("SharedTreeデータが正しく保存される", async ({ page }) => {
         // 最初のアイテムを選択
-        const firstItem = page.locator(".outliner-item").nth(1);
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 

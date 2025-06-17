@@ -8,8 +8,8 @@ const LOCAL_HOST = process.env.LOCAL_HOST || "localhost";
 
 // サーバーとngrokのプロセスを格納するオブジェクト
 const processes = {
-    ngrok: null,
-    server: null,
+    ngrok: undefined,
+    server: undefined,
 };
 
 // 終了時のクリーンアップ
@@ -50,7 +50,7 @@ function startNgrok(port) {
         processes.ngrok = ngrok;
 
         let ngrokOutput = "";
-        let timeout = null;
+        let timeout = undefined;
 
         // 3秒経過してもURL取得できなかったらAPIから取得を試みる
         timeout = setTimeout(async () => {
@@ -68,7 +68,7 @@ function startNgrok(port) {
         });
 
         ngrok.on("close", code => {
-            processes.ngrok = null;
+            processes.ngrok = undefined;
             console.log(`ngrokが終了しました（コード: ${code}）`);
 
             if (code !== 0 && processes.server) {
@@ -108,7 +108,7 @@ function startServer() {
         });
 
         server.on("close", code => {
-            processes.server = null;
+            processes.server = undefined;
             console.log(`サーバーが終了しました（コード: ${code}）`);
 
             if (code !== 0 && processes.ngrok) {

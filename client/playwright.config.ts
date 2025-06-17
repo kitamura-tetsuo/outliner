@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const TEST_PORT = "7090";
-const VITE_HOST = "localhost";
+const TEST_PORT = process.env.TEST_PORT || process.env.VITE_PORT || "7090";
+const VITE_HOST = process.env.VITE_HOST || "localhost";
 
 console.log(`E2E Test Configuration:`);
 console.log(`- Test port: ${TEST_PORT}`);

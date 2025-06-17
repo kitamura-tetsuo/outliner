@@ -1,6 +1,7 @@
 <script lang="ts">
 // @ts-ignore
 import { Grid } from "wx-svelte-grid";
+import { onMount, afterUpdate, tick } from "svelte";
 import { mapEdit } from "../services/editMapper";
 import type { ColumnMeta } from "../services/sqlService";
 
@@ -43,6 +44,24 @@ function onEdit(e: any) {
     const info = mapEdit(columns, row, columnIndex, value);
     if (info && onedit) onedit(info);
 }
+
+function applyDataAttributes() {
+    tick().then(() => {
+        const grid = document.querySelector('[data-testid="editable-grid"]');
+        if (!grid) return;
+        const rowsEls = grid.querySelectorAll('.wx-row');
+        rowsEls.forEach((rowEl, rIndex) => {
+            (rowEl as HTMLElement).setAttribute('data-row-index', String(rIndex));
+            const cells = rowEl.querySelectorAll('.wx-cell[role="gridcell"]');
+            cells.forEach((cell, cIndex) => {
+                (cell as HTMLElement).setAttribute('data-item-id', `cell-${rIndex}-${cIndex}`);
+            });
+        });
+    });
+}
+
+onMount(applyDataAttributes);
+afterUpdate(applyDataAttributes);
 </script>
 
 <div data-testid="editable-grid" class="wx-grid-container">

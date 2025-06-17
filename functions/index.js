@@ -7,13 +7,17 @@ const { FieldValue } = require("firebase-admin/firestore");
 
 // CORS設定を共通化する関数
 function setCorsHeaders(req, res) {
-  const allowedOrigins = [
-    "http://localhost:7090",
-    "http://localhost:7091",
-    "http://localhost:7092",
-    "http://localhost:57000",
+  const localHost = process.env.LOCAL_HOST || "localhost";
+  const defaultOrigins = [
+    `http://${localHost}:${process.env.VITE_PORT || "7090"}`,
+    `http://${localHost}:${process.env.PORT || "7091"}`,
+    `http://${localHost}:${process.env.VITE_TINYLICIOUS_PORT || "7092"}`,
+    `http://${localHost}:${process.env.FIREBASE_HOSTING_PORT || "57000"}`,
     "https://outliner-d57b0.web.app"
   ];
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || defaultOrigins.join(","))
+    .split(",")
+    .map(o => o.trim());
 
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {

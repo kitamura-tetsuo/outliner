@@ -61,3 +61,23 @@ export async function getAllContainerMeta(): Promise<{ id: string; title: string
     const db = await open();
     return await db.selectFrom("containers").selectAll().execute();
 }
+
+export async function __test__resetWasmDbState() {
+    console.log("Attempting to reset WasmDB state for testing.");
+    if (currentDatabase && typeof currentDatabase.close === 'function') {
+        console.log("Closing currentDatabase...");
+        try {
+            // Assuming close might be async or sync, attempt await if it looks like a promise
+            const closeResult = currentDatabase.close();
+            if (closeResult && typeof (closeResult as Promise<any>).then === 'function') {
+                await closeResult;
+            }
+            console.log("currentDatabase closed.");
+        } catch (error) {
+            console.error("Error closing currentDatabase:", error);
+        }
+    }
+    currentDatabase = null;
+    dbPromise = null;
+    console.log("WasmDB state reset complete (dbPromise and currentDatabase nullified).");
+}
