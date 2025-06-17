@@ -4,6 +4,7 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("OutlinerTree E2E", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -38,8 +39,8 @@ test.describe("OutlinerTree E2E", () => {
         // If initialCount could be 0, then nth(0) for first click, nth(1) for second item.
         // Let's assume initialCount >= 1 based on beforeEach.
         // The new item from toolbar usually appears last or based on current focus.
-        // For robustness, let's operate on the newly added item, which should be items.nth(initialCount)
-        const newItem = items.nth(initialCount); // This is the item added by toolbar
+        // For robustness, operate on the newly added item using its item id
+        const newItem = await TestHelpers.getItemLocatorByIndex(page, initialCount)!; // Item added by toolbar
 
         // そのアイテムに対して兄弟追加
         // Hovering might be needed if buttons are not always visible
@@ -47,8 +48,8 @@ test.describe("OutlinerTree E2E", () => {
         await newItem.locator('button[title="新しいアイテムを追加"]').click();
         await expect(items).toHaveCount(initialCount + 2, { timeout: 7000 });
 
-        // 追加された3番目のアイテム (which is now items.nth(initialCount + 1)) を削除
-        const thirdItemOverall = items.nth(initialCount + 1);
+        // 追加された3番目のアイテム (initialCount + 1 番目) を削除
+        const thirdItemOverall = await TestHelpers.getItemLocatorByIndex(page, initialCount + 1)!;
         await thirdItemOverall.hover();
         await thirdItemOverall.locator('button[title="削除"]').click();
         await expect(items).toHaveCount(initialCount + 1, { timeout: 7000 });

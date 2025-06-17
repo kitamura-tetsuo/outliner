@@ -695,6 +695,15 @@ export class TestHelpers {
     }
 
     /**
+     * Get the locator for an item by its index
+     */
+    public static async getItemLocatorByIndex(page: Page, index: number): Promise<any> {
+        const id = await this.getItemIdByIndex(page, index);
+        if (!id) return null;
+        return page.locator(`.outliner-item[data-item-id="${id}"]`);
+    }
+
+    /**
      * アイテムをクリックして編集モードに入る
      * @param page Playwrightのページオブジェクト
      * @param itemSelector アイテムを特定するセレクタ

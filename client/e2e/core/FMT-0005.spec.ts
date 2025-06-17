@@ -112,9 +112,12 @@ test.describe("Visual Studio Codeのコピー/ペースト仕様", () => {
 
         // 各アイテムのテキストが正しいことを確認（可能な場合）
         if (count >= 3) {
-            const text1 = await items.nth(0).locator(".item-text").textContent();
-            const text2 = await items.nth(1).locator(".item-text").textContent();
-            const text3 = await items.nth(2).locator(".item-text").textContent();
+            const id1 = await TestHelpers.getItemIdByIndex(page, 0);
+            const id2 = await TestHelpers.getItemIdByIndex(page, 1);
+            const id3 = await TestHelpers.getItemIdByIndex(page, 2);
+            const text1 = await page.locator(`[data-item-id="${id1}"] .item-text`).textContent();
+            const text2 = await page.locator(`[data-item-id="${id2}"] .item-text`).textContent();
+            const text3 = await page.locator(`[data-item-id="${id3}"] .item-text`).textContent();
 
             // テキストが含まれていることを確認（完全一致でなくても可）
             expect(text1).toContain("1行目");
@@ -206,8 +209,8 @@ test.describe("Visual Studio Codeのコピー/ペースト仕様", () => {
         // 新しいアイテムを作成してフォーカス
         await page.keyboard.press("Enter"); // Create new item below
         await TestHelpers.waitForOutlinerItems(page, 2); // Wait for the second item
-        const secondItem = page.locator(".outliner-item").nth(1);
-        const secondItemContent = secondItem.locator(".item-content");
+        const secondItemLocator = await TestHelpers.getItemLocatorByIndex(page, 1);
+        const secondItemContent = secondItemLocator!.locator(".item-content");
         await secondItemContent.click(); // Focus the new item
         await TestHelpers.waitForCursorVisible(page); // Ensure cursor is in the new item
 
@@ -215,13 +218,12 @@ test.describe("Visual Studio Codeのコピー/ペースト仕様", () => {
         await page.keyboard.press(isMac ? "Meta+V" : "Control+V");
 
         // 少し待ってからテキスト内容を確認
-        await page.waitForFunction(async (expectedText) => {
-            const secondItemHandle = document.querySelectorAll(".outliner-item")[1];
-            const itemTextElement = secondItemHandle?.querySelector(".item-text");
-            return itemTextElement?.textContent?.includes(expectedText);
-        }, textToCopy, { timeout: 5000 });
+        await page.waitForFunction(async (expectedText, id) => {
+            const el = document.querySelector(`.outliner-item[data-item-id="${id}"] .item-text`);
+            return el?.textContent?.includes(expectedText);
+        }, textToCopy, await TestHelpers.getItemIdByIndex(page, 1), { timeout: 5000 });
 
-        await expect(secondItem.locator(".item-text")).toHaveText(textToCopy);
+        await expect(secondItemLocator!.locator(".item-text")).toHaveText(textToCopy);
     });
 
     /**
@@ -259,9 +261,10 @@ test.describe("Visual Studio Codeのコピー/ペースト仕様", () => {
 
         // 結果を確認
         // 結果を確認
-        const items = page.locator(".outliner-item");
-        const firstItemText = await items.nth(0).locator(".item-text").textContent();
-        const secondItemText = await items.nth(1).locator(".item-text").textContent();
+        const firstId = await TestHelpers.getItemIdByIndex(page, 0);
+        const secondId = await TestHelpers.getItemIdByIndex(page, 1);
+        const firstItemText = await page.locator(`[data-item-id="${firstId}"] .item-text`).textContent();
+        const secondItemText = await page.locator(`[data-item-id="${secondId}"] .item-text`).textContent();
 
         // 各アイテムのテキストが正しいことを確認
         expect(firstItemText).toBe(testText);
