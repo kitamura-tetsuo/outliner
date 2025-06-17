@@ -51,7 +51,8 @@ test.describe("フォーマット文字列の入力と表示", () => {
         // フォーカスを外してフォーマットが適用されることを確認
         await page.keyboard.press("Enter");
         await page.keyboard.type("別のアイテム");
-        await page.locator(".outliner-item").nth(1).locator(".item-content").click();
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").click();
 
         // フォーマットが適用されるのを待つ
         await page.waitForTimeout(500);
@@ -105,7 +106,8 @@ test.describe("フォーマット文字列の入力と表示", () => {
 
         if (secondItemExists) {
             // 新しいアイテムが作成された場合
-            const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+            const secondItemIdText = await TestHelpers.getItemIdByIndex(page, 1);
+            const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemIdText}"]`).locator(".item-text").textContent();
             expect(secondItemText).toContain("2行目");
         }
         else {
@@ -242,10 +244,9 @@ test.describe("フォーマット文字列の入力と表示", () => {
         console.log("クリップボードテストページが読み込まれました");
 
         // クリップボード権限を確認
-        await clipboardPage.locator(".test-section").nth(2).locator('button:has-text("クリップボード権限を確認")')
-            .click();
+        await clipboardPage.locator('#check-permission-btn').click();
         await clipboardPage.waitForTimeout(1000);
-        const permissionResult = await clipboardPage.locator(".test-section").nth(2).locator(".result").textContent();
+        const permissionResult = await clipboardPage.locator('#permission-result').textContent();
         console.log(`クリップボード権限: ${permissionResult}`);
 
         // Playwrightテスト用セクションにテキストを入力
@@ -253,14 +254,14 @@ test.describe("フォーマット文字列の入力と表示", () => {
         console.log("テキストエリアにテキストを入力しました");
 
         // コピーボタンをクリック
-        await clipboardPage.locator(".test-section").nth(3).locator('button:has-text("コピー")').click();
+        await clipboardPage.locator('#playwright-copy-btn').click();
         console.log("コピーボタンをクリックしました");
 
         // 少し待機してコピー操作が完了するのを待つ
         await clipboardPage.waitForTimeout(2000);
 
         // 結果を確認
-        const resultText = await clipboardPage.locator(".test-section").nth(3).locator(".result").textContent();
+        const resultText = await clipboardPage.locator('#playwright-result').textContent();
         console.log(`コピー結果: ${resultText}`);
 
         // クリップボードの内容を直接確認

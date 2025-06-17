@@ -67,8 +67,8 @@ export const test = base.extend({
                 process.env.VITE_FIRESTORE_EMULATOR_PORT || "58080",
             );
             window.localStorage.setItem(
-                "VITE_AUTH_EMULATOR_HOST",
-                process.env.VITE_AUTH_EMULATOR_HOST || "localhost",
+                "VITE_FIREBASE_AUTH_EMULATOR_HOST",
+                process.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || "localhost",
             );
             window.localStorage.setItem("VITE_AUTH_EMULATOR_PORT", process.env.VITE_AUTH_EMULATOR_PORT || "59099");
 

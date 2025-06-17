@@ -17,6 +17,36 @@
     - client/src/routes/min/+page.svelte
     - client/.env.example
   tests: []
+
+- id: FTR-0014
+  title: Configurable host and port via environment variables
+  description: Default service hosts and ports are configurable through environment variables with fallbacks.
+  category: configuration
+  status: implemented
+  components:
+    - client/src/lib/draftService.svelte.ts
+    - client/src/lib/scheduleService.svelte.ts
+    - client/src/lib/fluidService.svelte.ts
+    - client/src/stores/firestoreStore.svelte.ts
+    - client/src/auth/UserManager.ts
+    - client/playwright.config.ts
+    - functions/index.js
+  tests:
+    - client/e2e/core/DFT-0003.spec.ts
+    - client/e2e/core/USR-0001.spec.ts
+    - client/e2e/core/USR-0002.spec.ts
+- id: EMB-0001
+  title: Outliner Table & Chart Embedding
+  description: Notion-like table and chart blocks can be embedded in any outliner item
+  category: table
+  status: implemented
+  components:
+    - client/src/components/TableEmbed.svelte
+    - client/src/components/ChartEmbed.svelte
+    - client/src/components/OutlinerItem.svelte
+    - client/src/schema/app-schema.ts
+  tests:
+    - client/e2e/new/EMB-0001.spec.ts
   acceptance:
     - "Firebase config values come from VITE_FIREBASE_* variables"
     - "Token verification URL uses VITE_TOKEN_VERIFY_URL"

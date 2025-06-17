@@ -58,7 +58,8 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
     test("複数のフォーマットが混在する文字列でのカーソル移動", async ({ page }) => {
         // ページタイトル以外のアイテムを選択（2番目のアイテム）
-        const item = page.locator(".outliner-item").nth(1);
+        const itemId2 = await TestHelpers.getItemIdByIndex(page, 1);
+        const item = page.locator(`.outliner-item[data-item-id="${itemId2}"]`);
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
@@ -132,7 +133,8 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
     test("Home/Endキーがフォーマット文字列で正しく機能する", async ({ page }) => {
         // ページタイトル以外のアイテムを選択（2番目のアイテム）
-        const item = page.locator(".outliner-item").nth(1);
+        const itemId3 = await TestHelpers.getItemIdByIndex(page, 1);
+        const item = page.locator(`.outliner-item[data-item-id="${itemId3}"]`);
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
@@ -161,7 +163,8 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
     test("Shift+矢印キーによる選択がフォーマット文字列で正しく機能する", async ({ page }) => {
         // 既存のアイテム（2番目のアイテム）を使用
-        const item = page.locator(".outliner-item").nth(1);
+        const itemId4 = await TestHelpers.getItemIdByIndex(page, 1);
+        const item = page.locator(`.outliner-item[data-item-id="${itemId4}"]`);
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
@@ -233,7 +236,8 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
     test("フォーマット文字列内での単語単位の移動（Ctrl+矢印）", async ({ page }) => {
         // ページタイトル以外のアイテムを選択（2番目のアイテム）
-        const item = page.locator(".outliner-item").nth(1);
+        const itemId5 = await TestHelpers.getItemIdByIndex(page, 1);
+        const item = page.locator(`.outliner-item[data-item-id="${itemId5}"]`);
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 

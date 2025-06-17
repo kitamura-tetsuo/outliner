@@ -1548,7 +1548,9 @@ export class DraftService {
      * @returns 公開レスポンス
      */
     private async callPublishFunction(request: PublishDraftRequest): Promise<PublishDraftResponse> {
-        const endpoint = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://127.0.0.1:5100";
+        const functionsHost = import.meta.env.VITE_FIREBASE_FUNCTIONS_HOST || "localhost";
+        const functionsPort = import.meta.env.VITE_FIREBASE_FUNCTIONS_PORT || "57070";
+        const endpoint = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || `http://${functionsHost}:${functionsPort}`;
         const url = `${endpoint}/demo-test/us-central1/publishDraft`;
 
         const response = await fetch(url, {

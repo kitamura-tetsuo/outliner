@@ -263,8 +263,9 @@ initializeFirebase();
 const app = express();
 // CORS設定を強化
 app.use(cors({
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",").map(origin => origin.trim())
-        : ["http://localhost:7090"], // カンマ区切りで複数オリジンをサポート
+    origin: process.env.CORS_ORIGIN
+        ? process.env.CORS_ORIGIN.split(",").map(origin => origin.trim())
+        : [`http://${process.env.LOCAL_HOST || "localhost"}:${process.env.VITE_PORT || "7090"}`],
     methods: ["GET", "POST", "OPTIONS"], // OPTIONSメソッドを追加(プリフライトリクエスト対応)
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"], // 許可するヘッダーを明示

@@ -142,16 +142,22 @@ firebase deploy
   - API: `PORT=7071`
   - Tinylicious: `VITE_TINYLICIOUS_PORT=7072`
   - Firebase Functions はデバッグのためローカルを利用します
+  - Firebase Functions Host: `VITE_FIREBASE_FUNCTIONS_HOST=localhost`
+  - Firebase Functions Port: `VITE_FIREBASE_FUNCTIONS_PORT=57070`
 
 - **エミュレータ利用時**
   - クライアント: `VITE_PORT=7090`
   - API: `PORT=7091`
   - Tinylicious: `VITE_TINYLICIOUS_PORT=7092`
+  - Firebase Functions Host: `VITE_FIREBASE_FUNCTIONS_HOST=localhost`
+  - Firebase Functions Port: `VITE_FIREBASE_FUNCTIONS_PORT=57070`
 
 ### テスト環境
 
 - クライアント: `VITE_PORT=7090`
 - Tinylicious: `VITE_TINYLICIOUS_PORT=7092`
+- Firebase Functions Host: `VITE_FIREBASE_FUNCTIONS_HOST=localhost`
+- Firebase Functions Port: `VITE_FIREBASE_FUNCTIONS_PORT=57070`
 
 ## Firebase Hosting + Functions
 

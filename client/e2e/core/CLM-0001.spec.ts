@@ -273,7 +273,8 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         await page.screenshot({ path: "client/test-results/CLM-0001-last-line-start.png" });
 
         // ページタイトル以外のアイテムを使用（2番目のアイテム）
-        const testItem = page.locator(".outliner-item").nth(1);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const testItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         console.log("Using second item (non-page-title) for last line test");
 
         // 折り返しが発生する長いテキストを入力

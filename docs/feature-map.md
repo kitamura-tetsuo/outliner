@@ -21,6 +21,7 @@
 | COL-0001 | 他ユーザーのカーソル表示 | client/e2e/disabled/COL-0001.spec.ts | implemented |
 | DBW-0001 | Client-Side WASM DB | — | implemented |
 | DBW-001 | Client-Side SQL Database | client/e2e/new/DBW-001.spec.ts | implemented |
+| EMB-0001 | Outliner Table & Chart Embedding | client/e2e/new/EMB-0001.spec.ts | implemented |
 | ERR-0001 | エラーハンドリングテスト | client/e2e/new/ERR-0001.spec.ts | implemented |
 | FFI-0001 | Fluid Framework Integration | — | implemented |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
@@ -33,6 +34,7 @@
 | FMT-0007 | 内部リンク機能の表示 | — | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
 | FTR-0013 | Use environment variables in min page | — | implemented |
+| FTR-0014 | Configurable host and port via environment variables | — | implemented |
 | GRF-001 | Graph View | — | implemented |
 | GVI-0001 | Graph View | — | implemented |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
