@@ -1,7 +1,8 @@
 /// <reference types="@playwright/test" />
 import { defineConfig } from "@playwright/test";
 
-const PORT = 7090;
+// Use PORT environment variable if provided, otherwise default to 7090
+const PORT = process.env.PORT ? Number(process.env.PORT) : 7090;
 
 export default defineConfig({
     testDir: "./client/e2e",
