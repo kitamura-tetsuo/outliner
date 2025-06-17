@@ -33,6 +33,20 @@
   tests:
     - server/tests/server-log-file.test.js
 
+- id: EMU-0001
+  title: Unified Auth emulator environment variable
+  description: Client, server and functions all use FIREBASE_AUTH_EMULATOR_HOST to locate the Firebase Auth emulator
+  category: configuration
+  status: implemented
+  components:
+    - client/src/auth/UserManager.ts
+    - client/src/components/EnvDebugger.svelte
+    - server/auth-service.js
+    - functions/test/env.js
+    - functions/test/setup.js
+  tests:
+    - client/e2e/new/EMU-0001.spec.ts
+
 - id: FTR-0014
   title: Configurable host and port via environment variables
   description: Default service hosts and ports are configurable through environment variables with fallbacks.

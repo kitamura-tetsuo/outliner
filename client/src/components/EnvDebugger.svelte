@@ -38,17 +38,15 @@ onMount(() => {
                 .VITE_FIRESTORE_EMULATOR_HOST,
             VITE_FIRESTORE_EMULATOR_PORT: import.meta.env
                 .VITE_FIRESTORE_EMULATOR_PORT,
-            VITE_FIREBASE_AUTH_EMULATOR_HOST: import.meta.env
-                .VITE_FIREBASE_AUTH_EMULATOR_HOST,
-            VITE_AUTH_EMULATOR_PORT: import.meta.env
-                .VITE_AUTH_EMULATOR_PORT,
+            FIREBASE_AUTH_EMULATOR_HOST: import.meta.env
+                .FIREBASE_AUTH_EMULATOR_HOST,
             // LocalStorageからの値も取得
             localStorage_VITE_USE_FIREBASE_EMULATOR: window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR"),
             localStorage_VITE_FIRESTORE_EMULATOR_HOST: window.localStorage?.getItem(
                 "VITE_FIRESTORE_EMULATOR_HOST",
             ),
-            localStorage_VITE_FIREBASE_AUTH_EMULATOR_HOST: window.localStorage?.getItem(
-                "VITE_FIREBASE_AUTH_EMULATOR_HOST",
+            localStorage_FIREBASE_AUTH_EMULATOR_HOST: window.localStorage?.getItem(
+                "FIREBASE_AUTH_EMULATOR_HOST",
             ),
         };
     }
