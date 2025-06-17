@@ -228,6 +228,8 @@ npm run test:unit
 
 # Playwright テストを 1 ファイルずつ実行する場合
 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
+# Example: run the collaboration cursor test
+scripts/run-tests.sh client/e2e/collaboration/COL-0001.spec.ts
 # 環境変数 `PORT` を指定して別ポートで実行する例
 PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 ```

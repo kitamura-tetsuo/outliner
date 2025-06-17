@@ -914,9 +914,7 @@
     - "他ユーザーがカーソルを移動すると、その位置が表示される"
     - "Fluid Framework の signal 機能でカーソル位置を同期する"
   tests:
-    - client/e2e/disabled/COL-0001.spec.ts
     - client/e2e/collaboration/COL-0001.spec.ts
-  notes: Logic fixed, env exec pending.
 
 - id: SRP-0001
   title: "高度な検索と置換"
