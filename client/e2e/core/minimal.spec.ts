@@ -1,3 +1,4 @@
+/** @feature MIN-0000 */
 // minimal.spec.ts
 import { expect, test } from '@playwright/test';
 

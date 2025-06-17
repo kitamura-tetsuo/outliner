@@ -1,3 +1,4 @@
+/** @feature FTR-0012 */
 import { test, expect } from '@playwright/test';
 
 test.describe('FTR-0012 - Forgot Password UI Flow', () => {

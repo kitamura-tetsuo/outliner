@@ -1,3 +1,4 @@
+/** @feature CHT-001 */
 import { test, expect } from '@playwright/test';
 
 test.describe('CHT-001 - ChartComponent E2E Tests', () => {
