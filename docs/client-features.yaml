@@ -680,6 +680,8 @@
     - client/e2e/core/add-text.spec.ts
     - client/e2e/core/tinylicious.spec.ts
     - client/e2e/auth/auth.spec.ts
+    - client/e2e/utils/testHelpers.spec.ts
+    - client/e2e/utils/linkTestHelpers.spec.ts
   examples:
     - client/e2e/utils/testHelpers.ts
 
