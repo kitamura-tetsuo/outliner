@@ -209,16 +209,13 @@ firebase deploy
 cd client
 npm run test:unit
 
-# E2E テスト
-npm run test:e2e
-
-# Playwright テストを 1 ファイルずつ実行する場合
+# E2E テストは Playwright を用います。実行前に必ず環境をセットアップしてください。
+# まず `scripts/codex-setp.sh` を実行し、Firebase Emulator などのローカルサービスを
+# 起動します。その後、Playwright のテストファイルを個別に実行します。
 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 # 環境変数 `PORT` を指定して別ポートで実行する例
 PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 ```
-テスト実行前に必ず `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
-
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
 
 ### Feature Map の更新
