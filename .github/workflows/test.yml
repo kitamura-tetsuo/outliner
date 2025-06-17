@@ -1,0 +1,144 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: self-hosted
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install client dependencies
+      run: |
+        cd client
+        npm ci
+        
+    - name: Install server dependencies
+      run: |
+        cd server
+        npm ci
+        
+    - name: Install functions dependencies
+      run: |
+        cd functions
+        npm ci
+        
+    - name: Setup test environment
+      run: |
+        # Install system dependencies for headless testing
+        sudo apt-get update
+        sudo apt-get install -y xvfb
+
+        # Clean up any existing processes on test ports
+        sudo pkill -f "port 7090" || true
+        sudo pkill -f "port 7091" || true
+        sudo pkill -f "port 7092" || true
+        sudo pkill -f "port 9099" || true
+        sudo pkill -f "port 8080" || true
+        sudo pkill -f "port 5001" || true
+
+        # Wait for ports to be freed
+        sleep 5
+        
+    - name: Install Playwright browsers
+      run: |
+        cd client
+        npx playwright install chromium
+        npx playwright install-deps chromium
+        
+    - name: Run tests
+      run: |
+        # Set display for headless testing
+        export DISPLAY=:99
+
+        # Run tests with timeout
+        timeout 1800 npm test || {
+          echo "Tests timed out or failed"
+          # Kill any remaining processes
+          sudo pkill -f "tinylicious" || true
+          sudo pkill -f "firebase" || true
+          sudo pkill -f "vite" || true
+          exit 1
+        }
+      env:
+        CI: true
+        NODE_ENV: test
+        DISPLAY: :99
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: |
+          client/test-results/
+          client/playwright-report/
+          client/coverage/
+        retention-days: 30
+        
+    - name: Cleanup after tests
+      if: always()
+      run: |
+        # Clean up any remaining processes
+        sudo pkill -f "tinylicious" || true
+        sudo pkill -f "firebase" || true
+        sudo pkill -f "vite" || true
+        sudo pkill -f "node.*7090" || true
+        sudo pkill -f "node.*7091" || true
+        sudo pkill -f "node.*7092" || true
+
+    - name: Comment PR with test results
+      uses: actions/github-script@v7
+      if: github.event_name == 'pull_request' && always()
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+
+          let comment = '## 🧪 Test Results\n\n';
+
+          // Check if tests passed
+          const testStatus = '${{ job.status }}';
+          if (testStatus === 'success') {
+            comment += '✅ **All tests passed!**\n\n';
+            comment += '🎉 Your changes are ready for review.\n\n';
+          } else {
+            comment += '❌ **Tests failed**\n\n';
+            comment += '⚠️ Please check the logs and fix the failing tests before merging.\n\n';
+          }
+
+          // Add timestamp
+          const now = new Date().toISOString();
+          comment += `⏰ **Test run completed at:** ${now}\n\n`;
+
+          // Add links
+          comment += '### 📊 Detailed Information\n\n';
+          comment += `- [View test artifacts](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})\n`;
+          comment += `- [View workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})\n`;
+          comment += `- [View all checks](${context.payload.pull_request.html_url}/checks)\n\n`;
+
+          // Add commit info
+          comment += `**Commit:** ${context.sha.substring(0, 7)}\n`;
+          comment += `**Branch:** ${context.payload.pull_request.head.ref}\n`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

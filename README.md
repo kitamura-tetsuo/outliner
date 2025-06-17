@@ -210,6 +210,20 @@ firebase deploy
 テスト実行前に、必要に応じて各ディレクトリ（`client`, `functions`, `server`）で `npm install` を実行し、依存関係をインストールしてください。
 また、一部のテスト（特にクライアントの連携テスト）はFirebase EmulatorやTinyliciousサーバーなどのローカルサービスが起動していることを前提とする場合があります。詳細は各テストスイートのドキュメントや `scripts/codex-setp.sh` を参照してください。
 
+### CI/CD (GitHub Actions)
+
+このプロジェクトでは、GitHub Actionsを使用してコミット時の自動テストを実行しています。
+
+- **テストワークフロー**: コミットがpushされるたびに、全てのテストが自動実行されます
+- **PRステータスチェック**: プルリクエストでテスト結果を確認できます
+- **セルフホストランナー**: テストはセルフホストランナーで実行されます
+- **詳細レポート**: テスト結果、カバレッジ、失敗詳細がPRコメントに自動投稿されます
+
+ワークフローファイル:
+- `.github/workflows/test.yml` - メインのテストワークフロー
+- `.github/workflows/pr-status.yml` - PRステータスチェック
+- `.github/workflows/test-report.yml` - 詳細テストレポート生成
+
 ### クライアント (client)
 
 クライアントサイドのテストは [Vitest](https://vitest.dev/) を使用しています。
