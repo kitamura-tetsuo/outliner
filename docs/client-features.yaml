@@ -934,9 +934,9 @@
     - client/src/fluid/fluidClient.ts
     - client/src/lib/debug.ts
   tests:
-    - client/e2e/new/FFI-0001.spec.ts
+    - client/e2e/core/FFI-0001.spec.ts
     - client/src/lib/fluidService.test.ts
-  notes: Logic fixed, file move blocked. Env exec pending.
+  notes: File moved to active suite. Run scripts/codex-setp.sh before testing.
 
 - id: GVI-0001
   title: "Graph View"
