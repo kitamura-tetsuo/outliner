@@ -886,6 +886,10 @@
   description: "複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する"
   category: collaboration
   status: implemented
+  components:
+    - client/src/lib/Cursor.ts
+    - client/src/fluid/fluidClient.ts
+    - client/src/stores/EditorOverlayStore.svelte.ts
   acceptance:
     - "他ユーザーがカーソルを移動すると、その位置が表示される"
     - "Fluid Framework の signal 機能でカーソル位置を同期する"
@@ -923,8 +927,10 @@
     - client/src/lib/fluidService.ts
     - client/src/lib/wasmDb.ts
     - client/src/fluid/fluidClient.ts
+    - client/src/lib/debug.ts
   tests:
     - client/e2e/disabled/FFI-0001.spec.ts
+    - client/src/lib/fluidService.test.ts
   notes: Logic fixed, file move blocked. Env exec pending.
 
 - id: GVI-0001
