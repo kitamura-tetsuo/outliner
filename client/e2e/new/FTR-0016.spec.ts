@@ -13,4 +13,15 @@ test.describe("FTR-0016: PORT environment variable", () => {
         await expect(page).toHaveURL(new RegExp(`${expectedPort}`));
         await expect(page.locator("h1")).toContainText("Fluid Outliner App");
     });
+
+    test("baseURL port matches window location", async ({ page, baseURL }) => {
+        const expectedPort = process.env.PORT ?? "7090";
+        await page.goto("/");
+        const locationPort = await page.evaluate(() => window.location.port);
+        expect(locationPort).toBe(String(expectedPort));
+
+        const response = await page.request.get(`${baseURL}/api/telemetry-logs`);
+        expect(response.status()).toBeGreaterThanOrEqual(200);
+        expect(response.status()).toBeLessThan(500);
+    });
 });
