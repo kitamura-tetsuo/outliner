@@ -1,9 +1,5 @@
-import {
-    defineConfig,
-    devices,
-} from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
-// テスト環境の設定 - AGENTS.mdの指定に従い7090ポートを使用
 const TEST_PORT = "7090";
 const VITE_HOST = "localhost";
 
