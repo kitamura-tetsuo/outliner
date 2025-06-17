@@ -1302,3 +1302,34 @@
     - scripts/codex-setp.sh
   tests:
     - server/tests/server-log-file.test.js
+- id: SLR-0011
+  title: "Multi-item selection via mouse drag"
+  description: "Users can select text across multiple items by dragging the mouse"
+  category: selection-range
+  status: implemented
+  components:
+    - client/src/components/OutlinerItem.svelte
+    - client/src/components/OutlinerTree.svelte
+    - client/src/stores/EditorOverlayStore.svelte.ts
+  tests:
+    - client/e2e/core/SLR-0011.spec.ts
+- id: SLR-0012
+  title: "Multi-item copy and paste"
+  description: "Copying and pasting text across multiple items"
+  category: selection-range
+  status: implemented
+  components:
+    - client/src/lib/Cursor.ts
+    - client/src/components/EditorOverlay.svelte
+  tests:
+    - client/e2e/core/SLR-0012.spec.ts
+- id: SLR-0013
+  title: "Drag and drop multi-item selection"
+  description: "Drag and drop text selected across multiple items"
+  category: selection-range
+  status: implemented
+  components:
+    - client/src/components/OutlinerItem.svelte
+    - client/src/components/OutlinerTree.svelte
+  tests:
+    - client/e2e/core/SLR-0013.spec.ts
