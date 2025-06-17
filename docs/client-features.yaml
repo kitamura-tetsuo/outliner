@@ -6,7 +6,6 @@
     - client/src/routes/auth/reset-password/+page.svelte
     - client/src/lib/email/resetPassword.ts
   tests:
-    - tests/feature/FTR-0012.spec.ts
     - client/e2e/core/FTR-0012.spec.ts
     - client/e2e/auth/FTR-0012-forgot-password.spec.ts
   acceptance:
@@ -680,7 +679,7 @@
     - client/e2e/core/ITM-0001.spec.ts
     - client/e2e/core/ITM-0001-title.spec.ts
     - client/e2e/core/add-text.spec.ts
-    - client/e2e/core/tinylicious.spec.ts
+    - client/e2e/disabled/tinylicious.spec.ts
     - client/e2e/auth/auth.spec.ts
     - client/e2e/utils/testHelpers.spec.ts
     - client/e2e/utils/linkTestHelpers.spec.ts
@@ -869,7 +868,7 @@
     - "リトライ回数と遅延時間をログに出力する"
     - "接続成功時にユーザー数とユーザー情報をログに出力する"
   tests:
-    - server/test/auth-service-emulator-wait.test.js
+    - server/tests/auth-service-emulator-wait.test.js
   components:
     - server/auth-service.js
 
@@ -1028,9 +1027,9 @@
     - src/services/queryStore.ts
     - src/services/syncWorker.ts
   tests:
-    - src/tests/sqlService.test.ts
-    - src/tests/editMapper.test.ts
-    - src/tests/syncWorker.test.ts
+    - client/src/tests/sqlService.test.ts
+    - client/src/tests/editMapper.test.ts
+    - client/src/tests/syncWorker.test.ts
     - client/e2e/new/TBL-0001.spec.ts
 
 - id: TBL-0002
