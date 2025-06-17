@@ -8,6 +8,7 @@ import { userManager } from "../auth/UserManager";
 import * as dbService from "../lib/db/dbService";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { getLogger } from "./logger";
+import * as legacyFluidServiceModule from "./fluidService";
 
 const logger = getLogger();
 if (typeof window !== 'undefined') {
@@ -27,6 +28,7 @@ export function setupGlobalDebugFunctions(fluidService: any) {
     (window as any).__USER_MANAGER__ = userManager;
     (window as any).__DB_SERVICE__ = dbService;
     (window as any).__SVELTE_GOTO__ = goto;
+    (window as any).__LEGACY_FLUID_SERVICE__ = legacyFluidServiceModule;
 
     // SharedTreeのデータ構造を取得するデバッグ関数
     window.getFluidTreeDebugData = function () {
@@ -53,6 +55,7 @@ declare global {
         getFluidTreeDebugData?: () => any;
         getFluidTreePathData?: (path?: string) => any;
         __FLUID_SERVICE__?: any;
+        __LEGACY_FLUID_SERVICE__?: any;
         __FLUID_STORE__?: any;
         __USER_MANAGER__?: any;
         __DB_SERVICE__?: any;

@@ -19,10 +19,17 @@ test.describe("COL-0001: 他ユーザーのカーソル表示", () => {
     await page2.goto(`/${projectName}/${pageName}`);
     await TestHelpers.waitForOutlinerItems(page2);
 
+    // Wait for a remote cursor to appear
     await page2.waitForFunction(() => {
       const store = (window as any).editorOverlayStore;
-      return store && Object.keys(store.cursors).length > 0;
-    }, { timeout: 10000 });
+      if (!store || !store.cursors) {
+        // console.log('COL-0001: editorOverlayStore or cursors not found');
+        return false;
+      }
+      const remoteCursors = Object.values(store.cursors).filter((cursor: any) => cursor.userId && cursor.userId !== 'local');
+      // console.log('COL-0001: Remote cursors found:', remoteCursors.length);
+      return remoteCursors.length > 0;
+    }, { timeout: 10000 }); // Adjusted timeout as needed
 
     const data = await CursorValidator.getCursorData(page2);
     expect(data.cursorCount).toBeGreaterThan(0);

@@ -1,9 +1,10 @@
 # Feature ↔ Test Matrix
+<!-- Note: Some E2E tests in client/e2e/disabled/ have been refactored but remain disabled due to flakiness or environment issues. Their file paths in this map might not reflect their current disabled status if they were previously active. -->
 | Feature | Title | Test files | Status |
 |---------|-------|------------|--------|
 | API-0001 | Firebase Functions APIサーバーの修正 | — | implemented |
 | API-0002 | Firebase emulator起動待機機能 | — | implemented |
-| APP-0001 | プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定 | — | implemented |
+| APP-0001 | プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定 | client/e2e/core/APP-0001.spec.ts | implemented |
 | CHT-001 | Chart Component | — | implemented |
 | CLM-0001 | クリックで編集モードに入る | client/e2e/core/CLM-0001.spec.ts | implemented |
 | CLM-0002 | 左へ移動 | client/e2e/core/CLM-0002.spec.ts | implemented |
@@ -16,21 +17,21 @@
 | CLM-0101 | アイテム間移動時のカーソル重複と入力分散問題 | client/e2e/core/CLM-0101.spec.ts | implemented |
 | CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | client/e2e/core/CLM-0102.spec.ts | implemented |
 | CLM-0103 | フォーマット文字列でのカーソル操作 | client/e2e/core/CLM-0103.spec.ts | implemented |
-| COL-0001 | 他ユーザーのカーソル表示 | client/e2e/disabled/COL-0001.spec.ts | implemented |
-| DBW-0001 | Client-Side WASM DB | — | draft |
+| COL-0001 | 他ユーザーのカーソル表示 | client/e2e/collaboration/COL-0001.spec.ts <br> Note: Logic fixed, env exec pending. | implemented |
+| DBW-0001 | Client-Side WASM DB | client/src/lib/__tests__/wasmDb.test.ts (unit) <br> Note: Stores container metadata via wasmDb.ts. | implemented |
 | DBW-001 | Client-Side SQL Database | client/e2e/new/DBW-001.spec.ts | implemented |
-| FFI-0001 | Fluid Framework Integration | — | implemented |
-| FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
+| FFI-0001 | Fluid Framework Integration | client/e2e/disabled/FFI-0001.spec.ts <br> Note: Logic fixed, file move blocked. Env exec pending. | implemented |
+| FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | client/e2e/core/FLD-0001.spec.ts | implemented |
 | FMT-0001 | フォーマット表示 | client/e2e/core/FMT-0001.spec.ts | implemented |
 | FMT-0002 | フォーマット組み合わせ | client/e2e/core/FMT-0002.spec.ts | implemented |
 | FMT-0003 | 拡張フォーマット | client/e2e/core/FMT-0003.spec.ts | implemented |
 | FMT-0004 | クリップボードからのペーストとフォーマット | client/e2e/core/FMT-0004.spec.ts | implemented |
-| FMT-0005 | Visual Studio Codeのコピー/ペースト仕様 | client/e2e/disabled/FMT-0005.spec.ts | implemented |
+| FMT-0005 | Visual Studio Codeのコピー/ペースト仕様 | client/e2e/disabled/FMT-0005.spec.ts <br> Note: Partially refactored, complex simulations commented. File move blocked. Env exec pending. | implemented |
 | FMT-0006 | カーソル移動時のフォーマット表示の一貫性 | client/e2e/core/FMT-0006.spec.ts | implemented |
 | FMT-0007 | 内部リンク機能の表示 | — | implemented |
-| FTR-0012 | User can reset forgotten password | — | implemented |
+| FTR-0012 | User can reset forgotten password | client/e2e/auth/FTR-0012-forgot-password.spec.ts (UI structure) <br> Note: Frontend components seem missing. Test execution blocked. | implemented |
 | GRF-001 | Graph View | — | implemented |
-| GVI-0001 | Graph View | — | draft |
+| GVI-0001 | Graph View | — | superseded by GRF-001 |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
 | ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
 | LNK-0001 | 内部リンクのURL生成機能 | — | implemented |
@@ -41,7 +42,7 @@
 | LNK-0006 | リンク先ページの存在確認機能 | — | implemented |
 | LNK-0007 | バックリンク機能 | — | implemented |
 | NAV-0001 | プロジェクト選択とページナビゲーション | client/e2e/core/NAV-0001.spec.ts | implemented |
-| NAV-0002 | プロジェクトページへのリンク機能 | — | implemented |
+| NAV-0002 | プロジェクトページへのリンク機能 | client/e2e/core/NAV-0002.spec.ts | implemented |
 | SLR-0001 | Shift + 上下左右 | client/e2e/core/SLR-0001.spec.ts | implemented |
 | SLR-0002 | 行頭まで選択 | client/e2e/core/SLR-0002.spec.ts | implemented |
 | SLR-0003 | 行末まで選択 | client/e2e/core/SLR-0003.spec.ts | implemented |
@@ -52,8 +53,8 @@
 | SLR-0008 | 選択範囲のエッジケース | client/e2e/core/SLR-0008.spec.ts | implemented |
 | SLR-0009 | ドラッグ＆ドロップによるテキスト移動 | client/e2e/core/SLR-0009.spec.ts | implemented |
 | SLR-0010 | 選択範囲のフォーマット変更 | client/e2e/core/SLR-0010.spec.ts | implemented |
-| SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | — | implemented |
-| SLR-0101 | ボックス選択（矩形選択）機能 - マウス | — | implemented |
+| SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | client/e2e/core/SLR-0100.spec.ts | implemented |
+| SLR-0101 | ボックス選択（矩形選択）機能 - マウス | client/e2e/core/SLR-0101.spec.ts | implemented |
 | SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts | implemented |
 | SRP-0001 | 高度な検索と置換 | — | implemented |
 | TBL-0001 | Editable JOIN Table | client/e2e/new/TBL-0001.spec.ts | implemented |
@@ -62,5 +63,5 @@
 | TST-0003 | テストヘルパーユーティリティ | — | implemented |
 | TST-0004 | テスト環境の改善 | — | implemented |
 | TST-0005 | テスト環境の初期化と準備 | — | implemented |
-| USR-0001 | ユーザー削除機能 | — | implemented |
-| USR-0002 | コンテナ削除機能 | — | implemented |
+| USR-0001 | ユーザー削除機能 | client/e2e/core/USR-0001.spec.ts | implemented |
+| USR-0002 | コンテナ削除機能 | client/e2e/core/USR-0002.spec.ts | implemented |

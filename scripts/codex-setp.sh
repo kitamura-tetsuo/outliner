@@ -29,9 +29,9 @@ install_os_utilities
 echo "Installing all dependencies..."
 install_all_dependencies
 
-# Install Playwright with dependencies
+# Install Playwright browser (system dependencies should be handled by install_os_utilities)
 cd "${ROOT_DIR}/client"
-npx -y playwright install --with-deps chromium
+npx -y playwright install chromium
 cd "${ROOT_DIR}"
 
 # Stop any existing servers to ensure clean restart
