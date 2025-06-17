@@ -19,4 +19,17 @@ test.describe("FTR-0012: Forgot password flow", () => {
         await expect(page.locator(".reset-link-sent"))
             .toBeVisible({ timeout: 10000 });
     });
+
+    test("User can enter new password with token", async ({ page }) => {
+        await page.goto("/auth/reset-password?oobCode=dummyCode");
+
+        await expect(page.locator('input[name="newPassword"]')).toBeVisible();
+        await expect(page.locator('input[name="confirmPassword"]')).toBeVisible();
+
+        await page.fill('input[name="newPassword"]', 'Password123!');
+        await page.fill('input[name="confirmPassword"]', 'Password123!');
+        await page.click('button[type=submit]');
+
+        await expect(page.locator('.reset-success')).toBeVisible();
+    });
 });

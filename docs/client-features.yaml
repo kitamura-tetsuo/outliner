@@ -1,14 +1,15 @@
 - id: FTR-0012
   title: User can reset forgotten password
-  status: implemented # draft / implemented / deprecated
+  status: implemented
   components:
-    - routes/auth/forgot.svelte
-    - lib/email/resetPassword.ts
+    - client/src/routes/auth/forgot.svelte
+    - client/src/routes/auth/forgot/+page.svelte
+    - client/src/routes/auth/reset-password/+page.svelte
+    - client/src/lib/email/resetPassword.ts
   tests:
     - tests/feature/FTR-0012.spec.ts
     - client/e2e/core/FTR-0012.spec.ts
-    - client/e2e/auth/FTR-0012-forgot-password.spec.ts # UI structure only
-  notes: "Frontend components (forgot.svelte, lib/email/resetPassword.ts) appear to be missing. Test execution blocked."
+    - client/e2e/auth/FTR-0012-forgot-password.spec.ts
   acceptance:
     - "ユーザーがメールアドレスを入力すると、リセットリンクが送信される"
     - "リンクは 30 分で失効する"
@@ -33,6 +34,20 @@
   tests:
     - server/tests/server-log-file.test.js
 
+- id: EMU-0001
+  title: Unified Auth emulator environment variable
+  description: Client, server and functions all use FIREBASE_AUTH_EMULATOR_HOST to locate the Firebase Auth emulator
+  category: configuration
+  status: implemented
+  components:
+    - client/src/auth/UserManager.ts
+    - client/src/components/EnvDebugger.svelte
+    - server/auth-service.js
+    - functions/test/env.js
+    - functions/test/setup.js
+  tests:
+    - client/e2e/new/EMU-0001.spec.ts
+
 - id: FTR-0014
   title: Configurable host and port via environment variables
   description: Default service hosts and ports are configurable through environment variables with fallbacks.
@@ -50,6 +65,8 @@
     - client/e2e/core/DFT-0003.spec.ts
     - client/e2e/core/USR-0001.spec.ts
     - client/e2e/core/USR-0002.spec.ts
+    - client/e2e/core/FTR-0014.spec.ts
+    - client/e2e/new/FTR-0014.spec.ts
 - id: FTR-0016
   title: Playwright config supports PORT env variable
   description: The E2E test server port can be set via PORT environment variable with fallback to 7090.
@@ -438,7 +455,8 @@
     - "複数行テキストをボックス選択（矩形選択）範囲にペーストすると、各行に対応する行が挿入される"
     - "ボックス選択（矩形選択）範囲へのペースト時に、選択範囲が適切に置き換えられる"
   tests:
-    - client/e2e/disabled/FMT-0005.spec.ts
+    - client/e2e/core/FMT-0005.spec.ts
+    - client/e2e/core/FMT-0005-multicursor.spec.ts
   notes: Partially refactored (basic clipboard test improved, complex simulations commented out). File move blocked. Env exec pending.
 
 - id: FMT-0006
@@ -671,7 +689,8 @@
     - client/e2e/core/SLR-0004.spec.ts
     - client/e2e/core/SLR-0005.spec.ts
     - client/e2e/core/SLR-0010.spec.ts
-    - client/e2e/disabled/FMT-0005.spec.ts
+    - client/e2e/core/FMT-0005.spec.ts
+    - client/e2e/core/FMT-0005-multicursor.spec.ts
     - client/e2e/core/FMT-0006.spec.ts
     - client/e2e/core/IME-0001.spec.ts
     - client/e2e/core/ITM-0001.spec.ts
@@ -679,6 +698,8 @@
     - client/e2e/core/add-text.spec.ts
     - client/e2e/core/tinylicious.spec.ts
     - client/e2e/auth/auth.spec.ts
+    - client/e2e/utils/testHelpers.spec.ts
+    - client/e2e/utils/linkTestHelpers.spec.ts
   examples:
     - client/e2e/utils/testHelpers.ts
 
@@ -886,13 +907,15 @@
   description: "複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する"
   category: collaboration
   status: implemented
+  components:
+    - client/src/lib/Cursor.ts
+    - client/src/fluid/fluidClient.ts
+    - client/src/stores/EditorOverlayStore.svelte.ts
   acceptance:
     - "他ユーザーがカーソルを移動すると、その位置が表示される"
     - "Fluid Framework の signal 機能でカーソル位置を同期する"
   tests:
-    - client/e2e/disabled/COL-0001.spec.ts
     - client/e2e/collaboration/COL-0001.spec.ts
-  notes: Logic fixed, env exec pending.
 
 - id: SRP-0001
   title: "高度な検索と置換"
@@ -923,9 +946,11 @@
     - client/src/lib/fluidService.ts
     - client/src/lib/wasmDb.ts
     - client/src/fluid/fluidClient.ts
+    - client/src/lib/debug.ts
   tests:
-    - client/e2e/disabled/FFI-0001.spec.ts
-  notes: Logic fixed, file move blocked. Env exec pending.
+    - client/e2e/core/FFI-0001.spec.ts
+    - client/src/lib/fluidService.test.ts
+  notes: File moved to active suite. Run scripts/codex-setp.sh before testing.
 
 - id: GVI-0001
   title: "Graph View"
@@ -1207,6 +1232,7 @@
     - "メモリリークが発生しない"
   tests:
     - client/src/tests/queryStore.advanced.test.ts
+    - client/e2e/new/TBL-0005.spec.ts
 
 - id: TBL-0006
   title: FluidTableClient の統合テスト

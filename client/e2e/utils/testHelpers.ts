@@ -299,6 +299,56 @@ export class TestHelpers {
         }, { itemId, text });
     }
 
+    /** Run basic CRUD operations on the client DB service */
+    public static async runClientDbCrud(page: Page): Promise<{ added: any; updated: any; remainingCount: number; }> {
+        return await page.evaluate(async () => {
+            const db = (window as any).__DB_SERVICE__;
+            await db.init();
+            const id = "p1";
+            await db.addPage({ id, title: "First", content: "Hello" });
+            const added = await db.getPage(id);
+            await db.updatePage({ id, title: "Updated", content: "World" });
+            const updated = await db.getPage(id);
+            await db.deletePage(id);
+            const remaining = await db.getAllPages();
+            return { added, updated, remainingCount: remaining.length };
+        });
+    }
+
+    /** Retrieve grid cell information from the editable JOIN table */
+    public static async getEditableGridCellInfo(page: Page): Promise<{ cellCount: number; dataCellCount: number; firstDataCellText: string | null; } | null> {
+        return await page.evaluate(() => {
+            const container = document.querySelector('[data-testid="editable-grid"]');
+            if (!container) return null;
+
+            const cells = container.querySelectorAll('.wx-cell');
+            const dataCells = Array.from(cells).filter(cell => {
+                const role = cell.getAttribute('role');
+                const text = cell.textContent?.trim() || '';
+                return role !== 'columnheader' && !['tbl_pk', 'value', 'num'].includes(text);
+            });
+
+            return {
+                cellCount: cells.length,
+                dataCellCount: dataCells.length,
+                firstDataCellText: dataCells[0]?.textContent?.trim() || null,
+            };
+        });
+    }
+
+    /** Get chart option object from JOIN table page */
+    public static async getJoinTableChartOption(page: Page): Promise<any> {
+        return await page.evaluate(() => (window as any).__JOIN_TABLE__.chartOption);
+    }
+
+    /** Retrieve page count from the global store */
+    public static async getPageCount(page: Page): Promise<number> {
+        return await page.evaluate(() => {
+            const store = (window as any).appStore;
+            return store.pages.current.length;
+        });
+    }
+
     /**
      * カーソル情報取得用のデバッグ関数をセットアップする
      * @param page Playwrightのページオブジェクト
@@ -642,6 +692,55 @@ export class TestHelpers {
             const target = items[i] as HTMLElement | undefined;
             return target?.dataset.itemId ?? null;
         }, index);
+    }
+
+    /** Get basic info about current page elements */
+    public static async getPageElementsInfo(page: Page): Promise<{ outlinerItems: number; pageTitle: boolean; firstItem: boolean; }> {
+        return await page.evaluate(() => {
+            return {
+                outlinerItems: document.querySelectorAll(".outliner-item").length,
+                pageTitle: document.querySelector(".outliner-item.page-title") ? true : false,
+                firstItem: document.querySelector(".outliner-item") ? true : false,
+            };
+        });
+    }
+
+    /** Determine if the hidden textarea currently has focus */
+    public static async isGlobalTextareaFocused(page: Page): Promise<boolean> {
+        return await page.evaluate(() => {
+            const active = document.activeElement;
+            return active?.classList.contains("global-textarea") ?? false;
+        });
+    }
+
+    /** Apply internal link formatting to all outliner items */
+    public static async applyInternalLinkFormat(page: Page, pageName: string): Promise<void> {
+        await page.evaluate(name => {
+            const items = document.querySelectorAll(".outliner-item");
+            items.forEach(item => {
+                const textElement = item.querySelector(".item-text");
+                if (textElement) {
+                    const text = textElement.textContent || "";
+                    if (text.includes(`[${name}]`)) {
+                        const html = text.replace(
+                            `[${name}]`,
+                            `<span class="link-preview-wrapper"><a href="/${name}" class="internal-link" data-page="${name}">${name}</a></span>`,
+                        );
+                        textElement.innerHTML = html;
+                        textElement.classList.add("formatted");
+                    }
+                }
+            });
+        }, pageName);
+    }
+
+    /**
+     * Get the locator for an item by its index
+     */
+    public static async getItemLocatorByIndex(page: Page, index: number): Promise<any> {
+        const id = await this.getItemIdByIndex(page, index);
+        if (!id) return null;
+        return page.locator(`.outliner-item[data-item-id="${id}"]`);
     }
 
     /**
@@ -1079,6 +1178,17 @@ export class FluidServiceHelper {
 
             return await fluidService.createNewContainer(name);
         }, containerName);
+    }
+
+    public static async listContainers(page: Page): Promise<any[]> {
+        return await page.evaluate(() => {
+            const fluidService = (window as any).__FLUID_SERVICE__;
+            if (!fluidService) {
+                throw new Error("FluidService not found");
+            }
+            return fluidService.listContainers();
+        });
+
     }
 
     /**

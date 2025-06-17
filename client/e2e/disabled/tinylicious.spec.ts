@@ -1,3 +1,4 @@
+/** @feature TIN-0000 */
 // File in disabled/ as it requires a running Tinylicious server and proper test environment config.
 import {
     expect,

@@ -1,6 +1,7 @@
 const { describe, it, beforeEach, afterEach } = require("mocha");
 const { expect } = require("chai");
 const { createQueue, createTestTask, deleteTestTask, checkQueueStatus } = require("../scripts/setup-cloud-tasks");
+const { existsSync } = require("fs");
 
 describe("Cloud Tasks Integration Tests", () => {
     let createdTaskNames = [];
@@ -23,10 +24,12 @@ describe("Cloud Tasks Integration Tests", () => {
 
     describe("Queue Management", () => {
         it("should create or verify queue exists", async function() {
-            // 本番環境でのみ実行
             if (process.env.NODE_ENV !== "production") {
-                this.skip();
+                console.warn("Cloud Tasks integration tests only run in production environment");
                 return;
+            }
+            if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || !existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+                expect.fail("GOOGLE_APPLICATION_CREDENTIALS is not set or file not found");
             }
 
             try {
@@ -34,21 +37,20 @@ describe("Cloud Tasks Integration Tests", () => {
                 expect(queue).to.be.an("object");
                 expect(queue.name).to.include("draft-publish-queue");
             } catch (error) {
-                // Google Cloud認証が設定されていない場合はスキップ
                 if (error.message.includes("authentication") || error.message.includes("credentials")) {
-                    console.warn("Google Cloud authentication not configured, skipping test");
-                    this.skip();
-                    return;
+                    expect.fail("Google Cloud authentication not configured: " + error.message);
                 }
                 throw error;
             }
         });
 
         it("should check queue status", async function() {
-            // 本番環境でのみ実行
             if (process.env.NODE_ENV !== "production") {
-                this.skip();
+                console.warn("Cloud Tasks integration tests only run in production environment");
                 return;
+            }
+            if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || !existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+                expect.fail("GOOGLE_APPLICATION_CREDENTIALS is not set or file not found");
             }
 
             try {
@@ -57,11 +59,8 @@ describe("Cloud Tasks Integration Tests", () => {
                 expect(queue.name).to.include("draft-publish-queue");
                 expect(queue.state).to.be.oneOf(["RUNNING", "PAUSED", "DISABLED"]);
             } catch (error) {
-                // Google Cloud認証が設定されていない場合はスキップ
                 if (error.message.includes("authentication") || error.message.includes("credentials")) {
-                    console.warn("Google Cloud authentication not configured, skipping test");
-                    this.skip();
-                    return;
+                    expect.fail("Google Cloud authentication not configured: " + error.message);
                 }
                 throw error;
             }
@@ -70,10 +69,12 @@ describe("Cloud Tasks Integration Tests", () => {
 
     describe("Task Management", () => {
         it("should create and delete test task", async function() {
-            // 本番環境でのみ実行
             if (process.env.NODE_ENV !== "production") {
-                this.skip();
+                console.warn("Cloud Tasks integration tests only run in production environment");
                 return;
+            }
+            if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || !existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+                expect.fail("GOOGLE_APPLICATION_CREDENTIALS is not set or file not found");
             }
 
             try {
@@ -100,21 +101,20 @@ describe("Cloud Tasks Integration Tests", () => {
                     createdTaskNames.splice(index, 1);
                 }
             } catch (error) {
-                // Google Cloud認証が設定されていない場合はスキップ
                 if (error.message.includes("authentication") || error.message.includes("credentials")) {
-                    console.warn("Google Cloud authentication not configured, skipping test");
-                    this.skip();
-                    return;
+                    expect.fail("Google Cloud authentication not configured: " + error.message);
                 }
                 throw error;
             }
         });
 
         it("should handle task creation with invalid parameters", async function() {
-            // 本番環境でのみ実行
             if (process.env.NODE_ENV !== "production") {
-                this.skip();
+                console.warn("Cloud Tasks integration tests only run in production environment");
                 return;
+            }
+            if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || !existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+                expect.fail("GOOGLE_APPLICATION_CREDENTIALS is not set or file not found");
             }
 
             try {
@@ -146,11 +146,8 @@ describe("Cloud Tasks Integration Tests", () => {
                     // Cloud Tasks APIのエラーを期待
                 }
             } catch (error) {
-                // Google Cloud認証が設定されていない場合はスキップ
                 if (error.message.includes("authentication") || error.message.includes("credentials")) {
-                    console.warn("Google Cloud authentication not configured, skipping test");
-                    this.skip();
-                    return;
+                    expect.fail("Google Cloud authentication not configured: " + error.message);
                 }
                 throw error;
             }
@@ -159,10 +156,12 @@ describe("Cloud Tasks Integration Tests", () => {
 
     describe("Error Handling", () => {
         it("should handle non-existent task deletion gracefully", async function() {
-            // 本番環境でのみ実行
             if (process.env.NODE_ENV !== "production") {
-                this.skip();
+                console.warn("Cloud Tasks integration tests only run in production environment");
                 return;
+            }
+            if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || !existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+                expect.fail("GOOGLE_APPLICATION_CREDENTIALS is not set or file not found");
             }
 
             try {
@@ -182,11 +181,8 @@ describe("Cloud Tasks Integration Tests", () => {
                     expect(error.code).to.equal(5); // NOT_FOUND
                 }
             } catch (error) {
-                // Google Cloud認証が設定されていない場合はスキップ
                 if (error.message.includes("authentication") || error.message.includes("credentials")) {
-                    console.warn("Google Cloud authentication not configured, skipping test");
-                    this.skip();
-                    return;
+                    expect.fail("Google Cloud authentication not configured: " + error.message);
                 }
                 throw error;
             }
@@ -195,10 +191,12 @@ describe("Cloud Tasks Integration Tests", () => {
 
     describe("Performance Tests", () => {
         it("should handle multiple task creation and deletion", async function() {
-            // 本番環境でのみ実行
             if (process.env.NODE_ENV !== "production") {
-                this.skip();
+                console.warn("Cloud Tasks integration tests only run in production environment");
                 return;
+            }
+            if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || !existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+                expect.fail("GOOGLE_APPLICATION_CREDENTIALS is not set or file not found");
             }
 
             // タイムアウトを延長
@@ -231,11 +229,8 @@ describe("Cloud Tasks Integration Tests", () => {
                     }
                 }
             } catch (error) {
-                // Google Cloud認証が設定されていない場合はスキップ
                 if (error.message.includes("authentication") || error.message.includes("credentials")) {
-                    console.warn("Google Cloud authentication not configured, skipping test");
-                    this.skip();
-                    return;
+                    expect.fail("Google Cloud authentication not configured: " + error.message);
                 }
                 throw error;
             }

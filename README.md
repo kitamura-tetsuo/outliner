@@ -144,6 +144,7 @@ firebase deploy
   - Firebase Functions はデバッグのためローカルを利用します
   - Firebase Functions Host: `VITE_FIREBASE_FUNCTIONS_HOST=localhost`
   - Firebase Functions Port: `VITE_FIREBASE_FUNCTIONS_PORT=57070`
+  - Firebase Auth Emulator: `FIREBASE_AUTH_EMULATOR_HOST=localhost:59099`
 
 - **エミュレータ利用時**
   - クライアント: `VITE_PORT=7090`
@@ -159,6 +160,7 @@ firebase deploy
 - Tinylicious: `VITE_TINYLICIOUS_PORT=7092`
 - Firebase Functions Host: `VITE_FIREBASE_FUNCTIONS_HOST=localhost`
 - Firebase Functions Port: `VITE_FIREBASE_FUNCTIONS_PORT=57070`
+- Firebase Auth Emulator: `FIREBASE_AUTH_EMULATOR_HOST=localhost:59099`
 
 ## Firebase Hosting + Functions
 
@@ -211,6 +213,26 @@ firebase deploy
 ### クライアント (client)
 
 クライアントサイドのテストは [Vitest](https://vitest.dev/) を使用しています。
+
+**重要:** テスト実行前に必ず `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
+This script must run **before every test** to ensure all services are available.
+
+```bash
+# ユニットテスト
+cd client
+npm run test:unit
+
+# E2E テストは Playwright を用います。実行前に必ず環境をセットアップしてください。
+# まず `scripts/codex-setp.sh` を実行し、Firebase Emulator などのローカルサービスを
+# 起動します。その後、Playwright のテストファイルを個別に実行します。
+
+# Playwright テストを 1 ファイルずつ実行する場合
+scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
+# Example: run the collaboration cursor test
+scripts/run-tests.sh client/e2e/collaboration/COL-0001.spec.ts
+# 環境変数 `PORT` を指定して別ポートで実行する例
+PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
+```
 
 -   **ユニットテストの実行:**
     ```bash
@@ -275,6 +297,13 @@ Firebase Functionsのテストは [Jest](https://jestjs.io/) を使用してい�
     -   テキストサマリー: コンソールに出力されます。
     -   HTMLレポート: `server/coverage/mocha/index.html` をブラウザで開いて確認できます。
     -   LCOVレポート: `server/coverage/mocha/lcov.info`
+
+### E2E テストのガイドライン
+
+- `.nth()` などの位置指定は使わず、必ず `data-item-id` 属性を用いて要素を取得します。
+- DOM へアクセスする場合は `TestHelpers` 経由で実行し、`page.evaluate` を直接書かないようにします。
+
+自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
 
 ### Feature Map の更新
 

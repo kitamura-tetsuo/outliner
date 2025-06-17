@@ -175,7 +175,6 @@ describe("DraftService", () => {
 
 describe("DraftService - Real Fluid Object Branch Testing", () => {
     test("should test branch functionality with real Fluid objects", async () => {
-        try {
             // テスト用のモックユーザーを設定
             const { userManager } = await import("../../auth/UserManager");
 
@@ -196,6 +195,7 @@ describe("DraftService - Real Fluid Object Branch Testing", () => {
                 method: "GET",
                 signal: AbortSignal.timeout(3000), // 3秒でタイムアウト
             });
+            expect(response.ok).toBe(true);
             console.log("Tinylicious server response status:", response.status);
 
             // 実際のFluidClientを作成してテスト
@@ -304,23 +304,7 @@ describe("DraftService - Real Fluid Object Branch Testing", () => {
             // クリーンアップ
             (userManager as any).currentUser = undefined;
             (userManager as any).fluidUserInfo = undefined;
-        }
-        catch (error) {
-            console.warn("Real Fluid object test skipped due to environment limitations:", (error as Error).message);
-            // テスト環境の制約でFluidClientが作成できない場合はスキップ
-            if (
-                (error as Error).message.includes("fetch failed") ||
-                (error as Error).message.includes("ECONNREFUSED") ||
-                (error as Error).message.includes("timeout")
-            ) {
-                console.log("Tinylicious server is not available, skipping real Fluid object test");
-                expect(true).toBe(true); // テストをパス
-            }
-            else {
-                throw error; // 予期しないエラーは再スロー
-            }
-        }
-    }, 15000); // 15秒のタイムアウトに短縮
+        }, 15000);
 });
 
 describe("DraftService - Enhanced Branch Data Operations", () => {

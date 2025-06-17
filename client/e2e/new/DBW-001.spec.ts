@@ -11,18 +11,7 @@ test.describe("DBW-001: Client-Side SQL Database", () => {
     });
 
     test("basic CRUD operations", async ({ page }) => {
-        const result = await page.evaluate(async () => {
-            const db = window.__DB_SERVICE__;
-            await db.init();
-            const id = "p1";
-            await db.addPage({ id, title: "First", content: "Hello" });
-            const added = await db.getPage(id);
-            await db.updatePage({ id, title: "Updated", content: "World" });
-            const updated = await db.getPage(id);
-            await db.deletePage(id);
-            const remaining = await db.getAllPages();
-            return { added, updated, remainingCount: remaining.length };
-        });
+        const result = await TestHelpers.runClientDbCrud(page);
 
         expect(result.added.title).toBe("First");
         expect(result.updated.title).toBe("Updated");

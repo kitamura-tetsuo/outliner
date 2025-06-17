@@ -1,8 +1,10 @@
+/** @feature ADV-0000 */
 // File in disabled/ due to test flakiness and reliance on CSS for validation. Some waits improved.
 import {
     expect,
     test,
 } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @file advanced-indent.spec.ts
@@ -138,13 +140,14 @@ test.describe("Advanced indent/unindent functionality", () => {
     test("Should create and manipulate a deeply nested structure", async ({ page }) => {
         // アイテムを5つ追加
         for (let i = 0; i < 5; i++) {
-            const currentItem = page.locator(".outliner-item").nth(i);
-            await currentItem.click(); // Focus or create if it's the first effective click
+            const currentItem = await TestHelpers.getItemLocatorByIndex(page, i);
+            await currentItem!.click(); // Focus or create if it's the first effective click
             await page.keyboard.type(`アイテム ${i + 1}`);
             await page.keyboard.press("Enter");
             // Wait for the next item to be created and visible, except for the last one
             if (i < 4) {
-                await expect(page.locator(".outliner-item").nth(i + 1)).toBeVisible({ timeout: 7000 });
+                const nextLocator = await TestHelpers.getItemLocatorByIndex(page, i + 1);
+                await expect(nextLocator!).toBeVisible({ timeout: 7000 });
             }
         }
 
@@ -152,7 +155,7 @@ test.describe("Advanced indent/unindent functionality", () => {
 
         // ステップ1: 階層構造を作成（2から5までのアイテムを順番に移動）
         // アイテム2をアイテム1の子にする
-        await page.locator(".outliner-item").nth(1).click();
+        await (await TestHelpers.getItemLocatorByIndex(page, 1))!.click();
         await page.keyboard.press("Tab");
         await page.waitForSelector(".outliner-item", { state: "attached", timeout: 7000 });
 
@@ -172,7 +175,7 @@ test.describe("Advanced indent/unindent functionality", () => {
         expect(structure[1].text).toBe("アイテム 2");
 
         // アイテム3をアイテム2の子にする
-        await page.locator(".outliner-item").nth(2).click();
+        await (await TestHelpers.getItemLocatorByIndex(page, 2))!.click();
         await page.keyboard.press("Tab");
         await page.waitForSelector(".outliner-item", { state: "attached", timeout: 7000 });
         await page.keyboard.press("Tab");
@@ -192,7 +195,7 @@ test.describe("Advanced indent/unindent functionality", () => {
         expect(structure[2].text).toBe("アイテム 3");
 
         // アイテム4をアイテム3の子にする
-        await page.locator(".outliner-item").nth(3).click();
+        await (await TestHelpers.getItemLocatorByIndex(page, 3))!.click();
         await page.keyboard.press("Tab");
         await page.waitForSelector(".outliner-item", { state: "attached", timeout: 7000 });
         await page.keyboard.press("Tab");
@@ -220,7 +223,7 @@ test.describe("Advanced indent/unindent functionality", () => {
 
         // ステップ2: 階層構造の変更を検証
         // アイテム4を2レベル上げる（2回のshift+tab）
-        const item4 = page.locator(".outliner-item").nth(3);
+        const item4 = await TestHelpers.getItemLocatorByIndex(page, 3);
         for (let i = 0; i < 2; i++) {
             await item4.click();
             await page.keyboard.press("Shift+Tab");
@@ -270,23 +273,23 @@ test.describe("Advanced indent/unindent functionality", () => {
 
     //     // 2. 子アイテムを追加
     //     await page.click('button:has-text("アイテム追加")');
-    //     await page.locator(".outliner-item").nth(1).click();
+    //     await (await TestHelpers.getItemLocatorByIndex(page, 1))!.click();
     //     await page.keyboard.type("子アイテム1");
     //     await page.keyboard.press("Enter");
 
     //     // 3. 孫アイテムを追加
     //     await page.click('button:has-text("アイテム追加")');
-    //     await page.locator(".outliner-item").nth(2).click();
+    //     await (await TestHelpers.getItemLocatorByIndex(page, 2))!.click();
     //     await page.keyboard.type("子アイテム2");
     //     await page.keyboard.press("Enter");
 
     //     // 子アイテムをインデント
-    //     await page.locator(".outliner-item").nth(1).click();
+    //     await (await TestHelpers.getItemLocatorByIndex(page, 1))!.click();
     //     await page.keyboard.press("Tab");
     //     await page.waitForTimeout(500);
 
     //     // 孫アイテムを更にインデント
-    //     await page.locator(".outliner-item").nth(2).click();
+    //     await (await TestHelpers.getItemLocatorByIndex(page, 2))!.click();
     //     await page.keyboard.press("Tab");
     //     await page.waitForTimeout(500);
 
