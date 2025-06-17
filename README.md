@@ -208,3 +208,14 @@ npm run test:e2e
 テストの前には `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
+
+### Feature Map の更新
+
+テストファイルや `docs/client-features.yaml` を変更した後は、機能とテストの対応表を更新するため次のコマンドを実行してください。
+
+```bash
+python scripts/gen_feature_map.py
+git add docs/feature-map.md
+```
+
+生成された `docs/feature-map.md` もコミットに含めることで、常に最新の機能一覧を共有できます。
