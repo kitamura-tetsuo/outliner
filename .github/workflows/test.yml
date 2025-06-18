@@ -9,30 +9,38 @@ on:
 jobs:
   test:
     runs-on: self-hosted
-    
+    timeout-minutes: 60
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
-        
-    - name: Install dependencies
+
+    - name: Check environment
+      run: |
+        echo "Node version: $(node --version)"
+        echo "NPM version: $(npm --version)"
+        echo "Current user: $(whoami)"
+        echo "Working directory: $(pwd)"
+
+    - name: Install root dependencies
       run: npm ci
-      
+
     - name: Install client dependencies
       run: |
         cd client
         npm ci
-        
+
     - name: Install server dependencies
       run: |
         cd server
         npm ci
-        
+
     - name: Install functions dependencies
       run: |
         cd functions
@@ -40,39 +48,69 @@ jobs:
         
     - name: Setup test environment
       run: |
-        # Install system dependencies for headless testing
-        sudo apt-get update
-        sudo apt-get install -y xvfb
+        # Check if xvfb is available, install if needed
+        if ! command -v xvfb-run &> /dev/null; then
+          echo "Installing xvfb..."
+          sudo apt-get update || echo "apt-get update failed, continuing..."
+          sudo apt-get install -y xvfb || echo "xvfb installation failed, continuing..."
+        fi
 
-        # Clean up any existing processes on test ports
-        sudo pkill -f "port 7090" || true
-        sudo pkill -f "port 7091" || true
-        sudo pkill -f "port 7092" || true
-        sudo pkill -f "port 9099" || true
-        sudo pkill -f "port 8080" || true
-        sudo pkill -f "port 5001" || true
+        # Clean up any existing processes on test ports (without sudo)
+        pkill -f "port 7090" || true
+        pkill -f "port 7091" || true
+        pkill -f "port 7092" || true
+        pkill -f "port 9099" || true
+        pkill -f "port 8080" || true
+        pkill -f "port 5001" || true
+        pkill -f "tinylicious" || true
+        pkill -f "firebase" || true
+        pkill -f "vite" || true
 
         # Wait for ports to be freed
-        sleep 5
+        sleep 3
         
     - name: Install Playwright browsers
       run: |
         cd client
-        npx playwright install chromium
-        npx playwright install-deps chromium
+        echo "Installing Playwright browsers..."
+        npx playwright install chromium || echo "Playwright install failed, continuing..."
+        npx playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
         
     - name: Run tests
       run: |
         # Set display for headless testing
         export DISPLAY=:99
 
-        # Run tests with timeout
+        # Check if test script exists
+        if [ ! -f "package.json" ]; then
+          echo "package.json not found"
+          exit 1
+        fi
+
+        # Show test script
+        echo "Test script from package.json:"
+        cat package.json | grep -A 5 -B 5 '"test"' || echo "No test script found"
+
+        # Check if scripts/run-tests.sh exists and is executable
+        if [ -f "scripts/run-tests.sh" ]; then
+          echo "Found scripts/run-tests.sh"
+          chmod +x scripts/run-tests.sh
+          echo "Made scripts/run-tests.sh executable"
+        else
+          echo "scripts/run-tests.sh not found"
+          exit 1
+        fi
+
+        # Run tests with timeout (30 minutes)
         timeout 1800 npm test || {
           echo "Tests timed out or failed"
-          # Kill any remaining processes
-          sudo pkill -f "tinylicious" || true
-          sudo pkill -f "firebase" || true
-          sudo pkill -f "vite" || true
+          # Kill any remaining processes (without sudo)
+          pkill -f "tinylicious" || true
+          pkill -f "firebase" || true
+          pkill -f "vite" || true
+          pkill -f "node.*7090" || true
+          pkill -f "node.*7091" || true
+          pkill -f "node.*7092" || true
           exit 1
         }
       env:
@@ -94,13 +132,17 @@ jobs:
     - name: Cleanup after tests
       if: always()
       run: |
-        # Clean up any remaining processes
-        sudo pkill -f "tinylicious" || true
-        sudo pkill -f "firebase" || true
-        sudo pkill -f "vite" || true
-        sudo pkill -f "node.*7090" || true
-        sudo pkill -f "node.*7091" || true
-        sudo pkill -f "node.*7092" || true
+        # Clean up any remaining processes (without sudo)
+        pkill -f "tinylicious" || true
+        pkill -f "firebase" || true
+        pkill -f "vite" || true
+        pkill -f "node.*7090" || true
+        pkill -f "node.*7091" || true
+        pkill -f "node.*7092" || true
+
+        # Show any remaining processes
+        echo "Remaining processes:"
+        ps aux | grep -E "(tinylicious|firebase|vite|node.*70)" || echo "No relevant processes found"
 
     - name: Comment PR with test results
       uses: actions/github-script@v7

@@ -1,0 +1,77 @@
+name: Simple Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  simple-test:
+    runs-on: self-hosted
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Environment check
+      run: |
+        echo "=== Basic Environment Check ==="
+        whoami
+        pwd
+        ls -la
+        echo "Node: $(node --version)"
+        echo "NPM: $(npm --version)"
+        
+    - name: Check package.json
+      run: |
+        echo "=== Package.json Check ==="
+        if [ -f package.json ]; then
+          echo "Root package.json exists"
+          cat package.json
+        else
+          echo "No root package.json found"
+        fi
+        
+    - name: Install root dependencies
+      run: |
+        echo "=== Installing Root Dependencies ==="
+        if [ -f package.json ]; then
+          npm install || echo "npm install failed"
+        else
+          echo "No package.json to install from"
+        fi
+        
+    - name: Check test script
+      run: |
+        echo "=== Test Script Check ==="
+        if [ -f scripts/run-tests.sh ]; then
+          echo "scripts/run-tests.sh exists"
+          ls -la scripts/run-tests.sh
+          echo "Content:"
+          head -20 scripts/run-tests.sh
+        else
+          echo "scripts/run-tests.sh does not exist"
+        fi
+        
+    - name: Try basic test command
+      run: |
+        echo "=== Basic Test Command ==="
+        if [ -f package.json ]; then
+          echo "Checking npm scripts:"
+          npm run || echo "npm run failed"
+          
+          echo "Trying to run test script:"
+          npm test --dry-run || echo "npm test --dry-run failed"
+        else
+          echo "No package.json found"
+        fi
+        
+    - name: Summary
+      if: always()
+      run: |
+        echo "=== Test Summary ==="
+        echo "Test completed at: $(date)"
+        echo "Working directory: $(pwd)"
+        echo "User: $(whoami)"
