@@ -19,7 +19,6 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
         registry-url: 'https://registry.npmjs.org'
 
     - name: Check environment
@@ -36,10 +35,45 @@ jobs:
         if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
           . "$HOME/.nvm/nvm.sh"
           echo "NVM loaded, Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+        fi
+
+        # Fallback: try to use system Node.js if actions/setup-node didn't work
+        if ! command -v node >/dev/null 2>&1; then
+          echo "Node.js not found via actions/setup-node, trying system installation..."
+          # Try common Node.js installation paths
+          export PATH="/usr/local/bin:/usr/bin:$PATH"
+          if command -v node >/dev/null 2>&1; then
+            echo "Found system Node.js: $(node --version)"
+          else
+            echo "Node.js not found in system paths either"
+            exit 1
+          fi
+        fi
+
+        # Verify npm is available
+        if ! command -v npm >/dev/null 2>&1; then
+          echo "npm not found, this will cause issues in subsequent steps"
+          exit 1
         fi
 
     - name: Install dependencies
       run: |
+        # Load NVM if available
+        if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+          . "$HOME/.nvm/nvm.sh"
+          echo "NVM loaded, Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+        fi
+
+        # Verify npm is available
+        if ! command -v npm >/dev/null 2>&1; then
+          echo "Error: npm command not found"
+          echo "PATH: $PATH"
+          echo "Node location: $(which node || echo 'node not found')"
+          exit 1
+        fi
+
         # Install root dependencies if package.json exists
         if [ -f "package.json" ]; then
           echo "Installing root dependencies..."
@@ -122,6 +156,11 @@ jobs:
 
     - name: Install Playwright browsers
       run: |
+        # Load NVM if available
+        if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+          . "$HOME/.nvm/nvm.sh"
+        fi
+
         cd client
         echo "Installing Playwright browsers..."
         npx playwright install chromium || echo "Playwright install failed, continuing..."
