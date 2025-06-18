@@ -38,6 +38,16 @@ jobs:
           echo "NPM version: $(npm --version)"
         fi
 
+        # Check if actions/setup-node installed Node.js in _tool directory
+        if [ -d "$GITHUB_WORKSPACE/../_tool/node" ]; then
+          NODE_TOOL_DIR=$(find "$GITHUB_WORKSPACE/../_tool/node" -name "x64" -type d | head -1)
+          if [ -n "$NODE_TOOL_DIR" ]; then
+            export PATH="$NODE_TOOL_DIR/bin:$PATH"
+            echo "Found Node.js in tool cache: $(node --version)"
+            echo "NPM version: $(npm --version)"
+          fi
+        fi
+
         # Fallback: try to use system Node.js if actions/setup-node didn't work
         if ! command -v node >/dev/null 2>&1; then
           echo "Node.js not found via actions/setup-node, trying system installation..."
@@ -56,6 +66,9 @@ jobs:
           echo "npm not found, this will cause issues in subsequent steps"
           exit 1
         fi
+
+        # Export PATH for subsequent steps
+        echo "PATH=$PATH" >> $GITHUB_ENV
 
     - name: Install dependencies
       run: |
@@ -136,10 +149,10 @@ jobs:
           . "$HOME/.nvm/nvm.sh"
         fi
 
-        # Install global packages if needed
+        # Install global packages if needed (without sudo for self-hosted runner)
         echo "Installing global packages..."
         if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
-          sudo npm install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || echo "Global package installation failed, continuing..."
+          npm install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || echo "Global package installation failed, continuing..."
         fi
 
         # Install OS utilities if needed
