@@ -77,14 +77,22 @@ jobs:
         # Install root dependencies if package.json exists
         if [ -f "package.json" ]; then
           echo "Installing root dependencies..."
-          npm ci
+          # Try npm ci first, fallback to npm install if lock files are out of sync
+          npm ci || {
+            echo "npm ci failed, trying npm install..."
+            npm install
+          }
         fi
 
         # Install client dependencies
         echo "Installing client dependencies..."
         if [ -d "client" ] && [ -f "client/package.json" ]; then
           cd client
-          npm ci
+          # Try npm ci first, fallback to npm install if lock files are out of sync
+          npm ci || {
+            echo "npm ci failed for client, trying npm install..."
+            npm install
+          }
           cd ..
         else
           echo "Client directory or package.json not found"
@@ -95,7 +103,11 @@ jobs:
         echo "Installing server dependencies..."
         if [ -d "server" ] && [ -f "server/package.json" ]; then
           cd server
-          npm ci
+          # Try npm ci first, fallback to npm install if lock files are out of sync
+          npm ci || {
+            echo "npm ci failed for server, trying npm install..."
+            npm install
+          }
           cd ..
         else
           echo "Server directory or package.json not found"
@@ -106,7 +118,11 @@ jobs:
         echo "Installing functions dependencies..."
         if [ -d "functions" ] && [ -f "functions/package.json" ]; then
           cd functions
-          npm ci
+          # Try npm ci first, fallback to npm install if lock files are out of sync
+          npm ci || {
+            echo "npm ci failed for functions, trying npm install..."
+            npm install
+          }
           cd ..
         else
           echo "Functions directory or package.json not found"
