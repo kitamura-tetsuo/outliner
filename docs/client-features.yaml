@@ -75,6 +75,15 @@
     - playwright.config.ts
   tests:
     - client/e2e/new/FTR-0016.spec.ts
+- id: FTR-0017
+  title: Server respects PORT environment variable
+  description: Running server and API endpoints use process.env.PORT or default 7090
+  category: configuration
+  status: implemented
+  components:
+    - playwright.config.ts
+  tests:
+    - client/e2e/new/config-port.spec.ts
 - id: EMB-0001
   title: Outliner Table & Chart Embedding
   description: Notion-like table and chart blocks can be embedded in any outliner item
