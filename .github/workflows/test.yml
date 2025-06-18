@@ -48,21 +48,36 @@ jobs:
 
         # Install client dependencies
         echo "Installing client dependencies..."
-        cd client
-        npm ci
-        cd ..
+        if [ -d "client" ] && [ -f "client/package.json" ]; then
+          cd client
+          npm ci
+          cd ..
+        else
+          echo "Client directory or package.json not found"
+          exit 1
+        fi
 
         # Install server dependencies
         echo "Installing server dependencies..."
-        cd server
-        npm ci
-        cd ..
+        if [ -d "server" ] && [ -f "server/package.json" ]; then
+          cd server
+          npm ci
+          cd ..
+        else
+          echo "Server directory or package.json not found"
+          exit 1
+        fi
 
         # Install functions dependencies
         echo "Installing functions dependencies..."
-        cd functions
-        npm ci
-        cd ..
+        if [ -d "functions" ] && [ -f "functions/package.json" ]; then
+          cd functions
+          npm ci
+          cd ..
+        else
+          echo "Functions directory or package.json not found"
+          exit 1
+        fi
 
     - name: Setup test environment
       run: |
