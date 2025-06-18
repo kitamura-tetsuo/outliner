@@ -73,7 +73,16 @@ test.describe('FTR-0012 - Forgot Password UI Flow', () => {
         await page.goto(`${resetPasswordRoute}?oobCode=testtoken123`);
 
         // Add basic UI verification for reset password page
-        // This test can be expanded based on the actual reset password implementation
         await expect(page.locator('h1')).toBeVisible();
+    });
+
+    test('Reset link shows success for valid token', async ({ page }) => {
+        await page.goto(`${forgotPasswordRoute}?oobCode=valid-token`);
+        await expect(page.locator('.token-valid')).toBeVisible();
+    });
+
+    test('Reset link shows error for invalid token', async ({ page }) => {
+        await page.goto(`${forgotPasswordRoute}?oobCode=invalid-token`);
+        await expect(page.locator('.error')).toBeVisible();
     });
 });
