@@ -1,5 +1,8 @@
 # Outliner
 
+<!-- GitHub Actions Status -->
+[![Test Status](https://github.com/kitamura-tetsuo/outliner/workflows/Test/badge.svg)](https://github.com/kitamura-tetsuo/outliner/actions)
+
 Outlinerは、Azure Fluid Relayを使用したリアルタイム共同編集アプリケーションです。
 
 ## 開発環境のセットアップ
