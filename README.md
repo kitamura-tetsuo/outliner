@@ -226,10 +226,12 @@ npm run test:unit
 # まず `scripts/codex-setp.sh` を実行し、Firebase Emulator などのローカルサービスを
 # 起動します。その後、Playwright のテストファイルを個別に実行します。
 
-# Playwright テストを 1 ファイルずつ実行する場合
+# Playwright テストを複数指定した場合、それぞれ順番に実行されます
 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 # Example: run the collaboration cursor test
 scripts/run-tests.sh client/e2e/collaboration/COL-0001.spec.ts
+# 複数ファイルを一度に実行する例
+scripts/run-tests.sh client/e2e/spec-a.spec.ts client/e2e/spec-b.spec.ts
 # 環境変数 `PORT` を指定して別ポートで実行する例
 PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
 ```
