@@ -227,11 +227,12 @@ npm run test:unit
 # 起動します。その後、Playwright のテストファイルを個別に実行します。
 
 # Playwright テストを 1 ファイルずつ実行する場合
-scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
+scripts/run-tests.sh <spec-file>
 # Example: run the collaboration cursor test
 scripts/run-tests.sh client/e2e/collaboration/COL-0001.spec.ts
 # 環境変数 `PORT` を指定して別ポートで実行する例
-PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
+PORT=7100 scripts/run-tests.sh <spec-file>
+# テストはタイムアウトする場合がありますが問題ありません。別環境で検証します。
 ```
 
 -   **ユニットテストの実行:**
@@ -247,18 +248,11 @@ PORT=7100 scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
     -   LCOVレポート: `client/coverage/vitest/lcov.info` (CIや外部ツール連携用)
 
 -   **E2Eテスト:**
-    E2Eテストは [Playwright](https://playwright.dev/) を使用しています。
+    E2Eテストは [Playwright](https://playwright.dev/) を使用しています。各テストファイルを次のスクリプトで個別に実行してください。
     ```bash
-    cd client
-    npm run test:e2e
+    scripts/run-tests.sh <spec-file>
     ```
-    特定のE2Eテストファイルを実行する場合:
-    ```bash
-    # client ディレクトリのルートから実行
-    npx playwright test e2e/your-spec-file.spec.ts
-    # またはプロジェクトルートからスクリプト経由で
-    # scripts/run-tests.sh client/e2e/your-spec-file.spec.ts
-    ```
+    テストはタイムアウトする場合がありますが、別の環境で検証を行うため問題ありません。
 
 ### Firebase Functions (functions)
 
@@ -325,7 +319,7 @@ commands. Prepend `npx dotenvx run --env-file=<file>` to your usual command.
 npx dotenvx run --env-file=server/.env.development npm run dev
 
 # Testing
-npx dotenvx run --env-file=server/.env.test npm run test:e2e
+npx dotenvx run --env-file=server/.env.test scripts/run-tests.sh <spec-file>
 
 # Deployment
 npx dotenvx run --env-file=server/.env.production firebase deploy
