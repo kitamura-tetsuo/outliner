@@ -344,3 +344,4 @@ npx dotenvx run --env-file=server/.env.test npm run test:e2e
 # Deployment
 npx dotenvx run --env-file=server/.env.production firebase deploy
 ```
+# Test commit for GitHub Actions
