@@ -152,3 +152,10 @@
 ### GRF-001 Graph View
 - ページ間リンクをグラフとして可視化するビューを追加
 - ノード選択で対応ページへ遷移できるようにする
+
+## Authentication Strategy
+
+- Two-factor authentication will not be implemented.
+- Authentication is delegated to Firebase.
+- Email-based authentication is only used during tests.
+
