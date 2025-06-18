@@ -7,79 +7,132 @@ on:
 jobs:
   status-check:
     runs-on: self-hosted
-    
+    timeout-minutes: 90
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Set PR status to pending
       uses: actions/github-script@v7
       with:
         script: |
-          github.rest.repos.createCommitStatus({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            sha: context.payload.pull_request.head.sha,
-            state: 'pending',
-            target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-            description: 'Tests are running...',
-            context: 'continuous-integration/outliner-tests'
-          });
-          
+          try {
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.payload.pull_request.head.sha,
+              state: 'pending',
+              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              description: 'Tests are running...',
+              context: 'continuous-integration/outliner-tests'
+            });
+            console.log('Successfully set PR status to pending');
+          } catch (error) {
+            console.error('Failed to set PR status:', error);
+          }
+
     - name: Wait for test workflow
       uses: actions/github-script@v7
       with:
         script: |
           const { owner, repo } = context.repo;
           const sha = context.payload.pull_request.head.sha;
-          
+
+          console.log(`Waiting for test workflow for SHA: ${sha}`);
+
           // Wait for the test workflow to complete
           let attempts = 0;
-          const maxAttempts = 60; // 30 minutes max wait
-          
+          const maxAttempts = 120; // 60 minutes max wait (30 seconds * 120)
+
           while (attempts < maxAttempts) {
-            const runs = await github.rest.actions.listWorkflowRunsForRepo({
-              owner,
-              repo,
-              head_sha: sha,
-              status: 'completed'
-            });
-            
-            const testRun = runs.data.workflow_runs.find(run => 
-              run.name === 'Test' && run.head_sha === sha
-            );
-            
-            if (testRun) {
-              const conclusion = testRun.conclusion;
-              const state = conclusion === 'success' ? 'success' : 'failure';
-              const description = conclusion === 'success' 
-                ? 'All tests passed!' 
-                : 'Tests failed. Check logs for details.';
-              
-              await github.rest.repos.createCommitStatus({
+            try {
+              const runs = await github.rest.actions.listWorkflowRunsForRepo({
                 owner,
                 repo,
-                sha,
-                state,
-                target_url: testRun.html_url,
-                description,
-                context: 'continuous-integration/outliner-tests'
+                head_sha: sha,
+                per_page: 100
               });
-              
-              return;
+
+              console.log(`Found ${runs.data.workflow_runs.length} workflow runs for SHA ${sha}`);
+
+              const testRun = runs.data.workflow_runs.find(run =>
+                run.name === 'Test' && run.head_sha === sha && run.status === 'completed'
+              );
+
+              if (testRun) {
+                console.log(`Test workflow completed with conclusion: ${testRun.conclusion}`);
+
+                const conclusion = testRun.conclusion;
+                let state, description;
+
+                switch (conclusion) {
+                  case 'success':
+                    state = 'success';
+                    description = 'All tests passed!';
+                    break;
+                  case 'failure':
+                    state = 'failure';
+                    description = 'Tests failed. Check logs for details.';
+                    break;
+                  case 'cancelled':
+                    state = 'error';
+                    description = 'Tests were cancelled.';
+                    break;
+                  case 'timed_out':
+                    state = 'error';
+                    description = 'Tests timed out.';
+                    break;
+                  default:
+                    state = 'error';
+                    description = `Tests completed with status: ${conclusion}`;
+                }
+
+                await github.rest.repos.createCommitStatus({
+                  owner,
+                  repo,
+                  sha,
+                  state,
+                  target_url: testRun.html_url,
+                  description,
+                  context: 'continuous-integration/outliner-tests'
+                });
+
+                console.log(`Successfully set PR status to: ${state}`);
+                return;
+              }
+
+              // Check if there's a running test workflow
+              const runningTestRun = runs.data.workflow_runs.find(run =>
+                run.name === 'Test' && run.head_sha === sha && run.status === 'in_progress'
+              );
+
+              if (runningTestRun) {
+                console.log(`Test workflow is still running (attempt ${attempts + 1}/${maxAttempts})`);
+              } else {
+                console.log(`No test workflow found yet (attempt ${attempts + 1}/${maxAttempts})`);
+              }
+
+            } catch (error) {
+              console.error(`Error checking workflow runs (attempt ${attempts + 1}):`, error);
             }
-            
+
             attempts++;
             await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
           }
-          
+
           // If we get here, the test didn't complete in time
-          await github.rest.repos.createCommitStatus({
-            owner,
-            repo,
-            sha,
-            state: 'error',
-            target_url: `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`,
-            description: 'Test workflow timed out',
-            context: 'continuous-integration/outliner-tests'
-          });
+          console.log('Test workflow timed out');
+          try {
+            await github.rest.repos.createCommitStatus({
+              owner,
+              repo,
+              sha,
+              state: 'error',
+              target_url: `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`,
+              description: 'Test workflow timed out after 60 minutes',
+              context: 'continuous-integration/outliner-tests'
+            });
+          } catch (error) {
+            console.error('Failed to set timeout status:', error);
+          }

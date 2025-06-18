@@ -27,59 +27,106 @@ jobs:
         echo "NPM version: $(npm --version)"
         echo "Current user: $(whoami)"
         echo "Working directory: $(pwd)"
+        echo "PATH: $PATH"
 
-    - name: Install root dependencies
-      run: npm ci
-
-    - name: Install client dependencies
+    - name: Load NVM environment
       run: |
-        cd client
-        npm ci
-
-    - name: Install server dependencies
-      run: |
-        cd server
-        npm ci
-
-    - name: Install functions dependencies
-      run: |
-        cd functions
-        npm ci
-        
-    - name: Setup test environment
-      run: |
-        # Check if xvfb is available, install if needed
-        if ! command -v xvfb-run &> /dev/null; then
-          echo "Installing xvfb..."
-          sudo apt-get update || echo "apt-get update failed, continuing..."
-          sudo apt-get install -y xvfb || echo "xvfb installation failed, continuing..."
+        # Load NVM if available
+        if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+          . "$HOME/.nvm/nvm.sh"
+          echo "NVM loaded, Node version: $(node --version)"
         fi
 
-        # Clean up any existing processes on test ports (without sudo)
+    - name: Install dependencies
+      run: |
+        # Install root dependencies if package.json exists
+        if [ -f "package.json" ]; then
+          echo "Installing root dependencies..."
+          npm ci
+        fi
+
+        # Install client dependencies
+        echo "Installing client dependencies..."
+        cd client
+        npm ci
+        cd ..
+
+        # Install server dependencies
+        echo "Installing server dependencies..."
+        cd server
+        npm ci
+        cd ..
+
+        # Install functions dependencies
+        echo "Installing functions dependencies..."
+        cd functions
+        npm ci
+        cd ..
+
+    - name: Setup test environment
+      run: |
+        # Load NVM if available
+        if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+          . "$HOME/.nvm/nvm.sh"
+        fi
+
+        # Install global packages if needed
+        echo "Installing global packages..."
+        if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
+          sudo npm install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || echo "Global package installation failed, continuing..."
+        fi
+
+        # Install OS utilities if needed
+        echo "Installing OS utilities..."
+        if ! command -v xvfb-run &> /dev/null || ! command -v lsof &> /dev/null; then
+          sudo apt-get update || echo "apt-get update failed, continuing..."
+          sudo apt-get install -y xvfb lsof netcat-openbsd curl || echo "OS utilities installation failed, continuing..."
+        fi
+
+        # Clean up any existing processes on test ports
+        echo "Cleaning up existing processes..."
+        cd "$(pwd)"
+        if [ -f "scripts/kill-tinylicious.js" ]; then
+          node scripts/kill-tinylicious.js || echo "Process cleanup script failed, continuing..."
+        fi
+
+        # Manual cleanup as fallback
         pkill -f "port 7090" || true
         pkill -f "port 7091" || true
         pkill -f "port 7092" || true
-        pkill -f "port 9099" || true
-        pkill -f "port 8080" || true
-        pkill -f "port 5001" || true
+        pkill -f "port 59099" || true
+        pkill -f "port 58080" || true
+        pkill -f "port 57000" || true
         pkill -f "tinylicious" || true
         pkill -f "firebase" || true
         pkill -f "vite" || true
 
         # Wait for ports to be freed
-        sleep 3
-        
+        sleep 5
+
     - name: Install Playwright browsers
       run: |
         cd client
         echo "Installing Playwright browsers..."
         npx playwright install chromium || echo "Playwright install failed, continuing..."
         npx playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
-        
+
     - name: Run tests
       run: |
+        # Load NVM if available
+        if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+          . "$HOME/.nvm/nvm.sh"
+        fi
+
         # Set display for headless testing
         export DISPLAY=:99
+
+        # Set environment variables for testing
+        export NODE_ENV=test
+        export TEST_ENV=localhost
+        export CI=true
+        export DISABLE_POSTHOG=true
+        export VITE_DISABLE_FLUID_TELEMETRY=true
 
         # Check if test script exists
         if [ ! -f "package.json" ]; then
@@ -96,15 +143,35 @@ jobs:
           echo "Found scripts/run-tests.sh"
           chmod +x scripts/run-tests.sh
           echo "Made scripts/run-tests.sh executable"
+
+          # Also make other scripts executable
+          chmod +x scripts/codex-setp.sh || true
+          chmod +x scripts/common-config.sh || true
+          chmod +x scripts/common-functions.sh || true
+          chmod +x scripts/setup-local-env.sh || true
         else
           echo "scripts/run-tests.sh not found"
           exit 1
         fi
 
-        # Run tests with timeout (30 minutes)
-        timeout 1800 npm test || {
+        # Run tests with timeout (45 minutes)
+        echo "Starting test execution..."
+        timeout 2700 npm test || {
           echo "Tests timed out or failed"
-          # Kill any remaining processes (without sudo)
+          echo "Checking logs for debugging..."
+
+          # Show recent logs if available
+          if [ -d "server/logs" ]; then
+            echo "=== Recent server logs ==="
+            find server/logs -name "*.log" -type f -exec tail -20 {} \; 2>/dev/null || true
+          fi
+
+          if [ -d "client/logs" ]; then
+            echo "=== Recent client logs ==="
+            find client/logs -name "*.log" -type f -exec tail -20 {} \; 2>/dev/null || true
+          fi
+
+          # Kill any remaining processes
           pkill -f "tinylicious" || true
           pkill -f "firebase" || true
           pkill -f "vite" || true
@@ -116,33 +183,51 @@ jobs:
       env:
         CI: true
         NODE_ENV: test
+        TEST_ENV: localhost
         DISPLAY: :99
-        
+        DISABLE_POSTHOG: true
+        VITE_DISABLE_FLUID_TELEMETRY: true
+
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: test-results
+        name: test-results-${{ github.run_id }}
         path: |
           client/test-results/
           client/playwright-report/
           client/coverage/
+          server/logs/
+          client/logs/
         retention-days: 30
-        
+
     - name: Cleanup after tests
       if: always()
       run: |
-        # Clean up any remaining processes (without sudo)
+        echo "Starting cleanup process..."
+
+        # Use the cleanup script if available
+        if [ -f "scripts/kill-tinylicious.js" ]; then
+          node scripts/kill-tinylicious.js || echo "Cleanup script failed"
+        fi
+
+        # Manual cleanup as fallback
         pkill -f "tinylicious" || true
         pkill -f "firebase" || true
         pkill -f "vite" || true
         pkill -f "node.*7090" || true
         pkill -f "node.*7091" || true
         pkill -f "node.*7092" || true
+        pkill -f "node.*59099" || true
+        pkill -f "node.*58080" || true
+        pkill -f "node.*57000" || true
+
+        # Wait for processes to terminate
+        sleep 3
 
         # Show any remaining processes
         echo "Remaining processes:"
-        ps aux | grep -E "(tinylicious|firebase|vite|node.*70)" || echo "No relevant processes found"
+        ps aux | grep -E "(tinylicious|firebase|vite|node.*70|node.*59|node.*58|node.*57)" || echo "No relevant processes found"
 
     - name: Comment PR with test results
       uses: actions/github-script@v7
@@ -156,12 +241,27 @@ jobs:
 
           // Check if tests passed
           const testStatus = '${{ job.status }}';
-          if (testStatus === 'success') {
+          const conclusion = '${{ steps.run-tests.conclusion }}' || testStatus;
+
+          if (testStatus === 'success' && conclusion === 'success') {
             comment += '✅ **All tests passed!**\n\n';
             comment += '🎉 Your changes are ready for review.\n\n';
+          } else if (testStatus === 'cancelled') {
+            comment += '⏹️ **Tests were cancelled**\n\n';
+            comment += '🔄 The test run was cancelled. You may want to restart the tests.\n\n';
           } else {
             comment += '❌ **Tests failed**\n\n';
             comment += '⚠️ Please check the logs and fix the failing tests before merging.\n\n';
+
+            // Add failure details if available
+            if (conclusion === 'failure') {
+              comment += '### 🔍 Failure Details\n\n';
+              comment += 'The tests encountered failures. Common issues to check:\n';
+              comment += '- Environment setup problems\n';
+              comment += '- Service startup timeouts\n';
+              comment += '- Test assertion failures\n';
+              comment += '- Browser automation issues\n\n';
+            }
           }
 
           // Add timestamp
@@ -177,10 +277,16 @@ jobs:
           // Add commit info
           comment += `**Commit:** ${context.sha.substring(0, 7)}\n`;
           comment += `**Branch:** ${context.payload.pull_request.head.ref}\n`;
+          comment += `**Runner:** self-hosted\n`;
 
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+          // Try to create the comment
+          try {
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.error('Failed to create PR comment:', error);
+          }
