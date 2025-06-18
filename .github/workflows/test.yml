@@ -142,12 +142,21 @@ jobs:
           exit 1
         fi
 
+    - name: Setup Java for Firebase emulator
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
     - name: Setup test environment
       run: |
         # Load NVM if available
         if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
           . "$HOME/.nvm/nvm.sh"
         fi
+
+        # Verify Java installation
+        echo "Java version: $(java -version 2>&1 | head -1)"
 
         # Install global packages if needed (without sudo for self-hosted runner)
         echo "Installing global packages..."

@@ -271,8 +271,8 @@ start_firebase_emulator() {
     }
   fi
 
-  # Start Firebase emulator with better error handling
-  firebase emulators:start --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
+  # Start Firebase emulator with better error handling and no authentication requirement
+  firebase emulators:start --project ${FIREBASE_PROJECT_ID} --only auth,firestore,functions > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
   local firebase_pid=$!
 
   # Give Firebase a moment to start
