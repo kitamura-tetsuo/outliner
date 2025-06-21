@@ -16,7 +16,8 @@
   components:
     - client/src/routes/min/+page.svelte
     - client/.env.example
-  tests: []
+  tests:
+    - client/e2e/core/FTR-0013.spec.ts
   acceptance:
     - 'Firebase config values come from VITE_FIREBASE_* variables'
     - 'Token verification URL uses VITE_TOKEN_VERIFY_URL'
@@ -902,7 +903,8 @@
   status: implemented
   components:
     - src/components/ChartComponent.svelte
-  tests: []
+  tests:
+    - client/e2e/core/CHT-001.spec.ts
 
 - id: TBL-0001
   title: Editable JOIN Table
@@ -928,4 +930,5 @@
   category: security
   status: implemented
   components: []
-  tests: []
+  tests:
+    - client/e2e/core/SEC-0001.spec.ts
