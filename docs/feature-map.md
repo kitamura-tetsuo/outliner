@@ -45,6 +45,7 @@
 | NAV-0001 | プロジェクト選択とページナビゲーション | client/e2e/core/NAV-0001.spec.ts | implemented |
 | NAV-0002 | プロジェクトページへのリンク機能 | — | implemented |
 | SEC-0001 | Dotenvx encrypted env files | — | implemented |
+| SEC-0002 | Two-Factor Authentication (2FA) | — | deprecated |
 | SLR-0001 | Shift + 上下左右 | client/e2e/core/SLR-0001.spec.ts | implemented |
 | SLR-0002 | 行頭まで選択 | client/e2e/core/SLR-0002.spec.ts | implemented |
 | SLR-0003 | 行末まで選択 | client/e2e/core/SLR-0003.spec.ts | implemented |
@@ -58,6 +59,7 @@
 | SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | — | implemented |
 | SLR-0101 | ボックス選択（矩形選択）機能 - マウス | — | implemented |
 | SRE-001 | Advanced Search & Replace | — | draft |
+| SRP-0001 | 高度な検索と置換 | — | draft |
 | TBL-0001 | Editable JOIN Table | — | implemented |
 | TST-0001 | SharedTreeデータ検証ユーティリティ | client/e2e/utils/tree-validation.spec.ts | implemented |
 | TST-0002 | カーソル情報検証ユーティリティ | client/e2e/utils/cursor-validation.spec.ts | implemented |
@@ -66,3 +68,4 @@
 | TST-0005 | テスト環境の初期化と準備 | — | implemented |
 | USR-0001 | ユーザー削除機能 | — | implemented |
 | USR-0002 | コンテナ削除機能 | — | implemented |
+| VCM-001 | Multi-Cursor Editing | — | draft |

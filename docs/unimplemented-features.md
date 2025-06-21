@@ -7,3 +7,5 @@ This document records features that are intentionally omitted from the project. 
 - Only email link authentication is used for testing purposes.
 - No additional verification steps such as SMS or authenticator apps are planned.
 
+- Email/password authentication. The application uses SSO only and does not provide its own credential login.
+- Password reset feature. Since no password-based login is offered, password reset is unnecessary.
