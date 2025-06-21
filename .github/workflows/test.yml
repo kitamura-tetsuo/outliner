@@ -248,6 +248,7 @@ jobs:
         fi
 
         # Run tests with timeout (40 minutes)
+        cd client
         echo "Starting test execution..."
         timeout 2400 npm run test || {
           echo "Tests timed out or failed"
