@@ -1,5 +1,5 @@
 # 📄 Documentation & Specifications
-Record every feature in docs\client-features.yaml.
+Record every feature in docs\client-features.yaml. Document intentionally omitted features in docs/unimplemented-features.md.
 - While multiple AIs may code in parallel, review documents frequently to avoid overlapping features or contradictory explanations.
 - Continuously reference and update past best practices so they remain current.
 - Keep the implementation plan documentation updated whenever changes occur.
