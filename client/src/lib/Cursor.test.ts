@@ -1,0 +1,319 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { Cursor } from './Cursor';
+import type { Item } from '../schema/app-schema';
+
+// Svelteストアのモック
+// AGENTS.mdの指示に基づき、ストアの挙動を制御するためにvi.mockを使用します。
+const mockTextareaElement = {
+  focus: vi.fn(),
+  value: '',
+  selectionStart: 0,
+  selectionEnd: 0,
+  setSelectionRange: vi.fn(),
+};
+vi.mock('../stores/EditorOverlayStore.svelte', () => ({
+  editorOverlayStore: {
+    subscribe: vi.fn(),
+    update: vi.fn(),
+    set: vi.fn(),
+    updateCursor: vi.fn(),
+    setCursor: vi.fn((opts: any) => `cursor-${opts.itemId}-${Math.random()}`),
+    setActiveItem: vi.fn(),
+    getTextareaRef: vi.fn(() => mockTextareaElement),
+    startCursorBlink: vi.fn(),
+    triggerOnEdit: vi.fn(),
+    clearCursorForItem: vi.fn(),
+    clearCursorAndSelection: vi.fn(),
+    clearSelectionForUser: vi.fn(),
+    setSelection: vi.fn(),
+    selections: {}, // 初期値は空オブジェクト
+    cursors: {}, // 初期値は空オブジェクト
+    forceUpdate: vi.fn(),
+  },
+}));
+vi.mock('../stores/store.svelte', () => ({
+  store: {
+    currentPage: undefined, // テストケース内で設定可能にする
+    subscribe: vi.fn(),
+    update: vi.fn(),
+    set: vi.fn(),
+  },
+}));
+
+// Itemのテストダブル
+// AGENTS.mdの指示に基づき、Itemのインターフェースを満たす単純なテストダブルを使用します。
+const createMockItem = (id: string, text: string, children: Item[] = []): Item => {
+  const item: Item = {
+    id,
+    text,
+    items: children as any, // 型キャストで対応
+    updateText: vi.fn((newText: string) => {
+      item.text = newText;
+    }),
+    delete: vi.fn(),
+    // 必要に応じて他のプロパティやメソッドをモック
+  };
+  return item;
+};
+
+describe('Cursor', () => {
+  let cursor: Cursor;
+  let mockCurrentPage: Item | undefined;
+
+  // Cursorクラスのプライベートメソッドにアクセスするための型ハック
+  type CursorWithPrivateHelpers = Cursor & {
+    countLines: (text: string) => number;
+    getLineStartOffset: (text: string, lineIndex: number) => number;
+    getLineEndOffset: (text: string, lineIndex: number) => number;
+    getCurrentLineIndex: (text: string, offset: number) => number;
+    getCurrentColumn: (text: string, offset: number) => number;
+    findTarget: () => Item | undefined;
+    // findPreviousItem: () => Item | undefined; // 必要なら追加
+    // findNextItem: () => Item | undefined; // 必要なら追加
+  };
+
+  beforeEach(() => {
+    // モックをリセット
+    vi.clearAllMocks();
+    mockTextareaElement.value = '';
+    mockTextareaElement.selectionStart = 0;
+    mockTextareaElement.selectionEnd = 0;
+
+    // generalStore.currentPageのモックを設定
+    const { store: generalStore } = await import('../stores/store.svelte');
+    generalStore.currentPage = mockCurrentPage; // テストケース側で設定できるようにする
+
+    cursor = new Cursor('test-cursor-id', {
+      itemId: 'item1',
+      offset: 0,
+      isActive: true,
+      userId: 'test-user',
+    }) as CursorWithPrivateHelpers;
+
+    // findTargetがモックアイテムを返すように設定
+    vi.spyOn(cursor as any, 'findTarget').mockImplementation(() => {
+        if (generalStore.currentPage && cursor.itemId === generalStore.currentPage.id) {
+            return generalStore.currentPage;
+        }
+        // 簡単な実装：ここでは深くネストしたアイテムの検索はモックしない
+        // 必要に応じてテストケースごとに個別のモックアイテムを返すようにする
+        const item = createMockItem(cursor.itemId, "Default text for " + cursor.itemId);
+        if (generalStore.currentPage && !generalStore.currentPage.items.find((child: Item) => child.id === cursor.itemId)) {
+            generalStore.currentPage.items.push(item);
+        }
+        return item;
+    });
+  });
+
+  describe('Constructor and Properties', () => {
+    it('should be defined and initialized with given options', () => {
+      const opts = { itemId: 'item-A', offset: 5, isActive: false, userId: 'user-B' };
+      const c = new Cursor('cursor-X', opts);
+      expect(c).toBeDefined();
+      expect(c.cursorId).toBe('cursor-X');
+      expect(c.itemId).toBe('item-A');
+      expect(c.offset).toBe(5);
+      expect(c.isActive).toBe(false);
+      expect(c.userId).toBe('user-B');
+    });
+  });
+
+  describe('Text Helper Methods', () => {
+    describe('countLines', () => {
+      it('should count lines correctly', () => {
+        expect((cursor as CursorWithPrivateHelpers).countLines('')).toBe(1);
+        expect((cursor as CursorWithPrivateHelpers).countLines('hello')).toBe(1);
+        expect((cursor as CursorWithPrivateHelpers).countLines('hello\nworld')).toBe(2);
+        expect((cursor as CursorWithPrivateHelpers).countLines('hello\nworld\n')).toBe(3); // 末尾の改行も1行としてカウント
+        expect((cursor as CursorWithPrivateHelpers).countLines('\nhello\nworld\n')).toBe(4);
+      });
+    });
+
+    describe('getLineStartOffset', () => {
+      const text = 'line1\nline2\nline3';
+      it('should return correct start offset for each line', () => {
+        expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(text, 0)).toBe(0); // line1
+        expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(text, 1)).toBe(6); // line2 (line1の長さ5 + \nの1)
+        expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(text, 2)).toBe(12); // line3 (line1の長さ5 + \nの1 + line2の長さ5 + \nの1)
+      });
+      it('should handle out of bounds line index', () => {
+        expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(text, 3)).toBe(17); // text.length (改行含む)
+        expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(text, -1)).toBe(0);
+      });
+       it('should handle text with trailing newline', () => {
+        const textWithTrailingNL = 'line1\nline2\n';
+        expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(textWithTrailingNL, 0)).toBe(0);
+        expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(textWithTrailingNL, 1)).toBe(6);
+        expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(textWithTrailingNL, 2)).toBe(12); // The start of the empty line after the last \n
+      });
+    });
+
+    describe('getLineEndOffset', () => {
+      const text = 'line1\nline2\nline3';
+      it('should return correct end offset for each line (excluding newline char)', () => {
+        expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(text, 0)).toBe(5);  // line1
+        expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(text, 1)).toBe(11); // line2
+        expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(text, 2)).toBe(17); // line3
+      });
+      it('should handle out of bounds line index returning text length', () => {
+        expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(text, 3)).toBe(17);
+      });
+      it('should handle text with trailing newline', () => {
+        const textWithTrailingNL = 'line1\nline2\n';
+        expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(textWithTrailingNL, 0)).toBe(5);
+        expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(textWithTrailingNL, 1)).toBe(11);
+        expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(textWithTrailingNL, 2)).toBe(12); // End of the empty line (which is also the end of the text)
+      });
+    });
+
+    describe('getCurrentLineIndex', () => {
+      const text = 'line1\nline2\nline3';
+      it('should return correct line index for given offset', () => {
+        expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 0)).toBe(0);    // l|ine1
+        expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 5)).toBe(0);    // line1|
+        expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 6)).toBe(1);    // \n|line2
+        expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 11)).toBe(1);   // line2|
+        expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 12)).toBe(2);   // \n|line3
+        expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 17)).toBe(2);   // line3|
+      });
+      it('should handle offset exceeding text length', () => {
+        expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 20)).toBe(2); // 最後の行を指す
+      });
+      it('should handle empty text', () => {
+        expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex('', 0)).toBe(0);
+      });
+      it('should handle text with only newlines', () => {
+        expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex('\n\n', 0)).toBe(0);
+        expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex('\n\n', 1)).toBe(1);
+        expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex('\n\n', 2)).toBe(2);
+      });
+    });
+
+    describe('getCurrentColumn', () => {
+      const text = 'line1\n  line2\nline3'; // line2 has leading spaces
+      it('should return correct column for given offset', () => {
+        expect((cursor as CursorWithPrivateHelpers).getCurrentColumn(text, 0)).toBe(0);     // |line1
+        expect((cursor as CursorWithPrivateHelpers).getCurrentColumn(text, 3)).toBe(3);     // lin|e1
+        expect((cursor as CursorWithPrivateHelpers).getCurrentColumn(text, 6)).toBe(0);     // |  line2 (start of line2)
+        expect((cursor as CursorWithPrivateHelpers).getCurrentColumn(text, 8)).toBe(2);     //   |line2 (after spaces)
+        expect((cursor as CursorWithPrivateHelpers).getCurrentColumn(text, 15)).toBe(0);    // |line3
+      });
+    });
+  });
+
+  describe('Cursor Movement (Simple Offset Changes)', () => {
+    beforeEach(async () => {
+      const { store: generalStore } = await import('../stores/store.svelte');
+      mockCurrentPage = createMockItem('page1', 'Page Title', [createMockItem('item1', 'Hello World')]);
+      generalStore.currentPage = mockCurrentPage;
+      cursor.itemId = 'item1'; // Ensure cursor is on a valid item
+      cursor.offset = 5; // Initial offset
+      // findTargetがmockCurrentPage.items[0]を返すように
+      vi.spyOn(cursor as any, 'findTarget').mockImplementation(() => mockCurrentPage!.items[0]);
+    });
+
+    it('moveLeft should decrease offset if offset > 0', () => {
+      cursor.moveLeft();
+      expect(cursor.offset).toBe(4);
+    });
+
+    it('moveLeft should not decrease offset if offset is 0 (and not navigate for this simple test)', () => {
+      cursor.offset = 0;
+      cursor.moveLeft(); // This would normally try to navigate
+      expect(cursor.offset).toBe(0); // For this test, we only check offset if no navigation mock
+    });
+
+    it('moveRight should increase offset if offset < text length', () => {
+      cursor.moveRight();
+      expect(cursor.offset).toBe(6);
+    });
+
+    it('moveRight should not increase offset if offset is at text length (and not navigate for this simple test)', () => {
+      const item = (cursor as CursorWithPrivateHelpers).findTarget();
+      cursor.offset = item!.text!.length;
+      cursor.moveRight(); // This would normally try to navigate
+      expect(cursor.offset).toBe(item!.text!.length);
+    });
+  });
+
+  describe('Text Manipulation', () => {
+    let mockItem: Item;
+
+    beforeEach(async () => {
+      mockItem = createMockItem('item1', 'Hello World');
+      const { store: generalStore } = await import('../stores/store.svelte');
+      mockCurrentPage = createMockItem('page1', 'Page Title', [mockItem]);
+      generalStore.currentPage = mockCurrentPage;
+      cursor.itemId = 'item1';
+      // findTargetがmockItemを返すように設定
+      vi.spyOn(cursor as any, 'findTarget').mockReturnValue(mockItem);
+    });
+
+    it('insertText should insert character at current offset and update offset', () => {
+      cursor.offset = 6; // After "Hello "
+      cursor.insertText('S');
+      expect(mockItem.text).toBe('Hello SWorld');
+      expect(mockItem.updateText).toHaveBeenCalledWith('Hello SWorld');
+      expect(cursor.offset).toBe(7);
+    });
+
+    it('insertText should insert text at the beginning', () => {
+      cursor.offset = 0;
+      cursor.insertText('Prefix ');
+      expect(mockItem.text).toBe('Prefix Hello World');
+      expect(mockItem.updateText).toHaveBeenCalledWith('Prefix Hello World');
+      expect(cursor.offset).toBe(7);
+    });
+
+    it('insertText should insert text at the end', () => {
+      cursor.offset = mockItem.text.length;
+      cursor.insertText(' Suffix');
+      expect(mockItem.text).toBe('Hello World Suffix');
+      expect(mockItem.updateText).toHaveBeenCalledWith('Hello World Suffix');
+      expect(cursor.offset).toBe(mockItem.text.length);
+    });
+
+    it('deleteBackward should delete character before current offset and update offset', () => {
+      cursor.offset = 6; // After "Hello "
+      cursor.deleteBackward();
+      expect(mockItem.text).toBe('HelloWorld'); // Space deleted
+      expect(mockItem.updateText).toHaveBeenCalledWith('HelloWorld');
+      expect(cursor.offset).toBe(5);
+    });
+
+    it('deleteBackward should do nothing if offset is 0 (and not merge for this test)', () => {
+      cursor.offset = 0;
+      const originalText = mockItem.text;
+      cursor.deleteBackward(); // This would normally try to merge
+      expect(mockItem.text).toBe(originalText);
+      expect(mockItem.updateText).not.toHaveBeenCalled(); // Or called with originalText if that's the behavior
+      expect(cursor.offset).toBe(0);
+    });
+
+    it('deleteForward should delete character after current offset and not change offset', () => {
+      cursor.offset = 5; // Before " World"
+      cursor.deleteForward();
+      expect(mockItem.text).toBe('HelloWorld'); // Space deleted
+      expect(mockItem.updateText).toHaveBeenCalledWith('HelloWorld');
+      expect(cursor.offset).toBe(5);
+    });
+
+    it('deleteForward should do nothing if offset is at end of text (and not merge for this test)', () => {
+      cursor.offset = mockItem.text.length;
+      const originalText = mockItem.text;
+      cursor.deleteForward(); // This would normally try to merge
+      expect(mockItem.text).toBe(originalText);
+      // expect(mockItem.updateText).not.toHaveBeenCalled(); // Depending on implementation if it tries to merge
+      expect(cursor.offset).toBe(mockItem.text.length);
+    });
+  });
+
+  // TODO: より複雑なカーソル移動（アイテム間、視覚的行移動）のテストケースを追加
+  // これらはDOMやより詳細なストアのモック、またはE2Eテストでのカバレッジが必要になる可能性が高い
+
+  // TODO: 選択範囲関連のテストケースを追加 (extendSelection*, clearSelectionなど)
+
+  // TODO: フォーマット関連のテストケースを追加 (formatBoldなど)
+
+  // TODO: onKeyDown, onInput のテストケースを追加 (より複雑なインタラクション)
+});
