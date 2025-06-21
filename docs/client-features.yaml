@@ -929,3 +929,14 @@
   status: implemented
   components: []
   tests: []
+
+- id: SEC-0002
+  title: "Two-Factor Authentication (2FA)"
+  description: >-
+    This project intentionally omits two-factor authentication.
+    Firebase Authentication handles user sign-in, and email link
+    authentication is used only during testing.
+  category: security
+  status: deprecated
+  components: []
+  tests: []
