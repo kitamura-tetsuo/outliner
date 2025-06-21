@@ -26,11 +26,27 @@ const azureConfig = {
 };
 
 // Firebaseの初期化（テスト用に最小構成）
-admin.initializeApp();
+// テスト環境でFirestoreエミュレーターを使用
+if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
+    process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
+    process.env.GCLOUD_PROJECT = "test-project";
+}
 
-// データベース接続設定（モック）
+admin.initializeApp({
+    projectId: "test-project",
+});
+
+// データベース接続設定（テスト用）
 const db = admin.firestore();
+if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
+    db.settings({
+        host: "localhost:58080",
+        ssl: false,
+    });
+}
+
 const userContainersCollection = db.collection("userContainers");
+const containerUsersCollection = db.collection("containerUsers");
 
 // Expressアプリの作成
 const app = express();
@@ -158,9 +174,7 @@ app.post("/api/get-container-users", async (req, res) => {
             return res.status(403).json({ error: "Admin privileges required" });
         }
 
-        const containerDoc = await db.collection("containerUsers")
-            .doc(containerId)
-            .get();
+        const containerDoc = await containerUsersCollection.doc(containerId).get();
 
         if (!containerDoc.exists) {
             return res.status(404).json({ error: "Container not found" });
