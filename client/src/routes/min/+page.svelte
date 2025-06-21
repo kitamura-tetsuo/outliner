@@ -6,6 +6,7 @@ import {
 } from "firebase/auth";
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
+import { onMount } from "svelte";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -30,6 +31,17 @@ const provider = new GoogleAuthProvider();
 
 let idToken = $state("");
 let verificationResult = $state("");
+
+// テスト用に環境変数をwindowオブジェクトに公開
+onMount(() => {
+    if (typeof window !== "undefined") {
+        (window as any).testEnvVars = {
+            VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
+            VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+            VITE_TOKEN_VERIFY_URL: import.meta.env.VITE_TOKEN_VERIFY_URL,
+        };
+    }
+});
 
 // Google ログインして ID トークンを取得し、バックエンドで検証する
 async function signIn() {

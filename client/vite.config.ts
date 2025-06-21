@@ -2,27 +2,18 @@ import { paraglide } from "@inlang/paraglide-sveltekit/vite";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
-import {
-    defineConfig,
-    loadEnv,
-} from "vite";
+import { defineConfig } from "vite";
 
 export default defineConfig(async ({ mode }) => {
     // dotenvxで環境変数を読み込み（ESモジュール対応）
     const { config } = await import("@dotenvx/dotenvx");
 
-    // デフォルトの環境変数を読み込み
-    process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
-
-    // テスト環境の場合は.env.testから環境変数を上書き
+    // テスト環境の場合は.env.testから環境変数を読み込み
     if (mode === "test" || process.env.NODE_ENV === "test") {
         console.log("Loading test environment variables from .env.test");
         config({ path: [".env.test"] });
-        process.env = {
-            ...process.env,
-            ...loadEnv("test", process.cwd(), ""),
-        };
-    } else if (mode === "development") {
+    }
+    else if (mode === "development") {
         console.log("Loading development environment variables from .env.development");
         config({ path: [".env.development"] });
     }
