@@ -239,6 +239,7 @@ jobs:
 
           # Also make other scripts executable
           chmod +x scripts/codex-setp.sh || true
+          chmod +x scripts/start-all-localhost-servers.sh || true
           chmod +x scripts/common-config.sh || true
           chmod +x scripts/common-functions.sh || true
           chmod +x scripts/setup-local-env.sh || true
@@ -246,6 +247,8 @@ jobs:
           echo "scripts/run-tests.sh not found"
           exit 1
         fi
+
+        bash scripts/start-all-localhost-servers.sh
 
         # Run tests with timeout (40 minutes)
         cd client
