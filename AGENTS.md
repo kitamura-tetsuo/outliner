@@ -1,8 +1,9 @@
 # 📄 Documentation & Specifications
-Record every feature in docs\client-features.yaml.
+Record every feature in docs\client-features.yaml. Document intentionally omitted features in docs/unimplemented-features.md.
 - While multiple AIs may code in parallel, review documents frequently to avoid overlapping features or contradictory explanations.
 - Continuously reference and update past best practices so they remain current.
 - Keep the implementation plan documentation updated whenever changes occur.
+docs/feature-map.md is automatically generated; do not edit it.
 
 # 🧪 Test implementation and execution policy
 For every feature, create a corresponding test.
@@ -27,6 +28,7 @@ Do not create duplicate functions in multiple locations.
 The use of page.waitForLoadState("networkidle"); is prohibited. 
 Process synchronously whenever possible.
 Please write git branch names, commit messages, etc. in English.
+Git branch names must be written in English.
 
 # ⚙️ Development workflow 
 At the end of your work, create the first prompt for the next session so you can continue smoothly. Even if issues remain, carry over the known problems. Focus on writing a prompt that makes the next session effective rather than describing today’s work. 
