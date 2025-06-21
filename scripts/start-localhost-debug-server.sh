@@ -1,18 +1,15 @@
 #!/bin/bash
 
-# For Localhost Debug Server  
-# ポート7091でデバッグサーバーを起動
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "Starting Localhost Debug Server on port 7091..."
+# Load common configuration and functions
+source "${SCRIPT_DIR}/common-config.sh"
+source "${SCRIPT_DIR}/common-functions.sh"
 
-# ログディレクトリを作成
-mkdir -p /workspace/server/logs
+# Create log directories and start API server
+create_log_directories
+start_api_server
 
-# サーバーディレクトリに移動
-cd /workspace/server
-
-# 環境変数を設定
-export PORT=7091
-
-# デバッグサーバーを起動（ログ出力付き）
-npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log
+# Wait for the server to be ready
+wait_for_port ${TEST_API_PORT}

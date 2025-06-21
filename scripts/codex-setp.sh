@@ -3,136 +3,67 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -euo pipefail
 
-# Ensure nvm environment is loaded so globally installed node tools are in PATH
-if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
-  . "$HOME/.nvm/nvm.sh"
-fi
+# Error handling
+trap 'echo "Error occurred at line $LINENO. Exit code: $?" >&2' ERR
 
-wait_for_port() {
-  local port="$1"
-  local retry=60
-  echo "Waiting for port ${port}..."
-  while ! nc -z localhost "${port}" >/dev/null 2>&1; do
-    sleep 1
-    retry=$((retry-1))
-    if [ ${retry} -le 0 ]; then
-      echo "Timeout waiting for port ${port}"
-      exit 1
-    fi
-  done
-  echo "Port ${port} is ready"
-}
+# Load common configuration and functions
+source "${SCRIPT_DIR}/common-config.sh"
+source "${SCRIPT_DIR}/common-functions.sh"
 
-# ポート番号のデフォルト値
-: "${TEST_FLUID_PORT:=7092}"
-: "${TEST_API_PORT:=7091}"
-: "${VITE_PORT:=7090}"
-: "${FIREBASE_PROJECT_ID:=outliner-d57b0}"
-
-chmod +x ${ROOT_DIR}/scripts/setup-local-env.sh
-${ROOT_DIR}/scripts/setup-local-env.sh
-
-set -a
-source ${ROOT_DIR}/server/.env
-source ${ROOT_DIR}/client/.env
-if [ -f ${ROOT_DIR}/client/.env.test ]; then
-  source ${ROOT_DIR}/client/.env.test
-fi
-export NODE_ENV=test
-export TEST_ENV=localhost
-export LIX_SDK_POSTHOG_TOKEN=""
-set +a
-
-FIREBASE_PROJECT_ID="outliner-d57b0"
-export FIREBASE_PROJECT_ID
-export VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
-
-
-# Install necessary global packages and tools
-if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
-  npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
-fi
-
-if ! command -v dprint >/dev/null; then
-  curl -fsSL https://dprint.dev/install.sh | sh
-fi
-if ! command -v cross-env >/dev/null; then
-  echo "cross-env not found after global install; attempting local install"
-  npm install -g cross-env || true
-fi
-
-pwd
+echo "=== Outliner Test Environment Setup ==="
 echo "ROOT_DIR: ${ROOT_DIR}"
 
-cd ${ROOT_DIR}
+# Initialize environment
+echo "Loading NVM..."
+load_nvm
+echo "Creating log directories..."
+create_log_directories
+echo "Clearing old log files..."
+clear_log_files
+echo "Setting up environment files..."
+setup_environment_files
 
-mkdir -p ${ROOT_DIR}/logs/
-mkdir -p client/logs/
-mkdir -p client/e2e/logs/
-mkdir -p server/logs/
-mkdir -p functions/logs/
-npm_ci_if_needed() {
-  if [ ! -d node_modules ]; then
-    npm --proxy='' --https-proxy='' ci
-  fi
-}
+# Install required tools and dependencies
+echo "Installing global packages..."
+install_global_packages
+echo "Installing OS utilities..."
+install_os_utilities
+echo "Installing all dependencies..."
+install_all_dependencies
 
-    # サーバーサイドの準備
-cd ${ROOT_DIR}/server
-npm_ci_if_needed
-    # Firebase Functionsの準備
-cd ${ROOT_DIR}/functions
-npm_ci_if_needed
-    # クライアントの準備
-cd ${ROOT_DIR}/client
-npm_ci_if_needed
-if [ -d node_modules ]; then
-  npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
+# Install Playwright browser (system dependencies should be handled by install_os_utilities)
+cd "${ROOT_DIR}/client"
+npx -y playwright install chromium
+cd "${ROOT_DIR}"
+
+# Stop any existing servers to ensure clean restart
+echo "Stopping any existing servers..."
+kill_ports || echo "Warning: Some ports could not be killed"
+sleep 2
+
+# Start all test servers
+echo "Starting test servers..."
+echo "Starting Firebase emulator..."
+start_firebase_emulator
+echo "Starting Tinylicious..."
+start_tinylicious
+echo "Starting API server..."
+start_api_server
+echo "Starting SvelteKit server..."
+start_sveltekit_server
+
+# Wait for all services to be ready
+echo "Waiting for all services to be ready..."
+if wait_for_all_ports; then
+  echo "=== All test services are ready! ==="
+else
+  echo "=== Test environment setup completed with warnings ==="
+  echo "Some services may not be fully ready, but the environment is usable"
 fi
-
-# Ensure required OS utilities are available before installing Playwright to
-# avoid apt lock conflicts when using --with-deps
-if ! command -v lsof >/dev/null || ! command -v xvfb-run >/dev/null; then
-  apt-get update
-  DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
-    lsof xvfb > /dev/null
-fi
-
-if [ ! -f "$HOME/.cache/ms-playwright/chromium_headless_shell-1176/chrome-linux/headless_shell" ]; then
-  npx -y playwright install --with-deps chromium
-fi
-
-chmod +x ${ROOT_DIR}/scripts/kill_ports.sh
-${ROOT_DIR}/scripts/kill_ports.sh || true
-# Ensure Firebase emulator ports are free
-lsof -ti :59099 2>/dev/null | xargs -r kill -9 || true
-lsof -ti :58080 2>/dev/null | xargs -r kill -9 || true
-lsof -ti :57000 2>/dev/null | xargs -r kill -9 || true
-lsof -ti :4400 2>/dev/null | xargs -r kill -9 || true
-
-
-    # Tinyliciousサーバーの起動
-PORT=${TEST_FLUID_PORT} tinylicious > ${ROOT_DIR}/logs/tinylicious.log 2>&1 &
-
-    # Firebase Emulatorの起動
-cd ${ROOT_DIR}/firebase
-firebase emulators:start --project ${FIREBASE_PROJECT_ID} > ${ROOT_DIR}/logs/firebase-emulator.log 2>&1 &
-
-    # APIサーバーの起動
-cd ${ROOT_DIR}/server
-npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${ROOT_DIR}/logs/auth-service-tee.log 2>&1 &
-
-    # クライアントの準備
-cd ${ROOT_DIR}/client
-    # SvelteKitサーバーの起動 (test mode)
-cross-env NODE_ENV=test TEST_ENV=localhost \
-  dotenvx run --env-file=${ROOT_DIR}/client/.env.test -- \
-  npm run dev -- --host 0.0.0.0 --port ${VITE_PORT} \
-  > ${ROOT_DIR}/logs/svelte-kit.log 2>&1 &
-
-wait_for_port ${TEST_API_PORT}
-wait_for_port ${TEST_FLUID_PORT}
-wait_for_port ${VITE_PORT}
-wait_for_port 57000
-wait_for_port 59099
-wait_for_port 58080
+echo "Available services:"
+echo "- SvelteKit Server: http://localhost:${VITE_PORT}"
+echo "- API Server: http://localhost:${TEST_API_PORT}"
+echo "- Tinylicious: http://localhost:${TEST_FLUID_PORT}"
+echo "- Firebase Auth: http://localhost:${FIREBASE_AUTH_PORT}"
+echo "- Firebase Firestore: http://localhost:${FIREBASE_FIRESTORE_PORT}"
+echo "- Firebase Functions: http://localhost:${FIREBASE_FUNCTIONS_PORT}"

@@ -1,18 +1,15 @@
 #!/bin/bash
 
-# For Localhost SvelteKit Server
-# ポート7090でSvelteKitサーバーを起動
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "Starting Localhost SvelteKit Server on port 7090..."
+# Load common configuration and functions
+source "${SCRIPT_DIR}/common-config.sh"
+source "${SCRIPT_DIR}/common-functions.sh"
 
-# ログディレクトリを作成
-mkdir -p /workspace/server/logs
+# Create log directories and start SvelteKit server
+create_log_directories
+start_sveltekit_server
 
-# クライアントディレクトリに移動
-cd /workspace/client
-
-# 環境変数を設定
-export PORT=7090
-
-# SvelteKitサーバーを起動（ログ出力付き）
-npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log
+# Wait for the server to be ready
+wait_for_port ${VITE_PORT}
