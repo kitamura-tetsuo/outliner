@@ -813,6 +813,20 @@
   components:
     - server/auth-service.js
 
+- id: API-0003
+  title: 'Admin check for container user listing'
+  description: '/api/get-container-users requires admin role'
+  category: api-server
+  status: implemented
+  acceptance:
+    - '非管理者がアクセスした場合403エラーを返す'
+    - '管理者はコンテナのユーザーリストを取得できる'
+  tests:
+    - server/tests/get-container-users.test.js
+    - client/e2e/core/API-0003.spec.ts
+  components:
+    - server/auth-service.js
+
 - id: COL-0001
   title: '他ユーザーのカーソル表示'
   description: '複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する'

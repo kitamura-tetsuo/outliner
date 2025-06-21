@@ -25,10 +25,8 @@ const azureConfig = {
     activeKey: "primary",
 };
 
-// Firebaseの初期化（モックが適用される）
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-});
+// Firebaseの初期化（テスト用に最小構成）
+admin.initializeApp();
 
 // データベース接続設定（モック）
 const db = admin.firestore();
@@ -142,6 +140,39 @@ app.post("/api/save-container", async (req, res) => {
             console.error("Error saving container ID:", error);
             res.status(500).json({ error: "Failed to save container ID", details: error.message });
         }
+    }
+});
+
+// コンテナにアクセス可能なユーザーのリストを取得するエンドポイント（管理者用）
+app.post("/api/get-container-users", async (req, res) => {
+    try {
+        const { idToken, containerId } = req.body;
+
+        if (!containerId) {
+            return res.status(400).json({ error: "Container ID is required" });
+        }
+
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+        if (decodedToken.role !== "admin") {
+            return res.status(403).json({ error: "Admin privileges required" });
+        }
+
+        const containerDoc = await db.collection("containerUsers")
+            .doc(containerId)
+            .get();
+
+        if (!containerDoc.exists) {
+            return res.status(404).json({ error: "Container not found" });
+        }
+
+        res.status(200).json({
+            users: containerDoc.data().accessibleUserIds || [],
+        });
+    }
+    catch (error) {
+        console.error("Error getting container users:", error);
+        res.status(500).json({ error: "Failed to get container users" });
     }
 });
 
