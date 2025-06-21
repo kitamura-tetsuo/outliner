@@ -3,6 +3,7 @@ Record every feature in docs\client-features.yaml. Document intentionally omitte
 - While multiple AIs may code in parallel, review documents frequently to avoid overlapping features or contradictory explanations.
 - Continuously reference and update past best practices so they remain current.
 - Keep the implementation plan documentation updated whenever changes occur.
+docs/feature-map.md is automatically generated; do not edit it.
 
 # 🧪 Test implementation and execution policy
 For every feature, create a corresponding test.
