@@ -11,7 +11,7 @@ const pretty = require("pino-pretty");
 
 // ログディレクトリのパス
 const serverLogDir = path.join(__dirname, "..", "logs");
-const clientLogDir = path.join("/workspace/client/logs");
+const clientLogDir = path.join(__dirname, "..", "..", "client", "logs");
 
 // ログファイルのパス
 const serverLogPath = path.join(serverLogDir, "auth-service.log");
@@ -25,16 +25,23 @@ const telemetryLogPath = path.join(clientLogDir, telemetryLogFileName);
 
 // ログディレクトリを確認・作成
 function ensureLogDirectories() {
-    // サーバーログディレクトリ
-    if (!fs.existsSync(serverLogDir)) {
-        fs.mkdirSync(serverLogDir, { recursive: true });
-        console.log(`サーバーログディレクトリを作成しました: ${serverLogDir}`);
-    }
+    try {
+        // サーバーログディレクトリ
+        if (!fs.existsSync(serverLogDir)) {
+            fs.mkdirSync(serverLogDir, { recursive: true });
+            console.log(`サーバーログディレクトリを作成しました: ${serverLogDir}`);
+        }
 
-    // クライアントログディレクトリ
-    if (!fs.existsSync(clientLogDir)) {
-        fs.mkdirSync(clientLogDir, { recursive: true });
-        console.log(`クライアントログディレクトリを作成しました: ${clientLogDir}`);
+        // クライアントログディレクトリ
+        if (!fs.existsSync(clientLogDir)) {
+            fs.mkdirSync(clientLogDir, { recursive: true });
+            console.log(`クライアントログディレクトリを作成しました: ${clientLogDir}`);
+        }
+    } catch (error) {
+        console.warn(`ログディレクトリの作成に失敗しました: ${error.message}`);
+        console.warn(`サーバーログディレクトリ: ${serverLogDir}`);
+        console.warn(`クライアントログディレクトリ: ${clientLogDir}`);
+        // エラーが発生してもアプリケーションを停止させない
     }
 }
 
@@ -42,9 +49,28 @@ function ensureLogDirectories() {
 ensureLogDirectories();
 
 // ファイル転送用と整形表示用のログストリームを設定
-let serverLogStream = fs.createWriteStream(serverLogPath, { flags: "a" });
-let clientLogStream = fs.createWriteStream(clientLogPath, { flags: "a" });
-let telemetryLogStream = fs.createWriteStream(telemetryLogPath, { flags: "a" });
+let serverLogStream, clientLogStream, telemetryLogStream;
+
+try {
+    serverLogStream = fs.createWriteStream(serverLogPath, { flags: "a" });
+} catch (error) {
+    console.warn(`サーバーログストリームの作成に失敗しました: ${error.message}`);
+    serverLogStream = null;
+}
+
+try {
+    clientLogStream = fs.createWriteStream(clientLogPath, { flags: "a" });
+} catch (error) {
+    console.warn(`クライアントログストリームの作成に失敗しました: ${error.message}`);
+    clientLogStream = null;
+}
+
+try {
+    telemetryLogStream = fs.createWriteStream(telemetryLogPath, { flags: "a" });
+} catch (error) {
+    console.warn(`telemetryログストリームの作成に失敗しました: ${error.message}`);
+    telemetryLogStream = null;
+}
 let prettyStream = pretty({
     colorize: true,
     translateTime: "SYS:standard",
@@ -53,26 +79,39 @@ let prettyStream = pretty({
 prettyStream.pipe(process.stdout);
 
 // クライアントログ用のロガー設定
+const clientStreams = [];
+if (clientLogStream) {
+    clientStreams.push({ stream: clientLogStream }); // 生ログをクライアントログディレクトリに保存
+}
+// ストリームが利用できない場合はコンソールのみ
+if (clientStreams.length === 0) {
+    clientStreams.push({ stream: process.stdout });
+}
+
 let clientLogger = pino(
     {
         level: "trace", // すべてのレベルのログを収集
         timestamp: pino.stdTimeFunctions.isoTime,
     },
-    pino.multistream([
-        { stream: clientLogStream }, // 生ログをクライアントログディレクトリに保存
-        // { stream: prettyStream }    // 整形ログをコンソールに表示（必要な場合）
-    ]),
+    pino.multistream(clientStreams),
 );
 
 // telemetryログ用のロガー設定
+const telemetryStreams = [];
+if (telemetryLogStream) {
+    telemetryStreams.push({ stream: telemetryLogStream }); // telemetryログを専用ファイルに保存
+}
+// ストリームが利用できない場合はコンソールのみ
+if (telemetryStreams.length === 0) {
+    telemetryStreams.push({ stream: process.stdout });
+}
+
 let telemetryLogger = pino(
     {
         level: "trace", // すべてのレベルのログを収集
         timestamp: pino.stdTimeFunctions.isoTime,
     },
-    pino.multistream([
-        { stream: telemetryLogStream }, // telemetryログを専用ファイルに保存
-    ]),
+    pino.multistream(telemetryStreams),
 );
 
 // サーバー自身のロガー設定
