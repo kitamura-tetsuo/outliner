@@ -217,6 +217,16 @@ onMount(() => {
 
         // 定期的なログローテーションを設定
         rotationInterval = schedulePeriodicLogRotation();
+
+        // E2Eテスト用にアプリケーション準備完了のシグナルを設定
+        document.body.setAttribute('data-app-ready', 'true');
+        logger.info("Application ready signal set for E2E tests.");
+
+        // E2Eテスト用に$pageストアをwindowに公開 (TestHelpersからアクセスするため)
+        if (typeof window !== "undefined") {
+            (window as any).sveltePageStore = page; // page store from $app/stores
+            logger.info("$page store exposed to window for E2E tests.");
+        }
     }
 });
 

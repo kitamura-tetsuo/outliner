@@ -65,6 +65,7 @@ Prioritize performance.
 - For E2E tests, use editorStore.setCursor({itemId, offset, isActive, userId}) for cursor creation, cursor.insertText() for text input, 500ms wait after text input, and waitForCursorVisible() for focus management - this pattern was successful for LNK-0003 and should be applied to other failing tests.
 - For E2E tests, work sequentially through test phases.
 - For E2E tests with internal links and cursor management, use editorStore.setCursor() for cursor creation, cursor.insertText() for text input with 500ms wait, waitForCursorVisible() for focus management, and apply these patterns sequentially to LNK-0002, LNK-0004, LNK-0006, and SLR-0009 tests.
+- Event-driven tests for Svelte components should be handled by E2E tests rather than unit tests, especially when unit testing event handling proves difficult or unreliable.
 
 # Test Environment Configuration
 - E2E tests should run on both Windows and Ubuntu, with configurations for localhost (7090/7091/7092).

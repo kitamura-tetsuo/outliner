@@ -23,14 +23,13 @@ export class TestHelpers {
         // ホームページにアクセスしてアプリの初期化を待つ
         await page.goto("/");
 
-        // ページが完全に初期化されるのを待機
-        await page.waitForFunction(() => {
-            return (
-                (window as any).__FLUID_STORE__ !== undefined &&
-                (window as any).__SVELTE_GOTO__ !== undefined
-            );
-        });
+        // アプリケーションが完全に初期化されたことを示すシグナルを待つ
+        await page.waitForSelector('body[data-app-ready="true"]', { timeout: 15000 });
+        console.log("TestHelpers: Application ready signal received.");
 
+        // page.goto の上書き (SvelteKitのSPAナビゲーションを模倣/制御)
+        // この部分は __SVELTE_GOTO__ が window に設定された後に実行される必要がある
+        // data-app-ready が設定されるのは onMount の最後なので、__SVELTE_GOTO__ も利用可能なはず
         page.goto = async (
             url: string,
             options?: {
@@ -335,14 +334,78 @@ export class TestHelpers {
         await TestHelpers.createTestProjectAndPageViaAPI(page, projectName, pageName, lines);
 
         await page.goto(`/${projectName}/${pageName}`);
+        console.log(`TestHelpers: Navigated to /${projectName}/${pageName}`);
 
-        await page.waitForSelector(".outliner-item", { timeout: 30000 });
+        // アプリが準備完了になるのを再度待つ (ページ遷移後)
+        await page.waitForSelector('body[data-app-ready="true"]', { timeout: 20000 });
+        console.log(`TestHelpers: App ready after navigating to project page.`);
+
+        // Add detailed logging from within the browser context
+        await page.evaluate((expectedProjName, expectedPageNameFromUrl) => {
+            const winStore = (window as any).store;
+            const fluidStore = (window as any).fluidStore;
+            const sveltePageStore = (window as any).sveltePageStore;
+
+            console.log("======= Browser Context Debug Info START =======");
+            console.log("Expected Project Name (from test):", expectedProjName);
+            console.log("Expected Page Name (from URL):", expectedPageNameFromUrl);
+            console.log("$page.params (from sveltePageStore):", sveltePageStore?.params);
+            console.log("window.fluidStore.fluidClient.containerId:", fluidStore?.fluidClient?.containerId);
+            console.log("window.fluidStore.fluidClient.project.title:", fluidStore?.fluidClient?.project?.title);
+            const projectItems = fluidStore?.fluidClient?.project?.items;
+            if (projectItems) {
+                console.log(`window.fluidStore.fluidClient.project.items (${projectItems.length}):`);
+                for(let i=0; i < projectItems.length; i++) {
+                    const item = projectItems.at(i);
+                    console.log(`  - Item ${i}: id=${item?.id}, text='${item?.text}', itemsCount=${item?.items?.length}`);
+                }
+            } else {
+                console.log("window.fluidStore.fluidClient.project.items: undefined or empty");
+            }
+
+            console.log("window.store.project.title:", winStore?.project?.title);
+            const storePages = winStore?.pages?.current;
+            if (storePages) {
+                console.log(`window.store.pages.current (${storePages.length}):`);
+                for(let i=0; i < storePages.length; i++) {
+                    console.log(`  - Page ${i}: id=${storePages[i]?.id}, text='${storePages[i]?.text}', itemsCount=${storePages[i]?.items?.length}`);
+                }
+            } else {
+                console.log("window.store.pages.current: undefined or empty");
+            }
+            console.log("window.store.currentPage.text:", winStore?.currentPage?.text);
+            console.log("window.store.currentPage.items?.length:", winStore?.currentPage?.items?.length);
+            console.log("======= Browser Context Debug Info END =======");
+        }, { expectedProjName: projectName, expectedPageNameFromUrl: pageName }); // Pass arguments as an object
+
+
+        // store.currentPage が設定され、アイテムが存在し、ページ名が一致するかをポーリングで確認
+        await page.waitForFunction((expectedPageName) => {
+            const winStore = (window as any).store;
+            // const fluidStore = (window as any).fluidStore; // Already logged above
+            if (winStore?.currentPage) {
+                if (winStore.currentPage.text === expectedPageName && winStore.currentPage.items?.length > 0) {
+                    console.log(`TestHelpers: SUCCESS - currentPage '${winStore.currentPage.text}' [${winStore.currentPage.id}] has ${winStore.currentPage.items.length} items and matches expected name '${expectedPageName}'.`);
+                    return true;
+                }
+                 console.log(`TestHelpers: POLLING - currentPage text: '${winStore.currentPage.text}' (expected: '${expectedPageName}'), items: ${winStore.currentPage.items?.length}`);
+            } else {
+                console.log(`TestHelpers: POLLING - winStore.currentPage is not yet available.`);
+            }
+            return false;
+        }, pageName, { timeout: 25000 });
+
+        console.log("TestHelpers: store.currentPage is set with items and correct pageName. Now waiting for .outliner-item DOM elements.");
+        await page.waitForSelector(".outliner-item", { timeout: 10000 });
+
+        // global-textarea の準備も待つ
         await page.waitForFunction(() => {
             const textarea = document.querySelector<HTMLTextAreaElement>(".global-textarea");
-            console.log("TestHelper: global-textarea found:", !!textarea);
-            console.log("TestHelper: activeElement:", document.activeElement?.tagName, document.activeElement?.className);
+            // console.log("TestHelper: global-textarea found:", !!textarea);
+            // console.log("TestHelper: activeElement:", document.activeElement?.tagName, document.activeElement?.className);
             return textarea !== null;
         }, { timeout: 5000 });
+
 
         return { projectName, pageName };
     }
@@ -869,6 +932,120 @@ export class TestHelpers {
     }
 
     // 注: 422行目に同名のメソッドが既に定義されているため、このメソッドは削除します
+
+    /**
+     * 新しいプロジェクトをプログラムで作成し、そのURLを返す
+     * @param page Playwrightのページオブジェクト
+     * @param projectName 作成するプロジェクトの名前
+     * @returns 作成されたプロジェクトのURL
+     */
+    public static async createNewProject(page: Page, projectName: string): Promise<string> {
+        const newProjectData = await page.evaluate(async (name) => {
+            if (!window.__FLUID_SERVICE__) {
+                console.error("TestHelpers.createNewProject: __FLUID_SERVICE__ is not available on window.");
+                throw new Error("__FLUID_SERVICE__ is not available on window.");
+            }
+            try {
+                console.log(`TestHelpers.createNewProject: Calling createNewContainer with name: ${name}`);
+                const fluidClient = await window.__FLUID_SERVICE__.createNewContainer(name);
+                if (!fluidClient || !fluidClient.containerId || !fluidClient.project?.title) {
+                    console.error("TestHelpers.createNewProject: Failed to create container or project structure is invalid.", fluidClient);
+                    throw new Error("Failed to create container or project structure is invalid.");
+                }
+                // プロジェクト作成後、デフォルトのページ "page1" を作成
+                const defaultPageName = "page1";
+                if (typeof fluidClient.createPage === "function") {
+                    fluidClient.createPage(defaultPageName, [`Content for ${defaultPageName}`]);
+                    console.log(`TestHelpers.createNewProject: Default page "${defaultPageName}" created.`);
+                } else {
+                    // Fallback if createPage is not on fluidClient directly, try via project
+                    const project = fluidClient.getProject();
+                    if (project && typeof project.addPage === "function") {
+                         project.addPage(defaultPageName, "test-user"); // Assuming "test-user" is acceptable author
+                         console.log(`TestHelpers.createNewProject: Default page "${defaultPageName}" created via project.addPage.`);
+                    } else {
+                        console.warn(`TestHelpers.createNewProject: Could not create default page as createPage/addPage method not found.`);
+                    }
+                }
+
+                console.log(`TestHelpers.createNewProject: Project created. Container ID: ${fluidClient.containerId}, Project Title: ${fluidClient.project.title}, Attempted Default Page: ${defaultPageName}`);
+                return {
+                    containerId: fluidClient.containerId,
+                    projectTitle: fluidClient.project.title,
+                    pageName: defaultPageName, // Use the fixed default page name
+                };
+            } catch (error) {
+                console.error("TestHelpers.createNewProject: Error during createNewContainer:", error);
+                throw error; // Re-throw to fail the test if project creation fails
+            }
+        }, projectName);
+
+        // URLを構築 (アプリケーションのルーティング規則に合わせる)
+        // 例: /project-title/page-name
+        // プロジェクト名やページ名に特殊文字が含まれる場合はエンコードが必要
+        const projectUrl = `/${encodeURIComponent(newProjectData.projectTitle)}/${encodeURIComponent(newProjectData.pageName)}`;
+        console.log(`TestHelpers.createNewProject: Constructed project URL: ${projectUrl}`);
+        return projectUrl;
+    }
+
+    /**
+     * E2Eテスト用の事前定義されたユーザーとしてログインする
+     * @param page Playwrightのページオブジェクト
+     * @param role テストユーザーのロール（現在は未使用だが将来的な拡張のため）
+     */
+    public static async loginAsTestUser(page: Page, role: 'owner' | 'shared_user' | 'default' = 'default'): Promise<void> {
+        // VITE_TEST_USER_EMAIL と VITE_TEST_USER_PASSWORD は .env.test などで定義されていることを期待
+        const TEST_USER_EMAIL = process.env.VITE_E2E_TEST_USER_EMAIL || 'test@example.com';
+        const TEST_USER_PASSWORD = process.env.VITE_E2E_TEST_USER_PASSWORD || 'password';
+
+        console.log(`TestHelpers.loginAsTestUser: Attempting to log in as ${role} (${TEST_USER_EMAIL})`);
+
+        await page.evaluate(async ({ email, password }) => {
+            if (!window.__USER_MANAGER__) {
+                console.error("TestHelpers.loginAsTestUser: __USER_MANAGER__ is not available on window.");
+                throw new Error("__USER_MANAGER__ is not available on window for login.");
+            }
+            try {
+                // UserManagerのloginWithEmailPasswordメソッドを呼び出す
+                await window.__USER_MANAGER__.loginWithEmailPassword(email, password);
+                console.log(`TestHelpers.loginAsTestUser: loginWithEmailPassword called for ${email}`);
+
+                // ログイン状態がUserManagerのイベント経由で反映されるのを待つ必要がある
+                // waitForFunctionでcurrentUserが期待通りになるのを待つ
+                await new Promise<void>((resolve, reject) => {
+                    let attempts = 0;
+                    const maxAttempts = 20; // 約2秒待機 (100ms * 20)
+                    const interval = setInterval(() => {
+                        const user = window.__USER_MANAGER__.getCurrentUser();
+                        if (user && user.email?.toLowerCase() === email.toLowerCase()) {
+                            clearInterval(interval);
+                            console.log(`TestHelpers.loginAsTestUser: Login confirmed for ${email} via getCurrentUser.`);
+                            resolve();
+                        } else if (attempts >= maxAttempts) {
+                            clearInterval(interval);
+                            console.error(`TestHelpers.loginAsTestUser: Timeout waiting for login confirmation (getCurrentUser) for ${email}. Current user:`, user);
+                            reject(new Error(`Timeout waiting for login confirmation (getCurrentUser) for ${email}`));
+                        }
+                        attempts++;
+                    }, 100);
+                });
+
+            } catch (error) {
+                console.error(`TestHelpers.loginAsTestUser: Error during loginWithEmailPassword for ${email}:`, error);
+                // エラーを再スローしてテストを失敗させる
+                throw new Error(`Login failed for ${email}: ${error.message || error}`);
+            }
+        }, { email: TEST_USER_EMAIL, password: TEST_USER_PASSWORD });
+
+        // ページをリロードして、ログイン状態をアプリケーション全体に確実に反映させる
+        console.log("TestHelpers.loginAsTestUser: Adding short wait before reload.");
+        await page.waitForTimeout(500); // 短い待機を追加
+        console.log("TestHelpers.loginAsTestUser: Reloading page to ensure auth state is applied.");
+        await page.reload({ waitUntil: 'load' }); // waitUntil を 'load' に変更
+        // アプリケーションが再度準備完了になるのを待つ
+        await page.waitForSelector('body[data-app-ready="true"]', { timeout: 20000 });
+        console.log("TestHelpers.loginAsTestUser: Page reloaded and app ready after login.");
+    }
 }
 
 /**

@@ -195,9 +195,9 @@ install_all_dependencies() {
   npm_ci_if_needed
   
   # Compile Paraglide if needed
-  # if [ -z "${SKIP_PARAGLIDE_COMPILE}" ] && [ -d node_modules ]; then
-  #   npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
-  # fi
+  if [ -z "${SKIP_PARAGLIDE_COMPILE}" ] && [ -d node_modules ]; then
+    npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
+  fi
   
   cd "${ROOT_DIR}"
 }

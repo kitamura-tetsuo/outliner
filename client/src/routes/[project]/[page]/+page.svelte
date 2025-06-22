@@ -38,6 +38,11 @@ let pageNotFound = $state(false);
 let isTemporaryPage = $state(false); // 仮ページかどうかのフラグ
 let hasBeenEdited = $state(false); // 仮ページが編集されたかどうかのフラグ
 
+// Share Dialog State
+let showShareDialog = $state(false);
+let generatedShareLink = $state('');
+let sharePermission = $state('view'); // 'view' or 'edit'
+
 // URLパラメータを監視して更新
 $effect(() => {
     logger.info(`URL params effect triggered: project=${$page.params.project}, page=${$page.params.page}`);
@@ -301,9 +306,23 @@ function goToProject() {
     goto(`/${projectName}`);
 }
 
+function handleShareClick() {
+    console.log('Share button clicked for project:', projectName, 'page:', pageName);
+    generatedShareLink = `${window.location.origin}/shared-project/${projectName}/${pageName}?token=dummyShareToken123`;
+    showShareDialog = true;
+}
+
+function closeShareDialog() {
+    showShareDialog = false;
+}
+
+function handleSavePermissions() {
+    logger.info('Save permissions clicked. Current permission:', sharePermission);
+    closeShareDialog();
+}
+
 onMount(() => {
     // UserManagerの認証状態を確認
-
     isAuthenticated = userManager.getCurrentUser() !== null;
 
     // ページ読み込み後にリンクプレビューハンドラーを設定
@@ -362,7 +381,69 @@ onDestroy(() => {
                 ページ
             {/if}
         </h1>
+
+        <!-- Share Button -->
+        {#if isAuthenticated && store.currentPage && !isTemporaryPage}
+            <div class="my-4">
+                <button
+                    type="button"
+                    data-testid="project-share-button"
+                    class="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                    onclick={handleShareClick}
+                >
+                    共有
+                </button>
+            </div>
+        {/if}
     </div>
+
+    <!-- Share Dialog Placeholder -->
+    {#if showShareDialog}
+    <div data-testid="share-dialog" class="share-dialog-placeholder fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div class="rounded-lg bg-white p-6 shadow-xl">
+            <h3 class="mb-4 text-lg font-medium">プロジェクトを共有</h3>
+            <p class="mb-2 text-sm">以下のリンクを共有してください:</p>
+            <input
+                type="text"
+                data-testid="share-link-input"
+                readonly
+                bind:value={generatedShareLink}
+                class="w-full rounded border border-gray-300 p-2 text-sm"
+            />
+
+            <div class="mt-4">
+                <p class="mb-2 text-sm font-medium">権限:</p>
+                <div class="flex items-center space-x-4">
+                    <label class="flex items-center text-sm">
+                        <input type="radio" name="sharePermission" value="view" bind:group={sharePermission} class="mr-1"/>
+                        閲覧のみ
+                    </label>
+                    <label class="flex items-center text-sm">
+                        <input type="radio" name="sharePermission" value="edit" bind:group={sharePermission} class="mr-1"/>
+                        編集可
+                    </label>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-between">
+                <button
+                    type="button"
+                    class="rounded bg-green-500 px-4 py-2 text-sm text-white hover:bg-green-600"
+                    onclick={handleSavePermissions}
+                >
+                    権限を保存
+                </button>
+                <button
+                    type="button"
+                    class="rounded bg-gray-200 px-4 py-2 text-sm hover:bg-gray-300"
+                    onclick={closeShareDialog}
+                >
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+    {/if}
 
     <!-- 認証コンポーネント -->
     <div class="auth-section mb-6">

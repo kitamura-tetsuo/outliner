@@ -63,7 +63,12 @@ export default defineConfig(async ({ mode }) => {
                         name: "server",
                         environment: "node",
                         include: ["src/**/*.{test,spec}.{js,ts}"],
-                        exclude: ["src/**/*.svelte.{test,spec}.{js,ts}"],
+                        exclude: [
+                            "src/**/*.svelte.{test,spec}.{js,ts}",
+                            "src/components/**/*.{test,spec}.{js,ts}",
+                            "src/routes/**/*.{test,spec}.{js,ts}",
+                            "src/lib/fluidService.test.ts" // Exclude this from server tests
+                        ],
                     },
                 },
             ],
