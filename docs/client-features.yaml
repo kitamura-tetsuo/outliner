@@ -545,11 +545,14 @@
   title: Multi-Cursor Editing
   description: 複数のカーソルを使って同時に編集できる機能
   category: collaboration
-  status: draft
+  status: implemented
   acceptance:
     - 複数のカーソルを配置できる
     - 各カーソルから独立してテキスト編集できる
     - Undo/redoがすべてのカーソルに適用される
+  tests:
+    - client/src/stores/EditorOverlayStore.test.ts
+    - client/e2e/disabled/multi-cursor.spec.ts
 - id: NAV-0001
   title: プロジェクト選択とページナビゲーション
   description: ルートページでプロジェクトを選択した場合にプロジェクトページへ遷移し、プロジェクトページからページリストを通じて個別ページへ遷移する機能
@@ -991,7 +994,7 @@
   title: 'Multi-Cursor Editing'
   description: '複数のカーソルを使って同時に編集できる機能'
   category: collaboration
-  status: draft
+  status: implemented
 
 - id: SRP-0001
   title: '高度な検索と置換'
@@ -1020,7 +1023,7 @@
   title: Multi-Cursor Editing
   description: 複数カーソルを同時に操作して編集できる機能
   category: cursor-management
-  status: draft
+  status: implemented
 
 - id: SRE-001
   title: Advanced Search & Replace
