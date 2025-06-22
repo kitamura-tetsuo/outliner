@@ -1,8 +1,8 @@
 # Feature ↔ Test Matrix
 | Feature | Title | Test files | Status |
 |---------|-------|------------|--------|
-| API-0001 | Firebase Functions APIサーバーの修正 | — | implemented |
-| API-0002 | Firebase emulator起動待機機能 | — | implemented |
+| API-0001 | Firebase Functions APIサーバーの修正 | client/e2e/core/API-0001.spec.ts | implemented |
+| API-0002 | Firebase emulator起動待機機能 | client/e2e/core/API-0002.spec.ts | implemented |
 | API-0003 | Admin check for container user listing | — | implemented |
 | API-0004 | Admin user list | — | implemented |
 | APP-0001 | プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定 | — | implemented |
