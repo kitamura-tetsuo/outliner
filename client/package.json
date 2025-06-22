@@ -86,6 +86,8 @@
         "@fluidframework/sequence": "^2.30.0",
         "@fluidframework/tree": "^2.30.0",
         "@inlang/paraglide-sveltekit": "^0.15.5",
+        "@sqlite.org/sqlite-wasm": "^3.48.0-build4",
+        "echarts": "^5.6.0",
         "firebase": "^11.5.0",
         "fluid-framework": "2.30.0",
         "pino": "^8.15.0",

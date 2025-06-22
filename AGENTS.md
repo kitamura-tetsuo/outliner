@@ -10,6 +10,8 @@ For every feature, create a corresponding test.
 Make the expected values ​​used for pass/fail judgments strict; longer test-execution time is acceptable if that is the consequence.
 Do not embed code that skips tests.
 Do not use mocks in tests.
+Do not delete or skip tests simply because they fail locally;
+CI has a fully working environment and will run them successfully.
 Run tests in headless mode.
 Fix one test file at a time and run tests after each fix to confirm.
 
