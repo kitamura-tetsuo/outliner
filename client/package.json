@@ -24,7 +24,7 @@
         "test:e2e:xvfb": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test --reporter=list",
         "test:e2e:single": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test --reporter=list",
         "test:e2e:clipboard": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test --reporter=list e2e/core/FMT-0004.spec.ts",
-        "ci:test:e2e": "playwright test --reporter=list --workers=1",
+        "ci:test:e2e": "playwright test --reporter=list",
         "ci:test:e2e:ui": "playwright test --ui --reporter=list",
         "ci:test:e2e:xvfb": "xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npm run ci:test:e2e --reporter=list"
     },

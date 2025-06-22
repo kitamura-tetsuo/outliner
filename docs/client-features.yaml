@@ -346,6 +346,17 @@
     - カーソルがないアイテムでは内部リンクが視覚的にリンクとして表示される
   tests:
     - client/e2e/core/FMT-0007.spec.ts
+- id: FMT-0008
+  title: 内部リンクの複数表示
+  description: 1つのアイテムに複数の内部リンクが含まれている場合に正しくリンク化される機能
+  category: text-formatting
+  status: implemented
+  acceptance:
+    - '[page-one] と [page-two] のように複数の内部リンクが正しくリンク化される'
+    - カーソルがない時は全てのリンクが表示される
+    - カーソルがある場合は制御文字が表示される
+  tests:
+    - client/e2e/new/FMT-0008.spec.ts
 - id: FTR-0012
   title: User can reset forgotten password
   status: implemented

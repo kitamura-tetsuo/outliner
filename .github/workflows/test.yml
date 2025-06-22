@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ '**' ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ '**' ]
 
 jobs:
   test:
@@ -250,10 +250,9 @@ jobs:
 
         bash scripts/start-all-localhost-servers.sh
 
-        # Run tests with timeout (40 minutes)
-        cd client
+        # Run tests sequentially, each file at a time
         echo "Starting test execution..."
-        timeout 2400 npm run test || {
+        timeout 2400 bash scripts/run-tests.sh || {
           echo "Tests timed out or failed"
           echo "Checking logs for debugging..."
 
