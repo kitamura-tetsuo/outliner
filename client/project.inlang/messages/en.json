@@ -1,0 +1,8 @@
+{
+    "$schema": "https://inlang.com/schema/inlang-message-format",
+    "hello_world": "Hello, {name} from en!",
+    "temporary_page_notice": "This page does not exist yet. It will be created when you edit it.",
+    "temporary_page_create_button": "Create Page",
+    "temporary_page_cancel_button": "Cancel",
+    "temporary_page_title": "Temporary Page"
+}
