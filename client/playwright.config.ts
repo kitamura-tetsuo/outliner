@@ -27,7 +27,6 @@ const ENV_FILE = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
 // console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
 // console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
 // console.log(`Environment file: ${ENV_FILE}`);
-
 export default defineConfig({
     testDir: "./e2e",
     testMatch: "**/*.spec.ts",
@@ -35,6 +34,8 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
     workers: process.env.CI ? 8 : 4,
+    maxFailures: process.env.CI ? 1 : undefined,
+
     reporter: [["html", { open: "never" }]],
     headless: true,
     // テスト実行時のタイムアウト設定を延長
