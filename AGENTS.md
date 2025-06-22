@@ -6,6 +6,14 @@ Record every feature in docs\client-features.yaml. Document intentionally omitte
 docs/feature-map.md is automatically generated; do not edit it.
 
 # 🧪 Test implementation and execution policy
+
+## テストの網羅性とカバレッジレポートの活用
+新しい機能を追加または既存の機能を変更する際には、その変更が広範囲に影響を及ぼす可能性を考慮し、十分なテストカバレッジを確保するよう努めてください。
+- **カバレッジレポートの確認**: ユニットテスト実行後に生成されるカバレッジレポート（`client/coverage/index.html`など）を必ず確認してください。
+- **テストケースの追加**: カバレッジが低い箇所や、新たに追加・変更されたロジックでテストされていない箇所を特定し、必要なテストケースを追加してください。特に条件分岐やエッジケースが網羅されているか注意深く確認します。
+- **既存テストの拡充**: 単に新しいテストを追加するだけでなく、既存のテストケースが新しい機能や変更点を考慮したものになっているかを見直し、必要に応じて拡充してください。
+目標は、コードの品質と安定性を維持するために、テストによってコードベースの大部分が検証されている状態を保つことです。
+
 For every feature, create a corresponding test.
 Make the expected values ​​used for pass/fail judgments strict; longer test-execution time is acceptable if that is the consequence.
 Do not embed code that skips tests.
