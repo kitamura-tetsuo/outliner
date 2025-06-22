@@ -345,6 +345,11 @@ async function deleteQueryBatch(query) {
     }
 }
 
+// Determine if the decoded Firebase token represents an admin user
+function isAdmin(decodedToken) {
+    return decodedToken && decodedToken.role === "admin";
+}
+
 // 注: テストユーザーのセットアップ後にデータクリアを行うため、ここでの実行は不要
 
 // 注意: /api/save-container エンドポイントはFirebase Functionsに移行しました
@@ -364,7 +369,7 @@ app.post("/api/get-container-users", async (req, res) => {
         const userId = decodedToken.uid;
 
         // Check admin role before returning container info
-        if (decodedToken.role !== "admin") {
+        if (!isAdmin(decodedToken)) {
             return res.status(403).json({ error: "Admin privileges required" });
         }
 

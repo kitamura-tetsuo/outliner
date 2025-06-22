@@ -923,6 +923,7 @@
     - '管理者はコンテナのユーザーリストを取得できる'
   tests:
     - server/tests/get-container-users.test.js
+    - server/tests/auth-service.test.js
     - client/e2e/core/API-0003.spec.ts
   components:
     - server/auth-service.js
