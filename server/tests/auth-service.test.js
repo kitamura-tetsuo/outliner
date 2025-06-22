@@ -1,11 +1,10 @@
 const request = require("supertest");
 const path = require("path");
 const jwt = require("jsonwebtoken");
-const { MockFirebase } = require("mock-firebase-admin");
 
 // モックの設定
-let verifyIdTokenMock = jest.fn();
-let containerDocGetMock = jest.fn();
+let mockVerifyIdToken = jest.fn();
+let mockContainerDocGet = jest.fn();
 
 jest.mock("firebase-admin", () => {
     return {
@@ -14,7 +13,7 @@ jest.mock("firebase-admin", () => {
             cert: jest.fn(),
         },
         auth: () => ({
-            verifyIdToken: (...args) => verifyIdTokenMock(...args),
+            verifyIdToken: (...args) => mockVerifyIdToken(...args),
         }),
         firestore: () => ({
             settings: jest.fn(),
@@ -22,7 +21,7 @@ jest.mock("firebase-admin", () => {
                 if (name === "containerUsers") {
                     return {
                         doc: jest.fn().mockReturnValue({
-                            get: (...args) => containerDocGetMock(...args),
+                            get: (...args) => mockContainerDocGet(...args),
                             set: jest.fn().mockResolvedValue({}),
                             update: jest.fn().mockResolvedValue({}),
                         }),
@@ -69,7 +68,7 @@ require("dotenv").config({ path: path.join(__dirname, "..", ".env.test") });
 
 // テスト対象のサーバーをインポート
 // 注意: このimport前にモックを設定する必要がある
-const app = require("../auth-service-test-helper");
+const app = require("./auth-service-test-helper");
 
 describe("認証サービスのテスト", () => {
     // テスト前の準備
@@ -81,7 +80,7 @@ describe("認証サービスのテスト", () => {
     });
 
     beforeEach(() => {
-        verifyIdTokenMock.mockImplementation(idToken => {
+        mockVerifyIdToken.mockImplementation(idToken => {
             if (idToken === "valid-token") {
                 return Promise.resolve({
                     uid: "test-user-123",
@@ -100,7 +99,7 @@ describe("認証サービスのテスト", () => {
             return Promise.reject(new Error("Invalid token"));
         });
 
-        containerDocGetMock.mockResolvedValue({
+        mockContainerDocGet.mockResolvedValue({
             exists: true,
             data: () => ({ accessibleUserIds: ["user1", "user2"] }),
         });
@@ -264,7 +263,7 @@ describe("認証サービスのテスト", () => {
         });
 
         test("存在しないコンテナIDで404を返す", async () => {
-            containerDocGetMock.mockResolvedValueOnce({ exists: false });
+            mockContainerDocGet.mockResolvedValueOnce({ exists: false });
 
             const res = await request(app)
                 .post("/api/get-container-users")
