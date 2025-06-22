@@ -112,7 +112,8 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         // 制御文字が表示されていることを確認
         expect(firstItemTextWithCursor).toContain('class="control-char">[');
         expect(firstItemTextWithCursor).toContain('class="control-char">]');
-        expect(firstItemTextWithCursor).toContain('href="/test-page"');
+        // カーソルがある時は制御文字のみ表示され、hrefは含まれない
+        expect(firstItemTextWithCursor).not.toContain('href="/test-page"');
 
         // 2つ目のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
@@ -141,7 +142,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         // カーソルの状態を確認し、必要に応じて作成
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
-            if (!editorStore) return { error: 'editorOverlayStore not found' };
+            if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
             const cursorInstances = editorStore.getCursorInstances();
@@ -163,7 +164,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
                             itemId: activeItemId,
                             offset: 0,
                             isActive: true,
-                            userId: 'local'
+                            userId: "local",
                         });
                     }
                 }
@@ -180,7 +181,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
                     // 既存のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
-                        target.updateText('');
+                        target.updateText("");
                         cursor.offset = 0;
                     }
                     // 通常の内部リンクを挿入
@@ -196,7 +197,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    cursor.insertText('\n');
+                    cursor.insertText("\n");
                 }
             }
         });
