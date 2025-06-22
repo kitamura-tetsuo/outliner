@@ -734,6 +734,9 @@
     - client/src/routes/[project]/[page]/+page.svelte
   tests:
     - client/e2e/new/SRE-001.spec.ts
+  testcases:
+    - 検索結果がハイライト表示される
+    - 置換を実行するとSharedTreeが更新される
   acceptance:
     - 正規表現検索が可能
     - 一括置換が実行できる
@@ -949,6 +952,9 @@
     - client/src/routes/[project]/[page]/+page.svelte
   tests:
     - client/e2e/new/SRE-001.spec.ts
+  testcases:
+    - 検索結果がハイライト表示される
+    - 置換を実行するとSharedTreeが更新される
 
 - id: DBW-001
   title: Client-Side SQL Database
