@@ -1,9 +1,7 @@
 <script lang="ts">
 import { browser } from "$app/environment";
 import { getEnv } from "$lib/env";
-import { i18n } from "$lib/i18n";
 import { getLogger } from "$lib/logger";
-import { ParaglideJS } from "@inlang/paraglide-sveltekit";
 import {
     onDestroy,
     onMount,
@@ -241,6 +239,4 @@ onDestroy(() => {
 });
 </script>
 
-<ParaglideJS {i18n}>
-    {@render children()}
-</ParaglideJS>
+{@render children()}
