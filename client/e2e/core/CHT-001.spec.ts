@@ -6,13 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CHT-001: Chart auto-refresh", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
-    });
-
     test("Graph appears and refreshes when data updates", async ({ page }) => {
         await page.setContent(`
       <!DOCTYPE html>
@@ -51,6 +46,10 @@ test.describe("CHT-001: Chart auto-refresh", () => {
     });
 
     test("Chart component implementation check", async ({ page }) => {
+        // SvelteKitアプリケーションのルートページに移動
+        await page.goto("http://localhost:7090/");
+        await page.waitForLoadState("domcontentloaded");
+
         // 基本的なページ表示テスト
         await expect(page.locator("body")).toBeVisible();
 
