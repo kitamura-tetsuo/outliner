@@ -23,50 +23,13 @@ export class TestHelpers {
         // ホームページにアクセスしてアプリの初期化を待つ
         await page.goto("/");
 
-        // テスト環境用のグローバル変数を強制的に設定
-        await page.evaluate(() => {
-            // setupGlobalDebugFunctionsが呼ばれていない場合に備えて、手動で設定
-            if (typeof (window as any).__FLUID_STORE__ === "undefined") {
-                // fluidStoreをインポートして設定
-                import("/src/stores/fluidStore.svelte.js").then(module => {
-                    (window as any).__FLUID_STORE__ = module.fluidStore;
-                }).catch(() => {
-                    // フォールバック: 空のオブジェクトを設定
-                    (window as any).__FLUID_STORE__ = {};
-                });
-            }
-            if (typeof (window as any).__SVELTE_GOTO__ === "undefined") {
-                // gotoをインポートして設定
-                import("$app/navigation").then(module => {
-                    (window as any).__SVELTE_GOTO__ = module.goto;
-                }).catch(() => {
-                    // フォールバック: 空の関数を設定
-                    (window as any).__SVELTE_GOTO__ = () => {};
-                });
-            }
-            if (typeof (window as any).__FLUID_SERVICE__ === "undefined") {
-                // fluidServiceをインポートして設定
-                import("/src/lib/fluidService.svelte.js").then(module => {
-                    (window as any).__FLUID_SERVICE__ = module;
-                }).catch(() => {
-                    // フォールバック: 空のオブジェクトを設定
-                    (window as any).__FLUID_SERVICE__ = {};
-                });
-            }
+        // ページが完全に初期化されるのを待機
+        await page.waitForFunction(() => {
+            return (
+                (window as any).__FLUID_STORE__ !== undefined &&
+                (window as any).__SVELTE_GOTO__ !== undefined
+            );
         });
-
-        // ページが完全に初期化されるのを待機（タイムアウトを短縮）
-        try {
-            await page.waitForFunction(() => {
-                return (
-                    (window as any).__FLUID_STORE__ !== undefined &&
-                    (window as any).__SVELTE_GOTO__ !== undefined
-                );
-            }, { timeout: 10000 });
-        }
-        catch (error) {
-            console.log("Warning: Global variables not fully initialized, continuing anyway");
-        }
 
         page.goto = async (
             url: string,
