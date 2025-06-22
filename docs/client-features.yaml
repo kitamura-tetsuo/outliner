@@ -976,6 +976,19 @@
   components:
     - server/auth-service.js
 
+- id: API-0004
+  title: 'Admin user list'
+  description: '/api/list-users returns all users for admins only'
+  category: api-server
+  status: implemented
+  acceptance:
+    - '管理者以外のリクエストは403エラーを返す'
+    - '管理者はFirebaseユーザー一覧を取得できる'
+  tests:
+    - server/tests/auth-service.test.js
+  components:
+    - server/auth-service.js
+
 - id: COL-0001
   title: '他ユーザーのカーソル表示'
   description: '複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する'
