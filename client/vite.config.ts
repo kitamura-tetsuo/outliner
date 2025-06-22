@@ -1,4 +1,4 @@
-import { paraglide } from "@inlang/paraglide-sveltekit/vite";
+import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
@@ -22,9 +22,10 @@ export default defineConfig(async ({ mode }) => {
         plugins: [
             tailwindcss(),
             sveltekit(),
-            paraglide({
+            paraglideVitePlugin({
                 project: "./project.inlang",
                 outdir: "./src/lib/paraglide",
+                strategy: ["url", "cookie", "baseLocale"],
             }),
         ],
         server: {
@@ -39,6 +40,12 @@ export default defineConfig(async ({ mode }) => {
         },
         build: {
             sourcemap: true,
+        },
+        optimizeDeps: {
+            include: ["sql.js"],
+        },
+        define: {
+            global: "globalThis",
         },
         test: {
             workspace: [

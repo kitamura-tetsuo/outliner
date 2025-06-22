@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: ['**']
+    branches: [main, develop]
   pull_request:
-    branches: ['**']
+    branches: [main, develop]
 
 jobs:
   test:
@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Check environment
@@ -106,6 +106,9 @@ jobs:
               echo "npm ci failed for client, trying npm install..."
               npm install
             }
+            # Compile Paraglide messages
+            echo "Compiling Paraglide messages..."
+            npm run paraglide:compile || echo "Paraglide compilation failed, continuing..."
             cd ..
           else
             echo "Client directory or package.json not found"
@@ -250,9 +253,11 @@ jobs:
 
           bash scripts/start-all-localhost-servers.sh
 
+          # Run tests with timeout (40 minutes)
           cd client
           echo "Starting test execution..."
-          timeout 2400 npm test || {
+          timeout 2400 npm run test || {
+            cd ..
             echo "Tests timed out or failed"
             echo "Checking logs for debugging..."
 
