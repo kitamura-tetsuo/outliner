@@ -4,6 +4,9 @@ const jwt = require("jsonwebtoken");
 const { MockFirebase } = require("mock-firebase-admin");
 
 // モックの設定
+let verifyIdTokenMock = jest.fn();
+let containerDocGetMock = jest.fn();
+
 jest.mock("firebase-admin", () => {
     return {
         initializeApp: jest.fn(),
@@ -11,42 +14,41 @@ jest.mock("firebase-admin", () => {
             cert: jest.fn(),
         },
         auth: () => ({
-            verifyIdToken: jest.fn().mockImplementation(idToken => {
-                if (idToken === "valid-token") {
-                    return Promise.resolve({
-                        uid: "test-user-123",
-                        name: "Test User",
-                        email: "testuser@example.com",
-                    });
-                }
-                else {
-                    return Promise.reject(new Error("Invalid token"));
-                }
-            }),
+            verifyIdToken: (...args) => verifyIdTokenMock(...args),
         }),
         firestore: () => ({
             settings: jest.fn(),
-            collection: jest.fn().mockReturnValue({
-                doc: jest.fn().mockReturnValue({
-                    get: jest.fn().mockImplementation(() => {
-                        return Promise.resolve({
+            collection: jest.fn(name => {
+                if (name === "containerUsers") {
+                    return {
+                        doc: jest.fn().mockReturnValue({
+                            get: (...args) => containerDocGetMock(...args),
+                            set: jest.fn().mockResolvedValue({}),
+                            update: jest.fn().mockResolvedValue({}),
+                        }),
+                        listCollections: jest.fn().mockResolvedValue([{ id: name }]),
+                    };
+                }
+                // default userContainers behavior
+                return {
+                    doc: jest.fn().mockReturnValue({
+                        get: jest.fn().mockResolvedValue({
                             exists: true,
                             data: () => ({
                                 userId: "test-user-123",
                                 defaultContainerId: "test-container-456",
                                 createdAt: new Date(),
                             }),
-                        });
+                        }),
+                        set: jest.fn().mockResolvedValue({}),
+                        update: jest.fn().mockResolvedValue({}),
                     }),
-                    set: jest.fn().mockResolvedValue({}),
-                    update: jest.fn().mockResolvedValue({}),
-                }),
-                listCollections: jest.fn().mockResolvedValue([
-                    { id: "userContainers" },
-                ]),
+                    listCollections: jest.fn().mockResolvedValue([{ id: name }]),
+                };
             }),
             listCollections: jest.fn().mockResolvedValue([
                 { id: "userContainers" },
+                { id: "containerUsers" },
             ]),
         }),
         FieldValue: {
@@ -76,6 +78,36 @@ describe("認証サービスのテスト", () => {
         process.env.AZURE_TENANT_ID = "test-tenant-id";
         process.env.AZURE_FLUID_RELAY_ENDPOINT = "https://test-endpoint.fluidrelay.azure.com";
         process.env.AZURE_PRIMARY_KEY = "test-primary-key";
+    });
+
+    beforeEach(() => {
+        verifyIdTokenMock.mockImplementation(idToken => {
+            if (idToken === "valid-token") {
+                return Promise.resolve({
+                    uid: "test-user-123",
+                    name: "Test User",
+                    email: "testuser@example.com",
+                });
+            }
+            if (idToken === "admin-token") {
+                return Promise.resolve({
+                    uid: "admin-user-123",
+                    name: "Admin User",
+                    email: "admin@example.com",
+                    role: "admin",
+                });
+            }
+            return Promise.reject(new Error("Invalid token"));
+        });
+
+        containerDocGetMock.mockResolvedValue({
+            exists: true,
+            data: () => ({ accessibleUserIds: ["user1", "user2"] }),
+        });
+    });
+
+    afterEach(() => {
+        jest.clearAllMocks();
     });
 
     // テスト後のクリーンアップ
@@ -206,6 +238,49 @@ describe("認証サービスのテスト", () => {
                 .expect(400);
 
             expect(response.body).toHaveProperty("error", "トークンが必要です");
+        });
+    });
+
+    // /api/get-container-users エンドポイントのテスト (管理者限定)
+    describe("POST /api/get-container-users", () => {
+        test("非管理者は403を受け取る", async () => {
+            const res = await request(app)
+                .post("/api/get-container-users")
+                .send({ idToken: "valid-token", containerId: "cont-1" });
+
+            expect(res.status).toBe(403);
+            expect(res.body).toHaveProperty("error", "Admin privileges required");
+        });
+
+        test("管理者はユーザー一覧を取得できる", async () => {
+            const res = await request(app)
+                .post("/api/get-container-users")
+                .send({ idToken: "admin-token", containerId: "cont-1" })
+                .expect(200);
+
+            expect(res.body).toHaveProperty("users");
+            expect(Array.isArray(res.body.users)).toBe(true);
+            expect(res.body.users).toEqual(["user1", "user2"]);
+        });
+
+        test("存在しないコンテナIDで404を返す", async () => {
+            containerDocGetMock.mockResolvedValueOnce({ exists: false });
+
+            const res = await request(app)
+                .post("/api/get-container-users")
+                .send({ idToken: "admin-token", containerId: "missing" });
+
+            expect(res.status).toBe(404);
+            expect(res.body).toHaveProperty("error", "Container not found");
+        });
+
+        test("containerIdが無い場合400を返す", async () => {
+            const res = await request(app)
+                .post("/api/get-container-users")
+                .send({ idToken: "admin-token" });
+
+            expect(res.status).toBe(400);
+            expect(res.body).toHaveProperty("error", "Container ID is required");
         });
     });
 });
