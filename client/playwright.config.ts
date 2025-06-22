@@ -34,7 +34,7 @@ export default defineConfig({
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
-    workers: process.env.CI ? 1 : 4,
+    workers: process.env.CI ? 8 : 4,
     reporter: [["html", { open: "never" }]],
     headless: true,
     // テスト実行時のタイムアウト設定を延長
@@ -77,6 +77,12 @@ export default defineConfig({
             // ユーティリティテスト: 共通機能のテスト
             name: "utils",
             testDir: "./e2e/utils",
+            use: { ...devices["Desktop Chrome"] },
+        },
+        {
+            // 新機能テスト
+            name: "new",
+            testDir: "./e2e/new",
             use: { ...devices["Desktop Chrome"] },
         },
     ],
