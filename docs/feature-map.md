@@ -17,7 +17,7 @@
 | CLM-0101 | アイテム間移動時のカーソル重複と入力分散問題 | client/e2e/core/CLM-0101.spec.ts | implemented |
 | CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | client/e2e/core/CLM-0102.spec.ts | implemented |
 | CLM-0103 | フォーマット文字列でのカーソル操作 | client/e2e/core/CLM-0103.spec.ts | implemented |
-| COL-0001 | 他ユーザーのカーソル表示 | — | implemented |
+| COL-0001 | 他ユーザーのカーソル表示 | client/e2e/core/COL-0001.spec.ts | implemented |
 | DBW-0001 | Client-Side WASM DB | — | draft |
 | DBW-001 | Client-Side SQL Database | — | draft |
 | FFI-0001 | Fluid Framework Integration | — | draft |
@@ -34,7 +34,7 @@
 | GRF-001 | Graph View | — | implemented |
 | GVI-0001 | Graph View | — | draft |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
-| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
+| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001.spec.ts<br>client/e2e/core/ITM-0001-title.spec.ts | implemented |
 | LNK-0001 | 内部リンクのURL生成機能 | — | implemented |
 | LNK-0002 | 内部リンクの機能検証 | — | implemented |
 | LNK-0003 | 内部リンクのナビゲーション機能 | — | implemented |
