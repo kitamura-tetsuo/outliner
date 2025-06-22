@@ -1,0 +1,31 @@
+/** @feature API-0002
+ *  Title   : Firebase emulator起動待機機能
+ *  Source  : docs/client-features.yaml
+ */
+import { expect, test } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+
+// Utility function to retry request until success or timeout
+async function waitForHealth(request: any, attempts = 10) {
+    for (let i = 0; i < attempts; i++) {
+        const response = await request.get("http://localhost:7091/health");
+        if (response.ok()) {
+            return response;
+        }
+        await new Promise(res => setTimeout(res, 1000));
+    }
+    throw new Error("Health endpoint did not respond in time");
+}
+
+test.describe("API-0002: emulator wait-and-retry", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
+    });
+
+    test("server becomes available after retries", async ({ request }) => {
+        const response = await waitForHealth(request, 5);
+        expect(response.status()).toBe(200);
+        const json = await response.json();
+        expect(json.status).toBe("OK");
+    });
+});

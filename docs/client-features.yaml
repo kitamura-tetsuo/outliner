@@ -20,6 +20,7 @@
     - Firebase Hosting経由でのリクエストが正しくFunctionsにルーティングされる
   tests:
     - functions/test/firebase-functions.test.js
+    - client/e2e/core/API-0001.spec.ts
   components:
     - functions/index.js
     - functions/.env
@@ -41,6 +42,7 @@
     - 接続成功時にユーザー数とユーザー情報をログに出力する
   tests:
     - server/test/auth-service-emulator-wait.test.js
+    - client/e2e/core/API-0002.spec.ts
   components:
     - server/auth-service.js
 - id: APP-0001
