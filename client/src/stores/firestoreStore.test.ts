@@ -12,8 +12,7 @@ describe('firestoreStore', () => {
   // let store: ReturnType<typeof firestoreStore>;
   // const mockProjectId = 'test-project';
 
-  beforeEach(()
- => {
+  beforeEach(() => {
     // store = firestoreStore(mockProjectId);
     // モックやスタブの設定が必要な場合はここで行います。
     // 例: Firebase SDKの関数をモック化するなど。

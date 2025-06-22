@@ -72,7 +72,7 @@ describe('Cursor', () => {
     // findNextItem: () => Item | undefined; // 必要なら追加
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // モックをリセット
     vi.clearAllMocks();
     mockTextareaElement.value = '';
