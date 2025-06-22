@@ -51,6 +51,8 @@ cp .env.example .env
 npx @dotenvx/dotenvx encrypt --env-file server/.env.development
 ```
 
+このコマンドは `.env.development` を暗号化して同じファイル名のまま上書きします。
+
 復号化が必要な場合は `decrypt` サブコマンドを使用します。
 
 ## 開発サーバーの起動
@@ -192,8 +194,8 @@ firebase deploy
 cd client
 npm run test:unit
 
-# E2E テスト
-npm run test:e2e
+# E2E テスト (dotenvxで復号化して実行)
+dotenvx run -- npm run test:e2e
 ```
 テストの前には `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
 
