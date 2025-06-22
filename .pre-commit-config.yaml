@@ -5,9 +5,9 @@ repos:
   - repo: local
     hooks:
       - id: feature-map
-        name: Generate feature-map.md from features.yaml
-        language: python # pre-commit が venv を用意してくれる
-        entry: python ./scripts/gen_feature_map.py
+        name: Update feature docs
+        language: python
+        entry: python ./scripts/update_feature_docs.py
         pass_filenames: false # ファイル一覧をスクリプトに渡さない
         always_run: true # 変更がなくても毎回実行
         stages: [pre-commit] # commit 時のみ

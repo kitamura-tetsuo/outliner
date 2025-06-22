@@ -204,8 +204,8 @@ dotenvx run -- npm run test:e2e
 テストファイルや `docs/client-features.yaml` を変更した後は、機能とテストの対応表を更新するため次のコマンドを実行してください。
 
 ```bash
-python scripts/gen_feature_map.py
-git add docs/feature-map.md
+python scripts/update_feature_docs.py
+git add docs/client-features.yaml docs/feature-map.md
 ```
 
 生成された `docs/feature-map.md` もコミットに含めることで、常に最新の機能一覧を共有できます。
