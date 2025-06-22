@@ -27,7 +27,9 @@ test.describe("拡張フォーマット", () => {
         await page.keyboard.type("別のアイテム");
 
         // 別のアイテムをクリックしてフォーカスを移動（フォーマットを適用させるため）
-        await page.locator(".outliner-item").nth(1).locator(".item-content").click();
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId).not.toBeNull();
+        await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").click();
 
         // フォーマットが適用されるのを待つ
         await page.waitForTimeout(500);
@@ -52,7 +54,9 @@ test.describe("拡張フォーマット", () => {
         await page.keyboard.type("別のアイテム");
 
         // 別のアイテムをクリックしてフォーカスを移動（フォーマットを適用させるため）
-        await page.locator(".outliner-item").nth(1).locator(".item-content").click();
+        const secondItemId2 = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId2).not.toBeNull();
+        await page.locator(`.outliner-item[data-item-id="${secondItemId2}"]`).locator(".item-content").click();
 
         // フォーマットが適用されるのを待つ
         await page.waitForTimeout(500);
@@ -78,7 +82,9 @@ test.describe("拡張フォーマット", () => {
         await page.keyboard.type("別のアイテム");
 
         // 別のアイテムをクリックしてフォーカスを移動（フォーマットを適用させるため）
-        await page.locator(".outliner-item").nth(1).locator(".item-content").click();
+        const secondItemId3 = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId3).not.toBeNull();
+        await page.locator(`.outliner-item[data-item-id="${secondItemId3}"]`).locator(".item-content").click();
 
         // フォーマットが適用されるのを待つ
         await page.waitForTimeout(500);

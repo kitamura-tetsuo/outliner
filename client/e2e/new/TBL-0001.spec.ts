@@ -14,4 +14,12 @@ test.describe("TBL-0001: Editable JOIN Table", () => {
         await page.goto("/table");
         await expect(page.locator(".editable-query-grid")).toBeVisible();
     });
+
+  test('display query result', async ({ page }) => {
+    await page.waitForSelector('textarea');
+    await page.fill('textarea', 'SELECT 1 as value');
+    await page.click('text=Run');
+    await expect(page.locator('text=value')).toBeVisible();
+    await expect(page.locator('text=1')).toBeVisible();
+  });
 });
