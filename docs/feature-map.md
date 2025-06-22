@@ -4,6 +4,7 @@
 | API-0001 | Firebase Functions APIサーバーの修正 | — | implemented |
 | API-0002 | Firebase emulator起動待機機能 | — | implemented |
 | API-0003 | Admin check for container user listing | client/e2e/core/API-0003.spec.ts | implemented |
+| API-0004 | Admin user list | — | implemented |
 | APP-0001 | プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定 | client/e2e/core/APP-0001.spec.ts | implemented |
 | CHT-001 | Chart Component | client/e2e/core/CHT-001.spec.ts | implemented |
 | CLM-0001 | クリックで編集モードに入る | client/e2e/core/CLM-0001.spec.ts | implemented |
@@ -19,7 +20,7 @@
 | CLM-0103 | フォーマット文字列でのカーソル操作 | client/e2e/core/CLM-0103.spec.ts | implemented |
 | COL-0001 | 他ユーザーのカーソル表示 | — | implemented |
 | DBW-0001 | Client-Side WASM DB | — | draft |
-| DBW-001 | Client-Side SQL Database | — | draft |
+| DBW-001 | Client-Side SQL Database | — | implemented |
 | FFI-0001 | Fluid Framework Integration | — | draft |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | client/e2e/core/FLD-0001.spec.ts | implemented |
 | FMT-0001 | フォーマット表示 | client/e2e/core/FMT-0001.spec.ts | implemented |
@@ -42,10 +43,10 @@
 | LNK-0005 | リンクプレビュー機能 | client/e2e/core/LNK-0005.spec.ts | implemented |
 | LNK-0006 | リンク先ページの存在確認機能 | client/e2e/core/LNK-0006.spec.ts | implemented |
 | LNK-0007 | バックリンク機能 | client/e2e/core/LNK-0007.spec.ts | implemented |
-| MCE-0001 | Multi-Cursor Editing | — | draft |
+| MCE-0001 | Multi-Cursor Editing | — | implemented |
 | NAV-0001 | プロジェクト選択とページナビゲーション | client/e2e/core/NAV-0001.spec.ts | implemented |
 | NAV-0002 | プロジェクトページへのリンク機能 | client/e2e/core/NAV-0002.spec.ts | implemented |
-| SEC-0001 | Dotenvx encrypted env files | — | implemented |
+| SEC-0001 | Dotenvx encrypted env files | client/e2e/core/SEC-0001.spec.ts | implemented |
 | SEC-0002 | Two-Factor Authentication (2FA) | — | deprecated |
 | SLR-0001 | Shift + 上下左右 | client/e2e/core/SLR-0001.spec.ts | implemented |
 | SLR-0002 | 行頭まで選択 | client/e2e/core/SLR-0002.spec.ts | implemented |
@@ -59,14 +60,13 @@
 | SLR-0010 | 選択範囲のフォーマット変更 | client/e2e/core/SLR-0010.spec.ts | implemented |
 | SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | client/e2e/core/SLR-0100.spec.ts | implemented |
 | SLR-0101 | ボックス選択（矩形選択）機能 - マウス | client/e2e/core/SLR-0101.spec.ts | implemented |
-| SRE-001 | Advanced Search & Replace | — | draft |
-| SRP-0001 | 高度な検索と置換 | — | draft |
-| TBL-0001 | Editable JOIN Table | — | implemented |
+| SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts | implemented |
+| TBL-0001 | Editable JOIN Table | client/e2e/new/TBL-0001.spec.ts | implemented |
 | TST-0001 | SharedTreeデータ検証ユーティリティ | client/e2e/utils/tree-validation.spec.ts | implemented |
 | TST-0002 | カーソル情報検証ユーティリティ | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | テストヘルパーユーティリティ | — | implemented |
 | TST-0004 | テスト環境の改善 | — | implemented |
-| TST-0005 | テスト環境の初期化と準備 | client/e2e/basic.spec.ts<br>client/e2e/disabled/outliner-item.spec.ts<br>client/e2e/disabled/selection.spec.ts<br>client/e2e/disabled/example.spec.ts<br>client/e2e/disabled/advanced-indent.spec.ts<br>client/e2e/disabled/multi-cursor.spec.ts<br>client/e2e/disabled/outliner-tree.spec.ts<br>client/e2e/disabled/clipboard-test.spec.ts<br>client/e2e/disabled/tinylicious.spec.ts<br>client/e2e/core/add-text.spec.ts<br>client/e2e/core/basic.spec.ts<br>client/e2e/core/minimal.spec.ts<br>client/e2e/core/port.spec.ts<br>client/e2e/auth/auth.spec.ts | implemented |
+| TST-0005 | テスト環境の初期化と準備 | client/e2e/basic.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/core/minimal.spec.ts<br>client/e2e/core/port.spec.ts<br>client/e2e/core/add-text.spec.ts<br>client/e2e/core/basic.spec.ts<br>client/e2e/disabled/multi-cursor.spec.ts<br>client/e2e/disabled/advanced-indent.spec.ts<br>client/e2e/disabled/selection.spec.ts<br>client/e2e/disabled/example.spec.ts<br>client/e2e/disabled/tinylicious.spec.ts<br>client/e2e/disabled/clipboard-test.spec.ts<br>client/e2e/disabled/outliner-tree.spec.ts<br>client/e2e/disabled/outliner-item.spec.ts | implemented |
 | USR-0001 | ユーザー削除機能 | client/e2e/core/USR-0001.spec.ts | implemented |
 | USR-0002 | コンテナ削除機能 | client/e2e/core/USR-0002.spec.ts | implemented |
 | VCM-001 | Multi-Cursor Editing | — | draft |
