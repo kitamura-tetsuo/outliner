@@ -16,11 +16,11 @@ import { fluidStore } from "../../stores/fluidStore.svelte";
 const logger = getLogger();
 
 let isLoading = $state(false);
-let error: string | null = $state(null);
-let success: string | null = $state(null);
+let error: string | undefined = $state(undefined);
+let success: string | undefined = $state(undefined);
 let containerName = $state("");
 let isAuthenticated = $state(false);
-let createdContainerId: string | null = $state(null);
+let createdContainerId: string | undefined = $state(undefined);
 
 // 認証成功時の処理
 async function handleAuthSuccess(authResult) {
@@ -42,8 +42,8 @@ async function createNewContainer() {
     }
 
     isLoading = true;
-    error = null;
-    success = null;
+    error = undefined;
+    success = undefined;
 
     try {
         // 現在のFluidClientインスタンスを破棄してリセット
