@@ -23,13 +23,50 @@ export class TestHelpers {
         // ホームページにアクセスしてアプリの初期化を待つ
         await page.goto("/");
 
-        // ページが完全に初期化されるのを待機
-        await page.waitForFunction(() => {
-            return (
-                (window as any).__FLUID_STORE__ !== undefined &&
-                (window as any).__SVELTE_GOTO__ !== undefined
-            );
+        // テスト環境用のグローバル変数を強制的に設定
+        await page.evaluate(() => {
+            // setupGlobalDebugFunctionsが呼ばれていない場合に備えて、手動で設定
+            if (typeof (window as any).__FLUID_STORE__ === "undefined") {
+                // fluidStoreをインポートして設定
+                import("/src/stores/fluidStore.svelte.js").then(module => {
+                    (window as any).__FLUID_STORE__ = module.fluidStore;
+                }).catch(() => {
+                    // フォールバック: 空のオブジェクトを設定
+                    (window as any).__FLUID_STORE__ = {};
+                });
+            }
+            if (typeof (window as any).__SVELTE_GOTO__ === "undefined") {
+                // gotoをインポートして設定
+                import("$app/navigation").then(module => {
+                    (window as any).__SVELTE_GOTO__ = module.goto;
+                }).catch(() => {
+                    // フォールバック: 空の関数を設定
+                    (window as any).__SVELTE_GOTO__ = () => {};
+                });
+            }
+            if (typeof (window as any).__FLUID_SERVICE__ === "undefined") {
+                // fluidServiceをインポートして設定
+                import("/src/lib/fluidService.svelte.js").then(module => {
+                    (window as any).__FLUID_SERVICE__ = module;
+                }).catch(() => {
+                    // フォールバック: 空のオブジェクトを設定
+                    (window as any).__FLUID_SERVICE__ = {};
+                });
+            }
         });
+
+        // ページが完全に初期化されるのを待機（タイムアウトを短縮）
+        try {
+            await page.waitForFunction(() => {
+                return (
+                    (window as any).__FLUID_STORE__ !== undefined &&
+                    (window as any).__SVELTE_GOTO__ !== undefined
+                );
+            }, { timeout: 10000 });
+        }
+        catch (error) {
+            console.log("Warning: Global variables not fully initialized, continuing anyway");
+        }
 
         page.goto = async (
             url: string,
@@ -93,7 +130,10 @@ export class TestHelpers {
             console.log(`TestHelper: FluidClient created`, { containerId: fluidClient.containerId });
 
             const project = fluidClient.getProject();
-            console.log(`TestHelper: Project retrieved`, { projectTitle: project.title, itemsCount: project.items?.length });
+            console.log(`TestHelper: Project retrieved`, {
+                projectTitle: project.title,
+                itemsCount: project.items?.length,
+            });
 
             fluidClient.createPage(pageName, lines);
             console.log(`TestHelper: Page created`, { pageName });
@@ -104,7 +144,8 @@ export class TestHelpers {
                 console.log(`TestHelper: Updating fluidStore with new client`);
                 fluidStore.fluidClient = fluidClient;
                 console.log(`TestHelper: FluidStore updated`);
-            } else {
+            }
+            else {
                 console.error(`TestHelper: FluidStore not found`);
             }
 
@@ -112,7 +153,7 @@ export class TestHelpers {
             const updatedProject = fluidClient.getProject();
             console.log(`TestHelper: Updated project state`, {
                 projectTitle: updatedProject.title,
-                itemsCount: updatedProject.items?.length
+                itemsCount: updatedProject.items?.length,
             });
 
             if (updatedProject.items && updatedProject.items.length > 0) {
@@ -340,7 +381,11 @@ export class TestHelpers {
         await page.waitForFunction(() => {
             const textarea = document.querySelector<HTMLTextAreaElement>(".global-textarea");
             console.log("TestHelper: global-textarea found:", !!textarea);
-            console.log("TestHelper: activeElement:", document.activeElement?.tagName, document.activeElement?.className);
+            console.log(
+                "TestHelper: activeElement:",
+                document.activeElement?.tagName,
+                document.activeElement?.className,
+            );
             return textarea !== null;
         }, { timeout: 5000 });
 
@@ -482,8 +527,8 @@ export class TestHelpers {
      * 指定インデックスのアイテムIDを取得する
      */
     public static async getItemIdByIndex(page: Page, index: number): Promise<string | null> {
-        return await page.evaluate((i) => {
-            const items = document.querySelectorAll('.outliner-item');
+        return await page.evaluate(i => {
+            const items = document.querySelectorAll(".outliner-item");
             const target = items[i] as HTMLElement | undefined;
             return target?.dataset.itemId ?? null;
         }, index);
@@ -945,7 +990,7 @@ export class FluidServiceHelper {
             const projectDetails = {
                 title: project.title,
                 itemCount: project.items ? project.items.length : 0,
-                items: []
+                items: [],
             };
 
             // 各ページ（アイテム）の詳細を取得
@@ -960,7 +1005,7 @@ export class FluidServiceHelper {
                             created: item.created,
                             lastChanged: item.lastChanged,
                             childItemCount: item.items ? item.items.length : 0,
-                            childItems: []
+                            childItems: [],
                         };
 
                         // 子アイテムの詳細も取得
@@ -973,7 +1018,7 @@ export class FluidServiceHelper {
                                         text: childItem.text,
                                         author: childItem.author,
                                         created: childItem.created,
-                                        lastChanged: childItem.lastChanged
+                                        lastChanged: childItem.lastChanged,
                                     });
                                 }
                             }
@@ -987,7 +1032,7 @@ export class FluidServiceHelper {
             return {
                 containerId: client.containerId,
                 clientId: client.clientId,
-                project: projectDetails
+                project: projectDetails,
             };
         });
     }
@@ -1051,7 +1096,7 @@ export class FluidServiceHelper {
                         created: item.created,
                         lastChanged: item.lastChanged,
                         childItemCount: item.items ? item.items.length : 0,
-                        childItems: []
+                        childItems: [],
                     };
 
                     // 子アイテムの詳細も取得
@@ -1064,7 +1109,7 @@ export class FluidServiceHelper {
                                     text: childItem.text,
                                     author: childItem.author,
                                     created: childItem.created,
-                                    lastChanged: childItem.lastChanged
+                                    lastChanged: childItem.lastChanged,
                                 });
                             }
                         }

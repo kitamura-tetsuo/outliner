@@ -25,7 +25,7 @@ import { userManager } from "../auth/UserManager";
 import { FluidClient } from "../fluid/fluidClient";
 import {
     appTreeConfiguration,
-    Project
+    Project,
 } from "../schema/app-schema";
 import {
     getDefaultContainerId,
@@ -474,7 +474,16 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
 
         // ユーザー情報を取得
         const userInfo = userManager.getFluidUserInfo();
-        const userId = userInfo?.id;
+        let userId = userInfo?.id;
+
+        // テスト環境では認証をバイパス
+        if (
+            !userId &&
+            (import.meta.env.VITE_IS_TEST === "true" || import.meta.env.VITE_IS_TEST_MODE_FORCE_E2E === "true")
+        ) {
+            userId = import.meta.env.VITE_DEBUG_USER_ID || "test-user-id";
+            log("fluidService", "info", `Using test user ID: ${userId}`);
+        }
 
         if (!userId) {
             throw new Error("ユーザーがログインしていないため、新規コンテナを作成できません");
@@ -577,7 +586,11 @@ export async function getFluidClientByProjectTitle(projectTitle: string): Promis
 
             // 必要なプロパティが存在することを確認
             if (!container || !appData) {
-                log("fluidService", "error", `FluidInstancesに必要なプロパティが不足しています: container=${!!container}, appData=${!!appData}`);
+                log(
+                    "fluidService",
+                    "error",
+                    `FluidInstancesに必要なプロパティが不足しています: container=${!!container}, appData=${!!appData}`,
+                );
                 continue;
             }
 
@@ -598,10 +611,16 @@ export async function getFluidClientByProjectTitle(projectTitle: string): Promis
     }
 
     log("fluidService", "warn", `プロジェクトタイトル「${projectTitle}」に一致するFluidClientが見つかりませんでした`);
-    log("fluidService", "debug", `利用可能なプロジェクト: ${keys.map(key => {
-        const instances = clientRegistry.get(key);
-        return instances?.[4]?.title || 'unknown';
-    }).join(', ')}`);
+    log(
+        "fluidService",
+        "debug",
+        `利用可能なプロジェクト: ${
+            keys.map(key => {
+                const instances = clientRegistry.get(key);
+                return instances?.[4]?.title || "unknown";
+            }).join(", ")
+        }`,
+    );
     return undefined;
 }
 
