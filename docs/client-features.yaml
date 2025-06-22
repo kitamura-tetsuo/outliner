@@ -744,6 +744,7 @@
     - src/components/QueryEditor.svelte
     - src/components/ChartPanel.svelte
   services:
+    - src/services/sqlService.ts
     - src/services/queryStore.ts
     - src/services/syncWorker.ts
   tests:
@@ -1059,6 +1060,7 @@
     - src/components/QueryEditor.svelte
     - src/components/ChartPanel.svelte
   services:
+    - src/services/sqlService.ts
     - src/services/queryStore.ts
     - src/services/syncWorker.ts
   tests:
