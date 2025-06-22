@@ -20,11 +20,28 @@ let db: Database | null = null;
 
 export async function initDb(data?: Uint8Array) {
     try {
-        const SQL = await initSqlJs({
-            locateFile: (file: string) => {
-                return `https://sql.js.org/dist/${file}`;
-            },
-        });
+        let SQL;
+
+        // In test environment, load WASM file directly
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "test") {
+            const fs = await import("fs");
+            const path = await import("path");
+            const wasmPath = path.join(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm");
+            const wasmBinary = fs.readFileSync(wasmPath);
+
+            SQL = await initSqlJs({
+                wasmBinary,
+            });
+        }
+        else {
+            // In browser environment, use CDN
+            SQL = await initSqlJs({
+                locateFile: (file: string) => {
+                    return `https://sql.js.org/dist/${file}`;
+                },
+            });
+        }
+
         db = new SQL.Database(data);
         console.log("SQLite database initialized successfully");
     }
