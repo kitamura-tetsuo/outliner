@@ -5,7 +5,7 @@
 | API-0002 | Firebase emulator起動待機機能 | — | implemented |
 | API-0003 | Admin check for container user listing | client/e2e/core/API-0003.spec.ts | implemented |
 | APP-0001 | プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定 | client/e2e/core/APP-0001.spec.ts | implemented |
-| CHT-001 | Chart Component | — | implemented |
+| CHT-001 | Chart Component | client/e2e/core/CHT-001.spec.ts | implemented |
 | CLM-0001 | クリックで編集モードに入る | client/e2e/core/CLM-0001.spec.ts | implemented |
 | CLM-0002 | 左へ移動 | client/e2e/core/CLM-0002.spec.ts | implemented |
 | CLM-0003 | 右へ移動 | client/e2e/core/CLM-0003.spec.ts | implemented |
