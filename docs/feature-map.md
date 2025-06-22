@@ -69,4 +69,3 @@
 | TST-0005 | テスト環境の初期化と準備 | — | implemented |
 | USR-0001 | ユーザー削除機能 | — | implemented |
 | USR-0002 | コンテナ削除機能 | — | implemented |
-| VCM-001 | Multi-Cursor Editing | — | implemented |

@@ -990,11 +990,6 @@
   tests:
     - client/e2e/core/COL-0001.spec.ts
 
-- id: MCE-0001
-  title: 'Multi-Cursor Editing'
-  description: '複数のカーソルを使って同時に編集できる機能'
-  category: collaboration
-  status: implemented
 
 - id: SRP-0001
   title: '高度な検索と置換'
@@ -1019,12 +1014,6 @@
   description: 'ページ間のリンクを視覚化するグラフ表示機能'
   category: navigation
   status: draft
-- id: VCM-001
-  title: Multi-Cursor Editing
-  description: 複数カーソルを同時に操作して編集できる機能
-  category: cursor-management
-  status: implemented
-
 - id: SRE-001
   title: Advanced Search & Replace
   description: 正規表現や範囲指定に対応した検索・置換機能
