@@ -34,7 +34,7 @@
 | GRF-001 | Graph View | — | implemented |
 | GVI-0001 | Graph View | — | draft |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
-| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
+| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001.spec.ts<br>client/e2e/core/ITM-0001-title.spec.ts | implemented |
 | LNK-0001 | 内部リンクのURL生成機能 | — | implemented |
 | LNK-0002 | 内部リンクの機能検証 | — | implemented |
 | LNK-0003 | 内部リンクのナビゲーション機能 | — | implemented |
@@ -42,7 +42,7 @@
 | LNK-0005 | リンクプレビュー機能 | — | implemented |
 | LNK-0006 | リンク先ページの存在確認機能 | — | implemented |
 | LNK-0007 | バックリンク機能 | — | implemented |
-| MCE-0001 | Multi-Cursor Editing | — | draft |
+| MCE-0001 | Multi-Cursor Editing | — | implemented |
 | NAV-0001 | プロジェクト選択とページナビゲーション | client/e2e/core/NAV-0001.spec.ts | implemented |
 | NAV-0002 | プロジェクトページへのリンク機能 | — | implemented |
 | SEC-0001 | Dotenvx encrypted env files | client/e2e/core/SEC-0001.spec.ts | implemented |
@@ -69,4 +69,3 @@
 | TST-0005 | テスト環境の初期化と準備 | — | implemented |
 | USR-0001 | ユーザー削除機能 | — | implemented |
 | USR-0002 | コンテナ削除機能 | — | implemented |
-| VCM-001 | Multi-Cursor Editing | — | draft |
