@@ -1,5 +1,8 @@
-import initSqlJs, { Database, type QueryExecResult } from 'sql.js';
-import { writable } from 'svelte/store';
+import initSqlJs, {
+    type Database,
+    type QueryExecResult,
+} from "sql.js";
+import { writable } from "svelte/store";
 
 export interface ColumnMeta {
     name: string;
@@ -21,19 +24,19 @@ export async function initDb(data?: Uint8Array) {
 }
 
 export function execute(sql: string): QueryResult {
-    if (!db) throw new Error('Database not initialized');
+    if (!db) throw new Error("Database not initialized");
     const res = db.exec(sql);
     if (res.length === 0) return { rows: [], columnsMeta: [] };
     const result = res[0] as QueryExecResult;
-    const columnsMeta: ColumnMeta[] = result.columns.map(name => ({
+    const columnsMeta: ColumnMeta[] = result.columns.map((name: string) => ({
         name,
         table: null,
         column: null,
         db: null,
     }));
-    const rows = result.values.map(row => {
+    const rows = result.values.map((row: any[]) => {
         const obj: Record<string, any> = {};
-        result.columns.forEach((col, i) => {
+        result.columns.forEach((col: string, i: number) => {
             obj[col] = row[i];
         });
         return obj;
