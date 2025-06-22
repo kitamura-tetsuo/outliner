@@ -4,6 +4,7 @@
 | API-0001 | Firebase Functions APIサーバーの修正 | — | implemented |
 | API-0002 | Firebase emulator起動待機機能 | — | implemented |
 | API-0003 | Admin check for container user listing | — | implemented |
+| API-0004 | Admin user list | — | implemented |
 | APP-0001 | プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定 | — | implemented |
 | CHT-001 | Chart Component | client/e2e/core/CHT-001.spec.ts | implemented |
 | CLM-0001 | クリックで編集モードに入る | client/e2e/core/CLM-0001.spec.ts | implemented |
