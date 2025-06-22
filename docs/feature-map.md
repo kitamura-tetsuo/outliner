@@ -20,7 +20,7 @@
 | CLM-0103 | フォーマット文字列でのカーソル操作 | client/e2e/core/CLM-0103.spec.ts | implemented |
 | COL-0001 | 他ユーザーのカーソル表示 | — | implemented |
 | DBW-0001 | Client-Side WASM DB | — | draft |
-| DBW-001 | Client-Side SQL Database | — | draft |
+| DBW-001 | Client-Side SQL Database | — | implemented |
 | FFI-0001 | Fluid Framework Integration | — | draft |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | — | implemented |
 | FMT-0001 | フォーマット表示 | client/e2e/core/FMT-0001.spec.ts | implemented |
@@ -60,8 +60,7 @@
 | SLR-0010 | 選択範囲のフォーマット変更 | client/e2e/core/SLR-0010.spec.ts | implemented |
 | SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | — | implemented |
 | SLR-0101 | ボックス選択（矩形選択）機能 - マウス | — | implemented |
-| SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts | draft |
-| SRP-0001 | 高度な検索と置換 | — | draft |
+| SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts | implemented |
 | TBL-0001 | Editable JOIN Table | client/e2e/new/TBL-0001.spec.ts | implemented |
 | TST-0001 | SharedTreeデータ検証ユーティリティ | client/e2e/utils/tree-validation.spec.ts | implemented |
 | TST-0002 | カーソル情報検証ユーティリティ | client/e2e/utils/cursor-validation.spec.ts | implemented |
@@ -70,3 +69,4 @@
 | TST-0005 | テスト環境の初期化と準備 | — | implemented |
 | USR-0001 | ユーザー削除機能 | — | implemented |
 | USR-0002 | コンテナ削除機能 | — | implemented |
+| VCM-001 | Multi-Cursor Editing | — | draft |
