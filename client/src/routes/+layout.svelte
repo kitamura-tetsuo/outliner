@@ -132,18 +132,8 @@ onMount(() => {
         // 認証状態を確認
         isAuthenticated = userManager.getCurrentUser() !== null;
 
-        // テスト環境かどうかを確認
-        const isTestEnv = import.meta.env.MODE === "test" ||
-            process.env.NODE_ENV === "test" ||
-            import.meta.env.VITE_IS_TEST === "true" ||
-            import.meta.env.VITE_IS_TEST_MODE_FORCE_E2E === "true";
-
         if (isAuthenticated) {
             // デバッグ関数を初期化
-            setupGlobalDebugFunctions(fluidService);
-        }
-        else if (isTestEnv) {
-            // テスト環境では認証なしでもデバッグ関数を初期化
             setupGlobalDebugFunctions(fluidService);
         }
         else {
@@ -153,6 +143,9 @@ onMount(() => {
                 // デバッグ関数を初期化
                 if (isAuthenticated && browser) {
                     setupGlobalDebugFunctions(fluidService);
+                    const isTestEnv = import.meta.env.MODE === "test" ||
+                        process.env.NODE_ENV === "test" ||
+                        import.meta.env.VITE_IS_TEST === "true";
                     if (isTestEnv) {
                         // テスト環境では、既存のコンテナを削除してからテスト用のコンテナを作成する
                         (async () => {

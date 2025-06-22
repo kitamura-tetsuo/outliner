@@ -474,16 +474,7 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
 
         // ユーザー情報を取得
         const userInfo = userManager.getFluidUserInfo();
-        let userId = userInfo?.id;
-
-        // テスト環境では認証をバイパス
-        if (
-            !userId &&
-            (import.meta.env.VITE_IS_TEST === "true" || import.meta.env.VITE_IS_TEST_MODE_FORCE_E2E === "true")
-        ) {
-            userId = import.meta.env.VITE_DEBUG_USER_ID || "test-user-id";
-            log("fluidService", "info", `Using test user ID: ${userId}`);
-        }
+        const userId = userInfo?.id;
 
         if (!userId) {
             throw new Error("ユーザーがログインしていないため、新規コンテナを作成できません");
