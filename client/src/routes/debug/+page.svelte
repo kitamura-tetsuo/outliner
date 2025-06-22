@@ -16,13 +16,13 @@ import { createFluidClient } from "../../services";
 
 const logger = getLogger();
 
-let error: string | null = $state(null);
+let error: string | undefined = $state(undefined);
 let debugInfo: any = $state({});
 let hostInfo = $state("");
 let portInfo = $state("");
 let envConfig = getDebugConfig();
 let isAuthenticated = $state(false);
-let networkError: string | null = $state(null);
+let networkError: string | undefined = $state(undefined);
 let isInitializing = $state(false);
 let connectionStatus = $state("未接続");
 let isConnected = $state(false);
@@ -63,7 +63,7 @@ async function initializeFluidClient() {
 
 // ネットワークエラー発生時の再試行
 async function retryConnection() {
-    networkError = null;
+    networkError = undefined;
     await initializeFluidClient();
 }
 

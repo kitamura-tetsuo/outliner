@@ -24,7 +24,7 @@ const logger = getLogger("AppLayout");
 
 // 認証関連の状態
 let isAuthenticated = $state(false);
-let error: string | null = $state(null);
+let error: string | undefined = $state(undefined);
 
 // APIサーバーのURLを取得
 const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
@@ -106,7 +106,7 @@ function schedulePeriodicLogRotation() {
     }, ROTATION_INTERVAL);
 }
 
-let rotationInterval: ReturnType<typeof setInterval> | null = null;
+let rotationInterval: ReturnType<typeof setInterval> | undefined = undefined;
 
 // ブラウザのunloadイベント用リスナー
 function handleBeforeUnload() {

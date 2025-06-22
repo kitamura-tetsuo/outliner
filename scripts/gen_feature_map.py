@@ -15,9 +15,10 @@ ROOT        = Path(__file__).resolve().parent.parent
 YAML_SRC    = ROOT / "docs" / "client-features.yaml"
 # ★ 複数ディレクトリをリストで指定
 TEST_ROOTS  = [                                   # 任意で追記 / 上書き
-    ROOT / "client/e2e",                              # default
-    ROOT / "client/src/tests",                              # default
-    # ROOT / "server/tests",                    # 例: 追加したいときはアンコメント
+    ROOT / "client/e2e",                         # default
+    ROOT / "client/src/tests",                   # default
+    ROOT / "functions/test",                     # new: Cloud Functions tests
+    ROOT / "server/tests",                       # new: server unit tests
 ]
 MD_OUTFILE  = ROOT / "docs" / "feature-map.md"        # 出力先
 # Accept any capitalized prefix like CLM-0001 or API-0123
