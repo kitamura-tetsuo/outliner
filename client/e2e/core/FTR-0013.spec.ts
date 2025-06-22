@@ -1,3 +1,7 @@
+/** @feature FTR-0013
+ *  Title   : Use environment variables in min page
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,

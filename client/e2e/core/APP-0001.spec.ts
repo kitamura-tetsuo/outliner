@@ -1,3 +1,7 @@
+/** @feature APP-0001
+ *  Title   : プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
