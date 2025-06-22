@@ -1,5 +1,8 @@
-import initSqlJs, { Database, type QueryExecResult } from 'sql.js';
-import { writable } from 'svelte/store';
+import initSqlJs, {
+    Database,
+    type QueryExecResult,
+} from "sql.js";
+import { writable } from "svelte/store";
 
 export interface ColumnMeta {
     name: string;
@@ -16,12 +19,23 @@ export interface QueryResult {
 let db: Database | null = null;
 
 export async function initDb(data?: Uint8Array) {
-    const SQL = await initSqlJs({});
-    db = new SQL.Database(data);
+    try {
+        const SQL = await initSqlJs({
+            locateFile: (file: string) => {
+                return `https://sql.js.org/dist/${file}`;
+            },
+        });
+        db = new SQL.Database(data);
+        console.log("SQLite database initialized successfully");
+    }
+    catch (error) {
+        console.error("Failed to initialize SQLite database:", error);
+        throw error;
+    }
 }
 
 export function execute(sql: string): QueryResult {
-    if (!db) throw new Error('Database not initialized');
+    if (!db) throw new Error("Database not initialized");
     const res = db.exec(sql);
     if (res.length === 0) return { rows: [], columnsMeta: [] };
     const result = res[0] as QueryExecResult;
@@ -44,5 +58,14 @@ export function execute(sql: string): QueryResult {
 export const queryStore = writable<QueryResult>({ rows: [], columnsMeta: [] });
 
 export function runQuery(sql: string) {
-    queryStore.set(execute(sql));
+    try {
+        console.log("Executing SQL query:", sql);
+        const result = execute(sql);
+        console.log("Query result:", result);
+        queryStore.set(result);
+    }
+    catch (error) {
+        console.error("Failed to execute SQL query:", error);
+        queryStore.set({ rows: [], columnsMeta: [] });
+    }
 }
