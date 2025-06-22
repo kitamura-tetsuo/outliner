@@ -79,6 +79,12 @@ export default defineConfig({
             testDir: "./e2e/utils",
             use: { ...devices["Desktop Chrome"] },
         },
+        {
+            // 新機能テスト
+            name: "new",
+            testDir: "./e2e/new",
+            use: { ...devices["Desktop Chrome"] },
+        },
     ],
     // webServer: {
     //     command: `npx dotenv -e .env.test -- npm run dev -- --host 0.0.0.0 --port ${TEST_PORT}`,
