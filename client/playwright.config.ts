@@ -34,7 +34,7 @@ export default defineConfig({
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
-    workers: process.env.CI ? 1 : 4,
+    workers: process.env.CI ? 8 : 4,
     reporter: [["html", { open: "never" }]],
     headless: true,
     // テスト実行時のタイムアウト設定を延長
