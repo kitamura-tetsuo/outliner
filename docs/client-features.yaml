@@ -759,6 +759,8 @@
     - SQLクエリ結果をグリッド表示する
     - 編集内容がFluid経由で同期される
     - 編集後チャートが自動更新される
+    - セル編集後、queryStoreのデータが更新される
+    - セル編集後、ChartPanelに変更が表示される
 - id: TST-0001
   title: SharedTreeデータ検証ユーティリティ
   description: テストにおいてSharedTreeの内容をJSONとして取得し、結果を厳密かつ簡易に判定するユーティリティ
