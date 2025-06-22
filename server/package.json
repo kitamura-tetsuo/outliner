@@ -2,13 +2,13 @@
     "name": "fluid-outliner-server",
     "version": "1.0.0",
     "description": "Authentication server for Fluid Outliner app",
-    "main": "auth-service.js",
+    "main": "log-service.js",
     "scripts": {
-        "start": "node auth-service.js",
-        "dev": "nodemon auth-service.js",
+        "start": "node log-service.js",
+        "dev": "nodemon log-service.js",
         "create-test-user": "node utils/create-test-user.js",
         "test": "mocha tests/**/*.test.js --timeout 10000",
-        "test:emulator-wait": "mocha tests/auth-service-emulator-wait.test.js --timeout 10000"
+        "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000"
     },
     "dependencies": {
         "@dotenvx/dotenvx": "^1.44.1",

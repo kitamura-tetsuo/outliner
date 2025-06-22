@@ -14,7 +14,7 @@ const serverLogDir = path.join(__dirname, "..", "logs");
 const clientLogDir = path.join(__dirname, "..", "..", "client", "logs");
 
 // ログファイルのパス
-const serverLogPath = path.join(serverLogDir, "auth-service.log");
+const serverLogPath = path.join(serverLogDir, "log-service.log");
 // テスト環境かどうかをチェック
 const isTestEnv = process.env.NODE_ENV === "test";
 const clientLogFileName = isTestEnv ? "test-browser.log" : "browser.log";

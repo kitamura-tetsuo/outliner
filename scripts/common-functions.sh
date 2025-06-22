@@ -214,6 +214,7 @@ start_firebase_emulator() {
   cd "${ROOT_DIR}"
   firebase emulators:start --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
   cd "${ROOT_DIR}"
+  node "${ROOT_DIR}/server/scripts/init-firebase-emulator.js" &
 }
 
 # Start Tinylicious server
@@ -228,7 +229,7 @@ start_tinylicious() {
 start_api_server() {
   echo "Starting API server on port ${TEST_API_PORT}..."
   cd "${ROOT_DIR}/server"
-  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} </dev/null > "${ROOT_DIR}/server/logs/test-auth-service-tee.log" 2>&1 &
+  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} </dev/null > "${ROOT_DIR}/server/logs/test-log-service-tee.log" 2>&1 &
   cd "${ROOT_DIR}"
 }
 

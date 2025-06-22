@@ -72,7 +72,7 @@ Prioritize performance.
 - Firebase Auth emulator should be called only once at 192.168.50.13:59099, and duplicate environment variables like VITE_AUTH_EMULATOR_HOST and VITE_FIREbase_EMULATOR_HOST should be consolidated.
 - For VSCode Playwright extension, directly modify isLocalhostEnv in playwright.config.ts as environment variables aren't reliably passed.
 - When tests aren't progressing, check server-side logs (server/logs/test-svelte-kit.log or server/logs/localhost-svelte-kit.log).
-- User has set up test users in server/auth-service.js and wants to clear all Firestore emulator data during development.
+- User has set up test users in server/log-service.js and wants to clear all Firestore emulator data during development.
 - Always use environment variables for emulator host configuration instead of hardcoding IP addresses like 192.168.50.13, as CI environments will have different host values.
 - User prefers fixing import.meta environment variable loading issues at the root cause rather than using error handling workarounds.
 - Always run `scripts/codex-setp.sh` when the container starts to set up local test services.
@@ -117,7 +117,7 @@ Prioritize performance.
 - User plans to deploy to Firebase Hosting + Functions with only /api/fluid-token and /api/save-container needing implementation in Firebase Functions.
 - The Firebase project is deployed at https://outliner-d57b0.web.app with project console at https://console.firebase.google.com/project/outliner-d57b0/overview.
 - For Firebase Functions v2, environment variables should be set using .env files instead of functions.config() method.
-- Authentication service needs to be migrated from server/auth-service.js to Firebase Functions, and client-side code needs to be updated accordingly.
+- Authentication service needs to be migrated from server/log-service.js to Firebase Functions, and client-side code needs to be updated accordingly.
 - User prefers using Firebase Functions exclusively and wants to remove conditional API path selection.
 - Firebase Functions are accessed through Firebase Hosting at http://localhost:57000/api instead of http://localhost:7090/api.
 - Sensitive keys and credentials should not be hardcoded in the source code, especially in repositories that are committed to git.

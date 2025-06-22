@@ -78,7 +78,7 @@ require("dotenv").config({ path: path.join(__dirname, "..", ".env.test") });
 
 // テスト対象のサーバーをインポート
 // 注意: このimport前にモックを設定する必要がある
-const app = require("./auth-service-test-helper");
+const app = require("./log-service-test-helper");
 
 describe("認証サービスのテスト", () => {
     // テスト前の準備

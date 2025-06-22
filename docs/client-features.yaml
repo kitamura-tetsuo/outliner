@@ -40,9 +40,9 @@
     - リトライ回数と遅延時間をログに出力する
     - 接続成功時にユーザー数とユーザー情報をログに出力する
   tests:
-    - server/test/auth-service-emulator-wait.test.js
+    - server/tests/log-service-emulator-wait.test.js
   components:
-    - server/auth-service.js
+    - server/log-service.js
 - id: APP-0001
   title: プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定
   description: プロジェクトページ表示時に自動的にグローバルテキストエリアにフォーカスを設定し、すぐに入力できるようにします。
@@ -912,7 +912,7 @@
     - server/tests/get-container-users.test.js
     - client/e2e/core/API-0003.spec.ts
   components:
-    - server/auth-service.js
+    - server/log-service.js
 
 - id: API-0004
   title: 'Admin user list'
@@ -923,9 +923,9 @@
     - '管理者以外のリクエストは403エラーを返す'
     - '管理者はFirebaseユーザー一覧を取得できる'
   tests:
-    - server/tests/auth-service.test.js
+    - server/tests/log-service.test.js
   components:
-    - server/auth-service.js
+    - server/log-service.js
 
 - id: COL-0001
   title: '他ユーザーのカーソル表示'
@@ -1016,6 +1016,18 @@
   category: security
   status: deprecated
   components: []
+  tests: []
+
+- id: LOG-0001
+  title: Development log service
+  description: >-
+    Node server used in development and test environments to store logs.
+    Firebase emulator initialization is handled by a separate script.
+  category: api-server
+  status: implemented
+  components:
+    - server/log-service.js
+    - server/scripts/init-firebase-emulator.js
   tests: []
 
 - id: VCM-001
