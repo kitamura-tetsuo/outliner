@@ -61,3 +61,5 @@ client/test-output.txt
 server/firebase-adminsdk.json
 functions/.env.production
 *.swp
+
+client/coverage/
