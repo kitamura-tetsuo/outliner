@@ -61,7 +61,8 @@
   status: implemented
   components:
     - src/components/ChartComponent.svelte
-  tests: []
+  tests:
+    - client/e2e/core/CHT-001.spec.ts
   acceptance:
     - データをグラフで表示する
     - データ更新時にグラフが自動更新される
@@ -1065,7 +1066,8 @@
   status: implemented
   components:
     - src/components/ChartComponent.svelte
-  tests: []
+  tests:
+    - client/e2e/core/CHT-001.spec.ts
 
 - id: TBL-0001
   title: Editable JOIN Table
