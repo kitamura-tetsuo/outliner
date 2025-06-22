@@ -93,7 +93,10 @@ export class TestHelpers {
             console.log(`TestHelper: FluidClient created`, { containerId: fluidClient.containerId });
 
             const project = fluidClient.getProject();
-            console.log(`TestHelper: Project retrieved`, { projectTitle: project.title, itemsCount: project.items?.length });
+            console.log(`TestHelper: Project retrieved`, {
+                projectTitle: project.title,
+                itemsCount: project.items?.length,
+            });
 
             fluidClient.createPage(pageName, lines);
             console.log(`TestHelper: Page created`, { pageName });
@@ -104,7 +107,8 @@ export class TestHelpers {
                 console.log(`TestHelper: Updating fluidStore with new client`);
                 fluidStore.fluidClient = fluidClient;
                 console.log(`TestHelper: FluidStore updated`);
-            } else {
+            }
+            else {
                 console.error(`TestHelper: FluidStore not found`);
             }
 
@@ -112,7 +116,7 @@ export class TestHelpers {
             const updatedProject = fluidClient.getProject();
             console.log(`TestHelper: Updated project state`, {
                 projectTitle: updatedProject.title,
-                itemsCount: updatedProject.items?.length
+                itemsCount: updatedProject.items?.length,
             });
 
             if (updatedProject.items && updatedProject.items.length > 0) {
@@ -330,7 +334,7 @@ export class TestHelpers {
         testInfo,
         lines: string[],
     ): Promise<{ projectName: string; pageName: string; }> {
-        const projectName = `Test Project ${testInfo.workerIndex} ${Date.now()}`;
+        const projectName = `TestProject${testInfo.workerIndex}_${Date.now()}`;
         const pageName = `test-page-${Date.now()}`;
         await TestHelpers.createTestProjectAndPageViaAPI(page, projectName, pageName, lines);
 
@@ -340,7 +344,11 @@ export class TestHelpers {
         await page.waitForFunction(() => {
             const textarea = document.querySelector<HTMLTextAreaElement>(".global-textarea");
             console.log("TestHelper: global-textarea found:", !!textarea);
-            console.log("TestHelper: activeElement:", document.activeElement?.tagName, document.activeElement?.className);
+            console.log(
+                "TestHelper: activeElement:",
+                document.activeElement?.tagName,
+                document.activeElement?.className,
+            );
             return textarea !== null;
         }, { timeout: 5000 });
 
@@ -365,7 +373,14 @@ export class TestHelpers {
                 console.log("Current URL:", currentUrl);
 
                 // プロジェクトページに移動していない場合は、リダイレクトを待つ
-                if (!currentUrl.includes("/project/") && !currentUrl.includes("?project=")) {
+                // URLが /ProjectName/PageName の形式になっているかチェック
+                const urlParts = currentUrl.split("/").filter(part => part.length > 0);
+                const isProjectPage = urlParts.length >= 2 &&
+                    !currentUrl.includes("/project/") &&
+                    !currentUrl.includes("?project=") &&
+                    urlParts[urlParts.length - 2].startsWith("Test"); // プロジェクト名がTestで始まる
+
+                if (!isProjectPage && !currentUrl.includes("/project/") && !currentUrl.includes("?project=")) {
                     console.log("Not on a project page yet, waiting for redirect...");
                     await page.waitForTimeout(1000);
                     continue;
@@ -482,8 +497,8 @@ export class TestHelpers {
      * 指定インデックスのアイテムIDを取得する
      */
     public static async getItemIdByIndex(page: Page, index: number): Promise<string | null> {
-        return await page.evaluate((i) => {
-            const items = document.querySelectorAll('.outliner-item');
+        return await page.evaluate(i => {
+            const items = document.querySelectorAll(".outliner-item");
             const target = items[i] as HTMLElement | undefined;
             return target?.dataset.itemId ?? null;
         }, index);
@@ -945,7 +960,7 @@ export class FluidServiceHelper {
             const projectDetails = {
                 title: project.title,
                 itemCount: project.items ? project.items.length : 0,
-                items: []
+                items: [],
             };
 
             // 各ページ（アイテム）の詳細を取得
@@ -960,7 +975,7 @@ export class FluidServiceHelper {
                             created: item.created,
                             lastChanged: item.lastChanged,
                             childItemCount: item.items ? item.items.length : 0,
-                            childItems: []
+                            childItems: [],
                         };
 
                         // 子アイテムの詳細も取得
@@ -973,7 +988,7 @@ export class FluidServiceHelper {
                                         text: childItem.text,
                                         author: childItem.author,
                                         created: childItem.created,
-                                        lastChanged: childItem.lastChanged
+                                        lastChanged: childItem.lastChanged,
                                     });
                                 }
                             }
@@ -987,7 +1002,7 @@ export class FluidServiceHelper {
             return {
                 containerId: client.containerId,
                 clientId: client.clientId,
-                project: projectDetails
+                project: projectDetails,
             };
         });
     }
@@ -1051,7 +1066,7 @@ export class FluidServiceHelper {
                         created: item.created,
                         lastChanged: item.lastChanged,
                         childItemCount: item.items ? item.items.length : 0,
-                        childItems: []
+                        childItems: [],
                     };
 
                     // 子アイテムの詳細も取得
@@ -1064,7 +1079,7 @@ export class FluidServiceHelper {
                                     text: childItem.text,
                                     author: childItem.author,
                                     created: childItem.created,
-                                    lastChanged: childItem.lastChanged
+                                    lastChanged: childItem.lastChanged,
                                 });
                             }
                         }
