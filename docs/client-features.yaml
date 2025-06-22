@@ -54,17 +54,7 @@
     - ユーザーがクリックせずに直接テキスト入力が可能になる
   tests:
     - client/e2e/core/APP-0001.spec.ts
-- id: CHT-001
-  title: Chart Component
-  description: 保存されたデータをグラフ表示するチャートコンポーネント
-  category: visualization
-  status: implemented
-  components:
-    - src/components/ChartComponent.svelte
-  tests: []
-  acceptance:
-    - データをグラフで表示する
-    - データ更新時にグラフが自動更新される
+
 - id: CLM-0001
   title: クリックで編集モードに入る
   shortcut: クリック
@@ -545,11 +535,14 @@
   title: Multi-Cursor Editing
   description: 複数のカーソルを使って同時に編集できる機能
   category: collaboration
-  status: draft
+  status: implemented
   acceptance:
     - 複数のカーソルを配置できる
     - 各カーソルから独立してテキスト編集できる
     - Undo/redoがすべてのカーソルに適用される
+  tests:
+    - client/src/stores/EditorOverlayStore.test.ts
+    - client/e2e/disabled/multi-cursor.spec.ts
 - id: NAV-0001
   title: プロジェクト選択とページナビゲーション
   description: ルートページでプロジェクトを選択した場合にプロジェクトページへ遷移し、プロジェクトページからページリストを通じて個別ページへ遷移する機能
@@ -576,16 +569,7 @@
     - ホームへのリンクをクリックするとホームページに遷移する
   tests:
     - client/e2e/core/NAV-0002.spec.ts
-- id: SEC-0001
-  title: Dotenvx encrypted env files
-  description: Use dotenvx to encrypt server environment files
-  category: security
-  status: implemented
-  components: []
-  tests: []
-  acceptance:
-    - dotenvxで環境ファイルを暗号化
-    - 実行時に復号して利用できる
+
 - id: SLR-0001
   title: Shift + 上下左右
   shortcut: Shift + 上下左右
@@ -763,6 +747,7 @@
     - src/components/QueryEditor.svelte
     - src/components/ChartPanel.svelte
   services:
+    - src/services/sqlService.ts
     - src/services/queryStore.ts
     - src/services/syncWorker.ts
   tests:
@@ -920,50 +905,30 @@
   tests:
     - client/e2e/core/USR-0002.spec.ts
 
-- id: API-0001
-  title: 'Firebase Functions APIサーバーの修正'
-  description: 'Firebase Functions APIサーバーのローカルテスト時のエラーを修正し、正常に動作するようにする機能'
+- id: API-0003
+  title: 'Admin check for container user listing'
+  description: '/api/get-container-users requires admin role'
   category: api-server
   status: implemented
   acceptance:
-    - 'Firebase Functions エミュレーターが正常に起動する'
-    - 'ポート設定が正しく構成される（Hosting: 57000, Functions: 57070）'
-    - 'CORS設定が正しく構成され、クロスオリジンリクエストが正常に処理される'
-    - '環境変数が正しく読み込まれ、Azure Fluid Relay設定が適用される'
-    - 'ヘルスチェックエンドポイント（/health）が正常に応答する'
-    - 'fluid-tokenエンドポイント（/api/fluid-token）が認証エラーを適切に処理する'
-    - 'save-containerエンドポイント（/api/save-container）が認証エラーを適切に処理する'
-    - 'getUserContainersエンドポイント（/api/getUserContainers）が認証エラーを適切に処理する'
-    - 'deleteUserエンドポイント（/api/deleteUser）が認証エラーを適切に処理する'
-    - 'deleteContainerエンドポイント（/api/deleteContainer）が認証エラーを適切に処理する'
-    - '無効なHTTPメソッドに対して405エラーが返される'
-    - '必須パラメータが不足している場合に400エラーが返される'
-    - '認証に失敗した場合に401または500エラーが返される'
-    - 'Firebase Hosting経由でのリクエストが正しくFunctionsにルーティングされる'
+    - '非管理者がアクセスした場合403エラーを返す'
+    - '管理者はコンテナのユーザーリストを取得できる'
   tests:
-    - functions/test/firebase-functions.test.js
+    - server/tests/get-container-users.test.js
+    - client/e2e/core/API-0003.spec.ts
   components:
-    - functions/index.js
-    - functions/.env
-    - firebase.json
-    - client/.env.localhost.test
+    - server/auth-service.js
 
-- id: API-0002
-  title: 'Firebase emulator起動待機機能'
-  description: 'Firebase emulatorの起動を待つリトライ機能により、ECONNREFUSED エラーを回避する機能'
+- id: API-0004
+  title: 'Admin user list'
+  description: '/api/list-users returns all users for admins only'
   category: api-server
   status: implemented
   acceptance:
-    - 'Firebase emulator環境変数が設定されている場合、emulatorの起動を待機する'
-    - 'ECONNREFUSED エラーが発生した場合、指数バックオフでリトライする'
-    - '最大30回のリトライを行い、初期遅延1秒、最大遅延10秒で待機する'
-    - 'Firebase Auth emulatorへの接続テストを行い、成功するまで待機する'
-    - 'emulator環境でない場合は待機をスキップする'
-    - 'ECONNREFUSED以外のエラーは即座に失敗とする'
-    - 'リトライ回数と遅延時間をログに出力する'
-    - '接続成功時にユーザー数とユーザー情報をログに出力する'
+    - '管理者以外のリクエストは403エラーを返す'
+    - '管理者はFirebaseユーザー一覧を取得できる'
   tests:
-    - server/test/auth-service-emulator-wait.test.js
+    - server/tests/auth-service.test.js
   components:
     - server/auth-service.js
 
@@ -978,41 +943,6 @@
   tests:
     - client/e2e/core/COL-0001.spec.ts
 
-- id: MCE-0001
-  title: 'Multi-Cursor Editing'
-  description: '複数のカーソルを使って同時に編集できる機能'
-  category: collaboration
-  status: draft
-
-- id: SRP-0001
-  title: '高度な検索と置換'
-  description: '全文検索および一括置換を行う機能'
-  category: navigation
-  status: draft
-
-- id: DBW-0001
-  title: 'Client-Side WASM DB'
-  description: 'オフライン操作と高速検索を実現するWebAssemblyデータベース'
-  category: application
-  status: draft
-
-- id: FFI-0001
-  title: 'Fluid Framework Integration'
-  description: 'Fluid Frameworkを全面的に統合しリアルタイム機能を強化'
-  category: fluid-service
-  status: draft
-
-- id: GVI-0001
-  title: 'Graph View'
-  description: 'ページ間のリンクを視覚化するグラフ表示機能'
-  category: navigation
-  status: draft
-- id: VCM-001
-  title: Multi-Cursor Editing
-  description: 複数カーソルを同時に操作して編集できる機能
-  category: cursor-management
-  status: draft
-
 - id: SRE-001
   title: Advanced Search & Replace
   description: 正規表現や範囲指定に対応した検索・置換機能
@@ -1022,7 +952,6 @@
     - client/src/lib/search/index.ts
     - client/src/components/SearchPanel.svelte
     - client/src/routes/[project]/[page]/+page.svelte
-  status: draft
   tests:
     - client/e2e/new/SRE-001.spec.ts
 
@@ -1031,10 +960,6 @@
   description: IndexedDB上にSQLデータベースを構築し、オフラインでページを保存できる機能
   category: database
   status: implemented
-  tests:
-    - client/e2e/new/DBW-001.spec.ts
-
-  status: draft
   tests:
     - client/e2e/new/DBW-001.spec.ts
 
@@ -1056,7 +981,8 @@
   status: implemented
   components:
     - src/components/ChartComponent.svelte
-  tests: []
+  tests:
+    - client/e2e/core/CHT-001.spec.ts
 
 - id: TBL-0001
   title: Editable JOIN Table
@@ -1068,6 +994,7 @@
     - src/components/QueryEditor.svelte
     - src/components/ChartPanel.svelte
   services:
+    - src/services/sqlService.ts
     - src/services/queryStore.ts
     - src/services/syncWorker.ts
   tests:
@@ -1086,10 +1013,11 @@
   category: security
   status: implemented
   components: []
-  tests: []
+  tests:
+    - client/e2e/core/SEC-0001.spec.ts
 
 - id: SEC-0002
-  title: "Two-Factor Authentication (2FA)"
+  title: 'Two-Factor Authentication (2FA)'
   description: >-
     This project intentionally omits two-factor authentication.
     Firebase Authentication handles user sign-in, and email link
@@ -1098,3 +1026,9 @@
   status: deprecated
   components: []
   tests: []
+
+- id: VCM-001
+  title: Multi-Cursor Editing
+  description: 複数カーソルを同時に操作して編集できる機能
+  category: cursor-management
+  status: draft

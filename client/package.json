@@ -91,6 +91,8 @@
         "firebase": "^11.5.0",
         "fluid-framework": "2.30.0",
         "pino": "^8.15.0",
-        "uuid": "^8.3.2"
+        "sql.js": "^1.13.0",
+        "uuid": "^8.3.2",
+        "wx-svelte-grid": "^2.1.5"
     }
 }

@@ -18,7 +18,7 @@ const logger = getLogger("ProjectIndex");
 let projectName = $state("");
 
 // ページの状態
-let error: string | null = $state(null);
+let error: string | undefined = $state(undefined);
 let isAuthenticated = $state(false);
 let projectNotFound = $state(false);
 

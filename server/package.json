@@ -25,6 +25,10 @@
         "uuid": "^9.0.0"
     },
     "devDependencies": {
-        "nodemon": "^2.0.22"
+        "chai": "^4.3.7",
+        "mocha": "^11.7.0",
+        "nodemon": "^2.0.22",
+        "sinon": "^15.2.0",
+        "supertest": "^6.3.3"
     }
 }
