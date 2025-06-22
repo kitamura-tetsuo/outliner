@@ -54,17 +54,7 @@
     - ユーザーがクリックせずに直接テキスト入力が可能になる
   tests:
     - client/e2e/core/APP-0001.spec.ts
-- id: CHT-001
-  title: Chart Component
-  description: 保存されたデータをグラフ表示するチャートコンポーネント
-  category: visualization
-  status: implemented
-  components:
-    - src/components/ChartComponent.svelte
-  tests: []
-  acceptance:
-    - データをグラフで表示する
-    - データ更新時にグラフが自動更新される
+
 - id: CLM-0001
   title: クリックで編集モードに入る
   shortcut: クリック
@@ -587,16 +577,7 @@
     - ホームへのリンクをクリックするとホームページに遷移する
   tests:
     - client/e2e/core/NAV-0002.spec.ts
-- id: SEC-0001
-  title: Dotenvx encrypted env files
-  description: Use dotenvx to encrypt server environment files
-  category: security
-  status: implemented
-  components: []
-  tests: []
-  acceptance:
-    - dotenvxで環境ファイルを暗号化
-    - 実行時に復号して利用できる
+
 - id: SLR-0001
   title: Shift + 上下左右
   shortcut: Shift + 上下左右
@@ -774,6 +755,7 @@
     - src/components/QueryEditor.svelte
     - src/components/ChartPanel.svelte
   services:
+    - src/services/sqlService.ts
     - src/services/queryStore.ts
     - src/services/syncWorker.ts
   tests:
@@ -973,6 +955,20 @@
   components:
     - server/auth-service.js
 
+- id: API-0003
+  title: 'Admin check for container user listing'
+  description: '/api/get-container-users requires admin role'
+  category: api-server
+  status: implemented
+  acceptance:
+    - '非管理者がアクセスした場合403エラーを返す'
+    - '管理者はコンテナのユーザーリストを取得できる'
+  tests:
+    - server/tests/get-container-users.test.js
+    - client/e2e/core/API-0003.spec.ts
+  components:
+    - server/auth-service.js
+
 - id: COL-0001
   title: '他ユーザーのカーソル表示'
   description: '複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する'
@@ -1062,7 +1058,8 @@
   status: implemented
   components:
     - src/components/ChartComponent.svelte
-  tests: []
+  tests:
+    - client/e2e/core/CHT-001.spec.ts
 
 - id: TBL-0001
   title: Editable JOIN Table
@@ -1074,6 +1071,7 @@
     - src/components/QueryEditor.svelte
     - src/components/ChartPanel.svelte
   services:
+    - src/services/sqlService.ts
     - src/services/queryStore.ts
     - src/services/syncWorker.ts
   tests:
@@ -1088,10 +1086,11 @@
   category: security
   status: implemented
   components: []
-  tests: []
+  tests:
+    - client/e2e/core/SEC-0001.spec.ts
 
 - id: SEC-0002
-  title: "Two-Factor Authentication (2FA)"
+  title: 'Two-Factor Authentication (2FA)'
   description: >-
     This project intentionally omits two-factor authentication.
     Firebase Authentication handles user sign-in, and email link
