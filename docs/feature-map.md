@@ -1,8 +1,8 @@
 # Feature ↔ Test Matrix
 | Feature | Title | Test files | Status |
 |---------|-------|------------|--------|
-| API-0001 | Firebase Functions APIサーバーの修正 | — | implemented |
-| API-0002 | Firebase emulator起動待機機能 | — | implemented |
+| API-0001 | Firebase Functions APIサーバーの修正 | client/e2e/core/API-0001.spec.ts | implemented |
+| API-0002 | Firebase emulator起動待機機能 | client/e2e/core/API-0002.spec.ts | implemented |
 | API-0003 | Admin check for container user listing | — | implemented |
 | APP-0001 | プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定 | — | implemented |
 | CHT-001 | Chart Component | — | implemented |
@@ -34,7 +34,7 @@
 | GRF-001 | Graph View | — | implemented |
 | GVI-0001 | Graph View | — | draft |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
-| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
+| ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001.spec.ts<br>client/e2e/core/ITM-0001-title.spec.ts | implemented |
 | LNK-0001 | 内部リンクのURL生成機能 | — | implemented |
 | LNK-0002 | 内部リンクの機能検証 | — | implemented |
 | LNK-0003 | 内部リンクのナビゲーション機能 | — | implemented |
