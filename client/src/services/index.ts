@@ -21,3 +21,11 @@ export {
     initFluidClientWithAuth,
     loadContainer,
 } from "../lib/fluidService.svelte";
+
+// SQL service exports
+export {
+    initDb,
+    execute,
+    queryStore,
+    runQuery,
+} from './sqlService';

@@ -546,11 +546,14 @@
   title: Multi-Cursor Editing
   description: 複数のカーソルを使って同時に編集できる機能
   category: collaboration
-  status: draft
+  status: implemented
   acceptance:
     - 複数のカーソルを配置できる
     - 各カーソルから独立してテキスト編集できる
     - Undo/redoがすべてのカーソルに適用される
+  tests:
+    - client/src/stores/EditorOverlayStore.test.ts
+    - client/e2e/disabled/multi-cursor.spec.ts
 - id: NAV-0001
   title: プロジェクト選択とページナビゲーション
   description: ルートページでプロジェクトを選択した場合にプロジェクトページへ遷移し、プロジェクトページからページリストを通じて個別ページへ遷移する機能
@@ -577,16 +580,7 @@
     - ホームへのリンクをクリックするとホームページに遷移する
   tests:
     - client/e2e/core/NAV-0002.spec.ts
-- id: SEC-0001
-  title: Dotenvx encrypted env files
-  description: Use dotenvx to encrypt server environment files
-  category: security
-  status: implemented
-  components: []
-  tests: []
-  acceptance:
-    - dotenvxで環境ファイルを暗号化
-    - 実行時に復号して利用できる
+
 - id: SLR-0001
   title: Shift + 上下左右
   shortcut: Shift + 上下左右
@@ -764,6 +758,7 @@
     - src/components/QueryEditor.svelte
     - src/components/ChartPanel.svelte
   services:
+    - src/services/sqlService.ts
     - src/services/queryStore.ts
     - src/services/syncWorker.ts
   tests:
@@ -977,6 +972,19 @@
   components:
     - server/auth-service.js
 
+- id: API-0004
+  title: 'Admin user list'
+  description: '/api/list-users returns all users for admins only'
+  category: api-server
+  status: implemented
+  acceptance:
+    - '管理者以外のリクエストは403エラーを返す'
+    - '管理者はFirebaseユーザー一覧を取得できる'
+  tests:
+    - server/tests/auth-service.test.js
+  components:
+    - server/auth-service.js
+
 - id: COL-0001
   title: '他ユーザーのカーソル表示'
   description: '複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する'
@@ -988,11 +996,6 @@
   tests:
     - client/e2e/core/COL-0001.spec.ts
 
-- id: MCE-0001
-  title: 'Multi-Cursor Editing'
-  description: '複数のカーソルを使って同時に編集できる機能'
-  category: collaboration
-  status: draft
 
 - id: SRP-0001
   title: '高度な検索と置換'
@@ -1017,12 +1020,6 @@
   description: 'ページ間のリンクを視覚化するグラフ表示機能'
   category: navigation
   status: draft
-- id: VCM-001
-  title: Multi-Cursor Editing
-  description: 複数カーソルを同時に操作して編集できる機能
-  category: cursor-management
-  status: draft
-
 - id: SRE-001
   title: Advanced Search & Replace
   description: 正規表現や範囲指定に対応した検索・置換機能
@@ -1079,6 +1076,7 @@
     - src/components/QueryEditor.svelte
     - src/components/ChartPanel.svelte
   services:
+    - src/services/sqlService.ts
     - src/services/queryStore.ts
     - src/services/syncWorker.ts
   tests:
@@ -1093,10 +1091,11 @@
   category: security
   status: implemented
   components: []
-  tests: []
+  tests:
+    - client/e2e/core/SEC-0001.spec.ts
 
 - id: SEC-0002
-  title: "Two-Factor Authentication (2FA)"
+  title: 'Two-Factor Authentication (2FA)'
   description: >-
     This project intentionally omits two-factor authentication.
     Firebase Authentication handles user sign-in, and email link

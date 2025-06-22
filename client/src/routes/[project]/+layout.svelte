@@ -19,9 +19,9 @@ const logger = getLogger("ProjectLayout");
 let projectName = $state("");
 
 // プロジェクト関連の状態
-let project: any = $state(null);
-let rootItems: any = $state(null);
-let error: string | null = $state(null);
+let project: any = $state(undefined);
+let rootItems: any = $state(undefined);
+let error: string | undefined = $state(undefined);
 let isLoading = $state(true);
 let isAuthenticated = $state(false);
 let projectNotFound = $state(false);
@@ -44,7 +44,7 @@ $effect(() => {
 // プロジェクトを読み込む
 async function loadProject() {
     isLoading = true;
-    error = null;
+    error = undefined;
     projectNotFound = false;
 
     try {
