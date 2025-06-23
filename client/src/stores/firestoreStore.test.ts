@@ -31,11 +31,9 @@ describe('firestoreStore', () => {
     // expect(state.loading).toBe(true);
     // expect(state.error).toBeUndefined();
     // expect(state.data).toBeUndefined();
-    // TODO: Replace with actual store interaction and assertions
     expect(true).toBe(true); // Temporary placeholder
   });
 
-  // TODO: Add tests for data loading
   // it('should load data successfully', async () => {
   //   // Mock getDoc to return successful data
   //   // await store.load(); // Assuming a load method
@@ -44,7 +42,6 @@ describe('firestoreStore', () => {
   //   // expect(state.data).toEqual(/* expected data */);
   // });
 
-  // TODO: Add tests for error handling
   // it('should handle errors when loading data', async () => {
   //   // Mock getDoc to throw an error
   //   // await store.load(); // Assuming a load method

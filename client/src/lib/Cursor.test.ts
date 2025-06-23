@@ -317,12 +317,4 @@ describe('Cursor', () => {
     });
   });
 
-  // TODO: より複雑なカーソル移動（アイテム間、視覚的行移動）のテストケースを追加
-  // これらはDOMやより詳細なストアのモック、またはE2Eテストでのカバレッジが必要になる可能性が高い
-
-  // TODO: 選択範囲関連のテストケースを追加 (extendSelection*, clearSelectionなど)
-
-  // TODO: フォーマット関連のテストケースを追加 (formatBoldなど)
-
-  // TODO: onKeyDown, onInput のテストケースを追加 (より複雑なインタラクション)
 });
