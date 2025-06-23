@@ -28,19 +28,29 @@ export const queryStore = writable<QueryResult>({ rows: [], columnsMeta: [] });
 
 export async function initDb() {
     if (db) return;
-    SQL = await initSqlJs({
-        locateFile: (file: string) => {
-            if (file.endsWith(".wasm")) {
-                // テスト環境では絶対パスを使用
-                if (typeof process !== "undefined" && process.env.NODE_ENV === "test") {
-                    const path = require("path");
-                    return path.resolve(__dirname, "../../../node_modules/sql.js/dist/sql-wasm.wasm");
+
+    // テスト環境では直接ファイルシステムからWASMを読み込み
+    if (typeof process !== "undefined" && process.env.NODE_ENV === "test") {
+        const fs = await import("fs");
+        const path = await import("path");
+        const wasmPath = path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm");
+        const wasmBinary = fs.readFileSync(wasmPath);
+
+        SQL = await initSqlJs({
+            wasmBinary: wasmBinary,
+        });
+    }
+    else {
+        SQL = await initSqlJs({
+            locateFile: (file: string) => {
+                if (file.endsWith(".wasm")) {
+                    return `/sql-wasm.wasm`;
                 }
-                return `/sql-wasm.wasm`;
-            }
-            return file;
-        },
-    });
+                return file;
+            },
+        });
+    }
+
     db = new SQL.Database();
     worker = new SyncWorker(db);
 }
