@@ -75,7 +75,7 @@ export default defineConfig(async ({ mode }) => {
                         name: "server",
                         environment: "node",
                         include: ["src/**/*.{test,spec}.{js,ts}"],
-                        exclude: ["src/**/*.svelte.{test,spec}.{js,ts}"],
+                        exclude: ["src/**/*{.svelte,}.{test,spec}.{js,ts}", "src/lib/server/**"],
                     },
                     server: {
                         fs: {

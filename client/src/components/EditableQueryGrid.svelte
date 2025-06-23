@@ -1,14 +1,18 @@
 <script lang="ts">
-import { createEventDispatcher } from "svelte";
-const { columns = [], rows = [], readonlyColumns = [] } = $props<{
+const {
+    columns = [],
+    rows = [],
+    readonlyColumns = [],
+    onedit,
+} = $props<{
     columns?: string[];
     rows?: any[][];
     readonlyColumns?: string[];
+    onedit?: (event: CustomEvent<{ rowIndex: number; colIndex: number; value: string; }>) => void;
 }>();
-const dispatch = createEventDispatcher();
 
 function updateCell(rowIndex: number, colIndex: number, value: string) {
-    dispatch("edit", { rowIndex, colIndex, value });
+    onedit?.(new CustomEvent("edit", { detail: { rowIndex, colIndex, value } }));
 }
 </script>
 

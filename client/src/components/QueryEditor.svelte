@@ -1,6 +1,6 @@
 <script lang="ts">
 import { queryStore } from "../services/queryStore";
-let query = "";
+let query = $state("");
 
 function run() {
     queryStore.run(query);
@@ -8,5 +8,5 @@ function run() {
 </script>
 <div class="query-editor">
     <textarea bind:value={query} data-testid="sql-input"></textarea>
-    <button on:click={run} data-testid="run-btn">Run</button>
+    <button onclick={run} data-testid="run-btn">Run</button>
 </div>
