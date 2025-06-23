@@ -25,6 +25,51 @@
   - firebase.json
   - functions/.env
   - functions/index.js
+- id: API-0001
+  title: Firebase Functions APIサーバーの修正
+  description: Firebase Functions APIサーバーのローカルテスト時のエラーを修正し、正常に動作するようにする機能
+  category: api-server
+  status: implemented
+  acceptance:
+  - CORS設定が正しく構成され、クロスオリジンリクエストが正常に処理される
+  - Firebase Functions エミュレーターが正常に起動する
+  - Firebase Hosting経由でのリクエストが正しくFunctionsにルーティングされる
+  - deleteContainerエンドポイント（/api/deleteContainer）が認証エラーを適切に処理する
+  - deleteUserエンドポイント（/api/deleteUser）が認証エラーを適切に処理する
+  - fluid-tokenエンドポイント（/api/fluid-token）が認証エラーを適切に処理する
+  - getUserContainersエンドポイント（/api/getUserContainers）が認証エラーを適切に処理する
+  - save-containerエンドポイント（/api/save-container）が認証エラーを適切に処理する
+  - ヘルスチェックエンドポイント（/health）が正常に応答する
+  - 'ポート設定が正しく構成される（Hosting: 57000, Functions: 57070）'
+  - 必須パラメータが不足している場合に400エラーが返される
+  - 無効なHTTPメソッドに対して405エラーが返される
+  - 環境変数が正しく読み込まれ、Azure Fluid Relay設定が適用される
+  - 認証に失敗した場合に401または500エラーが返される
+  tests:
+  - functions/test/firebase-functions.test.js
+  components:
+  - client/.env.localhost.test
+  - firebase.json
+  - functions/.env
+  - functions/index.js
+- id: API-0002
+  title: Firebase emulator起動待機機能
+  description: Firebase emulatorの起動を待つリトライ機能により、ECONNREFUSED エラーを回避する機能
+  category: api-server
+  status: implemented
+  acceptance:
+  - ECONNREFUSED エラーが発生した場合、指数バックオフでリトライする
+  - ECONNREFUSED以外のエラーは即座に失敗とする
+  - Firebase Auth emulatorへの接続テストを行い、成功するまで待機する
+  - Firebase emulator環境変数が設定されている場合、emulatorの起動を待機する
+  - emulator環境でない場合は待機をスキップする
+  - リトライ回数と遅延時間をログに出力する
+  - 接続成功時にユーザー数とユーザー情報をログに出力する
+  - 最大30回のリトライを行い、初期遅延1秒、最大遅延10秒で待機する
+  tests:
+  - server/test/auth-service-emulator-wait.test.js
+  components:
+  - server/auth-service.js
 - id: API-0002
   title: Firebase emulator起動待機機能
   description: Firebase emulatorの起動を待つリトライ機能により、ECONNREFUSED エラーを回避する機能
@@ -84,10 +129,7 @@
   description: 保存されたデータをグラフ表示するチャートコンポーネント
   category: visualization
   status: implemented
-  components:
-  - src/components/ChartComponent.svelte
-  tests:
-  - client/e2e/core/CHT-001.spec.ts
+  components: null
 - id: CLM-0001
   title: クリックで編集モードに入る
   shortcut: クリック
@@ -228,30 +270,16 @@
   - 他ユーザーがカーソルを移動すると、その位置が表示される
   tests:
   - client/e2e/core/COL-0001.spec.ts
-- id: DBW-0001
-  title: Client-Side WASM DB
-  description: オフライン操作と高速検索を実現するWebAssemblyデータベース
-  category: application
-  status: draft
-  acceptance:
-  - WASMデータベースがブラウザで動作する
-  - オフラインでもページ保存が可能
-  - 高速な全文検索ができる
-- id: DBW-001
-  title: Client-Side SQL Database
-  description: IndexedDB上にSQLデータベースを構築し、オフラインでページを保存できる機能
-  category: database
+- id: COL-0001
+  title: 他ユーザーのカーソル表示
+  description: 複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する
+  category: collaboration
   status: implemented
-  tests:
-  - client/e2e/new/DBW-001.spec.ts
-- id: FFI-0001
-  title: Fluid Framework Integration
-  description: Fluid Frameworkを全面的に統合しリアルタイム機能を強化
-  category: fluid-service
-  status: draft
   acceptance:
-  - Fluid Frameworkを用いてリアルタイム同期が行われる
-  - 既存機能との互換性を保つ
+  - Fluid Framework の signal 機能でカーソル位置を同期する
+  - 他ユーザーがカーソルを移動すると、その位置が表示される
+  tests:
+  - client/e2e/core/COL-0001.spec.ts
 - id: FLD-0001
   title: プロジェクトタイトルからFluidClientを取得する機能
   description: clientRegistryを走査して、Project.titleが一致するFluidClientインスタンスを取得する機能。プロジェクトタイトルとFluid containerのIDは1:1の対応関係にある。
@@ -320,24 +348,6 @@
   - 複数行テキストのペーストが正しく機能する
   tests:
   - client/e2e/core/FMT-0004.spec.ts
-- id: FMT-0005
-  title: Visual Studio Codeのコピー/ペースト仕様
-  description: Visual Studio Codeのコピー/ペースト仕様に準拠したクリップボード操作
-  category: text-formatting
-  status: implemented
-  acceptance:
-  - シングルカーソル（通常選択）からシングルカーソルへのペーストが正しく機能する
-  - シングルカーソル（通常選択）からマルチカーソルへのペースト（full設定）が正しく機能する
-  - シングルカーソル（通常選択）からマルチカーソルへのペースト（spread設定）が正しく機能する
-  - ボックス選択（矩形選択）からのペーストが正しく機能する
-  - ボックス選択（矩形選択）へのペーストが正しく機能する
-  - ボックス選択（矩形選択）範囲へのペースト時に、選択範囲が適切に置き換えられる
-  - マルチカーソル（複数選択範囲）からシングルカーソルへのペーストが正しく機能する
-  - マルチカーソル（複数選択範囲）からマルチカーソルへのペースト（full設定）が正しく機能する
-  - マルチカーソル（複数選択範囲）からマルチカーソルへのペースト（spread設定）が正しく機能する
-  - 複数行テキストをボックス選択（矩形選択）範囲にペーストすると、各行に対応する行が挿入される
-  tests:
-  - client/e2e/core/FMT-0005.spec.ts
 - id: FMT-0006
   title: カーソル移動時のフォーマット表示の一貫性
   description: カーソル移動時にフォーマット表示が一貫して適切に切り替わることを確認します
@@ -399,14 +409,16 @@
   acceptance:
   - Graph Viewでリンク関係を視覚化
   - ズームとパン操作が可能
-- id: GVI-0001
+- id: GRF-001
   title: Graph View
-  description: ページ間のリンクを視覚化するグラフ表示機能
-  category: navigation
-  status: draft
-  acceptance:
-  - ノードをクリックしてページへ遷移できる
-  - ページ間のリンクをグラフ表示する
+  description: 項目間のリンクをグラフ表示するビューを提供
+  category: visualization
+  status: implemented
+  components:
+  - src/components/GraphView.svelte
+  - src/routes/graph/+page.svelte
+  tests:
+  - client/e2e/new/GRF-001.spec.ts
 - id: IME-0001
   title: IMEを使用した日本語入力
   status: implemented
@@ -521,21 +533,6 @@
   - 存在しないページへのリンクの場合は、その旨が表示される
   notes:
   - テスト環境ではマウスイベントが正確に動作しない場合があるため、TestHelpers.forceHoverEvent()とTestHelpers.forceLinkPreview()を使用してテストを安定化
-- id: LNK-0006
-  title: リンク先ページの存在確認機能
-  description: 内部リンクのリンク先ページが存在するかどうかを視覚的に区別する機能
-  category: navigation
-  status: implemented
-  acceptance:
-  - リンク先ページの存在確認は動的に更新される
-  - 存在しないページへのリンクは点線下線や異なる色で表示される
-  - 存在するページへのリンクと存在しないページへのリンクが視覚的に区別される
-  tests:
-  - client/e2e/core/LNK-0006.spec.ts
-  testcases:
-  - 存在するページへのリンクと存在しないページへのリンクが視覚的に区別される
-  - 存在しないページへのリンクは点線下線や異なる色で表示される
-  - ページが作成されると、リンクの表示が更新される
 - id: LNK-0007
   title: バックリンク機能
   description: あるページからリンクされているページの一覧を表示する機能
@@ -786,15 +783,26 @@
   - src/components/QueryEditor.svelte
   services:
   - src/services/sqlService.ts
-  - src/services/queryStore.ts
+  - src/services/editMapper.ts
   - src/services/syncWorker.ts
   tests:
   - client/e2e/new/TBL-0001.spec.ts
+  - client/src/tests/ChartPanel.test.ts
+  - client/src/tests/EditableQueryGrid.test.ts
+  - client/src/tests/FluidTableClient.test.ts
+  - client/src/tests/QueryEditor.spec.ts
+  - client/src/tests/queryStore.test.ts
   - src/tests/editMapper.test.ts
   - src/tests/sqlService.test.ts
   - src/tests/syncWorker.test.ts
   acceptance:
+  - JOINクエリで編集した値が正しいテーブルに反映される
+  - PKエイリアスを利用してJOIN結果の各行が編集対象テーブルに正しくマッピングされる
   - SQLクエリ結果をグリッド表示する
+  - クエリ実行後、ChartPanelが表示される
+  - セル編集後、ChartPanelに変更が表示される
+  - セル編集後、queryStoreのデータが更新される
+  - セル編集後に再実行したクエリ結果も更新される
   - 編集内容がFluid経由で同期される
   - 編集後チャートが自動更新される
 - id: TST-0001
@@ -862,7 +870,6 @@
   - client/e2e/core/CLM-0100.spec.ts
   - client/e2e/core/CLM-0101.spec.ts
   - client/e2e/core/CLM-0103.spec.ts
-  - client/e2e/core/FMT-0005.spec.ts
   - client/e2e/core/FMT-0006.spec.ts
   - client/e2e/core/IME-0001.spec.ts
   - client/e2e/core/ITM-0001-title.spec.ts
@@ -937,8 +944,3 @@
   - コンテナを削除できる
   tests:
   - client/e2e/core/USR-0002.spec.ts
-- id: VCM-001
-  title: Multi-Cursor Editing
-  description: 複数カーソルを同時に操作して編集できる機能
-  category: cursor-management
-  status: draft

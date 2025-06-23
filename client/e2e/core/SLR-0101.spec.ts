@@ -1,3 +1,7 @@
+/** @feature SLR-0101
+ *  Title   : ボックス選択（矩形選択）機能 - マウス
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,

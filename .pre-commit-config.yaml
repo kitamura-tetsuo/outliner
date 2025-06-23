@@ -4,6 +4,13 @@ repos:
   # ② “local” リポでカスタムフックを定義
   - repo: local
     hooks:
+      - id: remove-feature-map
+        name: Remove feature-map.md before commit
+        language: script
+        entry: ./scripts/remove_feature_map.sh
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
       - id: feature-map
         name: Update feature docs
         language: python

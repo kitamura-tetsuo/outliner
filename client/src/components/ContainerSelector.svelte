@@ -1,13 +1,10 @@
 <script lang="ts">
-import {
-    onDestroy,
-    onMount,
-} from "svelte";
-import { getLogger } from "../lib/logger";
+import { onMount } from "svelte";
 import {
     createFluidClient,
     getProjectTitle,
-} from "../services";
+} from "../lib/fluidService.svelte";
+import { getLogger } from "../lib/logger";
 import { firestoreStore } from "../stores/firestoreStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 const logger = getLogger();
@@ -214,22 +211,6 @@ async function reloadCurrentContainer() {
     border-radius: 4px;
     border: 1px solid #ccc;
     background-color: white;
-}
-
-.refresh-button {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.refresh-button:hover {
-    background-color: #e0e0e0;
 }
 
 .actions {

@@ -15,6 +15,7 @@ const logger = pino({
 // グローバル変数の型定義
 declare global {
     var __TINYLICIOUS_PROCESS__: ChildProcess | null;
+    var __SERVER_PROCESS__: ChildProcess | null;
 }
 
 // Tinylicious サーバーのポート
@@ -28,10 +29,17 @@ async function globalTeardown(config: any) {
 
     // グローバル変数からTinyliciousプロセスを取得して停止
     const tinyliciousProcess = global.__TINYLICIOUS_PROCESS__;
+    const serverProcess = global.__SERVER_PROCESS__;
 
     if (tinyliciousProcess) {
         console.log("Stopping Tinylicious process via reference");
         tinyliciousProcess.kill();
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    if (serverProcess) {
+        console.log("Stopping dev server via reference");
+        serverProcess.kill();
         await new Promise(resolve => setTimeout(resolve, 500));
     }
 

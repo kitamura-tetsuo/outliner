@@ -2,9 +2,13 @@ name: Test
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -12,349 +16,353 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        registry-url: 'https://registry.npmjs.org'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
 
-    - name: Check environment
-      run: |
-        echo "Node version: $(node --version)"
-        echo "NPM version: $(npm --version)"
-        echo "Current user: $(whoami)"
-        echo "Working directory: $(pwd)"
-        echo "PATH: $PATH"
-
-    - name: Load NVM environment
-      run: |
-        # Load NVM if available
-        if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
-          . "$HOME/.nvm/nvm.sh"
-          echo "NVM loaded, Node version: $(node --version)"
+      - name: Check environment
+        run: |
+          echo "Node version: $(node --version)"
           echo "NPM version: $(npm --version)"
-        fi
+          echo "Current user: $(whoami)"
+          echo "Working directory: $(pwd)"
+          echo "PATH: $PATH"
 
-        # Check if actions/setup-node installed Node.js in _tool directory
-        if [ -d "$GITHUB_WORKSPACE/../_tool/node" ]; then
-          NODE_TOOL_DIR=$(find "$GITHUB_WORKSPACE/../_tool/node" -name "x64" -type d | head -1)
-          if [ -n "$NODE_TOOL_DIR" ]; then
-            export PATH="$NODE_TOOL_DIR/bin:$PATH"
-            echo "Found Node.js in tool cache: $(node --version)"
+      - name: Load NVM environment
+        run: |
+          # Load NVM if available
+          if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+            . "$HOME/.nvm/nvm.sh"
+            echo "NVM loaded, Node version: $(node --version)"
             echo "NPM version: $(npm --version)"
           fi
-        fi
 
-        # Fallback: try to use system Node.js if actions/setup-node didn't work
-        if ! command -v node >/dev/null 2>&1; then
-          echo "Node.js not found via actions/setup-node, trying system installation..."
-          # Try common Node.js installation paths
-          export PATH="/usr/local/bin:/usr/bin:$PATH"
-          if command -v node >/dev/null 2>&1; then
-            echo "Found system Node.js: $(node --version)"
-          else
-            echo "Node.js not found in system paths either"
+          # Check if actions/setup-node installed Node.js in _tool directory
+          if [ -d "$GITHUB_WORKSPACE/../_tool/node" ]; then
+            NODE_TOOL_DIR=$(find "$GITHUB_WORKSPACE/../_tool/node" -name "x64" -type d | head -1)
+            if [ -n "$NODE_TOOL_DIR" ]; then
+              export PATH="$NODE_TOOL_DIR/bin:$PATH"
+              echo "Found Node.js in tool cache: $(node --version)"
+              echo "NPM version: $(npm --version)"
+            fi
+          fi
+
+          # Fallback: try to use system Node.js if actions/setup-node didn't work
+          if ! command -v node >/dev/null 2>&1; then
+            echo "Node.js not found via actions/setup-node, trying system installation..."
+            # Try common Node.js installation paths
+            export PATH="/usr/local/bin:/usr/bin:$PATH"
+            if command -v node >/dev/null 2>&1; then
+              echo "Found system Node.js: $(node --version)"
+            else
+              echo "Node.js not found in system paths either"
+              exit 1
+            fi
+          fi
+
+          # Verify npm is available
+          if ! command -v npm >/dev/null 2>&1; then
+            echo "npm not found, this will cause issues in subsequent steps"
             exit 1
           fi
-        fi
 
-        # Verify npm is available
-        if ! command -v npm >/dev/null 2>&1; then
-          echo "npm not found, this will cause issues in subsequent steps"
-          exit 1
-        fi
+          # Export PATH for subsequent steps
+          echo "PATH=$PATH" >> $GITHUB_ENV
 
-        # Export PATH for subsequent steps
-        echo "PATH=$PATH" >> $GITHUB_ENV
+      - name: Install dependencies
+        run: |
+          # Load NVM if available
+          if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+            . "$HOME/.nvm/nvm.sh"
+            echo "NVM loaded, Node version: $(node --version)"
+            echo "NPM version: $(npm --version)"
+          fi
 
-    - name: Install dependencies
-      run: |
-        # Load NVM if available
-        if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
-          . "$HOME/.nvm/nvm.sh"
-          echo "NVM loaded, Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
-        fi
+          # Verify npm is available
+          if ! command -v npm >/dev/null 2>&1; then
+            echo "Error: npm command not found"
+            echo "PATH: $PATH"
+            echo "Node location: $(which node || echo 'node not found')"
+            exit 1
+          fi
 
-        # Verify npm is available
-        if ! command -v npm >/dev/null 2>&1; then
-          echo "Error: npm command not found"
-          echo "PATH: $PATH"
-          echo "Node location: $(which node || echo 'node not found')"
-          exit 1
-        fi
+          # Install root dependencies if package.json exists
+          if [ -f "package.json" ]; then
+            echo "Installing root dependencies..."
+            # Try npm ci first, fallback to npm install if lock files are out of sync
+            npm ci || {
+              echo "npm ci failed, trying npm install..."
+              npm install
+            }
+          fi
 
-        # Install root dependencies if package.json exists
-        if [ -f "package.json" ]; then
-          echo "Installing root dependencies..."
-          # Try npm ci first, fallback to npm install if lock files are out of sync
-          npm ci || {
-            echo "npm ci failed, trying npm install..."
-            npm install
-          }
-        fi
+          # Install client dependencies
+          echo "Installing client dependencies..."
+          if [ -d "client" ] && [ -f "client/package.json" ]; then
+            cd client
+            # Try npm ci first, fallback to npm install if lock files are out of sync
+            npm ci || {
+              echo "npm ci failed for client, trying npm install..."
+              npm install
+            }
+            # Compile Paraglide messages
+            echo "Compiling Paraglide messages..."
+            npm run paraglide:compile || echo "Paraglide compilation failed, continuing..."
+            cd ..
+          else
+            echo "Client directory or package.json not found"
+            exit 1
+          fi
 
-        # Install client dependencies
-        echo "Installing client dependencies..."
-        if [ -d "client" ] && [ -f "client/package.json" ]; then
+          # Install server dependencies
+          echo "Installing server dependencies..."
+          if [ -d "server" ] && [ -f "server/package.json" ]; then
+            cd server
+            # Try npm ci first, fallback to npm install if lock files are out of sync
+            npm ci || {
+              echo "npm ci failed for server, trying npm install..."
+              npm install
+            }
+            cd ..
+          else
+            echo "Server directory or package.json not found"
+            exit 1
+          fi
+
+          # Install functions dependencies
+          echo "Installing functions dependencies..."
+          if [ -d "functions" ] && [ -f "functions/package.json" ]; then
+            cd functions
+            # Try npm ci first, fallback to npm install if lock files are out of sync
+            npm ci || {
+              echo "npm ci failed for functions, trying npm install..."
+              npm install
+            }
+            cd ..
+          else
+            echo "Functions directory or package.json not found"
+            exit 1
+          fi
+
+      - name: Setup Java for Firebase emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup test environment
+        run: |
+          # Load NVM if available
+          if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+            . "$HOME/.nvm/nvm.sh"
+          fi
+
+          # Verify Java installation
+          echo "Java version: $(java -version 2>&1 | head -1)"
+
+          # Install global packages if needed (without sudo for self-hosted runner)
+          echo "Installing global packages..."
+          if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
+            npm install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || echo "Global package installation failed, continuing..."
+          fi
+
+          # Install OS utilities if needed
+          echo "Installing OS utilities..."
+          if ! command -v xvfb-run &> /dev/null || ! command -v lsof &> /dev/null; then
+            sudo apt-get update || echo "apt-get update failed, continuing..."
+            sudo apt-get install -y xvfb lsof netcat-openbsd curl || echo "OS utilities installation failed, continuing..."
+          fi
+
+          # Clean up any existing processes on test ports
+          echo "Cleaning up existing processes..."
+          cd "$(pwd)"
+          if [ -f "scripts/kill-tinylicious.js" ]; then
+            node scripts/kill-tinylicious.js || echo "Process cleanup script failed, continuing..."
+          fi
+
+          # Manual cleanup as fallback
+          pkill -f "port 7090" || true
+          pkill -f "port 7091" || true
+          pkill -f "port 7092" || true
+          pkill -f "port 59099" || true
+          pkill -f "port 58080" || true
+          pkill -f "port 57000" || true
+          pkill -f "tinylicious" || true
+          pkill -f "firebase" || true
+          pkill -f "vite" || true
+
+          # Wait for ports to be freed
+          sleep 5
+
+      - name: Install Playwright browsers
+        run: |
+          # Load NVM if available
+          if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+            . "$HOME/.nvm/nvm.sh"
+          fi
+
           cd client
-          # Try npm ci first, fallback to npm install if lock files are out of sync
-          npm ci || {
-            echo "npm ci failed for client, trying npm install..."
-            npm install
-          }
-          cd ..
-        else
-          echo "Client directory or package.json not found"
-          exit 1
-        fi
+          echo "Installing Playwright browsers..."
+          npx playwright install chromium || echo "Playwright install failed, continuing..."
+          npx playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
 
-        # Install server dependencies
-        echo "Installing server dependencies..."
-        if [ -d "server" ] && [ -f "server/package.json" ]; then
-          cd server
-          # Try npm ci first, fallback to npm install if lock files are out of sync
-          npm ci || {
-            echo "npm ci failed for server, trying npm install..."
-            npm install
-          }
-          cd ..
-        else
-          echo "Server directory or package.json not found"
-          exit 1
-        fi
-
-        # Install functions dependencies
-        echo "Installing functions dependencies..."
-        if [ -d "functions" ] && [ -f "functions/package.json" ]; then
-          cd functions
-          # Try npm ci first, fallback to npm install if lock files are out of sync
-          npm ci || {
-            echo "npm ci failed for functions, trying npm install..."
-            npm install
-          }
-          cd ..
-        else
-          echo "Functions directory or package.json not found"
-          exit 1
-        fi
-
-    - name: Setup Java for Firebase emulator
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    - name: Setup test environment
-      run: |
-        # Load NVM if available
-        if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
-          . "$HOME/.nvm/nvm.sh"
-        fi
-
-        # Verify Java installation
-        echo "Java version: $(java -version 2>&1 | head -1)"
-
-        # Install global packages if needed (without sudo for self-hosted runner)
-        echo "Installing global packages..."
-        if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
-          npm install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || echo "Global package installation failed, continuing..."
-        fi
-
-        # Install OS utilities if needed
-        echo "Installing OS utilities..."
-        if ! command -v xvfb-run &> /dev/null || ! command -v lsof &> /dev/null; then
-          sudo apt-get update || echo "apt-get update failed, continuing..."
-          sudo apt-get install -y xvfb lsof netcat-openbsd curl || echo "OS utilities installation failed, continuing..."
-        fi
-
-        # Clean up any existing processes on test ports
-        echo "Cleaning up existing processes..."
-        cd "$(pwd)"
-        if [ -f "scripts/kill-tinylicious.js" ]; then
-          node scripts/kill-tinylicious.js || echo "Process cleanup script failed, continuing..."
-        fi
-
-        # Manual cleanup as fallback
-        pkill -f "port 7090" || true
-        pkill -f "port 7091" || true
-        pkill -f "port 7092" || true
-        pkill -f "port 59099" || true
-        pkill -f "port 58080" || true
-        pkill -f "port 57000" || true
-        pkill -f "tinylicious" || true
-        pkill -f "firebase" || true
-        pkill -f "vite" || true
-
-        # Wait for ports to be freed
-        sleep 5
-
-    - name: Install Playwright browsers
-      run: |
-        # Load NVM if available
-        if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
-          . "$HOME/.nvm/nvm.sh"
-        fi
-
-        cd client
-        echo "Installing Playwright browsers..."
-        npx playwright install chromium || echo "Playwright install failed, continuing..."
-        npx playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
-
-    - name: Run tests
-      run: |
-        # Load NVM if available
-        if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
-          . "$HOME/.nvm/nvm.sh"
-        fi
-
-        # Set display for headless testing
-        export DISPLAY=:99
-
-        # Set environment variables for testing
-        export NODE_ENV=test
-        export TEST_ENV=localhost
-        export CI=true
-        export DISABLE_POSTHOG=true
-        export VITE_DISABLE_FLUID_TELEMETRY=true
-
-        # Check if test script exists
-        if [ ! -f "package.json" ]; then
-          echo "package.json not found"
-          exit 1
-        fi
-
-        # Show test script
-        echo "Test script from package.json:"
-        cat package.json | grep -A 5 -B 5 '"test"' || echo "No test script found"
-
-        # Check if scripts/run-tests.sh exists and is executable
-        if [ -f "scripts/run-tests.sh" ]; then
-          echo "Found scripts/run-tests.sh"
-          chmod +x scripts/run-tests.sh
-          echo "Made scripts/run-tests.sh executable"
-
-          # Also make other scripts executable
-          chmod +x scripts/codex-setp.sh || true
-          chmod +x scripts/start-all-localhost-servers.sh || true
-          chmod +x scripts/common-config.sh || true
-          chmod +x scripts/common-functions.sh || true
-          chmod +x scripts/setup-local-env.sh || true
-        else
-          echo "scripts/run-tests.sh not found"
-          exit 1
-        fi
-
-        bash scripts/start-all-localhost-servers.sh
-
-        # Run tests with timeout (40 minutes)
-        cd client
-        echo "Starting test execution..."
-        timeout 2400 npm run test || {
-          echo "Tests timed out or failed"
-          echo "Checking logs for debugging..."
-
-          # Show recent logs if available
-          if [ -d "server/logs" ]; then
-            echo "=== Recent server logs ==="
-            find server/logs -name "*.log" -type f -exec tail -20 {} \; 2>/dev/null || true
+      - name: Run tests
+        run: |
+          # Load NVM if available
+          if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+            . "$HOME/.nvm/nvm.sh"
           fi
 
-          if [ -d "client/logs" ]; then
-            echo "=== Recent client logs ==="
-            find client/logs -name "*.log" -type f -exec tail -20 {} \; 2>/dev/null || true
+          # Set display for headless testing
+          export DISPLAY=:99
+
+          # Set environment variables for testing
+          export NODE_ENV=test
+          export TEST_ENV=localhost
+          export CI=true
+          export DISABLE_POSTHOG=true
+          export VITE_DISABLE_FLUID_TELEMETRY=true
+
+          # Check if test script exists
+          if [ ! -f "package.json" ]; then
+            echo "package.json not found"
+            exit 1
           fi
 
-          # Kill any remaining processes
+          # Show test script
+          echo "Test script from package.json:"
+          cat package.json | grep -A 5 -B 5 '"test"' || echo "No test script found"
+
+          # Check if scripts/run-tests.sh exists and is executable
+          if [ -f "scripts/run-tests.sh" ]; then
+            echo "Found scripts/run-tests.sh"
+            chmod +x scripts/run-tests.sh
+            echo "Made scripts/run-tests.sh executable"
+
+            # Also make other scripts executable
+            chmod +x scripts/codex-setup.sh || true
+            chmod +x scripts/start-all-localhost-servers.sh || true
+            chmod +x scripts/common-config.sh || true
+            chmod +x scripts/common-functions.sh || true
+            chmod +x scripts/setup-local-env.sh || true
+          else
+            echo "scripts/run-tests.sh not found"
+            exit 1
+          fi
+
+          bash scripts/start-all-localhost-servers.sh
+
+          # Run tests with timeout (40 minutes)
+          cd client
+          echo "Starting test execution..."
+          timeout 2400 npm run test || {
+            cd ..
+            echo "Tests timed out or failed"
+            echo "Checking logs for debugging..."
+
+            # Show recent logs if available
+            if [ -d "server/logs" ]; then
+              echo "=== Recent server logs ==="
+              find server/logs -name "*.log" -type f -exec tail -20 {} \; 2>/dev/null || true
+            fi
+
+            if [ -d "client/logs" ]; then
+              echo "=== Recent client logs ==="
+              find client/logs -name "*.log" -type f -exec tail -20 {} \; 2>/dev/null || true
+            fi
+
+            # Kill any remaining processes
+            pkill -f "tinylicious" || true
+            pkill -f "firebase" || true
+            pkill -f "vite" || true
+            pkill -f "node.*7090" || true
+            pkill -f "node.*7091" || true
+            pkill -f "node.*7092" || true
+            exit 1
+          }
+        env:
+          CI: true
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISPLAY: :99
+          DISABLE_POSTHOG: true
+          VITE_DISABLE_FLUID_TELEMETRY: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.run_id }}
+          path: |
+            client/test-results/
+            client/playwright-report/
+            client/coverage/
+            server/logs/
+            client/logs/
+          retention-days: 30
+
+      - name: Cleanup after tests
+        if: always()
+        run: |
+          echo "Starting cleanup process..."
+
+          # Use the cleanup script if available
+          if [ -f "scripts/kill-tinylicious.js" ]; then
+            node scripts/kill-tinylicious.js || echo "Cleanup script failed"
+          fi
+
+          # Manual cleanup as fallback
           pkill -f "tinylicious" || true
           pkill -f "firebase" || true
           pkill -f "vite" || true
           pkill -f "node.*7090" || true
           pkill -f "node.*7091" || true
           pkill -f "node.*7092" || true
-          exit 1
-        }
-      env:
-        CI: true
-        NODE_ENV: test
-        TEST_ENV: localhost
-        DISPLAY: :99
-        DISABLE_POSTHOG: true
-        VITE_DISABLE_FLUID_TELEMETRY: true
+          pkill -f "node.*59099" || true
+          pkill -f "node.*58080" || true
+          pkill -f "node.*57000" || true
 
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results-${{ github.run_id }}
-        path: |
-          client/test-results/
-          client/playwright-report/
-          client/coverage/
-          server/logs/
-          client/logs/
-        retention-days: 30
+          # Wait for processes to terminate
+          sleep 3
 
-    - name: Cleanup after tests
-      if: always()
-      run: |
-        echo "Starting cleanup process..."
+          # Show any remaining processes
+          echo "Remaining processes:"
+          ps aux | grep -E "(tinylicious|firebase|vite|node.*70|node.*59|node.*58|node.*57)" || echo "No relevant processes found"
 
-        # Use the cleanup script if available
-        if [ -f "scripts/kill-tinylicious.js" ]; then
-          node scripts/kill-tinylicious.js || echo "Cleanup script failed"
-        fi
+      - name: Comment PR with test results
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request' && always()
+        with:
+          script: |
+            const testStatus = '${{ job.status }}';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
-        # Manual cleanup as fallback
-        pkill -f "tinylicious" || true
-        pkill -f "firebase" || true
-        pkill -f "vite" || true
-        pkill -f "node.*7090" || true
-        pkill -f "node.*7091" || true
-        pkill -f "node.*7092" || true
-        pkill -f "node.*59099" || true
-        pkill -f "node.*58080" || true
-        pkill -f "node.*57000" || true
+            let comment = '## 🧪 Test Results\n\n';
 
-        # Wait for processes to terminate
-        sleep 3
+            if (testStatus === 'success') {
+              comment += '✅ **All tests passed!** 🎉\n\n';
+            } else if (testStatus === 'cancelled') {
+              comment += '⏹️ **Tests were cancelled** - You may want to restart the tests.\n\n';
+            } else {
+              comment += '❌ **Tests failed** - Please check the logs and fix the failing tests.\n\n';
+            }
 
-        # Show any remaining processes
-        echo "Remaining processes:"
-        ps aux | grep -E "(tinylicious|firebase|vite|node.*70|node.*59|node.*58|node.*57)" || echo "No relevant processes found"
+            comment += `📊 [View detailed results](${runUrl})\n`;
+            comment += `🔍 [View all checks](${context.payload.pull_request.html_url}/checks)\n\n`;
+            comment += `**Commit:** ${context.sha.substring(0, 7)} | **Runner:** self-hosted`;
 
-    - name: Comment PR with test results
-      uses: actions/github-script@v7
-      if: github.event_name == 'pull_request' && always()
-      with:
-        script: |
-          const testStatus = '${{ job.status }}';
-          const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-
-          let comment = '## 🧪 Test Results\n\n';
-
-          if (testStatus === 'success') {
-            comment += '✅ **All tests passed!** 🎉\n\n';
-          } else if (testStatus === 'cancelled') {
-            comment += '⏹️ **Tests were cancelled** - You may want to restart the tests.\n\n';
-          } else {
-            comment += '❌ **Tests failed** - Please check the logs and fix the failing tests.\n\n';
-          }
-
-          comment += `📊 [View detailed results](${runUrl})\n`;
-          comment += `🔍 [View all checks](${context.payload.pull_request.html_url}/checks)\n\n`;
-          comment += `**Commit:** ${context.sha.substring(0, 7)} | **Runner:** self-hosted`;
-
-          try {
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-          } catch (error) {
-            console.error('Failed to create PR comment:', error);
-          }
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } catch (error) {
+              console.error('Failed to create PR comment:', error);
+            }

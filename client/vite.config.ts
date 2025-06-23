@@ -1,4 +1,4 @@
-import { paraglide } from "@inlang/paraglide-sveltekit/vite";
+import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
@@ -22,23 +22,30 @@ export default defineConfig(async ({ mode }) => {
         plugins: [
             tailwindcss(),
             sveltekit(),
-            paraglide({
+            paraglideVitePlugin({
                 project: "./project.inlang",
                 outdir: "./src/lib/paraglide",
+                strategy: ["url", "cookie", "baseLocale"],
             }),
         ],
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,
-            host: process.env.VITE_HOST || "192.168.50.13",
+            host: process.env.VITE_HOST || "localhost",
         },
         preview: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,
-            host: process.env.VITE_HOST || "192.168.50.13",
+            host: process.env.VITE_HOST || "localhost",
         },
         build: {
             sourcemap: true,
+        },
+        optimizeDeps: {
+            include: ["sql.js"],
+        },
+        define: {
+            global: "globalThis",
         },
         test: {
             workspace: [
@@ -55,6 +62,11 @@ export default defineConfig(async ({ mode }) => {
                         setupFiles: ["./vitest-setup-client.ts"],
                         envFile: ".env.test",
                     },
+                    server: {
+                        fs: {
+                            allow: [".."],
+                        },
+                    },
                 },
                 {
                     extends: "./vite.config.ts",
@@ -62,8 +74,13 @@ export default defineConfig(async ({ mode }) => {
                     test: {
                         name: "server",
                         environment: "node",
-                        include: ["src/**/*.{test,spec}.{js,ts}"],
+                        include: ["src/lib/server/**/*.{test,spec}.{js,ts}"], // server側のテストのみを対象
                         exclude: ["src/**/*.svelte.{test,spec}.{js,ts}"],
+                    },
+                    server: {
+                        fs: {
+                            allow: [".."],
+                        },
                     },
                 },
             ],

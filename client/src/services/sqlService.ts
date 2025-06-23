@@ -1,48 +1,209 @@
-import initSqlJs, { Database, type QueryExecResult } from 'sql.js';
-import { writable } from 'svelte/store';
+import initSqlJs, { type Database } from "sql.js";
+import { writable } from "svelte/store";
+import type { EditInfo } from "./editMapper";
+import {
+    type Op,
+    SyncWorker,
+} from "./syncWorker";
 
-export interface ColumnMeta {
+interface ColumnMeta {
     name: string;
-    table: string | null;
-    column: string | null;
-    db: string | null;
+    table?: string;
+    pkAlias?: string;
+    column?: string;
 }
 
-export interface QueryResult {
+interface QueryResult {
     rows: any[];
     columnsMeta: ColumnMeta[];
 }
 
+let SQL: any;
 let db: Database | null = null;
-
-export async function initDb(data?: Uint8Array) {
-    const SQL = await initSqlJs({});
-    db = new SQL.Database(data);
-}
-
-export function execute(sql: string): QueryResult {
-    if (!db) throw new Error('Database not initialized');
-    const res = db.exec(sql);
-    if (res.length === 0) return { rows: [], columnsMeta: [] };
-    const result = res[0] as QueryExecResult;
-    const columnsMeta: ColumnMeta[] = result.columns.map(name => ({
-        name,
-        table: null,
-        column: null,
-        db: null,
-    }));
-    const rows = result.values.map(row => {
-        const obj: Record<string, any> = {};
-        result.columns.forEach((col, i) => {
-            obj[col] = row[i];
-        });
-        return obj;
-    });
-    return { rows, columnsMeta };
-}
+let currentQuery = "";
+let currentSelect = "";
+let worker: SyncWorker | null = null;
 
 export const queryStore = writable<QueryResult>({ rows: [], columnsMeta: [] });
 
+// テスト環境でqueryStoreをwindowオブジェクトに公開
+if (typeof window !== "undefined") {
+    (window as any).queryStore = queryStore;
+}
+
+export async function initDb() {
+    if (db) return;
+
+    console.log("Initializing SQL.js database...");
+
+    // テスト環境では直接ファイルシステムからWASMを読み込み
+    if (typeof process !== "undefined" && process.env.NODE_ENV === "test") {
+        const fs = await import("fs");
+        const path = await import("path");
+        const wasmPath = path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm");
+        const wasmBinary = fs.readFileSync(wasmPath);
+
+        SQL = await initSqlJs({
+            wasmBinary: wasmBinary,
+        });
+    }
+    else {
+        SQL = await initSqlJs({
+            locateFile: (file: string) => {
+                if (file.endsWith(".wasm")) {
+                    return `/sql-wasm.wasm`;
+                }
+                return file;
+            },
+        });
+    }
+
+    db = new SQL.Database();
+    worker = new SyncWorker(db);
+    console.log("SQL.js database initialized successfully");
+}
+
+function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: Record<string, string>; } {
+    console.log("extendQuery called with:", sql);
+
+    // 最後のSELECT文のみを処理
+    const lastSelectIndex = sql.toUpperCase().lastIndexOf("SELECT");
+    console.log("lastSelectIndex:", lastSelectIndex);
+    if (lastSelectIndex === -1) {
+        console.log("No SELECT found, returning original");
+        return { sql, aliases: [], tableMap: {} };
+    }
+
+    const selectPart = sql.slice(lastSelectIndex);
+    const beforeSelect = sql.slice(0, lastSelectIndex);
+    console.log("selectPart:", selectPart);
+
+    // FROMとJOINを分けて処理
+    const fromRegex =
+        /\bfrom\s+([a-zA-Z0-9_]+)(?:\s+(?:as\s+)?([a-zA-Z0-9_]+))?(?=\s+(?:join|where|group|order|limit|on|;|$)|\s*;|\s*$)/gi;
+    const joinRegex =
+        /\bjoin\s+([a-zA-Z0-9_]+)(?:\s+(?:as\s+)?([a-zA-Z0-9_]+))?(?=\s+(?:on|join|where|group|order|limit|;|$)|\s*;|\s*$)/gi;
+    const aliases: string[] = [];
+    const tableMap: Record<string, string> = {};
+    let match;
+    console.log("Testing regex against:", selectPart);
+    // FROM句の処理
+    while ((match = fromRegex.exec(selectPart)) !== null) {
+        console.log("FROM match:", match);
+        const table = match[1];
+        const alias = match[2] || table;
+        console.log("FROM Table:", table, "Alias:", alias);
+        if (!aliases.includes(alias)) aliases.push(alias);
+        tableMap[alias] = table;
+    }
+
+    // JOIN句の処理
+    while ((match = joinRegex.exec(selectPart)) !== null) {
+        console.log("JOIN match:", match);
+        const table = match[1];
+        const alias = match[2] || table;
+        console.log("JOIN Table:", table, "Alias:", alias);
+        if (!aliases.includes(alias)) aliases.push(alias);
+        tableMap[alias] = table;
+    }
+    console.log("Found aliases:", aliases);
+    if (aliases.length === 0) {
+        console.log("No aliases found, returning original");
+        return { sql, aliases, tableMap };
+    }
+
+    const selectMatch = selectPart.match(/select\s+([\s\S]+?)\s+from/i);
+    console.log("selectMatch:", selectMatch);
+    if (!selectMatch) {
+        console.log("No select match found, returning original");
+        return { sql, aliases, tableMap };
+    }
+
+    const selectClause = selectMatch[1];
+    console.log("selectClause:", selectClause);
+    const additions = aliases
+        .filter(a => !new RegExp(`${a}\.id`, "i").test(selectClause))
+        .map(a => `${a}.id AS ${a}_pk`);
+    console.log("additions:", additions);
+    if (additions.length === 0) {
+        console.log("No additions needed, returning original");
+        return { sql, aliases, tableMap };
+    }
+
+    const newSelect = `${selectClause}, ${additions.join(", ")}`;
+    const modifiedSelectPart = selectPart.replace(selectMatch[0], `SELECT ${newSelect} FROM`);
+    const modified = beforeSelect + modifiedSelectPart;
+
+    console.log("Extended query result:", { original: sql, modified, aliases, tableMap });
+    return { sql: modified, aliases, tableMap };
+}
+
 export function runQuery(sql: string) {
-    queryStore.set(execute(sql));
+    console.log("Running query:", sql);
+    if (!db) throw new Error("DB not initialized");
+    const { sql: extended, aliases, tableMap } = extendQuery(sql);
+    console.log("Extended query:", extended);
+    currentQuery = extended;
+    const idx = extended.toUpperCase().lastIndexOf("SELECT");
+    currentSelect = idx >= 0 ? extended.slice(idx) : extended;
+    const results = db.exec(extended);
+    if (results.length === 0) {
+        queryStore.set({ rows: [], columnsMeta: [] });
+        return;
+    }
+    const res = results[0];
+    const pkAliases: Record<string, string> = {};
+    res.columns.forEach(col => {
+        const m = col.match(/^(\w+)_pk$/);
+        if (m) pkAliases[m[1]] = col;
+    });
+    const columnsMeta: ColumnMeta[] = [];
+    res.columns.forEach(col => {
+        if (/^(\w+)_pk$/.test(col)) return;
+        const aliasMatch = col.match(/^(\w+)_(.+)$/);
+        let table: string | undefined;
+        let column = col;
+        if (aliasMatch) {
+            const alias = aliasMatch[1];
+            table = tableMap[alias] || alias; // エイリアスを実際のテーブル名に変換
+            column = aliasMatch[2];
+        }
+        columnsMeta.push({ name: col, table, pkAlias: table ? pkAliases[aliasMatch?.[1] || ""] : undefined, column });
+    });
+    const rows = res.values.map(v => {
+        const obj: any = {};
+        res.columns.forEach((c, i) => {
+            obj[c] = v[i];
+        });
+        return obj;
+    });
+    queryStore.set({ rows, columnsMeta });
+}
+
+export function getDb() {
+    return db;
+}
+
+export function rawExec(sql: string) {
+    if (!db) throw new Error("DB not initialized");
+    db.exec(sql);
+}
+
+export function applyEdit(info: EditInfo, value: any) {
+    console.log("Applying edit:", info, "value:", value);
+    if (!worker) {
+        console.log("No worker available");
+        return;
+    }
+    const op: Op = { table: info.table, pk: info.pk, column: info.column, value };
+    worker.applyOp(op);
+    console.log("Applied operation:", op);
+    if (currentSelect) {
+        console.log("Re-running query:", currentSelect);
+        rawExec(currentSelect);
+        runQuery(currentSelect);
+    }
+    else {
+        console.log("No currentSelect to re-run");
+    }
 }

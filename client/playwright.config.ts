@@ -13,28 +13,29 @@ const __dirname = path.dirname(__filename);
 // 環境変数TEST_ENVが'localhost'の場合はlocalhost環境、それ以外はデフォルト環境
 // VSCode Playwright拡張から実行する場合は環境変数が正しく渡らないことがあるため、
 // 必要に応じて直接trueに設定してください
-const isLocalhostEnv = process.env.TEST_ENV === 'localhost';
+const isLocalhostEnv = process.env.TEST_ENV === "localhost";
 
 // テスト用ポートを定義 - これを明示的に指定
 const TEST_PORT = isLocalhostEnv ? "7090" : "7080";
 // Tinylicious サーバーのポートを定義
 const TINYLICIOUS_PORT = isLocalhostEnv ? "7092" : "7082";
 // ホストを定義
-const VITE_HOST = isLocalhostEnv ? "localhost" : "192.168.50.13";
+const VITE_HOST = process.env.VITE_HOST || "localhost";
 // 環境設定ファイルを定義
 const ENV_FILE = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
 
 // console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
 // console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
 // console.log(`Environment file: ${ENV_FILE}`);
-
 export default defineConfig({
     testDir: "./e2e",
     testMatch: "**/*.spec.ts",
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
-    retries: process.env.CI ? 2 : 0,
-    workers: process.env.CI ? 8 : 4,
+    retries: process.env.CI ? 10 : 0,
+    workers: process.env.CI ? 2 : 4,
+    maxFailures: process.env.CI ? 1 : undefined,
+
     reporter: [["html", { open: "never" }]],
     headless: true,
     // テスト実行時のタイムアウト設定を延長
@@ -88,7 +89,7 @@ export default defineConfig({
     ],
     // webServer: {
     //     command: `npx dotenv -e .env.test -- npm run dev -- --host 0.0.0.0 --port ${TEST_PORT}`,
-    //     url: `http://192.168.50.13:${TEST_PORT}`,
+    //     url: `http://localhost:${TEST_PORT}`,
     //     reuseExistingServer: !process.env.CI,
     //     env: {
     //         NODE_ENV: "test",

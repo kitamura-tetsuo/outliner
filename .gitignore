@@ -41,6 +41,9 @@ client/logs/
 server/logs/
 logs/
 
+# Coverage reports
+client/coverage/
+
 # GitLab CI
 .gitlab-ci-local
 
@@ -61,3 +64,6 @@ client/test-output.txt
 server/firebase-adminsdk.json
 functions/.env.production
 *.swp
+
+# Coverage reports
+client/coverage/

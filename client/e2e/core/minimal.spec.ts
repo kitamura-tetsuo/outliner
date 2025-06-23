@@ -1,3 +1,7 @@
+/** @feature TST-0005
+ *  Title   : テスト環境の初期化と準備
+ *  Source  : docs/client-features.yaml
+ */
 // minimal.spec.ts
 import { expect, test } from '@playwright/test';
 
