@@ -19,7 +19,8 @@
   - 環境変数が正しく読み込まれ、Azure Fluid Relay設定が適用される
   - 認証に失敗した場合に401または500エラーが返される
   tests:
-  - functions/test/firebase-functions.test.js
+    - functions/test/firebase-functions.test.js
+    - client/e2e/core/API-0001.spec.ts
   components:
   - client/.env.localhost.test
   - firebase.json
@@ -40,7 +41,8 @@
   - 接続成功時にユーザー数とユーザー情報をログに出力する
   - 最大30回のリトライを行い、初期遅延1秒、最大遅延10秒で待機する
   tests:
-  - server/test/auth-service-emulator-wait.test.js
+    - server/test/auth-service-emulator-wait.test.js
+    - client/e2e/core/API-0002.spec.ts
   components:
   - server/auth-service.js
 - id: API-0003
@@ -78,16 +80,19 @@
   - プロジェクトページ表示時にグローバルテキストエリアにフォーカスが設定される
   - ユーザーがクリックせずに直接テキスト入力が可能になる
   tests:
-  - client/e2e/core/APP-0001.spec.ts
+    - client/e2e/core/APP-0001.spec.ts
 - id: CHT-001
   title: Chart Component
   description: 保存されたデータをグラフ表示するチャートコンポーネント
   category: visualization
   status: implemented
   components:
-  - src/components/ChartComponent.svelte
+    - src/components/ChartComponent.svelte
   tests:
-  - client/e2e/core/CHT-001.spec.ts
+    - client/e2e/core/CHT-001.spec.ts
+  acceptance:
+    - データをグラフで表示する
+    - データ更新時にグラフが自動更新される
 - id: CLM-0001
   title: クリックで編集モードに入る
   shortcut: クリック
@@ -595,7 +600,438 @@
   - ページ表示時にパンくずナビゲーションが表示される
   - ホームへのリンクをクリックするとホームページに遷移する
   tests:
-  - client/e2e/core/NAV-0002.spec.ts
+    - client/e2e/core/NAV-0002.spec.ts
+
+- id: SLR-0001
+  title: Shift + 上下左右
+  shortcut: Shift + 上下左右
+  description: カーソルを1文字上下左右に移動し、選択範囲を広げます。
+  category: selection-range
+  status: implemented
+  acceptance:
+    - Shift + 上で選択範囲の上端を広げる
+    - Shift + 下で選択範囲の下端を広げる
+    - Shift + 左で選択範囲の左端を広げる
+    - Shift + 右で選択範囲の右端を広げる
+  tests:
+    - client/e2e/core/SLR-0001.spec.ts
+- id: SLR-0002
+  title: 行頭まで選択
+  shortcut: Shift + Home
+  description: カーソル位置から行の先頭までを選択します。
+  category: selection-range
+  status: implemented
+  acceptance:
+    - Shift + Homeで現在位置から行頭までを選択する
+    - 複数行のアイテムでは、現在のカーソルがある行の先頭までを選択する
+  tests:
+    - client/e2e/core/SLR-0002.spec.ts
+- id: SLR-0003
+  title: 行末まで選択
+  shortcut: Shift + End
+  description: カーソル位置から行の末尾までを選択します。
+  category: selection-range
+  status: implemented
+  acceptance:
+    - Shift + Endで現在位置から行末までを選択する
+    - 複数行のアイテムでは、現在のカーソルがある行の末尾までを選択する
+  tests:
+    - client/e2e/core/SLR-0003.spec.ts
+- id: SLR-0004
+  title: マウスドラッグによる選択
+  description: マウスドラッグでテキストを選択します。
+  category: selection-range
+  status: implemented
+  acceptance:
+    - マウスドラッグで単一アイテム内のテキストを選択できる
+    - 選択範囲が視覚的に表示される
+    - 選択範囲のテキストをコピーできる
+  tests:
+    - client/e2e/core/SLR-0004.spec.ts
+- id: SLR-0005
+  title: 複数アイテムにまたがる選択
+  description: 複数アイテムにまたがるテキスト選択機能
+  category: selection-range
+  status: implemented
+  acceptance:
+    - Shift+上下キーで複数アイテムにまたがる選択範囲を作成できる
+    - マウスドラッグで複数アイテムにまたがる選択範囲を作成できる
+    - 複数アイテムにまたがる選択範囲が視覚的に表示される
+  tests:
+    - client/e2e/core/SLR-0005.spec.ts
+- id: SLR-0006
+  title: 複数アイテム選択範囲のコピー＆ペースト
+  description: 複数アイテムにまたがる選択範囲のコピー＆ペースト機能
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 複数アイテムにまたがる選択範囲のテキストをコピーできる
+    - コピーしたテキストを別の場所にペーストできる
+    - 複数行テキストをペーストすると適切に複数アイテムに分割される
+  tests:
+    - client/e2e/core/SLR-0006.spec.ts
+- id: SLR-0007
+  title: 複数アイテム選択範囲の削除
+  description: 複数アイテムにまたがる選択範囲の削除機能
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 複数アイテムにまたがる選択範囲をBackspace/Deleteキーで削除できる
+    - 削除後、アイテムが適切に結合される
+    - カーソル位置が適切に更新される
+  tests:
+    - client/e2e/core/SLR-0007.spec.ts
+- id: SLR-0008
+  title: 選択範囲のエッジケース
+  description: 選択範囲機能のエッジケースのテスト
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 空のアイテムを含む選択範囲を作成できる
+    - 長いテキストを含むアイテムの選択範囲を作成できる
+    - 選択範囲の方向（正方向/逆方向）を切り替えることができる
+    - 複数アイテムにまたがる選択範囲を削除した後、カーソル位置が適切に更新される
+  tests:
+    - client/e2e/core/SLR-0008.spec.ts
+- id: SLR-0009
+  title: ドラッグ＆ドロップによるテキスト移動
+  description: 選択範囲のテキストをドラッグ＆ドロップで移動する機能
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 単一アイテム内の選択範囲をドラッグ＆ドロップで移動できる
+    - 複数アイテムにまたがる選択範囲をドラッグ＆ドロップで移動できる
+    - アイテム全体をドラッグ＆ドロップで移動できる
+    - ドラッグ中に視覚的なフィードバックが表示される
+    - ドロップ位置に応じて適切にテキストが挿入される
+  tests:
+    - client/e2e/core/SLR-0009.spec.ts
+- id: SLR-0010
+  title: 選択範囲のフォーマット変更
+  description: 選択範囲のテキストのフォーマット（太字、斜体、下線、取り消し線、コード）を変更する機能
+  category: selection-range
+  status: implemented
+  acceptance:
+    - 単一アイテム内の選択範囲のフォーマットを変更できる
+    - 複数アイテムにまたがる選択範囲のフォーマットを変更できる
+    - Scrapbox構文に準拠したフォーマットが適用される
+    - キーボードショートカットでフォーマットを変更できる
+    - 太字フォーマット（[[text]]）を適用できる
+    - 斜体フォーマット（[/ text]）を適用できる
+    - 取り消し線フォーマット（[- text]）を適用できる
+    - コードフォーマット（`text`）を適用できる
+    - 同じフォーマットを再度適用すると、フォーマットが解除される
+  tests:
+    - client/e2e/core/SLR-0010.spec.ts
+- id: SLR-0100
+  title: ボックス選択（矩形選択）機能 - キーボード
+  shortcut: Alt+Shift+矢印キー
+  description: Alt+Shift+矢印キーによる矩形選択機能
+  category: selection-range
+  status: implemented
+  acceptance:
+    - Alt+Shift+矢印キーで矩形選択を開始できる
+    - 矩形選択の範囲を矢印キーで拡張できる
+    - 矩形選択の範囲が視覚的に表示される
+    - 複数アイテムにまたがる矩形選択を作成できる
+    - Escキーで矩形選択をキャンセルできる
+    - 矩形選択範囲のテキストをコピーできる
+    - 矩形選択範囲にテキストをペーストできる
+  tests:
+    - client/e2e/core/SLR-0100.spec.ts
+- id: SLR-0101
+  title: ボックス選択（矩形選択）機能 - マウス
+  shortcut: Alt+Shift+ドラッグ
+  description: Alt+Shift+マウスドラッグによる矩形選択機能
+  category: selection-range
+  status: implemented
+  acceptance:
+    - Alt+Shift+マウスドラッグで矩形選択を開始できる
+    - 矩形選択の範囲がドラッグに合わせて拡張される
+    - 矩形選択の範囲が視覚的に表示される
+    - 複数アイテムにまたがる矩形選択を作成できる
+    - 矩形選択範囲のテキストをコピーできる
+    - 矩形選択範囲にテキストをペーストできる
+    - 矩形選択範囲のテキストを削除できる
+  tests:
+    - client/e2e/core/SLR-0101.spec.ts
+- id: SRE-001
+  title: Advanced Search & Replace
+  description: 正規表現や範囲指定に対応した検索・置換機能
+  category: search
+  status: draft
+  components:
+    - client/src/lib/search/index.ts
+    - client/src/components/SearchPanel.svelte
+    - client/src/routes/[project]/[page]/+page.svelte
+  tests:
+    - client/e2e/new/SRE-001.spec.ts
+  acceptance:
+    - 正規表現検索が可能
+    - 一括置換が実行できる
+- id: TBL-0001
+  title: Editable JOIN Table
+  description: SQL query results editable via Fluid Framework and SQLite cache
+  category: table
+  status: implemented
+  components:
+    - src/components/EditableQueryGrid.svelte
+    - src/components/QueryEditor.svelte
+    - src/components/ChartPanel.svelte
+  services:
+    - src/services/sqlService.ts
+    - src/services/queryStore.ts
+    - src/services/syncWorker.ts
+  tests:
+    - src/tests/sqlService.test.ts
+    - src/tests/editMapper.test.ts
+    - src/tests/syncWorker.test.ts
+    - client/e2e/new/TBL-0001.spec.ts
+  acceptance:
+    - SQLクエリ結果をグリッド表示する
+    - 編集内容がFluid経由で同期される
+    - 編集後チャートが自動更新される
+- id: TST-0001
+  title: SharedTreeデータ検証ユーティリティ
+  description: テストにおいてSharedTreeの内容をJSONとして取得し、結果を厳密かつ簡易に判定するユーティリティ
+  category: testing
+  status: implemented
+  acceptance:
+    - SharedTreeのデータ構造をJSON形式で取得できる
+    - 期待値と実際の値を厳密に比較できる
+    - 期待値と実際の値を部分的に比較できる
+    - 特定のパスのデータを検証できる
+    - スナップショットを取得して後で比較できる
+    - 特定のパスを無視して比較できる
+    - ネストされた構造（親子関係）を正確に検証できる
+  tests:
+    - client/e2e/utils/tree-validation.spec.ts
+  examples:
+    - client/e2e/utils/tree-validator-examples.ts
+    - client/e2e/utils/tree-validator-usage.md
+- id: TST-0002
+  title: カーソル情報検証ユーティリティ
+  description: テストにおいてカーソル情報をJSONとして取得し、結果を厳密かつ簡易に判定するユーティリティ
+  category: testing
+  status: implemented
+  acceptance:
+    - カーソル情報をJSON形式で取得できる
+    - 期待値と実際の値を厳密に比較できる
+    - 期待値と実際の値を部分的に比較できる
+    - 特定のパスのデータを検証できる
+    - スナップショットを取得して後で比較できる
+    - カーソルの数を検証できる
+    - アクティブなアイテムIDを検証できる
+  tests:
+    - client/e2e/utils/cursor-validation.spec.ts
+  examples:
+    - client/e2e/utils/cursor-validator-examples.ts
+    - client/e2e/utils/cursor-validator-usage.md
+- id: TST-0003
+  title: テストヘルパーユーティリティ
+  description: テストにおいてカーソル状態の検証を容易にするヘルパー関数群
+  category: testing
+  status: implemented
+  acceptance:
+    - カーソルデバッグ機能をセットアップできる（setupCursorDebugger）
+    - カーソルが表示されるまで待機できる（waitForCursorVisible）
+    - アクティブなアイテムIDを取得できる（getActiveItemId）
+    - アクティブなアイテム要素を取得できる（getActiveItemLocator）
+    - アイテムをクリックして編集モードに入れる（clickItemToEdit）
+    - class:editingセレクタの代わりにカーソル状態を検証できる
+    - マウスオーバーイベントを強制的にシミュレートできる（forceHoverEvent）
+    - マウスアウトイベントを強制的にシミュレートできる（forceMouseOutEvent）
+    - リンクプレビューを強制的に表示できる（forceLinkPreview）
+    - バックリンクパネルを開くことができる（openBacklinkPanel）
+    - DOM要素の可視性を強制的に確認できる（forceCheckVisibility）
+  tests:
+    - client/e2e/core/CLM-0001.spec.ts
+    - client/e2e/core/CLM-0002.spec.ts
+    - client/e2e/core/CLM-0003.spec.ts
+    - client/e2e/core/CLM-0004.spec.ts
+    - client/e2e/core/CLM-0005.spec.ts
+    - client/e2e/core/CLM-0007.spec.ts
+    - client/e2e/core/CLM-0008.spec.ts
+    - client/e2e/core/CLM-0100.spec.ts
+    - client/e2e/core/CLM-0101.spec.ts
+    - client/e2e/core/CLM-0103.spec.ts
+    - client/e2e/core/SLR-0003.spec.ts
+    - client/e2e/core/SLR-0004.spec.ts
+    - client/e2e/core/SLR-0005.spec.ts
+    - client/e2e/core/SLR-0010.spec.ts
+    - client/e2e/core/FMT-0005.spec.ts
+    - client/e2e/core/FMT-0006.spec.ts
+    - client/e2e/core/IME-0001.spec.ts
+    - client/e2e/core/ITM-0001.spec.ts
+    - client/e2e/core/ITM-0001-title.spec.ts
+    - client/e2e/core/add-text.spec.ts
+    - client/e2e/core/tinylicious.spec.ts
+    - client/e2e/auth/auth.spec.ts
+  examples:
+    - client/e2e/utils/testHelpers.ts
+- id: TST-0004
+  title: テスト環境の改善
+  description: テスト環境の安定性と信頼性を向上させるための改善
+  category: testing
+  status: implemented
+  acceptance:
+    - テスト実行時のタイムアウト設定を延長し、テストの安定性を向上させる
+    - 要素の検出待機のタイムアウト設定を延長し、テストの安定性を向上させる
+    - マウスイベントが正確に動作しない場合に代替手段を提供する
+    - DOM要素の検出と操作のためのヘルパー関数を提供する
+    - テスト環境の制約を考慮したテスト条件の調整を行う
+  tests:
+    - client/e2e/core/LNK-0005.spec.ts
+    - client/e2e/core/LNK-0007.spec.ts
+  notes:
+    - テスト環境ではマウスイベントやDOM要素の検出が不安定な場合があるため、専用のヘルパー関数を使用してテストを安定化
+    - headlessモードでの実行時に一部の機能が正常に動作しない場合があるため、代替手段を提供
+- id: TST-0005
+  title: テスト環境の初期化と準備
+  description: テスト実行前の環境準備を改善し、テストの安定性と再現性を向上させる
+  category: testing
+  status: implemented
+  acceptance:
+    - テスト実行前にプロジェクトとページを自動的に作成する仕組みを提供する
+    - UI操作ではなくFluid APIを使用して直接データを作成することで安定性を向上させる
+    - テスト間の依存関係を減らし、各テストが独立して実行できるようにする
+    - テスト環境の初期化を一貫した方法で行うヘルパー関数を提供する
+    - DOM要素の検出問題を解決するための改善されたヘルパー関数を提供する
+  tests:
+    - client/e2e/utils/testHelpers.ts
+    - client/e2e/utils/linkTestHelpers.ts
+    - client/e2e/helpers.ts
+  notes:
+    - テスト環境では要素の検出が不安定な場合があるため、再試行機能を持つヘルパー関数を使用してテストを安定化
+    - テストデータの作成にはUI操作ではなくFluid APIを使用し、テストの安定性を向上
+    - テスト前の環境準備を標準化することで、テスト間の依存関係を減少
+- id: USR-0001
+  title: ユーザー削除機能
+  description: ユーザーアカウントとそれに関連するデータを削除する機能
+  category: user-management
+  status: implemented
+  acceptance:
+    - ユーザーアカウントを削除できる
+    - ユーザーに関連するコンテナ情報が削除される
+    - ユーザーがアクセス可能だったコンテナからユーザーIDが削除される
+    - ユーザーが最後のアクセス者だったコンテナは完全に削除される
+    - Firebase Authからユーザーアカウントが削除される
+  tests:
+    - client/e2e/core/USR-0001.spec.ts
+- id: USR-0002
+  title: コンテナ削除機能
+  description: コンテナとそれに関連するデータを削除する機能
+  category: container-management
+  status: implemented
+  acceptance:
+    - コンテナを削除できる
+    - コンテナにアクセス可能だったユーザーのアクセス権からコンテナIDが削除される
+    - コンテナがデフォルトコンテナだった場合、ユーザーのデフォルトコンテナが更新される
+    - コンテナが存在しない場合は適切なエラーメッセージが表示される
+    - コンテナへのアクセス権がない場合は適切なエラーメッセージが表示される
+  tests:
+    - client/e2e/core/USR-0002.spec.ts
+
+- id: API-0003
+  title: 'Admin check for container user listing'
+  description: '/api/get-container-users requires admin role'
+  category: api-server
+  status: implemented
+  acceptance:
+    - '非管理者がアクセスした場合403エラーを返す'
+    - '管理者はコンテナのユーザーリストを取得できる'
+  tests:
+    - server/tests/get-container-users.test.js
+    - server/tests/auth-service.test.js
+    - client/e2e/core/API-0003.spec.ts
+  components:
+    - server/auth-service.js
+
+- id: API-0004
+  title: 'Admin user list'
+  description: '/api/list-users returns all users for admins only'
+  category: api-server
+  status: implemented
+  acceptance:
+    - '管理者以外のリクエストは403エラーを返す'
+    - '管理者はFirebaseユーザー一覧を取得できる'
+  tests:
+    - server/tests/auth-service.test.js
+  components:
+    - server/auth-service.js
+
+- id: COL-0001
+  title: '他ユーザーのカーソル表示'
+  description: '複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する'
+  category: collaboration
+  status: implemented
+  acceptance:
+    - '他ユーザーがカーソルを移動すると、その位置が表示される'
+    - 'Fluid Framework の signal 機能でカーソル位置を同期する'
+  tests:
+    - client/e2e/core/COL-0001.spec.ts
+
+- id: SRE-001
+  title: Advanced Search & Replace
+  description: 正規表現や範囲指定に対応した検索・置換機能
+  category: search
+  status: implemented
+  components:
+    - client/src/lib/search/index.ts
+    - client/src/components/SearchPanel.svelte
+    - client/src/routes/[project]/[page]/+page.svelte
+  tests:
+    - client/e2e/new/SRE-001.spec.ts
+
+- id: DBW-001
+  title: Client-Side SQL Database
+  description: IndexedDB上にSQLデータベースを構築し、オフラインでページを保存できる機能
+  category: database
+  status: implemented
+  tests:
+    - client/e2e/new/DBW-001.spec.ts
+
+- id: GRF-001
+  title: Graph View
+  description: 項目間のリンクをグラフ表示するビューを提供
+  category: visualization
+  status: implemented
+  components:
+    - src/components/GraphView.svelte
+    - src/routes/graph/+page.svelte
+  tests:
+    - client/e2e/new/GRF-001.spec.ts
+
+- id: CHT-001
+  title: Chart Component
+  description: 保存されたデータをグラフ表示するチャートコンポーネント
+  category: visualization
+  status: implemented
+  components:
+    - src/components/ChartComponent.svelte
+  tests:
+    - client/e2e/core/CHT-001.spec.ts
+
+- id: TBL-0001
+  title: Editable JOIN Table
+  description: SQL query results editable via Fluid Framework and SQLite cache
+  category: table
+  status: implemented
+  components:
+    - src/components/EditableQueryGrid.svelte
+    - src/components/QueryEditor.svelte
+    - src/components/ChartPanel.svelte
+  services:
+    - src/services/sqlService.ts
+    - src/services/queryStore.ts
+    - src/services/syncWorker.ts
+  tests:
+    - src/tests/sqlService.test.ts
+    - src/tests/editMapper.test.ts
+    - src/tests/syncWorker.test.ts
+    - client/e2e/new/TBL-0001.spec.ts
+
+>>>>>>> origin/main
 - id: SEC-0001
   title: Dotenvx encrypted env files
   description: Use dotenvx to encrypt server environment files
