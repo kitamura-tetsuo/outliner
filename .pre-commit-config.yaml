@@ -4,13 +4,20 @@ repos:
   # ② “local” リポでカスタムフックを定義
   - repo: local
     hooks:
-      - id: feature-map
-        name: Generate feature-map.md from features.yaml
-        language: python # pre-commit が venv を用意してくれる
-        entry: python ./scripts/gen_feature_map.py
-        pass_filenames: false # ファイル一覧をスクリプトに渡さない
-        always_run: true # 変更がなくても毎回実行
-        stages: [pre-commit] # commit 時のみ
-        additional_dependencies: # スクリプトが import するパッケージ
-          - loguru
-          - PyYAML
+    - id: remove-feature-map
+      name: Remove feature-map.md before commit
+      language: script
+      entry: ./scripts/remove_feature_map.sh
+      pass_filenames: false
+      always_run: true
+      stages: [pre-commit]
+    - id: feature-map
+      name: Generate feature-map.md from features.yaml
+      language: python # pre-commit が venv を用意してくれる
+      entry: python ./scripts/gen_feature_map.py
+      pass_filenames: false # ファイル一覧をスクリプトに渡さない
+      always_run: true # 変更がなくても毎回実行
+      stages: [pre-commit] # commit 時のみ
+      additional_dependencies: # スクリプトが import するパッケージ
+        - loguru
+        - PyYAML

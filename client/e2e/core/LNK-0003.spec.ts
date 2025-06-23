@@ -1,3 +1,7 @@
+/** @feature LNK-0003
+ *  Title   : 内部リンクのナビゲーション機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
