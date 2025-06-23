@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { page } from "$app/state";
 import {
     onDestroy,
     onMount,
@@ -27,9 +28,8 @@ import { store } from "../../../stores/store.svelte";
 const logger = getLogger("ProjectPage");
 
 // URLパラメータを取得
-let { data } = $props();
-let projectName = $state(data?.project || "");
-let pageName = $state(data?.page || "");
+let projectName = page.params.project;
+let pageName = page.params.page;
 
 // ページの状態
 let error: string | undefined = $state(undefined);
