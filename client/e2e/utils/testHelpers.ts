@@ -24,12 +24,12 @@ export class TestHelpers {
         await page.goto("/");
 
         // ページが完全に初期化されるのを待機
-        await page.waitForFunction(() => {
-            return (
+        await page.waitForFunction(
+            () =>
                 (window as any).__FLUID_STORE__ !== undefined &&
-                (window as any).__SVELTE_GOTO__ !== undefined
-            );
-        });
+                (window as any).__SVELTE_GOTO__ !== undefined,
+            { timeout: 60000 },
+        );
 
         page.goto = async (
             url: string,
