@@ -19,7 +19,7 @@ VSCodeのlaunch.jsonで定義されているLocalhost設定をbashで実行す�
 ```
 - **ポート**: 7091
 - **説明**: バックエンドAPIサーバーを起動
-- **ログ**: `/workspace/server/logs/test-auth-service-tee.log`
+- **ログ**: `/workspace/server/logs/test-log-service-tee.log`
 - **URL**: http://localhost:7091
 
 ### 3. Tinylicious
@@ -71,4 +71,4 @@ Ctrl+Cで全サーバーを停止できます。
 
 サーバーのログは以下の場所に出力されます：
 - `/workspace/server/logs/test-svelte-kit.log`
-- `/workspace/server/logs/test-auth-service-tee.log`
+- `/workspace/server/logs/test-log-service-tee.log`

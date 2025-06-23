@@ -10,7 +10,7 @@ process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
 process.env.GCLOUD_PROJECT = "test-project";
 
 // Use the Express app defined for testing
-const app = require("./auth-service-test-helper");
+const app = require("./log-service-test-helper");
 
 describe("/api/get-container-users admin role check (API-0003)", function () {
     let verifyStub;
