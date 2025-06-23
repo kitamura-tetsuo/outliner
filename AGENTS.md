@@ -60,6 +60,8 @@ Prioritize performance.
 - For link testing, first test within current project, verify new page creation in fluid container data before testing links, and create helper functions for data verification if they don't exist.
 - When Playwright test output cannot be read directly, use cmd /c with output redirection to save results to a file and then read the file: cmd /c "cd /d path && npx playwright test ... > test-output.txt 2>&1 && type test-output.txt"
 - When terminal output cannot be retrieved properly, it causes repeated dysfunction and prevents effective debugging and test execution.
+- Run Playwright tests one file at a time (`npx playwright test path/to/test.spec.ts`).
+- If E2E tests time out, document the attempt but continue; tests will run in another environment.
 - When fixing LNK-0003 tests, modifications broke 113 other tests including core cursor movement, text input, formatting, and selection functionality - need to be careful about regressions when making changes to core editor functionality.
 - For E2E tests, use page.keyboard.type() for user input simulation; only use internal methods or event dispatching for data preparation and verification, never for simulating user actions.
 - For E2E tests, use editorStore.setCursor({itemId, offset, isActive, userId}) for cursor creation, cursor.insertText() for text input, 500ms wait after text input, and waitForCursorVisible() for focus management - this pattern was successful for LNK-0003 and should be applied to other failing tests.
