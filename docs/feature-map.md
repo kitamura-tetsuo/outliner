@@ -29,6 +29,7 @@
 | FMT-0005 | Visual Studio Codeのコピー/ペースト仕様 | client/e2e/disabled/FMT-0005.spec.ts | implemented |
 | FMT-0006 | カーソル移動時のフォーマット表示の一貫性 | client/e2e/core/FMT-0006.spec.ts | implemented |
 | FMT-0007 | 内部リンク機能の表示 | client/e2e/core/FMT-0007.spec.ts | implemented |
+| FMT-0008 | 内部リンクの複数表示 | client/e2e/disabled/FMT-0008.spec.ts | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
 | FTR-0013 | Use environment variables in min page | client/e2e/core/FTR-0013.spec.ts | implemented |
 | GRF-001 | Graph View | — | implemented |
