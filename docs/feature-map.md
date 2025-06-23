@@ -19,6 +19,7 @@
 | CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | client/e2e/core/CLM-0102.spec.ts | implemented |
 | CLM-0103 | フォーマット文字列でのカーソル操作 | client/e2e/core/CLM-0103.spec.ts | implemented |
 | COL-0001 | 他ユーザーのカーソル表示 | — | implemented |
+| DBW-001 | Client-Side SQL Database | — | implemented |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | client/e2e/core/FLD-0001.spec.ts | implemented |
 | FMT-0001 | フォーマット表示 | client/e2e/core/FMT-0001.spec.ts | implemented |
 | FMT-0002 | フォーマット組み合わせ | client/e2e/core/FMT-0002.spec.ts | implemented |
