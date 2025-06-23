@@ -4,14 +4,15 @@
     "version": "0.0.1",
     "type": "module",
     "scripts": {
-        "dev": "vite dev",
-        "dev:host": "vite dev --host 0.0.0.0",
-        "dev:localhost": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- vite dev --host 0.0.0.0 --port 7090",
+        "dev": "npm run paraglide:compile && vite dev",
+        "dev:host": "npm run paraglide:compile && vite dev --host 0.0.0.0",
+        "dev:localhost": "npm run paraglide:compile && cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- vite dev --host 0.0.0.0 --port 7090",
         "dev:localhost:tinylicious": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- npx tinylicious --port 7092",
-        "build": "vite build",
+        "build": "npm run paraglide:compile && vite build",
         "preview": "vite preview",
         "preview:host": "vite preview --host 0.0.0.0",
         "prepare": "svelte-kit sync || echo ''",
+        "paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide",
         "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
         "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
         "format": "prettier --write .",
@@ -39,6 +40,7 @@
         "@inlang/message-lint-rule-missing-translation": "^1.4.8",
         "@inlang/message-lint-rule-valid-js-identifier": "^1.0.8",
         "@inlang/message-lint-rule-without-source": "^1.4.8",
+        "@inlang/paraglide-js": "2.1.0",
         "@inlang/plugin-m-function-matcher": "^2.0.10",
         "@inlang/plugin-message-format": "^4.0.0",
         "@playwright/test": "^1.53.0-alpha-2025-05-30",
@@ -90,6 +92,8 @@
         "firebase": "^11.5.0",
         "fluid-framework": "2.30.0",
         "pino": "^8.15.0",
-        "uuid": "^8.3.2"
+        "sql.js": "^1.13.0",
+        "uuid": "^8.3.2",
+        "wx-svelte-grid": "^2.1.5"
     }
 }

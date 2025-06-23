@@ -31,7 +31,7 @@ let projectName = $state("");
 let pageName = $state("");
 
 // ページの状態
-let error: string | null = $state(null);
+let error: string | undefined = $state(undefined);
 let isLoading = $state(true);
 let isAuthenticated = $state(false);
 let pageNotFound = $state(false);
@@ -88,7 +88,7 @@ function handleAuthLogout() {
 // プロジェクトとページを読み込む
 async function loadProjectAndPage() {
     isLoading = true;
-    error = null;
+    error = undefined;
     pageNotFound = false;
 
     logger.info(`Loading project and page: project="${projectName}", page="${pageName}"`);
@@ -172,7 +172,7 @@ async function loadProjectAndPage() {
 
 // ページ名からページを検索する
 function findPageByName(name: string) {
-    if (!store.pages) return null;
+    if (!store.pages) return undefined;
 
     logger.info(`Searching for page: "${name}"`);
 
@@ -186,7 +186,7 @@ function findPageByName(name: string) {
     }
 
     logger.info(`No matching page found for: "${name}"`);
-    return null;
+    return undefined;
 }
 
 /**

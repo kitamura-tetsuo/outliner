@@ -1,9 +1,7 @@
 <script lang="ts">
 import { browser } from "$app/environment";
 import { getEnv } from "$lib/env";
-import { i18n } from "$lib/i18n";
 import { getLogger } from "$lib/logger";
-import { ParaglideJS } from "@inlang/paraglide-sveltekit";
 import {
     onDestroy,
     onMount,
@@ -24,7 +22,7 @@ const logger = getLogger("AppLayout");
 
 // 認証関連の状態
 let isAuthenticated = $state(false);
-let error: string | null = $state(null);
+let error: string | undefined = $state(undefined);
 
 // APIサーバーのURLを取得
 const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
@@ -106,7 +104,7 @@ function schedulePeriodicLogRotation() {
     }, ROTATION_INTERVAL);
 }
 
-let rotationInterval: ReturnType<typeof setInterval> | null = null;
+let rotationInterval: ReturnType<typeof setInterval> | undefined = undefined;
 
 // ブラウザのunloadイベント用リスナー
 function handleBeforeUnload() {
@@ -251,6 +249,4 @@ onDestroy(() => {
 });
 </script>
 
-<ParaglideJS {i18n}>
-    {@render children()}
-</ParaglideJS>
+{@render children()}

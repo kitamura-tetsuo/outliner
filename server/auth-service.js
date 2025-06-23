@@ -345,6 +345,11 @@ async function deleteQueryBatch(query) {
     }
 }
 
+// Determine if the decoded Firebase token represents an admin user
+function isAdmin(decodedToken) {
+    return decodedToken && decodedToken.role === "admin";
+}
+
 // 注: テストユーザーのセットアップ後にデータクリアを行うため、ここでの実行は不要
 
 // 注意: /api/save-container エンドポイントはFirebase Functionsに移行しました
@@ -363,7 +368,10 @@ app.post("/api/get-container-users", async (req, res) => {
         const decodedToken = await admin.auth().verifyIdToken(idToken);
         const userId = decodedToken.uid;
 
-        // TODO: 管理者権限チェックを追加する場合はここに実装
+        // Check admin role before returning container info
+        if (!isAdmin(decodedToken)) {
+            return res.status(403).json({ error: "Admin privileges required" });
+        }
 
         const containerDoc = await containerUsersCollection.doc(containerId).get();
 
@@ -687,6 +695,36 @@ app.post("/api/create-test-user", async (req, res) => {
     }
 });
 
+// 全ユーザー一覧を取得するエンドポイント（管理者用）
+app.post("/api/list-users", async (req, res) => {
+    try {
+        const { idToken } = req.body;
+
+        if (!idToken) {
+            return res.status(400).json({ error: "ID token required" });
+        }
+
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+        if (decodedToken.role !== "admin") {
+            return res.status(403).json({ error: "Admin privileges required" });
+        }
+
+        const result = await admin.auth().listUsers();
+        const users = result.users.map(u => ({
+            uid: u.uid,
+            email: u.email,
+            displayName: u.displayName,
+        }));
+
+        res.status(200).json({ users });
+    }
+    catch (error) {
+        logger.error(`Error listing users: ${error.message}`);
+        res.status(500).json({ error: "Failed to list users" });
+    }
+});
+
 // 注意: generateAzureFluidToken 関数はFirebase Functionsに移行しました
 
 const PORT = process.env.PORT || 7071;
@@ -694,3 +732,5 @@ app.listen(PORT, () => {
     logger.info(`Auth service running on port ${PORT}`);
     logger.info(`CORS origin: ${process.env.CORS_ORIGIN || "*"}`);
 });
+
+module.exports = app;

@@ -80,6 +80,7 @@ Prioritize performance.
 
 # Cursor and Selection Management
 - Key files: Cursor.ts, EditorOverlay.svelte, EditorOverlayStore.svelte.ts, OutlinerItem.svelte.
+- Multi-Cursor editing is already implemented. See docs/multi-cursor-editing.md for details and design references.
 - User is centralizing cursor management by moving logic to Cursor.ts, with EditorOverlayStore handling state management.
 - When moving to previous/next item with up/down arrows, cursor should maintain x-coordinate position that minimizes change from initial position.
 - For visual line movement in the outliner, Range API is used for line detection, items never contain newline characters (only CSS wrapping), and up/down arrow movement should navigate between visual lines while maintaining cursor position, falling back to item start/end when no previous/next item exists.
