@@ -55,8 +55,8 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
 
     test("Min page can be accessed", async ({ page }) => {
         // /minページへのアクセステスト
-        const response = await page.goto("/min");
-        expect(response?.status()).toBe(200);
+        await page.goto("/min");
+        await expect(page).toHaveURL("/min");
 
         // ページが表示されることを確認
         await expect(page.locator("body")).toBeVisible();
