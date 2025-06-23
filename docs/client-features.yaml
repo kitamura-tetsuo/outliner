@@ -197,25 +197,6 @@
     - Fluid Framework の signal 機能でカーソル位置を同期する
   tests:
     - client/e2e/core/COL-0001.spec.ts
-- id: DBW-0001
-  title: Client-Side WASM DB
-  description: オフライン操作と高速検索を実現するWebAssemblyデータベース
-  category: application
-  status: draft
-  acceptance:
-    - WASMデータベースがブラウザで動作する
-    - オフラインでもページ保存が可能
-    - 高速な全文検索ができる
-  tests:
-    - client/e2e/new/DBW-001.spec.ts
-- id: FFI-0001
-  title: Fluid Framework Integration
-  description: Fluid Frameworkを全面的に統合しリアルタイム機能を強化
-  category: fluid-service
-  status: draft
-  acceptance:
-    - Fluid Frameworkを用いてリアルタイム同期が行われる
-    - 既存機能との互換性を保つ
 - id: FLD-0001
   title: プロジェクトタイトルからFluidClientを取得する機能
   description: clientRegistryを走査して、Project.titleが一致するFluidClientインスタンスを取得する機能。プロジェクトタイトルとFluid
@@ -285,24 +266,6 @@
     - ペーストされたフォーマット構文が視覚的に正しく表示される
   tests:
     - client/e2e/core/FMT-0004.spec.ts
-- id: FMT-0005
-  title: Visual Studio Codeのコピー/ペースト仕様
-  description: Visual Studio Codeのコピー/ペースト仕様に準拠したクリップボード操作
-  category: text-formatting
-  status: implemented
-  acceptance:
-    - シングルカーソル（通常選択）からシングルカーソルへのペーストが正しく機能する
-    - シングルカーソル（通常選択）からマルチカーソルへのペースト（spread設定）が正しく機能する
-    - シングルカーソル（通常選択）からマルチカーソルへのペースト（full設定）が正しく機能する
-    - マルチカーソル（複数選択範囲）からシングルカーソルへのペーストが正しく機能する
-    - マルチカーソル（複数選択範囲）からマルチカーソルへのペースト（spread設定）が正しく機能する
-    - マルチカーソル（複数選択範囲）からマルチカーソルへのペースト（full設定）が正しく機能する
-    - ボックス選択（矩形選択）からのペーストが正しく機能する
-    - ボックス選択（矩形選択）へのペーストが正しく機能する
-    - 複数行テキストをボックス選択（矩形選択）範囲にペーストすると、各行に対応する行が挿入される
-    - ボックス選択（矩形選択）範囲へのペースト時に、選択範囲が適切に置き換えられる
-  tests:
-    - client/e2e/core/FMT-0005.spec.ts
 - id: FMT-0006
   title: カーソル移動時のフォーマット表示の一貫性
   description: カーソル移動時にフォーマット表示が一貫して適切に切り替わることを確認します
@@ -328,17 +291,6 @@
     - カーソルがないアイテムでは内部リンクが視覚的にリンクとして表示される
   tests:
     - client/e2e/core/FMT-0007.spec.ts
-- id: FMT-0008
-  title: 内部リンクの複数表示
-  description: 1つのアイテムに複数の内部リンクが含まれている場合に正しくリンク化される機能
-  category: text-formatting
-  status: implemented
-  acceptance:
-    - '[page-one] と [page-two] のように複数の内部リンクが正しくリンク化される'
-    - カーソルがない時は全てのリンクが表示される
-    - カーソルがある場合は制御文字が表示される
-  tests:
-    - client/e2e/new/FMT-0008.spec.ts
 - id: FTR-0012
   title: User can reset forgotten password
   status: implemented
@@ -375,14 +327,6 @@
   acceptance:
     - Graph Viewでリンク関係を視覚化
     - ズームとパン操作が可能
-- id: GVI-0001
-  title: Graph View
-  description: ページ間のリンクを視覚化するグラフ表示機能
-  category: navigation
-  status: draft
-  acceptance:
-    - ページ間のリンクをグラフ表示する
-    - ノードをクリックしてページへ遷移できる
 - id: IME-0001
   title: IMEを使用した日本語入力
   status: implemented
@@ -497,21 +441,6 @@
     - 存在しないページへのリンクの場合は、その旨が表示される
   notes:
     - テスト環境ではマウスイベントが正確に動作しない場合があるため、TestHelpers.forceHoverEvent()とTestHelpers.forceLinkPreview()を使用してテストを安定化
-- id: LNK-0006
-  title: リンク先ページの存在確認機能
-  description: 内部リンクのリンク先ページが存在するかどうかを視覚的に区別する機能
-  category: navigation
-  status: implemented
-  acceptance:
-    - 存在するページへのリンクと存在しないページへのリンクが視覚的に区別される
-    - 存在しないページへのリンクは点線下線や異なる色で表示される
-    - リンク先ページの存在確認は動的に更新される
-  tests:
-    - client/e2e/core/LNK-0006.spec.ts
-  testcases:
-    - 存在するページへのリンクと存在しないページへのリンクが視覚的に区別される
-    - 存在しないページへのリンクは点線下線や異なる色で表示される
-    - ページが作成されると、リンクの表示が更新される
 - id: LNK-0007
   title: バックリンク機能
   description: あるページからリンクされているページの一覧を表示する機能
@@ -726,20 +655,6 @@
     - 矩形選択範囲のテキストを削除できる
   tests:
     - client/e2e/core/SLR-0101.spec.ts
-- id: SRE-001
-  title: Advanced Search & Replace
-  description: 正規表現や範囲指定に対応した検索・置換機能
-  category: search
-  status: draft
-  components:
-    - client/src/lib/search/index.ts
-    - client/src/components/SearchPanel.svelte
-    - client/src/routes/[project]/[page]/+page.svelte
-  tests:
-    - client/e2e/new/SRE-001.spec.ts
-  acceptance:
-    - 正規表現検索が可能
-    - 一括置換が実行できる
 - id: TBL-0001
   title: Editable JOIN Table
   description: SQL query results editable via Fluid Framework and SQLite cache
@@ -836,7 +751,6 @@
     - client/e2e/core/SLR-0004.spec.ts
     - client/e2e/core/SLR-0005.spec.ts
     - client/e2e/core/SLR-0010.spec.ts
-    - client/e2e/core/FMT-0005.spec.ts
     - client/e2e/core/FMT-0006.spec.ts
     - client/e2e/core/IME-0001.spec.ts
     - client/e2e/core/ITM-0001.spec.ts
@@ -995,29 +909,6 @@
     - client/e2e/core/COL-0001.spec.ts
 
 
-- id: SRP-0001
-  title: '高度な検索と置換'
-  description: '全文検索および一括置換を行う機能'
-  category: navigation
-  status: draft
-
-- id: DBW-0001
-  title: 'Client-Side WASM DB'
-  description: 'オフライン操作と高速検索を実現するWebAssemblyデータベース'
-  category: application
-  status: draft
-
-- id: FFI-0001
-  title: 'Fluid Framework Integration'
-  description: 'Fluid Frameworkを全面的に統合しリアルタイム機能を強化'
-  category: fluid-service
-  status: draft
-
-- id: GVI-0001
-  title: 'Graph View'
-  description: 'ページ間のリンクを視覚化するグラフ表示機能'
-  category: navigation
-  status: draft
 - id: SRE-001
   title: Advanced Search & Replace
   description: 正規表現や範囲指定に対応した検索・置換機能

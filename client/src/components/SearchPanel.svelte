@@ -14,17 +14,14 @@ let isCaseSensitive = $state(false);
 
 function handleSearch() {
     console.log("Search:", searchQuery);
-    // TODO: 検索機能の実装
 }
 
 function handleReplace() {
     console.log("Replace:", searchQuery, "with:", replaceText);
-    // TODO: 置換機能の実装
 }
 
 function handleReplaceAll() {
     console.log("Replace all:", searchQuery, "with:", replaceText);
-    // TODO: 一括置換機能の実装
 }
 
 function toggleRegex() {

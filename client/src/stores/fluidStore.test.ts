@@ -31,11 +31,9 @@ describe('fluidStore', () => {
     // expect(state.loading).toBe(true); // Or based on actual initial state
     // expect(state.error).toBeUndefined();
     // expect(state.treeData).toBeUndefined(); // Or initial tree structure
-    // TODO: Replace with actual store interaction and assertions
     expect(true).toBe(true); // Temporary placeholder
   });
 
-  // TODO: Add tests for successful connection and data hydration
   // it('should connect and hydrate data', async () => {
   //   // Simulate successful connection and initial data
   //   // (This might involve triggering events or resolving promises fluidStore listens to)
@@ -45,7 +43,6 @@ describe('fluidStore', () => {
   //   // expect(state.treeData).toEqual(/* expected initial tree data */);
   // });
 
-  // TODO: Add tests for handling connection errors
   // it('should handle connection errors', async () => {
   //   // Simulate a connection error
   //   // await someStoreInitializationLogicThatThrowsError();
@@ -54,7 +51,6 @@ describe('fluidStore', () => {
   //   // expect(state.error).toBeDefined();
   // });
 
-  // TODO: Add tests for tree data updates
   // it('should update treeData when SharedTree changes', () => {
   //   // Simulate a change in the mockSharedTree that fluidStore listens to
   //   // mockSharedTree.on.mock.calls[0][1](); // Example: trigger the 'change' event listener

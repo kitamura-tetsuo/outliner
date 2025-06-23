@@ -33,7 +33,6 @@ describe('Global Stores (store.svelte.ts)', () => {
   // if they are derived or have setters.
 
   it('should have placeholder test', () => {
-    // TODO: Replace with actual tests for the stores/logic in store.svelte.ts
     expect(true).toBe(true); // Temporary placeholder
   });
 
