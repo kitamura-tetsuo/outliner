@@ -9,6 +9,15 @@ Record every feature in docs\client-features.yaml. Document intentionally omitte
 
 # 🧪 Test implementation and execution policy
 
+## テストの網羅性とカバレッジレポートの活用
+
+新しい機能を追加または既存の機能を変更する際には、その変更が広範囲に影響を及ぼす可能性を考慮し、十分なテストカバレッジを確保するよう努めてください。
+
+- **カバレッジレポートの確認**: ユニットテスト実行後に生成されるカバレッジレポート（`client/coverage/index.html`など）を必ず確認してください。
+- **テストケースの追加**: カバレッジが低い箇所や、新たに追加・変更されたロジックでテストされていない箇所を特定し、必要なテストケースを追加してください。特に条件分岐やエッジケースが網羅されているか注意深く確認します。
+- **既存テストの拡充**: 単に新しいテストを追加するだけでなく、既存のテストケースが新しい機能や変更点を考慮したものになっているかを見直し、必要に応じて拡充してください。
+  目標は、コードの品質と安定性を維持するために、テストによってコードベースの大部分が検証されている状態を保つことです。
+
 For every feature, create a corresponding test.
 Make the expected values ​​used for pass/fail judgments strict; longer test-execution time is acceptable if that is the consequence.
 Do not embed code that skips tests.
@@ -17,6 +26,17 @@ Do not delete or skip tests simply because they fail locally;
 CI has a fully working environment and will run them successfully.
 Run tests in headless mode.
 Fix one test file at a time and run tests after each fix to confirm.
+
+## ユニットテストにおけるモックとテストダブルの使用について
+
+原則としてモックは使用しませんが、以下のケースにおいては限定的な使用を許容します。
+
+- **Svelteストア**: ユニットテスト対象のモジュールがSvelteストアに依存している場合、ストアの挙動を制御するために `vi.mock` を使用してストアの関数やプロパティをモックすることを許容します。これにより、ストアの状態やストア経由での副作用をテストダブルで置き換え、ユニットテストの分離性を高めます。
+  - 使用例: `vi.mock('../stores/editorOverlayStore.svelte', () => ({ editorOverlayStore: { subscribe: vi.fn(), update: vi.fn(), set: vi.fn(), getTextareaRef: vi.fn(() => mockTextareaElement), /* 他のストアプロパティや関数 */ } }));`
+- **Fluid Framework `Item` オブジェクト**: `Item`オブジェクトのような複雑な外部依存オブジェクトについては、ユニットテストの実行効率と分離性を考慮し、インターフェースを満たす単純なテストダブル（スタブ）の使用を許容します。テストダブルは、テスト対象のロジックが必要とする最小限のプロパティ（例: `text`, `id`）とメソッド（例: `updateText`）を持つべきです。
+  - 使用例: `const mockItem = { id: 'test-item', text: 'initial text', updateText: vi.fn((newText) => { mockItem.text = newText; }), items: { /* 子アイテムのモックなど */ } };`
+
+これらのモックやテストダブルを使用する際は、テストコード内でその目的と範囲を明確にコメントし、過度なモックによってテストが実装の詳細と密結合しすぎないよう注意してください。E2Eテストでカバーされるべき統合的な振る舞いをユニットテストで無理に再現しようとしないでください。
 
 # 🔍 How to deal with test failures
 
