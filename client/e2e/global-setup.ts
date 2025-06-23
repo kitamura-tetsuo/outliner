@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { spawn, type ChildProcess } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -12,9 +12,9 @@ const __dirname = path.dirname(__filename);
 setupEnv();
 
 // Tinyliciousサーバーのインスタンスを格納する変数
-let tinyliciousProcess = null;
+let tinyliciousProcess: ChildProcess | null = null;
+let serverProcess: ChildProcess | null = null;
 
-// Tinyliciousサーバーを起動する関数
 function startTinyliciousServer() {
     const tinyliciousPort = process.env.VITE_TINYLICIOUS_PORT || "7082";
     console.log(`Starting Tinylicious server on port ${tinyliciousPort}...`);
@@ -64,7 +64,22 @@ function startTinyliciousServer() {
 
 async function globalSetup() {
     console.log("Starting global setup...");
+    const env = { ...process.env, NODE_ENV: "test" };
 
+    const serverPort = env.TEST_PORT || "7090";
+    serverProcess = spawn("npm", ["run", "dev", "--", "--host", "0.0.0.0", "--port", serverPort], {
+        cwd: path.join(__dirname, ".."),
+        env,
+        stdio: "inherit",
+    });
+
+    tinyliciousProcess = startTinyliciousServer();
+
+    global.__TINYLICIOUS_PROCESS__ = tinyliciousProcess;
+    global.__SERVER_PROCESS__ = serverProcess;
+
+    // give servers time to start
+    await new Promise(r => setTimeout(r, 5000));
 }
 
 export default globalSetup;

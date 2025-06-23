@@ -62,7 +62,7 @@
 | SLR-0101 | ボックス選択（矩形選択）機能 - マウス | client/e2e/core/SLR-0101.spec.ts | implemented |
 | SRE-001 | Advanced Search & Replace | client/e2e/disabled/SRE-001.spec.ts | implemented |
 | SRP-0001 | 高度な検索と置換 | — | draft |
-| TBL-0001 | Editable JOIN Table | client/e2e/disabled/TBL-0001.spec.ts | implemented |
+| TBL-0001 | Editable JOIN Table | client/e2e/new/TBL-0001.spec.ts<br>client/e2e/disabled/TBL-0001.spec.ts | implemented |
 | TST-0001 | SharedTreeデータ検証ユーティリティ | client/e2e/utils/tree-validation.spec.ts | implemented |
 | TST-0002 | カーソル情報検証ユーティリティ | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | テストヘルパーユーティリティ | — | implemented |

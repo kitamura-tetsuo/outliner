@@ -2,7 +2,20 @@
 import { onMount } from "svelte";
 import EditableQueryGrid from "../../components/EditableQueryGrid.svelte";
 import QueryEditor from "../../components/QueryEditor.svelte";
-import { initDb } from "../../services/sqlService";
+import {
+    initDb,
+    queryStore,
+} from "../../services/sqlService";
+
+let data = $state({ rows: [], columnsMeta: [] } as any);
+
+// Svelte 5のリアクティブな購読
+$effect(() => {
+    const unsubscribe = queryStore.subscribe(v => {
+        data = v;
+    });
+    return unsubscribe;
+});
 
 onMount(async () => {
     await initDb();
@@ -25,6 +38,19 @@ onMount(async () => {
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-lg font-semibold mb-4">クエリ結果</h2>
             <EditableQueryGrid />
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">チャート</h2>
+            <div class="chart-panel">
+                {#if data.rows.length > 0}
+                    <div class="chart-content">
+                        {data.rows[0] ? Object.values(data.rows[0])[0] : ""}
+                    </div>
+                {:else}
+                    <div class="no-data">データがありません</div>
+                {/if}
+            </div>
         </div>
     </div>
 </main>

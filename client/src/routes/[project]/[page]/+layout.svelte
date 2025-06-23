@@ -4,4 +4,4 @@
 let { children } = $props();
 </script>
 
-<slot />
+{@render children()}

@@ -1,6 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
-import { page } from "$app/stores";
+import { page } from "$app/state";
 import {
     onDestroy,
     onMount,
@@ -28,8 +28,8 @@ import { store } from "../../../stores/store.svelte";
 const logger = getLogger("ProjectPage");
 
 // URLパラメータを取得
-let projectName = $state("");
-let pageName = $state("");
+let projectName = page.params.project;
+let pageName = page.params.page;
 
 // ページの状態
 let error: string | undefined = $state(undefined);
@@ -42,14 +42,7 @@ let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 
 // URLパラメータを監視して更新
 $effect(() => {
-    logger.info(`URL params effect triggered: project=${$page.params.project}, page=${$page.params.page}`);
-
-    if ($page.params.project) {
-        projectName = $page.params.project;
-    }
-    if ($page.params.page) {
-        pageName = $page.params.page;
-    }
+    logger.info(`URL params effect triggered: project=${projectName}, page=${pageName}`);
 
     logger.info(`Updated params: project="${projectName}", page="${pageName}", isAuthenticated=${isAuthenticated}`);
 

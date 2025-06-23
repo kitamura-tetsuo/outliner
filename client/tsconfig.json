@@ -1,5 +1,4 @@
 {
-    "extends": "./.svelte-kit/tsconfig.json",
     "compilerOptions": {
         "allowJs": true,
         "checkJs": true,
@@ -10,6 +9,7 @@
         "sourceMap": true,
         "strict": true,
         "moduleResolution": "bundler",
+        "verbatimModuleSyntax": true,
         "types": ["@playwright/test"],
         "noUnusedLocals": true // 未使用の変数・関数・importをエラーに
         // "noUnusedParameters": true // 未使用のパラメータをエラーに

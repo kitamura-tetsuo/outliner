@@ -156,6 +156,16 @@
 - Fluid Frameworkのコンテナ管理機能を共通モジュール化
 - リアルタイム同期処理を他機能から簡単に利用できるようにする
 
+### TBL-0001 Editable JOIN Table
+
+- SQLite WASM と Fluid Framework を組み合わせ、JOIN クエリ結果を編集可能なテーブルとして表示
+- セル編集は EditMapper を経由して Fluid に反映し、SyncWorker が SQLite キャッシュを更新
+- ChartPanel は queryStore の変更を監視して自動更新する
+- sqlService、editMapper、syncWorker のユニットテストと E2E テストを追加
+- ChartPanel 表示確認と JOIN 編集検証を含むE2Eテストを追加
+- EditMapper は PK エイリアスで行の編集先を特定するユニットテストを追加
+- セル編集後に再実行しても更新値が取得できることをE2Eテストで検証
+
 ### GRF-001 Graph View
 
 - ページ間リンクをグラフとして可視化するビューを追加

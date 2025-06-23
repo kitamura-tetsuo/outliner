@@ -1,8 +1,8 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
 import ContainerSelector from "../components/ContainerSelector.svelte";
+import { loadContainer } from "../lib/fluidService.svelte";
 import { getLogger } from "../lib/logger";
-import { loadContainer } from "../services";
 import { fluidStore } from "../stores/fluidStore.svelte";
 
 const logger = getLogger("HomePage");
