@@ -10,31 +10,35 @@ test.describe("TBL-0001: Editable JOIN Table", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-  test("query grid should be visible", async ({ page }) => {
+    test("query grid should be visible", async ({ page }) => {
         await page.goto("/table");
         await expect(page.locator(".editable-query-grid")).toBeVisible();
     });
 
-    test('display query result', async ({ page }) => {
-        await page.waitForSelector('textarea');
-        await page.fill('textarea', 'SELECT 1 as value');
-        await page.click('text=Run');
-        await expect(page.locator('text=value')).toBeVisible();
-        await expect(page.locator('text=1')).toBeVisible();
+    test("display query result", async ({ page }) => {
+        await page.goto("/table");
+        await page.waitForSelector("textarea");
+        await page.fill("textarea", "SELECT 1 as value");
+        await page.click("text=Run");
+        await expect(page.locator("text=value")).toBeVisible();
+        await expect(page.locator("text=1")).toBeVisible();
     });
 
-    test('edit cell updates store and chart', async ({ page }) => {
-        await page.goto('/table');
-        await page.waitForSelector('textarea');
-        await page.fill('textarea', 'CREATE TABLE tbl(val INTEGER); INSERT INTO tbl VALUES (1); SELECT * FROM tbl;');
-        await page.click('text=Run');
-        await page.waitForSelector('.editable-query-grid');
+    test("edit cell updates store and chart", async ({ page }) => {
+        await page.goto("/table");
+        await page.waitForSelector("textarea");
+        await page.fill(
+            "textarea",
+            "CREATE TABLE tbl(val INTEGER); INSERT INTO tbl VALUES (1); SELECT * FROM tbl;"
+        );
+        await page.click("text=Run");
+        await page.waitForSelector(".editable-query-grid");
 
-        const cell = page.locator('.editable-query-grid td').first();
+        const cell = page.locator(".editable-query-grid td").first();
         await cell.dblclick();
-        const input = page.locator('.editable-query-grid input').first();
-        await input.fill('2');
-        await input.press('Enter');
+        const input = page.locator(".editable-query-grid input").first();
+        await input.fill("2");
+        await input.press("Enter");
 
         const data = await page.evaluate(() => {
             const qs: any = (window as any).queryStore;
@@ -47,6 +51,7 @@ test.describe("TBL-0001: Editable JOIN Table", () => {
 
         expect(data?.rows?.[0]?.val).toBe(2);
 
-        await expect(page.locator('.chart-panel')).toContainText('2');
+        await expect(page.locator(".chart-panel")).toContainText("2");
+    });
     });
 });

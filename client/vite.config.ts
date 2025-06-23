@@ -31,12 +31,12 @@ export default defineConfig(async ({ mode }) => {
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,
-            host: process.env.VITE_HOST || "192.168.50.13",
+            host: process.env.VITE_HOST || "localhost",
         },
         preview: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,
-            host: process.env.VITE_HOST || "192.168.50.13",
+            host: process.env.VITE_HOST || "localhost",
         },
         build: {
             sourcemap: true,
@@ -62,6 +62,11 @@ export default defineConfig(async ({ mode }) => {
                         setupFiles: ["./vitest-setup-client.ts"],
                         envFile: ".env.test",
                     },
+                    server: {
+                        fs: {
+                            allow: [".."],
+                        },
+                    },
                 },
                 {
                     extends: "./vite.config.ts",
@@ -69,8 +74,13 @@ export default defineConfig(async ({ mode }) => {
                     test: {
                         name: "server",
                         environment: "node",
-                        include: ["src/**/*.{test,spec}.{js,ts}"],
+                        include: ["src/lib/server/**/*.{test,spec}.{js,ts}"], // server側のテストのみを対象
                         exclude: ["src/**/*.svelte.{test,spec}.{js,ts}"],
+                    },
+                    server: {
+                        fs: {
+                            allow: [".."],
+                        },
                     },
                 },
             ],
