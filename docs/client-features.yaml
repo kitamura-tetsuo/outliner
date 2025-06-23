@@ -56,7 +56,18 @@
     - ユーザーがクリックせずに直接テキスト入力が可能になる
   tests:
     - client/e2e/core/APP-0001.spec.ts
-
+- id: CHT-001
+  title: Chart Component
+  description: 保存されたデータをグラフ表示するチャートコンポーネント
+  category: visualization
+  status: implemented
+  components:
+    - src/components/ChartComponent.svelte
+  tests:
+    - client/e2e/core/CHT-001.spec.ts
+  acceptance:
+    - データをグラフで表示する
+    - データ更新時にグラフが自動更新される
 - id: CLM-0001
   title: クリックで編集モードに入る
   shortcut: クリック
@@ -912,6 +923,7 @@
     - '管理者はコンテナのユーザーリストを取得できる'
   tests:
     - server/tests/get-container-users.test.js
+    - server/tests/auth-service.test.js
     - client/e2e/core/API-0003.spec.ts
   components:
     - server/auth-service.js
