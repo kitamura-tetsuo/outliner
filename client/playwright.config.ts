@@ -20,7 +20,7 @@ const TEST_PORT = isLocalhostEnv ? "7090" : "7080";
 // Tinylicious サーバーのポートを定義
 const TINYLICIOUS_PORT = isLocalhostEnv ? "7092" : "7082";
 // ホストを定義
-const VITE_HOST = isLocalhostEnv ? "localhost" : "192.168.50.13";
+const VITE_HOST = process.env.VITE_HOST || "localhost";
 // 環境設定ファイルを定義
 const ENV_FILE = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
 
@@ -89,7 +89,7 @@ export default defineConfig({
     ],
     // webServer: {
     //     command: `npx dotenv -e .env.test -- npm run dev -- --host 0.0.0.0 --port ${TEST_PORT}`,
-    //     url: `http://192.168.50.13:${TEST_PORT}`,
+    //     url: `http://localhost:${TEST_PORT}`,
     //     reuseExistingServer: !process.env.CI,
     //     env: {
     //         NODE_ENV: "test",
