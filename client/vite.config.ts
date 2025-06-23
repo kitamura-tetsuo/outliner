@@ -62,6 +62,11 @@ export default defineConfig(async ({ mode }) => {
                         setupFiles: ["./vitest-setup-client.ts"],
                         envFile: ".env.test",
                     },
+                    server: {
+                        fs: {
+                            allow: [".."],
+                        },
+                    },
                 },
                 {
                     extends: "./vite.config.ts",
@@ -71,6 +76,11 @@ export default defineConfig(async ({ mode }) => {
                         environment: "node",
                         include: ["src/**/*.{test,spec}.{js,ts}"],
                         exclude: ["src/**/*.svelte.{test,spec}.{js,ts}"],
+                    },
+                    server: {
+                        fs: {
+                            allow: [".."],
+                        },
                     },
                 },
             ],

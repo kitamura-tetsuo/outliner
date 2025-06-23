@@ -41,6 +41,9 @@ client/logs/
 server/logs/
 logs/
 
+# Coverage reports
+client/coverage/
+
 # GitLab CI
 .gitlab-ci-local
 
