@@ -12,6 +12,13 @@ labels:
   - name: question
     description: Further information is requested
     color: d876e3
+  - name: test
+    description: Add or update test cases
+    color: 0e8a16
+  - name: chore
+    description: Maintenance of test frameworks or environments
+    color: d4c5f9
+
 
   # Priority
   - name: P0-critical
@@ -48,6 +55,9 @@ labels:
   - name: infra
     description: Infrastructure / CI / deployment
     color: 006b75
+  - name: testing
+    description: Tasks related to testing (unit/integration/e2e)
+    color: f9d0c4
 
   # Size
   - name: size/XS
