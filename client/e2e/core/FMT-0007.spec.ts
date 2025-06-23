@@ -1,3 +1,7 @@
+/** @feature FMT-0007
+ *  Title   : 内部リンク機能の表示
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
