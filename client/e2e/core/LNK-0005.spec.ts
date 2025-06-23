@@ -1,3 +1,7 @@
+/** @feature LNK-0005
+ *  Title   : リンクプレビュー機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
