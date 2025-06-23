@@ -1,3 +1,7 @@
+/** @feature LNK-0001
+ *  Title   : 内部リンクのURL生成機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,

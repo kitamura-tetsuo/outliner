@@ -1,3 +1,7 @@
+/** @feature FLD-0001
+ *  Title   : プロジェクトタイトルからFluidClientを取得する機能
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
