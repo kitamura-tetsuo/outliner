@@ -1136,6 +1136,21 @@ export class FluidServiceHelper {
             return userManager.getCurrentUser();
         });
     }
+
+    /**
+     * queryStoreから現在のデータを取得する
+     * @param page Playwrightのページオブジェクト
+     */
+    public static async getQueryStoreData(page: Page): Promise<any> {
+        return await page.evaluate(() => {
+            const qs: any = (window as any).queryStore;
+            if (!qs) return null;
+            let value: any;
+            const unsub = qs.subscribe((v: any) => (value = v));
+            unsub();
+            return value;
+        });
+    }
 }
 
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）

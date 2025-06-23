@@ -740,7 +740,7 @@
     - src/components/ChartPanel.svelte
   services:
     - src/services/sqlService.ts
-    - src/services/queryStore.ts
+    - src/services/editMapper.ts
     - src/services/syncWorker.ts
   tests:
     - src/tests/sqlService.test.ts
@@ -753,6 +753,10 @@
     - 編集後チャートが自動更新される
     - セル編集後、queryStoreのデータが更新される
     - セル編集後、ChartPanelに変更が表示される
+    - クエリ実行後、ChartPanelが表示される
+    - JOINクエリで編集した値が正しいテーブルに反映される
+    - PKエイリアスを利用してJOIN結果の各行が編集対象テーブルに正しくマッピングされる
+    - セル編集後に再実行したクエリ結果も更新される
 - id: TST-0001
   title: SharedTreeデータ検証ユーティリティ
   description: テストにおいてSharedTreeの内容をJSONとして取得し、結果を厳密かつ簡易に判定するユーティリティ
@@ -1032,29 +1036,6 @@
   category: visualization
   status: implemented
   components:
-    - src/components/ChartComponent.svelte
-  tests:
-    - client/e2e/core/CHT-001.spec.ts
-
-- id: TBL-0001
-  title: Editable JOIN Table
-  description: SQL query results editable via Fluid Framework and SQLite cache
-  category: table
-  status: implemented
-  components:
-    - src/components/EditableQueryGrid.svelte
-    - src/components/QueryEditor.svelte
-    - src/components/ChartPanel.svelte
-  services:
-    - src/services/sqlService.ts
-    - src/services/queryStore.ts
-    - src/services/syncWorker.ts
-  tests:
-    - src/tests/sqlService.test.ts
-    - src/tests/editMapper.test.ts
-    - src/tests/syncWorker.test.ts
-    - client/e2e/new/TBL-0001.spec.ts
-
 - id: SEC-0001
   title: Dotenvx encrypted env files
   description: Use dotenvx to encrypt server environment files
