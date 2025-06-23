@@ -979,7 +979,6 @@
   tests:
     - client/e2e/core/COL-0001.spec.ts
 
-
 - id: SRP-0001
   title: '高度な検索と置換'
   description: '全文検索および一括置換を行う機能'
@@ -1074,3 +1073,32 @@
   status: deprecated
   components: []
   tests: []
+
+- id: ENV-0001
+  title: Codex setup script is executable
+  description: Ensure scripts/codex-setup.sh has execute permission and is referenced consistently.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+    - client/e2e/utils/ENV-0001.spec.ts
+
+- id: ENV-0002
+  title: Setup script starts all services
+  description: Verify scripts/codex-setup.sh contains commands to start Firebase emulator, Tinylicious, API server, and SvelteKit server.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+    - client/e2e/utils/ENV-0002.spec.ts
+
+- id: ENV-0003
+  title: Setup script caches installation
+  description: >-
+    scripts/codex-setup.sh creates a sentinel file after running once and skips
+    dependency installation on subsequent runs, making repeat executions faster.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+    - client/e2e/utils/ENV-0003.spec.ts

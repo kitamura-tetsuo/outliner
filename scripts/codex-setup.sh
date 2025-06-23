@@ -1,6 +1,7 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+SETUP_SENTINEL="${ROOT_DIR}/.codex-setup-installed"
 set -euo pipefail
 
 # Error handling
@@ -9,6 +10,14 @@ trap 'echo "Error occurred at line $LINENO. Exit code: $?" >&2' ERR
 # Load common configuration and functions
 source "${SCRIPT_DIR}/common-config.sh"
 source "${SCRIPT_DIR}/common-functions.sh"
+
+# Bypass heavy setup steps if sentinel file exists
+if [ -f "$SETUP_SENTINEL" ]; then
+  echo "Setup already completed, skipping installation steps"
+  SKIP_INSTALL=1
+else
+  SKIP_INSTALL=0
+fi
 
 echo "=== Outliner Test Environment Setup ==="
 echo "ROOT_DIR: ${ROOT_DIR}"
@@ -23,34 +32,43 @@ clear_log_files
 echo "Setting up environment files..."
 setup_environment_files
 
-# Install required tools and dependencies
-echo "Installing global packages..."
-install_global_packages
-echo "Installing OS utilities..."
-install_os_utilities
-echo "Installing all dependencies..."
-install_all_dependencies
+# Install required tools and dependencies on first run
+if [ "$SKIP_INSTALL" -eq 0 ]; then
+  echo "Installing global packages..."
+  install_global_packages
+  echo "Installing OS utilities..."
+  install_os_utilities
+  echo "Installing all dependencies..."
+  install_all_dependencies
 
-# Install Playwright browser (system dependencies should be handled by install_os_utilities)
-cd "${ROOT_DIR}/client"
-npx -y playwright install chromium
-cd "${ROOT_DIR}"
+  # Install Playwright browser (system dependencies should be handled by install_os_utilities)
+  cd "${ROOT_DIR}/client"
+  npx -y playwright install chromium
+  cd "${ROOT_DIR}"
+  touch "$SETUP_SENTINEL"
+else
+  echo "Skipping dependency installation"
+fi
 
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
 kill_ports || echo "Warning: Some ports could not be killed"
 sleep 2
 
-# Start all test servers
-echo "Starting test servers..."
-echo "Starting Firebase emulator..."
-start_firebase_emulator
-echo "Starting Tinylicious..."
-start_tinylicious
-echo "Starting API server..."
-start_api_server
-echo "Starting SvelteKit server..."
-start_sveltekit_server
+# Start all test servers unless skipped
+if [ "${SKIP_SERVER_START:-0}" -eq 1 ]; then
+  echo "Skipping server start as requested"
+else
+  echo "Starting test servers..."
+  echo "Starting Firebase emulator..."
+  start_firebase_emulator
+  echo "Starting Tinylicious..."
+  start_tinylicious
+  echo "Starting API server..."
+  start_api_server
+  echo "Starting SvelteKit server..."
+  start_sveltekit_server
+fi
 
 # Wait for all services to be ready
 echo "Waiting for all services to be ready..."
