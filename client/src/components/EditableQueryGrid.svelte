@@ -6,10 +6,13 @@ import {
 } from "../services/sqlService";
 
 let data = $state({ rows: [], columnsMeta: [] } as any);
+let editingCell = $state<{ rowIndex: number; columnKey: string; } | null>(null);
 
 // Svelte 5のリアクティブな購読
 $effect(() => {
-    const unsubscribe = queryStore.subscribe(v => data = v);
+    const unsubscribe = queryStore.subscribe(v => {
+        data = v;
+    });
     return unsubscribe;
 });
 
@@ -24,6 +27,15 @@ function handleCellEdit(rowIndex: number, columnKey: string, newValue: any) {
         });
         applyEdit(info, newValue);
     }
+    editingCell = null;
+}
+
+function startEdit(rowIndex: number, columnKey: string) {
+    editingCell = { rowIndex, columnKey };
+}
+
+function isEditing(rowIndex: number, columnKey: string): boolean {
+    return editingCell?.rowIndex === rowIndex && editingCell?.columnKey === columnKey;
 }
 </script>
 
@@ -41,18 +53,31 @@ function handleCellEdit(rowIndex: number, columnKey: string, newValue: any) {
                 {#each data.rows as row, rowIndex}
                     <tr>
                         {#each data.columnsMeta as column}
-                            <td>
-                                <input
-                                    type="text"
-                                    value={row[column.name] || ""}
-                                    onblur={e =>
-                                    handleCellEdit(
-                                        rowIndex,
-                                        column.name,
-                                        (e.target as HTMLInputElement)?.value || "",
-                                    )}
-                                    class="cell-input"
-                                />
+                            <td ondblclick={() => startEdit(rowIndex, column.name)}>
+                                {#if isEditing(rowIndex, column.name)}
+                                    <input
+                                        type="text"
+                                        value={row[column.name] || ""}
+                                        onblur={e =>
+                                        handleCellEdit(
+                                            rowIndex,
+                                            column.name,
+                                            (e.target as HTMLInputElement)?.value || "",
+                                        )}
+                                        onkeydown={e => {
+                                            if (e.key === "Enter") {
+                                                handleCellEdit(
+                                                    rowIndex,
+                                                    column.name,
+                                                    (e.target as HTMLInputElement)?.value || "",
+                                                );
+                                            }
+                                        }}
+                                        class="cell-input"
+                                    />
+                                {:else}
+                                    <span class="cell-value">{row[column.name] || ""}</span>
+                                {/if}
                             </td>
                         {/each}
                     </tr>
@@ -98,5 +123,16 @@ function handleCellEdit(rowIndex: number, columnKey: string, newValue: any) {
 .cell-input:focus {
     outline: 2px solid #007bff;
     background-color: #fff;
+}
+
+.cell-value {
+    display: block;
+    padding: 4px;
+    min-height: 1.2em;
+    cursor: pointer;
+}
+
+.cell-value:hover {
+    background-color: #f8f9fa;
 }
 </style>

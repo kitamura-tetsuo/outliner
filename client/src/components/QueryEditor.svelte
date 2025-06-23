@@ -1,10 +1,19 @@
 <script lang="ts">
-import { runQuery } from "../services/sqlService";
+import {
+    initDb,
+    runQuery,
+} from "../services/sqlService";
 
 let sql = $state("SELECT 1 AS value");
 
-function run() {
-    runQuery(sql);
+async function run() {
+    try {
+        await initDb();
+        runQuery(sql);
+    }
+    catch (error) {
+        console.error("Error running query:", error);
+    }
 }
 </script>
 

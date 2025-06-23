@@ -26,8 +26,15 @@ let worker: SyncWorker | null = null;
 
 export const queryStore = writable<QueryResult>({ rows: [], columnsMeta: [] });
 
+// テスト環境でqueryStoreをwindowオブジェクトに公開
+if (typeof window !== "undefined") {
+    (window as any).queryStore = queryStore;
+}
+
 export async function initDb() {
     if (db) return;
+
+    console.log("Initializing SQL.js database...");
 
     // テスト環境では直接ファイルシステムからWASMを読み込み
     if (typeof process !== "undefined" && process.env.NODE_ENV === "test") {
@@ -53,34 +60,89 @@ export async function initDb() {
 
     db = new SQL.Database();
     worker = new SyncWorker(db);
+    console.log("SQL.js database initialized successfully");
 }
 
-function extendQuery(sql: string): { sql: string; aliases: string[]; } {
-    const aliasRegex =
-        /\b(?:from|join)\s+([a-zA-Z0-9_]+)(?:\s+(?:as\s+)?([a-zA-Z0-9_]+))?(?=\s+(?:join|on|using|where|$))/gi;
-    const aliases: string[] = [];
-    let match;
-    while ((match = aliasRegex.exec(sql)) !== null) {
-        const table = match[1];
-        const alias = match[2] && !/^(on|using|join|where)$/i.test(match[2]) ? match[2] : table;
-        if (!aliases.includes(alias)) aliases.push(alias);
+function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: Record<string, string>; } {
+    console.log("extendQuery called with:", sql);
+
+    // 最後のSELECT文のみを処理
+    const lastSelectIndex = sql.toUpperCase().lastIndexOf("SELECT");
+    console.log("lastSelectIndex:", lastSelectIndex);
+    if (lastSelectIndex === -1) {
+        console.log("No SELECT found, returning original");
+        return { sql, aliases: [], tableMap: {} };
     }
-    if (aliases.length === 0) return { sql, aliases };
-    const selectMatch = sql.match(/select\s+([\s\S]+?)\s+from/i);
-    if (!selectMatch) return { sql, aliases };
+
+    const selectPart = sql.slice(lastSelectIndex);
+    const beforeSelect = sql.slice(0, lastSelectIndex);
+    console.log("selectPart:", selectPart);
+
+    // FROMとJOINを分けて処理
+    const fromRegex =
+        /\bfrom\s+([a-zA-Z0-9_]+)(?:\s+(?:as\s+)?([a-zA-Z0-9_]+))?(?=\s+(?:join|where|group|order|limit|on|;|$)|\s*;|\s*$)/gi;
+    const joinRegex =
+        /\bjoin\s+([a-zA-Z0-9_]+)(?:\s+(?:as\s+)?([a-zA-Z0-9_]+))?(?=\s+(?:on|join|where|group|order|limit|;|$)|\s*;|\s*$)/gi;
+    const aliases: string[] = [];
+    const tableMap: Record<string, string> = {};
+    let match;
+    console.log("Testing regex against:", selectPart);
+    // FROM句の処理
+    while ((match = fromRegex.exec(selectPart)) !== null) {
+        console.log("FROM match:", match);
+        const table = match[1];
+        const alias = match[2] || table;
+        console.log("FROM Table:", table, "Alias:", alias);
+        if (!aliases.includes(alias)) aliases.push(alias);
+        tableMap[alias] = table;
+    }
+
+    // JOIN句の処理
+    while ((match = joinRegex.exec(selectPart)) !== null) {
+        console.log("JOIN match:", match);
+        const table = match[1];
+        const alias = match[2] || table;
+        console.log("JOIN Table:", table, "Alias:", alias);
+        if (!aliases.includes(alias)) aliases.push(alias);
+        tableMap[alias] = table;
+    }
+    console.log("Found aliases:", aliases);
+    if (aliases.length === 0) {
+        console.log("No aliases found, returning original");
+        return { sql, aliases, tableMap };
+    }
+
+    const selectMatch = selectPart.match(/select\s+([\s\S]+?)\s+from/i);
+    console.log("selectMatch:", selectMatch);
+    if (!selectMatch) {
+        console.log("No select match found, returning original");
+        return { sql, aliases, tableMap };
+    }
+
     const selectClause = selectMatch[1];
+    console.log("selectClause:", selectClause);
     const additions = aliases
         .filter(a => !new RegExp(`${a}\.id`, "i").test(selectClause))
         .map(a => `${a}.id AS ${a}_pk`);
-    if (additions.length === 0) return { sql, aliases };
+    console.log("additions:", additions);
+    if (additions.length === 0) {
+        console.log("No additions needed, returning original");
+        return { sql, aliases, tableMap };
+    }
+
     const newSelect = `${selectClause}, ${additions.join(", ")}`;
-    const modified = sql.replace(selectMatch[0], `SELECT ${newSelect} FROM`);
-    return { sql: modified, aliases };
+    const modifiedSelectPart = selectPart.replace(selectMatch[0], `SELECT ${newSelect} FROM`);
+    const modified = beforeSelect + modifiedSelectPart;
+
+    console.log("Extended query result:", { original: sql, modified, aliases, tableMap });
+    return { sql: modified, aliases, tableMap };
 }
 
 export function runQuery(sql: string) {
+    console.log("Running query:", sql);
     if (!db) throw new Error("DB not initialized");
-    const { sql: extended, aliases } = extendQuery(sql);
+    const { sql: extended, aliases, tableMap } = extendQuery(sql);
+    console.log("Extended query:", extended);
     currentQuery = extended;
     const idx = extended.toUpperCase().lastIndexOf("SELECT");
     currentSelect = idx >= 0 ? extended.slice(idx) : extended;
@@ -102,10 +164,11 @@ export function runQuery(sql: string) {
         let table: string | undefined;
         let column = col;
         if (aliasMatch) {
-            table = aliasMatch[1];
+            const alias = aliasMatch[1];
+            table = tableMap[alias] || alias; // エイリアスを実際のテーブル名に変換
             column = aliasMatch[2];
         }
-        columnsMeta.push({ name: col, table, pkAlias: table ? pkAliases[table] : undefined, column });
+        columnsMeta.push({ name: col, table, pkAlias: table ? pkAliases[aliasMatch?.[1] || ""] : undefined, column });
     });
     const rows = res.values.map(v => {
         const obj: any = {};
@@ -127,11 +190,20 @@ export function rawExec(sql: string) {
 }
 
 export function applyEdit(info: EditInfo, value: any) {
-    if (!worker) return;
+    console.log("Applying edit:", info, "value:", value);
+    if (!worker) {
+        console.log("No worker available");
+        return;
+    }
     const op: Op = { table: info.table, pk: info.pk, column: info.column, value };
     worker.applyOp(op);
+    console.log("Applied operation:", op);
     if (currentSelect) {
+        console.log("Re-running query:", currentSelect);
         rawExec(currentSelect);
         runQuery(currentSelect);
+    }
+    else {
+        console.log("No currentSelect to re-run");
     }
 }
