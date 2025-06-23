@@ -1,6 +1,7 @@
 <script lang="ts">
 import { queryStore } from "../services/queryStore";
 let query = "";
+
 function run() {
     queryStore.run(query);
 }

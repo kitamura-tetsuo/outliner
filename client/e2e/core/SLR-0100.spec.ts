@@ -1,3 +1,7 @@
+/** @feature SLR-0100
+ *  Title   : ボックス選択（矩形選択）機能 - キーボード
+ *  Source  : docs/client-features.yaml
+ */
 import {
     expect,
     test,
