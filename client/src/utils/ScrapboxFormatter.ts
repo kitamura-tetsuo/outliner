@@ -458,10 +458,10 @@ export class ScrapboxFormatter {
             '<span class="control-char">$1</span><strong>$2</strong><span class="control-char">$3</span>',
         );
 
-        // プロジェクト内部リンク - 斜体よりも先に処理する必要がある
+        // プロジェクト内部リンク - カーソルがある時は制御文字のみ表示
         html = html.replace(
             /(\[\/)([a-zA-Z0-9\-\/]+)(\])/g,
-            '<span class="control-char">$1</span><a href="/$2" class="internal-link project-link">$2</a><span class="control-char">$3</span>',
+            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
 
         // 斜体
@@ -482,18 +482,18 @@ export class ScrapboxFormatter {
             '<span class="control-char">$1</span><code>$2</code><span class="control-char">$3</span>',
         );
 
-        // 外部リンク
+        // 外部リンク - カーソルがある時は制御文字のみ表示
         html = html.replace(
             /(\[)(https?:\/\/.*?)(\])/g,
-            '<span class="control-char">$1</span><a href="$2" target="_blank" rel="noopener noreferrer">$2</a><span class="control-char">$3</span>',
+            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
 
         // プロジェクト内部リンクは上で処理済み
 
-        // 通常の内部リンク - 外部リンクの後に処理する必要がある
+        // 通常の内部リンク - カーソルがある時は制御文字のみ表示
         html = html.replace(
             /(\[)([^\[\]\/\-][^\[\]]*?)(\])/g,
-            '<span class="control-char">$1</span><a href="/$2" class="internal-link">$2</a><span class="control-char">$3</span>',
+            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
 
         // 引用
