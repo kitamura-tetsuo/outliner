@@ -197,7 +197,7 @@ npm run test:unit
 # E2E テスト (dotenvxで復号化して実行)
 dotenvx run -- npm run test:e2e
 ```
-テストの前には `scripts/codex-setp.sh` を実行してローカルのエミュレータ群を起動してください。
+テストの前には `scripts/codex-setup.sh` を実行してローカルのエミュレータ群を起動してください。
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
 

@@ -287,7 +287,7 @@ main() {
     echo "  npm test (for unit tests)"
     echo ""
     echo "To start test servers, use the existing scripts:"
-    echo "  scripts/codex-setp.sh (for full environment)"
+    echo "  scripts/codex-setup.sh (for full environment)"
     echo ""
 }
 
