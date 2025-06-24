@@ -26,33 +26,6 @@
   - firebase.json
   - functions/.env
   - functions/index.js
-- id: API-0001
-  title: Firebase Functions APIサーバーの修正
-  description: Firebase Functions APIサーバーのローカルテスト時のエラーを修正し、正常に動作するようにする機能
-  category: api-server
-  status: implemented
-  acceptance:
-  - CORS設定が正しく構成され、クロスオリジンリクエストが正常に処理される
-  - Firebase Functions エミュレーターが正常に起動する
-  - Firebase Hosting経由でのリクエストが正しくFunctionsにルーティングされる
-  - deleteContainerエンドポイント（/api/deleteContainer）が認証エラーを適切に処理する
-  - deleteUserエンドポイント（/api/deleteUser）が認証エラーを適切に処理する
-  - fluid-tokenエンドポイント（/api/fluid-token）が認証エラーを適切に処理する
-  - getUserContainersエンドポイント（/api/getUserContainers）が認証エラーを適切に処理する
-  - save-containerエンドポイント（/api/save-container）が認証エラーを適切に処理する
-  - ヘルスチェックエンドポイント（/health）が正常に応答する
-  - 'ポート設定が正しく構成される（Hosting: 57000, Functions: 57070）'
-  - 必須パラメータが不足している場合に400エラーが返される
-  - 無効なHTTPメソッドに対して405エラーが返される
-  - 環境変数が正しく読み込まれ、Azure Fluid Relay設定が適用される
-  - 認証に失敗した場合に401または500エラーが返される
-  tests:
-  - functions/test/firebase-functions.test.js
-  components:
-  - client/.env.localhost.test
-  - firebase.json
-  - functions/.env
-  - functions/index.js
 - id: API-0002
   title: Firebase emulator起動待機機能
   description: Firebase emulatorの起動を待つリトライ機能により、ECONNREFUSED エラーを回避する機能
@@ -72,24 +45,6 @@
   - server/tests/log-service-emulator-wait.test.js
   components:
   - server/log-service.js
-- id: API-0002
-  title: Firebase emulator起動待機機能
-  description: Firebase emulatorの起動を待つリトライ機能により、ECONNREFUSED エラーを回避する機能
-  category: api-server
-  status: implemented
-  acceptance:
-  - ECONNREFUSED エラーが発生した場合、指数バックオフでリトライする
-  - ECONNREFUSED以外のエラーは即座に失敗とする
-  - Firebase Auth emulatorへの接続テストを行い、成功するまで待機する
-  - Firebase emulator環境変数が設定されている場合、emulatorの起動を待機する
-  - emulator環境でない場合は待機をスキップする
-  - リトライ回数と遅延時間をログに出力する
-  - 接続成功時にユーザー数とユーザー情報をログに出力する
-  - 最大30回のリトライを行い、初期遅延1秒、最大遅延10秒で待機する
-  tests:
-  - server/test/auth-service-emulator-wait.test.js
-  components:
-  - server/auth-service.js
 - id: API-0003
   title: Admin check for container user listing
   description: /api/get-container-users requires admin role
@@ -138,21 +93,6 @@
   acceptance:
   - データをグラフで表示する
   - データ更新時にグラフが自動更新される
-- id: CHT-001
-  title: Chart Component
-  description: 保存されたデータをグラフ表示するチャートコンポーネント
-  category: visualization
-  status: implemented
-  components:
-  - src/components/ChartComponent.svelte
-  tests:
-  - client/e2e/core/CHT-001.spec.ts
-- id: CHT-001
-  title: Chart Component
-  description: 保存されたデータをグラフ表示するチャートコンポーネント
-  category: visualization
-  status: implemented
-  components: null
 - id: CLM-0001
   title: クリックで編集モードに入る
   shortcut: クリック
@@ -283,36 +223,6 @@
   - Shift+矢印キーによる選択がフォーマット文字列で正しく機能する
   - フォーマット文字列内でのカーソル移動が正しく機能する
   - 複数のフォーマットが混在する文字列でのカーソル移動が正しく機能する
-- id: COL-0001
-  title: 他ユーザーのカーソル表示
-  description: 複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する
-  category: collaboration
-  status: implemented
-  acceptance:
-  - Fluid Framework の signal 機能でカーソル位置を同期する
-  - 他ユーザーがカーソルを移動すると、その位置が表示される
-  tests:
-  - client/e2e/core/COL-0001.spec.ts
-- id: COL-0001
-  title: 他ユーザーのカーソル表示
-  description: 複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する
-  category: collaboration
-  status: implemented
-  acceptance:
-  - Fluid Framework の signal 機能でカーソル位置を同期する
-  - 他ユーザーがカーソルを移動すると、その位置が表示される
-  tests:
-  - client/e2e/core/COL-0001.spec.ts
-- id: COL-0001
-  title: 他ユーザーのカーソル表示
-  description: 複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する
-  category: collaboration
-  status: implemented
-  acceptance:
-  - Fluid Framework の signal 機能でカーソル位置を同期する
-  - 他ユーザーがカーソルを移動すると、その位置が表示される
-  tests:
-  - client/e2e/core/COL-0001.spec.ts
 - id: COL-0001
   title: 他ユーザーのカーソル表示
   description: 複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する
