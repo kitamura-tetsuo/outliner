@@ -255,6 +255,21 @@
   - 新しいプロジェクトを作成してからFluidClientを取得できる
   tests:
   - client/e2e/core/FLD-0001.spec.ts
+- id: FFI-0001
+  title: Fluid Framework integration
+  description: 共通Fluidコンテナ管理モジュールを実装し、リアルタイム同期を簡素化する
+  category: fluid-service
+  status: implemented
+  acceptance:
+  - fluidService の機能を services/fluidClient モジュール経由で利用できる
+  - createNewContainer を通じて FluidClient インスタンスを取得できる
+  - 複数クライアント間で編集内容がリアルタイム同期される
+  tests:
+  - client/e2e/core/FFI-0001.spec.ts
+  components:
+  - client/src/services/fluidClient.ts
+  - client/src/services/index.ts
+  - client/src/services/fluidClient.test.ts
 - id: FMT-0001
   title: フォーマット表示
   description: Scrapbox構文のフォーマットを視覚的に表示する機能
