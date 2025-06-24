@@ -898,3 +898,12 @@
   - コンテナを削除できる
   tests:
   - client/e2e/core/USR-0002.spec.ts
+
+- id: ENV-0004
+  title: E2E test scripts create log directory
+  description: Playwright test scripts ensure "client/e2e/logs" exists before execution.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+    - client/e2e/utils/ENV-0004.spec.ts
