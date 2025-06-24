@@ -93,6 +93,25 @@
   acceptance:
   - データをグラフで表示する
   - データ更新時にグラフが自動更新される
+- id: CMD-0001
+  title: Inline Command Palette
+  description: Notion-style command palette activated by typing / within an item. Selecting an option inserts specialized components.
+  category: editing
+  status: implemented
+  acceptance:
+  - Show palette when the user types / in any editable outliner item.
+  - Palette options include Table and Chart.
+  - When Table is selected, an EditableJoinTable component is inserted.
+  - When Chart is selected, a ChartPanel component is inserted.
+  - Added items display the corresponding components.
+  - Cursor is positioned appropriately after insertion.
+  tests:
+  - client/e2e/new/CMD-0001.spec.ts
+  components:
+  - client/src/components/CommandPalette.svelte
+  - client/src/lib/KeyEventHandler.ts
+  - client/src/stores/EditorOverlayStore.svelte.ts
+  - client/src/components/OutlinerItem.svelte
 - id: CLM-0001
   title: クリックで編集モードに入る
   shortcut: クリック

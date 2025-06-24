@@ -165,3 +165,17 @@
 - ChartPanel 表示確認と JOIN 編集検証を含むE2Eテストを追加
 - EditMapper は PK エイリアスで行の編集先を特定するユニットテストを追加
 - セル編集後に再実行しても更新値が取得できることをE2Eテストで検証
+
+### CMD-0001 Inline Command Palette
+- **Detect Slash:** `KeyEventHandler.ts` modified to detect `/` key press in `handleKeyDown`.
+- **Palette State:** `EditorOverlayStore.svelte.ts` updated with `commandPaletteVisible`, `commandPaletteItemId`, `commandPaletteOffset` and methods `showCommandPalette`, `hideCommandPalette`, `getCommandPaletteState`.
+- **Palette Component:** New `CommandPalette.svelte` created.
+    - Displays "Table" and "Chart" options.
+    - Positioned near the cursor/active item.
+    - On selection, inserts a new item with placeholder text (`[[EditableJoinTable]]` or `[[ChartPanel]]`) after the current item.
+    - Uses `OutlinerViewModel` and `FluidClient` from context to interact with the Fluid Framework data.
+- **Component Rendering:** `EditorOverlay.svelte` imports and renders `CommandPalette.svelte`.
+- **Specialized Item Rendering:** `OutlinerItem.svelte` modified to:
+    - Import `EditableQueryGrid.svelte` and `ChartPanel.svelte`.
+    - Conditionally render these components if `item.text` matches `[[EditableJoinTable]]` or `[[ChartPanel]]`.
+- **Cursor Management:** After inserting a new item, the command palette attempts to set focus to the new item.

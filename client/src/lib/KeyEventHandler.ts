@@ -46,6 +46,19 @@ export class KeyEventHandler {
             return;
         }
 
+        // Handle slash command
+        if (event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            const activeCursor = cursorInstances.find(c => c.isActive);
+            if (activeCursor && activeCursor.itemId) {
+                // Prevent default / insertion for now
+                event.preventDefault();
+                event.stopPropagation();
+                store.showCommandPalette(activeCursor.itemId, activeCursor.offset);
+                console.log("Show command palette triggered");
+                return;
+            }
+        }
+
         // Escキーで矩形選択をキャンセル
         if (event.key === "Escape" && KeyEventHandler.boxSelectionState.active) {
             KeyEventHandler.cancelBoxSelection();

@@ -63,6 +63,11 @@ export class EditorOverlayStore {
     // onEdit コールバック
     onEditCallback: (() => void) | null = null;
 
+    // Command Palette State
+    commandPaletteVisible = $state<boolean>(false);
+    commandPaletteItemId = $state<string | null>(null);
+    commandPaletteOffset = $state<number>(0);
+
     private timerId!: ReturnType<typeof setTimeout>;
 
     // テキストエリア参照を設定
@@ -1048,6 +1053,27 @@ export class EditorOverlayStore {
         };
 
         return { itemIdToIndex, allItems };
+    }
+
+    // Command Palette Methods
+    showCommandPalette(itemId: string, offset: number) {
+        this.commandPaletteVisible = true;
+        this.commandPaletteItemId = itemId;
+        this.commandPaletteOffset = offset;
+    }
+
+    hideCommandPalette() {
+        this.commandPaletteVisible = false;
+        this.commandPaletteItemId = null;
+        this.commandPaletteOffset = 0;
+    }
+
+    getCommandPaletteState() {
+        return {
+            visible: this.commandPaletteVisible,
+            itemId: this.commandPaletteItemId,
+            offset: this.commandPaletteOffset,
+        };
     }
 }
 

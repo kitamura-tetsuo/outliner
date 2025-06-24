@@ -6,6 +6,9 @@
 	import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 	import { TreeSubscriber } from "../stores/TreeSubscriber";
 	import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
+	import EditableQueryGrid from './EditableQueryGrid.svelte';
+	import ChartPanel from './ChartPanel.svelte';
+
 	interface Props {
 		model: OutlinerItemViewModel;
 		depth?: number;
@@ -1356,7 +1359,11 @@
 				ondrop={handleDrop}
 				ondragend={handleDragEnd}
 			>
-				{#if hasActiveCursor()}
+				{#if text.current === '[[EditableJoinTable]]'}
+					<EditableQueryGrid />
+				{:else if text.current === '[[ChartPanel]]'}
+					<ChartPanel />
+				{:else if hasActiveCursor()}
 					<!-- フォーカスがある場合：フォーマットを適用した上で制御文字を表示 -->
 					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>
 						{@html ScrapboxFormatter.formatWithControlChars(text.current)}
@@ -1367,7 +1374,7 @@
 						{@html ScrapboxFormatter.formatToHtml(text.current)}
 					</span>
 				{/if}
-				{#if !isPageTitle && model.votes.length > 0}
+				{#if !isPageTitle && model.votes.length > 0 && text.current !== '[[EditableJoinTable]]' && text.current !== '[[ChartPanel]]'}
 					<span class="vote-count">{model.votes.length}</span>
 				{/if}
 			</div>

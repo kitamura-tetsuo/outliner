@@ -2,6 +2,7 @@
 import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
+import CommandPalette from './CommandPalette.svelte';
 
 // store API (関数のみ)
 const { stopCursorBlink } = store;
@@ -708,6 +709,9 @@ function handlePaste(event: ClipboardEvent) {
     >
         D
     </button>
+
+    <!-- Command Palette -->
+    <CommandPalette />
 
     <!-- 隠しクリップボード用textarea -->
     <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
