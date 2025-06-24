@@ -1,6 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
-import { page } from "$app/stores";
+import { page } from "$app/state";
 import {
     onDestroy,
     onMount,
@@ -15,19 +15,12 @@ import { store } from "../../stores/store.svelte";
 const logger = getLogger("ProjectIndex");
 
 // URLパラメータを取得
-let projectName = $state("");
+let projectName = page.params.project;
 
 // ページの状態
 let error: string | undefined = $state(undefined);
 let isAuthenticated = $state(false);
 let projectNotFound = $state(false);
-
-// URLパラメータを監視して更新
-$effect(() => {
-    if ($page.params.project) {
-        projectName = $page.params.project;
-    }
-});
 
 // 認証成功時の処理
 async function handleAuthSuccess(authResult: any) {
@@ -123,7 +116,7 @@ onDestroy(() => {
                     </div>
                     <div class="mt-4">
                         <button
-                            onclick={loadProject}
+                            onclick={() => window.location.reload()}
                             class="rounded-md bg-red-100 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >
                             再試行

@@ -1,10 +1,10 @@
 <script lang="ts">
 import { onMount } from "svelte";
-import { getLogger } from "../lib/logger";
 import {
     createFluidClient,
     getProjectTitle,
-} from "../services";
+} from "../lib/fluidService.svelte";
+import { getLogger } from "../lib/logger";
 import { firestoreStore } from "../stores/firestoreStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 const logger = getLogger();

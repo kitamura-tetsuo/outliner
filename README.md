@@ -142,6 +142,8 @@ firebase deploy
 
 - クライアント: `VITE_PORT=7080`
 - Tinylicious: `VITE_TINYLICIOUS_PORT=7082`
+- Firestore Emulator host: `VITE_FIRESTORE_EMULATOR_HOST=localhost`
+- Auth Emulator host: `VITE_AUTH_EMULATOR_HOST=localhost`
 
 ## Firebase Hosting + Functions
 
@@ -194,20 +196,12 @@ npm run test:unit
 
 # E2E テスト (dotenvxで復号化して実行)
 dotenvx run -- npm run test:e2e
+
+# 環境維持テスト (Vitest)
+dotenvx run -- npm run test:env
 ```
 
 テストの前には `scripts/codex-setup.sh` を実行してローカルのエミュレータ群を起動してください。
 スクリプトは初回実行後にインストール結果をキャッシュするため、二回目以降は依存関係のインストールをスキップして短時間で完了します。
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
-
-### Feature Map の更新
-
-テストファイルや `docs/client-features.yaml` を変更した後は、機能とテストの対応表を更新するため次のコマンドを実行してください。
-
-```bash
-python scripts/gen_feature_map.py
-git add docs/feature-map.md
-```
-
-生成された `docs/feature-map.md` もコミットに含めることで、常に最新の機能一覧を共有できます。

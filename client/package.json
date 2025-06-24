@@ -17,14 +17,13 @@
         "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
         "format": "prettier --write .",
         "lint": "prettier --check . && eslint .",
-        "test:unit": "vitest run",
+        "test:unit": "vitest run --coverage",
+        "coverage": "vitest run --coverage",
         "test": "cross-env NODE_ENV=test dotenvx run --env-file=.env.test -- npm run test:unit && npm run test:e2e",
         "test:e2e": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test --reporter=list",
         "test:e2e:debug": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test --reporter=list --debug",
         "test:e2e:ui": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test --reporter=list --ui",
         "test:e2e:xvfb": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test --reporter=list",
-        "test:e2e:single": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test --reporter=list",
-        "test:e2e:clipboard": "cross-env NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test --reporter=list e2e/core/FMT-0004.spec.ts",
         "ci:test:e2e": "playwright test --reporter=list --workers=1",
         "ci:test:e2e:ui": "playwright test --ui --reporter=list",
         "ci:test:e2e:xvfb": "xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npm run ci:test:e2e --reporter=list"
@@ -55,6 +54,8 @@
         "@testing-library/svelte": "^5.2.4",
         "@types/dotenv": "^6.1.1",
         "@types/uuid": "^10.0.0",
+        "@vitest/coverage-v8": "^3.2.4",
+        "@vitest/ui": "^3.2.4",
         "chokidar-cli": "^2.1.0",
         "concurrently": "^8.2.2",
         "cross-env": "^7.0.3",
@@ -79,7 +80,7 @@
         "typescript": "^5.5.0",
         "typescript-eslint": "^8.20.0",
         "vite": "^6.0.0",
-        "vitest": "^3.0.0"
+        "vitest": "^3.2.4"
     },
     "dependencies": {
         "@dotenvx/dotenvx": "^1.44.1",

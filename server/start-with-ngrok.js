@@ -93,7 +93,7 @@ function startServer() {
     return new Promise(resolve => {
         console.log("バックエンドサーバーを起動しています...");
 
-        const server = spawn("node", ["auth-service.js"], {
+        const server = spawn("node", ["log-service.js"], {
             stdio: ["ignore", "pipe", "pipe"],
         });
 

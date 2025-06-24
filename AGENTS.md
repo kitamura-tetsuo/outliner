@@ -1,6 +1,8 @@
 # 📄 Documentation & Specifications
 
-Record every feature in docs\client-features.yaml. Document intentionally omitted features in docs/unimplemented-features.md.
+Record end-user features in docs\client-features.yaml.
+List development and environment maintenance features (the ENV-* series) in docs/dev-features.yaml.
+Document intentionally omitted features in docs/unimplemented-features.md.
 
 - While multiple AIs may code in parallel, review documents frequently to avoid overlapping features or contradictory explanations.
 - Continuously reference and update past best practices so they remain current.
@@ -9,12 +11,34 @@ Record every feature in docs\client-features.yaml. Document intentionally omitte
 
 # 🧪 Test implementation and execution policy
 
+## テストの網羅性とカバレッジレポートの活用
+
+新しい機能を追加または既存の機能を変更する際には、その変更が広範囲に影響を及ぼす可能性を考慮し、十分なテストカバレッジを確保するよう努めてください。
+
+- **カバレッジレポートの確認**: ユニットテスト実行後に生成されるカバレッジレポート（`client/coverage/index.html`など）を必ず確認してください。
+- **テストケースの追加**: カバレッジが低い箇所や、新たに追加・変更されたロジックでテストされていない箇所を特定し、必要なテストケースを追加してください。特に条件分岐やエッジケースが網羅されているか注意深く確認します。
+- **既存テストの拡充**: 単に新しいテストを追加するだけでなく、既存のテストケースが新しい機能や変更点を考慮したものになっているかを見直し、必要に応じて拡充してください。
+  目標は、コードの品質と安定性を維持するために、テストによってコードベースの大部分が検証されている状態を保つことです。
+
 For every feature, create a corresponding test.
 Make the expected values ​​used for pass/fail judgments strict; longer test-execution time is acceptable if that is the consequence.
 Do not embed code that skips tests.
 Do not use mocks in tests.
 Run tests in headless mode.
 Fix one test file at a time and run tests after each fix to confirm.
+Run environment maintenance tests (ENV-*) separately from unit and e2e suites.
+These tests use Vitest while e2e tests use Playwright.
+
+## ユニットテストにおけるモックとテストダブルの使用について
+
+原則としてモックは使用しませんが、以下のケースにおいては限定的な使用を許容します。
+
+- **Svelteストア**: ユニットテスト対象のモジュールがSvelteストアに依存している場合、ストアの挙動を制御するために `vi.mock` を使用してストアの関数やプロパティをモックすることを許容します。これにより、ストアの状態やストア経由での副作用をテストダブルで置き換え、ユニットテストの分離性を高めます。
+  - 使用例: `vi.mock('../stores/editorOverlayStore.svelte', () => ({ editorOverlayStore: { subscribe: vi.fn(), update: vi.fn(), set: vi.fn(), getTextareaRef: vi.fn(() => mockTextareaElement), /* 他のストアプロパティや関数 */ } }));`
+- **Fluid Framework `Item` オブジェクト**: `Item`オブジェクトのような複雑な外部依存オブジェクトについては、ユニットテストの実行効率と分離性を考慮し、インターフェースを満たす単純なテストダブル（スタブ）の使用を許容します。テストダブルは、テスト対象のロジックが必要とする最小限のプロパティ（例: `text`, `id`）とメソッド（例: `updateText`）を持つべきです。
+  - 使用例: `const mockItem = { id: 'test-item', text: 'initial text', updateText: vi.fn((newText) => { mockItem.text = newText; }), items: { /* 子アイテムのモックなど */ } };`
+
+これらのモックやテストダブルを使用する際は、テストコード内でその目的と範囲を明確にコメントし、過度なモックによってテストが実装の詳細と密結合しすぎないよう注意してください。E2Eテストでカバーされるべき統合的な振る舞いをユニットテストで無理に再現しようとしないでください。
 
 # 🔍 How to deal with test failures
 
@@ -40,6 +64,28 @@ Git branch names must be written in English.
 At the end of your work, create the first prompt for the next session so you can continue smoothly. Even if issues remain, carry over the known problems. Focus on writing a prompt that makes the next session effective rather than describing today’s work.
 State in the prompt that tasks should be progressed sequentially.
 Write the prompt as plain text.
+
+# 📁 Working Directory Management
+
+**CRITICAL**: Always pay attention to the current working directory when executing commands.
+
+- Client code is in `client`
+- Server code is in `server`
+- Scripts are in `scripts`
+- Development environment tests (ENV-*) are in `scripts/tests`
+
+When using launch-process tool:
+
+- Always specify the correct `cwd` parameter for the intended directory
+- Do not assume the current directory - explicitly set it
+- For client tests: use `client` as cwd
+- For ENV-* tests: use `scripts/tests` as cwd
+
+Common mistakes to avoid:
+
+- Running client commands from wrong directory
+- Executing scripts without proper cwd specification
+- Assuming terminal's current directory matches intended target
 
 # ⚡ Performance & Reactivity
 
@@ -67,10 +113,13 @@ Prioritize performance.
 - For link testing, first test within current project, verify new page creation in fluid container data before testing links, and create helper functions for data verification if they don't exist.
 - When Playwright test output cannot be read directly, use cmd /c with output redirection to save results to a file and then read the file: cmd /c "cd /d path && npx playwright test ... > test-output.txt 2>&1 && type test-output.txt"
 - When terminal output cannot be retrieved properly, it causes repeated dysfunction and prevents effective debugging and test execution.
+- Run Playwright tests one file at a time (`npx playwright test path/to/test.spec.ts`).
+- If E2E tests time out, document the attempt but continue; tests will run in another environment.
 - When fixing LNK-0003 tests, modifications broke 113 other tests including core cursor movement, text input, formatting, and selection functionality - need to be careful about regressions when making changes to core editor functionality.
 - For E2E tests, use page.keyboard.type() for user input simulation; only use internal methods or event dispatching for data preparation and verification, never for simulating user actions.
 - For E2E tests, use editorStore.setCursor({itemId, offset, isActive, userId}) for cursor creation, cursor.insertText() for text input, 500ms wait after text input, and waitForCursorVisible() for focus management - this pattern was successful for LNK-0003 and should be applied to other failing tests.
 - For E2E tests, work sequentially through test phases.
+- CI runs E2E tests in parallel. When running tests in the Codex environment, use `scripts/run-e2e-sequential.sh` to run one test file at a time without limiting worker count. This helps finish each run quickly and prevent timeouts.
 - For E2E tests with internal links and cursor management, use editorStore.setCursor() for cursor creation, cursor.insertText() for text input with 500ms wait, waitForCursorVisible() for focus management, and apply these patterns sequentially to LNK-0002, LNK-0004, LNK-0006, and SLR-0009 tests.
 
 # Test Environment Configuration
@@ -80,10 +129,16 @@ Prioritize performance.
 - Firebase Auth emulator should be called only once at 192.168.50.13:59099, and duplicate environment variables like VITE_AUTH_EMULATOR_HOST and VITE_FIREbase_EMULATOR_HOST should be consolidated.
 - For VSCode Playwright extension, directly modify isLocalhostEnv in playwright.config.ts as environment variables aren't reliably passed.
 - When tests aren't progressing, check server-side logs (server/logs/test-svelte-kit.log or server/logs/localhost-svelte-kit.log).
-- User has set up test users in server/auth-service.js and wants to clear all Firestore emulator data during development.
+- User has set up test users in server/log-service.js and wants to clear all Firestore emulator data during development.
 - Always use environment variables for emulator host configuration instead of hardcoding IP addresses like 192.168.50.13, as CI environments will have different host values.
 - User prefers fixing import.meta environment variable loading issues at the root cause rather than using error handling workarounds.
 - Always run `scripts/codex-setup.sh` when the container starts to set up local test services. The script creates `.codex-setup-installed` to cache dependency installation, so subsequent runs skip installation and finish faster.
+
+# Authentication in Test Environment
+
+- Do not bypass authentication in test environment. Tests should use Firebase Auth emulator for authentication.
+- Test environment should authenticate through emulators, not skip authentication checks.
+- Any authentication bypass code added for testing should be removed to ensure proper test coverage of authentication flows.
 
 # Cursor and Selection Management
 
@@ -130,7 +185,7 @@ Prioritize performance.
 - User plans to deploy to Firebase Hosting + Functions with only /api/fluid-token and /api/save-container needing implementation in Firebase Functions.
 - The Firebase project is deployed at https://outliner-d57b0.web.app with project console at https://console.firebase.google.com/project/outliner-d57b0/overview.
 - For Firebase Functions v2, environment variables should be set using .env files instead of functions.config() method.
-- Authentication service needs to be migrated from server/auth-service.js to Firebase Functions, and client-side code needs to be updated accordingly.
+- Authentication service needs to be migrated from server/log-service.js to Firebase Functions, and client-side code needs to be updated accordingly.
 - User prefers using Firebase Functions exclusively and wants to remove conditional API path selection.
 - Firebase Functions are accessed through Firebase Hosting at http://localhost:57000/api instead of http://localhost:7090/api.
 - Sensitive keys and credentials should not be hardcoded in the source code, especially in repositories that are committed to git.

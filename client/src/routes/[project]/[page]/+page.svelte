@@ -1,6 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
-import { page } from "$app/stores";
+import { page } from "$app/state";
 import {
     onDestroy,
     onMount,
@@ -10,6 +10,7 @@ import { userManager } from "../../../auth/UserManager";
 import AuthComponent from "../../../components/AuthComponent.svelte";
 import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
 import OutlinerBase from "../../../components/OutlinerBase.svelte";
+import SearchPanel from "../../../components/SearchPanel.svelte";
 import { TreeViewManager } from "../../../fluid/TreeViewManager";
 import {
     cleanupLinkPreviews,
@@ -27,8 +28,8 @@ import { store } from "../../../stores/store.svelte";
 const logger = getLogger("ProjectPage");
 
 // URLパラメータを取得
-let projectName = $state("");
-let pageName = $state("");
+let projectName = page.params.project;
+let pageName = page.params.page;
 
 // ページの状態
 let error: string | undefined = $state(undefined);
@@ -37,17 +38,11 @@ let isAuthenticated = $state(false);
 let pageNotFound = $state(false);
 let isTemporaryPage = $state(false); // 仮ページかどうかのフラグ
 let hasBeenEdited = $state(false); // 仮ページが編集されたかどうかのフラグ
+let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 
 // URLパラメータを監視して更新
 $effect(() => {
-    logger.info(`URL params effect triggered: project=${$page.params.project}, page=${$page.params.page}`);
-
-    if ($page.params.project) {
-        projectName = $page.params.project;
-    }
-    if ($page.params.page) {
-        pageName = $page.params.page;
-    }
+    logger.info(`URL params effect triggered: project=${projectName}, page=${pageName}`);
 
     logger.info(`Updated params: project="${projectName}", page="${pageName}", isAuthenticated=${isAuthenticated}`);
 
@@ -55,8 +50,11 @@ $effect(() => {
     if (projectName && pageName && isAuthenticated) {
         logger.info(`Calling loadProjectAndPage()`);
         loadProjectAndPage();
-    } else {
-        logger.info(`Skipping loadProjectAndPage: projectName=${!!projectName}, pageName=${!!pageName}, isAuthenticated=${isAuthenticated}`);
+    }
+    else {
+        logger.info(
+            `Skipping loadProjectAndPage: projectName=${!!projectName}, pageName=${!!pageName}, isAuthenticated=${isAuthenticated}`,
+        );
     }
 });
 
@@ -69,7 +67,8 @@ async function handleAuthSuccess(authResult: any) {
     if (projectName && pageName) {
         logger.info(`Auth success: calling loadProjectAndPage for project="${projectName}", page="${pageName}"`);
         loadProjectAndPage();
-    } else {
+    }
+    else {
         logger.info(`Auth success: skipping loadProjectAndPage, projectName="${projectName}", pageName="${pageName}"`);
     }
 }
@@ -217,7 +216,10 @@ function createTemporaryItem(pageName: string): Item {
  */
 function saveTemporaryPage() {
     if (!isTemporaryPage || !hasBeenEdited || !store.project) {
-        logger.info(`saveTemporaryPage skipped: isTemporaryPage=${isTemporaryPage}, hasBeenEdited=${hasBeenEdited}, project=${!!store.project}`);
+        logger.info(
+            `saveTemporaryPage skipped: isTemporaryPage=${isTemporaryPage}, hasBeenEdited=${hasBeenEdited}, project=${!!store
+                .project}`,
+        );
         return;
     }
 
@@ -301,6 +303,11 @@ function goToProject() {
     goto(`/${projectName}`);
 }
 
+// 検索パネルの表示を切り替える
+function toggleSearchPanel() {
+    isSearchPanelVisible = !isSearchPanelVisible;
+}
+
 onMount(() => {
     // UserManagerの認証状態を確認
 
@@ -354,14 +361,22 @@ onDestroy(() => {
             {/if}
         </nav>
 
-        <!-- ページタイトル -->
-        <h1 class="text-2xl font-bold">
-            {#if projectName && pageName}
-                <span class="text-gray-600">{projectName} /</span> {pageName}
-            {:else}
-                ページ
-            {/if}
-        </h1>
+        <!-- ページタイトルと検索ボタン -->
+        <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-bold">
+                {#if projectName && pageName}
+                    <span class="text-gray-600">{projectName} /</span> {pageName}
+                {:else}
+                    ページ
+                {/if}
+            </h1>
+            <button
+                onclick={toggleSearchPanel}
+                class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+                検索
+            </button>
+        </div>
     </div>
 
     <!-- 認証コンポーネント -->
@@ -374,7 +389,11 @@ onDestroy(() => {
 
     {#if store.currentPage}
         <!-- デバッグ用ログ -->
-        {logger.info(`Rendering OutlinerBase: pageItem.id=${store.currentPage.id}, isTemporary=${isTemporaryPage}, onEdit=${!!handleTemporaryPageEdited}`)}
+        {
+            logger.info(
+                `Rendering OutlinerBase: pageItem.id=${store.currentPage.id}, isTemporary=${isTemporaryPage}, onEdit=${!!handleTemporaryPageEdited}`,
+            )
+        }
 
         <!-- OutlinerBase コンポーネントでアウトライナーを表示 -->
         <OutlinerBase
@@ -388,9 +407,11 @@ onDestroy(() => {
         {#if !isTemporaryPage}
             <BacklinkPanel {pageName} {projectName} />
         {/if}
+
+        <!-- 検索パネル -->
+        <SearchPanel isVisible={isSearchPanelVisible} />
     {:else}
-        <!-- デバッグ用ログ -->
-        {logger.info(`OutlinerBase not rendered: store.currentPage=${!!store.currentPage}`)}
+        <!-- デバッグ用ログ --> {logger.info(`OutlinerBase not rendered: store.currentPage=${!!store.currentPage}`)}
     {/if}
     {#if isLoading}
         <div class="flex justify-center py-8">
