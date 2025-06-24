@@ -71,12 +71,16 @@ else
 fi
 
 # Wait for all services to be ready
-echo "Waiting for all services to be ready..."
-if wait_for_all_ports; then
-  echo "=== All test services are ready! ==="
+if [ "${SKIP_PORT_WAIT:-0}" -eq 1 ]; then
+  echo "Skipping port wait as requested"
 else
-  echo "=== Test environment setup completed with warnings ==="
-  echo "Some services may not be fully ready, but the environment is usable"
+  echo "Waiting for all services to be ready..."
+  if wait_for_all_ports; then
+    echo "=== All test services are ready! ==="
+  else
+    echo "=== Test environment setup completed with warnings ==="
+    echo "Some services may not be fully ready, but the environment is usable"
+  fi
 fi
 echo "Available services:"
 echo "- SvelteKit Server: http://localhost:${VITE_PORT}"

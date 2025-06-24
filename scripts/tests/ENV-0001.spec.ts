@@ -1,15 +1,18 @@
 /** @feature ENV-0001
  *  Title   : Codex setup script is executable
  *  Source  : docs/dev-features.yaml
-*/
-import { expect, test } from "vitest";
+ */
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import {
+    expect,
+    test,
+} from "vitest";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const repoRoot = path.resolve(__dirname, "../../..");
+const repoRoot = path.resolve(__dirname, "../..");
 
 const setupScript = path.join(repoRoot, "scripts", "codex-setup.sh");
 const filesReferencingSetup = [

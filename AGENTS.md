@@ -45,6 +45,28 @@ At the end of your work, create the first prompt for the next session so you can
 State in the prompt that tasks should be progressed sequentially.
 Write the prompt as plain text.
 
+# 📁 Working Directory Management
+
+**CRITICAL**: Always pay attention to the current working directory when executing commands.
+
+- Client code is in `client`
+- Server code is in `server`
+- Scripts are in `scripts`
+- Development environment tests (ENV-*) are in `scripts/tests`
+
+When using launch-process tool:
+
+- Always specify the correct `cwd` parameter for the intended directory
+- Do not assume the current directory - explicitly set it
+- For client tests: use `client` as cwd
+- For ENV-* tests: use `scripts/tests` as cwd
+
+Common mistakes to avoid:
+
+- Running client commands from wrong directory
+- Executing scripts without proper cwd specification
+- Assuming terminal's current directory matches intended target
+
 # ⚡ Performance & Reactivity
 
 Ensure Svelte HTML elements update reactively.

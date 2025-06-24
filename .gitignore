@@ -63,3 +63,4 @@ functions/.env.production
 *.swp
 
 client/coverage/
+.codex-setup-installed
