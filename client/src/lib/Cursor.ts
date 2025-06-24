@@ -34,7 +34,11 @@ export class Cursor {
     findTarget(): Item | undefined {
         const root = generalStore.currentPage;
         if (!root) return undefined;
-        return this.searchItem(root, this.itemId);
+        const item = this.searchItem(root, this.itemId);
+        if (item?.aliasTargetId) {
+            return this.searchItem(root, item.aliasTargetId);
+        }
+        return item;
     }
 
     // 前のアイテムを探す

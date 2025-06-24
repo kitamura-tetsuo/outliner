@@ -12,6 +12,7 @@ export interface OutlinerItemViewModel {
     id: string;
     original: Item; // 元のFluidオブジェクトへの参照
     text: string;
+    aliasTargetId?: string;
     votes: string[];
     author: string;
     created: number;
@@ -61,6 +62,7 @@ export class OutlinerViewModel {
 
             // 既存のビューモデルをクリアせず、更新または追加する
             this.ensureViewModelsItemExist(pageItem);
+            this.updateAliasTexts();
 
             // 表示順序と深度を再計算
             this.recalculateOrderAndDepthItem(pageItem);
@@ -93,6 +95,7 @@ export class OutlinerViewModel {
             existingViewModel.text = item.text;
             existingViewModel.votes = [...item.votes];
             existingViewModel.lastChanged = item.lastChanged;
+            existingViewModel.aliasTargetId = item.aliasTargetId;
         }
         else {
             // 新しいビューモデルを作成
@@ -100,6 +103,7 @@ export class OutlinerViewModel {
                 id: item.id,
                 original: item,
                 text: item.text,
+                aliasTargetId: item.aliasTargetId,
                 votes: [...item.votes],
                 author: item.author,
                 created: item.created,
@@ -113,6 +117,18 @@ export class OutlinerViewModel {
         // 子アイテムも処理
         if (item.items && Tree.is(item.items, Items)) {
             this.ensureViewModelsItemsExist(item.items, item.id);
+        }
+    }
+
+    private updateAliasTexts(): void {
+        for (const [id, vm] of this.viewModels) {
+            const targetId = vm.original.aliasTargetId;
+            if (targetId) {
+                const target = this.viewModels.get(targetId)?.original;
+                if (target) {
+                    vm.text = target.text;
+                }
+            }
         }
     }
     /**
