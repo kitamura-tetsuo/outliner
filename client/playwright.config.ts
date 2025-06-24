@@ -45,10 +45,6 @@ export default defineConfig({
         timeout: 15 * 1000, // 15秒
     },
 
-    // globalSetupとglobalTeardown - require.resolveではなく相対パスを使用
-    globalSetup: "./e2e/global-setup.ts",
-    globalTeardown: path.join(__dirname, "./e2e/global-teardown.ts"),
-
     use: {
         // Clipboard APIを有効にするためにlocalhostを使用
         baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
