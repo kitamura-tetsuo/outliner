@@ -21,6 +21,7 @@ const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120003");
 export class Item extends sf.objectRecursive("Item", {
     id: sf.string,
     text: sf.string, // テキスト内容
+    aliasTargetId: sf.optional(sf.string), // 参照先アイテムID
     author: sf.string,
     votes: sf.array(sf.string),
     created: sf.number,
@@ -74,7 +75,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
      * @param index 追加する位置のインデックス。未指定の場合は末尾に追加
      * @returns 作成されたアイテム
      */
-    public readonly addNode = (author: string, index?: number) => {
+    public readonly addNode = (author: string, index?: number, aliasTargetId?: string) => {
         const timeStamp = new Date().getTime();
 
         // 開発環境では、アイテムのインデックスをテキストに設定
@@ -88,6 +89,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
         const newItem = new Item({
             id: uuid(),
             text: defaultText, // 開発環境ではインデックスを含むテキスト
+            aliasTargetId,
             author,
             votes: [],
             created: timeStamp,
@@ -110,6 +112,10 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
             this.insertAtEnd(newItem);
         }
         return newItem;
+    };
+
+    public readonly addAlias = (targetId: string, author: string, index?: number) => {
+        return this.addNode(author, index, targetId);
     };
 }
 
