@@ -46,6 +46,12 @@ if (!admin.apps.length) {
 // Firestoreの参照を取得
 const db = admin.firestore();
 const userContainersCollection = db.collection("userContainers");
+const containerUsersCollection = db.collection("containerUsers");
+
+// Determine if the decoded Firebase token represents an admin user
+function isAdmin(decodedToken) {
+  return decodedToken && decodedToken.role === "admin";
+}
 
 // Azure Fluid Relay設定（上記で定義済み）
 
@@ -577,6 +583,111 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
   } catch (error) {
     logger.error(`Error deleting container: ${error.message}`, { error });
     return res.status(500).json({ error: "Failed to delete container" });
+  }
+});
+
+// コンテナにアクセス可能なユーザーのリストを取得するエンドポイント（管理者用）
+exports.getContainerUsers = onRequest({ cors: true }, async (req, res) => {
+  // CORS設定
+  setCorsHeaders(req, res);
+
+  // プリフライト OPTIONS リクエストの処理
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  // POSTメソッド以外は拒否
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    const { idToken, containerId } = req.body;
+
+    if (!containerId) {
+      return res.status(400).json({ error: "Container ID is required" });
+    }
+
+    if (!idToken) {
+      return res.status(400).json({ error: "ID token required" });
+    }
+
+    // Firebaseトークンを検証
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+    // Check admin role before returning container info
+    if (!isAdmin(decodedToken)) {
+      return res.status(403).json({ error: "Admin privileges required" });
+    }
+
+    const containerDoc = await containerUsersCollection.doc(containerId).get();
+
+    if (!containerDoc.exists) {
+      return res.status(404).json({ error: "Container not found" });
+    }
+
+    const containerData = containerDoc.data();
+
+    return res.status(200).json({
+      users: containerData.accessibleUserIds || [],
+    });
+  } catch (error) {
+    logger.error(`Error getting container users: ${error.message}`, { error });
+    // Firebase認証エラーの場合は401を返す
+    if (error.code === 'auth/id-token-expired' ||
+        error.code === 'auth/invalid-id-token' ||
+        error.code === 'auth/argument-error') {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to get container users" });
+  }
+});
+
+// 全ユーザー一覧を取得するエンドポイント（管理者用）
+exports.listUsers = onRequest({ cors: true }, async (req, res) => {
+  // CORS設定
+  setCorsHeaders(req, res);
+
+  // プリフライト OPTIONS リクエストの処理
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  // POSTメソッド以外は拒否
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ error: "ID token required" });
+    }
+
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+    if (!isAdmin(decodedToken)) {
+      return res.status(403).json({ error: "Admin privileges required" });
+    }
+
+    const result = await admin.auth().listUsers();
+    const users = result.users.map(u => ({
+      uid: u.uid,
+      email: u.email,
+      displayName: u.displayName,
+    }));
+
+    return res.status(200).json({ users });
+  } catch (error) {
+    logger.error(`Error listing users: ${error.message}`, { error });
+    // Firebase認証エラーの場合は401を返す
+    if (error.code === 'auth/id-token-expired' ||
+        error.code === 'auth/invalid-id-token' ||
+        error.code === 'auth/argument-error') {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to list users" });
   }
 });
 

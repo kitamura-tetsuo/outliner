@@ -52,7 +52,7 @@ Firebase SDKを使ってGoogle認証を完結させる
 受け取ったJWTでAzure Fluid Relayに接続
 
 APIサーバーの実装
-/workspace/server/auth-service.js
+/workspace/server/log-service.js
 
 クライアント側のログについて。
 クライアント側のログはpinoを介してサーバーへ送られる。

@@ -1,6 +1,8 @@
 # 📄 Documentation & Specifications
 
-Record every feature in docs\client-features.yaml. Document intentionally omitted features in docs/unimplemented-features.md.
+Record end-user features in docs\client-features.yaml.
+List development and environment maintenance features (the ENV-* series) in docs/dev-features.yaml.
+Document intentionally omitted features in docs/unimplemented-features.md.
 
 - While multiple AIs may code in parallel, review documents frequently to avoid overlapping features or contradictory explanations.
 - Continuously reference and update past best practices so they remain current.
@@ -24,6 +26,8 @@ Do not embed code that skips tests.
 Do not use mocks in tests.
 Run tests in headless mode.
 Fix one test file at a time and run tests after each fix to confirm.
+Run environment maintenance tests (ENV-*) separately from unit and e2e suites.
+These tests use Vitest while e2e tests use Playwright.
 
 ## ユニットテストにおけるモックとテストダブルの使用について
 
@@ -60,6 +64,28 @@ Git branch names must be written in English.
 At the end of your work, create the first prompt for the next session so you can continue smoothly. Even if issues remain, carry over the known problems. Focus on writing a prompt that makes the next session effective rather than describing today’s work.
 State in the prompt that tasks should be progressed sequentially.
 Write the prompt as plain text.
+
+# 📁 Working Directory Management
+
+**CRITICAL**: Always pay attention to the current working directory when executing commands.
+
+- Client code is in `client`
+- Server code is in `server`
+- Scripts are in `scripts`
+- Development environment tests (ENV-*) are in `scripts/tests`
+
+When using launch-process tool:
+
+- Always specify the correct `cwd` parameter for the intended directory
+- Do not assume the current directory - explicitly set it
+- For client tests: use `client` as cwd
+- For ENV-* tests: use `scripts/tests` as cwd
+
+Common mistakes to avoid:
+
+- Running client commands from wrong directory
+- Executing scripts without proper cwd specification
+- Assuming terminal's current directory matches intended target
 
 # ⚡ Performance & Reactivity
 
@@ -106,7 +132,7 @@ Prioritize performance.
 - User has set up test users in server/log-service.js and wants to clear all Firestore emulator data during development.
 - Always use environment variables for emulator host configuration instead of hardcoding IP addresses like 192.168.50.13, as CI environments will have different host values.
 - User prefers fixing import.meta environment variable loading issues at the root cause rather than using error handling workarounds.
-- Always run `scripts/codex-setup.sh` when the container starts to set up local test services.
+- Always run `scripts/codex-setup.sh` when the container starts to set up local test services. The script creates `.codex-setup-installed` to cache dependency installation, so subsequent runs skip installation and finish faster.
 
 # Authentication in Test Environment
 

@@ -67,4 +67,5 @@ functions/.env.production
 
 # Coverage reports
 client/coverage/
+
 .codex-setup-installed

@@ -196,8 +196,12 @@ npm run test:unit
 
 # E2E テスト (dotenvxで復号化して実行)
 dotenvx run -- npm run test:e2e
+
+# 環境維持テスト (Vitest)
+dotenvx run -- npm run test:env
 ```
 
 テストの前には `scripts/codex-setup.sh` を実行してローカルのエミュレータ群を起動してください。
+スクリプトは初回実行後にインストール結果をキャッシュするため、二回目以降は依存関係のインストールをスキップして短時間で完了します。
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。

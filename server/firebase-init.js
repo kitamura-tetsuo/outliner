@@ -9,7 +9,8 @@ if (isDevelopment) {
     try {
         devAuthHelper = require("./scripts/setup-dev-auth");
         logger.info("Development auth helper loaded");
-    } catch (error) {
+    }
+    catch (error) {
         logger.warn(`Development auth helper not available: ${error.message}`);
     }
 }
@@ -28,22 +29,20 @@ const serviceAccount = {
     client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
 };
 
-const isEmulatorEnvironment =
-    process.env.USE_FIREBASE_EMULATOR === "true" ||
+const isEmulatorEnvironment = process.env.USE_FIREBASE_EMULATOR === "true" ||
     process.env.FIREBASE_AUTH_EMULATOR_HOST ||
     process.env.FIRESTORE_EMULATOR_HOST ||
     process.env.FIREBASE_EMULATOR_HOST;
 
 if (!serviceAccount.project_id && !isEmulatorEnvironment) {
     logger.error(
-        "Firebase service account environment variables are not properly configured."
+        "Firebase service account environment variables are not properly configured.",
     );
     process.exit(1);
 }
 
 async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
-    const isEmulator =
-        process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+    const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST ||
         process.env.FIRESTORE_EMULATOR_HOST ||
         process.env.FIREBASE_EMULATOR_HOST;
     if (!isEmulator) {
@@ -60,15 +59,18 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
             logger.info(`Firebase emulator connection successful. Found users: ${listUsersResult.users.length}`);
             if (listUsersResult.users.length > 0) {
                 logger.info(
-                    `First user: ${JSON.stringify({
-                        uid: listUsersResult.users[0].uid,
-                        email: listUsersResult.users[0].email,
-                        displayName: listUsersResult.users[0].displayName,
-                    })}`
+                    `First user: ${
+                        JSON.stringify({
+                            uid: listUsersResult.users[0].uid,
+                            email: listUsersResult.users[0].email,
+                            displayName: listUsersResult.users[0].displayName,
+                        })
+                    }`,
                 );
             }
             return;
-        } catch (error) {
+        }
+        catch (error) {
             retryCount++;
             if (error.code === "ECONNREFUSED" || error.message.includes("ECONNREFUSED")) {
                 logger.warn(`Firebase emulator not ready yet (attempt ${retryCount}/${maxRetries}): ${error.message}`);
@@ -77,7 +79,8 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
                     await new Promise(resolve => setTimeout(resolve, delay));
                     delay = Math.min(delay * 1.5, maxDelay);
                 }
-            } else {
+            }
+            else {
                 logger.error(`Firebase emulator connection failed with non-connection error: ${error.message}`);
                 throw error;
             }
@@ -106,7 +109,8 @@ async function clearFirestoreEmulatorData() {
         }
         logger.info("Firestore エミュレータのデータを全て消去しました");
         return true;
-    } catch (error) {
+    }
+    catch (error) {
         logger.error(`Firestore エミュレータのデータ消去中にエラーが発生しました: ${error.message}`);
         return false;
     }
@@ -137,7 +141,8 @@ async function initializeFirebase() {
                     logger.info("Previous Firebase Admin SDK instance deleted");
                 });
             }
-        } catch (deleteError) {
+        }
+        catch (deleteError) {
             logger.warn(`Previous Firebase Admin SDK instance deletion failed: ${deleteError.message}`);
         }
         const emulatorVariables = {
@@ -153,9 +158,13 @@ async function initializeFirebase() {
             logger.warn(`設定されているEmulator環境変数: ${configuredEmulators.join(", ")}`);
             logger.warn("これらの環境変数は本来 .env.test に設定すべきもので、本番環境では設定しないでください。");
         }
-        if (isEmulatorEnvironment && (!serviceAccount.private_key || serviceAccount.private_key.includes("Your Private Key Here"))) {
+        if (
+            isEmulatorEnvironment &&
+            (!serviceAccount.private_key || serviceAccount.private_key.includes("Your Private Key Here"))
+        ) {
             admin.initializeApp({ projectId: serviceAccount.project_id });
-        } else {
+        }
+        else {
             admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
         }
         logger.info(`Firebase Admin SDK initialized successfully. Project ID: ${serviceAccount.project_id}`);
@@ -163,7 +172,8 @@ async function initializeFirebase() {
             try {
                 await waitForFirebaseEmulator();
                 logger.info("Firebase emulator connection established successfully");
-            } catch (error) {
+            }
+            catch (error) {
                 logger.error(`Firebase emulator connection failed after retries: ${error.message}`);
             }
         }
@@ -181,17 +191,20 @@ async function initializeFirebase() {
                         if (cleared) {
                             logger.info("開発環境の Firestore エミュレータデータを消去しました");
                         }
-                    } catch (error) {
+                    }
+                    catch (error) {
                         logger.error(`Firestore エミュレータデータの消去に失敗しました: ${error.message}`);
                     }
                 }
-            } catch (error) {
+            }
+            catch (error) {
                 logger.warn(`テストユーザーのセットアップに失敗しました: ${error.message}`);
             }
         }
-    } catch (error) {
+    }
+    catch (error) {
         logger.error(`Firebase初期化エラー: ${error.message}`);
-        process.exit(1);
+        throw error;
     }
 }
 

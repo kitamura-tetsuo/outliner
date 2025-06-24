@@ -62,7 +62,7 @@ cd /workspace/client && npx playwright test {test file path}
 テスト用のSveltKit serverのログがここにあります。必要であれば、アクセス後にこちらを確認して下さい。
 　/workspace/server/logs/test-svelte-kit.log
 API serverのログがここにあります。必要であれば、アクセス後にこちらを確認して下さい。
-　/workspace/server/logs/test-auth-service-tee.log
+　/workspace/server/logs/test-log-service-tee.log
 
 
 
@@ -79,7 +79,7 @@ http://192.168.50.13:7070/
 開発用のSveltKit serverのログがここにある。必要であれば、アクセス後にこちらを確認して。
 /workspace/server/logs/svelte-kit.log
 API serverのログがここにある。必要であれば、アクセス後にこちらを確認して。
-/workspace/server/logs/auth-service-tee.log
+/workspace/server/logs/log-service-tee.log
 
 
 
@@ -178,11 +178,126 @@ document.querySelectorAll('.cursor')
 既に多くのテストはパスしているため、テスト環境は正常です。
 
 
+origin/main
+の
+/workspace/scripts/get-pr.sh
+を実行して、GitHubのOpen PRを確認して下さい。
+古いPRから順に処理して下さい。
 
-GitHubのOpen PRを確認して下さい。
-軽微なPRでエラーがないものはマージして下さい。
-Testやコミットでエラーやコンフリクトがあるものを見つけてください。
-Testが未完了のPRは対象外とします。
-古い方のPRから順に修正して下さい。
-修正時はローカルへチェックアウトしてから修正して、コミットして下さい。
-軽微なPRは修正後にマージして下さい。
+コンフリクトがある場合はチェックアウトして下さい。
+ブランチの名前はそのままにしてください。pr-xxx等の別名にするとPRで追跡できなくなります。
+コンフリクトを確認し、注意深く重複が不整合が無いように、手動でコンフリクトを解消して下さい。
+docs/feature-map.md, client/coverage/ はgitから削除(git rm -f)して下さい。 
+package-lock.json がコンフリクトしている場合は削除して再作成して下さい。
+チェックアウトしたブランチへコミットして、プッシュして下さい。
+プッシュ後に、GitHub Actionでテストが行われるので、マージはしないで下さい。
+次のPRへ進んで下さい。
+
+ciがFAILUREの場合はチェックアウトして下さい。
+ブランチの名前はそのままにしてください。pr-xxx等の別名にするとPRで追跡できなくなります。
+origin/mainからPRのブランチへマージしてして下さい。
+テストのエラーが起きたファイルを GitHubのログから特定してください。
+特定されたテストのエラーが解消されるように、テストまたは実装を修正して下さい。 
+e2eテストの実行は時間を短縮するため、特定されたテストを実行してください。
+このPRの前はテストが全て通っていました。テストが失敗する原因は今回のPRの変更によるものです。
+今回のPRの変更以外の箇所を大きく修正してはいけません。
+PRが分岐し始める前のmainと比較して、変更点を確認してから修正を始めてください。
+チェックアウトしたブランチへコミットして、プッシュして下さい。
+プッシュ後に、GitHub Actionでテストが行われるので、マージはしないで下さい。
+次のPRへ進んで下さい。
+
+
+
+
+
+軽微なPRで Testのエラーがない場合のみマージして下さい。
+次のPRへ進んで下さい。
+
+
+
+https://github.com/kitamura-tetsuo/outliner/pull/141
+をチェックアウトして下さい。
+コンフリクトを確認し、注意深く重複が不整合が無いように、手動でコンフリクトを解消して下さい。
+コンフリクトを解消後、コミットして、プッシュして下さい。
+
+
+
+
+
+テキスト入力で、/が入力された時、Notionライクにインラインのコマンドパレットを表示する。
+まず、SQL DBを表示可能なテーブルの実装から始めてください。
+docs/outliner_editable_join_table_spec.md
+に沿って進めて下さい。
+
+
+GH_TOKENを使ってください。
+apt update && apt install gh
+gh pr list, gh issue list
+を実行して下さい。
+
+現在のコードとドキュメントと現在開かれているGitHub Issues, PRを読んで下さい。
+次に行うべきタスクを複数列挙して、GitHub Issuesを作成して下さい。
+既に存在する GitHub Issuesに対して、コメント欄を読み、議論の中で出てきていない関連情報を付け加える事が可能なら付け加えてください。
+例えば、既に実装済みである、より良い実装方法がある、関連する実装が途中で止まっている等です。
+重複した Open Issueがあれば統合してください。
+ラベルの不足、誤りがあれば修正をして下さい。
+
+
+
+apt update && apt install gh
+gh pr list, gh issue list
+を実行して下さい。
+
+現在のコードとドキュメントとGitHub Issues, 現在開かれている GitHub PRをじっくりと多数読んで下さい。
+以下の機能の実装を進める為の GitHub issueを作成又は更新して下さい。
+実装済みの部分の確認、適切なサイズへの分割、段階的な実装など、管理しやすくする変更を歓迎します。
+GitHub issueには enhancementのラベルをつけてください。
+
+ページ内検索・置換機能・ハイライト表示機能
+
+
+全文検索機能・全文置換機能
+
+
+
+ページ内検索・置換機能・ハイライト表示機能
+
+
+エイリアス機能。
+outline表示の中に、他のアイテムを参照できる。
+参照は参照先のUUIDで管理される。
+どこのアイテムを参照しているかは、先祖がファイルパスのように表示される。
+参照先の子孫ツリーが表示され、編集可能にする。
+
+
+テキスト入力で、/が入力された時、Notionライクにインラインのコマンドパレットを表示する。
+コマンドパレットから、SQL DBを表示可能なテーブル、チャートをアイテムとして追加する機能を追加する。
+
+
+
+
+
+
+
+
+
+Run gh issue list to see the list of issues that are not assigned.
+choose the oldest issue。
+Please check the code to see if the content and purpose of the issue has not yet been implemented.
+If the issue is not implemented, assign it to yourself.
+If the issue is already implemented, close it and select the next issue that is not assigned.
+
+Follow GitHub Flow to implement the issue:
+    Run scripts/codex-setup.sh to start required services.
+    Create a new branch.
+    Link branch to issue.
+    Implement missing services and components.
+    Add unit, integration, and E2E tests as outlined in the spec.
+    Run Playwright tests one file at a time (npx playwright test path/to/test.spec.ts). Note any timeouts but continue.
+    Update docs/client-features.yaml with new features/tests.
+    Update the issue with a summary of the work done and refine the spec if necessary.
+    Commit in logical chunks and push when ready.
+    Open a PR referencing the issue and summarize the work.
+    Do not close the issue.
+Proceed sequentially.
+Show title and number of the issue you are working on on the message.
