@@ -1,17 +1,23 @@
 <script lang="ts">
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
-function select(type: "table" | "chart") {
+function handleClick(type: "table" | "chart") {
     commandPaletteStore.insert(type);
     commandPaletteStore.hide();
 }
 </script>
 
 {#if commandPaletteStore.isVisible}
-<div class="slash-command-palette" style="top:{commandPaletteStore.position.top}px;left:{commandPaletteStore.position.left}px;position:absolute;z-index:1000;background:white;border:1px solid #ccc;border-radius:4px;padding:4px;">
+<div
+    class="slash-command-palette"
+    style="position:absolute;top:{commandPaletteStore.position.top}px;left:{commandPaletteStore.position.left}px;z-index:1000;"
+>
     <ul>
-        <li><button on:click={() => select('table')}>Table</button></li>
-        <li><button on:click={() => select('chart')}>Chart</button></li>
+        {#each commandPaletteStore.filtered as cmd, i}
+            <li class:selected={i === commandPaletteStore.selectedIndex}>
+                <button on:click={() => handleClick(cmd.type)}>{cmd.label}</button>
+            </li>
+        {/each}
     </ul>
 </div>
 {/if}
@@ -27,5 +33,8 @@ function select(type: "table" | "chart") {
     width:100%;
     padding:4px 8px;
     text-align:left;
+}
+.slash-command-palette li.selected {
+    background:#eee;
 }
 </style>

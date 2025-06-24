@@ -39,6 +39,26 @@ export class KeyEventHandler {
         console.log(`KeyEventHandler.handleKeyDown: activeElement:`, document.activeElement);
         console.log(`Current cursor instances: ${cursorInstances.length}`);
 
+        if (commandPaletteStore.isVisible) {
+            if (event.key === "ArrowDown") {
+                commandPaletteStore.move(1);
+                event.preventDefault();
+                return;
+            } else if (event.key === "ArrowUp") {
+                commandPaletteStore.move(-1);
+                event.preventDefault();
+                return;
+            } else if (event.key === "Enter") {
+                commandPaletteStore.confirm();
+                event.preventDefault();
+                return;
+            } else if (event.key === "Escape") {
+                commandPaletteStore.hide();
+                event.preventDefault();
+                return;
+            }
+        }
+
         // カーソルがない場合は処理しない
         if (cursorInstances.length === 0) {
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -190,7 +210,19 @@ export class KeyEventHandler {
         }
 
         if (inputEvent.data === '/') {
-            commandPaletteStore.show({ top: 0, left: 0 });
+            const pos = commandPaletteStore.getCursorScreenPosition();
+            commandPaletteStore.show(pos || { top: 0, left: 0 });
+        } else if (commandPaletteStore.isVisible) {
+            const cursor = cursorInstances[0];
+            const node = cursor.findTarget();
+            const text = node?.text || "";
+            if (text.startsWith('/')) {
+                commandPaletteStore.updateQuery(text.slice(1));
+                const pos = commandPaletteStore.getCursorScreenPosition();
+                if (pos) commandPaletteStore.updatePosition(pos);
+            } else {
+                commandPaletteStore.hide();
+            }
         }
 
         // カーソルがない場合は処理しない

@@ -896,6 +896,8 @@
   tests:
   - client/e2e/new/CMD-0001.spec.ts
   acceptance:
-  - '/' を入力するとコマンドパレットが表示される
-  - Table を選択すると Editable JOIN Table が挿入される
-  - Chart を選択すると Chart Component が挿入される
+- '/' を入力するとコマンドパレットが表示される
+- Table を選択すると Editable JOIN Table が挿入される
+- Chart を選択すると Chart Component が挿入される
+  - 方向キーで選択を移動できる
+  - 入力テキストに応じて候補が絞り込まれる

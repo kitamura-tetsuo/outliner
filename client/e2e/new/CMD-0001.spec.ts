@@ -12,25 +12,28 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
     test("insert table via palette", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
-        const first = page.locator(".outliner-item .item-content").first();
-        await first.click();
-        await TestHelpers.waitForCursorVisible(page);
+        const id = await TestHelpers.getItemIdByIndex(page, 0);
+        await TestHelpers.clickItemToEdit(page, `.outliner-item[data-item-id="${id}"] .item-content`);
 
         await page.keyboard.type("/");
         await expect(page.locator(".slash-command-palette")).toBeVisible();
-        await page.click(".slash-command-palette button:has-text('Table')");
+        const paletteBox = await page.locator(".slash-command-palette").boundingBox();
+        expect(paletteBox?.x).toBeGreaterThan(0);
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("Enter");
         await expect(page.locator(".inline-join-table")).toBeVisible();
     });
 
-    test("insert chart via palette", async ({ page }) => {
+    test("filter and insert chart", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
-        const last = page.locator(".outliner-item .item-content").last();
-        await last.click();
-        await TestHelpers.waitForCursorVisible(page);
+        const id = await TestHelpers.getItemIdByIndex(page, 1);
+        await TestHelpers.clickItemToEdit(page, `.outliner-item[data-item-id="${id}"] .item-content`);
 
-        await page.keyboard.type("/");
+        await page.keyboard.type("/ch");
         await expect(page.locator(".slash-command-palette")).toBeVisible();
-        await page.click(".slash-command-palette button:has-text('Chart')");
+        await expect(page.locator(".slash-command-palette li")).toHaveCount(1);
+        await page.keyboard.press("Enter");
         await expect(page.locator(".chart-panel")).toBeVisible();
     });
 });
