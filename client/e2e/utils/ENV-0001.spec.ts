@@ -1,11 +1,8 @@
 /** @feature ENV-0001
  *  Title   : Codex setup script is executable
- *  Source  : docs/client-features.yaml
- */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+ *  Source  : docs/dev-features.yaml
+*/
+import { expect, test } from "vitest";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
