@@ -48,6 +48,14 @@
                 "function": "deleteUser"
             },
             {
+                "source": "/api/get-container-users",
+                "function": "getContainerUsers"
+            },
+            {
+                "source": "/api/list-users",
+                "function": "listUsers"
+            },
+            {
                 "source": "/health",
                 "function": "health"
             },

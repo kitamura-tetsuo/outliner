@@ -12,6 +12,16 @@ copy_if_missing() {
     fi
 }
 
+# Root env file (for dotenvx compatibility)
+if [ ! -f "$ROOT_DIR/.env" ]; then
+    cat >> "$ROOT_DIR/.env" <<'EOV'
+# Root environment file for dotenvx compatibility
+# This file is created to prevent dotenvx errors when loading environment variables
+NODE_ENV=development
+EOV
+    echo "Created .env"
+fi
+
 # Client env files
 copy_if_missing "$ROOT_DIR/client/.env.test" "$ROOT_DIR/client/.env"
 if [ ! -f "$ROOT_DIR/client/.env.test" ]; then

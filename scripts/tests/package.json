@@ -1,0 +1,14 @@
+{
+  "name": "outliner-dev-tests",
+  "version": "1.0.0",
+  "description": "Development environment tests for Outliner",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run *.spec.ts",
+    "test:watch": "vitest *.spec.ts"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0",
+    "@dotenvx/dotenvx": "^1.44.1"
+  }
+}

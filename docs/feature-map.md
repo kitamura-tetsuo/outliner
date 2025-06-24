@@ -29,7 +29,6 @@
 | FMT-0007 | 内部リンク機能の表示 | client/e2e/core/FMT-0007.spec.ts | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
 | FTR-0013 | Use environment variables in min page | client/e2e/core/FTR-0013.spec.ts | implemented |
-| GRF-001 | Graph View | — | implemented |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
 | ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
 | LNK-0001 | 内部リンクのURL生成機能 | client/e2e/core/LNK-0001.spec.ts | implemented |
@@ -56,7 +55,7 @@
 | SLR-0010 | 選択範囲のフォーマット変更 | client/e2e/core/SLR-0010.spec.ts | implemented |
 | SLR-0100 | ボックス選択（矩形選択）機能 - キーボード | client/e2e/core/SLR-0100.spec.ts | implemented |
 | SLR-0101 | ボックス選択（矩形選択）機能 - マウス | client/e2e/core/SLR-0101.spec.ts | implemented |
-| SRE-001 | Advanced Search & Replace | — | implemented |
+| SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts | implemented |
 | TBL-0001 | Editable JOIN Table | client/e2e/new/TBL-0001.spec.ts | implemented |
 | TST-0001 | SharedTreeデータ検証ユーティリティ | client/e2e/utils/tree-validation.spec.ts | implemented |
 | TST-0002 | カーソル情報検証ユーティリティ | client/e2e/utils/cursor-validation.spec.ts | implemented |
