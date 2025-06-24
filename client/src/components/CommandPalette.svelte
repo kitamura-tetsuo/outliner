@@ -10,6 +10,8 @@
 	const viewModel = getContext<OutlinerViewModel>('viewModel');
 
 	let paletteStyle = $derived(getPaletteStyle());
+	let highlightedIndex = $state(0);
+	const options = ['table', 'chart'] as const; // Define options for type safety and iteration
 
 	function getPaletteStyle() {
 		const state = editorOverlayStore.getCommandPaletteState();
@@ -17,55 +19,47 @@
 			return 'display: none;';
 		}
 
+		// Use position from store if available
+		if (state.position) {
+			return `display: block; position: fixed; top: ${state.position.top}px; left: ${state.position.left}px; z-index: 1000;`;
+		}
+
+		// Fallback calculation if position not yet in store (e.g., initial render before EditorOverlay updates it)
 		const itemElement = document.querySelector(`[data-item-id="${state.itemId}"]`);
 		if (!itemElement) {
 			return 'display: none;';
 		}
-
 		const itemRect = itemElement.getBoundingClientRect();
-		// Attempt to find the cursor span if available
-		const cursorSpans = itemElement.querySelectorAll('.cursor-overlay .cursor');
-		let cursorLeft = itemRect.left;
-		let cursorTop = itemRect.top + itemRect.height; // Default below item
+        let cursorLeft = itemRect.left;
+        let cursorTop = itemRect.top + itemRect.height; // Default below item
 
-		if (cursorSpans.length > 0) {
-			// Find the local user's cursor if multiple are present
-			let localCursorSpan: Element | null = null;
-			for (const span of Array.from(cursorSpans)) {
-				if (span.classList.contains('local')) { // Assuming local cursors have a 'local' class
-					localCursorSpan = span;
-					break;
-				}
-			}
-			if (!localCursorSpan && cursorSpans.length > 0) {
-				localCursorSpan = cursorSpans[0]; // Fallback to the first cursor
-			}
-
-			if (localCursorSpan) {
-				const cursorRect = localCursorSpan.getBoundingClientRect();
-				cursorLeft = cursorRect.left;
-				cursorTop = cursorRect.bottom; // Position below the cursor
-			}
-		} else {
-            // Fallback if no cursor span is found, estimate based on offset
+        // Try to find the actual cursor element rendered by EditorOverlay for more precision
+        const activeCursorElement = document.querySelector(`.editor-overlay .cursor.active[data-offset="${state.offset}"]`);
+        if (activeCursorElement) {
+            const cursorRect = activeCursorElement.getBoundingClientRect();
+            cursorLeft = cursorRect.left;
+            cursorTop = cursorRect.bottom;
+        } else {
+            // Fallback to estimating based on text offset if specific cursor element isn't found
             const textElement = itemElement.querySelector('.item-text') as HTMLElement;
             if (textElement) {
                 const textContent = textElement.textContent || '';
                 const span = document.createElement('span');
                 const style = window.getComputedStyle(textElement);
                 span.style.font = style.font;
-                span.style.whiteSpace = 'pre'; // Ensure spaces are handled correctly
+                span.style.whiteSpace = 'pre';
                 span.style.visibility = 'hidden';
-                span.style.position = 'absolute';
-                document.body.appendChild(span);
+                span.style.position = 'absolute'; // Important for getBoundingClientRect
+                document.body.appendChild(span); // Must be in document to measure
+
                 span.textContent = textContent.substring(0, state.offset);
-                const textWidth = span.getBoundingClientRect().width;
+                const textRect = textElement.getBoundingClientRect(); // Get text element's position
+                cursorLeft = textRect.left + span.getBoundingClientRect().width;
+                cursorTop = textRect.bottom; // Position palette below the line of text
+
                 document.body.removeChild(span);
-                cursorLeft = itemRect.left + textWidth;
             }
         }
-
-
 		return `display: block; position: fixed; top: ${cursorTop}px; left: ${cursorLeft}px; z-index: 1000;`;
 	}
 
@@ -115,21 +109,38 @@
 	}
 
     function handleKeyDown(event: KeyboardEvent) {
+        if (!editorOverlayStore.commandPaletteVisible) return;
+
         if (event.key === 'Escape') {
             editorOverlayStore.hideCommandPalette();
+            event.preventDefault();
+            event.stopPropagation();
+        } else if (event.key === 'ArrowDown') {
+            highlightedIndex = (highlightedIndex + 1) % options.length;
+            event.preventDefault();
+            event.stopPropagation();
+        } else if (event.key === 'ArrowUp') {
+            highlightedIndex = (highlightedIndex - 1 + options.length) % options.length;
+            event.preventDefault();
+            event.stopPropagation();
+        } else if (event.key === 'Enter') {
+            handleSelect(options[highlightedIndex]);
+            event.preventDefault();
+            event.stopPropagation();
         }
-        // TODO: Add navigation with arrow keys and Enter to select
     }
 
-    // Listen for Escape key to close palette
+    // Listen for keydown events when palette is visible
     $effect(() => {
         if (editorOverlayStore.commandPaletteVisible) {
-            window.addEventListener('keydown', handleKeyDown);
+            // Reset highlighted index when palette becomes visible
+            highlightedIndex = 0;
+            window.addEventListener('keydown', handleKeyDown, true); // Use capture phase
         } else {
-            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keydown', handleKeyDown, true);
         }
         return () => {
-            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keydown', handleKeyDown, true);
         };
     });
 
@@ -138,12 +149,17 @@
 {#if editorOverlayStore.commandPaletteVisible}
 <div class="command-palette" style={paletteStyle} role="dialog" aria-modal="true">
 	<ul>
-		<li onmousedown={() => handleSelect('table')} ontouchend={() => handleSelect('table')} role="button" tabindex="0">
-			Table
-		</li>
-		<li onmousedown={() => handleSelect('chart')} ontouchend={() => handleSelect('chart')} role="button" tabindex="0">
-			Chart
-		</li>
+		{#each options as option, index}
+			<li
+				class:highlighted={index === highlightedIndex}
+				onclick={() => handleSelect(option)}
+				onmouseenter={() => highlightedIndex = index}
+				role="button"
+				tabindex="0"
+			>
+				{option.charAt(0).toUpperCase() + option.slice(1)} <!-- Capitalize first letter -->
+			</li>
+		{/each}
 	</ul>
 </div>
 {/if}
@@ -168,7 +184,7 @@
 		cursor: pointer;
 	}
 
-	.command-palette li:hover {
+	.command-palette li:hover, .command-palette li.highlighted {
 		background-color: #f0f0f0;
 	}
 </style>

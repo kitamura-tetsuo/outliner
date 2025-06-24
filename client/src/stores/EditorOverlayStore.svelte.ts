@@ -67,6 +67,7 @@ export class EditorOverlayStore {
     commandPaletteVisible = $state<boolean>(false);
     commandPaletteItemId = $state<string | null>(null);
     commandPaletteOffset = $state<number>(0);
+    commandPalettePosition = $state<{ top: number; left: number } | null>(null);
 
     private timerId!: ReturnType<typeof setTimeout>;
 
@@ -1056,16 +1057,24 @@ export class EditorOverlayStore {
     }
 
     // Command Palette Methods
-    showCommandPalette(itemId: string, offset: number) {
+    showCommandPalette(itemId: string, offset: number, position: { top: number; left: number } | null = null) {
         this.commandPaletteVisible = true;
         this.commandPaletteItemId = itemId;
         this.commandPaletteOffset = offset;
+        if (position) {
+            this.commandPalettePosition = position;
+        }
     }
 
     hideCommandPalette() {
         this.commandPaletteVisible = false;
         this.commandPaletteItemId = null;
         this.commandPaletteOffset = 0;
+        this.commandPalettePosition = null;
+    }
+
+    setCommandPalettePosition(position: { top: number; left: number } | null) {
+        this.commandPalettePosition = position;
     }
 
     getCommandPaletteState() {
@@ -1073,6 +1082,7 @@ export class EditorOverlayStore {
             visible: this.commandPaletteVisible,
             itemId: this.commandPaletteItemId,
             offset: this.commandPaletteOffset,
+            position: this.commandPalettePosition,
         };
     }
 }

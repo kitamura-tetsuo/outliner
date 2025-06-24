@@ -297,6 +297,18 @@ $effect(() => {
   localActiveItemId = store.activeItemId;
   localCursorVisible = store.cursorVisible;
   localAnimationPaused = store.animationPaused;
+
+  // Update command palette position when it becomes visible and itemId/offset are set
+  if (store.commandPaletteVisible && store.commandPaletteItemId && store.commandPaletteOffset !== undefined) {
+    const pos = calculateCursorPixelPosition(store.commandPaletteItemId, store.commandPaletteOffset);
+    if (pos && overlayRef) {
+        const overlayRect = overlayRef.getBoundingClientRect();
+        // Adjust position to be relative to viewport, not overlay, and add line height
+        const itemInfo = positionMap[store.commandPaletteItemId];
+        const lineHeight = itemInfo?.lineHeight || 20; // Default line height
+        store.setCommandPalettePosition({ top: pos.top + overlayRect.top + lineHeight, left: pos.left + overlayRect.left });
+    }
+  }
 });
 
 // MutationObserver を設定して DOM の変更を監視
