@@ -118,7 +118,7 @@
             "localRoot": "${workspaceFolder}/server",
             "runtimeArgs": [
                 "-c",
-                "npm run dev -- --host 0.0.0.0 2>&1 | tee /workspace/server/logs/auth-service-tee.log"
+                "npm run dev -- --host 0.0.0.0 2>&1 | tee /workspace/server/logs/log-service-tee.log"
             ],
             "env": {
                 "PORT": "7071"
@@ -137,7 +137,7 @@
             "localRoot": "${workspaceFolder}/server",
             "runtimeArgs": [
                 "-c",
-                "cd ${workspaceFolder}/server && npx dotenvx run --env-file=.env.test -- npm run dev -- --host 0.0.0.0 --port 7081 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
+                "cd ${workspaceFolder}/server && npx dotenvx run --env-file=.env.test -- npm run dev -- --host 0.0.0.0 --port 7081 2>&1 | tee /workspace/server/logs/test-log-service-tee.log"
             ],
             "env": {
                 "PORT": "7081"
@@ -238,7 +238,7 @@
             "localRoot": "${workspaceFolder}/server",
             "runtimeArgs": [
                 "-c",
-                "cd ${workspaceFolder}/server && npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log"
+                "cd ${workspaceFolder}/server && npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-log-service-tee.log"
             ],
             "env": {
                 "PORT": "7091"

@@ -88,7 +88,7 @@ git grep -n "updateFluidClient" $(git rev-list --all) -- . ':(exclude)*.md'
 
 
 firebase emulators:start --project outliner-d57b0
-cd /workspace/server && npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-auth-service-tee.log
+cd /workspace/server && npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-log-service-tee.log
 PORT=7092 npx tinylicious
 npx dotenv-cli -e .env.localhost.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log
 

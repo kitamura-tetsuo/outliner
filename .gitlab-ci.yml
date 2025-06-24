@@ -71,7 +71,7 @@ e2e-tests:
     - 'cd ../server'
     - 'npm ci'
     # APIサーバーの起動
-    - 'npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${CI_PROJECT_DIR}/logs/auth-service-tee.log 2>&1 &'
+    - 'npm run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} > ${CI_PROJECT_DIR}/logs/log-service-tee.log 2>&1 &'
     # Tinyliciousサーバーの起動
     - 'PORT=${TEST_FLUID_PORT} tinylicious > ${CI_PROJECT_DIR}/logs/tinylicious.log 2>&1 &'
     # クライアントの準備
