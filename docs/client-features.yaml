@@ -368,7 +368,12 @@
   title: Graph View
   description: ページ間のリンクを視覚化するグラフ表示機能
   category: navigation
-  status: draft
+  status: implemented
+  components:
+    - src/components/GraphView.svelte
+    - src/routes/graph/+page.svelte
+  tests:
+    - client/e2e/core/GVI-0001.spec.ts
   acceptance:
     - ページ間のリンクをグラフ表示する
     - ノードをクリックしてページへ遷移できる
@@ -1001,7 +1006,7 @@
   title: 'Graph View'
   description: 'ページ間のリンクを視覚化するグラフ表示機能'
   category: navigation
-  status: draft
+  status: implemented
 - id: SRE-001
   title: Advanced Search & Replace
   description: 正規表現や範囲指定に対応した検索・置換機能
