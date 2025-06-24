@@ -1,11 +1,8 @@
 /** @feature ENV-0002
  *  Title   : Setup script starts all test services
- *  Source  : docs/client-features.yaml
- */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+ *  Source  : docs/dev-features.yaml
+*/
+import { expect, test } from "vitest";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";

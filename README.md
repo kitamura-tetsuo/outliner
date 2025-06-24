@@ -194,6 +194,9 @@ npm run test:unit
 
 # E2E テスト (dotenvxで復号化して実行)
 dotenvx run -- npm run test:e2e
+
+# 環境維持テスト (Vitest)
+dotenvx run -- npm run test:env
 ```
 
 テストの前には `scripts/codex-setup.sh` を実行してローカルのエミュレータ群を起動してください。

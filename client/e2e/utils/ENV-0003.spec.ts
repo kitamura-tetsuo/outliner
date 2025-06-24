@@ -1,11 +1,8 @@
 /** @feature ENV-0003
  *  Title   : Setup script caches installation
- *  Source  : docs/client-features.yaml
- */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+ *  Source  : docs/dev-features.yaml
+*/
+import { expect, test } from "vitest";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";

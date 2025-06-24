@@ -1,6 +1,8 @@
 # 📄 Documentation & Specifications
 
-Record every feature in docs\client-features.yaml. Document intentionally omitted features in docs/unimplemented-features.md.
+Record end-user features in docs\client-features.yaml.
+List development and environment maintenance features (the ENV-* series) in docs/dev-features.yaml.
+Document intentionally omitted features in docs/unimplemented-features.md.
 
 - While multiple AIs may code in parallel, review documents frequently to avoid overlapping features or contradictory explanations.
 - Continuously reference and update past best practices so they remain current.
@@ -15,6 +17,8 @@ Do not embed code that skips tests.
 Do not use mocks in tests.
 Run tests in headless mode.
 Fix one test file at a time and run tests after each fix to confirm.
+Run environment maintenance tests (ENV-*) separately from unit and e2e suites.
+These tests use Vitest while e2e tests use Playwright.
 
 # 🔍 How to deal with test failures
 
