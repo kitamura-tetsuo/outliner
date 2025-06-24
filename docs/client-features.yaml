@@ -205,9 +205,6 @@
   acceptance:
     - WASMデータベースがブラウザで動作する
     - オフラインでもページ保存が可能
-    - 高速な全文検索ができる
-  tests:
-    - client/e2e/new/DBW-001.spec.ts
 - id: FFI-0001
   title: Fluid Framework Integration
   description: Fluid Frameworkを全面的に統合しリアルタイム機能を強化
@@ -355,12 +352,11 @@
   title: Graph View
   description: 項目間のリンクをグラフ表示するビューを提供
   category: visualization
-  status: implemented
+  status: draft
   components:
     - src/components/GraphView.svelte
     - src/routes/graph/+page.svelte
   tests:
-    - client/e2e/new/GRF-001.spec.ts
   acceptance:
     - Graph Viewでリンク関係を視覚化
     - ズームとパン操作が可能
@@ -1018,18 +1014,16 @@
   title: Graph View
   description: 項目間のリンクをグラフ表示するビューを提供
   category: visualization
-  status: implemented
+  status: draft
   components:
     - src/components/GraphView.svelte
     - src/routes/graph/+page.svelte
   tests:
-    - client/e2e/new/GRF-001.spec.ts
-
 - id: CHT-001
   title: Chart Component
   description: 保存されたデータをグラフ表示するチャートコンポーネント
   category: visualization
-  status: implemented
+  status: draft
   components:
     - src/components/ChartComponent.svelte
   tests:
