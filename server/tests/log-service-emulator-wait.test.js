@@ -31,9 +31,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
 
         // waitForFirebaseEmulator関数を模擬実装
         waitForFirebaseEmulator = async function (maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
-            const isEmulator = processStub.env.FIREBASE_AUTH_EMULATOR_HOST ||
-                processStub.env.FIRESTORE_EMULATOR_HOST ||
-                processStub.env.FIREBASE_EMULATOR_HOST;
+            const isEmulator = processStub.env.FIREBASE_EMULATOR_HOST;
 
             if (!isEmulator) {
                 loggerStub.info("Firebase emulator not configured, skipping connection wait");
@@ -103,7 +101,8 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
 
     it("Firebase emulator環境変数が設定されている場合、emulatorの起動を待機する", async function () {
         // 環境変数を設定
-        processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
+        processStub.env.FIREBASE_EMULATOR_HOST = "localhost";
+        processStub.env.AUTH_EMULATOR_PORT = "9099";
 
         // 成功するレスポンスを設定
         adminStub.auth().listUsers.resolves({ users: [] });
@@ -118,7 +117,8 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
 
     it("ECONNREFUSED エラーが発生した場合、指数バックオフでリトライする", async function () {
         // 環境変数を設定
-        processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
+        processStub.env.FIREBASE_EMULATOR_HOST = "localhost";
+        processStub.env.AUTH_EMULATOR_PORT = "9099";
 
         // 最初の2回はECONNREFUSEDエラー、3回目は成功
         const econnrefusedError = new Error("connect ECONNREFUSED 127.0.0.1:9099");
@@ -147,7 +147,8 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
 
     it("最大30回のリトライを行い、初期遅延1秒、最大遅延10秒で待機する", async function () {
         // 環境変数を設定
-        processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
+        processStub.env.FIREBASE_EMULATOR_HOST = "localhost";
+        processStub.env.AUTH_EMULATOR_PORT = "9099";
 
         // 常にECONNREFUSEDエラーを返す
         const econnrefusedError = new Error("connect ECONNREFUSED 127.0.0.1:9099");
@@ -168,7 +169,8 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
 
     it("Firebase Auth emulatorへの接続テストを行い、成功するまで待機する", async function () {
         // 環境変数を設定
-        processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
+        processStub.env.FIREBASE_EMULATOR_HOST = "localhost";
+        processStub.env.AUTH_EMULATOR_PORT = "9099";
 
         // ユーザーが存在する場合のレスポンス
         const mockUsers = [{
@@ -200,7 +202,8 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
 
     it("ECONNREFUSED以外のエラーは即座に失敗とする", async function () {
         // 環境変数を設定
-        processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
+        processStub.env.FIREBASE_EMULATOR_HOST = "localhost";
+        processStub.env.AUTH_EMULATOR_PORT = "9099";
 
         // ECONNREFUSED以外のエラー
         const otherError = new Error("Some other error");
@@ -223,7 +226,8 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
 
     it("リトライ回数と遅延時間をログに出力する", async function () {
         // 環境変数を設定
-        processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
+        processStub.env.FIREBASE_EMULATOR_HOST = "localhost";
+        processStub.env.AUTH_EMULATOR_PORT = "9099";
 
         // 最初はECONNREFUSEDエラー、2回目は成功
         const econnrefusedError = new Error("connect ECONNREFUSED 127.0.0.1:9099");
@@ -242,7 +246,8 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
 
     it("接続成功時にユーザー数とユーザー情報をログに出力する", async function () {
         // 環境変数を設定
-        processStub.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
+        processStub.env.FIREBASE_EMULATOR_HOST = "localhost";
+        processStub.env.FIRESTORE_EMULATOR_PORT = "8080";
 
         // ユーザーが存在する場合のレスポンス
         const mockUsers = [{
@@ -264,7 +269,8 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
 
     it("Firebase初期化が非同期でラップされ、テストユーザーセットアップがemulator起動待機後に実行される", async function () {
         // 環境変数を設定
-        processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
+        processStub.env.FIREBASE_EMULATOR_HOST = "localhost";
+        processStub.env.AUTH_EMULATOR_PORT = "9099";
 
         // devAuthHelperのモック
         const devAuthHelperStub = {

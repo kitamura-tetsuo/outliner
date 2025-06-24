@@ -27,8 +27,9 @@ const azureConfig = {
 
 // Firebaseの初期化（テスト用に最小構成）
 // テスト環境でFirestoreエミュレーターを使用
-if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
-    process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
+if (process.env.NODE_ENV === "test" || process.env.FIREBASE_EMULATOR_HOST) {
+    process.env.FIREBASE_EMULATOR_HOST = "localhost";
+    process.env.FIRESTORE_EMULATOR_PORT = "58080";
     process.env.GCLOUD_PROJECT = "test-project";
 }
 
@@ -38,9 +39,9 @@ admin.initializeApp({
 
 // データベース接続設定（テスト用）
 const db = admin.firestore();
-if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
+if (process.env.NODE_ENV === "test" || process.env.FIREBASE_EMULATOR_HOST) {
     db.settings({
-        host: "localhost:58080",
+        host: `${process.env.FIREBASE_EMULATOR_HOST}:${process.env.FIRESTORE_EMULATOR_PORT || "58080"}`,
         ssl: false,
     });
 }

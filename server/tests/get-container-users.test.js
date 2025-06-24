@@ -6,7 +6,8 @@ const admin = require("firebase-admin");
 
 // テスト環境の設定
 process.env.NODE_ENV = "test";
-process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
+process.env.FIREBASE_EMULATOR_HOST = "localhost";
+process.env.FIRESTORE_EMULATOR_PORT = "58080";
 process.env.GCLOUD_PROJECT = "test-project";
 
 // Use the Express app defined for testing

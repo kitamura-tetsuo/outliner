@@ -42,9 +42,9 @@ const initializeAdminEmulator = (host, port) => {
         }
 
         // Point to the Auth emulator
-        const emulatorHost = `${host}:${port}`;
-        process.env.FIREBASE_AUTH_EMULATOR_HOST = emulatorHost;
-        console.log(`Setting Auth emulator host to: ${emulatorHost}`);
+        process.env.FIREBASE_EMULATOR_HOST = host;
+        process.env.AUTH_EMULATOR_PORT = String(port);
+        console.log(`Setting Auth emulator host to: ${host}:${port}`);
     }
     catch (error) {
         console.error("Error initializing Firebase Admin:", error);

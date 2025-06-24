@@ -39,3 +39,12 @@
   components: []
   tests:
     - client/e2e/utils/ENV-0003.spec.ts
+
+- id: ENV-0004
+  title: Consolidate Firebase emulator host variable
+  description: Single FIREBASE_EMULATOR_HOST environment variable replaces separate host variables for Auth and Firestore emulators.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+    - client/e2e/utils/ENV-0004.spec.ts

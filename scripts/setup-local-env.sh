@@ -28,7 +28,7 @@ if [ ! -f "$ROOT_DIR/client/.env.test" ]; then
     cat >> "$ROOT_DIR/client/.env.test" <<'EOV'
 VITE_IS_TEST=true
 VITE_USE_FIREBASE_EMULATOR=true
-VITE_FIRESTORE_EMULATOR_HOST=localhost
+VITE_FIREBASE_EMULATOR_HOST=localhost
 VITE_USE_TINYLICIOUS=true
 EOV
     echo "Created client/.env.test"
