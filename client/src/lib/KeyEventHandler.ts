@@ -1,4 +1,5 @@
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
+import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 /**
  * キーおよび入力イベントを各カーソルインスタンスに振り分けるハンドラ
@@ -186,6 +187,10 @@ export class KeyEventHandler {
                 console.log(`Skipping input event during composition`);
             }
             return;
+        }
+
+        if (inputEvent.data === '/') {
+            commandPaletteStore.show({ top: 0, left: 0 });
         }
 
         // カーソルがない場合は処理しない

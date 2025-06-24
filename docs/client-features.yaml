@@ -885,3 +885,17 @@
   - コンテナを削除できる
   tests:
   - client/e2e/core/USR-0002.spec.ts
+- id: CMD-0001
+  title: Inline Command Palette
+  description: '/ を入力してテーブルやチャートを挿入できるコマンドパレット'
+  category: editor
+  status: implemented
+  components:
+  - src/components/SlashCommandPalette.svelte
+  - src/components/InlineJoinTable.svelte
+  tests:
+  - client/e2e/new/CMD-0001.spec.ts
+  acceptance:
+  - '/' を入力するとコマンドパレットが表示される
+  - Table を選択すると Editable JOIN Table が挿入される
+  - Chart を選択すると Chart Component が挿入される

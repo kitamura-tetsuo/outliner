@@ -1,11 +1,13 @@
 <script lang="ts">
-	import { Tree } from 'fluid-framework';
-	import { createEventDispatcher, onMount } from 'svelte';
-	import { Items } from '../schema/app-schema';
-	import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
-	import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
-	import { TreeSubscriber } from "../stores/TreeSubscriber";
-	import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
+import { Tree } from 'fluid-framework';
+import { createEventDispatcher, onMount } from 'svelte';
+import { Items } from '../schema/app-schema';
+import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
+import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
+import { TreeSubscriber } from "../stores/TreeSubscriber";
+import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
+import InlineJoinTable from './InlineJoinTable.svelte';
+import ChartPanel from './ChartPanel.svelte';
 	interface Props {
 		model: OutlinerItemViewModel;
 		depth?: number;
@@ -1367,11 +1369,16 @@
 						{@html ScrapboxFormatter.formatToHtml(text.current)}
 					</span>
 				{/if}
-				{#if !isPageTitle && model.votes.length > 0}
-					<span class="vote-count">{model.votes.length}</span>
-				{/if}
-			</div>
-		</div>
+                                {#if !isPageTitle && model.votes.length > 0}
+                                        <span class="vote-count">{model.votes.length}</span>
+                                {/if}
+                                {#if text.current === '/table'}
+                                        <InlineJoinTable />
+                                {:else if text.current === '/chart'}
+                                        <ChartPanel />
+                                {/if}
+                        </div>
+                </div>
 
 		{#if !isPageTitle}
 			<div class="item-actions">
