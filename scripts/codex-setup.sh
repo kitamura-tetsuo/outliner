@@ -45,9 +45,23 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   cd "${ROOT_DIR}/client"
   npx -y playwright install chromium
   cd "${ROOT_DIR}"
+
+  # Ensure vitest and playwright packages are available for npm test
+  if [ ! -f "${ROOT_DIR}/client/node_modules/.bin/vitest" ] || [ ! -f "${ROOT_DIR}/client/node_modules/.bin/playwright" ]; then
+    echo "Installing vitest@3.2.4 and playwright@1.53.1 for testing..."
+    cd "${ROOT_DIR}/client"
+    npm --proxy='' --https-proxy='' install --no-save vitest@3.2.4 playwright@1.53.1
+    cd "${ROOT_DIR}"
+  fi
   touch "$SETUP_SENTINEL"
 else
   echo "Skipping dependency installation"
+  if [ ! -f "${ROOT_DIR}/client/node_modules/.bin/vitest" ] || [ ! -f "${ROOT_DIR}/client/node_modules/.bin/playwright" ]; then
+    echo "Required test packages missing; installing vitest@3.2.4 and playwright@1.53.1..."
+    cd "${ROOT_DIR}/client"
+    npm --proxy='' --https-proxy='' install --no-save vitest@3.2.4 playwright@1.53.1
+    cd "${ROOT_DIR}"
+  fi
 fi
 
 # Stop any existing servers to ensure clean restart
