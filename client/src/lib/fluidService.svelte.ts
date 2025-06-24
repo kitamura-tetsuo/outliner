@@ -25,12 +25,12 @@ import { userManager } from "../auth/UserManager";
 import { FluidClient } from "../fluid/fluidClient";
 import {
     appTreeConfiguration,
-    Project
+    Project,
 } from "../schema/app-schema";
 import {
     getDefaultContainerId,
-    saveFirestoreContainerIdToServer,
-} from "../services";
+    saveContainerIdToServer as saveFirestoreContainerIdToServer,
+} from "../stores/firestoreStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";
 import {
@@ -577,7 +577,11 @@ export async function getFluidClientByProjectTitle(projectTitle: string): Promis
 
             // 必要なプロパティが存在することを確認
             if (!container || !appData) {
-                log("fluidService", "error", `FluidInstancesに必要なプロパティが不足しています: container=${!!container}, appData=${!!appData}`);
+                log(
+                    "fluidService",
+                    "error",
+                    `FluidInstancesに必要なプロパティが不足しています: container=${!!container}, appData=${!!appData}`,
+                );
                 continue;
             }
 
@@ -598,10 +602,16 @@ export async function getFluidClientByProjectTitle(projectTitle: string): Promis
     }
 
     log("fluidService", "warn", `プロジェクトタイトル「${projectTitle}」に一致するFluidClientが見つかりませんでした`);
-    log("fluidService", "debug", `利用可能なプロジェクト: ${keys.map(key => {
-        const instances = clientRegistry.get(key);
-        return instances?.[4]?.title || 'unknown';
-    }).join(', ')}`);
+    log(
+        "fluidService",
+        "debug",
+        `利用可能なプロジェクト: ${
+            keys.map(key => {
+                const instances = clientRegistry.get(key);
+                return instances?.[4]?.title || "unknown";
+            }).join(", ")
+        }`,
+    );
     return undefined;
 }
 
