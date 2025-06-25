@@ -66,10 +66,6 @@ else
     npm --proxy='' --https-proxy='' install --no-save vitest playwright
     cd "${ROOT_DIR}"
   fi
-  if ! command -v cross-env >/dev/null; then
-    echo "cross-env not found; installing globally"
-    npm install -g cross-env || true
-  fi
 fi
 
 # Stop any existing servers to ensure clean restart
