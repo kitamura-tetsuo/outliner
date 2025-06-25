@@ -26,9 +26,16 @@ let worker: SyncWorker | null = null;
 
 export const queryStore = writable<QueryResult>({ rows: [], columnsMeta: [] });
 
-// テスト環境でqueryStoreをwindowオブジェクトに公開
+// テスト環境でqueryStoreとSQLサービスをwindowオブジェクトに公開
 if (typeof window !== "undefined") {
     (window as any).queryStore = queryStore;
+    (window as any).__SQL_SERVICE__ = {
+        initDb,
+        runQuery,
+        rawExec,
+        getDb,
+        applyEdit,
+    };
 }
 
 export async function initDb() {

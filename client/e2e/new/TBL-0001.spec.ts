@@ -9,8 +9,12 @@ import {
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("TBL-0001: Editable JOIN Table", () => {
+    let uniqueId: string;
+
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // テストごとにユニークなIDを生成
+        uniqueId = `${testInfo.workerIndex}_${Date.now()}`;
     });
 
     test("query grid should be visible", async ({ page }) => {
@@ -48,11 +52,11 @@ test.describe("TBL-0001: Editable JOIN Table", () => {
         await page.goto("/table");
         await page.waitForSelector("textarea");
         const sql = [
-            "CREATE TABLE t1(id TEXT PRIMARY KEY, a INTEGER);",
-            "CREATE TABLE t2(id TEXT PRIMARY KEY, b INTEGER);",
-            "INSERT INTO t1 VALUES('1',1);",
-            "INSERT INTO t2 VALUES('1',2);",
-            "SELECT t1.a AS t1_a, t2.b AS t2_b FROM t1 JOIN t2 ON t1.id=t2.id;",
+            `CREATE TABLE t1_${uniqueId}(id TEXT PRIMARY KEY, a INTEGER);`,
+            `CREATE TABLE t2_${uniqueId}(id TEXT PRIMARY KEY, b INTEGER);`,
+            `INSERT INTO t1_${uniqueId} VALUES('1',1);`,
+            `INSERT INTO t2_${uniqueId} VALUES('1',2);`,
+            `SELECT t1.a AS t1_a, t2.b AS t2_b FROM t1_${uniqueId} t1 JOIN t2_${uniqueId} t2 ON t1.id=t2.id;`,
         ].join(" ");
         await page.fill("textarea", sql);
         await page.click("text=Run");
@@ -76,9 +80,9 @@ test.describe("TBL-0001: Editable JOIN Table", () => {
 
         await page.goto("/table");
         const sql = [
-            "CREATE TABLE test_table(id TEXT PRIMARY KEY, value INTEGER);",
-            "INSERT INTO test_table VALUES('1', 1);",
-            "SELECT t.value AS t_value FROM test_table t;",
+            `CREATE TABLE test_table_${uniqueId}(id TEXT PRIMARY KEY, value INTEGER);`,
+            `INSERT INTO test_table_${uniqueId} VALUES('1', 1);`,
+            `SELECT t.value AS t_value FROM test_table_${uniqueId} t;`,
         ].join(" ");
         await page.fill("textarea", sql);
         await page.click("text=Run");
