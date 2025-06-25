@@ -25,6 +25,10 @@ echo "ROOT_DIR: ${ROOT_DIR}"
 # Initialize environment
 echo "Loading NVM..."
 load_nvm
+NPM_GLOBAL_BIN="$(npm bin -g 2>/dev/null || true)"
+if [ -n "$NPM_GLOBAL_BIN" ] && [[ ":$PATH:" != *":$NPM_GLOBAL_BIN:"* ]]; then
+  export PATH="$NPM_GLOBAL_BIN:$PATH"
+fi
 echo "Creating log directories..."
 create_log_directories
 echo "Clearing old log files..."
@@ -61,6 +65,10 @@ else
     cd "${ROOT_DIR}/client"
     npm --proxy='' --https-proxy='' install --no-save vitest playwright
     cd "${ROOT_DIR}"
+  fi
+  if ! command -v cross-env >/dev/null; then
+    echo "cross-env not found; installing globally"
+    npm install -g cross-env || true
   fi
 fi
 
