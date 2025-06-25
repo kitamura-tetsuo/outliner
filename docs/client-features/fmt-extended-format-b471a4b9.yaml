@@ -1,0 +1,13 @@
+id: FMT-0003
+title: Extended format
+description: Scrapbox構文の拡張フォーマット（リンク、引用）を視覚的に表示する機能
+category: text-formatting
+status: implemented
+acceptance:
+- カーソルがあるアイテムでは拡張フォーマットもプレーンテキストで表示される
+- リンク構文（[URL]）が正しくリンクとして表示される
+- 引用構文（> テキスト）が正しく引用として表示される
+- 複合フォーマット（引用内の太字や斜体など）が正しく表示される
+tests:
+- client/e2e/core/fmt-extended-format-b471a4b9.spec.ts
+title-ja: 拡張フォーマット

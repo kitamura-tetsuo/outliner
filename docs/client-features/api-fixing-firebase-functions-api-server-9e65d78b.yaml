@@ -1,0 +1,29 @@
+id: API-0001
+title: Fixing Firebase Functions API Server
+description: Firebase Functions APIサーバーのローカルテスト時のエラーを修正し、正常に動作するようにする機能
+category: api-server
+status: implemented
+acceptance:
+- CORS設定が正しく構成され、クロスオリジンリクエストが正常に処理される
+- Firebase Functions エミュレーターが正常に起動する
+- Firebase Hosting経由でのリクエストが正しくFunctionsにルーティングされる
+- deleteContainerエンドポイント（/api/deleteContainer）が認証エラーを適切に処理する
+- deleteUserエンドポイント（/api/deleteUser）が認証エラーを適切に処理する
+- fluid-tokenエンドポイント（/api/fluid-token）が認証エラーを適切に処理する
+- getUserContainersエンドポイント（/api/getUserContainers）が認証エラーを適切に処理する
+- save-containerエンドポイント（/api/save-container）が認証エラーを適切に処理する
+- ヘルスチェックエンドポイント（/health）が正常に応答する
+- 'ポート設定が正しく構成される（Hosting: 57000, Functions: 57070）'
+- 必須パラメータが不足している場合に400エラーが返される
+- 無効なHTTPメソッドに対して405エラーが返される
+- 環境変数が正しく読み込まれ、Azure Fluid Relay設定が適用される
+- 認証に失敗した場合に401または500エラーが返される
+tests:
+- client/e2e/core/api-fixing-firebase-functions-api-server-9e65d78b.spec.ts
+- functions/test/firebase-functions.test.js
+components:
+- client/.env.localhost.test
+- firebase.json
+- functions/.env
+- functions/index.js
+title-ja: Firebase Functions APIサーバーの修正

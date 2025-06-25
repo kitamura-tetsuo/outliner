@@ -1,32 +1,41 @@
 #!/usr/bin/env python3
-"""Sort docs/client-features.yaml alphabetically by feature id."""
+"""Sort docs/client-features/*.yaml alphabetically by feature id and
+regenerate docs/client-features.yaml"""
 from pathlib import Path
 import yaml
 from loguru import logger
 import subprocess
 
 ROOT = Path(__file__).resolve().parent.parent
-YAML_FILE = ROOT / "docs" / "client-features.yaml"
+YAML_DIR = ROOT / "docs" / "client-features"
+AGG_FILE = ROOT / "docs" / "client-features.yaml"
 
 
 def main() -> None:
-    data = yaml.safe_load(YAML_FILE.read_text(encoding="utf-8"))
-
-    for feature in data:
+    features = []
+    for path in YAML_DIR.glob("*.yaml"):
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if "title-ja" not in data:
+            data["title-ja"] = data.get("title", "")
         for key in ("acceptance", "components", "tests"):
-            items = feature.get(key)
+            items = data.get(key)
             if isinstance(items, list):
-                feature[key] = sorted(items)
+                data[key] = sorted(items)
+        text = yaml.safe_dump(data, allow_unicode=True, sort_keys=False, width=4096)
+        if path.read_text(encoding="utf-8") != text:
+            path.write_text(text, encoding="utf-8")
+            subprocess.run(["git", "add", str(path)], check=False)
+            logger.info(f"sorted {path.relative_to(ROOT)}")
+        features.append(data)
 
-    sorted_data = sorted(data, key=lambda f: f.get("id", ""))
-    out_text = yaml.safe_dump(sorted_data, allow_unicode=True, sort_keys=False, width=4096)
-
-    if out_text != YAML_FILE.read_text(encoding="utf-8"):
-        YAML_FILE.write_text(out_text, encoding="utf-8")
-        logger.info("client-features.yaml sorted")
-        subprocess.run(["git", "add", str(YAML_FILE)], check=False)
+    features_sorted = sorted(features, key=lambda f: f.get("id", ""))
+    agg_text = yaml.safe_dump(features_sorted, allow_unicode=True, sort_keys=False, width=4096)
+    if not AGG_FILE.exists() or AGG_FILE.read_text(encoding="utf-8") != agg_text:
+        AGG_FILE.write_text(agg_text, encoding="utf-8")
+        subprocess.run(["git", "add", str(AGG_FILE)], check=False)
+        logger.info("client-features.yaml regenerated")
     else:
-        logger.info("client-features.yaml already sorted")
+        logger.info("client-features.yaml already up-to-date")
 
 
 if __name__ == "__main__":
