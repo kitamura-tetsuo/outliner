@@ -315,6 +315,13 @@ describe('Cursor', () => {
       // expect(mockItem.updateText).not.toHaveBeenCalled(); // Depending on implementation if it tries to merge
       expect(cursor.offset).toBe(mockItem.text.length);
     });
+
+    it('deleteBackward at offset 0 triggers mergeWithPreviousItem', () => {
+      cursor.offset = 0;
+      const spy = vi.spyOn(cursor as any, 'mergeWithPreviousItem').mockImplementation(() => {});
+      cursor.deleteBackward();
+      expect(spy).toHaveBeenCalled();
+    });
   });
 
 });
