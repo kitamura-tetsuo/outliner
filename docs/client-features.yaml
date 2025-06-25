@@ -803,6 +803,18 @@
   - 編集内容がFluid経由で同期される
   - 編集後チャートが自動更新される
   title-ja: 編集可能な結合テーブル
+- id: TBL-0002
+  title: Multi-statement query support
+  description: SQL editor executes sequential statements separated by semicolons
+  category: table
+  status: implemented
+  tests:
+  - client/e2e/new/TBL-0002.spec.ts
+  acceptance:
+  - クエリエディタで複数のSQLステートメントをセミコロン区切りで実行できる
+  - 各ステートメントの結果が正しい順序で表示される
+  - 実行後、EditableQueryGridに最終ステートメントの結果が表示される
+  title-ja: 複数ステートメントクエリのサポート
 - id: TST-0001
   title: SharedTree Data Verification Utility
   description: テストにおいてSharedTreeの内容をJSONとして取得し、結果を厳密かつ簡易に判定するユーティリティ

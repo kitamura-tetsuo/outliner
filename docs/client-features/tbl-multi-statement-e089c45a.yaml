@@ -1,0 +1,12 @@
+id: TBL-0002
+title: Multi-statement query support
+description: SQL editor executes sequential statements separated by semicolons
+category: table
+status: implemented
+tests:
+- client/e2e/new/TBL-0002.spec.ts
+acceptance:
+- クエリエディタで複数のSQLステートメントをセミコロン区切りで実行できる
+- 各ステートメントの結果が正しい順序で表示される
+- 実行後、EditableQueryGridに最終ステートメントの結果が表示される
+title-ja: 複数ステートメントクエリのサポート
