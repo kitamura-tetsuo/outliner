@@ -1,0 +1,9 @@
+id: ENV-0004
+title: Setup script installs vitest and playwright
+description: Ensure scripts/codex-setup.sh installs vitest and playwright packages so npm test runs without prompts.
+category: environment
+status: implemented
+components: []
+tests:
+- scripts/tests/ENV-0004.spec.ts
+title-ja: Setup script installs vitest and playwright
