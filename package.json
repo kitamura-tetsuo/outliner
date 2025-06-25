@@ -1,6 +1,7 @@
 {
     "scripts": {
-        "postinstall": "playwright install --with-deps chromium"
+        "postinstall": "playwright install --with-deps chromium",
+        "dev": "npm run --prefix client dev"
     },
     "dependencies": {
         "@playwright/test": "^1.52.0"
