@@ -116,6 +116,7 @@ Prioritize performance.
 - When Playwright test output cannot be read directly, use cmd /c with output redirection to save results to a file and then read the file: cmd /c "cd /d path && npm run test:e2e ... > test-output.txt 2>&1 && type test-output.txt"
 - When terminal output cannot be retrieved properly, it causes repeated dysfunction and prevents effective debugging and test execution.
 - Run Playwright tests one file at a time (`npm run test:e2e -- path/to/test.spec.ts`).
+- Run E2E tests from the repository root with `(cd client && npm run test:e2e -- <test_file>)`.
 - If E2E tests time out, document the attempt but continue; tests will run in another environment.
 - When fixing LNK-0003 tests, modifications broke 113 other tests including core cursor movement, text input, formatting, and selection functionality - need to be careful about regressions when making changes to core editor functionality.
 - For E2E tests, use page.keyboard.type() for user input simulation; only use internal methods or event dispatching for data preparation and verification, never for simulating user actions.
