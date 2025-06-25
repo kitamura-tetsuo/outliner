@@ -48,3 +48,12 @@
   components: []
   tests:
     - scripts/tests/ENV-0004.spec.ts
+
+- id: ENV-0005
+  title: dotenvx handles env variables without cross-env
+  description: Verify that NODE_ENV and TEST_ENV are correctly loaded using dotenvx alone.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+    - scripts/tests/ENV-0005.spec.ts
