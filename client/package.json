@@ -43,6 +43,7 @@
         "@inlang/plugin-m-function-matcher": "^2.0.10",
         "@inlang/plugin-message-format": "^4.0.0",
         "@playwright/test": "^1.53.0-alpha-2025-05-30",
+        "playwright": "^1.53.1",
         "@sveltejs/adapter-auto": "^4.0.0",
         "@sveltejs/adapter-static": "^3.0.8",
         "@sveltejs/kit": "^2.16.0",
