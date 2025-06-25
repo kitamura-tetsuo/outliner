@@ -132,8 +132,9 @@ export class UserManager {
     private connectToFirebaseEmulator(): boolean {
         try {
             // 環境変数から接続情報を取得（デフォルトはlocalhost:59099）
-            const host = import.meta.env.VITE_AUTH_EMULATOR_HOST || "localhost";
-            const port = parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT || "59099", 10);
+            const hostValue = import.meta.env.VITE_AUTH_EMULATOR_HOST || "localhost:59099";
+            const [host, portStr] = hostValue.split(":");
+            const port = parseInt(portStr || "59099", 10);
 
             logger.info(`Connecting to Firebase Auth emulator at ${host}:${port}`);
             connectAuthEmulator(this.auth, `http://${host}:${port}`, { disableWarnings: true });
