@@ -57,3 +57,13 @@
   components: []
   tests:
     - scripts/tests/ENV-0005.spec.ts
+- id: ENV-0006
+  title: Consolidate Firebase emulator host variables
+  description: Use VITE_FIREBASE_EMULATOR_HOST for all emulator services and remove redundant host settings.
+  category: environment
+  status: implemented
+  components: []
+  tests: []
+  acceptance:
+    - Environment files define VITE_FIREBASE_EMULATOR_HOST
+    - Client and scripts reference the unified variable

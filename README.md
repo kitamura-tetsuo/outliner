@@ -142,8 +142,7 @@ firebase deploy
 
 - クライアント: `VITE_PORT=7080`
 - Tinylicious: `VITE_TINYLICIOUS_PORT=7082`
-- Firestore Emulator host: `VITE_FIRESTORE_EMULATOR_HOST=localhost`
-- Auth Emulator host: `VITE_AUTH_EMULATOR_HOST=localhost`
+- Firebase Emulator host: `VITE_FIREBASE_EMULATOR_HOST=localhost`
 
 ## Firebase Hosting + Functions
 
