@@ -61,6 +61,6 @@
 | TST-0002 | Cursor Information Verification Utility | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | Test Helper Utility | — | implemented |
 | TST-0004 | Improve your test environment | — | implemented |
-| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/core/minimal.spec.ts<br>client/e2e/core/tst-test-helper-utility-2020b233.spec.ts<br>client/e2e/core/port.spec.ts<br>client/e2e/core/basic.spec.ts | implemented |
+| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/core/minimal.spec.ts<br>client/e2e/core/port.spec.ts<br>client/e2e/core/tst-test-helper-utility-2020b233.spec.ts<br>client/e2e/core/basic.spec.ts | implemented |
 | USR-0001 | User deletion function | client/e2e/core/usr-user-deletion-function-baaa8b62.spec.ts | implemented |
 | USR-0002 | Container removal function | client/e2e/core/usr-container-removal-function-0661ecad.spec.ts | implemented |

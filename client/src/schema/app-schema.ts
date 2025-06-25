@@ -24,6 +24,7 @@ export class Item extends sf.objectRecursive("Item", {
     author: sf.string,
     votes: sf.array(sf.string),
     created: sf.number,
+    componentType: sf.optional(sf.string), // コンポーネントタイプ（"table", "chart", undefined）
     lastChanged: sf.number,
     items: () => Items, // 子アイテムを保持
 }) {

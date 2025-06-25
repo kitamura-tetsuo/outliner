@@ -113,9 +113,9 @@ Prioritize performance.
 - User prefers absolute paths instead of 'cd client' commands, dislikes auto-opening browsers for HTML reports, and wants file output for test results but with proper encoding to prevent character corruption.
 - For test execution, use the file output method with UTF-8 encoding to avoid character corruption, and never use nth() for element selection in tests - use data-item-id or other specific selectors instead.
 - For link testing, first test within current project, verify new page creation in fluid container data before testing links, and create helper functions for data verification if they don't exist.
-- When Playwright test output cannot be read directly, use cmd /c with output redirection to save results to a file and then read the file: cmd /c "cd /d path && npx playwright test ... > test-output.txt 2>&1 && type test-output.txt"
+- When Playwright test output cannot be read directly, use cmd /c with output redirection to save results to a file and then read the file: cmd /c "cd /d path && npm run test:e2e ... > test-output.txt 2>&1 && type test-output.txt"
 - When terminal output cannot be retrieved properly, it causes repeated dysfunction and prevents effective debugging and test execution.
-- Run Playwright tests one file at a time (`npx playwright test path/to/test.spec.ts`).
+- Run Playwright tests one file at a time (`npm run test:e2e -- path/to/test.spec.ts`).
 - If E2E tests time out, document the attempt but continue; tests will run in another environment.
 - When fixing LNK-0003 tests, modifications broke 113 other tests including core cursor movement, text input, formatting, and selection functionality - need to be careful about regressions when making changes to core editor functionality.
 - For E2E tests, use page.keyboard.type() for user input simulation; only use internal methods or event dispatching for data preparation and verification, never for simulating user actions.

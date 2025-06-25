@@ -12,6 +12,7 @@ import "$lib";
 import { userManager } from "../auth/UserManager";
 import { setupGlobalDebugFunctions } from "../lib/debug";
 import * as fluidService from "../lib/fluidService.svelte";
+import "../utils/ScrapboxFormatter"; // グローバルに公開するためにインポート
 import {
     cleanupFluidClient,
     initFluidClientWithAuth,

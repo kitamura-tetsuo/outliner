@@ -99,13 +99,15 @@ export class ScrapboxFormatter {
         const patterns = [
             { type: "bold", start: "[[", end: "]]", regex: /\[\[(.*?)\]\]/g },
             // プロジェクト内部リンク（/project-name/page-name形式）- 斜体よりも先に処理
-            { type: "internalLink", start: "[/", end: "]", regex: /\[\/([\w\-\/]+)\]/g },
-            { type: "italic", start: "[/", end: "]", regex: /\[\/(.*?)\]/g },
+            // スラッシュを含む場合のみマッチ（プロジェクト内部リンク）
+            { type: "internalLink", start: "[/", end: "]", regex: /\[\/([\w\-]+\/[\w\-\/]*)\]/g },
+            // 斜体 - スラッシュを含まない場合のみマッチ
+            { type: "italic", start: "[/", end: "]", regex: /\[\/([^\/\]]*)\]/g },
             { type: "strikethrough", start: "[-", end: "]", regex: /\[\-(.*?)\]/g },
             { type: "code", start: "`", end: "`", regex: /`(.*?)`/g },
             { type: "link", start: "[", end: "]", regex: /\[(https?:\/\/.*?)\]/g },
-            // 通常の内部リンク（page-name形式）
-            { type: "internalLink", start: "[", end: "]", regex: /\[([^\[\]\/\-][^\[\]]*?)\]/g },
+            // 通常の内部リンク（page-name形式）- ハイフンを含むページ名も許可
+            { type: "internalLink", start: "[", end: "]", regex: /\[([^\[\]\/][^\[\]]*?)\]/g },
             { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm },
         ];
 
@@ -266,12 +268,12 @@ export class ScrapboxFormatter {
 
                             // LinkPreviewコンポーネントを使用
                             html += `<span class="link-preview-wrapper">
-                                <a href="${content}" class="internal-link project-link ${existsClass}" data-project="${projectName}" data-page="${pageName}">${content}</a>
+                                <a href="/${content}" class="internal-link project-link ${existsClass}" data-project="${projectName}" data-page="${pageName}">${content}</a>
                             </span>`;
                         }
                         else {
                             // 不正なパス形式の場合は通常のリンクとして表示
-                            html += `<a href="${content}" class="internal-link project-link">${content}</a>`;
+                            html += `<a href="/${content}" class="internal-link project-link">${content}</a>`;
                         }
                     }
                     else {
@@ -338,7 +340,8 @@ export class ScrapboxFormatter {
             });
 
             // プロジェクト内部リンク - 斜体よりも先に処理する必要がある
-            const projectLinkRegex = /\[\/([\w\-\/]+)\]/g;
+            // スラッシュを含む場合のみマッチ（プロジェクト内部リンク）
+            const projectLinkRegex = /\[\/([\w\-]+\/[\w\-\/]*)\]/g;
             input = input.replace(projectLinkRegex, (match, path) => {
                 // パスを分解してプロジェクト名とページ名を取得
                 const parts = path.split("/").filter(p => p);
@@ -361,7 +364,8 @@ export class ScrapboxFormatter {
             });
 
             // 斜体 - プロジェクト内部リンクの後に処理
-            const italicRegex = /\[\/(.*?)\]/g;
+            // スラッシュを含まない場合のみマッチ
+            const italicRegex = /\[\/([^\/\]]*)\]/g;
             input = input.replace(italicRegex, (match, content) => {
                 return `<em>${processFormat(content)}</em>`;
             });
@@ -387,7 +391,7 @@ export class ScrapboxFormatter {
             // プロジェクト内部リンクは上で処理済み
 
             // 通常の内部リンク - 外部リンクの後に処理する必要がある
-            const internalLinkRegex = /\[([^\[\]\/\-][^\[\]]*?)\]/g;
+            const internalLinkRegex = /\[([^\[\]\/][^\[\]]*?)\]/g;
             input = input.replace(internalLinkRegex, (match, text) => {
                 // ページの存在確認用のクラスを追加
                 const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
@@ -455,31 +459,32 @@ export class ScrapboxFormatter {
         // 太字
         html = html.replace(
             /(\[\[)(.*?)(\]\])/g,
-            '<span class="control-char">$1</span><strong>$2</strong><span class="control-char">$3</span>',
-        );
-
-        // プロジェクト内部リンク - カーソルがある時は制御文字のみ表示
-        html = html.replace(
-            /(\[\/)([a-zA-Z0-9\-\/]+)(\])/g,
             '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
-        );
-
-        // 斜体
-        html = html.replace(
-            /(\[\/)(.+?)(\])/g,
-            '<span class="control-char">$1</span><em>$2</em><span class="control-char">$3</span>',
-        );
-
-        // 取り消し線
-        html = html.replace(
-            /(\[\-)(.+?)(\])/g,
-            '<span class="control-char">$1</span><s>$2</s><span class="control-char">$3</span>',
         );
 
         // コード
         html = html.replace(
             /(`)(.*?)(`)/g,
-            '<span class="control-char">$1</span><code>$2</code><span class="control-char">$3</span>',
+            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
+        );
+
+        // 取り消し線
+        html = html.replace(
+            /(\[\-)(.*?)(\])/g,
+            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
+        );
+
+        // プロジェクト内部リンク - カーソルがある時は制御文字のみ表示
+        // スラッシュを含む場合のみマッチ（プロジェクト内部リンク）
+        html = html.replace(
+            /(\[\/)([a-zA-Z0-9\-]+\/[a-zA-Z0-9\-\/]*)(\])/g,
+            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
+        );
+
+        // 斜体 - プロジェクト内部リンクの後に処理
+        html = html.replace(
+            /(\[\/)(.*?)(\])/g,
+            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
 
         // 外部リンク - カーソルがある時は制御文字のみ表示
@@ -487,8 +492,6 @@ export class ScrapboxFormatter {
             /(\[)(https?:\/\/.*?)(\])/g,
             '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
-
-        // プロジェクト内部リンクは上で処理済み
 
         // 通常の内部リンク - カーソルがある時は制御文字のみ表示
         html = html.replace(
@@ -517,7 +520,7 @@ export class ScrapboxFormatter {
         const linkPattern = /\[(https?:\/\/.*?)\]/;
 
         // 内部リンクの正規表現パターン
-        const internalLinkPattern = /\[([^\[\]\/\-][^\[\]]*?)\]/;
+        const internalLinkPattern = /\[([^\[\]\/][^\[\]]*?)\]/;
 
         // プロジェクト内部リンクの正規表現パターン
         const projectLinkPattern = /\[\/([\w\-\/]+)\]/;
@@ -565,4 +568,9 @@ export class ScrapboxFormatter {
 
         return false;
     }
+}
+
+// グローバルに参照できるようにする（テスト環境でアクセスするため）
+if (typeof window !== "undefined") {
+    (window as any).ScrapboxFormatter = ScrapboxFormatter;
 }
