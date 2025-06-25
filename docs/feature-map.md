@@ -39,6 +39,7 @@
 | LNK-0007 | Backlink function | client/e2e/core/lnk-backlink-function-7976aef8.spec.ts | implemented |
 | LOG-0001 | Development log service | client/e2e/core/log-development-log-service-8f761bd4.spec.ts | implemented |
 | MCE-0001 | Multi-Cursor Editing | — | implemented |
+| MCE-0102 | VS Code style multi-cursor commands | — | implemented |
 | NAV-0001 | Project Selection and Page Navigation | client/e2e/core/nav-project-selection-and-page-navigation-bf35d422.spec.ts | implemented |
 | NAV-0002 | Link function to project page | client/e2e/core/nav-link-function-to-project-page-a0e7d28a.spec.ts | implemented |
 | SEC-0001 | Dotenvx encrypted env files | client/e2e/core/sec-dotenvx-encrypted-env-files-fa94885c.spec.ts | implemented |
@@ -61,6 +62,6 @@
 | TST-0002 | Cursor Information Verification Utility | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | Test Helper Utility | — | implemented |
 | TST-0004 | Improve your test environment | — | implemented |
-| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/core/minimal.spec.ts<br>client/e2e/core/port.spec.ts<br>client/e2e/core/tst-test-helper-utility-2020b233.spec.ts<br>client/e2e/core/basic.spec.ts | implemented |
+| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/core/port.spec.ts<br>client/e2e/core/minimal.spec.ts<br>client/e2e/core/tst-test-helper-utility-2020b233.spec.ts<br>client/e2e/core/basic.spec.ts<br>client/e2e/auth/auth.spec.ts | implemented |
 | USR-0001 | User deletion function | client/e2e/core/usr-user-deletion-function-baaa8b62.spec.ts | implemented |
 | USR-0002 | Container removal function | client/e2e/core/usr-container-removal-function-0661ecad.spec.ts | implemented |

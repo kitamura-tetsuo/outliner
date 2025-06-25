@@ -58,6 +58,8 @@ export class EditorOverlayStore {
     activeItemId = $state<string | null>(null);
     cursorVisible = $state<boolean>(true);
     animationPaused = $state<boolean>(false);
+    // 追加されたカーソルの履歴
+    cursorHistory = $state<string[]>([]);
     // GlobalTextArea の textarea 要素を保持
     textareaRef = $state<HTMLTextAreaElement | null>(null);
     // onEdit コールバック
@@ -272,6 +274,7 @@ export class EditorOverlayStore {
             console.log(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
         }
 
+        this.pushCursorHistory(newId);
         return newId;
     }
 
@@ -282,6 +285,17 @@ export class EditorOverlayStore {
         const newCursors = { ...this.cursors };
         delete newCursors[cursorId];
         this.cursors = newCursors;
+    }
+
+    pushCursorHistory(cursorId: string) {
+        this.cursorHistory = [...this.cursorHistory, cursorId];
+    }
+
+    undoLastCursor() {
+        if (this.cursorHistory.length === 0) return;
+        const lastId = this.cursorHistory[this.cursorHistory.length - 1];
+        this.cursorHistory = this.cursorHistory.slice(0, -1);
+        this.removeCursor(lastId);
     }
 
     setSelection(selection: SelectionRange) {

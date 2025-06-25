@@ -552,6 +552,17 @@
   - client/e2e/disabled/multi-cursor.spec.ts
   - client/src/stores/EditorOverlayStore.test.ts
   title-ja: マルチカーサーの編集
+- id: MCE-0102
+  title: VS Code style multi-cursor commands
+  description: VS Codeスタイルの複数カーソルコマンドを実装する
+  category: editing
+  status: implemented
+  acceptance:
+  - Ctrl+Shift+Alt+Arrow keys add cursors vertically
+  - Ctrl+U undo last added cursor
+  tests:
+  - client/e2e/new/MCE-0102.spec.ts
+  title-ja: VS Code風マルチカーソルコマンド
 - id: NAV-0001
   title: Project Selection and Page Navigation
   description: ルートページでプロジェクトを選択した場合にプロジェクトページへ遷移し、プロジェクトページからページリストを通じて個別ページへ遷移する機能

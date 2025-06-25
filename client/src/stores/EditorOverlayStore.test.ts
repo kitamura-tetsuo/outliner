@@ -83,6 +83,15 @@ describe("EditorOverlayStore", () => {
         vi.useRealTimers();
     });
 
+    it("undoLastCursor removes the most recently added cursor", () => {
+        const id1 = store.addCursor({ itemId: "foo", offset: 0, isActive: true, userId: "local" });
+        const id2 = store.addCursor({ itemId: "bar", offset: 0, isActive: true, userId: "local" });
+        expect(store.cursors[id2]).toBeDefined();
+        store.undoLastCursor();
+        expect(store.cursors[id2]).toBeUndefined();
+        expect(store.cursors[id1]).toBeDefined();
+    });
+
     afterEach(() => {
         // タイマーや状態をリセット
         vi.useRealTimers();

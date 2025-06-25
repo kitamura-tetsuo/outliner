@@ -83,6 +83,22 @@ export class KeyEventHandler {
             return;
         }
 
+        // Ctrl+Shift+Alt+矢印キーによるカーソル追加
+        if (event.ctrlKey && event.shiftKey && event.altKey) {
+            if (event.key === "ArrowUp") {
+                KeyEventHandler.addCursorVertical("prev");
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            else if (event.key === "ArrowDown") {
+                KeyEventHandler.addCursorVertical("next");
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+        }
+
         // Alt+Shift+矢印キーによる矩形選択
         if (event.altKey && event.shiftKey) {
             if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
@@ -105,6 +121,13 @@ export class KeyEventHandler {
             // Ctrl+I: 斜体
             else if (event.key === "i") {
                 cursorInstances.forEach(cursor => cursor.formatItalic());
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            // Ctrl+U: カーソル追加の取り消し (複数カーソルがある場合)
+            else if (event.key === "u" && cursorInstances.length > 1) {
+                store.undoLastCursor();
                 event.preventDefault();
                 event.stopPropagation();
                 return;
@@ -870,6 +893,17 @@ export class KeyEventHandler {
         const text = textElement ? textElement.textContent || "" : "";
 
         return { id: adjacentItemId, text };
+    }
+
+    private static addCursorVertical(direction: "prev" | "next") {
+        const cursors = store.getCursorInstances();
+        cursors.forEach(cursor => {
+            const adj = KeyEventHandler.getAdjacentItem(cursor.itemId, direction);
+            if (!adj) return;
+            const offset = Math.min(adj.text.length, cursor.offset);
+            const id = store.addCursor({ itemId: adj.id, offset, isActive: false, userId: cursor.userId });
+            store.pushCursorHistory(id);
+        });
     }
 
     /**

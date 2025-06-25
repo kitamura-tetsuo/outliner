@@ -1,0 +1,11 @@
+id: MCE-0102
+title: VS Code style multi-cursor commands
+description: VS Codeスタイルの複数カーソルコマンドを実装する
+category: editing
+status: implemented
+acceptance:
+- Ctrl+Shift+Alt+Arrow keys add cursors vertically
+- Ctrl+U undo last added cursor
+tests:
+- client/e2e/new/MCE-0102.spec.ts
+title-ja: VS Code風マルチカーソルコマンド
