@@ -27,6 +27,7 @@
 | FMT-0004 | Paste and format from the clipboard | client/e2e/core/fmt-paste-and-format-from-the-clipboard-fe4971c2.spec.ts | implemented |
 | FMT-0006 | Consistency of format display when moving cursors | client/e2e/core/fmt-consistency-of-format-display-when-moving-cursors-36199743.spec.ts | implemented |
 | FMT-0007 | Displaying internal link function | client/e2e/core/fmt-displaying-internal-link-function-a8a7c97e.spec.ts | implemented |
+| FMT-0008 | Support multiple internal links in one item | client/e2e/core/fmt-multiple-internal-links-3a606671.spec.ts | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
 | FTR-0013 | Use environment variables in min page | client/e2e/core/ftr-use-environment-variables-in-min-page-cfe01fbf.spec.ts | implemented |
 | IME-0001 | Japanese input using IME | client/e2e/core/ime-japanese-input-using-ime-59109b4a.spec.ts | implemented |
