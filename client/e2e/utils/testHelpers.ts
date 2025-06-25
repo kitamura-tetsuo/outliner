@@ -324,6 +324,56 @@ export class TestHelpers {
     }
 
     /**
+     * エディターストアを使用してカーソルを設定する
+     * @param page Playwrightのページオブジェクト
+     * @param itemId アイテムID
+     * @param offset カーソル位置
+     * @param userId ユーザーID
+     */
+    public static async setCursor(
+        page: Page,
+        itemId: string,
+        offset: number = 0,
+        userId: string = "test-user",
+    ): Promise<void> {
+        await page.evaluate(async ({ itemId, offset, userId }) => {
+            const editorOverlayStore = (window as any).editorOverlayStore;
+            if (editorOverlayStore && editorOverlayStore.setCursor) {
+                editorOverlayStore.setCursor({
+                    itemId: itemId,
+                    offset: offset,
+                    isActive: true,
+                    userId: userId,
+                });
+            }
+        }, { itemId, offset, userId });
+    }
+
+    /**
+     * カーソルを使用してテキストを入力する
+     * @param page Playwrightのページオブジェクト
+     * @param itemId アイテムID
+     * @param text 入力するテキスト
+     * @param userId ユーザーID
+     */
+    public static async insertText(
+        page: Page,
+        itemId: string,
+        text: string,
+        userId: string = "test-user",
+    ): Promise<void> {
+        await page.evaluate(async ({ itemId, text, userId }) => {
+            const editorOverlayStore = (window as any).editorOverlayStore;
+            if (editorOverlayStore && editorOverlayStore.getCursor) {
+                const cursor = editorOverlayStore.getCursor(itemId, userId);
+                if (cursor && cursor.insertText) {
+                    cursor.insertText(text);
+                }
+            }
+        }, { itemId, text, userId });
+    }
+
+    /**
      * プロジェクトページに移動する
      * 既存のプロジェクトがあればそれを使用し、なければ新規作成する
      * @param page Playwrightのページオブジェクト
@@ -363,105 +413,34 @@ export class TestHelpers {
     public static async waitForOutlinerItems(page: Page, timeout = 30000): Promise<void> {
         console.log("Waiting for outliner items to be visible...");
 
-        const startTime = Date.now();
-        let itemsVisible = false;
+        // 現在のURLを確認
+        const currentUrl = page.url();
+        console.log("Current URL:", currentUrl);
 
-        while (Date.now() - startTime < timeout && !itemsVisible) {
-            try {
-                // 現在のURLを確認
-                const currentUrl = page.url();
-                console.log("Current URL:", currentUrl);
+        // プロジェクトページに移動していることを確認
+        const url = new URL(currentUrl);
+        const pathParts = url.pathname.split("/").filter(part => part);
+        const isOnProjectPage = pathParts.length >= 2;
 
-                // プロジェクトページに移動していない場合は、リダイレクトを待つ
-                if (!currentUrl.includes("/project/") && !currentUrl.includes("?project=")) {
-                    console.log("Not on a project page yet, waiting for redirect...");
-                    await page.waitForTimeout(1000);
-                    continue;
-                }
-
-                // アウトライナーアイテムが表示されるのを待つ
-                const itemCount = await page.locator(".outliner-item").count();
-                if (itemCount > 0) {
-                    console.log(`Found ${itemCount} outliner items`);
-                    itemsVisible = true;
-
-                    // SharedTreeが初期化されるのを待つ
-                    try {
-                        await page.waitForFunction(() => {
-                            return window.generalStore && window.generalStore.currentPage;
-                        }, { timeout: 5000 });
-                        console.log("SharedTree is initialized");
-                    }
-                    catch (e) {
-                        console.log("Timeout waiting for SharedTree initialization, continuing anyway");
-                    }
-
-                    // カーソルが初期化されるのを待つ
-                    try {
-                        await page.waitForFunction(() => {
-                            return window.editorOverlayStore;
-                        }, { timeout: 5000 });
-                        console.log("EditorOverlayStore is initialized");
-                    }
-                    catch (e) {
-                        console.log("Timeout waiting for EditorOverlayStore initialization, continuing anyway");
-                    }
-
-                    // 少し待機して安定させる
-                    await page.waitForTimeout(1000);
-                    break;
-                }
-                else {
-                    // アイテムが見つからない場合は、ページの状態を確認
-                    console.log("No outliner items found yet, checking page state...");
-
-                    // ページのHTMLを確認
-                    const html = await page.content();
-                    if (html.includes('class="outliner-item"')) {
-                        console.log("Outliner items found in HTML but not visible yet");
-                        // DOMには存在するが、まだ表示されていない可能性がある
-                        await page.waitForTimeout(1000);
-                    }
-                    else if (html.includes('class="page-loading"') || html.includes("Loading...")) {
-                        console.log("Page is still loading");
-                        await page.waitForTimeout(1000);
-                    }
-                    else {
-                        // ページの内容を確認
-                        const bodyText = await page.textContent("body");
-                        console.log("Page content (first 200 chars):", bodyText?.substring(0, 200));
-
-                        // 新しいページを作成するボタンがあるか確認
-                        const newPageButton = page.getByText("新しいページ");
-                        if (await newPageButton.count() > 0) {
-                            console.log("Found 'New Page' button, clicking it");
-                            await newPageButton.click();
-                            await page.waitForTimeout(1000);
-                        }
-                        else {
-                            // 少し待機して再試行
-                            await page.waitForTimeout(2000);
-                        }
-                    }
-                }
-            }
-            catch (e) {
-                console.log("Error while waiting for outliner items:", e.message);
-                await page.waitForTimeout(1000);
-            }
+        if (!isOnProjectPage) {
+            console.log("Not on a project page, waiting for navigation...");
+            await page.waitForTimeout(2000);
         }
 
-        if (!itemsVisible) {
-            console.log("Timeout waiting for outliner items");
-            // スクリーンショットを撮影して状態を確認
+        // アウトライナーアイテムが表示されるのを待つ
+        try {
+            await page.waitForSelector(".outliner-item", { timeout: timeout });
+            const itemCount = await page.locator(".outliner-item").count();
+            console.log(`Found ${itemCount} outliner items`);
+        }
+        catch (e) {
+            console.log("Timeout waiting for outliner items, taking screenshot...");
             await page.screenshot({ path: "client/test-results/outliner-items-timeout.png" });
-
-            // ページのHTMLを確認
-            const html = await page.content();
-            console.log("Page HTML (first 500 chars):", html.substring(0, 500));
-
-            // エラーはスローせず、テストを続行する
+            throw e;
         }
+
+        // 少し待機して安定させる
+        await page.waitForTimeout(1000);
     }
 
     /**

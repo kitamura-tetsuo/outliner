@@ -99,17 +99,13 @@ kill_ports() {
 # Install global packages if needed
 install_global_packages() {
   if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
-    npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx || true
+    npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli @dotenvx/dotenvx || true
   fi
 
   # if ! command -v dprint >/dev/null; then
   #   curl -fsSL https://dprint.dev/install.sh | sudo sh
   # fi
   
-  if ! command -v cross-env >/dev/null; then
-    echo "cross-env not found after global install; attempting local install"
-    npm install -g cross-env || true
-  fi
 }
 
 # Install OS utilities if needed

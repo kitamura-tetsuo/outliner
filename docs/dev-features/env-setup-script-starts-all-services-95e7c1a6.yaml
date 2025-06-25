@@ -1,0 +1,9 @@
+id: ENV-0002
+title: Setup script starts all services
+description: Verify scripts/codex-setup.sh contains commands to start Firebase emulator, Tinylicious, API server, and SvelteKit server.
+category: environment
+status: implemented
+components: []
+tests:
+- client/e2e/utils/ENV-0002.spec.ts
+title-ja: Setup script starts all services

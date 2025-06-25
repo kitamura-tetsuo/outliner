@@ -1,11 +1,13 @@
 <script lang="ts">
-	import { Tree } from 'fluid-framework';
-	import { createEventDispatcher, onMount } from 'svelte';
-	import { Items } from '../schema/app-schema';
-	import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
-	import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
-	import { TreeSubscriber } from "../stores/TreeSubscriber";
-	import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
+import { Tree } from 'fluid-framework';
+import { createEventDispatcher, onMount } from 'svelte';
+import { Items } from '../schema/app-schema';
+import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
+import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
+import { TreeSubscriber } from "../stores/TreeSubscriber";
+import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
+import InlineJoinTable from './InlineJoinTable.svelte';
+import ChartPanel from './ChartPanel.svelte';
 	interface Props {
 		model: OutlinerItemViewModel;
 		depth?: number;
@@ -46,6 +48,20 @@
 	let dropTargetPosition = $state<'top' | 'middle' | 'bottom' | null>(null);
 
 	let item = model.original;
+
+	// コンポーネントタイプの状態管理
+	let componentType = $state<string | undefined>(item.componentType);
+
+	// コンポーネントタイプが変更された時にアイテムを更新
+	function handleComponentTypeChange(newType: string) {
+		if (newType === "none") {
+			item.componentType = undefined;
+			componentType = undefined;
+		} else {
+			item.componentType = newType;
+			componentType = newType;
+		}
+	}
 
 	const text = new TreeSubscriber(
     item,
@@ -1356,6 +1372,8 @@
 				ondrop={handleDrop}
 				ondragend={handleDragEnd}
 			>
+				<!-- テキスト表示（コンポーネントが表示されている時は非表示） -->
+				<!-- 一時的にコンポーネントタイプの条件分岐を無効化 -->
 				{#if hasActiveCursor()}
 					<!-- フォーカスがある場合：フォーマットを適用した上で制御文字を表示 -->
 					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>
@@ -1367,11 +1385,32 @@
 						{@html ScrapboxFormatter.formatToHtml(text.current)}
 					</span>
 				{/if}
-				{#if !isPageTitle && model.votes.length > 0}
-					<span class="vote-count">{model.votes.length}</span>
-				{/if}
-			</div>
-		</div>
+                                {#if !isPageTitle && model.votes.length > 0}
+                                        <span class="vote-count">{model.votes.length}</span>
+                                {/if}
+
+                                <!-- コンポーネントタイプセレクター -->
+                                {#if !isPageTitle}
+                                    <div class="component-selector">
+                                        <select
+                                            value={componentType || "none"}
+                                            onchange={(e) => handleComponentTypeChange(e.target.value)}
+                                        >
+                                            <option value="none">テキスト</option>
+                                            <option value="table">テーブル</option>
+                                            <option value="chart">チャート</option>
+                                        </select>
+                                    </div>
+                                {/if}
+
+                                <!-- コンポーネント表示（テキストは非表示） -->
+                                {#if componentType === 'table'}
+                                        <InlineJoinTable />
+                                {:else if componentType === 'chart'}
+                                        <ChartPanel />
+                                {/if}
+                        </div>
+                </div>
 
 		{#if !isPageTitle}
 			<div class="item-actions">
@@ -1506,6 +1545,18 @@
 		padding: 0 4px;
 		font-size: 0.7rem;
 		color: #666;
+	}
+
+	.component-selector {
+		margin-left: 8px;
+	}
+
+	.component-selector select {
+		padding: 2px 4px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		font-size: 0.8rem;
+		background-color: white;
 	}
 
 	.title-text {

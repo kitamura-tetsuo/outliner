@@ -62,7 +62,7 @@
 
 ## 5. ドキュメント更新
 
-- docs/client-features.yaml の更新
+- docs/client-features/<slug>-<title>-<8-char-uuid>.yaml の更新
 - 新機能の使用方法のドキュメント作成
 
 ## 6. Multi-Cursor Editing
@@ -165,3 +165,12 @@
 - ChartPanel 表示確認と JOIN 編集検証を含むE2Eテストを追加
 - EditMapper は PK エイリアスで行の編集先を特定するユニットテストを追加
 - セル編集後に再実行しても更新値が取得できることをE2Eテストで検証
+
+### CMD-0001 Inline Command Palette
+
+- '/' キー入力でパレットを表示し Table/Chart を挿入する
+- commandPaletteStore で表示状態と挿入処理を管理
+- 選択したコンポーネント用のアイテムを新規作成しカーソルを移動
+- アイテムテキスト '/table' '/chart' を判定して専用コンポーネントを表示
+- 方向キーで選択を移動し Enter で確定
+- 入力テキストに応じて候補を絞り込む

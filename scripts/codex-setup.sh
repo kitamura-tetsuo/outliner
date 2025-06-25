@@ -25,6 +25,10 @@ echo "ROOT_DIR: ${ROOT_DIR}"
 # Initialize environment
 echo "Loading NVM..."
 load_nvm
+NPM_GLOBAL_BIN="$(npm bin -g 2>/dev/null || true)"
+if [ -n "$NPM_GLOBAL_BIN" ] && [[ ":$PATH:" != *":$NPM_GLOBAL_BIN:"* ]]; then
+  export PATH="$NPM_GLOBAL_BIN:$PATH"
+fi
 echo "Creating log directories..."
 create_log_directories
 echo "Clearing old log files..."

@@ -1,10 +1,13 @@
 <script lang="ts">
+import { Tree } from "fluid-framework";
 import {
     onDestroy,
     onMount,
 } from "svelte";
 import { KeyEventHandler } from "../lib/KeyEventHandler";
+import { Items } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
+import { store as generalStore } from "../stores/store.svelte";
 
 let textareaRef: HTMLTextAreaElement;
 
@@ -16,28 +19,34 @@ $effect(() => {
         console.log(`GlobalTextArea: Setting focus for activeItemId ${id}`);
 
         // フォーカスを確実に設定するための複数の試行
-        textareaRef.focus();
-        console.log(`GlobalTextArea: Initial focus call, activeElement: ${document.activeElement?.tagName}`);
-
-        // requestAnimationFrameを使用してフォーカスを設定
-        requestAnimationFrame(() => {
+        if (textareaRef) {
             textareaRef.focus();
-            console.log(`GlobalTextArea: RAF focus call, activeElement: ${document.activeElement?.tagName}`);
+            console.log(`GlobalTextArea: Initial focus call, activeElement: ${document.activeElement?.tagName}`);
 
-            // さらに確実にするためにsetTimeoutも併用
-            setTimeout(() => {
-                textareaRef.focus();
-                const isFocused = document.activeElement === textareaRef;
-                console.log(`GlobalTextArea: Final focus call, focused: ${isFocused}`);
+            // requestAnimationFrameを使用してフォーカスを設定
+            requestAnimationFrame(() => {
+                if (textareaRef) {
+                    textareaRef.focus();
+                    console.log(`GlobalTextArea: RAF focus call, activeElement: ${document.activeElement?.tagName}`);
 
-                // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(
-                        `GlobalTextArea: focus set on activeItemId change. Active element is textarea: ${isFocused}`,
-                    );
+                    // さらに確実にするためにsetTimeoutも併用
+                    setTimeout(() => {
+                        if (textareaRef) {
+                            textareaRef.focus();
+                            const isFocused = document.activeElement === textareaRef;
+                            console.log(`GlobalTextArea: Final focus call, focused: ${isFocused}`);
+
+                            // デバッグ情報
+                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                console.log(
+                                    `GlobalTextArea: focus set on activeItemId change. Active element is textarea: ${isFocused}`,
+                                );
+                            }
+                        }
+                    }, 10);
                 }
-            }, 10);
-        });
+            });
+        }
     }
 });
 
@@ -47,24 +56,33 @@ onMount(() => {
     console.log("GlobalTextArea: Textarea reference set in store");
 
     // 初期フォーカスを設定
-    textareaRef.focus();
-    console.log("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
-
-    // フォーカス確保のための追加試行
-    requestAnimationFrame(() => {
+    if (textareaRef) {
         textareaRef.focus();
-        console.log("GlobalTextArea: RAF focus set, activeElement:", document.activeElement?.tagName);
+        console.log("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
 
-        setTimeout(() => {
-            textareaRef.focus();
-            const isFocused = document.activeElement === textareaRef;
-            console.log("GlobalTextArea: Final focus set, focused:", isFocused);
-        }, 10);
-    });
+        // フォーカス確保のための追加試行
+        requestAnimationFrame(() => {
+            if (textareaRef) {
+                textareaRef.focus();
+                console.log("GlobalTextArea: RAF focus set, activeElement:", document.activeElement?.tagName);
+
+                setTimeout(() => {
+                    if (textareaRef) {
+                        textareaRef.focus();
+                        const isFocused = document.activeElement === textareaRef;
+                        console.log("GlobalTextArea: Final focus set, focused:", isFocused);
+                    }
+                }, 10);
+            }
+        });
+    }
 
     // テスト用にKeyEventHandlerをグローバルに公開
     if (typeof window !== "undefined") {
         (window as any).__KEY_EVENT_HANDLER__ = KeyEventHandler;
+        (window as any).Tree = Tree;
+        (window as any).Items = Items;
+        (window as any).generalStore = generalStore;
     }
 });
 
@@ -116,15 +134,17 @@ function handleBlur(_event: FocusEvent) {
     if (activeItemId) {
         // フォーカスを確実に設定するための複数の試行
         setTimeout(() => {
-            textareaRef.focus();
+            if (textareaRef) {
+                textareaRef.focus();
 
-            // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(
-                    `GlobalTextArea: focus restored after blur. Active element is textarea: ${
-                        document.activeElement === textareaRef
-                    }`,
-                );
+                // デバッグ情報
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        `GlobalTextArea: focus restored after blur. Active element is textarea: ${
+                            document.activeElement === textareaRef
+                        }`,
+                    );
+                }
             }
         }, 10);
     }

@@ -128,25 +128,17 @@ test.describe("LNK-0002: 内部リンクのナビゲーション機能の実際�
      * @description 内部リンクのURLが正しく生成されることを確認するテスト
      */
     test("内部リンクのURLが正しく生成される", async ({ page }) => {
-        // テストページをセットアップ
+        // 各リンクを別々のアイテムに配置したテストデータを作成
+        const uniquePageName = `link-test-${Date.now()}`;
+        await TestHelpers.createTestProjectAndPageViaAPI(page, "test-project", uniquePageName, [
+            "[simple-page]",
+            "[/project/page]",
+            "[/multi/level/path/page]",
+        ]);
 
-        // 最初のアイテムを選択
-        const firstItem = page.locator(".outliner-item").first();
-        await firstItem.locator(".item-content").click();
-        await waitForCursorVisible(page);
-
-        // 様々な形式の内部リンクを入力
-        await page.keyboard.type("[simple-page]");
-        await page.keyboard.press("Enter");
-        await waitForCursorVisible(page);
-
-        await page.keyboard.type("[/project/page]");
-        await page.keyboard.press("Enter");
-        await waitForCursorVisible(page);
-
-        await page.keyboard.type("[/multi/level/path/page]");
-        await page.keyboard.press("Enter");
-        await waitForCursorVisible(page);
+        // 新しいページに移動
+        await page.goto(`/test-project/${uniquePageName}`);
+        await page.waitForTimeout(1000);
 
         // カーソルを外して内部リンクを表示
         await page.keyboard.press("Escape");

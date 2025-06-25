@@ -1,0 +1,12 @@
+id: SRE-001
+title: Advanced Search & Replace
+description: 正規表現や範囲指定に対応した検索・置換機能
+category: search
+status: implemented
+components:
+- client/src/components/SearchPanel.svelte
+- client/src/lib/search/index.ts
+- client/src/routes/[project]/[page]/+page.svelte
+tests:
+- client/e2e/new/SRE-001.spec.ts
+title-ja: 高度な検索と交換

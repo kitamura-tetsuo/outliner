@@ -129,7 +129,7 @@ export class Cursor {
         return undefined;
     }
 
-    private applyToStore() {
+    applyToStore() {
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(
@@ -186,7 +186,8 @@ export class Cursor {
                         }
                     }, 10);
                 });
-            } else {
+            }
+            else {
                 // テキストエリアが見つからない場合はエラーログ
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.error(`Cursor.applyToStore: Global textarea not found`);
@@ -990,7 +991,9 @@ export class Cursor {
     onInput(event: InputEvent) {
         const data = event.data;
         console.log(`Cursor.onInput called for item ${this.itemId}, data: "${data}", inputType: ${event.inputType}`);
-        console.log(`Cursor.onInput: Current cursor state - itemId: ${this.itemId}, offset: ${this.offset}, isActive: ${this.isActive}`);
+        console.log(
+            `Cursor.onInput: Current cursor state - itemId: ${this.itemId}, offset: ${this.offset}, isActive: ${this.isActive}`,
+        );
 
         // テキストエリア全体の値を取得して同期
         const textarea = store.getTextareaRef();
@@ -1015,10 +1018,12 @@ export class Cursor {
                     store.triggerOnEdit();
                     return;
                 }
-            } else {
+            }
+            else {
                 console.error(`Cursor.onInput: Target item not found for itemId: ${this.itemId}`);
             }
-        } else {
+        }
+        else {
             console.error(`Cursor.onInput: Global textarea not found`);
         }
 
@@ -1026,7 +1031,8 @@ export class Cursor {
         if (data) {
             console.log(`Inserting text via fallback: "${data}"`);
             this.insertText(data);
-        } else {
+        }
+        else {
             console.log(`No data to insert`);
         }
     }

@@ -1,0 +1,14 @@
+id: FMT-0006
+title: Consistency of format display when moving cursors
+description: カーソル移動時にフォーマット表示が一貫して適切に切り替わることを確認します
+category: text-formatting
+status: implemented
+acceptance:
+- カーソルがあるアイテムでは制御文字（[[]], [/], [-], `）が表示される
+- カーソルがないアイテムでは制御文字が非表示でフォーマットが適用される
+- カーソル移動時に表示が適切に切り替わる
+- タイトル（最初の行）は通常のテキスト表示される（ボールド表示されない）
+- リンク構文（[ text]]）が正しくリンクとして表示される
+tests:
+- client/e2e/core/fmt-consistency-of-format-display-when-moving-cursors-36199743.spec.ts
+title-ja: カーソル移動時のフォーマット表示の一貫性

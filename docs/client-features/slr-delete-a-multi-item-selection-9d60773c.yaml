@@ -1,0 +1,12 @@
+id: SLR-0007
+title: Delete a multi-item selection
+description: 複数アイテムにまたがる選択範囲の削除機能
+category: selection-range
+status: implemented
+acceptance:
+- カーソル位置が適切に更新される
+- 削除後、アイテムが適切に結合される
+- 複数アイテムにまたがる選択範囲をBackspace/Deleteキーで削除できる
+tests:
+- client/e2e/core/slr-delete-a-multi-item-selection-9d60773c.spec.ts
+title-ja: 複数アイテム選択範囲の削除
