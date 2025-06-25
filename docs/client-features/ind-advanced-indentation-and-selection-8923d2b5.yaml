@@ -1,0 +1,12 @@
+id: IND-0001
+title: Advanced indentation and selection operations
+description: Use Tab and Shift+Tab to create nested structures and copy them via clipboard.
+category: editing
+status: implemented
+tests:
+- client/e2e/new/IND-0001.spec.ts
+acceptance:
+- Items can be indented with Tab to create nested structure
+- Items can be outdented with Shift+Tab
+- Selected nested items can be copied and pasted using clipboard
+title-ja: 高度なインデントと選択操作
