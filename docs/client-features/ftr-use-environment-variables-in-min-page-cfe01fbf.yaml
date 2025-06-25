@@ -1,0 +1,12 @@
+id: FTR-0013
+title: Use environment variables in min page
+status: implemented
+components:
+- client/.env.example
+- client/src/routes/min/+page.svelte
+tests:
+- client/e2e/core/ftr-use-environment-variables-in-min-page-cfe01fbf.spec.ts
+acceptance:
+- Firebase config values come from VITE_FIREBASE_* variables
+- Token verification URL uses VITE_TOKEN_VERIFY_URL
+title-ja: 最小ページで環境変数を使用します

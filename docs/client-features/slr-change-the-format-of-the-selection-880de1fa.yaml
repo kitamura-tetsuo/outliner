@@ -1,0 +1,18 @@
+id: SLR-0010
+title: Change the format of the selection
+description: 選択範囲のテキストのフォーマット（太字、斜体、下線、取り消し線、コード）を変更する機能
+category: selection-range
+status: implemented
+acceptance:
+- Scrapbox構文に準拠したフォーマットが適用される
+- キーボードショートカットでフォーマットを変更できる
+- コードフォーマット（`text`）を適用できる
+- 単一アイテム内の選択範囲のフォーマットを変更できる
+- 取り消し線フォーマット（[- text]）を適用できる
+- 同じフォーマットを再度適用すると、フォーマットが解除される
+- 太字フォーマット（[[text]]）を適用できる
+- 斜体フォーマット（[/ text]）を適用できる
+- 複数アイテムにまたがる選択範囲のフォーマットを変更できる
+tests:
+- client/e2e/core/slr-change-the-format-of-the-selection-880de1fa.spec.ts
+title-ja: 選択範囲のフォーマット変更

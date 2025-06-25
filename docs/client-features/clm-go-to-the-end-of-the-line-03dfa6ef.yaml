@@ -1,0 +1,11 @@
+id: CLM-0008
+title: Go to the end of the line
+shortcut: End
+description: カーソルを行の末尾に移動します。
+category: cursor-movement
+status: implemented
+acceptance:
+- Endキーを押すと、カーソルが現在の行の末尾に移動する
+tests:
+- client/e2e/core/clm-go-to-the-end-of-the-line-03dfa6ef.spec.ts
+title-ja: 行末へ移動

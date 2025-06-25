@@ -1,0 +1,9 @@
+id: SEC-0001
+title: Dotenvx encrypted env files
+description: Use dotenvx to encrypt server environment files
+category: security
+status: implemented
+components: []
+tests:
+- client/e2e/core/sec-dotenvx-encrypted-env-files-fa94885c.spec.ts
+title-ja: dotenvx暗号化されたenvファイル
