@@ -44,7 +44,7 @@ export function setupEnv() {
     const requiredVars = [
         "VITE_IS_TEST",
         "VITE_USE_FIREBASE_EMULATOR",
-        "VITE_FIRESTORE_EMULATOR_HOST",
+        "VITE_FIREBASE_EMULATOR_HOST",
         "VITE_USE_TINYLICIOUS",
     ];
 
