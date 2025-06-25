@@ -65,6 +65,12 @@ export default defineConfig({
             use: { ...devices["Desktop Chrome"] },
         },
         {
+            // 基本テスト: 環境確認や最小構成の検証用
+            name: "basic",
+            testDir: "./e2e/basic",
+            use: { ...devices["Desktop Chrome"] },
+        },
+        {
             // 認証テスト: 本番環境でのみ実行
             name: "auth",
             testDir: "./e2e/auth",
