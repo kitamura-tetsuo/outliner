@@ -1,0 +1,13 @@
+id: FMT-0007
+title: Displaying internal link function
+description: /project-name/page-name 形式の内部リンクをサポートする機能
+category: text-formatting
+status: implemented
+acceptance:
+- '[/project-name/page-name] 形式の内部リンクが正しく表示される'
+- '[page-name] 形式の内部リンクが正しく表示される'
+- カーソルがあるアイテムでは内部リンクもプレーンテキストで表示される
+- カーソルがないアイテムでは内部リンクが視覚的にリンクとして表示される
+tests:
+- client/e2e/core/fmt-displaying-internal-link-function-a8a7c97e.spec.ts
+title-ja: 内部リンク機能の表示

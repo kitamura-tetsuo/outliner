@@ -1,0 +1,16 @@
+id: FLD-0001
+title: Ability to retrieve FluidClient from project title
+description: clientRegistryを走査して、Project.titleが一致するFluidClientインスタンスを取得する機能。プロジェクトタイトルとFluid containerのIDは1:1の対応関係にある。
+category: fluid-service
+status: implemented
+acceptance:
+- clientRegistryに登録されている全てのFluidClientを走査して一致するものを探す
+- プロジェクトタイトルからFluidClientインスタンスを取得できる
+- プロジェクトタイトルが指定されていない場合はエラーを返す
+- プロジェクトタイトルに一致するFluidClientが見つからない場合はundefinedを返す
+- プロジェクトレイアウトでこの機能を使用してプロジェクトデータを読み込める
+- 取得したFluidClientインスタンスを使用してプロジェクトデータにアクセスできる
+- 新しいプロジェクトを作成してからFluidClientを取得できる
+tests:
+- client/e2e/core/fld-ability-to-retrieve-fluidclient-from-project-title-f3bf0fec.spec.ts
+title-ja: プロジェクトタイトルからFluidClientを取得する機能

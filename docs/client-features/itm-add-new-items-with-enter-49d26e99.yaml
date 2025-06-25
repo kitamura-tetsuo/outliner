@@ -1,0 +1,17 @@
+id: ITM-0001
+title: Add new items with Enter
+shortcut: Enter
+description: カーソル位置でアイテムを分割し、新しいアイテムを追加します。
+category: item-management
+status: implemented
+acceptance:
+- Enterキーを押すと、カーソル位置でアイテムが分割される
+- カーソルは新しいアイテムの先頭に移動する
+- カーソル位置より前のテキストは現在のアイテムに残る
+- カーソル位置より後のテキストは新しいアイテムに移動する
+- タイトルでは、新しいアイテムは最初の子として追加される
+- 通常のアイテムでは、新しいアイテムは兄弟として追加される
+tests:
+- client/e2e/core/itm-add-new-items-with-enter-49d26e99.spec.ts
+- client/e2e/core/itm-add-new-items-with-enter-49d26e99.spec.ts
+title-ja: Enterで新規アイテム追加

@@ -1,0 +1,8 @@
+id: SEC-0002
+title: Two-Factor Authentication (2FA)
+description: This project intentionally omits two-factor authentication. Firebase Authentication handles user sign-in, and email link authentication is used only during testing.
+category: security
+status: deprecated
+components: []
+tests: []
+title-ja: 二因子認証（2FA）

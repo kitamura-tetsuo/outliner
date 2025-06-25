@@ -1,0 +1,14 @@
+id: USR-0001
+title: User deletion function
+description: ユーザーアカウントとそれに関連するデータを削除する機能
+category: user-management
+status: implemented
+acceptance:
+- Firebase Authからユーザーアカウントが削除される
+- ユーザーがアクセス可能だったコンテナからユーザーIDが削除される
+- ユーザーが最後のアクセス者だったコンテナは完全に削除される
+- ユーザーに関連するコンテナ情報が削除される
+- ユーザーアカウントを削除できる
+tests:
+- client/e2e/core/usr-user-deletion-function-baaa8b62.spec.ts
+title-ja: ユーザー削除機能
