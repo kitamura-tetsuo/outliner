@@ -47,6 +47,15 @@
   tests:
   - scripts/tests/ENV-0005.spec.ts
   title-ja: dotenvx handles env variables without cross-env
+- id: ENV-0006
+  title: Consolidate emulator host variables
+  description: Use single HOST:PORT variables for Firebase emulators instead of separate host and port values.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+  - scripts/tests/ENV-0006.spec.ts
+  title-ja: Firebaseエミュレータホスト変数の統合
 - id: TST-0006
   title: feature-map削除スクリプト
   description: gitコミット時にdocs/feature-map.mdを自動削除するpre-commitフック

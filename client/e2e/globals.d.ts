@@ -54,17 +54,12 @@ export const test = base.extend({
             // エミュレーター接続情報（環境変数から取得、デフォルトはlocalhost）
             window.localStorage.setItem(
                 "VITE_FIRESTORE_EMULATOR_HOST",
-                process.env.VITE_FIRESTORE_EMULATOR_HOST || "localhost",
-            );
-            window.localStorage.setItem(
-                "VITE_FIRESTORE_EMULATOR_PORT",
-                process.env.VITE_FIRESTORE_EMULATOR_PORT || "58080",
+                process.env.VITE_FIRESTORE_EMULATOR_HOST || "localhost:58080",
             );
             window.localStorage.setItem(
                 "VITE_AUTH_EMULATOR_HOST",
-                process.env.VITE_AUTH_EMULATOR_HOST || "localhost",
+                process.env.VITE_AUTH_EMULATOR_HOST || "localhost:59099",
             );
-            window.localStorage.setItem("VITE_AUTH_EMULATOR_PORT", process.env.VITE_AUTH_EMULATOR_PORT || "59099");
 
             // Tinylicious設定（必要に応じて）
             window.localStorage.setItem("VITE_USE_TINYLICIOUS", "true");

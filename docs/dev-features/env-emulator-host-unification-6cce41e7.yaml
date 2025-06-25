@@ -1,0 +1,9 @@
+id: ENV-0006
+title: Consolidate emulator host variables
+description: Use single HOST:PORT variables for Firebase emulators instead of separate host and port values.
+category: environment
+status: implemented
+components: []
+tests:
+- scripts/tests/ENV-0006.spec.ts
+title-ja: Firebaseエミュレータホスト変数の統合

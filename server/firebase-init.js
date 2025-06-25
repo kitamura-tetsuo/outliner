@@ -31,8 +31,7 @@ const serviceAccount = {
 
 const isEmulatorEnvironment = process.env.USE_FIREBASE_EMULATOR === "true" ||
     process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-    process.env.FIRESTORE_EMULATOR_HOST ||
-    process.env.FIREBASE_EMULATOR_HOST;
+    process.env.FIRESTORE_EMULATOR_HOST;
 
 if (!serviceAccount.project_id && !isEmulatorEnvironment) {
     logger.error(
@@ -43,8 +42,7 @@ if (!serviceAccount.project_id && !isEmulatorEnvironment) {
 
 async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
     const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-        process.env.FIRESTORE_EMULATOR_HOST ||
-        process.env.FIREBASE_EMULATOR_HOST;
+        process.env.FIRESTORE_EMULATOR_HOST;
     if (!isEmulator) {
         logger.info("Firebase emulator not configured, skipping connection wait");
         return;
@@ -91,7 +89,7 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
 
 async function clearFirestoreEmulatorData() {
     const db = admin.firestore();
-    const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
+    const isEmulator = process.env.FIRESTORE_EMULATOR_HOST;
     if (!isEmulator) {
         logger.warn("Firestore エミュレータが検出されなかったため、データ消去をスキップします");
         return false;
@@ -146,7 +144,6 @@ async function initializeFirebase() {
             logger.warn(`Previous Firebase Admin SDK instance deletion failed: ${deleteError.message}`);
         }
         const emulatorVariables = {
-            FIREBASE_EMULATOR_HOST: process.env.FIREBASE_EMULATOR_HOST,
             FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST,
             FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST,
         };
@@ -184,7 +181,7 @@ async function initializeFirebase() {
             try {
                 const user = await devAuthHelper.setupTestUser();
                 logger.info(`開発環境用テストユーザーをセットアップしました: ${user.email} (${user.uid})`);
-                const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
+                const isEmulator = process.env.FIRESTORE_EMULATOR_HOST;
                 if (isEmulator) {
                     try {
                         const cleared = await clearFirestoreEmulatorData();

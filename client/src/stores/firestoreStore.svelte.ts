@@ -71,8 +71,9 @@ try {
     // Firebase Emulatorに接続
     if (useEmulator) {
         // 環境変数から接続情報を取得（デフォルトはlocalhost:58080）
-        const emulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || "localhost";
-        const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "58080", 10);
+        const host = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || "localhost:58080";
+        const [emulatorHost, portStr] = host.split(":");
+        const emulatorPort = parseInt(portStr || "58080", 10);
 
         // エミュレーター接続情報をログに出力
         logger.info(`Connecting to Firestore emulator at ${emulatorHost}:${emulatorPort}`);
