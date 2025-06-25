@@ -1,0 +1,15 @@
+id: NAV-0002
+title: Link function to project page
+description: ページ表示時にプロジェクトページへのリンクをパンくずナビゲーションとして表示する機能
+category: navigation
+status: implemented
+acceptance:
+- パンくずナビゲーションにプロジェクトページへのリンクが表示される
+- パンくずナビゲーションにホームへのリンクが表示される
+- パンくずナビゲーションに現在のページ名が表示される
+- プロジェクトページへのリンクをクリックするとプロジェクトページに遷移する
+- ページ表示時にパンくずナビゲーションが表示される
+- ホームへのリンクをクリックするとホームページに遷移する
+tests:
+- client/e2e/core/nav-link-function-to-project-page-a0e7d28a.spec.ts
+title-ja: プロジェクトページへのリンク機能

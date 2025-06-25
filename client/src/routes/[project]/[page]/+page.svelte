@@ -409,7 +409,7 @@ onDestroy(() => {
         {/if}
 
         <!-- 検索パネル -->
-        <SearchPanel isVisible={isSearchPanelVisible} />
+        <SearchPanel isVisible={isSearchPanelVisible} pageItem={store.currentPage} />
     {:else}
         <!-- デバッグ用ログ --> {logger.info(`OutlinerBase not rendered: store.currentPage=${!!store.currentPage}`)}
     {/if}
