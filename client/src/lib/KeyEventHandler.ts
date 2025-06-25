@@ -1,5 +1,5 @@
-import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
+import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 
 /**
  * キーおよび入力イベントを各カーソルインスタンスに振り分けるハンドラ
@@ -44,16 +44,24 @@ export class KeyEventHandler {
                 commandPaletteStore.move(1);
                 event.preventDefault();
                 return;
-            } else if (event.key === "ArrowUp") {
+            }
+            else if (event.key === "ArrowUp") {
                 commandPaletteStore.move(-1);
                 event.preventDefault();
                 return;
-            } else if (event.key === "Enter") {
+            }
+            else if (event.key === "Enter") {
                 commandPaletteStore.confirm();
                 event.preventDefault();
                 return;
-            } else if (event.key === "Escape") {
+            }
+            else if (event.key === "Escape") {
                 commandPaletteStore.hide();
+                event.preventDefault();
+                return;
+            }
+            else if (event.key === "Backspace") {
+                commandPaletteStore.handleCommandBackspace();
                 event.preventDefault();
                 return;
             }
@@ -190,7 +198,8 @@ export class KeyEventHandler {
         if (textareaRef) {
             console.log(`Textarea value: "${textareaRef.value}"`);
             console.log(`Textarea selection: start=${textareaRef.selectionStart}, end=${textareaRef.selectionEnd}`);
-        } else {
+        }
+        else {
             console.log(`Textarea not found in KeyEventHandler.handleInput`);
         }
 
@@ -209,19 +218,52 @@ export class KeyEventHandler {
             return;
         }
 
-        if (inputEvent.data === '/') {
-            const pos = commandPaletteStore.getCursorScreenPosition();
-            commandPaletteStore.show(pos || { top: 0, left: 0 });
-        } else if (commandPaletteStore.isVisible) {
-            const cursor = cursorInstances[0];
-            const node = cursor.findTarget();
-            const text = node?.text || "";
-            if (text.startsWith('/')) {
-                commandPaletteStore.updateQuery(text.slice(1));
+        if (inputEvent.data === "/") {
+            // カーソル位置の前の文字をチェックして、内部リンクの一部かどうか判定
+            if (cursorInstances.length > 0) {
+                const cursor = cursorInstances[0];
+                const node = cursor.findTarget();
+                const text = node?.text || "";
+                const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
+
+                // [の直後の/の場合、または既に[で始まる内部リンク内の場合はコマンドパレットを表示しない
+                if (prevChar === "[") {
+                    // 通常の入力処理を続行
+                }
+                else {
+                    // [で始まる内部リンク内かどうかをチェック
+                    const beforeCursor = text.slice(0, cursor.offset);
+                    const lastOpenBracket = beforeCursor.lastIndexOf("[");
+                    const lastCloseBracket = beforeCursor.lastIndexOf("]");
+
+                    // 最後の[が最後の]より後にある場合は内部リンク内
+                    if (lastOpenBracket > lastCloseBracket) {
+                        // 通常の入力処理を続行
+                    }
+                    else {
+                        // コマンドパレットを表示
+                        const pos = commandPaletteStore.getCursorScreenPosition();
+                        commandPaletteStore.show(pos || { top: 0, left: 0 });
+                    }
+                }
+            }
+            else {
+                // カーソルがない場合はコマンドパレットを表示
                 const pos = commandPaletteStore.getCursorScreenPosition();
-                if (pos) commandPaletteStore.updatePosition(pos);
-            } else {
-                commandPaletteStore.hide();
+                commandPaletteStore.show(pos || { top: 0, left: 0 });
+            }
+        }
+        else if (inputEvent.data === "[" && commandPaletteStore.isVisible) {
+            // [が入力されたらコマンドパレットを非表示（内部リンクの開始）
+            commandPaletteStore.hide();
+        }
+        else if (commandPaletteStore.isVisible) {
+            // CommandPaletteが表示されている場合は、専用の入力処理を使用
+            if (inputEvent.data) {
+                commandPaletteStore.handleCommandInput(inputEvent.data);
+                // 通常の入力処理をスキップ
+                inputEvent.preventDefault?.();
+                return;
             }
         }
 
@@ -266,7 +308,9 @@ export class KeyEventHandler {
                     // デバッグ情報
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(
-                            `Focus set after input. Active element is textarea: ${document.activeElement === textareaElement}`,
+                            `Focus set after input. Active element is textarea: ${
+                                document.activeElement === textareaElement
+                            }`,
                         );
                     }
                 }, 10);

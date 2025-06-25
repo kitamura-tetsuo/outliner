@@ -49,6 +49,20 @@ import ChartPanel from './ChartPanel.svelte';
 
 	let item = model.original;
 
+	// コンポーネントタイプの状態管理
+	let componentType = $state<string | undefined>(item.componentType);
+
+	// コンポーネントタイプが変更された時にアイテムを更新
+	function handleComponentTypeChange(newType: string) {
+		if (newType === "none") {
+			item.componentType = undefined;
+			componentType = undefined;
+		} else {
+			item.componentType = newType;
+			componentType = newType;
+		}
+	}
+
 	const text = new TreeSubscriber(
     item,
     "nodeChanged",
@@ -1358,6 +1372,8 @@ import ChartPanel from './ChartPanel.svelte';
 				ondrop={handleDrop}
 				ondragend={handleDragEnd}
 			>
+				<!-- テキスト表示（コンポーネントが表示されている時は非表示） -->
+				<!-- 一時的にコンポーネントタイプの条件分岐を無効化 -->
 				{#if hasActiveCursor()}
 					<!-- フォーカスがある場合：フォーマットを適用した上で制御文字を表示 -->
 					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>
@@ -1372,9 +1388,25 @@ import ChartPanel from './ChartPanel.svelte';
                                 {#if !isPageTitle && model.votes.length > 0}
                                         <span class="vote-count">{model.votes.length}</span>
                                 {/if}
-                                {#if text.current === '/table'}
+
+                                <!-- コンポーネントタイプセレクター -->
+                                {#if !isPageTitle}
+                                    <div class="component-selector">
+                                        <select
+                                            value={componentType || "none"}
+                                            onchange={(e) => handleComponentTypeChange(e.target.value)}
+                                        >
+                                            <option value="none">テキスト</option>
+                                            <option value="table">テーブル</option>
+                                            <option value="chart">チャート</option>
+                                        </select>
+                                    </div>
+                                {/if}
+
+                                <!-- コンポーネント表示（テキストは非表示） -->
+                                {#if componentType === 'table'}
                                         <InlineJoinTable />
-                                {:else if text.current === '/chart'}
+                                {:else if componentType === 'chart'}
                                         <ChartPanel />
                                 {/if}
                         </div>
@@ -1513,6 +1545,18 @@ import ChartPanel from './ChartPanel.svelte';
 		padding: 0 4px;
 		font-size: 0.7rem;
 		color: #666;
+	}
+
+	.component-selector {
+		margin-left: 8px;
+	}
+
+	.component-selector select {
+		padding: 2px 4px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		font-size: 0.8rem;
+		background-color: white;
 	}
 
 	.title-text {

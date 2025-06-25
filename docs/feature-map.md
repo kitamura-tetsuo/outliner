@@ -18,6 +18,7 @@
 | CLM-0101 | アイテム間移動時のカーソル重複と入力分散問題 | client/e2e/core/CLM-0101.spec.ts | implemented |
 | CLM-0102 | 空のテキストアイテムでのカーソル移動と複数回のキーボード操作 | client/e2e/core/CLM-0102.spec.ts | implemented |
 | CLM-0103 | フォーマット文字列でのカーソル操作 | client/e2e/core/CLM-0103.spec.ts | implemented |
+| CMD-0001 | Inline Command Palette | client/e2e/new/CMD-0001.spec.ts | implemented |
 | COL-0001 | 他ユーザーのカーソル表示 | — | implemented |
 | DBW-001 | Client-Side SQL Database | — | implemented |
 | FLD-0001 | プロジェクトタイトルからFluidClientを取得する機能 | client/e2e/core/FLD-0001.spec.ts | implemented |
@@ -29,7 +30,6 @@
 | FMT-0007 | 内部リンク機能の表示 | client/e2e/core/FMT-0007.spec.ts | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
 | FTR-0013 | Use environment variables in min page | client/e2e/core/FTR-0013.spec.ts | implemented |
-| GRF-001 | Graph View | client/e2e/new/GRF-001.spec.ts | implemented |
 | IME-0001 | IMEを使用した日本語入力 | client/e2e/core/IME-0001.spec.ts | implemented |
 | ITM-0001 | Enterで新規アイテム追加 | client/e2e/core/ITM-0001-title.spec.ts<br>client/e2e/core/ITM-0001.spec.ts | implemented |
 | LNK-0001 | 内部リンクのURL生成機能 | client/e2e/core/LNK-0001.spec.ts | implemented |

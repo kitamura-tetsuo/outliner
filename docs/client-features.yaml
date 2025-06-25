@@ -223,6 +223,32 @@
   - Shift+矢印キーによる選択がフォーマット文字列で正しく機能する
   - フォーマット文字列内でのカーソル移動が正しく機能する
   - 複数のフォーマットが混在する文字列でのカーソル移動が正しく機能する
+- id: CMD-0001
+  title: Inline Command Palette
+  description: / を入力してテーブルやチャートを挿入できるコマンドパレット（マルチカーソル対応）
+  category: editor
+  status: implemented
+  components:
+  - src/components/CommandPalette.svelte
+  - src/components/InlineChart.svelte
+  - src/components/InlineJoinTable.svelte
+  - src/stores/commandPaletteStore.svelte.ts
+  tests:
+  - client/e2e/new/CMD-0001.spec.ts
+  - client/src/stores/commandPaletteStore.test.ts
+  acceptance:
+  - /を入力するとコマンドパレットが表示される
+  - Chart を選択すると Chart Component が挿入される
+  - Table を選択すると Editable JOIN Table が挿入される
+  - バックスペースで '/' を削除するとパレットが非表示になる
+  - マルチカーソル環境でカーソルとして動作する
+  - 入力テキストに応じて候補が絞り込まれる
+  - 方向キーで選択を移動できる
+  - 複数回の '/' 入力でもパレットが正常に動作する
+  implementation_details:
+  - マルチカーソルの仕組みを使用してカーソルとしてふるまう方式
+  - 入力対象文字列からコマンドを取得するのではなく、ユーザー入力/修正をカーソルの動作として蓄積
+  - 複数回の '/' 入力やバックスペース処理を適切に処理
 - id: COL-0001
   title: 他ユーザーのカーソル表示
   description: 複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する
@@ -885,19 +911,3 @@
   - コンテナを削除できる
   tests:
   - client/e2e/core/USR-0002.spec.ts
-- id: CMD-0001
-  title: Inline Command Palette
-  description: '/ を入力してテーブルやチャートを挿入できるコマンドパレット'
-  category: editor
-  status: implemented
-  components:
-  - src/components/SlashCommandPalette.svelte
-  - src/components/InlineJoinTable.svelte
-  tests:
-  - client/e2e/new/CMD-0001.spec.ts
-  acceptance:
-- '/' を入力するとコマンドパレットが表示される
-- Table を選択すると Editable JOIN Table が挿入される
-- Chart を選択すると Chart Component が挿入される
-  - 方向キーで選択を移動できる
-  - 入力テキストに応じて候補が絞り込まれる

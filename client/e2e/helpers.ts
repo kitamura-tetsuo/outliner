@@ -27,7 +27,7 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
 
             return {
                 cursorCount: cursors.length,
-                activeCursors: activeCursors.length
+                activeCursors: activeCursors.length,
             };
         });
 
@@ -36,12 +36,13 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
         if (cursorVisible) {
             console.log("waitForCursorVisible: Cursor is visible");
             return true;
-        } else {
+        }
+        else {
             console.log("waitForCursorVisible: Cursor exists but not visible");
             return false;
         }
-
-    } catch (error) {
+    }
+    catch (error) {
         console.log("Error in waitForCursorVisible:", error);
         return false;
     }
@@ -63,5 +64,6 @@ declare global {
         __SVELTE_GOTO__?: any;
         generalStore?: any;
         editorOverlayStore?: any;
+        ScrapboxFormatter?: any;
     }
 }
