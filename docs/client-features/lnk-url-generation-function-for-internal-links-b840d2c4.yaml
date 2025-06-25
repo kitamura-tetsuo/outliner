@@ -1,0 +1,13 @@
+id: LNK-0001
+title: URL generation function for internal links
+description: 内部リンクのURLが正しく生成される機能
+category: navigation
+status: implemented
+acceptance:
+- '[/project-name/page-name] 形式の内部リンクが /project-name/page-name のURLを生成する'
+- '[page-name] 形式の内部リンクが /page-name のURLを生成する'
+- 内部リンクのHTMLが正しく生成される
+- 内部リンクのURLが正しく生成される
+tests:
+- client/e2e/core/lnk-url-generation-function-for-internal-links-b840d2c4.spec.ts
+title-ja: 内部リンクのURL生成機能

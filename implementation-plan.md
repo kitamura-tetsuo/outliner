@@ -62,7 +62,7 @@
 
 ## 5. ドキュメント更新
 
-- docs/client-features.yaml の更新
+- docs/client-features/<slug>-<title>-<8-char-uuid>.yaml の更新
 - 新機能の使用方法のドキュメント作成
 
 ## 6. Multi-Cursor Editing

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # scripts/gen_feature_map.py
 """
-Scan tests for `@feature` tags, merge with docs/features.yaml,
+Scan tests for `@feature` tags, merge YAML files in docs/client-features,
 and emit a Markdown table mapping features to test files.
 Now supports **multiple test-root directories**.
 """
@@ -12,7 +12,7 @@ from loguru import logger
 
 # ─────────────────────────  設定  ──────────────────────────
 ROOT        = Path(__file__).resolve().parent.parent
-YAML_SRC    = ROOT / "docs" / "client-features.yaml"
+YAML_DIR    = ROOT / "docs" / "client-features"
 # ★ 複数ディレクトリをリストで指定
 TEST_ROOTS  = [                                   # 任意で追記 / 上書き
     ROOT / "client/e2e",                         # default
@@ -33,7 +33,10 @@ logger.add(ROOT / "scripts" / "gen_feature_map.log", rotation="1 MB")
 # ---------- Helpers ----------
 
 def load_features():
-    data = yaml.safe_load(YAML_SRC.read_text(encoding="utf-8"))
+    data = []
+    if YAML_DIR.exists():
+        for path in YAML_DIR.glob("*.yaml"):
+            data.append(yaml.safe_load(path.read_text(encoding="utf-8")))
     return {f["id"]: f for f in data}
 
 

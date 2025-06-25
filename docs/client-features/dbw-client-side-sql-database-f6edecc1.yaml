@@ -1,0 +1,8 @@
+id: DBW-001
+title: Client-Side SQL Database
+description: IndexedDB上にSQLデータベースを構築し、オフラインでページを保存できる機能
+category: database
+status: implemented
+tests:
+- client/e2e/new/DBW-001.spec.ts
+title-ja: クライアント側SQLデータベース

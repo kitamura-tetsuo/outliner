@@ -1,0 +1,11 @@
+id: LOG-0001
+title: Development log service
+title-ja: 開発ログサービス
+description: Node server used in development and test environments to store logs. Firebase emulator initialization is handled by a separate script.
+category: api-server
+status: implemented
+components:
+- server/log-service.js
+- server/scripts/init-firebase-emulator.js
+tests:
+- client/e2e/core/log-development-log-service-8f761bd4.spec.ts

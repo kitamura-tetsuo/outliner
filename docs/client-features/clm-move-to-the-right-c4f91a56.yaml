@@ -1,0 +1,12 @@
+id: CLM-0003
+title: Move to the right
+shortcut: →
+description: カーソルを1文字右に移動します。
+category: cursor-movement
+status: implemented
+acceptance:
+- カーソルを1文字右に移動する
+- 一番最後の文字にある時は、一つ次のアイテムの最初の文字へ移動する
+tests:
+- client/e2e/core/clm-move-to-the-right-c4f91a56.spec.ts
+title-ja: 右へ移動

@@ -1,0 +1,13 @@
+id: LNK-0002
+title: Internal link functionality verification
+description: 内部リンクが正しく機能することを確認する
+category: navigation
+status: implemented
+acceptance:
+- プロジェクト内部リンク（/project-name/page-name形式）のhref属性が正しく生成される
+- 内部リンクのhref属性が正しく生成される
+- 内部リンクのクラスとテキストが正しく設定される
+- 様々な形式の内部リンクが正しく生成される
+tests:
+- client/e2e/core/lnk-internal-link-functionality-verification-eb4d5867.spec.ts
+title-ja: 内部リンクの機能検証
