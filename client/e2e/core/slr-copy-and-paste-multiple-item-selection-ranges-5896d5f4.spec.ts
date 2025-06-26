@@ -102,18 +102,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         await page.waitForTimeout(1000);
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
-        const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
-            if (!store) return "";
-
-            // デバッグ情報
-            console.log("EditorOverlayStore:", store);
-            console.log("Selections:", store.selections);
-
-            const text = store.getSelectedText();
-            console.log("Selected text:", text);
-            return text;
-        });
+        const selectionText = await TestHelpers.getSelectedText(page);
 
         // 選択範囲が存在することを確認
         console.log("Selection text:", selectionText);
@@ -223,18 +212,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         await page.waitForTimeout(1000);
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
-        const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
-            if (!store) return "";
-
-            // デバッグ情報
-            console.log("EditorOverlayStore:", store);
-            console.log("Selections:", store.selections);
-
-            const text = store.getSelectedText();
-            console.log("Selected text:", text);
-            return text;
-        });
+        const selectionText = await TestHelpers.getSelectedText(page);
 
         // 選択範囲が存在することを確認
         console.log("Selection text:", selectionText);
@@ -244,12 +222,9 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         await page.keyboard.press("Control+c");
 
         // 手動でコピーイベントを発火させる
-        await page.evaluate(() => {
-            // 選択範囲のテキストを取得
-            const store = (window as any).editorOverlayStore;
-            if (!store) return;
-
-            const selectedText = store.getSelectedText();
+        const selectedText = await TestHelpers.getSelectedText(page);
+        await page.evaluate((text) => {
+            const selectedText = text;
             console.log(`Selected text for copy: "${selectedText}"`);
 
             // クリップボードの内容を設定

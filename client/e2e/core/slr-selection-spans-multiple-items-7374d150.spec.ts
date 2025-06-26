@@ -129,23 +129,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         });
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
-        const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
-            if (!store) return "";
-
-            // 全てのアイテムのテキストを取得
-            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-            const allItemTexts = allItems.map(el => {
-                const textEl = el.querySelector(".item-text");
-                return textEl ? textEl.textContent : "";
-            });
-            console.log("All item texts:", allItemTexts);
-
-            // 選択範囲のテキストを取得
-            const text = store.getSelectedText();
-            console.log("Selected text:", text);
-            return text;
-        });
+        const selectionText = await TestHelpers.getSelectedText(page);
 
         // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
@@ -230,23 +214,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
-        const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
-            if (!store) return "";
-
-            // 全てのアイテムのテキストを取得
-            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-            const allItemTexts = allItems.map(el => {
-                const textEl = el.querySelector(".item-text");
-                return textEl ? textEl.textContent : "";
-            });
-            console.log("All item texts:", allItemTexts);
-
-            // 選択範囲のテキストを取得
-            const text = store.getSelectedText();
-            console.log("Selected text after keyboard selection:", text);
-            return text;
-        });
+        const selectionText = await TestHelpers.getSelectedText(page);
 
         // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);

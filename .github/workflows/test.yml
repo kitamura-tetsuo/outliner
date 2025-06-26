@@ -242,22 +242,12 @@ jobs:
           export DISABLE_POSTHOG=true
           export VITE_DISABLE_FLUID_TELEMETRY=true
 
-          # Check if scripts/run-tests.sh exists and is executable
-          if [ -f "scripts/run-tests.sh" ]; then
-            echo "Found scripts/run-tests.sh"
-            chmod +x scripts/run-tests.sh
-            echo "Made scripts/run-tests.sh executable"
-
-            # Also make other scripts executable
-            chmod +x scripts/codex-setup.sh || true
-            chmod +x scripts/start-all-localhost-servers.sh || true
-            chmod +x scripts/common-config.sh || true
-            chmod +x scripts/common-functions.sh || true
-            chmod +x scripts/setup-local-env.sh || true
-          else
-            echo "scripts/run-tests.sh not found"
-            exit 1
-          fi
+          # Make helper scripts executable
+          chmod +x scripts/codex-setup.sh || true
+          chmod +x scripts/start-all-localhost-servers.sh || true
+          chmod +x scripts/common-config.sh || true
+          chmod +x scripts/common-functions.sh || true
+          chmod +x scripts/setup-local-env.sh || true
 
           bash scripts/start-all-localhost-servers.sh
 
