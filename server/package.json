@@ -7,7 +7,7 @@
         "start": "node log-service.js",
         "dev": "nodemon log-service.js",
         "create-test-user": "node utils/create-test-user.js",
-        "test": "mocha tests/**/*.test.js --timeout 10000",
+        "test": "bash ../scripts/run-server-tests.sh",
         "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000"
     },
     "dependencies": {
