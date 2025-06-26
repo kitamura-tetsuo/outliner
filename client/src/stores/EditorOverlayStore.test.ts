@@ -31,6 +31,15 @@ describe("EditorOverlayStore", () => {
         expect(store.cursors[id]).toBeUndefined();
     });
 
+    it("undoLastCursor が最後に追加したカーソルを削除する", () => {
+        const id1 = store.addCursor({ itemId: "A", offset: 0, isActive: true, userId: "local" });
+        const id2 = store.addCursor({ itemId: "B", offset: 0, isActive: true, userId: "local" });
+        expect(Object.keys(store.cursors).length).toBe(2);
+        store.undoLastCursor();
+        expect(store.cursors[id2]).toBeUndefined();
+        expect(store.cursors[id1]).toBeDefined();
+    });
+
     it("clearCursorForItem がアイテムの全カーソルをクリアする", () => {
         // テスト用にカーソルを追加
         store.addCursor({ itemId: "X", offset: 0, isActive: true, userId: "local" });

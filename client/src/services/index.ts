@@ -3,21 +3,32 @@
 
 // FirestoreStore関連の関数をエクスポート
 export {
-    firestoreStore,
-    getDefaultContainerId,
-    saveContainerId,
-    saveContainerIdToServer as saveFirestoreContainerIdToServer,
+  firestoreStore,
+  getDefaultContainerId,
+  saveContainerId,
+  saveContainerIdToServer as saveFirestoreContainerIdToServer,
 } from "../stores/firestoreStore.svelte";
 
 // FluidService関連の関数をエクスポート
 export {
-    cleanupFluidClient,
-    createFluidClient,
-    createNewContainer,
-    deleteContainer,
-    getFluidClientByProjectTitle,
-    getProjectTitle,
-    getUserContainers,
-    initFluidClientWithAuth,
-    loadContainer,
+  cleanupFluidClient,
+  createFluidClient,
+  createNewContainer,
+  deleteContainer,
+  getFluidClientByProjectTitle,
+  getProjectTitle,
+  getUserContainers,
+  initFluidClientWithAuth,
+  loadContainer,
 } from "../lib/fluidService.svelte";
+
+// SnapshotService
+export {
+  addSnapshot,
+  listSnapshots,
+  getSnapshot,
+  replaceWithSnapshot,
+  setCurrentContent,
+  getCurrentContent,
+  type Snapshot,
+} from "./snapshotService";
