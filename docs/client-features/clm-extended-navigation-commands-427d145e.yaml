@@ -1,0 +1,8 @@
+id: CLM-0104
+title: Extended navigation commands
+title-ja: 拡張ナビゲーションコマンド
+description: Ctrl+Left/Right word jumps, bracket jump with Ctrl+Shift+\, document navigation with Ctrl+Home/End, PageUp/PageDown and scroll commands.
+category: cursor-movement
+status: implemented
+tests:
+- client/e2e/core/clm-extended-navigation-commands-427d145e.spec.ts

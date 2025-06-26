@@ -1064,19 +1064,54 @@ export class Cursor {
 
         // Ctrl/Cmd キーが押されている場合は特殊操作
         if (event.ctrlKey || event.metaKey) {
-            switch (event.key.toLowerCase()) {
-                case "a": // 全選択
+            switch (event.key) {
+                case "a":
+                case "A":
                     this.selectAll();
                     break;
-                case "c": // コピー
+                case "c":
+                case "C":
                     this.copySelectedText();
-                    return true; // ブラウザのデフォルト動作を許可
-                case "x": // カット
-                    this.cutSelectedText();
-                    return true; // ブラウザのデフォルト動作を許可
-                case "v": // ペースト
-                    // ペーストはブラウザのデフォルト動作に任せる
                     return true;
+                case "x":
+                case "X":
+                    this.cutSelectedText();
+                    return true;
+                case "v":
+                case "V":
+                    return true;
+                case "ArrowLeft":
+                    this.moveWordLeft();
+                    break;
+                case "ArrowRight":
+                    this.moveWordRight();
+                    break;
+                case "ArrowUp":
+                    this.scrollUp();
+                    break;
+                case "ArrowDown":
+                    this.scrollDown();
+                    break;
+                case "Home":
+                    this.moveToDocumentStart();
+                    break;
+                case "End":
+                    this.moveToDocumentEnd();
+                    break;
+                case "PageUp":
+                    this.pageUp();
+                    break;
+                case "PageDown":
+                    this.pageDown();
+                    break;
+                case "\\":
+                    if (event.shiftKey) {
+                        this.jumpToMatchingBracket();
+                        break;
+                    }
+                    else {
+                        return false;
+                    }
                 default:
                     return false;
             }
@@ -2021,6 +2056,139 @@ export class Cursor {
             // カーソル点滅を開始
             store.startCursorBlink();
         }
+    }
+
+    // --- Extended navigation commands ---
+
+    // 単語単位で左へ移動
+    moveWordLeft() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = target.text || "";
+        let pos = this.offset;
+        if (pos > 0) {
+            pos--;
+            while (pos > 0 && /\s/.test(text[pos])) pos--;
+            while (pos > 0 && !/\s/.test(text[pos - 1])) pos--;
+        }
+        this.offset = pos;
+        this.applyToStore();
+        store.startCursorBlink();
+    }
+
+    // 単語単位で右へ移動
+    moveWordRight() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = target.text || "";
+        let pos = this.offset;
+        const len = text.length;
+        if (pos < len) {
+            while (pos < len && /\s/.test(text[pos])) pos++;
+            while (pos < len && !/\s/.test(text[pos])) pos++;
+        }
+        this.offset = pos;
+        this.applyToStore();
+        store.startCursorBlink();
+    }
+
+    // 対応する角括弧へジャンプ
+    jumpToMatchingBracket() {
+        const target = this.findTarget();
+        if (!target) return;
+        const text = target.text || "";
+        const pos = this.offset;
+        const before = text[pos - 1];
+        const current = text[pos];
+
+        if (current === "[") {
+            const close = text.indexOf("]", pos + 1);
+            if (close !== -1) {
+                this.offset = close + 1;
+            }
+        } else if (before === "[") {
+            const close = text.indexOf("]", pos);
+            if (close !== -1) {
+                this.offset = close + 1;
+            }
+        } else if (current === "]") {
+            const open = text.lastIndexOf("[", pos - 1);
+            if (open !== -1) {
+                this.offset = open;
+            }
+        } else if (before === "]") {
+            const open = text.lastIndexOf("[", pos - 2);
+            if (open !== -1) {
+                this.offset = open;
+            }
+        }
+
+        this.applyToStore();
+        store.startCursorBlink();
+    }
+
+    // ドキュメント先頭に移動
+    moveToDocumentStart() {
+        const root = generalStore.currentPage;
+        if (!root) return;
+        let item: Item = root;
+        while (item.items && (item.items as Iterable<Item>)[Symbol.iterator]) {
+            const iter = (item.items as Iterable<Item>)[Symbol.iterator]();
+            const first = iter.next();
+            if (first.done) break;
+            item = first.value;
+        }
+        this.itemId = item.id;
+        this.offset = 0;
+        this.applyToStore();
+        store.startCursorBlink();
+    }
+
+    // ドキュメント末尾に移動
+    moveToDocumentEnd() {
+        const root = generalStore.currentPage;
+        if (!root) return;
+        let item: Item = root;
+        while (item.items && (item.items as Iterable<Item>)[Symbol.iterator]) {
+            let last: Item | undefined;
+            for (const child of item.items as Iterable<Item>) {
+                last = child;
+            }
+            if (!last) break;
+            item = last;
+        }
+        this.itemId = item.id;
+        this.offset = (item.text || "").length;
+        this.applyToStore();
+        store.startCursorBlink();
+    }
+
+    // PageUp/PageDown 相当の移動（10行単位）
+    pageUp() {
+        for (let i = 0; i < 10; i++) this.moveUp();
+    }
+
+    pageDown() {
+        for (let i = 0; i < 10; i++) this.moveDown();
+    }
+
+    // スクロール操作
+    scrollUp() {
+        if (typeof window !== "undefined") window.scrollBy(0, -100);
+    }
+
+    scrollDown() {
+        if (typeof window !== "undefined") window.scrollBy(0, 100);
+    }
+
+    altPageUp() {
+        if (typeof window !== "undefined") window.scrollBy(0, -window.innerHeight);
+    }
+
+    altPageDown() {
+        if (typeof window !== "undefined") window.scrollBy(0, window.innerHeight);
     }
 
     // フォーマットメソッドは下部で定義されています

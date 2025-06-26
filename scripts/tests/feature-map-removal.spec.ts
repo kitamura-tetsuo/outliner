@@ -12,7 +12,7 @@ import { fileURLToPath } from "url";
 describe("TST-0006: feature-map削除スクリプト", () => {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const repoRoot = path.resolve(__dirname, "../../.." );
+    const repoRoot = path.resolve(__dirname, "..", ".." );
     const docsPath = path.join(repoRoot, "docs", "feature-map.md");
     const scriptPath = path.join(repoRoot, "scripts", "remove_feature_map.sh");
 
