@@ -398,6 +398,8 @@ onDestroy(() => {
         <!-- OutlinerBase コンポーネントでアウトライナーを表示 -->
         <OutlinerBase
             pageItem={store.currentPage}
+            projectName={projectName}
+            pageName={pageName}
             isReadOnly={false}
             isTemporary={isTemporaryPage}
             onEdit={handleTemporaryPageEdited}

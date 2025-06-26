@@ -2,7 +2,8 @@ const { describe, it, expect, beforeAll, afterAll } = require("@jest/globals");
 const axios = require("axios");
 
 describe("Firebase Functions HTTP API Tests", () => {
-    const baseURL = "http://localhost:57070/demo-test/us-central1"; // Firebase Functions エミュレーターのURL
+    // Use Hosting port which rewrites /api/* to functions
+    const baseURL = "http://localhost:57000/api";
     let testIdToken;
     let testContainerId;
 
@@ -51,7 +52,7 @@ describe("Firebase Functions HTTP API Tests", () => {
     describe("Save Container Endpoint", () => {
         it("should return 400 for missing container ID", async () => {
             try {
-                await axios.post(`${baseURL}/saveContainer`, {
+                await axios.post(`${baseURL}/save-container`, {
                     idToken: testIdToken,
                     // containerId is missing
                 });
@@ -71,7 +72,7 @@ describe("Firebase Functions HTTP API Tests", () => {
 
         it("should return error for invalid token", async () => {
             try {
-                await axios.post(`${baseURL}/saveContainer`, {
+                await axios.post(`${baseURL}/save-container`, {
                     idToken: "invalid-token",
                     containerId: testContainerId,
                 });
@@ -91,7 +92,7 @@ describe("Firebase Functions HTTP API Tests", () => {
 
         it("should return 405 for non-POST methods", async () => {
             try {
-                await axios.get(`${baseURL}/saveContainer`);
+                await axios.get(`${baseURL}/save-container`);
                 // リクエストが成功した場合はテスト失敗
                 expect(true).toBe(false);
             } catch (error) {
@@ -110,7 +111,7 @@ describe("Firebase Functions HTTP API Tests", () => {
     describe("Get User Containers Endpoint", () => {
         it("should handle getUserContainers request", async () => {
             try {
-                await axios.post(`${baseURL}/getUserContainers`, {
+                await axios.post(`${baseURL}/get-user-containers`, {
                     idToken: "invalid-token",
                 });
                 // リクエストが成功した場合はテスト失敗

@@ -13,7 +13,7 @@ acceptance:
 - getUserContainersエンドポイント（/api/getUserContainers）が認証エラーを適切に処理する
 - save-containerエンドポイント（/api/save-container）が認証エラーを適切に処理する
 - ヘルスチェックエンドポイント（/health）が正常に応答する
-- 'ポート設定が正しく構成される（Hosting: 57000, Functions: 57070）'
+- 'ポート設定が正しく構成される（Hosting: 57000）'
 - 必須パラメータが不足している場合に400エラーが返される
 - 無効なHTTPメソッドに対して405エラーが返される
 - 環境変数が正しく読み込まれ、Azure Fluid Relay設定が適用される
