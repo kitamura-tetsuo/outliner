@@ -54,7 +54,7 @@ export class UserManager {
         measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-FKSFRCT7GR",
     };
 
-    private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57070");
+    private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57000");
     private app = initializeApp(this.firebaseConfig);
     auth = getAuth(this.app);
 
