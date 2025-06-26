@@ -84,13 +84,36 @@ export class KeyEventHandler {
         }
 
         // Alt+Shift+矢印キーによる矩形選択
-        if (event.altKey && event.shiftKey) {
+        if (event.altKey && event.shiftKey && !event.ctrlKey) {
             if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
                 KeyEventHandler.handleBoxSelection(event);
                 event.preventDefault();
                 event.stopPropagation();
                 return;
             }
+        }
+
+        // Ctrl+Shift+Alt+矢印キーでカーソル追加
+        if (event.ctrlKey && event.shiftKey && event.altKey) {
+            if (event.key === "ArrowDown" || event.key === "PageDown") {
+                store.addCursorRelativeToActive("down");
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            else if (event.key === "ArrowUp" || event.key === "PageUp") {
+                store.addCursorRelativeToActive("up");
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+        }
+
+        if (event.ctrlKey && event.key === "u") {
+            store.undoLastCursor();
+            event.preventDefault();
+            event.stopPropagation();
+            return;
         }
 
         // フォーマットショートカットを処理

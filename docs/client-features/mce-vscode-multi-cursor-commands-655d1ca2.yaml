@@ -1,0 +1,13 @@
+id: MCE-0002
+title: VS Code style multi-cursor commands
+title-ja: VS Codeスタイルのマルチカーソルコマンド
+description: カーソル追加と取り消しをキーボードショートカットで行える
+category: editing
+status: implemented
+acceptance:
+  - Ctrl+Shift+Alt+ArrowUp で上の行にカーソルを追加できる
+  - Ctrl+Shift+Alt+ArrowDown で下の行にカーソルを追加できる
+  - Ctrl+U で最後に追加したカーソルを取り消せる
+tests:
+  - client/e2e/new/mce-multi-cursor-commands-655d1ca2.spec.ts
+  - client/src/stores/EditorOverlayStore.test.ts
