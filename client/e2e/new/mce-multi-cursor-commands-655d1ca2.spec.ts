@@ -21,7 +21,7 @@ test.describe("MCE-0002: multi-cursor commands", () => {
         await TestHelpers.waitForCursorVisible(page);
         const countAfter = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
         expect(countAfter).toBe(2);
-        await page.keyboard.press("Control+u");
+        await page.keyboard.press("Control+Shift+z");
         const countUndo = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
         expect(countUndo).toBe(1);
     });

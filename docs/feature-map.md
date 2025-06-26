@@ -25,6 +25,7 @@
 | FMT-0002 | Format combination | client/e2e/core/fmt-format-combination-bcb56231.spec.ts | implemented |
 | FMT-0003 | Extended format | client/e2e/core/fmt-extended-format-b471a4b9.spec.ts | implemented |
 | FMT-0004 | Paste and format from the clipboard | client/e2e/core/fmt-paste-and-format-from-the-clipboard-fe4971c2.spec.ts | implemented |
+| FMT-0005 | VS Code style clipboard behavior | client/e2e/core/fmt-vscode-clipboard-behavior-3807f353.spec.ts | implemented |
 | FMT-0006 | Consistency of format display when moving cursors | client/e2e/core/fmt-consistency-of-format-display-when-moving-cursors-36199743.spec.ts | implemented |
 | FMT-0007 | Displaying internal link function | client/e2e/core/fmt-displaying-internal-link-function-a8a7c97e.spec.ts | implemented |
 | FMT-0008 | Support multiple internal links in one item | client/e2e/core/fmt-multiple-internal-links-3a606671.spec.ts | implemented |
@@ -41,6 +42,7 @@
 | LNK-0007 | Backlink function | client/e2e/core/lnk-backlink-function-7976aef8.spec.ts | implemented |
 | LOG-0001 | Development log service | client/e2e/core/log-development-log-service-8f761bd4.spec.ts | implemented |
 | MCE-0001 | Multi-Cursor Editing | — | implemented |
+| MCE-0002 | VS Code style multi-cursor commands | client/e2e/new/mce-multi-cursor-commands-655d1ca2.spec.ts | implemented |
 | NAV-0001 | Project Selection and Page Navigation | client/e2e/core/nav-project-selection-and-page-navigation-bf35d422.spec.ts | implemented |
 | NAV-0002 | Link function to project page | client/e2e/core/nav-link-function-to-project-page-a0e7d28a.spec.ts | implemented |
 | SEC-0001 | Dotenvx encrypted env files | client/e2e/core/sec-dotenvx-encrypted-env-files-fa94885c.spec.ts | implemented |
@@ -63,5 +65,6 @@
 | TST-0002 | Cursor Information Verification Utility | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | Test Helper Utility | — | implemented |
 | TST-0004 | Improve your test environment | — | implemented |
+| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/basic/add-text-functionality.spec.ts<br>client/e2e/basic/homepage-auth.spec.ts<br>client/e2e/basic/google-access.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/core/port.spec.ts | implemented |
 | USR-0001 | User deletion function | client/e2e/core/usr-user-deletion-function-baaa8b62.spec.ts | implemented |
 | USR-0002 | Container removal function | client/e2e/core/usr-container-removal-function-0661ecad.spec.ts | implemented |

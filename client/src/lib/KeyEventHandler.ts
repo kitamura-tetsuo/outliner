@@ -109,7 +109,8 @@ export class KeyEventHandler {
             }
         }
 
-        if (event.ctrlKey && event.key === "u") {
+        // Ctrl+Shift+Z: 最後に追加したカーソルを削除
+        if (event.ctrlKey && event.shiftKey && event.key === "z") {
             store.undoLastCursor();
             event.preventDefault();
             event.stopPropagation();
