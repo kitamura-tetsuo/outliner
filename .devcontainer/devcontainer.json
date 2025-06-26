@@ -35,7 +35,6 @@
         54000,
         58080,
         59099,
-        57070,
         57000
     ],
     "postStartCommand": "bash /workspace/outliner/scripts/codex-setup.sh",
