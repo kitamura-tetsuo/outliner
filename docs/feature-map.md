@@ -25,6 +25,7 @@
 | FMT-0002 | Format combination | client/e2e/core/fmt-format-combination-bcb56231.spec.ts | implemented |
 | FMT-0003 | Extended format | client/e2e/core/fmt-extended-format-b471a4b9.spec.ts | implemented |
 | FMT-0004 | Paste and format from the clipboard | client/e2e/core/fmt-paste-and-format-from-the-clipboard-fe4971c2.spec.ts | implemented |
+| FMT-0005 | VS Code style clipboard behavior | client/e2e/core/fmt-vscode-clipboard-behavior-3807f353.spec.ts | implemented |
 | FMT-0006 | Consistency of format display when moving cursors | client/e2e/core/fmt-consistency-of-format-display-when-moving-cursors-36199743.spec.ts | implemented |
 | FMT-0007 | Displaying internal link function | client/e2e/core/fmt-displaying-internal-link-function-a8a7c97e.spec.ts | implemented |
 | FMT-0008 | Support multiple internal links in one item | client/e2e/core/fmt-multiple-internal-links-3a606671.spec.ts | implemented |
@@ -55,6 +56,9 @@
 | SLR-0008 | Selected Edge Case | client/e2e/core/slr-selected-edge-case-e818d989.spec.ts | implemented |
 | SLR-0009 | Drag and drop text movement | client/e2e/core/slr-drag-and-drop-text-movement-e889233a.spec.ts | implemented |
 | SLR-0010 | Change the format of the selection | client/e2e/core/slr-change-the-format-of-the-selection-880de1fa.spec.ts | implemented |
+| SLR-0011 | Expand selection | client/e2e/core/slr-expand-selection-7d15b501.spec.ts | implemented |
+| SLR-0012 | Shrink selection | client/e2e/core/slr-shrink-selection-99167b65.spec.ts | implemented |
+| SLR-0013 | Select current line | client/e2e/core/slr-select-line-7e40ab64.spec.ts | implemented |
 | SLR-0100 | Box Selection (Rectangle Selection) Function - Keyboard | client/e2e/core/slr-box-selection-rectangle-selection-function-keyboard-50ee5e3d.spec.ts | implemented |
 | SLR-0101 | Box Selection (Rectangle Selection) Function - Mouse | client/e2e/core/slr-box-selection-rectangle-selection-function-mouse-ca340ca3.spec.ts | implemented |
 | SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts | implemented |
@@ -63,5 +67,6 @@
 | TST-0002 | Cursor Information Verification Utility | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | Test Helper Utility | — | implemented |
 | TST-0004 | Improve your test environment | — | implemented |
+| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/basic/add-text-functionality.spec.ts<br>client/e2e/basic/homepage-auth.spec.ts<br>client/e2e/basic/google-access.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/core/port.spec.ts | implemented |
 | USR-0001 | User deletion function | client/e2e/core/usr-user-deletion-function-baaa8b62.spec.ts | implemented |
 | USR-0002 | Container removal function | client/e2e/core/usr-container-removal-function-0661ecad.spec.ts | implemented |

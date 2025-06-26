@@ -83,10 +83,22 @@ export class KeyEventHandler {
             return;
         }
 
-        // Alt+Shift+矢印キーによる矩形選択
+        // Alt+Shift+矢印キーによる操作
         if (event.altKey && event.shiftKey) {
-            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+            if (["ArrowUp", "ArrowDown"].includes(event.key)) {
                 KeyEventHandler.handleBoxSelection(event);
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            else if (event.key === "ArrowRight") {
+                cursorInstances.forEach(cursor => cursor.expandSelection());
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            else if (event.key === "ArrowLeft") {
+                cursorInstances.forEach(cursor => cursor.shrinkSelection());
                 event.preventDefault();
                 event.stopPropagation();
                 return;
@@ -140,6 +152,12 @@ export class KeyEventHandler {
             else if (event.key === "v") {
                 // ペーストイベントはデフォルトの動作を許可
                 // handlePasteメソッドがClipboardEventを処理
+                return;
+            }
+            else if (event.key === "l") {
+                cursorInstances.forEach(cursor => cursor.selectLine());
+                event.preventDefault();
+                event.stopPropagation();
                 return;
             }
         }
