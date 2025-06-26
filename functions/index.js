@@ -706,3 +706,70 @@ exports.health = onRequest({ cors: true }, async (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+// Schedule a page for publishing
+exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+  const { idToken, pageId, schedule } = req.body || {};
+  if (!idToken || !pageId || !schedule) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const scheduleRef = db
+      .collection("pages")
+      .doc(pageId)
+      .collection("schedules")
+      .doc();
+    const data = {
+      strategy: schedule.strategy,
+      params: schedule.params || {},
+      createdBy: uid,
+      nextRunAt: schedule.nextRunAt,
+      createdAt: FieldValue.serverTimestamp(),
+    };
+    await scheduleRef.set(data);
+    return res.status(200).json({ scheduleId: scheduleRef.id });
+  } catch (err) {
+    logger.error(`createSchedule error: ${err.message}`);
+    return res.status(500).json({ error: "Failed to create schedule" });
+  }
+});
+
+// Execute a scheduled publish (triggered by Cloud Tasks)
+exports.executePublish = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+  const { pageId, scheduleId } = req.body || {};
+  if (!pageId || !scheduleId) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  try {
+    const scheduleRef = db
+      .collection("pages")
+      .doc(pageId)
+      .collection("schedules")
+      .doc(scheduleId);
+    const scheduleSnap = await scheduleRef.get();
+    if (!scheduleSnap.exists) {
+      return res.status(404).json({ error: "Schedule not found" });
+    }
+    await scheduleRef.update({ executedAt: FieldValue.serverTimestamp() });
+    // Here the actual publish logic would merge TreeAlpha.branch into main
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    logger.error(`executePublish error: ${err.message}`);
+    return res.status(500).json({ error: "Failed to execute publish" });
+  }
+});
