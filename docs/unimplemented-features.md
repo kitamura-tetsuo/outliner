@@ -10,7 +10,3 @@ This document records features that are intentionally omitted from the project. 
 
 - Email/password authentication. The application uses SSO only and does not provide its own credential login.
 - Password reset feature. Since no password-based login is offered, password reset is unnecessary.
-
-## Advanced Search Limitations
-
-- ページをまたいだ検索機能は提供していません。検索は表示中のページ内のみ対象としています。
