@@ -7,8 +7,7 @@ import sys
 ROOT = Path(__file__).resolve().parent
 
 cmds = [
-    [sys.executable, str(ROOT / 'sort_client_features.py')],
-    [sys.executable, str(ROOT / 'sort_dev_features.py')],
+    [sys.executable, str(ROOT / 'aggregate_features.py')],
     [sys.executable, str(ROOT / 'gen_feature_map.py')],
 ]
 
