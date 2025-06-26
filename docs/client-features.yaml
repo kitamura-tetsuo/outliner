@@ -1,3 +1,22 @@
+- id: ALS-0001
+  title: Alias node referencing existing items
+  title-ja: 既存アイテムを参照するエイリアスノード
+  category: outline
+  status: implemented
+  acceptance:
+  - エイリアスは参照先アイテムへのパスを表示する
+  - エイリアスノードを作成できる
+  - エイリアス展開時に参照先のサブツリーを編集できる
+  - 変更は元のアイテムに反映される
+  components:
+  - client/src/components/AliasPicker.svelte
+  - client/src/components/OutlinerItem.svelte
+  - client/src/schema/app-schema.ts
+  - client/src/stores/AliasPickerStore.svelte.ts
+  - client/src/stores/CommandPaletteStore.svelte.ts
+  tests:
+  - client/e2e/new/als-alias-node-58ad30d4.spec.ts
+  - client/e2e/new/als-alias-path-navigation.spec.ts
 - id: API-0001
   title: Fixing Firebase Functions API Server
   description: Firebase Functions APIサーバーのローカルテスト時のエラーを修正し、正常に動作するようにする機能

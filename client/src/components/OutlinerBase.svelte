@@ -6,6 +6,7 @@ import type { Item } from "../schema/app-schema";
 import GlobalTextArea from "./GlobalTextArea.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
 import SlashCommandPalette from "./SlashCommandPalette.svelte";
+import AliasPicker from "./AliasPicker.svelte";
 
 console.log("OutlinerBase imports completed");
 
@@ -47,6 +48,7 @@ console.log("OutlinerBase script completed successfully");
     <!-- グローバルテキストエリア -->
     <GlobalTextArea />
     <SlashCommandPalette />
+    <AliasPicker />
 </div>
 
 <style>

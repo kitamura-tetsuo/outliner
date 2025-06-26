@@ -699,6 +699,51 @@ export class TestHelpers {
     }
 
     /**
+     * AliasPicker から指定されたパスのオプションを選択する
+     * @param page Playwrightのページオブジェクト
+     * @param path エイリアス先のパス
+     */
+    public static async confirmAliasOption(page: Page, itemId: string): Promise<void> {
+        await page.evaluate(id => {
+            const store = (window as any).aliasPickerStore;
+            if (store && typeof store.confirmById === 'function') {
+                store.confirmById(id);
+            }
+        }, itemId);
+    }
+
+    public static async setAliasTarget(page: Page, itemId: string, targetId: string): Promise<void> {
+        await page.evaluate(({ itemId, targetId }) => {
+            const store = (window as any).appStore;
+            const findItem = (node: any, id: string): any => {
+                if (!node) return undefined;
+                if (node.id === id) return node;
+                if (node.items) {
+                    for (const child of node.items) {
+                        const found = findItem(child, id);
+                        if (found) return found;
+                    }
+                }
+                return undefined;
+            };
+            const root = store.currentPage;
+            const item = findItem(root, itemId);
+            if (item) {
+                item.aliasTargetId = targetId;
+            }
+        }, { itemId, targetId });
+    }
+
+    public static async hideAliasPicker(page: Page): Promise<void> {
+        await page.evaluate(() => {
+            const store = (window as any).aliasPickerStore;
+            if (store && typeof store.hide === 'function') {
+                store.hide();
+            }
+        });
+    }
+
+    /**
      * テスト環境でのDOM要素の可視性を強制的に確認する
      * @param selector 対象要素のセレクタ
      * @param page Playwrightのページオブジェクト

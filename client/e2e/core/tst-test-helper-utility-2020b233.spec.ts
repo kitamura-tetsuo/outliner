@@ -38,16 +38,15 @@ test.describe("テキスト追加機能テスト", () => {
         // テスト開始前に十分な時間を設定
 
         // アウトラインにアイテムを追加
+        const countBefore = await page.locator('.outliner-item').count();
         await page.click('button:has-text("アイテム追加")');
 
-        // アイテムが追加されるのを待つ
-        await page.waitForSelector(".outliner-item", { timeout: 30000 });
-
-        // 追加されたアイテムをクリックして編集モードに
-        // テキスト内容で特定できるアイテムを探す
-        const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-        const item = visibleItems.first();
-        await item.locator(".item-content").click({ force: true });
+        // 新しいアイテムが表示されるのを待つ
+        await page.waitForFunction((c) => document.querySelectorAll('.outliner-item').length > c, countBefore, { timeout: 30000 });
+        const newId = await TestHelpers.getItemIdByIndex(page, countBefore);
+        if (!newId) throw new Error('new item not found');
+        const item = page.locator(`.outliner-item[data-item-id="${newId}"]`);
+        await item.locator('.item-content').click({ force: true });
 
         // カーソルが表示されるのを待つ
         const cursorVisible = await TestHelpers.waitForCursorVisible(page);

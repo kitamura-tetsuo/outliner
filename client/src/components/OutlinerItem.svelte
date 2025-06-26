@@ -1,7 +1,9 @@
 <script lang="ts">
 import { Tree } from 'fluid-framework';
 import { createEventDispatcher, onMount } from 'svelte';
-import { Items } from '../schema/app-schema';
+import { Items, Item } from '../schema/app-schema';
+import { store as generalStore } from '../stores/store.svelte';
+import OutlinerTree from './OutlinerTree.svelte';
 import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
@@ -47,7 +49,60 @@ import ChartPanel from './ChartPanel.svelte';
 	let isDropTarget = $state(false);
 	let dropTargetPosition = $state<'top' | 'middle' | 'bottom' | null>(null);
 
-	let item = model.original;
+let item = model.original;
+
+const aliasTargetIdSub = new TreeSubscriber(
+    item,
+    'nodeChanged',
+    () => (item as any).aliasTargetId,
+    value => {
+        (item as any).aliasTargetId = value;
+    },
+);
+
+let aliasTargetId = $state<string | undefined>(aliasTargetIdSub.current);
+
+$effect(() => {
+    aliasTargetId = aliasTargetIdSub.current;
+});
+
+let aliasTarget = $state<Item | undefined>(undefined);
+let aliasPath = $state<Item[]>([]);
+
+$effect(() => {
+    if (aliasTargetId && generalStore.currentPage) {
+        aliasTarget = findItem(generalStore.currentPage, aliasTargetId);
+        const p = findPath(generalStore.currentPage, aliasTargetId);
+        aliasPath = p || [];
+    } else {
+        aliasTarget = undefined;
+        aliasPath = [];
+    }
+});
+
+function findItem(node: Item, id: string): Item | undefined {
+    if (node.id === id) return node;
+    const children = node.items as Items;
+    if (children) {
+        for (const child of children as any) {
+            const found = findItem(child, id);
+            if (found) return found;
+        }
+    }
+    return undefined;
+}
+
+function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
+    if (node.id === id) return [...path, node];
+    const children = node.items as Items;
+    if (children) {
+        for (const child of children as any) {
+            const res = findPath(child, id, [...path, node]);
+            if (res) return res;
+        }
+    }
+    return null;
+}
 
 	// コンポーネントタイプの状態管理
 	let componentType = $state<string | undefined>(item.componentType);
@@ -1406,8 +1461,20 @@ import ChartPanel from './ChartPanel.svelte';
                                 <!-- コンポーネント表示（テキストは非表示） -->
                                 {#if componentType === 'table'}
                                         <InlineJoinTable />
-                                {:else if componentType === 'chart'}
-                                        <ChartPanel />
+                               {:else if componentType === 'chart'}
+                                       <ChartPanel />
+                               {/if}
+                                {#if aliasTargetId && aliasPath.length > 0}
+                                    <div class="alias-path">
+                                        {#each aliasPath as p, i}
+                                            <a onclick={() => dispatch('navigate-to-item',{itemId:p.id})}>{p.text}</a>{i < aliasPath.length-1 ? '/' : ''}
+                                        {/each}
+                                    </div>
+                                    {#if !isCollapsed && aliasTarget}
+                                        <div class="alias-subtree">
+                                            <OutlinerTree pageItem={aliasTarget} isReadOnly={isReadOnly} />
+                                        </div>
+                                    {/if}
                                 {/if}
                         </div>
                 </div>
@@ -1653,14 +1720,27 @@ import ChartPanel from './ChartPanel.svelte';
 		bottom: 0;
 	}
 
-	.item-content.drop-target-middle::after {
-		content: '';
-		position: absolute;
-		left: 0;
-		top: 0;
-		bottom: 0;
-		width: 2px;
-		background-color: #0078d7;
-		z-index: 10;
-	}
+        .item-content.drop-target-middle::after {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 2px;
+                background-color: #0078d7;
+                z-index: 10;
+        }
+        .alias-path {
+                margin-top: 4px;
+                font-size: 0.8rem;
+                color: #555;
+        }
+        .alias-path a {
+                color: #06c;
+                text-decoration: underline;
+                cursor: pointer;
+        }
+        .alias-subtree {
+                margin-left: 24px;
+        }
 </style>
