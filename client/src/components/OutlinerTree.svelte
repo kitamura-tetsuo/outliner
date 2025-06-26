@@ -11,6 +11,7 @@ import {
 } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
+import { goto } from "$app/navigation";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
 import { OutlinerViewModel } from "../stores/OutlinerViewModel";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
@@ -35,11 +36,13 @@ const logger = getLogger();
 
 interface Props {
     pageItem: Item; // ページとして表示する Item
+    projectName: string;
+    pageName: string;
     isReadOnly?: boolean;
     onEdit?: () => void;
 }
 
-let { pageItem, isReadOnly = false, onEdit }: Props = $props();
+let { pageItem, projectName, pageName, isReadOnly = false, onEdit }: Props = $props();
 
 let currentUser = $derived(fluidStore.currentUser?.id ?? 'anonymous');
 
@@ -1368,6 +1371,9 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
             {#if !isReadOnly}
                 <button onclick={handleAddItem}>アイテム追加</button>
             {/if}
+            <button onclick={() => goto(`/${projectName}/${pageName}/diff`)}>
+                History / Diff
+            </button>
         </div>
     </div>
 

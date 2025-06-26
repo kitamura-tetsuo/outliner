@@ -1,23 +1,20 @@
-# .pre-commit-config.yaml
 repos:
-  # ① 既存フックがあればそのまま残す
-  # ② “local” リポでカスタムフックを定義
   - repo: local
     hooks:
-      - id: remove-feature-map
-        name: Remove feature-map.md before commit
+      - id: remove-feature-docs
+        name: Remove feature docs before commit
         language: script
-        entry: ./scripts/remove_feature_map.sh
+        entry: ./scripts/remove_feature_docs.sh
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
-      - id: feature-map
-        name: Update feature docs
+      - id: pre-commit
+        name: Run pre-commit.py
         language: python
-        entry: python ./scripts/update_feature_docs.py
-        pass_filenames: false # ファイル一覧をスクリプトに渡さない
-        always_run: true # 変更がなくても毎回実行
-        stages: [pre-commit] # commit 時のみ
-        additional_dependencies: # スクリプトが import するパッケージ
+        entry: python ./scripts/pre_commit.py
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+        additional_dependencies:
           - loguru
           - PyYAML
