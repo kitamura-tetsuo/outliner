@@ -1,6 +1,6 @@
 <script lang="ts">
-import { onDestroy } from "svelte";
 import { goto } from "$app/navigation";
+import { onDestroy } from "svelte";
 import {
     buildRegExp,
     type ItemMatch,
@@ -10,12 +10,15 @@ import {
     type SearchOptions,
 } from "../lib/search";
 import {
-    searchProject,
+    type PageItemMatch,
     replaceAllInProject,
     replaceFirstInProject,
-    type PageItemMatch,
+    searchProject,
 } from "../lib/search/projectSearch";
-import type { Item, Project } from "../schema/app-schema";
+import type {
+    Item,
+    Project,
+} from "../schema/app-schema";
 
 interface Props {
     isVisible?: boolean;
@@ -25,7 +28,7 @@ interface Props {
 
 let { isVisible = false, pageItem = null, project = null }: Props = $props();
 
-let matches: Array<PageItemMatch<Item>> = [];
+let matches: Array<PageItemMatch<Item>> = $state([]);
 
 let searchQuery = $state("");
 let replaceText = $state("");
@@ -67,9 +70,11 @@ function handleSearch() {
     };
     if (project) {
         matches = searchProject(project, searchQuery, options);
-    } else if (pageItem) {
+    }
+    else if (pageItem) {
         matches = searchItems(pageItem, searchQuery, options).map(m => ({ ...m, page: pageItem! }));
-    } else {
+    }
+    else {
         matches = [];
     }
     matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
@@ -83,7 +88,8 @@ function handleReplace() {
             caseSensitive: isCaseSensitive,
         });
         if (replaced) handleSearch();
-    } else if (pageItem) {
+    }
+    else if (pageItem) {
         const replaced = replaceFirst(pageItem, searchQuery, replaceText, {
             regex: isRegexMode,
             caseSensitive: isCaseSensitive,
@@ -99,7 +105,8 @@ function handleReplaceAll() {
             caseSensitive: isCaseSensitive,
         });
         handleSearch();
-    } else if (pageItem) {
+    }
+    else if (pageItem) {
         replaceAll(pageItem, searchQuery, replaceText, {
             regex: isRegexMode,
             caseSensitive: isCaseSensitive,
