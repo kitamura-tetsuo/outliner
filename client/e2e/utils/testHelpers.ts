@@ -388,7 +388,10 @@ export class TestHelpers {
         const pageName = `test-page-${Date.now()}`;
         await TestHelpers.createTestProjectAndPageViaAPI(page, projectName, pageName, lines);
 
-        await page.goto(`/${projectName}/${pageName}`);
+        const encodedProject = encodeURIComponent(projectName);
+        const encodedPage = encodeURIComponent(pageName);
+        const url = `/${encodedProject}/${encodedPage}`;
+        await page.goto(url);
 
         await page.waitForSelector(".outliner-item", { timeout: 30000 });
         await page.waitForFunction(() => {
