@@ -1,6 +1,7 @@
 # Feature ↔ Test Matrix
 | Feature | Title | Test files | Status |
 |---------|-------|------------|--------|
+| ALS-0001 | Alias node referencing existing items | client/e2e/new/als-alias-node-58ad30d4.spec.ts | implemented |
 | API-0001 | Fixing Firebase Functions API Server | client/e2e/core/api-fixing-firebase-functions-api-server-9e65d78b.spec.ts | implemented |
 | API-0002 | Firebase emulator startup standby function | client/e2e/core/api-firebase-emulator-startup-standby-function-c9fa9c85.spec.ts | implemented |
 | API-0003 | Admin check for container user listing | client/e2e/core/api-admin-check-for-container-user-listing-bada0e86.spec.ts | implemented |
@@ -18,7 +19,7 @@
 | CLM-0101 | Cursor duplication and input distribution problems when moving between items | client/e2e/core/clm-cursor-duplication-and-input-distribution-problems-when-moving-between-items-be4c0ba6.spec.ts | implemented |
 | CLM-0102 | Move cursors and multiple keyboard operations on empty text items | client/e2e/core/clm-move-cursors-and-multiple-keyboard-operations-on-empty-text-items-20043fb0.spec.ts | implemented |
 | CLM-0103 | Cursor manipulation with format strings | client/e2e/core/clm-cursor-manipulation-with-format-strings-86f0d787.spec.ts | implemented |
-| CLM-0104 | Extended navigation commands | — | implemented |
+| CLM-0104 | Extended navigation commands | client/e2e/core/clm-extended-navigation-commands-427d145e.spec.ts | implemented |
 | COL-0001 | Displaying cursors for other users | — | implemented |
 | DBW-001 | Client-Side SQL Database | — | implemented |
 | FLD-0001 | Ability to retrieve FluidClient from project title | client/e2e/core/fld-ability-to-retrieve-fluidclient-from-project-title-f3bf0fec.spec.ts | implemented |
@@ -65,6 +66,6 @@
 | TST-0002 | Cursor Information Verification Utility | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | Test Helper Utility | — | implemented |
 | TST-0004 | Improve your test environment | — | implemented |
-| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/basic/homepage-auth.spec.ts<br>client/e2e/basic/google-access.spec.ts<br>client/e2e/basic/add-text-functionality.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/core/port.spec.ts | implemented |
+| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/basic/add-text-functionality.spec.ts<br>client/e2e/basic/homepage-auth.spec.ts<br>client/e2e/basic/google-access.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/core/port.spec.ts | implemented |
 | USR-0001 | User deletion function | client/e2e/core/usr-user-deletion-function-baaa8b62.spec.ts | implemented |
 | USR-0002 | Container removal function | client/e2e/core/usr-container-removal-function-0661ecad.spec.ts | implemented |

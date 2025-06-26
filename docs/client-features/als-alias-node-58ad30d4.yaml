@@ -15,5 +15,5 @@ components:
 - client/src/stores/AliasPickerStore.svelte.ts
 - client/src/stores/CommandPaletteStore.svelte.ts
 tests:
- - client/e2e/new/als-alias-node-58ad30d4.spec.ts
- - client/e2e/new/als-alias-path-navigation.spec.ts
+- client/e2e/new/als-alias-node-58ad30d4.spec.ts
+- client/e2e/new/als-alias-path-navigation.spec.ts
