@@ -259,6 +259,14 @@
   - フォーマット文字列内でのカーソル移動が正しく機能する
   - 複数のフォーマットが混在する文字列でのカーソル移動が正しく機能する
   title-ja: フォーマット文字列でのカーソル操作
+- id: CLM-0104
+  title: Extended navigation commands
+  title-ja: 拡張ナビゲーションコマンド
+  description: Ctrl+Left/Right word jumps, bracket jump with Ctrl+Shift+\, document navigation with Ctrl+Home/End, PageUp/PageDown and scroll commands.
+  category: cursor-movement
+  status: implemented
+  tests:
+  - client/e2e/core/clm-extended-navigation-commands-427d145e.spec.ts
 - id: COL-0001
   title: Displaying cursors for other users
   description: 複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する
@@ -351,6 +359,20 @@
   tests:
   - client/e2e/core/fmt-paste-and-format-from-the-clipboard-fe4971c2.spec.ts
   title-ja: クリップボードからのペーストとフォーマット
+- id: FMT-0005
+  title: VS Code style clipboard behavior
+  category: text-formatting
+  status: implemented
+  description: 'Copying and pasting using multi-cursors or box selection should behave the same as Visual Studio Code. Metadata in the clipboard is interpreted so each cursor receives the expected text.
+
+    '
+  acceptance:
+  - Box selection paste inserts each line of text into the corresponding selection range
+  - Clipboard operations work when triggered via keyboard shortcuts
+  - Pasting with application/vscode-editor metadata distributes text across multiple cursors
+  tests:
+  - client/e2e/core/fmt-vscode-clipboard-behavior-3807f353.spec.ts
+  title-ja: VS Code風クリップボード操作
 - id: FMT-0006
   title: Consistency of format display when moving cursors
   description: カーソル移動時にフォーマット表示が一貫して適切に切り替わることを確認します
@@ -378,6 +400,23 @@
   tests:
   - client/e2e/core/fmt-displaying-internal-link-function-a8a7c97e.spec.ts
   title-ja: 内部リンク機能の表示
+- id: FMT-0008
+  title: Support multiple internal links in one item
+  title-ja: 1アイテム内で複数の内部リンクをサポート
+  description: 単一のアイテム内で複数の内部リンクを正しく表示・動作させる
+  category: text-formatting
+  status: implemented
+  acceptance:
+  - 1アイテム内に複数の [page] と [/project/page] リンクを含めてもすべてがリンクとして表示される
+  - E2E テストが成功する
+  - ScrapboxFormatter.formatToHtml で複数リンクが適切に生成される
+  - カーソルがある場合はプレーンテキスト表示となる
+  - ページ存在チェッククラス page-exists/page-not-exists がそれぞれ適用される
+  - リンクをクリックすると正しいページへ遷移する
+  - 各リンクにリンクプレビューが表示される
+  tests:
+  - client/e2e/core/fmt-multiple-internal-links-3a606671.spec.ts
+  - client/src/utils/ScrapboxFormatter.test.ts
 - id: FTR-0012
   title: User can reset forgotten password
   status: implemented
@@ -413,6 +452,18 @@
   - 入力途中の文字がカーソル位置に表示される
   - 変換候補がカーソル位置に表示される
   title-ja: IMEを使用した日本語入力
+- id: IND-0001
+  title: Advanced indentation and selection operations
+  description: Use Tab and Shift+Tab to create nested structures and copy them via clipboard.
+  category: editing
+  status: implemented
+  tests:
+  - client/e2e/new/IND-0001.spec.ts
+  acceptance:
+  - Items can be indented with Tab to create nested structure
+  - Items can be outdented with Shift+Tab
+  - Selected nested items can be copied and pasted using clipboard
+  title-ja: 高度なインデントと選択操作
 - id: ITM-0001
   title: Add new items with Enter
   shortcut: Enter

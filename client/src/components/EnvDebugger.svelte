@@ -34,20 +34,17 @@ onMount(() => {
         firebaseEmulatorInfo = {
             VITE_USE_FIREBASE_EMULATOR: import.meta.env
                 .VITE_USE_FIREBASE_EMULATOR,
-            VITE_FIRESTORE_EMULATOR_HOST: import.meta.env
-                .VITE_FIRESTORE_EMULATOR_HOST,
+            VITE_FIREBASE_EMULATOR_HOST: import.meta.env
+                .VITE_FIREBASE_EMULATOR_HOST,
             VITE_FIRESTORE_EMULATOR_PORT: import.meta.env
                 .VITE_FIRESTORE_EMULATOR_PORT,
-            VITE_AUTH_EMULATOR_HOST: import.meta.env
-                .VITE_AUTH_EMULATOR_HOST,
             VITE_AUTH_EMULATOR_PORT: import.meta.env
                 .VITE_AUTH_EMULATOR_PORT,
             // LocalStorageからの値も取得
             localStorage_VITE_USE_FIREBASE_EMULATOR: window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR"),
-            localStorage_VITE_FIRESTORE_EMULATOR_HOST: window.localStorage?.getItem(
-                "VITE_FIRESTORE_EMULATOR_HOST",
+            localStorage_VITE_FIREBASE_EMULATOR_HOST: window.localStorage?.getItem(
+                "VITE_FIREBASE_EMULATOR_HOST",
             ),
-            localStorage_VITE_AUTH_EMULATOR_HOST: window.localStorage?.getItem("VITE_AUTH_EMULATOR_HOST"),
         };
     }
 

@@ -18,6 +18,7 @@
 | CLM-0101 | Cursor duplication and input distribution problems when moving between items | client/e2e/core/clm-cursor-duplication-and-input-distribution-problems-when-moving-between-items-be4c0ba6.spec.ts | implemented |
 | CLM-0102 | Move cursors and multiple keyboard operations on empty text items | client/e2e/core/clm-move-cursors-and-multiple-keyboard-operations-on-empty-text-items-20043fb0.spec.ts | implemented |
 | CLM-0103 | Cursor manipulation with format strings | client/e2e/core/clm-cursor-manipulation-with-format-strings-86f0d787.spec.ts | implemented |
+| CLM-0104 | Extended navigation commands | — | implemented |
 | COL-0001 | Displaying cursors for other users | — | implemented |
 | DBW-001 | Client-Side SQL Database | — | implemented |
 | FLD-0001 | Ability to retrieve FluidClient from project title | client/e2e/core/fld-ability-to-retrieve-fluidclient-from-project-title-f3bf0fec.spec.ts | implemented |
@@ -25,11 +26,14 @@
 | FMT-0002 | Format combination | client/e2e/core/fmt-format-combination-bcb56231.spec.ts | implemented |
 | FMT-0003 | Extended format | client/e2e/core/fmt-extended-format-b471a4b9.spec.ts | implemented |
 | FMT-0004 | Paste and format from the clipboard | client/e2e/core/fmt-paste-and-format-from-the-clipboard-fe4971c2.spec.ts | implemented |
+| FMT-0005 | VS Code style clipboard behavior | client/e2e/core/fmt-vscode-clipboard-behavior-3807f353.spec.ts | implemented |
 | FMT-0006 | Consistency of format display when moving cursors | client/e2e/core/fmt-consistency-of-format-display-when-moving-cursors-36199743.spec.ts | implemented |
 | FMT-0007 | Displaying internal link function | client/e2e/core/fmt-displaying-internal-link-function-a8a7c97e.spec.ts | implemented |
+| FMT-0008 | Support multiple internal links in one item | client/e2e/core/fmt-multiple-internal-links-3a606671.spec.ts | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
 | FTR-0013 | Use environment variables in min page | client/e2e/core/ftr-use-environment-variables-in-min-page-cfe01fbf.spec.ts | implemented |
 | IME-0001 | Japanese input using IME | client/e2e/core/ime-japanese-input-using-ime-59109b4a.spec.ts | implemented |
+| IND-0001 | Advanced indentation and selection operations | client/e2e/new/IND-0001.spec.ts | implemented |
 | ITM-0001 | Add new items with Enter | client/e2e/core/itm-add-new-items-with-enter-49d26e99.spec.ts | implemented |
 | LNK-0001 | URL generation function for internal links | client/e2e/core/lnk-url-generation-function-for-internal-links-b840d2c4.spec.ts | implemented |
 | LNK-0002 | Internal link functionality verification | client/e2e/core/lnk-internal-link-functionality-verification-eb4d5867.spec.ts | implemented |
@@ -61,6 +65,6 @@
 | TST-0002 | Cursor Information Verification Utility | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | Test Helper Utility | — | implemented |
 | TST-0004 | Improve your test environment | — | implemented |
-| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/core/minimal.spec.ts<br>client/e2e/core/port.spec.ts<br>client/e2e/core/tst-test-helper-utility-2020b233.spec.ts<br>client/e2e/core/basic.spec.ts | implemented |
+| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/basic/homepage-auth.spec.ts<br>client/e2e/basic/google-access.spec.ts<br>client/e2e/basic/add-text-functionality.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/core/port.spec.ts | implemented |
 | USR-0001 | User deletion function | client/e2e/core/usr-user-deletion-function-baaa8b62.spec.ts | implemented |
 | USR-0002 | Container removal function | client/e2e/core/usr-container-removal-function-0661ecad.spec.ts | implemented |
