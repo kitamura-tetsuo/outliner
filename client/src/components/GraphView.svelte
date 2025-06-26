@@ -68,6 +68,13 @@ onMount(() => {
     update();
     return () => { chart?.dispose(); };
 });
+
+$effect(() => {
+    // react to project or page updates and refresh the graph
+    store.project;
+    store.pages?.current;
+    update();
+});
 </script>
 
 <div class="graph-view" bind:this={graphDiv} style="width:100%;height:400px;"></div>

@@ -423,6 +423,21 @@
   - Firebase config values come from VITE_FIREBASE_* variables
   - Token verification URL uses VITE_TOKEN_VERIFY_URL
   title-ja: 最小ページで環境変数を使用します
+- id: GRV-0001
+  title: Graph View visualization
+  description: Inter-page links are visualized in an interactive graph view allowing navigation and real-time updates.
+  category: visualization
+  status: implemented
+  components:
+  - client/src/components/GraphView.svelte
+  - client/src/routes/graph/+page.svelte
+  tests:
+  - client/e2e/new/GRF-001.spec.ts
+  acceptance:
+  - Clicking a node navigates to the corresponding page
+  - Graph updates automatically when page links change
+  - Links between pages are parsed and displayed as a graph
+  title-ja: グラフビュー可視化
 - id: IME-0001
   title: Japanese input using IME
   status: implemented
@@ -462,6 +477,16 @@
   - client/e2e/core/itm-add-new-items-with-enter-49d26e99.spec.ts
   - client/e2e/core/itm-add-new-items-with-enter-49d26e99.spec.ts
   title-ja: Enterで新規アイテム追加
+- id: ITM-0002
+  title: Add items with button
+  description: Clicking the "アイテム追加" button adds a new outliner item.
+  category: item-management
+  status: implemented
+  acceptance:
+  - ボタンをクリックすると新しいアイテムがリストに表示される
+  tests:
+  - client/e2e/basic/itm-add-item-button-a4430f1e.spec.ts
+  title-ja: ボタンでアイテム追加
 - id: LNK-0001
   title: URL generation function for internal links
   description: 内部リンクのURLが正しく生成される機能

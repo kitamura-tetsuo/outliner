@@ -1,0 +1,15 @@
+id: GRV-0001
+title: Graph View visualization
+description: Inter-page links are visualized in an interactive graph view allowing navigation and real-time updates.
+category: visualization
+status: implemented
+components:
+- client/src/components/GraphView.svelte
+- client/src/routes/graph/+page.svelte
+tests:
+- client/e2e/new/GRF-001.spec.ts
+acceptance:
+- Clicking a node navigates to the corresponding page
+- Graph updates automatically when page links change
+- Links between pages are parsed and displayed as a graph
+title-ja: グラフビュー可視化

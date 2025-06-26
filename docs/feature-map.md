@@ -32,9 +32,11 @@
 | FMT-0008 | Support multiple internal links in one item | client/e2e/core/fmt-multiple-internal-links-3a606671.spec.ts | implemented |
 | FTR-0012 | User can reset forgotten password | — | implemented |
 | FTR-0013 | Use environment variables in min page | client/e2e/core/ftr-use-environment-variables-in-min-page-cfe01fbf.spec.ts | implemented |
+| GRV-0001 | Graph View visualization | — | implemented |
 | IME-0001 | Japanese input using IME | client/e2e/core/ime-japanese-input-using-ime-59109b4a.spec.ts | implemented |
 | IND-0001 | Advanced indentation and selection operations | client/e2e/new/IND-0001.spec.ts | implemented |
 | ITM-0001 | Add new items with Enter | client/e2e/core/itm-add-new-items-with-enter-49d26e99.spec.ts | implemented |
+| ITM-0002 | Add items with button | client/e2e/basic/itm-add-item-button-a4430f1e.spec.ts | implemented |
 | LNK-0001 | URL generation function for internal links | client/e2e/core/lnk-url-generation-function-for-internal-links-b840d2c4.spec.ts | implemented |
 | LNK-0002 | Internal link functionality verification | client/e2e/core/lnk-internal-link-functionality-verification-eb4d5867.spec.ts | implemented |
 | LNK-0003 | Internal link navigation feature | client/e2e/core/lnk-internal-link-navigation-feature-db56e693.spec.ts | implemented |
@@ -60,12 +62,12 @@
 | SLR-0010 | Change the format of the selection | client/e2e/core/slr-change-the-format-of-the-selection-880de1fa.spec.ts | implemented |
 | SLR-0100 | Box Selection (Rectangle Selection) Function - Keyboard | client/e2e/core/slr-box-selection-rectangle-selection-function-keyboard-50ee5e3d.spec.ts | implemented |
 | SLR-0101 | Box Selection (Rectangle Selection) Function - Mouse | client/e2e/core/slr-box-selection-rectangle-selection-function-mouse-ca340ca3.spec.ts | implemented |
-| SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts | implemented |
+| SRE-001 | Advanced Search & Replace | client/e2e/new/SRE-001.spec.ts<br>client/e2e/new/SRE-001-regex.spec.ts | implemented |
 | TBL-0001 | Editable JOIN Table | client/e2e/new/TBL-0001.spec.ts | implemented |
 | TST-0001 | SharedTree Data Verification Utility | client/e2e/utils/tree-validation.spec.ts | implemented |
 | TST-0002 | Cursor Information Verification Utility | client/e2e/utils/cursor-validation.spec.ts | implemented |
 | TST-0003 | Test Helper Utility | — | implemented |
 | TST-0004 | Improve your test environment | — | implemented |
-| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/basic/add-text-functionality.spec.ts<br>client/e2e/basic/homepage-auth.spec.ts<br>client/e2e/basic/google-access.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/core/port.spec.ts | implemented |
+| TST-0005 | Initializing and preparing the test environment | client/e2e/basic.spec.ts<br>client/e2e/core/port.spec.ts<br>client/e2e/auth/auth.spec.ts<br>client/e2e/basic/add-text-functionality.spec.ts<br>client/e2e/basic/homepage-auth.spec.ts<br>client/e2e/basic/playwright-sanity.spec.ts | implemented |
 | USR-0001 | User deletion function | client/e2e/core/usr-user-deletion-function-baaa8b62.spec.ts | implemented |
 | USR-0002 | Container removal function | client/e2e/core/usr-container-removal-function-0661ecad.spec.ts | implemented |

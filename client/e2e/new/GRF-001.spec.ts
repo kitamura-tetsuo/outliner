@@ -70,4 +70,41 @@ test.describe("GRF-001: Graph View navigation", () => {
             : new RegExp(`/${escapeRegExp(encodeForUrl(firstPageName))}$`);
         await expect(page).toHaveURL(expectedUrlPattern);
     });
+
+    test("graph updates when links change", async ({ page }) => {
+        await page.goto("/graph");
+
+        await expect(page.locator(".graph-view")).toBeVisible();
+        await expect(page.locator(".graph-view canvas")).toBeVisible();
+
+        await page.waitForFunction(() => {
+            const chart = (window as any).__GRAPH_CHART__;
+            if (!chart) return false;
+            const option = chart.getOption();
+            return option && option.series && option.series[0] && option.series[0].data && option.series[0].data.length > 0;
+        }, { timeout: 10000 });
+
+        const initialLinkCount = await page.evaluate(() => {
+            const chart = (window as any).__GRAPH_CHART__;
+            const option = chart.getOption();
+            return option.series[0].links.length;
+        });
+
+        await page.evaluate(() => {
+            const appStore = (window as any).appStore;
+            const pages = appStore.pages.current;
+            if (!pages[1]) {
+                appStore.project.addPage(`temp-${Date.now()}`, "tester");
+            }
+            const first = pages[0];
+            const second = pages[1];
+            first.updateText(`[${second.text}]`);
+        });
+
+        await page.waitForFunction((oldCount) => {
+            const chart = (window as any).__GRAPH_CHART__;
+            const option = chart.getOption();
+            return option.series[0].links.length > oldCount;
+        }, initialLinkCount, { timeout: 10000 });
+    });
 });
