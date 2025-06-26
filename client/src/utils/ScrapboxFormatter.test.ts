@@ -46,6 +46,16 @@ describe("ScrapboxFormatter", () => {
         });
     });
 
+    describe("underline", () => {
+        it("should format text as underline", () => {
+            expect(ScrapboxFormatter.underline("text")).toBe("<u>text</u>");
+        });
+
+        it("should remove underline formatting if already underlined", () => {
+            expect(ScrapboxFormatter.underline("<u>text</u>")).toBe("text");
+        });
+    });
+
     describe("getFormatType", () => {
         it("should detect bold format", () => {
             expect(ScrapboxFormatter.getFormatType("[[text]]")).toBe("bold");
@@ -61,6 +71,10 @@ describe("ScrapboxFormatter", () => {
 
         it("should detect code format", () => {
             expect(ScrapboxFormatter.getFormatType("`text`")).toBe("code");
+        });
+
+        it("should detect underline format", () => {
+            expect(ScrapboxFormatter.getFormatType("<u>text</u>")).toBe("underline");
         });
 
         it("should return null for unformatted text", () => {
@@ -162,6 +176,13 @@ describe("ScrapboxFormatter", () => {
                 expect(result).toMatch(
                     /<a href="\/project\/page"[^>]*class="[^"]*internal-link[^"]*project-link[^"]*"[^>]*>project\/page<\/a>/,
                 );
+            });
+
+            it("should handle underline formatting", () => {
+                const input = "<u>underlined text</u>";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toContain("<u>underlined text</u>");
             });
         });
     });

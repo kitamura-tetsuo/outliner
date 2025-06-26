@@ -2,7 +2,7 @@
  * フォーマットトークンを表すインターフェース
  */
 interface FormatToken {
-    type: "text" | "bold" | "italic" | "strikethrough" | "code" | "link" | "internalLink" | "quote";
+    type: "text" | "bold" | "italic" | "strikethrough" | "underline" | "code" | "link" | "internalLink" | "quote";
     content: string;
     children?: FormatToken[];
     start: number;
@@ -67,11 +67,24 @@ export class ScrapboxFormatter {
     }
 
     /**
+     * テキストに下線を適用する
+     * @param text フォーマットするテキスト
+     * @returns 下線が適用されたテキスト
+     */
+    static underline(text: string): string {
+        // 既に下線の場合は解除
+        if (text.startsWith("<u>") && text.endsWith("</u>")) {
+            return text.substring(3, text.length - 4);
+        }
+        return `<u>${text}</u>`;
+    }
+
+    /**
      * テキストが特定のフォーマットを持っているかチェックする
      * @param text チェックするテキスト
-     * @returns フォーマットの種類（bold, italic, strikethrough, code）または null
+     * @returns フォーマットの種類（bold, italic, strikethrough, underline, code）または null
      */
-    static getFormatType(text: string): "bold" | "italic" | "strikethrough" | "code" | null {
+    static getFormatType(text: string): "bold" | "italic" | "strikethrough" | "underline" | "code" | null {
         if (text.startsWith("[[") && text.endsWith("]]")) {
             return "bold";
         }
@@ -80,6 +93,9 @@ export class ScrapboxFormatter {
         }
         else if (text.startsWith("[-") && text.endsWith("]")) {
             return "strikethrough";
+        }
+        else if (text.startsWith("<u>") && text.endsWith("</u>")) {
+            return "underline";
         }
         else if (text.startsWith("`") && text.endsWith("`")) {
             return "code";
@@ -104,6 +120,7 @@ export class ScrapboxFormatter {
             // 斜体 - スラッシュを含まない場合のみマッチ
             { type: "italic", start: "[/", end: "]", regex: /\[\/([^\/\]]*)\]/g },
             { type: "strikethrough", start: "[-", end: "]", regex: /\[\-(.*?)\]/g },
+            { type: "underline", start: "<u>", end: "</u>", regex: /<u>(.*?)<\/u>/g },
             { type: "code", start: "`", end: "`", regex: /`(.*?)`/g },
             { type: "link", start: "[", end: "]", regex: /\[(https?:\/\/.*?)\]/g },
             // 通常の内部リンク（page-name形式）- ハイフンを含むページ名も許可
@@ -192,7 +209,7 @@ export class ScrapboxFormatter {
 
             // フォーマットトークンを追加
             tokens.push({
-                type: match.type as "bold" | "italic" | "strikethrough" | "code",
+                type: match.type as "bold" | "italic" | "strikethrough" | "underline" | "code",
                 content: match.content,
                 start: match.start,
                 end: match.end,
@@ -244,6 +261,9 @@ export class ScrapboxFormatter {
                     break;
                 case "strikethrough":
                     html += `<s>${content}</s>`;
+                    break;
+                case "underline":
+                    html += `<u>${content}</u>`;
                     break;
                 case "code":
                     html += `<code>${content}</code>`;
@@ -320,15 +340,39 @@ export class ScrapboxFormatter {
     static formatToHtmlAdvanced(text: string): string {
         if (!text) return "";
 
-        // HTMLエスケープ
+        // HTMLエスケープ（プレースホルダーは除外）
         const escapeHtml = (str: string): string => {
-            return str
+            // プレースホルダーを一時的に保護
+            const placeholderMap: Record<string, string> = {};
+            let protectedStr = str.replace(/__UNDERLINE_\d+__/g, match => {
+                const tempKey = `__TEMP_${Object.keys(placeholderMap).length}__`;
+                placeholderMap[tempKey] = match;
+                return tempKey;
+            });
+
+            // HTMLエスケープを適用
+            protectedStr = protectedStr
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+
+            // プレースホルダーを復元
+            Object.keys(placeholderMap).forEach(tempKey => {
+                protectedStr = protectedStr.replace(tempKey, placeholderMap[tempKey]);
+            });
+
+            return protectedStr;
         };
+
+        // 下線タグを一時的にプレースホルダーに置換
+        const underlinePlaceholders: string[] = [];
+        let tempText = text.replace(/<u>(.*?)<\/u>/g, (match, content) => {
+            const placeholder = `__UNDERLINE_${underlinePlaceholders.length}__`;
+            underlinePlaceholders.push(content);
+            return placeholder;
+        });
 
         // 再帰的にフォーマットを処理する関数
         const processFormat = (input: string): string => {
@@ -432,8 +476,16 @@ export class ScrapboxFormatter {
         };
 
         // 行に分割して処理
-        const lines = text.split("\n");
-        return processLines(lines);
+        const lines = tempText.split("\n");
+        let result = processLines(lines);
+
+        // プレースホルダーを実際の下線タグに復元
+        underlinePlaceholders.forEach((content, index) => {
+            const placeholder = `__UNDERLINE_${index}__`;
+            result = result.replace(placeholder, `<u>${processFormat(escapeHtml(content))}</u>`);
+        });
+
+        return result;
     }
 
     /**
@@ -471,6 +523,12 @@ export class ScrapboxFormatter {
         // 取り消し線
         html = html.replace(
             /(\[\-)(.*?)(\])/g,
+            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
+        );
+
+        // 下線
+        html = html.replace(
+            /(<u>)(.*?)(<\/u>)/g,
             '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
 

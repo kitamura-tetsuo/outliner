@@ -84,13 +84,48 @@ export class KeyEventHandler {
         }
 
         // Alt+Shift+矢印キーによる矩形選択
-        if (event.altKey && event.shiftKey) {
+        if (event.altKey && event.shiftKey && !event.ctrlKey) {
             if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
                 KeyEventHandler.handleBoxSelection(event);
                 event.preventDefault();
                 event.stopPropagation();
                 return;
             }
+        }
+
+        // Ctrl+Shift+Alt+矢印キーでカーソル追加
+        if (event.ctrlKey && event.shiftKey && event.altKey) {
+            if (event.key === "ArrowDown" || event.key === "PageDown") {
+                store.addCursorRelativeToActive("down");
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            else if (event.key === "ArrowUp" || event.key === "PageUp") {
+                store.addCursorRelativeToActive("up");
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+        }
+
+        // Ctrl+Shift+Z: 最後に追加したカーソルを削除
+        if (event.ctrlKey && event.shiftKey && event.key === "z") {
+            store.undoLastCursor();
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+
+        // Alt+PageUp/PageDown スクロール
+        if (event.altKey && ["PageUp", "PageDown"].includes(event.key)) {
+            cursorInstances.forEach(cursor => {
+                if (event.key === "PageUp") cursor.altPageUp();
+                else cursor.altPageDown();
+            });
+            event.preventDefault();
+            event.stopPropagation();
+            return;
         }
 
         // フォーマットショートカットを処理
