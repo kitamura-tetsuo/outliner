@@ -69,3 +69,4 @@ functions/.env.production
 client/coverage/
 
 .codex-setup-installed
+.e2e-progress
