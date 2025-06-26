@@ -54,6 +54,8 @@ export class EditorOverlayStore {
     cursors = $state<Record<string, CursorPosition>>({});
     // Cursor インスタンスを保持する Map
     cursorInstances = new Map<string, Cursor>();
+    // 追加されたカーソルの履歴
+    cursorHistory = $state<string[]>([]);
     selections = $state<Record<string, SelectionRange>>({});
     activeItemId = $state<string | null>(null);
     cursorVisible = $state<boolean>(true);
@@ -272,6 +274,8 @@ export class EditorOverlayStore {
             console.log(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
         }
 
+        this.cursorHistory = [...this.cursorHistory, newId];
+
         return newId;
     }
 
@@ -282,6 +286,14 @@ export class EditorOverlayStore {
         const newCursors = { ...this.cursors };
         delete newCursors[cursorId];
         this.cursors = newCursors;
+    }
+
+    undoLastCursor() {
+        const lastId = this.cursorHistory[this.cursorHistory.length - 1];
+        if (lastId) {
+            this.cursorHistory = this.cursorHistory.slice(0, -1);
+            this.removeCursor(lastId);
+        }
     }
 
     setSelection(selection: SelectionRange) {
@@ -1048,6 +1060,30 @@ export class EditorOverlayStore {
         };
 
         return { itemIdToIndex, allItems };
+    }
+
+    addCursorRelativeToActive(direction: "up" | "down") {
+        const active = Object.values(this.cursors).find(c => c.isActive && (c.userId === "local" || !c.userId));
+        if (!active) return;
+        const adj = this.getAdjacentItem(active.itemId, direction === "up" ? "prev" : "next");
+        if (!adj) return;
+        const offset = Math.min(active.offset, adj.text.length);
+        this.addCursor({ itemId: adj.id, offset, isActive: true, userId: active.userId ?? "local" });
+    }
+
+    private getAdjacentItem(itemId: string | null, dir: "prev" | "next"): { id: string; text: string } | null {
+        if (!itemId) return null;
+        const { itemIdToIndex, allItems } = this.getItemsMapping();
+        const idx = itemIdToIndex.get(itemId);
+        if (idx === undefined) return null;
+        const target = dir === "prev" ? idx - 1 : idx + 1;
+        if (target < 0 || target >= allItems.length) return null;
+        const el = allItems[target];
+        const id = el.getAttribute("data-item-id");
+        if (!id) return null;
+        const textEl = el.querySelector(".item-text");
+        const text = textEl ? textEl.textContent || "" : "";
+        return { id, text };
     }
 }
 

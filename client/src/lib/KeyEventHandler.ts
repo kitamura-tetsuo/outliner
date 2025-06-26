@@ -105,6 +105,30 @@ export class KeyEventHandler {
             }
         }
 
+        // Ctrl+Shift+Alt+矢印キーでカーソル追加
+        if (event.ctrlKey && event.shiftKey && event.altKey) {
+            if (event.key === "ArrowDown" || event.key === "PageDown") {
+                store.addCursorRelativeToActive("down");
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            else if (event.key === "ArrowUp" || event.key === "PageUp") {
+                store.addCursorRelativeToActive("up");
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+        }
+
+        // Ctrl+Shift+Z: 最後に追加したカーソルを削除
+        if (event.ctrlKey && event.shiftKey && event.key === "z") {
+            store.undoLastCursor();
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+
         // Alt+PageUp/PageDown スクロール
         if (event.altKey && ["PageUp", "PageDown"].includes(event.key)) {
             cursorInstances.forEach(cursor => {

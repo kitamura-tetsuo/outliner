@@ -2978,10 +2978,10 @@ export class Cursor {
     }
 
     /**
-     * 選択範囲のテキストに下線を追加する（Scrapbox構文: 未対応のため HTML タグを使用）
+     * 選択範囲のテキストに下線を追加する（HTML タグを使用）
      */
     formatUnderline() {
-        this.applyFormatting("<u>", "</u>", "<u>", "</u>");
+        this.applyScrapboxFormatting("underline");
     }
 
     /**
@@ -3058,9 +3058,9 @@ export class Cursor {
 
     /**
      * 選択範囲にScrapbox構文のフォーマットを適用する
-     * @param formatType フォーマットの種類（'bold', 'italic', 'strikethrough', 'code'）
+     * @param formatType フォーマットの種類（'bold', 'italic', 'strikethrough', 'underline', 'code'）
      */
-    private applyScrapboxFormatting(formatType: "bold" | "italic" | "strikethrough" | "code") {
+    private applyScrapboxFormatting(formatType: "bold" | "italic" | "strikethrough" | "underline" | "code") {
         // 選択範囲を取得
         const selection = Object.values(store.selections).find(s => s.userId === this.userId);
 
@@ -3095,6 +3095,9 @@ export class Cursor {
                 break;
             case "strikethrough":
                 formattedText = ScrapboxFormatter.strikethrough(selectedText);
+                break;
+            case "underline":
+                formattedText = ScrapboxFormatter.underline(selectedText);
                 break;
             case "code":
                 formattedText = ScrapboxFormatter.code(selectedText);
@@ -3201,7 +3204,7 @@ export class Cursor {
      */
     private applyScrapboxFormattingToMultipleItems(
         selection: any,
-        formatType: "bold" | "italic" | "strikethrough" | "code",
+        formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
         // 開始アイテムと終了アイテムのIDを取得
         const startItemId = selection.startItemId;
@@ -3251,6 +3254,9 @@ export class Cursor {
                         break;
                     case "strikethrough":
                         formattedText = ScrapboxFormatter.strikethrough(selectedText);
+                        break;
+                    case "underline":
+                        formattedText = ScrapboxFormatter.underline(selectedText);
                         break;
                     case "code":
                         formattedText = ScrapboxFormatter.code(selectedText);
