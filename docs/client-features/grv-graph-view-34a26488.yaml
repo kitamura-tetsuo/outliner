@@ -1,0 +1,29 @@
+id: GRV-0001
+title: Graph View visualization
+title-ja: グラフビュー可視化
+description: Visualize inter-page links as an interactive graph that updates in real time when pages change.
+category: navigation
+status: implemented
+components:
+- client/src/components/GraphView.svelte
+- client/src/routes/graph/+page.svelte
+features:
+- Parse page links to build a graph structure
+- Allow navigation to pages by clicking nodes
+- Support real-time updates when links change
+- Display interactive graph using ECharts
+acceptance:
+- Clicking a node navigates to the correct page
+- E2E tests verify graph page navigation and real-time updates
+- Graph renders using project data on /graph page
+- Graph updates automatically when pages or links change
+- Unit test verifies chart update logic
+interfaces:
+- GraphView
+- store.pages
+- TreeSubscriber
+- ECharts
+resources: []
+tests:
+- client/e2e/new/GRV-001.spec.ts
+- client/e2e/new/GRV-002.spec.ts

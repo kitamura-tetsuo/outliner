@@ -11,6 +11,8 @@ console.log("OutlinerBase imports completed");
 
 interface Props {
     pageItem: Item;
+    projectName: string;
+    pageName: string;
     isReadOnly?: boolean;
     isTemporary?: boolean;
     onEdit?: () => void;
@@ -18,6 +20,8 @@ interface Props {
 
 let {
     pageItem,
+    projectName,
+    pageName,
     isReadOnly = false,
     isTemporary = false,
     onEdit,
@@ -37,6 +41,8 @@ console.log("OutlinerBase script completed successfully");
     {#if pageItem}
         <OutlinerTree
             pageItem={pageItem}
+            projectName={projectName}
+            pageName={pageName}
             isReadOnly={isReadOnly}
             onEdit={onEdit}
         />

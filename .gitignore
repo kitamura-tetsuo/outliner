@@ -70,3 +70,8 @@ client/coverage/
 
 .codex-setup-installed
 .e2e-progress
+
+docs/feature-map.md
+docs/client-features.yaml
+docs/dev-features.yaml
+docs/unimplemented-features.md
