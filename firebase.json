@@ -56,6 +56,14 @@
                 "function": "listUsers"
             },
             {
+                "source": "/api/create-schedule",
+                "function": "createSchedule"
+            },
+            {
+                "source": "/api/execute-publish",
+                "function": "executePublish"
+            },
+            {
                 "source": "/health",
                 "function": "health"
             },
