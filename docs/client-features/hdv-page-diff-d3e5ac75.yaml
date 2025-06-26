@@ -3,14 +3,16 @@ title: Page snapshot diff viewer
 title-ja: ページのスナップショット差分ビューア
 category: history
 status: draft
-description: |
-  Allow users to view differences between the current page state and previous snapshots.
+description: 'Allow users to view differences between the current page state and previous snapshots.
+
   Users can select two snapshots to see changes and revert to a chosen version.
+
+  '
 acceptance:
-  - Selecting a snapshot shows diff within one second for pages up to 50KB.
-  - Revert replaces current page content with selected snapshot.
-  - Snapshot list shows timestamp and author.
-  - Diff displays insertions and deletions.
+- Diff displays insertions and deletions.
+- Revert replaces current page content with selected snapshot.
+- Selecting a snapshot shows diff within one second for pages up to 50KB.
+- Snapshot list shows timestamp and author.
 tests:
-  - client/src/tests/snapshotService.spec.ts
-  - client/e2e/new/diff-view.spec.ts
+- client/e2e/new/diff-view.spec.ts
+- client/src/tests/snapshotService.spec.ts
