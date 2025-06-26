@@ -18,6 +18,7 @@
 | CLM-0101 | Cursor duplication and input distribution problems when moving between items | client/e2e/core/clm-cursor-duplication-and-input-distribution-problems-when-moving-between-items-be4c0ba6.spec.ts | implemented |
 | CLM-0102 | Move cursors and multiple keyboard operations on empty text items | client/e2e/core/clm-move-cursors-and-multiple-keyboard-operations-on-empty-text-items-20043fb0.spec.ts | implemented |
 | CLM-0103 | Cursor manipulation with format strings | client/e2e/core/clm-cursor-manipulation-with-format-strings-86f0d787.spec.ts | implemented |
+| CLM-0104 | Extended navigation commands | client/e2e/core/clm-extended-navigation-commands-427d145e.spec.ts | implemented |
 | COL-0001 | Displaying cursors for other users | — | implemented |
 | DBW-001 | Client-Side SQL Database | — | implemented |
 | FLD-0001 | Ability to retrieve FluidClient from project title | client/e2e/core/fld-ability-to-retrieve-fluidclient-from-project-title-f3bf0fec.spec.ts | implemented |

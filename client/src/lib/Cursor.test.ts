@@ -324,4 +324,38 @@ describe('Cursor', () => {
     });
   });
 
+  describe('Extended navigation', () => {
+    let mockItem: Item;
+
+    beforeEach(async () => {
+      mockItem = createMockItem('item1', 'Hello World');
+      const { store: generalStore } = await import('../stores/store.svelte');
+      mockCurrentPage = createMockItem('page1', 'Page Title', [mockItem]);
+      generalStore.currentPage = mockCurrentPage;
+      cursor.itemId = 'item1';
+      vi.spyOn(cursor as any, 'findTarget').mockReturnValue(mockItem);
+    });
+
+    it('moveWordLeft and moveWordRight work correctly', () => {
+      cursor.offset = mockItem.text.length;
+      cursor.moveWordLeft();
+      expect(cursor.offset).toBe(6);
+      cursor.moveWordLeft();
+      expect(cursor.offset).toBe(0);
+      cursor.moveWordRight();
+      expect(cursor.offset).toBe(5);
+    });
+
+    it('moveToDocumentStart and moveToDocumentEnd', () => {
+      const other = createMockItem('item2', 'Second');
+      (mockCurrentPage!.items as any).push(other);
+      cursor.moveToDocumentEnd();
+      expect(cursor.itemId).toBe('item2');
+      expect(cursor.offset).toBe(other.text.length);
+      cursor.moveToDocumentStart();
+      expect(cursor.itemId).toBe('item1');
+      expect(cursor.offset).toBe(0);
+    });
+  });
+
 });

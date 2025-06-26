@@ -117,6 +117,17 @@ export class KeyEventHandler {
             return;
         }
 
+        // Alt+PageUp/PageDown スクロール
+        if (event.altKey && ["PageUp", "PageDown"].includes(event.key)) {
+            cursorInstances.forEach(cursor => {
+                if (event.key === "PageUp") cursor.altPageUp();
+                else cursor.altPageDown();
+            });
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+
         // フォーマットショートカットを処理
         if (event.ctrlKey) {
             // Ctrl+B: 太字

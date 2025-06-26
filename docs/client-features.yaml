@@ -240,6 +240,14 @@
   - フォーマット文字列内でのカーソル移動が正しく機能する
   - 複数のフォーマットが混在する文字列でのカーソル移動が正しく機能する
   title-ja: フォーマット文字列でのカーソル操作
+- id: CLM-0104
+  title: Extended navigation commands
+  title-ja: 拡張ナビゲーションコマンド
+  description: Ctrl+Left/Right word jumps, bracket jump with Ctrl+Shift+\, document navigation with Ctrl+Home/End, PageUp/PageDown and scroll commands.
+  category: cursor-movement
+  status: implemented
+  tests:
+  - client/e2e/core/clm-extended-navigation-commands-427d145e.spec.ts
 - id: COL-0001
   title: Displaying cursors for other users
   description: 複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する
