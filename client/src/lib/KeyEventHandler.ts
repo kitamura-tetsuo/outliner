@@ -83,8 +83,24 @@ export class KeyEventHandler {
             return;
         }
 
-        // Alt+Shift+矢印キーによる操作
-        if (event.altKey && event.shiftKey) {
+        // Ctrl+Shift+Alt+矢印キーでカーソル追加（より具体的な条件を先に評価）
+        if (event.ctrlKey && event.shiftKey && event.altKey) {
+            if (event.key === "ArrowDown" || event.key === "PageDown") {
+                store.addCursorRelativeToActive("down");
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            else if (event.key === "ArrowUp" || event.key === "PageUp") {
+                store.addCursorRelativeToActive("up");
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+        }
+
+        // Alt+Shift+矢印キーによる操作（Ctrlキーが押されていない場合のみ）
+        if (event.altKey && event.shiftKey && !event.ctrlKey) {
             if (["ArrowUp", "ArrowDown"].includes(event.key)) {
                 KeyEventHandler.handleBoxSelection(event);
                 event.preventDefault();
@@ -99,22 +115,6 @@ export class KeyEventHandler {
             }
             else if (event.key === "ArrowLeft") {
                 cursorInstances.forEach(cursor => cursor.shrinkSelection());
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-        }
-
-        // Ctrl+Shift+Alt+矢印キーでカーソル追加
-        if (event.ctrlKey && event.shiftKey && event.altKey) {
-            if (event.key === "ArrowDown" || event.key === "PageDown") {
-                store.addCursorRelativeToActive("down");
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-            else if (event.key === "ArrowUp" || event.key === "PageUp") {
-                store.addCursorRelativeToActive("up");
                 event.preventDefault();
                 event.stopPropagation();
                 return;

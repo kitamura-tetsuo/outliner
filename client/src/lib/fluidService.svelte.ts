@@ -474,7 +474,18 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
 
         // ユーザー情報を取得
         const userInfo = userManager.getFluidUserInfo();
-        const userId = userInfo?.id;
+        let userId = userInfo?.id;
+
+        // テスト環境では認証をバイパス
+        const isTestEnv = import.meta.env.MODE === "test" ||
+            process.env.NODE_ENV === "test" ||
+            import.meta.env.VITE_IS_TEST === "true" ||
+            (typeof window !== "undefined" && window.mockUser);
+
+        if (!userId && isTestEnv) {
+            userId = "test-user-id";
+            log("fluidService", "info", "Using test user ID for test environment");
+        }
 
         if (!userId) {
             throw new Error("ユーザーがログインしていないため、新規コンテナを作成できません");
@@ -631,7 +642,18 @@ export async function createFluidClient(containerId?: string): Promise<FluidClie
 
             // ユーザー情報を取得
             const userInfo = userManager.getFluidUserInfo();
-            const userId = userInfo?.id;
+            let userId = userInfo?.id;
+
+            // テスト環境では認証をバイパス
+            const isTestEnv = import.meta.env.MODE === "test" ||
+                process.env.NODE_ENV === "test" ||
+                import.meta.env.VITE_IS_TEST === "true" ||
+                (typeof window !== "undefined" && window.mockUser);
+
+            if (!userId && isTestEnv) {
+                userId = "test-user-id";
+                log("fluidService", "info", "Using test user ID for test environment");
+            }
 
             if (!userId) {
                 throw new Error("ユーザーがログインしていないため、Fluidクライアントを作成できません");

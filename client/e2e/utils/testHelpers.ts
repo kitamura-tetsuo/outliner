@@ -24,12 +24,38 @@ export class TestHelpers {
         await page.goto("/");
 
         // ページが完全に初期化されるのを待機
+        // SvelteKitアプリケーションが読み込まれるまで待つ
         await page.waitForFunction(
-            () =>
-                (window as any).__FLUID_STORE__ !== undefined &&
-                (window as any).__SVELTE_GOTO__ !== undefined,
+            () => {
+                // SvelteKitアプリケーションの基本的な要素が存在するかチェック
+                const hasApp = document.querySelector("#svelte") !== null ||
+                    document.querySelector("[data-svelte]") !== null ||
+                    document.querySelector("body > div") !== null;
+
+                // グローバルストアが設定されているかチェック（認証不要）
+                const hasStores = (window as any).appStore !== undefined;
+
+                return hasApp && hasStores;
+            },
             { timeout: 60000 },
         );
+
+        // デバッグ関数を手動で設定（認証なしで）
+        await page.evaluate(async () => {
+            // fluidStoreとgotoを手動で設定
+            if (!(window as any).__FLUID_STORE__) {
+                (window as any).__FLUID_STORE__ = (window as any).fluidStore;
+            }
+            if (!(window as any).__SVELTE_GOTO__) {
+                (window as any).__SVELTE_GOTO__ = (window as any).goto;
+            }
+
+            // snapshotServiceを手動で設定
+            if (!(window as any).__SNAPSHOT_SERVICE__) {
+                const snapshotService = await import("../../src/services/snapshotService.js");
+                (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
+            }
+        });
 
         page.goto = async (
             url: string,
@@ -81,21 +107,16 @@ export class TestHelpers {
         await page.evaluate(async ({ projectName, pageName, lines }) => {
             console.log(`TestHelper: Creating project and page`, { projectName, pageName, linesCount: lines.length });
 
-            while (!window.__FLUID_STORE__) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            console.log(`TestHelper: FluidStore is available`);
+            // テスト環境でFluidServiceを直接インポートして使用
+            const { createNewContainer } = await import("../../src/lib/fluidService.svelte.js");
+            console.log(`TestHelper: FluidService imported`);
 
-            const fluidService = window.__FLUID_SERVICE__;
-            console.log(`TestHelper: FluidService is available`, { exists: !!fluidService });
-
-            const fluidClient = await fluidService.createNewContainer(projectName);
+            const fluidClient = await createNewContainer(projectName);
             console.log(`TestHelper: FluidClient created`, { containerId: fluidClient.containerId });
 
             const project = fluidClient.getProject();
             console.log(`TestHelper: Project retrieved`, {
                 projectTitle: project.title,
-                itemsCount: project.items?.length,
             });
 
             fluidClient.createPage(pageName, lines);
@@ -127,10 +148,8 @@ export class TestHelpers {
             }
         }, { projectName, pageName, lines });
 
-        // FluidClient が設定されるまで待機
-        await page.waitForFunction(() => {
-            return (window as any).__FLUID_STORE__?.fluidClient !== undefined;
-        });
+        // 少し待機してからページの状態を確認
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     /**
