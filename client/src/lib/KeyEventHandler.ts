@@ -1,5 +1,6 @@
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
+import { CustomKeyMap } from "./CustomKeyMap";
 
 /**
  * キーおよび入力イベントを各カーソルインスタンスに振り分けるハンドラ
@@ -25,6 +26,78 @@ export class KeyEventHandler {
         endOffset: 0,
         ranges: [],
     };
+
+    private static keyHandlers = new CustomKeyMap<
+        { key: string; ctrl: boolean; alt: boolean; shift: boolean },
+        (event: KeyboardEvent, cursors: ReturnType<typeof store.getCursorInstances>) => void
+    >();
+
+    private static initKeyHandlers() {
+        if (KeyEventHandler.keyHandlers.size > 0) return;
+
+        const map = KeyEventHandler.keyHandlers;
+
+        const add = (key: string, ctrl: boolean, alt: boolean, shift: boolean,
+            handler: (event: KeyboardEvent, cursors: ReturnType<typeof store.getCursorInstances>) => void) => {
+            map.set({ key, ctrl, alt, shift }, handler);
+        };
+
+        // Esc cancels box selection
+        add("Escape", false, false, false, () => {
+            if (KeyEventHandler.boxSelectionState.active) {
+                KeyEventHandler.cancelBoxSelection();
+            }
+        });
+
+        // Alt+Shift+Arrow for box selection
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].forEach(k => {
+            add(k, false, true, true, event => {
+                KeyEventHandler.handleBoxSelection(event);
+            });
+        });
+
+        // Ctrl+Shift+Alt+Arrow/PageUp/PageDown adds cursors
+        ["ArrowDown", "PageDown"].forEach(k => {
+            add(k, true, true, true, () => {
+                store.addCursorRelativeToActive("down");
+            });
+        });
+        ["ArrowUp", "PageUp"].forEach(k => {
+            add(k, true, true, true, () => {
+                store.addCursorRelativeToActive("up");
+            });
+        });
+
+        // Ctrl+Shift+Z undo last cursor
+        add("z", true, false, true, () => {
+            store.undoLastCursor();
+        });
+
+        // Alt+PageUp/PageDown scroll
+        add("PageUp", false, true, false, (_, cursors) => {
+            cursors.forEach(c => c.altPageUp());
+        });
+        add("PageDown", false, true, false, (_, cursors) => {
+            cursors.forEach(c => c.altPageDown());
+        });
+
+        // Formatting shortcuts
+        add("b", true, false, false, (_, cursors) => {
+            cursors.forEach(c => c.formatBold());
+        });
+        add("i", true, false, false, (_, cursors) => {
+            cursors.forEach(c => c.formatItalic());
+        });
+        add("u", true, false, false, (_, cursors) => {
+            cursors.forEach(c => c.formatUnderline());
+        });
+        add("k", true, false, false, (_, cursors) => {
+            cursors.forEach(c => c.formatStrikethrough());
+        });
+        add("`", true, false, false, (_, cursors) => {
+            cursors.forEach(c => c.formatCode());
+        });
+    }
     /**
      * KeyDown イベントを各カーソルに委譲
      */
@@ -75,108 +148,18 @@ export class KeyEventHandler {
             return;
         }
 
-        // Escキーで矩形選択をキャンセル
-        if (event.key === "Escape" && KeyEventHandler.boxSelectionState.active) {
-            KeyEventHandler.cancelBoxSelection();
+        KeyEventHandler.initKeyHandlers();
+        const handler = KeyEventHandler.keyHandlers.get({
+            key: event.key,
+            ctrl: event.ctrlKey,
+            alt: event.altKey,
+            shift: event.shiftKey,
+        });
+        if (handler) {
+            handler(event, cursorInstances);
             event.preventDefault();
             event.stopPropagation();
             return;
-        }
-
-        // Alt+Shift+矢印キーによる矩形選択
-        if (event.altKey && event.shiftKey && !event.ctrlKey) {
-            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
-                KeyEventHandler.handleBoxSelection(event);
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-        }
-
-        // Ctrl+Shift+Alt+矢印キーでカーソル追加
-        if (event.ctrlKey && event.shiftKey && event.altKey) {
-            if (event.key === "ArrowDown" || event.key === "PageDown") {
-                store.addCursorRelativeToActive("down");
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-            else if (event.key === "ArrowUp" || event.key === "PageUp") {
-                store.addCursorRelativeToActive("up");
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-        }
-
-        // Ctrl+Shift+Z: 最後に追加したカーソルを削除
-        if (event.ctrlKey && event.shiftKey && event.key === "z") {
-            store.undoLastCursor();
-            event.preventDefault();
-            event.stopPropagation();
-            return;
-        }
-
-        // Alt+PageUp/PageDown スクロール
-        if (event.altKey && ["PageUp", "PageDown"].includes(event.key)) {
-            cursorInstances.forEach(cursor => {
-                if (event.key === "PageUp") cursor.altPageUp();
-                else cursor.altPageDown();
-            });
-            event.preventDefault();
-            event.stopPropagation();
-            return;
-        }
-
-        // フォーマットショートカットを処理
-        if (event.ctrlKey) {
-            // Ctrl+B: 太字
-            if (event.key === "b") {
-                cursorInstances.forEach(cursor => cursor.formatBold());
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-            // Ctrl+I: 斜体
-            else if (event.key === "i") {
-                cursorInstances.forEach(cursor => cursor.formatItalic());
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-            // Ctrl+U: 下線
-            else if (event.key === "u") {
-                cursorInstances.forEach(cursor => cursor.formatUnderline());
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-            // Ctrl+K: 取り消し線
-            else if (event.key === "k") {
-                cursorInstances.forEach(cursor => cursor.formatStrikethrough());
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-            // Ctrl+`: コード
-            else if (event.key === "`") {
-                cursorInstances.forEach(cursor => cursor.formatCode());
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-            // Ctrl+C: コピー
-            else if (event.key === "c") {
-                // コピーイベントはデフォルトの動作を許可
-                // handleCopyメソッドがClipboardEventを処理
-                return;
-            }
-            // Ctrl+V: ペースト
-            else if (event.key === "v") {
-                // ペーストイベントはデフォルトの動作を許可
-                // handlePasteメソッドがClipboardEventを処理
-                return;
-            }
         }
 
         // 各カーソルインスタンスのonKeyDownメソッドを呼び出す
