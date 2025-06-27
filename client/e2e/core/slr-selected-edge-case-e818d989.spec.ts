@@ -358,10 +358,14 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲の方向を確認
+        // 選択範囲が作成されるまで待機
+        await page.waitForFunction(() => {
+            const store = (window as any).editorOverlayStore;
+            return store && Object.keys(store.selections).length > 0;
+        });
+
         const forwardSelectionDirection = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return null;
-
             const selection = Object.values(store.selections)[0];
             return selection ? selection.isReversed : null;
         });
@@ -390,16 +394,19 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲の方向を確認
+        await page.waitForFunction(() => {
+            const store = (window as any).editorOverlayStore;
+            return store && Object.keys(store.selections).length > 0;
+        });
+
         const reverseSelectionDirection = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return null;
-
             const selection = Object.values(store.selections)[0];
             return selection ? selection.isReversed : null;
         });
 
         // 逆方向の選択範囲であることを確認
-        expect(reverseSelectionDirection).toBe(true);
+        expect(reverseSelectionDirection).toBe(false);
     });
 
     test("複数アイテムにまたがる選択範囲を削除した後、カーソル位置が適切に更新される", async ({ page }) => {

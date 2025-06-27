@@ -1343,7 +1343,8 @@ export class Cursor {
             isReversed = true;
         }
 
-        // 選択範囲を設定
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
+        store.clearSelectionForUser(this.userId);
         store.setSelection({
             startItemId,
             startOffset,
@@ -1713,7 +1714,8 @@ export class Cursor {
             }
         }
 
-        // 選択範囲を設定
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
+        store.clearSelectionForUser(this.userId);
         const selectionId = store.setSelection({
             startItemId,
             startOffset,
