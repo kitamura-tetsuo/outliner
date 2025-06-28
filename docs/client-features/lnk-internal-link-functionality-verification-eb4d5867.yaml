@@ -9,5 +9,7 @@ acceptance:
 - 内部リンクのクラスとテキストが正しく設定される
 - 様々な形式の内部リンクが正しく生成される
 tests:
-- client/e2e/core/lnk-internal-link-functionality-verification-eb4d5867.spec.ts
+- client/e2e/core/lnk-internal-link-basic-eb4d5867.spec.ts
+- client/e2e/core/lnk-internal-link-url-eb4d5867.spec.ts
+- client/e2e/core/lnk-project-internal-link-eb4d5867.spec.ts
 title-ja: 内部リンクの機能検証
