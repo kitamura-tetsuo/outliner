@@ -172,7 +172,6 @@ onDestroy(() => {
                     <input
                         type="checkbox"
                         bind:checked={isRegexMode}
-                        onchange={toggleRegex}
                     />
                     正規表現
                 </label>
@@ -180,7 +179,6 @@ onDestroy(() => {
                     <input
                         type="checkbox"
                         bind:checked={isCaseSensitive}
-                        onchange={toggleCaseSensitive}
                     />
                     大文字小文字を区別
                 </label>

@@ -189,6 +189,10 @@ install_all_dependencies() {
   # Client dependencies
   cd "${ROOT_DIR}/client"
   npm_ci_if_needed
+
+  # Development environment test dependencies
+  cd "${ROOT_DIR}/scripts/tests"
+  npm_ci_if_needed
   
   # Compile Paraglide if needed
   # if [ -z "${SKIP_PARAGLIDE_COMPILE}" ] && [ -d node_modules ]; then

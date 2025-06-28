@@ -57,6 +57,14 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
     npm --proxy='' --https-proxy='' install --no-save vitest playwright
     cd "${ROOT_DIR}"
   fi
+
+  # Ensure vitest is available for environment tests
+  if [ ! -f "${ROOT_DIR}/scripts/tests/node_modules/.bin/vitest" ]; then
+    echo "Installing vitest for environment tests..."
+    cd "${ROOT_DIR}/scripts/tests"
+    npm --proxy='' --https-proxy='' install --no-save vitest
+    cd "${ROOT_DIR}"
+  fi
   touch "$SETUP_SENTINEL"
 else
   echo "Skipping dependency installation"
@@ -64,6 +72,12 @@ else
     echo "Required test packages missing; installing vitest playwright..."
     cd "${ROOT_DIR}/client"
     npm --proxy='' --https-proxy='' install --no-save vitest playwright
+    cd "${ROOT_DIR}"
+  fi
+  if [ ! -f "${ROOT_DIR}/scripts/tests/node_modules/.bin/vitest" ]; then
+    echo "Required vitest missing for environment tests; installing..."
+    cd "${ROOT_DIR}/scripts/tests"
+    npm --proxy='' --https-proxy='' install --no-save vitest
     cd "${ROOT_DIR}"
   fi
 fi
