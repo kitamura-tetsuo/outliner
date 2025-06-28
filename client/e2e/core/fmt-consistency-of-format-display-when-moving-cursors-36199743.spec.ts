@@ -194,7 +194,7 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         // カーソルの状態を確認し、必要に応じて作成
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
-            if (!editorStore) return { error: 'editorOverlayStore not found' };
+            if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
             const cursorInstances = editorStore.getCursorInstances();
@@ -216,7 +216,7 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
                             itemId: activeItemId,
                             offset: 0,
                             isActive: true,
-                            userId: 'local'
+                            userId: "local",
                         });
                     }
                 }
@@ -233,7 +233,7 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
                     // 既存のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
-                        target.updateText('');
+                        target.updateText("");
                         cursor.offset = 0;
                     }
                     // 太字テキストを挿入
@@ -245,7 +245,7 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         // 少し待機してデータが反映されるのを待つ
         await page.waitForTimeout(500);
 
-        // SharedTreeのデータを取得
+        // SharedTreeのデータを取得（フォールバック機能付き）
         const treeData = await TreeValidator.getTreeData(page);
 
         // デバッグ情報を出力
@@ -259,10 +259,13 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         // 最初のアイテム（ページタイトル）の子アイテムを確認
         const pageItem = treeData.items[0];
         expect(pageItem.items).toBeDefined();
-        expect(pageItem.items.length).toBeGreaterThan(0);
+
+        // itemsがオブジェクトの場合（実際のデータ構造）
+        const itemsArray = Object.values(pageItem.items);
+        expect(itemsArray.length).toBeGreaterThan(0);
 
         // 太字テキストが保存されていることを確認
-        const hasFormattedText = pageItem.items.some(item => item.text === "[[aasdd]]");
+        const hasFormattedText = itemsArray.some((item: any) => item.text === "[[aasdd]]");
         expect(hasFormattedText).toBe(true);
     });
 });

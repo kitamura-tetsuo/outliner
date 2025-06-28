@@ -162,6 +162,7 @@ export class KeyEventHandler {
             return;
         }
 
+
         // 各カーソルインスタンスのonKeyDownメソッドを呼び出す
         let handled = false;
         for (const cursor of cursorInstances) {

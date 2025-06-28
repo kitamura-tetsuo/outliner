@@ -59,15 +59,21 @@ export default defineConfig({
 
     projects: [
         {
-            // コアテスト: 認証不要の基本機能テスト
-            name: "core",
-            testDir: "./e2e/core",
-            use: { ...devices["Desktop Chrome"] },
-        },
-        {
             // 基本テスト: 環境確認や最小構成の検証用
             name: "basic",
             testDir: "./e2e/basic",
+            use: { ...devices["Desktop Chrome"] },
+        },
+        {
+            // 新機能テスト
+            name: "new",
+            testDir: "./e2e/new",
+            use: { ...devices["Desktop Chrome"] },
+        },
+        {
+            // コアテスト: 認証不要の基本機能テスト
+            name: "core",
+            testDir: "./e2e/core",
             use: { ...devices["Desktop Chrome"] },
         },
         {
@@ -80,12 +86,6 @@ export default defineConfig({
             // ユーティリティテスト: 共通機能のテスト
             name: "utils",
             testDir: "./e2e/utils",
-            use: { ...devices["Desktop Chrome"] },
-        },
-        {
-            // 新機能テスト
-            name: "new",
-            testDir: "./e2e/new",
             use: { ...devices["Desktop Chrome"] },
         },
     ],
