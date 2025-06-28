@@ -15,6 +15,8 @@ This document consolidates the key development policies for this repository. Fol
 - Keep expected values strict even if tests take longer to run.
 - Run tests in headless mode.
 - Fix one test file at a time and run it immediately to confirm the fix.
+- Ensure test coverage for every implemented feature. Add detailed E2E scenarios whenever new behavior is introduced.
+- Split any test file that grows beyond roughly 150 lines so that Playwright can run it reliably.
 - Run environment maintenance tests (ENV-*) separately using `scripts/run-env-tests.sh`. These use Vitest. E2E tests use Playwright.
 - Record test specs in `docs/client-features/<slug>-<title>-<uuid>.yaml` and match the file name pattern in the `client/e2e` directory.
 - Retrieve SharedTree and cursor data with `treeValidation.ts` and `cursorValidation.ts` instead of mocks.
@@ -28,6 +30,7 @@ Add comments explaining the purpose and scope of any mock.
 ### Running E2E Tests
 - Always run `scripts/codex-setup.sh` before tests to start emulators.
 - Execute E2E tests one file at a time with `scripts/run-e2e-progress.sh 1`.
+- The Codex environment is prone to timeouts. Keep each Playwright spec short and split larger flows across multiple files. Document any timeouts; tests will be rerun elsewhere.
 - Use `TestHelpers.prepareTestEnvironment(page)` in `test.beforeEach` and Playwright's `expect(locator).toBeVisible()` assertions.
 - Create projects and pages programmatically via `fluidClient` rather than via the UI.
 - Simulate user input with `page.keyboard.type()` and manage cursors with `editorStore.setCursor()` and `cursor.insertText()` followed by a 500 ms wait and `waitForCursorVisible()`.
