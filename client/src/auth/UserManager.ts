@@ -148,11 +148,16 @@ export class UserManager {
 
     // テスト環境用のユーザーをセットアップ
     private async _setupMockUser() {
+        // テスト環境の検出条件を拡張
+        const isTestEnvironment = typeof window !== "undefined" && (
+            window.location.href.includes("e2e-test") ||
+            import.meta.env.VITE_IS_TEST === "true" ||
+            localStorage.getItem("VITE_IS_TEST") === "true" ||
+            process.env.NODE_ENV === "test"
+        );
+
         // E2Eテスト用にFirebaseメール/パスワード認証を使う
-        if (
-            typeof window !== "undefined" &&
-            (window.location.href.includes("e2e-test") || import.meta.env.VITE_IS_TEST === "true")
-        ) {
+        if (isTestEnvironment) {
             logger.info("[UserManager] E2E test environment detected, using Firebase auth emulator with test account");
             logger.info("[UserManager] Attempting E2E test login with test@example.com");
 
@@ -163,6 +168,16 @@ export class UserManager {
             }
             catch (error) {
                 logger.error("[UserManager] Test user login failed:", error);
+
+                // ユーザーが存在しない場合は作成を試みる
+                try {
+                    logger.info("[UserManager] Attempting to create test user");
+                    await createUserWithEmailAndPassword(this.auth, "test@example.com", "password");
+                    logger.info("[UserManager] Test user created and logged in successfully");
+                }
+                catch (createError) {
+                    logger.error("[UserManager] Failed to create test user:", createError);
+                }
             }
             return;
         }

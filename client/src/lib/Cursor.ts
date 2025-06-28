@@ -1343,7 +1343,8 @@ export class Cursor {
             isReversed = true;
         }
 
-        // 選択範囲を設定
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
+        store.clearSelectionForUser(this.userId);
         store.setSelection({
             startItemId,
             startOffset,
@@ -1713,7 +1714,8 @@ export class Cursor {
             }
         }
 
-        // 選択範囲を設定
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
+        store.clearSelectionForUser(this.userId);
         const selectionId = store.setSelection({
             startItemId,
             startOffset,
@@ -2220,6 +2222,71 @@ export class Cursor {
         this.applyToStore();
 
         // カーソル点滅を開始
+        store.startCursorBlink();
+    }
+
+    // Shift+Alt+Right で選択範囲を拡張
+    expandSelection() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = target.text || "";
+        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
+
+        const startOffset = selection ? Math.min(selection.startOffset, selection.endOffset) : this.offset;
+
+        store.setSelection({
+            startItemId: this.itemId,
+            startOffset,
+            endItemId: this.itemId,
+            endOffset: text.length,
+            userId: this.userId,
+            isReversed: false,
+        });
+
+        this.updateGlobalTextareaSelection(this.itemId, startOffset, this.itemId, text.length);
+
+        this.offset = text.length;
+        this.applyToStore();
+        store.startCursorBlink();
+    }
+
+    // Shift+Alt+Left で選択範囲を縮小
+    shrinkSelection() {
+        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
+        if (!selection) return;
+
+        const newOffset = Math.min(selection.startOffset, selection.endOffset);
+        this.offset = newOffset;
+        this.applyToStore();
+        this.clearSelection();
+        this.updateGlobalTextareaSelection(this.itemId, newOffset, this.itemId, newOffset);
+        store.startCursorBlink();
+    }
+
+    // Ctrl+L で現在行を選択
+    selectLine() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = target.text || "";
+        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+        const startOffset = this.getLineStartOffset(text, currentLineIndex);
+        const endOffset = this.getLineEndOffset(text, currentLineIndex);
+
+        store.setSelection({
+            startItemId: this.itemId,
+            startOffset,
+            endItemId: this.itemId,
+            endOffset,
+            userId: this.userId,
+            isReversed: false,
+        });
+
+        this.updateGlobalTextareaSelection(this.itemId, startOffset, this.itemId, endOffset);
+
+        this.offset = endOffset;
+        this.applyToStore();
         store.startCursorBlink();
     }
 

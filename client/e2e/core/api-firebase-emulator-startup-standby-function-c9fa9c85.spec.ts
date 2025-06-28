@@ -2,8 +2,10 @@
  *  Title   : Firebase emulator起動待機機能
  *  Source  : docs/client-features.yaml
  */
-import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
+import {
+    expect,
+    test,
+} from "@playwright/test";
 
 // Utility function to retry request until success or timeout
 async function waitForHealth(request: any, attempts = 10) {
@@ -18,9 +20,7 @@ async function waitForHealth(request: any, attempts = 10) {
 }
 
 test.describe("API-0002: emulator wait-and-retry", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
-    });
+    // API tests don't need page preparation
 
     test("server becomes available after retries", async ({ request }) => {
         const response = await waitForHealth(request, 5);

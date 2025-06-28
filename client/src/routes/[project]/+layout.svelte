@@ -49,12 +49,19 @@ async function loadProject() {
 
     try {
         const projectName = data.project;
-        // プロジェクト名からFluidClientを取得
-        logger.info(`プロジェクト名からFluidClientを取得: ${projectName}`);
-        const client = await getFluidClientByProjectTitle(projectName);
 
-        // fluidClientストアを更新
-        fluidStore.fluidClient = client;
+        // 既にfluidStoreにFluidClientが設定されている場合はそれを使用
+        if (fluidStore.fluidClient) {
+            logger.info(`既存のFluidClientを使用: ${projectName}`);
+        }
+        else {
+            // プロジェクト名からFluidClientを取得
+            logger.info(`プロジェクト名からFluidClientを取得: ${projectName}`);
+            const client = await getFluidClientByProjectTitle(projectName);
+
+            // fluidClientストアを更新
+            fluidStore.fluidClient = client;
+        }
     }
     catch (err) {
         console.error("Failed to load project:", err);

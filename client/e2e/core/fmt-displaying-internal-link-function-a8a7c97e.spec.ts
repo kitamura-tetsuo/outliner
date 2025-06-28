@@ -221,7 +221,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         // 少し待機してデータが反映されるのを待つ
         await page.waitForTimeout(500);
 
-        // SharedTreeのデータを取得
+        // SharedTreeのデータを取得（フォールバック機能付き）
         const treeData = await TreeValidator.getTreeData(page);
 
         // デバッグ情報を出力
@@ -241,7 +241,9 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         for (const item of treeData.items) {
             if (item.items) {
-                for (const subItem of item.items) {
+                // itemsがオブジェクトの場合（実際のデータ構造）
+                const itemsArray = Array.isArray(item.items) ? item.items : Object.values(item.items);
+                for (const subItem of itemsArray) {
                     if (subItem.text.includes("[test-page]") && subItem.text.includes("[/project-name/page-name]")) {
                         linkItem = subItem;
                         break;

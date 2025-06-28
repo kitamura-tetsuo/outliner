@@ -1,4 +1,5 @@
 <script lang="ts">
+import { goto } from "$app/navigation";
 import { onDestroy } from "svelte";
 import {
     buildRegExp,
@@ -8,16 +9,26 @@ import {
     searchItems,
     type SearchOptions,
 } from "../lib/search";
-import type { Item } from "../schema/app-schema";
+import {
+    type PageItemMatch,
+    replaceAllInProject,
+    replaceFirstInProject,
+    searchProject,
+} from "../lib/search/projectSearch";
+import type {
+    Item,
+    Project,
+} from "../schema/app-schema";
 
 interface Props {
     isVisible?: boolean;
     pageItem?: Item | null;
+    project?: Project | null;
 }
 
-let { isVisible = false, pageItem = null }: Props = $props();
+let { isVisible = false, pageItem = null, project = null }: Props = $props();
 
-let matches: Array<ItemMatch<Item>> = [];
+let matches: Array<PageItemMatch<Item>> = $state([]);
 
 let searchQuery = $state("");
 let replaceText = $state("");
@@ -53,34 +64,70 @@ function removeHighlights() {
 }
 
 function handleSearch() {
-    if (!pageItem) return;
     const options: SearchOptions = {
         regex: isRegexMode,
         caseSensitive: isCaseSensitive,
     };
-    matches = searchItems(pageItem, searchQuery, options);
+    if (project) {
+        matches = searchProject(project, searchQuery, options);
+    }
+    else if (pageItem) {
+        matches = searchItems(pageItem, searchQuery, options).map(m => ({ ...m, page: pageItem! }));
+    }
+    else {
+        matches = [];
+    }
     matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
     highlight(matches, options);
 }
 
 function handleReplace() {
-    if (!pageItem) return;
-    const replaced = replaceFirst(pageItem, searchQuery, replaceText, {
-        regex: isRegexMode,
-        caseSensitive: isCaseSensitive,
-    });
-    if (replaced) {
-        handleSearch();
+    if (project) {
+        const replaced = replaceFirstInProject(project, searchQuery, replaceText, {
+            regex: isRegexMode,
+            caseSensitive: isCaseSensitive,
+        });
+        if (replaced) handleSearch();
+    }
+    else if (pageItem) {
+        const replaced = replaceFirst(pageItem, searchQuery, replaceText, {
+            regex: isRegexMode,
+            caseSensitive: isCaseSensitive,
+        });
+        if (replaced) handleSearch();
     }
 }
 
 function handleReplaceAll() {
-    if (!pageItem) return;
-    replaceAll(pageItem, searchQuery, replaceText, {
-        regex: isRegexMode,
-        caseSensitive: isCaseSensitive,
-    });
-    handleSearch();
+    if (project) {
+        replaceAllInProject(project, searchQuery, replaceText, {
+            regex: isRegexMode,
+            caseSensitive: isCaseSensitive,
+        });
+        handleSearch();
+    }
+    else if (pageItem) {
+        replaceAll(pageItem, searchQuery, replaceText, {
+            regex: isRegexMode,
+            caseSensitive: isCaseSensitive,
+        });
+        handleSearch();
+    }
+}
+
+function toggleRegex() {
+    isRegexMode = !isRegexMode;
+}
+
+function toggleCaseSensitive() {
+    isCaseSensitive = !isCaseSensitive;
+}
+
+function jumpTo(match: PageItemMatch<Item>) {
+    if (!project) return;
+    const pageName = encodeURIComponent(match.page.text);
+    const projectTitle = encodeURIComponent(project.title);
+    goto(`/${projectTitle}/${pageName}`);
 }
 
 onDestroy(() => {
@@ -135,6 +182,20 @@ onDestroy(() => {
                     />
                     大文字小文字を区別
                 </label>
+            </div>
+
+            <div class="search-results">
+                <p>Hits: {matchCount}</p>
+                <ul>
+                    {#each matches as m}
+                        <li class="result-item">
+                            <button class="result-button" onclick={() => jumpTo(m)}>
+                                <span class="result-page">{m.page.text}</span> -
+                                <span class="result-snippet">{m.item.text}</span>
+                            </button>
+                        </li>
+                    {/each}
+                </ul>
             </div>
         </div>
     </div>
@@ -253,5 +314,38 @@ onDestroy(() => {
     background-color: #fff3cd;
     padding: 0 2px;
     border-radius: 2px;
+}
+
+.search-results ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 10px;
+    max-height: 200px;
+    overflow: auto;
+}
+
+.result-item {
+    padding: 4px 0;
+}
+
+.result-item:hover {
+    background: #f0f0f0;
+}
+
+.result-button {
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    padding: 4px 0;
+    cursor: pointer;
+}
+
+.result-button:hover {
+    background: #f0f0f0;
+}
+
+.result-page {
+    font-weight: bold;
 }
 </style>
