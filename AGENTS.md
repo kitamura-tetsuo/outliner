@@ -132,17 +132,6 @@ Prioritize performance.
 - **Import Requirements**: Import `{ initializeApp, getApps, getApp }` from "firebase/app" in UserManager.ts.
 - **Error Symptoms**: Look for "app/duplicate-app" errors in server/logs/test-svelte-kit.log when tests timeout unexpectedly.
 
-## Test Suite Status and Results
-
-As of the latest testing session, the following test suites have been verified and are working correctly:
-
-- **SLR (Selection Range) Tests**: 37 passed, 1 skipped - Selection functionality including Shift+arrow keys, mouse drag selection, copy/paste, and multi-item selection ranges.
-- **CLM (Cursor Movement) Tests**: 31 passed - Cursor movement with arrow keys, Home/End, click positioning, and multi-cursor operations.
-- **FMT (Formatting) Tests**: 33 passed - Text formatting including bold, italic, strikethrough, code, and internal link display.
-- **LNK (Internal Links) Tests**: 16 passed, 6 skipped - Internal link navigation, temporary pages, and URL generation.
-
-**Skipped Tests**: Some tests are intentionally skipped when features are not yet implemented. This is expected behavior and should not be considered failures.
-
 **Test Execution Commands**:
 
 - Run specific test category: `npm run test:e2e -- e2e/core/slr-*.spec.ts`
