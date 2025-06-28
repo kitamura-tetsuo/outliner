@@ -1,0 +1,13 @@
+id: ENV-0007
+title: Deploy workflow runs on self-hosted runner
+title-ja: 自己ホストランナーで実行されるデプロイワークフロー
+description: 'Migrate the Firebase deploy task from GitLab CI to GitHub Actions using
+
+  a self-hosted runner. The workflow installs dependencies, builds the client
+
+  and functions, creates required .env files from secrets and runs `firebase deploy`.'
+category: environment
+status: implemented
+components: []
+tests:
+- scripts/tests/ENV-0007.spec.ts
