@@ -69,8 +69,8 @@ const clientRegistry = new CustomKeyMap<FluidClientKey, FluidInstances>();
 
 // Azure Fluid Relayエンドポイント設定
 const azureConfig = {
-    tenantId: import.meta.env.VITE_AZURE_TENANT_ID || "00000000-0000-0000-0000-000000000000",
-    endpoint: import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT || "https://us.fluidrelay.azure.com",
+    tenantId: import.meta.env.VITE_AZURE_TENANT_ID,
+    endpoint: import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT,
 };
 
 // 開発環境ではTinyliciousを使用する - 環境変数で強制的に切り替え可能
@@ -414,7 +414,7 @@ export async function getUserContainers(): Promise<{ containers: string[]; defau
         }
 
         // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL;
         log("fluidService", "info", `Getting user containers from Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナリストを取得
@@ -467,7 +467,7 @@ export async function deleteContainer(containerId: string): Promise<boolean> {
         }
 
         // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL;
         log("fluidService", "info", `Deleting container ${containerId} via Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナを削除
