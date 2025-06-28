@@ -56,9 +56,6 @@ test.describe("テキスト追加機能テスト", () => {
             const cursorData = await CursorValidator.getCursorData(page);
             expect(cursorData.cursorCount).toBeGreaterThan(0);
         }
-        else {
-            console.log("Cursor not visible, continuing test anyway");
-        }
 
         // テキストを入力
         await page.screenshot({ path: "test-results/before Hello Fluid Framework.png" });
@@ -117,7 +114,6 @@ test.describe("テキスト追加機能テスト", () => {
 
         // 最新のアイテムを取得（最後に追加されたアイテム）
         const itemCount = await page.locator(".outliner-item").count();
-        console.log(`Total items: ${itemCount}`);
 
         // 最後のアイテムを選択（新しく追加されたアイテム）
         const lastItem = page.locator(".outliner-item").nth(itemCount - 1);
@@ -142,14 +138,12 @@ test.describe("テキスト追加機能テスト", () => {
                 cursorInstances: store.cursorInstances.size,
             };
         });
-        console.log("Cursor debug info:", debugInfo);
 
         // カーソルが表示されるのを待つ（短いタイムアウト）
         const cursorVisible = await TestHelpers.waitForCursorVisible(page, 5000);
 
         if (!cursorVisible) {
             // カーソルが表示されない場合、手動でカーソルを作成
-            console.log("Cursor not visible, creating cursor manually");
 
             const itemId = await lastItem.getAttribute("data-item-id");
             if (itemId) {
@@ -192,7 +186,6 @@ test.describe("テキスト追加機能テスト", () => {
 
         // テキストが正しく入力されたことを確認
         const itemText = await lastItem.locator(".item-text").textContent();
-        console.log("Item text after input:", itemText);
 
         // テキストが含まれていることを確認
         expect(itemText).toContain("Test data update");
