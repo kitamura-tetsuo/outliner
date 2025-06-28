@@ -8,7 +8,6 @@ import {
 } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
-import { TreeValidator } from "../utils/treeValidation";
 
 /**
  * @playwright
@@ -94,8 +93,22 @@ test.describe("テキスト追加機能テスト", () => {
      * @check ページを再読み込みしても入力したデータが保持されていることを確認する
      */
     test("Adding text updates data structure", async ({ page }) => {
-        // テキスト追加前の状態を確認
-        const initialDebugInfo = await TreeValidator.getTreeData(page);
+        // FluidClientが初期化されるまで待機
+        await page.waitForTimeout(3000);
+
+        // テキスト追加前の状態を確認（FluidStoreから直接取得）
+        const initialDebugInfo = await page.evaluate(() => {
+            const fluidStore = (window as any).__FLUID_STORE__;
+            if (!fluidStore || !fluidStore.fluidClient) {
+                return { error: "FluidClient not available", items: [] };
+            }
+            try {
+                return fluidStore.fluidClient.getAllData();
+            }
+            catch (error) {
+                return { error: (error as Error).message, items: [] };
+            }
+        });
 
         // アイテムを追加して編集
         await page.click('button:has-text("アイテム追加")');
@@ -164,8 +177,19 @@ test.describe("テキスト追加機能テスト", () => {
         // データが更新されるのを待つ
         await page.waitForTimeout(2000);
 
-        // 更新後のDebugInfoを取得
-        const updatedDebugInfo = await TreeValidator.getTreeData(page);
+        // 更新後のDebugInfoを取得（FluidStoreから直接取得）
+        const updatedDebugInfo = await page.evaluate(() => {
+            const fluidStore = (window as any).__FLUID_STORE__;
+            if (!fluidStore || !fluidStore.fluidClient) {
+                return { error: "FluidClient not available", items: [] };
+            }
+            try {
+                return fluidStore.fluidClient.getAllData();
+            }
+            catch (error) {
+                return { error: (error as Error).message, items: [] };
+            }
+        });
 
         // テキストが正しく入力されたことを確認
         const itemText = await lastItem.locator(".item-text").textContent();

@@ -5,4 +5,4 @@ description: KeyEventHandler uses CustomKeyMap to map key combinations to handle
 category: cursor-management
 status: implemented
 tests:
-  - client/e2e/core/clm-dictionary-key-handler-59169a01.spec.ts
+- client/e2e/core/clm-dictionary-key-handler-59169a01.spec.ts

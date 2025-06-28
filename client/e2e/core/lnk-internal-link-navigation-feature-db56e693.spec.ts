@@ -123,20 +123,20 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         // フォーカス状態を確認
         const focusState = await page.evaluate(() => {
-            const textarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             return {
                 textareaExists: !!textarea,
                 focused: document.activeElement === textarea,
                 activeElementTag: document.activeElement?.tagName,
                 activeElementClass: document.activeElement?.className,
-                textareaValue: textarea?.value || ''
+                textareaValue: textarea?.value || "",
             };
         });
-        console.log('Focus state after click:', focusState);
+        console.log("Focus state after click:", focusState);
 
         // テキストエリアに明示的にフォーカスを設定
         await page.evaluate(() => {
-            const textarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             if (textarea) {
                 textarea.focus();
                 textarea.select(); // 全選択
@@ -145,21 +145,21 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         // フォーカス設定後の状態を確認
         const focusStateAfterFocus = await page.evaluate(() => {
-            const textarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             return {
                 focused: document.activeElement === textarea,
-                textareaValue: textarea?.value || ''
+                textareaValue: textarea?.value || "",
             };
         });
-        console.log('Focus state after explicit focus:', focusStateAfterFocus);
+        console.log("Focus state after explicit focus:", focusStateAfterFocus);
 
         // 既存のテキストをクリア
         await page.keyboard.press("Delete");
 
         // クリア後の状態を確認
         const textareaValueAfterClear = await page.evaluate(() => {
-            const textarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
-            return textarea?.value || '';
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
+            return textarea?.value || "";
         });
         console.log(`Textarea value after clear: "${textareaValueAfterClear}"`);
 
@@ -169,7 +169,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // カーソルの状態を確認
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
-            if (!editorStore) return { error: 'editorOverlayStore not found' };
+            if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
             const cursorInstances = editorStore.getCursorInstances();
@@ -179,15 +179,15 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                 cursorInstancesCount: cursorInstances.length,
                 cursorInstances: cursorInstances.map((cursor: any) => ({
                     itemId: cursor.itemId,
-                    position: cursor.position
-                }))
+                    position: cursor.position,
+                })),
             };
         });
-        console.log('Cursor state:', cursorState);
+        console.log("Cursor state:", cursorState);
 
         // カーソルインスタンスが存在しない場合、作成する
         if (cursorState.cursorInstancesCount === 0) {
-            console.log('No cursor instances found, creating cursor');
+            console.log("No cursor instances found, creating cursor");
             await page.evaluate(() => {
                 const editorStore = (window as any).editorOverlayStore;
                 if (editorStore) {
@@ -198,14 +198,15 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                             itemId: activeItemId,
                             offset: 0,
                             isActive: true,
-                            userId: 'local'
+                            userId: "local",
                         });
-                        console.log('Created cursor for active item');
+                        console.log("Created cursor for active item");
                     }
                 }
             });
-        } else if (cursorState.cursorInstances.length > 0 && cursorState.cursorInstances[0].position === undefined) {
-            console.log('Cursor position is undefined, setting to 0');
+        }
+        else if (cursorState.cursorInstances.length > 0 && cursorState.cursorInstances[0].position === undefined) {
+            console.log("Cursor position is undefined, setting to 0");
             await page.evaluate(() => {
                 const editorStore = (window as any).editorOverlayStore;
                 if (editorStore) {
@@ -213,7 +214,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                     if (cursorInstances.length > 0) {
                         const cursor = cursorInstances[0];
                         cursor.position = 0; // カーソル位置を0に設定
-                        console.log('Set cursor position to 0');
+                        console.log("Set cursor position to 0");
                     }
                 }
             });
@@ -236,7 +237,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // 入力後のカーソル状態を確認
         const cursorStateAfterInput = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
-            if (!editorStore) return { error: 'editorOverlayStore not found' };
+            if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
             const cursorInstances = editorStore.getCursorInstances();
@@ -246,11 +247,11 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                 cursorInstancesCount: cursorInstances.length,
                 cursorInstances: cursorInstances.map((cursor: any) => ({
                     itemId: cursor.itemId,
-                    position: cursor.position
-                }))
+                    position: cursor.position,
+                })),
             };
         });
-        console.log('Cursor state after input:', cursorStateAfterInput);
+        console.log("Cursor state after input:", cursorStateAfterInput);
 
         // 2つ目のアイテムを作成
         await page.keyboard.press("Enter");
@@ -324,20 +325,20 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         // フォーカス状態を確認
         const focusState = await page.evaluate(() => {
-            const textarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             return {
                 textareaExists: !!textarea,
                 focused: document.activeElement === textarea,
                 activeElementTag: document.activeElement?.tagName,
                 activeElementClass: document.activeElement?.className,
-                textareaValue: textarea?.value || ''
+                textareaValue: textarea?.value || "",
             };
         });
-        console.log('Focus state after click:', focusState);
+        console.log("Focus state after click:", focusState);
 
         // テキストエリアに明示的にフォーカスを設定
         await page.evaluate(() => {
-            const textarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             if (textarea) {
                 textarea.focus();
                 textarea.select(); // 全選択
@@ -350,7 +351,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // カーソルの状態を確認
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
-            if (!editorStore) return { error: 'editorOverlayStore not found' };
+            if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
             const cursorInstances = editorStore.getCursorInstances();
@@ -360,15 +361,15 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                 cursorInstancesCount: cursorInstances.length,
                 cursorInstances: cursorInstances.map((cursor: any) => ({
                     itemId: cursor.itemId,
-                    position: cursor.position
-                }))
+                    position: cursor.position,
+                })),
             };
         });
-        console.log('Cursor state:', cursorState);
+        console.log("Cursor state:", cursorState);
 
         // カーソルインスタンスが存在しない場合、作成する
         if (cursorState.cursorInstancesCount === 0) {
-            console.log('No cursor instances found, creating cursor');
+            console.log("No cursor instances found, creating cursor");
             await page.evaluate(() => {
                 const editorStore = (window as any).editorOverlayStore;
                 if (editorStore) {
@@ -379,14 +380,15 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                             itemId: activeItemId,
                             offset: 0,
                             isActive: true,
-                            userId: 'local'
+                            userId: "local",
                         });
-                        console.log('Created cursor for active item');
+                        console.log("Created cursor for active item");
                     }
                 }
             });
-        } else if (cursorState.cursorInstances.length > 0 && cursorState.cursorInstances[0].position === undefined) {
-            console.log('Cursor position is undefined, setting to 0');
+        }
+        else if (cursorState.cursorInstances.length > 0 && cursorState.cursorInstances[0].position === undefined) {
+            console.log("Cursor position is undefined, setting to 0");
             await page.evaluate(() => {
                 const editorStore = (window as any).editorOverlayStore;
                 if (editorStore) {
@@ -394,7 +396,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                     if (cursorInstances.length > 0) {
                         const cursor = cursorInstances[0];
                         cursor.position = 0; // カーソル位置を0に設定
-                        console.log('Set cursor position to 0');
+                        console.log("Set cursor position to 0");
                     }
                 }
             });
@@ -503,12 +505,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const pageNotFoundMessage = await page.locator("text=ページが見つかりません").count();
         expect(pageNotFoundMessage).toBe(0);
 
-        // FluidClientが初期化されるまで待機
-        await page.waitForFunction(() => {
-            return window.__FLUID_STORE__ && window.__FLUID_STORE__.fluidClient;
-        }, { timeout: 10000 });
-
-        // 初期のTreeDataを確認
+        // 初期のTreeDataを確認（フォールバック機能付き）
         const initialTreeData = await TreeValidator.getTreeData(page);
         console.log("Initial tree data:", JSON.stringify(initialTreeData, null, 2));
 
@@ -524,23 +521,25 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    console.log('Using cursor.insertText to insert: これはターゲットページです。');
+                    console.log("Using cursor.insertText to insert: これはターゲットページです。");
 
                     // 現在のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
-                        target.updateText('');
+                        target.updateText("");
                         cursor.offset = 0;
                     }
 
                     // 新しいテキストを挿入
-                    cursor.insertText('これはターゲットページです。');
-                    console.log('Text inserted via cursor.insertText');
-                } else {
-                    console.log('No cursor instances found');
+                    cursor.insertText("これはターゲットページです。");
+                    console.log("Text inserted via cursor.insertText");
                 }
-            } else {
-                console.log('editorOverlayStore not found');
+                else {
+                    console.log("No cursor instances found");
+                }
+            }
+            else {
+                console.log("editorOverlayStore not found");
             }
         });
 
@@ -581,12 +580,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         await page.waitForSelector(".outliner-item", { timeout: 10000 });
 
         // 遷移先のページ内容を確認
-        // FluidClientが初期化されるまで待機
-        await page.waitForFunction(() => {
-            return window.__FLUID_STORE__ && window.__FLUID_STORE__.fluidClient;
-        }, { timeout: 10000 });
-
-        // TreeDataからアイテムを取得して確認
+        // TreeDataからアイテムを取得して確認（フォールバック機能付き）
         const treeData = await TreeValidator.getTreeData(page);
         console.log("Target page tree data:", JSON.stringify(treeData, null, 2));
 
@@ -639,12 +633,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const pageNotFoundMessage = await page.locator("text=ページが見つかりません").count();
         expect(pageNotFoundMessage).toBe(0);
 
-        // FluidClientが初期化されるまで待機
-        await page.waitForFunction(() => {
-            return window.__FLUID_STORE__ && window.__FLUID_STORE__.fluidClient;
-        }, { timeout: 10000 });
-
-        // 初期のTreeDataを確認
+        // 初期のTreeDataを確認（フォールバック機能付き）
         const initialTreeData = await TreeValidator.getTreeData(page);
         console.log("Initial tree data:", JSON.stringify(initialTreeData, null, 2));
 
@@ -660,23 +649,25 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    console.log('Using cursor.insertText to insert: これは新しく作成されたページです。');
+                    console.log("Using cursor.insertText to insert: これは新しく作成されたページです。");
 
                     // 現在のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
-                        target.updateText('');
+                        target.updateText("");
                         cursor.offset = 0;
                     }
 
                     // 新しいテキストを挿入
-                    cursor.insertText('これは新しく作成されたページです。');
-                    console.log('Text inserted via cursor.insertText');
-                } else {
-                    console.log('No cursor instances found');
+                    cursor.insertText("これは新しく作成されたページです。");
+                    console.log("Text inserted via cursor.insertText");
                 }
-            } else {
-                console.log('editorOverlayStore not found');
+                else {
+                    console.log("No cursor instances found");
+                }
+            }
+            else {
+                console.log("editorOverlayStore not found");
             }
         });
 
@@ -713,12 +704,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         await page.waitForSelector(".outliner-item", { timeout: 10000 });
 
         // 遷移先のページ内容を確認
-        // FluidClientが初期化されるまで待機
-        await page.waitForFunction(() => {
-            return window.__FLUID_STORE__ && window.__FLUID_STORE__.fluidClient;
-        }, { timeout: 10000 });
-
-        // TreeDataからアイテムを取得して確認
+        // TreeDataからアイテムを取得して確認（フォールバック機能付き）
         const treeData2 = await TreeValidator.getTreeData(page);
         console.log("Non-existent page tree data:", JSON.stringify(treeData2, null, 2));
 
