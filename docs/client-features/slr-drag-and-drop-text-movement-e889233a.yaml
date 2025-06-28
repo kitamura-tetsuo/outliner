@@ -10,5 +10,6 @@ acceptance:
 - 単一アイテム内の選択範囲をドラッグ＆ドロップで移動できる
 - 複数アイテムにまたがる選択範囲をドラッグ＆ドロップで移動できる
 tests:
-- client/e2e/core/slr-drag-and-drop-text-movement-e889233a.spec.ts
+- client/e2e/core/slr-drag-drop-item-e889233a.spec.ts
+- client/e2e/core/slr-drag-drop-selection-e889233a.spec.ts
 title-ja: ドラッグ＆ドロップによるテキスト移動

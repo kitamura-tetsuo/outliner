@@ -1,0 +1,82 @@
+- id: ENV-0001
+  title: Codex setup script is executable
+  description: Ensure scripts/codex-setup.sh has execute permission and is referenced consistently.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+  - client/e2e/utils/ENV-0001.spec.ts
+  title-ja: Codex setup script is executable
+- id: ENV-0002
+  title: Setup script starts all services
+  description: Verify scripts/codex-setup.sh contains commands to start Firebase emulator, Tinylicious, API server, and SvelteKit server.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+  - client/e2e/utils/ENV-0002.spec.ts
+  title-ja: Setup script starts all services
+- id: ENV-0003
+  title: Setup script caches installation
+  description: 'scripts/codex-setup.sh creates a sentinel file after running once and skips
+
+    dependency installation on subsequent runs, making repeat executions faster.
+
+    '
+  category: environment
+  status: implemented
+  components: []
+  tests:
+  - client/e2e/utils/ENV-0003.spec.ts
+  title-ja: Setup script caches installation
+- id: ENV-0004
+  title: Setup script installs vitest and playwright
+  description: Ensure scripts/codex-setup.sh installs vitest and playwright packages so npm test runs without prompts.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+  - scripts/tests/ENV-0004.spec.ts
+  title-ja: Setup script installs vitest and playwright
+- id: ENV-0005
+  title: dotenvx handles env variables without cross-env
+  description: Verify that NODE_ENV and TEST_ENV are correctly loaded using dotenvx alone.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+  - scripts/tests/ENV-0005.spec.ts
+  title-ja: dotenvx handles env variables without cross-env
+- id: ENV-0006
+  title: Inline test annotations and job summary in CI
+  title-ja: CIでのインラインテスト注釈とジョブサマリー
+  description: Enable GitHub annotation reporters for Vitest and Playwright and summarize failures in the workflow.
+  category: environment
+  status: implemented
+  components: []
+  tests:
+  - scripts/tests/ENV-0006.spec.ts
+- id: ENV-0007
+  title: Deploy workflow runs on self-hosted runner
+  title-ja: 自己ホストランナーで実行されるデプロイワークフロー
+  description: 'Migrate the Firebase deploy task from GitLab CI to GitHub Actions using
+
+    a self-hosted runner. The workflow installs dependencies, builds the client
+
+    and functions, creates required .env files from secrets and runs `firebase deploy`.'
+  category: environment
+  status: implemented
+  components: []
+  tests:
+  - scripts/tests/ENV-0007.spec.ts
+- id: TST-0006
+  title: feature-map削除スクリプト
+  description: gitコミット時にdocs/feature-map.mdを自動削除するpre-commitフック
+  category: development
+  status: implemented
+  acceptance:
+  - docs/feature-map.mdが存在してもcommit前に削除される
+  - インデックスに登録されていても自動的に削除される
+  tests:
+  - client/e2e/utils/feature-map-removal.spec.ts
+  title-ja: feature-map削除スクリプト

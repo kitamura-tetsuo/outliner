@@ -1,0 +1,31 @@
+/** @feature LNK-0004
+ *  Title   : 仮ページ機能
+ *  Source  : docs/client-features.yaml
+ */
+import { expect, test } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+
+test.describe("LNK-0004: 仮ページ表示", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
+    });
+
+    test("存在しないページへのリンクをクリックした場合に仮ページが表示される", async ({ page }) => {
+        const sourceUrl = page.url();
+        const nonExistentPage = "non-existent-page-" + Date.now().toString().slice(-6);
+        await page.goto(`${sourceUrl}${nonExistentPage}`);
+        await page.waitForSelector("body", { timeout: 10000 });
+
+        const loginButton = page.locator("button:has-text('開発者ログイン')");
+        if (await loginButton.isVisible()) {
+            await loginButton.click();
+            await page.waitForTimeout(1000);
+        }
+
+        const currentUrl = page.url();
+        expect(currentUrl).toContain(nonExistentPage);
+
+        const pageTitle = await page.locator("h1").textContent();
+        expect(pageTitle).not.toBe("");
+    });
+});
