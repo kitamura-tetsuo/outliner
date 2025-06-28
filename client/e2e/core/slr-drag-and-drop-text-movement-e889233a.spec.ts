@@ -86,7 +86,11 @@ test.describe("SLR-0009: ドラッグ＆ドロップによるテキスト移動"
         expect(selectionExists).toBe(true);
 
         // 選択範囲のテキストを取得
-        const selectedText = await TestHelpers.getSelectedText(page);
+        const selectedText = await page.evaluate(() => {
+            const store = (window as any).editorOverlayStore;
+            if (!store) return "";
+            return store.getSelectedText();
+        });
 
         // 選択範囲が存在することを確認
         expect(selectedText.length).toBeGreaterThan(0);

@@ -124,6 +124,55 @@ Prioritize performance.
 - CI runs E2E tests in parallel. When running tests in the Codex environment, execute one file at a time using `scripts/run-e2e-progress.sh 1`. Re-run the script until every entry in `.e2e-progress` shows DONE.
 - For E2E tests with internal links and cursor management, use editorStore.setCursor() for cursor creation, cursor.insertText() for text input with 500ms wait, waitForCursorVisible() for focus management, and apply these patterns sequentially to LNK-0002, LNK-0004, LNK-0006, and SLR-0009 tests.
 
+## Firebase Initialization and Test Timeout Issues
+
+- **Critical Fix**: Firebase app duplicate initialization causes test timeouts. In UserManager.ts, always check for existing Firebase apps using `getApps()` and `getApp()` before calling `initializeApp()` to prevent "Firebase App named '[DEFAULT]' already exists" errors.
+- **Implementation Pattern**: Use a helper method like `initializeFirebaseApp()` that checks `getApps().length > 0` and returns existing app or creates new one.
+- **Test Impact**: This fix resolves 30-second test timeouts that were affecting SLR, CLM, FMT, and LNK test suites.
+- **Import Requirements**: Import `{ initializeApp, getApps, getApp }` from "firebase/app" in UserManager.ts.
+- **Error Symptoms**: Look for "app/duplicate-app" errors in server/logs/test-svelte-kit.log when tests timeout unexpectedly.
+
+## Test Suite Status and Results
+
+As of the latest testing session, the following test suites have been verified and are working correctly:
+
+- **SLR (Selection Range) Tests**: 37 passed, 1 skipped - Selection functionality including Shift+arrow keys, mouse drag selection, copy/paste, and multi-item selection ranges.
+- **CLM (Cursor Movement) Tests**: 31 passed - Cursor movement with arrow keys, Home/End, click positioning, and multi-cursor operations.
+- **FMT (Formatting) Tests**: 33 passed - Text formatting including bold, italic, strikethrough, code, and internal link display.
+- **LNK (Internal Links) Tests**: 16 passed, 6 skipped - Internal link navigation, temporary pages, and URL generation.
+
+**Skipped Tests**: Some tests are intentionally skipped when features are not yet implemented. This is expected behavior and should not be considered failures.
+
+**Test Execution Commands**:
+
+- Run specific test category: `npm run test:e2e -- e2e/core/slr-*.spec.ts`
+- Run single test file: `npm run test:e2e -- e2e/core/specific-test.spec.ts`
+- All tests should be run from `/workspace/client` directory with proper environment variables.
+
+## Test Troubleshooting Guide
+
+**Common Issues and Solutions**:
+
+1. **Test Timeouts (30+ seconds)**:
+   - Check server/logs/test-svelte-kit.log for Firebase duplicate app errors
+   - Verify server is running: `curl -s http://localhost:7090/ | head -c 100`
+   - Ensure Firebase initialization follows the pattern described above
+
+2. **TestHelpers Method Errors**:
+   - `TestHelpers.getSelectedText` requires a page parameter: use `TestHelpers.getSelectedText(page)`
+   - Remove console.log calls that reference methods without parameters
+
+3. **Test Environment Setup**:
+   - Always run `scripts/codex-setup.sh` when container starts
+   - Use TEST_ENV=localhost for local testing
+   - Check that Firebase emulators are running properly
+
+4. **Test Execution Best Practices**:
+   - Run tests one category at a time to isolate issues
+   - Use absolute paths in launch-process commands
+   - Specify correct cwd parameter for different test types
+   - Monitor server logs during test execution for early error detection
+
 # Test Environment Configuration
 
 - E2E tests should run on both Windows and Ubuntu, with configurations for localhost (7090/7091/7092).

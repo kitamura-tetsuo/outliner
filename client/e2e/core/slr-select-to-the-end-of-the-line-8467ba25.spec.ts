@@ -6,7 +6,6 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0003: 行末まで選択", () => {
@@ -71,7 +70,11 @@ test.describe("SLR-0003: 行末まで選択", () => {
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
-        const selectionText = await TestHelpers.getSelectedText(page);
+        const selectionText = await page.evaluate(() => {
+            const store = (window as any).editorOverlayStore;
+            if (!store) return "";
+            return store.getSelectedText();
+        });
 
         // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
@@ -114,7 +117,11 @@ test.describe("SLR-0003: 行末まで選択", () => {
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
-        const selectionText = await TestHelpers.getSelectedText(page);
+        const selectionText = await page.evaluate(() => {
+            const store = (window as any).editorOverlayStore;
+            if (!store) return "";
+            return store.getSelectedText();
+        });
 
         // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
