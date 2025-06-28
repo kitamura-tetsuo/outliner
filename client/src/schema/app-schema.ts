@@ -25,6 +25,7 @@ export class Item extends sf.objectRecursive("Item", {
     votes: sf.array(sf.string),
     created: sf.number,
     componentType: sf.optional(sf.string), // コンポーネントタイプ（"table", "chart", undefined）
+    aliasTargetId: sf.optional(sf.string),
     lastChanged: sf.number,
     items: () => Items, // 子アイテムを保持
 }) {
@@ -111,6 +112,12 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
             this.insertAtEnd(newItem);
         }
         return newItem;
+    };
+
+    public readonly addAlias = (targetId: string, author: string, index?: number) => {
+        const item = this.addNode(author, index);
+        (item as any).aliasTargetId = targetId;
+        return item;
     };
 }
 

@@ -157,7 +157,7 @@ describe("CommandPaletteStore", () => {
             commandPaletteStore.show({ top: 0, left: 0 });
 
             // 空のクエリでは全てのコマンドが表示される
-            expect(commandPaletteStore.filtered).toHaveLength(2);
+            expect(commandPaletteStore.filtered).toHaveLength(3);
 
             // "ta"でフィルタリング（"Table"のみにマッチ）
             commandPaletteStore.handleCommandInput("t");

@@ -1,7 +1,7 @@
 <script lang="ts">
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
-function handleClick(type: "table" | "chart") {
+function handleClick(type: "table" | "chart" | "alias") {
     commandPaletteStore.insert(type);
     commandPaletteStore.hide();
 }

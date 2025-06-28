@@ -1,13 +1,15 @@
 <script lang="ts">
 import { Tree } from 'fluid-framework';
 import { createEventDispatcher, onMount } from 'svelte';
-import { Items } from '../schema/app-schema';
+import { Item, Items } from '../schema/app-schema';
 import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
+import { store as generalStore } from '../stores/store.svelte';
 import { TreeSubscriber } from "../stores/TreeSubscriber";
 import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
-import InlineJoinTable from './InlineJoinTable.svelte';
 import ChartPanel from './ChartPanel.svelte';
+import InlineJoinTable from './InlineJoinTable.svelte';
+import OutlinerTree from './OutlinerTree.svelte';
 	interface Props {
 		model: OutlinerItemViewModel;
 		depth?: number;
@@ -47,7 +49,69 @@ import ChartPanel from './ChartPanel.svelte';
 	let isDropTarget = $state(false);
 	let dropTargetPosition = $state<'top' | 'middle' | 'bottom' | null>(null);
 
-	let item = model.original;
+let item = model.original;
+
+const aliasTargetIdSub = new TreeSubscriber(
+    item,
+    'nodeChanged',
+    () => (item as any).aliasTargetId,
+    value => {
+        (item as any).aliasTargetId = value;
+    },
+);
+
+let aliasTargetId = $state<string | undefined>(aliasTargetIdSub.current);
+
+$effect(() => {
+    aliasTargetId = aliasTargetIdSub.current;
+});
+
+let aliasTarget = $state<Item | undefined>(undefined);
+let aliasPath = $state<Item[]>([]);
+
+const aliasTargetSub = new TreeSubscriber<Item, Item | undefined>(
+    generalStore.currentPage,
+    "nodeChanged",
+    () => {
+        if (!aliasTargetId) return undefined;
+        return findItem(generalStore.currentPage, aliasTargetId);
+    },
+);
+
+$effect(() => {
+    if (aliasTargetId && generalStore.currentPage) {
+        aliasTarget = aliasTargetSub.current;
+        const p = findPath(generalStore.currentPage, aliasTargetId);
+        aliasPath = p || [];
+    } else {
+        aliasTarget = undefined;
+        aliasPath = [];
+    }
+});
+
+function findItem(node: Item, id: string): Item | undefined {
+    if (node.id === id) return node;
+    const children = node.items as Items;
+    if (children) {
+        for (const child of children as any) {
+            const found = findItem(child, id);
+            if (found) return found;
+        }
+    }
+    return undefined;
+}
+
+function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
+    if (node.id === id) return [...path, node];
+    const children = node.items as Items;
+    if (children) {
+        for (const child of children as any) {
+            const res = findPath(child, id, [...path, node]);
+            if (res) return res;
+        }
+    }
+    return null;
+}
 
 	// コンポーネントタイプの状態管理
 	let componentType = $state<string | undefined>(item.componentType);
@@ -1341,6 +1405,7 @@ import ChartPanel from './ChartPanel.svelte';
 	onmouseup={handleMouseUp}
 	bind:this={itemRef}
 	data-item-id={model.id}
+	data-alias-target-id={aliasTargetId || ""}
 >
 	<div class="item-header">
 		{#if !isPageTitle}
@@ -1406,8 +1471,20 @@ import ChartPanel from './ChartPanel.svelte';
                                 <!-- コンポーネント表示（テキストは非表示） -->
                                 {#if componentType === 'table'}
                                         <InlineJoinTable />
-                                {:else if componentType === 'chart'}
-                                        <ChartPanel />
+                               {:else if componentType === 'chart'}
+                                       <ChartPanel />
+                               {/if}
+                                {#if aliasTargetId && aliasPath.length > 0}
+                                    <div class="alias-path">
+                                        {#each aliasPath as p, i}
+                                            <button type="button" onclick={() => dispatch('navigate-to-item',{toItemId:p.id})}>{p.text}</button>{i < aliasPath.length-1 ? '/' : ''}
+                                        {/each}
+                                    </div>
+                                    {#if !isCollapsed && aliasTarget}
+                                        <div class="alias-subtree">
+                                            <OutlinerTree pageItem={aliasTarget} isReadOnly={isReadOnly} />
+                                        </div>
+                                    {/if}
                                 {/if}
                         </div>
                 </div>
@@ -1653,14 +1730,31 @@ import ChartPanel from './ChartPanel.svelte';
 		bottom: 0;
 	}
 
-	.item-content.drop-target-middle::after {
-		content: '';
-		position: absolute;
-		left: 0;
-		top: 0;
-		bottom: 0;
-		width: 2px;
-		background-color: #0078d7;
-		z-index: 10;
-	}
+        .item-content.drop-target-middle::after {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 2px;
+                background-color: #0078d7;
+                z-index: 10;
+        }
+        .alias-path {
+                margin-top: 4px;
+                font-size: 0.8rem;
+                color: #555;
+        }
+        .alias-path button {
+                color: #06c;
+                text-decoration: underline;
+                cursor: pointer;
+                background: none;
+                border: none;
+                padding: 0;
+                font: inherit;
+        }
+        .alias-subtree {
+                margin-left: 24px;
+        }
 </style>

@@ -1,6 +1,7 @@
 import { editorOverlayStore } from "./EditorOverlayStore.svelte";
+import { aliasPickerStore } from "./AliasPickerStore.svelte";
 
-export type CommandType = "table" | "chart";
+export type CommandType = "table" | "chart" | "alias";
 
 interface Position {
     top: number;
@@ -21,6 +22,7 @@ class CommandPaletteStore {
     readonly commands = [
         { label: "Table", type: "table" as const },
         { label: "Chart", type: "chart" as const },
+        { label: "Alias", type: "alias" as const },
     ];
 
     get filtered() {
@@ -237,7 +239,12 @@ class CommandPaletteStore {
 
         // テキストは空にして、コンポーネントタイプを設定
         newItem.text = "";
-        newItem.componentType = type;
+        if (type === "alias") {
+            (newItem as any).aliasTargetId = undefined;
+            aliasPickerStore.show(newItem.id);
+        } else {
+            newItem.componentType = type;
+        }
         editorOverlayStore.clearCursorAndSelection(cursor.userId);
         cursor.itemId = newItem.id;
         cursor.offset = 0;
