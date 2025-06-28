@@ -706,65 +706,160 @@ export class TestHelpers {
     public static async confirmAliasOption(page: Page, itemId: string): Promise<void> {
         await page.evaluate(id => {
             const store = (window as any).aliasPickerStore;
-            if (store && typeof store.confirmById === 'function') {
+            if (store && typeof store.confirmById === "function") {
                 store.confirmById(id);
             }
         }, itemId);
     }
 
     public static async selectAliasOption(page: Page, itemId: string): Promise<void> {
+        // エイリアスピッカーが表示されていることを確認
+        await page.locator(".alias-picker").waitFor({ state: "visible", timeout: 5000 });
+
+        // 対象のボタンが存在することを確認
         const selector = `.alias-picker button[data-id="${itemId}"]`;
         await page.locator(selector).waitFor({ state: "visible", timeout: 5000 });
-        await page.locator(selector).click();
+
+        // ボタンをクリックしてエイリアスを選択（DOM操作ベース）
+        // タイムアウトを短くして、失敗した場合はEscapeで閉じる
+        try {
+            await page.locator(selector).click({ timeout: 3000 });
+        }
+        catch (error) {
+            console.log("Button click failed, trying to close picker with Escape");
+            await page.keyboard.press("Escape");
+            throw error;
+        }
+
+        // エイリアスピッカーが非表示になるまで待機
+        await page.locator(".alias-picker").waitFor({ state: "hidden", timeout: 5000 });
     }
 
     public static async clickAliasOptionViaDOM(page: Page, itemId: string): Promise<void> {
         const selector = `.alias-picker button[data-id="${itemId}"]`;
-        await page.evaluate((sel) => {
+        await page.evaluate(sel => {
             const btn = document.querySelector(sel) as HTMLElement | null;
             btn?.click();
         }, selector);
     }
 
-
     public static async setAliasTarget(page: Page, itemId: string, targetId: string): Promise<void> {
-        await page.evaluate(({ itemId, targetId }) => {
-            const store = (window as any).appStore;
-            const findItem = (node: any, id: string): any => {
-                if (!node) return undefined;
-                if (node.id === id) return node;
-                if (node.items) {
-                    for (const child of node.items) {
-                        const found = findItem(child, id);
-                        if (found) return found;
-                    }
-                }
-                return undefined;
-            };
-            const root = store.currentPage;
-            const item = findItem(root, itemId);
-            if (item) {
-                item.aliasTargetId = targetId;
-            }
-        }, { itemId, targetId });
-    }
-
-    public static async hideAliasPicker(page: Page): Promise<void> {
-        await page.evaluate(() => {
-            const store = (window as any).aliasPickerStore;
-            if (store && typeof store.hide === 'function') {
-                store.hide();
-            }
-        });
-    }
-
-    public static async showAliasPicker(page: Page, itemId: string): Promise<void> {
+        // 既存のエイリアスアイテムのターゲットを変更する（直接AliasPickerStoreを呼び出し）
         await page.evaluate(id => {
             const store = (window as any).aliasPickerStore;
-            if (store && typeof store.show === 'function') {
+            if (store && typeof store.show === "function") {
                 store.show(id);
             }
         }, itemId);
+
+        // エイリアスピッカーが表示されるまで待機
+        await page.locator(".alias-picker").waitFor({ state: "visible", timeout: 5000 });
+
+        // ターゲットアイテムのボタンをクリック
+        const selector = `.alias-picker button[data-id="${targetId}"]`;
+        await page.locator(selector).waitFor({ state: "visible", timeout: 5000 });
+        await page.locator(selector).click();
+
+        // エイリアスピッカーが非表示になるまで待機
+        await page.locator(".alias-picker").waitFor({ state: "hidden", timeout: 5000 });
+
+        // 少し待機してからエイリアスパスが表示されることを確認
+        await page.waitForTimeout(500);
+    }
+
+    public static async hideAliasPicker(page: Page): Promise<void> {
+        // エイリアスピッカーが表示されている場合のみ非表示にする
+        const isVisible = await page.locator(".alias-picker").isVisible();
+        if (isVisible) {
+            try {
+                // エイリアスピッカーにフォーカスを設定
+                await page.locator(".alias-picker").focus();
+                // Escapeキーを押してエイリアスピッカーを閉じる
+                await page.keyboard.press("Escape");
+                await page.locator(".alias-picker").waitFor({ state: "hidden", timeout: 3000 });
+            }
+            catch (error) {
+                console.log("Failed to hide alias picker with Escape, trying alternative method");
+                // 代替手法：ページの他の場所をクリックしてピッカーを閉じる
+                await page.click("body");
+                await page.waitForTimeout(500);
+                // それでも閉じない場合は、強制的に非表示にする
+                const stillVisible = await page.locator(".alias-picker").isVisible();
+                if (stillVisible) {
+                    console.log("Alias picker still visible, forcing hide via store");
+                    await page.evaluate(() => {
+                        const store = (window as any).aliasPickerStore;
+                        if (store && typeof store.hide === "function") {
+                            store.hide();
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    public static async showAliasPicker(page: Page, itemId: string): Promise<void> {
+        // DOM操作ベースでエイリアスピッカーを表示する代替手法
+        // アイテムをクリックしてフォーカスを設定
+        await page.click(`.outliner-item[data-item-id="${itemId}"] .item-content`);
+        await page.waitForTimeout(500);
+
+        // テキストエリアにフォーカスを設定
+        await page.evaluate(() => {
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
+            textarea?.focus();
+        });
+        await page.waitForTimeout(300);
+
+        // /aliasコマンドを入力してエイリアスピッカーを表示
+        await page.keyboard.type("/alias");
+        await page.keyboard.press("Enter");
+
+        // エイリアスピッカーが表示されるまで待機
+        await page.locator(".alias-picker").waitFor({ state: "visible", timeout: 5000 });
+    }
+
+    /**
+     * DOM属性からaliasTargetIdを取得する（page.evaluate不要）
+     */
+    public static async getAliasTargetId(page: Page, itemId: string): Promise<string | null> {
+        const element = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
+        const aliasTargetId = await element.getAttribute("data-alias-target-id");
+        return aliasTargetId && aliasTargetId !== "" ? aliasTargetId : null;
+    }
+
+    /**
+     * エイリアスパスが表示されているかを確認する（DOM操作ベース）
+     */
+    public static async isAliasPathVisible(page: Page, itemId: string): Promise<boolean> {
+        const aliasPath = page.locator(`.outliner-item[data-item-id="${itemId}"] .alias-path`);
+        return await aliasPath.isVisible();
+    }
+
+    /**
+     * エイリアスサブツリーが表示されているかを確認する（DOM操作ベース）
+     */
+    public static async isAliasSubtreeVisible(page: Page, itemId: string): Promise<boolean> {
+        const aliasSubtree = page.locator(`.outliner-item[data-item-id="${itemId}"] .alias-subtree`);
+        return await aliasSubtree.isVisible();
+    }
+
+    /**
+     * エイリアスパス内のボタンをクリックしてナビゲーションをテストする（DOM操作ベース）
+     */
+    public static async clickAliasPathButton(page: Page, itemId: string, buttonIndex: number): Promise<void> {
+        const aliasPath = page.locator(`.outliner-item[data-item-id="${itemId}"] .alias-path`);
+        const buttons = aliasPath.locator("button");
+        await buttons.nth(buttonIndex).click();
+    }
+
+    /**
+     * エイリアスパス内のボタンの数を取得する（DOM操作ベース）
+     */
+    public static async getAliasPathButtonCount(page: Page, itemId: string): Promise<number> {
+        const aliasPath = page.locator(`.outliner-item[data-item-id="${itemId}"] .alias-path`);
+        const buttons = aliasPath.locator("button");
+        return await buttons.count();
     }
 
     /**
@@ -773,23 +868,10 @@ export class TestHelpers {
      * @param itemId 取得対象アイテムの ID
      */
     public static async getAliasTarget(page: Page, itemId: string): Promise<string | null> {
-        return await page.evaluate(id => {
-            const store = (window as any).appStore;
-            const findItem = (node: any, targetId: string): any => {
-                if (!node) return undefined;
-                if (node.id === targetId) return node;
-                if (node.items) {
-                    for (const child of node.items) {
-                        const found = findItem(child, targetId);
-                        if (found) return found;
-                    }
-                }
-                return undefined;
-            };
-            const root = store.currentPage;
-            const item = findItem(root, id);
-            return item?.aliasTargetId ?? null;
-        }, itemId);
+        // DOM属性から直接aliasTargetIdを取得（page.evaluateを使わない代替手法）
+        const element = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
+        const aliasTargetId = await element.getAttribute("data-alias-target-id");
+        return aliasTargetId && aliasTargetId.trim() !== "" ? aliasTargetId : null;
     }
 
     /**

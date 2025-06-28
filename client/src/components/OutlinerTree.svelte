@@ -1,4 +1,5 @@
 <script lang="ts">
+import { goto } from "$app/navigation";
 import { Tree } from "fluid-framework";
 import {
     onDestroy,
@@ -11,7 +12,6 @@ import {
 } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
-import { goto } from "$app/navigation";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
 import { OutlinerViewModel } from "../stores/OutlinerViewModel";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
@@ -322,9 +322,13 @@ function handleNavigateToItem(event: CustomEvent) {
             // 次のアイテムの最初の行に移動
             focusItemWithPosition(toItemId, 0, shiftKey, direction);
             return;
-        } else {
+        } else if (direction === "left" || direction === "right") {
             // 左右方向の移動
             focusItemWithPosition(toItemId, direction === "left" ? Number.MAX_SAFE_INTEGER : 0, shiftKey, direction);
+            return;
+        } else {
+            // directionが指定されていない場合（エイリアスパスのクリックなど）
+            focusItemWithPosition(toItemId, 0, shiftKey, undefined);
             return;
         }
     }
