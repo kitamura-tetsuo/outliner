@@ -268,9 +268,29 @@ jobs:
           echo >> "$GITHUB_STEP_SUMMARY"
           grep -E -A1 -B0 "FAIL|FAILED" /tmp/test.log >> "$GITHUB_STEP_SUMMARY" || true
 
+      - name: Check disk space before upload
+        if: failure()
+        id: disk-check
+        run: |
+          # Check available disk space (in GB)
+          AVAILABLE_GB=$(df -BG . | awk 'NR==2 {print $4}' | sed 's/G//')
+          echo "Available disk space: ${AVAILABLE_GB}GB"
+
+          # Set minimum required space (2GB)
+          MIN_SPACE=2
+
+          if [ "$AVAILABLE_GB" -gt "$MIN_SPACE" ]; then
+            echo "sufficient_space=true" >> $GITHUB_OUTPUT
+            echo "✅ Sufficient disk space available for artifact upload"
+          else
+            echo "sufficient_space=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Insufficient disk space for artifact upload (${AVAILABLE_GB}GB < ${MIN_SPACE}GB)"
+          fi
+
       - name: Upload test results
         uses: actions/upload-artifact@v4
-        if: always()
+        if: failure() && steps.disk-check.outputs.sufficient_space == 'true'
+        continue-on-error: true
         with:
           name: test-results-${{ github.run_id }}
           path: |
@@ -279,7 +299,7 @@ jobs:
             client/coverage/
             server/logs/
             client/logs/
-          retention-days: 30
+          retention-days: 2
 
       - name: Cleanup after tests
         if: always()
