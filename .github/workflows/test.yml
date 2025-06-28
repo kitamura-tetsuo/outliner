@@ -236,10 +236,10 @@ jobs:
           DISABLE_POSTHOG: true
           VITE_DISABLE_FLUID_TELEMETRY: true
 
-      - name: Run unit tests
+      - name: Run unit tests for github reporting
         run: |
           cd client
-          npm run github:test:unit > /tmp/test.log
+          npm run github:test:unit > /tmp/unit-test.log
         env:
           CI: true
           NODE_ENV: test
@@ -248,9 +248,10 @@ jobs:
           DISABLE_POSTHOG: true
           VITE_DISABLE_FLUID_TELEMETRY: true
 
-      - name: Run e2e tests sequentially
+      - name: Run e2e tests for github reporting
         run: |
-          bash scripts/run-e2e-progress.sh 1 >> /tmp/test.log
+          cd client
+          npm run github:test:e2e >> /tmp/e2e-test.log
         env:
           CI: true
           NODE_ENV: test
