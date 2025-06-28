@@ -1,0 +1,8 @@
+id: CLM-0105
+title: Dictionary-based key handler
+title-ja: 辞書型キー処理
+description: KeyEventHandler uses CustomKeyMap to map key combinations to handlers.
+category: cursor-management
+status: implemented
+tests:
+- client/e2e/core/clm-dictionary-key-handler-59169a01.spec.ts

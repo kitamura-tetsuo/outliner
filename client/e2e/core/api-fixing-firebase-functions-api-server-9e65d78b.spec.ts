@@ -6,12 +6,9 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("API-0001: Firebase Functions CORS and token validation", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
-    });
+    // API tests don't need page preparation
 
     test("OPTIONS preflight returns 204", async ({ request }) => {
         const response = await request.fetch("http://localhost:57000/api/fluid-token", {

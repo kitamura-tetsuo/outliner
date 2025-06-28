@@ -1,0 +1,9 @@
+id: ENV-0006
+title: Inline test annotations and job summary in CI
+title-ja: CIでのインラインテスト注釈とジョブサマリー
+description: Enable GitHub annotation reporters for Vitest and Playwright and summarize failures in the workflow.
+category: environment
+status: implemented
+components: []
+tests:
+- scripts/tests/ENV-0006.spec.ts

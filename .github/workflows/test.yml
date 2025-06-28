@@ -225,7 +225,7 @@ jobs:
           npx playwright install chromium || echo "Playwright install failed, continuing..."
           npx playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
 
-      - name: Run tests
+      - name: Start test services
         run: |
           # Load NVM if available
           if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
@@ -250,35 +250,6 @@ jobs:
           chmod +x scripts/setup-local-env.sh || true
 
           bash scripts/start-all-localhost-servers.sh
-
-          # Run tests with timeout (40 minutes)
-          cd client
-          echo "Starting test execution..."
-          timeout 2400 npm run test || {
-            cd ..
-            echo "Tests timed out or failed"
-            echo "Checking logs for debugging..."
-
-            # Show recent logs if available
-            if [ -d "server/logs" ]; then
-              echo "=== Recent server logs ==="
-              find server/logs -name "*.log" -type f -exec tail -20 {} \; 2>/dev/null || true
-            fi
-
-            if [ -d "client/logs" ]; then
-              echo "=== Recent client logs ==="
-              find client/logs -name "*.log" -type f -exec tail -20 {} \; 2>/dev/null || true
-            fi
-
-            # Kill any remaining processes
-            pkill -f "tinylicious" || true
-            pkill -f "firebase" || true
-            pkill -f "vite" || true
-            pkill -f "node.*7090" || true
-            pkill -f "node.*7091" || true
-            pkill -f "node.*7092" || true
-            exit 1
-          }
         env:
           CI: true
           NODE_ENV: test
@@ -287,9 +258,60 @@ jobs:
           DISABLE_POSTHOG: true
           VITE_DISABLE_FLUID_TELEMETRY: true
 
+      - name: Run unit tests
+        run: |
+          cd client
+          npm run github:test:unit > /tmp/test.log
+        env:
+          CI: true
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISPLAY: :99
+          DISABLE_POSTHOG: true
+          VITE_DISABLE_FLUID_TELEMETRY: true
+
+      - name: Run e2e tests
+        run: |
+          cd client
+          npm run github:test:e2e >> /tmp/test.log
+        env:
+          CI: true
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISPLAY: :99
+          DISABLE_POSTHOG: true
+          VITE_DISABLE_FLUID_TELEMETRY: true
+
+      - name: Summarise failures
+        if: failure()
+        run: |
+          echo "## ❌ Test suite failed" >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+          grep -E -A1 -B0 "FAIL|FAILED" /tmp/test.log >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Check disk space before upload
+        if: failure()
+        id: disk-check
+        run: |
+          # Check available disk space (in GB)
+          AVAILABLE_GB=$(df -BG . | awk 'NR==2 {print $4}' | sed 's/G//')
+          echo "Available disk space: ${AVAILABLE_GB}GB"
+
+          # Set minimum required space (2GB)
+          MIN_SPACE=2
+
+          if [ "$AVAILABLE_GB" -gt "$MIN_SPACE" ]; then
+            echo "sufficient_space=true" >> $GITHUB_OUTPUT
+            echo "✅ Sufficient disk space available for artifact upload"
+          else
+            echo "sufficient_space=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Insufficient disk space for artifact upload (${AVAILABLE_GB}GB < ${MIN_SPACE}GB)"
+          fi
+
       - name: Upload test results
         uses: actions/upload-artifact@v4
-        if: always()
+        if: failure() && steps.disk-check.outputs.sufficient_space == 'true'
+        continue-on-error: true
         with:
           name: test-results-${{ github.run_id }}
           path: |
@@ -298,7 +320,7 @@ jobs:
             client/coverage/
             server/logs/
             client/logs/
-          retention-days: 30
+          retention-days: 2
 
       - name: Cleanup after tests
         if: always()

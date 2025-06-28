@@ -6,13 +6,8 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Scheduled Page Publishing", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
-    });
-
     test("create schedule via API", async ({ page }) => {
         const response = await page.request.post("http://localhost:57000/api/create-schedule", {
             data: {
@@ -21,6 +16,7 @@ test.describe("Scheduled Page Publishing", () => {
                 schedule: { strategy: "one_shot", nextRunAt: Date.now() + 60000 },
             },
         });
+
         // invalid token should be rejected
         expect(response.status()).toBeGreaterThanOrEqual(400);
     });

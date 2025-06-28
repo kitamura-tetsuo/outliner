@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "sourceMap": true,
+        "strict": true,
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "verbatimModuleSyntax": false,
+        "allowImportingTsExtensions": false,
+        "types": [
+            "@playwright/test",
+            "node"
+        ],
+        "noUnusedLocals": true
+    },
+    "include": [
+        "**/*.ts",
+        "**/*.js"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

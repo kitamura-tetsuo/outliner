@@ -738,6 +738,12 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
     return res.status(200).json({ scheduleId: scheduleRef.id });
   } catch (err) {
     logger.error(`createSchedule error: ${err.message}`);
+    // Firebase認証エラーの場合は401を返す
+    if (err.code === 'auth/id-token-expired' ||
+        err.code === 'auth/invalid-id-token' ||
+        err.code === 'auth/argument-error') {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
     return res.status(500).json({ error: "Failed to create schedule" });
   }
 });

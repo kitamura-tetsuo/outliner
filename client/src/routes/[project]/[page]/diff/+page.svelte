@@ -1,25 +1,36 @@
 <script lang="ts">
-  import SnapshotDiffModal from "../../../../components/SnapshotDiffModal.svelte";
-  import { page } from "$app/stores";
-  import { onMount } from "svelte";
-  import { getCurrentContent } from "../../../../services";
+import { page } from "$app/stores";
+import { onMount } from "svelte";
+import SnapshotDiffModal from "../../../../components/SnapshotDiffModal.svelte";
+import { getCurrentContent } from "../../../../services";
 
-  let project: string;
-  let pageTitle: string;
-  let content = "";
-  let user = "user";
+let project = $state("");
+let pageTitle = $state("");
+let content = $state("");
+let user = "user";
 
-  onMount(() => {
-    const params = $page.params as { project: string; page: string };
-    project = params.project;
-    pageTitle = params.page;
-    content = getCurrentContent(project, pageTitle);
-  });
+onMount(() => {
+    try {
+        const params = $page.params as { project: string; page: string; };
+        if (params) {
+            project = decodeURIComponent(params.project || "");
+            pageTitle = decodeURIComponent(params.page || "");
+            content = getCurrentContent(project, pageTitle);
+            console.log("Diff page initialized:", { project, pageTitle, content });
+        }
+        else {
+            console.error("Page params not available");
+        }
+    }
+    catch (error) {
+        console.error("Error initializing diff page:", error);
+    }
+});
 </script>
 
 <SnapshotDiffModal
-  {project}
-  page={pageTitle}
-  bind:currentContent={content}
-  author={user}
+    {project}
+    page={pageTitle}
+    bind:currentContent={content}
+    author={user}
 />
