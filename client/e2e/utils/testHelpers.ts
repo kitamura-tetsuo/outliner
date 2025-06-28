@@ -1505,6 +1505,19 @@ export class FluidServiceHelper {
             return value;
         });
     }
+
+    /**
+     * 現在の選択テキストを取得する
+     * @param page Playwrightのページオブジェクト
+     * @returns 選択されているテキスト
+     */
+    public static async getSelectedText(page: Page): Promise<string> {
+        return await page.evaluate(() => {
+            const store = (window as any).editorOverlayStore;
+            if (!store) return "";
+            return store.getSelectedText();
+        });
+    }
 }
 
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）

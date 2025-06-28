@@ -6,7 +6,6 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
@@ -132,19 +131,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
-
-            // 全てのアイテムのテキストを取得
-            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-            const allItemTexts = allItems.map(el => {
-                const textEl = el.querySelector(".item-text");
-                return textEl ? textEl.textContent : "";
-            });
-            console.log("All item texts:", allItemTexts);
-
-            // 選択範囲のテキストを取得
-            const text = store.getSelectedText();
-            console.log("Selected text:", text);
-            return text;
+            return store.getSelectedText();
         });
 
         // 選択範囲が存在することを確認
@@ -233,19 +220,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
-
-            // 全てのアイテムのテキストを取得
-            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-            const allItemTexts = allItems.map(el => {
-                const textEl = el.querySelector(".item-text");
-                return textEl ? textEl.textContent : "";
-            });
-            console.log("All item texts:", allItemTexts);
-
-            // 選択範囲のテキストを取得
-            const text = store.getSelectedText();
-            console.log("Selected text after keyboard selection:", text);
-            return text;
+            return store.getSelectedText();
         });
 
         // 選択範囲が存在することを確認

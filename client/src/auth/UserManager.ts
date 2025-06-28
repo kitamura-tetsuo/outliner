@@ -1,4 +1,8 @@
-import { initializeApp } from "firebase/app";
+import {
+    getApp,
+    getApps,
+    initializeApp,
+} from "firebase/app";
 import {
     connectAuthEmulator,
     createUserWithEmailAndPassword,
@@ -55,7 +59,7 @@ export class UserManager {
     };
 
     private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57000");
-    private app = initializeApp(this.firebaseConfig);
+    private app = this.initializeFirebaseApp();
     auth = getAuth(this.app);
 
     private currentFluidToken: IFluidToken | null = null;
@@ -68,6 +72,17 @@ export class UserManager {
     // 開発環境かどうかの判定
     private isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development" ||
         process.env.NODE_ENV === "development";
+
+    private initializeFirebaseApp() {
+        // 既存のアプリがあるかチェック
+        const existingApps = getApps();
+        if (existingApps.length > 0) {
+            // 既存のアプリを使用
+            return getApp();
+        }
+        // 新しいアプリを初期化
+        return initializeApp(this.firebaseConfig);
+    }
 
     constructor() {
         logger.debug("Initializing...");

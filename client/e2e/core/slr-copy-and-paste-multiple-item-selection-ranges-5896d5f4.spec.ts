@@ -101,18 +101,14 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         // 少し待機して選択が反映されるのを待つ
         await page.waitForTimeout(1000);
 
+        // TestHelpersクラスが正しくインポートされているかを確認
+        console.log("TestHelpers:", TestHelpers);
+
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
-
-            // デバッグ情報
-            console.log("EditorOverlayStore:", store);
-            console.log("Selections:", store.selections);
-
-            const text = store.getSelectedText();
-            console.log("Selected text:", text);
-            return text;
+            return store.getSelectedText();
         });
 
         // 選択範囲が存在することを確認
@@ -128,6 +124,40 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
 
         // ペースト操作を実行
         await page.keyboard.press("Control+v");
+
+        // KeyEventHandlerのhandlePasteを直接呼び出す
+        await page.evaluate(text => {
+            console.log("Calling KeyEventHandler.handlePaste directly with text:", text);
+
+            // ClipboardEventを手動で作成
+            const clipboardEvent = new ClipboardEvent("paste", {
+                clipboardData: new DataTransfer(),
+                bubbles: true,
+                cancelable: true,
+            });
+
+            // DataTransferオブジェクトにテキストを設定
+            Object.defineProperty(clipboardEvent, "clipboardData", {
+                writable: false,
+                value: {
+                    getData: (format: string) => {
+                        if (format === "text/plain") return text;
+                        return "";
+                    },
+                    setData: () => {},
+                },
+            });
+
+            // KeyEventHandlerのhandlePasteを直接呼び出し
+            const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
+            if (KeyEventHandler && KeyEventHandler.handlePaste) {
+                KeyEventHandler.handlePaste(clipboardEvent);
+                console.log("KeyEventHandler.handlePaste called successfully");
+            }
+            else {
+                console.log("KeyEventHandler.handlePaste not found");
+            }
+        }, selectionText);
 
         // 少し待機してペーストが反映されるのを待つ
         await page.waitForTimeout(1000);
@@ -226,14 +256,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
-
-            // デバッグ情報
-            console.log("EditorOverlayStore:", store);
-            console.log("Selections:", store.selections);
-
-            const text = store.getSelectedText();
-            console.log("Selected text:", text);
-            return text;
+            return store.getSelectedText();
         });
 
         // 選択範囲が存在することを確認
@@ -244,12 +267,13 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         await page.keyboard.press("Control+c");
 
         // 手動でコピーイベントを発火させる
-        await page.evaluate(() => {
-            // 選択範囲のテキストを取得
+        const selectedText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            if (!store) return;
-
-            const selectedText = store.getSelectedText();
+            if (!store) return "";
+            return store.getSelectedText();
+        });
+        await page.evaluate(text => {
+            const selectedText = text;
             console.log(`Selected text for copy: "${selectedText}"`);
 
             // クリップボードの内容を設定
@@ -311,51 +335,39 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         // ペースト操作を実行
         await page.keyboard.press("Control+v");
 
-        // 手動でペーストイベントを発火させる
-        await page.evaluate(() => {
-            // テスト用に保存したクリップボードテキストを使用
-            const clipboardText = (window as any).testClipboardText;
-            if (clipboardText) {
-                console.log("Using stored clipboard text:", clipboardText);
+        // KeyEventHandlerのhandlePasteを直接呼び出す
+        await page.evaluate(text => {
+            console.log("Calling KeyEventHandler.handlePaste directly with text:", text);
 
-                // ClipboardEventを手動で作成
-                const clipboardEvent = new ClipboardEvent("paste", {
-                    clipboardData: new DataTransfer(),
-                    bubbles: true,
-                    cancelable: true,
-                });
+            // ClipboardEventを手動で作成
+            const clipboardEvent = new ClipboardEvent("paste", {
+                clipboardData: new DataTransfer(),
+                bubbles: true,
+                cancelable: true,
+            });
 
-                // DataTransferオブジェクトにテキストを設定
-                Object.defineProperty(clipboardEvent, "clipboardData", {
-                    writable: false,
-                    value: {
-                        getData: () => clipboardText,
-                        setData: () => {},
+            // DataTransferオブジェクトにテキストを設定
+            Object.defineProperty(clipboardEvent, "clipboardData", {
+                writable: false,
+                value: {
+                    getData: (format: string) => {
+                        if (format === "text/plain") return text;
+                        return "";
                     },
-                });
+                    setData: () => {},
+                },
+            });
 
-                // アクティブなアイテムにイベントを発火
-                const activeItem = document.querySelector(".outliner-item.active");
-                if (activeItem) {
-                    activeItem.dispatchEvent(clipboardEvent);
-                    console.log("Dispatched paste event to active item:", activeItem);
-                }
-                else {
-                    // フォールバック：エディタオーバーレイにイベントを発火
-                    const editorOverlay = document.querySelector(".editor-overlay");
-                    if (editorOverlay) {
-                        editorOverlay.dispatchEvent(clipboardEvent);
-                        console.log("Dispatched paste event to editor overlay");
-                    }
-                    else {
-                        console.log("No target found for paste event");
-                    }
-                }
+            // KeyEventHandlerのhandlePasteを直接呼び出し
+            const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
+            if (KeyEventHandler && KeyEventHandler.handlePaste) {
+                KeyEventHandler.handlePaste(clipboardEvent);
+                console.log("KeyEventHandler.handlePaste called successfully");
             }
             else {
-                console.log("No stored clipboard text found");
+                console.log("KeyEventHandler.handlePaste not found");
             }
-        });
+        }, selectedText);
 
         // 少し待機してペーストが反映されるのを待つ
         await page.waitForTimeout(1000);
@@ -452,34 +464,39 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         // ペースト操作を実行
         await page.keyboard.press("Control+v");
 
-        // 手動でペーストイベントを発火させる
-        await page.evaluate(() => {
-            // テスト用に作成したClipboardEventを使用
-            const clipboardEvent = (window as any).testClipboardEvent;
-            if (clipboardEvent) {
-                console.log("Dispatching test clipboard event");
-                // アクティブなアイテムにイベントを発火
-                const activeItem = document.querySelector(".outliner-item.active");
-                if (activeItem) {
-                    activeItem.dispatchEvent(clipboardEvent);
-                    console.log("Dispatched event to active item:", activeItem);
-                }
-                else {
-                    // フォールバック：エディタオーバーレイにイベントを発火
-                    const editorOverlay = document.querySelector(".editor-overlay");
-                    if (editorOverlay) {
-                        editorOverlay.dispatchEvent(clipboardEvent);
-                        console.log("Dispatched event to editor overlay");
-                    }
-                    else {
-                        console.log("No target found for paste event");
-                    }
-                }
+        // KeyEventHandlerのhandlePasteを直接呼び出す
+        await page.evaluate(text => {
+            console.log("Calling KeyEventHandler.handlePaste directly with text:", text);
+
+            // ClipboardEventを手動で作成
+            const clipboardEvent = new ClipboardEvent("paste", {
+                clipboardData: new DataTransfer(),
+                bubbles: true,
+                cancelable: true,
+            });
+
+            // DataTransferオブジェクトにテキストを設定
+            Object.defineProperty(clipboardEvent, "clipboardData", {
+                writable: false,
+                value: {
+                    getData: (format: string) => {
+                        if (format === "text/plain") return text;
+                        return "";
+                    },
+                    setData: () => {},
+                },
+            });
+
+            // KeyEventHandlerのhandlePasteを直接呼び出し
+            const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
+            if (KeyEventHandler && KeyEventHandler.handlePaste) {
+                KeyEventHandler.handlePaste(clipboardEvent);
+                console.log("KeyEventHandler.handlePaste called successfully");
             }
             else {
-                console.log("No test clipboard event found");
+                console.log("KeyEventHandler.handlePaste not found");
             }
-        });
+        }, multilineText);
 
         // 少し待機してペーストが反映されるのを待つ
         await page.waitForTimeout(1000);

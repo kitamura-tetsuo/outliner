@@ -139,9 +139,7 @@ test.describe("SLR-0002: 行頭まで選択", () => {
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
-            const text = store.getSelectedText();
-            console.log("Selected text:", text);
-            return text;
+            return store.getSelectedText();
         });
 
         // 選択範囲が存在することを確認

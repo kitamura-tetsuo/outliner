@@ -121,9 +121,46 @@ Prioritize performance.
 - When fixing LNK-0003 tests, modifications broke 113 other tests including core cursor movement, text input, formatting, and selection functionality - need to be careful about regressions when making changes to core editor functionality.
 - For E2E tests, use page.keyboard.type() for user input simulation; only use internal methods or event dispatching for data preparation and verification, never for simulating user actions.
 - For E2E tests, use editorStore.setCursor({itemId, offset, isActive, userId}) for cursor creation, cursor.insertText() for text input, 500ms wait after text input, and waitForCursorVisible() for focus management - this pattern was successful for LNK-0003 and should be applied to other failing tests.
-- For E2E tests, work sequentially through test phases.
 - CI runs E2E tests in parallel. When running tests in the Codex environment, execute one file at a time using `scripts/run-e2e-progress.sh 1`. Re-run the script until every entry in `.e2e-progress` shows DONE.
 - For E2E tests with internal links and cursor management, use editorStore.setCursor() for cursor creation, cursor.insertText() for text input with 500ms wait, waitForCursorVisible() for focus management, and apply these patterns sequentially to LNK-0002, LNK-0004, LNK-0006, and SLR-0009 tests.
+
+## Firebase Initialization and Test Timeout Issues
+
+- **Critical Fix**: Firebase app duplicate initialization causes test timeouts. In UserManager.ts, always check for existing Firebase apps using `getApps()` and `getApp()` before calling `initializeApp()` to prevent "Firebase App named '[DEFAULT]' already exists" errors.
+- **Implementation Pattern**: Use a helper method like `initializeFirebaseApp()` that checks `getApps().length > 0` and returns existing app or creates new one.
+- **Test Impact**: This fix resolves 30-second test timeouts that were affecting SLR, CLM, FMT, and LNK test suites.
+- **Import Requirements**: Import `{ initializeApp, getApps, getApp }` from "firebase/app" in UserManager.ts.
+- **Error Symptoms**: Look for "app/duplicate-app" errors in server/logs/test-svelte-kit.log when tests timeout unexpectedly.
+
+**Test Execution Commands**:
+
+- Run specific test category: `npm run test:e2e -- e2e/core/slr-*.spec.ts`
+- Run single test file: `npm run test:e2e -- e2e/core/specific-test.spec.ts`
+- All tests should be run from `/workspace/client` directory with proper environment variables.
+
+## Test Troubleshooting Guide
+
+**Common Issues and Solutions**:
+
+1. **Test Timeouts (30+ seconds)**:
+   - Check server/logs/test-svelte-kit.log for Firebase duplicate app errors
+   - Verify server is running: `curl -s http://localhost:7090/ | head -c 100`
+   - Ensure Firebase initialization follows the pattern described above
+
+2. **TestHelpers Method Errors**:
+   - `TestHelpers.getSelectedText` requires a page parameter: use `TestHelpers.getSelectedText(page)`
+   - Remove console.log calls that reference methods without parameters
+
+3. **Test Environment Setup**:
+   - Always run `scripts/codex-setup.sh` when container starts
+   - Use TEST_ENV=localhost for local testing
+   - Check that Firebase emulators are running properly
+
+4. **Test Execution Best Practices**:
+   - Run tests one category at a time to isolate issues
+   - Use absolute paths in launch-process commands
+   - Specify correct cwd parameter for different test types
+   - Monitor server logs during test execution for early error detection
 
 # Test Environment Configuration
 

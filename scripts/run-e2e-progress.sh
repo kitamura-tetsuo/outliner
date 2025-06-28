@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 PROGRESS_FILE="$ROOT_DIR/.e2e-progress"
 TEST_DIR="$ROOT_DIR/client/e2e"
-TEST_FILES=$(find "$TEST_DIR" -name '*.spec.ts' | sort)
+TEST_FILES=$(find "$TEST_DIR" -name '*.spec.ts' -printf '%P\n' | sort)
 
 # Initialize progress file if it doesn't exist
 if [ ! -f "$PROGRESS_FILE" ]; then
@@ -26,7 +26,8 @@ fi
 
 for file in "${PENDING_FILES[@]}"; do
     echo "=== Running Playwright test: $file ==="
-    if bash "$ROOT_DIR/scripts/run-tests.sh" "$file"; then
+    bash "$ROOT_DIR/scripts/codex-setup.sh"
+    if (cd "$ROOT_DIR/client" && xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npm run test:e2e -- "$file"); then
         status="DONE"
     else
         status="FAIL"

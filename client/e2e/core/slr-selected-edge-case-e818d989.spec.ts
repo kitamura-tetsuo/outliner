@@ -100,14 +100,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
-
-            // デバッグ情報
-            console.log("EditorOverlayStore:", store);
-            console.log("Selections:", store.selections);
-
-            const text = store.getSelectedText();
-            console.log("Selected text:", text);
-            return text;
+            return store.getSelectedText();
         });
 
         // 選択範囲が存在することを確認
@@ -204,10 +197,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
-
-            const text = store.getSelectedText();
-            console.log("Selected text:", text);
-            return text;
+            return store.getSelectedText();
         });
 
         // 選択範囲が存在することを確認

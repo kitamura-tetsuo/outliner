@@ -227,7 +227,28 @@ jobs:
 
       - name: Start test services
         run: |
-          chmod +x scripts/start-all-localhost-servers.sh
+          # Load NVM if available
+          if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
+            . "$HOME/.nvm/nvm.sh"
+          fi
+
+          # Set display for headless testing
+          export DISPLAY=:99
+
+          # Set environment variables for testing
+          export NODE_ENV=test
+          export TEST_ENV=localhost
+          export CI=true
+          export DISABLE_POSTHOG=true
+          export VITE_DISABLE_FLUID_TELEMETRY=true
+
+          # Make helper scripts executable
+          chmod +x scripts/codex-setup.sh || true
+          chmod +x scripts/start-all-localhost-servers.sh || true
+          chmod +x scripts/common-config.sh || true
+          chmod +x scripts/common-functions.sh || true
+          chmod +x scripts/setup-local-env.sh || true
+
           bash scripts/start-all-localhost-servers.sh
         env:
           CI: true

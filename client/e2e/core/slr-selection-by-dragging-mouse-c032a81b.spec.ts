@@ -6,7 +6,6 @@ import {
     expect,
     test,
 } from "@playwright/test";
-import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0004: マウスドラッグによる選択", () => {
