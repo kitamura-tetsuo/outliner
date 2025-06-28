@@ -2,7 +2,10 @@
  *  Title   : Alias node referencing existing items
  *  Source  : docs/client-features.yaml
  */
-import { expect, test } from "@playwright/test";
+import {
+    expect,
+    test,
+} from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias node", () => {
@@ -29,14 +32,20 @@ test.describe("ALS-0001: Alias node", () => {
 
         await expect(page.locator(".alias-picker")).toBeVisible();
         const firstText = await page.locator(`.outliner-item[data-item-id="${firstId}"] .item-text`).innerText();
-        const newIndex = await page.locator('.outliner-item').count() - 1;
+        const newIndex = await page.locator(".outliner-item").count() - 1;
         const aliasId = await TestHelpers.getItemIdByIndex(page, newIndex);
-        if (!aliasId) throw new Error('alias item not found');
-        await TestHelpers.setAliasTarget(page, aliasId, firstId);
-        await TestHelpers.hideAliasPicker(page);
+        if (!aliasId) throw new Error("alias item not found");
+        const optionCount = await page.locator(".alias-picker li").count();
+        expect(optionCount).toBeGreaterThan(0);
+        await TestHelpers.selectAliasOption(page, firstId);
+        await expect(page.locator(".alias-picker")).toBeHidden();
 
-        const aliasPath = page.locator('.alias-path');
+        const targetSet = await TestHelpers.getAliasTarget(page, aliasId);
+        expect(targetSet).toBe(firstId);
+
+        const aliasPath = page.locator(".alias-path");
         await expect(aliasPath).toContainText(firstText);
+        await expect(aliasPath.locator("a")).toHaveCount(1);
         const targetInput = `.alias-subtree .outliner-item[data-item-id="${firstId}"] .item-content`;
         await page.click(targetInput);
         await TestHelpers.setCursor(page, firstId, 0);
@@ -44,5 +53,8 @@ test.describe("ALS-0001: Alias node", () => {
 
         const textAfter = await page.locator(`.outliner-item[data-item-id="${firstId}"] .item-text`).innerText();
         expect(textAfter.startsWith("X")).toBeTruthy();
+
+        const aliasPathTextAfter = await aliasPath.innerText();
+        expect(aliasPathTextAfter.startsWith("X")).toBeTruthy();
     });
 });

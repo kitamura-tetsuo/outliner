@@ -69,9 +69,18 @@ $effect(() => {
 let aliasTarget = $state<Item | undefined>(undefined);
 let aliasPath = $state<Item[]>([]);
 
+const aliasTargetSub = new TreeSubscriber<Item, Item | undefined>(
+    generalStore.currentPage,
+    "nodeChanged",
+    () => {
+        if (!aliasTargetId) return undefined;
+        return findItem(generalStore.currentPage, aliasTargetId);
+    },
+);
+
 $effect(() => {
     if (aliasTargetId && generalStore.currentPage) {
-        aliasTarget = findItem(generalStore.currentPage, aliasTargetId);
+        aliasTarget = aliasTargetSub.current;
         const p = findPath(generalStore.currentPage, aliasTargetId);
         aliasPath = p || [];
     } else {
