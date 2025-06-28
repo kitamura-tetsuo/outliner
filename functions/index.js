@@ -779,3 +779,86 @@ exports.executePublish = onRequest({ cors: true }, async (req, res) => {
     return res.status(500).json({ error: "Failed to execute publish" });
   }
 });
+
+// List schedules for a page
+exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  const { idToken, pageId } = req.body || {};
+  if (!idToken || !pageId) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const snapshot = await db
+      .collection("pages")
+      .doc(pageId)
+      .collection("schedules")
+      .where("createdBy", "==", uid)
+      .where("executedAt", "==", null)
+      .get();
+
+    const schedules = [];
+    snapshot.forEach(doc => schedules.push({ id: doc.id, ...doc.data() }));
+    return res.status(200).json({ schedules });
+  } catch (err) {
+    logger.error(`listSchedules error: ${err.message}`);
+    if (err.code === 'auth/id-token-expired' ||
+        err.code === 'auth/invalid-id-token' ||
+        err.code === 'auth/argument-error') {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to list schedules" });
+  }
+});
+
+// Cancel a scheduled publish
+exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  const { idToken, pageId, scheduleId } = req.body || {};
+  if (!idToken || !pageId || !scheduleId) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const scheduleRef = db
+      .collection("pages")
+      .doc(pageId)
+      .collection("schedules")
+      .doc(scheduleId);
+    const scheduleSnap = await scheduleRef.get();
+    if (!scheduleSnap.exists) {
+      return res.status(404).json({ error: "Schedule not found" });
+    }
+    if (scheduleSnap.data().createdBy !== uid) {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+    await scheduleRef.delete();
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    logger.error(`cancelSchedule error: ${err.message}`);
+    if (err.code === 'auth/id-token-expired' ||
+        err.code === 'auth/invalid-id-token' ||
+        err.code === 'auth/argument-error') {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to cancel schedule" });
+  }
+});
