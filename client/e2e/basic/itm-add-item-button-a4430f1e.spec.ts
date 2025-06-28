@@ -10,17 +10,6 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-0002: Add item via button", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // ブラウザのコンソールログを監視
-        page.on("console", msg => {
-            if (msg.type() === "error") {
-                console.log("Browser Error:", msg.text());
-            }
-            else if (
-                msg.text().includes("FluidClient") || msg.text().includes("UserManager") || msg.text().includes("auth")
-            ) {
-                console.log("Browser Log:", msg.text());
-            }
-        });
 
         // TestHelpersを使用してテスト環境を準備
         await TestHelpers.prepareTestEnvironment(page, testInfo);
