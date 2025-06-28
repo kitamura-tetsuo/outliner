@@ -712,6 +712,21 @@ export class TestHelpers {
         }, itemId);
     }
 
+    public static async selectAliasOption(page: Page, itemId: string): Promise<void> {
+        const selector = `.alias-picker button[data-id="${itemId}"]`;
+        await page.locator(selector).waitFor({ state: "visible", timeout: 5000 });
+        await page.locator(selector).click();
+    }
+
+    public static async clickAliasOptionViaDOM(page: Page, itemId: string): Promise<void> {
+        const selector = `.alias-picker button[data-id="${itemId}"]`;
+        await page.evaluate((sel) => {
+            const btn = document.querySelector(sel) as HTMLElement | null;
+            btn?.click();
+        }, selector);
+    }
+
+
     public static async setAliasTarget(page: Page, itemId: string, targetId: string): Promise<void> {
         await page.evaluate(({ itemId, targetId }) => {
             const store = (window as any).appStore;
@@ -741,6 +756,40 @@ export class TestHelpers {
                 store.hide();
             }
         });
+    }
+
+    public static async showAliasPicker(page: Page, itemId: string): Promise<void> {
+        await page.evaluate(id => {
+            const store = (window as any).aliasPickerStore;
+            if (store && typeof store.show === 'function') {
+                store.show(id);
+            }
+        }, itemId);
+    }
+
+    /**
+     * 指定したアイテムの aliasTargetId を取得する
+     * @param page Playwright のページオブジェクト
+     * @param itemId 取得対象アイテムの ID
+     */
+    public static async getAliasTarget(page: Page, itemId: string): Promise<string | null> {
+        return await page.evaluate(id => {
+            const store = (window as any).appStore;
+            const findItem = (node: any, targetId: string): any => {
+                if (!node) return undefined;
+                if (node.id === targetId) return node;
+                if (node.items) {
+                    for (const child of node.items) {
+                        const found = findItem(child, targetId);
+                        if (found) return found;
+                    }
+                }
+                return undefined;
+            };
+            const root = store.currentPage;
+            const item = findItem(root, id);
+            return item?.aliasTargetId ?? null;
+        }, itemId);
     }
 
     /**

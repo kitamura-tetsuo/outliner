@@ -1,4 +1,7 @@
-import { expect, test } from "@playwright/test";
+import {
+    expect,
+    test,
+} from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias path navigation", () => {
@@ -25,14 +28,28 @@ test.describe("ALS-0001: Alias path navigation", () => {
 
         await expect(page.locator(".alias-picker")).toBeVisible();
         const firstText = await page.locator(`.outliner-item[data-item-id="${firstId}"] .item-text`).innerText();
-        const newIndex = await page.locator('.outliner-item').count() - 1;
+        const newIndex = await page.locator(".outliner-item").count() - 1;
         const aliasId = await TestHelpers.getItemIdByIndex(page, newIndex);
-        if (!aliasId) throw new Error('alias item not found');
-        await TestHelpers.setAliasTarget(page, aliasId, firstId);
-        await TestHelpers.hideAliasPicker(page);
+        if (!aliasId) throw new Error("alias item not found");
+        const optionCount = await page.locator(".alias-picker li").count();
+        expect(optionCount).toBeGreaterThan(0);
+        await TestHelpers.selectAliasOption(page, firstId);
+        await expect(page.locator(".alias-picker")).toBeHidden();
 
-        const links = page.locator('.alias-path a');
+        const targetSet = await TestHelpers.getAliasTarget(page, aliasId);
+        expect(targetSet).toBe(firstId);
+
+        const links = page.locator(".alias-path a");
+        await expect(links).toHaveCount(1);
         await expect(links.first()).toContainText(firstText);
         await links.first().click();
+        await page.waitForTimeout(500);
+        const activeId = await TestHelpers.getActiveItemId(page);
+        expect(activeId).toBe(firstId);
+
+        await TestHelpers.setCursor(page, firstId, 0);
+        await TestHelpers.insertText(page, firstId, "Y");
+        const aliasPathTextAfter = await page.locator(".alias-path").innerText();
+        expect(aliasPathTextAfter.startsWith("Y")).toBeTruthy();
     });
 });
