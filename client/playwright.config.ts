@@ -46,15 +46,38 @@ export default defineConfig({
     },
 
     use: {
+        ...devices["Desktop Chrome"],
+        // Chromium用のタイムアウト設定を延長
+        launchOptions: {
+            // 共有メモリの問題を回避するためのオプション
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-web-security",
+                "--disable-features=VizDisplayCompositor",
+                "--disable-background-timer-throttling",
+                "--disable-backgrounding-occluded-windows",
+                "--disable-renderer-backgrounding",
+                "--memory-pressure-off",
+                "--max_old_space_size=4096",
+                "--disable-extensions",
+                "--disable-plugins",
+                "--run-all-compositor-stages-before-draw",
+                "--disable-ipc-flooding-protection",
+                // 共有メモリサイズを明示的に指定
+                "--shm-size=1gb",
+                "--allow-file-access-from-files",
+                "--enable-clipboard-read",
+                "--enable-clipboard-write",
+            ],
+        },
         // Clipboard APIを有効にするためにlocalhostを使用
         baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
         trace: "on-first-retry",
         // クリップボードへのアクセスを許可
         permissions: ["clipboard-read", "clipboard-write"],
-        // ブラウザの起動オプションを設定
-        launchOptions: {
-            args: ["--allow-file-access-from-files", "--enable-clipboard-read", "--enable-clipboard-write"],
-        },
     },
 
     projects: [
@@ -62,31 +85,26 @@ export default defineConfig({
             // 基本テスト: 環境確認や最小構成の検証用
             name: "basic",
             testDir: "./e2e/basic",
-            use: { ...devices["Desktop Chrome"] },
         },
         {
             // 新機能テスト
             name: "new",
             testDir: "./e2e/new",
-            use: { ...devices["Desktop Chrome"] },
         },
         {
             // コアテスト: 認証不要の基本機能テスト
             name: "core",
             testDir: "./e2e/core",
-            use: { ...devices["Desktop Chrome"] },
         },
         {
             // 認証テスト: 本番環境でのみ実行
             name: "auth",
             testDir: "./e2e/auth",
-            use: { ...devices["Desktop Chrome"] },
         },
         {
             // ユーティリティテスト: 共通機能のテスト
             name: "utils",
             testDir: "./e2e/utils",
-            use: { ...devices["Desktop Chrome"] },
         },
     ],
     // webServer: {
