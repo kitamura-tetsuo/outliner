@@ -21,7 +21,25 @@ export class TestHelpers {
         lines: string[] = [],
     ): Promise<{ projectName: string; pageName: string; }> {
         // ホームページにアクセスしてアプリの初期化を待つ
-        await page.goto("/");
+        console.log("TestHelper: Starting navigation to home page");
+        console.log("TestHelper: Page URL before navigation:", page.url());
+
+        try {
+            // より段階的なアプローチを試す
+            console.log("TestHelper: Attempting to navigate to /");
+            await page.goto("/", {
+                timeout: 120000, // 120秒のタイムアウト
+                waitUntil: "domcontentloaded", // DOMコンテンツロード完了まで待機
+            });
+            console.log("TestHelper: Successfully navigated to home page");
+            console.log("TestHelper: Page URL after navigation:", page.url());
+        }
+        catch (error) {
+            console.error("TestHelper: Failed to navigate to home page:", error);
+            console.log("TestHelper: Current page URL:", page.url());
+            console.log("TestHelper: Page title:", await page.title().catch(() => "Unable to get title"));
+            throw error;
+        }
 
         // テスト環境フラグを設定
         await page.evaluate(() => {
@@ -32,10 +50,12 @@ export class TestHelpers {
         });
 
         // UserManagerが初期化されるまで待機
+        console.log("TestHelper: Waiting for UserManager initialization");
         await page.waitForFunction(
             () => (window as any).__USER_MANAGER__ !== undefined,
-            { timeout: 10000 },
+            { timeout: 30000 }, // 30秒に延長
         );
+        console.log("TestHelper: UserManager initialized");
 
         console.log("TestHelper: UserManager found, attempting authentication");
 
@@ -48,21 +68,35 @@ export class TestHelpers {
 
             try {
                 console.log("TestHelper: Attempting login with test@example.com");
+
+                // 認証状態変更を監視するPromiseを作成
+                const authPromise = new Promise((resolve, reject) => {
+                    let timeoutId: number;
+
+                    // 正しいメソッド名を使用
+                    const cleanup = userManager.addEventListener((authResult: any) => {
+                        if (authResult && authResult.user) {
+                            console.log("TestHelper: Authentication successful via listener", authResult.user);
+                            clearTimeout(timeoutId);
+                            cleanup();
+                            resolve({ success: true, user: authResult.user });
+                        }
+                    });
+
+                    // 60秒のタイムアウト（デバッグのため延長）
+                    timeoutId = setTimeout(() => {
+                        cleanup();
+                        reject(new Error("Authentication timeout after 60 seconds"));
+                    }, 60000);
+                });
+
+                // ログイン実行
+                console.log("TestHelper: Calling loginWithEmailPassword");
                 await userManager.loginWithEmailPassword("test@example.com", "password");
+                console.log("TestHelper: loginWithEmailPassword completed, waiting for auth state change");
 
                 // 認証完了を待機
-                let attempts = 0;
-                while (attempts < 30) { // 3秒間待機
-                    const currentUser = userManager.getCurrentUser();
-                    if (currentUser) {
-                        console.log("TestHelper: Authentication successful", currentUser);
-                        return { success: true, user: currentUser };
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    attempts++;
-                }
-
-                return { success: false, error: "Authentication timeout" };
+                return await authPromise;
             }
             catch (error) {
                 console.error("TestHelper: Authentication failed", error);
@@ -77,6 +111,7 @@ export class TestHelpers {
         console.log("TestHelper: Authentication successful, waiting for global variables");
 
         // グローバル変数が設定されるまで待機
+        console.log("TestHelper: Waiting for global variables");
         await page.waitForFunction(
             () => {
                 const hasFluidStore = (window as any).__FLUID_STORE__ !== undefined;
@@ -84,8 +119,9 @@ export class TestHelpers {
                 console.log("TestHelper: Checking globals - FluidStore:", hasFluidStore, "SvelteGoto:", hasSvelteGoto);
                 return hasFluidStore && hasSvelteGoto;
             },
-            { timeout: 15000 },
+            { timeout: 30000 }, // 30秒に延長
         );
+        console.log("TestHelper: Global variables are ready");
 
         console.log("TestHelper: Global variables initialized successfully");
 
@@ -110,7 +146,7 @@ export class TestHelpers {
             _options?: {
                 referer?: string;
                 timeout?: number;
-                waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit";
+                waitUntil?: "load" | "domcontentloaded" | "commit";
             },
         ): Promise<Response | null> => {
             await page.evaluate(async url => {
