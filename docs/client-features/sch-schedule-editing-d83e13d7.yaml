@@ -1,0 +1,15 @@
+id: SCH-D83E13D7
+title: Schedule Editing
+description: Users can modify existing schedules via the API.
+category: publishing
+status: implemented
+acceptance:
+  - Schedule updates require a valid Firebase auth token
+  - Invalid or missing parameters return errors
+components:
+  - functions/index.js
+  - client/e2e/core/sch-edit-schedule-d83e13d7.spec.ts
+tests:
+  - functions/test/scheduled-publishing.test.js
+  - client/e2e/core/sch-edit-schedule-d83e13d7.spec.ts
+title-ja: スケジュール編集
