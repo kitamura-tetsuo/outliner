@@ -26,8 +26,8 @@ function setCorsHeaders(req, res) {
 // ロガーの設定
 const logger = require("firebase-functions/logger");
 
-// dotenvxを使用して環境変数を読み込み
-require("@dotenvx/dotenvx/config");
+// Load environment variables for local development
+require("dotenv").config();
 
 // 環境変数を直接使用（ローカル開発用）
 const azureConfig = {
@@ -777,5 +777,40 @@ exports.executePublish = onRequest({ cors: true }, async (req, res) => {
   } catch (err) {
     logger.error(`executePublish error: ${err.message}`);
     return res.status(500).json({ error: "Failed to execute publish" });
+  }
+});
+
+// List schedules for a page
+exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  const idToken = req.query.idToken;
+  const pageId = req.query.pageId;
+  if (!idToken || !pageId) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(String(idToken));
+    const uid = decoded.uid;
+    const snapshot = await db
+      .collection("pages")
+      .doc(String(pageId))
+      .collection("schedules")
+      .where("createdBy", "==", uid)
+      .get();
+    const schedules = [];
+    snapshot.forEach((doc) => {
+      schedules.push({ id: doc.id, ...doc.data() });
+    });
+    return res.status(200).json({ schedules });
+  } catch (err) {
+    logger.error(`listSchedules error: ${err.message}`);
+    return res.status(500).json({ error: "Failed to fetch schedules" });
   }
 });

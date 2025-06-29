@@ -64,6 +64,10 @@
                 "function": "executePublish"
             },
             {
+                "source": "/api/list-schedules",
+                "function": "listSchedules"
+            },
+            {
                 "source": "/health",
                 "function": "health"
             },
