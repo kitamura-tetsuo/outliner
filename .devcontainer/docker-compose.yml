@@ -9,6 +9,9 @@ services:
     working_dir: /workspace
     user: node
 
+    ipc: 'host'
+    shm_size: '1gb'
+
     volumes:
       # 1️⃣  Project source as a bind-mount
       - type: bind

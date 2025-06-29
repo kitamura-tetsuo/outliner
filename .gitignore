@@ -15,7 +15,10 @@ Thumbs.db
 
 # Env
 .env
+.env.production
+.env.local
 !.env.example
+!.env.test
 .env.keys
 
 # Vite

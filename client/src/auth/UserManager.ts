@@ -1,9 +1,6 @@
+import { type FirebaseApp } from "firebase/app";
 import {
-    getApp,
-    getApps,
-    initializeApp,
-} from "firebase/app";
-import {
+    type Auth,
     connectAuthEmulator,
     createUserWithEmailAndPassword,
     getAuth,
@@ -15,6 +12,7 @@ import {
     type User as FirebaseUser,
 } from "firebase/auth";
 import { getEnv } from "../lib/env";
+import { getFirebaseApp } from "../lib/firebase-app";
 import { getLogger } from "../lib/logger"; // log関数をインポート
 
 const logger = getLogger();
@@ -49,18 +47,18 @@ type AuthEventListener = (result: IAuthResult | null) => void;
 export class UserManager {
     // Firebase 設定
     private firebaseConfig = {
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCikgn1YY06j6ZlAJPYab1FIOKSQAuzcH4",
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "outliner-d57b0.firebaseapp.com",
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "outliner-d57b0",
-        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "outliner-d57b0.firebasestorage.app",
-        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "560407608873",
-        appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:560407608873:web:147817f4a93a4678606638",
-        measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-FKSFRCT7GR",
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
     };
 
     private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57000");
-    private app = this.initializeFirebaseApp();
-    auth = getAuth(this.app);
+    private _app: FirebaseApp | null = null;
+    private _auth: Auth | null = null;
 
     private currentFluidToken: IFluidToken | null = null;
     private listeners: AuthEventListener[] = [];
@@ -73,21 +71,44 @@ export class UserManager {
     private isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development" ||
         process.env.NODE_ENV === "development";
 
-    private initializeFirebaseApp() {
-        // 既存のアプリがあるかチェック
-        const existingApps = getApps();
-        if (existingApps.length > 0) {
-            // 既存のアプリを使用
-            return getApp();
+    /**
+     * Firebaseアプリインスタンスを遅延初期化で取得
+     * SSR環境での重複初期化を防ぐ
+     */
+    private get app(): FirebaseApp {
+        if (!this._app) {
+            this._app = getFirebaseApp();
         }
-        // 新しいアプリを初期化
-        return initializeApp(this.firebaseConfig);
+        return this._app;
+    }
+
+    /**
+     * Firebase Authインスタンスを遅延初期化で取得
+     */
+    get auth(): Auth {
+        if (!this._auth) {
+            this._auth = getAuth(this.app);
+        }
+        return this._auth;
+    }
+
+    /**
+     * API Base URLを取得
+     */
+    get functionsUrl(): string {
+        return this.apiBaseUrl;
     }
 
     constructor() {
         logger.debug("Initializing...");
 
-        this.initAuthListener();
+        // テスト環境でのアクセスのためにグローバルに設定
+        if (typeof window !== "undefined") {
+            (window as any).__USER_MANAGER__ = this;
+        }
+
+        // 認証リスナーを非同期で初期化
+        this.initAuthListenerAsync();
 
         // テスト環境の検出
         const isTestEnv = import.meta.env.MODE === "test" ||
@@ -201,22 +222,48 @@ export class UserManager {
         logger.info("[UserManager] Using Firebase auth emulator for testing");
     }
 
-    // Firebase認証状態の監視
+    // Firebase認証状態の監視（非同期初期化）
+    private async initAuthListenerAsync(): Promise<void> {
+        try {
+            // Firebase appとauthの初期化を確実に行う
+            const auth = this.auth;
+            logger.debug("Firebase Auth initialized, setting up listener");
+
+            this.unsubscribeAuth = onAuthStateChanged(auth, async firebaseUser => {
+                logger.debug("onAuthStateChanged triggered", {
+                    hasUser: !!firebaseUser,
+                    userId: firebaseUser?.uid,
+                    email: firebaseUser?.email,
+                });
+
+                if (firebaseUser) {
+                    logger.info("User signed in via onAuthStateChanged", { userId: firebaseUser.uid });
+                    await this.handleUserSignedIn(firebaseUser);
+                }
+                else {
+                    logger.info("User signed out via onAuthStateChanged");
+                    this.handleUserSignedOut();
+                }
+            });
+        }
+        catch (error) {
+            logger.error("Failed to initialize auth listener:", error);
+            // エラーが発生した場合は少し待ってからリトライ
+            setTimeout(() => {
+                this.initAuthListenerAsync();
+            }, 1000);
+        }
+    }
+
+    // Firebase認証状態の監視（同期版 - 後方互換性のため）
     private initAuthListener(): void {
-        this.unsubscribeAuth = onAuthStateChanged(this.auth, async firebaseUser => {
-            if (firebaseUser) {
-                await this.handleUserSignedIn(firebaseUser);
-            }
-            else {
-                this.handleUserSignedOut();
-            }
-        });
+        this.initAuthListenerAsync();
     }
 
     // ユーザーサインイン処理
     private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<void> {
         try {
-            logger.debug("User signed in", { uid: firebaseUser.uid });
+            logger.debug("handleUserSignedIn started", { uid: firebaseUser.uid });
 
             // ユーザーオブジェクトを作成
             const user: IUser = {
@@ -226,10 +273,17 @@ export class UserManager {
                 photoURL: firebaseUser.photoURL || undefined,
             };
 
+            logger.info("Notifying listeners of successful authentication", {
+                userId: user.id,
+                listenerCount: this.listeners.length,
+            });
+
             // 認証結果をリスナーに通知
             this.notifyListeners({
                 user,
             });
+
+            logger.debug("handleUserSignedIn completed successfully");
         }
         catch (error) {
             logger.error("Error handling user sign in:", error);
@@ -267,7 +321,7 @@ export class UserManager {
     // Fluid Relayトークンを取得
     private async getFluidToken(idToken: string, containerId?: string): Promise<IFluidToken> {
         try {
-            logger.info(`[UserManager] Requesting Fluid token from: ${this.apiBaseUrl}/api/fluid-token`);
+            logger.info(`[UserManager] Requesting Fluid token from: /api/fluidToken`);
 
             // リクエストボディの作成
             const requestBody: any = { idToken };
@@ -279,7 +333,7 @@ export class UserManager {
             }
 
             // フェッチオプションを明示的に設定
-            const response = await fetch(`${this.apiBaseUrl}/api/fluid-token`, {
+            const response = await fetch(`/api/fluid-token`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -339,13 +393,19 @@ export class UserManager {
     public async loginWithEmailPassword(email: string, password: string): Promise<void> {
         try {
             logger.info(`[UserManager] Attempting email/password login for: ${email}`);
+            logger.debug(
+                `[UserManager] Current auth state: ${this.auth.currentUser ? "authenticated" : "not authenticated"}`,
+            );
 
             // 開発環境の場合
             if (this.isDevelopment) {
                 try {
                     // まず通常のFirebase認証を試みる
-                    await signInWithEmailAndPassword(this.auth, email, password);
-                    logger.info("[UserManager] Email/password login successful via Firebase Auth");
+                    logger.debug("[UserManager] Calling signInWithEmailAndPassword");
+                    const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
+                    logger.info("[UserManager] Email/password login successful via Firebase Auth", {
+                        userId: userCredential.user.uid,
+                    });
                     return;
                 }
                 catch (firebaseError: any) {
@@ -355,8 +415,10 @@ export class UserManager {
                     if (firebaseError?.code === "auth/user-not-found") {
                         try {
                             logger.info("[UserManager] User not found, attempting to create user");
-                            await createUserWithEmailAndPassword(this.auth, email, password);
-                            logger.info("[UserManager] New user created and logged in successfully");
+                            const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
+                            logger.info("[UserManager] New user created and logged in successfully", {
+                                userId: userCredential.user.uid,
+                            });
                             return;
                         }
                         catch (createError) {
@@ -369,6 +431,7 @@ export class UserManager {
             }
             else {
                 // 本番環境では通常のFirebase認証のみを使用
+                logger.debug("[UserManager] Production environment, using Firebase Auth only");
                 await signInWithEmailAndPassword(this.auth, email, password);
             }
         }
@@ -394,11 +457,17 @@ export class UserManager {
     public addEventListener(listener: AuthEventListener): () => void {
         this.listeners.push(listener);
 
-        // 既に認証済みの場合は即座に通知
-        if (this.auth.currentUser && this.currentFluidToken) {
-            listener({
-                user: this.getCurrentUser()!,
-            });
+        // 既に認証済みの場合は即座に通知（FluidTokenは不要）
+        if (this.auth.currentUser) {
+            const user = this.getCurrentUser();
+            if (user) {
+                logger.debug("addEventListener: User already authenticated, notifying immediately", {
+                    userId: user.id,
+                });
+                listener({
+                    user,
+                });
+            }
         }
 
         // リスナー削除用の関数を返す

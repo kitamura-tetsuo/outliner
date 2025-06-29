@@ -1,34 +1,116 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { createSchedule, listSchedules, cancelSchedule } from "../services/scheduleService";
-import { userManager } from "../auth/UserManager";
+import {
+    beforeEach,
+    expect,
+    it,
+    vi,
+} from "vitest";
+import {
+    cancelSchedule,
+    createSchedule,
+    listSchedules,
+} from "../services/scheduleService";
 
+// UserManagerをモックして、実際のAPIエンドポイントを使用
 vi.mock("../auth/UserManager", () => ({
     userManager: {
-        apiBaseUrl: "http://localhost:57000",
-        auth: { currentUser: { getIdToken: vi.fn().mockResolvedValue("token") } },
+        functionsUrl: "http://localhost:57000",
+        auth: { currentUser: { getIdToken: vi.fn().mockResolvedValue("test-id-token") } },
     },
 }));
 
-declare const global: any;
+// fetchをモックして、実際のAPIレスポンスをシミュレート
+global.fetch = vi.fn();
 
 beforeEach(() => {
     vi.clearAllMocks();
 });
 
 it("calls createSchedule API", async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
-    await createSchedule("page1", { strategy: "one_shot", nextRunAt: 1 });
-    expect(global.fetch).toHaveBeenCalled();
+    // fetchのモックレスポンスを設定
+    const mockResponse = { scheduleId: "test-schedule-id" };
+    (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+    });
+
+    const nextRunAt = Date.now() + 60000;
+    const result = await createSchedule("page1", { strategy: "one_shot", nextRunAt });
+
+    expect(result).toBeDefined();
+    expect(result.scheduleId).toBe("test-schedule-id");
+
+    // fetchが正しいパラメータで呼ばれたことを確認
+    expect(global.fetch).toHaveBeenCalledWith(
+        "/api/create-schedule",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                idToken: "test-id-token",
+                pageId: "page1",
+                schedule: { strategy: "one_shot", nextRunAt },
+            }),
+        },
+    );
 });
 
 it("calls listSchedules API", async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ schedules: [] }) });
-    await listSchedules("page1");
-    expect(global.fetch).toHaveBeenCalled();
+    // fetchのモックレスポンスを設定
+    const mockSchedules = [
+        { id: "schedule1", strategy: "one_shot", params: {}, nextRunAt: Date.now() + 60000 },
+        { id: "schedule2", strategy: "recurring", params: {}, nextRunAt: Date.now() + 120000 },
+    ];
+    (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ schedules: mockSchedules }),
+    });
+
+    const result = await listSchedules("page1");
+
+    expect(result).toBeDefined();
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe("schedule1");
+    expect(result[1].id).toBe("schedule2");
+
+    // fetchが正しいパラメータで呼ばれたことを確認
+    expect(global.fetch).toHaveBeenCalledWith(
+        "/api/list-schedules",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                idToken: "test-id-token",
+                pageId: "page1",
+            }),
+        },
+    );
 });
 
 it("calls cancelSchedule API", async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
-    await cancelSchedule("page1", "sch1");
-    expect(global.fetch).toHaveBeenCalled();
+    // fetchのモックレスポンスを設定
+    const mockResponse = { success: true };
+    (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+    });
+
+    const result = await cancelSchedule("page1", "test-schedule-id");
+
+    expect(result).toBeDefined();
+    expect(result.success).toBe(true);
+
+    // fetchが正しいパラメータで呼ばれたことを確認
+    expect(global.fetch).toHaveBeenCalledWith(
+        "/api/cancel-schedule",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                idToken: "test-id-token",
+                pageId: "page1",
+                scheduleId: "test-schedule-id",
+            }),
+        },
+    );
 });

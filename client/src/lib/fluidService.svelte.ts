@@ -418,7 +418,7 @@ export async function getUserContainers(): Promise<{ containers: string[]; defau
         log("fluidService", "info", `Getting user containers from Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナリストを取得
-        const response = await fetch(`${apiBaseUrl}/api/get-user-containers`, {
+        const response = await fetch(`${apiBaseUrl}/getUserContainers`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -471,7 +471,7 @@ export async function deleteContainer(containerId: string): Promise<boolean> {
         log("fluidService", "info", `Deleting container ${containerId} via Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナを削除
-        const response = await fetch(`${apiBaseUrl}/api/delete-container`, {
+        const response = await fetch(`${apiBaseUrl}/deleteContainer`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

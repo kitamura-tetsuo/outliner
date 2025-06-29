@@ -1,14 +1,14 @@
 <script lang="ts">
+import { goto } from "$app/navigation";
 import { page } from "$app/stores";
 import { onMount } from "svelte";
-import { goto } from "$app/navigation";
-import { store } from "../../../../stores/store.svelte";
 import {
+    cancelSchedule,
     createSchedule,
     listSchedules,
-    cancelSchedule,
     type Schedule,
 } from "../../../../services";
+import { store } from "../../../../stores/store.svelte";
 
 let project = $state("");
 let pageTitle = $state("");
@@ -16,34 +16,76 @@ let pageId = $state("");
 let schedules = $state<Schedule[]>([]);
 let publishTime = $state("");
 
-onMount(() => {
-    const params = $page.params as { project: string; page: string };
+onMount(async () => {
+    const params = $page.params as { project: string; page: string; };
     project = decodeURIComponent(params.project || "");
     pageTitle = decodeURIComponent(params.page || "");
+
+    // store.currentPageが設定されるまで待つ
+    let attempts = 0;
+    while (!store.currentPage && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+    }
+
     pageId = store.currentPage?.id || "";
-    refresh();
+    console.log("Schedule page: pageId =", pageId, "currentPage =", store.currentPage);
+
+    if (pageId) {
+        await refresh();
+    }
+    else {
+        console.error("Schedule page: pageId is empty, cannot load schedules");
+    }
 });
 
 async function refresh() {
-    if (!pageId) return;
+    if (!pageId) {
+        console.error("Schedule page: Cannot refresh, pageId is empty");
+        return;
+    }
+    console.log("Schedule page: Refreshing schedules for pageId:", pageId);
     try {
         schedules = await listSchedules(pageId);
-    } catch (err) {
-        console.error(err);
+        console.log("Schedule page: Loaded schedules:", schedules);
+    }
+    catch (err) {
+        console.error("Schedule page: Error loading schedules:", err);
     }
 }
 
 async function addSchedule() {
-    if (!publishTime) return;
-    const ts = new Date(publishTime).getTime();
-    await createSchedule(pageId, { strategy: "one_shot", nextRunAt: ts });
-    publishTime = "";
-    await refresh();
+    if (!publishTime) {
+        console.error("Schedule page: Cannot add schedule, publishTime is empty");
+        return;
+    }
+    if (!pageId) {
+        console.error("Schedule page: Cannot add schedule, pageId is empty");
+        return;
+    }
+    console.log("Schedule page: Adding schedule for pageId:", pageId, "publishTime:", publishTime);
+    try {
+        const ts = new Date(publishTime).getTime();
+        const result = await createSchedule(pageId, { strategy: "one_shot", nextRunAt: ts });
+        console.log("Schedule page: Schedule created successfully:", result);
+        publishTime = "";
+        await refresh();
+    }
+    catch (err) {
+        console.error("Schedule page: Error creating schedule:", err);
+    }
 }
 
 async function cancel(id: string) {
-    await cancelSchedule(pageId, id);
-    await refresh();
+    console.log("Schedule page: Canceling schedule:", id);
+    try {
+        await cancelSchedule(pageId, id);
+        console.log("Schedule page: Schedule canceled successfully");
+        await refresh();
+    }
+    catch (err) {
+        console.error("Schedule page: Error canceling schedule:", err);
+    }
 }
 
 function back() {
@@ -54,16 +96,18 @@ function back() {
 <div class="p-4">
     <h1 class="text-xl font-bold mb-4">Schedule Management</h1>
     <div class="mb-4">
-        <label class="mr-2">Publish Time:</label>
-        <input type="datetime-local" bind:value={publishTime} class="border p-1" />
-        <button on:click={addSchedule} class="ml-2 px-2 py-1 bg-blue-600 text-white rounded">Add</button>
-        <button on:click={back} class="ml-2 px-2 py-1 bg-gray-300 rounded">Back</button>
+        <label for="publish-time" class="mr-2">Publish Time:</label>
+        <input id="publish-time" type="datetime-local" bind:value={publishTime} class="border p-1" />
+        <button onclick={addSchedule} class="ml-2 px-2 py-1 bg-blue-600 text-white rounded">Add</button>
+        <button onclick={back} class="ml-2 px-2 py-1 bg-gray-300 rounded">Back</button>
     </div>
     <ul>
         {#each schedules as sch}
             <li class="mb-2">
                 {new Date(sch.nextRunAt).toLocaleString()}
-                <button on:click={() => cancel(sch.id)} class="ml-2 px-2 py-1 bg-red-500 text-white rounded">Cancel</button>
+                <button onclick={() => cancel(sch.id)} class="ml-2 px-2 py-1 bg-red-500 text-white rounded">
+                    Cancel
+                </button>
             </li>
         {/each}
     </ul>

@@ -9,7 +9,7 @@ import {
 
 test.describe("Scheduled Page Publishing", () => {
     test("create schedule via API", async ({ page }) => {
-        const response = await page.request.post("http://localhost:57000/api/create-schedule", {
+        const response = await page.request.post("/api/create-schedule", {
             data: {
                 idToken: "dummy-token",
                 pageId: "page-1",

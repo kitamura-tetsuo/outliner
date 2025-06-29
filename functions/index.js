@@ -733,6 +733,7 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
       createdBy: uid,
       nextRunAt: schedule.nextRunAt,
       createdAt: FieldValue.serverTimestamp(),
+      executedAt: null,
     };
     await scheduleRef.set(data);
     return res.status(200).json({ scheduleId: scheduleRef.id });
