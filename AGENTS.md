@@ -17,6 +17,9 @@ This document consolidates the key development policies for this repository. Fol
 - Keep expected values strict even if tests take longer to run.
 - Run tests in headless mode.
 - Fix one test file at a time and run it immediately to confirm the fix.
+- CI keeps tests green on the `main` branch. If tests fail in your branch, the
+  cause lies in changes made after you diverged from `main`. Investigate those
+  modifications to identify the problem.
 - Ensure test coverage for every implemented feature. Add detailed E2E scenarios whenever new behavior is introduced.
 - Split any test file that grows beyond roughly 150 lines so that Playwright can run it reliably.
 - Run environment maintenance tests (ENV-*) separately using `scripts/run-env-tests.sh`. These use Vitest. E2E tests use Playwright.
