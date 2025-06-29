@@ -27,7 +27,8 @@ function setCorsHeaders(req, res) {
 const logger = require("firebase-functions/logger");
 
 // Load environment variables for local development
-require("dotenv").config();
+// Load environment variables using dotenvx for local development
+require("@dotenvx/dotenvx").config({ path: __dirname + "/.env" });
 
 // 環境変数を直接使用（ローカル開発用）
 const azureConfig = {

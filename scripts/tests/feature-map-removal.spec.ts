@@ -14,14 +14,14 @@ describe("TST-0006: feature-map削除スクリプト", () => {
     const __dirname = path.dirname(__filename);
     const repoRoot = path.resolve(__dirname, "..", ".." );
     const docsPath = path.join(repoRoot, "docs", "feature-map.md");
-    const scriptPath = path.join(repoRoot, "scripts", "remove_feature_map.sh");
+    const scriptPath = path.join(repoRoot, "scripts", "remove_feature_docs.sh");
 
     beforeEach(() => {
         if (!fs.existsSync(path.dirname(docsPath))) {
             fs.mkdirSync(path.dirname(docsPath), { recursive: true });
         }
         fs.writeFileSync(docsPath, "# dummy\n");
-        execSync(`git add ${docsPath}`);
+        execSync(`git add -f ${docsPath}`);
     });
 
     afterEach(() => {
@@ -29,7 +29,7 @@ describe("TST-0006: feature-map削除スクリプト", () => {
         try { fs.unlinkSync(docsPath); } catch { /* ignore */ }
     });
 
-    test("remove_feature_map.sh deletes tracked feature-map.md", async () => {
+    test("remove_feature_docs.sh deletes tracked feature-map.md", async () => {
         execSync(scriptPath);
 
         const exists = fs.existsSync(docsPath);

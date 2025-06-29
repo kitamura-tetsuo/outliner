@@ -1,0 +1,8 @@
+id: TST-0006
+title: Environment variable is loaded in browser
+title-ja: ブラウザで環境変数が読み込まれる
+category: testing
+description: Verify that VITE_IS_TEST from .env loads in the client runtime.
+status: implemented
+tests:
+- client/e2e/basic/env-variable-check.spec.ts
