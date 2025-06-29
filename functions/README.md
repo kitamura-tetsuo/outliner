@@ -9,7 +9,22 @@
 2. `/api/save-container` - ユーザーのコンテナIDを保存するエンドポイント
 3. `/api/get-user-containers` - ユーザーがアクセス可能なコンテナIDのリストを取得するエンドポイント
 4. `/health` - ヘルスチェックエンドポイント
+5. `/api/create-schedule` - 指定したページに公開スケジュールを登録するエンドポイント
+6. `/api/update-schedule` - 既存のスケジュールを更新するエンドポイント
+7. `/api/list-schedules` - ユーザーが作成したスケジュール一覧を取得するエンドポイント
+8. `/api/cancel-schedule` - スケジュールをキャンセルするエンドポイント
 
+### サンプル
+
+```bash
+curl -X POST http://localhost:57000/api/create-schedule \
+  -H 'Content-Type: application/json' \
+  -d '{"idToken":"<ID_TOKEN>","pageId":"<PAGE_ID>","schedule":{"strategy":"one_shot","nextRunAt":<TIMESTAMP>}}'
+
+curl -X POST http://localhost:57000/api/cancel-schedule \
+  -H 'Content-Type: application/json' \
+  -d '{"idToken":"<ID_TOKEN>","pageId":"<PAGE_ID>","scheduleId":"<SCHEDULE_ID>"}'
+```
 ## セットアップ
 
 1. 依存関係をインストール:
