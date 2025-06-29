@@ -303,6 +303,10 @@ function goToProject() {
     goto(`/${projectName}`);
 }
 
+function goToSchedule() {
+    goto(`/${projectName}/${pageName}/schedule`);
+}
+
 // 検索パネルの表示を切り替える
 function toggleSearchPanel() {
     isSearchPanelVisible = !isSearchPanelVisible;
@@ -370,12 +374,20 @@ onDestroy(() => {
                     ページ
                 {/if}
             </h1>
-            <button
-                onclick={toggleSearchPanel}
-                class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-                検索
-            </button>
+            <div class="space-x-2">
+                <button
+                    onclick={toggleSearchPanel}
+                    class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                    検索
+                </button>
+                <button
+                    onclick={goToSchedule}
+                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                    予約管理
+                </button>
+            </div>
         </div>
     </div>
 

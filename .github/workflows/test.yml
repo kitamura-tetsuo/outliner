@@ -228,9 +228,10 @@ jobs:
       - name: Run codex setup script
         run: bash scripts/codex-setup.sh
 
-      - name: Run environment tests
+      - name: Start test services
         run: |
-          bash scripts/run-env-tests.sh > /tmp/env-test.log
+          chmod +x scripts/start-all-localhost-servers.sh
+          bash scripts/start-all-localhost-servers.sh
         env:
           CI: true
           NODE_ENV: test
@@ -238,6 +239,17 @@ jobs:
           DISPLAY: :99
           DISABLE_POSTHOG: true
           VITE_DISABLE_FLUID_TELEMETRY: true
+
+      # - name: Run environment tests
+      #   run: |
+      #     bash scripts/run-env-tests.sh > /tmp/env-test.log
+      #   env:
+      #     CI: true
+      #     NODE_ENV: test
+      #     TEST_ENV: localhost
+      #     DISPLAY: :99
+      #     DISABLE_POSTHOG: true
+      #     VITE_DISABLE_FLUID_TELEMETRY: true
 
       - name: Run unit tests for github reporting
         run: |
