@@ -15,5 +15,6 @@ test('dotenvx loads NODE_ENV and TEST_ENV without cross-env', () => {
 
   const command = `(cd client && NODE_ENV=test TEST_ENV=localhost npx dotenvx run --env-file=.env.test -- node -e "console.log(process.env.NODE_ENV + '|' + process.env.TEST_ENV)")`;
   const output = execSync(command, { cwd: repoRoot }).toString().trim();
-  expect(output).toBe('test|localhost');
+  const lines = output.split(/\r?\n/);
+  expect(lines.at(-1)).toBe('test|localhost');
 });

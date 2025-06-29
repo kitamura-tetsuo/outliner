@@ -227,8 +227,8 @@ jobs:
 
       - name: Start test services
         run: |
-          chmod +x scripts/start-all-localhost-servers.sh
-          bash scripts/start-all-localhost-servers.sh
+          chmod +x scripts/codex-setup.sh
+          SKIP_PORT_WAIT=1 bash scripts/codex-setup.sh
         env:
           CI: true
           NODE_ENV: test

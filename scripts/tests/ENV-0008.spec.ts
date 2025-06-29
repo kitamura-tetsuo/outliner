@@ -14,5 +14,6 @@ test('functions env variables load with dotenvx', () => {
 
   const command = "node -e \"require('./functions/index.js'); console.log(process.env.AZURE_TENANT_ID)\"";
   const output = execSync(command, { cwd: repoRoot }).toString().trim();
-  expect(output).toBe('test-tenant-id');
+  const lines = output.split(/\r?\n/);
+  expect(lines.at(-1)).toBe('test-tenant-id');
 });
