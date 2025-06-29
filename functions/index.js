@@ -26,8 +26,8 @@ function setCorsHeaders(req, res) {
 // ロガーの設定
 const logger = require("firebase-functions/logger");
 
-// 環境変数を読み込み
-require("dotenv").config();
+// dotenvxを使用して環境変数を読み込み
+require("@dotenvx/dotenvx/config");
 
 // 環境変数を直接使用（ローカル開発用）
 const azureConfig = {

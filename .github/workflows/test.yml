@@ -225,31 +225,9 @@ jobs:
           npx playwright install chromium || echo "Playwright install failed, continuing..."
           npx playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
 
-      - name: Start test services
+      - name: Run environment tests
         run: |
-          # Load NVM if available
-          if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
-            . "$HOME/.nvm/nvm.sh"
-          fi
-
-          # Set display for headless testing
-          export DISPLAY=:99
-
-          # Set environment variables for testing
-          export NODE_ENV=test
-          export TEST_ENV=localhost
-          export CI=true
-          export DISABLE_POSTHOG=true
-          export VITE_DISABLE_FLUID_TELEMETRY=true
-
-          # Make helper scripts executable
-          chmod +x scripts/codex-setup.sh || true
-          chmod +x scripts/start-all-localhost-servers.sh || true
-          chmod +x scripts/common-config.sh || true
-          chmod +x scripts/common-functions.sh || true
-          chmod +x scripts/setup-local-env.sh || true
-
-          bash scripts/start-all-localhost-servers.sh
+          bash scripts/run-env-tests.sh > /tmp/env-test.log
         env:
           CI: true
           NODE_ENV: test
@@ -258,10 +236,10 @@ jobs:
           DISABLE_POSTHOG: true
           VITE_DISABLE_FLUID_TELEMETRY: true
 
-      - name: Run unit tests
+      - name: Run unit tests for github reporting
         run: |
           cd client
-          npm run github:test:unit > /tmp/test.log
+          npm run github:test:unit > /tmp/unit-test.log
         env:
           CI: true
           NODE_ENV: test
@@ -270,10 +248,10 @@ jobs:
           DISABLE_POSTHOG: true
           VITE_DISABLE_FLUID_TELEMETRY: true
 
-      - name: Run e2e tests
+      - name: Run e2e tests for github reporting
         run: |
           cd client
-          npm run github:test:e2e >> /tmp/test.log
+          npm run github:test:e2e >> /tmp/e2e-test.log
         env:
           CI: true
           NODE_ENV: test
@@ -287,7 +265,12 @@ jobs:
         run: |
           echo "## ❌ Test suite failed" >> "$GITHUB_STEP_SUMMARY"
           echo >> "$GITHUB_STEP_SUMMARY"
-          grep -E -A1 -B0 "FAIL|FAILED" /tmp/test.log >> "$GITHUB_STEP_SUMMARY" || true
+          if [ -f /tmp/test.log ]; then
+            grep -E -A1 -B0 "FAIL|FAILED" /tmp/test.log >> "$GITHUB_STEP_SUMMARY" || true
+          fi
+          if [ -f /tmp/env-test.log ]; then
+            grep -E -A1 -B0 "FAIL|FAILED" /tmp/env-test.log >> "$GITHUB_STEP_SUMMARY" || true
+          fi
 
       - name: Check disk space before upload
         if: failure()

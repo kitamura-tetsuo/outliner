@@ -1,0 +1,11 @@
+id: ENV-0008
+title: Functions load env via dotenvx
+category: environment
+status: implemented
+description: Ensure Firebase functions load environment variables with dotenvx and test env file is generated.
+components:
+- functions/index.js
+- scripts/setup-local-env.sh
+tests:
+- scripts/tests/ENV-0008.spec.ts
+title-ja: dotenvxでFunctionsの環境変数を読み込む

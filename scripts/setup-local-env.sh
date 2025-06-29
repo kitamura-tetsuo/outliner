@@ -37,5 +37,15 @@ fi
 # Server and functions env files
 copy_if_missing "$ROOT_DIR/server/.env.test" "$ROOT_DIR/server/.env"
 copy_if_missing "$ROOT_DIR/functions/.env.test" "$ROOT_DIR/functions/.env"
+if [ ! -f "$ROOT_DIR/functions/.env.test" ]; then
+    cat >> "$ROOT_DIR/functions/.env.test" <<'EOV'
+AZURE_TENANT_ID=test-tenant-id
+AZURE_ENDPOINT=https://test.fluidrelay.azure.com
+AZURE_PRIMARY_KEY=test-primary-key
+AZURE_SECONDARY_KEY=test-secondary-key
+AZURE_ACTIVE_KEY=primary
+EOV
+    echo "Created functions/.env.test"
+fi
 
 echo "Environment files are ready"
