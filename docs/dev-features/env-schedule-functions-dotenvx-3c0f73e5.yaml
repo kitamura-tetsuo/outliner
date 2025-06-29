@@ -1,0 +1,11 @@
+id: ENV-0009
+title: Schedule management functions load env via dotenvx
+category: environment
+status: implemented
+description: Ensure schedule management Cloud Functions load environment variables using dotenvx.
+components:
+- functions/index.js
+- scripts/tests/ENV-0009.spec.ts
+tests:
+- scripts/tests/ENV-0009.spec.ts
+title-ja: スケジュール管理Functionsがdotenvxで環境変数を読み込む

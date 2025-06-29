@@ -204,3 +204,12 @@ dotenvx run -- npm run test:env
 スクリプトは初回実行後にインストール結果をキャッシュするため、二回目以降は依存関係のインストールをスキップして短時間で完了します。
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
+
+## 機能ドキュメントの集約
+
+`docs/client-features.yaml` と `docs/dev-features.yaml` は、`docs/client-features/` と `docs/dev-features/` 以下の YAML を集約して生成します。新しい YAML ファイルを追加したら次のコマンドを実行してください。
+
+```bash
+python scripts/aggregate_features.py
+```
+
