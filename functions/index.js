@@ -780,6 +780,89 @@ exports.executePublish = onRequest({ cors: true }, async (req, res) => {
     return res.status(500).json({ error: "Failed to execute publish" });
   }
 });
+// Update an existing publishing schedule
+exports.updateSchedule = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+  const { idToken, pageId, scheduleId, schedule } = req.body || {};
+  if (!idToken || !pageId || !scheduleId || !schedule) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const scheduleRef = db
+      .collection("pages")
+      .doc(pageId)
+      .collection("schedules")
+      .doc(scheduleId);
+    const scheduleSnap = await scheduleRef.get();
+    if (!scheduleSnap.exists) {
+      return res.status(404).json({ error: "Schedule not found" });
+    }
+    if (scheduleSnap.data().createdBy !== uid) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    await scheduleRef.update({
+      strategy: schedule.strategy,
+      params: schedule.params || {},
+      nextRunAt: schedule.nextRunAt,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    logger.error(`updateSchedule error: ${err.message}`);
+    if (
+      err.code === "auth/id-token-expired" ||
+      err.code === "auth/invalid-id-token" ||
+      err.code === "auth/argument-error"
+    ) {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to update schedule" });
+  }
+});
+
+// List schedules for a page
+exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+  const { idToken, pageId } = req.body || {};
+  if (!idToken || !pageId) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  try {
+    await admin.auth().verifyIdToken(idToken);
+    const snapshot = await db
+      .collection("pages")
+      .doc(pageId)
+      .collection("schedules")
+      .orderBy("nextRunAt")
+      .get();
+    const schedules = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    return res.status(200).json({ schedules });
+  } catch (err) {
+    logger.error(`listSchedules error: ${err.message}`);
+    if (
+      err.code === "auth/id-token-expired" ||
+      err.code === "auth/invalid-id-token" ||
+      err.code === "auth/argument-error"
+    ) {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to list schedules" });
+  }
+});
 
 // List schedules for a page
 exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
