@@ -81,6 +81,7 @@ Mocks are generally forbidden. Limited exceptions:
 
 - Projects use `title` (not `name`) and the project ID equals its Fluid container ID.
 - Firebase Functions are accessed through Hosting at `http://localhost:57000/api`.
+- In both deployed and test environments, call Firebase Functions through the host's `/api/` route.
 - Use `.env` files for Functions v2 environment variables and never hardcode credentials.
 - Do not bypass authentication; tests should authenticate against the Firebase Auth emulator.
 

@@ -1,7 +1,11 @@
-import { execSync } from 'child_process';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { expect, test } from 'vitest';
+import { execSync } from "child_process";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import {
+    expect,
+    test,
+} from "vitest";
 
 /** @feature ENV-0008
  *  Title   : Functions load env via dotenvx
@@ -16,4 +20,14 @@ test('functions env variables load with dotenvx', () => {
   const output = execSync(command, { cwd: repoRoot }).toString().trim();
   const lines = output.split(/\r?\n/);
   expect(lines.at(-1)).toBe('test-tenant-id');
+});
+
+
+test("functions package.json lists dotenvx dependency", () => {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const repoRoot = path.resolve(__dirname, "..", "..");
+    const pkgPath = path.join(repoRoot, "functions", "package.json");
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+    expect(pkg.dependencies["@dotenvx/dotenvx"]).toBeDefined();
 });
