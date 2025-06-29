@@ -15,14 +15,11 @@ test('functions env variables load with dotenvx', () => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const repoRoot = path.resolve(__dirname, '..', '..');
-
-  const command = "node -e \"require('./index.js'); console.log(process.env.AZURE_TENANT_ID)\"";
-  const functionsDir = path.join(repoRoot, 'functions');
-  const output = execSync(command, { cwd: functionsDir }).toString().trim();
-  const lastLine = output.split('\n').pop();
-  expect(lastLine).toBe('test-tenant-id');
+  const command = "node -e \"require('./functions/index.js'); console.log(process.env.AZURE_TENANT_ID)\"";
+  const output = execSync(command, { cwd: repoRoot }).toString().trim();
+  const lines = output.split(/\r?\n/);
+  expect(lines.at(-1)).toBe('test-tenant-id');
 });
-
 
 test("functions package.json lists dotenvx dependency", () => {
     const __filename = fileURLToPath(import.meta.url);
