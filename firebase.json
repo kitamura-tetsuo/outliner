@@ -68,6 +68,10 @@
                 "function": "listSchedules"
             },
             {
+                "source": "/api/cancel-schedule",
+                "function": "cancelSchedule"
+            },
+            {
                 "source": "/health",
                 "function": "health"
             },

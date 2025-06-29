@@ -1,7 +1,4 @@
-import {
-    type FirebaseApp,
-    initializeApp,
-} from "firebase/app";
+import { type FirebaseApp } from "firebase/app";
 import {
     connectFirestoreEmulator,
     doc,
@@ -12,6 +9,7 @@ import {
 } from "firebase/firestore";
 
 import { userManager } from "../auth/UserManager";
+import { getFirebaseApp } from "../lib/firebase-app";
 import { getLogger } from "../lib/logger";
 const logger = getLogger();
 const firebaseConfig = {
@@ -45,14 +43,9 @@ let db: Firestore | undefined;
 
 // Firebaseアプリの初期化（一度だけ）
 try {
-    try {
-        app = initializeApp(firebaseConfig);
-        logger.info("Firebase app initialized successfully");
-    }
-    catch (e) {
-        // すでに初期化されている場合は既存のアプリを使用
-        logger.info("Firebase app already initialized, reusing existing instance");
-    }
+    // 中央管理されたFirebaseアプリを使用
+    app = getFirebaseApp();
+    logger.info("Firebase app initialized via central management");
 
     // Firestoreインスタンスの取得
     db = getFirestore(app!);
@@ -186,12 +179,11 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
             throw new Error("認証トークンを取得できません");
         }
 
-        // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
-        logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
+        // /api/プレフィックスを付加してhost経由で呼び出し
+        logger.info(`Saving container ID via /api/saveContainer`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
-        const response = await fetch(`${apiBaseUrl}/api/save-container`, {
+        const response = await fetch(`/api/save-container`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -331,7 +323,7 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
-        const response = await fetch(`${apiBaseUrl}/api/save-container`, {
+        const response = await fetch(`${apiBaseUrl}/saveContainer`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

@@ -17,6 +17,9 @@ This document consolidates the key development policies for this repository. Fol
 - Keep expected values strict even if tests take longer to run.
 - Run tests in headless mode.
 - Fix one test file at a time and run it immediately to confirm the fix.
+- CI keeps tests green on the `main` branch. If tests fail in your branch, the
+  cause lies in changes made after you diverged from `main`. Investigate those
+  modifications to identify the problem.
 - Ensure test coverage for every implemented feature. Add detailed E2E scenarios whenever new behavior is introduced.
 - Split any test file that grows beyond roughly 150 lines so that Playwright can run it reliably.
 - Run environment maintenance tests (ENV-*) separately using `scripts/run-env-tests.sh`. These use Vitest. E2E tests use Playwright.
@@ -30,6 +33,9 @@ Mocks are generally forbidden. Limited exceptions:
 1. **Svelte stores** – use `vi.mock` to control store behavior.
 2. **Fluid `Item` objects** – provide minimal stubs with required properties like `id` and `text`.
    Add comments explaining the purpose and scope of any mock.
+- **No mocking logic in production code**. If unit tests require mocks, place all
+  mock-related code inside the test files and keep it out of the application
+  code.
 
 ### Running E2E Tests
 
