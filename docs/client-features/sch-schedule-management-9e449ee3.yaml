@@ -1,0 +1,12 @@
+id: SCH-9E449EE3
+title: Schedule Management UI
+title-ja: スケジュール管理UI
+description: Users can view scheduled publishing tasks for a page.
+category: publishing
+status: implemented
+components:
+- client/e2e/core/sch-schedule-management-9e449ee3.spec.ts
+- client/src/routes/schedule/+page.svelte
+- functions/index.js
+tests:
+- client/e2e/core/sch-schedule-management-9e449ee3.spec.ts
