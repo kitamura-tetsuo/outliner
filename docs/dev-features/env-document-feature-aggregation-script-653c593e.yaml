@@ -1,0 +1,8 @@
+id: ENV-0009
+title: Document feature aggregation script
+description: Add instructions to run scripts/aggregate_features.py after adding feature YAML files.
+category: environment
+status: implemented
+components: []
+tests: []
+title-ja: feature aggregation script documentation

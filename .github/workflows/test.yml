@@ -225,6 +225,9 @@ jobs:
           npx playwright install chromium || echo "Playwright install failed, continuing..."
           npx playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
 
+      - name: Run codex setup script
+        run: bash scripts/codex-setup.sh
+
       - name: Start test services
         run: |
           chmod +x scripts/start-all-localhost-servers.sh
