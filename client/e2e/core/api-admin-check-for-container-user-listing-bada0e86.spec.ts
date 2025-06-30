@@ -17,7 +17,7 @@ test.describe("管理者チェック (API-0003)", () => {
 
     test("無効なトークンでは認証エラーが返る", async ({ page }) => {
         // 無効なトークンでFirebase Functions APIを呼び出し、認証エラーが返ることを確認
-        const response = await page.request.post("/api/get-container-users", {
+        const response = await page.request.post("http://localhost:57000/api/get-container-users", {
             data: { idToken: "invalid-token", containerId: "test-container" },
         });
 

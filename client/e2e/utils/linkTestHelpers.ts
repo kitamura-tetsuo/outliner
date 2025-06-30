@@ -1,5 +1,5 @@
-import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 import { TestHelpers } from "./testHelpers";
 
@@ -348,45 +348,6 @@ export class LinkTestHelpers {
             await loginButton.click();
             await page.waitForTimeout(1000);
         }
-    }
-
-    /**
-     * リンクプレビューを強制的に表示する
-     * @param page Playwrightのページオブジェクト
-     * @param linkText リンクのテキスト
-     */
-    static async forceLinkPreview(page: Page, linkText: string): Promise<void> {
-        await page.evaluate(text => {
-            // リンク要素を取得
-            const linkElement = Array.from(document.querySelectorAll("a.internal-link")).find(
-                el => el.textContent === text,
-            );
-
-            if (!linkElement) {
-                console.error(`Link with text "${text}" not found`);
-                return;
-            }
-
-            // カスタムイベントを発火
-            const mouseoverEvent = new MouseEvent("mouseover", {
-                bubbles: true,
-                cancelable: true,
-                view: window,
-            });
-            linkElement.dispatchEvent(mouseoverEvent);
-
-            // プレビュー要素を強制的に表示
-            setTimeout(() => {
-                const previewElement = document.querySelector(".link-preview-popup");
-                if (previewElement) {
-                    (previewElement as HTMLElement).style.display = "block";
-                    (previewElement as HTMLElement).style.visibility = "visible";
-                    (previewElement as HTMLElement).style.opacity = "1";
-                }
-            }, 100);
-        }, linkText);
-
-        await page.waitForTimeout(500);
     }
 
     /**

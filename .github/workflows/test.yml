@@ -86,7 +86,7 @@ jobs:
           fi
 
           # Export PATH for subsequent steps
-          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "PATH=$PATH" 2>&1 | tee -a $GITHUB_ENV
 
       - name: Install dependencies
         run: |
@@ -227,11 +227,6 @@ jobs:
 
       - name: Run codex setup script
         run: bash scripts/codex-setup.sh
-
-      - name: Start test services
-        run: |
-          chmod +x scripts/start-all-localhost-servers.sh
-          bash scripts/start-all-localhost-servers.sh
         env:
           CI: true
           NODE_ENV: test
@@ -242,7 +237,7 @@ jobs:
 
       # - name: Run environment tests
       #   run: |
-      #     bash scripts/run-env-tests.sh > /tmp/env-test.log
+      #     bash scripts/run-env-tests.sh 2>&1 | tee -a /tmp/env-test.log
       #   env:
       #     CI: true
       #     NODE_ENV: test
@@ -254,7 +249,7 @@ jobs:
       - name: Run unit tests for github reporting
         run: |
           cd client
-          npm run github:test:unit > /tmp/unit-test.log
+          npm run github:test:unit 2>&1 | tee -a /tmp/unit-test.log
         env:
           CI: true
           NODE_ENV: test
@@ -266,7 +261,7 @@ jobs:
       - name: Run e2e tests for github reporting
         run: |
           cd client
-          npm run github:test:e2e >> /tmp/e2e-test.log
+          npm run github:test:e2e 2>&1 | tee -a /tmp/e2e-test.log
         env:
           CI: true
           NODE_ENV: test
@@ -278,13 +273,13 @@ jobs:
       - name: Summarise failures
         if: failure()
         run: |
-          echo "## ❌ Test suite failed" >> "$GITHUB_STEP_SUMMARY"
-          echo >> "$GITHUB_STEP_SUMMARY"
+          echo "## ❌ Test suite failed" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           if [ -f /tmp/test.log ]; then
-            grep -E -A1 -B0 "FAIL|FAILED" /tmp/test.log >> "$GITHUB_STEP_SUMMARY" || true
+            grep -E -A1 -B0 "FAIL|FAILED" /tmp/test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
           fi
           if [ -f /tmp/env-test.log ]; then
-            grep -E -A1 -B0 "FAIL|FAILED" /tmp/env-test.log >> "$GITHUB_STEP_SUMMARY" || true
+            grep -E -A1 -B0 "FAIL|FAILED" /tmp/env-test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
           fi
 
       - name: Check disk space before upload
@@ -299,10 +294,10 @@ jobs:
           MIN_SPACE=2
 
           if [ "$AVAILABLE_GB" -gt "$MIN_SPACE" ]; then
-            echo "sufficient_space=true" >> $GITHUB_OUTPUT
+            echo "sufficient_space=true" 2>&1 | tee -a $GITHUB_OUTPUT
             echo "✅ Sufficient disk space available for artifact upload"
           else
-            echo "sufficient_space=false" >> $GITHUB_OUTPUT
+            echo "sufficient_space=false" 2>&1 | tee -a $GITHUB_OUTPUT
             echo "⚠️ Insufficient disk space for artifact upload (${AVAILABLE_GB}GB < ${MIN_SPACE}GB)"
           fi
 

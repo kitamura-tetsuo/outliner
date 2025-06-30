@@ -77,7 +77,7 @@
             },
             {
                 "source": "**",
-                "destination": "/index.html"
+                "destination": "http://localhost:7090"
             }
         ]
     },

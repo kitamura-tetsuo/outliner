@@ -41,7 +41,7 @@ it("calls createSchedule API", async () => {
 
     // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
-        "/api/create-schedule",
+        "http://localhost:57000/api/create-schedule",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -75,7 +75,7 @@ it("calls listSchedules API", async () => {
 
     // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
-        "/api/list-schedules",
+        "http://localhost:57000/api/list-schedules",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -102,7 +102,7 @@ it("calls cancelSchedule API", async () => {
 
     // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
-        "/api/cancel-schedule",
+        "http://localhost:57000/api/cancel-schedule",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },

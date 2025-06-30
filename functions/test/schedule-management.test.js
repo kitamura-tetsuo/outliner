@@ -3,8 +3,6 @@ const axios = require("axios");
 
 const baseURL = "http://localhost:57000/api";
 const dummyToken = "test-id-token";
-const dummyPageId = "page-1";
-const dummyScheduleId = "sch-1";
 
 describe("Schedule Management", () => {
   it("list schedules missing params", async () => {
