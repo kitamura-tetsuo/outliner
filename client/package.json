@@ -9,6 +9,7 @@
         "dev:localhost": "npm run paraglide:compile && NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- vite dev --host 0.0.0.0 --port 7090",
         "dev:localhost:tinylicious": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- npx tinylicious --port 7092",
         "build": "npm run paraglide:compile && vite build",
+        "build:production": "npm run paraglide:compile && dotenvx run --env-file=.env.production -- vite build",
         "preview": "vite preview",
         "preview:host": "vite preview --host 0.0.0.0",
         "prepare": "svelte-kit sync || echo ''",

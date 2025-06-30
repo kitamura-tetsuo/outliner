@@ -17,6 +17,10 @@ export default defineConfig(async ({ mode }) => {
         console.log("Loading development environment variables from .env.development");
         config({ path: [".env.development"] });
     }
+    else if (mode === "production") {
+        console.log("Loading production environment variables from .env.production");
+        config({ path: [".env.production"] });
+    }
 
     return {
         plugins: [

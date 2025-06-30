@@ -25,7 +25,7 @@ jobs:
 
       - name: Create client env file
         run: |
-          cat > client/.env <<EOF2
+          cat > client/.env.production <<EOF2
           VITE_AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}
           VITE_AZURE_FLUID_RELAY_ENDPOINT=${{ secrets.AZURE_FLUID_RELAY_ENDPOINT }}
           VITE_USE_FIREBASE_AUTH=true
@@ -48,7 +48,7 @@ jobs:
         run: |
           cd client
           npm ci
-          npm run build
+          npm run build:production
 
       - name: Install functions dependencies
         run: |
