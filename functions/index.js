@@ -396,7 +396,7 @@ exports.getUserContainers = onRequest({ cors: true }, async (req, res) => {
 });
 
 // テストユーザーを作成するエンドポイント
-exports["create-test-user"] = onRequest({ cors: true }, async (req, res) => {
+exports.createTestUser = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
   setCorsHeaders(req, res);
 

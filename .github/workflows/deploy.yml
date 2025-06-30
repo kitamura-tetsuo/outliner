@@ -67,5 +67,8 @@ jobs:
           NODE_ENV=production
           EOF3
 
+      - name: Set Firebase project
+        run: firebase use outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
+
       - name: Deploy to Firebase
-        run: firebase deploy --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive
+        run: firebase deploy --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive
