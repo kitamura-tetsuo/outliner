@@ -395,6 +395,49 @@ exports.getUserContainers = onRequest({ cors: true }, async (req, res) => {
   }
 });
 
+// テストユーザーを作成するエンドポイント
+exports["create-test-user"] = onRequest({ cors: true }, async (req, res) => {
+  // CORS設定
+  setCorsHeaders(req, res);
+
+  // プリフライト OPTIONS リクエストの処理
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  // POSTメソッド以外は拒否
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    const { email, password, displayName } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    try {
+      const userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: displayName || email,
+        emailVerified: true,
+      });
+      return res.status(200).json({ uid: userRecord.uid });
+    } catch (err) {
+      if (err.code === "auth/email-already-exists") {
+        const existing = await admin.auth().getUserByEmail(email);
+        return res.status(200).json({ uid: existing.uid });
+      }
+      logger.error(`Error creating test user: ${err.message}`, { err });
+      return res.status(500).json({ error: "Failed to create test user" });
+    }
+  } catch (error) {
+    logger.error(`createTestUser error: ${error.message}`, { error });
+    return res.status(500).json({ error: "Failed to create test user" });
+  }
+});
+
 // ユーザーを削除するエンドポイント
 exports.deleteUser = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
