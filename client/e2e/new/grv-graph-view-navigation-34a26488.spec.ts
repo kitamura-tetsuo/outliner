@@ -1,6 +1,6 @@
-/** @feature GRF-001
- *  Title   : Graph View
- *  Source  : docs/client-features.yaml
+/** @feature GRV-0001
+ *  Title   : Graph View visualization
+ *  Source  : docs/client-features/grv-graph-view-34a26488.yaml
  */
 import {
     expect,
@@ -8,7 +8,7 @@ import {
 } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("GRF-001: Graph View navigation", () => {
+test.describe("GRV-0001: Graph View navigation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });

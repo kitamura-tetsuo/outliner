@@ -8,5 +8,5 @@ components:
 - functions/package.json
 - scripts/setup-local-env.sh
 tests:
-- scripts/tests/ENV-0008.spec.ts
+- scripts/tests/env-dotenvx-functions-root-9a2b7c8d.spec.ts
 title-ja: dotenvxでFunctionsの環境変数を読み込む

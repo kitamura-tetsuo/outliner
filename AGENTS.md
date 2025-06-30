@@ -23,6 +23,7 @@ This document consolidates the key development policies for this repository. Fol
 - Ensure test coverage for every implemented feature. Add detailed E2E scenarios whenever new behavior is introduced.
 - Split any test file that grows beyond roughly 150 lines so that Playwright can run it reliably.
 - Run environment maintenance tests (ENV-*) separately using `scripts/run-env-tests.sh`. These use Vitest. E2E tests use Playwright.
+- Environment test spec files follow the same `<slug>-<title>-<uuid>.spec.ts` naming used in client E2E tests (e.g. `env-setup-script-starts-all-services-95e7c1a6.spec.ts`).
 - Record test specs in `docs/client-features/<slug>-<title>-<uuid>.yaml` and match the file name pattern in the `client/e2e` directory.
 - Retrieve SharedTree and cursor data with `treeValidation.ts` and `cursorValidation.ts` instead of mocks.
 
