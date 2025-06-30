@@ -63,6 +63,7 @@ jobs:
           AZURE_PRIMARY_KEY=${{ secrets.AZURE_PRIMARY_KEY }}
           AZURE_SECONDARY_KEY=${{ secrets.AZURE_SECONDARY_KEY }}
           AZURE_ACTIVE_KEY=${{ secrets.AZURE_ACTIVE_KEY }}
+          AZURE_ENDPOINT=${{ secrets.AZURE_ENDPOINT }}
           NODE_ENV=production
           EOF3
 
