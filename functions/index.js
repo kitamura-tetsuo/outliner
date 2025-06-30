@@ -635,9 +635,9 @@ exports.getContainerUsers = onRequest({ cors: true }, async (req, res) => {
   } catch (error) {
     logger.error(`Error getting container users: ${error.message}`, { error });
     // Firebase認証エラーの場合は401を返す
-    if (error.code === 'auth/id-token-expired' ||
-        error.code === 'auth/invalid-id-token' ||
-        error.code === 'auth/argument-error') {
+    if (error.code === "auth/id-token-expired" ||
+        error.code === "auth/invalid-id-token" ||
+        error.code === "auth/argument-error") {
       return res.status(401).json({ error: "Authentication failed" });
     }
     return res.status(500).json({ error: "Failed to get container users" });
@@ -673,7 +673,7 @@ exports.listUsers = onRequest({ cors: true }, async (req, res) => {
     }
 
     const result = await admin.auth().listUsers();
-    const users = result.users.map(u => ({
+    const users = result.users.map((u) => ({
       uid: u.uid,
       email: u.email,
       displayName: u.displayName,
@@ -683,9 +683,9 @@ exports.listUsers = onRequest({ cors: true }, async (req, res) => {
   } catch (error) {
     logger.error(`Error listing users: ${error.message}`, { error });
     // Firebase認証エラーの場合は401を返す
-    if (error.code === 'auth/id-token-expired' ||
-        error.code === 'auth/invalid-id-token' ||
-        error.code === 'auth/argument-error') {
+    if (error.code === "auth/id-token-expired" ||
+        error.code === "auth/invalid-id-token" ||
+        error.code === "auth/argument-error") {
       return res.status(401).json({ error: "Authentication failed" });
     }
     return res.status(500).json({ error: "Failed to list users" });
@@ -741,9 +741,9 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
   } catch (err) {
     logger.error(`createSchedule error: ${err.message}`);
     // Firebase認証エラーの場合は401を返す
-    if (err.code === 'auth/id-token-expired' ||
-        err.code === 'auth/invalid-id-token' ||
-        err.code === 'auth/argument-error') {
+    if (err.code === "auth/id-token-expired" ||
+        err.code === "auth/invalid-id-token" ||
+        err.code === "auth/argument-error") {
       return res.status(401).json({ error: "Authentication failed" });
     }
     return res.status(500).json({ error: "Failed to create schedule" });
@@ -892,13 +892,13 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
       .get();
 
     const schedules = [];
-    snapshot.forEach(doc => schedules.push({ id: doc.id, ...doc.data() }));
+    snapshot.forEach((doc) => schedules.push({ id: doc.id, ...doc.data() }));
     return res.status(200).json({ schedules });
   } catch (err) {
     logger.error(`listSchedules error: ${err.message}`);
-    if (err.code === 'auth/id-token-expired' ||
-        err.code === 'auth/invalid-id-token' ||
-        err.code === 'auth/argument-error') {
+    if (err.code === "auth/id-token-expired" ||
+        err.code === "auth/invalid-id-token" ||
+        err.code === "auth/argument-error") {
       return res.status(401).json({ error: "Authentication failed" });
     }
     return res.status(500).json({ error: "Failed to list schedules" });
@@ -939,9 +939,9 @@ exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
     return res.status(200).json({ success: true });
   } catch (err) {
     logger.error(`cancelSchedule error: ${err.message}`);
-    if (err.code === 'auth/id-token-expired' ||
-        err.code === 'auth/invalid-id-token' ||
-        err.code === 'auth/argument-error') {
+    if (err.code === "auth/id-token-expired" ||
+        err.code === "auth/invalid-id-token" ||
+        err.code === "auth/argument-error") {
       return res.status(401).json({ error: "Authentication failed" });
     }
     return res.status(500).json({ error: "Failed to cancel schedule" });

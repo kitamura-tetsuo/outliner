@@ -1,4 +1,5 @@
 // Jest テストセットアップファイル
+/* global jest, afterAll */
 const admin = require("firebase-admin");
 
 // Firebase Admin SDK のテスト用初期化
