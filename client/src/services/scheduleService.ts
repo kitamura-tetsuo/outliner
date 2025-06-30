@@ -12,8 +12,9 @@ async function fetchApi(path: string, body: any) {
     const idToken = await userManager.auth.currentUser?.getIdToken();
     if (!idToken) throw new Error("No auth token");
 
-    // /api/プレフィックスを付加してhost経由で呼び出し
-    const url = `/api/${path}`;
+    // 環境に応じてAPIベースURLを決定
+    const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
+    const url = `${apiBaseUrl}/api/${path}`;
 
     console.log(`Schedule API: Calling ${url}`);
 

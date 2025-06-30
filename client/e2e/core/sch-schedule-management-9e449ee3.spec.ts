@@ -28,8 +28,11 @@ test.describe("Schedule Management", () => {
             },
         });
 
-        const res = await page.request.get(
-            `http://localhost:57000/api/list-schedules?idToken=${idToken}&pageId=${pageId}`,
+        const res = await page.request.post(
+            `http://localhost:57000/api/list-schedules`,
+            {
+                data: { idToken, pageId },
+            },
         );
         expect(res.status()).toBe(200);
         const json = await res.json();

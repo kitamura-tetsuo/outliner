@@ -227,11 +227,6 @@ jobs:
 
       - name: Run codex setup script
         run: bash scripts/codex-setup.sh
-
-      - name: Start test services
-        run: |
-          chmod +x scripts/codex-setup.sh
-          SKIP_PORT_WAIT=1 bash scripts/codex-setup.sh
         env:
           CI: true
           NODE_ENV: test
