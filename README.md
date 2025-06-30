@@ -205,6 +205,17 @@ dotenvx run -- npm run test:env
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
 
+### Playwrightテストを順番に実行する
+
+Codex環境では複数のE2Eテストを一度に実行するとタイムアウトすることがあります。`scripts/run-e2e-progress-for-codex.sh 1` を使うと、テストファイルを1件ずつ実行できます。
+
+```bash
+scripts/run-e2e-progress-for-codex.sh 1
+```
+
+このスクリプトは進捗を `.e2e-progress` ファイルに記録し、途中でタイムアウトした場合でも続きから再開できます。タイムアウトしたテストはログに記録してください。
+`.e2e-progress` を削除すると最初から実行できます。
+
 ## 機能ドキュメントの集約
 
 `docs/client-features.yaml` と `docs/dev-features.yaml` は、`docs/client-features/` と `docs/dev-features/` 以下の YAML を集約して生成します。新しい YAML ファイルを追加したら次のコマンドを実行してください。
@@ -212,4 +223,3 @@ dotenvx run -- npm run test:env
 ```bash
 python scripts/aggregate_features.py
 ```
-
