@@ -56,6 +56,18 @@
                 "function": "listUsers"
             },
             {
+                "source": "/api/create-test-user",
+                "function": "create-test-user"
+            },
+            {
+                "source": "/api/delete-container",
+                "function": "deleteContainer"
+            },
+            {
+                "source": "/api/update-schedule",
+                "function": "updateSchedule"
+            },
+            {
                 "source": "/api/create-schedule",
                 "function": "createSchedule"
             },
