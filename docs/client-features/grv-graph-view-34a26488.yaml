@@ -25,5 +25,5 @@ interfaces:
 - ECharts
 resources: []
 tests:
-- client/e2e/new/grv-graph-view-navigation-34a26488.spec.ts
 - client/e2e/new/GRV-002.spec.ts
+- client/e2e/new/grv-graph-view-navigation-34a26488.spec.ts

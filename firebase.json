@@ -1,106 +1,29 @@
 {
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint"
-      ],
-      "runtime": "nodejs22",
-      "v2": {
-        "minInstances": 0,
-        "maxInstances": 10,
-        "concurrency": 80,
-        "memory": "256MiB",
-        "timeoutSeconds": 60
-      }
-    }
-  ],
-  "hosting": {
-    "public": "build",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
+    "functions": [
+        {
+            "source": "functions",
+            "codebase": "default",
+            "ignore": [
+                "node_modules",
+                ".git",
+                "firebase-debug.log",
+                "firebase-debug.*.log",
+                "*.local"
+            ],
+            "predeploy": [
+                "npm --prefix \"$RESOURCE_DIR\" run lint"
+            ],
+            "runtime": "nodejs22",
+            "v2": {
+                "minInstances": 0,
+                "maxInstances": 10,
+                "concurrency": 80,
+                "memory": "256MiB",
+                "timeoutSeconds": 60
+            }
+        }
     ],
-    "rewrites": [
-      {
-        "source": "/api/fluid-token",
-        "function": "fluidToken"
-      },
-      {
-        "source": "/api/save-container",
-        "function": "saveContainer"
-      },
-      {
-        "source": "/api/get-user-containers",
-        "function": "getUserContainers"
-      },
-      {
-        "source": "/api/create-test-user",
-        "function": "create-test-user"
-      },
-      {
-        "source": "/api/delete-user",
-        "function": "deleteUser"
-      },
-      {
-        "source": "/api/get-container-users",
-        "function": "getContainerUsers"
-      },
-      {
-        "source": "/api/list-users",
-        "function": "listUsers"
-      },
-      {
-        "source": "/api/create-schedule",
-        "function": "createSchedule"
-      },
-      {
-        "source": "/api/execute-publish",
-        "function": "executePublish"
-      },
-      {
-        "source": "/api/list-schedules",
-        "function": "listSchedules"
-      },
-      {
-        "source": "/api/cancel-schedule",
-        "function": "cancelSchedule"
-      },
-      {
-        "source": "/health",
-        "function": "health"
-      },
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  },
-  "emulators": {
-    "auth": {
-      "port": 59099,
-      "host": "0.0.0.0"
-    },
-    "firestore": {
-      "port": 58080,
-      "host": "0.0.0.0"
-    },
-    "functions": {
-      "port": 57070,
-      "host": "0.0.0.0"
-    },
     "hosting": {
-      "port": 57000,
-      "host": "0.0.0.0"
         "public": "build",
         "ignore": [
             "firebase.json",
@@ -158,10 +81,27 @@
             }
         ]
     },
-    "ui": {
-      "port": 54000,
-      "host": "0.0.0.0",
-      "enabled": false
+    "emulators": {
+        "auth": {
+            "port": 59099,
+            "host": "0.0.0.0"
+        },
+        "firestore": {
+            "port": 58080,
+            "host": "0.0.0.0"
+        },
+        "functions": {
+            "port": 57070,
+            "host": "0.0.0.0"
+        },
+        "hosting": {
+            "port": 57000,
+            "host": "0.0.0.0"
+        },
+        "ui": {
+            "port": 54000,
+            "host": "0.0.0.0",
+            "enabled": false
+        }
     }
-  }
 }
