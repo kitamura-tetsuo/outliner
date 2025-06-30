@@ -29,10 +29,6 @@ jobs:
           npm ci
           npm run build
 
-      - name: Copy build to root
-        run: |
-          cp -r client/build ./build
-
       - name: Install functions dependencies
         run: |
           cd functions
