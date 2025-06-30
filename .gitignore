@@ -18,6 +18,9 @@ Thumbs.db
 .env.production
 .env.local
 !.env.example
+
+# Firebase
+firebase.emulator.json
 !.env.test
 .env.keys
 

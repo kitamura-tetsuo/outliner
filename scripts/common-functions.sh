@@ -212,7 +212,7 @@ start_firebase_emulator() {
 
   echo "Starting Firebase emulator..."
   cd "${ROOT_DIR}"
-  firebase emulators:start --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
+  firebase emulators:start --config firebase.emulator.json --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
   cd "${ROOT_DIR}"
   node "${ROOT_DIR}/server/scripts/init-firebase-emulator.js" &
 }

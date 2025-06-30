@@ -89,7 +89,7 @@
             },
             {
                 "source": "**",
-                "destination": "http://localhost:7090"
+                "destination": "/index.html"
             }
         ]
     },

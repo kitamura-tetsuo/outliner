@@ -22,6 +22,10 @@ fi
 echo "=== Outliner Test Environment Setup ==="
 echo "ROOT_DIR: ${ROOT_DIR}"
 
+# Generate emulator-specific Firebase configuration
+echo "Generating emulator-specific Firebase configuration..."
+node "${SCRIPT_DIR}/setup-emulator-config.js"
+
 # Initialize environment
 echo "Loading NVM..."
 load_nvm

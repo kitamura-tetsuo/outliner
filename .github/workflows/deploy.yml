@@ -21,13 +21,17 @@ jobs:
           node-version: '22'
 
       - name: Install Firebase CLI
-        run: npm install -g firebase-tools
+        run: npm install -g firebase-tools@latest
 
       - name: Install client dependencies and build
         run: |
           cd client
           npm ci
           npm run build
+
+      - name: Copy build to root
+        run: |
+          cp -r client/build ./build
 
       - name: Install functions dependencies
         run: |
