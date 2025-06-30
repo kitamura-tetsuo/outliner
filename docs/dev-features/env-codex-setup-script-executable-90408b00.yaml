@@ -7,5 +7,5 @@ components:
 - .github/workflows/test.yml
 - scripts/codex-setup.sh
 tests:
-- scripts/tests/ENV-0001.spec.ts
+- scripts/tests/env-codex-setup-script-executable-90408b00.spec.ts
 title-ja: Codex setup script is executable

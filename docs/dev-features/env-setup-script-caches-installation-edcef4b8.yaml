@@ -9,5 +9,5 @@ category: environment
 status: implemented
 components: []
 tests:
-- client/e2e/utils/ENV-0003.spec.ts
+- scripts/tests/env-setup-script-caches-installation-edcef4b8.spec.ts
 title-ja: Setup script caches installation
