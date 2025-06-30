@@ -49,6 +49,9 @@ export class TestHelpers {
             console.log("TestHelper: Set test environment flags");
         });
 
+        // フラグを適用するためページを再読み込み
+        await page.reload({ waitUntil: "domcontentloaded" });
+
         // UserManagerが初期化されるまで待機
         console.log("TestHelper: Waiting for UserManager initialization");
         await page.waitForFunction(

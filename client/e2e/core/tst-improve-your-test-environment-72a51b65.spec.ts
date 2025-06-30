@@ -143,8 +143,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             }
         }
         else {
-            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
-            test.skip();
+            throw new Error("Preview could not be forced");
         }
 
         // テスト成功
@@ -273,8 +272,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             }
         }
         else {
-            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
-            test.skip();
+            throw new Error("Preview could not be forced");
         }
 
         // テスト成功
@@ -386,8 +384,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             }
         }
         else {
-            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
-            test.skip();
+            throw new Error("Preview could not be forced");
         }
 
         // テスト成功
@@ -519,8 +516,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
             }
         }
         else {
-            console.log("プレビューを強制的に表示することができませんでした。テスト環境の制約によりスキップします。");
-            test.skip();
+            throw new Error("Preview could not be forced");
         }
 
         // テスト成功

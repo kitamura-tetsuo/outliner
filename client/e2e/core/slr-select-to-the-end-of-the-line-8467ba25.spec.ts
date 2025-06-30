@@ -80,7 +80,7 @@ test.describe("SLR-0003: 行末まで選択", () => {
         expect(selectionText.length).toBeGreaterThan(0);
     });
 
-    test.skip("複数行のアイテムでは、現在のカーソルがある行の末尾までを選択する", async ({ page }) => {
+    test("複数行のアイテムでは、現在のカーソルがある行の末尾までを選択する", async ({ page }) => {
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 

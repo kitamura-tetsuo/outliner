@@ -93,12 +93,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         console.log("Search availability:", searchAvailable);
 
-        if (!searchAvailable.searchBtnExists) {
-            console.log("Search button not found, skipping search test");
-            // 検索機能が実装されていない場合はテストをスキップ
-            test.skip();
-            return;
-        }
+        expect(searchAvailable.searchBtnExists).toBe(true);
 
         // 検索ボタンが存在することを確認
         await expect(page.locator(".search-btn")).toBeVisible();
@@ -112,11 +107,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         });
 
         const searchPanelExists = await page.locator(".search-panel").isVisible();
-        if (!searchPanelExists) {
-            console.log("Search panel not available, skipping search test");
-            test.skip();
-            return;
-        }
+        expect(searchPanelExists).toBe(true);
 
         await expect(page.locator(".search-panel")).toBeVisible();
 
