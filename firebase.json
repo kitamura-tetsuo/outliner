@@ -101,6 +101,62 @@
     "hosting": {
       "port": 57000,
       "host": "0.0.0.0"
+        "public": "build",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "rewrites": [
+            {
+                "source": "/api/fluid-token",
+                "function": "fluidToken"
+            },
+            {
+                "source": "/api/save-container",
+                "function": "saveContainer"
+            },
+            {
+                "source": "/api/get-user-containers",
+                "function": "getUserContainers"
+            },
+            {
+                "source": "/api/delete-user",
+                "function": "deleteUser"
+            },
+            {
+                "source": "/api/get-container-users",
+                "function": "getContainerUsers"
+            },
+            {
+                "source": "/api/list-users",
+                "function": "listUsers"
+            },
+            {
+                "source": "/api/create-schedule",
+                "function": "createSchedule"
+            },
+            {
+                "source": "/api/execute-publish",
+                "function": "executePublish"
+            },
+            {
+                "source": "/api/list-schedules",
+                "function": "listSchedules"
+            },
+            {
+                "source": "/api/cancel-schedule",
+                "function": "cancelSchedule"
+            },
+            {
+                "source": "/health",
+                "function": "health"
+            },
+            {
+                "source": "**",
+                "destination": "http://localhost:7090"
+            }
+        ]
     },
     "ui": {
       "port": 54000,

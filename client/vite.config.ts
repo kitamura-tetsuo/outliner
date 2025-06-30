@@ -48,7 +48,7 @@ export default defineConfig(async ({ mode }) => {
             global: "globalThis",
         },
         test: {
-            workspace: [
+            projects: [
                 {
                     extends: "./vite.config.ts",
                     plugins: [svelteTesting()],
