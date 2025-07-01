@@ -51,6 +51,7 @@ export class TestHelpers {
 
         // フラグを適用するためページを再読み込み
         await page.reload({ waitUntil: "domcontentloaded" });
+        await page.waitForLoadState("domcontentloaded");
 
         // UserManagerが初期化されるまで待機
         console.log("TestHelper: Waiting for UserManager initialization");
@@ -70,42 +71,21 @@ export class TestHelpers {
             }
 
             try {
-                console.log("TestHelper: Attempting login with test@example.com");
-
-                // 認証状態変更を監視するPromiseを作成
-                const authPromise = new Promise((resolve, reject) => {
-                    let timeoutId: number;
-
-                    // 正しいメソッド名を使用
-                    const cleanup = userManager.addEventListener((authResult: any) => {
-                        if (authResult && authResult.user) {
-                            console.log("TestHelper: Authentication successful via listener", authResult.user);
-                            clearTimeout(timeoutId);
-                            cleanup();
-                            resolve({ success: true, user: authResult.user });
-                        }
-                    });
-
-                    // 60秒のタイムアウト（デバッグのため延長）
-                    timeoutId = setTimeout(() => {
-                        cleanup();
-                        reject(new Error("Authentication timeout after 60 seconds"));
-                    }, 60000);
-                });
-
-                // ログイン実行
                 console.log("TestHelper: Calling loginWithEmailPassword");
                 await userManager.loginWithEmailPassword("test@example.com", "password");
-                console.log("TestHelper: loginWithEmailPassword completed, waiting for auth state change");
-
-                // 認証完了を待機
-                return await authPromise;
+                return { success: true };
             }
             catch (error) {
                 console.error("TestHelper: Authentication failed", error);
                 return { success: false, error: error instanceof Error ? error.message : String(error) };
             }
         });
+
+        // Wait for login to complete
+        await page.waitForFunction(() => {
+            const mgr = (window as any).__USER_MANAGER__;
+            return mgr && mgr.getCurrentUser && mgr.getCurrentUser() !== null;
+        }, { timeout: 30000 });
 
         if (!authResult.success) {
             throw new Error(`Authentication failed: ${authResult.error}`);

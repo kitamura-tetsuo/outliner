@@ -1,0 +1,17 @@
+id: TST-0012
+title: UserManager global access for tests
+category: testing
+status: implemented
+description: __USER_MANAGER__ is initialized before E2E tests so authentication helpers can interact with it.
+acceptance:
+- Auth E2E test uses programmatic login without context errors
+- Test helpers rely on __USER_MANAGER__ for programmatic login
+- Unit test verifies global variable presence
+- window.__USER_MANAGER__ is defined after app load
+tests:
+- client/e2e/auth/auth.spec.ts
+- client/src/tests/userManager-global.test.ts
+components:
+- client/e2e/utils/testHelpers.ts
+- client/src/auth/UserManager.ts
+title-ja: テスト用にUserManagerをグローバル公開
