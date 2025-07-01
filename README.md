@@ -209,6 +209,8 @@ dotenvx run -- npm run test:env
 
 Codex環境では複数のE2Eテストを一度に実行するとタイムアウトすることがあります。`scripts/run-e2e-progress-for-codex.sh 1` を使うと、テストファイルを1件ずつ実行できます。
 
+This prevents timeout errors during CI runs.
+
 ```bash
 scripts/run-e2e-progress-for-codex.sh 1
 ```
