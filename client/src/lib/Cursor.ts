@@ -714,13 +714,9 @@ export class Cursor {
         // onEdit コールバックを呼び出す
         store.triggerOnEdit();
 
-        // グローバルテキストエリアの値も同期
-        const textarea = store.getTextareaRef();
-        if (textarea) {
-            textarea.value = node.text;
-            textarea.setSelectionRange(this.offset, this.offset);
-            console.log(`insertText: Synced textarea value: "${textarea.value}"`);
-        }
+        // 注意: グローバルテキストエリアの値を同期してはいけない
+        // マルチカーソル環境では、複数のアイテムが同時に編集される可能性があり、
+        // 単一のテキストエリアに特定のアイテムの値を設定することは適切ではない
     }
 
     /**
@@ -775,6 +771,13 @@ export class Cursor {
         }
 
         this.applyToStore();
+
+        // onEdit コールバックを呼び出す
+        store.triggerOnEdit();
+
+        // 注意: グローバルテキストエリアの値を同期してはいけない
+        // マルチカーソル環境では、複数のアイテムが同時に編集される可能性があり、
+        // 単一のテキストエリアに特定のアイテムの値を設定することは適切ではない
     }
 
     /**
@@ -827,6 +830,17 @@ export class Cursor {
         }
 
         this.applyToStore();
+
+        // onEdit コールバックを呼び出す
+        store.triggerOnEdit();
+
+        // グローバルテキストエリアの値も同期
+        const textarea = store.getTextareaRef();
+        if (textarea) {
+            textarea.value = node.text;
+            textarea.setSelectionRange(this.offset, this.offset);
+            console.log(`deleteForward: Synced textarea value: "${textarea.value}"`);
+        }
     }
 
     /**
@@ -995,45 +1009,17 @@ export class Cursor {
             `Cursor.onInput: Current cursor state - itemId: ${this.itemId}, offset: ${this.offset}, isActive: ${this.isActive}`,
         );
 
-        // テキストエリア全体の値を取得して同期
-        const textarea = store.getTextareaRef();
-        if (textarea) {
-            const textareaValue = textarea.value;
-            console.log(`Textarea value: "${textareaValue}"`);
+        // 注意: マルチカーソル環境では、グローバルテキストエリアの値を使って
+        // SharedTreeを更新してはいけない。テキストエリアは単一のアイテムの状態を
+        // 表すものではなく、複数のカーソルが同時に編集している可能性がある。
 
-            // テキストエリアの値でSharedTreeのアイテムテキストを更新
-            const node = this.findTarget();
-            if (node) {
-                console.log(`Current item text: "${node.text}"`);
-                if (textareaValue !== node.text) {
-                    console.log(`Updating item text from "${node.text}" to "${textareaValue}"`);
-                    node.updateText(textareaValue);
-
-                    // カーソル位置をテキストエリアの選択位置に合わせる
-                    const selectionStart = textarea.selectionStart || 0;
-                    this.offset = selectionStart;
-                    this.applyToStore();
-
-                    // onEdit コールバックを呼び出す
-                    store.triggerOnEdit();
-                    return;
-                }
-            }
-            else {
-                console.error(`Cursor.onInput: Target item not found for itemId: ${this.itemId}`);
-            }
-        }
-        else {
-            console.error(`Cursor.onInput: Global textarea not found`);
-        }
-
-        // フォールバック: event.dataがある場合は従来の処理
-        if (data) {
-            console.log(`Inserting text via fallback: "${data}"`);
+        // 代わりに、InputEventのdataを使って適切にテキストを挿入する
+        if (data && data.length > 0) {
+            console.log(`Inserting text from input event: "${data}"`);
             this.insertText(data);
         }
         else {
-            console.log(`No data to insert`);
+            console.log(`No data in input event, skipping text insertion`);
         }
     }
 
@@ -2110,17 +2096,20 @@ export class Cursor {
             if (close !== -1) {
                 this.offset = close + 1;
             }
-        } else if (before === "[") {
+        }
+        else if (before === "[") {
             const close = text.indexOf("]", pos);
             if (close !== -1) {
                 this.offset = close + 1;
             }
-        } else if (current === "]") {
+        }
+        else if (current === "]") {
             const open = text.lastIndexOf("[", pos - 1);
             if (open !== -1) {
                 this.offset = open;
             }
-        } else if (before === "]") {
+        }
+        else if (before === "]") {
             const open = text.lastIndexOf("[", pos - 2);
             if (open !== -1) {
                 this.offset = open;

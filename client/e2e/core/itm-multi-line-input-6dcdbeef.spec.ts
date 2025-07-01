@@ -20,26 +20,47 @@ test.describe("ITM-0004: 複数行テキスト入力", () => {
         const items = page.locator(".outliner-item");
         const countBefore = await items.count();
 
-        const firstId = await TestHelpers.getItemIdByIndex(page, 0);
-        await page.locator(`.outliner-item[data-item-id="${firstId}"] .item-content`).click({ force: true });
+        // ページタイトル（インデックス0）ではなく、通常のアイテム（インデックス1）を使用
+        // まず、ページタイトルにEnterを押して子アイテムを作成
+        const titleId = await TestHelpers.getItemIdByIndex(page, 0);
+        await page.locator(`.outliner-item[data-item-id="${titleId}"] .item-content`).click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("End");
+        await page.keyboard.press("Enter");
+        await TestHelpers.waitForCursorVisible(page);
+        await page.waitForTimeout(500);
+
+        // 新しく作成された子アイテムを使用
+        const firstChildId = await TestHelpers.getItemIdByIndex(page, 1);
+        await page.locator(`.outliner-item[data-item-id="${firstChildId}"] .item-content`).click({ force: true });
+        await TestHelpers.waitForCursorVisible(page);
+
+        // テキストを入力してEnterキーで新しいアイテムを作成
         await page.keyboard.type("Line 1");
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
+        await page.waitForTimeout(500);
+
         await page.keyboard.type("Line 2");
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
+        await page.waitForTimeout(500);
+
         await page.keyboard.type("Line 3");
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
         await page.waitForTimeout(500);
 
         const countAfter = await items.count();
-        expect(countAfter).toBe(countBefore + 3);
+
+        // 最初に1つ子アイテムを作成し、その後3つ追加したので、合計4つ増加
+        expect(countAfter).toBe(countBefore + 4);
+
+        // 作成されたアイテムのIDを取得（インデックス1, 2, 3が対象）
         const id1 = await TestHelpers.getItemIdByIndex(page, 1);
         const id2 = await TestHelpers.getItemIdByIndex(page, 2);
         const id3 = await TestHelpers.getItemIdByIndex(page, 3);
+
         await expect(page.locator(`.outliner-item[data-item-id="${id1}"] .item-text`)).toHaveText("Line 1");
         await expect(page.locator(`.outliner-item[data-item-id="${id2}"] .item-text`)).toHaveText("Line 2");
         await expect(page.locator(`.outliner-item[data-item-id="${id3}"] .item-text`)).toHaveText("Line 3");
@@ -48,17 +69,22 @@ test.describe("ITM-0004: 複数行テキスト入力", () => {
     test("Backspace 後の入力が正しく反映される", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
 
-        const firstId = await TestHelpers.getItemIdByIndex(page, 0);
-        const firstItem = page.locator(`.outliner-item[data-item-id="${firstId}"] .item-content`);
-        await firstItem.click({ force: true });
+        // ページタイトル（インデックス0）ではなく、通常のアイテムを使用
+        // まず、ページタイトルにEnterを押して子アイテムを作成
+        const titleId = await TestHelpers.getItemIdByIndex(page, 0);
+        await page.locator(`.outliner-item[data-item-id="${titleId}"] .item-content`).click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("End");
-
-        // create a new empty item
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
+        await page.waitForTimeout(500);
 
-        const newId = await TestHelpers.getItemIdByIndex(page, 1);
+        // さらに新しいアイテムを作成
+        await page.keyboard.press("Enter");
+        await TestHelpers.waitForCursorVisible(page);
+        await page.waitForTimeout(500);
+
+        const newId = await TestHelpers.getItemIdByIndex(page, 2);
         const newItem = page.locator(`.outliner-item[data-item-id="${newId}"] .item-content`);
         await newItem.click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
