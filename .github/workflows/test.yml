@@ -246,10 +246,12 @@ jobs:
       #     DISABLE_POSTHOG: true
       #     VITE_DISABLE_FLUID_TELEMETRY: true
 
-      - name: Run unit tests for github reporting
+      - name: Run unit and integration tests for github reporting
         run: |
+          set -o pipefail
           cd client
           npm run github:test:unit 2>&1 | tee -a /tmp/unit-test.log
+          npm run github:test:integration 2>&1 | tee -a /tmp/integration-test.log
         env:
           CI: true
           NODE_ENV: test
@@ -260,6 +262,7 @@ jobs:
 
       - name: Run e2e tests for github reporting
         run: |
+          set -o pipefail
           cd client
           npm run github:test:e2e 2>&1 | tee -a /tmp/e2e-test.log
         env:

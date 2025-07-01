@@ -18,10 +18,11 @@
         "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
         "format": "prettier --write .",
         "lint": "prettier --check . && eslint .",
-        "test:unit": "vitest run --coverage",
-        "github:test:unit": "vitest run --coverage --reporter=github-actions --reporter=dot",
-        "coverage": "vitest run --coverage",
-        "test": "NODE_ENV=test dotenvx run --env-file=.env.test -- npm run test:unit && npm run test:e2e",
+        "test:unit": "vitest run --project unit --coverage",
+        "test:integration": "vitest run --project integration",
+        "github:test:unit": "vitest run --project unit --coverage --reporter=github-actions --reporter=dot",
+        "github:test:integration": "vitest run --project integration --reporter=github-actions --reporter=dot",
+        "test": "NODE_ENV=test dotenvx run --env-file=.env.test -- npm run test:unit && npm run test:integration && npm run test:e2e",
         "test:e2e": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test --reporter=list",
         "github:test:e2e": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test --reporter=github,line",
         "test:e2e:basic": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test ./e2e/basic --reporter=list",
@@ -84,7 +85,8 @@
         "typescript": "^5.5.0",
         "typescript-eslint": "^8.20.0",
         "vite": "^6.0.0",
-        "vitest": "^3.2.4"
+        "vitest": "^3.2.4",
+        "fake-indexeddb": "^4.0.2"
     },
     "dependencies": {
         "@dotenvx/dotenvx": "^1.44.1",

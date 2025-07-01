@@ -2,6 +2,14 @@
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/typography";
 
+html {
+    @apply bg-white text-black;
+}
+
+html.dark {
+    @apply bg-gray-900 text-gray-100;
+}
+
 /* 内部リンクのスタイル */
 .internal-link {
     color: #1a73e8;

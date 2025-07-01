@@ -58,12 +58,19 @@ export default defineConfig(async ({ mode }) => {
                     plugins: [svelteTesting()],
 
                     test: {
-                        name: "client",
+                        name: "unit",
                         environment: "jsdom",
                         clearMocks: true,
-                        include: ["src/**/*{.svelte,}.{test,spec}.{js,ts}"],
-                        exclude: ["src/lib/server/**"],
-                        setupFiles: ["./vitest-setup-client.ts"],
+                        include: [
+                            "src/tests/unit/**/*{.svelte,}.{test,spec}.{js,ts}",
+                            "src/**/*{.svelte,}.{test,spec}.{js,ts}",
+                        ],
+                        exclude: [
+                            "src/lib/server/**",
+                            "src/tests/integration/**",
+                            "e2e/**",
+                        ],
+                        // setupFiles: ["./vitest-setup-client.ts"],
                         envFile: ".env.test",
                     },
                     server: {
@@ -76,10 +83,13 @@ export default defineConfig(async ({ mode }) => {
                     extends: "./vite.config.ts",
 
                     test: {
-                        name: "server",
+                        name: "integration",
                         environment: "node",
-                        include: ["src/lib/server/**/*.{test,spec}.{js,ts}"], // server側のテストのみを対象
-                        exclude: ["src/**/*.svelte.{test,spec}.{js,ts}"],
+                        clearMocks: true,
+                        include: ["src/tests/integration/**/*{.svelte,}.{test,spec}.{js,ts}"],
+                        exclude: ["src/lib/server/**"],
+                        envFile: ".env.test",
+                        testTimeout: 30000, // Integration testは時間がかかる可能性があるため
                     },
                     server: {
                         fs: {

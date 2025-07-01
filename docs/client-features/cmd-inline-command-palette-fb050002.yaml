@@ -1,0 +1,18 @@
+id: CMD-0001
+title: Inline Command Palette
+title-ja: インラインコマンドパレット
+description: Type '/' within an item to open a palette for inserting tables or charts.
+category: editing
+status: implemented
+components:
+- src/components/ChartPanel.svelte
+- src/components/InlineJoinTable.svelte
+- src/components/SlashCommandPalette.svelte
+tests:
+- client/e2e/new/CMD-0001.spec.ts
+acceptance:
+- Arrow keys move the selection within the palette
+- Pressing Enter on 'table' inserts an inline table
+- Pressing Enter on the filtered command inserts that component
+- Typing '/' with focus on an item shows the command palette
+- Typing a filter such as 'ch' narrows the command list
