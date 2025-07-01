@@ -123,7 +123,7 @@ onMount(() => {
     }
 
     // onEdit コールバックをストアに設定
-    editorOverlayStore.setOnEditCallback(onEdit || null);
+    editorOverlayStore.setOnEditCallback(handleEdit);
 
     // 初期状態でアイテムの高さを初期化
     itemHeights = new Array(displayItems.current.length).fill(0);
@@ -178,6 +178,31 @@ function handleAddItem() {
     if (pageItem && !isReadOnly && pageItem.items && Tree.is(pageItem.items, Items)) {
         // 末尾にアイテム追加
         pageItem.items.addNode(currentUser);
+    }
+}
+
+// 最下部のアイテム編集中に空の兄弟アイテムを追加
+function handleEdit() {
+    // 外部のonEditがあれば呼び出し
+    if (onEdit) onEdit();
+
+    // 表示アイテムの最後を取得
+    const items = displayItems.current;
+    if (items.length === 0) return;
+    const last = items[items.length - 1];
+    const activeId = editorOverlayStore.getActiveItem();
+    if (!activeId || activeId !== last.model.id) return;
+
+    // 最下部アイテムが空でない場合のみ追加
+    if (last.model.original.text?.trim().length === 0) return;
+
+    const parent = Tree.parent(last.model.original);
+    if (parent && Tree.is(parent, Items)) {
+        const idx = parent.indexOf(last.model.original);
+        parent.addNode(currentUser, idx + 1);
+    } else if (pageItem.items && Tree.is(pageItem.items, Items)) {
+        const idx = pageItem.items.indexOf(last.model.original);
+        pageItem.items.addNode(currentUser, idx + 1);
     }
 }
 
