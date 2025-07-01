@@ -2,7 +2,7 @@ id: HDV-0001
 title: Page snapshot diff viewer
 title-ja: ページのスナップショット差分ビューア
 category: history
-status: draft
+status: implemented
 description: 'Allow users to view differences between the current page state and previous snapshots.
 
   Users can select two snapshots to see changes and revert to a chosen version.

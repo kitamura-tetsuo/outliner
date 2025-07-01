@@ -13,6 +13,7 @@ import { userManager } from "../auth/UserManager";
 import { setupGlobalDebugFunctions } from "../lib/debug";
 import * as fluidService from "../lib/fluidService.svelte";
 import "../utils/ScrapboxFormatter"; // グローバルに公開するためにインポート
+import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 import {
     cleanupFluidClient,
     initFluidClientWithAuth,
@@ -24,6 +25,16 @@ const logger = getLogger("AppLayout");
 // 認証関連の状態
 let isAuthenticated = $state(false);
 let error: string | undefined = $state(undefined);
+
+let currentTheme = $derived(userPreferencesStore.theme);
+$effect(() => {
+    if (browser) {
+        document.documentElement.classList.toggle(
+            'dark',
+            currentTheme === 'dark',
+        );
+    }
+});
 
 // APIサーバーのURLを取得
 const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
@@ -253,3 +264,10 @@ onDestroy(() => {
 </script>
 
 {@render children()}
+
+<button
+    class="fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
+    on:click={() => userPreferencesStore.toggleTheme()}
+>
+    {currentTheme === 'light' ? 'Dark Mode' : 'Light Mode'}
+</button>
