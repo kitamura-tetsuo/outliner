@@ -1,0 +1,10 @@
+id: ITM-00cbb408
+title: Drag items to reorder
+description: アイテムをドラッグ＆ドロップで並び替えできます。
+category: item-management
+status: implemented
+acceptance:
+- アイテムをドラッグ＆ドロップで移動できる
+tests:
+- client/e2e/core/itm-drag-items-to-reorder-00cbb408.spec.ts
+title-ja: ドラッグでアイテムを移動
