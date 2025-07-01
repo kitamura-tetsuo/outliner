@@ -248,6 +248,7 @@ jobs:
 
       - name: Run unit tests for github reporting
         run: |
+          set -o pipefail
           cd client
           npm run github:test:unit 2>&1 | tee -a /tmp/unit-test.log
         env:
@@ -260,6 +261,7 @@ jobs:
 
       - name: Run e2e tests for github reporting
         run: |
+          set -o pipefail
           cd client
           npm run github:test:e2e 2>&1 | tee -a /tmp/e2e-test.log
         env:
