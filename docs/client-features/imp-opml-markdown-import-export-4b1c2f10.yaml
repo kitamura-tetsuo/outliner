@@ -1,0 +1,10 @@
+id: IMP-0001
+title: OPML/Markdown import and export
+title-ja: OPMLとMarkdownのインポートとエクスポート
+category: outline
+status: implemented
+components:
+  - client/src/services/importExportService.ts
+  - client/src/routes/[project]/settings/+page.svelte
+tests:
+  - client/e2e/new/imp-opml-markdown-import-export-4b1c2f10.spec.ts

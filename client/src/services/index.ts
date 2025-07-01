@@ -40,3 +40,11 @@ export {
   cancelSchedule,
   type Schedule,
 } from "./scheduleService";
+
+// Import/Export Service
+export {
+  exportProjectToMarkdown,
+  exportProjectToOpml,
+  importMarkdownIntoProject,
+  importOpmlIntoProject,
+} from "./importExportService";
