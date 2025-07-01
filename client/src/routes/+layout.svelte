@@ -127,6 +127,18 @@ onMount(() => {
     if (browser) {
         // アプリケーション初期化のログ
         logger.info("アプリケーションがマウントされました");
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js').then(reg => {
+                logger.info('Service worker registered');
+                if ('sync' in reg) {
+                    reg.sync.register('sync-ops').catch(err => {
+                        logger.warn('Failed to register sync', err);
+                    });
+                }
+            }).catch(err => {
+                logger.error('Service worker registration failed', err);
+            });
+        }
 
         // 認証状態を確認
         isAuthenticated = userManager.getCurrentUser() !== null;
