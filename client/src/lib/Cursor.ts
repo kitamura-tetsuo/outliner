@@ -1065,7 +1065,8 @@ export class Cursor {
                     return true;
                 case "v":
                 case "V":
-                    return true;
+                    // ペースト処理はブラウザのデフォルト動作に任せる
+                    return false;
                 case "ArrowLeft":
                     this.moveWordLeft();
                     break;
