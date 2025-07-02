@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 // 環境変数TEST_ENVが'localhost'の場合はlocalhost環境、それ以外はデフォルト環境
 // VSCode Playwright拡張から実行する場合は環境変数が正しく渡らないことがあるため、
 // 必要に応じて直接trueに設定してください
-const isLocalhostEnv = process.env.TEST_ENV === "localhost";
+const isLocalhostEnv = process.env.TEST_ENV === "localhost" || true; // デフォルトでlocalhostを使用
 
 // テスト用ポートを定義 - これを明示的に指定
 const TEST_PORT = isLocalhostEnv ? "7090" : "7080";
@@ -32,7 +32,7 @@ export default defineConfig({
     testMatch: "**/*.spec.ts",
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
-    retries: process.env.CI ? 10 : 5,
+    retries: process.env.CI ? 10 : 0,
     workers: process.env.CI ? 2 : 4,
     maxFailures: process.env.CI ? 1 : undefined,
 
