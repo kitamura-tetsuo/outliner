@@ -1,7 +1,0 @@
-id: OFF-0001
-title: Offline editing via service worker
-title-ja: サービスワーカーによるオフライン編集
-category: offline
-status: deprecated
-components: []
-tests: []
