@@ -6,7 +6,12 @@ import {
     expect,
     test,
 } from "@playwright/test";
+import path from "path";
+import { fileURLToPath } from "url";
 import { TestHelpers } from "../utils/testHelpers";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 test.describe("GRV-0001: Graph View real-time updates", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -17,9 +22,8 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
     test("ECharts library initialization", async ({ page }) => {
         // EChartsライブラリを動的に読み込み
-        await page.addScriptTag({
-            url: "https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js",
-        });
+        const echartsPath = path.resolve(__dirname, "../../node_modules/echarts/dist/echarts.min.js");
+        await page.addScriptTag({ path: echartsPath });
 
         // EChartsライブラリが正常に読み込まれることを確認
         const echartsLoaded = await page.evaluate(() => {
