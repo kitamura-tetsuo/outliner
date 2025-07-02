@@ -5,9 +5,17 @@ This document tracks features that are intentionally left out of the Outliner pr
 ## Security
 
 ### SEC-0002 Two-Factor Authentication (2FA)
+
 Firebase Authentication is used for sign-in. Two-factor authentication is outside the scope of this project and will not be implemented.
 
 ## Notifications
 
 ### NOT-0001 External Notification Services
+
 Outliner does not send notifications through Slack or any other external applications.
+
+## Offline Editing
+
+### OFF-NON Offline Editing Support
+
+Offline editing will not be implemented. The Fluid Framework used for collaboration requires a network connection and does not support offline operations.
