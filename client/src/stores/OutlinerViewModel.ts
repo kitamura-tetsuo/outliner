@@ -59,12 +59,18 @@ export class OutlinerViewModel {
         try {
             this._isUpdating = true;
 
+            console.log("OutlinerViewModel: updateFromModel called");
+            console.log("OutlinerViewModel: pageItem.items length:", pageItem.items?.length || 0);
+
             // 既存のビューモデルをクリアせず、更新または追加する
             this.ensureViewModelsItemExist(pageItem);
 
-            // 表示順序と深度を再計算
+            console.log("OutlinerViewModel: viewModels count after ensure:", this.viewModels.size);
+
+            // 表示順序と深度を再計算 - pageItem自体から開始
             this.recalculateOrderAndDepthItem(pageItem);
 
+            console.log("OutlinerViewModel: visibleOrder length after recalculate:", this.visibleOrder.length);
             logger.info("View models updated, count:", this.visibleOrder.length);
         }
         finally {
@@ -86,6 +92,8 @@ export class OutlinerViewModel {
     private ensureViewModelsItemExist(item: Item, parentId: string | null = null): void {
         if (!Tree.is(item, Item) || !item.id) return;
 
+        console.log(`OutlinerViewModel: ensureViewModelsItemExist for item "${item.text}" (id: ${item.id})`);
+
         // 既存のビューモデルを更新または新規作成
         const existingViewModel = this.viewModels.get(item.id);
         if (existingViewModel) {
@@ -93,6 +101,7 @@ export class OutlinerViewModel {
             existingViewModel.text = item.text;
             existingViewModel.votes = [...item.votes];
             existingViewModel.lastChanged = item.lastChanged;
+            console.log(`OutlinerViewModel: Updated existing view model for "${item.text}"`);
         }
         else {
             // 新しいビューモデルを作成
@@ -105,6 +114,7 @@ export class OutlinerViewModel {
                 created: item.created,
                 lastChanged: item.lastChanged,
             });
+            console.log(`OutlinerViewModel: Created new view model for "${item.text}"`);
         }
 
         // 親の設定
@@ -112,7 +122,11 @@ export class OutlinerViewModel {
 
         // 子アイテムも処理
         if (item.items && Tree.is(item.items, Items)) {
+            console.log(`OutlinerViewModel: Processing ${item.items.length} children for "${item.text}"`);
             this.ensureViewModelsItemsExist(item.items, item.id);
+        }
+        else {
+            console.log(`OutlinerViewModel: No children for "${item.text}"`);
         }
     }
     /**
@@ -131,14 +145,17 @@ export class OutlinerViewModel {
         }
     }
     /**
-     * 表示順序と深度を再計算する
+     * 表示順序と深度を再計算する（単一アイテム用）
      */
     private recalculateOrderAndDepthItem(item: Item, depth: number = 0, parentId: string | null = null): void {
-        // 表示順序と深度を最初に初期化
+        if (!Tree.is(item, Item) || !item.id) return;
+
+        // 表示順序を最初に初期化（ルートアイテムの場合のみ）
         if (depth === 0) {
             this.visibleOrder = [];
         }
-        if (!Tree.is(item, Item) || !item.id) return;
+
+        console.log(`OutlinerViewModel: recalculateOrderAndDepthItem for "${item.text}" (depth: ${depth})`);
 
         // 表示順序に追加
         this.visibleOrder.push(item.id);
@@ -147,8 +164,26 @@ export class OutlinerViewModel {
         this.depthMap.set(item.id, depth);
 
         // 子アイテムを処理（折りたたまれていない場合のみ）
-        if (item.items && Tree.is(item.items, Items) && !this.collapsedMap.get(item.id)) {
-            this.recalculateOrderAndDepth(item.items, depth + 1, item.id);
+        const isCollapsed = this.collapsedMap.get(item.id);
+        const hasChildren = item.items && Tree.is(item.items, Items) && item.items.length > 0;
+
+        console.log(
+            `OutlinerViewModel: Item "${item.text}" - hasChildren: ${hasChildren}, isCollapsed: ${isCollapsed}, childrenCount: ${
+                hasChildren ? item.items.length : 0
+            }`,
+        );
+
+        if (hasChildren && !isCollapsed) {
+            console.log(`OutlinerViewModel: Processing ${item.items.length} children for "${item.text}"`);
+            for (let i = 0; i < item.items.length; i++) {
+                this.recalculateOrderAndDepthItem(item.items[i], depth + 1, item.id);
+            }
+        }
+        else if (hasChildren && isCollapsed) {
+            console.log(`OutlinerViewModel: Skipping children for "${item.text}" because it's collapsed`);
+        }
+        else if (!hasChildren) {
+            console.log(`OutlinerViewModel: No children for "${item.text}"`);
         }
     }
 
