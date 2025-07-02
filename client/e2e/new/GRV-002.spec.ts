@@ -7,7 +7,11 @@ import {
     test,
 } from "@playwright/test";
 import path from "path";
+import { fileURLToPath } from "url";
 import { TestHelpers } from "../utils/testHelpers";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 test.describe("GRV-0001: Graph View real-time updates", () => {
     test.beforeEach(async ({ page }, testInfo) => {
