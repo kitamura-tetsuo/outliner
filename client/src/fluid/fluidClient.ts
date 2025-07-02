@@ -13,6 +13,7 @@ import {
 } from "fluid-framework";
 import { userManager } from "../auth/UserManager";
 import { getLogger } from "../lib/logger";
+import { presenceStore, colorForUser } from "../stores/PresenceStore.svelte";
 import {
     Items,
     Project,
@@ -67,6 +68,7 @@ export class FluidClient {
         // 接続状態監視を設定
         this.setupConnectionMonitoring();
         this._setupDebugEventListeners();
+        this.setupPresence();
     }
 
     // 接続状態の監視を設定
@@ -209,6 +211,28 @@ export class FluidClient {
         });
     }
 
+    private setupPresence() {
+        const audience = (this.services as any)?.audience;
+        if (!audience) return;
+
+        const updateMembers = () => {
+            const members = audience.getMembers();
+            const active = new Set<string>();
+            members.forEach((m: any, id: string) => {
+                const name = m.name ?? id;
+                const color = colorForUser(id);
+                presenceStore.setUser({ userId: id, userName: name, color });
+                active.add(id);
+            });
+            presenceStore.getUsers().forEach(u => {
+                if (!active.has(u.userId)) presenceStore.removeUser(u.userId);
+            });
+        };
+
+        audience.on("membersChanged", updateMembers);
+        updateMembers();
+    }
+
     // デバッグ用のヘルパーメソッド
     getDebugInfo() {
         // rootItems の安全な取得
@@ -298,6 +322,10 @@ export class FluidClient {
             this.connectionListenerCleanup();
             this.connectionListenerCleanup = null;
         }
+
+        const me = (this.services as any)?.audience?.getMyself?.();
+        const id = me?.user?.id ?? this.clientId;
+        presenceStore.removeUser(id);
 
         this.appData.dispose();
         this.container.dispose();

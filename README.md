@@ -210,7 +210,6 @@ dotenvx run -- npm run test:env
 Codex環境では複数のE2Eテストを一度に実行するとタイムアウト (timeout) することがあります。`scripts/run-e2e-progress-for-codex.sh 1` を使うと、テストファイルを1件ずつ実行できます。
 This prevents timeout errors during cording agent's env runs.
 
-This helps avoid timeout errors during CI runs.
 
 ```bash
 scripts/run-e2e-progress-for-codex.sh 1
@@ -218,6 +217,10 @@ scripts/run-e2e-progress-for-codex.sh 1
 
 このスクリプトは進捗を `.e2e-progress` ファイルに記録し、途中でタイムアウト (timeout) した場合でも続きから再開できます。タイムアウト (timeout) したテストはログに記録してください。
 `.e2e-progress` を削除すると最初から実行できます。
+
+### ローカルサーバーをまとめて起動する
+
+手元で手動テストを行うときは `scripts/start-all-localhost-servers.sh` を実行します。SvelteKit、API、Tinylicious、Firebase エミュレータがバックグラウンドで起動し、`Ctrl+C` で全て停止できます。
 
 ## 機能ドキュメントの集約
 

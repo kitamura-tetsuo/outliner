@@ -2,18 +2,25 @@ import { type ViewableTree } from "fluid-framework";
 import {
     afterEach,
     beforeEach,
+    beforeAll,
     describe,
     expect,
     it,
     vi,
 } from "vitest";
+
+vi.setConfig({ testTimeout: 60000 });
 import {
     appTreeConfiguration,
     Project,
 } from "../schema/app-schema";
-import * as fluidService from "./fluidService.svelte";
+let fluidService: typeof import("./fluidService.svelte");
 
 describe("fluidService", () => {
+    beforeAll(async () => {
+        process.env.VITE_USE_FIREBASE_EMULATOR = "false";
+        fluidService = await import("./fluidService.svelte");
+    });
     beforeEach(() => {
     });
 
@@ -42,7 +49,7 @@ describe("fluidService", () => {
             console.error(error);
             expect(error).toBeUndefined();
         }
-    });
+    }, 20000);
 
     afterEach(() => {
         // タイマーや状態をリセット

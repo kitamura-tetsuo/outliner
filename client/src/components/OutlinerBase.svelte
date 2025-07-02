@@ -7,6 +7,7 @@ import GlobalTextArea from "./GlobalTextArea.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
 import SlashCommandPalette from "./SlashCommandPalette.svelte";
 import AliasPicker from "./AliasPicker.svelte";
+import PresenceAvatars from "./PresenceAvatars.svelte";
 
 console.log("OutlinerBase imports completed");
 
@@ -55,6 +56,7 @@ console.log("OutlinerBase script completed successfully");
     <GlobalTextArea />
     <SlashCommandPalette />
     <AliasPicker />
+    <PresenceAvatars />
 </div>
 
 <style>
