@@ -824,7 +824,13 @@ export class Cursor {
                 node.updateText(txt);
             }
             else {
-                // 行末で次アイテムとの結合
+                // 行末の場合
+                // アイテムが空の場合はアイテム自体を削除
+                if (txt.length === 0) {
+                    this.deleteEmptyItem();
+                    return;
+                }
+                // 空でない場合は次アイテムとの結合
                 this.mergeWithNextItem();
             }
         }
@@ -900,6 +906,64 @@ export class Cursor {
         nextItem.delete();
 
         // カーソル位置はそのまま（現在のアイテムの末尾）
+    }
+
+    /**
+     * 空のアイテムを削除する
+     */
+    private deleteEmptyItem() {
+        const currentItem = this.findTarget();
+        if (!currentItem) return;
+
+        // アイテムが空でない場合は何もしない
+        if (currentItem.text && currentItem.text.length > 0) return;
+
+        // 次のアイテムを探す
+        const nextItem = this.findNextItem();
+
+        // カーソルを移動する先を決定
+        let targetItemId: string;
+        let targetOffset: number;
+
+        if (nextItem) {
+            // 次のアイテムがある場合は次のアイテムの先頭に移動
+            targetItemId = nextItem.id;
+            targetOffset = 0;
+        }
+        else {
+            // 次のアイテムがない場合は前のアイテムの末尾に移動
+            const prevItem = this.findPreviousItem();
+            if (prevItem) {
+                targetItemId = prevItem.id;
+                targetOffset = prevItem.text ? prevItem.text.length : 0;
+            }
+            else {
+                // 前のアイテムもない場合（最後の1つのアイテム）は削除しない
+                return;
+            }
+        }
+
+        // 現在のアイテムのカーソルをクリア
+        store.clearCursorForItem(this.itemId);
+
+        // アイテムを削除
+        currentItem.delete();
+
+        // 新しい位置にカーソルを設定
+        this.itemId = targetItemId;
+        this.offset = targetOffset;
+
+        // ストアを更新
+        store.setActiveItem(this.itemId);
+        store.setCursor({
+            itemId: this.itemId,
+            offset: this.offset,
+            isActive: true,
+            userId: this.userId,
+        });
+
+        // カーソル点滅を開始
+        store.startCursorBlink();
     }
 
     insertLineBreak() {
