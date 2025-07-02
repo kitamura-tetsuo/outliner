@@ -44,6 +44,11 @@ export default defineConfig(async ({ mode }) => {
         },
         build: {
             sourcemap: true,
+            rollupOptions: {
+                input: {
+                    app: './src/app.html'
+                }
+            }
         },
         optimizeDeps: {
             include: ["sql.js"],

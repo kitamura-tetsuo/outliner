@@ -20,6 +20,9 @@ const config = {
             precompress: false,
             strict: true,
         }),
+        serviceWorker: {
+            register: false, // 手動でService Workerを登録するため無効化
+        },
     },
 
     extensions: [".svelte", ".svx"],

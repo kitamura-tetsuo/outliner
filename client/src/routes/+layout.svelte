@@ -12,12 +12,13 @@ import "$lib";
 import { userManager } from "../auth/UserManager";
 import { setupGlobalDebugFunctions } from "../lib/debug";
 import * as fluidService from "../lib/fluidService.svelte";
-import "../utils/ScrapboxFormatter"; // グローバルに公開するためにインポート
-import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
+import "../utils/ScrapboxFormatter";
+// グローバルに公開するためにインポート
 import {
     cleanupFluidClient,
     initFluidClientWithAuth,
 } from "../services";
+import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
 let { children } = $props();
 const logger = getLogger("AppLayout");
@@ -139,15 +140,25 @@ onMount(() => {
         // アプリケーション初期化のログ
         logger.info("アプリケーションがマウントされました");
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js').then(reg => {
-                logger.info('Service worker registered');
+            // SvelteKitのService Workerを登録
+            navigator.serviceWorker.register('/service-worker.js', {
+                scope: '/'
+            }).then(reg => {
+                logger.info('Service worker registered successfully');
+
+                // Background Syncが利用可能な場合は登録
                 if ('sync' in reg) {
-                    reg.sync.register('sync-ops').catch(err => {
-                        logger.warn('Failed to register sync', err);
+                    (reg as any).sync.register('sync-ops').catch((err: any) => {
+                        logger.warn('Failed to register background sync:', err);
                     });
                 }
+
+                // Service Workerの更新をチェック
+                reg.addEventListener('updatefound', () => {
+                    logger.info('Service worker update found');
+                });
             }).catch(err => {
-                logger.error('Service worker registration failed', err);
+                logger.error('Service worker registration failed:', err);
             });
         }
 
