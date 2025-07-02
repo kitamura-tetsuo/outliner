@@ -101,7 +101,7 @@ def check_if_implemented_with_gemini(issue):
     """
     purpose = "check_implementation"
     print(f"🤖 Asking Gemini to check if issue #{issue['number']} is already implemented...")
-    prompt = f"""
+    prompt = f'''
     Please act as a senior software engineer.
     Analyze the codebase to determine if the functionality in the issue below is implemented.
 
@@ -123,7 +123,7 @@ def check_if_implemented_with_gemini(issue):
     Example:
     implemented
     This is handled by `UserProfileService` in `src/services/user.js`.
-    """
+    '''
     result = run_command(["gemini", "--force-model", "-p", prompt])
     raw_response = result.stdout.strip()
     actual_response_lines = [line for line in raw_response.splitlines() if not line.startswith('GrepLogic:')]
@@ -203,7 +203,7 @@ def main():
         print("\n" + "-"*80)
         print("🤖 Handing over implementation to Gemini...")
         purpose_impl = "implement_feature"
-        implementation_prompt = f"""
+        implementation_prompt = f'''
         You are a senior software engineer. Implement the feature and tests for the GitHub issue below.
 
         Issue: #{issue['number']} - {issue['title']}
@@ -215,12 +215,12 @@ def main():
         2. Commit your work in logical chunks (`feat: ...`, `test: ...`).
         3. In your response, mention the relative path to the main E2E test file you worked on (e.g., `client/e2e/core/my-feature.spec.ts`).
         4. If no E2E test is relevant, include the word "SKIP" in your response.
-        """
+        '''
         result = run_command(["gemini", "--force-model", "-p", implementation_prompt])
         gemini_response = result.stdout.strip()
         log_gemini_interaction(purpose_impl, implementation_prompt, gemini_response)
 
-        test_file_match = re.search(r'((?:client/|e2e/)?\w\-\/.+\.spec\.ts)', gemini_response)
+        test_file_match = re.search(r'((?:client/|e2e/)?\w\-\/.*\.spec\.ts)', gemini_response)
         test_file = ""
         if test_file_match:
             test_file = test_file_match.group(1)
@@ -247,7 +247,7 @@ def main():
                 print("❌ Tests failed. Asking Gemini to fix the implementation.")
                 purpose_fix = "fix_test"
                 test_output = f"STDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
-                fix_prompt = f"""
+                fix_prompt = f'''
                 The tests for feature '{issue['title']}' failed. Fix the code so the tests pass.
 
                 Test File: {test_file}
@@ -260,7 +260,7 @@ def main():
                 1. Analyze the error and fix the code.
                 2. Commit your changes (`fix: ...`).
                 3. Respond with ONLY the word "DONE" once you have committed the fix.
-                """
+                '''
                 fix_result = run_command(["gemini", "--force-model", "-p", fix_prompt])
                 log_gemini_interaction(purpose_fix, fix_prompt, fix_result.stdout)
         else:
@@ -269,7 +269,7 @@ def main():
         print("\n" + "-"*80)
         print("🤖 Asking Gemini to update documentation and generate a summary...")
         purpose_docs = "generate_docs_and_summary"
-        combined_prompt = f"""
+        combined_prompt = f'''
         You are a senior software engineer. Document the changes for the issue below and write a summary of the work.
 
         Issue: #{issue['number']}
@@ -290,7 +290,7 @@ def main():
           "summary": "Implemented the core logic and added E2E tests."
         }}
         ```
-        """
+        '''
         result = run_command(["gemini", "--force-model", "-p", combined_prompt])
         summary = ""
         json_response_str = result.stdout.strip()
@@ -346,4 +346,115 @@ def main():
         print("Moving on to the next issue...")
         run_command(["git", "checkout", "main"])
 
-def get_oldest_failing_pr():    """Fetches the oldest open PR with a failing CI check."""    print("🔎 Fetching open PRs with failing checks...")    result = run_command([        "gh", "pr", "list",        "--state", "open",        "--limit", "50",        "--json", "number,title,headRefName,statusCheckRollup",        "--search", "status:failure"    ], check=False)    if result.returncode != 0 or not result.stdout:        print("🤷 Could not fetch PRs or no failing PRs found.")        return None    try:        prs = json.loads(result.stdout)        # The API might return PRs that don't have a failing status, so we filter again.        failing_prs = [p for p in prs if p.get("statusCheckRollup") and any(c['state'] == 'FAILURE' for c in p["statusCheckRollup"])]        if not failing_prs:            print("✅ No PRs with failing checks found.")            return None        # Sort by PR number to get the oldest        return sorted(failing_prs, key=lambda p: p['number'])[0]    except (json.JSONDecodeError, IndexError) as e:        print(f"❌ Could not parse PR list output or no failing PRs found: {e}")        return Nonedef run_tests_and_get_failures():    """Runs all E2E tests and returns a list of failed test files."""    print("🧪 Running all E2E tests to identify failures...")    # The command needs to be run from the 'client' directory    test_command = "cd client && npx playwright test"    result = run_command(test_command, check=False)    if result.returncode == 0:        print("✅ All tests passed!")        return None, None    print("❌ Some tests failed. Analyzing report...")    stdout = result.stdout    failed_tests = re.findall(r'\s*\d+\) (.*\.spec\.ts)', stdout)        return list(set(failed_tests)), stdoutdef handle_failing_prs():    """Main workflow to find and fix failing PRs."""    while True:        pr = get_oldest_failing_pr()        if not pr:            print("🎉 No more failing PRs to fix.")            break        print("\n" + "="*80)        print(f"🛠️ Now working on PR #{pr['number']}: {pr['title']}")        print("="*80)        branch_name = pr['headRefName']        print(f"🌿 Checking out branch: {branch_name}")        run_command(["git", "checkout", branch_name])        run_command(["git", "pull", "origin", branch_name]) # Ensure we have the latest code        max_retries = 5        for i in range(max_retries):            print(f"\n🔄 Attempt {i+1}/{max_retries} to fix tests...")            failed_tests, test_output = run_tests_and_get_failures()            if not failed_tests:                print("✅ All tests passed for this PR!")                break            print(f"🔥 Found {len(failed_tests)} failing test file(s):")            for test in failed_tests:                print(f"  - {test}")            purpose_fix_pr = "fix_failing_pr"            fix_prompt = f"""            You are a senior software engineer. The E2E tests in the PR '{pr['title']}' are failing.            Your task is to analyze the test output, fix the underlying code and the tests, and commit the changes.            Failing Test Files:            {chr(10).join(failed_tests)}            Full Test Output:            ---            {test_output}            ---            Workflow:            1. Carefully analyze the error messages and the relevant code.            2. Fix the implementation code and/or the test files.            3. Commit your changes with a clear message (e.g., `fix: resolve failing tests for feature X`).            4. Respond with ONLY the word "DONE" once you have committed the fix.            """            fix_result = run_command(["gemini", "--force-model", "-p", fix_prompt])            log_gemini_interaction(purpose_fix_pr, fix_prompt, fix_result.stdout)            if "DONE" not in fix_result.stdout.upper():                print("⚠️ Gemini did not respond with 'DONE'. The fix might not be complete. Retrying...")        else:            print(f"❌ Failed to fix the PR after {max_retries} attempts. Moving on.")            run_command(["git", "checkout", "main"])            continue # Move to the next PR if any        print("\n🚀 All tests passed. Pushing changes to remote...")        run_command(["git", "push", "origin", branch_name])        print(f"✅ Successfully fixed and updated PR #{pr['number']}!")        run_command(["git", "checkout", "main"])if __name__ == "__main__":    main()
+def get_oldest_failing_pr():
+    """Fetches the oldest open PR with a failing CI check."""
+    print("🔎 Fetching open PRs with failing checks...")
+    result = run_command([
+        "gh", "pr", "list",
+        "--state", "open",
+        "--limit", "50",
+        "--json", "number,title,headRefName,statusCheckRollup",
+        "--search", "status:failure"
+    ], check=False)
+
+    if result.returncode != 0 or not result.stdout:
+        print("🤷 Could not fetch PRs or no failing PRs found.")
+        return None
+
+    try:
+        prs = json.loads(result.stdout)
+        # The API might return PRs that don't have a failing status, so we filter again.
+        failing_prs = [p for p in prs if p.get("statusCheckRollup") and any(c['state'] == 'FAILURE' for c in p["statusCheckRollup"])]
+        if not failing_prs:
+            print("✅ No PRs with failing checks found.")
+            return None
+        # Sort by PR number to get the oldest
+        return sorted(failing_prs, key=lambda p: p['number'])[0]
+    except (json.JSONDecodeError, IndexError) as e:
+        print(f"❌ Could not parse PR list output or no failing PRs found: {e}")
+        return None
+
+def run_tests_and_get_failures():
+    """Runs all E2E tests and returns a list of failed test files."""
+    print("🧪 Running all E2E tests to identify failures...")
+    # The command needs to be run from the 'client' directory
+    test_command = "cd client && npx playwright test"
+    result = run_command(test_command, check=False)
+
+    if result.returncode == 0:
+        print("✅ All tests passed!")
+        return None, None
+
+    print("❌ Some tests failed. Analyzing report...")
+    stdout = result.stdout
+    failed_tests = re.findall(r'\s*\d+\) (.*\.spec\.ts)', stdout)
+    
+    return list(set(failed_tests)), stdout
+
+def handle_failing_prs():
+    """Main workflow to find and fix failing PRs."""
+    while True:
+        pr = get_oldest_failing_pr()
+        if not pr:
+            print("🎉 No more failing PRs to fix.")
+            break
+
+        print("\n" + "="*80)
+        print(f"🛠️ Now working on PR #{pr['number']}: {pr['title']}")
+        print("="*80)
+
+        branch_name = pr['headRefName']
+        print(f"🌿 Checking out branch: {branch_name}")
+        run_command(["git", "checkout", branch_name])
+        run_command(["git", "pull", "origin", branch_name]) # Ensure we have the latest code
+
+        max_retries = 5
+        for i in range(max_retries):
+            print(f"\n🔄 Attempt {i+1}/{max_retries} to fix tests...")
+            failed_tests, test_output = run_tests_and_get_failures()
+
+            if not failed_tests:
+                print("✅ All tests passed for this PR!")
+                break
+
+            print(f"🔥 Found {len(failed_tests)} failing test file(s):")
+            for test in failed_tests:
+                print(f"  - {test}")
+
+            purpose_fix_pr = "fix_failing_pr"
+            fix_prompt = f'''
+            You are a senior software engineer. The E2E tests in the PR '{pr['title']}' are failing.
+            Your task is to analyze the test output, fix the underlying code and the tests, and commit the changes.
+
+            Failing Test Files:
+            {chr(10).join(failed_tests)}
+
+            Full Test Output:
+            ---
+            {test_output}
+            ---
+
+            Workflow:
+            1. Carefully analyze the error messages and the relevant code.
+            2. Fix the implementation code and/or the test files.
+            3. Commit your changes with a clear message (e.g., `fix: resolve failing tests for feature X`).
+            4. Respond with ONLY the word "DONE" once you have committed the fix.
+            '''
+            fix_result = run_command(["gemini", "--force-model", "-p", fix_prompt])
+            log_gemini_interaction(purpose_fix_pr, fix_prompt, fix_result.stdout)
+
+            if "DONE" not in fix_result.stdout.upper():
+                print("⚠️ Gemini did not respond with 'DONE'. The fix might not be complete. Retrying...")
+        else:
+            print(f"❌ Failed to fix the PR after {max_retries} attempts. Moving on.")
+            run_command(["git", "checkout", "main"])
+            continue # Move to the next PR if any
+
+        print("\n🚀 All tests passed. Pushing changes to remote...")
+        run_command(["git", "push", "origin", branch_name])
+        print(f"✅ Successfully fixed and updated PR #{pr['number']}!")
+        run_command(["git", "checkout", "main"])
+
+
+if __name__ == "__main__":
+    main()
