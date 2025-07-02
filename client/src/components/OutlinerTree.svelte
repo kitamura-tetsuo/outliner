@@ -72,9 +72,28 @@ const displayItems = new TreeSubscriber<Items, DisplayItem[]>(
         console.log("OutlinerTree: pageItem.items exists:", !!pageItem.items);
         console.log("OutlinerTree: pageItem.items length:", (pageItem.items as any)?.length || 0);
 
+        // 子アイテムの詳細をログ出力
+        if (pageItem.items && (pageItem.items as any).length > 0) {
+            for (let i = 0; i < (pageItem.items as any).length; i++) {
+                const item = (pageItem.items as any)[i];
+                console.log(`OutlinerTree: Item ${i}: text="${item.text}", hasChildren=${item.items?.length > 0}, childrenCount=${item.items?.length || 0}`);
+                if (item.items && item.items.length > 0) {
+                    for (let j = 0; j < item.items.length; j++) {
+                        const childItem = item.items[j];
+                        console.log(`OutlinerTree: Child ${j}: text="${childItem.text}"`);
+                    }
+                }
+            }
+        }
+
         viewModel.updateFromModel(pageItem);
         const visibleItems = viewModel.getVisibleItems();
         console.log("OutlinerTree: visibleItems length:", visibleItems.length);
+
+        // 表示アイテムの詳細をログ出力
+        visibleItems.forEach((item, index) => {
+            console.log(`OutlinerTree: DisplayItem ${index}: text="${item.model.text}", depth=${item.depth}`);
+        });
 
         return visibleItems;
     },

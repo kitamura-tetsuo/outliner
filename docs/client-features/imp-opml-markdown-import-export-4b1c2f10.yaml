@@ -4,7 +4,7 @@ title-ja: OPMLとMarkdownのインポートとエクスポート
 category: outline
 status: implemented
 components:
-  - client/src/services/importExportService.ts
-  - client/src/routes/[project]/settings/+page.svelte
+- client/src/routes/[project]/settings/+page.svelte
+- client/src/services/importExportService.ts
 tests:
-  - client/e2e/new/imp-opml-markdown-import-export-4b1c2f10.spec.ts
+- client/e2e/new/imp-opml-markdown-import-export-4b1c2f10.spec.ts
