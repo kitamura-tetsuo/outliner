@@ -22,7 +22,7 @@
         "test:integration": "vitest run --project integration",
         "github:test:unit": "vitest run --project unit --coverage --reporter=github-actions --reporter=dot",
         "github:test:integration": "vitest run --project integration --reporter=github-actions --reporter=dot",
-        "test": "NODE_ENV=test dotenvx run --env-file=.env.test -- npm run test:unit && npm run test:integration && bash ../scripts/run-e2e-progress-for-codex.sh 1",
+        "test": "NODE_ENV=test dotenvx run --env-file=.env.test -- npm run test:unit && npm run test:integration && npm run test:e2e",
         "test:e2e": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test --reporter=list --",
         "github:test:e2e": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test --reporter=github,line",
         "test:e2e:basic": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test ./e2e/basic --reporter=list",
