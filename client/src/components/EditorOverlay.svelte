@@ -305,6 +305,8 @@ onMount(() => {
 
     // copyイベントを監視
     document.addEventListener('copy', handleCopy as EventListener);
+    // cutイベントを監視
+    document.addEventListener('cut', handleCut as EventListener);
     // pasteイベントを監視 (マルチラインペースト)
     document.addEventListener('paste', handlePaste as EventListener);
 
@@ -341,6 +343,8 @@ onDestroy(() => {
 
     // copyイベントリスナー解除
     document.removeEventListener('copy', handleCopy as EventListener);
+    // cutイベントリスナー解除
+    document.removeEventListener('cut', handleCut as EventListener);
     // pasteイベントリスナー解除
     document.removeEventListener('paste', handlePaste as EventListener);
 
@@ -620,6 +624,48 @@ function handleCopy(event: ClipboardEvent) {
   // テスト・フォーカス保持のため、常に隠しtextareaを更新
   if (clipboardRef && combinedText) {
     clipboardRef.value = combinedText;
+  }
+}
+
+// 複数アイテム選択をクリップボードにカットする
+function handleCut(event: ClipboardEvent) {
+  // デバッグ情報
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    console.log(`handleCut called`);
+  }
+
+  // 選択範囲がない場合は何もしない
+  const selections = allSelections.filter(sel =>
+    sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
+  );
+
+  if (selections.length === 0) return;
+
+  // ブラウザのデフォルトカット動作を防止
+  event.preventDefault();
+
+  // 選択されたテキストを取得
+  const selectedText = store.getSelectedText('local');
+
+  // グローバル変数にテキストを保存（テスト用）
+  if (typeof window !== 'undefined' && selectedText) {
+    (window as any).lastCopiedText = selectedText;
+    console.log(`Cut: Saved text to global variable: "${selectedText}"`);
+  }
+
+  // まずコピー処理を実行
+  handleCopy(event);
+
+  // 選択範囲を削除
+  const cursors = store.getCursorInstances();
+  if (cursors.length > 0) {
+    // 最初のカーソルを使用して選択範囲を削除
+    cursors[0].deleteSelection();
+  }
+
+  // デバッグ情報
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    console.log(`Cut operation completed`);
   }
 }
 

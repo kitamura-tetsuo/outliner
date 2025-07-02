@@ -451,17 +451,23 @@ export class TestHelpers {
         page: Page,
         itemId: string,
         offset: number = 0,
-        userId: string = "test-user",
+        userId: string = "local",
     ): Promise<void> {
         await page.evaluate(async ({ itemId, offset, userId }) => {
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (editorOverlayStore && editorOverlayStore.setCursor) {
+                console.log(
+                    `TestHelpers.setCursor: Setting cursor for itemId=${itemId}, offset=${offset}, userId=${userId}`,
+                );
                 editorOverlayStore.setCursor({
                     itemId: itemId,
                     offset: offset,
                     isActive: true,
                     userId: userId,
                 });
+            }
+            else {
+                console.error(`TestHelpers.setCursor: editorOverlayStore or setCursor not available`);
             }
         }, { itemId, offset, userId });
     }
@@ -477,15 +483,27 @@ export class TestHelpers {
         page: Page,
         itemId: string,
         text: string,
-        userId: string = "test-user",
+        userId: string = "local",
     ): Promise<void> {
         await page.evaluate(async ({ itemId, text, userId }) => {
             const editorOverlayStore = (window as any).editorOverlayStore;
-            if (editorOverlayStore && editorOverlayStore.getCursor) {
-                const cursor = editorOverlayStore.getCursor(itemId, userId);
+            if (editorOverlayStore && editorOverlayStore.getCursorInstances) {
+                const cursorInstances = editorOverlayStore.getCursorInstances();
+                const cursor = cursorInstances.find((c: any) => c.itemId === itemId && c.userId === userId);
                 if (cursor && cursor.insertText) {
+                    console.log(`TestHelpers.insertText: Found cursor for itemId=${itemId}, userId=${userId}`);
                     cursor.insertText(text);
                 }
+                else {
+                    console.error(`TestHelpers.insertText: Cursor not found for itemId=${itemId}, userId=${userId}`);
+                    console.log(
+                        `Available cursors:`,
+                        cursorInstances.map((c: any) => ({ itemId: c.itemId, userId: c.userId })),
+                    );
+                }
+            }
+            else {
+                console.error(`TestHelpers.insertText: editorOverlayStore or getCursorInstances not available`);
             }
         }, { itemId, text, userId });
     }

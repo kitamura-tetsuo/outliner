@@ -640,11 +640,21 @@ export class EditorOverlayStore {
         const userId = cursorProps.userId ?? "local";
         const itemId = cursorProps.itemId;
 
-        // 同じユーザーの同じアイテムに対する既存のカーソルをクリア
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`setCursor called for userId=${userId}, itemId=${itemId}, offset=${cursorProps.offset}`);
+            console.log(`Current cursor instances:`, Array.from(this.cursorInstances.keys()));
+        }
+
+        // 同じユーザーの既存のアクティブカーソルをすべてクリア（マルチカーソルでない限り）
         const cursorIdsToRemove: string[] = [];
         for (const [cursorId, inst] of this.cursorInstances.entries()) {
-            if (inst.userId === userId && inst.itemId === itemId) {
-                cursorIdsToRemove.push(cursorId);
+            if (inst.userId === userId) {
+                // 同じアイテムの場合は必ずクリア
+                // 異なるアイテムでも、新しいカーソルがアクティブな場合は既存のアクティブカーソルをクリア
+                if (inst.itemId === itemId || (cursorProps.isActive && inst.isActive)) {
+                    cursorIdsToRemove.push(cursorId);
+                }
             }
         }
 
@@ -661,6 +671,11 @@ export class EditorOverlayStore {
                 delete newCursors[id];
             });
             this.cursors = newCursors;
+
+            // デバッグ情報
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Removed ${cursorIdsToRemove.length} existing cursors:`, cursorIdsToRemove);
+            }
         }
 
         // 新しいカーソルを作成
@@ -686,6 +701,12 @@ export class EditorOverlayStore {
         // アクティブなカーソルの場合はアクティブアイテムを更新
         if (cursorProps.isActive) {
             this.setActiveItem(itemId);
+        }
+
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`Created new cursor with ID=${id}`);
+            console.log(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
         }
 
         return id;
@@ -1071,7 +1092,7 @@ export class EditorOverlayStore {
         this.addCursor({ itemId: adj.id, offset, isActive: true, userId: active.userId ?? "local" });
     }
 
-    private getAdjacentItem(itemId: string | null, dir: "prev" | "next"): { id: string; text: string } | null {
+    private getAdjacentItem(itemId: string | null, dir: "prev" | "next"): { id: string; text: string; } | null {
         if (!itemId) return null;
         const { itemIdToIndex, allItems } = this.getItemsMapping();
         const idx = itemIdToIndex.get(itemId);
