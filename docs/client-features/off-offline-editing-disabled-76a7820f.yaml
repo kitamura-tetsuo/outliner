@@ -1,0 +1,9 @@
+id: OFF-0002
+title: Offline editing disabled
+title-ja: オフライン編集の無効化
+category: offline
+description: Offline editing will not be implemented because the Fluid Framework requires a network connection.
+status: deprecated
+components: []
+tests:
+  - client/e2e/new/off-offline-editing-disabled-76a7820f.spec.ts
