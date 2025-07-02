@@ -139,16 +139,26 @@ onMount(() => {
     if (browser) {
         // アプリケーション初期化のログ
         logger.info("アプリケーションがマウントされました");
-        if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("/service-worker.js").then(reg => {
-                logger.info("Service worker registered");
-                if ("sync" in reg) {
-                    reg.sync.register("sync-ops").catch(err => {
-                        logger.warn("Failed to register sync", err);
+        if ('serviceWorker' in navigator) {
+            // SvelteKitのService Workerを登録
+            navigator.serviceWorker.register('/service-worker.js', {
+                scope: '/'
+            }).then(reg => {
+                logger.info('Service worker registered successfully');
+
+                // Background Syncが利用可能な場合は登録
+                if ('sync' in reg) {
+                    (reg as any).sync.register('sync-ops').catch((err: any) => {
+                        logger.warn('Failed to register background sync:', err);
                     });
                 }
+
+                // Service Workerの更新をチェック
+                reg.addEventListener('updatefound', () => {
+                    logger.info('Service worker update found');
+                });
             }).catch(err => {
-                logger.error("Service worker registration failed", err);
+                logger.error('Service worker registration failed:', err);
             });
         }
 

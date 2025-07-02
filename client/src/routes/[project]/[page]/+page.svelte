@@ -307,6 +307,10 @@ function goToSchedule() {
     goto(`/${projectName}/${pageName}/schedule`);
 }
 
+function goToGraphView() {
+    goto(`/${projectName}/graph`);
+}
+
 // 検索パネルの表示を切り替える
 function toggleSearchPanel() {
     isSearchPanelVisible = !isSearchPanelVisible;
@@ -386,6 +390,13 @@ onDestroy(() => {
                     class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                 >
                     予約管理
+                </button>
+                <button
+                    onclick={goToGraphView}
+                    data-testid="graph-view-button"
+                    class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+                >
+                    グラフビュー
                 </button>
             </div>
         </div>

@@ -1398,7 +1398,7 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
 <div
 	class="outliner-item"
 	class:page-title={isPageTitle}
-	style="margin-left: {depth * 20}px"
+	style="margin-left: {depth <= 1 ? 0 : (depth - 1) * 20}px"
 	onclick={handleClick}
 	onmousedown={handleMouseDown}
 	onmousemove={handleMouseMove}

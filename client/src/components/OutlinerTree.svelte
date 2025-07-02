@@ -72,9 +72,28 @@ const displayItems = new TreeSubscriber<Items, DisplayItem[]>(
         console.log("OutlinerTree: pageItem.items exists:", !!pageItem.items);
         console.log("OutlinerTree: pageItem.items length:", (pageItem.items as any)?.length || 0);
 
+        // 子アイテムの詳細をログ出力
+        if (pageItem.items && (pageItem.items as any).length > 0) {
+            for (let i = 0; i < (pageItem.items as any).length; i++) {
+                const item = (pageItem.items as any)[i];
+                console.log(`OutlinerTree: Item ${i}: text="${item.text}", hasChildren=${item.items?.length > 0}, childrenCount=${item.items?.length || 0}`);
+                if (item.items && item.items.length > 0) {
+                    for (let j = 0; j < item.items.length; j++) {
+                        const childItem = item.items[j];
+                        console.log(`OutlinerTree: Child ${j}: text="${childItem.text}"`);
+                    }
+                }
+            }
+        }
+
         viewModel.updateFromModel(pageItem);
         const visibleItems = viewModel.getVisibleItems();
         console.log("OutlinerTree: visibleItems length:", visibleItems.length);
+
+        // 表示アイテムの詳細をログ出力
+        visibleItems.forEach((item, index) => {
+            console.log(`OutlinerTree: DisplayItem ${index}: text="${item.model.text}", depth=${item.depth}`);
+        });
 
         return visibleItems;
     },
@@ -123,7 +142,7 @@ onMount(() => {
     }
 
     // onEdit コールバックをストアに設定
-    editorOverlayStore.setOnEditCallback(onEdit || null);
+    editorOverlayStore.setOnEditCallback(handleEdit);
 
     // 初期状態でアイテムの高さを初期化
     itemHeights = new Array(displayItems.current.length).fill(0);
@@ -178,6 +197,31 @@ function handleAddItem() {
     if (pageItem && !isReadOnly && pageItem.items && Tree.is(pageItem.items, Items)) {
         // 末尾にアイテム追加
         pageItem.items.addNode(currentUser);
+    }
+}
+
+// 最下部のアイテム編集中に空の兄弟アイテムを追加
+function handleEdit() {
+    // 外部のonEditがあれば呼び出し
+    if (onEdit) onEdit();
+
+    // 表示アイテムの最後を取得
+    const items = displayItems.current;
+    if (items.length === 0) return;
+    const last = items[items.length - 1];
+    const activeId = editorOverlayStore.getActiveItem();
+    if (!activeId || activeId !== last.model.id) return;
+
+    // 最下部アイテムが空でない場合のみ追加
+    if (last.model.original.text?.trim().length === 0) return;
+
+    const parent = Tree.parent(last.model.original);
+    if (parent && Tree.is(parent, Items)) {
+        const idx = parent.indexOf(last.model.original);
+        parent.addNode(currentUser, idx + 1);
+    } else if (pageItem.items && Tree.is(pageItem.items, Items)) {
+        const idx = pageItem.items.indexOf(last.model.original);
+        pageItem.items.addNode(currentUser, idx + 1);
     }
 }
 
@@ -1477,8 +1521,8 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
 
 .item-container {
     position: absolute;
-    left: calc(16px + var(--item-depth) * 24px);
-    width: calc(100% - 32px - var(--item-depth) * 24px);
+    left: calc(16px + max(0, var(--item-depth) - 1) * 24px);
+    width: calc(100% - 32px - max(0, var(--item-depth) - 1) * 24px);
     min-height: 36px; /* 最小の高さを設定 */
     transition: left 0.2s ease, top 0.2s ease;
 }

@@ -345,7 +345,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
         // 選択範囲の方向を確認
         // 選択範囲が作成されるまで待機
@@ -381,7 +381,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
-        await expect(page.locator(".editor-overlay .selection")).toBeVisible();
+        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
         // 選択範囲の方向を確認
         await page.waitForFunction(() => {
