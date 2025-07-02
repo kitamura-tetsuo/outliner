@@ -296,6 +296,12 @@ export class EditorOverlayStore {
         }
     }
 
+    getLastActiveCursor(): CursorPosition | null {
+        const lastId = this.cursorHistory[this.cursorHistory.length - 1];
+        if (!lastId) return null;
+        return this.cursors[lastId] || null;
+    }
+
     setSelection(selection: SelectionRange) {
         // 選択範囲のキーを開始アイテムIDと終了アイテムIDの組み合わせにする
         const key = `${selection.startItemId}-${selection.endItemId}-${selection.userId || "local"}`;

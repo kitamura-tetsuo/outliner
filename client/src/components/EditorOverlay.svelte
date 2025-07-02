@@ -1,5 +1,5 @@
 <script lang="ts">
-import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+import { createEventDispatcher, onDestroy, onMount, afterUpdate } from 'svelte';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
 
@@ -50,6 +50,22 @@ let localAnimationPaused = $state<boolean>(false);
 
 // DOM要素への参照
 let overlayRef: HTMLDivElement;
+
+afterUpdate(() => {
+    const textarea = store.getTextareaRef();
+    if (!textarea) return;
+    const lastCursor = store.getLastActiveCursor();
+    if (!lastCursor) return;
+    const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
+    if (!pos) return;
+    const treeContainer = overlayRef.closest('.tree-container');
+    if (!treeContainer) return;
+    const rect = treeContainer.getBoundingClientRect();
+    textarea.style.left = `${rect.left + pos.left}px`;
+    textarea.style.top = `${rect.top + pos.top}px`;
+    const height = positionMap[lastCursor.itemId]?.lineHeight || 16;
+    textarea.style.height = `${height}px`;
+});
 
 // より正確なテキスト測定を行うヘルパー関数
 function createMeasurementSpan(itemId: string, text: string): HTMLSpanElement {
