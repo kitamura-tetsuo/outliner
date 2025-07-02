@@ -364,7 +364,7 @@ def get_oldest_failing_pr():
     try:
         prs = json.loads(result.stdout)
         # The API might return PRs that don't have a failing status, so we filter again.
-        failing_prs = [p for p in prs if p.get("statusCheckRollup") and any(c['state'] == 'FAILURE' for c in p["statusCheckRollup"])]
+        failing_prs = [p for p in prs if p.get("statusCheckRollup") and any(c.get('conclusion') == 'FAILURE' for c in p["statusCheckRollup"])]
         if not failing_prs:
             print("✅ No PRs with failing checks found.")
             return None
