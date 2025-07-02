@@ -1,0 +1,10 @@
+id: THM-0001
+title: Dark mode theme toggle
+title-ja: ダークモードテーマの切り替え
+description: User can switch between light and dark themes.
+category: ui
+status: implemented
+tests:
+- client/e2e/core/thm-dark-mode-toggle-5e7cbe61.spec.ts
+acceptance:
+- アプリ全体でダークテーマとライトテーマを切り替えられる

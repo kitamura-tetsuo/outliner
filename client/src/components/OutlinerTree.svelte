@@ -1496,8 +1496,8 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
 
 .item-container {
     position: absolute;
-    left: calc(16px + var(--item-depth) * 24px);
-    width: calc(100% - 32px - var(--item-depth) * 24px);
+    left: calc(16px + max(0, var(--item-depth) - 1) * 24px);
+    width: calc(100% - 32px - max(0, var(--item-depth) - 1) * 24px);
     min-height: 36px; /* 最小の高さを設定 */
     transition: left 0.2s ease, top 0.2s ease;
 }

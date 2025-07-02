@@ -207,13 +207,16 @@ dotenvx run -- npm run test:env
 
 ### Playwrightテストを順番に実行する
 
-Codex環境では複数のE2Eテストを一度に実行するとタイムアウトすることがあります。`scripts/run-e2e-progress-for-codex.sh 1` を使うと、テストファイルを1件ずつ実行できます。
+Codex環境では複数のE2Eテストを一度に実行するとタイムアウト (timeout) することがあります。`scripts/run-e2e-progress-for-codex.sh 1` を使うと、テストファイルを1件ずつ実行できます。
+This prevents timeout errors during cording agent's env runs.
+
+This helps avoid timeout errors during CI runs.
 
 ```bash
 scripts/run-e2e-progress-for-codex.sh 1
 ```
 
-このスクリプトは進捗を `.e2e-progress` ファイルに記録し、途中でタイムアウトした場合でも続きから再開できます。タイムアウトしたテストはログに記録してください。
+このスクリプトは進捗を `.e2e-progress` ファイルに記録し、途中でタイムアウト (timeout) した場合でも続きから再開できます。タイムアウト (timeout) したテストはログに記録してください。
 `.e2e-progress` を削除すると最初から実行できます。
 
 ## 機能ドキュメントの集約
