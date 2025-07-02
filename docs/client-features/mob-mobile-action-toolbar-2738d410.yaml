@@ -1,0 +1,16 @@
+id: MOB-0003
+title: Mobile Bottom Action Toolbar
+title-ja: モバイルアクションツールバー
+category: mobile
+status: implemented
+components:
+  - client/src/components/MobileActionToolbar.svelte
+  - client/src/routes/+layout.svelte
+tests:
+  - client/e2e/core/MOB-0003.spec.ts
+acceptance:
+  - Toolbar visible only on screens ≤ 768 px
+  - Indent and Outdent buttons modify item depth
+  - Insert Above and Insert Below add sibling items
+  - New Child creates a child under current item
+  - Buttons scroll horizontally when overflowed
