@@ -389,6 +389,13 @@ export class KeyEventHandler {
 
     // 現在のcomposition文字数を保持
     static lastCompositionLength = 0;
+
+    /**
+     * IMEのcompositionstartイベントを処理する
+     */
+    static handleCompositionStart(_event: CompositionEvent) {
+        KeyEventHandler.lastCompositionLength = 0;
+    }
     /**
      * IMEのcompositionupdateイベントを処理し、中間入力文字を表示する
      */
