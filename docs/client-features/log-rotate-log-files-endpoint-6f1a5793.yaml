@@ -1,0 +1,13 @@
+id: LOG-0002
+title: Log rotation endpoint
+title-ja: ログローテーションエンドポイント
+description: POST /api/rotate-logs rotates client, telemetry, and server logs.
+category: api-server
+status: implemented
+components:
+- server/log-service.js
+- server/utils/logger.js
+tests:
+- server/tests/logger-rotate-logfile.test.js
+- server/tests/rotate-logs-endpoint.test.js
+- client/e2e/logs/log-rotate-log-files-endpoint-6f1a5793.spec.ts

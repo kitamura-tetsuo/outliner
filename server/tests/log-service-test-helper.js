@@ -249,6 +249,39 @@ app.get("/debug/token-info", async (req, res) => {
     }
 });
 
+// ログファイルをローテーションするエンドポイント
+const {
+    rotateClientLogs,
+    rotateTelemetryLogs,
+    rotateServerLogs,
+    refreshClientLogStream,
+    refreshTelemetryLogStream,
+    refreshServerLogStream,
+} = require("../utils/logger");
+
+app.post("/api/rotate-logs", async (req, res) => {
+    try {
+        const clientRotated = await rotateClientLogs(2);
+        const telemetryRotated = await rotateTelemetryLogs(2);
+        const serverRotated = await rotateServerLogs(2);
+
+        if (clientRotated) refreshClientLogStream();
+        if (telemetryRotated) refreshTelemetryLogStream();
+        if (serverRotated) refreshServerLogStream();
+
+        res.status(200).json({
+            success: true,
+            clientRotated,
+            telemetryRotated,
+            serverRotated,
+            timestamp: new Date().toISOString(),
+        });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Azure Fluid Relay用トークン生成関数
 function generateAzureFluidToken(user, containerId = undefined) {
     return {
