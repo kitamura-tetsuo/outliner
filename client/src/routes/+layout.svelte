@@ -12,8 +12,8 @@ import "$lib";
 import { userManager } from "../auth/UserManager";
 import { setupGlobalDebugFunctions } from "../lib/debug";
 import * as fluidService from "../lib/fluidService.svelte";
-import "../utils/ScrapboxFormatter";
-// グローバルに公開するためにインポート
+import "../utils/ScrapboxFormatter"; // グローバルに公開するためにインポート
+import MobileActionToolbar from "../components/MobileActionToolbar.svelte";
 import {
     cleanupFluidClient,
     initFluidClientWithAuth,
@@ -297,6 +297,8 @@ onDestroy(() => {
 </script>
 
 {@render children()}
+
+<MobileActionToolbar />
 
 <button
     class="fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
