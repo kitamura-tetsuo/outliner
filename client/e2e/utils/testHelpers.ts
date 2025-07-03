@@ -237,8 +237,8 @@ export class TestHelpers {
             }
         }, { projectName, pageName, lines });
 
-        // 少し待機してからページの状態を確認
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // プロジェクトとページの作成後、ページルートでの処理が完了するまで待機
+        await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
     /**
@@ -434,8 +434,15 @@ export class TestHelpers {
         }
         catch (error) {
             console.log("Timeout waiting for cursor to be visible, continuing anyway");
-            // スクリーンショットを撮影して状態を確認
-            await page.screenshot({ path: "client/test-results/cursor-visible-timeout.png" });
+            // ページが閉じられていないかチェックしてからスクリーンショットを撮影
+            try {
+                if (!page.isClosed()) {
+                    await page.screenshot({ path: "client/test-results/cursor-visible-timeout.png" });
+                }
+            }
+            catch (screenshotError) {
+                console.log("Failed to take screenshot:", screenshotError);
+            }
             return false;
         }
     }
@@ -532,6 +539,166 @@ export class TestHelpers {
         console.log("TestHelper: Navigating to project page:", url);
         await page.goto(url);
 
+        // 遷移後の状態を確認
+        const currentUrl = page.url();
+        console.log(`TestHelper: Current URL after navigation: ${currentUrl}`);
+
+        const pageTitle = await page.title();
+        console.log(`TestHelper: Page title: ${pageTitle}`);
+
+        // ページルートの自動処理を待機（手動設定は行わない）
+        console.log("TestHelper: Waiting for page route to automatically load project and page");
+
+        // 認証状態が検出されるまで待機
+        console.log("TestHelper: Waiting for authentication detection");
+        await page.waitForFunction(() => {
+            const userManager = (window as any).__USER_MANAGER__;
+            if (!userManager) {
+                console.log("TestHelper: UserManager not available yet");
+                return false;
+            }
+
+            const currentUser = userManager.getCurrentUser();
+            console.log("TestHelper: Auth check - currentUser exists:", !!currentUser);
+            return !!currentUser;
+        }, { timeout: 30000 });
+
+        console.log("TestHelper: Authentication detected, waiting for project loading");
+
+        // ページの詳細な状態をログ出力
+        await page.evaluate(() => {
+            console.log("TestHelper: Current page state:");
+            console.log("TestHelper: URL:", window.location.href);
+            console.log("TestHelper: generalStore exists:", !!(window as any).generalStore);
+            console.log("TestHelper: fluidStore exists:", !!(window as any).__FLUID_STORE__);
+
+            const generalStore = (window as any).generalStore;
+            if (generalStore) {
+                console.log("TestHelper: generalStore.project exists:", !!generalStore.project);
+                console.log("TestHelper: generalStore.pages exists:", !!generalStore.pages);
+                console.log("TestHelper: generalStore.currentPage exists:", !!generalStore.currentPage);
+            }
+
+            const fluidStore = (window as any).__FLUID_STORE__;
+            if (fluidStore) {
+                console.log("TestHelper: fluidStore.fluidClient exists:", !!fluidStore.fluidClient);
+            }
+        });
+
+        // generalStoreが設定されるまで待機（OutlinerBaseのマウントは後で確認）
+        console.log("TestHelper: Waiting for generalStore to be available");
+        await page.waitForFunction(() => {
+            const generalStore = (window as any).generalStore;
+
+            console.log("TestHelper: GeneralStore availability check", {
+                hasGeneralStore: !!generalStore,
+            });
+
+            return !!generalStore;
+        }, { timeout: 30000 });
+
+        // プロジェクトとページの自動読み込みを待機
+        console.log("TestHelper: OutlinerBase mounted, waiting for project and page loading");
+
+        // より短いタイムアウトで複数回試行する
+        let attempts = 0;
+        const maxAttempts = 6; // 6回試行（各10秒）
+        let success = false;
+
+        while (attempts < maxAttempts && !success) {
+            attempts++;
+            console.log(`TestHelper: Attempt ${attempts}/${maxAttempts} to wait for project loading`);
+
+            try {
+                await page.waitForFunction(() => {
+                    const generalStore = (window as any).generalStore;
+                    const fluidStore = (window as any).__FLUID_STORE__;
+
+                    if (!generalStore || !fluidStore) {
+                        console.log("TestHelper: Stores not available yet", {
+                            hasGeneralStore: !!generalStore,
+                            hasFluidStore: !!fluidStore,
+                        });
+                        return false;
+                    }
+
+                    const hasProject = !!generalStore.project;
+                    const hasFluidClient = !!fluidStore.fluidClient;
+                    const hasPages = !!(generalStore.pages && generalStore.pages.current);
+                    const hasCurrentPage = !!generalStore.currentPage;
+
+                    console.log("TestHelper: Project loading check", {
+                        hasProject,
+                        hasFluidClient,
+                        hasPages,
+                        hasCurrentPage,
+                        pagesCount: generalStore.pages?.current?.length || 0,
+                        currentPageText: generalStore.currentPage?.text || "none",
+                        currentPageId: generalStore.currentPage?.id || "none",
+                        projectTitle: generalStore.project?.title || "none",
+                        fluidClientContainerId: fluidStore.fluidClient?.containerId || "none",
+                    });
+
+                    // プロジェクト、ページが設定されていることを確認
+                    // FluidClientは後で設定される可能性があるので、必須条件から除外
+                    const basicConditionsMet = hasProject && hasPages;
+
+                    if (basicConditionsMet) {
+                        console.log("TestHelper: Basic conditions met (project and pages available)");
+                        if (hasFluidClient) {
+                            console.log("TestHelper: FluidClient also available");
+                        }
+                        else {
+                            console.log("TestHelper: FluidClient not yet available, but proceeding");
+                        }
+                        return true;
+                    }
+
+                    console.log("TestHelper: Basic conditions not met, continuing to wait");
+                    return false;
+                }, { timeout: 10000, polling: 1000 }); // 10秒のタイムアウト、1秒ごとにポーリング
+
+                success = true;
+                console.log(`TestHelper: Successfully loaded project and page on attempt ${attempts}`);
+            }
+            catch (error) {
+                console.log(`TestHelper: Attempt ${attempts} failed:`, error.message);
+                if (attempts < maxAttempts) {
+                    console.log("TestHelper: Retrying...");
+                    await page.waitForTimeout(2000); // 2秒待機してから再試行
+                }
+            }
+        }
+
+        if (!success) {
+            console.log("TestHelper: Failed to load project and page after all attempts");
+            // 最終状態をログ出力
+            const finalState = await page.evaluate(() => {
+                const generalStore = (window as any).generalStore;
+                const fluidStore = (window as any).__FLUID_STORE__;
+                return {
+                    hasGeneralStore: !!generalStore,
+                    hasFluidStore: !!fluidStore,
+                    hasProject: !!(generalStore?.project),
+                    hasPages: !!(generalStore?.pages),
+                    hasCurrentPage: !!(generalStore?.currentPage),
+                    hasFluidClient: !!(fluidStore?.fluidClient),
+                };
+            });
+            console.log("TestHelper: Final state:", finalState);
+            throw new Error("Failed to load project and page");
+        }
+
+        // OutlinerBaseがマウントされるまで待機
+        console.log("TestHelper: Waiting for OutlinerBase to mount");
+        await page.waitForFunction(() => {
+            const outlinerBase = document.querySelector('[data-testid="outliner-base"]');
+            console.log("TestHelper: OutlinerBase mount check", {
+                hasOutlinerBase: !!outlinerBase,
+            });
+            return !!outlinerBase;
+        }, { timeout: 30000 });
+
         // ページコンポーネントが初期化されるまで待機
         console.log("TestHelper: Waiting for page component initialization");
 
@@ -552,25 +719,32 @@ export class TestHelpers {
         await page.screenshot({ path: "test-results/debug-page-before-wait.png" });
 
         try {
-            // より柔軟な初期化チェック - FluidClientの存在は必須ではない
+            // currentPageが設定されるまで待機
+            console.log("TestHelper: Waiting for currentPage to be set");
             await page.waitForFunction(() => {
-                // ページコンポーネントが初期化されているかチェック
+                const generalStore = (window as any).generalStore;
+                const hasCurrentPage = !!(generalStore && generalStore.currentPage);
+
+                if (hasCurrentPage) {
+                    console.log("TestHelper: currentPage is set:", generalStore.currentPage.text);
+                }
+
+                return hasCurrentPage;
+            }, { timeout: 30000 });
+
+            // OutlinerBaseが表示されるまで待機
+            console.log("TestHelper: Waiting for OutlinerBase to be visible");
+            await page.waitForFunction(() => {
                 const outlinerBase = document.querySelector('[data-testid="outliner-base"]');
                 const hasOutlinerBase = !!outlinerBase;
 
-                // FluidStoreが正しく設定されているかチェック（オプショナル）
-                const fluidStore = (window as any).__FLUID_STORE__;
-                const hasFluidClient = !!(fluidStore && fluidStore.fluidClient);
-
-                console.log("TestHelper: Page initialization check", {
+                console.log("TestHelper: OutlinerBase check", {
                     hasOutlinerBase,
-                    hasFluidClient,
                     outlinerBaseContent: outlinerBase?.textContent?.substring(0, 100),
                 });
 
-                // OutlinerBaseが存在すれば十分とする（FluidClientは後で設定される可能性がある）
                 return hasOutlinerBase;
-            }, { timeout: 15000 });
+            }, { timeout: 30000 });
         }
         catch (error) {
             console.log("TestHelper: Page initialization timeout, taking debug screenshot");

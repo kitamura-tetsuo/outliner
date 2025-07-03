@@ -296,6 +296,12 @@ export class EditorOverlayStore {
         }
     }
 
+    getLastActiveCursor(): CursorPosition | null {
+        const lastId = this.cursorHistory[this.cursorHistory.length - 1];
+        if (!lastId) return null;
+        return this.cursors[lastId] || null;
+    }
+
     setSelection(selection: SelectionRange) {
         // 選択範囲のキーを開始アイテムIDと終了アイテムIDの組み合わせにする
         const key = `${selection.startItemId}-${selection.endItemId}-${selection.userId || "local"}`;
@@ -703,10 +709,14 @@ export class EditorOverlayStore {
             this.setActiveItem(itemId);
         }
 
+        // カーソル履歴を更新
+        this.cursorHistory = [...this.cursorHistory, id];
+
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Created new cursor with ID=${id}`);
             console.log(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
+            console.log(`Updated cursor history:`, this.cursorHistory);
         }
 
         return id;

@@ -14,16 +14,33 @@ class GeneralStore {
         return this._project;
     }
     public set project(v: Project) {
-        console.log(`store: Setting project`, { projectExists: !!v, projectTitle: v?.title });
+        if (import.meta.env.DEV) {
+            console.log(`store: Setting project`, { projectExists: !!v, projectTitle: v?.title });
+        }
         this._project = v;
-        console.log(`store: Creating TreeSubscriber for pages`);
+        if (import.meta.env.DEV) {
+            console.log(`store: Creating TreeSubscriber for pages`);
+        }
         this.pages = new TreeSubscriber<Items>(v.items as Items, "nodeChanged");
-        console.log(`store: TreeSubscriber created`, { pagesExists: !!this.pages, pagesLength: this.pages?.current?.length });
+        if (import.meta.env.DEV) {
+            console.log(`store: TreeSubscriber created`, {
+                pagesExists: !!this.pages,
+                pagesLength: this.pages?.current?.length,
+            });
+        }
         if (this.pages?.current?.length > 0) {
             this.currentPage = this.pages.current[0];
-            console.log(`store: Set currentPage to first page`, { currentPageExists: !!this.currentPage, currentPageText: this.currentPage?.text });
-        } else {
-            console.log(`store: No pages available, currentPage not set`);
+            if (import.meta.env.DEV) {
+                console.log(`store: Set currentPage to first page`, {
+                    currentPageExists: !!this.currentPage,
+                    currentPageText: this.currentPage?.text,
+                });
+            }
+        }
+        else {
+            if (import.meta.env.DEV) {
+                console.log(`store: No pages available, currentPage not set`);
+            }
         }
     }
 }
@@ -33,4 +50,5 @@ export const store = new GeneralStore();
 // グローバルに参照できるようにする（ScrapboxFormatter.tsからアクセスするため）
 if (typeof window !== "undefined") {
     (window as any).appStore = store;
+    (window as any).generalStore = store; // TestHelpersとの互換性のため
 }
