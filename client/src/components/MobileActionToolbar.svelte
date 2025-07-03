@@ -43,7 +43,9 @@ function findItem(node: Item, id: string): Item | undefined {
 function getActiveItem(): Item | undefined {
     const id = editorOverlayStore.activeItemId;
     if (!id) return undefined;
-    return findItem(generalStore.currentPage, id);
+    const currentPage = generalStore.currentPage;
+    if (!currentPage) return undefined;
+    return findItem(currentPage, id);
 }
 
 function indent() {
@@ -56,13 +58,34 @@ function indent() {
     const index = parent.indexOf(item);
     if (index <= 0) return;
     const previousItem = parent[index - 1];
-    const prevItems = previousItem.items;
-    if (prevItems && Tree.is(prevItems, Items)) {
-        Tree.runTransaction(parent, () => {
-            (prevItems as any).moveRangeToEnd(index, index + 1, parent);
-        });
-        generalStore.currentPage = generalStore.currentPage;
-        editorOverlayStore.setActiveItem(id);
+
+    try {
+        // アイテムのテキストを保存
+        const itemText = item.text || "";
+        const itemAuthor = item.author;
+
+        // 前のアイテムの子リストを取得
+        const prevItems = previousItem.items;
+        if (prevItems && Tree.is(prevItems, Items)) {
+            let newItemId: string = "";
+            Tree.runTransaction(parent, () => {
+                // 元のアイテムを削除
+                parent.removeAt(index);
+
+                // 前のアイテムの子として追加
+                const newItem = prevItems.addNode(itemAuthor);
+                newItem.text = itemText;
+                newItemId = newItem.id;
+            });
+
+            generalStore.currentPage = generalStore.currentPage;
+            if (newItemId) {
+                editorOverlayStore.setActiveItem(newItemId);
+            }
+        }
+    }
+    catch (error) {
+        console.error("Failed to indent item:", error);
     }
 }
 
@@ -77,16 +100,34 @@ function outdent() {
     if (!parentItem || !Tree.is(parentItem, Item)) return;
     const grandParentList = Tree.parent(parentItem);
     if (!grandParentList || !Tree.is(grandParentList, Items)) return;
-    const parentIndex = grandParentList.indexOf(parentItem);
-    const itemIndex = parentList.indexOf(item);
-    const sourceItem = parentList[itemIndex];
-    if (sourceItem) {
-        const targetArray = grandParentList as any;
+
+    try {
+        // アイテムのテキストを保存
+        const itemText = item.text || "";
+        const itemAuthor = item.author;
+
+        // 親アイテムのindex取得
+        const parentIndex = grandParentList.indexOf(parentItem);
+        const itemIndex = parentList.indexOf(item);
+
+        let newItemId: string = "";
         Tree.runTransaction(grandParentList, () => {
-            targetArray.moveRangeToIndex(parentIndex + 1, itemIndex, itemIndex + 1, parentList);
+            // 元のアイテムを削除
+            parentList.removeAt(itemIndex);
+
+            // 親の次の位置に追加
+            const newItem = grandParentList.addNode(itemAuthor, parentIndex + 1);
+            newItem.text = itemText;
+            newItemId = newItem.id;
         });
+
         generalStore.currentPage = generalStore.currentPage;
-        editorOverlayStore.setActiveItem(id);
+        if (newItemId) {
+            editorOverlayStore.setActiveItem(newItemId);
+        }
+    }
+    catch (error) {
+        console.error("Failed to outdent item:", error);
     }
 }
 
@@ -132,11 +173,51 @@ function newChild() {
         data-testid="mobile-action-toolbar"
         class="mobile-toolbar"
     >
-        <button aria-label="Indent" on:mousedown|preventDefault={indent}>→</button>
-        <button aria-label="Outdent" on:mousedown|preventDefault={outdent}>←</button>
-        <button aria-label="Insert Above" on:mousedown|preventDefault={insertAbove}>↑</button>
-        <button aria-label="Insert Below" on:mousedown|preventDefault={insertBelow}>↓</button>
-        <button aria-label="New Child" on:mousedown|preventDefault={newChild}>＋</button>
+        <button
+            aria-label="Indent"
+            onmousedown={e => {
+                e.preventDefault();
+                indent();
+            }}
+        >
+            →
+        </button>
+        <button
+            aria-label="Outdent"
+            onmousedown={e => {
+                e.preventDefault();
+                outdent();
+            }}
+        >
+            ←
+        </button>
+        <button
+            aria-label="Insert Above"
+            onmousedown={e => {
+                e.preventDefault();
+                insertAbove();
+            }}
+        >
+            ↑
+        </button>
+        <button
+            aria-label="Insert Below"
+            onmousedown={e => {
+                e.preventDefault();
+                insertBelow();
+            }}
+        >
+            ↓
+        </button>
+        <button
+            aria-label="New Child"
+            onmousedown={e => {
+                e.preventDefault();
+                newChild();
+            }}
+        >
+            ＋
+        </button>
     </div>
 {/if}
 
