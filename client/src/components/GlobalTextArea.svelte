@@ -10,6 +10,9 @@ import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte
 import { store as generalStore } from "../stores/store.svelte";
 
 let textareaRef: HTMLTextAreaElement;
+let isComposing = false;
+const measureCanvas = document.createElement("canvas");
+const measureCtx = measureCanvas.getContext("2d");
 
 // store.activeItemId 変化時に再フォーカス
 $effect(() => {
@@ -90,6 +93,22 @@ onDestroy(() => {
     store.setTextareaRef(null);
 });
 
+function updateCompositionWidth(text: string) {
+    if (!textareaRef || !measureCtx) return;
+    const style = getComputedStyle(textareaRef);
+    measureCtx.font = `${style.fontSize} ${style.fontFamily}`;
+    const metrics = measureCtx.measureText(text);
+    textareaRef.style.width = `${metrics.width + 4}px`;
+}
+
+function handleCompositionStart(event: CompositionEvent) {
+    isComposing = true;
+    textareaRef.classList.add("ime-input");
+    textareaRef.style.opacity = "1";
+    updateCompositionWidth(event.data || "");
+    KeyEventHandler.handleCompositionStart(event);
+}
+
 // キーダウンイベントを KeyEventHandler へ委譲
 function handleKeyDown(event: KeyboardEvent) {
     console.log("GlobalTextArea.handleKeyDown called with key:", event.key);
@@ -111,10 +130,15 @@ function handleInput(event: Event) {
 // CompositionEnd イベントを KeyEventHandler へ委譲
 function handleCompositionEnd(event: CompositionEvent) {
     KeyEventHandler.handleCompositionEnd(event);
+    isComposing = false;
+    textareaRef.classList.remove("ime-input");
+    textareaRef.style.opacity = "0";
+    textareaRef.style.width = "1px";
 }
 
 // CompositionUpdate イベントを KeyEventHandler へ委譲
 function handleCompositionUpdate(event: CompositionEvent) {
+    updateCompositionWidth(event.data || "");
     KeyEventHandler.handleCompositionUpdate(event);
 }
 
@@ -156,6 +180,7 @@ function handleBlur(_event: FocusEvent) {
     class="global-textarea"
     on:keydown={handleKeyDown}
     on:input={handleInput}
+    on:compositionstart={handleCompositionStart}
     on:compositionupdate={handleCompositionUpdate}
     on:compositionend={handleCompositionEnd}
     on:copy={handleCopy}
@@ -172,5 +197,10 @@ function handleBlur(_event: FocusEvent) {
     height: 1px;
     opacity: 0;
     pointer-events: none;
+}
+.ime-input {
+    z-index: 10;
+    color: transparent;
+    background-color: transparent;
 }
 </style>
