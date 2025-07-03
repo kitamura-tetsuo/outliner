@@ -1,5 +1,5 @@
 <script lang="ts">
-import { createEventDispatcher, onDestroy, onMount, afterUpdate } from 'svelte';
+import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
 
@@ -51,20 +51,71 @@ let localAnimationPaused = $state<boolean>(false);
 // DOM要素への参照
 let overlayRef: HTMLDivElement;
 
-afterUpdate(() => {
-    const textarea = store.getTextareaRef();
-    if (!textarea) return;
+// テキストエリアの位置を更新する$effect
+$effect(() => {
+    // 依存関係を明示的に追跡
+    const cursors = store.cursors; // カーソルの変更を追跡
+    const activeItemId = store.activeItemId; // アクティブアイテムの変更を追跡
+    const currentPositionMap = positionMap; // positionMapの変更を追跡
+    const textareaRef = store.getTextareaRef();
+
+    if (!textareaRef || !overlayRef) return;
+
     const lastCursor = store.getLastActiveCursor();
     if (!lastCursor) return;
-    const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
-    if (!pos) return;
-    const treeContainer = overlayRef.closest('.tree-container');
-    if (!treeContainer) return;
-    const rect = treeContainer.getBoundingClientRect();
-    textarea.style.left = `${rect.left + pos.left}px`;
-    textarea.style.top = `${rect.top + pos.top}px`;
-    const height = positionMap[lastCursor.itemId]?.lineHeight || 16;
-    textarea.style.height = `${height}px`;
+
+    // 即座に位置を更新し、positionMapが不完全な場合は再試行
+    updateTextareaPosition();
+
+    function updateTextareaPosition() {
+        if (!lastCursor || !textareaRef) return;
+
+        // positionMapの更新も監視
+        const itemInfo = currentPositionMap[lastCursor.itemId];
+        if (!itemInfo) {
+            // positionMapが更新されていない場合は、強制的に更新してから再試行
+            updatePositionMap();
+            setTimeout(() => {
+                updateTextareaPosition();
+            }, 50);
+            return;
+        }
+
+        const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
+        if (!pos) {
+            // 位置計算に失敗した場合も、positionMapを更新してから再試行
+            updatePositionMap();
+            setTimeout(() => {
+                updateTextareaPosition();
+            }, 50);
+            return;
+        }
+
+        const treeContainer = overlayRef.closest('.tree-container');
+        if (!treeContainer) return;
+
+        const rect = treeContainer.getBoundingClientRect();
+
+        // デバッグ情報を追加
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log('Textarea positioning debug:', {
+                cursorItemId: lastCursor.itemId,
+                cursorOffset: lastCursor.offset,
+                calculatedPos: pos,
+                treeContainerRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+                finalLeft: rect.left + pos.left,
+                finalTop: rect.top + pos.top,
+                hasItemInfo: !!itemInfo
+            });
+        }
+
+        // posは既にtreeContainerを基準とした相対位置なので、
+        // ページ上の絶対位置にするためにrectの位置を加算する
+        textareaRef.style.left = `${rect.left + pos.left}px`;
+        textareaRef.style.top = `${rect.top + pos.top}px`;
+        const height = currentPositionMap[lastCursor.itemId]?.lineHeight || 16;
+        textareaRef.style.height = `${height}px`;
+    }
 });
 
 // より正確なテキスト測定を行うヘルパー関数
@@ -145,7 +196,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         const contentLeft = contentRect.left - treeContainerRect.left;
         const relativeLeft = contentLeft + cursorWidth;
         const relativeTop = textRect.top - treeContainerRect.top + 3;
-        if (DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Cursor for ${itemId} at offset ${offset}:`, { relativeLeft, relativeTop });
         }
         return { left: relativeLeft, top: relativeTop };
@@ -218,7 +269,7 @@ function calculateSelectionPixelRange(
         // 高さは行の高さを使用
         const height = lineHeight || textRect.height || 20;
 
-        if (DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Selection for ${itemId} from ${actualStart} to ${actualEnd}:`, {
                 relativeLeft, relativeTop, width, height,
                 contentLeft,
@@ -284,7 +335,7 @@ function updatePositionMap() {
 
     positionMap = newMap;
 
-    if (DEBUG_MODE) {
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
         console.log("Position map updated:", Object.keys(newMap));
     }
 }

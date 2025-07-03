@@ -24,13 +24,17 @@ let projectNotFound = $state(false);
 
 // 認証成功時の処理
 async function handleAuthSuccess(authResult: any) {
-    logger.info("認証成功:", authResult);
+    if (import.meta.env.DEV) {
+        logger.info("認証成功:", authResult);
+    }
     isAuthenticated = true;
 }
 
 // 認証ログアウト時の処理
 function handleAuthLogout() {
-    logger.info("ログアウトしました");
+    if (import.meta.env.DEV) {
+        logger.info("ログアウトしました");
+    }
     isAuthenticated = false;
 }
 

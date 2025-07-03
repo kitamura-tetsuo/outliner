@@ -31,6 +31,9 @@ const logger = getLogger("ProjectPage");
 let projectName = page.params.project;
 let pageName = page.params.page;
 
+// デバッグ用ログ
+logger.info(`Page component initialized with params: project="${projectName}", page="${pageName}"`);
+
 // ページの状態
 let error: string | undefined = $state(undefined);
 let isLoading = $state(true);
@@ -40,37 +43,35 @@ let isTemporaryPage = $state(false); // 仮ページかどうかのフラグ
 let hasBeenEdited = $state(false); // 仮ページが編集されたかどうかのフラグ
 let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 
-// URLパラメータを監視して更新
+// URLパラメータと認証状態を監視して更新
 $effect(() => {
-    logger.info(`URL params effect triggered: project=${projectName}, page=${pageName}`);
+    logger.info(`Effect triggered: project=${projectName}, page=${pageName}, isAuthenticated=${isAuthenticated}`);
+    logger.info(`Effect: projectName="${projectName}", pageName="${pageName}"`);
+    logger.info(`Effect: URL params - project exists: ${!!projectName}, page exists: ${!!pageName}`);
+    logger.info(`Effect: Authentication status: ${isAuthenticated}`);
 
-    logger.info(`Updated params: project="${projectName}", page="${pageName}", isAuthenticated=${isAuthenticated}`);
-
-    // プロジェクトとページが指定されている場合、データを読み込む
+    // プロジェクトとページが指定されており、認証済みの場合、データを読み込む
     if (projectName && pageName && isAuthenticated) {
-        logger.info(`Calling loadProjectAndPage()`);
+        logger.info(`Effect: All conditions met - calling loadProjectAndPage()`);
         loadProjectAndPage();
     }
     else {
         logger.info(
-            `Skipping loadProjectAndPage: projectName=${!!projectName}, pageName=${!!pageName}, isAuthenticated=${isAuthenticated}`,
+            `Effect: Skipping loadProjectAndPage: projectName="${projectName}" (${!!projectName}), pageName="${pageName}" (${!!pageName}), isAuthenticated=${isAuthenticated}`,
         );
     }
 });
 
 // 認証成功時の処理
 async function handleAuthSuccess(authResult: any) {
-    logger.info("認証成功:", authResult);
+    logger.info("handleAuthSuccess: 認証成功:", authResult);
+    logger.info(`handleAuthSuccess: Setting isAuthenticated from ${isAuthenticated} to true`);
     isAuthenticated = true;
 
-    // 認証成功後にプロジェクトとページを読み込む
-    if (projectName && pageName) {
-        logger.info(`Auth success: calling loadProjectAndPage for project="${projectName}", page="${pageName}"`);
-        loadProjectAndPage();
-    }
-    else {
-        logger.info(`Auth success: skipping loadProjectAndPage, projectName="${projectName}", pageName="${pageName}"`);
-    }
+    // isAuthenticatedの変更により$effectが自動的にloadProjectAndPageを呼び出すため、
+    // ここでは明示的に呼び出さない（重複を避ける）
+    logger.info(`handleAuthSuccess: isAuthenticated set to true, $effect will handle loadProjectAndPage`);
+    logger.info(`handleAuthSuccess: Current params - project="${projectName}", page="${pageName}"`);
 }
 
 // 認証ログアウト時の処理
@@ -81,33 +82,62 @@ function handleAuthLogout() {
 
 // プロジェクトとページを読み込む
 async function loadProjectAndPage() {
+    logger.info(`loadProjectAndPage: Starting for project="${projectName}", page="${pageName}"`);
     isLoading = true;
     error = undefined;
     pageNotFound = false;
 
-    logger.info(`Loading project and page: project="${projectName}", page="${pageName}"`);
+    logger.info(`loadProjectAndPage: Set isLoading=true, calling getFluidClientByProjectTitle`);
 
     try {
         // コンテナを読み込む
+        logger.info(`loadProjectAndPage: Calling getFluidClientByProjectTitle("${projectName}")`);
         const client = await getFluidClientByProjectTitle(projectName);
-        logger.info(`FluidClient loaded for project: ${projectName}`);
+        logger.info(`loadProjectAndPage: FluidClient loaded for project: ${projectName}`);
+        logger.info(`loadProjectAndPage: Client containerId: ${client?.containerId}`);
 
         // fluidClientストアを更新
+        logger.info(`loadProjectAndPage: Setting fluidStore.fluidClient`);
+        logger.info(`loadProjectAndPage: Client before setting:`, {
+            containerId: client?.containerId,
+            clientId: client?.clientId,
+        });
         fluidStore.fluidClient = client;
-        logger.info(`FluidStore updated with client`);
-        logger.info(`FluidStore.fluidClient exists: ${!!fluidStore.fluidClient}`);
+        logger.info(`loadProjectAndPage: FluidStore updated with client`);
+        logger.info(`loadProjectAndPage: FluidStore.fluidClient exists: ${!!fluidStore.fluidClient}`);
+        logger.info(`loadProjectAndPage: FluidStore.fluidClient containerId: ${fluidStore.fluidClient?.containerId}`);
+
+        // グローバルストアの状態をログ出力
+        if (typeof window !== "undefined") {
+            const globalStore = (window as any).generalStore;
+            logger.info(`Global generalStore exists: ${!!globalStore}`);
+            if (globalStore) {
+                logger.info(`generalStore.project exists: ${!!globalStore.project}`);
+                logger.info(`generalStore.pages exists: ${!!globalStore.pages}`);
+                logger.info(`generalStore.currentPage exists: ${!!globalStore.currentPage}`);
+                logger.info(`generalStore === store: ${globalStore === store}`);
+            }
+        }
 
         // プロジェクトの設定を待つ
         let retryCount = 0;
-        const maxRetries = 10;
+        const maxRetries = 20; // リトライ回数を増やす
         while (!store.project && retryCount < maxRetries) {
             logger.info(`Waiting for store.project to be set... retry ${retryCount + 1}/${maxRetries}`);
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 200)); // 待機時間を増やす
             retryCount++;
         }
 
         logger.info(`Store.project exists: ${!!store.project}`);
         logger.info(`Store.pages exists: ${!!store.pages}`);
+
+        // store.pagesの設定も待つ
+        retryCount = 0;
+        while (!store.pages && retryCount < maxRetries) {
+            logger.info(`Waiting for store.pages to be set... retry ${retryCount + 1}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            retryCount++;
+        }
 
         if (store.project) {
             logger.info(`Project title: "${store.project.title}"`);
@@ -129,6 +159,9 @@ async function loadProjectAndPage() {
                 isTemporaryPage = false;
                 hasBeenEdited = false;
                 logger.info(`Found existing page: ${pageName}`);
+                logger.info(
+                    `store.currentPage set to existing page: ${store.currentPage?.text}, id: ${store.currentPage?.id}`,
+                );
             }
             else {
                 // プロジェクトは存在するが、ページが存在しない場合は仮ページを表示
@@ -140,6 +173,9 @@ async function loadProjectAndPage() {
                 store.currentPage = tempItem;
 
                 logger.info(`Creating temporary page: ${pageName}`);
+                logger.info(
+                    `store.currentPage set to temporary page: ${store.currentPage?.text}, id: ${store.currentPage?.id}`,
+                );
             }
         }
         else {
@@ -316,10 +352,47 @@ function toggleSearchPanel() {
     isSearchPanelVisible = !isSearchPanelVisible;
 }
 
-onMount(() => {
-    // UserManagerの認証状態を確認
+onMount(async () => {
+    // UserManagerの認証状態を確認（非同期対応）
+    logger.info(`onMount: Starting for project="${projectName}", page="${pageName}"`);
+    logger.info(`onMount: URL params - projectName: "${projectName}", pageName: "${pageName}"`);
 
-    isAuthenticated = userManager.getCurrentUser() !== null;
+    // 初期認証状態を確認
+    let currentUser = userManager.getCurrentUser();
+    logger.info(`onMount: Initial auth check - currentUser exists: ${!!currentUser}`);
+    logger.info(`onMount: UserManager instance exists: ${!!userManager}`);
+
+    if (currentUser) {
+        isAuthenticated = true;
+        logger.info("onMount: User already authenticated, setting isAuthenticated=true");
+    }
+    else {
+        // 認証状態が変更されるまで待機（テスト環境対応）
+        logger.info("onMount: No current user, waiting for authentication...");
+        let retryCount = 0;
+        const maxRetries = 50; // 5秒間待機
+
+        while (!currentUser && retryCount < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            currentUser = userManager.getCurrentUser();
+            retryCount++;
+
+            if (retryCount % 10 === 0) {
+                logger.info(`onMount: Auth check retry ${retryCount}/${maxRetries}`);
+            }
+        }
+
+        if (currentUser) {
+            isAuthenticated = true;
+            logger.info(`onMount: Authentication detected after ${retryCount} retries, setting isAuthenticated=true`);
+        }
+        else {
+            logger.info("onMount: No authentication detected after retries, staying unauthenticated");
+        }
+    }
+
+    logger.info(`onMount: Final authentication status: ${isAuthenticated}`);
+    logger.info(`onMount: About to complete, $effect should trigger with isAuthenticated=${isAuthenticated}`);
 
     // ページ読み込み後にリンクプレビューハンドラーを設定
     // DOMが完全に読み込まれるのを待つ

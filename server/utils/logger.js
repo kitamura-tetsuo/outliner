@@ -37,7 +37,8 @@ function ensureLogDirectories() {
             fs.mkdirSync(clientLogDir, { recursive: true });
             console.log(`クライアントログディレクトリを作成しました: ${clientLogDir}`);
         }
-    } catch (error) {
+    }
+    catch (error) {
         console.warn(`ログディレクトリの作成に失敗しました: ${error.message}`);
         console.warn(`サーバーログディレクトリ: ${serverLogDir}`);
         console.warn(`クライアントログディレクトリ: ${clientLogDir}`);
@@ -53,21 +54,24 @@ let serverLogStream, clientLogStream, telemetryLogStream;
 
 try {
     serverLogStream = fs.createWriteStream(serverLogPath, { flags: "a" });
-} catch (error) {
+}
+catch (error) {
     console.warn(`サーバーログストリームの作成に失敗しました: ${error.message}`);
     serverLogStream = null;
 }
 
 try {
     clientLogStream = fs.createWriteStream(clientLogPath, { flags: "a" });
-} catch (error) {
+}
+catch (error) {
     console.warn(`クライアントログストリームの作成に失敗しました: ${error.message}`);
     clientLogStream = null;
 }
 
 try {
     telemetryLogStream = fs.createWriteStream(telemetryLogPath, { flags: "a" });
-} catch (error) {
+}
+catch (error) {
     console.warn(`telemetryログストリームの作成に失敗しました: ${error.message}`);
     telemetryLogStream = null;
 }
@@ -117,8 +121,7 @@ let telemetryLogger = pino(
 // サーバー自身のロガー設定
 let logger = pino(
     {
-        level: "debug",
-        // level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        level: process.env.NODE_ENV === "production" ? "info" : "debug",
         timestamp: pino.stdTimeFunctions.isoTime,
     },
     pino.multistream([
