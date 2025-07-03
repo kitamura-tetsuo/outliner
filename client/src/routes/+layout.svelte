@@ -31,8 +31,8 @@ let currentTheme = $derived(userPreferencesStore.theme);
 $effect(() => {
     if (browser) {
         document.documentElement.classList.toggle(
-            'dark',
-            currentTheme === 'dark',
+            "dark",
+            currentTheme === "dark",
         );
     }
 });
@@ -45,9 +45,11 @@ const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
  */
 async function rotateLogFiles() {
     try {
-        logger.info(
-            "アプリケーション終了時のログローテーションを実行します",
-        );
+        if (import.meta.env.DEV) {
+            logger.info(
+                "アプリケーション終了時のログローテーションを実行します",
+            );
+        }
 
         // 1. まず通常のFetch APIで試す
         try {
@@ -61,15 +63,19 @@ async function rotateLogFiles() {
 
             if (response.ok) {
                 const result = await response.json();
-                logger.info("ログローテーション完了", result);
+                if (import.meta.env.DEV) {
+                    logger.info("ログローテーション完了", result);
+                }
                 return;
             }
         }
         catch (fetchError) {
             // fetch失敗時はsendBeaconを試す - エラーは記録しない
-            logger.debug(
-                "通常のfetch呼び出しに失敗、sendBeaconを試行します",
-            );
+            if (import.meta.env.DEV) {
+                logger.debug(
+                    "通常のfetch呼び出しに失敗、sendBeaconを試行します",
+                );
+            }
         }
 
         // 2. フォールバックとしてsendBeaconを使用
@@ -82,7 +88,9 @@ async function rotateLogFiles() {
         );
 
         if (success) {
-            logger.info("ログローテーション実行をスケジュールしました");
+            if (import.meta.env.DEV) {
+                logger.info("ログローテーション実行をスケジュールしました");
+            }
         }
         else {
             logger.warn("ログローテーション送信失敗");
@@ -112,7 +120,9 @@ function schedulePeriodicLogRotation() {
     const ROTATION_INTERVAL = 12 * 60 * 60 * 1000;
 
     return setInterval(() => {
-        logger.info("定期的なログローテーションを実行します");
+        if (import.meta.env.DEV) {
+            logger.info("定期的なログローテーションを実行します");
+        }
         rotateLogFiles();
     }, ROTATION_INTERVAL);
 }
@@ -138,27 +148,33 @@ onMount(() => {
     // ブラウザ環境でのみ実行
     if (browser) {
         // アプリケーション初期化のログ
-        logger.info("アプリケーションがマウントされました");
-        if ('serviceWorker' in navigator) {
+        if (import.meta.env.DEV) {
+            logger.info("アプリケーションがマウントされました");
+        }
+        if ("serviceWorker" in navigator) {
             // SvelteKitのService Workerを登録
-            navigator.serviceWorker.register('/service-worker.js', {
-                scope: '/'
+            navigator.serviceWorker.register("/service-worker.js", {
+                scope: "/",
             }).then(reg => {
-                logger.info('Service worker registered successfully');
+                if (import.meta.env.DEV) {
+                    logger.info("Service worker registered successfully");
+                }
 
                 // Background Syncが利用可能な場合は登録
-                if ('sync' in reg) {
-                    (reg as any).sync.register('sync-ops').catch((err: any) => {
-                        logger.warn('Failed to register background sync:', err);
+                if ("sync" in reg) {
+                    (reg as any).sync.register("sync-ops").catch((err: any) => {
+                        logger.warn("Failed to register background sync:", err);
                     });
                 }
 
                 // Service Workerの更新をチェック
-                reg.addEventListener('updatefound', () => {
-                    logger.info('Service worker update found');
+                reg.addEventListener("updatefound", () => {
+                    if (import.meta.env.DEV) {
+                        logger.info("Service worker update found");
+                    }
                 });
             }).catch(err => {
-                logger.error('Service worker registration failed:', err);
+                logger.error("Service worker registration failed:", err);
             });
         }
 
@@ -189,22 +205,28 @@ onMount(() => {
                                 // 既存のコンテナを削除
                                 for (const containerId of containers) {
                                     try {
-                                        logger.info(
-                                            `テスト環境のため、コンテナを削除します: ${containerId}`,
-                                        );
+                                        if (import.meta.env.DEV) {
+                                            logger.info(
+                                                `テスト環境のため、コンテナを削除します: ${containerId}`,
+                                            );
+                                        }
                                         const success = await fluidService.deleteContainer(
                                             containerId,
                                         );
 
                                         if (success) {
-                                            logger.info(
-                                                `コンテナを削除しました: ${containerId}`,
-                                            );
+                                            if (import.meta.env.DEV) {
+                                                logger.info(
+                                                    `コンテナを削除しました: ${containerId}`,
+                                                );
+                                            }
                                         }
                                         else {
-                                            logger.warn(
-                                                `コンテナの削除に失敗しました: ${containerId}`,
-                                            );
+                                            if (import.meta.env.DEV) {
+                                                logger.warn(
+                                                    `コンテナの削除に失敗しました: ${containerId}`,
+                                                );
+                                            }
                                         }
                                     }
                                     catch (error) {
@@ -280,5 +302,5 @@ onDestroy(() => {
     class="fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
     on:click={() => userPreferencesStore.toggleTheme()}
 >
-    {currentTheme === 'light' ? 'Dark Mode' : 'Light Mode'}
+    {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
 </button>

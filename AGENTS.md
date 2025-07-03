@@ -34,9 +34,15 @@ Mocks are generally forbidden. Limited exceptions:
 1. **Svelte stores** – use `vi.mock` to control store behavior.
 2. **Fluid `Item` objects** – provide minimal stubs with required properties like `id` and `text`.
    Add comments explaining the purpose and scope of any mock.
+
 - **No mocking logic in production code**. If unit tests require mocks, place all
   mock-related code inside the test files and keep it out of the application
   code.
+
+### Test Implementation Guidelines
+
+- **Manual workarounds in tests are not acceptable**. If a test requires manual positioning of textarea elements or other DOM manipulation to pass, the underlying implementation must be fixed instead.
+- **Tests should verify actual behavior**. Avoid bypassing implementation issues with test-specific workarounds that mask real problems.
 
 ### Running E2E Tests
 
