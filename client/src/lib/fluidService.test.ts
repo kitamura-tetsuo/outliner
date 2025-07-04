@@ -18,7 +18,10 @@ let fluidService: typeof import("./fluidService.svelte");
 
 describe("fluidService", () => {
     beforeAll(async () => {
-        process.env.VITE_USE_FIREBASE_EMULATOR = "false";
+        process.env.VITE_USE_FIREBASE_EMULATOR = "true";
+        if (typeof window !== "undefined") {
+            window.localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+        }
         fluidService = await import("./fluidService.svelte");
     });
     beforeEach(() => {

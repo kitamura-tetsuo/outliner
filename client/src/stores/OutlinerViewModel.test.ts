@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { OutlinerViewModel } from './OutlinerViewModel';
-import { Item, Items } from '../schema/app-schema';
+import { Item, Items, Comments } from '../schema/app-schema';
 
 function createSimpleTree() {
   const root = new Item({
@@ -10,7 +10,8 @@ function createSimpleTree() {
     votes: [],
     created: 0,
     lastChanged: 0,
-    items: new Items([])
+    items: new Items([]),
+    comments: new Comments([])
   });
   const child1 = root.items.addNode('u');
   child1.id = 'child1';
@@ -48,5 +49,17 @@ describe('OutlinerViewModel', () => {
     grand.text = 'grand';
     vm.updateFromModel(tree);
     expect(vm.getVisibleItems().map(i => i.model.id)).not.toContain('grand');
+  });
+
+  it('tracks comment counts', () => {
+    const c = (tree.items[0] as Item).addComment('u', 'hi');
+    vm.updateFromModel(tree);
+    expect(vm.getViewModel('child1')?.commentCount).toBe(1);
+    (tree.items[0] as Item).updateComment(c.id, 'edited');
+    vm.updateFromModel(tree);
+    expect(vm.getViewModel('child1')?.commentCount).toBe(1);
+    (tree.items[0] as Item).deleteComment(c.id);
+    vm.updateFromModel(tree);
+    expect(vm.getViewModel('child1')?.commentCount).toBe(0);
   });
 });
