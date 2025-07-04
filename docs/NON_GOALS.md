@@ -19,3 +19,9 @@ Outliner does not send notifications through Slack or any other external applica
 ### OFF-NON Offline Editing Support
 
 Offline editing will not be implemented. The Fluid Framework used for collaboration requires a network connection and does not support offline operations.
+
+## Extensibility
+
+### EXT-NON Plugin Architecture
+
+Outliner does not provide a plugin system or extension API. Loading or executing user-defined plugins is outside the project's scope.

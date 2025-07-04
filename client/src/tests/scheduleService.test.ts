@@ -8,6 +8,7 @@ import {
     cancelSchedule,
     createSchedule,
     listSchedules,
+    updateSchedule,
 } from "../services/scheduleService";
 
 // UserManagerをモックして、実際のAPIエンドポイントを使用
@@ -110,6 +111,37 @@ it("calls cancelSchedule API", async () => {
                 idToken: "test-id-token",
                 pageId: "page1",
                 scheduleId: "test-schedule-id",
+            }),
+        },
+    );
+});
+
+it("calls updateSchedule API", async () => {
+    const mockResponse = { success: true };
+    (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+    });
+
+    const nextRunAt = Date.now() + 120000;
+    const result = await updateSchedule("page1", "schedule1", {
+        strategy: "one_shot",
+        nextRunAt,
+    });
+
+    expect(result).toBeDefined();
+    expect(result.success).toBe(true);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:57000/api/update-schedule",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                idToken: "test-id-token",
+                pageId: "page1",
+                scheduleId: "schedule1",
+                schedule: { strategy: "one_shot", nextRunAt },
             }),
         },
     );

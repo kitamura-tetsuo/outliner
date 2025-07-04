@@ -5,6 +5,7 @@ import { onMount } from "svelte";
 import {
     cancelSchedule,
     createSchedule,
+    updateSchedule,
     listSchedules,
     type Schedule,
 } from "../../../../services";
@@ -15,6 +16,8 @@ let pageTitle = $state("");
 let pageId = $state("");
 let schedules = $state<Schedule[]>([]);
 let publishTime = $state("");
+let editingId = $state("");
+let editingTime = $state("");
 
 onMount(async () => {
     const params = $page.params as { project: string; page: string; };
@@ -88,6 +91,31 @@ async function cancel(id: string) {
     }
 }
 
+function startEdit(sch: Schedule) {
+    editingId = sch.id;
+    editingTime = new Date(sch.nextRunAt).toISOString().slice(0, 16);
+}
+
+async function saveEdit() {
+    if (!editingId || !editingTime) {
+        console.error("Schedule page: Missing editing values");
+        return;
+    }
+    const ts = new Date(editingTime).getTime();
+    try {
+        await updateSchedule(pageId, editingId, {
+            strategy: "one_shot",
+            nextRunAt: ts,
+        });
+        editingId = "";
+        editingTime = "";
+        await refresh();
+    }
+    catch (err) {
+        console.error("Schedule page: Error updating schedule:", err);
+    }
+}
+
 function back() {
     goto(`/${project}/${pageTitle}`);
 }
@@ -104,10 +132,14 @@ function back() {
     <ul>
         {#each schedules as sch}
             <li class="mb-2">
-                {new Date(sch.nextRunAt).toLocaleString()}
-                <button onclick={() => cancel(sch.id)} class="ml-2 px-2 py-1 bg-red-500 text-white rounded">
-                    Cancel
-                </button>
+                {#if editingId === sch.id}
+                    <input type="datetime-local" bind:value={editingTime} class="border p-1" />
+                    <button onclick={saveEdit} class="ml-2 px-2 py-1 bg-green-600 text-white rounded">Save</button>
+                {:else}
+                    {new Date(sch.nextRunAt).toLocaleString()}
+                    <button onclick={() => startEdit(sch)} class="ml-2 px-2 py-1 bg-yellow-500 text-white rounded">Edit</button>
+                    <button onclick={() => cancel(sch.id)} class="ml-2 px-2 py-1 bg-red-500 text-white rounded">Cancel</button>
+                {/if}
             </li>
         {/each}
     </ul>
