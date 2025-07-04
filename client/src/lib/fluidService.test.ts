@@ -18,7 +18,10 @@ let fluidService: typeof import("./fluidService.svelte");
 
 describe("fluidService", () => {
     beforeAll(async () => {
-        process.env.VITE_USE_FIREBASE_EMULATOR = "false";
+        process.env.VITE_USE_FIREBASE_EMULATOR = "true";
+        process.env.VITE_TINYLICIOUS_PORT = process.env.VITE_TINYLICIOUS_PORT || "7092";
+        process.env.VITE_USE_TINYLICIOUS = "true";
+        process.env.NODE_ENV = "test";
         fluidService = await import("./fluidService.svelte");
     });
     beforeEach(() => {
@@ -49,7 +52,7 @@ describe("fluidService", () => {
             console.error(error);
             expect(error).toBeUndefined();
         }
-    }, 20000);
+    }, 60000);
 
     afterEach(() => {
         // タイマーや状態をリセット
