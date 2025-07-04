@@ -10,6 +10,7 @@ import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
 import ChartPanel from './ChartPanel.svelte';
 import InlineJoinTable from './InlineJoinTable.svelte';
 import OutlinerTree from './OutlinerTree.svelte';
+import CommentThread from './CommentThread.svelte';
 	interface Props {
 		model: OutlinerItemViewModel;
 		depth?: number;
@@ -43,11 +44,12 @@ import OutlinerTree from './OutlinerTree.svelte';
 	// 代わりに hasActiveCursor() 関数を使用
 
 	// ドラッグ関連の状態
-	let isDragging = $state(false);
-	let dragStartPosition = $state(0);
-	let isDragSelectionMode = $state(false);
-	let isDropTarget = $state(false);
-	let dropTargetPosition = $state<'top' | 'middle' | 'bottom' | null>(null);
+        let isDragging = $state(false);
+        let dragStartPosition = $state(0);
+        let isDragSelectionMode = $state(false);
+        let isDropTarget = $state(false);
+        let dropTargetPosition = $state<'top' | 'middle' | 'bottom' | null>(null);
+        let showComments = $state(false);
 
 let item = model.original;
 
@@ -458,11 +460,15 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
 		}
 	}
 
-	function toggleVote() {
-		if (!isReadOnly) {
-			model.original.toggleVote(currentUser);
-		}
-	}
+        function toggleVote() {
+                if (!isReadOnly) {
+                        model.original.toggleVote(currentUser);
+                }
+        }
+
+        function toggleComments() {
+                showComments = !showComments;
+        }
 
 	/**
 	 * クリック時のハンドリング: Alt+Click でマルチカーソル追加、それ以外は編集開始
@@ -1453,6 +1459,9 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
                                 {#if !isPageTitle && model.votes.length > 0}
                                         <span class="vote-count">{model.votes.length}</span>
                                 {/if}
+                                {#if !isPageTitle && model.commentCount > 0}
+                                        <span class="comment-count">{model.commentCount}</span>
+                                {/if}
 
                                 <!-- コンポーネントタイプセレクター -->
                                 {#if !isPageTitle}
@@ -1491,19 +1500,28 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
 
 		{#if !isPageTitle}
 			<div class="item-actions">
-				<button onclick={addNewItem} title="新しいアイテムを追加">+</button>
-				<button onclick={handleDelete} title="削除">×</button>
-				<button
-					onclick={toggleVote}
-					class="vote-btn"
-					class:voted={model.votes.includes(currentUser)}
-					title="投票"
-				>
-					⭐
-				</button>
-			</div>
-		{/if}
-	</div>
+                                <button onclick={addNewItem} title="新しいアイテムを追加">+</button>
+                                <button onclick={handleDelete} title="削除">×</button>
+                                <button
+                                        onclick={toggleVote}
+                                        class="vote-btn"
+                                        class:voted={model.votes.includes(currentUser)}
+                                        title="投票"
+                                >
+                                        ⭐
+                                </button>
+                                <button
+                                        onclick={toggleComments}
+                                        class="comment-btn"
+                                        data-testid="comment-button-{model.id}"
+                                        title="コメント"
+                                >💬</button>
+                        </div>
+                {/if}
+                {#if showComments}
+                        <CommentThread comments={item.comments} currentUser={currentUser} />
+                {/if}
+        </div>
 </div>
 
 <style>
@@ -1611,9 +1629,22 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
 		color: #ccc;
 	}
 
-	.vote-btn.voted {
-		color: gold;
-	}
+        .vote-btn.voted {
+                color: gold;
+        }
+
+        .comment-count {
+                margin-left: 4px;
+                background: #e0f7ff;
+                border-radius: 8px;
+                padding: 0 4px;
+                font-size: 0.7rem;
+                color: #007acc;
+        }
+
+        .comment-btn {
+                color: #888;
+        }
 
 	.vote-count {
 		margin-left: 4px;
