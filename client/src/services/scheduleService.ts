@@ -43,3 +43,11 @@ export async function listSchedules(pageId: string): Promise<Schedule[]> {
 export async function cancelSchedule(pageId: string, scheduleId: string) {
     return fetchApi("cancel-schedule", { pageId, scheduleId });
 }
+
+export async function updateSchedule(
+    pageId: string,
+    scheduleId: string,
+    schedule: { strategy: string; nextRunAt: number; params?: any; },
+) {
+    return fetchApi("update-schedule", { pageId, scheduleId, schedule });
+}

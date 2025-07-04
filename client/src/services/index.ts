@@ -3,48 +3,43 @@
 
 // FirestoreStore関連の関数をエクスポート
 export {
-  firestoreStore,
-  getDefaultContainerId,
-  saveContainerId,
-  saveContainerIdToServer as saveFirestoreContainerIdToServer,
+    firestoreStore,
+    getDefaultContainerId,
+    saveContainerId,
+    saveContainerIdToServer as saveFirestoreContainerIdToServer,
 } from "../stores/firestoreStore.svelte";
 
 // FluidService関連の関数をエクスポート
 export {
-  cleanupFluidClient,
-  createFluidClient,
-  createNewContainer,
-  deleteContainer,
-  getFluidClientByProjectTitle,
-  getProjectTitle,
-  getUserContainers,
-  initFluidClientWithAuth,
-  loadContainer,
+    cleanupFluidClient,
+    createFluidClient,
+    createNewContainer,
+    deleteContainer,
+    getFluidClientByProjectTitle,
+    getProjectTitle,
+    getUserContainers,
+    initFluidClientWithAuth,
+    loadContainer,
 } from "../lib/fluidService.svelte";
 
 // SnapshotService
 export {
-  addSnapshot,
-  listSnapshots,
-  getSnapshot,
-  replaceWithSnapshot,
-  setCurrentContent,
-  getCurrentContent,
-  type Snapshot,
+    addSnapshot,
+    getCurrentContent,
+    getSnapshot,
+    listSnapshots,
+    replaceWithSnapshot,
+    setCurrentContent,
+    type Snapshot,
 } from "./snapshotService";
 
 // ScheduleService
-export {
-  createSchedule,
-  listSchedules,
-  cancelSchedule,
-  type Schedule,
-} from "./scheduleService";
+export { cancelSchedule, createSchedule, listSchedules, type Schedule, updateSchedule } from "./scheduleService";
 
 // Import/Export Service
 export {
-  exportProjectToMarkdown,
-  exportProjectToOpml,
-  importMarkdownIntoProject,
-  importOpmlIntoProject,
+    exportProjectToMarkdown,
+    exportProjectToOpml,
+    importMarkdownIntoProject,
+    importOpmlIntoProject,
 } from "./importExportService";
