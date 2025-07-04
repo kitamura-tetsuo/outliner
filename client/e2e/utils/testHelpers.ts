@@ -49,6 +49,22 @@ export class TestHelpers {
             console.log("TestHelper: Set test environment flags");
         });
 
+        // Viteエラーオーバーレイを無効化
+        await page.addInitScript(() => {
+            // Viteエラーオーバーレイを無効化
+            if (typeof window !== "undefined") {
+                (window as any).__vite_plugin_react_preamble_installed__ = true;
+                // エラーオーバーレイの表示を防ぐ
+                const originalCreateElement = document.createElement;
+                document.createElement = function (tagName: string, ...args: any[]) {
+                    if (tagName === "vite-error-overlay") {
+                        return originalCreateElement.call(this, "div", ...args);
+                    }
+                    return originalCreateElement.call(this, tagName, ...args);
+                };
+            }
+        });
+
         // フラグを適用するためページを再読み込み
         await page.reload({ waitUntil: "domcontentloaded" });
         await page.waitForLoadState("domcontentloaded");
@@ -662,7 +678,10 @@ export class TestHelpers {
                 console.log(`TestHelper: Successfully loaded project and page on attempt ${attempts}`);
             }
             catch (error) {
-                console.log(`TestHelper: Attempt ${attempts} failed:`, error.message);
+                console.log(
+                    `TestHelper: Attempt ${attempts} failed:`,
+                    error instanceof Error ? error.message : String(error),
+                );
                 if (attempts < maxAttempts) {
                     console.log("TestHelper: Retrying...");
                     await page.waitForTimeout(2000); // 2秒待機してから再試行
@@ -1641,7 +1660,7 @@ declare global {
         getFluidTreeDebugData?: () => any;
         __testShowLinkPreview?: (pageName: string, projectName?: string) => HTMLElement;
         fluidServerPort?: number;
-        _alertMessage?: string | undefined;
+        _alertMessage?: string | null | undefined;
         __FLUID_SERVICE__?: any;
         __FLUID_STORE__?: any;
         __USER_MANAGER__?: any;

@@ -4,16 +4,16 @@ description: Checklist supporting shopping, packing and habit modes with optiona
 category: checklist
 status: draft
 components:
-  - src/components/Checklist.svelte
+- src/components/Checklist.svelte
 services:
-  - src/services/checklistService.ts
+- src/services/checklistService.ts
 tests:
-  - client/e2e/new/CHK-0001.spec.ts
-  - src/tests/checklistService.test.ts
-  - src/tests/integration/checklist.integration.spec.ts
+- client/e2e/new/CHK-0001.spec.ts
+- src/tests/checklistService.test.ts
+- src/tests/integration/checklist.integration.spec.ts
 acceptance:
-  - Items can be added to the checklist
-  - Items can be toggled or archived based on mode
-  - Reset button returns all items to active state
-  - Habit lists auto reset based on RRule
+- Habit lists auto reset based on RRule
+- Items can be added to the checklist
+- Items can be toggled or archived based on mode
+- Reset button returns all items to active state
 title-ja: 汎用チェックリストコンポーネント
