@@ -142,6 +142,102 @@ export function getProjectTitle(containerId: string): string {
     return title || "";
 }
 
+/**
+ * 現在アクティブなcontainerIdを取得する
+ * @returns 現在のcontainerId、見つからない場合はundefined
+ */
+export function getCurrentContainerId(): string | undefined {
+    const user = userManager.getCurrentUser();
+    console.log("getCurrentContainerId: user =", user);
+    if (!user) return undefined;
+
+    // fluidStoreから現在のcontainerIdを取得を試みる
+    console.log("getCurrentContainerId: fluidStore.fluidClient =", fluidStore.fluidClient);
+    const currentContainerId = fluidStore.getCurrentContainerId();
+    console.log("getCurrentContainerId: fluidStore.currentContainerId =", currentContainerId);
+    if (fluidStore.fluidClient && currentContainerId) {
+        console.log("getCurrentContainerId: returning from fluidStore =", currentContainerId);
+        return currentContainerId;
+    }
+
+    // generalStoreから現在のプロジェクトのcontainerIdを取得を試みる
+    const generalStore = typeof window !== "undefined" ? (window as any).generalStore : undefined;
+    console.log("getCurrentContainerId: generalStore =", generalStore);
+    console.log("getCurrentContainerId: generalStore.currentProject =", generalStore?.currentProject);
+    if (generalStore?.currentProject?.containerId) {
+        console.log("getCurrentContainerId: returning from generalStore =", generalStore.currentProject.containerId);
+        return generalStore.currentProject.containerId;
+    }
+
+    // clientRegistryから現在のcontainerIdを探す（安全にチェック）
+    try {
+        if (clientRegistry && typeof clientRegistry.getEntries === "function") {
+            for (const [key, instances] of clientRegistry.getEntries()) {
+                if (key.type === "container" && instances[4]) { // project exists
+                    console.log("getCurrentContainerId: returning from clientRegistry =", key.id);
+                    return key.id;
+                }
+            }
+        }
+    }
+    catch (error) {
+        console.warn("Error accessing clientRegistry:", error);
+    }
+
+    // ローカルストレージから取得を試みる（テスト環境以外）
+    if (!isTestEnvironment) {
+        const localContainerId = loadContainerId();
+        console.log("getCurrentContainerId: returning from localStorage =", localContainerId);
+        return localContainerId;
+    }
+
+    // テスト環境では、URLからcontainerIdを推測する
+    if (typeof window !== "undefined") {
+        const url = window.location.pathname;
+        console.log("getCurrentContainerId: checking URL =", url);
+
+        // URLパターン: /Project%20Name/page-name
+        const pathParts = url.split("/").filter(part => part.length > 0);
+        if (pathParts.length >= 1) {
+            const projectName = decodeURIComponent(pathParts[0]);
+            console.log("getCurrentContainerId: projectName from URL =", projectName);
+
+            // firestoreStoreのmockStoreからcontainerIdを取得
+            if ((window as any).__FIRESTORE_STORE__?.mockStore?.accessibleContainerIds) {
+                const containerIds = (window as any).__FIRESTORE_STORE__.mockStore.accessibleContainerIds;
+                console.log("getCurrentContainerId: available containerIds =", containerIds);
+
+                // 最新のcontainerIdを使用（テスト環境では通常最後に作成されたもの）
+                if (containerIds.length > 0) {
+                    const containerId = containerIds[containerIds.length - 1];
+                    console.log("getCurrentContainerId: returning from mockStore =", containerId);
+                    return containerId;
+                }
+            }
+            else {
+                console.log("getCurrentContainerId: __FIRESTORE_STORE__ not available, checking localStorage");
+
+                // ローカルストレージから最新のcontainerIdを取得
+                console.log("getCurrentContainerId: checking localStorage keys =", Object.keys(localStorage));
+
+                // 複数のキーをチェック
+                const possibleKeys = ["containerId", "fluid_container_id", "currentContainerId"];
+                for (const key of possibleKeys) {
+                    const localContainerId = localStorage.getItem(key);
+                    console.log(`getCurrentContainerId: localStorage.getItem('${key}') =`, localContainerId);
+                    if (localContainerId) {
+                        console.log("getCurrentContainerId: returning from localStorage =", localContainerId);
+                        return localContainerId;
+                    }
+                }
+            }
+        }
+    }
+
+    console.log("getCurrentContainerId: no containerId found, returning undefined");
+    return undefined;
+}
+
 // TokenProviderの取得
 async function getTokenProvider(userId?: string, containerId?: string): Promise<ITokenProvider> {
     if (!useTinylicious) {
@@ -418,7 +514,7 @@ export async function getUserContainers(): Promise<{ containers: string[]; defau
         log("fluidService", "info", `Getting user containers from Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナリストを取得
-        const response = await fetch(`${apiBaseUrl}/getUserContainers`, {
+        const response = await fetch(`${apiBaseUrl}/api/get-user-containers`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -471,7 +567,7 @@ export async function deleteContainer(containerId: string): Promise<boolean> {
         log("fluidService", "info", `Deleting container ${containerId} via Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナを削除
-        const response = await fetch(`${apiBaseUrl}/deleteContainer`, {
+        const response = await fetch(`${apiBaseUrl}/api/delete-container`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

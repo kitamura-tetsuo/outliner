@@ -15,6 +15,7 @@ export {
     createFluidClient,
     createNewContainer,
     deleteContainer,
+    getCurrentContainerId,
     getFluidClientByProjectTitle,
     getProjectTitle,
     getUserContainers,

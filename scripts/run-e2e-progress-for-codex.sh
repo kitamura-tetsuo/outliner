@@ -26,7 +26,6 @@ fi
 
 for file in "${PENDING_FILES[@]}"; do
     echo "=== Running Playwright test: $file ==="
-    bash "$ROOT_DIR/scripts/codex-setup.sh"
     if (cd "$ROOT_DIR/client" && xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npm run test:e2e -- "$file"); then
         status="DONE"
     else

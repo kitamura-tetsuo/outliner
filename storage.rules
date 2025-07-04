@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Container-based attachments: /attachments/{containerId}/{itemId}/{fileName}
+    // Access control based on Fluid Framework container permissions
+    match /attachments/{containerId}/{itemId}/{fileName} {
+      allow read, write: if request.auth != null &&
+        hasContainerAccess(request.auth.uid, containerId);
+    }
+  }
+}
+
+// Check if user has access to the container
+// This function checks the containerUsers collection in Firestore
+function hasContainerAccess(userId, containerId) {
+  return exists(/databases/$(database)/documents/containerUsers/$(containerId + '_' + userId)) ||
+         exists(/databases/$(database)/documents/userContainers/$(userId)) &&
+         get(/databases/$(database)/documents/userContainers/$(userId)).data.containers[containerId] != null;
+}

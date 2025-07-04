@@ -4,12 +4,14 @@ import {
     createEventDispatcher,
     onMount,
 } from "svelte";
+import { getCurrentContainerId } from "../lib/fluidService.svelte";
 import {
     Item,
     Items,
 } from "../schema/app-schema";
 import { uploadAttachment } from "../services/attachmentService";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
+import { fluidStore } from "../stores/fluidStore.svelte";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
@@ -292,6 +294,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
 
     // グローバルテキストエリアにフォーカスを設定（最優先）
     textareaEl.focus();
+    console.log(
         "OutlinerItem startEditing: Focus set to global textarea, activeElement:",
         document.activeElement === textareaEl,
     );
@@ -308,6 +311,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     // テキスト内容を同期
     textareaEl.value = text.current;
     textareaEl.focus();
+    console.log(
         "OutlinerItem startEditing: focus called, activeElement:",
         document.activeElement?.tagName,
         document.activeElement?.className,
@@ -362,7 +366,6 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
         isActive: true,
         userId: "local",
     });
-
 
     // カーソル点滅を開始
     editorOverlayStore.startCursorBlink();
@@ -1011,6 +1014,7 @@ function handleDragLeave() {
  * @param event ドラッグイベント
  */
 async function handleDrop(event: DragEvent) {
+    console.log("OutlinerItem handleDrop: event received", event);
     // デフォルト動作を防止
     event.preventDefault();
 
@@ -1021,9 +1025,32 @@ async function handleDrop(event: DragEvent) {
     if (!event.dataTransfer) return;
 
     if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+        // getCurrentContainerIdを使用してコンテナIDを取得
+        let containerId = getCurrentContainerId();
+
+        console.log("OutlinerItem handleDrop: containerId =", containerId);
+        console.log("OutlinerItem handleDrop: fluidStore.fluidClient =", fluidStore.fluidClient);
+        console.log("OutlinerItem handleDrop: fluidStore.currentContainerId =", fluidStore.getCurrentContainerId());
+        console.log("OutlinerItem handleDrop: generalStore =", generalStore);
+        console.log("OutlinerItem handleDrop: currentProject =", generalStore?.currentProject);
+
+        if (!containerId) {
+            console.error("No container ID available for file upload");
+            return;
+        }
+
         for (const file of event.dataTransfer.files) {
             try {
-                const url = await uploadAttachment(model.id, file);
+                console.log(
+                    "OutlinerItem handleDrop: uploading file",
+                    file.name,
+                    "to container",
+                    containerId,
+                    "item",
+                    model.id,
+                );
+                const url = await uploadAttachment(containerId, model.id, file);
+                console.log("OutlinerItem handleDrop: upload successful, url =", url);
                 item.addAttachment(url);
                 attachments = [...attachments, url];
             }
@@ -1488,7 +1515,7 @@ onMount(() => {
                 {#if attachments.length > 0}
                     <div class="attachments">
                         {#each attachments as url}
-                            <img src={url} class="attachment-preview" />
+                            <img src={url} class="attachment-preview" alt="添付ファイル" />
                         {/each}
                     </div>
                 {/if}
