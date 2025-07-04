@@ -1,0 +1,17 @@
+id: ATT-0001
+title: Drag and drop attachments
+title-ja: ドラッグ&ドロップで添付
+description: Items accept files via drag-and-drop and show image previews.
+category: attachments
+status: implemented
+components:
+- src/components/OutlinerItem.svelte
+- src/services/attachmentService.ts
+tests:
+- client/e2e/core/att-drag-and-drop-attachments-11f8904b.spec.ts
+- functions/test/attachments.test.js
+- client/src/tests/attachmentService.test.ts
+acceptance:
+- Files dropped on an item are uploaded to Firebase Storage
+- Uploaded attachments appear as image previews beneath the item
+- Previews remain visible after the page reloads

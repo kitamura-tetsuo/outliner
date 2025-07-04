@@ -990,3 +990,85 @@ exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
     return res.status(500).json({ error: "Failed to cancel schedule" });
   }
 });
+
+// Upload attachment
+exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+
+  const { idToken, itemId, fileName, fileData } = req.body || {};
+  if (!idToken || !itemId || !fileName || !fileData) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const bucket = admin.storage().bucket();
+    const filePath = `attachments/${uid}/${itemId}/${fileName}`;
+    const file = bucket.file(filePath);
+    await file.save(Buffer.from(fileData, 'base64'));
+    const [url] = await file.getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+    return res.status(200).json({ url });
+  } catch (err) {
+    logger.error(`uploadAttachment error: ${err.message}`);
+    if (err.code === "auth/id-token-expired" || err.code === "auth/invalid-id-token" || err.code === "auth/argument-error") {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to upload attachment" });
+  }
+});
+
+// List attachments
+exports.listAttachments = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+
+  const { idToken, itemId } = req.body || {};
+  if (!idToken || !itemId) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const bucket = admin.storage().bucket();
+    const prefix = `attachments/${uid}/${itemId}/`;
+    const [files] = await bucket.getFiles({ prefix });
+    const urls = await Promise.all(files.map(f => f.getSignedUrl({ action: 'read', expires: Date.now() + 7*24*60*60*1000 }).then(r => r[0])));
+    return res.status(200).json({ urls });
+  } catch (err) {
+    logger.error(`listAttachments error: ${err.message}`);
+    if (err.code === "auth/id-token-expired" || err.code === "auth/invalid-id-token" || err.code === "auth/argument-error") {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to list attachments" });
+  }
+});
+
+// Delete attachment
+exports.deleteAttachment = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+
+  const { idToken, itemId, fileName } = req.body || {};
+  if (!idToken || !itemId || !fileName) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const bucket = admin.storage().bucket();
+    const filePath = `attachments/${uid}/${itemId}/${fileName}`;
+    await bucket.file(filePath).delete();
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    logger.error(`deleteAttachment error: ${err.message}`);
+    if (err.code === "auth/id-token-expired" || err.code === "auth/invalid-id-token" || err.code === "auth/argument-error") {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to delete attachment" });
+  }
+});

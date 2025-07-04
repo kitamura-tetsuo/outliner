@@ -23,6 +23,7 @@ export class Item extends sf.objectRecursive("Item", {
     text: sf.string, // テキスト内容
     author: sf.string,
     votes: sf.array(sf.string),
+    attachments: sf.optional(sf.array(sf.string)),
     created: sf.number,
     componentType: sf.optional(sf.string), // コンポーネントタイプ（"table", "chart", undefined）
     aliasTargetId: sf.optional(sf.string),
@@ -45,6 +46,21 @@ export class Item extends sf.objectRecursive("Item", {
             this.votes.insertAtEnd(user);
         }
         this.lastChanged = new Date().getTime();
+    };
+
+    // 添付ファイルを追加
+    public readonly addAttachment = (url: string) => {
+        this.attachments.insertAtEnd(url);
+        this.lastChanged = new Date().getTime();
+    };
+
+    // 添付ファイルを削除
+    public readonly removeAttachment = (url: string) => {
+        const index = this.attachments.indexOf(url);
+        if (index > -1) {
+            this.attachments.removeAt(index);
+            this.lastChanged = new Date().getTime();
+        }
     };
 
     // アイテム削除機能
@@ -92,6 +108,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
             text: defaultText, // 開発環境ではインデックスを含むテキスト
             author,
             votes: [],
+            attachments: [],
             created: timeStamp,
             lastChanged: timeStamp,
             // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
