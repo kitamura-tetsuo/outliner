@@ -1,0 +1,10 @@
+id: IME-0004
+title: IME candidate window remains fixed during composition
+title-ja: IME変換候補ウィンドウが入力途中に移動しない
+category: input-method
+status: implemented
+tests:
+- client/e2e/core/ime-candidate-window-fixed-during-composition-90db08fa.spec.ts
+- client/e2e/core/ime-candidate-window-repositions-after-composition-end-1e01279f.spec.ts
+acceptance:
+- Hidden textarea position does not update between compositionstart and compositionend

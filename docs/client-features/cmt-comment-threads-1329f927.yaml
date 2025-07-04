@@ -1,0 +1,18 @@
+id: CMT-0001
+title: Comment threads per item
+title-ja: アイテムごとのコメントスレッド
+category: collaboration
+status: implemented
+acceptance:
+- Comment count appears next to the item
+- Comments synchronize in real-time between clients
+- Users can edit and delete their comments
+- Users can open a comment thread for an item
+components:
+- client/src/components/CommentThread.svelte
+- client/src/components/OutlinerItem.svelte
+- client/src/schema/app-schema.ts
+- client/src/stores/OutlinerViewModel.ts
+tests:
+- client/e2e/new/cmt-comment-thread-basic.spec.ts
+- client/src/stores/OutlinerViewModel.test.ts

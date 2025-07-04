@@ -20,7 +20,7 @@ This document consolidates the key development policies for this repository. Fol
 - CI keeps tests green on the `main` branch. If tests fail in your branch, the
   cause lies in changes made after you diverged from `main`. Investigate those
   modifications to identify the problem.
-- Ensure test coverage for every implemented feature. Add detailed E2E scenarios whenever new behavior is introduced.
+- Ensure test coverage for every implemented feature. Add detailed E2E scenarios whenever new behavior is introduced. Run Playwright tests one file at a time and document any timeouts; they will be rerun in another environment.
 - Split any test file that grows beyond roughly 150 lines so that Playwright can run it reliably.
 - Run environment maintenance tests (ENV-*) separately using `scripts/run-env-tests.sh`. These use Vitest. E2E tests use Playwright.
 - Environment test spec files follow the same `<slug>-<title>-<uuid>.spec.ts` naming used in client E2E tests (e.g. `env-setup-script-starts-all-services-95e7c1a6.spec.ts`).
@@ -87,6 +87,7 @@ Mocks are generally forbidden. Limited exceptions:
 - At the end of each session, create a prompt for the next session describing remaining tasks. Mention that tasks should proceed sequentially.
 - Always track your working directory. Client code is in `client`, server code in `server`, and scripts in `scripts` (ENV-* tests are in `scripts/tests`). When using `launch-process`, set the `cwd` explicitly.
 - Keep Svelte HTML elements reactive and prioritize performance. Use asynchronous updates where appropriate.
+- After implementing changes, run `npm run build` in the `client` directory to confirm the code compiles correctly.
 
 ## 5. Cursor, Selection, and Item Handling
 

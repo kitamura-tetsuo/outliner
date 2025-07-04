@@ -100,6 +100,7 @@
         "fluid-framework": "2.30.0",
         "jsonwebtoken": "^9.0.2",
         "pino": "^8.15.0",
+        "rrule": "^2.7.2",
         "sql.js": "^1.13.0",
         "uuid": "^8.3.2",
         "wx-svelte-grid": "^2.1.5"

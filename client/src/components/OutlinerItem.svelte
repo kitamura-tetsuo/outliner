@@ -2768,6 +2768,26 @@ onMount(() => {
                 {#if !isPageTitle && item.comments.length > 0}
                     <span class="comment-count">{item.comments.length}</span>
                 {/if}
+				<!-- テキスト表示（コンポーネントが表示されている時は非表示） -->
+				<!-- 一時的にコンポーネントタイプの条件分岐を無効化 -->
+				{#if hasActiveCursor()}
+					<!-- フォーカスがある場合：フォーマットを適用した上で制御文字を表示 -->
+					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>
+						{@html ScrapboxFormatter.formatWithControlChars(text.current)}
+					</span>
+				{:else}
+					<!-- フォーカスがない場合：制御文字は非表示、フォーマットは適用 -->
+					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>
+						{@html ScrapboxFormatter.formatToHtml(text.current)}
+					</span>
+				{/if}
+                                {#if !isPageTitle && model.votes.length > 0}
+                                        <span class="vote-count">{model.votes.length}</span>
+                                {/if}
+                                {#if !isPageTitle && model.commentCount > 0}
+                                        <span class="comment-count">{model.commentCount}</span>
+                                {/if}
+>>>>>>> origin/main
 
                 {#if attachments.length > 0}
                     <div class="attachments">
@@ -2947,6 +2967,19 @@ onMount(() => {
 
 .vote-btn.voted {
     color: gold;
+}
+
+.comment-count {
+    margin-left: 4px;
+    background: #e0f7ff;
+    border-radius: 8px;
+    padding: 0 4px;
+    font-size: 0.7rem;
+    color: #007acc;
+}
+
+.comment-btn {
+    color: #888;
 }
 
 .comment-count {

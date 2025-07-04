@@ -60,6 +60,8 @@ export class EditorOverlayStore {
     activeItemId = $state<string | null>(null);
     cursorVisible = $state<boolean>(true);
     animationPaused = $state<boolean>(false);
+    // IME composition state
+    isComposing = $state<boolean>(false);
     // GlobalTextArea の textarea 要素を保持
     textareaRef = $state<HTMLTextAreaElement | null>(null);
     // onEdit コールバック
@@ -448,6 +450,14 @@ export class EditorOverlayStore {
 
     setAnimationPaused(paused: boolean) {
         this.animationPaused = paused;
+    }
+
+    setIsComposing(value: boolean) {
+        this.isComposing = value;
+    }
+
+    getIsComposing(): boolean {
+        return this.isComposing;
     }
 
     startCursorBlink() {
