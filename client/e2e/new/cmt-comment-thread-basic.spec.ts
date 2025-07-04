@@ -23,11 +23,16 @@ test.describe("CMT-0001: comment threads", () => {
     test("add, edit and remove comment", async ({ page }) => {
         await page.goto(`/${projectName}/${pageName}`);
         await TestHelpers.waitForOutlinerItems(page);
-        const firstId = await TestHelpers.getItemIdByIndex(page, 0);
+        // インデックス1を使用（インデックス0はページタイトルでコメントボタンが表示されない）
+        const firstId = await TestHelpers.getItemIdByIndex(page, 1);
         if (!firstId) throw new Error("item id not found");
         await page.click(
             `[data-item-id="${firstId}"] [data-testid="comment-button-${firstId}"]`,
         );
+
+        // コメントスレッドが表示されるまで待機
+        await expect(page.locator('[data-testid="comment-thread"]')).toBeVisible();
+
         await page.fill('[data-testid="new-comment-input"]', "hello");
         await page.click('[data-testid="add-comment-btn"]');
         await expect(
