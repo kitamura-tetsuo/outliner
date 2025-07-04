@@ -103,6 +103,7 @@ function updateCompositionWidth(text: string) {
 
 function handleCompositionStart(event: CompositionEvent) {
     isComposing = true;
+    store.setIsComposing(true);
     textareaRef.classList.add("ime-input");
     textareaRef.style.opacity = "1";
     updateCompositionWidth(event.data || "");
@@ -131,6 +132,7 @@ function handleInput(event: Event) {
 function handleCompositionEnd(event: CompositionEvent) {
     KeyEventHandler.handleCompositionEnd(event);
     isComposing = false;
+    store.setIsComposing(false);
     textareaRef.classList.remove("ime-input");
     textareaRef.style.opacity = "0";
     textareaRef.style.width = "1px";
