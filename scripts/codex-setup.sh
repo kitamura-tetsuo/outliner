@@ -49,6 +49,11 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   install_global_packages
   echo "Installing OS utilities..."
   install_os_utilities
+  echo "Installing Python packages..."
+  pip install --no-cache-dir pre-commit
+  if [ -f "${ROOT_DIR}/scripts/requirements.txt" ]; then
+    pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"
+  fi
   echo "Installing all dependencies..."
   install_all_dependencies
 
