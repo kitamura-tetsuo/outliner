@@ -2,10 +2,7 @@
  *  Title   : Dark mode preference persists
  *  Source  : docs/client-features/thm-dark-mode-persistence-0f7c39db.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("THM-0002: Dark mode preference persists", () => {

@@ -51,7 +51,7 @@ export class TestHelpers {
                 (window as any).__vite_plugin_react_preamble_installed__ = true;
                 // エラーオーバーレイの表示を防ぐ
                 const originalCreateElement = document.createElement;
-                document.createElement = function (tagName: string, ...args: any[]) {
+                document.createElement = function(tagName: string, ...args: any[]) {
                     if (tagName === "vite-error-overlay") {
                         return originalCreateElement.call(this, "div", ...args);
                     }
