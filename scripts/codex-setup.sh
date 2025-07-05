@@ -22,6 +22,9 @@ fi
 echo "=== Outliner Test Environment Setup ==="
 echo "ROOT_DIR: ${ROOT_DIR}"
 
+# Setup pre-push hook
+ln -s ${ROOT_DIR}/scripts/pre_push.sh ${ROOT_DIR}/.git/hooks/pre-push || true
+
 # Generate emulator-specific Firebase configuration
 echo "Generating emulator-specific Firebase configuration..."
 node "${SCRIPT_DIR}/setup-emulator-config.js"
