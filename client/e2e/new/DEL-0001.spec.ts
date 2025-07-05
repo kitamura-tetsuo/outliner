@@ -18,13 +18,13 @@ test.describe("DEL-0001: Project Deletion Page", () => {
         if (await table.count()) {
             await expect(table).toBeVisible();
             const checkbox = page.locator(
-                "tbody tr td input[type=checkbox]"
+                "tbody tr td input[type=checkbox]",
             ).first();
             if (await checkbox.count()) {
                 await checkbox.check();
                 await page.getByRole("button", { name: "Delete" }).click();
                 await expect(
-                    page.getByText("選択したプロジェクトを削除しました")
+                    page.getByText("選択したプロジェクトを削除しました"),
                 ).toBeVisible();
             }
         } else {
