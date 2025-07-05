@@ -15,7 +15,7 @@
         "@fluidframework/azure-client": "^2.43.0",
         "@fluidframework/azure-service-utils": "^1.1.0",
         "cors": "^2.8.5",
-        "express": "^4.18.2",
+        "express": "^5.1.0",
         "find-process": "^1.4.7",
         "firebase-admin": "^11.8.0",
         "fs-extra": "^11.3.0",
