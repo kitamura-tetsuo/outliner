@@ -58,14 +58,18 @@ $effect(() => {
     const activeItemId = store.activeItemId; // アクティブアイテムの変更を追跡
     const currentPositionMap = positionMap; // positionMapの変更を追跡
     const textareaRef = store.getTextareaRef();
+    const isComposing = store.isComposing;
 
     if (!textareaRef || !overlayRef) return;
 
     const lastCursor = store.getLastActiveCursor();
     if (!lastCursor) return;
 
-    // 即座に位置を更新し、positionMapが不完全な場合は再試行
-    updateTextareaPosition();
+    // Composition中はテキストエリア位置を固定
+    if (!isComposing) {
+        // 即座に位置を更新し、positionMapが不完全な場合は再試行
+        updateTextareaPosition();
+    }
 
     function updateTextareaPosition() {
         if (!lastCursor || !textareaRef) return;

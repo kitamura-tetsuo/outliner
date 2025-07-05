@@ -61,4 +61,16 @@ describe("OutlinerViewModel", () => {
         vm.updateFromModel(tree);
         expect(vm.getVisibleItems().map(i => i.model.id)).not.toContain("grand");
     });
+
+    it("tracks comment counts", () => {
+        const c = (tree.items[0] as Item).addComment("u", "hi");
+        vm.updateFromModel(tree);
+        expect(vm.getViewModel("child1")?.commentCount).toBe(1);
+        (tree.items[0] as Item).updateComment(c.id, "edited");
+        vm.updateFromModel(tree);
+        expect(vm.getViewModel("child1")?.commentCount).toBe(1);
+        (tree.items[0] as Item).deleteComment(c.id);
+        vm.updateFromModel(tree);
+        expect(vm.getViewModel("child1")?.commentCount).toBe(0);
+    });
 });
