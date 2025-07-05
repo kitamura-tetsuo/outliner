@@ -48,6 +48,7 @@ Mocks are generally forbidden. Limited exceptions:
 
 - Always run `scripts/codex-setup.sh` before tests to start emulators.
 - Execute E2E tests one file at a time with `scripts/run-e2e-progress-for-codex.sh 1`.
+- The `run-e2e-progress-for-codex.sh` script is for the Codex environment only. Do not include it in workflows or scripts intended for other environments.
 - The Codex environment is prone to timeouts. Keep each Playwright spec short and split larger flows across multiple files. Document any timeouts; tests will be rerun elsewhere.
 - Use `TestHelpers.prepareTestEnvironment(page)` in `test.beforeEach` and Playwright's `expect(locator).toBeVisible()` assertions.
 - Create projects and pages programmatically via `fluidClient` rather than via the UI.

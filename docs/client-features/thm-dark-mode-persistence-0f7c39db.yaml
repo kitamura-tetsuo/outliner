@@ -1,0 +1,10 @@
+id: THM-0002
+title: Dark mode preference persists
+title-ja: ダークモード設定の保存
+category: ui
+description: Dark mode preference is saved and restored after page reload.
+status: implemented
+tests:
+- client/e2e/core/thm-dark-mode-persistence-0f7c39db.spec.ts
+acceptance:
+- ダークモード状態でリロードしてもダークモードが維持される
