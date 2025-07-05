@@ -167,6 +167,8 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
             lastChanged: timeStamp,
             // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
             items: new Items([]), // 子アイテムのための空のリスト
+            // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
+            comments: new Comments([]),
         });
 
         if (index !== undefined) {
