@@ -21,7 +21,7 @@ repos:
       - id: dprint-format
         name: Check formatting with dprint
         language: script
-        entry: ./scripts/pre_push.sh
+        entry: ./scripts/check_format.sh
         pass_filenames: false
         always_run: true
         stages: [pre-commit, pre-push]
