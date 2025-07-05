@@ -1,5 +1,14 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { Comments, Item, Items } from "../schema/app-schema";
+import {
+    beforeEach,
+    describe,
+    expect,
+    it,
+} from "vitest";
+import {
+    Comments,
+    Item,
+    Items,
+} from "../schema/app-schema";
 import { OutlinerViewModel } from "./OutlinerViewModel";
 
 function createSimpleTree() {
@@ -10,7 +19,9 @@ function createSimpleTree() {
         votes: [],
         created: 0,
         lastChanged: 0,
+        // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
         items: new Items([]),
+        // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
         comments: new Comments([]),
     });
     const child1 = root.items.addNode("u");

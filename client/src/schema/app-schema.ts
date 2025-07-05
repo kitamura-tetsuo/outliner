@@ -63,6 +63,7 @@ export class Item extends sf.objectRecursive("Item", {
     text: sf.string, // テキスト内容
     author: sf.string,
     votes: sf.array(sf.string),
+    attachments: sf.optional(sf.array(sf.string)),
     created: sf.number,
     componentType: sf.optional(sf.string), // コンポーネントタイプ（"table", "chart", undefined）
     aliasTargetId: sf.optional(sf.string),
@@ -81,12 +82,29 @@ export class Item extends sf.objectRecursive("Item", {
         const index = this.votes.indexOf(user);
         if (index > -1) {
             this.votes.removeAt(index);
-        } else {
+        }
+        else {
             this.votes.insertAtEnd(user);
         }
         this.lastChanged = new Date().getTime();
     };
 
+    // 添付ファイルを追加
+    public readonly addAttachment = (url: string) => {
+        this.attachments?.insertAtEnd(url);
+        this.lastChanged = new Date().getTime();
+    };
+
+    // 添付ファイルを削除
+    public readonly removeAttachment = (url: string) => {
+        const index = this.attachments?.indexOf(url);
+        if (index !== undefined && index > -1) {
+            this.attachments?.removeAt(index);
+            this.lastChanged = new Date().getTime();
+        }
+    };
+
+    // コメント機能
     public readonly addComment = (author: string, text: string) => {
         return (this.comments as Comments).addComment(author, text);
     };
@@ -112,7 +130,8 @@ export class Item extends sf.objectRecursive("Item", {
                     parent.moveRangeToIndex(index, 0, items.length, items);
                     parent.removeAt(parent.indexOf(this));
                 });
-            } else {
+            }
+            else {
                 // 子アイテムがない場合は単純に削除
                 parent.removeAt(parent.indexOf(this));
             }
@@ -133,9 +152,9 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 
         // 開発環境では、アイテムのインデックスをテキストに設定
         const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
-        const isTest = import.meta.env.MODE === "test"
-            || process.env.NODE_ENV === "test"
-            || import.meta.env.VITE_IS_TEST === "true";
+        const isTest = import.meta.env.MODE === "test" ||
+            process.env.NODE_ENV === "test" ||
+            import.meta.env.VITE_IS_TEST === "true";
         const itemIndex = index ?? this.length;
         const defaultText = isDev && !isTest ? `Item ${itemIndex}` : "";
 
@@ -144,10 +163,12 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
             text: defaultText, // 開発環境ではインデックスを含むテキスト
             author,
             votes: [],
+            attachments: [],
             created: timeStamp,
             lastChanged: timeStamp,
             // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
             items: new Items([]), // 子アイテムのための空のリスト
+            // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
             comments: new Comments([]),
         });
 
@@ -155,21 +176,19 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
             // 指定された位置に挿入
             if (index === 0) {
                 this.insertAtStart(newItem);
-            } else {
+            }
+            else {
                 this.insertAt(index, newItem);
             }
-        } else {
+        }
+        else {
             // 末尾に追加
             this.insertAtEnd(newItem);
         }
         return newItem;
     };
 
-    public readonly addAlias = (
-        targetId: string,
-        author: string,
-        index?: number,
-    ) => {
+    public readonly addAlias = (targetId: string, author: string, index?: number) => {
         const item = this.addNode(author, index);
         (item as any).aliasTargetId = targetId;
         return item;

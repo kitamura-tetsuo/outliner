@@ -15,6 +15,7 @@ export {
     createFluidClient,
     createNewContainer,
     deleteContainer,
+    getCurrentContainerId,
     getFluidClientByProjectTitle,
     getProjectTitle,
     getUserContainers,
@@ -43,3 +44,6 @@ export {
     importMarkdownIntoProject,
     importOpmlIntoProject,
 } from "./importExportService";
+
+// Attachment Service
+export { deleteAttachment, listAttachments, uploadAttachment } from "./attachmentService";
