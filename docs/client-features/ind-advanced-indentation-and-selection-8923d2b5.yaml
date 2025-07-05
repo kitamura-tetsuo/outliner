@@ -4,10 +4,10 @@ description: Use Tab and Shift+Tab to create nested structures and copy them via
 category: editing
 status: implemented
 tests:
-  - client/e2e/new/IND-0001.spec.ts
-  - client/e2e/new/ind-indent-variations-1ef547d8.spec.ts
+- client/e2e/new/IND-0001.spec.ts
+- client/e2e/new/ind-indent-variations-1ef547d8.spec.ts
 acceptance:
-  - Items can be indented with Tab to create nested structure
-  - Items can be outdented with Shift+Tab
-  - Selected nested items can be copied and pasted using clipboard
+- Items can be indented with Tab to create nested structure
+- Items can be outdented with Shift+Tab
+- Selected nested items can be copied and pasted using clipboard
 title-ja: 高度なインデントと選択操作

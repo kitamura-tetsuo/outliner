@@ -4,8 +4,8 @@ description: Ensure scripts/codex-setup.sh has execute permission and is referen
 category: environment
 status: implemented
 components:
-  - .github/workflows/test.yml
-  - scripts/codex-setup.sh
+- .github/workflows/test.yml
+- scripts/codex-setup.sh
 tests:
-  - scripts/tests/env-codex-setup-script-executable-90408b00.spec.ts
+- scripts/tests/env-codex-setup-script-executable-90408b00.spec.ts
 title-ja: Codex setup script is executable

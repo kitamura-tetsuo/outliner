@@ -4,10 +4,10 @@ description: アイテム間を移動する際に、複数のカーソルが生�
 category: cursor-management
 status: implemented
 tests:
-  - client/e2e/core/clm-cursor-duplication-and-input-distribution-problems-when-moving-between-items-be4c0ba6.spec.ts
+- client/e2e/core/clm-cursor-duplication-and-input-distribution-problems-when-moving-between-items-be4c0ba6.spec.ts
 acceptance:
-  - 1番目のアイテムに「123」の繰り返しが表示される問題を検出する
-  - 入力が複数のアイテムに分散する問題を検出する
-  - 異なる位置に複数のカーソルが表示される問題を検出する
-  - 複数のアイテムをクリックすると、複数のカーソルが生成される問題を検出する
+- 1番目のアイテムに「123」の繰り返しが表示される問題を検出する
+- 入力が複数のアイテムに分散する問題を検出する
+- 異なる位置に複数のカーソルが表示される問題を検出する
+- 複数のアイテムをクリックすると、複数のカーソルが生成される問題を検出する
 title-ja: アイテム間移動時のカーソル重複と入力分散問題

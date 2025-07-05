@@ -4,9 +4,9 @@ description: 複数アイテムにまたがる選択範囲のコピー＆ペー�
 category: selection-range
 status: implemented
 acceptance:
-  - コピーしたテキストを別の場所にペーストできる
-  - 複数アイテムにまたがる選択範囲のテキストをコピーできる
-  - 複数行テキストをペーストすると適切に複数アイテムに分割される
+- コピーしたテキストを別の場所にペーストできる
+- 複数アイテムにまたがる選択範囲のテキストをコピーできる
+- 複数行テキストをペーストすると適切に複数アイテムに分割される
 tests:
-  - client/e2e/core/slr-copy-and-paste-multiple-item-selection-ranges-5896d5f4.spec.ts
+- client/e2e/core/slr-copy-and-paste-multiple-item-selection-ranges-5896d5f4.spec.ts
 title-ja: 複数アイテム選択範囲のコピー＆ペースト

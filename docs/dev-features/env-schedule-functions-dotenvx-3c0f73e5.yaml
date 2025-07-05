@@ -4,8 +4,8 @@ category: environment
 status: implemented
 description: Ensure schedule management Cloud Functions load environment variables using dotenvx.
 components:
-  - functions/index.js
-  - scripts/tests/env-schedule-functions-dotenvx-3c0f73e5.spec.ts
+- functions/index.js
+- scripts/tests/env-schedule-functions-dotenvx-3c0f73e5.spec.ts
 tests:
-  - scripts/tests/env-schedule-functions-dotenvx-3c0f73e5.spec.ts
+- scripts/tests/env-schedule-functions-dotenvx-3c0f73e5.spec.ts
 title-ja: スケジュール管理Functionsがdotenvxで環境変数を読み込む

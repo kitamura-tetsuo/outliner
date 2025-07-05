@@ -9,13 +9,13 @@ exit_code=0
 # Check all files in the repository, not just changed files
 echo "Checking formatting for all files in the repository..."
 
-# Check root directory files
-npx --yes dprint check --allow-no-files . || exit_code=1
+# Get all files that dprint should check and run check on them
+file_paths=$(npx --yes dprint output-file-paths 2>/dev/null || true)
 
-# Check functions directory if it exists
-if [ -d "functions" ]; then
-    echo "Checking formatting for functions directory..."
-    (cd functions && npx --yes dprint check --allow-no-files .) || exit_code=1
+if [ -n "$file_paths" ]; then
+    echo "$file_paths" | xargs npx --yes dprint check || exit_code=1
+else
+    echo "No files found to check."
 fi
 
 if [ $exit_code -ne 0 ]; then

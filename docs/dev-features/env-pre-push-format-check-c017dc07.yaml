@@ -5,6 +5,6 @@ description: A git pre-push hook runs dprint to ensure changed files are formatt
 category: environment
 status: implemented
 components:
-  - scripts/pre_push.sh
+- scripts/pre_push.sh
 tests:
-  - scripts/tests/env-pre-push-format-check-c017dc07.spec.ts
+- scripts/tests/env-pre-push-format-check-c017dc07.spec.ts

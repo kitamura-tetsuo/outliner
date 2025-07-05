@@ -5,4 +5,4 @@ description: Ctrl+Left/Right word jumps, bracket jump with Ctrl+Shift+\, documen
 category: cursor-movement
 status: implemented
 tests:
-  - client/e2e/core/clm-extended-navigation-commands-427d145e.spec.ts
+- client/e2e/core/clm-extended-navigation-commands-427d145e.spec.ts

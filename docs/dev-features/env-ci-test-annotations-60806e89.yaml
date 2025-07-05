@@ -6,4 +6,4 @@ category: environment
 status: implemented
 components: []
 tests:
-  - scripts/tests/env-ci-test-annotations-60806e89.spec.ts
+- scripts/tests/env-ci-test-annotations-60806e89.spec.ts

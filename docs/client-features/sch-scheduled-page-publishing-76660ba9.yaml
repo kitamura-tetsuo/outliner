@@ -4,16 +4,16 @@ description: Users can schedule pages for automatic publishing using Cloud Tasks
 category: publishing
 status: implemented
 acceptance:
-  - One-shot, delay, recurring, and debounced scheduling strategies are supported
-  - Publishing tasks run server-side via Cloud Functions
-  - Schedule creation verifies Firebase auth tokens
-  - Schedules are stored per-page and scoped by user
-  - Users can inspect and cancel their own schedules via API
+- One-shot, delay, recurring, and debounced scheduling strategies are supported
+- Publishing tasks run server-side via Cloud Functions
+- Schedule creation verifies Firebase auth tokens
+- Schedules are stored per-page and scoped by user
+- Users can inspect and cancel their own schedules via API
 components:
-  - client/e2e/core/sch-scheduled-page-publishing-ba83fd47.spec.ts
-  - functions/index.js
-  - functions/test/scheduled-publishing.test.js
+- client/e2e/core/sch-scheduled-page-publishing-ba83fd47.spec.ts
+- functions/index.js
+- functions/test/scheduled-publishing.test.js
 tests:
-  - client/e2e/core/sch-scheduled-page-publishing-ba83fd47.spec.ts
-  - functions/test/scheduled-publishing.test.js
+- client/e2e/core/sch-scheduled-page-publishing-ba83fd47.spec.ts
+- functions/test/scheduled-publishing.test.js
 title-ja: 予約ページ公開

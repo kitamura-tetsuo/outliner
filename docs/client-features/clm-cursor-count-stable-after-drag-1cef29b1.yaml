@@ -4,7 +4,7 @@ description: ドラッグでアイテムを移動してもカーソルの数は�
 category: cursor-management
 status: implemented
 acceptance:
-  - アイテムをドラッグして移動したあともカーソルの総数が変わらない
+- アイテムをドラッグして移動したあともカーソルの総数が変わらない
 tests:
-  - client/e2e/core/clm-cursor-count-stable-after-drag-1cef29b1.spec.ts
+- client/e2e/core/clm-cursor-count-stable-after-drag-1cef29b1.spec.ts
 title-ja: ドラッグ後もカーソル数は変化しない

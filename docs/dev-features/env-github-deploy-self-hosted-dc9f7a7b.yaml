@@ -10,4 +10,4 @@ category: environment
 status: implemented
 components: []
 tests:
-  - scripts/tests/env-github-deploy-self-hosted-dc9f7a7b.spec.ts
+- scripts/tests/env-github-deploy-self-hosted-dc9f7a7b.spec.ts

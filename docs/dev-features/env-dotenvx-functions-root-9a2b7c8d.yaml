@@ -4,9 +4,9 @@ category: environment
 status: implemented
 description: Ensure Firebase functions load environment variables with dotenvx, with the module listed as a dependency, and test env file is generated.
 components:
-  - functions/index.js
-  - functions/package.json
-  - scripts/setup-local-env.sh
+- functions/index.js
+- functions/package.json
+- scripts/setup-local-env.sh
 tests:
-  - scripts/tests/env-dotenvx-functions-root-9a2b7c8d.spec.ts
+- scripts/tests/env-dotenvx-functions-root-9a2b7c8d.spec.ts
 title-ja: dotenvxでFunctionsの環境変数を読み込む

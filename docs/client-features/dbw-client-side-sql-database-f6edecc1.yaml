@@ -4,5 +4,5 @@ description: IndexedDB上にSQLデータベースを構築し、オフライン�
 category: database
 status: implemented
 tests:
-  - client/e2e/new/DBW-001.spec.ts
+- client/e2e/new/DBW-001.spec.ts
 title-ja: クライアント側SQLデータベース
