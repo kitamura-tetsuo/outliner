@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-if [ -z "${CODEX_ENV:-}" ]; then
+if [ -z "${CODEX_ENV_NODE_VERSION:-}" ]; then
     echo "Non-Codex environment detected. Running full E2E suite..."
     cd "$ROOT_DIR/client"
     npm run github:test:e2e
