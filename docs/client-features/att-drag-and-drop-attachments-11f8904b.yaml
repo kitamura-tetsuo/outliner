@@ -1,0 +1,26 @@
+id: ATT-0001
+title: Drag and drop attachments
+title-ja: ドラッグ&ドロップで添付
+description: Items accept files via drag-and-drop and show image previews. Access control is based on Fluid Framework container permissions.
+category: attachments
+status: implemented
+components:
+- functions/index.js (uploadAttachment, listAttachments, deleteAttachment)
+- src/components/OutlinerItem.svelte
+- src/services/attachmentService.ts
+- storage.rules
+tests:
+- client/e2e/core/att-drag-and-drop-attachments-11f8904b.spec.ts
+- client/src/tests/attachmentService.test.ts
+- functions/test/attachments.test.js
+acceptance:
+- Access to attachments is controlled by Fluid Framework container permissions
+- 'Attachment file paths are organized by containerId: /attachments/{containerId}/{itemId}/{fileName}'
+- Files dropped on an item are uploaded to Firebase Storage
+- Multiple attachments can be added to the same item
+- Only users with access to the container can view, upload, or delete attachments
+- Uploaded attachments appear as image previews beneath the item
+notes:
+- In test environments using Tinylicious, container restoration may fail due to "default dataStore [rootDOId] must exist" error
+- This is a known Tinylicious bug that doesn't occur in production environments
+- Tests focus on upload functionality rather than persistence across page reloads

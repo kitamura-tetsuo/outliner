@@ -4,13 +4,13 @@
  */
 
 import {
-  type ReadonlyArrayNode,
-  SchemaFactory,
-  Tree,
-  type TreeLeafValue,
-  type TreeNode,
-  TreeViewConfiguration,
-  type ValidateRecursiveSchema,
+    type ReadonlyArrayNode,
+    SchemaFactory,
+    Tree,
+    type TreeLeafValue,
+    type TreeNode,
+    TreeViewConfiguration,
+    type ValidateRecursiveSchema,
 } from "fluid-framework";
 import { v4 as uuid } from "uuid";
 
@@ -18,204 +18,221 @@ import { v4 as uuid } from "uuid";
 const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120003");
 
 export class Comment extends sf.objectRecursive("Comment", {
-  id: sf.string,
-  text: sf.string,
-  author: sf.string,
-  created: sf.number,
-  lastChanged: sf.number,
+    id: sf.string,
+    text: sf.string,
+    author: sf.string,
+    created: sf.number,
+    lastChanged: sf.number,
 }) {
-  public readonly updateText = (text: string) => {
-    this.lastChanged = new Date().getTime();
-    this.text = text;
-  };
+    public readonly updateText = (text: string) => {
+        this.lastChanged = new Date().getTime();
+        this.text = text;
+    };
 }
 
 export class Comments extends sf.arrayRecursive("Comments", [Comment]) {
-  public readonly addComment = (author: string, text: string) => {
-    const time = new Date().getTime();
-    const comment = new Comment({
-      id: uuid(),
-      text,
-      author,
-      created: time,
-      lastChanged: time,
-    });
-    this.insertAtEnd(comment);
-    return comment;
-  };
+    public readonly addComment = (author: string, text: string) => {
+        const time = new Date().getTime();
+        const comment = new Comment({
+            id: uuid(),
+            text,
+            author,
+            created: time,
+            lastChanged: time,
+        });
+        this.insertAtEnd(comment);
+        return comment;
+    };
 
-  public readonly deleteComment = (commentId: string) => {
-    const idx = this.findIndex((c) => c.id === commentId);
-    if (idx > -1) {
-      this.removeAt(idx);
-    }
-  };
+    public readonly deleteComment = (commentId: string) => {
+        const idx = this.findIndex(c => c.id === commentId);
+        if (idx > -1) {
+            this.removeAt(idx);
+        }
+    };
 
-  public readonly updateComment = (commentId: string, text: string) => {
-    const c = this.find((cm) => cm.id === commentId);
-    if (c) c.updateText(text);
-  };
+    public readonly updateComment = (commentId: string, text: string) => {
+        const c = this.find(cm => cm.id === commentId);
+        if (c) c.updateText(text);
+    };
 }
 
 // アイテム定義をシンプル化
 export class Item extends sf.objectRecursive("Item", {
-  id: sf.string,
-  text: sf.string, // テキスト内容
-  author: sf.string,
-  votes: sf.array(sf.string),
-  created: sf.number,
-  componentType: sf.optional(sf.string), // コンポーネントタイプ（"table", "chart", undefined）
-  aliasTargetId: sf.optional(sf.string),
-  lastChanged: sf.number,
-  items: () => Items, // 子アイテムを保持
-  comments: () => Comments,
+    id: sf.string,
+    text: sf.string, // テキスト内容
+    author: sf.string,
+    votes: sf.array(sf.string),
+    attachments: sf.optional(sf.array(sf.string)),
+    created: sf.number,
+    componentType: sf.optional(sf.string), // コンポーネントタイプ（"table", "chart", undefined）
+    aliasTargetId: sf.optional(sf.string),
+    lastChanged: sf.number,
+    items: () => Items, // 子アイテムを保持
+    comments: () => Comments,
 }) {
-  // テキスト更新時にタイムスタンプも更新
-  public readonly updateText = (text: string) => {
-    this.lastChanged = new Date().getTime();
-    this.text = text;
-  };
+    // テキスト更新時にタイムスタンプも更新
+    public readonly updateText = (text: string) => {
+        this.lastChanged = new Date().getTime();
+        this.text = text;
+    };
 
-  // 投票機能
-  public readonly toggleVote = (user: string) => {
-    const index = this.votes.indexOf(user);
-    if (index > -1) {
-      this.votes.removeAt(index);
-    } else {
-      this.votes.insertAtEnd(user);
-    }
-    this.lastChanged = new Date().getTime();
-  };
+    // 投票機能
+    public readonly toggleVote = (user: string) => {
+        const index = this.votes.indexOf(user);
+        if (index > -1) {
+            this.votes.removeAt(index);
+        }
+        else {
+            this.votes.insertAtEnd(user);
+        }
+        this.lastChanged = new Date().getTime();
+    };
 
-  public readonly addComment = (author: string, text: string) => {
-    return (this.comments as Comments).addComment(author, text);
-  };
+    // 添付ファイルを追加
+    public readonly addAttachment = (url: string) => {
+        this.attachments?.insertAtEnd(url);
+        this.lastChanged = new Date().getTime();
+    };
 
-  public readonly deleteComment = (commentId: string) => {
-    (this.comments as Comments).deleteComment(commentId);
-  };
+    // 添付ファイルを削除
+    public readonly removeAttachment = (url: string) => {
+        const index = this.attachments?.indexOf(url);
+        if (index !== undefined && index > -1) {
+            this.attachments?.removeAt(index);
+            this.lastChanged = new Date().getTime();
+        }
+    };
 
-  public readonly updateComment = (commentId: string, text: string) => {
-    const c = (this.comments as Comments).find((cm) => cm.id === commentId);
-    if (c) c.updateText(text);
-  };
+    // コメント機能
+    public readonly addComment = (author: string, text: string) => {
+        return (this.comments as Comments).addComment(author, text);
+    };
 
-  // アイテム削除機能
-  public readonly delete = () => {
-    const parent = Tree.parent(this);
-    if (Tree.is(parent, Items)) {
-      // 子アイテムがある場合、親に移動してから削除
-      const items = this.items as ReadonlyArrayNode<TreeNode | TreeLeafValue>;
-      if (items.length > 0) {
-        Tree.runTransaction(parent, () => {
-          const index = parent.indexOf(this);
-          parent.moveRangeToIndex(index, 0, items.length, items);
-          parent.removeAt(parent.indexOf(this));
-        });
-      } else {
-        // 子アイテムがない場合は単純に削除
-        parent.removeAt(parent.indexOf(this));
-      }
-    }
-  };
+    public readonly deleteComment = (commentId: string) => {
+        (this.comments as Comments).deleteComment(commentId);
+    };
+
+    public readonly updateComment = (commentId: string, text: string) => {
+        const c = (this.comments as Comments).find(cm => cm.id === commentId);
+        if (c) c.updateText(text);
+    };
+
+    // アイテム削除機能
+    public readonly delete = () => {
+        const parent = Tree.parent(this);
+        if (Tree.is(parent, Items)) {
+            // 子アイテムがある場合、親に移動してから削除
+            const items = this.items as ReadonlyArrayNode<TreeNode | TreeLeafValue>;
+            if (items.length > 0) {
+                Tree.runTransaction(parent, () => {
+                    const index = parent.indexOf(this);
+                    parent.moveRangeToIndex(index, 0, items.length, items);
+                    parent.removeAt(parent.indexOf(this));
+                });
+            }
+            else {
+                // 子アイテムがない場合は単純に削除
+                parent.removeAt(parent.indexOf(this));
+            }
+        }
+    };
 }
 
 // アイテムのリスト
 export class Items extends sf.arrayRecursive("Items", [Item]) {
-  /**
-   * 通常のアイテム（ページ内のノード）を追加
-   * @param author 作成者
-   * @param index 追加する位置のインデックス。未指定の場合は末尾に追加
-   * @returns 作成されたアイテム
-   */
-  public readonly addNode = (author: string, index?: number) => {
-    const timeStamp = new Date().getTime();
+    /**
+     * 通常のアイテム（ページ内のノード）を追加
+     * @param author 作成者
+     * @param index 追加する位置のインデックス。未指定の場合は末尾に追加
+     * @returns 作成されたアイテム
+     */
+    public readonly addNode = (author: string, index?: number) => {
+        const timeStamp = new Date().getTime();
 
-    // 開発環境では、アイテムのインデックスをテキストに設定
-    const isDev =
-      typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
-    const isTest =
-      import.meta.env.MODE === "test" ||
-      process.env.NODE_ENV === "test" ||
-      import.meta.env.VITE_IS_TEST === "true";
-    const itemIndex = index ?? this.length;
-    const defaultText = isDev && !isTest ? `Item ${itemIndex}` : "";
+        // 開発環境では、アイテムのインデックスをテキストに設定
+        const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
+        const isTest = import.meta.env.MODE === "test" ||
+            process.env.NODE_ENV === "test" ||
+            import.meta.env.VITE_IS_TEST === "true";
+        const itemIndex = index ?? this.length;
+        const defaultText = isDev && !isTest ? `Item ${itemIndex}` : "";
 
-    const newItem = new Item({
-      id: uuid(),
-      text: defaultText, // 開発環境ではインデックスを含むテキスト
-      author,
-      votes: [],
-      created: timeStamp,
-      lastChanged: timeStamp,
-      // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
-      items: new Items([]), // 子アイテムのための空のリスト
-      comments: new Comments([]),
-    });
+        const newItem = new Item({
+            id: uuid(),
+            text: defaultText, // 開発環境ではインデックスを含むテキスト
+            author,
+            votes: [],
+            attachments: [],
+            created: timeStamp,
+            lastChanged: timeStamp,
+            // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
+            items: new Items([]), // 子アイテムのための空のリスト
+            // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
+            comments: new Comments([]),
+        });
 
-    if (index !== undefined) {
-      // 指定された位置に挿入
-      if (index === 0) {
-        this.insertAtStart(newItem);
-      } else {
-        this.insertAt(index, newItem);
-      }
-    } else {
-      // 末尾に追加
-      this.insertAtEnd(newItem);
-    }
-    return newItem;
-  };
+        if (index !== undefined) {
+            // 指定された位置に挿入
+            if (index === 0) {
+                this.insertAtStart(newItem);
+            }
+            else {
+                this.insertAt(index, newItem);
+            }
+        }
+        else {
+            // 末尾に追加
+            this.insertAtEnd(newItem);
+        }
+        return newItem;
+    };
 
-  public readonly addAlias = (
-    targetId: string,
-    author: string,
-    index?: number,
-  ) => {
-    const item = this.addNode(author, index);
-    (item as any).aliasTargetId = targetId;
-    return item;
-  };
+    public readonly addAlias = (targetId: string, author: string, index?: number) => {
+        const item = this.addNode(author, index);
+        (item as any).aliasTargetId = targetId;
+        return item;
+    };
 }
 
 // 型検証ヘルパー
 {
-  // @ts-ignore: TS6133
-  type _check = ValidateRecursiveSchema<typeof Items>;
+    // @ts-ignore: TS6133
+    type _check = ValidateRecursiveSchema<typeof Items>;
 }
 
 // アイテム定義をシンプル化
 export class Project extends sf.objectRecursive("Project", {
-  title: sf.string,
-  items: () => Items, // 元のコードに戻す - TypeScript型エラーはあるが機能する
+    title: sf.string,
+    items: () => Items, // 元のコードに戻す - TypeScript型エラーはあるが機能する
 }) {
-  // テキスト更新時にタイムスタンプも更新
-  public readonly updateText = (text: string) => {
-    this.title = text;
-  };
+    // テキスト更新時にタイムスタンプも更新
+    public readonly updateText = (text: string) => {
+        this.title = text;
+    };
 
-  /**
-   * ページとして機能するアイテム（最上位アイテム）を追加
-   * このメソッドはルートItemsコレクションに対してのみ使用してください。
-   * 通常のアイテムの子アイテムとしては使用しないでください。
-   *
-   * @param title ページのタイトル
-   * @param author 作成者
-   * @returns 作成されたページアイテム
-   */
-  public readonly addPage = (title: string, author: string) => {
-    const pageItem = (this.items as Items).addNode(author);
-    pageItem.updateText(title);
-    return pageItem;
-  };
+    /**
+     * ページとして機能するアイテム（最上位アイテム）を追加
+     * このメソッドはルートItemsコレクションに対してのみ使用してください。
+     * 通常のアイテムの子アイテムとしては使用しないでください。
+     *
+     * @param title ページのタイトル
+     * @param author 作成者
+     * @returns 作成されたページアイテム
+     */
+    public readonly addPage = (title: string, author: string) => {
+        const pageItem = (this.items as Items).addNode(author);
+        pageItem.updateText(title);
+        return pageItem;
+    };
 
-  public static createInstance(title: string): Project {
-    return new Project({
-      title: title,
-      // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題
-      items: new Items([]), // 空のアイテムリストで初期化
-    });
-  }
+    public static createInstance(title: string): Project {
+        return new Project({
+            title: title,
+            // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題
+            items: new Items([]), // 空のアイテムリストで初期化
+        });
+    }
 }
 
 // 型検証ヘルパーはコメントアウト - 型エラーを避けるため
@@ -226,5 +243,5 @@ export class Project extends sf.objectRecursive("Project", {
 // TypeScriptのエラーは無視するが、ランタイム動作は問題ないはず
 // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題
 export const appTreeConfiguration = new TreeViewConfiguration({
-  schema: Project,
+    schema: Project,
 });

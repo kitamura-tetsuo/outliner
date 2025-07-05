@@ -92,6 +92,18 @@
                 "function": "cancelSchedule"
             },
             {
+                "source": "/api/upload-attachment",
+                "function": "uploadAttachment"
+            },
+            {
+                "source": "/api/list-attachments",
+                "function": "listAttachments"
+            },
+            {
+                "source": "/api/delete-attachment",
+                "function": "deleteAttachment"
+            },
+            {
                 "source": "/health",
                 "function": "health"
             },
@@ -100,6 +112,9 @@
                 "destination": "/index.html"
             }
         ]
+    },
+    "storage": {
+        "rules": "storage.rules"
     },
     "emulators": {
         "auth": {
@@ -116,6 +131,10 @@
         },
         "hosting": {
             "port": 57000,
+            "host": "0.0.0.0"
+        },
+        "storage": {
+            "port": 59200,
             "host": "0.0.0.0"
         },
         "ui": {

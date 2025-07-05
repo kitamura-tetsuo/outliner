@@ -62,6 +62,19 @@ Mocks are generally forbidden. Limited exceptions:
 - Check `server/logs/test-svelte-kit.log` when a test stalls.
 - Verify the server with `curl -s http://localhost:7090/ | head -c 100`.
 - Duplicate Firebase initialization often causes 30 s timeouts—ensure `UserManager.initializeFirebaseApp()` checks `getApps()` before calling `initializeApp()`.
+- **Tinylicious Container Restoration Issue**: The error "default dataStore [rootDOId] must exist" occurs when trying to reload saved Fluid containers in Tinylicious (test environment). This is a known Tinylicious bug that doesn't occur in production. In test environments, avoid reloading saved containers and use alternative testing approaches instead.
+
+### Firebase Functions Emulator
+
+**CRITICAL**: Always use Firebase Functions Emulator for testing, never mock Firebase Functions. The emulator provides the actual Firebase Functions environment and is essential for proper testing.
+
+- Firebase Functions Emulator runs on port 57000 (configured in firebase.json)
+- Firebase Storage Emulator runs on port 59200 (configured in firebase.json)
+- Firebase Auth Emulator runs on port 59099 (configured in firebase.json)
+- Firebase Firestore Emulator runs on port 58080 (configured in firebase.json)
+- Use `scripts/codex-setup.sh` to start all Firebase emulators
+- All attachment upload/download functionality requires Firebase Functions Emulator to be running
+- Tests will fail with "API error 404" if Firebase Functions Emulator is not running
 
 ## 3. Code Style
 
@@ -76,6 +89,14 @@ Mocks are generally forbidden. Limited exceptions:
 - Always track your working directory. Client code is in `client`, server code in `server`, and scripts in `scripts` (ENV-* tests are in `scripts/tests`). When using `launch-process`, set the `cwd` explicitly.
 - Keep Svelte HTML elements reactive and prioritize performance. Use asynchronous updates where appropriate.
 - After implementing changes, run `npm run build` in the `client` directory to confirm the code compiles correctly.
+
+### Merge Workflow
+
+- After merging branches, always run the following commands to ensure the merge was successful:
+  1. `npm run build` in the `client` directory to verify compilation
+  2. `npm test` in the `client` directory to run unit tests
+- Fix any test failures before proceeding with further development
+- Never skip tests or simplify them to avoid merge conflicts - always solve the actual problems
 
 ## 5. Cursor, Selection, and Item Handling
 

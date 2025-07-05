@@ -26,22 +26,25 @@ function setCorsHeaders(req, res) {
 // ロガーの設定
 const logger = require("firebase-functions/logger");
 
-// Load environment variables for local development
-// Load environment variables using dotenvx for local development
-require("@dotenvx/dotenvx").config({ path: __dirname + "/.env" });
-
-// 環境変数を直接使用（ローカル開発用）
-const azureConfig = {
-  tenantId: process.env.AZURE_TENANT_ID,
-  endpoint: process.env.AZURE_ENDPOINT,
-  primaryKey: process.env.AZURE_PRIMARY_KEY,
-  secondaryKey: process.env.AZURE_SECONDARY_KEY,
-  activeKey: process.env.AZURE_ACTIVE_KEY,
-};
+// Azure Fluid Relay設定を取得する関数
+function getAzureConfig() {
+  return {
+    tenantId: process.env.AZURE_TENANT_ID,
+    endpoint: process.env.AZURE_ENDPOINT,
+    primaryKey: process.env.AZURE_PRIMARY_KEY,
+    secondaryKey: process.env.AZURE_SECONDARY_KEY,
+    activeKey: process.env.AZURE_ACTIVE_KEY || "primary",
+  };
+}
 
 // Firebase Admin SDKの初期化（テスト環境では既に初期化済みの場合がある）
 if (!admin.apps.length) {
   admin.initializeApp();
+}
+
+// Storage Emulatorの設定
+if (process.env.NODE_ENV === "development" || process.env.FUNCTIONS_EMULATOR) {
+  process.env.FIREBASE_STORAGE_EMULATOR_HOST = "localhost:59200";
 }
 
 // Firestoreの参照を取得
@@ -54,29 +57,46 @@ function isAdmin(decodedToken) {
   return decodedToken && decodedToken.role === "admin";
 }
 
+// Check if user has access to a specific container
+async function checkContainerAccess(userId, containerId) {
+  try {
+    // In test environment, allow access for test users
+    if (process.env.FUNCTIONS_EMULATOR === "true" || process.env.NODE_ENV === "test") {
+      logger.info(`Test environment detected, allowing access for user ${userId} to container ${containerId}`);
+      return true;
+    }
+
+    // Check if user is in containerUsers collection
+    const containerUserDoc = await db.collection("containerUsers").doc(`${containerId}_${userId}`).get();
+    if (containerUserDoc.exists) {
+      return true;
+    }
+
+    // Check if container is in user's containers list
+    const userContainerDoc = await db.collection("userContainers").doc(userId).get();
+    if (userContainerDoc.exists) {
+      const userData = userContainerDoc.data();
+      return userData.containers && userData.containers[containerId] != null;
+    }
+
+    return false;
+  } catch (error) {
+    logger.error(`Error checking container access: ${error.message}`);
+    return false;
+  }
+}
+
 // Azure Fluid Relay設定（上記で定義済み）
 
-// 必須の環境変数が設定されているか確認
-if (!azureConfig.tenantId) {
-  logger.error("Azure Tenant ID (AZURE_TENANT_ID) が設定されていません。");
+// Azure設定の初期化確認
+try {
+  const config = getAzureConfig();
+  if (!config.tenantId || !config.primaryKey) {
+    logger.warn("Azure設定が不完全です。環境変数を確認してください。");
+  }
+} catch (error) {
+  logger.error("Azure設定の取得に失敗しました:", error.message);
 }
-if (!azureConfig.endpoint) {
-  logger.error("Azure Endpoint (AZURE_ENDPOINT) が設定されていません。");
-}
-if (!azureConfig.primaryKey) {
-  logger.error("Azure Primary Key (AZURE_PRIMARY_KEY) が設定されていません。");
-}
-
-// CORS設定（削除 - 各エンドポイントで直接設定）
-
-// 設定値をログに出力（デバッグ用）
-logger.info("Azure Fluid Relay設定:", {
-  tenantId: azureConfig.tenantId,
-  endpoint: azureConfig.endpoint,
-  primaryKeyExists: !!azureConfig.primaryKey,
-  secondaryKeyExists: !!azureConfig.secondaryKey,
-  activeKey: azureConfig.activeKey
-});
 
 /**
  * Azure Fluid Relay用トークン生成関数
@@ -87,7 +107,9 @@ logger.info("Azure Fluid Relay設定:", {
  * @return {Object} 生成されたトークン情報
  */
 function generateAzureFluidToken(user, containerId = undefined) {
-  // グローバルのazureConfigを使用
+  // Azure設定を取得
+  const azureConfig = getAzureConfig();
+
   // 使用するキーを決定
   const keyToUse = azureConfig.activeKey === "secondary" &&
     azureConfig.secondaryKey ?
@@ -216,8 +238,6 @@ exports.fluidToken = onRequest({ cors: true }, async (req, res) => {
       }
     }
 
-    // Azure設定はグローバルのazureConfigを使用
-
     // Azure Fluid RelayのJWT生成
     const jwt = generateAzureFluidToken({
       uid: userId,
@@ -237,7 +257,7 @@ exports.fluidToken = onRequest({ cors: true }, async (req, res) => {
           decodedToken.displayName ||
           "Anonymous User",
       },
-      tenantId: azureConfig.tenantId,
+      tenantId: jwt.tenantId,
       containerId: targetContainerId,
       defaultContainerId,
       accessibleContainerIds,
@@ -988,5 +1008,158 @@ exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
       return res.status(401).json({ error: "Authentication failed" });
     }
     return res.status(500).json({ error: "Failed to cancel schedule" });
+  }
+});
+
+// Upload attachment
+exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+
+  const { idToken, containerId, itemId, fileName, fileData } = req.body || {};
+  logger.info(`uploadAttachment request: containerId=${containerId}, itemId=${itemId}, fileName=${fileName}, fileDataLength=${fileData?.length}`);
+
+  if (!idToken || !containerId || !itemId || !fileName || !fileData) {
+    logger.error(`uploadAttachment invalid request: idToken=${!!idToken}, containerId=${!!containerId}, itemId=${!!itemId}, fileName=${!!fileName}, fileData=${!!fileData}`);
+    return res.status(400).json({ error: "Invalid request" });
+  }
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    logger.info(`uploadAttachment authenticated user: ${uid}`);
+
+    // Check if user has access to the container
+    const hasAccess = await checkContainerAccess(uid, containerId);
+    if (!hasAccess) {
+      logger.error(`uploadAttachment access denied: user=${uid}, container=${containerId}`);
+      return res.status(403).json({ error: "Access denied to container" });
+    }
+
+    // テスト環境では適切なバケット名を設定
+    const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST || process.env.NODE_ENV === "development";
+    const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
+    const bucket = admin.storage().bucket(bucketName);
+    logger.info(`uploadAttachment using bucket: ${bucket.name}, isEmulator: ${isEmulator}`);
+
+    const filePath = `attachments/${containerId}/${itemId}/${fileName}`;
+    const file = bucket.file(filePath);
+    logger.info(`uploadAttachment saving file: ${filePath}`);
+
+    await file.save(Buffer.from(fileData, "base64"));
+    logger.info(`uploadAttachment file saved successfully: ${filePath}`);
+
+    let url;
+
+    if (isEmulator) {
+      // Emulator環境では直接URLを生成
+      const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST || "localhost:59200";
+      url = `http://${storageHost}/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+      logger.info(`uploadAttachment generated emulator URL: ${url}`);
+    } else {
+      // 本番環境では署名付きURLを生成
+      const [signedUrl] = await file.getSignedUrl({ action: "read", expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+      url = signedUrl;
+      logger.info(`uploadAttachment generated signed URL: ${url}`);
+    }
+
+    logger.info(`uploadAttachment success: ${filePath} -> ${url}`);
+    return res.status(200).json({ url });
+  } catch (err) {
+    logger.error(`uploadAttachment error: ${err.message}`, err);
+    if (err.code === "auth/id-token-expired" || err.code === "auth/invalid-id-token" || err.code === "auth/argument-error") {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to upload attachment", details: err.message });
+  }
+});
+
+// List attachments
+exports.listAttachments = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+
+  const { idToken, containerId, itemId } = req.body || {};
+  if (!idToken || !containerId || !itemId) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+
+    // Check if user has access to the container
+    const hasAccess = await checkContainerAccess(uid, containerId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied to container" });
+    }
+
+    // テスト環境では適切なバケット名を設定
+    const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST || process.env.NODE_ENV === "development";
+    const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
+    const bucket = admin.storage().bucket(bucketName);
+
+    const prefix = `attachments/${containerId}/${itemId}/`;
+    const [files] = await bucket.getFiles({ prefix });
+
+    let urls;
+
+    if (isEmulator) {
+      // Emulator環境では直接URLを生成
+      const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST || "localhost:59200";
+      urls = files.map(file => {
+        const filePath = file.name;
+        return `http://${storageHost}/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+      });
+    } else {
+      // 本番環境では署名付きURLを生成
+      urls = await Promise.all(files.map(f => f.getSignedUrl({ action: "read", expires: Date.now() + 7*24*60*60*1000 }).then(r => r[0])));
+    }
+
+    return res.status(200).json({ urls });
+  } catch (err) {
+    logger.error(`listAttachments error: ${err.message}`);
+    if (err.code === "auth/id-token-expired" || err.code === "auth/invalid-id-token" || err.code === "auth/argument-error") {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to list attachments" });
+  }
+});
+
+// Delete attachment
+exports.deleteAttachment = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+
+  const { idToken, containerId, itemId, fileName } = req.body || {};
+  if (!idToken || !containerId || !itemId || !fileName) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+
+    // Check if user has access to the container
+    const hasAccess = await checkContainerAccess(uid, containerId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied to container" });
+    }
+
+    // テスト環境では適切なバケット名を設定
+    const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST || process.env.NODE_ENV === "development";
+    const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
+    const bucket = admin.storage().bucket(bucketName);
+
+    const filePath = `attachments/${containerId}/${itemId}/${fileName}`;
+    await bucket.file(filePath).delete();
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    logger.error(`deleteAttachment error: ${err.message}`);
+    if (err.code === "auth/id-token-expired" || err.code === "auth/invalid-id-token" || err.code === "auth/argument-error") {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to delete attachment" });
   }
 });

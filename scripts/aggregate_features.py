@@ -20,7 +20,28 @@ def aggregate_features(yaml_dir, agg_file):
         for key in ("acceptance", "components", "tests"):
             items = data.get(key)
             if isinstance(items, list):
-                data[key] = sorted(items)
+                # Convert mixed types to strings for consistent sorting
+                normalized_items = []
+                for item in items:
+                    if isinstance(item, dict):
+                        # Convert dict to a string representation
+                        # Use the first key-value pair as the string
+                        if item:
+                            first_key = next(iter(item))
+                            normalized_items.append(f"{first_key}: {item[first_key]}")
+                        else:
+                            normalized_items.append("")
+                    else:
+                        # Keep strings as-is
+                        normalized_items.append(str(item))
+
+                try:
+                    data[key] = sorted(normalized_items)
+                except TypeError as e:
+                    logger.error(f"Error sorting {key} in {path.relative_to(ROOT)}: {e}")
+                    logger.error(f"Items: {normalized_items}")
+                    # Skip sorting for this key if there's still a type error
+                    continue
         text = yaml.safe_dump(data, allow_unicode=True, sort_keys=False, width=4096)
         if path.read_text(encoding="utf-8") != text:
             path.write_text(text, encoding="utf-8")
