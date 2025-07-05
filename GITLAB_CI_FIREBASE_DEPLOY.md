@@ -51,81 +51,81 @@ GitLabプロジェクトの「Settings」→「CI/CD」→「Variables」で以�
 
 ```yaml
 deploy-to-firebase:
-  stage: deploy
-  image: node:22-slim
-  dependencies:
-    - e2e-tests # テストジョブが成功した場合のみデプロイを実行
-  variables:
-    FIREBASE_TOKEN: ${FIREBASE_TOKEN}
-    AZURE_TENANT_ID: ${AZURE_TENANT_ID}
-    AZURE_FLUID_RELAY_ENDPOINT: ${AZURE_FLUID_RELAY_ENDPOINT}
-    AZURE_PRIMARY_KEY: ${AZURE_PRIMARY_KEY}
-    AZURE_SECONDARY_KEY: ${AZURE_SECONDARY_KEY}
-    AZURE_ACTIVE_KEY: ${AZURE_ACTIVE_KEY}
-  before_script:
-    - 'apt-get update && apt-get install -y curl'
-    - 'npm install -g firebase-tools'
-    - 'echo "CI_PROJECT_DIR: ${CI_PROJECT_DIR}"'
-    - 'mkdir -p ${CI_PROJECT_DIR}/logs/'
-  script:
-    # クライアントのビルド
-    - 'cd ${CI_PROJECT_DIR}/client'
-    - 'npm ci'
-    - 'echo "Creating client .env file..."'
-    - |
-        cat > .env << EOF
-        # Azure Fluid Relay 設定
-        VITE_AZURE_TENANT_ID=${AZURE_TENANT_ID}
-        VITE_AZURE_FLUID_RELAY_ENDPOINT=${AZURE_FLUID_RELAY_ENDPOINT}
-        VITE_USE_FIREBASE_AUTH=true
-        VITE_USE_API_AUTH=true
+    stage: deploy
+    image: node:22-slim
+    dependencies:
+        - e2e-tests # テストジョブが成功した場合のみデプロイを実行
+    variables:
+        FIREBASE_TOKEN: ${FIREBASE_TOKEN}
+        AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+        AZURE_FLUID_RELAY_ENDPOINT: ${AZURE_FLUID_RELAY_ENDPOINT}
+        AZURE_PRIMARY_KEY: ${AZURE_PRIMARY_KEY}
+        AZURE_SECONDARY_KEY: ${AZURE_SECONDARY_KEY}
+        AZURE_ACTIVE_KEY: ${AZURE_ACTIVE_KEY}
+    before_script:
+        - "apt-get update && apt-get install -y curl"
+        - "npm install -g firebase-tools"
+        - 'echo "CI_PROJECT_DIR: ${CI_PROJECT_DIR}"'
+        - "mkdir -p ${CI_PROJECT_DIR}/logs/"
+    script:
+        # クライアントのビルド
+        - "cd ${CI_PROJECT_DIR}/client"
+        - "npm ci"
+        - 'echo "Creating client .env file..."'
+        - |
+              cat > .env << EOF
+              # Azure Fluid Relay 設定
+              VITE_AZURE_TENANT_ID=${AZURE_TENANT_ID}
+              VITE_AZURE_FLUID_RELAY_ENDPOINT=${AZURE_FLUID_RELAY_ENDPOINT}
+              VITE_USE_FIREBASE_AUTH=true
+              VITE_USE_API_AUTH=true
 
-        # 接続サービスの選択
-        VITE_USE_TINYLICIOUS=false
-        VITE_FORCE_AZURE=true
+              # 接続サービスの選択
+              VITE_USE_TINYLICIOUS=false
+              VITE_FORCE_AZURE=true
 
-        # API設定 - Firebase Functionsのエンドポイント
-        VITE_API_BASE_URL=https://outliner-d57b0.web.app
-        VITE_API_SERVER_URL=https://outliner-d57b0.web.app
+              # API設定 - Firebase Functionsのエンドポイント
+              VITE_API_BASE_URL=https://outliner-d57b0.web.app
+              VITE_API_SERVER_URL=https://outliner-d57b0.web.app
 
-        # Fluid Framework Telemetry設定
-        VITE_DISABLE_FLUID_TELEMETRY=true
+              # Fluid Framework Telemetry設定
+              VITE_DISABLE_FLUID_TELEMETRY=true
 
-        # Firebase設定
-        VITE_FIREBASE_API_KEY=${FIREBASE_API_KEY}
-        VITE_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}
-        VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
-        VITE_FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
-        VITE_FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID}
-        VITE_FIREBASE_APP_ID=${FIREBASE_APP_ID}
-        VITE_FIREBASE_MEASUREMENT_ID=${FIREBASE_MEASUREMENT_ID}
-        EOF
-    - 'npm run build'
+              # Firebase設定
+              VITE_FIREBASE_API_KEY=${FIREBASE_API_KEY}
+              VITE_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}
+              VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+              VITE_FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
+              VITE_FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID}
+              VITE_FIREBASE_APP_ID=${FIREBASE_APP_ID}
+              VITE_FIREBASE_MEASUREMENT_ID=${FIREBASE_MEASUREMENT_ID}
+              EOF
+        - "npm run build"
 
-    # Firebase Functionsのビルド
-    - 'cd ${CI_PROJECT_DIR}/functions'
-    - 'npm ci'
+        # Firebase Functionsのビルド
+        - "cd ${CI_PROJECT_DIR}/functions"
+        - "npm ci"
 
-    # Firebase Functions環境変数ファイルの作成
-    - 'cd ${CI_PROJECT_DIR}'
-    - 'echo "Creating Firebase Functions .env file..."'
-    - |
-        cat > functions/.env << EOF
-        # Azure Fluid Relay設定
-        AZURE_TENANT_ID=${AZURE_TENANT_ID}
-        AZURE_FLUID_RELAY_ENDPOINT=${AZURE_FLUID_RELAY_ENDPOINT}
-        AZURE_PRIMARY_KEY=${AZURE_PRIMARY_KEY}
-        AZURE_SECONDARY_KEY=${AZURE_SECONDARY_KEY}
-        AZURE_ACTIVE_KEY=${AZURE_ACTIVE_KEY}
+        # Firebase Functions環境変数ファイルの作成
+        - "cd ${CI_PROJECT_DIR}"
+        - 'echo "Creating Firebase Functions .env file..."'
+        - |
+              cat > functions/.env << EOF
+              # Azure Fluid Relay設定
+              AZURE_TENANT_ID=${AZURE_TENANT_ID}
+              AZURE_FLUID_RELAY_ENDPOINT=${AZURE_FLUID_RELAY_ENDPOINT}
+              AZURE_PRIMARY_KEY=${AZURE_PRIMARY_KEY}
+              AZURE_SECONDARY_KEY=${AZURE_SECONDARY_KEY}
+              AZURE_ACTIVE_KEY=${AZURE_ACTIVE_KEY}
 
-        # プロダクション環境設定
-        NODE_ENV=production
-        EOF
+              # プロダクション環境設定
+              NODE_ENV=production
+              EOF
 
-    # Firebaseへのデプロイ
-    - 'firebase deploy --token "${FIREBASE_TOKEN}" --non-interactive'
-  only:
-    - main # mainブランチにプッシュされた場合のみデプロイを実行
+        # Firebaseへのデプロイ
+        - 'firebase deploy --token "${FIREBASE_TOKEN}" --non-interactive'
+    only:
+        - main # mainブランチにプッシュされた場合のみデプロイを実行
 ```
 
 ### 4. ビルド設定の確認
