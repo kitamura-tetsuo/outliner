@@ -88,6 +88,14 @@ Mocks are generally forbidden. Limited exceptions:
 - Always track your working directory. Client code is in `client`, server code in `server`, and scripts in `scripts` (ENV-* tests are in `scripts/tests`). When using `launch-process`, set the `cwd` explicitly.
 - Keep Svelte HTML elements reactive and prioritize performance. Use asynchronous updates where appropriate.
 
+### Merge Workflow
+
+- After merging branches, always run the following commands to ensure the merge was successful:
+  1. `npm run build` in the `client` directory to verify compilation
+  2. `npm test` in the `client` directory to run unit tests
+- Fix any test failures before proceeding with further development
+- Never skip tests or simplify them to avoid merge conflicts - always solve the actual problems
+
 ## 5. Cursor, Selection, and Item Handling
 
 - Important files: `Cursor.ts`, `EditorOverlay.svelte`, `EditorOverlayStore.svelte.ts`, `OutlinerItem.svelte`.
