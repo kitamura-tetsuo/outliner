@@ -210,7 +210,6 @@ dotenvx run -- npm run test:env
 Codex環境では複数のE2Eテストを一度に実行するとタイムアウト (timeout) することがあります。`scripts/run-e2e-progress-for-codex.sh 1` を使うと、テストファイルを1件ずつ実行できます。
 This prevents timeout errors during cording agent's env runs.
 
-
 ```bash
 scripts/run-e2e-progress-for-codex.sh 1
 ```
@@ -229,3 +228,13 @@ scripts/run-e2e-progress-for-codex.sh 1
 ```bash
 python scripts/aggregate_features.py
 ```
+
+### pre-push でフォーマットを検証する
+
+push 前に `dprint check` を実行して未フォーマットのファイルがないか確認します。次のようにフックを設定してください。
+
+```bash
+ln -s ../../scripts/pre_push.sh .git/hooks/pre-push
+```
+
+未フォーマットのファイルがある場合、push は拒否されます。
