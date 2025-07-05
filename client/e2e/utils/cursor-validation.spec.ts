@@ -2,10 +2,7 @@
  *  Title   : カーソル情報検証ユーティリティのテスト
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { waitForCursorVisible } from "../helpers";
 import { CursorValidator } from "./cursorValidation";
 import { TestHelpers } from "./testHelpers";
@@ -30,8 +27,7 @@ test.describe("CursorValidator: カーソル情報検証ユーティリティ", 
         await page.evaluate(() => {
             if (typeof window.editorOverlayStore === "undefined") {
                 console.error("editorOverlayStore is not defined in window");
-            }
-            else {
+            } else {
                 console.log("editorOverlayStore is available:", window.editorOverlayStore);
             }
         });
@@ -40,8 +36,7 @@ test.describe("CursorValidator: カーソル情報検証ユーティリティ", 
         await page.evaluate(() => {
             if (typeof window.getCursorDebugData !== "function") {
                 console.error("getCursorDebugData is not defined in window");
-            }
-            else {
+            } else {
                 console.log("getCursorDebugData is available");
             }
         });
@@ -117,8 +112,7 @@ test.describe("CursorValidator: カーソル情報検証ユーティリティ", 
             await CursorValidator.compareWithSnapshot(page, snapshot);
             // ここに到達したら失敗
             expect(false).toBeTruthy();
-        }
-        catch (error) {
+        } catch (error) {
             // エラーが発生することを期待
             expect(error).toBeTruthy();
         }

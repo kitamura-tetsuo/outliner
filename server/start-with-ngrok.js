@@ -150,8 +150,7 @@ async function start() {
             console.warn("ngrokのURLを取得できませんでした。");
             console.warn("Google認証のコールバックが正しく機能しない可能性があります。");
             console.warn(".envファイルのGOOGLE_CALLBACK_URLを手動で設定してください。");
-        }
-        else {
+        } else {
             console.log("ngrokのURLを取得しました:", ngrokUrl);
             console.log("コールバックURLを更新しました:", `${ngrokUrl}/auth/google/callback`);
         }
@@ -172,8 +171,7 @@ async function start() {
         }
         console.log("終了するには Ctrl+C を押してください。");
         console.log("=====================================================\n");
-    }
-    catch (error) {
+    } catch (error) {
         console.error("起動中にエラーが発生しました:", error);
         cleanup();
     }

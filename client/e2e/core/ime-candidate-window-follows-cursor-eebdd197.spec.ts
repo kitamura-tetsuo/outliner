@@ -2,10 +2,7 @@
  *  Title   : IME candidate window follows active cursor
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("IME-0002: IME candidate window follows active cursor", () => {
@@ -23,8 +20,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
                 .first()
                 .locator(".item-content")
                 .click({ force: true });
-        }
-        else {
+        } else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -63,8 +59,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
                 // 少し待機
                 await page.waitForTimeout(500);
             }
-        }
-        else {
+        } else {
             // カーソルが表示されている場合もデバッグモードを有効にする
             await page.evaluate(() => {
                 (window as any).DEBUG_MODE = true;
@@ -141,16 +136,20 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
                 hasStore: !!store,
                 hasTextarea: !!textareaRef,
                 hasCursor: !!lastCursor,
-                cursorInfo: lastCursor ? {
-                    itemId: lastCursor.itemId,
-                    offset: lastCursor.offset,
-                    isActive: lastCursor.isActive,
-                } : null,
-                textareaStyle: textareaRef ? {
-                    left: textareaRef.style.left,
-                    top: textareaRef.style.top,
-                    height: textareaRef.style.height,
-                } : null,
+                cursorInfo: lastCursor
+                    ? {
+                        itemId: lastCursor.itemId,
+                        offset: lastCursor.offset,
+                        isActive: lastCursor.isActive,
+                    }
+                    : null,
+                textareaStyle: textareaRef
+                    ? {
+                        left: textareaRef.style.left,
+                        top: textareaRef.style.top,
+                        height: textareaRef.style.height,
+                    }
+                    : null,
             };
         });
 

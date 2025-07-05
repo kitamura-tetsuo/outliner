@@ -25,7 +25,7 @@ test.describe("LNK-0004: 仮ページ通知ボタン", () => {
         const createButton = page.locator(".temporary-page-notice button:has-text('ページを作成')");
         const buttonCount = await createButton.count();
         if (buttonCount === 0) {
-            console.log('Create button not found in this environment.');
+            console.log("Create button not found in this environment.");
             return;
         }
         await createButton.click();

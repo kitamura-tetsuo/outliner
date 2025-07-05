@@ -1,10 +1,4 @@
-import {
-    beforeEach,
-    describe,
-    expect,
-    it,
-    vi,
-} from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Item } from "../schema/app-schema";
 import { Cursor } from "./Cursor";
 
@@ -106,8 +100,8 @@ describe("Cursor", () => {
             // 必要に応じてテストケースごとに個別のモックアイテムを返すようにする
             const item = createMockItem(cursor.itemId, "Default text for " + cursor.itemId);
             if (
-                generalStore.currentPage &&
-                !generalStore.currentPage.items.find((child: Item) => child.id === cursor.itemId)
+                generalStore.currentPage
+                && !generalStore.currentPage.items.find((child: Item) => child.id === cursor.itemId)
             ) {
                 generalStore.currentPage.items.push(item);
             }

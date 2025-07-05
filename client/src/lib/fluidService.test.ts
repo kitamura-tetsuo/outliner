@@ -1,19 +1,8 @@
 import { type ViewableTree } from "fluid-framework";
-import {
-    afterEach,
-    beforeEach,
-    beforeAll,
-    describe,
-    expect,
-    it,
-    vi,
-} from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.setConfig({ testTimeout: 60000 });
-import {
-    appTreeConfiguration,
-    Project,
-} from "../schema/app-schema";
+import { appTreeConfiguration, Project } from "../schema/app-schema";
 let fluidService: typeof import("./fluidService.svelte");
 
 describe("fluidService", () => {
@@ -47,8 +36,7 @@ describe("fluidService", () => {
             // client.getContainer(newContainerId, fluidService.containerSchema, "2"); does not work with tinylicious.
             // const getResponse = await client.getContainer(newContainerId, fluidService.containerSchema, "2");
             // console.log(getResponse.container);
-        }
-        catch (error) {
+        } catch (error) {
             console.error(error);
             expect(error).toBeUndefined();
         }

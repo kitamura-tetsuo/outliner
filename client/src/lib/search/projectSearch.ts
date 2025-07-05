@@ -1,15 +1,5 @@
-import type {
-    Item,
-    Items,
-    Project,
-} from "../../schema/app-schema";
-import {
-    type ItemMatch,
-    replaceAll,
-    replaceFirst,
-    searchItems,
-    type SearchOptions,
-} from "./index";
+import type { Item, Items, Project } from "../../schema/app-schema";
+import { type ItemMatch, replaceAll, replaceFirst, searchItems, type SearchOptions } from "./index";
 
 export interface PageItemMatch<T> extends ItemMatch<T> {
     page: Item;

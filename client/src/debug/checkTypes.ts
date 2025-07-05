@@ -94,8 +94,7 @@ function safeInitializationPattern(container: IFluidContainer, config: TreeViewC
         const sharedTree = container.initialObjects.appData as SharedTree;
         const treeView = sharedTree.viewWith(config);
         return treeView;
-    }
-    catch (error) {
+    } catch (error) {
         console.error("Failed to initialize TreeView:", error);
         throw error;
     }

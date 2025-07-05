@@ -2,10 +2,7 @@
  *  Title   : プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
@@ -46,15 +43,15 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
 
         // フォーカス状態を確認
         const focusState = await page.evaluate(() => {
-            const textarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             return {
                 textareaExists: !!textarea,
                 focused: document.activeElement === textarea,
                 activeElementTag: document.activeElement?.tagName,
-                textareaValue: textarea?.value || ''
+                textareaValue: textarea?.value || "",
             };
         });
-        console.log('Focus state after click:', focusState);
+        console.log("Focus state after click:", focusState);
 
         // フォーカスが設定されていることを確認
         expect(focusState.focused).toBe(true);
@@ -62,7 +59,7 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         // カーソルの状態を確認し、必要に応じて作成
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
-            if (!editorStore) return { error: 'editorOverlayStore not found' };
+            if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
             const cursorInstances = editorStore.getCursorInstances();
@@ -72,11 +69,11 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
                 cursorInstancesCount: cursorInstances.length,
             };
         });
-        console.log('Cursor state:', cursorState);
+        console.log("Cursor state:", cursorState);
 
         // カーソルインスタンスが存在しない場合、作成する
         if (cursorState.cursorInstancesCount === 0) {
-            console.log('No cursor instances found, creating cursor');
+            console.log("No cursor instances found, creating cursor");
             await page.evaluate(() => {
                 const editorStore = (window as any).editorOverlayStore;
                 if (editorStore) {
@@ -86,9 +83,9 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
                             itemId: activeItemId,
                             offset: 0,
                             isActive: true,
-                            userId: 'local'
+                            userId: "local",
                         });
-                        console.log('Created cursor for active item');
+                        console.log("Created cursor for active item");
                     }
                 }
             });
@@ -96,7 +93,7 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
 
         // テキスト入力が可能であることを確認（cursor.insertText()を使用）
         const testText = "テスト用テキスト";
-        await page.evaluate((text) => {
+        await page.evaluate(text => {
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
@@ -105,12 +102,12 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
                     // 既存のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
-                        target.updateText('');
+                        target.updateText("");
                         cursor.offset = 0;
                     }
                     // 新しいテキストを挿入
                     cursor.insertText(text);
-                    console.log('Text inserted via cursor.insertText');
+                    console.log("Text inserted via cursor.insertText");
                 }
             }
         }, testText);

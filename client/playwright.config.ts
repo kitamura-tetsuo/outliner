@@ -1,7 +1,4 @@
-import {
-    defineConfig,
-    devices,
-} from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
 

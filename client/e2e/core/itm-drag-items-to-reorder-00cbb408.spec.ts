@@ -2,10 +2,7 @@
  *  Title   : ドラッグでアイテムを移動
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-00cbb408: ドラッグでアイテムを移動", () => {

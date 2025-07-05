@@ -5,5 +5,5 @@ category: environment
 status: implemented
 components: []
 tests:
-- scripts/tests/env-setup-script-installs-vitest-and-playwright-7a549148.spec.ts
+  - scripts/tests/env-setup-script-installs-vitest-and-playwright-7a549148.spec.ts
 title-ja: Setup script installs vitest and playwright

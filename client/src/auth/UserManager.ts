@@ -68,8 +68,8 @@ export class UserManager {
     private readonly TOKEN_REFRESH_TIMEOUT = 10000; // 10秒のタイムアウト
 
     // 開発環境かどうかの判定
-    private isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development" ||
-        process.env.NODE_ENV === "development";
+    private isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development"
+        || process.env.NODE_ENV === "development";
 
     /**
      * Firebaseアプリインスタンスを遅延初期化で取得
@@ -111,13 +111,13 @@ export class UserManager {
         this.initAuthListenerAsync();
 
         // テスト環境の検出
-        const isTestEnv = import.meta.env.MODE === "test" ||
-            process.env.NODE_ENV === "test" ||
-            import.meta.env.VITE_IS_TEST === "true";
+        const isTestEnv = import.meta.env.MODE === "test"
+            || process.env.NODE_ENV === "test"
+            || import.meta.env.VITE_IS_TEST === "true";
 
-        const useEmulator = isTestEnv ||
-            import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true" ||
-            (typeof window !== "undefined" && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true");
+        const useEmulator = isTestEnv
+            || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
+            || (typeof window !== "undefined" && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true");
 
         // サーバーサイドレンダリング環境かどうかを判定
         const isSSR = typeof window === "undefined";
@@ -131,8 +131,7 @@ export class UserManager {
                     logger.info("Successfully connected to Auth emulator");
                     // テスト環境では自動的にテストユーザーでログイン
                     this._setupMockUser();
-                }
-                else {
+                } else {
                     // エミュレーター接続に失敗した場合
                     const error = new Error("Failed to connect to Firebase Auth emulator");
                     logger.error("Failed to connect to Auth emulator, authentication may not work", error);
@@ -140,26 +139,22 @@ export class UserManager {
                     // SSR環境ではエラーをスローしない（クライアント側でリトライできるように）
                     if (!isSSR) {
                         throw error;
-                    }
-                    else {
+                    } else {
                         logger.info("Running in SSR environment, will retry connection on client side");
                     }
                 }
-            }
-            catch (err) {
+            } catch (err) {
                 // エミュレーターに接続できない場合
                 logger.error("Failed to connect to Auth emulator:", err);
 
                 // SSR環境ではエラーをスローしない
                 if (!isSSR) {
                     throw err;
-                }
-                else {
+                } else {
                     logger.info("Running in SSR environment, will retry connection on client side");
                 }
             }
-        }
-        else {
+        } else {
             this.loadSavedUser();
         }
     }
@@ -175,8 +170,7 @@ export class UserManager {
             connectAuthEmulator(this.auth, `http://${host}:${port}`, { disableWarnings: true });
             logger.info(`Successfully connected to Firebase Auth emulator at ${host}:${port}`);
             return true;
-        }
-        catch (err) {
+        } catch (err) {
             logger.error("Error connecting to Firebase Auth emulator:", err);
             return false;
         }
@@ -186,10 +180,10 @@ export class UserManager {
     private async _setupMockUser() {
         // テスト環境の検出条件を拡張
         const isTestEnvironment = typeof window !== "undefined" && (
-            window.location.href.includes("e2e-test") ||
-            import.meta.env.VITE_IS_TEST === "true" ||
-            localStorage.getItem("VITE_IS_TEST") === "true" ||
-            process.env.NODE_ENV === "test"
+            window.location.href.includes("e2e-test")
+            || import.meta.env.VITE_IS_TEST === "true"
+            || localStorage.getItem("VITE_IS_TEST") === "true"
+            || process.env.NODE_ENV === "test"
         );
 
         // E2Eテスト用にFirebaseメール/パスワード認証を使う
@@ -201,8 +195,7 @@ export class UserManager {
             try {
                 await signInWithEmailAndPassword(this.auth, "test@example.com", "password");
                 logger.info("[UserManager] Test user login successful");
-            }
-            catch (error) {
+            } catch (error) {
                 logger.error("[UserManager] Test user login failed:", error);
 
                 // ユーザーが存在しない場合は作成を試みる
@@ -210,8 +203,7 @@ export class UserManager {
                     logger.info("[UserManager] Attempting to create test user");
                     await createUserWithEmailAndPassword(this.auth, "test@example.com", "password");
                     logger.info("[UserManager] Test user created and logged in successfully");
-                }
-                catch (createError) {
+                } catch (createError) {
                     logger.error("[UserManager] Failed to create test user:", createError);
                 }
             }
@@ -239,14 +231,12 @@ export class UserManager {
                 if (firebaseUser) {
                     logger.info("User signed in via onAuthStateChanged", { userId: firebaseUser.uid });
                     await this.handleUserSignedIn(firebaseUser);
-                }
-                else {
+                } else {
                     logger.info("User signed out via onAuthStateChanged");
                     this.handleUserSignedOut();
                 }
             });
-        }
-        catch (error) {
+        } catch (error) {
             logger.error("Failed to initialize auth listener:", error);
             // エラーが発生した場合は少し待ってからリトライ
             setTimeout(() => {
@@ -284,8 +274,7 @@ export class UserManager {
             });
 
             logger.debug("handleUserSignedIn completed successfully");
-        }
-        catch (error) {
+        } catch (error) {
             logger.error("Error handling user sign in:", error);
             // エラーが発生した場合は認証失敗として扱う
             this.notifyListeners(null);
@@ -352,8 +341,7 @@ export class UserManager {
             const data = await response.json();
             logger.info("[UserManager] Fluid token received successfully");
             return data;
-        }
-        catch (error) {
+        } catch (error) {
             logger.error("[UserManager] Error getting fluid token:", error);
             throw error;
         }
@@ -366,8 +354,7 @@ export class UserManager {
             if (savedUser) {
                 try {
                     return JSON.parse(savedUser);
-                }
-                catch (e) {
+                } catch (e) {
                     logger.error("[UserManager] Error parsing saved user:", e);
                     localStorage.removeItem("fluidUser");
                 }
@@ -382,8 +369,7 @@ export class UserManager {
             const provider = new GoogleAuthProvider();
             await signInWithPopup(this.auth, provider);
             // 認証状態の変更はonAuthStateChangedで検知される
-        }
-        catch (error) {
+        } catch (error) {
             logger.error("[UserManager] Google login error:", error);
             throw error;
         }
@@ -407,8 +393,7 @@ export class UserManager {
                         userId: userCredential.user.uid,
                     });
                     return;
-                }
-                catch (firebaseError: any) {
+                } catch (firebaseError: any) {
                     logger.warn("[UserManager] Firebase Auth login failed:", firebaseError?.message);
 
                     // ユーザーが存在しない場合は作成を試みる
@@ -420,22 +405,19 @@ export class UserManager {
                                 userId: userCredential.user.uid,
                             });
                             return;
-                        }
-                        catch (createError) {
+                        } catch (createError) {
                             logger.error("[UserManager] Failed to create new user:", createError);
                         }
                     }
                     // すべての方法が失敗した場合は元のエラーをスロー
                     throw firebaseError;
                 }
-            }
-            else {
+            } else {
                 // 本番環境では通常のFirebase認証のみを使用
                 logger.debug("[UserManager] Production environment, using Firebase Auth only");
                 await signInWithEmailAndPassword(this.auth, email, password);
             }
-        }
-        catch (error) {
+        } catch (error) {
             logger.error("[UserManager] Email/password login error:", error);
             throw error;
         }
@@ -446,8 +428,7 @@ export class UserManager {
         try {
             await signOut(this.auth);
             // ログアウト処理はonAuthStateChangedで検知される
-        }
-        catch (error) {
+        } catch (error) {
             logger.error("[UserManager] Logout error:", error);
             throw error;
         }
@@ -521,21 +502,18 @@ export class UserManager {
                         await this.refreshToken();
                         clearTimeout(timeoutId);
                         resolve(this.currentFluidToken);
-                    }
-                    catch (error) {
+                    } catch (error) {
                         logger.error("[UserManager] Failed to get fluid token:", error);
                         clearTimeout(timeoutId);
                         resolve(this.currentFluidToken); // エラー時は現在の状態を返す
-                    }
-                    finally {
+                    } finally {
                         this.isRefreshingToken = false;
                         this.tokenRefreshPromise = null;
                     }
                 });
 
                 return await this.tokenRefreshPromise;
-            }
-            catch (error) {
+            } catch (error) {
                 logger.error("[UserManager] Error in getCurrentFluidToken:", error);
                 this.isRefreshingToken = false;
                 this.tokenRefreshPromise = null;
@@ -603,8 +581,7 @@ export class UserManager {
         // リフレッシュの詳細をログ出力
         if (containerId) {
             logger.info(`[UserManager] Refreshing token specifically for container: ${containerId}`);
-        }
-        else {
+        } else {
             logger.info(`[UserManager] Refreshing token (no specific container)`);
         }
 
@@ -624,19 +601,17 @@ export class UserManager {
 
             if (containerId && this.currentFluidToken.containerId !== containerId) {
                 console.warn(
-                    `[UserManager] Warning: Requested token for container ${containerId} ` +
-                        `but received token for ${this.currentFluidToken.containerId || "unspecified container"}`,
+                    `[UserManager] Warning: Requested token for container ${containerId} `
+                        + `but received token for ${this.currentFluidToken.containerId || "unspecified container"}`,
                 );
             }
 
             return this.currentFluidToken.token;
-        }
-        catch (error) {
+        } catch (error) {
             logger.error("[UserManager] Token refresh failed:", error);
             // エラーを上位に伝播させる
             throw error;
-        }
-        finally {
+        } finally {
             this.isRefreshingToken = false;
             this.tokenRefreshPromise = null;
         }

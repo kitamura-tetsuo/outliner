@@ -5,8 +5,8 @@ description: Use Shift+Alt+Right to expand the current selection to the end of t
 category: selection-range
 status: implemented
 acceptance:
-- If no selection exists, selection starts from the cursor
-- Shift+Alt+Right expands the selection to the end of the line
+  - If no selection exists, selection starts from the cursor
+  - Shift+Alt+Right expands the selection to the end of the line
 tests:
-- client/e2e/core/slr-expand-selection-7d15b501.spec.ts
+  - client/e2e/core/slr-expand-selection-7d15b501.spec.ts
 title-ja: 選択範囲の拡張

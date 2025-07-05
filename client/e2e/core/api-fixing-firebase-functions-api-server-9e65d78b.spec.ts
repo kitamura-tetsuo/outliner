@@ -2,10 +2,7 @@
  *  Title   : Firebase Functions APIサーバーの修正
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("API-0001: Firebase Functions CORS and token validation", () => {
     // API tests don't need page preparation

@@ -2,10 +2,7 @@
  *  Title   : Project-Wide Search & Replace
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SRP-0001: Project-Wide Search & Replace", () => {
@@ -56,8 +53,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             await page.waitForTimeout(3000);
 
             console.log("Additional pages created successfully");
-        }
-        catch (error) {
+        } catch (error) {
             console.error("Error creating additional pages:", error);
             // エラーが発生してもテストを続行（既存のページで検索テストを実行）
         }
@@ -201,7 +197,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
                         // プロジェクトのitemsプロパティを更新してSearchPanelが正しいデータを参照できるようにする
                         // Itemsクラスのような構造を模倣
                         const mockItems = {
-                            [Symbol.iterator]: function* () {
+                            [Symbol.iterator]: function*() {
                                 for (const page of mockPages) {
                                     yield page;
                                 }
@@ -220,12 +216,10 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
                         console.log("Updated project.items with mock pages, length:", mockPages.length);
                         return { success: true, pagesCount: mockPages.length };
-                    }
-                    else {
+                    } else {
                         return { success: false, error: "Project not available" };
                     }
-                }
-                else {
+                } else {
                     return { success: false, error: `Insufficient pages: ${mockPages.length}` };
                 }
             }
@@ -309,8 +303,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
                 // 置換されたページでは"page"が存在しないことを確認
                 expect(page.hasPage).toBe(false);
                 expect(page.hasUpdated).toBe(true);
-            }
-            else if (page.text === "different-content") {
+            } else if (page.text === "different-content") {
                 // "page"を含まないページは置換されないことを確認
                 expect(page.hasPage).toBe(false);
                 expect(page.hasUpdated).toBe(false);

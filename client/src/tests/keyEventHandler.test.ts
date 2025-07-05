@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cursor = {
     altPageUp: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
             setBoxSelection: vi.fn(),
             getTextareaRef: vi.fn(),
             logCursorState: vi.fn(),
-        }
+        },
     };
 });
 

@@ -6,10 +6,7 @@
  */
 
 import { Page } from "@playwright/test";
-import {
-    setupCursorDebugger,
-    waitForCursorVisible,
-} from "../helpers";
+import { setupCursorDebugger, waitForCursorVisible } from "../helpers";
 import { CursorValidator } from "./cursorValidation";
 
 /**
@@ -119,8 +116,7 @@ export async function snapshotComparisonExample(page: Page): Promise<void> {
     try {
         await CursorValidator.compareWithSnapshot(page, snapshot);
         throw new Error("スナップショットが一致してしまいました");
-    }
-    catch (error) {
+    } catch (error) {
         console.log("スナップショットが一致しないことを確認しました");
     }
 }

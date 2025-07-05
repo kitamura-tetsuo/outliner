@@ -2,10 +2,7 @@
  *  Title   : Inline Command Palette
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CMD-0001: Inline Command Palette", () => {
@@ -82,7 +79,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // confirmとinsertメソッドにログを追加
         await page.evaluate(() => {
             const originalConfirm = window.commandPaletteStore.confirm;
-            window.commandPaletteStore.confirm = function () {
+            window.commandPaletteStore.confirm = function() {
                 console.log("CommandPaletteStore.confirm called");
                 console.log("selectedIndex:", this.selectedIndex);
                 console.log("filtered:", this.filtered);
@@ -90,22 +87,20 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                     const result = originalConfirm.call(this);
                     console.log("CommandPaletteStore.confirm completed successfully");
                     return result;
-                }
-                catch (error) {
+                } catch (error) {
                     console.log("CommandPaletteStore.confirm error:", error.message);
                     throw error;
                 }
             };
 
             const originalInsert = window.commandPaletteStore.insert;
-            window.commandPaletteStore.insert = function (type) {
+            window.commandPaletteStore.insert = function(type) {
                 console.log("CommandPaletteStore.insert called with type:", type);
                 try {
                     const result = originalInsert.call(this, type);
                     console.log("CommandPaletteStore.insert completed successfully");
                     return result;
-                }
-                catch (error) {
+                } catch (error) {
                     console.log("CommandPaletteStore.insert error:", error.message);
                     throw error;
                 }

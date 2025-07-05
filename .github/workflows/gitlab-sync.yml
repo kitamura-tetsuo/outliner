@@ -10,7 +10,7 @@ jobs:
       # 1. 完全履歴を取る
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0            # ← 浅い clone を解除
+          fetch-depth: 0 # ← 浅い clone を解除
 
       # 2. Git ユーザ情報
       - name: Git identity
@@ -21,7 +21,7 @@ jobs:
       # 3. GitLab と同期
       - name: Merge-and-push to GitLab
         env:
-          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}   # api 権限 PAT
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }} # api 権限 PAT
         run: |
           git remote add gitlab https://oauth2:${GITLAB_TOKEN}@gitlab.com/kitamura.tetsuo/outliner.git
 

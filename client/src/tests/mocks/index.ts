@@ -1,10 +1,7 @@
 // filepath: /workspace/client/src/tests/mocks/index.ts
 import { vi } from "vitest";
 import * as UserManagerModule from "../../auth/UserManager";
-import {
-    resetMockFirestore,
-    setupMockFirestore,
-} from "./firestoreMock";
+import { resetMockFirestore, setupMockFirestore } from "./firestoreMock";
 
 // Mock for UserManager
 const mockUserManager = {

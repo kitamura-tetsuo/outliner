@@ -2,10 +2,7 @@
  *  Title   : SharedTreeデータ検証ユーティリティのテスト
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "./testHelpers";
 import { TreeValidator } from "./treeValidation";
 
@@ -119,8 +116,7 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
             await TreeValidator.compareWithSnapshot(page, snapshot);
             // ここに到達したら失敗
             expect(false).toBeTruthy();
-        }
-        catch (error) {
+        } catch (error) {
             // エラーが発生することを期待
             expect(error).toBeTruthy();
         }
@@ -131,8 +127,7 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
             await TreeValidator.compareWithSnapshot(page, snapshot, ["items.0.items.2"]);
             // ここに到達したら失敗
             expect(false).toBeTruthy();
-        }
-        catch (error) {
+        } catch (error) {
             // エラーが発生することを期待
             expect(error).toBeTruthy();
         }

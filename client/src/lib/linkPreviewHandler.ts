@@ -153,8 +153,7 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
             }
 
             itemsDiv.appendChild(ul);
-        }
-        else {
+        } else {
             // アイテムがない場合
             const emptyP = document.createElement("p");
             emptyP.textContent = "このページには内容がありません";
@@ -166,8 +165,7 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
 
         contentDiv.appendChild(itemsDiv);
         previewElement.appendChild(contentDiv);
-    }
-    else {
+    } else {
         // ページが見つからない場合
         const notFoundDiv = document.createElement("div");
         notFoundDiv.style.color = "#d32f2f";
@@ -342,8 +340,7 @@ export function setupLinkPreviewHandlers(): void {
         }
 
         logger.info(`Link preview handlers set up for ${internalLinks.length} links`);
-    }
-    catch (error) {
+    } catch (error) {
         logger.error("Error setting up link preview handlers:", error);
     }
 }
@@ -391,9 +388,9 @@ function setupMutationObserver(): void {
 
                 // 属性の変更を処理（クラスが変更された場合など）
                 if (
-                    mutation.type === "attributes" &&
-                    mutation.attributeName === "class" &&
-                    mutation.target.nodeType === Node.ELEMENT_NODE
+                    mutation.type === "attributes"
+                    && mutation.attributeName === "class"
+                    && mutation.target.nodeType === Node.ELEMENT_NODE
                 ) {
                     const element = mutation.target as Element;
                     if (element.classList && element.classList.contains("internal-link")) {
@@ -417,8 +414,7 @@ function setupMutationObserver(): void {
         });
 
         logger.info("MutationObserver for link preview handlers set up");
-    }
-    catch (error) {
+    } catch (error) {
         logger.error("Error setting up MutationObserver:", error);
     }
 }

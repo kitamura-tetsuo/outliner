@@ -2,10 +2,7 @@
  *  Title   : 選択範囲の拡張
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0011: 選択範囲の拡張", () => {
@@ -77,8 +74,7 @@ test.describe("SLR-0011: 選択範囲の拡張", () => {
 
             // 基本的な選択が動作することを確認
             expect(basicSelectionState.selectedText).toBe("Hello World");
-        }
-        else {
+        } else {
             // 選択範囲拡張機能が実装されている場合
             await expect(page.locator(".editor-overlay .selection")).toBeVisible();
             expect(afterSelectionState.selectedText).toBe("Hello World");

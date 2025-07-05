@@ -3,10 +3,7 @@
  *  Source  : docs/client-features.yaml
  */
 
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 // テストのタイムアウトを設定
@@ -67,7 +64,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         // カーソルの状態を確認し、必要に応じて作成
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
-            if (!editorStore) return { error: 'editorOverlayStore not found' };
+            if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
             const cursorInstances = editorStore.getCursorInstances();
@@ -89,7 +86,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
                             itemId: activeItemId,
                             offset: 0,
                             isActive: true,
-                            userId: 'local'
+                            userId: "local",
                         });
                     }
                 }
@@ -106,7 +103,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
                     // 既存のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
-                        target.updateText('');
+                        target.updateText("");
                         cursor.offset = 0;
                     }
                     // 複数のフォーマットを含むテキストを挿入
@@ -174,7 +171,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         // カーソルの状態を確認し、必要に応じて作成
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
-            if (!editorStore) return { error: 'editorOverlayStore not found' };
+            if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
             const cursorInstances = editorStore.getCursorInstances();
@@ -196,7 +193,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
                             itemId: activeItemId,
                             offset: 0,
                             isActive: true,
-                            userId: 'local'
+                            userId: "local",
                         });
                     }
                 }
@@ -213,7 +210,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
                     // 既存のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
-                        target.updateText('');
+                        target.updateText("");
                         cursor.offset = 0;
                     }
                     // フォーマットを含むテキストを挿入

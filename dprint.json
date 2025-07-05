@@ -1,31 +1,12 @@
 {
-    // If updating this, also update the config in dtsBundler.mjs.
     "indentWidth": 4,
     "lineWidth": 120,
     "newLineKind": "auto",
     "useTabs": false,
     "typescript": {
-        "newLineKind": "crlf",
         "semiColons": "always",
         "quoteStyle": "preferDouble",
-        "quoteProps": "consistent",
-        "useBraces": "whenNotSingleLine",
-        "bracePosition": "sameLineUnlessHanging",
-        "singleBodyPosition": "sameLine",
-        "nextControlFlowPosition": "nextLine", // Stroustrup style braces.
-        "trailingCommas": "onlyMultiLine",
-        "preferHanging": false,
-        "operatorPosition": "maintain",
-        "arrowFunction.useParentheses": "preferNone",
-        "conditionalExpression.linePerExpression": false, // Keep our "match/case"-ish conditionals.
-        "functionExpression.spaceAfterFunctionKeyword": true,
-        "importDeclaration.forceMultiLine": "whenMultiple",
-        "constructorType.spaceAfterNewKeyword": true,
-        "constructSignature.spaceAfterNewKeyword": true,
-        "module.sortImportDeclarations": "caseInsensitive",
-        "module.sortExportDeclarations": "caseInsensitive",
-        "exportDeclaration.sortNamedExports": "caseInsensitive",
-        "importDeclaration.sortNamedImports": "caseInsensitive"
+        "trailingCommas": "onlyMultiLine"
     },
     "yaml": {
         "indentWidth": 2,
@@ -43,7 +24,9 @@
         "internal/**",
         "**/*.generated.*",
         "scripts/*.d.*",
-        "**/_namespaces/**"
+        "**/_namespaces/**",
+        "**/*.svelte",
+        "**/*.html"
     ],
     "toml": {},
     "dockerfile": {},

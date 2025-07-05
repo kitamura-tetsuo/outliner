@@ -2,10 +2,7 @@
  *  Title   : ボックス選択（矩形選択）機能 - キーボード
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
@@ -35,8 +32,7 @@ test.describe("選択範囲管理テスト", () => {
             await page.evaluate(() => {
                 (window as any).DEBUG_MODE = true;
             });
-        }
-        catch (error) {
+        } catch (error) {
             console.log(`デバッグモード設定中にエラーが発生しました: ${error}`);
         }
 
@@ -114,13 +110,12 @@ test.describe("選択範囲管理テスト", () => {
         // 明示的にcancelBoxSelectionを呼び出す
         await page.evaluate(() => {
             if (
-                (window as any).KeyEventHandler &&
-                typeof (window as any).KeyEventHandler.cancelBoxSelection === "function"
+                (window as any).KeyEventHandler
+                && typeof (window as any).KeyEventHandler.cancelBoxSelection === "function"
             ) {
                 (window as any).KeyEventHandler.cancelBoxSelection();
                 console.log("Explicitly called KeyEventHandler.cancelBoxSelection()");
-            }
-            else {
+            } else {
                 console.log("KeyEventHandler.cancelBoxSelection not available");
             }
 

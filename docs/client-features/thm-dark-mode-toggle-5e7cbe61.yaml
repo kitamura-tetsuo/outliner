@@ -5,6 +5,6 @@ description: User can switch between light and dark themes.
 category: ui
 status: implemented
 tests:
-- client/e2e/core/thm-dark-mode-toggle-5e7cbe61.spec.ts
+  - client/e2e/core/thm-dark-mode-toggle-5e7cbe61.spec.ts
 acceptance:
-- アプリ全体でダークテーマとライトテーマを切り替えられる
+  - アプリ全体でダークテーマとライトテーマを切り替えられる

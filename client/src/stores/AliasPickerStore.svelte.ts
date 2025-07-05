@@ -1,7 +1,4 @@
-import type {
-    Item,
-    Items,
-} from "../schema/app-schema";
+import type { Item, Items } from "../schema/app-schema";
 import { store as generalStore } from "./store.svelte";
 
 interface Option {
@@ -73,12 +70,10 @@ class AliasPickerStore {
             if (item) {
                 (item as any).aliasTargetId = option.id;
                 console.log("AliasPickerStore set aliasTargetId:", option.id);
-            }
-            else {
+            } else {
                 console.error("AliasPickerStore: Item not found:", this.itemId);
             }
-        }
-        catch (error) {
+        } catch (error) {
             console.error("AliasPickerStore error finding item:", error);
         }
 
@@ -93,8 +88,7 @@ class AliasPickerStore {
         console.log("AliasPickerStore found option:", opt);
         if (opt) {
             this.confirm(opt.path);
-        }
-        else {
+        } else {
             console.log("AliasPickerStore option not found for id:", id);
         }
     }

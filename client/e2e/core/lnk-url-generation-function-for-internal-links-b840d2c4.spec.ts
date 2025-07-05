@@ -2,10 +2,7 @@
  *  Title   : 内部リンクのURL生成機能
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
@@ -182,8 +179,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
                 if (itemTextCount > 0) {
                     try {
                         itemTextHTML = await item.locator(".item-text").innerHTML({ timeout: 5000 });
-                    }
-                    catch (error) {
+                    } catch (error) {
                         console.log(`Failed to get .item-text HTML for item ${i}:`, error);
                     }
                 }
@@ -193,18 +189,17 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
                     textContent: textContent.substring(0, 100),
                     hasItemText: itemTextCount > 0,
                     itemTextHTML: itemTextHTML, // 完全なHTMLを保持
-                    hasTestPageText: textContent.includes(`[${actualPageName}]`) ||
-                        textContent.includes(actualPageName),
-                    hasProjectPageText: textContent.includes("[/project-name/page-name]") ||
-                        textContent.includes("project-name/page-name"),
+                    hasTestPageText: textContent.includes(`[${actualPageName}]`)
+                        || textContent.includes(actualPageName),
+                    hasProjectPageText: textContent.includes("[/project-name/page-name]")
+                        || textContent.includes("project-name/page-name"),
                     hasInternalLink: itemTextHTML.includes("internal-link"),
                     hasHref: itemTextHTML.includes("href="),
                 };
 
                 console.log(`Item ${i}:`, result);
                 linkCheckResult.push(result);
-            }
-            catch (error) {
+            } catch (error) {
                 console.log(`Failed to process item ${i}:`, error);
                 linkCheckResult.push({
                     index: i,
@@ -228,8 +223,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
             expect(linkItemResult.itemTextHTML).toContain("internal-link");
             expect(linkItemResult.itemTextHTML).toContain(actualPageName);
             expect(linkItemResult.itemTextHTML).toContain(`href="/${actualPageName}"`);
-        }
-        else {
+        } else {
             // 内部リンクが見つからない場合、詳細情報を表示
             const itemsWithTestPage = linkCheckResult.filter(r => r.hasTestPageText);
             console.log("Items with test page text but no internal link:", itemsWithTestPage);
@@ -243,14 +237,12 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
             if (secondItemResult.hasItemText) {
                 expect(secondItemResult.itemTextHTML).toContain("project-name/page-name");
                 expect(secondItemResult.itemTextHTML).toContain('href="/project-name/page-name"');
-            }
-            else {
+            } else {
                 console.log("Warning: .item-text element not found for project link, but text content exists");
                 // .item-text要素がない場合でも、テキストが存在すれば成功とみなす
                 expect(secondItemResult.textContent).toContain("project-name/page-name");
             }
-        }
-        else {
+        } else {
             throw new Error("No item found with [/project-name/page-name] text");
         }
     });

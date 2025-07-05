@@ -2,10 +2,7 @@
  *  Title   : Graph View visualization
  *  Source  : docs/client-features/grv-graph-view-34a26488.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("GRV-0001: Graph View navigation", () => {
@@ -60,10 +57,9 @@ test.describe("GRV-0001: Graph View navigation", () => {
             if (!chart) return false;
             try {
                 const option = chart.getOption();
-                return option && option.series && option.series[0] &&
-                    option.series[0].data && option.series[0].data.length > 0;
-            }
-            catch (error) {
+                return option && option.series && option.series[0]
+                    && option.series[0].data && option.series[0].data.length > 0;
+            } catch (error) {
                 return false;
             }
         }, { timeout: 5000 });

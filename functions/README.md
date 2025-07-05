@@ -2,16 +2,20 @@
 
 ## 概要
 
-このディレクトリには、Outlinerアプリケーションで使用するFirebase Functionsが含まれています。
-主な機能は以下の通りです：
+このディレクトリには、Outlinerアプリケーションで使用するFirebase
+Functionsが含まれています。 主な機能は以下の通りです：
 
-1. `/api/fluid-token` - Firebase認証トークンを検証し、Azure Fluid RelayのJWTトークンを生成するエンドポイント
+1. `/api/fluid-token` - Firebase認証トークンを検証し、Azure Fluid
+   RelayのJWTトークンを生成するエンドポイント
 2. `/api/save-container` - ユーザーのコンテナIDを保存するエンドポイント
-3. `/api/get-user-containers` - ユーザーがアクセス可能なコンテナIDのリストを取得するエンドポイント
+3. `/api/get-user-containers` -
+   ユーザーがアクセス可能なコンテナIDのリストを取得するエンドポイント
 4. `/health` - ヘルスチェックエンドポイント
-5. `/api/create-schedule` - 指定したページに公開スケジュールを登録するエンドポイント
+5. `/api/create-schedule` -
+   指定したページに公開スケジュールを登録するエンドポイント
 6. `/api/update-schedule` - 既存のスケジュールを更新するエンドポイント
-7. `/api/list-schedules` - ユーザーが作成したスケジュール一覧を取得するエンドポイント
+7. `/api/list-schedules` -
+   ユーザーが作成したスケジュール一覧を取得するエンドポイント
 8. `/api/cancel-schedule` - スケジュールをキャンセルするエンドポイント
 
 ### サンプル
@@ -25,6 +29,7 @@ curl -X POST http://localhost:57000/api/cancel-schedule \
   -H 'Content-Type: application/json' \
   -d '{"idToken":"<ID_TOKEN>","pageId":"<PAGE_ID>","scheduleId":"<SCHEDULE_ID>"}'
 ```
+
 ## セットアップ
 
 1. 依存関係をインストール:
@@ -80,4 +85,5 @@ firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="h
 
 - Firebase Functionsは、Node.js 22ランタイムを使用しています
 - 本番環境では、適切なセキュリティルールを設定してください
-- Azure Fluid Relay設定は、Firebase Functionsの環境変数として設定する必要があります
+- Azure Fluid Relay設定は、Firebase
+  Functionsの環境変数として設定する必要があります

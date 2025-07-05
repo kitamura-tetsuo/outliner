@@ -4,21 +4,21 @@ description: 存在しないページへのリンクをクリックした場合�
 category: navigation
 status: implemented
 acceptance:
-- 仮ページが保存された後は、通常のページとして扱われる
-- 仮ページであることを示すUIは表示されない（非表示設定）
-- 仮ページにアクセスしただけでは、ページは作成されない
-- 仮ページの通知UIは非表示になっている
-- 仮ページを編集した場合のみ、実際のページとして保存される
-- 存在しないページへのリンクをクリックした場合、仮ページを表示する
+  - 仮ページが保存された後は、通常のページとして扱われる
+  - 仮ページであることを示すUIは表示されない（非表示設定）
+  - 仮ページにアクセスしただけでは、ページは作成されない
+  - 仮ページの通知UIは非表示になっている
+  - 仮ページを編集した場合のみ、実際のページとして保存される
+  - 存在しないページへのリンクをクリックした場合、仮ページを表示する
 tests:
-- client/e2e/core/lnk-temporary-page-display-08bbbbfc.spec.ts
-- client/e2e/core/lnk-temporary-page-edit-save-08bbbbfc.spec.ts
-- client/e2e/core/lnk-temporary-page-no-create-08bbbbfc.spec.ts
-- client/e2e/core/lnk-temporary-page-notice-buttons-08bbbbfc.spec.ts
-- client/e2e/core/lnk-temporary-page-notice-hidden-08bbbbfc.spec.ts
+  - client/e2e/core/lnk-temporary-page-display-08bbbbfc.spec.ts
+  - client/e2e/core/lnk-temporary-page-edit-save-08bbbbfc.spec.ts
+  - client/e2e/core/lnk-temporary-page-no-create-08bbbbfc.spec.ts
+  - client/e2e/core/lnk-temporary-page-notice-buttons-08bbbbfc.spec.ts
+  - client/e2e/core/lnk-temporary-page-notice-hidden-08bbbbfc.spec.ts
 testcases:
-- 存在しないページへのリンクをクリックした場合に仮ページが表示される
-- 仮ページを編集した場合に実際のページとして保存される
-- 仮ページにアクセスしただけではページが作成されないことを確認
-- 仮ページの通知UIが非表示になっている
+  - 存在しないページへのリンクをクリックした場合に仮ページが表示される
+  - 仮ページを編集した場合に実際のページとして保存される
+  - 仮ページにアクセスしただけではページが作成されないことを確認
+  - 仮ページの通知UIが非表示になっている
 title-ja: 仮ページ機能

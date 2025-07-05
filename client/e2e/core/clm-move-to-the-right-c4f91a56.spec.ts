@@ -2,10 +2,7 @@
  *  Title   : 右へ移動
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
@@ -21,8 +18,7 @@ test.describe("CLM-0003: 右へ移動", () => {
         if (await item.count() === 0) {
             // 画面に表示されているアイテムを取得
             await page.locator(".outliner-item").first().locator(".item-content").click({ force: true });
-        }
-        else {
+        } else {
             await item.locator(".item-content").click({ force: true });
         }
 

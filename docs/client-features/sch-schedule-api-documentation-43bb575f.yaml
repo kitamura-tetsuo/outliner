@@ -4,12 +4,12 @@ description: README describes schedule management endpoints and example usage.
 category: publishing
 status: implemented
 acceptance:
-- README lists /api/create-schedule, /api/update-schedule, /api/list-schedules and /api/cancel-schedule
-- README shows sample curl requests for creating and cancelling schedules
+  - README lists /api/create-schedule, /api/update-schedule, /api/list-schedules and /api/cancel-schedule
+  - README shows sample curl requests for creating and cancelling schedules
 components:
-- functions/README.md
-- functions/index.js
+  - functions/README.md
+  - functions/index.js
 tests:
-- functions/test/schedule-management.test.js
-- functions/test/scheduled-publishing.test.js
+  - functions/test/schedule-management.test.js
+  - functions/test/scheduled-publishing.test.js
 title-ja: スケジュール管理APIのドキュメント

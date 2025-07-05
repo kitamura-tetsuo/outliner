@@ -67,8 +67,7 @@ export class TreeValidator {
 
                 return hasFluidClient;
             }, { timeout });
-        }
-        catch (error) {
+        } catch (error) {
             console.error("TreeValidator: FluidClient not ready within timeout", error);
             throw new Error(`FluidClient not ready within ${timeout}ms`);
         }
@@ -98,8 +97,7 @@ export class TreeValidator {
                     for (const part of parts) {
                         if (current && typeof current === "object" && part in current) {
                             current = current[part];
-                        }
-                        else {
+                        } else {
                             return undefined;
                         }
                     }
@@ -131,8 +129,7 @@ export class TreeValidator {
                     for (const part of parts) {
                         if (current && typeof current === "object" && part in current) {
                             current = current[part];
-                        }
-                        else {
+                        } else {
                             return undefined;
                         }
                     }
@@ -274,8 +271,7 @@ export class TreeValidator {
         if (strict) {
             // 厳密比較モード - 完全に一致する必要がある
             expect(JSON.stringify(treeData)).toBe(JSON.stringify(expectedData));
-        }
-        else {
+        } else {
             // 部分比較モード - 期待値のプロパティが全て含まれていればOK
             this.assertObjectContains(treeData, expectedData);
         }

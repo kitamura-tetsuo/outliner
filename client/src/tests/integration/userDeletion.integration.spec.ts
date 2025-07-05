@@ -2,13 +2,7 @@
  *  Title   : ユーザー削除機能 - Integration Test
  *  Source  : docs/client-features.yaml
  */
-import {
-    afterEach,
-    beforeEach,
-    describe,
-    expect,
-    it,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 /**
  * ユーザー削除機能のIntegration Test
@@ -132,8 +126,7 @@ class IntegrationTestHelper {
             });
 
             return response.ok;
-        }
-        catch {
+        } catch {
             return false;
         }
     }
@@ -168,8 +161,7 @@ describe("User Deletion - Integration Tests", () => {
 
             user1Token = await helper.authenticateUser(testUser1);
             user2Token = await helper.authenticateUser(testUser2);
-        }
-        catch (error) {
+        } catch (error) {
             console.log("Setup failed, skipping test:", error);
             return;
         }
@@ -179,8 +171,7 @@ describe("User Deletion - Integration Tests", () => {
         // テストユーザーをクリーンアップ（削除テストで削除されていない場合）
         try {
             if (user2Token) await helper.deleteUser(user2Token);
-        }
-        catch (error) {
+        } catch (error) {
             console.log("Cleanup failed:", error);
         }
     });

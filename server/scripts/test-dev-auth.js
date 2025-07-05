@@ -98,12 +98,10 @@ async function testEmailPasswordLogin() {
             console.log(`${colors.cyan}===================================================${colors.reset}`);
             console.log(`${colors.cyan}テスト結果: 成功${colors.reset}`);
             console.log(`${colors.cyan}===================================================${colors.reset}`);
-        }
-        else {
+        } else {
             console.error(`${colors.red}トークンが返されませんでした${colors.reset}`);
         }
-    }
-    catch (error) {
+    } catch (error) {
         console.error(`${colors.red}テスト中にエラーが発生しました:${colors.reset}`, error);
     }
 }

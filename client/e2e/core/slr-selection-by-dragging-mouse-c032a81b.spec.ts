@@ -2,10 +2,7 @@
  *  Title   : マウスドラッグによる選択
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0004: マウスドラッグによる選択", () => {

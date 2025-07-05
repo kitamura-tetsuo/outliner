@@ -2,14 +2,8 @@
  *  Title   : プロジェクトタイトルからFluidClientを取得する機能
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
-import {
-    FluidServiceHelper,
-    TestHelpers,
-} from "../utils/testHelpers";
+import { expect, test } from "@playwright/test";
+import { FluidServiceHelper, TestHelpers } from "../utils/testHelpers";
 
 /**
  * FLD-0001: プロジェクトタイトルからFluidClientを取得する機能のテスト
@@ -52,8 +46,7 @@ test.describe("FLD-0001: プロジェクトタイトルからFluidClientを取�
             await FluidServiceHelper.getFluidClientByProjectTitle(page, "");
             // エラーが発生しなかった場合はテスト失敗
             expect(true).toBe(false);
-        }
-        catch (error) {
+        } catch (error) {
             // エラーメッセージを確認（page.evaluateのエラーメッセージ形式を考慮）
             expect(error.message).toContain("プロジェクトタイトルが指定されていません");
         }

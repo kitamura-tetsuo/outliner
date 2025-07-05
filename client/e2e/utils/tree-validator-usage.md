@@ -97,8 +97,7 @@ await page.waitForTimeout(500);
 try {
     await TreeValidator.compareWithSnapshot(page, snapshot);
     throw new Error("スナップショットが一致してしまいました");
-}
-catch (error) {
+} catch (error) {
     console.log("スナップショットが一致しないことを確認しました");
 }
 ```
@@ -123,8 +122,7 @@ try {
     // 新しく追加されたアイテムのパスを無視
     await TreeValidator.compareWithSnapshot(page, snapshot, ["items.0.items.2"]);
     console.log("無視したパス以外は一致しました");
-}
-catch (error) {
+} catch (error) {
     console.error("無視したパス以外も変更されています");
 }
 ```

@@ -5,8 +5,8 @@ description: カーソル位置から行の先頭までを選択します。
 category: selection-range
 status: implemented
 acceptance:
-- Shift + Homeで現在位置から行頭までを選択する
-- 複数行のアイテムでは、現在のカーソルがある行の先頭までを選択する
+  - Shift + Homeで現在位置から行頭までを選択する
+  - 複数行のアイテムでは、現在のカーソルがある行の先頭までを選択する
 tests:
-- client/e2e/core/slr-select-up-to-the-beginning-of-the-line-6c287e80.spec.ts
+  - client/e2e/core/slr-select-up-to-the-beginning-of-the-line-6c287e80.spec.ts
 title-ja: 行頭まで選択

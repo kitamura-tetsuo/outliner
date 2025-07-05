@@ -2,13 +2,7 @@
  *  Title   : コンテナ削除機能 - Integration Test
  *  Source  : docs/client-features.yaml
  */
-import {
-    afterEach,
-    beforeEach,
-    describe,
-    expect,
-    it,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 /**
  * コンテナ削除機能のIntegration Test
@@ -163,8 +157,7 @@ describe("Container Deletion - Integration Tests", () => {
 
             user1Token = await helper.authenticateUser(testUser1);
             user2Token = await helper.authenticateUser(testUser2);
-        }
-        catch (error) {
+        } catch (error) {
             console.log("Setup failed, skipping test:", error);
             return;
         }
@@ -175,8 +168,7 @@ describe("Container Deletion - Integration Tests", () => {
         try {
             if (user1Token) await helper.deleteUser(user1Token);
             if (user2Token) await helper.deleteUser(user2Token);
-        }
-        catch (error) {
+        } catch (error) {
             console.log("Cleanup failed:", error);
         }
     });

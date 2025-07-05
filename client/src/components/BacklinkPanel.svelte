@@ -1,8 +1,14 @@
 <script lang="ts">
-import { onMount, onDestroy } from "svelte";
-import { getLogger } from "$lib/logger";
-import { collectBacklinks, type Backlink } from "$lib/backlinkCollector";
 import { goto } from "$app/navigation";
+import {
+    type Backlink,
+    collectBacklinks,
+} from "$lib/backlinkCollector";
+import { getLogger } from "$lib/logger";
+import {
+    onDestroy,
+    onMount,
+} from "svelte";
 
 const logger = getLogger("BacklinkPanel");
 
@@ -22,19 +28,21 @@ let error = $state<string | null>(null);
 // バックリンクを読み込む
 async function loadBacklinks() {
     if (!pageName) return;
-    
+
     isLoading = true;
     error = null;
-    
+
     try {
         // バックリンクを収集
         backlinks = collectBacklinks(pageName);
         logger.info(`Loaded ${backlinks.length} backlinks for page: ${pageName}`);
-    } catch (err) {
+    }
+    catch (err) {
         logger.error("Failed to load backlinks:", err);
         error = "バックリンクの読み込みに失敗しました";
         backlinks = [];
-    } finally {
+    }
+    finally {
         isLoading = false;
     }
 }
@@ -42,7 +50,7 @@ async function loadBacklinks() {
 // パネルの開閉を切り替える
 function togglePanel() {
     isOpen = !isOpen;
-    
+
     if (isOpen && backlinks.length === 0) {
         loadBacklinks();
     }
@@ -53,7 +61,8 @@ function navigateToPage(pageId: string, pageName: string) {
     if (!projectName) {
         // プロジェクト名が指定されていない場合は現在のプロジェクトを使用
         goto(`/${pageName}`);
-    } else {
+    }
+    else {
         goto(`/${projectName}/${pageName}`);
     }
 }
@@ -76,16 +85,16 @@ onDestroy(() => {
 </script>
 
 <div class="backlink-panel">
-    <button 
+    <button
         onclick={togglePanel}
         class="backlink-toggle-button"
         class:active={isOpen}
     >
         <span class="backlink-count">{backlinks.length}</span>
         <span class="backlink-label">バックリンク</span>
-        <span class="toggle-icon">{isOpen ? '▼' : '▶'}</span>
+        <span class="toggle-icon">{isOpen ? "▼" : "▶"}</span>
     </button>
-    
+
     {#if isOpen}
         <div class="backlink-content">
             <div class="backlink-header">
@@ -94,7 +103,7 @@ onDestroy(() => {
                     ↻
                 </button>
             </div>
-            
+
             {#if isLoading}
                 <div class="backlink-loading">
                     <div class="loader"></div>
@@ -113,8 +122,8 @@ onDestroy(() => {
                     {#each backlinks as backlink}
                         <li class="backlink-item">
                             <div class="backlink-source">
-                                <a 
-                                    href="javascript:void(0)" 
+                                <a
+                                    href="javascript:void(0)"
                                     onclick={() => navigateToPage(backlink.sourcePageId, backlink.sourcePageName)}
                                     class="source-page-link"
                                 >
@@ -245,8 +254,12 @@ onDestroy(() => {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .backlink-list {
@@ -297,18 +310,18 @@ onDestroy(() => {
 // コンテキスト内のリンクをハイライトする
 function highlightLinkInContext(context: string, pageName: string): string {
     if (!context || !pageName) return context;
-    
+
     // 内部リンクの正規表現パターン
-    const internalLinkPattern = new RegExp(`\\[(${escapeHtml(pageName)})\\]`, 'gi');
-    
+    const internalLinkPattern = new RegExp(`\\[(${escapeHtml(pageName)})\\]`, "gi");
+
     // プロジェクト内部リンクの正規表現パターン
-    const projectLinkPattern = new RegExp(`\\[\\/[^/]+\\/(${escapeHtml(pageName)})\\]`, 'gi');
-    
+    const projectLinkPattern = new RegExp(`\\[\\/[^/]+\\/(${escapeHtml(pageName)})\\]`, "gi");
+
     // リンクをハイライト
     let result = context
         .replace(internalLinkPattern, '<span class="highlight">[$1]</span>')
         .replace(projectLinkPattern, '<span class="highlight">[/project/$1]</span>');
-    
+
     return result;
 }
 

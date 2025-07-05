@@ -1,8 +1,4 @@
-import {
-    chromium,
-    expect,
-    test,
-} from "@playwright/test";
+import { chromium, expect, test } from "@playwright/test";
 
 test.describe("Chromium Debug Test", () => {
     test("can launch browser and create context", async () => {
@@ -75,8 +71,7 @@ test.describe("Chromium Debug Test", () => {
 
             // ページが正常に読み込まれたことを確認
             expect(title).toBeTruthy();
-        }
-        catch (error) {
+        } catch (error) {
             console.log("Debug: Navigation error:", error);
             throw error;
         }

@@ -4,10 +4,10 @@ description: 保存されたデータをグラフ表示するチャートコン�
 category: visualization
 status: implemented
 components:
-- src/components/ChartComponent.svelte
+  - src/components/ChartComponent.svelte
 tests:
-- client/e2e/core/cht-chart-component-1b7a8eff.spec.ts
+  - client/e2e/core/cht-chart-component-1b7a8eff.spec.ts
 acceptance:
-- データをグラフで表示する
-- データ更新時にグラフが自動更新される
+  - データをグラフで表示する
+  - データ更新時にグラフが自動更新される
 title-ja: チャートコンポーネント

@@ -4,10 +4,10 @@ description: 'scripts/codex-setup.sh creates a sentinel file after running once 
 
   dependency installation on subsequent runs, making repeat executions faster.
 
-  '
+'
 category: environment
 status: implemented
 components: []
 tests:
-- scripts/tests/env-setup-script-caches-installation-edcef4b8.spec.ts
+  - scripts/tests/env-setup-script-caches-installation-edcef4b8.spec.ts
 title-ja: Setup script caches installation

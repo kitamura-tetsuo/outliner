@@ -1,10 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import {
-    expect,
-    test,
-} from "vitest";
+import { expect, test } from "vitest";
 
 /** @feature ENV-0006
  *  Title   : Inline test annotations and job summary in CI

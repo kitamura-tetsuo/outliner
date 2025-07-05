@@ -4,26 +4,26 @@ description: SQL query results editable via Fluid Framework and SQLite cache
 category: table
 status: implemented
 components:
-- src/components/ChartPanel.svelte
-- src/components/EditableQueryGrid.svelte
-- src/components/QueryEditor.svelte
+  - src/components/ChartPanel.svelte
+  - src/components/EditableQueryGrid.svelte
+  - src/components/QueryEditor.svelte
 services:
-- src/services/sqlService.ts
-- src/services/editMapper.ts
-- src/services/syncWorker.ts
+  - src/services/sqlService.ts
+  - src/services/editMapper.ts
+  - src/services/syncWorker.ts
 tests:
-- client/e2e/new/TBL-0001.spec.ts
-- src/tests/editMapper.test.ts
-- src/tests/sqlService.test.ts
-- src/tests/syncWorker.test.ts
+  - client/e2e/new/TBL-0001.spec.ts
+  - src/tests/editMapper.test.ts
+  - src/tests/sqlService.test.ts
+  - src/tests/syncWorker.test.ts
 acceptance:
-- JOINクエリで編集した値が正しいテーブルに反映される
-- PKエイリアスを利用してJOIN結果の各行が編集対象テーブルに正しくマッピングされる
-- SQLクエリ結果をグリッド表示する
-- クエリ実行後、ChartPanelが表示される
-- セル編集後、ChartPanelに変更が表示される
-- セル編集後、queryStoreのデータが更新される
-- セル編集後に再実行したクエリ結果も更新される
-- 編集内容がFluid経由で同期される
-- 編集後チャートが自動更新される
+  - JOINクエリで編集した値が正しいテーブルに反映される
+  - PKエイリアスを利用してJOIN結果の各行が編集対象テーブルに正しくマッピングされる
+  - SQLクエリ結果をグリッド表示する
+  - クエリ実行後、ChartPanelが表示される
+  - セル編集後、ChartPanelに変更が表示される
+  - セル編集後、queryStoreのデータが更新される
+  - セル編集後に再実行したクエリ結果も更新される
+  - 編集内容がFluid経由で同期される
+  - 編集後チャートが自動更新される
 title-ja: 編集可能な結合テーブル

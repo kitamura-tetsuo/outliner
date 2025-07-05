@@ -1,18 +1,6 @@
-import {
-    describe,
-    expect,
-    it,
-} from "vitest";
-import {
-    replaceAll,
-    replaceFirst,
-    searchItems,
-} from "../lib/search";
-import {
-    Item,
-    Items,
-    Project,
-} from "../schema/app-schema";
+import { describe, expect, it } from "vitest";
+import { replaceAll, replaceFirst, searchItems } from "../lib/search";
+import { Item, Items, Project } from "../schema/app-schema";
 
 function setupTree() {
     const project = Project.createInstance("Test");

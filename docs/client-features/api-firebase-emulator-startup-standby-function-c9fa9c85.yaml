@@ -4,17 +4,17 @@ description: Firebase emulatorの起動を待つリトライ機能により、EC
 category: api-server
 status: implemented
 acceptance:
-- ECONNREFUSED エラーが発生した場合、指数バックオフでリトライする
-- ECONNREFUSED以外のエラーは即座に失敗とする
-- Firebase Auth emulatorへの接続テストを行い、成功するまで待機する
-- Firebase emulator環境変数が設定されている場合、emulatorの起動を待機する
-- emulator環境でない場合は待機をスキップする
-- リトライ回数と遅延時間をログに出力する
-- 接続成功時にユーザー数とユーザー情報をログに出力する
-- 最大30回のリトライを行い、初期遅延1秒、最大遅延10秒で待機する
+  - ECONNREFUSED エラーが発生した場合、指数バックオフでリトライする
+  - ECONNREFUSED以外のエラーは即座に失敗とする
+  - Firebase Auth emulatorへの接続テストを行い、成功するまで待機する
+  - Firebase emulator環境変数が設定されている場合、emulatorの起動を待機する
+  - emulator環境でない場合は待機をスキップする
+  - リトライ回数と遅延時間をログに出力する
+  - 接続成功時にユーザー数とユーザー情報をログに出力する
+  - 最大30回のリトライを行い、初期遅延1秒、最大遅延10秒で待機する
 tests:
-- client/e2e/core/api-firebase-emulator-startup-standby-function-c9fa9c85.spec.ts
-- server/tests/log-service-emulator-wait.test.js
+  - client/e2e/core/api-firebase-emulator-startup-standby-function-c9fa9c85.spec.ts
+  - server/tests/log-service-emulator-wait.test.js
 components:
-- server/log-service.js
+  - server/log-service.js
 title-ja: Firebase emulator起動待機機能

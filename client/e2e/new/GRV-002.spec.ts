@@ -2,10 +2,7 @@
  *  Title   : Graph View visualization
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
 import { TestHelpers } from "../utils/testHelpers";
@@ -53,8 +50,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                 });
 
                 return { success: true, chartCreated: true };
-            }
-            catch (error) {
+            } catch (error) {
                 return { success: false, error: error.message };
             }
         });
@@ -111,12 +107,10 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                         }],
                     });
                     return { success: true, nodesCount: nodes.length };
-                }
-                else {
+                } else {
                     return { success: false, error: "Store not available" };
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 return { success: false, error: error.message };
             }
         });
@@ -130,10 +124,9 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
             if (!chart) return false;
             try {
                 const option = chart.getOption();
-                return option && option.series && option.series[0] && option.series[0].data &&
-                    option.series[0].data.length >= 1;
-            }
-            catch (error) {
+                return option && option.series && option.series[0] && option.series[0].data
+                    && option.series[0].data.length >= 1;
+            } catch (error) {
                 console.error("Error checking graph option:", error);
                 return false;
             }
@@ -220,12 +213,10 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                     });
 
                     return { success: true, nodesCount: nodes.length, linksCount: links.length, mockData: false };
-                }
-                else {
+                } else {
                     return { success: false, error: "Chart or store not available for update" };
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 return { success: false, error: error.message };
             }
         });
@@ -239,11 +230,10 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
             if (!chart) return false;
             try {
                 const option = chart.getOption();
-                return option && option.series && option.series[0] &&
-                    option.series[0].data && option.series[0].data.length >= 2 &&
-                    option.series[0].links && option.series[0].links.length >= 1;
-            }
-            catch (error) {
+                return option && option.series && option.series[0]
+                    && option.series[0].data && option.series[0].data.length >= 2
+                    && option.series[0].links && option.series[0].links.length >= 1;
+            } catch (error) {
                 console.error("Error checking updated graph:", error);
                 return false;
             }
@@ -259,8 +249,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                     nodes: opt.series[0].data.length,
                     links: opt.series[0].links.length,
                 };
-            }
-            catch (error) {
+            } catch (error) {
                 return { error: error.message };
             }
         });

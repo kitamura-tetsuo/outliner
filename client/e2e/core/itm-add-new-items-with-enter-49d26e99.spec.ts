@@ -2,10 +2,7 @@
  *  Title   : Enterで新規アイテム追加
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-0001: Enterで新規アイテム追加", () => {
@@ -20,8 +17,7 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        }
-        else {
+        } else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -230,8 +226,8 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
                 const itemRect = item.getBoundingClientRect();
                 // カーソルがアイテムの範囲内にあるかチェック
                 if (
-                    cursorRect.top >= itemRect.top &&
-                    cursorRect.bottom <= itemRect.bottom
+                    cursorRect.top >= itemRect.top
+                    && cursorRect.bottom <= itemRect.bottom
                 ) {
                     return item.getAttribute("data-item-id");
                 }

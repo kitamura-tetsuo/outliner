@@ -2,10 +2,7 @@
  *  Title   : 内部リンクのナビゲーション機能
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { waitForCursorVisible } from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
@@ -204,8 +201,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                     }
                 }
             });
-        }
-        else if (cursorState.cursorInstances.length > 0 && cursorState.cursorInstances[0].position === undefined) {
+        } else if (cursorState.cursorInstances.length > 0 && cursorState.cursorInstances[0].position === undefined) {
             console.log("Cursor position is undefined, setting to 0");
             await page.evaluate(() => {
                 const editorStore = (window as any).editorOverlayStore;
@@ -386,8 +382,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                     }
                 }
             });
-        }
-        else if (cursorState.cursorInstances.length > 0 && cursorState.cursorInstances[0].position === undefined) {
+        } else if (cursorState.cursorInstances.length > 0 && cursorState.cursorInstances[0].position === undefined) {
             console.log("Cursor position is undefined, setting to 0");
             await page.evaluate(() => {
                 const editorStore = (window as any).editorOverlayStore;
@@ -533,12 +528,10 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                     // 新しいテキストを挿入
                     cursor.insertText("これはターゲットページです。");
                     console.log("Text inserted via cursor.insertText");
-                }
-                else {
+                } else {
                     console.log("No cursor instances found");
                 }
-            }
-            else {
+            } else {
                 console.log("editorOverlayStore not found");
             }
         });
@@ -661,12 +654,10 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
                     // 新しいテキストを挿入
                     cursor.insertText("これは新しく作成されたページです。");
                     console.log("Text inserted via cursor.insertText");
-                }
-                else {
+                } else {
                     console.log("No cursor instances found");
                 }
-            }
-            else {
+            } else {
                 console.log("editorOverlayStore not found");
             }
         });

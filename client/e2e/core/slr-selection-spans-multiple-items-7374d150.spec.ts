@@ -2,10 +2,7 @@
  *  Title   : 複数アイテムにまたがる選択
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {

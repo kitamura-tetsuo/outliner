@@ -2,10 +2,7 @@
  *  Title   : Editable JOIN Table
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("TBL-0001: Editable JOIN Table", () => {

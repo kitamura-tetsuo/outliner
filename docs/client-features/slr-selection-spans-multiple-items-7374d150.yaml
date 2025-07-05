@@ -4,9 +4,9 @@ description: 複数アイテムにまたがるテキスト選択機能
 category: selection-range
 status: implemented
 acceptance:
-- Shift+上下キーで複数アイテムにまたがる選択範囲を作成できる
-- マウスドラッグで複数アイテムにまたがる選択範囲を作成できる
-- 複数アイテムにまたがる選択範囲が視覚的に表示される
+  - Shift+上下キーで複数アイテムにまたがる選択範囲を作成できる
+  - マウスドラッグで複数アイテムにまたがる選択範囲を作成できる
+  - 複数アイテムにまたがる選択範囲が視覚的に表示される
 tests:
-- client/e2e/core/slr-selection-spans-multiple-items-7374d150.spec.ts
+  - client/e2e/core/slr-selection-spans-multiple-items-7374d150.spec.ts
 title-ja: 複数アイテムにまたがる選択

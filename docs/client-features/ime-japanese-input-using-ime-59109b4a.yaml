@@ -2,9 +2,9 @@ id: IME-0001
 title: Japanese input using IME
 status: implemented
 tests:
-- client/e2e/core/ime-japanese-input-using-ime-59109b4a.spec.ts
+  - client/e2e/core/ime-japanese-input-using-ime-59109b4a.spec.ts
 acceptance:
-- IMEを使用した日本語入力が可能になる
-- 入力途中の文字がカーソル位置に表示される
-- 変換候補がカーソル位置に表示される
+  - IMEを使用した日本語入力が可能になる
+  - 入力途中の文字がカーソル位置に表示される
+  - 変換候補がカーソル位置に表示される
 title-ja: IMEを使用した日本語入力

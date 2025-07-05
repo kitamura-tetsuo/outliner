@@ -1,9 +1,5 @@
 // filepath: /workspace/client/src/tests/mocks/firestoreMock.ts
-import {
-    get,
-    type Writable,
-    writable,
-} from "svelte/store";
+import { get, type Writable, writable } from "svelte/store";
 import { log } from "../../lib/logger"; // ロガーをインポート
 
 // Mock version of UserContainer from the real store
@@ -45,8 +41,7 @@ export function setupMockFirestore(initialData?: {
 
         mockContainers.set(userId, containerData);
         mockUserContainer.set(containerData);
-    }
-    else {
+    } else {
         mockUserContainer.set(null);
     }
 
@@ -83,8 +78,7 @@ export function mockInitFirestoreSync(): () => void {
     if (containerData) {
         mockUserContainer.set(containerData);
         log("firestoreMock", "debug", `[MOCK] Loaded container data for user ${currentUserId}`);
-    }
-    else {
+    } else {
         mockUserContainer.set(null);
         log("firestoreMock", "debug", `[MOCK] No container data found for user ${currentUserId}`);
     }

@@ -2,10 +2,7 @@
  *  Title   : VS Code style multi-cursor commands
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("MCE-0002: multi-cursor commands", () => {

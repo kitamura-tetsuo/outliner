@@ -2,10 +2,7 @@
  *  Title   : IMEを使用した日本語入力
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
@@ -23,8 +20,7 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        }
-        else {
+        } else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -64,8 +60,7 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        }
-        else {
+        } else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -109,8 +104,7 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        }
-        else {
+        } else {
             await item.locator(".item-content").click({ force: true });
         }
 

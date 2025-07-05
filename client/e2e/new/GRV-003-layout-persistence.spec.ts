@@ -2,10 +2,7 @@
  *  Title   : Graph view layout persistence
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("GRV-0002: Graph view layout persistence", () => {
@@ -23,8 +20,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         // ページ遷移を待機（タイムアウトを短くしてデバッグ）
         try {
             await page.waitForURL(/\/.*\/graph$/, { timeout: 5000 });
-        }
-        catch (error) {
+        } catch (error) {
             console.log("Current URL after click:", page.url());
             throw error;
         }
@@ -99,10 +95,9 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
             if (!chart) return false;
             try {
                 const option = chart.getOption();
-                return option && option.series && option.series[0] &&
-                    option.series[0].data && option.series[0].data.length > 0;
-            }
-            catch (error) {
+                return option && option.series && option.series[0]
+                    && option.series[0].data && option.series[0].data.length > 0;
+            } catch (error) {
                 return false;
             }
         }, { timeout: 5000 });
@@ -172,8 +167,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                     });
                 }
                 return { success: false, error: "No nodes found" };
-            }
-            catch (error) {
+            } catch (error) {
                 return { success: false, error: error.message };
             }
         });
@@ -253,10 +247,9 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
             if (!chart) return false;
             try {
                 const option = chart.getOption();
-                return option && option.series && option.series[0] &&
-                    option.series[0].data && option.series[0].data.length > 0;
-            }
-            catch (error) {
+                return option && option.series && option.series[0]
+                    && option.series[0].data && option.series[0].data.length > 0;
+            } catch (error) {
                 return false;
             }
         }, { timeout: 5000 });
@@ -290,8 +283,8 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                         success: true,
                         restoredPosition: { x: currentFirstNode.x, y: currentFirstNode.y },
                         expectedPosition: { x: savedFirstNode.x, y: savedFirstNode.y },
-                        layoutRestored: currentFirstNode.x === savedFirstNode.x &&
-                            currentFirstNode.y === savedFirstNode.y,
+                        layoutRestored: currentFirstNode.x === savedFirstNode.x
+                            && currentFirstNode.y === savedFirstNode.y,
                         savedLayout: layoutData,
                         currentNodes: nodes.length,
                         debugInfo: {
@@ -301,8 +294,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                     };
                 }
                 return { success: false, error: "Node not found", savedFirstNode, currentFirstNode };
-            }
-            catch (error) {
+            } catch (error) {
                 return { success: false, error: error.message };
             }
         });

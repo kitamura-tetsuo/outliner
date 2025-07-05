@@ -37,8 +37,7 @@ function ensureLogDirectories() {
             fs.mkdirSync(clientLogDir, { recursive: true });
             console.log(`クライアントログディレクトリを作成しました: ${clientLogDir}`);
         }
-    }
-    catch (error) {
+    } catch (error) {
         console.warn(`ログディレクトリの作成に失敗しました: ${error.message}`);
         console.warn(`サーバーログディレクトリ: ${serverLogDir}`);
         console.warn(`クライアントログディレクトリ: ${clientLogDir}`);
@@ -54,24 +53,21 @@ let serverLogStream, clientLogStream, telemetryLogStream;
 
 try {
     serverLogStream = fs.createWriteStream(serverLogPath, { flags: "a" });
-}
-catch (error) {
+} catch (error) {
     console.warn(`サーバーログストリームの作成に失敗しました: ${error.message}`);
     serverLogStream = null;
 }
 
 try {
     clientLogStream = fs.createWriteStream(clientLogPath, { flags: "a" });
-}
-catch (error) {
+} catch (error) {
     console.warn(`クライアントログストリームの作成に失敗しました: ${error.message}`);
     clientLogStream = null;
 }
 
 try {
     telemetryLogStream = fs.createWriteStream(telemetryLogPath, { flags: "a" });
-}
-catch (error) {
+} catch (error) {
     console.warn(`telemetryログストリームの作成に失敗しました: ${error.message}`);
     telemetryLogStream = null;
 }
@@ -188,8 +184,7 @@ async function rotateLogFile(logFilePath, maxBackups = 2) {
         console.log(`新しいログファイルを作成しました: ${logFilePath}`);
 
         return true;
-    }
-    catch (error) {
+    } catch (error) {
         console.error("ログローテーション中にエラーが発生しました:", error);
         return false;
     }
@@ -274,8 +269,7 @@ function refreshClientLogStream() {
 
         console.log("クライアントログストリームを更新しました");
         return newClientLogStream;
-    }
-    catch (error) {
+    } catch (error) {
         console.error("クライアントログストリーム更新エラー:", error);
         // エラーが発生した場合でも、新しいストリームを作成して返す
         return fs.createWriteStream(clientLogPath, { flags: "a" });
@@ -316,8 +310,7 @@ function refreshTelemetryLogStream() {
 
         console.log("telemetryログストリームを更新しました");
         return newTelemetryLogStream;
-    }
-    catch (error) {
+    } catch (error) {
         console.error("telemetryログストリーム更新エラー:", error);
         // エラーが発生した場合でも、新しいストリームを作成して返す
         return fs.createWriteStream(telemetryLogPath, { flags: "a" });
@@ -367,8 +360,7 @@ function refreshServerLogStream() {
 
         console.log("サーバーログストリームを更新しました");
         return newServerLogStream;
-    }
-    catch (error) {
+    } catch (error) {
         console.error("サーバーログストリーム更新エラー:", error);
         // エラーが発生した場合でも、新しいストリームを作成して返す
         return fs.createWriteStream(serverLogPath, { flags: "a" });

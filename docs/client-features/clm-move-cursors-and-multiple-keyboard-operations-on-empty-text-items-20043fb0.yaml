@@ -4,10 +4,10 @@ description: 空のテキストアイテムでのカーソル移動と、クリ�
 category: cursor-management
 status: implemented
 tests:
-- client/e2e/core/clm-move-cursors-and-multiple-keyboard-operations-on-empty-text-items-20043fb0.spec.ts
+  - client/e2e/core/clm-move-cursors-and-multiple-keyboard-operations-on-empty-text-items-20043fb0.spec.ts
 acceptance:
-- アイテム間を移動しても常に1つのカーソルだけが表示される
-- クリック後に複数回のキーボード操作でカーソルが正しく移動する
-- 入力が正しいアイテムに行われる
-- 空のテキストアイテム間をキーボードで移動できる
+  - アイテム間を移動しても常に1つのカーソルだけが表示される
+  - クリック後に複数回のキーボード操作でカーソルが正しく移動する
+  - 入力が正しいアイテムに行われる
+  - 空のテキストアイテム間をキーボードで移動できる
 title-ja: 空のテキストアイテムでのカーソル移動と複数回のキーボード操作

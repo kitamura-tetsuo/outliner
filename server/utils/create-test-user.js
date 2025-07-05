@@ -45,8 +45,7 @@ const initializeAdminEmulator = (host, port) => {
         const emulatorHost = `${host}:${port}`;
         process.env.FIREBASE_AUTH_EMULATOR_HOST = emulatorHost;
         console.log(`Setting Auth emulator host to: ${emulatorHost}`);
-    }
-    catch (error) {
+    } catch (error) {
         console.error("Error initializing Firebase Admin:", error);
         throw error;
     }
@@ -94,8 +93,7 @@ const createTestUser = async () => {
             const userRecord = await admin.auth().getUserByEmail(testEmail);
             console.log(`Test user already exists: ${userRecord.uid}`);
             return userRecord;
-        }
-        catch (error) {
+        } catch (error) {
             // User doesn't exist, continue to create
             if (error.code !== "auth/user-not-found") {
                 throw error;
@@ -112,8 +110,7 @@ const createTestUser = async () => {
 
         console.log(`Successfully created test user: ${userRecord.uid}`);
         return userRecord;
-    }
-    catch (error) {
+    } catch (error) {
         console.error("Error creating test user:", error);
         throw error;
     }

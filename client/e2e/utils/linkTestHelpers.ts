@@ -68,8 +68,7 @@ export class LinkTestHelpers {
                 }
 
                 return { success: true };
-            }
-            catch (error) {
+            } catch (error) {
                 console.error("Error creating project and page:", error);
                 throw error;
             }
@@ -128,8 +127,7 @@ export class LinkTestHelpers {
                         // 最初のプロジェクトは既存のものを更新
                         project = existingProjects[0];
                         project.updateText(projectInfo.projectName);
-                    }
-                    else {
+                    } else {
                         // 新しいプロジェクトを作成
                         project = rootProject.items.addNode("test-user");
                         project.updateText(projectInfo.projectName);
@@ -150,8 +148,8 @@ export class LinkTestHelpers {
                             }
 
                             // 新しいアイテムを追加
-                            const content = pageInfo.content ||
-                                ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"];
+                            const content = pageInfo.content
+                                || ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"];
                             for (const text of content) {
                                 const item = pageItems.addNode("test-user");
                                 item.updateText(text);
@@ -161,8 +159,7 @@ export class LinkTestHelpers {
                 }
 
                 return { success: true };
-            }
-            catch (error) {
+            } catch (error) {
                 console.error("Error creating projects and pages:", error);
                 throw error;
             }
@@ -297,8 +294,7 @@ export class LinkTestHelpers {
                     projectId: project.id,
                     pageId: page.id,
                 };
-            }
-            catch (error) {
+            } catch (error) {
                 console.error("Error creating page:", error);
                 return {
                     success: false,
@@ -394,8 +390,7 @@ export class LinkTestHelpers {
                 item.updateText(newText);
 
                 return true;
-            }
-            catch (error) {
+            } catch (error) {
                 console.error("Error creating internal link:", error);
                 return false;
             }
@@ -458,8 +453,7 @@ export class LinkTestHelpers {
                                 <p>テスト用のプレビュー内容です。</p>
                             </div>
                         `;
-                    }
-                    else {
+                    } else {
                         // 存在しないページの場合
                         popup.innerHTML = `
                             <h3>${pageName}</h3>
@@ -554,8 +548,7 @@ export class LinkTestHelpers {
                                     return `<span class="link-preview-wrapper">
                                         <a href="/${path}" class="internal-link project-link" data-project="${projectName}" data-page="${pageName}">${path}</a>
                                     </span>`;
-                                }
-                                else {
+                                } else {
                                     return `<a href="/${path}" class="internal-link project-link">${path}</a>`;
                                 }
                             });

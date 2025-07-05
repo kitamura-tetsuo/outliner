@@ -5,10 +5,10 @@ description: カーソルを1文字上下左右に移動し、選択範囲を広
 category: selection-range
 status: implemented
 acceptance:
-- Shift + 上で選択範囲の上端を広げる
-- Shift + 下で選択範囲の下端を広げる
-- Shift + 右で選択範囲の右端を広げる
-- Shift + 左で選択範囲の左端を広げる
+  - Shift + 上で選択範囲の上端を広げる
+  - Shift + 下で選択範囲の下端を広げる
+  - Shift + 右で選択範囲の右端を広げる
+  - Shift + 左で選択範囲の左端を広げる
 tests:
-- client/e2e/core/slr-shift-up-down-left-right-eb1d392a.spec.ts
+  - client/e2e/core/slr-shift-up-down-left-right-eb1d392a.spec.ts
 title-ja: Shift + 上下左右

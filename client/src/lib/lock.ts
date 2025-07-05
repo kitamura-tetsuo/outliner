@@ -19,8 +19,7 @@ class AsyncLock {
             // shift() never returns undefined here because length > 0
             const resolve = this._queue.shift()!;
             resolve();
-        }
-        else {
+        } else {
             this._locked = false;
         }
     }
@@ -29,8 +28,7 @@ class AsyncLock {
         await this.acquire();
         try {
             return await callback();
-        }
-        finally {
+        } finally {
             this.release();
         }
     }

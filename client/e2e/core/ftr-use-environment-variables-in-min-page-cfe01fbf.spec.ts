@@ -2,10 +2,7 @@
  *  Title   : Use environment variables in min page
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-0013: Use environment variables in min page", () => {

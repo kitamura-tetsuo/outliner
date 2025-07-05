@@ -2,13 +2,7 @@
  *  Title   : ユーザー削除機能 - Unit Test
  *  Source  : docs/client-features.yaml
  */
-import {
-    beforeEach,
-    describe,
-    expect,
-    it,
-    vi,
-} from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * ユーザー削除機能のUnit Test
@@ -106,8 +100,7 @@ class UserDeletionService {
                 // コンテナにアクセスできるユーザーがいなくなった場合、コンテナを削除
                 if (updatedUserIds.length === 0) {
                     await mockDocRef.delete();
-                }
-                else {
+                } else {
                     await mockDocRef.update({
                         accessibleUserIds: updatedUserIds,
                         updatedAt: new Date(),

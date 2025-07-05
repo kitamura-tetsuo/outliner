@@ -35,8 +35,7 @@ async function getNgrokPublicUrl() {
 
         console.warn("アクティブなngrokトンネルが見つかりません");
         return null;
-    }
-    catch (error) {
+    } catch (error) {
         console.error("ngrok APIにアクセスできません:", error.message);
         console.error("ngrokが起動しているか確認してください");
         return null;
@@ -66,8 +65,7 @@ function updateEnvCallbackUrl(ngrokUrl) {
         if (regex.test(envContent)) {
             // 既存の設定を更新
             envContent = envContent.replace(regex, `$1${callbackUrl}`);
-        }
-        else {
+        } else {
             // 設定が存在しない場合は追加
             envContent += `\nGOOGLE_CALLBACK_URL=${callbackUrl}\n`;
         }
@@ -81,8 +79,7 @@ function updateEnvCallbackUrl(ngrokUrl) {
         dotenv.config();
 
         return true;
-    }
-    catch (error) {
+    } catch (error) {
         console.error(".envファイルの更新中にエラーが発生しました:", error);
         return false;
     }

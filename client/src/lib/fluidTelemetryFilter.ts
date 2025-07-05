@@ -1,7 +1,4 @@
-import type {
-    ConfigTypes,
-    IConfigProviderBase,
-} from "@fluidframework/core-interfaces";
+import type { ConfigTypes, IConfigProviderBase } from "@fluidframework/core-interfaces";
 import { getLogger } from "./logger";
 
 // 環境変数からtelemetry無効化設定を取得
@@ -37,8 +34,7 @@ function sendFilteredTelemetryLog(level: string, ...args: any[]): void {
             // 送信エラー時の処理（サイレント）
             console.debug("Telemetryログ送信エラー:", err);
         });
-    }
-    catch (error) {
+    } catch (error) {
         // エラーは無視（ログ送信のエラーでアプリを止めない）
     }
 }
@@ -55,7 +51,7 @@ const originalConsole = {
 // telemetryログをフィルタリングするためのコンソールオーバーライド
 if (disableTelemetry && typeof window !== "undefined") {
     // コンソールメソッドをオーバーライド
-    console.log = function (...args: any[]) {
+    console.log = function(...args: any[]) {
         if (shouldFilterTelemetryLog(args)) {
             // フィルタされたログをサーバーに送信
             sendFilteredTelemetryLog("info", ...args);
@@ -64,7 +60,7 @@ if (disableTelemetry && typeof window !== "undefined") {
         originalConsole.log.apply(console, args);
     };
 
-    console.info = function (...args: any[]) {
+    console.info = function(...args: any[]) {
         if (shouldFilterTelemetryLog(args)) {
             sendFilteredTelemetryLog("info", ...args);
             return;
@@ -72,7 +68,7 @@ if (disableTelemetry && typeof window !== "undefined") {
         originalConsole.info.apply(console, args);
     };
 
-    console.warn = function (...args: any[]) {
+    console.warn = function(...args: any[]) {
         if (shouldFilterTelemetryLog(args)) {
             sendFilteredTelemetryLog("warn", ...args);
             return;
@@ -80,7 +76,7 @@ if (disableTelemetry && typeof window !== "undefined") {
         originalConsole.warn.apply(console, args);
     };
 
-    console.error = function (...args: any[]) {
+    console.error = function(...args: any[]) {
         if (shouldFilterTelemetryLog(args)) {
             sendFilteredTelemetryLog("error", ...args);
             return;
@@ -88,7 +84,7 @@ if (disableTelemetry && typeof window !== "undefined") {
         originalConsole.error.apply(console, args);
     };
 
-    console.debug = function (...args: any[]) {
+    console.debug = function(...args: any[]) {
         if (shouldFilterTelemetryLog(args)) {
             sendFilteredTelemetryLog("debug", ...args);
             return;
@@ -228,8 +224,7 @@ export class TelemetryFilterLogger {
         try {
             const errorStr = JSON.stringify(error);
             return this.telemetryKeywords.some(keyword => errorStr.includes(keyword));
-        }
-        catch (e) {
+        } catch (e) {
             // JSON変換に失敗した場合はスタックトレースを検索
             if (error.stack) {
                 return this.telemetryKeywords.some(keyword => error.stack.includes(keyword));
@@ -290,8 +285,7 @@ export class TelemetryFilterLogger {
                     sendFilteredTelemetryLog(level, ...args);
                     return;
                 }
-            }
-            catch (e) {
+            } catch (e) {
                 // JSON変換に失敗した場合は通常通り処理
             }
         }

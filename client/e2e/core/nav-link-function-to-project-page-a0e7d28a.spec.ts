@@ -2,10 +2,7 @@
  *  Title   : プロジェクトページへのリンク機能
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("NAV-0002: プロジェクトページへのリンク機能", () => {

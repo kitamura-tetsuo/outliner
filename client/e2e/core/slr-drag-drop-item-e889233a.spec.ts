@@ -7,9 +7,13 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0009: アイテムドラッグ＆ドロップ", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await page.evaluate(() => { (window as any).DEBUG_MODE = true; });
+        await page.evaluate(() => {
+            (window as any).DEBUG_MODE = true;
+        });
         await TestHelpers.prepareTestEnvironment(page, testInfo);
-        await page.evaluate(() => { (window as any).DEBUG_MODE = true; });
+        await page.evaluate(() => {
+            (window as any).DEBUG_MODE = true;
+        });
         const item = page.locator(".outliner-item.page-title");
         if (await item.count() === 0) {
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });

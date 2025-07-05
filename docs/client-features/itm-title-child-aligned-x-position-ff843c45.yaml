@@ -4,7 +4,7 @@ description: ページタイトルとその直下の子アイテムの表示位�
 category: item-management
 status: implemented
 acceptance:
-- タイトルとその子アイテムのx座標が同じ
+  - タイトルとその子アイテムのx座標が同じ
 tests:
-- client/e2e/core/itm-title-child-aligned-x-position-ff843c45.spec.ts
+  - client/e2e/core/itm-title-child-aligned-x-position-ff843c45.spec.ts
 title-ja: タイトルと子アイテムの水平位置を揃える

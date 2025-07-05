@@ -2,10 +2,7 @@
  *  Title   : Scheduled Posting Management UI
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Schedule Management UI", () => {

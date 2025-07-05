@@ -5,9 +5,9 @@ description: 全ページを対象とした高速全文検索と一括置換機�
 category: search
 status: implemented
 components:
-- client/src/components/SearchPanel.svelte
-- client/src/lib/search/index.ts
-- client/src/lib/search/projectSearch.ts
-- client/src/routes/[project]/[page]/+page.svelte
+  - client/src/components/SearchPanel.svelte
+  - client/src/lib/search/index.ts
+  - client/src/lib/search/projectSearch.ts
+  - client/src/routes/[project]/[page]/+page.svelte
 tests:
-- client/e2e/new/SRP-0001.spec.ts
+  - client/e2e/new/SRP-0001.spec.ts

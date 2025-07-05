@@ -2,10 +2,7 @@
  *  Title   : Tab and Shift+Tab indentation variations
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("IND-0001: Indentation variations", () => {

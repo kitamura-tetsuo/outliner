@@ -2,10 +2,7 @@
  *  Title   : 現在行を選択
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0013: 現在行を選択", () => {
@@ -76,8 +73,7 @@ test.describe("SLR-0013: 現在行を選択", () => {
 
             // 基本的な行選択が動作することを確認
             expect(basicSelectionState.selectedText).toBe("Second line");
-        }
-        else {
+        } else {
             // Ctrl+L機能が実装されている場合
             await expect(page.locator(".editor-overlay .selection")).toBeVisible();
             expect(afterSelectionState.selectedText).toBe("Second line");

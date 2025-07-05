@@ -4,9 +4,9 @@ description: Provides a UI for listing and canceling scheduled publishing tasks.
 category: publishing
 status: implemented
 components:
-- client/e2e/core/sch-schedule-management-ui-6974f589.spec.ts
-- functions/test/schedule-management.test.js
+  - client/e2e/core/sch-schedule-management-ui-6974f589.spec.ts
+  - functions/test/schedule-management.test.js
 tests:
-- client/e2e/core/sch-schedule-management-ui-6974f589.spec.ts
-- functions/test/schedule-management.test.js
+  - client/e2e/core/sch-schedule-management-ui-6974f589.spec.ts
+  - functions/test/schedule-management.test.js
 title-ja: スケジュール管理ページ

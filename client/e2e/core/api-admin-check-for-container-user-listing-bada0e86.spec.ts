@@ -2,10 +2,7 @@
  *  Title   : Admin check for container user listing
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 /**
  * @testcase 管理者チェック機能

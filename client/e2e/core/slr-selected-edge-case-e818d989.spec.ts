@@ -2,10 +2,7 @@
  *  Title   : 選択範囲のエッジケース
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0008: 選択範囲のエッジケース", () => {
@@ -90,8 +87,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        }
-        catch (e) {
+        } catch (e) {
             console.log("Selection not created, skipping test");
             return;
         }
@@ -111,8 +107,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         // 環境によっては3つ目のアイテムのテキストが含まれない場合もあるため、条件付きでチェック
         if (selectionText.includes("Third")) {
             expect(selectionText).toContain("Third");
-        }
-        else {
+        } else {
             console.log("Third item text not included in selection, but test continues");
         }
 
@@ -132,8 +127,8 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
     test("長いテキストを含むアイテムの選択範囲を作成できる", async ({ page }) => {
         // 最初のアイテムに長いテキストを入力
         const longText =
-            "This is a very long text that contains many characters and should be long enough to test the selection range functionality with long texts. " +
-            "We want to make sure that the selection range works correctly with long texts and that the text is properly selected and copied.";
+            "This is a very long text that contains many characters and should be long enough to test the selection range functionality with long texts. "
+            + "We want to make sure that the selection range works correctly with long texts and that the text is properly selected and copied.";
         await page.keyboard.type(longText);
 
         // 2つ目のアイテムを作成
@@ -187,8 +182,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        }
-        catch (e) {
+        } catch (e) {
             console.log("Selection not created, skipping test");
             return;
         }
@@ -275,20 +269,17 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
                 if (activeItem) {
                     activeItem.dispatchEvent(clipboardEvent);
                     console.log("Dispatched paste event to active item:", activeItem);
-                }
-                else {
+                } else {
                     // フォールバック：エディタオーバーレイにイベントを発火
                     const editorOverlay = document.querySelector(".editor-overlay");
                     if (editorOverlay) {
                         editorOverlay.dispatchEvent(clipboardEvent);
                         console.log("Dispatched paste event to editor overlay");
-                    }
-                    else {
+                    } else {
                         console.log("No target found for paste event");
                     }
                 }
-            }
-            else {
+            } else {
                 console.log("No stored clipboard text found");
             }
         });
@@ -472,8 +463,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        }
-        catch (e) {
+        } catch (e) {
             console.log("Selection not created, skipping test");
             return;
         }

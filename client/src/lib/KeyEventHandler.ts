@@ -154,23 +154,19 @@ export class KeyEventHandler {
                 commandPaletteStore.move(1);
                 event.preventDefault();
                 return;
-            }
-            else if (event.key === "ArrowUp") {
+            } else if (event.key === "ArrowUp") {
                 commandPaletteStore.move(-1);
                 event.preventDefault();
                 return;
-            }
-            else if (event.key === "Enter") {
+            } else if (event.key === "Enter") {
                 commandPaletteStore.confirm();
                 event.preventDefault();
                 return;
-            }
-            else if (event.key === "Escape") {
+            } else if (event.key === "Escape") {
                 commandPaletteStore.hide();
                 event.preventDefault();
                 return;
-            }
-            else if (event.key === "Backspace") {
+            } else if (event.key === "Backspace") {
                 commandPaletteStore.handleCommandBackspace();
                 event.preventDefault();
                 return;
@@ -253,8 +249,7 @@ export class KeyEventHandler {
         if (textareaRef) {
             console.log(`Textarea value: "${textareaRef.value}"`);
             console.log(`Textarea selection: start=${textareaRef.selectionStart}, end=${textareaRef.selectionEnd}`);
-        }
-        else {
+        } else {
             console.log(`Textarea not found in KeyEventHandler.handleInput`);
         }
 
@@ -284,8 +279,7 @@ export class KeyEventHandler {
                 // [の直後の/の場合、または既に[で始まる内部リンク内の場合はコマンドパレットを表示しない
                 if (prevChar === "[") {
                     // 通常の入力処理を続行
-                }
-                else {
+                } else {
                     // [で始まる内部リンク内かどうかをチェック
                     const beforeCursor = text.slice(0, cursor.offset);
                     const lastOpenBracket = beforeCursor.lastIndexOf("[");
@@ -294,25 +288,21 @@ export class KeyEventHandler {
                     // 最後の[が最後の]より後にある場合は内部リンク内
                     if (lastOpenBracket > lastCloseBracket) {
                         // 通常の入力処理を続行
-                    }
-                    else {
+                    } else {
                         // コマンドパレットを表示
                         const pos = commandPaletteStore.getCursorScreenPosition();
                         commandPaletteStore.show(pos || { top: 0, left: 0 });
                     }
                 }
-            }
-            else {
+            } else {
                 // カーソルがない場合はコマンドパレットを表示
                 const pos = commandPaletteStore.getCursorScreenPosition();
                 commandPaletteStore.show(pos || { top: 0, left: 0 });
             }
-        }
-        else if (inputEvent.data === "[" && commandPaletteStore.isVisible) {
+        } else if (inputEvent.data === "[" && commandPaletteStore.isVisible) {
             // [が入力されたらコマンドパレットを非表示（内部リンクの開始）
             commandPaletteStore.hide();
-        }
-        else if (commandPaletteStore.isVisible) {
+        } else if (commandPaletteStore.isVisible) {
             // CommandPaletteが表示されている場合は、専用の入力処理を使用
             if (inputEvent.data) {
                 commandPaletteStore.handleCommandInput(inputEvent.data);
@@ -370,8 +360,7 @@ export class KeyEventHandler {
                     }
                 }, 10);
             });
-        }
-        else {
+        } else {
             // テキストエリアが見つからない場合はエラーログ
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Global textarea not found in handleInput`);
@@ -471,8 +460,7 @@ export class KeyEventHandler {
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Box selection text: "${selectedText}"`);
             }
-        }
-        else {
+        } else {
             // 通常の選択範囲の場合
             selectedText = store.getSelectedText("local");
 
@@ -511,8 +499,7 @@ export class KeyEventHandler {
                             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                                 console.log(`VS Code metadata added:`, vscodeMetadata);
                             }
-                        }
-                        catch (error) {
+                        } catch (error) {
                             // メタデータの設定に失敗した場合はログに出力
                             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                                 console.error(`Failed to set VS Code metadata:`, error);
@@ -541,8 +528,7 @@ export class KeyEventHandler {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Clipboard updated with: "${selectedText}" (using execCommand fallback)`);
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 // エラーが発生した場合はログに出力
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.error(`Error in handleCopy:`, error);
@@ -684,9 +670,9 @@ export class KeyEventHandler {
 
         // 矩形選択を設定
         if (
-            KeyEventHandler.boxSelectionState.ranges.length > 0 &&
-            KeyEventHandler.boxSelectionState.startItemId &&
-            KeyEventHandler.boxSelectionState.endItemId
+            KeyEventHandler.boxSelectionState.ranges.length > 0
+            && KeyEventHandler.boxSelectionState.startItemId
+            && KeyEventHandler.boxSelectionState.endItemId
         ) {
             try {
                 // 矩形選択範囲の更新前に視覚的フィードバックを追加
@@ -764,8 +750,7 @@ export class KeyEventHandler {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Box selection updated:`, KeyEventHandler.boxSelectionState);
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 // エラーが発生した場合はログに出力
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.error(`Error in handleBoxSelection:`, error);
@@ -777,8 +762,7 @@ export class KeyEventHandler {
                 // 矩形選択をキャンセル
                 KeyEventHandler.cancelBoxSelection();
             }
-        }
-        else {
+        } else {
             // 範囲が無効な場合はログに出力
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Invalid box selection range, cancelling`);
@@ -863,8 +847,7 @@ export class KeyEventHandler {
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Box selection ranges updated:`, ranges);
             }
-        }
-        catch (error) {
+        } catch (error) {
             // エラーが発生した場合はログに出力
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Error in updateBoxSelectionRanges:`, error);
@@ -997,8 +980,7 @@ export class KeyEventHandler {
             }
 
             return itemsInRange;
-        }
-        catch (error) {
+        } catch (error) {
             // エラーが発生した場合はログに出力
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Error in getItemsBetween:`, error);
@@ -1017,9 +999,9 @@ export class KeyEventHandler {
      */
     private static getBoxSelectionDirection(): string {
         if (
-            !KeyEventHandler.boxSelectionState.active ||
-            !KeyEventHandler.boxSelectionState.startItemId ||
-            !KeyEventHandler.boxSelectionState.endItemId
+            !KeyEventHandler.boxSelectionState.active
+            || !KeyEventHandler.boxSelectionState.startItemId
+            || !KeyEventHandler.boxSelectionState.endItemId
         ) {
             return "";
         }
@@ -1044,16 +1026,14 @@ export class KeyEventHandler {
             // 垂直方向
             if (startIndex < endIndex) {
                 direction += "↓"; // 下方向
-            }
-            else if (startIndex > endIndex) {
+            } else if (startIndex > endIndex) {
                 direction += "↑"; // 上方向
             }
 
             // 水平方向
             if (startX < endX) {
                 direction += "→"; // 右方向
-            }
-            else if (startX > endX) {
+            } else if (startX > endX) {
                 direction += "←"; // 左方向
             }
 
@@ -1063,8 +1043,7 @@ export class KeyEventHandler {
             }
 
             return direction;
-        }
-        catch (error) {
+        } catch (error) {
             // エラーが発生した場合はログに出力
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Error in getBoxSelectionDirection:`, error);
@@ -1100,8 +1079,7 @@ export class KeyEventHandler {
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Box selection cancelled`);
             }
-        }
-        catch (error) {
+        } catch (error) {
             // エラーが発生した場合はログに出力
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Error in cancelBoxSelection:`, error);
@@ -1153,8 +1131,7 @@ export class KeyEventHandler {
                         console.log(`VS Code metadata detected:`, vscodeMetadata);
                     }
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 // メタデータの解析に失敗した場合は無視
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.error(`Failed to parse VS Code metadata:`, error);
@@ -1189,8 +1166,8 @@ export class KeyEventHandler {
 
             // VS Codeのマルチカーソルテキストが含まれている場合
             if (
-                vscodeMetadata && Array.isArray(vscodeMetadata.multicursorText) &&
-                vscodeMetadata.multicursorText.length > 0
+                vscodeMetadata && Array.isArray(vscodeMetadata.multicursorText)
+                && vscodeMetadata.multicursorText.length > 0
             ) {
                 // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -1208,14 +1185,12 @@ export class KeyEventHandler {
                     cursorInstances.forEach((cursor, index) => {
                         if (index < multicursorText.length) {
                             cursor.insertText(multicursorText[index]);
-                        }
-                        else if (multicursorText.length > 0) {
+                        } else if (multicursorText.length > 0) {
                             // カーソル数がテキスト数より多い場合は、最後のテキストを繰り返し使用
                             cursor.insertText(multicursorText[multicursorText.length - 1]);
                         }
                     });
-                }
-                else {
+                } else {
                     // 'full'モード: 各カーソルに同じテキストを挿入
                     const fullText = multicursorText.join("\n");
                     cursorInstances.forEach(cursor => cursor.insertText(fullText));
@@ -1312,14 +1287,12 @@ export class KeyEventHandler {
                                 console.log(`Updated text for item ID: ${itemId}`);
                                 console.log(`New cursor offset: ${cursor.offset}`);
                             }
-                        }
-                        else {
+                        } else {
                             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                                 console.warn(`Target item not found for cursor with item ID: ${itemId}`);
                             }
                         }
-                    }
-                    else {
+                    } else {
                         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                             console.warn(`Cursor not found or created for item ID: ${itemId}`);
                         }
@@ -1347,8 +1320,8 @@ export class KeyEventHandler {
             // 矩形選択（ボックス選択）からのペーストの場合
             // VS Codeでは、矩形選択からのコピーは特殊なメタデータを含む
             if (
-                vscodeMetadata && vscodeMetadata.isFromEmptySelection === false &&
-                vscodeMetadata.mode === "plaintext" && text.includes("\n")
+                vscodeMetadata && vscodeMetadata.isFromEmptySelection === false
+                && vscodeMetadata.mode === "plaintext" && text.includes("\n")
             ) {
                 // 矩形選択からのペーストとして処理
                 const lines = text.split(/\r?\n/);
@@ -1363,8 +1336,7 @@ export class KeyEventHandler {
                 cursorInstances.forEach((cursor, index) => {
                     if (index < lines.length) {
                         cursor.insertText(lines[index]);
-                    }
-                    else if (lines.length > 0) {
+                    } else if (lines.length > 0) {
                         // カーソル数が行数より多い場合は、最後の行を繰り返し使用
                         cursor.insertText(lines[lines.length - 1]);
                     }
@@ -1393,8 +1365,7 @@ export class KeyEventHandler {
             // 単一行テキストの場合は、カーソル位置に挿入
             const cursorInstances = store.getCursorInstances();
             cursorInstances.forEach(cursor => cursor.insertText(text));
-        }
-        catch (error) {
+        } catch (error) {
             // エラーが発生した場合はログに出力
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Error in handlePaste:`, error);

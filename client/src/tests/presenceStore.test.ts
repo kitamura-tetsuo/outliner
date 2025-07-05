@@ -1,12 +1,5 @@
-import {
-    describe,
-    expect,
-    it,
-} from "vitest";
-import {
-    colorForUser,
-    presenceStore,
-} from "../stores/PresenceStore.svelte";
+import { describe, expect, it } from "vitest";
+import { colorForUser, presenceStore } from "../stores/PresenceStore.svelte";
 
 describe("presence store", () => {
     it("adds and removes users", () => {

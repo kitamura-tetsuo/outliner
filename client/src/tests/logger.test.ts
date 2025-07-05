@@ -1,12 +1,4 @@
-import {
-    afterEach,
-    beforeEach,
-    describe,
-    expect,
-    it,
-    type Mock,
-    vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 // useConsoleAPIをモックするためにloggerモジュールを先にモック
 vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
@@ -39,8 +31,11 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
             // ロガーメソッドが呼ばれたらコンソールも呼ぶよう設定
             (["trace", "debug", "info", "warn", "error", "fatal"] as const).forEach(level => {
                 logger[level].mockImplementation((...args: any[]) => {
-                    const consoleMethod = level === "trace" || level === "debug" ? "log" :
-                        level === "fatal" ? "error" : level;
+                    const consoleMethod = level === "trace" || level === "debug"
+                        ? "log"
+                        : level === "fatal"
+                        ? "error"
+                        : level;
 
                     // 型安全にコンソールメソッドを呼び出す
                     switch (consoleMethod) {

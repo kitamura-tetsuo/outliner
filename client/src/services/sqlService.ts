@@ -1,10 +1,7 @@
 import initSqlJs, { type Database } from "sql.js";
 import { writable } from "svelte/store";
 import type { EditInfo } from "./editMapper";
-import {
-    type Op,
-    SyncWorker,
-} from "./syncWorker";
+import { type Op, SyncWorker } from "./syncWorker";
 
 interface ColumnMeta {
     name: string;
@@ -46,8 +43,7 @@ export async function initDb() {
         SQL = await initSqlJs({
             wasmBinary: wasmBinary,
         });
-    }
-    else {
+    } else {
         SQL = await initSqlJs({
             locateFile: (file: string) => {
                 if (file.endsWith(".wasm")) {
@@ -202,8 +198,7 @@ export function applyEdit(info: EditInfo, value: any) {
         console.log("Re-running query:", currentSelect);
         rawExec(currentSelect);
         runQuery(currentSelect);
-    }
-    else {
+    } else {
         console.log("No currentSelect to re-run");
     }
 }

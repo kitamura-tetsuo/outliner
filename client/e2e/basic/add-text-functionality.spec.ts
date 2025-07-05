@@ -2,10 +2,7 @@
  *  Title   : テスト環境の初期化と準備
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
@@ -236,8 +233,7 @@ test.describe("テキスト追加機能テスト", () => {
             }
             try {
                 return fluidStore.fluidClient.getAllData();
-            }
-            catch (error) {
+            } catch (error) {
                 return { error: (error as Error).message, items: [] };
             }
         });
@@ -314,8 +310,7 @@ test.describe("テキスト追加機能テスト", () => {
             }
             try {
                 return fluidStore.fluidClient.getAllData();
-            }
-            catch (error) {
+            } catch (error) {
                 return { error: (error as Error).message, items: [] };
             }
         });
