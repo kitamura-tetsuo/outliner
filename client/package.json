@@ -91,7 +91,7 @@
     "dependencies": {
         "@dotenvx/dotenvx": "^1.44.1",
         "@fluidframework/azure-client": "^2.30.0",
-        "@fluidframework/fluid-static": "^2.30.0",
+        "@fluidframework/fluid-static": "^2.43.0",
         "@fluidframework/sequence": "^2.30.0",
         "@fluidframework/tree": "^2.30.0",
         "diff-match-patch": "^1.0.5",
