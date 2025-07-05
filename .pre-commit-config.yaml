@@ -18,3 +18,10 @@ repos:
         additional_dependencies:
           - loguru
           - PyYAML
+      - id: dprint-format
+        name: Check formatting with dprint
+        language: script
+        entry: ./scripts/check_format.sh
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
