@@ -4,6 +4,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+if [ -z "${CODEX_ENV_NODE_VERSION:-}" ]; then
+    echo "Non-Codex environment detected. Running full E2E suite..."
+    cd "$ROOT_DIR/client"
+    npm run github:test:e2e
+    exit $?
+fi
+
 PROGRESS_FILE="$ROOT_DIR/.e2e-progress"
 TEST_DIR="$ROOT_DIR/client/e2e"
 TEST_FILES=$(find "$TEST_DIR" -name '*.spec.ts' -printf '%P\n' | sort)
