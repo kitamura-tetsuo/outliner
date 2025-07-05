@@ -11,6 +11,7 @@ import AuthComponent from "../../../components/AuthComponent.svelte";
 import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
 import OutlinerBase from "../../../components/OutlinerBase.svelte";
 import SearchPanel from "../../../components/SearchPanel.svelte";
+import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
 import { TreeViewManager } from "../../../fluid/TreeViewManager";
 import {
     cleanupLinkPreviews,
@@ -399,6 +400,10 @@ onMount(async () => {
     setTimeout(() => {
         setupLinkPreviewHandlers();
     }, 500);
+
+    if (pageName) {
+        searchHistoryStore.add(pageName);
+    }
 });
 
 onDestroy(() => {

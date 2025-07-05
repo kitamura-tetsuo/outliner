@@ -1,0 +1,13 @@
+id: SEA-0001
+title: Add page title search box
+title-ja: プロジェクトページ横断検索ボックスの追加
+description: A Scrapbox-like search box to find page titles within a project.
+category: navigation
+status: implemented
+components:
+- client/src/components/SearchBox.svelte
+- client/src/stores/SearchHistoryStore.svelte.ts
+- client/src/routes/[project]/+layout.svelte
+- client/src/routes/[project]/[page]/+page.svelte
+tests:
+- client/e2e/core/sea-page-title-search-box-a3674e4f-dce0-4543-9e85-1f1899f97f73.spec.ts

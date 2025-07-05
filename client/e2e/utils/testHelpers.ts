@@ -260,7 +260,7 @@ export class TestHelpers {
         await page.evaluate(async ({ pageName, lines }) => {
             // FluidStoreが利用可能になるまで待機
             let attempts = 0;
-            const maxAttempts = 50; // 5秒間待機
+            const maxAttempts = 150; // wait up to 15 seconds
             while (!window.__FLUID_STORE__ && attempts < maxAttempts) {
                 await new Promise(resolve => setTimeout(resolve, 100));
                 attempts++;

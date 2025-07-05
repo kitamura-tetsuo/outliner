@@ -8,6 +8,7 @@ import { userManager } from "../../auth/UserManager";
 import { getLogger } from "../../lib/logger";
 import { getFluidClientByProjectTitle } from "../../services";
 import { fluidStore } from "../../stores/fluidStore.svelte";
+import SearchBox from "../../components/SearchBox.svelte";
 
 // プロジェクトレベルのレイアウト
 // このレイアウトは /[project] と /[project]/[page] の両方に適用されます
@@ -96,4 +97,7 @@ onDestroy(() => {
 });
 </script>
 
+{#if project}
+    <SearchBox {project} />
+{/if}
 {@render children()}
