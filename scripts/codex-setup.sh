@@ -51,6 +51,8 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   install_os_utilities
   echo "Installing Python packages..."
   pip install --no-cache-dir pre-commit
+  pre-commit install --hook-type pre-commit
+  ln -s ../../scripts/pre_push.sh .git/hooks/pre-push
   if [ -f "${ROOT_DIR}/scripts/requirements.txt" ]; then
     pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"
   fi
