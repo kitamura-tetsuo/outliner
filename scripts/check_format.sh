@@ -22,4 +22,5 @@ if [ $exit_code -ne 0 ]; then
   echo "\nFormatting issues detected. Run 'npx dprint fmt' to fix." >&2
 fi
 
+
 exit $exit_code
