@@ -4,6 +4,6 @@ title-ja: IME変換候補ウィンドウがアクティブカーソルに追従�
 category: cursor-management
 status: implemented
 tests:
-- client/e2e/core/ime-candidate-window-follows-cursor-eebdd197.spec.ts
+  - client/e2e/core/ime-candidate-window-follows-cursor-eebdd197.spec.ts
 acceptance:
-- Hidden textarea used for IME input is positioned at the last active cursor so the OS candidate window appears at the correct location
+  - Hidden textarea used for IME input is positioned at the last active cursor so the OS candidate window appears at the correct location

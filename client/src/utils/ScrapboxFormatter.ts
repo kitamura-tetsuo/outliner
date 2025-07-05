@@ -87,17 +87,13 @@ export class ScrapboxFormatter {
     static getFormatType(text: string): "bold" | "italic" | "strikethrough" | "underline" | "code" | null {
         if (text.startsWith("[[") && text.endsWith("]]")) {
             return "bold";
-        }
-        else if (text.startsWith("[/") && text.endsWith("]")) {
+        } else if (text.startsWith("[/") && text.endsWith("]")) {
             return "italic";
-        }
-        else if (text.startsWith("[-") && text.endsWith("]")) {
+        } else if (text.startsWith("[-") && text.endsWith("]")) {
             return "strikethrough";
-        }
-        else if (text.startsWith("<u>") && text.endsWith("</u>")) {
+        } else if (text.startsWith("<u>") && text.endsWith("</u>")) {
             return "underline";
-        }
-        else if (text.startsWith("`") && text.endsWith("`")) {
+        } else if (text.startsWith("`") && text.endsWith("`")) {
             return "code";
         }
         return null;
@@ -148,8 +144,7 @@ export class ScrapboxFormatter {
                         content: content,
                         url: content,
                     });
-                }
-                else {
+                } else {
                     matches.push({
                         type: pattern.type,
                         start: startIndex,
@@ -283,20 +278,19 @@ export class ScrapboxFormatter {
                             const pageName = parts.slice(1).join("/");
 
                             // ページの存在確認用のクラスを追加
-                            const existsClass = this.checkPageExists(pageName, projectName) ? "page-exists"
+                            const existsClass = this.checkPageExists(pageName, projectName)
+                                ? "page-exists"
                                 : "page-not-exists";
 
                             // LinkPreviewコンポーネントを使用
                             html += `<span class="link-preview-wrapper">
                                 <a href="/${content}" class="internal-link project-link ${existsClass}" data-project="${projectName}" data-page="${pageName}">${content}</a>
                             </span>`;
-                        }
-                        else {
+                        } else {
                             // 不正なパス形式の場合は通常のリンクとして表示
                             html += `<a href="/${content}" class="internal-link project-link">${content}</a>`;
                         }
-                    }
-                    else {
+                    } else {
                         // 通常の内部リンク
                         // ページの存在確認用のクラスを追加
                         const existsClass = this.checkPageExists(content) ? "page-exists" : "page-not-exists";
@@ -400,8 +394,7 @@ export class ScrapboxFormatter {
                     return `<span class="link-preview-wrapper">
                         <a href="/${path}" class="internal-link project-link ${existsClass}" data-project="${projectName}" data-page="${pageName}">${path}</a>
                     </span>`;
-                }
-                else {
+                } else {
                     // 不正なパス形式の場合は通常のリンクとして表示
                     return `<a href="/${path}" class="internal-link project-link">${path}</a>`;
                 }
@@ -586,11 +579,11 @@ export class ScrapboxFormatter {
         // 引用の正規表現パターン
         const quotePattern = /^>\s(.*?)$/m;
 
-        return basicFormatPattern.test(text) ||
-            linkPattern.test(text) ||
-            internalLinkPattern.test(text) ||
-            projectLinkPattern.test(text) ||
-            quotePattern.test(text);
+        return basicFormatPattern.test(text)
+            || linkPattern.test(text)
+            || internalLinkPattern.test(text)
+            || projectLinkPattern.test(text)
+            || quotePattern.test(text);
     }
 
     /**

@@ -1,0 +1,43 @@
+name: Format Check
+
+on:
+  push:
+    branches: ['**']
+
+jobs:
+  format:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dprint
+        run: npm install -g dprint
+
+      - name: Check formatting
+        run: |
+          echo "Checking code formatting..."
+          if ! dprint check; then
+            echo "❌ Code is not properly formatted!"
+            echo "Please run 'dprint fmt' to fix formatting issues."
+            exit 1
+          fi
+
+          echo "Checking functions formatting..."
+          cd functions
+          if ! dprint check; then
+            echo "❌ Functions code is not properly formatted!"
+            echo "Please run 'cd functions && dprint fmt' to fix formatting issues."
+            exit 1
+          fi
+          cd ..
+
+          echo "✅ All code is properly formatted!"

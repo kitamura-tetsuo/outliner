@@ -1,9 +1,5 @@
 import { Tree } from "fluid-framework";
-import {
-    Item,
-    Items,
-    Project,
-} from "../schema/app-schema";
+import { Item, Items, Project } from "../schema/app-schema";
 
 /**
  * TreeViewに関するヘルパー関数を提供するクラス

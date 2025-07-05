@@ -2,10 +2,7 @@
  *  Title   : 空のテキストアイテムでのカーソル移動と複数回のキーボード操作
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 // このテストは時間がかかるため、タイムアウトを増やす
@@ -121,13 +118,11 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
                 const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
                 console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
                 expect(secondItemText).toContain("Test text 2"); // 2番目のアイテムに入力したテキストが含まれていることを確認
-            }
-            catch (error) {
+            } catch (error) {
                 console.log("2番目のアイテムが見つかりませんでした。テストを続行します。");
                 // エラーが発生しても、テストは失敗とせずに続行
             }
-        }
-        else {
+        } else {
             console.log("2番目のアイテムが見つかりません。テストを続行します。");
             // 2番目のアイテムが見つからない場合でもテストを続行
         }

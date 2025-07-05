@@ -5,15 +5,15 @@ description: 'E2E tests verify schedule creation, editing via the updateSchedule
 
   cancellation, and list refresh across multiple pages.
 
-  '
+'
 category: publishing
 status: implemented
 components:
-- client/e2e/core/sch-multi-page-schedule-management-df38d2f7.spec.ts
-- client/src/routes/[project]/[page]/schedule/+page.svelte
-- client/src/services/scheduleService.ts
-- client/src/tests/scheduleService.test.ts
-- functions/index.js
-- functions/test/scheduled-publishing.test.js
+  - client/e2e/core/sch-multi-page-schedule-management-df38d2f7.spec.ts
+  - client/src/routes/[project]/[page]/schedule/+page.svelte
+  - client/src/services/scheduleService.ts
+  - client/src/tests/scheduleService.test.ts
+  - functions/index.js
+  - functions/test/scheduled-publishing.test.js
 tests:
-- client/e2e/core/sch-multi-page-schedule-management-df38d2f7.spec.ts
+  - client/e2e/core/sch-multi-page-schedule-management-df38d2f7.spec.ts

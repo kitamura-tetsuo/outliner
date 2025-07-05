@@ -4,12 +4,12 @@ category: api-server
 description: Client uses Firebase Hosting base URL for all function calls without fallback to local express ports.
 status: implemented
 acceptance:
-- API base URL defaults to http://localhost:57000 when environment variable is not set
-- No code paths reference the Functions emulator port directly
+  - API base URL defaults to http://localhost:57000 when environment variable is not set
+  - No code paths reference the Functions emulator port directly
 tests:
-- client/src/tests/env-functions-url-default.test.ts
+  - client/src/tests/env-functions-url-default.test.ts
 components:
-- client/src/auth/UserManager.ts
-- client/src/lib/fluidService.svelte.ts
-- client/src/stores/firestoreStore.svelte.ts
+  - client/src/auth/UserManager.ts
+  - client/src/lib/fluidService.svelte.ts
+  - client/src/stores/firestoreStore.svelte.ts
 title-ja: Firebase Hosting経由のFunctions URLを常時使用

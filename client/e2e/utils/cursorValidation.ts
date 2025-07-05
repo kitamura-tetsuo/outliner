@@ -12,7 +12,7 @@ export class CursorValidator {
         // まず、デバッグ関数をセットアップ
         await page.evaluate(() => {
             // グローバルオブジェクトにデバッグ関数を追加
-            window.getCursorDebugData = function () {
+            window.getCursorDebugData = function() {
                 // EditorOverlayStoreインスタンスを取得
                 const editorOverlayStore = window.editorOverlayStore;
                 if (!editorOverlayStore) {
@@ -49,8 +49,7 @@ export class CursorValidator {
                         cursorCount: cursors.length,
                         selectionCount: selections.length,
                     };
-                }
-                catch (error) {
+                } catch (error) {
                     console.error("Error getting cursor data:", error);
                     return { error: error.message || "Unknown error" };
                 }
@@ -76,8 +75,7 @@ export class CursorValidator {
         if (strict) {
             // 厳密比較モード - 完全に一致する必要がある
             expect(JSON.stringify(cursorData)).toBe(JSON.stringify(expectedData));
-        }
-        else {
+        } else {
             // 部分比較モード - 期待値のプロパティが全て含まれていればOK
             this.assertObjectContains(cursorData, expectedData);
         }
@@ -101,13 +99,11 @@ export class CursorValidator {
             for (let i = 0; i < expected.length; i++) {
                 if (i < actual.length) {
                     this.assertObjectContains(actual[i], expected[i]);
-                }
-                else {
+                } else {
                     throw new Error(`Expected array item at index ${i} not found in actual array`);
                 }
             }
-        }
-        else {
+        } else {
             for (const key in expected) {
                 expect(actual).toHaveProperty(key);
                 this.assertObjectContains(actual[key], expected[key]);
@@ -212,7 +208,7 @@ export class CursorValidator {
         cursorDetails: Array<{
             index: number;
             isActive: boolean;
-            position: { left: string; top: string };
+            position: { left: string; top: string; };
             dataOffset: string | null;
         }>;
     }> {
@@ -228,10 +224,10 @@ export class CursorValidator {
                     isActive: cursor.classList.contains("active"),
                     position: {
                         left: (cursor as HTMLElement).style.left,
-                        top: (cursor as HTMLElement).style.top
+                        top: (cursor as HTMLElement).style.top,
                     },
-                    dataOffset: cursor.getAttribute("data-offset")
-                }))
+                    dataOffset: cursor.getAttribute("data-offset"),
+                })),
             };
         });
     }

@@ -28,4 +28,3 @@ test.describe("SRE-001: Advanced Search & Replace regex", () => {
         expect(highlightCount).toBe(2);
     });
 });
-

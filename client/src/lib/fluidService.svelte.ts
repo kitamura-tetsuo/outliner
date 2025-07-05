@@ -4,44 +4,24 @@ import {
     type AzureRemoteConnectionConfig,
     type ITokenProvider,
 } from "@fluidframework/azure-client";
-import {
-    type ContainerSchema,
-    type IFluidContainer,
-} from "@fluidframework/fluid-static";
+import { type ContainerSchema, type IFluidContainer } from "@fluidframework/fluid-static";
 import { InsecureTokenProvider } from "@fluidframework/test-client-utils";
-import {
-    TinyliciousClient,
-    type TinyliciousContainerServices,
-} from "@fluidframework/tinylicious-client";
-import {
-    SharedTree,
-    Tree,
-    type TreeView,
-    type ViewableTree,
-} from "fluid-framework";
+import { TinyliciousClient, type TinyliciousContainerServices } from "@fluidframework/tinylicious-client";
+import { SharedTree, Tree, type TreeView, type ViewableTree } from "fluid-framework";
 import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";
 import { FluidClient } from "../fluid/fluidClient";
-import {
-    appTreeConfiguration,
-    Project,
-} from "../schema/app-schema";
+import { appTreeConfiguration, Project } from "../schema/app-schema";
 import {
     getDefaultContainerId,
     saveContainerIdToServer as saveFirestoreContainerIdToServer,
 } from "../stores/firestoreStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";
-import {
-    createFluidConfigProvider,
-    getTelemetryFilterLogger,
-} from "./fluidTelemetryFilter";
+import { createFluidConfigProvider, getTelemetryFilterLogger } from "./fluidTelemetryFilter";
 import { AsyncLockManager } from "./lock";
-import {
-    getLogger,
-    log,
-} from "./logger";
+import { getLogger, log } from "./logger";
 
 const logger = getLogger();
 
@@ -74,11 +54,11 @@ const azureConfig = {
 };
 
 // 開発環境ではTinyliciousを使用する - 環境変数で強制的に切り替え可能
-const isTestEnvironment = import.meta.env.VITE_IS_TEST === "true" ||
-    import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
-const useTinylicious = isTestEnvironment || // テスト環境では常にTinyliciousを使用
-    import.meta.env.VITE_USE_TINYLICIOUS === "true" ||
-    (import.meta.env.DEV && import.meta.env.VITE_FORCE_AZURE !== "true");
+const isTestEnvironment = import.meta.env.VITE_IS_TEST === "true"
+    || import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
+const useTinylicious = isTestEnvironment // テスト環境では常にTinyliciousを使用
+    || import.meta.env.VITE_USE_TINYLICIOUS === "true"
+    || (import.meta.env.DEV && import.meta.env.VITE_FORCE_AZURE !== "true");
 
 // Fluid Frameworkがパスの不一致によるエラーを回避するため、
 // ContainerSchemaを直接インポートせずにオブジェクトとして定義
@@ -123,8 +103,7 @@ async function loadTitle(containerId?: string) {
         // レジストリにない場合はデフォルトタイトルを設定
         log("fluidService", "warn", `Container ${containerId} not found in registry, using default title`);
         firestoreStore.titleRegistry.set(containerId, "プロジェクト");
-    }
-    catch (error) {
+    } catch (error) {
         log("fluidService", "warn", `Failed to load title for container ${containerId}, using fallback:`, error);
         // エラーが発生した場合はデフォルトタイトルを設定
         firestoreStore.titleRegistry.set(containerId, "プロジェクト");
@@ -179,8 +158,7 @@ export function getCurrentContainerId(): string | undefined {
                 }
             }
         }
-    }
-    catch (error) {
+    } catch (error) {
         console.warn("Error accessing clientRegistry:", error);
     }
 
@@ -213,8 +191,7 @@ export function getCurrentContainerId(): string | undefined {
                     console.log("getCurrentContainerId: returning from mockStore =", containerId);
                     return containerId;
                 }
-            }
-            else {
+            } else {
                 console.log("getCurrentContainerId: __FIRESTORE_STORE__ not available, checking localStorage");
 
                 // ローカルストレージから最新のcontainerIdを取得
@@ -291,8 +268,7 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
                     };
                 },
             };
-        }
-        else {
+        } else {
             log("fluidService", "warn", "No Fluid token available for Azure mode, fallback to insecure provider");
         }
     }
@@ -324,8 +300,7 @@ async function createAzureOrTinyliciousClient(
     try {
         // TokenProvider設定 - コンテナIDが指定されている場合はそれも渡す
         tokenProvider = await getTokenProvider(userId, containerId);
-    }
-    catch (error) {
+    } catch (error) {
         log(
             "fluidService",
             "error",
@@ -427,8 +402,7 @@ export async function getFluidClient(containerId?: string): Promise<FluidInstanc
                 });
             }
             return result;
-        }
-        catch (error) {
+        } catch (error) {
             log("fluidService", "error", `Failed to create Fluid client for ${clientKey.type}:${clientKey.id}:`, error);
             throw error;
         }
@@ -476,13 +450,11 @@ async function saveContainerIdToServer(containerId: string): Promise<boolean> {
 
         if (!result) {
             log("fluidService", "warn", "Failed to save container ID to server");
-        }
-        else {
+        } else {
             log("fluidService", "info", `Successfully saved container ID: ${containerId}`);
         }
         return result;
-    }
-    catch (error) {
+    } catch (error) {
         log("fluidService", "error", "Error saving container ID to server:", error);
         // エラーが発生してもクリティカルではないので、処理は続行
         return false;
@@ -533,8 +505,7 @@ export async function getUserContainers(): Promise<{ containers: string[]; defau
             containers: result.containers || [],
             defaultContainerId: result.defaultContainerId || null,
         };
-    }
-    catch (error) {
+    } catch (error) {
         log("fluidService", "error", "Error getting user containers:", error);
         return { containers: [], defaultContainerId: null };
     }
@@ -583,8 +554,7 @@ export async function deleteContainer(containerId: string): Promise<boolean> {
         const result = await response.json();
         log("fluidService", "info", `Successfully deleted container ${containerId}`);
         return result.success === true;
-    }
-    catch (error) {
+    } catch (error) {
         log("fluidService", "error", `Error deleting container ${containerId}:`, error);
         return false;
     }
@@ -604,10 +574,10 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
         let userId = userInfo?.id;
 
         // テスト環境では認証をバイパス
-        const isTestEnv = import.meta.env.MODE === "test" ||
-            process.env.NODE_ENV === "test" ||
-            import.meta.env.VITE_IS_TEST === "true" ||
-            (typeof window !== "undefined" && window.mockUser);
+        const isTestEnv = import.meta.env.MODE === "test"
+            || process.env.NODE_ENV === "test"
+            || import.meta.env.VITE_IS_TEST === "true"
+            || (typeof window !== "undefined" && window.mockUser);
 
         if (!userId && isTestEnv) {
             userId = "test-user-id";
@@ -662,8 +632,7 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
 
         // 新しいFluidClientインスタンスを返す
         return new FluidClient(fluidClientParams);
-    }
-    catch (error) {
+    } catch (error) {
         log("fluidService", "error", "Failed to create new container:", error);
         throw error;
     }
@@ -775,10 +744,10 @@ export async function createFluidClient(containerId?: string): Promise<FluidClie
             let userId = userInfo?.id;
 
             // テスト環境では認証をバイパス
-            const isTestEnv = import.meta.env.MODE === "test" ||
-                process.env.NODE_ENV === "test" ||
-                import.meta.env.VITE_IS_TEST === "true" ||
-                (typeof window !== "undefined" && window.mockUser);
+            const isTestEnv = import.meta.env.MODE === "test"
+                || process.env.NODE_ENV === "test"
+                || import.meta.env.VITE_IS_TEST === "true"
+                || (typeof window !== "undefined" && window.mockUser);
 
             if (!userId && isTestEnv) {
                 userId = "test-user-id";
@@ -875,8 +844,7 @@ export async function createFluidClient(containerId?: string): Promise<FluidClie
             //     // 新しいFluidClientインスタンスを返す
             //     return new FluidClient(fluidClientParams);
             // }
-        }
-        catch (error) {
+        } catch (error) {
             log("fluidService", "error", "Failed to create FluidClient:", error);
             throw error;
         }
@@ -903,8 +871,7 @@ export async function initFluidClientWithAuth() {
                 if (typeof window !== "undefined") {
                     (window as any).__FLUID_CLIENT__ = client;
                 }
-            }
-            else {
+            } else {
                 logger.info("ログアウトにより、Fluidクライアントをリセットします");
                 // ストアからの参照を削除
                 fluidStore.fluidClient = undefined;
@@ -912,8 +879,7 @@ export async function initFluidClientWithAuth() {
                     delete (window as any).__FLUID_CLIENT__;
                 }
             }
-        }
-        catch (error) {
+        } catch (error) {
             logger.error("FluidClient初期化エラー:", error);
             fluidStore.fluidClient = undefined;
         }
@@ -930,8 +896,7 @@ export async function initFluidClientWithAuth() {
             if (typeof window !== "undefined") {
                 (window as any).__FLUID_CLIENT__ = client;
             }
-        }
-        catch (error) {
+        } catch (error) {
             logger.error("既存ユーザーでのFluidClient初期化エラー:", error);
         }
     }
@@ -950,8 +915,7 @@ export function cleanupFluidClient() {
             // クライアントが接続状態のイベントハンドラを持っていれば解除
             fluidStore.fluidClient.container.off("connected", () => {});
             fluidStore.fluidClient.container.off("disconnected", () => {});
-        }
-        catch (e) {
+        } catch (e) {
             logger.warn("FluidClient接続解除中のエラー:", e);
         }
     }

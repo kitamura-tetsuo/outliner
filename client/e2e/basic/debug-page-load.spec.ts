@@ -35,8 +35,7 @@ test.describe("Debug Page Load", () => {
 
                 await userManager.loginWithEmailPassword("test@example.com", "password");
                 return { success: true, user: userManager.getCurrentUser() };
-            }
-            catch (error) {
+            } catch (error) {
                 return { success: false, error: error instanceof Error ? error.message : String(error) };
             }
         });
@@ -59,8 +58,7 @@ test.describe("Debug Page Load", () => {
                         projectTitle: project.title,
                         containerId: client.containerId,
                     };
-                }
-                catch (error) {
+                } catch (error) {
                     return { success: false, error: error instanceof Error ? error.message : String(error) };
                 }
             });
@@ -114,8 +112,7 @@ test.describe("Debug Page Load", () => {
                                     }
                                 }
                             }
-                        }
-                        catch (error) {
+                        } catch (error) {
                             console.error("Debug: Error loading project after navigation:", error);
                         }
                     }
@@ -133,16 +130,20 @@ test.describe("Debug Page Load", () => {
                         addButton: !!Array.from(document.querySelectorAll("button")).find(btn =>
                             btn.textContent?.includes("アイテム追加")
                         ),
-                        fluidStore: (window as any).__FLUID_STORE__ ? {
-                            hasClient: !!(window as any).__FLUID_STORE__.fluidClient,
-                            hasCurrentPage: !!(window as any).__FLUID_STORE__.currentPage,
-                        } : null,
-                        generalStore: generalStore ? {
-                            hasProject: !!generalStore.project,
-                            hasPages: !!generalStore.pages,
-                            hasCurrentPage: !!generalStore.currentPage,
-                            pagesCount: generalStore.pages?.current?.length || 0,
-                        } : null,
+                        fluidStore: (window as any).__FLUID_STORE__
+                            ? {
+                                hasClient: !!(window as any).__FLUID_STORE__.fluidClient,
+                                hasCurrentPage: !!(window as any).__FLUID_STORE__.currentPage,
+                            }
+                            : null,
+                        generalStore: generalStore
+                            ? {
+                                hasProject: !!generalStore.project,
+                                hasPages: !!generalStore.pages,
+                                hasCurrentPage: !!generalStore.currentPage,
+                                pagesCount: generalStore.pages?.current?.length || 0,
+                            }
+                            : null,
                     };
                 });
 

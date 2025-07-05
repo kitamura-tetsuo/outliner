@@ -2,10 +2,7 @@
  *  Title   : Chart Component
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("CHT-001: Chart auto-refresh", () => {
     test("Graph appears and refreshes when data updates", async ({ page }) => {
@@ -58,8 +55,7 @@ test.describe("CHT-001: Chart auto-refresh", () => {
             try {
                 const response = await fetch("/graph");
                 return response.status !== 404;
-            }
-            catch {
+            } catch {
                 return false;
             }
         });
@@ -76,8 +72,7 @@ test.describe("CHT-001: Chart auto-refresh", () => {
 
             // ページが正常に表示されることを確認
             expect(hasGraphRoute).toBe(true);
-        }
-        else {
+        } else {
             // /graphページが存在しない場合
             expect(hasGraphRoute).toBe(false);
         }

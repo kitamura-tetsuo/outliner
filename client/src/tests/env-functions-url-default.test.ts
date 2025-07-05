@@ -1,10 +1,4 @@
-import {
-    beforeEach,
-    describe,
-    expect,
-    it,
-    vi,
-} from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UserManager } from "../auth/UserManager";
 
 // getEnv関数をモックして、環境変数が設定されていない状態をシミュレート

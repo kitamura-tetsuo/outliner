@@ -2,10 +2,7 @@
  *  Title   : Alias self-reference prevention
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias self-reference prevention", () => {
@@ -40,19 +37,19 @@ test.describe("ALS-0001: Alias self-reference prevention", () => {
         // 自己参照エイリアスを試行（自分自身を選択）
         const selfSelector = `.alias-picker button[data-id="${aliasId}"]`;
         const selfButton = page.locator(selfSelector);
-        
+
         // 自分自身のボタンが存在するかチェック
         const selfButtonExists = await selfButton.count() > 0;
         if (selfButtonExists) {
             await selfButton.click();
-            
+
             // エイリアスピッカーが閉じることを確認
             await expect(page.locator(".alias-picker")).toBeHidden();
-            
+
             // aliasTargetIdが設定されていないことを確認（自己参照は防止される）
             const aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
             expect(aliasTargetId).toBeNull();
-            
+
             // エイリアスパスが表示されていないことを確認
             const isAliasPathVisible = await TestHelpers.isAliasPathVisible(page, aliasId);
             expect(isAliasPathVisible).toBe(false);

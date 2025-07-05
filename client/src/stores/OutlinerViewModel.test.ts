@@ -1,14 +1,5 @@
-import {
-    beforeEach,
-    describe,
-    expect,
-    it,
-} from "vitest";
-import {
-    Comments,
-    Item,
-    Items,
-} from "../schema/app-schema";
+import { beforeEach, describe, expect, it } from "vitest";
+import { Comments, Item, Items } from "../schema/app-schema";
 import { OutlinerViewModel } from "./OutlinerViewModel";
 
 function createSimpleTree() {

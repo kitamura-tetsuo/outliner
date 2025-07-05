@@ -1,12 +1,5 @@
 import { type FirebaseApp } from "firebase/app";
-import {
-    connectFirestoreEmulator,
-    doc,
-    Firestore,
-    getDoc,
-    getFirestore,
-    onSnapshot,
-} from "firebase/firestore";
+import { connectFirestoreEmulator, doc, Firestore, getDoc, getFirestore, onSnapshot } from "firebase/firestore";
 
 import { userManager } from "../auth/UserManager";
 import { getFirebaseApp } from "../lib/firebase-app";
@@ -51,15 +44,15 @@ try {
     db = getFirestore(app!);
 
     // テスト環境またはエミュレータ環境を検出して接続
-    const isTestEnv = import.meta.env.MODE === "test" ||
-        process.env.NODE_ENV === "test" ||
-        import.meta.env.VITE_IS_TEST === "true" ||
-        (typeof window !== "undefined" && window.mockFluidClient === false);
+    const isTestEnv = import.meta.env.MODE === "test"
+        || process.env.NODE_ENV === "test"
+        || import.meta.env.VITE_IS_TEST === "true"
+        || (typeof window !== "undefined" && window.mockFluidClient === false);
 
-    const useEmulator = isTestEnv ||
-        import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true" ||
-        (typeof window !== "undefined" &&
-            window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true");
+    const useEmulator = isTestEnv
+        || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
+        || (typeof window !== "undefined"
+            && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true");
 
     // Firebase Emulatorに接続
     if (useEmulator) {
@@ -74,16 +67,14 @@ try {
             // エミュレーターに接続
             connectFirestoreEmulator(db, emulatorHost, emulatorPort);
             logger.info("Successfully connected to Firestore emulator");
-        }
-        catch (err) {
+        } catch (err) {
             logger.error("Failed to connect to Firestore emulator:", err);
 
             // 接続できない場合はオフラインモードで続行することを通知
             logger.warn("Continuing in offline mode. Data operations will be cached until connection is restored.");
         }
     }
-}
-catch (error) {
+} catch (error) {
     logger.error("Critical error initializing Firestore:", error);
     // データベース接続に失敗した場合でもアプリが動作し続けられるように
     // 最低限の初期化だけを行う
@@ -141,8 +132,7 @@ function initFirestoreSync(): () => void {
                     firestoreStore.userContainer = containerData;
                     logger.info(`ユーザー ${userId} のコンテナ情報を読み込みました`);
                     logger.info(`デフォルトコンテナID: ${containerData.defaultContainerId || "なし"}`);
-                }
-                else {
+                } else {
                     logger.info(`ユーザー ${userId} のコンテナ情報は存在しません`);
                 }
             },
@@ -158,8 +148,7 @@ function initFirestoreSync(): () => void {
                 unsubscribe = null;
             }
         };
-    }
-    catch (error) {
+    } catch (error) {
         logger.error("Firestore監視設定エラー:", error);
         return () => {}; // 空のクリーンアップ関数を返す
     }
@@ -201,8 +190,7 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
 
         const result = await response.json();
         return result.success === true;
-    }
-    catch (error) {
+    } catch (error) {
         logger.error("コンテナID保存エラー:", error);
         return false;
     }
@@ -246,16 +234,14 @@ export async function getDefaultContainerId(): Promise<string | undefined> {
                     return containerId;
                 }
             }
-        }
-        catch (firestoreError) {
+        } catch (firestoreError) {
             logger.error("Firestore access error:", firestoreError);
             // Firestoreエラーは致命的ではないので、続行
         }
 
         logger.info("No default container ID found");
         return undefined;
-    }
-    catch (error) {
+    } catch (error) {
         logger.error("デフォルトコンテナID取得エラー:", error);
         return undefined;
     }
@@ -270,28 +256,30 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
     try {
         // テスト環境の場合は、直接 userContainer ストアに追加
         if (
-            typeof window !== "undefined" &&
-            (window.mockFluidClient === false ||
-                import.meta.env.VITE_IS_TEST === "true" ||
-                window.localStorage.getItem("VITE_USE_TINYLICIOUS") === "true")
+            typeof window !== "undefined"
+            && (window.mockFluidClient === false
+                || import.meta.env.VITE_IS_TEST === "true"
+                || window.localStorage.getItem("VITE_USE_TINYLICIOUS") === "true")
         ) {
             logger.info("Test environment detected, saving container ID to mock store");
 
             // 新しいコンテナデータを作成または更新
-            const updatedData = firestoreStore.userContainer ? {
-                ...firestoreStore.userContainer,
-                defaultContainerId: containerId,
-                accessibleContainerIds: firestoreStore.userContainer.accessibleContainerIds
-                    ? [...new Set([...firestoreStore.userContainer.accessibleContainerIds, containerId])]
-                    : [containerId],
-                updatedAt: new Date(),
-            } : {
-                userId: "test-user-id",
-                defaultContainerId: containerId,
-                accessibleContainerIds: [containerId],
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            };
+            const updatedData = firestoreStore.userContainer
+                ? {
+                    ...firestoreStore.userContainer,
+                    defaultContainerId: containerId,
+                    accessibleContainerIds: firestoreStore.userContainer.accessibleContainerIds
+                        ? [...new Set([...firestoreStore.userContainer.accessibleContainerIds, containerId])]
+                        : [containerId],
+                    updatedAt: new Date(),
+                }
+                : {
+                    userId: "test-user-id",
+                    defaultContainerId: containerId,
+                    accessibleContainerIds: [containerId],
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                };
 
             // ストアを更新
             firestoreStore.userContainer = updatedData;
@@ -342,8 +330,7 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         const result = await response.json();
         logger.info(`Successfully saved container ID to server for user ${currentUser.id}`);
         return result.success === true;
-    }
-    catch (error) {
+    } catch (error) {
         logger.error("Error saving container ID to server:", error);
         return false;
     }
@@ -364,8 +351,7 @@ if (typeof window !== "undefined") {
         // 認証されていればリスナーを設定
         if (authResult) {
             cleanup = initFirestoreSync();
-        }
-        else {
+        } else {
             // 未認証の場合はコンテナを空にする
             firestoreStore.userContainer = null;
         }

@@ -4,11 +4,11 @@ description: /api/list-users returns all users for admins only
 category: api-server
 status: implemented
 acceptance:
-- 管理者はFirebaseユーザー一覧を取得できる
-- 管理者以外のリクエストは403エラーを返す
+  - 管理者はFirebaseユーザー一覧を取得できる
+  - 管理者以外のリクエストは403エラーを返す
 tests:
   - server/tests/log-service.test.js
   - client/e2e/core/api-admin-user-list-569aaa6c.spec.ts
 components:
-- server/log-service.js
+  - server/log-service.js
 title-ja: 管理者ユーザーリスト

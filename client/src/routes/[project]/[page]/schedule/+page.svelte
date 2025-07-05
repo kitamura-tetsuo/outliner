@@ -5,9 +5,9 @@ import { onMount } from "svelte";
 import {
     cancelSchedule,
     createSchedule,
-    updateSchedule,
     listSchedules,
     type Schedule,
+    updateSchedule,
 } from "../../../../services";
 import { store } from "../../../../stores/store.svelte";
 
@@ -137,8 +137,12 @@ function back() {
                     <button onclick={saveEdit} class="ml-2 px-2 py-1 bg-green-600 text-white rounded">Save</button>
                 {:else}
                     {new Date(sch.nextRunAt).toLocaleString()}
-                    <button onclick={() => startEdit(sch)} class="ml-2 px-2 py-1 bg-yellow-500 text-white rounded">Edit</button>
-                    <button onclick={() => cancel(sch.id)} class="ml-2 px-2 py-1 bg-red-500 text-white rounded">Cancel</button>
+                    <button onclick={() => startEdit(sch)} class="ml-2 px-2 py-1 bg-yellow-500 text-white rounded">
+                        Edit
+                    </button>
+                    <button onclick={() => cancel(sch.id)} class="ml-2 px-2 py-1 bg-red-500 text-white rounded">
+                        Cancel
+                    </button>
                 {/if}
             </li>
         {/each}

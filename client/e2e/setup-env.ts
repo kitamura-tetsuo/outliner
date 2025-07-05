@@ -25,12 +25,10 @@ if (!process.env.CI) {
 
         if (result.error) {
             console.error(`Error loading ${envFileName} file:`, result.error);
-        }
-        else {
+        } else {
             console.log(`Successfully loaded test environment variables from ${envFileName}`);
         }
-    }
-    else {
+    } else {
         console.warn(`${envFileName} file not found at: ${envFilePath}`);
     }
 }

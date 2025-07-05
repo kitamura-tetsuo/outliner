@@ -2,10 +2,7 @@
  *  Title   : 左へ移動
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
@@ -21,8 +18,7 @@ test.describe("CLM-0002: 左へ移動", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        }
-        else {
+        } else {
             await item.locator(".item-content").click({ force: true });
         }
 

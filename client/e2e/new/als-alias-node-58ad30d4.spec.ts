@@ -2,10 +2,7 @@
  *  Title   : Alias node referencing existing items
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias node", () => {

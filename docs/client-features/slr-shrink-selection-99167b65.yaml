@@ -5,8 +5,8 @@ description: Use Shift+Alt+Left to shrink or clear the current selection.
 category: selection-range
 status: implemented
 acceptance:
-- No selection results in no change
-- Shift+Alt+Left clears the current selection and moves the cursor to the start
+  - No selection results in no change
+  - Shift+Alt+Left clears the current selection and moves the cursor to the start
 tests:
-- client/e2e/core/slr-shrink-selection-99167b65.spec.ts
+  - client/e2e/core/slr-shrink-selection-99167b65.spec.ts
 title-ja: 選択範囲の縮小

@@ -1,8 +1,4 @@
-import type {
-    Item,
-    Items,
-    Project,
-} from "../schema/app-schema";
+import type { Item, Items, Project } from "../schema/app-schema";
 import { TreeSubscriber } from "./TreeSubscriber";
 
 class GeneralStore {
@@ -36,8 +32,7 @@ class GeneralStore {
                     currentPageText: this.currentPage?.text,
                 });
             }
-        }
-        else {
+        } else {
             if (import.meta.env.DEV) {
                 console.log(`store: No pages available, currentPage not set`);
             }

@@ -4,9 +4,9 @@ description: プロジェクトページ表示時に自動的にグローバル�
 category: application
 status: implemented
 acceptance:
-- カーソルが表示される
-- プロジェクトページ表示時にグローバルテキストエリアにフォーカスが設定される
-- ユーザーがクリックせずに直接テキスト入力が可能になる
+  - カーソルが表示される
+  - プロジェクトページ表示時にグローバルテキストエリアにフォーカスが設定される
+  - ユーザーがクリックせずに直接テキスト入力が可能になる
 tests:
-- client/e2e/core/app-set-focus-to-global-text-area-when-viewing-project-pages-d14affb9.spec.ts
+  - client/e2e/core/app-set-focus-to-global-text-area-when-viewing-project-pages-d14affb9.spec.ts
 title-ja: プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定

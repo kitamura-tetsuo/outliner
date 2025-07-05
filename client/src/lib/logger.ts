@@ -5,12 +5,12 @@ const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";
 
 // ブラウザのコンソールAPIを使用するかどうか
 // テスト環境では常にtrueを返すようにする
-const isTestEnvironment = import.meta.env.NODE_ENV === "test" ||
-    import.meta.env.VITEST === "true" ||
-    (typeof process !== "undefined" && process.env?.NODE_ENV === "test");
+const isTestEnvironment = import.meta.env.NODE_ENV === "test"
+    || import.meta.env.VITEST === "true"
+    || (typeof process !== "undefined" && process.env?.NODE_ENV === "test");
 
-const useConsoleAPI = isTestEnvironment ||
-    (typeof window !== "undefined" && typeof window.console !== "undefined");
+const useConsoleAPI = isTestEnvironment
+    || (typeof window !== "undefined" && typeof window.console !== "undefined");
 
 // pino のインスタンス（ブラウザ用の設定）
 const baseLogger = pino({
@@ -112,11 +112,9 @@ function getCallerFile(): string {
         }
 
         return "unknown";
-    }
-    catch (error) {
+    } catch (error) {
         return "unknown";
-    }
-    finally {
+    } finally {
         // 元の prepareStackTrace を復元
         Error.prepareStackTrace = originalPrepareStackTrace;
     }
@@ -141,8 +139,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
             // 引数の処理: 最初の引数がオブジェクトなら位置情報を追加
             if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
                 args[0] = { file, ...args[0] };
-            }
-            else {
+            } else {
                 // オブジェクトでない場合は先頭に位置情報を追加
                 args.unshift({ file });
             }
@@ -154,7 +151,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
 
     // child メソッドを特別に上書き
     const originalChild = logger.child.bind(logger);
-    enhancedLogger.child = function (bindings: pino.Bindings): pino.Logger {
+    enhancedLogger.child = function(bindings: pino.Bindings): pino.Logger {
         // 元の child メソッドを呼び出し
         const childLogger = originalChild(bindings);
         // 子ロガーも強化
@@ -203,13 +200,16 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
         return new Proxy(childLogger, {
             get(target, prop) {
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
-                    return function (...args: any[]) {
+                    return function(...args: any[]) {
                         // オリジナルのロガーメソッドを呼び出し
                         (target as any)[prop](...args);
 
                         // コンソールにも出力（同じレベルで）
-                        const consoleMethod = prop === "trace" || prop === "debug" ? "log" :
-                            prop === "fatal" ? "error" : prop;
+                        const consoleMethod = prop === "trace" || prop === "debug"
+                            ? "log"
+                            : prop === "fatal"
+                            ? "error"
+                            : prop;
 
                         try {
                             // ファイル情報とモジュール名を整形
@@ -236,8 +236,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                         ...(messages.length > 0 ? messages : []),
                                         objData,
                                     );
-                                }
-                                else {
+                                } else {
                                     // モジュール名がファイル名と同じ場合は一つだけ表示
                                     (console[consoleMethod as keyof Console] as Function)(
                                         `%c[${sourceInfo}]%c [${levelUpperCase}]:`,
@@ -247,8 +246,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                         objData,
                                     );
                                 }
-                            }
-                            else {
+                            } else {
                                 // 通常のメッセージ（オブジェクトなし）
                                 if (isCustomModule) {
                                     (console[consoleMethod as keyof Console] as Function)(
@@ -258,8 +256,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                         consoleStyles.levels[prop as keyof typeof consoleStyles.levels],
                                         ...args,
                                     );
-                                }
-                                else {
+                                } else {
                                     // モジュール名がファイル名と同じ場合は一つだけ表示
                                     (console[consoleMethod as keyof Console] as Function)(
                                         `%c[${sourceInfo}]%c [${levelUpperCase}]:`,
@@ -269,8 +266,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                     );
                                 }
                             }
-                        }
-                        catch (e) {
+                        } catch (e) {
                             // スタイル適用に失敗した場合は通常のフォーマットで表示
                             (console[consoleMethod as keyof Console] as Function)(
                                 `[${file}] [${prop.toUpperCase()}]:`,
@@ -297,8 +293,11 @@ export function log(
     ...args: any[]
 ): void {
     // 1. 通常のコンソール出力（ソースマップ情報が付加されるが、直接的でシンプル）
-    const consoleMethod = level === "trace" || level === "debug" ? "log" :
-        level === "fatal" ? "error" : level;
+    const consoleMethod = level === "trace" || level === "debug"
+        ? "log"
+        : level === "fatal"
+        ? "error"
+        : level;
 
     // レベルごとに色分け
     const levelColors = {
@@ -322,8 +321,7 @@ export function log(
             `color: ${levelColors[level]}; font-weight: bold`,
             ...args,
         );
-    }
-    else {
+    } else {
         (console[consoleMethod as keyof Console] as Function)(
             `%c[${componentName}]%c [${level.toUpperCase()}]:`,
             `color: #5cb85c; font-weight: bold`,
@@ -350,11 +348,9 @@ function extractErrorDetails(
             stack: error.stack,
             ...(error as any), // その他のカスタムプロパティも含める
         };
-    }
-    else if (typeof error === "string") {
+    } else if (typeof error === "string") {
         return { message: error };
-    }
-    else if (error && typeof error === "object") {
+    } else if (error && typeof error === "object") {
         return { ...error as object, message: String(error) };
     }
     return { message: String(error) };

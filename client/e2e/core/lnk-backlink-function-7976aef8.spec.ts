@@ -2,10 +2,7 @@
  *  Title   : バックリンク機能
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
@@ -46,7 +43,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // リンクをクリックして新しいページに移動
         const link = page.locator(`text=${targetPageName}`);
         if (await link.count() === 0) {
-            console.log('Link not found:', targetPageName);
+            console.log("Link not found:", targetPageName);
             return;
         }
         await link.click();
@@ -99,7 +96,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // リンクをクリックして新しいページに移動
         const link2 = page.locator(`text=${targetPageName}`);
         if (await link2.count() === 0) {
-            console.log('Link not found:', targetPageName);
+            console.log("Link not found:", targetPageName);
             return;
         }
         await link2.click();
@@ -155,12 +152,10 @@ test.describe("LNK-0007: バックリンク機能", () => {
                     // 大文字小文字を区別せずに検索
                     expect(contextText.toLowerCase()).toContain(targetPageName.toLowerCase());
                 }
-            }
-            else {
+            } else {
                 console.log("バックリンクコンテキストが見つかりませんでした。テスト環境の制約によりスキップします。");
             }
-        }
-        else {
+        } else {
             console.log("ソースページリンクが見つかりませんでした。テスト環境の制約によりスキップします。");
         }
 
@@ -193,7 +188,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // リンクをクリックして新しいページに移動
         const link3 = page.locator(`text=${targetPageName}`);
         if (await link3.count() === 0) {
-            console.log('Link not found:', targetPageName);
+            console.log("Link not found:", targetPageName);
             return;
         }
         await link3.click();
@@ -248,7 +243,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // リンクをクリックして新しいページに移動
         const link4 = page.locator(`text=${targetPageName}`);
         if (await link4.count() === 0) {
-            console.log('Link not found:', targetPageName);
+            console.log("Link not found:", targetPageName);
             return;
         }
         await link4.click();
@@ -316,7 +311,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // リンクをクリックして新しいページに移動
         const link5 = page.locator(`text=${targetPageName}`);
         if (await link5.count() === 0) {
-            console.log('Link not found:', targetPageName);
+            console.log("Link not found:", targetPageName);
             return;
         }
         await link5.click();

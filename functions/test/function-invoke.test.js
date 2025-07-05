@@ -7,17 +7,62 @@ const baseURL = "http://localhost:57000/api";
 // List of endpoints and methods to verify invocation only
 const endpoints = [
   { method: "post", path: "/fluid-token", data: { idToken: "invalid" } },
-  { method: "post", path: "/save-container", data: { idToken: "invalid", containerId: "test" } },
-  { method: "post", path: "/get-user-containers", data: { idToken: "invalid" } },
-  { method: "post", path: "/create-test-user", data: { email: "test@example.com", password: "pass" } },
+  {
+    method: "post",
+    path: "/save-container",
+    data: { idToken: "invalid", containerId: "test" },
+  },
+  {
+    method: "post",
+    path: "/get-user-containers",
+    data: { idToken: "invalid" },
+  },
+  {
+    method: "post",
+    path: "/create-test-user",
+    data: { email: "test@example.com", password: "pass" },
+  },
   { method: "post", path: "/delete-user", data: { idToken: "invalid" } },
-  { method: "post", path: "/delete-container", data: { idToken: "invalid", containerId: "test" } },
-  { method: "post", path: "/get-container-users", data: { idToken: "invalid", containerId: "test" } },
+  {
+    method: "post",
+    path: "/delete-container",
+    data: { idToken: "invalid", containerId: "test" },
+  },
+  {
+    method: "post",
+    path: "/get-container-users",
+    data: { idToken: "invalid", containerId: "test" },
+  },
   { method: "post", path: "/list-users", data: { idToken: "invalid" } },
-  { method: "post", path: "/create-schedule", data: { idToken: "invalid", pageId: "p", schedule: { strategy: "one_shot", nextRunAt: Date.now() } } },
-  { method: "post", path: "/update-schedule", data: { idToken: "invalid", pageId: "p", scheduleId: "s", schedule: { strategy: "one_shot", nextRunAt: Date.now() } } },
-  { method: "post", path: "/list-schedules", data: { idToken: "invalid", pageId: "p" } },
-  { method: "post", path: "/cancel-schedule", data: { idToken: "invalid", pageId: "p", scheduleId: "s" } },
+  {
+    method: "post",
+    path: "/create-schedule",
+    data: {
+      idToken: "invalid",
+      pageId: "p",
+      schedule: { strategy: "one_shot", nextRunAt: Date.now() },
+    },
+  },
+  {
+    method: "post",
+    path: "/update-schedule",
+    data: {
+      idToken: "invalid",
+      pageId: "p",
+      scheduleId: "s",
+      schedule: { strategy: "one_shot", nextRunAt: Date.now() },
+    },
+  },
+  {
+    method: "post",
+    path: "/list-schedules",
+    data: { idToken: "invalid", pageId: "p" },
+  },
+  {
+    method: "post",
+    path: "/cancel-schedule",
+    data: { idToken: "invalid", pageId: "p", scheduleId: "s" },
+  },
 ];
 
 describe("Firebase function invocation", () => {

@@ -2,10 +2,7 @@
  *  Title   : 複数行テキスト入力
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-0004: 複数行テキスト入力", () => {

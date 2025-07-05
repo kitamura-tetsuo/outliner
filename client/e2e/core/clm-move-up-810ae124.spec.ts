@@ -2,10 +2,7 @@
  *  Title   : 上へ移動
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
@@ -21,8 +18,7 @@ test.describe("CLM-0004: 上へ移動", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        }
-        else {
+        } else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -121,8 +117,7 @@ test.describe("CLM-0004: 上へ移動", () => {
 
                 if (currentLineY === null) {
                     currentLineY = y;
-                }
-                else if (Math.abs(y - currentLineY) > 5) { // 5px以上の差があれば新しい行
+                } else if (Math.abs(y - currentLineY) > 5) { // 5px以上の差があれば新しい行
                     // 新しい行が始まった
                     lines.push({
                         startOffset: currentLineStart,
@@ -166,13 +161,11 @@ test.describe("CLM-0004: 上へ移動", () => {
         if (newPosition && initialPosition) {
             if (newPosition.y < initialPosition.y) {
                 console.log("✓ カーソルが上に移動しました");
-            }
-            else if (newPosition.y === initialPosition.y && newPosition.x !== initialPosition.x) {
+            } else if (newPosition.y === initialPosition.y && newPosition.x !== initialPosition.x) {
                 console.log("⚠ カーソルは同じ行内で移動しました（視覚的な行の移動が機能していない可能性）");
                 // 視覚的な行の移動が実装されていない場合は、オフセットの変化で確認
                 expect(newOffset).not.toBe(initialOffset);
-            }
-            else {
+            } else {
                 console.log("✗ カーソルが移動していません");
                 expect(newPosition.y).toBeLessThan(initialPosition.y);
             }
@@ -328,8 +321,7 @@ test.describe("CLM-0004: 上へ移動", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        }
-        else {
+        } else {
             await item.locator(".item-content").click({ force: true });
         }
 

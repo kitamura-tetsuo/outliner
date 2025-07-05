@@ -4,8 +4,8 @@ description: Pressing Delete on an empty outliner item removes that item.
 category: item-management
 status: implemented
 acceptance:
-- アイテムが空の状態でDeleteキーを押すとそのアイテムが削除される
-- 削除後、カーソルは次のアイテムの先頭に移動する
+  - アイテムが空の状態でDeleteキーを押すとそのアイテムが削除される
+  - 削除後、カーソルは次のアイテムの先頭に移動する
 tests:
-- client/e2e/core/itm-delete-empty-item-9f4d79c4.spec.ts
+  - client/e2e/core/itm-delete-empty-item-9f4d79c4.spec.ts
 title-ja: Deleteキーで空のアイテムを削除

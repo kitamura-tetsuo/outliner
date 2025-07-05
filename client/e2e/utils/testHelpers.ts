@@ -1,8 +1,4 @@
-import {
-    expect,
-    type Page,
-    type Response,
-} from "@playwright/test";
+import { expect, type Page, type Response } from "@playwright/test";
 import { CursorValidator } from "./cursorValidation.js";
 
 /**
@@ -33,8 +29,7 @@ export class TestHelpers {
             });
             console.log("TestHelper: Successfully navigated to home page");
             console.log("TestHelper: Page URL after navigation:", page.url());
-        }
-        catch (error) {
+        } catch (error) {
             console.error("TestHelper: Failed to navigate to home page:", error);
             console.log("TestHelper: Current page URL:", page.url());
             console.log("TestHelper: Page title:", await page.title().catch(() => "Unable to get title"));
@@ -56,7 +51,7 @@ export class TestHelpers {
                 (window as any).__vite_plugin_react_preamble_installed__ = true;
                 // エラーオーバーレイの表示を防ぐ
                 const originalCreateElement = document.createElement;
-                document.createElement = function (tagName: string, ...args: any[]) {
+                document.createElement = function(tagName: string, ...args: any[]) {
                     if (tagName === "vite-error-overlay") {
                         return originalCreateElement.call(this, "div", ...args);
                     }
@@ -90,8 +85,7 @@ export class TestHelpers {
                 console.log("TestHelper: Calling loginWithEmailPassword");
                 await userManager.loginWithEmailPassword("test@example.com", "password");
                 return { success: true };
-            }
-            catch (error) {
+            } catch (error) {
                 console.error("TestHelper: Authentication failed", error);
                 return { success: false, error: error instanceof Error ? error.message : String(error) };
             }
@@ -219,12 +213,10 @@ export class TestHelpers {
                     console.log(`TestHelper: FluidStore updated`);
                     console.log(`TestHelper: FluidClient containerId:`, fluidClient.containerId);
                     console.log(`TestHelper: FluidStore currentContainerId:`, fluidStore.getCurrentContainerId());
-                }
-                else {
+                } else {
                     console.error(`TestHelper: FluidStore not found`);
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 console.error(`TestHelper: Error creating project and page:`, error);
                 // エラーが発生してもテストを続行する
                 return; // エラーの場合は早期リターン
@@ -248,8 +240,7 @@ export class TestHelpers {
                             });
                         }
                     }
-                }
-                catch (error) {
+                } catch (error) {
                     console.error(`TestHelper: Error checking project state:`, error);
                 }
             }
@@ -295,7 +286,7 @@ export class TestHelpers {
     private static async setupCursorDebugger(page: Page): Promise<void> {
         await page.addInitScript(() => {
             // グローバルオブジェクトにデバッグ関数を追加
-            window.getCursorDebugData = function () {
+            window.getCursorDebugData = function() {
                 // EditorOverlayStoreインスタンスを取得
                 const editorOverlayStore = window.editorOverlayStore;
                 if (!editorOverlayStore) {
@@ -338,15 +329,14 @@ export class TestHelpers {
                         cursorCount: cursors.length,
                         selectionCount: selections.length,
                     };
-                }
-                catch (error) {
+                } catch (error) {
                     console.error("Error getting cursor data:", error);
                     return { error: error instanceof Error ? error.message : "Unknown error" };
                 }
             };
 
             // 拡張版のデバッグ関数 - 特定のパスのデータのみを取得
-            window.getCursorPathData = function (path) {
+            window.getCursorPathData = function(path) {
                 // EditorOverlayStoreインスタンスを取得
                 const editorOverlayStore = window.editorOverlayStore;
                 if (!editorOverlayStore) {
@@ -367,8 +357,7 @@ export class TestHelpers {
                         result = result[part];
                     }
                     return result;
-                }
-                catch (error) {
+                } catch (error) {
                     return { error: error instanceof Error ? error.message : "Unknown error" };
                 }
             };
@@ -385,7 +374,7 @@ export class TestHelpers {
     public static async setupTreeDebugger(page: Page): Promise<void> {
         await page.addInitScript(() => {
             // グローバルオブジェクトにデバッグ関数を追加
-            window.getFluidTreeDebugData = function () {
+            window.getFluidTreeDebugData = function() {
                 // グローバルFluidClientインスタンスを取得
                 const fluidClient = window.__FLUID_SERVICE__.getFluidClient();
                 if (!fluidClient) {
@@ -397,15 +386,14 @@ export class TestHelpers {
                     // FluidClientのgetAllDataメソッドを使用してデータを取得
                     const treeData = fluidClient.getAllData();
                     return treeData;
-                }
-                catch (error) {
+                } catch (error) {
                     console.error("Error getting tree data:", error);
                     return { error: error instanceof Error ? error.message : "Unknown error" };
                 }
             };
 
             // 拡張版のデバッグ関数 - 特定のパスのデータのみを取得
-            window.getFluidTreePathData = function (path) {
+            window.getFluidTreePathData = function(path) {
                 const fluidClient = window.__FLUID_SERVICE__.getFluidClient();
                 if (!fluidClient) {
                     return { error: "FluidClient instance not found" };
@@ -423,8 +411,7 @@ export class TestHelpers {
                         result = result[part];
                     }
                     return result;
-                }
-                catch (error) {
+                } catch (error) {
                     return { error: error instanceof Error ? error.message : "Unknown error" };
                 }
             };
@@ -449,16 +436,14 @@ export class TestHelpers {
                 return activeCursors.length > 0;
             }, { timeout });
             return true;
-        }
-        catch (error) {
+        } catch (error) {
             console.log("Timeout waiting for cursor to be visible, continuing anyway");
             // ページが閉じられていないかチェックしてからスクリーンショットを撮影
             try {
                 if (!page.isClosed()) {
                     await page.screenshot({ path: "client/test-results/cursor-visible-timeout.png" });
                 }
-            }
-            catch (screenshotError) {
+            } catch (screenshotError) {
                 console.log("Failed to take screenshot:", screenshotError);
             }
             return false;
@@ -490,8 +475,7 @@ export class TestHelpers {
                     isActive: true,
                     userId: userId,
                 });
-            }
-            else {
+            } else {
                 console.error(`TestHelpers.setCursor: editorOverlayStore or setCursor not available`);
             }
         }, { itemId, offset, userId });
@@ -518,16 +502,14 @@ export class TestHelpers {
                 if (cursor && cursor.insertText) {
                     console.log(`TestHelpers.insertText: Found cursor for itemId=${itemId}, userId=${userId}`);
                     cursor.insertText(text);
-                }
-                else {
+                } else {
                     console.error(`TestHelpers.insertText: Cursor not found for itemId=${itemId}, userId=${userId}`);
                     console.log(
                         `Available cursors:`,
                         cursorInstances.map((c: any) => ({ itemId: c.itemId, userId: c.userId })),
                     );
                 }
-            }
-            else {
+            } else {
                 console.error(`TestHelpers.insertText: editorOverlayStore or getCursorInstances not available`);
             }
         }, { itemId, text, userId });
@@ -665,8 +647,7 @@ export class TestHelpers {
                         console.log("TestHelper: Basic conditions met (project and pages available)");
                         if (hasFluidClient) {
                             console.log("TestHelper: FluidClient also available");
-                        }
-                        else {
+                        } else {
                             console.log("TestHelper: FluidClient not yet available, but proceeding");
                         }
                         return true;
@@ -678,8 +659,7 @@ export class TestHelpers {
 
                 success = true;
                 console.log(`TestHelper: Successfully loaded project and page on attempt ${attempts}`);
-            }
-            catch (error) {
+            } catch (error) {
                 console.log(
                     `TestHelper: Attempt ${attempts} failed:`,
                     error instanceof Error ? error.message : String(error),
@@ -766,8 +746,7 @@ export class TestHelpers {
 
                 return hasOutlinerBase;
             }, { timeout: 30000 });
-        }
-        catch (error) {
+        } catch (error) {
             console.log("TestHelper: Page initialization timeout, taking debug screenshot");
             await page.screenshot({ path: "test-results/debug-page-init-timeout.png" });
 
@@ -806,8 +785,7 @@ export class TestHelpers {
                 // OutlinerTreeまたはAddButtonのいずれかが存在すれば進行
                 return hasOutlinerTree || hasAddButton;
             }, { timeout: 10000 });
-        }
-        catch (error) {
+        } catch (error) {
             console.log("TestHelper: OutlinerTree initialization timeout, continuing anyway");
             // タイムアウトしても続行する
         }
@@ -856,8 +834,7 @@ export class TestHelpers {
             await page.waitForSelector(".outliner-item", { timeout: timeout });
             const itemCount = await page.locator(".outliner-item").count();
             console.log(`Found ${itemCount} outliner items`);
-        }
-        catch (e) {
+        } catch (e) {
             console.log("Timeout waiting for outliner items, taking screenshot...");
             await page.screenshot({ path: "client/test-results/outliner-items-timeout.png" });
             throw e;
@@ -976,8 +953,7 @@ export class TestHelpers {
                         }
                     }
                 }
-            }
-            else {
+            } else {
                 element = document.querySelector(sel);
             }
 
@@ -1053,8 +1029,7 @@ export class TestHelpers {
         // タイムアウトを短くして、失敗した場合はEscapeで閉じる
         try {
             await page.locator(selector).click({ timeout: 3000 });
-        }
-        catch (error) {
+        } catch (error) {
             console.log("Button click failed, trying to close picker with Escape");
             await page.keyboard.press("Escape");
             throw error;
@@ -1106,8 +1081,7 @@ export class TestHelpers {
                 // Escapeキーを押してエイリアスピッカーを閉じる
                 await page.keyboard.press("Escape");
                 await page.locator(".alias-picker").waitFor({ state: "hidden", timeout: 3000 });
-            }
-            catch (error) {
+            } catch (error) {
                 console.log("Failed to hide alias picker with Escape, trying alternative method");
                 // 代替手法：ページの他の場所をクリックしてピッカーを閉じる
                 await page.click("body");
@@ -1267,11 +1241,11 @@ export class TestHelpers {
 
                     // スタイルを確認
                     const style = window.getComputedStyle(element);
-                    const isVisibleStyle = style.display !== "none" &&
-                        style.visibility !== "hidden" &&
-                        style.opacity !== "0" &&
-                        rect.height > 0 &&
-                        rect.width > 0;
+                    const isVisibleStyle = style.display !== "none"
+                        && style.visibility !== "hidden"
+                        && style.opacity !== "0"
+                        && rect.height > 0
+                        && rect.width > 0;
 
                     // 親要素が非表示になっていないか確認
                     let parent = element.parentElement;
@@ -1280,9 +1254,9 @@ export class TestHelpers {
                     while (parent) {
                         const parentStyle = window.getComputedStyle(parent);
                         if (
-                            parentStyle.display === "none" ||
-                            parentStyle.visibility === "hidden" ||
-                            parentStyle.opacity === "0"
+                            parentStyle.display === "none"
+                            || parentStyle.visibility === "hidden"
+                            || parentStyle.opacity === "0"
                         ) {
                             isParentVisible = false;
                             break;
@@ -1316,8 +1290,7 @@ export class TestHelpers {
                 if (i < retryCount - 1) {
                     await page.waitForTimeout(300);
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 console.error(`Error checking visibility for ${selector}:`, error);
                 if (i < retryCount - 1) {
                     await page.waitForTimeout(300);

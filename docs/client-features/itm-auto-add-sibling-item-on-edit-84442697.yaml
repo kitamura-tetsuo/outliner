@@ -4,7 +4,7 @@ description: When the last visible outliner item is edited, a new empty sibling 
 category: item-management
 status: implemented
 acceptance:
-- Editing the bottommost item creates a new empty item below it
+  - Editing the bottommost item creates a new empty item below it
 tests:
-- client/e2e/core/itm-auto-add-sibling-item-on-edit-84442697.spec.ts
+  - client/e2e/core/itm-auto-add-sibling-item-on-edit-84442697.spec.ts
 title-ja: 最下部編集時に自動で兄弟アイテムを追加

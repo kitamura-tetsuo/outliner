@@ -1,9 +1,5 @@
 import { EventEmitter } from "events";
-import {
-    describe,
-    expect,
-    it,
-} from "vitest";
+import { describe, expect, it } from "vitest";
 import { FluidClient } from "../fluid/fluidClient";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
@@ -20,8 +16,8 @@ class FakeAudience extends EventEmitter {
 describe("fluid presence integration", () => {
     it("updates presence when members change", () => {
         const audience = new FakeAudience();
-    const services: any = { audience };
-    const dummy: any = { on: () => {}, off: () => {} };
+        const services: any = { audience };
+        const dummy: any = { on: () => {}, off: () => {} };
         const client = new FluidClient({
             clientId: "c1",
             client: dummy,

@@ -2,10 +2,7 @@
  *  Title   : Advanced Search & Replace
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SRE-001: Advanced Search & Replace", () => {

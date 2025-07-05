@@ -1,7 +1,4 @@
-import {
-    Items,
-    Project,
-} from "../schema/app-schema";
+import { Items, Project } from "../schema/app-schema";
 
 function escapeHtml(str: string): string {
     return str
@@ -118,14 +115,12 @@ export function importMarkdownIntoProject(md: string, project: Project) {
             node = project.addPage(text, "import");
             firstPageItems = node.items as Items;
             isFirstRootItem = false;
-        }
-        else if (indent === 0 && firstPageItems) {
+        } else if (indent === 0 && firstPageItems) {
             // 2番目以降のルートレベルアイテムは最初のページの子として作成
             console.log(`importMarkdownIntoProject: Creating root-level child "${text}" under first page`);
             node = firstPageItems.addNode("import");
             node.updateText(text);
-        }
-        else {
+        } else {
             // 通常の子アイテムとして作成
             console.log(`importMarkdownIntoProject: Creating child "${text}" under parent`);
             node = parentInfo.items.addNode("import");

@@ -5,5 +5,5 @@ category: security
 status: implemented
 components: []
 tests:
-- client/e2e/core/sec-dotenvx-encrypted-env-files-fa94885c.spec.ts
+  - client/e2e/core/sec-dotenvx-encrypted-env-files-fa94885c.spec.ts
 title-ja: dotenvx暗号化されたenvファイル

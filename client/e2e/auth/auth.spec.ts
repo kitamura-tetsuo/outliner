@@ -10,10 +10,7 @@
  * @playwright
  */
 
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("認証機能テスト", () => {

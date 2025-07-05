@@ -19,7 +19,6 @@ labels:
     description: Maintenance of test frameworks or environments
     color: d4c5f9
 
-
   # Priority
   - name: P0-critical
     description: Must be fixed ASAP

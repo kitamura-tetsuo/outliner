@@ -2,10 +2,7 @@
  *  Title   : Multi-Page Schedule Management
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Multi-Page Schedule Management", () => {

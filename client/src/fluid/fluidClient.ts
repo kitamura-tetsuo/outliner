@@ -1,23 +1,11 @@
-import {
-    AzureClient,
-    type AzureContainerServices,
-} from "@fluidframework/azure-client";
+import { AzureClient, type AzureContainerServices } from "@fluidframework/azure-client";
 import { type IFluidContainer } from "@fluidframework/fluid-static";
-import {
-    TinyliciousClient,
-    type TinyliciousContainerServices,
-} from "@fluidframework/tinylicious-client";
-import {
-    ConnectionState,
-    type TreeView,
-} from "fluid-framework";
+import { TinyliciousClient, type TinyliciousContainerServices } from "@fluidframework/tinylicious-client";
+import { ConnectionState, type TreeView } from "fluid-framework";
 import { userManager } from "../auth/UserManager";
 import { getLogger } from "../lib/logger";
-import { presenceStore, colorForUser } from "../stores/PresenceStore.svelte";
-import {
-    Items,
-    Project,
-} from "../schema/app-schema";
+import { Items, Project } from "../schema/app-schema";
+import { colorForUser, presenceStore } from "../stores/PresenceStore.svelte";
 
 const logger = getLogger();
 
@@ -115,8 +103,7 @@ export class FluidClient {
                     setTimeout(() => {
                         this.reconnect();
                     }, 2000);
-                }
-                else {
+                } else {
                     logger.warn("最大再接続回数に達しました。手動での再接続が必要です。");
                 }
             },
@@ -346,8 +333,7 @@ export class FluidClient {
                     logger.info("Reconnecting with refreshed token...");
                     this.container.connect();
                 }
-            }
-            else {
+            } else {
                 // 一般的なトークン更新
 
                 await userManager.refreshToken();
@@ -356,8 +342,7 @@ export class FluidClient {
                     this.container.connect();
                 }
             }
-        }
-        catch (error) {
+        } catch (error) {
             logger.error("Reconnection failed:", error);
         }
     }
@@ -371,8 +356,7 @@ export class FluidClient {
                 const item = pageItems.addNode("test-user");
                 item.updateText(line);
             }
-        }
-        catch (error) {
+        } catch (error) {
             console.error("Error creating page:", error);
             throw error;
         }

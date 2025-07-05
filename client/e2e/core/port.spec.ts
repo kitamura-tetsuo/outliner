@@ -2,10 +2,7 @@
  *  Title   : テスト環境の初期化と準備
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 /**
  * @file port.spec.ts

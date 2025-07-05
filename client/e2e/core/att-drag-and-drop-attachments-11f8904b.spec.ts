@@ -1,8 +1,5 @@
 /** @feature ATT-0001 */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ATT-0001: Drag and drop attachments", () => {

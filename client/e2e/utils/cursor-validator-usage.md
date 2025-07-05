@@ -21,10 +21,7 @@
 `CursorValidator` クラスを使用して、カーソル情報を取得し、検証することができます。
 
 ```typescript
-import {
-    setupCursorDebugger,
-    waitForCursorVisible,
-} from "../helpers";
+import { setupCursorDebugger, waitForCursorVisible } from "../helpers";
 import { CursorValidator } from "./cursorValidation";
 
 // カーソル情報取得用のデバッグ関数をセットアップ
@@ -106,8 +103,7 @@ await page.waitForTimeout(100);
 try {
     await CursorValidator.compareWithSnapshot(page, snapshot);
     throw new Error("スナップショットが一致してしまいました");
-}
-catch (error) {
+} catch (error) {
     console.log("スナップショットが一致しないことを確認しました");
 }
 ```

@@ -2,10 +2,7 @@
  *  Title   : 複数アイテム選択範囲の削除
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
@@ -177,8 +174,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        }
-        catch (e) {
+        } catch (e) {
             console.log("Selection not created, skipping test");
             return;
         }
@@ -258,8 +254,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        }
-        catch (e) {
+        } catch (e) {
             console.log("Selection not created, skipping test");
             return;
         }
@@ -334,8 +329,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        }
-        catch (e) {
+        } catch (e) {
             console.log("Selection not created, skipping test");
             return;
         }

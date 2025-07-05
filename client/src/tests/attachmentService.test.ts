@@ -1,13 +1,5 @@
-import {
-    describe,
-    expect,
-    it,
-} from "vitest";
-import {
-    deleteAttachment,
-    listAttachments,
-    uploadAttachment,
-} from "../services/attachmentService";
+import { describe, expect, it } from "vitest";
+import { deleteAttachment, listAttachments, uploadAttachment } from "../services/attachmentService";
 
 describe("attachmentService", () => {
     it("throws without auth token", async () => {

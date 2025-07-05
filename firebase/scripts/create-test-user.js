@@ -66,8 +66,7 @@ const createTestUser = async () => {
             const userRecord = await admin.auth().getUserByEmail(testEmail);
             console.log(`Test user already exists: ${userRecord.uid}`);
             return userRecord;
-        }
-        catch (error) {
+        } catch (error) {
             // ユーザーが存在しない場合は作成を続行
             if (error.code !== "auth/user-not-found") {
                 throw error;
@@ -84,8 +83,7 @@ const createTestUser = async () => {
 
         console.log(`Successfully created test user: ${userRecord.uid}`);
         return userRecord;
-    }
-    catch (error) {
+    } catch (error) {
         console.error("Error creating test user:", error);
         throw error;
     }

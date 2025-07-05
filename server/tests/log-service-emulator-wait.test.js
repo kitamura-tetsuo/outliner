@@ -3,13 +3,13 @@ const { expect } = require("chai");
 const sinon = require("sinon");
 
 // Firebase emulator起動待機機能のテスト
-describe("Firebase emulator起動待機機能 (API-0002)", function () {
+describe("Firebase emulator起動待機機能 (API-0002)", function() {
     let adminStub;
     let loggerStub;
     let processStub;
     let waitForFirebaseEmulator;
 
-    beforeEach(function () {
+    beforeEach(function() {
         // Firebase Admin SDKのモック
         adminStub = {
             auth: sinon.stub().returns({
@@ -30,10 +30,10 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         };
 
         // waitForFirebaseEmulator関数を模擬実装
-        waitForFirebaseEmulator = async function (maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
-            const isEmulator = processStub.env.FIREBASE_AUTH_EMULATOR_HOST ||
-                processStub.env.FIRESTORE_EMULATOR_HOST ||
-                processStub.env.FIREBASE_EMULATOR_HOST;
+        waitForFirebaseEmulator = async function(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
+            const isEmulator = processStub.env.FIREBASE_AUTH_EMULATOR_HOST
+                || processStub.env.FIRESTORE_EMULATOR_HOST
+                || processStub.env.FIREBASE_EMULATOR_HOST;
 
             if (!isEmulator) {
                 loggerStub.info("Firebase emulator not configured, skipping connection wait");
@@ -66,8 +66,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
                     }
 
                     return; // 成功した場合は関数を終了
-                }
-                catch (error) {
+                } catch (error) {
                     retryCount++;
 
                     if (error.code === "ECONNREFUSED" || error.message.includes("ECONNREFUSED")) {
@@ -82,8 +81,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
                             // 指数バックオフ（最大遅延時間まで）
                             delay = Math.min(delay * 1.5, maxDelay);
                         }
-                    }
-                    else {
+                    } else {
                         // ECONNREFUSED以外のエラーは即座に失敗とする
                         loggerStub.error(
                             `Firebase emulator connection failed with non-connection error: ${error.message}`,
@@ -97,11 +95,11 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         };
     });
 
-    afterEach(function () {
+    afterEach(function() {
         sinon.restore();
     });
 
-    it("Firebase emulator環境変数が設定されている場合、emulatorの起動を待機する", async function () {
+    it("Firebase emulator環境変数が設定されている場合、emulatorの起動を待機する", async function() {
         // 環境変数を設定
         processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
 
@@ -116,7 +114,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         expect(loggerStub.info.calledWith("Firebase emulator connection successful. Found users: 0")).to.be.true;
     });
 
-    it("ECONNREFUSED エラーが発生した場合、指数バックオフでリトライする", async function () {
+    it("ECONNREFUSED エラーが発生した場合、指数バックオフでリトライする", async function() {
         // 環境変数を設定
         processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
 
@@ -145,7 +143,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         expect(loggerStub.info.calledWith("Firebase emulator connection successful. Found users: 0")).to.be.true;
     });
 
-    it("最大30回のリトライを行い、初期遅延1秒、最大遅延10秒で待機する", async function () {
+    it("最大30回のリトライを行い、初期遅延1秒、最大遅延10秒で待機する", async function() {
         // 環境変数を設定
         processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
 
@@ -157,8 +155,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         try {
             await waitForFirebaseEmulator(3, 100, 200); // テスト用に短い時間に設定
             expect.fail("Should have thrown an error");
-        }
-        catch (error) {
+        } catch (error) {
             expect(error.message).to.equal("Firebase emulator connection failed after 3 attempts");
             expect(loggerStub.info.calledWith("Firebase emulator detected, waiting for connection... (max retries: 3)"))
                 .to.be.true;
@@ -166,7 +163,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         }
     });
 
-    it("Firebase Auth emulatorへの接続テストを行い、成功するまで待機する", async function () {
+    it("Firebase Auth emulatorへの接続テストを行い、成功するまで待機する", async function() {
         // 環境変数を設定
         processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
 
@@ -189,7 +186,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         ).to.be.true;
     });
 
-    it("emulator環境でない場合は待機をスキップする", async function () {
+    it("emulator環境でない場合は待機をスキップする", async function() {
         // 環境変数を設定しない（emulator環境でない）
 
         await waitForFirebaseEmulator(3, 100, 1000);
@@ -198,7 +195,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         expect(adminStub.auth().listUsers.called).to.be.false;
     });
 
-    it("ECONNREFUSED以外のエラーは即座に失敗とする", async function () {
+    it("ECONNREFUSED以外のエラーは即座に失敗とする", async function() {
         // 環境変数を設定
         processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
 
@@ -209,8 +206,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         try {
             await waitForFirebaseEmulator(3, 100, 1000);
             expect.fail("Should have thrown an error");
-        }
-        catch (error) {
+        } catch (error) {
             expect(error.message).to.equal("Some other error");
             expect(
                 loggerStub.error.calledWith(
@@ -221,7 +217,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         }
     });
 
-    it("リトライ回数と遅延時間をログに出力する", async function () {
+    it("リトライ回数と遅延時間をログに出力する", async function() {
         // 環境変数を設定
         processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
 
@@ -240,7 +236,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         expect(loggerStub.info.calledWith("Waiting 100ms before next retry...")).to.be.true;
     });
 
-    it("接続成功時にユーザー数とユーザー情報をログに出力する", async function () {
+    it("接続成功時にユーザー数とユーザー情報をログに出力する", async function() {
         // 環境変数を設定
         processStub.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
 
@@ -262,7 +258,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         ).to.be.true;
     });
 
-    it("Firebase初期化が非同期でラップされ、テストユーザーセットアップがemulator起動待機後に実行される", async function () {
+    it("Firebase初期化が非同期でラップされ、テストユーザーセットアップがemulator起動待機後に実行される", async function() {
         // 環境変数を設定
         processStub.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
 
@@ -276,7 +272,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function () {
         };
 
         // Firebase初期化の非同期関数を模擬実装
-        const initializeFirebase = async function () {
+        const initializeFirebase = async function() {
             // Firebase emulator起動待機
             await waitForFirebaseEmulator(3, 100, 1000);
 

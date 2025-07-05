@@ -1,7 +1,4 @@
-import {
-    expect,
-    type Page,
-} from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 /**
  * 認証なしのテスト用ヘルパー関数群
@@ -36,7 +33,7 @@ export class TestHelpersNoAuth {
             try {
                 await page.waitForFunction(
                     () => (window as any).__USER_MANAGER__ !== undefined,
-                    { timeout: 10000 }
+                    { timeout: 10000 },
                 );
                 console.log("TestHelper: UserManager found");
             } catch (error) {
@@ -45,14 +42,13 @@ export class TestHelpersNoAuth {
 
             return {
                 success: true,
-                message: "Environment prepared without authentication"
+                message: "Environment prepared without authentication",
             };
-
         } catch (error) {
             console.error("TestHelper: Failed to prepare environment:", error);
             return {
                 success: false,
-                message: `Failed to prepare environment: ${error}`
+                message: `Failed to prepare environment: ${error}`,
             };
         }
     }
@@ -63,7 +59,7 @@ export class TestHelpersNoAuth {
     public static async verifyBasicElements(page: Page): Promise<boolean> {
         try {
             // ページの基本要素を確認
-            const body = page.locator('body');
+            const body = page.locator("body");
             await expect(body).toBeVisible();
 
             // ページタイトルを確認
@@ -89,14 +85,14 @@ export class TestHelpersNoAuth {
 
             // 一般的なアウトライナー要素を探す
             const selectors = [
-                '.outliner-item',
-                '.item-content',
+                ".outliner-item",
+                ".item-content",
                 '[data-testid="outliner"]',
                 '[data-testid="item"]',
-                '.outliner',
-                '.item',
-                'main',
-                '#app'
+                ".outliner",
+                ".item",
+                "main",
+                "#app",
             ];
 
             for (const selector of selectors) {
@@ -110,14 +106,13 @@ export class TestHelpersNoAuth {
 
             return {
                 found: elements.length > 0,
-                elements
+                elements,
             };
-
         } catch (error) {
             console.error("TestHelper: Error finding outliner elements:", error);
             return {
                 found: false,
-                elements: []
+                elements: [],
             };
         }
     }
@@ -128,14 +123,14 @@ export class TestHelpersNoAuth {
     public static setupErrorMonitoring(page: Page): string[] {
         const errors: string[] = [];
 
-        page.on('console', msg => {
-            if (msg.type() === 'error') {
+        page.on("console", msg => {
+            if (msg.type() === "error") {
                 errors.push(msg.text());
                 console.log("TestHelper: JavaScript error detected:", msg.text());
             }
         });
 
-        page.on('pageerror', error => {
+        page.on("pageerror", error => {
             errors.push(error.message);
             console.log("TestHelper: Page error detected:", error.message);
         });
@@ -153,19 +148,19 @@ export class TestHelpersNoAuth {
         const requests: any[] = [];
         const responses: any[] = [];
 
-        page.on('request', request => {
+        page.on("request", request => {
             requests.push({
                 url: request.url(),
                 method: request.method(),
-                timestamp: Date.now()
+                timestamp: Date.now(),
             });
         });
 
-        page.on('response', response => {
+        page.on("response", response => {
             responses.push({
                 url: response.url(),
                 status: response.status(),
-                timestamp: Date.now()
+                timestamp: Date.now(),
             });
         });
 

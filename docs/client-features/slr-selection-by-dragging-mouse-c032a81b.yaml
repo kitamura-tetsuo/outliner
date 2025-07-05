@@ -4,9 +4,9 @@ description: マウスドラッグでテキストを選択します。
 category: selection-range
 status: implemented
 acceptance:
-- マウスドラッグで単一アイテム内のテキストを選択できる
-- 選択範囲が視覚的に表示される
-- 選択範囲のテキストをコピーできる
+  - マウスドラッグで単一アイテム内のテキストを選択できる
+  - 選択範囲が視覚的に表示される
+  - 選択範囲のテキストをコピーできる
 tests:
-- client/e2e/core/slr-selection-by-dragging-mouse-c032a81b.spec.ts
+  - client/e2e/core/slr-selection-by-dragging-mouse-c032a81b.spec.ts
 title-ja: マウスドラッグによる選択

@@ -100,8 +100,8 @@ export class EditorOverlayStore {
         if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
             return crypto.randomUUID();
         }
-        const bytes = (typeof crypto !== "undefined" ? crypto.getRandomValues(new Uint8Array(16)) : null) ||
-            new Uint8Array(16);
+        const bytes = (typeof crypto !== "undefined" ? crypto.getRandomValues(new Uint8Array(16)) : null)
+            || new Uint8Array(16);
         bytes[6] = (bytes[6] & 0x0f) | 0x40;
         bytes[8] = (bytes[8] & 0x3f) | 0x80;
         const hex: string[] = Array.from(bytes).map(b => b.toString(16).padStart(2, "0"));
@@ -119,8 +119,7 @@ export class EditorOverlayStore {
             inst.offset = cursor.offset;
             inst.isActive = cursor.isActive;
             if (cursor.userId) inst.userId = cursor.userId;
-        }
-        else {
+        } else {
             // インスタンスが存在しない場合は新しく作成
             const newInst = new Cursor(cursor.cursorId, {
                 itemId: cursor.itemId,
@@ -158,9 +157,9 @@ export class EditorOverlayStore {
 
         // 同じアイテムの同じ位置に既にカーソルがあるか確認（より厳密なチェック）
         const existingCursor = Object.values(this.cursors).find(c =>
-            c.itemId === omitProps.itemId &&
-            c.offset === omitProps.offset &&
-            c.userId === (omitProps.userId ?? "local")
+            c.itemId === omitProps.itemId
+            && c.offset === omitProps.offset
+            && c.userId === (omitProps.userId ?? "local")
         );
 
         if (existingCursor) {
@@ -204,8 +203,7 @@ export class EditorOverlayStore {
                         }
                     }, 10);
                 });
-            }
-            else {
+            } else {
                 // テキストエリアが見つからない場合はエラーログ
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.error(`Global textarea not found in addCursor (existing cursor)`);
@@ -258,8 +256,7 @@ export class EditorOverlayStore {
                     }
                 }, 10);
             });
-        }
-        else {
+        } else {
             // テキストエリアが見つからない場合はエラーログ
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Global textarea not found in addCursor (new cursor)`);
@@ -429,8 +426,7 @@ export class EditorOverlayStore {
 
             if (remainingSelections.length > 0) {
                 console.warn(`Warning: Some selections for userId=${userId} were not cleared:`, remainingSelections);
-            }
-            else {
+            } else {
                 console.log(`All selections for userId=${userId} were successfully cleared`);
             }
         }
@@ -503,8 +499,7 @@ export class EditorOverlayStore {
                     if (inst.isActive) {
                         // アクティブなカーソルのみ削除
                         cursorIdsToRemove.push(cursorId);
-                    }
-                    else {
+                    } else {
                         // 非アクティブなカーソルは保持
                         cursorIdsToKeep.push(cursorId);
                     }
@@ -532,8 +527,7 @@ export class EditorOverlayStore {
                     ),
                 );
             }
-        }
-        else {
+        } else {
             // 通常の削除処理（すべてのカーソルを削除）
             // 削除対象のカーソルIDを収集
             const cursorIdsToRemove: string[] = [];
@@ -799,17 +793,14 @@ export class EditorOverlayStore {
                 if (sel.isBoxSelection && sel.boxSelectionRanges) {
                     // 矩形選択（ボックス選択）の場合
                     selectedText += this.getTextFromBoxSelection(sel);
-                }
-                else if (sel.startItemId === sel.endItemId) {
+                } else if (sel.startItemId === sel.endItemId) {
                     // 単一アイテム内の選択範囲
                     selectedText += this.getTextFromSingleItemSelection(sel);
-                }
-                else {
+                } else {
                     // 複数アイテムにまたがる選択範囲
                     selectedText += this.getTextFromMultiItemSelection(sel);
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 // エラーが発生した場合はログに出力
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.error(`Error in getSelectedText:`, error);
@@ -867,8 +858,7 @@ export class EditorOverlayStore {
             const safeStartOffset = Math.max(0, Math.min(text.length, startOffset));
             const safeEndOffset = Math.max(0, Math.min(text.length, endOffset));
             return text.substring(safeStartOffset, safeEndOffset);
-        }
-        else {
+        } else {
             return text.substring(startOffset, endOffset);
         }
     }
@@ -888,17 +878,14 @@ export class EditorOverlayStore {
             if (sel.isBoxSelection && sel.boxSelectionRanges) {
                 // 矩形選択（ボックス選択）の場合
                 return this.getTextFromBoxSelection(sel);
-            }
-            else if (sel.startItemId === sel.endItemId) {
+            } else if (sel.startItemId === sel.endItemId) {
                 // 単一アイテム内の選択範囲
                 return this.getTextFromSingleItemSelection(sel);
-            }
-            else {
+            } else {
                 // 複数アイテムにまたがる選択範囲
                 return this.getTextFromMultiItemSelection(sel);
             }
-        }
-        catch (error) {
+        } catch (error) {
             // エラーが発生した場合はログに出力
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Error in getTextFromSelection:`, error);
@@ -964,8 +951,7 @@ export class EditorOverlayStore {
                 const safeStartOffset = Math.max(0, Math.min(text.length, startOffset));
                 const safeEndOffset = Math.max(0, Math.min(text.length, endOffset));
                 lines.push(text.substring(safeStartOffset, safeEndOffset));
-            }
-            else {
+            } else {
                 lines.push(text.substring(startOffset, endOffset));
             }
         }

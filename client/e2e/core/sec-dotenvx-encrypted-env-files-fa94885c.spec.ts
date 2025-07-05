@@ -2,10 +2,7 @@
  *  Title   : Dotenvx encrypted env files
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("SEC-0001: Dotenvx encrypted env files", () => {
     test.beforeEach(async ({ page }) => {

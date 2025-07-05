@@ -2,10 +2,7 @@
  *  Title   : Scheduled Page Publishing
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("Scheduled Page Publishing", () => {
     test("create schedule via API", async ({ page }) => {

@@ -2,10 +2,7 @@
  *  Title   : 複数アイテム選択範囲のコピー＆ペースト
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペースト", () => {
@@ -20,8 +17,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        }
-        else {
+        } else {
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -153,8 +149,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
             if (KeyEventHandler && KeyEventHandler.handlePaste) {
                 KeyEventHandler.handlePaste(clipboardEvent);
                 console.log("KeyEventHandler.handlePaste called successfully");
-            }
-            else {
+            } else {
                 console.log("KeyEventHandler.handlePaste not found");
             }
         }, selectionText);
@@ -363,8 +358,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
             if (KeyEventHandler && KeyEventHandler.handlePaste) {
                 KeyEventHandler.handlePaste(clipboardEvent);
                 console.log("KeyEventHandler.handlePaste called successfully");
-            }
-            else {
+            } else {
                 console.log("KeyEventHandler.handlePaste not found");
             }
         }, selectedText);
@@ -492,8 +486,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
             if (KeyEventHandler && KeyEventHandler.handlePaste) {
                 KeyEventHandler.handlePaste(clipboardEvent);
                 console.log("KeyEventHandler.handlePaste called successfully");
-            }
-            else {
+            } else {
                 console.log("KeyEventHandler.handlePaste not found");
             }
         }, multilineText);

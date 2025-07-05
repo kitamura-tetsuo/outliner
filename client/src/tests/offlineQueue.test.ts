@@ -1,9 +1,5 @@
 import { openDB } from "idb";
-import {
-    beforeEach,
-    expect,
-    it,
-} from "vitest";
+import { beforeEach, expect, it } from "vitest";
 
 async function clearDB() {
     const db = await openDB("outliner", 1, {

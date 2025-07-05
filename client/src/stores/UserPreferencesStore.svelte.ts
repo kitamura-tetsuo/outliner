@@ -15,8 +15,7 @@ function loadPreferencesFromStorage(): UserPreferences {
             const parsed = JSON.parse(stored);
             return { theme: parsed.theme === "dark" ? "dark" : "light" };
         }
-    }
-    catch (error) {
+    } catch (error) {
         console.warn("Failed to load user preferences from localStorage:", error);
     }
 
@@ -30,8 +29,7 @@ function savePreferencesToStorage(preferences: UserPreferences) {
 
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
-    }
-    catch (error) {
+    } catch (error) {
         console.warn("Failed to save user preferences to localStorage:", error);
     }
 }

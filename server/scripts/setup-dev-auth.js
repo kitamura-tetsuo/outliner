@@ -24,14 +24,12 @@ async function initializeFirebase() {
             });
 
             logger.info(`Firebase Admin SDK initialized with project: ${serviceAccount.projectId}`);
-        }
-        else {
+        } else {
             logger.info("Firebase Admin SDK already initialized");
         }
 
         return admin;
-    }
-    catch (error) {
+    } catch (error) {
         logger.error("Firebase initialization error:", error);
         throw error;
     }
@@ -52,8 +50,7 @@ async function setupTestUser() {
             const userRecord = await auth.getUserByEmail(testEmail);
             logger.info(`Test user already exists: ${userRecord.uid}`);
             return userRecord;
-        }
-        catch (error) {
+        } catch (error) {
             if (error.code !== "auth/user-not-found") {
                 throw error;
             }
@@ -78,8 +75,7 @@ async function setupTestUser() {
 
             return userRecord;
         }
-    }
-    catch (error) {
+    } catch (error) {
         logger.error("Error setting up test user:", error);
         throw error;
     }

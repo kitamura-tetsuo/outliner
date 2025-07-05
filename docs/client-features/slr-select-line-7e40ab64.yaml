@@ -5,8 +5,8 @@ description: Use Ctrl+L to select the entire line containing the cursor.
 category: selection-range
 status: implemented
 acceptance:
-- Ctrl+L selects the full line where the cursor is located
-- The cursor moves to the end of the line after selection
+  - Ctrl+L selects the full line where the cursor is located
+  - The cursor moves to the end of the line after selection
 tests:
-- client/e2e/core/slr-select-line-7e40ab64.spec.ts
+  - client/e2e/core/slr-select-line-7e40ab64.spec.ts
 title-ja: 現在行を選択

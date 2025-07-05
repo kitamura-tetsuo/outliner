@@ -4,8 +4,8 @@ description: gitコミット時にdocs/feature-map.mdを自動削除するpre-co
 category: development
 status: implemented
 acceptance:
-- docs/feature-map.mdが存在してもcommit前に削除される
-- インデックスに登録されていても自動的に削除される
+  - docs/feature-map.mdが存在してもcommit前に削除される
+  - インデックスに登録されていても自動的に削除される
 tests:
-- client/e2e/utils/feature-map-removal.spec.ts
+  - client/e2e/utils/feature-map-removal.spec.ts
 title-ja: feature-map削除スクリプト

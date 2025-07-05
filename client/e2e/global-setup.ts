@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "child_process";
+import { type ChildProcess, spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -34,8 +34,7 @@ function startTinyliciousServer() {
     // 権限を777に設定してアクセスエラーを回避
     try {
         fs.chmodSync(logFile, 0o777);
-    }
-    catch (e) {
+    } catch (e) {
         console.warn(`Failed to chmod log file: ${e.message}`);
     }
     const logStream = fs.createWriteStream(logFile, { flags: "a" });

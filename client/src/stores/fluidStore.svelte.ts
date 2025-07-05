@@ -12,7 +12,10 @@ class GeneralStore {
         this._fluidClient = v;
         if (v) {
             const project = v.getProject();
-            console.log(`fluidStore: Got project from client`, { projectExists: !!project, projectTitle: project?.title });
+            console.log(`fluidStore: Got project from client`, {
+                projectExists: !!project,
+                projectTitle: project?.title,
+            });
             store.project = project;
             console.log(`fluidStore: Set store.project`, { storeProjectExists: !!store.project });
         }

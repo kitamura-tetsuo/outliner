@@ -2,10 +2,7 @@
  *  Title   : OPML/Markdown import and export
  *  Source  : docs/client-features/imp-opml-markdown-import-export-4b1c2f10.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 

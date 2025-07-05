@@ -2,10 +2,7 @@
  *  Title   : アイテム間移動時のカーソル重複と入力分散問題
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
@@ -16,7 +13,6 @@ test.describe("カーソル重複問題の検証", () => {
     });
 
     test("修正後：アイテム間をクリックで移動してもカーソルが1つだけ存在する", async ({ page }) => {
-
         // 1. 最初のアイテムを3回クリック（重複カーソル作成の可能性をテスト）
         await page.locator(".item-content").first().click();
         await TestHelpers.waitForCursorVisible(page);

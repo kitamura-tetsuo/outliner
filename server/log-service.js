@@ -36,8 +36,7 @@ async function startServer() {
 
         // サーバー起動処理を開始
         return startLogService();
-    }
-    catch (error) {
+    } catch (error) {
         logger.error(`Failed to initialize Firebase: ${error.message}`);
         throw error;
     }
@@ -73,8 +72,7 @@ function startLogService() {
                     timestamp: new Date().toISOString(),
                 })
             }`);
-        }
-        catch (error) {
+        } catch (error) {
             logger.error(`Error during periodic log rotation: ${error.message}`);
         }
     };
@@ -85,7 +83,8 @@ function startLogService() {
     const app = express();
     // CORS設定を強化
     app.use(cors({
-        origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",").map(origin => origin.trim())
+        origin: process.env.CORS_ORIGIN
+            ? process.env.CORS_ORIGIN.split(",").map(origin => origin.trim())
             : ["http://localhost:7070"], // カンマ区切りで複数オリジンをサポート
         methods: ["GET", "POST", "OPTIONS"], // OPTIONSメソッドを追加(プリフライトリクエスト対応)
         credentials: true,
@@ -139,16 +138,14 @@ function startLogService() {
                             },
                         });
                     }
-                }
-                catch (error) {
+                } catch (error) {
                     logger.error(`Development login error: ${error.message}`);
                 }
             }
 
             // 本番環境では常にエラーを返す（実際の認証はFirebase SDKでクライアント側で行われる）
             return res.status(401).json({ error: "Invalid credentials" });
-        }
-        catch (error) {
+        } catch (error) {
             logger.error(`Login error: ${error.message}`);
             res.status(500).json({ error: "Authentication failed" });
         }
@@ -206,8 +203,7 @@ function startLogService() {
             }
 
             res.status(200).json({ success: true });
-        }
-        catch (error) {
+        } catch (error) {
             logger.error(`ログ処理エラー: ${error.message}`);
             res.status(500).json({ error: "ログ処理に失敗しました" });
         }
@@ -255,8 +251,7 @@ function startLogService() {
                         const logs = lines.map(line => {
                             try {
                                 return JSON.parse(line);
-                            }
-                            catch (e) {
+                            } catch (e) {
                                 return { raw: line };
                             }
                         });
@@ -269,8 +264,7 @@ function startLogService() {
                         });
                     });
                 });
-            }
-            catch (error) {
+            } catch (error) {
                 logger.error(`Telemetryログ取得エラー: ${error.message}`);
                 res.status(500).json({ error: "Telemetryログの取得に失敗しました" });
             }
@@ -315,8 +309,7 @@ function startLogService() {
                     timestamp: new Date().toISOString(),
                 })
             }`);
-        }
-        catch (error) {
+        } catch (error) {
             logger.error(`ログローテーション中にエラーが発生しました: ${error.message}`);
             res.status(500).json({
                 success: false,
@@ -349,8 +342,7 @@ function startLogService() {
                     expiresIn: decoded.payload.exp ? new Date(decoded.payload.exp * 1000).toISOString() : "N/A",
                     issuedAt: decoded.payload.iat ? new Date(decoded.payload.iat * 1000).toISOString() : "N/A",
                 });
-            }
-            catch (error) {
+            } catch (error) {
                 res.status(500).json({ error: `トークン情報の取得に失敗しました: ${error.message}` });
             }
         });
@@ -379,8 +371,7 @@ function startLogService() {
                     message: "User already exists",
                     uid: existingUser.uid,
                 });
-            }
-            catch (error) {
+            } catch (error) {
                 if (error.code !== "auth/user-not-found") {
                     throw error;
                 }
@@ -404,8 +395,7 @@ function startLogService() {
                 message: "User created successfully",
                 uid: userRecord.uid,
             });
-        }
-        catch (error) {
+        } catch (error) {
             logger.error(`Error creating test user: ${error.message}`);
             res.status(500).json({ error: error.message });
         }

@@ -8,13 +8,7 @@ vi.mock("../stores/firestoreStore.svelte", async () => {
 });
 
 import { get } from "svelte/store";
-import {
-    afterEach,
-    beforeEach,
-    describe,
-    expect,
-    it,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as firestoreStore from "../stores/firestoreStore.svelte";
 import { setupMocks } from "./mocks";
 import { setupMockFirestore } from "./mocks/firestoreMock";

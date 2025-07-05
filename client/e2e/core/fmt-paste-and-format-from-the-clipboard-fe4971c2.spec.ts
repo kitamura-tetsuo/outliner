@@ -3,10 +3,7 @@
  *  Source  : docs/client-features.yaml
  */
 
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { TestHelpers } from "../utils/testHelpers";
 
@@ -107,8 +104,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
             // 新しいアイテムが作成された場合
             const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
             expect(secondItemText).toContain("2行目");
-        }
-        else {
+        } else {
             // 同じアイテム内に改行として保持された場合
             expect(itemText).toContain("2行目");
         }
@@ -190,8 +186,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
             // 方法2: キーボードショートカット
             await page.keyboard.press("Control+v");
             console.log("Control+v キーを押しました");
-        }
-        catch (err) {
+        } catch (err) {
             console.log(`ペースト操作中にエラーが発生しました: ${err instanceof Error ? err.message : String(err)}`);
 
             // 方法3: 直接テキスト入力（フォールバック）
@@ -268,8 +263,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
             try {
                 const text = await navigator.clipboard.readText();
                 return `クリップボードの内容: ${text}`;
-            }
-            catch (err) {
+            } catch (err) {
                 return `クリップボードの読み取りに失敗: ${err.message}`;
             }
         });
@@ -311,8 +305,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
             // 方法2: キーボードショートカット
             await page.keyboard.press("Control+v");
             console.log("Control+v キーを押しました");
-        }
-        catch (err) {
+        } catch (err) {
             console.log(`ペースト操作中にエラーが発生しました: ${err instanceof Error ? err.message : String(err)}`);
 
             // 方法3: 直接テキスト入力（フォールバック）

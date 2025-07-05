@@ -3,11 +3,11 @@
 console.log("OutlinerBase script executed - console.log");
 
 import type { Item } from "../schema/app-schema";
+import AliasPicker from "./AliasPicker.svelte";
 import GlobalTextArea from "./GlobalTextArea.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
-import SlashCommandPalette from "./SlashCommandPalette.svelte";
-import AliasPicker from "./AliasPicker.svelte";
 import PresenceAvatars from "./PresenceAvatars.svelte";
+import SlashCommandPalette from "./SlashCommandPalette.svelte";
 
 console.log("OutlinerBase imports completed");
 
@@ -33,7 +33,7 @@ console.log("OutlinerBase props received:", {
     pageItemExists: !!pageItem,
     pageItemId: pageItem?.id,
     isTemporary,
-    onEditExists: !!onEdit
+    onEditExists: !!onEdit,
 });
 
 console.log("OutlinerBase script completed successfully");

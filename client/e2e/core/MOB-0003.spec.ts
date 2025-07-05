@@ -2,10 +2,7 @@
  *  Title   : Mobile Bottom Action Toolbar
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 
@@ -110,8 +107,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
             });
             const scrollLeft = await toolbar.evaluate(el => el.scrollLeft);
             expect(scrollLeft).toBeGreaterThan(0);
-        }
-        else {
+        } else {
             // スクロール不要な場合はテストをスキップ
             console.log("Toolbar does not need scrolling, skipping scroll test");
         }

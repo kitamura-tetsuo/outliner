@@ -1,5 +1,5 @@
-import { editorOverlayStore } from "./EditorOverlayStore.svelte";
 import { aliasPickerStore } from "./AliasPickerStore.svelte";
+import { editorOverlayStore } from "./EditorOverlayStore.svelte";
 
 export type CommandType = "table" | "chart" | "alias";
 

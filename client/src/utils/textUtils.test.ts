@@ -1,16 +1,7 @@
 // @ts-ignore: jsdom に型定義がありません
 import { JSDOM } from "jsdom";
-import {
-    afterAll,
-    beforeAll,
-    describe,
-    expect,
-    it,
-} from "vitest";
-import {
-    getClickPosition,
-    pixelPositionToTextPosition,
-} from "./textUtils";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { getClickPosition, pixelPositionToTextPosition } from "./textUtils";
 
 let originalGetBoundingClientRect: any;
 let originalGetComputedStyle: any;
@@ -25,7 +16,7 @@ beforeAll(() => {
     (global as any).Node = dom.window.Node;
     // getBoundingClientRect をモック: textContent 長さ * 10px
     originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
-    Element.prototype.getBoundingClientRect = function () {
+    Element.prototype.getBoundingClientRect = function() {
         const width = (this.textContent?.length || 0) * 10;
         return { width, left: 0, top: 0, right: width, bottom: 0, height: 0, x: 0, y: 0, toJSON() {} };
     };

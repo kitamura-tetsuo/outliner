@@ -9,9 +9,9 @@ import { log } from "./logger"; // ロガーをインポート
  */
 export function getEnv(key: string, defaultValue: string = ""): string {
     // 実行環境の検出
-    const isTestEnv = import.meta.env.MODE === "test" ||
-        process.env.NODE_ENV === "test" ||
-        import.meta.env.VITE_IS_TEST === "true";
+    const isTestEnv = import.meta.env.MODE === "test"
+        || process.env.NODE_ENV === "test"
+        || import.meta.env.VITE_IS_TEST === "true";
 
     // テスト環境専用の処理
     if (isTestEnv) {

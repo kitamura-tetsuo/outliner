@@ -2,10 +2,7 @@
  *  Title   : Universal Checklist Component
  *  Source  : docs/client-features/chk-universal-checklist-*.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CHK-0001: Universal Checklist", () => {

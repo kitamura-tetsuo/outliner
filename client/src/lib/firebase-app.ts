@@ -1,9 +1,4 @@
-import {
-    type FirebaseApp,
-    getApp,
-    getApps,
-    initializeApp,
-} from "firebase/app";
+import { type FirebaseApp, getApp, getApps, initializeApp } from "firebase/app";
 import { getLogger } from "./logger";
 
 const logger = getLogger();
@@ -81,8 +76,7 @@ export function getFirebaseApp(): FirebaseApp {
         globalRef[globalKey] = app;
         logger.info("Firebase app: Initialized new instance");
         return app;
-    }
-    catch (error: any) {
+    } catch (error: any) {
         logger.error("Firebase app initialization error:", error);
 
         // 重複アプリエラーの場合は既存のアプリを使用

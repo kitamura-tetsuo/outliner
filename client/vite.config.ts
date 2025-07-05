@@ -12,12 +12,10 @@ export default defineConfig(async ({ mode }) => {
     if (mode === "test" || process.env.NODE_ENV === "test") {
         console.log("Loading test environment variables from .env.test");
         config({ path: [".env.test"] });
-    }
-    else if (mode === "development") {
+    } else if (mode === "development") {
         console.log("Loading development environment variables from .env.development");
         config({ path: [".env.development"] });
-    }
-    else if (mode === "production") {
+    } else if (mode === "production") {
         console.log("Loading production environment variables from .env.production");
         config({ path: [".env.production"] });
     }
@@ -46,9 +44,9 @@ export default defineConfig(async ({ mode }) => {
             sourcemap: true,
             rollupOptions: {
                 input: {
-                    app: './src/app.html'
-                }
-            }
+                    app: "./src/app.html",
+                },
+            },
         },
         optimizeDeps: {
             include: ["sql.js"],

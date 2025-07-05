@@ -4,6 +4,6 @@ title-ja: IME変換アンダーラインがアクティブカーソルに表示�
 category: input-method
 status: implemented
 tests:
-- client/e2e/core/ime-composition-underlines-at-cursor-b11a6c1a.spec.ts
+  - client/e2e/core/ime-composition-underlines-at-cursor-b11a6c1a.spec.ts
 acceptance:
-- Hidden textarea gains ime-input class during composition so the OS underline appears at the cursor
+  - Hidden textarea gains ime-input class during composition so the OS underline appears at the cursor

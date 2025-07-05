@@ -79,8 +79,7 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
 
         logger.info(`Collected ${backlinks.length} backlinks for page: ${targetPageName}`);
         return backlinks;
-    }
-    catch (error) {
+    } catch (error) {
         logger.error(`Error collecting backlinks for page ${targetPageName}:`, error);
         return [];
     }
@@ -134,8 +133,7 @@ function extractContext(text: string, targetPageName: string): string {
     if (internalMatch && internalMatch.index !== undefined) {
         linkPosition = internalMatch.index;
         linkLength = internalMatch[0].length;
-    }
-    else if (projectMatch && projectMatch.index !== undefined) {
+    } else if (projectMatch && projectMatch.index !== undefined) {
         linkPosition = projectMatch.index;
         linkLength = projectMatch[0].length;
     }

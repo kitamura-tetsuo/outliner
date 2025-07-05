@@ -2,10 +2,7 @@
  *  Title   : Firebase emulator起動待機機能
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 // Utility function to retry request until success or timeout
 async function waitForHealth(request: any, attempts = 10) {

@@ -1,15 +1,5 @@
-import {
-    beforeEach,
-    expect,
-    it,
-    vi,
-} from "vitest";
-import {
-    cancelSchedule,
-    createSchedule,
-    listSchedules,
-    updateSchedule,
-} from "../services/scheduleService";
+import { beforeEach, expect, it, vi } from "vitest";
+import { cancelSchedule, createSchedule, listSchedules, updateSchedule } from "../services/scheduleService";
 
 // UserManagerをモックして、実際のAPIエンドポイントを使用
 vi.mock("../auth/UserManager", () => ({

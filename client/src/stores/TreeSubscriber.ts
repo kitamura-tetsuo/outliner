@@ -1,8 +1,4 @@
-import {
-    Tree,
-    type TreeChangeEvents,
-    type TreeNode,
-} from "fluid-framework";
+import { Tree, type TreeChangeEvents, type TreeNode } from "fluid-framework";
 import { createSubscriber } from "svelte/reactivity";
 
 export class TreeSubscriber<T extends TreeNode, R = T> {

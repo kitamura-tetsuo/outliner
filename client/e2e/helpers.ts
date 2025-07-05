@@ -36,13 +36,11 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
         if (cursorVisible) {
             console.log("waitForCursorVisible: Cursor is visible");
             return true;
-        }
-        else {
+        } else {
             console.log("waitForCursorVisible: Cursor exists but not visible");
             return false;
         }
-    }
-    catch (error) {
+    } catch (error) {
         console.log("Error in waitForCursorVisible:", error);
         return false;
     }

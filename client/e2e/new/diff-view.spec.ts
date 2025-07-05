@@ -2,10 +2,7 @@
  *  Title   : Page snapshot diff viewer
  *  Source  : docs/client-features.yaml
  */
-import {
-    expect,
-    test,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("snapshot diff viewer", () => {

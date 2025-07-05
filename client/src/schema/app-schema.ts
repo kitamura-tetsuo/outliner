@@ -82,8 +82,7 @@ export class Item extends sf.objectRecursive("Item", {
         const index = this.votes.indexOf(user);
         if (index > -1) {
             this.votes.removeAt(index);
-        }
-        else {
+        } else {
             this.votes.insertAtEnd(user);
         }
         this.lastChanged = new Date().getTime();
@@ -130,8 +129,7 @@ export class Item extends sf.objectRecursive("Item", {
                     parent.moveRangeToIndex(index, 0, items.length, items);
                     parent.removeAt(parent.indexOf(this));
                 });
-            }
-            else {
+            } else {
                 // 子アイテムがない場合は単純に削除
                 parent.removeAt(parent.indexOf(this));
             }
@@ -152,9 +150,9 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 
         // 開発環境では、アイテムのインデックスをテキストに設定
         const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
-        const isTest = import.meta.env.MODE === "test" ||
-            process.env.NODE_ENV === "test" ||
-            import.meta.env.VITE_IS_TEST === "true";
+        const isTest = import.meta.env.MODE === "test"
+            || process.env.NODE_ENV === "test"
+            || import.meta.env.VITE_IS_TEST === "true";
         const itemIndex = index ?? this.length;
         const defaultText = isDev && !isTest ? `Item ${itemIndex}` : "";
 
@@ -176,12 +174,10 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
             // 指定された位置に挿入
             if (index === 0) {
                 this.insertAtStart(newItem);
-            }
-            else {
+            } else {
                 this.insertAt(index, newItem);
             }
-        }
-        else {
+        } else {
             // 末尾に追加
             this.insertAtEnd(newItem);
         }

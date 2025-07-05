@@ -20,5 +20,5 @@
     "typescript.validate.experimental.enable": false,
     // settings.json（ユーザーでも devcontainer の "settings" でも可）
     "debug.javascript.autoAttachFilter": "disabled",
-    "terminal.integrated.shellIntegration.enabled": true,
+    "terminal.integrated.shellIntegration.enabled": true
 }

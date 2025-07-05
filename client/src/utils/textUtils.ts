@@ -9,8 +9,7 @@ export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content
         let range: Range | null = null;
         if (document.caretRangeFromPoint) {
             range = document.caretRangeFromPoint(x, y);
-        }
-        else {
+        } else {
             const posInfo = (document as any).caretPositionFromPoint(x, y);
             if (posInfo) {
                 range = document.createRange();
