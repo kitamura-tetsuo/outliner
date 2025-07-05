@@ -16,6 +16,7 @@ This document consolidates the key development policies for this repository. Fol
 - Provide a test for every feature. Do not embed code that skips tests.
 - Keep expected values strict even if tests take longer to run.
 - Run tests in headless mode.
+- Run `dprint fmt` before running tests.
 - Fix one test file at a time and run it immediately to confirm the fix.
 - CI keeps tests green on the `main` branch. If tests fail in your branch, the
   cause lies in changes made after you diverged from `main`. Investigate those
