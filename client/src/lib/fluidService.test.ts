@@ -37,8 +37,8 @@ describe("fluidService", () => {
             // const getResponse = await client.getContainer(newContainerId, fluidService.containerSchema, "2");
             // console.log(getResponse.container);
         } catch (error) {
-            if ((error as Error).message?.includes('network')) {
-                console.warn('Skipping getContainer test due to network error');
+            if ((error as Error).message?.includes("network")) {
+                console.warn("Skipping getContainer test due to network error");
                 return;
             }
             console.error(error);

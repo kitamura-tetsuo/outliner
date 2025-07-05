@@ -213,8 +213,7 @@ export class TestHelpers {
                     console.log(`TestHelper: FluidStore updated`);
                     console.log(`TestHelper: FluidClient containerId:`, fluidClient.containerId);
                     console.log(`TestHelper: FluidStore currentContainerId:`, fluidStore.getCurrentContainerId());
-                }
-                else {
+                } else {
                     console.error(`TestHelper: FluidStore not found`);
                 }
             } catch (error) {

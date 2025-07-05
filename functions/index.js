@@ -61,19 +61,27 @@ function isAdmin(decodedToken) {
 async function checkContainerAccess(userId, containerId) {
   try {
     // In test environment, allow access for test users
-    if (process.env.FUNCTIONS_EMULATOR === "true" || process.env.NODE_ENV === "test") {
-      logger.info(`Test environment detected, allowing access for user ${userId} to container ${containerId}`);
+    if (
+      process.env.FUNCTIONS_EMULATOR === "true" ||
+      process.env.NODE_ENV === "test"
+    ) {
+      logger.info(
+        `Test environment detected, allowing access for user ${userId} to container ${containerId}`,
+      );
       return true;
     }
 
     // Check if user is in containerUsers collection
-    const containerUserDoc = await db.collection("containerUsers").doc(`${containerId}_${userId}`).get();
+    const containerUserDoc = await db.collection("containerUsers").doc(
+      `${containerId}_${userId}`,
+    ).get();
     if (containerUserDoc.exists) {
       return true;
     }
 
     // Check if container is in user's containers list
-    const userContainerDoc = await db.collection("userContainers").doc(userId).get();
+    const userContainerDoc = await db.collection("userContainers").doc(userId)
+      .get();
     if (userContainerDoc.exists) {
       const userData = userContainerDoc.data();
       return userData.containers && userData.containers[containerId] != null;
@@ -1033,14 +1041,20 @@ exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
 // Upload attachment
 exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
   setCorsHeaders(req, res);
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method === "OPTIONS") { return res.status(204).end(); }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
   const { idToken, containerId, itemId, fileName, fileData } = req.body || {};
-  logger.info(`uploadAttachment request: containerId=${containerId}, itemId=${itemId}, fileName=${fileName}, fileDataLength=${fileData?.length}`);
+  logger.info(
+    `uploadAttachment request: containerId=${containerId}, itemId=${itemId}, fileName=${fileName}, fileDataLength=${fileData?.length}`,
+  );
 
   if (!idToken || !containerId || !itemId || !fileName || !fileData) {
-    logger.error(`uploadAttachment invalid request: idToken=${!!idToken}, containerId=${!!containerId}, itemId=${!!itemId}, fileName=${!!fileName}, fileData=${!!fileData}`);
+    logger.error(
+      `uploadAttachment invalid request: idToken=${!!idToken}, containerId=${!!containerId}, itemId=${!!itemId}, fileName=${!!fileName}, fileData=${!!fileData}`,
+    );
     return res.status(400).json({ error: "Invalid request" });
   }
 
@@ -1052,15 +1066,20 @@ exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
     // Check if user has access to the container
     const hasAccess = await checkContainerAccess(uid, containerId);
     if (!hasAccess) {
-      logger.error(`uploadAttachment access denied: user=${uid}, container=${containerId}`);
+      logger.error(
+        `uploadAttachment access denied: user=${uid}, container=${containerId}`,
+      );
       return res.status(403).json({ error: "Access denied to container" });
     }
 
     // テスト環境では適切なバケット名を設定
-    const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST || process.env.NODE_ENV === "development";
+    const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
+      process.env.NODE_ENV === "development";
     const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
     const bucket = admin.storage().bucket(bucketName);
-    logger.info(`uploadAttachment using bucket: ${bucket.name}, isEmulator: ${isEmulator}`);
+    logger.info(
+      `uploadAttachment using bucket: ${bucket.name}, isEmulator: ${isEmulator}`,
+    );
 
     const filePath = `attachments/${containerId}/${itemId}/${fileName}`;
     const file = bucket.file(filePath);
@@ -1073,12 +1092,18 @@ exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
 
     if (isEmulator) {
       // Emulator環境では直接URLを生成
-      const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST || "localhost:59200";
-      url = `http://${storageHost}/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+      const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
+        "localhost:59200";
+      url = `http://${storageHost}/v0/b/${bucket.name}/o/${
+        encodeURIComponent(filePath)
+      }?alt=media`;
       logger.info(`uploadAttachment generated emulator URL: ${url}`);
     } else {
       // 本番環境では署名付きURLを生成
-      const [signedUrl] = await file.getSignedUrl({ action: "read", expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+      const [signedUrl] = await file.getSignedUrl({
+        action: "read",
+        expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      });
       url = signedUrl;
       logger.info(`uploadAttachment generated signed URL: ${url}`);
     }
@@ -1087,18 +1112,26 @@ exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
     return res.status(200).json({ url });
   } catch (err) {
     logger.error(`uploadAttachment error: ${err.message}`, err);
-    if (err.code === "auth/id-token-expired" || err.code === "auth/invalid-id-token" || err.code === "auth/argument-error") {
+    if (
+      err.code === "auth/id-token-expired" ||
+      err.code === "auth/invalid-id-token" || err.code === "auth/argument-error"
+    ) {
       return res.status(401).json({ error: "Authentication failed" });
     }
-    return res.status(500).json({ error: "Failed to upload attachment", details: err.message });
+    return res.status(500).json({
+      error: "Failed to upload attachment",
+      details: err.message,
+    });
   }
 });
 
 // List attachments
 exports.listAttachments = onRequest({ cors: true }, async (req, res) => {
   setCorsHeaders(req, res);
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method === "OPTIONS") { return res.status(204).end(); }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
   const { idToken, containerId, itemId } = req.body || {};
   if (!idToken || !containerId || !itemId) {
@@ -1115,7 +1148,8 @@ exports.listAttachments = onRequest({ cors: true }, async (req, res) => {
     }
 
     // テスト環境では適切なバケット名を設定
-    const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST || process.env.NODE_ENV === "development";
+    const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
+      process.env.NODE_ENV === "development";
     const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
     const bucket = admin.storage().bucket(bucketName);
 
@@ -1126,20 +1160,33 @@ exports.listAttachments = onRequest({ cors: true }, async (req, res) => {
 
     if (isEmulator) {
       // Emulator環境では直接URLを生成
-      const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST || "localhost:59200";
+      const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
+        "localhost:59200";
       urls = files.map(file => {
         const filePath = file.name;
-        return `http://${storageHost}/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+        return `http://${storageHost}/v0/b/${bucket.name}/o/${
+          encodeURIComponent(filePath)
+        }?alt=media`;
       });
     } else {
       // 本番環境では署名付きURLを生成
-      urls = await Promise.all(files.map(f => f.getSignedUrl({ action: "read", expires: Date.now() + 7*24*60*60*1000 }).then(r => r[0])));
+      urls = await Promise.all(
+        files.map(f =>
+          f.getSignedUrl({
+            action: "read",
+            expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+          }).then(r => r[0])
+        ),
+      );
     }
 
     return res.status(200).json({ urls });
   } catch (err) {
     logger.error(`listAttachments error: ${err.message}`);
-    if (err.code === "auth/id-token-expired" || err.code === "auth/invalid-id-token" || err.code === "auth/argument-error") {
+    if (
+      err.code === "auth/id-token-expired" ||
+      err.code === "auth/invalid-id-token" || err.code === "auth/argument-error"
+    ) {
       return res.status(401).json({ error: "Authentication failed" });
     }
     return res.status(500).json({ error: "Failed to list attachments" });
@@ -1149,8 +1196,10 @@ exports.listAttachments = onRequest({ cors: true }, async (req, res) => {
 // Delete attachment
 exports.deleteAttachment = onRequest({ cors: true }, async (req, res) => {
   setCorsHeaders(req, res);
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method === "OPTIONS") { return res.status(204).end(); }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
   const { idToken, containerId, itemId, fileName } = req.body || {};
   if (!idToken || !containerId || !itemId || !fileName) {
@@ -1167,7 +1216,8 @@ exports.deleteAttachment = onRequest({ cors: true }, async (req, res) => {
     }
 
     // テスト環境では適切なバケット名を設定
-    const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST || process.env.NODE_ENV === "development";
+    const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
+      process.env.NODE_ENV === "development";
     const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
     const bucket = admin.storage().bucket(bucketName);
 
@@ -1176,7 +1226,10 @@ exports.deleteAttachment = onRequest({ cors: true }, async (req, res) => {
     return res.status(200).json({ success: true });
   } catch (err) {
     logger.error(`deleteAttachment error: ${err.message}`);
-    if (err.code === "auth/id-token-expired" || err.code === "auth/invalid-id-token" || err.code === "auth/argument-error") {
+    if (
+      err.code === "auth/id-token-expired" ||
+      err.code === "auth/invalid-id-token" || err.code === "auth/argument-error"
+    ) {
       return res.status(401).json({ error: "Authentication failed" });
     }
     return res.status(500).json({ error: "Failed to delete attachment" });

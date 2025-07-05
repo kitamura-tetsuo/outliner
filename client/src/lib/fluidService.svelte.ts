@@ -158,8 +158,7 @@ export function getCurrentContainerId(): string | undefined {
                 }
             }
         }
-    }
-    catch (error) {
+    } catch (error) {
         console.warn("Error accessing clientRegistry:", error);
     }
 
@@ -192,8 +191,7 @@ export function getCurrentContainerId(): string | undefined {
                     console.log("getCurrentContainerId: returning from mockStore =", containerId);
                     return containerId;
                 }
-            }
-            else {
+            } else {
                 console.log("getCurrentContainerId: __FIRESTORE_STORE__ not available, checking localStorage");
 
                 // ローカルストレージから最新のcontainerIdを取得
