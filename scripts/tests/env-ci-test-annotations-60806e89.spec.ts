@@ -27,11 +27,10 @@ test("package.json includes github test scripts", () => {
 
 test("workflow runs tests with annotation reporters", () => {
     const workflow = fs.readFileSync(workflowFile, "utf-8");
-    expect(workflow).toMatch(/Run unit tests/);
-    expect(workflow).toMatch(/Run integration tests/);
+    expect(workflow).toMatch(/Run unit and integration tests for github reporting/);
     expect(workflow).toMatch(/npm run github:test:unit/);
     expect(workflow).toMatch(/npm run github:test:integration/);
     expect(workflow).toMatch(/Run e2e tests for github reporting/);
-    expect(workflow).toMatch(/npm run github:test:e2e/);
+    expect(workflow).toMatch(/scripts\/run-e2e-progress-for-codex\.sh 1/);
     expect(workflow).toMatch(/Summarise failures/);
 });
