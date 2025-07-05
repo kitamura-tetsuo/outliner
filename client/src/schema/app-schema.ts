@@ -17,6 +17,46 @@ import { v4 as uuid } from "uuid";
 // スキーマファクトリを作成
 const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120003");
 
+export class Comment extends sf.objectRecursive("Comment", {
+    id: sf.string,
+    text: sf.string,
+    author: sf.string,
+    created: sf.number,
+    lastChanged: sf.number,
+}) {
+    public readonly updateText = (text: string) => {
+        this.lastChanged = new Date().getTime();
+        this.text = text;
+    };
+}
+
+export class Comments extends sf.arrayRecursive("Comments", [Comment]) {
+    public readonly addComment = (author: string, text: string) => {
+        const time = new Date().getTime();
+        const comment = new Comment({
+            id: uuid(),
+            text,
+            author,
+            created: time,
+            lastChanged: time,
+        });
+        this.insertAtEnd(comment);
+        return comment;
+    };
+
+    public readonly deleteComment = (commentId: string) => {
+        const idx = this.findIndex(c => c.id === commentId);
+        if (idx > -1) {
+            this.removeAt(idx);
+        }
+    };
+
+    public readonly updateComment = (commentId: string, text: string) => {
+        const c = this.find(cm => cm.id === commentId);
+        if (c) c.updateText(text);
+    };
+}
+
 // アイテム定義をシンプル化
 export class Item extends sf.objectRecursive("Item", {
     id: sf.string,
@@ -29,6 +69,7 @@ export class Item extends sf.objectRecursive("Item", {
     aliasTargetId: sf.optional(sf.string),
     lastChanged: sf.number,
     items: () => Items, // 子アイテムを保持
+    comments: () => Comments,
 }) {
     // テキスト更新時にタイムスタンプも更新
     public readonly updateText = (text: string) => {
@@ -50,17 +91,30 @@ export class Item extends sf.objectRecursive("Item", {
 
     // 添付ファイルを追加
     public readonly addAttachment = (url: string) => {
-        this.attachments.insertAtEnd(url);
+        this.attachments?.insertAtEnd(url);
         this.lastChanged = new Date().getTime();
     };
 
     // 添付ファイルを削除
     public readonly removeAttachment = (url: string) => {
-        const index = this.attachments.indexOf(url);
-        if (index > -1) {
-            this.attachments.removeAt(index);
+        const index = this.attachments?.indexOf(url);
+        if (index !== undefined && index > -1) {
+            this.attachments?.removeAt(index);
             this.lastChanged = new Date().getTime();
         }
+    };
+
+    public readonly addComment = (author: string, text: string) => {
+        return (this.comments as Comments).addComment(author, text);
+    };
+
+    public readonly deleteComment = (commentId: string) => {
+        (this.comments as Comments).deleteComment(commentId);
+    };
+
+    public readonly updateComment = (commentId: string, text: string) => {
+        const c = (this.comments as Comments).find(cm => cm.id === commentId);
+        if (c) c.updateText(text);
     };
 
     // アイテム削除機能
