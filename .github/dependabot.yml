@@ -1,15 +1,44 @@
 version: 2
 updates:
-  - package-ecosystem: 'npm' # npm, yarn, pnpm なども可
-    directory:
-      - ''
-      - 'client'
-      - 'server'
-      - 'functions'
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
       interval: 'weekly'
       day: 'monday'
       time: '00:00' # UTC。JST 09:00 相当
+    open-pull-requests-limit: 10
+    rebase-strategy: 'auto'
+    labels:
+      - 'dependencies'
+      - 'npm'
+  - package-ecosystem: 'npm'
+    directory: '/client'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '00:00'
+    open-pull-requests-limit: 10
+    rebase-strategy: 'auto'
+    labels:
+      - 'dependencies'
+      - 'npm'
+  - package-ecosystem: 'npm'
+    directory: '/server'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '00:00'
+    open-pull-requests-limit: 10
+    rebase-strategy: 'auto'
+    labels:
+      - 'dependencies'
+      - 'npm'
+  - package-ecosystem: 'npm'
+    directory: '/functions'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '00:00'
     open-pull-requests-limit: 10
     rebase-strategy: 'auto'
     labels:
