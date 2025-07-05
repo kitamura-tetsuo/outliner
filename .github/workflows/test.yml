@@ -268,7 +268,8 @@ jobs:
       - name: Run e2e tests for github reporting
         run: |
           set -o pipefail
-          bash scripts/run-e2e-progress-for-codex.sh 1 2>&1 | tee -a /tmp/e2e-test.log
+          cd client
+          npm run github:test:e2e 2>&1 | tee -a /tmp/e2e-test.log
         env:
           CI: true
           NODE_ENV: test

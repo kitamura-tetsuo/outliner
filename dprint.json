@@ -8,10 +8,6 @@
         "quoteStyle": "preferDouble",
         "trailingCommas": "onlyMultiLine"
     },
-    "yaml": {
-        "indentWidth": 2,
-        "quotes": "preferSingle"
-    },
     "json": {},
     "excludes": [
         "**/.git",
@@ -26,7 +22,9 @@
         "scripts/*.d.*",
         "**/_namespaces/**",
         "**/*.svelte",
-        "**/*.html"
+        "**/*.html",
+        "**/*.yaml",
+        "**/*.yml"
     ],
     "toml": {},
     "dockerfile": {},

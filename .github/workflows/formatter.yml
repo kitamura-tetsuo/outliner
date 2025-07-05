@@ -24,20 +24,10 @@ jobs:
 
       - name: Check formatting
         run: |
-          echo "Checking code formatting..."
-          if ! dprint check; then
+          echo "Running formatting check..."
+          if ! ./scripts/check_format.sh; then
             echo "❌ Code is not properly formatted!"
-            echo "Please run 'dprint fmt' to fix formatting issues."
+            echo "Please run 'npx dprint fmt' to fix formatting issues."
             exit 1
           fi
-
-          echo "Checking functions formatting..."
-          cd functions
-          if ! dprint check; then
-            echo "❌ Functions code is not properly formatted!"
-            echo "Please run 'cd functions && dprint fmt' to fix formatting issues."
-            exit 1
-          fi
-          cd ..
-
           echo "✅ All code is properly formatted!"

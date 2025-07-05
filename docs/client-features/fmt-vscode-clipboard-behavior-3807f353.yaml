@@ -2,13 +2,11 @@ id: FMT-0005
 title: VS Code style clipboard behavior
 category: text-formatting
 status: implemented
-description: 'Copying and pasting using multi-cursors or box selection should behave the same as Visual Studio Code. Metadata in the clipboard is interpreted so each cursor receives the expected text.
-
-'
+description: Copying and pasting using multi-cursors or box selection should behave the same as Visual Studio Code. Metadata in the clipboard is interpreted so each cursor receives the expected text.
 acceptance:
-  - Box selection paste inserts each line of text into the corresponding selection range
-  - Clipboard operations work when triggered via keyboard shortcuts
-  - Pasting with application/vscode-editor metadata distributes text across multiple cursors
+- Box selection paste inserts each line of text into the corresponding selection range
+- Clipboard operations work when triggered via keyboard shortcuts
+- Pasting with application/vscode-editor metadata distributes text across multiple cursors
 tests:
-  - client/e2e/core/fmt-vscode-clipboard-behavior-3807f353.spec.ts
+- client/e2e/core/fmt-vscode-clipboard-behavior-3807f353.spec.ts
 title-ja: VS Code風クリップボード操作

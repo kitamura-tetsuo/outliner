@@ -4,12 +4,12 @@ description: Clients can retrieve an updated list of schedules via the API.
 category: publishing
 status: implemented
 acceptance:
-  - Invalid auth tokens return errors
-  - List endpoint returns schedules ordered by nextRunAt
+- Invalid auth tokens return errors
+- List endpoint returns schedules ordered by nextRunAt
 components:
-  - client/e2e/core/sch-list-schedules-c10dea72.spec.ts
-  - functions/index.js
+- client/e2e/core/sch-list-schedules-c10dea72.spec.ts
+- functions/index.js
 tests:
-  - client/e2e/core/sch-list-schedules-c10dea72.spec.ts
-  - functions/test/scheduled-publishing.test.js
+- client/e2e/core/sch-list-schedules-c10dea72.spec.ts
+- functions/test/scheduled-publishing.test.js
 title-ja: スケジュール一覧更新

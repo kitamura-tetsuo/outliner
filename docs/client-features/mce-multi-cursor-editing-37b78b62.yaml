@@ -4,10 +4,10 @@ description: 複数のカーソルを使って同時に編集できる機能
 category: collaboration
 status: implemented
 acceptance:
-  - Undo/redoがすべてのカーソルに適用される
-  - 各カーソルから独立してテキスト編集できる
-  - 複数のカーソルを配置できる
+- Undo/redoがすべてのカーソルに適用される
+- 各カーソルから独立してテキスト編集できる
+- 複数のカーソルを配置できる
 tests:
-  - client/e2e/disabled/multi-cursor.spec.ts
-  - client/src/stores/EditorOverlayStore.test.ts
+- client/e2e/disabled/multi-cursor.spec.ts
+- client/src/stores/EditorOverlayStore.test.ts
 title-ja: マルチカーサーの編集

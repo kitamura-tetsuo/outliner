@@ -4,16 +4,16 @@ description: テストにおいてSharedTreeの内容をJSONとして取得し�
 category: testing
 status: implemented
 acceptance:
-  - SharedTreeのデータ構造をJSON形式で取得できる
-  - スナップショットを取得して後で比較できる
-  - ネストされた構造（親子関係）を正確に検証できる
-  - 期待値と実際の値を厳密に比較できる
-  - 期待値と実際の値を部分的に比較できる
-  - 特定のパスのデータを検証できる
-  - 特定のパスを無視して比較できる
+- SharedTreeのデータ構造をJSON形式で取得できる
+- スナップショットを取得して後で比較できる
+- ネストされた構造（親子関係）を正確に検証できる
+- 期待値と実際の値を厳密に比較できる
+- 期待値と実際の値を部分的に比較できる
+- 特定のパスのデータを検証できる
+- 特定のパスを無視して比較できる
 tests:
-  - client/e2e/utils/tree-validation.spec.ts
+- client/e2e/utils/tree-validation.spec.ts
 examples:
-  - client/e2e/utils/tree-validator-examples.ts
-  - client/e2e/utils/tree-validator-usage.md
+- client/e2e/utils/tree-validator-examples.ts
+- client/e2e/utils/tree-validator-usage.md
 title-ja: SharedTreeデータ検証ユーティリティ

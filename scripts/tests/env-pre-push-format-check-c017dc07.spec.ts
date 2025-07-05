@@ -2,10 +2,7 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import {
-    expect,
-    test,
-} from "vitest";
+import { expect, test } from "vitest";
 
 /** @feature ENV-0010
  *  Title   : Pre-push formatting check
@@ -23,8 +20,7 @@ function runScript(): number {
     try {
         execSync(script, { cwd: repoRoot, stdio: "pipe" });
         return 0;
-    }
-    catch (err) {
+    } catch (err) {
         return (err as any).status ?? 1;
     }
 }

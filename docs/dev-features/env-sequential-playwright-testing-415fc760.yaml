@@ -6,4 +6,4 @@ category: environment
 status: implemented
 components: []
 tests:
-  - scripts/tests/ENV-0009.spec.ts
+- scripts/tests/ENV-0009.spec.ts

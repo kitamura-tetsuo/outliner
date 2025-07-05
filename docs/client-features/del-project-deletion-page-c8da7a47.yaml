@@ -1,0 +1,17 @@
+id: DEL-0001
+title: Project Deletion Page
+title-ja: プロジェクト削除ページ
+description: Dedicated page listing all user projects with checkboxes to delete inaccessible or unwanted containers.
+category: project
+status: draft
+components:
+- src/routes/projects/delete/+page.svelte
+services:
+- src/lib/fluidService.svelte
+- src/stores/firestoreStore.svelte.ts
+tests:
+- client/e2e/new/DEL-0001.spec.ts
+acceptance:
+- Clicking Delete removes the selected projects
+- Multiple projects can be selected via checkboxes
+- Users can see all project container IDs and titles

@@ -4,10 +4,10 @@ description: フォーマット（太字、斜体など）が適用された文�
 category: cursor-movement
 status: implemented
 tests:
-  - client/e2e/core/clm-cursor-manipulation-with-format-strings-86f0d787.spec.ts
+- client/e2e/core/clm-cursor-manipulation-with-format-strings-86f0d787.spec.ts
 acceptance:
-  - Home/Endキーがフォーマット文字列で正しく機能する
-  - Shift+矢印キーによる選択がフォーマット文字列で正しく機能する
-  - フォーマット文字列内でのカーソル移動が正しく機能する
-  - 複数のフォーマットが混在する文字列でのカーソル移動が正しく機能する
+- Home/Endキーがフォーマット文字列で正しく機能する
+- Shift+矢印キーによる選択がフォーマット文字列で正しく機能する
+- フォーマット文字列内でのカーソル移動が正しく機能する
+- 複数のフォーマットが混在する文字列でのカーソル移動が正しく機能する
 title-ja: フォーマット文字列でのカーソル操作

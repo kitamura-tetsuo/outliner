@@ -4,7 +4,7 @@ description: Clicking the "アイテム追加" button adds a new outliner item.
 category: item-management
 status: implemented
 acceptance:
-  - ボタンをクリックすると新しいアイテムがリストに表示される
+- ボタンをクリックすると新しいアイテムがリストに表示される
 tests:
-  - client/e2e/basic/itm-add-item-button-a4430f1e.spec.ts
+- client/e2e/basic/itm-add-item-button-a4430f1e.spec.ts
 title-ja: ボタンでアイテム追加

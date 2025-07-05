@@ -4,10 +4,10 @@ description: 選択範囲機能のエッジケースのテスト
 category: selection-range
 status: implemented
 acceptance:
-  - 空のアイテムを含む選択範囲を作成できる
-  - 複数アイテムにまたがる選択範囲を削除した後、カーソル位置が適切に更新される
-  - 選択範囲の方向（正方向/逆方向）を切り替えることができる
-  - 長いテキストを含むアイテムの選択範囲を作成できる
+- 空のアイテムを含む選択範囲を作成できる
+- 複数アイテムにまたがる選択範囲を削除した後、カーソル位置が適切に更新される
+- 選択範囲の方向（正方向/逆方向）を切り替えることができる
+- 長いテキストを含むアイテムの選択範囲を作成できる
 tests:
-  - client/e2e/core/slr-selected-edge-case-e818d989.spec.ts
+- client/e2e/core/slr-selected-edge-case-e818d989.spec.ts
 title-ja: 選択範囲のエッジケース

@@ -5,10 +5,10 @@ category: collaboration
 description: Display active users with colored avatars using Fluid presence data.
 status: implemented
 acceptance:
-  - Avatars appear for all connected users
-  - Colors remain consistent per user
-  - Presence updates when users join or leave
+- Avatars appear for all connected users
+- Colors remain consistent per user
+- Presence updates when users join or leave
 tests:
-  - client/e2e/new/prs-real-time-presence-indicators-7b6a1ea8.spec.ts
-  - client/src/tests/fluidPresence.test.ts
-  - client/src/tests/presenceStore.test.ts
+- client/e2e/new/prs-real-time-presence-indicators-7b6a1ea8.spec.ts
+- client/src/tests/fluidPresence.test.ts
+- client/src/tests/presenceStore.test.ts

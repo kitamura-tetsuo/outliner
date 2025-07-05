@@ -5,25 +5,25 @@ description: Visualize inter-page links as an interactive graph that updates in 
 category: navigation
 status: implemented
 components:
-  - client/src/components/GraphView.svelte
-  - client/src/routes/graph/+page.svelte
+- client/src/components/GraphView.svelte
+- client/src/routes/graph/+page.svelte
 features:
-  - Parse page links to build a graph structure
-  - Allow navigation to pages by clicking nodes
-  - Support real-time updates when links change
-  - Display interactive graph using ECharts
+- Parse page links to build a graph structure
+- Allow navigation to pages by clicking nodes
+- Support real-time updates when links change
+- Display interactive graph using ECharts
 acceptance:
-  - Clicking a node navigates to the correct page
-  - E2E tests verify graph page navigation and real-time updates
-  - Graph renders using project data on /graph page
-  - Graph updates automatically when pages or links change
-  - Unit test verifies chart update logic
+- Clicking a node navigates to the correct page
+- E2E tests verify graph page navigation and real-time updates
+- Graph renders using project data on /graph page
+- Graph updates automatically when pages or links change
+- Unit test verifies chart update logic
 interfaces:
-  - GraphView
-  - store.pages
-  - TreeSubscriber
-  - ECharts
+- GraphView
+- store.pages
+- TreeSubscriber
+- ECharts
 resources: []
 tests:
-  - client/e2e/new/GRV-002.spec.ts
-  - client/e2e/new/grv-graph-view-navigation-34a26488.spec.ts
+- client/e2e/new/GRV-002.spec.ts
+- client/e2e/new/grv-graph-view-navigation-34a26488.spec.ts
