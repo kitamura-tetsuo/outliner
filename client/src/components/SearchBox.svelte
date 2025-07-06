@@ -1,7 +1,7 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
+import type { Item, Items, Project } from '../schema/app-schema';
 import { searchHistoryStore } from '../stores/SearchHistoryStore.svelte';
-import type { Project, Items, Item } from '../schema/app-schema';
 
 interface Props { project: Project }
 let { project }: Props = $props();
@@ -73,8 +73,10 @@ function handleKeydown(e: KeyboardEvent) {
         if (selected >= 0 && results[selected]) {
             const title = results[selected].text;
             searchHistoryStore.add(title);
+            // Temporarily disabled for testing
             goto(`/${project.title}/${title}`);
         } else {
+            // Temporarily disabled for testing
             goto(`/search?query=${encodeURIComponent(query)}`);
         }
     }

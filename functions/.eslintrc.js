@@ -27,6 +27,16 @@ module.exports = {
     camelcase: "off",
     "no-unused-vars": "warn",
     "comma-dangle": ["error", "only-multiline"],
+
+    // 🚫 禁止: svelte/store の直接利用
+    "no-restricted-imports": ["error", {
+      paths: [
+        {
+          name: "svelte/store",
+          message: "use svelte5's rune. svelte/store is not permitted.",
+        },
+      ],
+    }],
   },
   overrides: [
     {

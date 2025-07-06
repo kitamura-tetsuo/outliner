@@ -1,4 +1,4 @@
-import { expect, type Page, type Response } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { CursorValidator } from "./cursorValidation.js";
 
 /**
@@ -587,15 +587,46 @@ export class TestHelpers {
 
         // generalStoreが設定されるまで待機（OutlinerBaseのマウントは後で確認）
         console.log("TestHelper: Waiting for generalStore to be available");
-        await page.waitForFunction(() => {
-            const generalStore = (window as any).generalStore;
 
-            console.log("TestHelper: GeneralStore availability check", {
-                hasGeneralStore: !!generalStore,
+        // より詳細なデバッグ情報を追加
+        await page.evaluate(() => {
+            console.log("TestHelper: Current page state before generalStore wait:");
+            console.log("TestHelper: URL:", window.location.href);
+            console.log(
+                "TestHelper: Available global objects:",
+                Object.keys(window).filter(k => k.startsWith("__") || k.includes("Store") || k.includes("store")),
+            );
+            console.log("TestHelper: Document ready state:", document.readyState);
+            console.log("TestHelper: Body innerHTML length:", document.body.innerHTML.length);
+        });
+
+        try {
+            await page.waitForFunction(() => {
+                const generalStore = (window as any).generalStore;
+
+                console.log("TestHelper: GeneralStore availability check", {
+                    hasGeneralStore: !!generalStore,
+                });
+
+                return !!generalStore;
+            }, { timeout: 30000 });
+        } catch (error) {
+            console.log("TestHelper: generalStore wait failed, checking page state");
+            await page.evaluate(() => {
+                console.log("TestHelper: Final page state after generalStore timeout:");
+                console.log("TestHelper: Available stores:", {
+                    generalStore: !!(window as any).generalStore,
+                    fluidStore: !!(window as any).__FLUID_STORE__,
+                    userManager: !!(window as any).__USER_MANAGER__,
+                });
+                console.log("TestHelper: DOM elements:", {
+                    outlinerBase: !!document.querySelector('[data-testid="outliner-base"]'),
+                    searchBox: !!document.querySelector(".page-search-box"),
+                    main: !!document.querySelector("main"),
+                });
             });
-
-            return !!generalStore;
-        }, { timeout: 30000 });
+            throw error;
+        }
 
         // プロジェクトとページの自動読み込みを待機
         console.log("TestHelper: OutlinerBase mounted, waiting for project and page loading");
