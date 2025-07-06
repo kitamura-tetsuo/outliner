@@ -2,7 +2,7 @@
  *  Title   : Add page title search box
  *  Source  : docs/client-features.yaml
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/console-forward";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box", () => {

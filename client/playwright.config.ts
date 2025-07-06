@@ -6,6 +6,25 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// -- 単一 spec 実行かどうかを推定 -------------------------
+function detectSingleSpec() {
+    // 環境変数が既に設定されている場合はそれを使用
+    if (process.env.PLAYWRIGHT_SINGLE_SPEC_RUN !== undefined) {
+        return process.env.PLAYWRIGHT_SINGLE_SPEC_RUN === "true";
+    }
+
+    const idx = process.argv.findIndex(a => a === "test");
+    const patterns = idx === -1 ? [] : process.argv.slice(idx + 1).filter(a => !a.startsWith("-"));
+    const isSingle = patterns.length === 1;
+
+    // 環境変数に設定してワーカープロセスに伝達
+    process.env.PLAYWRIGHT_SINGLE_SPEC_RUN = isSingle.toString();
+
+    return isSingle;
+}
+
+export const isSingleSpecRun = detectSingleSpec();
+
 // テスト環境の設定
 // 環境変数TEST_ENVが'localhost'の場合はlocalhost環境、それ以外はデフォルト環境
 // VSCode Playwright拡張から実行する場合は環境変数が正しく渡らないことがあるため、
@@ -29,7 +48,7 @@ export default defineConfig({
     testMatch: "**/*.spec.ts",
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
-    retries: process.env.CI ? 10 : 10,
+    retries: process.env.CI ? 10 : 0,
     workers: process.env.CI ? 2 : 4,
     maxFailures: process.env.CI ? 1 : 5,
 

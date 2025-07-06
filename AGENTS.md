@@ -56,13 +56,16 @@ Mocks are generally forbidden. Limited exceptions:
 - Use `data-item-id` selectors instead of `nth()`.
 - Clipboard tests must use the real clipboard API (works only in HTTPS or localhost).
 - If tests time out, document the attempt; the CI environment will run them again.
+- **Navigation Requirements**: Use only Svelte-managed page navigation. Do not use alternative navigation methods that bypass SvelteKit's routing system.
 
 ### Troubleshooting
 
+- **Always check error logs first**: When encountering errors, immediately examine `server/logs/test-svelte-kit.log` for detailed error information before attempting fixes.
 - Check `server/logs/test-svelte-kit.log` when a test stalls.
 - Verify the server with `curl -s http://localhost:7090/ | head -c 100`.
 - Duplicate Firebase initialization often causes 30 s timeouts—ensure `UserManager.initializeFirebaseApp()` checks `getApps()` before calling `initializeApp()`.
 - **Tinylicious Container Restoration Issue**: The error "default dataStore [rootDOId] must exist" occurs when trying to reload saved Fluid containers in Tinylicious (test environment). This is a known Tinylicious bug that doesn't occur in production. In test environments, avoid reloading saved containers and use alternative testing approaches instead.
+- **Test Isolation and Regression Prevention**: When troubleshooting failing tests, destructive changes to shared code may occur. If you modify common code outside the specific test target, run the basic E2E tests to verify no breaking changes have been introduced. If breaking changes are detected, revert the modifications to maintain test stability.
 
 ### Firebase Functions Emulator
 

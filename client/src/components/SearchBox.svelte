@@ -8,28 +8,57 @@ let { project }: Props = $props();
 
 let query = $state('');
 let results: Item[] = $state([]);
-let history = $derived(searchHistoryStore);
+let history: string[] = $state([]);
 let selected = $state(-1);
 
+// SearchHistoryStoreの値を監視
+$effect(() => {
+    const unsubscribe = searchHistoryStore.subscribe(value => {
+        history = value;
+    });
+    return unsubscribe;
+});
+
 function updateResults() {
+    if (!project?.items) {
+        results = [];
+        selected = -1;
+        return;
+    }
+
+    const pages = project.items as Items;
+
     if (!query) {
         results = history
-            .map(h => (project.items as Items).find(p => p.text === h))
+            .map(h => {
+                // Items配列から検索
+                for (let i = 0; i < pages.length; i++) {
+                    const page = pages.at(i);
+                    if (page && page.text === h) {
+                        return page;
+                    }
+                }
+                return null;
+            })
             .filter(Boolean) as Item[];
         selected = results.length ? 0 : -1;
         return;
     }
-    const pages = project.items as Items;
+
     results = [];
-    for (const page of pages) {
-        if (page.text.toLowerCase().includes(query.toLowerCase())) {
+    for (let i = 0; i < pages.length; i++) {
+        const page = pages.at(i);
+        if (page && page.text.toLowerCase().includes(query.toLowerCase())) {
             results.push(page);
         }
     }
     selected = results.length ? 0 : -1;
 }
 
-$effect(updateResults);
+// プロジェクトとクエリの変更を監視
+$effect(() => {
+    updateResults();
+});
 
 function handleKeydown(e: KeyboardEvent) {
     if (e.isComposing) return;
@@ -53,7 +82,7 @@ function handleKeydown(e: KeyboardEvent) {
 </script>
 
 <div class="page-search-box">
-    <input type="text" placeholder="Search pages" bind:value={query} on:keydown={handleKeydown} />
+    <input type="text" placeholder="Search pages" bind:value={query} onkeydown={handleKeydown} />
     {#if results.length}
         <ul>
             {#each results as page, i}
