@@ -7,29 +7,18 @@ interface Props { project: Project }
 let { project }: Props = $props();
 
 let query = $state('');
-let results: Item[] = $state([]);
-let history: string[] = $state([]);
 let selected = $state(-1);
 
-// SearchHistoryStoreの値を監視
-$effect(() => {
-    const unsubscribe = searchHistoryStore.subscribe(value => {
-        history = value;
-    });
-    return unsubscribe;
-});
-
-function updateResults() {
+// リアクティブに結果を計算
+let results = $derived.by(() => {
     if (!project?.items) {
-        results = [];
-        selected = -1;
-        return;
+        return [];
     }
 
     const pages = project.items as Items;
 
     if (!query) {
-        results = history
+        const historyResults = searchHistoryStore.history
             .map(h => {
                 // Items配列から検索
                 for (let i = 0; i < pages.length; i++) {
@@ -41,23 +30,22 @@ function updateResults() {
                 return null;
             })
             .filter(Boolean) as Item[];
-        selected = results.length ? 0 : -1;
-        return;
+        return historyResults;
     }
 
-    results = [];
+    const searchResults: Item[] = [];
     for (let i = 0; i < pages.length; i++) {
         const page = pages.at(i);
         if (page && page.text.toLowerCase().includes(query.toLowerCase())) {
-            results.push(page);
+            searchResults.push(page);
         }
     }
-    selected = results.length ? 0 : -1;
-}
+    return searchResults;
+});
 
-// プロジェクトとクエリの変更を監視
+// 結果が変更されたときにselectedを更新
 $effect(() => {
-    updateResults();
+    selected = results.length ? 0 : -1;
 });
 
 function handleKeydown(e: KeyboardEvent) {

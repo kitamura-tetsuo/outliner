@@ -1,5 +1,4 @@
 import { browser } from "$app/environment";
-import { writable } from "svelte/store";
 
 const STORAGE_KEY = "pageSearchHistory";
 
@@ -13,28 +12,28 @@ function loadInitial(): string[] {
     }
 }
 
-function createHistory() {
-    const { subscribe, update } = writable<string[]>(loadInitial());
-
-    function persist(values: string[]) {
-        if (browser) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
-        }
+function persist(values: string[]) {
+    if (browser) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
     }
-
-    return {
-        subscribe,
-        add(title: string) {
-            update(list => {
-                const idx = list.indexOf(title);
-                if (idx !== -1) list.splice(idx, 1);
-                list.unshift(title);
-                if (list.length > 20) list.pop();
-                persist(list);
-                return list;
-            });
-        },
-    };
 }
 
-export const searchHistoryStore = createHistory();
+class SearchHistoryStore {
+    private _history = $state<string[]>(loadInitial());
+
+    get history(): string[] {
+        return this._history;
+    }
+
+    add(title: string) {
+        const list = [...this._history];
+        const idx = list.indexOf(title);
+        if (idx !== -1) list.splice(idx, 1);
+        list.unshift(title);
+        if (list.length > 20) list.pop();
+        this._history = list;
+        persist(list);
+    }
+}
+
+export const searchHistoryStore = new SearchHistoryStore();

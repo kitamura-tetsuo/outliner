@@ -270,6 +270,11 @@ export class TestHelpers {
                 throw new Error("FluidStore not available after waiting");
             }
 
+            while (!window.__FLUID_STORE__.fluidClient && attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+
             const fluidClient = window.__FLUID_STORE__.fluidClient;
             if (!fluidClient) {
                 throw new Error("FluidClient instance not found");

@@ -3,10 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 let store: any;
 
 function getHistory() {
-    let value: string[] = [];
-    const unsub = store.subscribe((v: string[]) => (value = v));
-    unsub();
-    return value;
+    return store.history;
 }
 
 describe("search history store", () => {
