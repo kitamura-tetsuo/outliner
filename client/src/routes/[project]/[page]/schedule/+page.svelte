@@ -129,9 +129,9 @@ function back() {
         <button onclick={addSchedule} class="ml-2 px-2 py-1 bg-blue-600 text-white rounded">Add</button>
         <button onclick={back} class="ml-2 px-2 py-1 bg-gray-300 rounded">Back</button>
     </div>
-    <ul>
+    <ul data-testid="schedule-list">
         {#each schedules as sch}
-            <li class="mb-2">
+            <li class="mb-2" data-testid="schedule-item">
                 {#if editingId === sch.id}
                     <input type="datetime-local" bind:value={editingTime} class="border p-1" />
                     <button onclick={saveEdit} class="ml-2 px-2 py-1 bg-green-600 text-white rounded">Save</button>

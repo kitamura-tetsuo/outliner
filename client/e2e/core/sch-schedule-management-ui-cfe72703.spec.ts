@@ -45,10 +45,11 @@ test.describe("Schedule Management UI", () => {
         // スケジュール追加後、少し待つ
         await page.waitForTimeout(3000);
 
-        const items = page.locator("ul li");
-        await expect(items).toHaveCount(1);
+        // スケジュール専用のセレクターを使用
+        const scheduleItems = page.locator('[data-testid="schedule-item"]');
+        await expect(scheduleItems).toHaveCount(1);
 
-        await items.first().locator('button:has-text("Cancel")').click();
-        await expect(items).toHaveCount(0);
+        await scheduleItems.first().locator('button:has-text("Cancel")').click();
+        await expect(scheduleItems).toHaveCount(0);
     });
 });

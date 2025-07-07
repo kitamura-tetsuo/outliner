@@ -51,7 +51,7 @@ export class TestHelpers {
                 (window as any).__vite_plugin_react_preamble_installed__ = true;
                 // エラーオーバーレイの表示を防ぐ
                 const originalCreateElement = document.createElement;
-                document.createElement = function(tagName: string, ...args: any[]) {
+                document.createElement = function (tagName: string, ...args: any[]) {
                     if (tagName === "vite-error-overlay") {
                         return originalCreateElement.call(this, "div", ...args);
                     }
@@ -120,10 +120,6 @@ export class TestHelpers {
 
         // デバッグ関数を手動で設定
         await page.evaluate(async () => {
-            // fluidStoreとgotoを手動で設定
-            if (!(window as any).__FLUID_STORE__) {
-                (window as any).__FLUID_STORE__ = (window as any).fluidStore;
-            }
             if (!(window as any).__SVELTE_GOTO__) {
                 (window as any).__SVELTE_GOTO__ = (window as any).goto;
             }
@@ -182,72 +178,57 @@ export class TestHelpers {
 
         // Fluid APIを使用してプロジェクトとページを作成
         await page.evaluate(async ({ projectName, pageName, lines }) => {
-            let fluidClient: any = null;
-            try {
-                console.log(`TestHelper: Creating project and page`, {
-                    projectName,
-                    pageName,
-                    linesCount: lines.length,
-                });
+            console.log(`TestHelper: Creating project and page`, { projectName, pageName, linesCount: lines.length });
 
-                // テスト環境でFluidServiceを直接インポートして使用
-                const { createNewContainer } = await import("../../src/lib/fluidService.svelte.js");
-                console.log(`TestHelper: FluidService imported`);
+            while (!window.__FLUID_STORE__) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            console.log(`TestHelper: FluidStore is available`);
 
-                fluidClient = await createNewContainer(projectName);
-                console.log(`TestHelper: FluidClient created`, { containerId: fluidClient.containerId });
+            const fluidService = window.__FLUID_SERVICE__;
+            console.log(`TestHelper: FluidService is available`, { exists: !!fluidService });
 
-                const project = fluidClient.getProject();
-                console.log(`TestHelper: Project retrieved`, {
-                    projectTitle: project.title,
-                });
+            const fluidClient = await fluidService.createNewContainer(projectName);
+            console.log(`TestHelper: FluidClient created`, { containerId: fluidClient.containerId });
 
-                fluidClient.createPage(pageName, lines);
-                console.log(`TestHelper: Page created`, { pageName });
+            const project = fluidClient.getProject();
+            console.log(`TestHelper: Project retrieved`, {
+                projectTitle: project.title,
+                itemsCount: project.items?.length,
+            });
 
-                // fluidStoreを更新してアプリケーション状態を同期
-                const fluidStore = window.__FLUID_STORE__;
-                if (fluidStore) {
-                    console.log(`TestHelper: Updating fluidStore with new client`);
-                    fluidStore.fluidClient = fluidClient;
-                    console.log(`TestHelper: FluidStore updated`);
-                    console.log(`TestHelper: FluidClient containerId:`, fluidClient.containerId);
-                    console.log(`TestHelper: FluidStore currentContainerId:`, fluidStore.getCurrentContainerId());
-                } else {
-                    console.error(`TestHelper: FluidStore not found`);
-                }
-            } catch (error) {
-                console.error(`TestHelper: Error creating project and page:`, error);
-                // エラーが発生してもテストを続行する
-                return; // エラーの場合は早期リターン
+            fluidClient.createPage(pageName, lines);
+            console.log(`TestHelper: Page created`, { pageName });
+
+            // fluidStoreを更新してアプリケーション状態を同期
+            const fluidStore = window.__FLUID_STORE__;
+            if (fluidStore) {
+                console.log(`TestHelper: Updating fluidStore with new client`);
+                fluidStore.fluidClient = fluidClient;
+                console.log(`TestHelper: FluidStore updated`);
+            } else {
+                console.error(`TestHelper: FluidStore not found`);
             }
 
-            // 作成後の状態を確認（fluidClientが正常に作成された場合のみ）
-            if (fluidClient) {
-                try {
-                    const updatedProject = fluidClient.getProject();
-                    console.log(`TestHelper: Updated project state`, {
-                        projectTitle: updatedProject.title,
-                        itemsCount: updatedProject.items ? (updatedProject.items as any).length : 0,
-                    });
+            // 作成後の状態を確認
+            const updatedProject = fluidClient.getProject();
+            console.log(`TestHelper: Updated project state`, {
+                projectTitle: updatedProject.title,
+                itemsCount: updatedProject.items?.length,
+            });
 
-                    if (updatedProject.items && (updatedProject.items as any).length > 0) {
-                        for (let i = 0; i < (updatedProject.items as any).length; i++) {
-                            const page = (updatedProject.items as any)[i];
-                            console.log(`TestHelper: Page ${i}`, {
-                                text: page.text,
-                                itemsCount: page.items ? (page.items as any).length : 0,
-                            });
-                        }
-                    }
-                } catch (error) {
-                    console.error(`TestHelper: Error checking project state:`, error);
+            if (updatedProject.items && updatedProject.items.length > 0) {
+                for (let i = 0; i < updatedProject.items.length; i++) {
+                    const page = updatedProject.items[i];
+                    console.log(`TestHelper: Page ${i}`, { text: page.text, itemsCount: page.items?.length });
                 }
             }
         }, { projectName, pageName, lines });
 
-        // プロジェクトとページの作成後、ページルートでの処理が完了するまで待機
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // FluidClient が設定されるまで待機
+        await page.waitForFunction(() => {
+            return (window as any).__FLUID_STORE__?.fluidClient !== undefined;
+        });
     }
 
     /**
@@ -291,7 +272,7 @@ export class TestHelpers {
     private static async setupCursorDebugger(page: Page): Promise<void> {
         await page.addInitScript(() => {
             // グローバルオブジェクトにデバッグ関数を追加
-            window.getCursorDebugData = function() {
+            window.getCursorDebugData = function () {
                 // EditorOverlayStoreインスタンスを取得
                 const editorOverlayStore = window.editorOverlayStore;
                 if (!editorOverlayStore) {
@@ -341,7 +322,7 @@ export class TestHelpers {
             };
 
             // 拡張版のデバッグ関数 - 特定のパスのデータのみを取得
-            window.getCursorPathData = function(path) {
+            window.getCursorPathData = function (path) {
                 // EditorOverlayStoreインスタンスを取得
                 const editorOverlayStore = window.editorOverlayStore;
                 if (!editorOverlayStore) {
@@ -379,7 +360,7 @@ export class TestHelpers {
     public static async setupTreeDebugger(page: Page): Promise<void> {
         await page.addInitScript(() => {
             // グローバルオブジェクトにデバッグ関数を追加
-            window.getFluidTreeDebugData = function() {
+            window.getFluidTreeDebugData = function () {
                 // グローバルFluidClientインスタンスを取得
                 const fluidClient = window.__FLUID_SERVICE__.getFluidClient();
                 if (!fluidClient) {
@@ -398,7 +379,7 @@ export class TestHelpers {
             };
 
             // 拡張版のデバッグ関数 - 特定のパスのデータのみを取得
-            window.getFluidTreePathData = function(path) {
+            window.getFluidTreePathData = function (path) {
                 const fluidClient = window.__FLUID_SERVICE__.getFluidClient();
                 if (!fluidClient) {
                     return { error: "FluidClient instance not found" };

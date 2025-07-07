@@ -48,7 +48,7 @@ export default defineConfig({
     testMatch: "**/*.spec.ts",
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
-    retries: process.env.CI ? 10 : 0,
+    retries: (process.env.CI || !isSingleSpecRun) ? 10 : 0,
     workers: process.env.CI ? 2 : 4,
     maxFailures: process.env.CI ? 1 : 5,
 
@@ -87,6 +87,8 @@ export default defineConfig({
                 "--allow-file-access-from-files",
                 "--enable-clipboard-read",
                 "--enable-clipboard-write",
+                // debug from vscode
+                "--remote-debugging-port=9222", // CDP WS が :9222 で LISTEN
             ],
         },
         // Clipboard APIを有効にするためにlocalhostを使用

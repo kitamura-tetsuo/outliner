@@ -22,7 +22,6 @@ export function setupGlobalDebugFunctions(xfluidService: any) {
 
     // グローバルオブジェクトにFluidClientインスタンスを保存
     (window as any).__FLUID_SERVICE__ = fluidService;
-    (window as any).__FLUID_STORE__ = fluidStore;
     (window as any).__USER_MANAGER__ = userManager;
     (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
     (window as any).__SVELTE_GOTO__ = goto;
