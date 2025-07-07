@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+# If not running inside the Codex environment, fallback to the
+# standard GitHub E2E test script.
+if [ -z "${CODEX_ENV_NODE_VERSION:-}" ]; then
+    echo "Codex environment not detected; running full E2E suite"
+    cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../client"
+    npm run github:test:e2e
+    exit $?
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
