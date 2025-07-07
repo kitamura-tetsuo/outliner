@@ -48,9 +48,51 @@ if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
 const userContainersCollection = db.collection("userContainers");
 const containerUsersCollection = db.collection("containerUsers");
 
+// CORS_ORIGINの値を検証して安全な値のみを使用
+function getSafeOrigins() {
+    const defaultOrigins = ["http://localhost:7070"];
+
+    if (!process.env.CORS_ORIGIN) {
+        return defaultOrigins;
+    }
+
+    try {
+        const origins = process.env.CORS_ORIGIN.split(",").map(origin => origin.trim());
+        const safeOrigins = origins.filter(origin => {
+            // URLの形式を検証
+            try {
+                new URL(origin);
+                // 不正な文字列パターンを除外
+                if (origin.includes("pathToRegexpError") || origin.includes("git.new")) {
+                    console.warn(`Filtering out invalid origin: ${origin}`);
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                console.warn(`Invalid origin URL format: ${origin}`);
+                return false;
+            }
+        });
+
+        if (safeOrigins.length === 0) {
+            return defaultOrigins;
+        }
+
+        return safeOrigins;
+    } catch (error) {
+        console.error(`Error parsing CORS_ORIGIN: ${error.message}, using defaults`);
+        return defaultOrigins;
+    }
+}
+
 // Expressアプリの作成
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: getSafeOrigins(),
+    methods: ["GET", "POST", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+}));
 app.use(express.json());
 
 // ヘルスチェックエンドポイント
