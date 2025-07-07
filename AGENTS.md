@@ -119,7 +119,8 @@ Mocks are generally forbidden. Limited exceptions:
 ## 7. Preferred Code Patterns
 
 - Use Svelte 5 `$derived` for derived state and `$state` in stores. `$state` is only valid in `.svelte` or `.svelte.ts` files.
-- Keep `$effect` blocks short (under 10 lines) and prefer `onMount` for initialization.
+- Keep existing `$effect` blocks short (under 10 lines) and prefer `onMount` for initialization.
+- Do not add new code that uses Svelte 5 `$effect`.
 - Implement API calls in `fluidService` and call them from components. Provide a `getFluidClientByProjectTitle` function that searches `clientRegistry` by `Project.title`.
 - Export manager instances directly (`export const userManager = new UserManager()`) rather than via `getInstance()`.
 - Rename `firestoreStore.ts` to `firestoreStore.svelte.ts` to enable `$state` usage.
