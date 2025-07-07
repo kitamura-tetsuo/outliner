@@ -58,16 +58,23 @@ function handleKeydown(e: KeyboardEvent) {
         if (results.length) selected = (selected - 1 + results.length) % results.length;
     } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (selected >= 0 && results[selected]) {
-            const title = results[selected].text;
-            searchHistoryStore.add(title);
-            // Temporarily disabled for testing
-            goto(`/${project.title}/${title}`);
-        } else {
-            // Temporarily disabled for testing
-            goto(`/search?query=${encodeURIComponent(query)}`);
-        }
+        navigateToPage();
     }
+}
+
+function navigateToPage(page?: Item) {
+    const targetPage = page || (selected >= 0 && results[selected] ? results[selected] : null);
+    if (targetPage) {
+        const title = targetPage.text;
+        searchHistoryStore.add(title);
+        goto(`/${project.title}/${title}`);
+    } else if (query) {
+        goto(`/search?query=${encodeURIComponent(query)}`);
+    }
+}
+
+function handlePageClick(page: Item) {
+    navigateToPage(page);
 }
 </script>
 
@@ -76,15 +83,79 @@ function handleKeydown(e: KeyboardEvent) {
     {#if results.length}
         <ul>
             {#each results as page, i}
-                <li class:selected={i === selected}>{page.text}</li>
+                <li class:selected={i === selected}>
+                    <button type="button" onclick={() => handlePageClick(page)}>{page.text}</button>
+                </li>
             {/each}
         </ul>
     {/if}
 </div>
 
 <style>
-.page-search-box { position: relative; margin-bottom: 1rem; }
-.page-search-box ul { position: absolute; z-index: 10; background: white; border: 1px solid #ccc; max-height: 200px; overflow-y: auto; width: 100%; padding:0; margin:0; list-style:none; }
-.page-search-box li { padding: 4px 8px; }
-.page-search-box li.selected { background: #ddd; }
+.page-search-box {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+}
+
+.page-search-box input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    background: white;
+}
+
+.page-search-box input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.page-search-box ul {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1100;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.page-search-box li {
+    padding: 0;
+}
+
+.page-search-box li.selected {
+    background: #eff6ff;
+}
+
+.page-search-box li button {
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #374151;
+}
+
+.page-search-box li button:hover {
+    background: #f3f4f6;
+}
+
+.page-search-box li.selected button {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
 </style>

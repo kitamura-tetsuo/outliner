@@ -41,7 +41,7 @@ async function handleContainerSelected(
     <title>Fluid Outliner App</title>
 </svelte:head>
 
-<main>
+<main class="main-content">
     <h1>Fluid Outliner App</h1>
 
     <div class="welcome-message">
@@ -68,6 +68,10 @@ main {
     max-width: 800px;
     margin: 0 auto;
     padding: 2rem;
+}
+
+.main-content {
+    padding-top: 5rem; /* ツールバーの高さ分のパディング（余裕を持って5rem） */
 }
 
 h1 {
