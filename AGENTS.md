@@ -56,6 +56,7 @@ Mocks are generally forbidden. Limited exceptions:
 - Simulate user input with `page.keyboard.type()` and manage cursors with `editorStore.setCursor()` and `cursor.insertText()` followed by a 500 ms wait and `waitForCursorVisible()`.
 - Use `data-item-id` selectors instead of `nth()`.
 - Clipboard tests must use the real clipboard API (works only in HTTPS or localhost).
+- Do not call `await import` inside `page.evaluate()` to avoid creating multiple browser instances.
 - If tests time out, document the attempt; the CI environment will run them again.
 
 ### Troubleshooting
@@ -119,6 +120,7 @@ Mocks are generally forbidden. Limited exceptions:
 ## 7. Preferred Code Patterns
 
 - Use Svelte 5 `$derived` for derived state and `$state` in stores. `$state` is only valid in `.svelte` or `.svelte.ts` files.
+- Avoid `svelte/store`; rely on Svelte 5 `$state` for all store functionality.
 - Keep `$effect` blocks short (under 10 lines) and prefer `onMount` for initialization.
 - Implement API calls in `fluidService` and call them from components. Provide a `getFluidClientByProjectTitle` function that searches `clientRegistry` by `Project.title`.
 - Export manager instances directly (`export const userManager = new UserManager()`) rather than via `getInstance()`.
