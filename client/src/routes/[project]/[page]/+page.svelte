@@ -23,6 +23,7 @@ import {
 } from "../../../schema/app-schema";
 import { getFluidClientByProjectTitle } from "../../../services";
 import { fluidStore } from "../../../stores/fluidStore.svelte";
+import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
 import { store } from "../../../stores/store.svelte";
 
 const logger = getLogger("ProjectPage");
@@ -399,6 +400,10 @@ onMount(async () => {
     setTimeout(() => {
         setupLinkPreviewHandlers();
     }, 500);
+
+    if (pageName) {
+        searchHistoryStore.add(pageName);
+    }
 });
 
 onDestroy(() => {
@@ -417,7 +422,7 @@ onDestroy(() => {
     </title>
 </svelte:head>
 
-<main class="container mx-auto px-4 py-8">
+<main class="container mx-auto px-4 py-4">
     <div class="mb-4">
         <!-- パンくずナビゲーション -->
         <nav class="mb-2 flex items-center text-sm text-gray-600">

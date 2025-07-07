@@ -3,6 +3,33 @@
     "configurations": [
         {
             "type": "chrome",
+            "request": "attach",
+            "name": "Attach to Chrome",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http:/localhost:7070/src/*": "${webRoot}/src/*",
+                "http:/localhost:7090/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "localhost꞉7070/src/*": "${webRoot}/src/*",
+                "localhost꞉7090/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
+                "**/node_modules/**"
+            ],
+            "port": 9222,
+            "justMyCode": false,
+            "console": "internalConsole", // ← Debug Console に出す
+            "trace": true // どこで拾えない時の調査用
+        },
+        {
+            "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against localhost",
             "url": "http://localhost:7090",

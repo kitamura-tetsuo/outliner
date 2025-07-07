@@ -628,3 +628,9 @@ export class UserManager {
 }
 
 export const userManager = new UserManager();
+
+if (process.env.NODE_ENV === "test") {
+    if (typeof window !== "undefined") {
+        (window as any).__USER_MANAGER__ = userManager;
+    }
+}

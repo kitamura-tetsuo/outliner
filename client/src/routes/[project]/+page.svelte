@@ -68,7 +68,7 @@ onDestroy(() => {
     <title>{projectName ? projectName : "プロジェクト"} | Fluid Outliner</title>
 </svelte:head>
 
-<main class="container mx-auto px-4 py-8">
+<main class="container mx-auto px-4 py-4">
     <div class="mb-4 flex items-center">
         <button
             onclick={goHome}

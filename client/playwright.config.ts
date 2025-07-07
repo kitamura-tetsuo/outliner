@@ -6,6 +6,25 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// -- 単一 spec 実行かどうかを推定 -------------------------
+function detectSingleSpec() {
+    // 環境変数が既に設定されている場合はそれを使用
+    if (process.env.PLAYWRIGHT_SINGLE_SPEC_RUN !== undefined) {
+        return process.env.PLAYWRIGHT_SINGLE_SPEC_RUN === "true";
+    }
+
+    const idx = process.argv.findIndex(a => a === "test");
+    const patterns = idx === -1 ? [] : process.argv.slice(idx + 1).filter(a => !a.startsWith("-"));
+    const isSingle = patterns.length === 1;
+
+    // 環境変数に設定してワーカープロセスに伝達
+    process.env.PLAYWRIGHT_SINGLE_SPEC_RUN = isSingle.toString();
+
+    return isSingle;
+}
+
+export const isSingleSpecRun = detectSingleSpec();
+
 // テスト環境の設定
 // 環境変数TEST_ENVが'localhost'の場合はlocalhost環境、それ以外はデフォルト環境
 // VSCode Playwright拡張から実行する場合は環境変数が正しく渡らないことがあるため、
@@ -21,6 +40,37 @@ const VITE_HOST = process.env.VITE_HOST || "localhost";
 // 環境設定ファイルを定義
 const ENV_FILE = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
 
+const commonArgs = [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--disable-web-security",
+    "--disable-features=VizDisplayCompositor",
+    "--disable-background-timer-throttling",
+    "--disable-backgrounding-occluded-windows",
+    "--disable-renderer-backgrounding",
+    "--memory-pressure-off",
+    "--max_old_space_size=4096",
+    "--disable-extensions",
+    "--disable-plugins",
+    "--run-all-compositor-stages-before-draw",
+    "--disable-ipc-flooding-protection",
+    // 共有メモリサイズを明示的に指定
+    "--shm-size=1gb",
+    "--allow-file-access-from-files",
+    "--enable-clipboard-read",
+    "--enable-clipboard-write",
+];
+
+// 👉 add the debugging port **only** in single-spec mode
+// debug from vscode
+const workerIdx = Number(process.env.TEST_WORKER_INDEX ?? 0); // undefined → 0
+const debugArgs = isSingleSpecRun
+    ? [`--remote-debugging-port=${process.env.CDP_PORT ?? 9222 + workerIdx}`]
+    : [];
+
+// console.log(`workerIdx: ${workerIdx}`);
 // console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
 // console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
 // console.log(`Environment file: ${ENV_FILE}`);
@@ -29,7 +79,7 @@ export default defineConfig({
     testMatch: "**/*.spec.ts",
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
-    retries: process.env.CI ? 10 : 10,
+    retries: (process.env.CI || !isSingleSpecRun) ? 10 : 0,
     workers: process.env.CI ? 2 : 4,
     maxFailures: process.env.CI ? 1 : 5,
 
@@ -47,28 +97,7 @@ export default defineConfig({
         // Chromium用のタイムアウト設定を延長
         launchOptions: {
             // 共有メモリの問題を回避するためのオプション
-            args: [
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-                "--disable-web-security",
-                "--disable-features=VizDisplayCompositor",
-                "--disable-background-timer-throttling",
-                "--disable-backgrounding-occluded-windows",
-                "--disable-renderer-backgrounding",
-                "--memory-pressure-off",
-                "--max_old_space_size=4096",
-                "--disable-extensions",
-                "--disable-plugins",
-                "--run-all-compositor-stages-before-draw",
-                "--disable-ipc-flooding-protection",
-                // 共有メモリサイズを明示的に指定
-                "--shm-size=1gb",
-                "--allow-file-access-from-files",
-                "--enable-clipboard-read",
-                "--enable-clipboard-write",
-            ],
+            args: [...commonArgs, ...debugArgs],
         },
         // Clipboard APIを有効にするためにlocalhostを使用
         baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,

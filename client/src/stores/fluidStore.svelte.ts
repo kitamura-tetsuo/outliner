@@ -8,6 +8,7 @@ class GeneralStore {
         return this._fluidClient;
     }
     public set fluidClient(v: FluidClient | undefined) {
+        debugger;
         console.log(`fluidStore: Setting fluidClient`, { exists: !!v, containerId: v?.containerId });
         this._fluidClient = v;
         if (v) {
@@ -48,3 +49,9 @@ class GeneralStore {
     }
 }
 export const fluidStore = new GeneralStore();
+
+if (process.env.NODE_ENV === "test") {
+    if (typeof window !== "undefined") {
+        (window as any).__FLUID_STORE__ = fluidStore;
+    }
+}

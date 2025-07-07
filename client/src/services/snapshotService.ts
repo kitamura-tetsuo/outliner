@@ -89,3 +89,16 @@ export function replaceWithSnapshot(
     save(project, page, snapshots);
     return snapshot;
 }
+
+if (process.env.NODE_ENV === "test") {
+    if (typeof window !== "undefined") {
+        (window as any).__SNAPSHOT_SERVICE__ = {
+            addSnapshot,
+            getCurrentContent,
+            getSnapshot,
+            listSnapshots,
+            replaceWithSnapshot,
+            setCurrentContent,
+        };
+    }
+}

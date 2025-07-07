@@ -1,11 +1,7 @@
 <script lang="ts">
-import { browser } from "$app/environment";
-import {
-    onDestroy,
-    onMount,
-} from "svelte";
+import { onMount } from "svelte";
 import { userManager } from "../../auth/UserManager";
-import { getLogger } from "../../lib/logger";
+import Toolbar from "../../components/Toolbar.svelte";
 import { getFluidClientByProjectTitle } from "../../services";
 import { fluidStore } from "../../stores/fluidStore.svelte";
 
@@ -13,87 +9,51 @@ import { fluidStore } from "../../stores/fluidStore.svelte";
 // このレイアウトは /[project] と /[project]/[page] の両方に適用されます
 let { data, children } = $props();
 
-const logger = getLogger("ProjectLayout");
-
-// URLパラメータを取得
-let projectName = $state("");
-
-// プロジェクト関連の状態
-let project: any = $state(undefined);
-let rootItems: any = $state(undefined);
-let error: string | undefined = $state(undefined);
-let isLoading = $state(true);
+let project: any = $state(null);
 let isAuthenticated = $state(false);
-let projectNotFound = $state(false);
 
-// URLパラメータを監視して更新
+// fluidStoreからプロジェクトを取得
 $effect(() => {
-    // SvelteKit 2.0では、dataオブジェクトからパラメータを取得
-    if (data && data.project) {
-        projectName = data.project;
+    if (fluidStore.fluidClient) {
+        project = fluidStore.fluidClient.getProject();
     }
+});
 
-    logger.info(`Layout loading project: ${projectName}`);
-
-    // プロジェクトが指定されている場合、データを読み込む
-    if (projectName && isAuthenticated) {
+// URLパラメータからプロジェクト名を取得
+$effect(() => {
+    if ((data as any)?.project && isAuthenticated && !fluidStore.fluidClient) {
         loadProject();
     }
 });
 
-// プロジェクトを読み込む
 async function loadProject() {
-    isLoading = true;
-    error = undefined;
-    projectNotFound = false;
-
     try {
-        const projectName = data.project;
+        const projectName = (data as any).project;
 
-        // 既にfluidStoreにFluidClientが設定されている場合はそれを使用
-        if (fluidStore.fluidClient) {
-            logger.info(`既存のFluidClientを使用: ${projectName}`);
-        }
-        else {
-            // プロジェクト名からFluidClientを取得
-            logger.info(`プロジェクト名からFluidClientを取得: ${projectName}`);
-            const client = await getFluidClientByProjectTitle(projectName);
-
-            // fluidClientストアを更新
+        // プロジェクト名からFluidClientを取得
+        const client = await getFluidClientByProjectTitle(projectName);
+        if (client) {
             fluidStore.fluidClient = client;
+            project = client.getProject();
         }
-    }
-    catch (err) {
+    } catch (err) {
         console.error("Failed to load project:", err);
-        error = err instanceof Error
-            ? err.message
-            : "プロジェクトの読み込み中にエラーが発生しました。";
-        projectNotFound = true;
-    }
-    finally {
-        isLoading = false;
     }
 }
 
-$effect(() => {
-    if (isAuthenticated) {
-        const client = fluidStore.fluidClient;
-        if (client?.container) {
-            project = client.getProject();
-            rootItems = client.getTree();
-        }
-    }
-});
-
 onMount(() => {
-    // UserManagerの認証状態を確認
-
     isAuthenticated = userManager.getCurrentUser() !== null;
-});
-
-onDestroy(() => {
-    // クリーンアップコード
 });
 </script>
 
-{@render children()}
+<Toolbar {project} />
+
+<div class="main-content">
+    {@render children()}
+</div>
+
+<style>
+.main-content {
+    padding-top: 5rem; /* ツールバーの高さ分のパディング（余裕を持って5rem） */
+}
+</style>
