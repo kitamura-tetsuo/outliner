@@ -51,7 +51,7 @@ export class TestHelpers {
                 (window as any).__vite_plugin_react_preamble_installed__ = true;
                 // エラーオーバーレイの表示を防ぐ
                 const originalCreateElement = document.createElement;
-                document.createElement = function (tagName: string, ...args: any[]) {
+                document.createElement = function(tagName: string, ...args: any[]) {
                     if (tagName === "vite-error-overlay") {
                         return originalCreateElement.call(this, "div", ...args);
                     }
@@ -122,12 +122,6 @@ export class TestHelpers {
         await page.evaluate(async () => {
             if (!(window as any).__SVELTE_GOTO__) {
                 (window as any).__SVELTE_GOTO__ = (window as any).goto;
-            }
-
-            // snapshotServiceを手動で設定
-            if (!(window as any).__SNAPSHOT_SERVICE__) {
-                const snapshotService = await import("../../src/services/snapshotService.js");
-                (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
             }
         });
         page.goto = async (
@@ -272,7 +266,7 @@ export class TestHelpers {
     private static async setupCursorDebugger(page: Page): Promise<void> {
         await page.addInitScript(() => {
             // グローバルオブジェクトにデバッグ関数を追加
-            window.getCursorDebugData = function () {
+            window.getCursorDebugData = function() {
                 // EditorOverlayStoreインスタンスを取得
                 const editorOverlayStore = window.editorOverlayStore;
                 if (!editorOverlayStore) {
@@ -322,7 +316,7 @@ export class TestHelpers {
             };
 
             // 拡張版のデバッグ関数 - 特定のパスのデータのみを取得
-            window.getCursorPathData = function (path) {
+            window.getCursorPathData = function(path) {
                 // EditorOverlayStoreインスタンスを取得
                 const editorOverlayStore = window.editorOverlayStore;
                 if (!editorOverlayStore) {
@@ -360,7 +354,7 @@ export class TestHelpers {
     public static async setupTreeDebugger(page: Page): Promise<void> {
         await page.addInitScript(() => {
             // グローバルオブジェクトにデバッグ関数を追加
-            window.getFluidTreeDebugData = function () {
+            window.getFluidTreeDebugData = function() {
                 // グローバルFluidClientインスタンスを取得
                 const fluidClient = window.__FLUID_SERVICE__.getFluidClient();
                 if (!fluidClient) {
@@ -379,7 +373,7 @@ export class TestHelpers {
             };
 
             // 拡張版のデバッグ関数 - 特定のパスのデータのみを取得
-            window.getFluidTreePathData = function (path) {
+            window.getFluidTreePathData = function(path) {
                 const fluidClient = window.__FLUID_SERVICE__.getFluidClient();
                 if (!fluidClient) {
                     return { error: "FluidClient instance not found" };

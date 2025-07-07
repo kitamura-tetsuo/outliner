@@ -921,3 +921,23 @@ export function cleanupFluidClient() {
     }
     fluidStore.fluidClient = undefined;
 }
+
+if (process.env.NODE_ENV === "test") {
+    if (typeof window !== "undefined") {
+        (window as any).__FLUID_SERVICE__ = {
+            createFluidClient,
+            createNewContainer,
+            cleanupFluidClient,
+            getFluidClientByProjectTitle,
+            initFluidClientWithAuth,
+            loadContainer,
+            deleteContainer,
+            getUserContainers,
+            getFluidClient,
+            getCurrentContainerId,
+            getProjectTitle,
+            containerSchema,
+            firestoreStore,
+        };
+    }
+}

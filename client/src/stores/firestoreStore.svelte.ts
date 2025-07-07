@@ -365,3 +365,9 @@ if (typeof window !== "undefined") {
         unsubscribeAuth();
     });
 }
+
+if (process.env.NODE_ENV === "test") {
+    if (typeof window !== "undefined") {
+        (window as any).__FIRESTORE_STORE__ = firestoreStore;
+    }
+}
