@@ -786,6 +786,11 @@ exports.health = onRequest({ cors: true }, async (req, res) => {
     return res.status(204).end();
   }
 
+  // GETメソッドのみ許可
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
   return res.status(200).json({
     status: "OK",
     timestamp: new Date().toISOString(),
