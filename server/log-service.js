@@ -81,11 +81,50 @@ function startLogService() {
     const logRotationTimer = setInterval(periodicLogRotation, LOG_ROTATION_INTERVAL);
 
     const app = express();
+
+    // CORS_ORIGINの値を検証して安全な値のみを使用
+    function getSafeOrigins() {
+        const defaultOrigins = ["http://localhost:7070"];
+
+        if (!process.env.CORS_ORIGIN) {
+            logger.info("CORS_ORIGIN not set, using default origins");
+            return defaultOrigins;
+        }
+
+        try {
+            const origins = process.env.CORS_ORIGIN.split(",").map(origin => origin.trim());
+            const safeOrigins = origins.filter(origin => {
+                // URLの形式を検証
+                try {
+                    new URL(origin);
+                    // 不正な文字列パターンを除外
+                    if (origin.includes("pathToRegexpError") || origin.includes("git.new")) {
+                        logger.warn(`Filtering out invalid origin: ${origin}`);
+                        return false;
+                    }
+                    return true;
+                } catch (e) {
+                    logger.warn(`Invalid origin URL format: ${origin}`);
+                    return false;
+                }
+            });
+
+            if (safeOrigins.length === 0) {
+                logger.warn("No valid origins found in CORS_ORIGIN, using defaults");
+                return defaultOrigins;
+            }
+
+            logger.info(`Using CORS origins: ${safeOrigins.join(", ")}`);
+            return safeOrigins;
+        } catch (error) {
+            logger.error(`Error parsing CORS_ORIGIN: ${error.message}, using defaults`);
+            return defaultOrigins;
+        }
+    }
+
     // CORS設定を強化
     app.use(cors({
-        origin: process.env.CORS_ORIGIN
-            ? process.env.CORS_ORIGIN.split(",").map(origin => origin.trim())
-            : ["http://localhost:7070"], // カンマ区切りで複数オリジンをサポート
+        origin: getSafeOrigins(),
         methods: ["GET", "POST", "OPTIONS"], // OPTIONSメソッドを追加(プリフライトリクエスト対応)
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"], // 許可するヘッダーを明示
