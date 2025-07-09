@@ -74,5 +74,10 @@ jobs:
       - name: Set Firebase project
         run: firebase use outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
 
+      - name: Lint functions
+        run: |
+          cd functions
+          npm run lint -- --fix
+
       - name: Deploy to Firebase
         run: firebase deploy --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive
