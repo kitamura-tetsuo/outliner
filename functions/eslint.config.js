@@ -1,0 +1,75 @@
+const js = require("@eslint/js");
+const googleConfig = require("eslint-config-google");
+
+module.exports = [
+  js.configs.recommended,
+  googleConfig,
+  {
+    languageOptions: {
+      ecmaVersion: 2020,
+      sourceType: "commonjs",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        Buffer: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        exports: "writable",
+        module: "writable",
+        require: "readonly",
+        global: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        setImmediate: "readonly",
+        clearImmediate: "readonly",
+      },
+    },
+    rules: {
+      "no-restricted-globals": ["error", "name", "length"],
+      "prefer-arrow-callback": "error",
+      quotes: ["error", "double", { allowTemplateLiterals: true }],
+      "max-len": ["warn", {
+        code: 100,
+        ignoreUrls: true,
+        ignoreStrings: true,
+        ignoreTemplateLiterals: true,
+      }],
+      indent: ["off", 2],
+      "object-curly-spacing": ["error", "always"],
+      "require-jsdoc": "off",
+      "valid-jsdoc": "off",
+      camelcase: "off",
+      "no-unused-vars": "warn",
+      "comma-dangle": ["error", "only-multiline"],
+
+      // 🚫 禁止: svelte/store の直接利用
+      "no-restricted-imports": ["error", {
+        paths: [
+          {
+            name: "svelte/store",
+            message: "use svelte5's rune. svelte/store is not permitted.",
+          },
+        ],
+      }],
+    },
+  },
+  {
+    files: ["**/*.spec.*", "**/*.test.*"],
+    languageOptions: {
+      globals: {
+        describe: "readonly",
+        it: "readonly",
+        test: "readonly",
+        expect: "readonly",
+        beforeEach: "readonly",
+        afterEach: "readonly",
+        beforeAll: "readonly",
+        afterAll: "readonly",
+        jest: "readonly",
+      },
+    },
+    rules: {},
+  },
+];

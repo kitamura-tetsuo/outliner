@@ -230,6 +230,11 @@ jobs:
           cd client
           npm run build
 
+      - name: Lint functions
+        run: |
+          cd functions
+          npm run lint
+
       - name: Run codex setup script
         run: bash scripts/codex-setup.sh
         env:
