@@ -30,7 +30,7 @@ describe("Scheduled Publishing", () => {
       });
       expect(response.status).toBe(200);
       expect(response.data.scheduleId).toBeDefined();
-    } catch (error) {
+    } catch {
       console.warn("Emulator not running, skipping test");
       expect(true).toBe(true);
     }
@@ -51,7 +51,7 @@ describe("Scheduled Publishing", () => {
         schedule: { strategy: "one_shot", nextRunAt: Date.now() + 120000 },
       });
       expect(updateRes.status).toBe(200);
-    } catch (error) {
+    } catch {
       console.warn("Emulator not running, skipping test");
       expect(true).toBe(true);
     }
@@ -65,7 +65,7 @@ describe("Scheduled Publishing", () => {
       });
       expect(response.status).toBe(200);
       expect(Array.isArray(response.data.schedules)).toBe(true);
-    } catch (error) {
+    } catch {
       console.warn("Emulator not running, skipping test");
       expect(true).toBe(true);
     }

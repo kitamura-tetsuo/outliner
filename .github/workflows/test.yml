@@ -233,7 +233,7 @@ jobs:
       - name: Lint functions
         run: |
           cd functions
-          npm run lint
+          npm run lint -- --fix
 
       - name: Run codex setup script
         run: bash scripts/codex-setup.sh

@@ -29,7 +29,7 @@ describe("Firebase Functions HTTP API Tests", () => {
             timestamp: expect.any(String),
           }),
         );
-      } catch (error) {
+      } catch {
         // エミュレーターが動いていない場合はスキップ
         console.warn("Firebase Emulator not running, skipping test");
         expect(true).toBe(true);
@@ -41,7 +41,7 @@ describe("Firebase Functions HTTP API Tests", () => {
         const response = await axios.options(`${baseURL}/health`);
 
         expect(response.status).toBe(204);
-      } catch (error) {
+      } catch {
         // エミュレーターが動いていない場合はスキップ
         console.warn("Firebase Emulator not running, skipping test");
         expect(true).toBe(true);
