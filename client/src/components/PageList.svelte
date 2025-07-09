@@ -1,13 +1,12 @@
 <script lang="ts">
-import { onMount } from "svelte";
-import { createEventDispatcher } from "svelte";
+import { createEventDispatcher, onMount } from "svelte";
 import { TreeViewManager } from "../fluid/TreeViewManager";
 import {
     Item,
     Items,
     Project,
 } from "../schema/app-schema";
-import { store } from "../stores/store.svelte";
+
 
 interface Props {
     project: Project;
@@ -39,13 +38,10 @@ function handleCreatePage() {
     const newPage = TreeViewManager.addPage(project, pageTitle, currentUser);
     pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : "";
 
-    store.currentPage = newPage;
+
 }
 
 function selectPage(page: Item) {
-    // ストアを更新
-    store.currentPage = page;
-
     // イベントを発火
     if (onPageSelected) {
         const event = new CustomEvent("pageSelected", {
@@ -95,16 +91,16 @@ onMount(() => {
     </div>
 
     <ul>
-        {#each store?.pages?.current! as page}
+        {#each rootItems as page}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-            <li class:active={page === store.currentPage} onclick={() => selectPage(page)}>
+            <li onclick={() => selectPage(page)}>
                 <span class="page-title">{page.text || "無題のページ"}</span>
                 <span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
             </li>
         {/each}
 
-        {#if store.pages}
+        {#if rootItems.length === 0}
             <li class="empty">ページがありません。新しいページを作成してください。</li>
         {/if}
     </ul>
@@ -165,9 +161,7 @@ li:hover {
     background: #f5f5f5;
 }
 
-li.active {
-    background: #e3f2fd;
-}
+
 
 .page-title {
     font-weight: 500;

@@ -3,24 +3,19 @@ import { goto } from "$app/navigation";
 import { page } from "$app/state";
 import {
     onDestroy,
-    onMount,
+    onMount
 } from "svelte";
-import { v4 as uuid } from "uuid";
+
 import { userManager } from "../../../auth/UserManager";
 import AuthComponent from "../../../components/AuthComponent.svelte";
 import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
 import OutlinerBase from "../../../components/OutlinerBase.svelte";
 import SearchPanel from "../../../components/SearchPanel.svelte";
-import { TreeViewManager } from "../../../fluid/TreeViewManager";
 import {
     cleanupLinkPreviews,
     setupLinkPreviewHandlers,
 } from "../../../lib/linkPreviewHandler";
 import { getLogger } from "../../../lib/logger";
-import {
-    Item,
-    Items,
-} from "../../../schema/app-schema";
 import { getFluidClientByProjectTitle } from "../../../services";
 import { fluidStore } from "../../../stores/fluidStore.svelte";
 import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
@@ -40,8 +35,7 @@ let error: string | undefined = $state(undefined);
 let isLoading = $state(true);
 let isAuthenticated = $state(false);
 let pageNotFound = $state(false);
-let isTemporaryPage = $state(false); // 仮ページかどうかのフラグ
-let hasBeenEdited = $state(false); // 仮ページが編集されたかどうかのフラグ
+
 let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 
 // URLパラメータと認証状態を監視して更新
@@ -54,6 +48,14 @@ $effect(() => {
     // プロジェクトとページが指定されており、認証済みの場合、データを読み込む
     if (projectName && pageName && isAuthenticated) {
         logger.info(`Effect: All conditions met - calling loadProjectAndPage()`);
+
+        // 現在のプロジェクトとURLパラメータのプロジェクトが一致するかチェック
+        const currentProjectTitle = store.project?.title;
+        if (currentProjectTitle && currentProjectTitle !== projectName) {
+            logger.info(`Effect: Project mismatch - current: "${currentProjectTitle}", URL: "${projectName}"`);
+            logger.info(`Effect: Need to load different project`);
+        }
+
         loadProjectAndPage();
     }
     else {
@@ -146,37 +148,12 @@ async function loadProjectAndPage() {
             logger.info(`Project items count: ${items?.length || 0}`);
         }
 
-        // ページを検索
+        // ページの読み込み完了をログ出力
         if (store.pages) {
             logger.info(`Available pages count: ${store.pages.current.length}`);
             for (let i = 0; i < store.pages.current.length; i++) {
                 const page = store.pages.current[i];
                 logger.info(`Page ${i}: "${page.text}"`);
-            }
-
-            const foundPage = findPageByName(pageName);
-            if (foundPage) {
-                store.currentPage = foundPage;
-                isTemporaryPage = false;
-                hasBeenEdited = false;
-                logger.info(`Found existing page: ${pageName}`);
-                logger.info(
-                    `store.currentPage set to existing page: ${store.currentPage?.text}, id: ${store.currentPage?.id}`,
-                );
-            }
-            else {
-                // プロジェクトは存在するが、ページが存在しない場合は仮ページを表示
-                isTemporaryPage = true;
-                hasBeenEdited = false;
-
-                // 仮ページ用の一時的なアイテムを作成（SharedTreeには追加しない）
-                const tempItem = createTemporaryItem(pageName);
-                store.currentPage = tempItem;
-
-                logger.info(`Creating temporary page: ${pageName}`);
-                logger.info(
-                    `store.currentPage set to temporary page: ${store.currentPage?.text}, id: ${store.currentPage?.id}`,
-                );
             }
         }
         else {
@@ -201,134 +178,9 @@ async function loadProjectAndPage() {
     }
 }
 
-// ページ名からページを検索する
-function findPageByName(name: string) {
-    if (!store.pages) return undefined;
 
-    logger.info(`Searching for page: "${name}"`);
 
-    // ページ名が一致するページを検索
-    for (const page of store.pages.current) {
-        logger.info(`Checking page: "${page.text}" against "${name}"`);
-        if (page.text.toLowerCase() === name.toLowerCase()) {
-            logger.info(`Found matching page: "${page.text}"`);
-            return page;
-        }
-    }
 
-    logger.info(`No matching page found for: "${name}"`);
-    return undefined;
-}
-
-/**
- * 仮ページ用の一時的なアイテムを作成する
- * このアイテムはSharedTreeには追加されない
- * @param pageName ページ名
- * @returns 一時的なアイテム
- */
-function createTemporaryItem(pageName: string): Item {
-    const timeStamp = new Date().getTime();
-    const currentUser = fluidStore.currentUser?.id || "anonymous";
-
-    logger.info(`Creating temporary item for page: ${pageName}, user: ${currentUser}`);
-
-    // 一時的なアイテムを作成
-    const tempItem = new Item({
-        id: `temp-${uuid()}`,
-        text: pageName,
-        author: currentUser,
-        votes: [],
-        created: timeStamp,
-        lastChanged: timeStamp,
-        // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題
-        items: new Items([]), // 子アイテムのための空のリスト
-    });
-
-    logger.info(`Created temporary item with ID: ${tempItem.id}`);
-    return tempItem;
-}
-
-/**
- * 仮ページを実際のページとして保存する
- */
-function saveTemporaryPage() {
-    if (!isTemporaryPage || !hasBeenEdited || !store.project) {
-        logger.info(
-            `saveTemporaryPage skipped: isTemporaryPage=${isTemporaryPage}, hasBeenEdited=${hasBeenEdited}, project=${!!store
-                .project}`,
-        );
-        return;
-    }
-
-    try {
-        const currentUser = fluidStore.currentUser?.id || "anonymous";
-        logger.info(`Saving temporary page: ${pageName} by user: ${currentUser}`);
-
-        // 新しいページを作成
-        const newPage = TreeViewManager.addPage(
-            store.project,
-            pageName,
-            currentUser,
-        );
-        logger.info(`Created new page with ID: ${newPage.id}`);
-
-        // 仮ページの内容を新しいページにコピー
-        if (store.currentPage) {
-            // 一時的なページの現在のテキストを保持
-            const currentText = store.currentPage.text || pageName;
-            newPage.updateText(currentText);
-            logger.info(`Updated page text to: ${currentText}`);
-
-            // 子アイテムがあれば、それも追加
-            // TypeScriptエラーを回避するためにキャストを使用
-            const tempItems = store.currentPage.items as unknown as Items;
-            if (tempItems && tempItems.length > 0) {
-                logger.info(`Copying ${tempItems.length} child items`);
-                for (let i = 0; i < tempItems.length; i++) {
-                    const item = tempItems[i] as Item;
-                    const newItems = newPage.items as unknown as Items;
-                    const newItem = newItems.addNode(currentUser);
-                    newItem.updateText(item.text);
-                    logger.info(`Copied item ${i}: ${item.text}`);
-                }
-            }
-        }
-
-        // 現在のページを新しいページに更新
-        store.currentPage = newPage;
-        logger.info(`Updated store.currentPage to new page`);
-
-        // 仮ページフラグをリセット
-        isTemporaryPage = false;
-        hasBeenEdited = false;
-
-        logger.info(`Temporary page saved as actual page: ${pageName}`);
-    }
-    catch (error) {
-        logger.error("Failed to save temporary page:", error);
-    }
-}
-
-/**
- * 仮ページが編集されたことを検知する
- */
-function handleTemporaryPageEdited() {
-    logger.info(`handleTemporaryPageEdited called: isTemporaryPage=${isTemporaryPage}, hasBeenEdited=${hasBeenEdited}`);
-
-    if (isTemporaryPage && !hasBeenEdited) {
-        hasBeenEdited = true;
-        logger.info(`Temporary page edited: ${pageName}`);
-
-        // 編集されたら実際のページとして保存
-        saveTemporaryPage();
-    }
-
-    // ページ内容が更新されたため、リンクプレビューハンドラーを再設定
-    // DOMの更新を待つ
-    setTimeout(() => {
-        setupLinkPreviewHandlers();
-    }, 300);
-}
 
 // ホームに戻る
 function goHome() {
@@ -492,7 +344,7 @@ onDestroy(() => {
         <!-- デバッグ用ログ -->
         {
             logger.info(
-                `Rendering OutlinerBase: pageItem.id=${store.currentPage.id}, isTemporary=${isTemporaryPage}, onEdit=${!!handleTemporaryPageEdited}`,
+                `Rendering OutlinerBase: pageItem.id=${store.currentPage.id}, isTemporary=${store.currentPage.id.startsWith('temp-')}`,
             )
         }
 
@@ -502,12 +354,12 @@ onDestroy(() => {
             projectName={projectName}
             pageName={pageName}
             isReadOnly={false}
-            isTemporary={isTemporaryPage}
-            onEdit={handleTemporaryPageEdited}
+            isTemporary={store.currentPage.id.startsWith('temp-')}
+            onEdit={undefined}
         />
 
         <!-- バックリンクパネル -->
-        {#if !isTemporaryPage}
+        {#if !store.currentPage.id.startsWith('temp-')}
             <BacklinkPanel {pageName} {projectName} />
         {/if}
 

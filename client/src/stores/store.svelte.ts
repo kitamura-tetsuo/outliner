@@ -10,33 +10,21 @@ class GeneralStore {
         return this._project;
     }
     public set project(v: Project) {
-        if (import.meta.env.DEV) {
-            console.log(`store: Setting project`, { projectExists: !!v, projectTitle: v?.title });
+        if (v === this._project) {
+            console.log(`store: Project is already set, skipping`);
+            return;
         }
+
+        console.log(`store: Setting project`, { projectExists: !!v, projectTitle: v?.title });
+
         this._project = v;
-        if (import.meta.env.DEV) {
-            console.log(`store: Creating TreeSubscriber for pages`);
-        }
+        console.log(`store: Creating TreeSubscriber for pages`);
+
         this.pages = new TreeSubscriber<Items>(v.items as Items, "nodeChanged");
-        if (import.meta.env.DEV) {
-            console.log(`store: TreeSubscriber created`, {
-                pagesExists: !!this.pages,
-                pagesLength: this.pages?.current?.length,
-            });
-        }
-        if (this.pages?.current?.length > 0) {
-            this.currentPage = this.pages.current[0];
-            if (import.meta.env.DEV) {
-                console.log(`store: Set currentPage to first page`, {
-                    currentPageExists: !!this.currentPage,
-                    currentPageText: this.currentPage?.text,
-                });
-            }
-        } else {
-            if (import.meta.env.DEV) {
-                console.log(`store: No pages available, currentPage not set`);
-            }
-        }
+        console.log(`store: TreeSubscriber created`, {
+            pagesExists: !!this.pages,
+            pagesLength: this.pages?.current?.length,
+        });
     }
 }
 

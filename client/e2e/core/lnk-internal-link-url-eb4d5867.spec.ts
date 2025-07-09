@@ -2,28 +2,19 @@
  *  Title   : 内部リンクの機能検証
  *  Source  : docs/client-features.yaml
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/console-forward";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("LNK-0002: 内部リンクURL生成", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
-    });
-
-    test("内部リンクのURLが正しく生成される", async ({ page }) => {
-        const uniquePageName = `link-test-${Date.now()}`;
-        await TestHelpers.createTestProjectAndPageViaAPI(page, "test-project", uniquePageName, [
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "[simple-page]",
             "[/project/page]",
             "[/multi/level/path/page]",
         ]);
+    });
 
-        await page.goto(`/test-project/${uniquePageName}`);
-        await page.waitForTimeout(1000);
-
-        await page.keyboard.press("Escape");
-        await page.waitForTimeout(500);
-
+    test("内部リンクのURLが正しく生成される", async ({ page }) => {
         const links = await page.locator("a.internal-link").all();
         const hrefs = [] as string[];
         for (const link of links) {

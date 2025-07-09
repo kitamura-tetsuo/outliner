@@ -623,8 +623,8 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
             // デフォルトコンテナの更新
             let defaultContainerId = userData.defaultContainerId;
             if (defaultContainerId === containerId) {
-              defaultContainerId = updatedContainerIds.length > 0
-                ? updatedContainerIds[0] : null;
+              defaultContainerId = updatedContainerIds.length > 0 ?
+                updatedContainerIds[0] : null;
             }
 
             transaction.update(userDocRef, {
@@ -929,61 +929,28 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
+
   const { idToken, pageId } = req.body || {};
   if (!idToken || !pageId) {
     return res.status(400).json({ error: "Invalid request" });
   }
+
   try {
     await admin.auth().verifyIdToken(idToken);
+    logger.info(`listSchedules: pageId=${pageId}`);
     const snapshot = await db
       .collection("pages")
       .doc(pageId)
       .collection("schedules")
-      .orderBy("nextRunAt")
-      .get();
-    const schedules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    return res.status(200).json({ schedules });
-  } catch (err) {
-    logger.error(`listSchedules error: ${err.message}`);
-    if (
-      err.code === "auth/id-token-expired" ||
-      err.code === "auth/invalid-id-token" ||
-      err.code === "auth/argument-error"
-    ) {
-      return res.status(401).json({ error: "Authentication failed" });
-    }
-    return res.status(500).json({ error: "Failed to list schedules" });
-  }
-});
-
-// List schedules for a page
-exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
-  setCorsHeaders(req, res);
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
-
-  const { idToken, pageId } = req.body || {};
-  if (!idToken || !pageId) {
-    return res.status(400).json({ error: "Invalid request" });
-  }
-
-  try {
-    const decoded = await admin.auth().verifyIdToken(idToken);
-    const uid = decoded.uid;
-    const snapshot = await db
-      .collection("pages")
-      .doc(pageId)
-      .collection("schedules")
-      .where("createdBy", "==", uid)
       .where("executedAt", "==", null)
+      .orderBy("nextRunAt")
       .get();
 
     const schedules = [];
     snapshot.forEach(doc => schedules.push({ id: doc.id, ...doc.data() }));
+    logger.info(
+      `listSchedules: found ${schedules.length} schedules for pageId=${pageId}`,
+    );
     return res.status(200).json({ schedules });
   } catch (err) {
     logger.error(`listSchedules error: ${err.message}`);
@@ -1046,7 +1013,9 @@ exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
 // Upload attachment
 exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
   setCorsHeaders(req, res);
-  if (req.method === "OPTIONS") { return res.status(204).end(); }
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
@@ -1133,7 +1102,9 @@ exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
 // List attachments
 exports.listAttachments = onRequest({ cors: true }, async (req, res) => {
   setCorsHeaders(req, res);
-  if (req.method === "OPTIONS") { return res.status(204).end(); }
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
@@ -1201,7 +1172,9 @@ exports.listAttachments = onRequest({ cors: true }, async (req, res) => {
 // Delete attachment
 exports.deleteAttachment = onRequest({ cors: true }, async (req, res) => {
   setCorsHeaders(req, res);
-  if (req.method === "OPTIONS") { return res.status(204).end(); }
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }

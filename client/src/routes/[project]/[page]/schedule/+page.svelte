@@ -31,8 +31,21 @@ onMount(async () => {
         attempts++;
     }
 
-    pageId = store.currentPage?.id || "";
+    // URLパラメータから正しいページを取得（store.currentPageは信頼しない）
+    const foundPage = store.pages?.current?.find(p => p.text === pageTitle);
+    pageId = foundPage?.id || "";
     console.log("Schedule page: pageId =", pageId, "currentPage =", store.currentPage);
+    console.log("Schedule page: URL params - project:", project, "pageTitle:", pageTitle);
+    console.log("Schedule page: foundPage from URL:", foundPage?.text, "id:", foundPage?.id);
+    console.log("Schedule page: store.pages count:", store.pages?.current?.length);
+    console.log("Schedule page: available pages:", store.pages?.current?.map(p => p.text));
+    console.log("Schedule page: current project title:", store.project?.title);
+
+    // プロジェクトが一致しない場合は待機
+    if (store.project?.title !== project) {
+        console.log("Schedule page: Project mismatch, waiting for correct project to load");
+        pageId = "";
+    }
 
     if (pageId) {
         await refresh();
