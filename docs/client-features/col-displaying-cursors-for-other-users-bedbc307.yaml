@@ -6,6 +6,4 @@ status: implemented
 acceptance:
 - Fluid Framework の signal 機能でカーソル位置を同期する
 - 他ユーザーがカーソルを移動すると、その位置が表示される
-tests:
-- client/e2e/core/COL-0001.spec.ts
 title-ja: 他ユーザーのカーソル表示

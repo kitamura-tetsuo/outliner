@@ -10,7 +10,7 @@ acceptance:
 - 別プロジェクトのページへのリンクの場合は、その旨が表示される
 - 存在しないページへのリンクの場合は、その旨が表示される
 tests:
-- client/e2e/core/LNK-0005.spec.ts
+- client/e2e/core/tst-improve-your-test-environment-72a51b65.spec.ts
 testcases:
 - 内部リンクにマウスオーバーするとプレビューが表示される
 - プレビューにページのタイトルと内容の一部が表示される
