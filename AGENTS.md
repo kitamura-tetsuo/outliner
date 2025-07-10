@@ -7,7 +7,7 @@ This document consolidates the key development policies for this repository. Fol
 - **Feature files**: Write end-user features in `docs/client-features/<slug>-<title>-<uuid>.yaml`. `<slug>` is a three-letter code from the feature ID. Each file must include `title` (English) and `title-ja` (Japanese).
 - **Dev features**: Store ENV-* features in `docs/dev-features/<slug>-<title>-<uuid>.yaml`.
 - `docs/client-features.yaml` and `docs/dev-features.yaml` are generated automatically.
-- Document intentionally omitted features in `docs/unimplemented-features.md`.
+- Document intentionally omitted features in `docs/NON_GOALS.md`.
 - `docs/feature-map.md` is auto-generated; never edit it manually.
 - Regularly review and update documentation to avoid conflicts and keep best practices current.
 
