@@ -17,6 +17,11 @@ This document consolidates the key development policies for this repository. Fol
 - Keep expected values strict even if tests take longer to run.
 - Run tests in headless mode.
 - Run `dprint fmt` before running tests.
+- Before finishing your work, run the following TypeScript checks and fix any errors:
+  ```
+  cd client/e2e && npx tsc --noEmit --project tsconfig.json
+  cd client && npx tsc --noEmit --project tsconfig.json
+  ```
 - Fix one test file at a time and run it immediately to confirm the fix.
 - CI keeps tests green on the `main` branch. If tests fail in your branch, the
   cause lies in changes made after you diverged from `main`. Investigate those
