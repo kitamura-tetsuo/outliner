@@ -1,4 +1,4 @@
-id: LNK-0005
+id: LNK-9bddc693
 title: Link preview feature
 description: 内部リンクにマウスオーバーした際にページ内容のプレビューを表示する機能
 category: navigation
@@ -10,7 +10,7 @@ acceptance:
 - 別プロジェクトのページへのリンクの場合は、その旨が表示される
 - 存在しないページへのリンクの場合は、その旨が表示される
 tests:
-- client/e2e/core/LNK-0005.spec.ts
+- client/e2e/core/lnk-link-preview-feature-9bddc693.spec.ts
 testcases:
 - 内部リンクにマウスオーバーするとプレビューが表示される
 - プレビューにページのタイトルと内容の一部が表示される
