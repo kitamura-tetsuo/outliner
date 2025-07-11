@@ -9,5 +9,8 @@ acceptance:
 - 選択範囲の方向（正方向/逆方向）を切り替えることができる
 - 長いテキストを含むアイテムの選択範囲を作成できる
 tests:
-- client/e2e/core/slr-selected-edge-case-e818d989.spec.ts
+- client/e2e/core/slr-selected-delete-correction-31fe9b27.spec.ts
+- client/e2e/core/slr-selected-direction-3724726f.spec.ts
+- client/e2e/core/slr-selected-empty-item-bb3a9bf4.spec.ts
+- client/e2e/core/slr-selected-long-text-356b853a.spec.ts
 title-ja: 選択範囲のエッジケース

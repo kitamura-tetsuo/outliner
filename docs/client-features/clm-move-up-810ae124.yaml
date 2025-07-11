@@ -10,5 +10,7 @@ acceptance:
 - 一番上の行にある時は、一つ前のアイテムの最後の行へ移動する。このとき、x座標の変化が最も小さい位置にカーソルをセットする。文字数が少ない場合は大きく移動する場合もある。カーソル上下以外の操作をしていない場合は、最初にカーソル上を押し始めた x座標からの変化が小さい位置にカーソルをセットする。
 - 一番上の行以外にある時は、同じアイテムの1行上へ移動する
 tests:
-- client/e2e/core/clm-move-up-810ae124.spec.ts
+- client/e2e/core/clm-move-up-line-move-06855626.spec.ts
+- client/e2e/core/clm-move-up-no-prev-item-9e8d4b10.spec.ts
+- client/e2e/core/clm-move-up-prev-item-6f0bdbc3.spec.ts
 title-ja: 上へ移動
