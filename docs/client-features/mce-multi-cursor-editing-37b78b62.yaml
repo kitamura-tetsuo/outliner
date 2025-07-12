@@ -1,4 +1,4 @@
-id: MCE-0001
+id: MCE-37b78b62
 title: Multi-Cursor Editing
 description: 複数のカーソルを使って同時に編集できる機能
 category: collaboration
@@ -8,6 +8,6 @@ acceptance:
 - 各カーソルから独立してテキスト編集できる
 - 複数のカーソルを配置できる
 tests:
-- client/e2e/disabled/multi-cursor.spec.ts
+- client/e2e/core/mce-multi-cursor-editing-37b78b62.spec.ts
 - client/src/stores/EditorOverlayStore.test.ts
 title-ja: マルチカーサーの編集

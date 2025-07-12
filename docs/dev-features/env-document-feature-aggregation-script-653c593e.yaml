@@ -1,4 +1,4 @@
-id: ENV-0009
+id: ENV-653c593e
 title: Document feature aggregation script
 description: Add instructions to run scripts/aggregate_features.py after adding feature YAML files.
 category: environment
