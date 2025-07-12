@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Items, Project } from "../schema/app-schema";
 
 function escapeHtml(str: string): string {

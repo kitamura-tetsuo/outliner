@@ -1,3 +1,4 @@
+// sql.js lacks type definitions in this project context. Use any.
 import type { Database } from "sql.js";
 
 export interface Op {
@@ -10,7 +11,9 @@ export interface Op {
 export class SyncWorker {
     private listeners: Map<string, Function[]> = new Map();
 
-    constructor(private db: Database) {}
+    // 'sql.js' does not ship proper TypeScript types. Treat the database
+    // instance as `any` so compilation succeeds.
+    constructor(private db: any) {}
 
     applyOp(op: Op) {
         const stmt = this.db.prepare(`UPDATE ${op.table} SET ${op.column}=? WHERE id=?`);

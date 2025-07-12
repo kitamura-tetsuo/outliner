@@ -18,7 +18,7 @@ describe("fluid presence integration", () => {
         const audience = new FakeAudience();
         const services: any = { audience };
         const dummy: any = { on: () => {}, off: () => {} };
-        const client = new FluidClient({
+        new FluidClient({
             clientId: "c1",
             client: dummy,
             container: dummy,

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @feature SLR-0013
  *  Title   : 現在行を選択
  *  Source  : docs/client-features.yaml

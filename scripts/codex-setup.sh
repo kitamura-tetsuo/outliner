@@ -4,6 +4,8 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SETUP_SENTINEL="${ROOT_DIR}/.codex-setup-installed"
 set -euo pipefail
 
+export GIT_MERGE_AUTOEDIT=no
+
 # Error handling
 trap 'echo "Error occurred at line $LINENO. Exit code: $?" >&2' ERR
 

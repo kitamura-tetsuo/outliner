@@ -382,7 +382,7 @@ export class ScrapboxFormatter {
             const projectLinkRegex = /\[\/([\w\-]+\/[\w\-\/]*)\]/g;
             input = input.replace(projectLinkRegex, (match, path) => {
                 // パスを分解してプロジェクト名とページ名を取得
-                const parts = path.split("/").filter(p => p);
+                const parts = path.split("/").filter((p: string) => p);
                 if (parts.length >= 2) {
                     const projectName = parts[0];
                     const pageName = parts.slice(1).join("/");

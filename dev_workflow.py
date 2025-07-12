@@ -7,7 +7,7 @@ import re
 import subprocess
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import yaml
 
@@ -34,7 +34,7 @@ yaml.add_representer(str, literal_str_presenter)
 def log_gemini_interaction(purpose, prompt, response, is_error=False):
     """Appends a structured log of a Gemini interaction to the log file."""
     log_entry = {
-        "timestamp": datetime.now(datetime.UTC).isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "purpose": purpose,
         "is_error": is_error,
         "prompt": prompt.strip(),
@@ -43,6 +43,7 @@ def log_gemini_interaction(purpose, prompt, response, is_error=False):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write("---\n")
         yaml.dump(log_entry, f, allow_unicode=True, sort_keys=False)
+
     print(f"📝 Logged Gemini interaction for '{purpose}' to {LOG_FILE}")
 
 

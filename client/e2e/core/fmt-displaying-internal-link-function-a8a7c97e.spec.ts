@@ -223,10 +223,10 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // デバッグ情報を出力
         console.log("Tree data items:");
-        treeData.items.forEach((item, index) => {
+        treeData.items.forEach((item: any, index: number) => {
             console.log(`  Item ${index}: "${item.text}"`);
             if (item.items && item.items.length > 0) {
-                item.items.forEach((subItem, subIndex) => {
+                item.items.forEach((subItem: any, subIndex: number) => {
                     console.log(`    SubItem ${subIndex}: "${subItem.text}"`);
                 });
             }

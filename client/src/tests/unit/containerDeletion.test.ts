@@ -57,10 +57,7 @@ const mockCollection = {
 
 // テスト対象の関数をモック化
 class ContainerDeletionService {
-    constructor(
-        private auth: typeof mockAuth,
-        private db: typeof mockFirestore,
-    ) {}
+    constructor(private auth: typeof mockAuth) {}
 
     async validateToken(idToken: string): Promise<MockUser> {
         if (!idToken) {
@@ -136,7 +133,7 @@ describe("Container Deletion Service - Unit Tests", () => {
 
         mockFirestore.collection.mockReturnValue(mockCollection);
 
-        service = new ContainerDeletionService(mockAuth, mockFirestore);
+        service = new ContainerDeletionService(mockAuth);
     });
 
     describe("validateToken", () => {

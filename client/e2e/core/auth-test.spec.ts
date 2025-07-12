@@ -29,7 +29,7 @@ test.describe("Authentication Test", () => {
         console.log("Debug: Before authentication:", beforeAuth);
 
         // 認証を実行
-        const authResult = await page.evaluate(async () => {
+        const authResult: any = await page.evaluate(async () => {
             const userManager = (window as any).__USER_MANAGER__;
             if (!userManager) {
                 return { success: false, error: "UserManager not found" };

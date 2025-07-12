@@ -9,6 +9,9 @@ services:
     working_dir: /workspace
     user: node
 
+    environment:
+      - GIT_MERGE_AUTOEDIT=no
+
     ipc: 'host'
     shm_size: '1gb'
 

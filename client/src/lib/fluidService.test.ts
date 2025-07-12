@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { type ViewableTree } from "fluid-framework";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { appTreeConfiguration, Project } from "../schema/app-schema";

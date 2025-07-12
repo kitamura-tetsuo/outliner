@@ -7,7 +7,6 @@ vi.mock("../stores/firestoreStore.svelte", async () => {
     return { ...mockStore };
 });
 
-import { get } from "svelte/store";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as firestoreStore from "../stores/firestoreStore.svelte";
 import { setupMocks } from "./mocks";
@@ -37,7 +36,8 @@ describe("Firestore Store", () => {
     });
 
     it("should provide container data through the store", () => {
-        const containerData = get(firestoreStore.firestoreStore.userContainer);
+        // Get the current value from the store
+        const containerData = firestoreStore.firestoreStore.userContainer;
 
         expect(containerData).not.toBeNull();
         expect(containerData?.userId).toBe("test-user-id");
@@ -56,7 +56,7 @@ describe("Firestore Store", () => {
     });
 
     it("should return a list of user containers", async () => {
-        const containers = await firestoreStore.getUserContainers();
+        const containers = await (firestoreStore as any).getUserContainers();
 
         expect(containers).toHaveLength(3);
         expect(containers[0].id).toBe("test-container-1");
