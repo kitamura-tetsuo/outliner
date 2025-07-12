@@ -9,6 +9,4 @@ acceptance:
 - コンテナにアクセス可能だったユーザーのアクセス権からコンテナIDが削除される
 - コンテナへのアクセス権がない場合は適切なエラーメッセージが表示される
 - コンテナを削除できる
-tests:
-- client/e2e/core/usr-container-removal-function-0661ecad.spec.ts
 title-ja: コンテナ削除機能
