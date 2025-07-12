@@ -8,6 +8,10 @@ test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
     });
 
     test("一番上の行にある時は、一つ前のアイテムの最後の行へ移動する", async ({ page }) => {
+        // 最初のアイテムをクリックしてカーソルを作成
+        await page.locator(".outliner-item").first().click();
+        await page.waitForTimeout(300);
+
         // カーソルデータを取得して確認
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBeGreaterThan(0);
