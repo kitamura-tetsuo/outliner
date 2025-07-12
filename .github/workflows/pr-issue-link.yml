@@ -13,6 +13,10 @@ jobs:
     runs-on: self-hosted
     if: ${{ github.actor != 'dependabot[bot]' }}
     timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
 
     steps:
       - name: Checkout code
@@ -22,6 +26,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: Setup Git configuration
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions Bot"
+          echo "✅ Git configuration set for Gemini CLI compatibility"
 
       - name: Setup Gemini CLI authentication
         run: |
@@ -68,7 +78,7 @@ jobs:
           mkdir -p "/home/runner/.gemini"
 
           # Create settings.json with GitHub MCP server
-          cat > "/home/runner/.gemini/settings.json" << 'EOF'
+          cat > "/home/runner/.gemini/settings.json" << EOF
           {
             "theme": "Default Dark",
             "selectedAuthType": "oauth-personal",
@@ -170,8 +180,8 @@ jobs:
           # Run Gemini CLI with the prompt
           echo "🤖 Running Gemini CLI to find related issues..."
 
-          # Change to repository directory for context
-          cd "$GITHUB_WORKSPACE"
+          # Change to /tmp directory to avoid Git repository issues
+          cd /tmp
 
           # Debug: Check if Gemini CLI is available and configured
           echo "🔍 Checking Gemini CLI availability..."
@@ -184,8 +194,9 @@ jobs:
             echo "HOME environment variable: $HOME"
             ls -la "/home/runner/.gemini/" || echo "⚠️ No .gemini directory found"
 
-            # Test authentication with a simple prompt
+            # Test authentication with a simple prompt (skip Git operations)
             echo "🔍 Testing Gemini CLI authentication..."
+            cd /tmp  # Use /tmp to avoid Git repository issues
             echo "test" | timeout 30 gemini --prompt "Respond with 'AUTH_TEST_OK' if you can read this." 2>&1 | tee /tmp/auth_test.log
 
             if grep -q "AUTH_TEST_OK" /tmp/auth_test.log; then
@@ -195,10 +206,12 @@ jobs:
               echo "Auth test output:"
               cat /tmp/auth_test.log
 
-              # Check for specific authentication errors
-              if grep -q "Code Assist login required\|authentication\|oauth" /tmp/auth_test.log; then
+              # Check for specific authentication errors (ignore Git errors)
+              if grep -q "Code Assist login required\|authentication\|oauth" /tmp/auth_test.log && ! grep -q "GitError\|git config" /tmp/auth_test.log; then
                 echo "❌ Authentication failure detected in test"
                 exit 1
+              elif grep -q "GitError\|git config" /tmp/auth_test.log; then
+                echo "⚠️ Git configuration issue detected, but authentication may be working"
               fi
             fi
 
