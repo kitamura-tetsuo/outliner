@@ -102,7 +102,7 @@ jobs:
 
           # Create a prompt for Gemini CLI to analyze the PR and find related issues
           cat > /tmp/gemini_prompt.txt << 'PROMPT_EOF'
-          You are a GitHub automation assistant. Your task is to analyze a pull request and find related open issues in the same repository.
+          You are an expert GitHub issue analyzer with access to GitHub MCP server tools. Your task is to find issues related to a specific Pull Request through comprehensive analysis.
 
           PR Information:
           - Number: $PR_NUMBER
@@ -113,36 +113,46 @@ jobs:
           PR Description:
           $PR_BODY
 
-          Please perform the following tasks using the GitHub MCP server:
+          Analysis Strategy - Use GitHub MCP server tools to perform:
 
-          1. Use the GitHub MCP server to search for open issues in the repository $REPO_OWNER/$REPO_NAME
-          2. Analyze the PR title and description to identify keywords and topics
-          3. Find issues that are related to this PR based on:
-             - Similar keywords in title or description
-             - Referenced issue numbers (e.g., "fixes #123", "closes #456", "resolves #789")
-             - Related functionality or bug fixes
-             - Common themes or components mentioned
+          1. **Repository Connection**: Connect to repository $REPO_OWNER/$REPO_NAME using GitHub MCP server
 
-          4. Return your findings in the following JSON format:
+          2. **Comprehensive Issue Search**: Search both open and closed issues using multiple approaches:
+             a) **Keyword-based search**: Extract key terms from PR title and description
+             b) **Direct reference detection**: Look for explicit issue references (#123, fixes #456, etc.)
+             c) **Component analysis**: Identify affected components from PR content
+             d) **Semantic matching**: Find issues with similar functionality or problem domains
+
+          3. **Relationship Analysis**: For each potential match, determine:
+             - **fixes/closes**: PR completely resolves the issue (look for resolution keywords)
+             - **related**: PR addresses similar functionality or is contextually connected
+             - **references**: PR mentions or builds upon the issue
+
+          4. **Quality Assessment**: Only include issues with:
+             - Clear technical or functional relationship to PR changes
+             - Relevant keyword overlap or component connection
+             - Logical connection between issue problem and PR solution
+
+          5. **Structured Output**: Return findings as valid JSON:
           {
             "related_issues": [
               {
                 "issue_number": 123,
                 "relationship": "fixes|closes|related",
-                "reason": "Brief explanation of why this issue is related"
+                "reason": "Specific explanation with evidence from PR and issue content"
               }
             ]
           }
 
-          Important guidelines:
-          - Use the GitHub MCP server tools to search for issues
-          - Only include issues that have a clear relationship to the PR
-          - Use "fixes" or "closes" for issues that this PR resolves completely
-          - Use "related" for issues that are connected but not necessarily resolved
-          - If no related issues are found, return {"related_issues": []}
-          - Do NOT update the PR or issues - only analyze and return the JSON
+          **Critical Instructions**:
+          - Use GitHub MCP server tools extensively for thorough issue searching
+          - Search both open AND closed issues for comprehensive coverage
+          - Prioritize precision - only include clearly related issues with strong evidence
+          - Provide specific, evidence-based reasons for each relationship
+          - Return empty array if no clear relationships found: {"related_issues": []}
+          - Focus on analysis only - do NOT modify PR or issues
 
-          Please proceed with the analysis using the available GitHub MCP server tools.
+          Begin comprehensive analysis using GitHub MCP server tools.
           PROMPT_EOF
 
           # Replace environment variables in the prompt
@@ -170,50 +180,82 @@ jobs:
             ls -la "$HOME/.gemini/" || echo "⚠️ No .gemini directory found"
 
             # Run Gemini CLI with the prompt
-            echo "🚀 Executing Gemini CLI..."
-            timeout 180 gemini chat --prompt "$(cat /tmp/gemini_prompt_final.txt)" 2>&1 | tee /tmp/gemini_output.log || {
-              echo "⚠️ Gemini CLI execution failed or timed out"
-              echo "Exit code: $?"
-              echo "Output log:"
+            echo "🚀 Executing Gemini CLI with 300 second timeout..."
+            echo "📝 Prompt size: $(wc -c < /tmp/gemini_prompt_final.txt) characters"
+
+            # Execute with extended timeout for comprehensive analysis
+            timeout 300 gemini chat --prompt "$(cat /tmp/gemini_prompt_final.txt)" 2>&1 | tee /tmp/gemini_output.log
+            GEMINI_EXIT_CODE=$?
+
+            if [ $GEMINI_EXIT_CODE -eq 124 ]; then
+              echo "⏰ Gemini CLI execution timed out after 300 seconds"
+              echo "This may indicate complex analysis or network issues"
+            elif [ $GEMINI_EXIT_CODE -ne 0 ]; then
+              echo "⚠️ Gemini CLI execution failed with exit code: $GEMINI_EXIT_CODE"
+              echo "📋 Output log content:"
               cat /tmp/gemini_output.log || echo "No output log available"
-              echo "This might be due to authentication issues or network problems"
-              echo "Please check the Gemini CLI setup and try again"
-              # Create test result for debugging
-              echo "Creating test result with known issues for debugging..."
-              echo '{"related_issues":[{"issue_number":411,"relationship":"related","reason":"This PR improves workflow automation, related to dprint formatting workflow"},{"issue_number":409,"relationship":"related","reason":"This PR updates documentation, related to TypeScript check instructions"},{"issue_number":402,"relationship":"related","reason":"This PR involves testing improvements, related to missing E2E tests"}]}' > /tmp/related_issues.json
+              echo "🔍 Possible causes:"
+              echo "  - Authentication issues (check OAuth credentials)"
+              echo "  - Network connectivity problems"
+              echo "  - GitHub MCP server configuration issues"
+              echo "  - API rate limiting"
+            fi
+
+            # Handle failure cases
+            if [ $GEMINI_EXIT_CODE -ne 0 ]; then
+              echo "Creating empty result due to Gemini CLI failure..."
+              echo '{"related_issues":[]}' > /tmp/related_issues.json
               exit 0  # Don't fail the workflow, just log the issue
-            }
+            fi
 
             echo "✅ Gemini CLI execution completed"
             echo "Output:"
             cat /tmp/gemini_output.log || echo "No output log available"
 
-            # Extract JSON from Gemini output
+            # Extract JSON from Gemini output with improved parsing
             echo "🔍 Extracting JSON from Gemini output..."
-            echo "Raw Gemini output:"
+            echo "📊 Output size: $(wc -c < /tmp/gemini_output.log) characters"
+
+            # Show last 20 lines of output for debugging
+            echo "📋 Last 20 lines of Gemini output:"
             echo "===================="
-            cat /tmp/gemini_output.log
+            tail -20 /tmp/gemini_output.log
             echo "===================="
 
-            # Look for JSON in the output and save it
-            grep -o '{.*"related_issues".*}' /tmp/gemini_output.log > /tmp/related_issues.json 2>/dev/null || {
-              echo "⚠️ Could not extract JSON from Gemini output"
-              echo "Trying alternative JSON extraction methods..."
+            # Multiple JSON extraction strategies
+            JSON_EXTRACTED=false
 
-              # Try to find any JSON-like structure
-              grep -o '{.*}' /tmp/gemini_output.log | tail -1 > /tmp/temp_json.txt 2>/dev/null || echo "{}" > /tmp/temp_json.txt
-
-              # Check if it contains related_issues
+            # Strategy 1: Look for complete JSON with related_issues
+            if grep -o '{[^{}]*"related_issues"[^{}]*}' /tmp/gemini_output.log > /tmp/related_issues.json 2>/dev/null; then
+              echo "✅ Strategy 1: Found JSON with related_issues"
+              JSON_EXTRACTED=true
+            # Strategy 2: Look for multiline JSON
+            elif sed -n '/{/,/}/p' /tmp/gemini_output.log | grep -q "related_issues"; then
+              sed -n '/{/,/}/p' /tmp/gemini_output.log > /tmp/related_issues.json
+              echo "✅ Strategy 2: Found multiline JSON"
+              JSON_EXTRACTED=true
+            # Strategy 3: Look for any JSON structure and validate
+            elif grep -o '{.*}' /tmp/gemini_output.log | tail -1 > /tmp/temp_json.txt 2>/dev/null; then
               if grep -q "related_issues" /tmp/temp_json.txt; then
                 cp /tmp/temp_json.txt /tmp/related_issues.json
-                echo "✅ Found JSON with alternative method"
-              else
-                echo "Creating empty result..."
-                echo '{"related_issues": []}' > /tmp/related_issues.json
+                echo "✅ Strategy 3: Found JSON with alternative method"
+                JSON_EXTRACTED=true
               fi
-
               rm -f /tmp/temp_json.txt
-            }
+            fi
+
+            # Fallback to empty result
+            if [ "$JSON_EXTRACTED" = false ]; then
+              echo "⚠️ Could not extract valid JSON from Gemini output"
+              echo "Creating empty result..."
+              echo '{"related_issues": []}' > /tmp/related_issues.json
+            fi
+
+            # Validate JSON structure
+            if ! jq empty /tmp/related_issues.json 2>/dev/null; then
+              echo "⚠️ Invalid JSON detected, creating empty result"
+              echo '{"related_issues": []}' > /tmp/related_issues.json
+            fi
           else
             echo "❌ Gemini CLI not available"
             echo "Please ensure Gemini CLI is properly installed and configured"
@@ -366,23 +408,47 @@ jobs:
             head -20 /tmp/new_pr_body.txt
             echo "========================"
 
-            # Update PR description using GitHub CLI
+            # Update PR description using GitHub CLI with improved error handling
             echo "🚀 Updating PR description..."
+            echo "📊 New body size: $(wc -c < /tmp/new_pr_body.txt) characters"
 
-            # Try using file method
-            if gh pr edit $PR_NUMBER --repo $REPO_OWNER/$REPO_NAME --body-file /tmp/new_pr_body.txt; then
-              echo "✅ PR description updated successfully"
+            # Validate GitHub CLI authentication
+            if ! gh auth status >/dev/null 2>&1; then
+              echo "❌ GitHub CLI authentication failed"
+              echo "Please check GITHUB_TOKEN configuration"
+              exit 1
+            fi
+
+            # Try using file method first (more reliable for large content)
+            echo "🔄 Attempting file-based update..."
+            if gh pr edit $PR_NUMBER --repo $REPO_OWNER/$REPO_NAME --body-file /tmp/new_pr_body.txt 2>/dev/null; then
+              echo "✅ PR description updated successfully using file method"
             else
-              echo "❌ Failed to update PR description"
-              echo "Attempting alternative method..."
+              echo "⚠️ File method failed, trying direct content method..."
 
               # Try reading file content and using direct body parameter
               NEW_BODY_CONTENT=$(cat /tmp/new_pr_body.txt)
-              if gh pr edit $PR_NUMBER --repo $REPO_OWNER/$REPO_NAME --body "$NEW_BODY_CONTENT"; then
-                echo "✅ PR description updated successfully using alternative method"
+              BODY_SIZE=${#NEW_BODY_CONTENT}
+              echo "📊 Content size: $BODY_SIZE characters"
+
+              if [ $BODY_SIZE -gt 65536 ]; then
+                echo "⚠️ Content too large ($BODY_SIZE chars), truncating..."
+                NEW_BODY_CONTENT=$(echo "$NEW_BODY_CONTENT" | head -c 65000)
+                echo "..." >> /tmp/truncated_body.txt
+                NEW_BODY_CONTENT="$NEW_BODY_CONTENT..."
+              fi
+
+              if gh pr edit $PR_NUMBER --repo $REPO_OWNER/$REPO_NAME --body "$NEW_BODY_CONTENT" 2>/dev/null; then
+                echo "✅ PR description updated successfully using direct method"
               else
                 echo "❌ All update methods failed"
-                exit 1
+                echo "🔍 Debugging information:"
+                echo "  - PR Number: $PR_NUMBER"
+                echo "  - Repository: $REPO_OWNER/$REPO_NAME"
+                echo "  - Body size: $BODY_SIZE characters"
+                echo "  - GitHub CLI version: $(gh --version | head -1)"
+                echo "⚠️ Continuing workflow without failing (non-critical error)"
+                exit 0  # Don't fail the workflow for PR update issues
               fi
             fi
 

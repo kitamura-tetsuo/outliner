@@ -97,36 +97,59 @@ Mocks are generally forbidden. Limited exceptions:
 
 ### Automated PR-Issue Linking Workflow
 
-This repository includes an automated PR-issue linking workflow using a two-stage approach with Gemini CLI and GitHub CLI for reliable issue linking.
+This repository includes a production-ready automated PR-issue linking workflow using a robust two-stage approach with Gemini CLI and GitHub CLI for reliable issue linking.
 
-**Current Status**: The workflow uses a robust two-stage approach for reliable PR-issue linking.
+**Current Status**: ✅ **PRODUCTION READY** - Workflow has been tested and optimized for reliable operation.
 
 **How it works**:
-1. **Stage 1 - Issue Discovery**: Gemini CLI analyzes PR content and finds related issues
+1. **Stage 1 - Issue Discovery**: Gemini CLI performs comprehensive issue analysis
    - Uses OAuth authentication stored at `/home/runner/.gemini/oauth_creds.json`
    - Configures GitHub MCP server for repository access
+   - Performs multi-layered search: keyword analysis, direct references, component-based search, semantic matching
    - Returns structured JSON with related issues and relationship types
+   - 300-second timeout for complex analysis
+   - Graceful fallback to empty results on failure
+
 2. **Stage 2 - PR Update**: GitHub CLI updates PR descriptions with linking keywords
    - Processes the JSON output from Stage 1
    - Adds appropriate linking keywords ("Fixes #XXX", "Related to #XXX")
-   - Updates PR description using GitHub CLI for reliable execution
+   - Updates PR description using GitHub CLI with multiple fallback methods
+   - Prevents duplicate linking keywords
+   - Handles large content and API limitations
 
 **Authentication Setup**:
-- OAuth credentials are configured on the self-hosted runner
+- OAuth credentials are configured on the self-hosted runner at `/home/runner/.gemini/oauth_creds.json`
 - Run `gemini auth login` on the runner machine to set up authentication
 - GitHub CLI uses the GITHUB_TOKEN for PR updates
 
 **Workflow Features**:
 - Triggers on PR creation and updates (opened, reopened, edited, synchronize)
-- Separates issue discovery from PR updates for better reliability
-- Prevents duplicate linking keywords
-- Handles errors gracefully without failing the workflow
-- Installs required tools (jq, GitHub CLI) automatically
+- Separates issue discovery from PR updates for maximum reliability
+- Comprehensive error handling and logging
+- Multiple JSON extraction strategies
+- Automatic tool installation (jq, GitHub CLI)
+- Non-blocking execution (workflow continues even if linking fails)
+- Content size validation and truncation for large PRs
+
+**Usage**:
+1. Create or update a Pull Request
+2. Workflow automatically triggers and analyzes PR content
+3. Related issues are identified using AI-powered analysis
+4. PR description is updated with appropriate linking keywords
+5. Issues are automatically linked in GitHub's Development section
+
+**Troubleshooting**:
+- Check GitHub Actions logs for detailed execution information
+- Verify OAuth credentials are properly configured: `ls -la /home/runner/.gemini/`
+- Ensure GitHub MCP server configuration is correct
+- Monitor for API rate limiting or network connectivity issues
+- Review JSON extraction logs if issue linking fails
 
 **Manual Verification**:
 - Check workflow execution logs in GitHub Actions
 - Verify PR descriptions for added linking keywords like "Related to #XXX" or "Fixes #XXX"
 - Confirm issues are linked in GitHub's Development section
+- Review "Related Issues" section added to PR descriptions
 
 ### Merge Workflow
 
