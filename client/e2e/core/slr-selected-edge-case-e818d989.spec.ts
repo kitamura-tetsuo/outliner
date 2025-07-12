@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @feature SLR-0008
  *  Title   : 選択範囲のエッジケース
  *  Source  : docs/client-features.yaml

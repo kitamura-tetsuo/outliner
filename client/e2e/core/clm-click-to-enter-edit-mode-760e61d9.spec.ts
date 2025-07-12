@@ -110,7 +110,7 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
             const text = await activeItem.locator(".item-text").textContent();
             console.log("Item text:", text);
             expect(text).toContain(testText);
-        } catch (e) {
+        } catch (e: any) {
             console.log("Failed to verify item text:", e.message);
             // ページ内にテキストが含まれていることを確認（代替検証）
             const pageContent = await page.textContent("body");

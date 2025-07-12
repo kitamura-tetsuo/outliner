@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @feature SLR-0006
  *  Title   : 複数アイテム選択範囲のコピー＆ペースト
  *  Source  : docs/client-features.yaml

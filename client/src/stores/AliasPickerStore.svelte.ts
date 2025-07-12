@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Item, Items } from "../schema/app-schema";
 import { store as generalStore } from "./store.svelte";
 

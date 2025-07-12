@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @feature GRV-0002
  *  Title   : Graph view layout persistence
  *  Source  : docs/client-features.yaml

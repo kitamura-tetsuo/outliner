@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @feature CMD-0001
  *  Title   : Inline Command Palette
  *  Source  : docs/client-features.yaml

@@ -1,5 +1,4 @@
-import { get } from "svelte/store";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 // Import specific stores or functions from store.svelte.ts
 // For example:
 // import { someStore, updateSomeStore, resetSomeStore } from './store.svelte';

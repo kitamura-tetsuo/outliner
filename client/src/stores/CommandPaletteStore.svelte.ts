@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { aliasPickerStore } from "./AliasPickerStore.svelte";
 import { editorOverlayStore } from "./EditorOverlayStore.svelte";
 

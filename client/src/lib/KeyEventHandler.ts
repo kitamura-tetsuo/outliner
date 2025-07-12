@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";

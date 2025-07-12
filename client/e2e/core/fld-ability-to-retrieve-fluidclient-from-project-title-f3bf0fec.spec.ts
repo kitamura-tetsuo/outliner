@@ -46,7 +46,7 @@ test.describe("FLD-0001: プロジェクトタイトルからFluidClientを取�
             await FluidServiceHelper.getFluidClientByProjectTitle(page, "");
             // エラーが発生しなかった場合はテスト失敗
             expect(true).toBe(false);
-        } catch (error) {
+        } catch (error: any) {
             // エラーメッセージを確認（page.evaluateのエラーメッセージ形式を考慮）
             expect(error.message).toContain("プロジェクトタイトルが指定されていません");
         }

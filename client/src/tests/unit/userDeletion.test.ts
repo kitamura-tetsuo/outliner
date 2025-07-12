@@ -58,10 +58,7 @@ const mockCollection = {
 
 // テスト対象の関数をモック化
 class UserDeletionService {
-    constructor(
-        private auth: typeof mockAuth,
-        private db: typeof mockFirestore,
-    ) {}
+    constructor(private auth: typeof mockAuth) {}
 
     async validateToken(idToken: string): Promise<MockUser> {
         if (!idToken) {
@@ -87,7 +84,7 @@ class UserDeletionService {
     }
 
     async removeUserFromContainers(userId: string, containerIds: string[]): Promise<void> {
-        for (const containerId of containerIds) {
+        for (const _containerId of containerIds) {
             const containerDoc = await mockDocRef.get();
 
             if (containerDoc.exists) {
@@ -153,7 +150,7 @@ describe("User Deletion Service - Unit Tests", () => {
         mockAuth.deleteUser.mockResolvedValue(undefined);
         mockFirestore.collection.mockReturnValue(mockCollection);
 
-        service = new UserDeletionService(mockAuth, mockFirestore);
+        service = new UserDeletionService(mockAuth);
     });
 
     describe("validateToken", () => {

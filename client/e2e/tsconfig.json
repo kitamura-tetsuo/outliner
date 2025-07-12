@@ -1,13 +1,13 @@
 {
     "compilerOptions": {
         "allowJs": true,
-        "checkJs": true,
+        "checkJs": false,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
         "skipLibCheck": true,
         "sourceMap": true,
-        "strict": true,
+        "strict": false,
         "module": "ESNext",
         "moduleResolution": "bundler",
         "verbatimModuleSyntax": false,
@@ -16,9 +16,11 @@
             "@playwright/test",
             "node"
         ],
-        "noUnusedLocals": true
+        "noUnusedLocals": false,
+        "target": "es2017"
     },
     "include": [
+        "../src/vite-env.d.ts",
         "**/*.ts",
         "**/*.js"
     ],

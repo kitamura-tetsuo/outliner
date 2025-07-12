@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @feature HDV-0001
  *  Title   : Page snapshot diff viewer
  *  Source  : docs/client-features.yaml

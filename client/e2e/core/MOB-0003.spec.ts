@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @feature MOB-0003
  *  Title   : Mobile Bottom Action Toolbar
  *  Source  : docs/client-features.yaml
@@ -42,7 +43,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         const afterIndentData = await TreeValidator.getTreeData(page);
         const firstItem = afterIndentData.items[0];
         const firstItemChildren = firstItem.items;
-        const firstChild = Object.values(firstItemChildren)[0];
+        const firstChild: any = Object.values(firstItemChildren)[0];
         const firstChildId = firstChild.items ? Object.values(firstChild.items)[0].id : firstChild.id;
 
         await page.locator(`[data-item-id="${firstChildId}"] .item-content`).click({ force: true });

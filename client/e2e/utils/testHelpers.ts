@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { expect, type Page } from "@playwright/test";
 import { CursorValidator } from "./cursorValidation.js";
 

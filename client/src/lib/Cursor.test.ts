@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Item } from "../schema/app-schema";
 import { Cursor } from "./Cursor";

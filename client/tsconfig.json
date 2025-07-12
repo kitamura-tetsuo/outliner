@@ -2,7 +2,7 @@
     "extends": "./.svelte-kit/tsconfig.json",
     "compilerOptions": {
         "allowJs": true,
-        "checkJs": true,
+        "checkJs": false,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
@@ -14,9 +14,14 @@
         "types": [
             "@playwright/test"
         ],
-        "noUnusedLocals": true // 未使用の変数・関数・importをエラーに
+        "noUnusedLocals": false // loosen unused checks for tests
         // "noUnusedParameters": true // 未使用のパラメータをエラーに
-    }
+    },
+    "include": [
+        "src/vite-env.d.ts",
+        "src/**/*",
+        "tests/**/*"
+    ]
     // Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
     // except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
     //

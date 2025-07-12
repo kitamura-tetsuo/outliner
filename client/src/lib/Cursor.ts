@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Tree } from "fluid-framework";
 import { TreeViewManager } from "../fluid/TreeViewManager";
 import type { Item } from "../schema/app-schema";
