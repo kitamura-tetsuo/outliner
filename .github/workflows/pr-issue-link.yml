@@ -35,11 +35,16 @@ jobs:
           elif [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
             # Method 2: Use API key if available
             echo "🔑 Using Gemini API key for authentication..."
+            # Set up API key authentication
+            export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
             echo "✅ Gemini CLI will use API key authentication"
           else
             echo "⚠️  No Gemini CLI credentials found. Please set up authentication:"
             echo "   Method 1 (Recommended for self-hosted): Run 'gemini auth login' on the runner machine"
             echo "   Method 2: Set GEMINI_API_KEY secret with API key"
+            echo "   Available secrets (names only):"
+            echo "   - GITHUB_TOKEN: $([ -n "${{ secrets.GITHUB_TOKEN }}" ] && echo "✅ Available" || echo "❌ Missing")"
+            echo "   - GEMINI_API_KEY: $([ -n "${{ secrets.GEMINI_API_KEY }}" ] && echo "✅ Available" || echo "❌ Missing")"
             echo "   Continuing without Gemini CLI authentication..."
           fi
           
@@ -147,14 +152,31 @@ jobs:
           # Change to repository directory for context
           cd "$GITHUB_WORKSPACE"
 
-          # Run Gemini CLI with the prompt
+          # Debug: Check if Gemini CLI is available and configured
+          echo "🔍 Checking Gemini CLI availability..."
           if command -v gemini >/dev/null 2>&1; then
-            timeout 180 gemini chat --prompt "$(cat /tmp/gemini_prompt_final.txt)" || {
+            echo "✅ Gemini CLI found"
+            gemini --version || echo "⚠️ Could not get Gemini CLI version"
+
+            # Check configuration
+            echo "🔍 Checking Gemini CLI configuration..."
+            ls -la "$HOME/.gemini/" || echo "⚠️ No .gemini directory found"
+
+            # Run Gemini CLI with the prompt
+            echo "🚀 Executing Gemini CLI..."
+            timeout 180 gemini chat --prompt "$(cat /tmp/gemini_prompt_final.txt)" 2>&1 | tee /tmp/gemini_output.log || {
               echo "⚠️ Gemini CLI execution failed or timed out"
+              echo "Exit code: $?"
+              echo "Output log:"
+              cat /tmp/gemini_output.log || echo "No output log available"
               echo "This might be due to authentication issues or network problems"
               echo "Please check the Gemini CLI setup and try again"
               exit 0  # Don't fail the workflow, just log the issue
             }
+
+            echo "✅ Gemini CLI execution completed"
+            echo "Output:"
+            cat /tmp/gemini_output.log || echo "No output log available"
           else
             echo "❌ Gemini CLI not available"
             echo "Please ensure Gemini CLI is properly installed and configured"
