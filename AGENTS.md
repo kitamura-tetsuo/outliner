@@ -95,6 +95,39 @@ Mocks are generally forbidden. Limited exceptions:
 - Keep Svelte HTML elements reactive and prioritize performance. Use asynchronous updates where appropriate.
 - After implementing changes, run `npm run build` in the `client` directory to confirm the code compiles correctly.
 
+### Automated PR-Issue Linking Workflow
+
+This repository includes an automated PR-issue linking workflow using a two-stage approach with Gemini CLI and GitHub CLI for reliable issue linking.
+
+**Current Status**: The workflow uses a robust two-stage approach for reliable PR-issue linking.
+
+**How it works**:
+1. **Stage 1 - Issue Discovery**: Gemini CLI analyzes PR content and finds related issues
+   - Uses OAuth authentication stored at `/home/runner/.gemini/oauth_creds.json`
+   - Configures GitHub MCP server for repository access
+   - Returns structured JSON with related issues and relationship types
+2. **Stage 2 - PR Update**: GitHub CLI updates PR descriptions with linking keywords
+   - Processes the JSON output from Stage 1
+   - Adds appropriate linking keywords ("Fixes #XXX", "Related to #XXX")
+   - Updates PR description using GitHub CLI for reliable execution
+
+**Authentication Setup**:
+- OAuth credentials are configured on the self-hosted runner
+- Run `gemini auth login` on the runner machine to set up authentication
+- GitHub CLI uses the GITHUB_TOKEN for PR updates
+
+**Workflow Features**:
+- Triggers on PR creation and updates (opened, reopened, edited, synchronize)
+- Separates issue discovery from PR updates for better reliability
+- Prevents duplicate linking keywords
+- Handles errors gracefully without failing the workflow
+- Installs required tools (jq, GitHub CLI) automatically
+
+**Manual Verification**:
+- Check workflow execution logs in GitHub Actions
+- Verify PR descriptions for added linking keywords like "Related to #XXX" or "Fixes #XXX"
+- Confirm issues are linked in GitHub's Development section
+
 ### Merge Workflow
 
 - After merging branches, always run the following commands to ensure the merge was successful:
