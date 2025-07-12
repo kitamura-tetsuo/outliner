@@ -8,5 +8,7 @@ acceptance:
 - 複数アイテムにまたがる選択範囲のテキストをコピーできる
 - 複数行テキストをペーストすると適切に複数アイテムに分割される
 tests:
-- client/e2e/core/slr-copy-and-paste-multiple-item-selection-ranges-5896d5f4.spec.ts
+- client/e2e/core/slr-copy-selection-4c4c4f1a.spec.ts
+- client/e2e/core/slr-paste-copied-text-20a382d6.spec.ts
+- client/e2e/core/slr-paste-multiline-f8740117.spec.ts
 title-ja: 複数アイテム選択範囲のコピー＆ペースト

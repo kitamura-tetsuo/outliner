@@ -5,7 +5,12 @@ description: クリックで編集モードに入ります。
 category: cursor-movement
 status: implemented
 tests:
-- client/e2e/core/clm-click-to-enter-edit-mode-760e61d9.spec.ts
+- client/e2e/core/clm-click-non-alt-edit-11765b4f.spec.ts
+- client/e2e/core/clm-cursor-blink-61a641e7.spec.ts
+- client/e2e/core/clm-cursor-position-aa9e87f6.spec.ts
+- client/e2e/core/clm-cursor-visible-c22414b4.spec.ts
+- client/e2e/core/clm-input-editable-c67b1dc8.spec.ts
+- client/e2e/core/clm-last-line-click-b8389849.spec.ts
 acceptance:
 - カーソルがクリック位置に表示される（最後の行を除く）
 - カーソルが点滅する
