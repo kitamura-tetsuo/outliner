@@ -29,10 +29,10 @@ jobs:
           echo "Setting up Gemini CLI authentication..."
 
           # Method 1: Check if persistent oauth_creds.json exists on runner
-          if [ -f "$HOME/.gemini/oauth_creds.json" ]; then
-            echo "✅ Found persistent Gemini CLI credentials at $HOME/.gemini/oauth_creds.json"
+          if [ -f "/home/runner/.gemini/oauth_creds.json" ]; then
+            echo "✅ Found persistent Gemini CLI credentials at /home/runner/.gemini/oauth_creds.json"
             echo "Verifying credential file..."
-            ls -la "$HOME/.gemini/oauth_creds.json"
+            ls -la "/home/runner/.gemini/oauth_creds.json"
             echo "Gemini CLI is ready to use"
           elif [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
             # Method 2: Use API key if available
@@ -65,10 +65,10 @@ jobs:
       - name: Setup GitHub MCP server configuration
         run: |
           # Create or update Gemini CLI settings with GitHub MCP server
-          mkdir -p "$HOME/.gemini"
+          mkdir -p "/home/runner/.gemini"
 
           # Create settings.json with GitHub MCP server
-          cat > "$HOME/.gemini/settings.json" << 'EOF'
+          cat > "/home/runner/.gemini/settings.json" << 'EOF'
           {
             "theme": "Default Dark",
             "selectedAuthType": "oauth-personal",
@@ -85,7 +85,7 @@ jobs:
           }
           EOF
 
-          chmod 600 "$HOME/.gemini/settings.json"
+          chmod 600 "/home/runner/.gemini/settings.json"
           echo "✅ GitHub MCP server configuration created"
 
       - name: Find related issues using Gemini CLI
@@ -98,6 +98,7 @@ jobs:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
+          HOME: /home/runner
         run: |
           echo "🔍 Analyzing PR #$PR_NUMBER to find related issues..."
           echo "PR Title: $PR_TITLE"
@@ -180,7 +181,26 @@ jobs:
 
             # Check configuration
             echo "🔍 Checking Gemini CLI configuration..."
-            ls -la "$HOME/.gemini/" || echo "⚠️ No .gemini directory found"
+            echo "HOME environment variable: $HOME"
+            ls -la "/home/runner/.gemini/" || echo "⚠️ No .gemini directory found"
+
+            # Test authentication with a simple prompt
+            echo "🔍 Testing Gemini CLI authentication..."
+            echo "test" | timeout 30 gemini --prompt "Respond with 'AUTH_TEST_OK' if you can read this." 2>&1 | tee /tmp/auth_test.log
+
+            if grep -q "AUTH_TEST_OK" /tmp/auth_test.log; then
+              echo "✅ Gemini CLI authentication test successful"
+            else
+              echo "❌ Gemini CLI authentication test failed"
+              echo "Auth test output:"
+              cat /tmp/auth_test.log
+
+              # Check for specific authentication errors
+              if grep -q "Code Assist login required\|authentication\|oauth" /tmp/auth_test.log; then
+                echo "❌ Authentication failure detected in test"
+                exit 1
+              fi
+            fi
 
             # Run Gemini CLI with the prompt
             echo "🚀 Executing Gemini CLI with 300 second timeout..."
