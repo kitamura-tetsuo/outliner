@@ -344,16 +344,54 @@ jobs:
               cat "$LINKING_KEYWORDS_FILE"
             } > /tmp/new_pr_body.txt
 
+            # Debug: Show what we're about to add
+            echo "🔍 Keywords to add:"
+            cat "$LINKING_KEYWORDS_FILE"
+
+            # Create new PR body content
+            NEW_BODY="$CURRENT_BODY
+
+## Related Issues
+
+$(cat "$LINKING_KEYWORDS_FILE")"
+
+            # Debug: Show the new body preview
+            echo "🔍 New PR body preview (first 20 lines):"
+            echo "========================"
+            echo "$NEW_BODY" | head -20
+            echo "========================"
+
             # Update PR description using GitHub CLI
             echo "🚀 Updating PR description..."
-            gh pr edit $PR_NUMBER --repo $REPO_OWNER/$REPO_NAME --body-file /tmp/new_pr_body.txt
 
-            echo "✅ PR description updated successfully"
+            # Try using stdin method first
+            if echo "$NEW_BODY" | gh pr edit $PR_NUMBER --repo $REPO_OWNER/$REPO_NAME --body-file -; then
+              echo "✅ PR description updated successfully using stdin method"
+            else
+              echo "⚠️ Stdin method failed, trying file method..."
+              # Write to file and try again
+              echo "$NEW_BODY" > /tmp/new_pr_body.txt
+              if gh pr edit $PR_NUMBER --repo $REPO_OWNER/$REPO_NAME --body-file /tmp/new_pr_body.txt; then
+                echo "✅ PR description updated successfully using file method"
+              else
+                echo "❌ Both update methods failed, trying direct body parameter..."
+                # Last resort: escape and use direct body parameter
+                ESCAPED_BODY=$(echo "$NEW_BODY" | sed 's/"/\\"/g' | tr '\n' '\\n')
+                if gh pr edit $PR_NUMBER --repo $REPO_OWNER/$REPO_NAME --body "$ESCAPED_BODY"; then
+                  echo "✅ PR description updated successfully using direct method"
+                else
+                  echo "❌ All update methods failed"
+                  exit 1
+                fi
+              fi
+              rm -f /tmp/new_pr_body.txt
+            fi
+
             echo "Added linking keywords:"
             cat "$LINKING_KEYWORDS_FILE"
 
             # Clean up
-            rm -f /tmp/new_pr_body.txt "$LINKING_KEYWORDS_FILE"
+            rm -f "$LINKING_KEYWORDS_FILE"
           else
             echo "ℹ️ No new issue links to add"
             rm -f "$LINKING_KEYWORDS_FILE"
