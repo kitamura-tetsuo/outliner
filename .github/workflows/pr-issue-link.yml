@@ -27,10 +27,12 @@ jobs:
         run: |
           # Setup Gemini CLI for self-hosted runner
           echo "Setting up Gemini CLI authentication..."
-          
+
           # Method 1: Check if persistent oauth_creds.json exists on runner
           if [ -f "$HOME/.gemini/oauth_creds.json" ]; then
             echo "✅ Found persistent Gemini CLI credentials at $HOME/.gemini/oauth_creds.json"
+            echo "Verifying credential file..."
+            ls -la "$HOME/.gemini/oauth_creds.json"
             echo "Gemini CLI is ready to use"
           elif [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
             # Method 2: Use API key if available
@@ -39,13 +41,14 @@ jobs:
             export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
             echo "✅ Gemini CLI will use API key authentication"
           else
-            echo "⚠️  No Gemini CLI credentials found. Please set up authentication:"
+            echo "❌ No Gemini CLI credentials found. This is a critical error."
             echo "   Method 1 (Recommended for self-hosted): Run 'gemini auth login' on the runner machine"
             echo "   Method 2: Set GEMINI_API_KEY secret with API key"
             echo "   Available secrets (names only):"
             echo "   - GITHUB_TOKEN: $([ -n "${{ secrets.GITHUB_TOKEN }}" ] && echo "✅ Available" || echo "❌ Missing")"
             echo "   - GEMINI_API_KEY: $([ -n "${{ secrets.GEMINI_API_KEY }}" ] && echo "✅ Available" || echo "❌ Missing")"
-            echo "   Continuing without Gemini CLI authentication..."
+            echo "   Failing workflow due to missing authentication..."
+            exit 1
           fi
           
           # Install gemini-cli if not available
@@ -203,9 +206,10 @@ jobs:
 
             # Handle failure cases
             if [ $GEMINI_EXIT_CODE -ne 0 ]; then
+              echo "❌ Gemini CLI execution failed - this is a critical error"
               echo "Creating empty result due to Gemini CLI failure..."
               echo '{"related_issues":[]}' > /tmp/related_issues.json
-              exit 0  # Don't fail the workflow, just log the issue
+              exit 1  # Fail the workflow for authentication/execution issues
             fi
 
             echo "✅ Gemini CLI execution completed"
@@ -244,9 +248,17 @@ jobs:
               rm -f /tmp/temp_json.txt
             fi
 
-            # Fallback to empty result
+            # Fallback to empty result - but check if this was due to authentication failure
             if [ "$JSON_EXTRACTED" = false ]; then
               echo "⚠️ Could not extract valid JSON from Gemini output"
+
+              # Check if the output contains authentication errors
+              if grep -q "Code Assist login required\|authentication\|oauth" /tmp/gemini_output.log; then
+                echo "❌ Authentication failure detected in Gemini CLI output"
+                echo "This indicates OAuth credentials are not properly configured"
+                exit 1  # Fail the workflow for authentication issues
+              fi
+
               echo "Creating empty result..."
               echo '{"related_issues": []}' > /tmp/related_issues.json
             fi
@@ -259,9 +271,9 @@ jobs:
           else
             echo "❌ Gemini CLI not available"
             echo "Please ensure Gemini CLI is properly installed and configured"
-            # Create empty result file to continue workflow
+            # Create empty result file but fail the workflow
             echo '{"related_issues": []}' > /tmp/related_issues.json
-            exit 0  # Don't fail the workflow, just log the issue
+            exit 1  # Fail the workflow when Gemini CLI is not available
           fi
 
           echo "📄 Related issues found:"
