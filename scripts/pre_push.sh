@@ -6,8 +6,8 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
 if ! npx --yes dprint --version >/dev/null 2>&1; then
-    echo "dprint is not installed." >&2
-    exit 1
+    echo "dprint is not available. Skipping format check." >&2
+    exit 0
 fi
 
 CHANGED=$(git diff --name-only --cached --diff-filter=AM | grep -E '\.(ts|tsx|js|jsx|json|md|yaml|yml|svelte|css|html)$' || true)

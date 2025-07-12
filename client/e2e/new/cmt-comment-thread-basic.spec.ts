@@ -37,10 +37,26 @@ test.describe("CMT-0001: comment threads", () => {
         ).toHaveText("1");
         const comment = page.locator('[data-testid="comment-thread"] .comment');
         await expect(comment).toHaveCount(1);
+
+        // 編集ボタンをクリック
         await page.click('[data-testid^="comment-"] .edit');
+
+        // 編集入力フィールドが表示されるまで待機
+        await expect(page.locator('[data-testid^="edit-input-"]')).toBeVisible();
+
+        // 編集入力フィールドをクリアしてから新しいテキストを入力
+        await page.fill('[data-testid^="edit-input-"]', "");
         await page.fill('[data-testid^="edit-input-"]', "edited");
+
+        // 保存ボタンをクリック
         await page.click('[data-testid^="save-edit-"]');
+
+        // 編集モードが終了するまで待機
+        await expect(page.locator('[data-testid^="edit-input-"]')).not.toBeVisible();
+
+        // テキストが更新されることを確認
         await expect(comment.locator(".text")).toHaveText("edited");
+
         await page.click('[data-testid^="comment-"] .delete');
         await expect(
             page.locator(`[data-item-id="${firstId}"] .comment-count`),

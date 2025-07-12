@@ -14,7 +14,13 @@ acceptance:
 - 存在しないページへのリンクをクリックした場合も対応するURLに移動する
 - 存在しないページへの内部リンクをクリックした場合、新規ページが作成される
 tests:
-- client/e2e/core/lnk-internal-link-navigation-feature-db56e693.spec.ts
+- client/e2e/core/lnk-click-navigation-6feab1d7.spec.ts
+- client/e2e/core/lnk-create-internal-af8f309a.spec.ts
+- client/e2e/core/lnk-create-project-link-439b72bd.spec.ts
+- client/e2e/core/lnk-link-click-67f5c9da.spec.ts
+- client/e2e/core/lnk-nonexistent-link-f9a15261.spec.ts
+- client/e2e/core/lnk-project-link-navigation-e9b58abb.spec.ts
+- client/e2e/core/lnk-url-direct-df445603.spec.ts
 testcases:
 - 内部リンクをクリックして別のページに移動する
 - URLを直接入力して内部リンク先のページにアクセスする

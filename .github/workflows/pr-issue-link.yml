@@ -1,0 +1,191 @@
+name: Auto-link PR to Issues
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  link-pr-to-issue:
+    runs-on: self-hosted
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Gemini CLI authentication
+        run: |
+          # Setup Gemini CLI for self-hosted runner
+          echo "Setting up Gemini CLI authentication..."
+          
+          # Method 1: Check if persistent oauth_creds.json exists on runner
+          if [ -f "$HOME/.gemini/oauth_creds.json" ]; then
+            echo "✅ Found persistent Gemini CLI credentials at $HOME/.gemini/oauth_creds.json"
+            echo "Gemini CLI is ready to use"
+          elif [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
+            # Method 2: Use API key if available
+            echo "🔑 Using Gemini API key for authentication..."
+            echo "✅ Gemini CLI will use API key authentication"
+          else
+            echo "⚠️  No Gemini CLI credentials found. Please set up authentication:"
+            echo "   Method 1 (Recommended for self-hosted): Run 'gemini auth login' on the runner machine"
+            echo "   Method 2: Set GEMINI_API_KEY secret with API key"
+            echo "   Continuing without Gemini CLI authentication..."
+          fi
+          
+          # Install gemini-cli if not available
+          if ! command -v gemini >/dev/null 2>&1; then
+            echo "Installing gemini-cli..."
+            npm install -g @google/gemini-cli || echo "Failed to install gemini-cli, continuing..."
+          fi
+          
+          # Verify gemini-cli installation
+          if command -v gemini >/dev/null 2>&1; then
+            echo "Gemini CLI version: $(gemini --version 2>/dev/null || echo 'version check failed')"
+          fi
+
+      - name: Setup GitHub MCP server configuration
+        run: |
+          # Create or update Gemini CLI settings with GitHub MCP server
+          mkdir -p "$HOME/.gemini"
+
+          # Create settings.json with GitHub MCP server
+          cat > "$HOME/.gemini/settings.json" << 'EOF'
+          {
+            "theme": "Default Dark",
+            "selectedAuthType": "oauth-personal",
+            "checkpointing": {"enabled": true},
+            "mcpServers": {
+              "github": {
+                "command": "npx",
+                "args": ["-y", "@modelcontextprotocol/server-github"],
+                "env": {
+                  "GITHUB_PERSONAL_ACCESS_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+                }
+              }
+            }
+          }
+          EOF
+
+          chmod 600 "$HOME/.gemini/settings.json"
+          echo "✅ GitHub MCP server configuration created"
+
+      - name: Auto-link PR to related issues using Gemini CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          echo "🔍 Analyzing PR #$PR_NUMBER to auto-link related issues..."
+          echo "PR Title: $PR_TITLE"
+          echo "PR Author: $PR_AUTHOR"
+          
+          # Create a prompt for Gemini CLI to analyze the PR and find related issues
+          cat > /tmp/gemini_prompt.txt << 'PROMPT_EOF'
+          You are a GitHub automation assistant. Your task is to analyze a pull request and find related open issues in the same repository that should be linked to this PR.
+
+          PR Information:
+          - Number: $PR_NUMBER
+          - Title: $PR_TITLE
+          - Author: $PR_AUTHOR
+          - Repository: $REPO_OWNER/$REPO_NAME
+
+          PR Description:
+          $PR_BODY
+
+          Please perform the following tasks using the GitHub MCP server:
+
+          1. Use the GitHub MCP server to search for open issues in the repository $REPO_OWNER/$REPO_NAME
+          2. Analyze the PR title and description to identify keywords and topics
+          3. Find issues that are related to this PR based on:
+             - Similar keywords in title or description
+             - Referenced issue numbers (e.g., "fixes #123", "closes #456", "resolves #789")
+             - Related functionality or bug fixes
+             - Common themes or components mentioned
+
+          4. If you find related issues, use the GitHub MCP server to update the PR description by adding linking keywords:
+             - Add "Fixes #issue_number" or "Closes #issue_number" for issues that this PR resolves
+             - Add "Related to #issue_number" for issues that are related but not necessarily closed
+             - This will automatically link the issues in GitHub's "Development" section
+
+          Important guidelines:
+          - Use the GitHub MCP server tools to interact with the repository
+          - Do NOT create comments on the PR - only update the PR description if needed
+          - Do NOT close or modify issues automatically
+          - Only add linking keywords if there's a clear relationship between the PR and issues
+          - If no related issues are found, do not modify the PR description
+
+          Please proceed with the analysis and linking using the available GitHub MCP server tools.
+          PROMPT_EOF
+
+          # Replace environment variables in the prompt
+          envsubst < /tmp/gemini_prompt.txt > /tmp/gemini_prompt_final.txt
+          
+          echo "📝 Generated prompt for Gemini CLI:"
+          echo "----------------------------------------"
+          cat /tmp/gemini_prompt_final.txt
+          echo "----------------------------------------"
+          
+          # Run Gemini CLI with the prompt
+          echo "🤖 Running Gemini CLI to analyze PR and auto-link issues..."
+
+          # Change to repository directory for context
+          cd "$GITHUB_WORKSPACE"
+
+          # Run Gemini CLI with the prompt
+          if command -v gemini >/dev/null 2>&1; then
+            timeout 180 gemini chat --prompt "$(cat /tmp/gemini_prompt_final.txt)" || {
+              echo "⚠️ Gemini CLI execution failed or timed out"
+              echo "This might be due to authentication issues or network problems"
+              echo "Please check the Gemini CLI setup and try again"
+              exit 0  # Don't fail the workflow, just log the issue
+            }
+          else
+            echo "❌ Gemini CLI not available"
+            echo "Please ensure Gemini CLI is properly installed and configured"
+            exit 0  # Don't fail the workflow, just log the issue
+          fi
+          
+          # Clean up temporary files
+          rm -f /tmp/gemini_prompt.txt /tmp/gemini_prompt_final.txt
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "🧹 Cleaning up temporary files..."
+          rm -f /tmp/gemini_prompt*.txt
+          echo "✅ Cleanup completed"
+
+      - name: Log failure information
+        if: failure()
+        run: |
+          echo "🤖 PR Issue Linking Failed"
+          echo ""
+          echo "The automated PR-to-issue linking process encountered an error."
+          echo "This could be due to:"
+          echo "- Gemini CLI authentication issues"
+          echo "- GitHub MCP server configuration problems"
+          echo "- Network connectivity issues"
+          echo ""
+          echo "Manual Action Required:"
+          echo "Please manually review this PR and link any related issues using the format:"
+          echo "- 'Fixes #issue_number' (to close the issue when PR is merged)"
+          echo "- 'Related to #issue_number' (to reference without closing)"
+          echo ""
+          echo "Add these keywords to the PR description to automatically link issues"
+          echo "in GitHub's 'Development' section."
