@@ -262,22 +262,28 @@ jobs:
             # Multiple JSON extraction strategies
             JSON_EXTRACTED=false
 
-            # Strategy 1: Look for complete JSON with related_issues
-            if grep -o '{[^{}]*"related_issues"[^{}]*}' /tmp/gemini_output.log > /tmp/related_issues.json 2>/dev/null; then
-              echo "✅ Strategy 1: Found JSON with related_issues"
-              JSON_EXTRACTED=true
-            # Strategy 2: Look for multiline JSON
-            elif sed -n '/{/,/}/p' /tmp/gemini_output.log | grep -q "related_issues"; then
-              sed -n '/{/,/}/p' /tmp/gemini_output.log > /tmp/related_issues.json
-              echo "✅ Strategy 2: Found multiline JSON"
-              JSON_EXTRACTED=true
-            # Strategy 3: Look for any JSON structure and validate
-            elif grep -o '{.*}' /tmp/gemini_output.log | tail -1 > /tmp/temp_json.txt 2>/dev/null; then
+            # Strategy 1: Extract JSON block between ```json and ``` markers
+            if sed -n '/```json/,/```/p' /tmp/gemini_output.log | sed '1d;$d' > /tmp/temp_json.txt 2>/dev/null && [ -s /tmp/temp_json.txt ]; then
               if grep -q "related_issues" /tmp/temp_json.txt; then
                 cp /tmp/temp_json.txt /tmp/related_issues.json
-                echo "✅ Strategy 3: Found JSON with alternative method"
+                echo "✅ Strategy 1: Found JSON in code block"
                 JSON_EXTRACTED=true
               fi
+              rm -f /tmp/temp_json.txt
+            # Strategy 2: Look for multiline JSON starting with { and ending with }
+            elif awk '/^{/,/^}/' /tmp/gemini_output.log > /tmp/temp_json.txt 2>/dev/null && [ -s /tmp/temp_json.txt ]; then
+              if grep -q "related_issues" /tmp/temp_json.txt; then
+                cp /tmp/temp_json.txt /tmp/related_issues.json
+                echo "✅ Strategy 2: Found multiline JSON"
+                JSON_EXTRACTED=true
+              fi
+              rm -f /tmp/temp_json.txt
+            # Strategy 3: Look for any JSON structure containing related_issues
+            elif grep -Pzo '(?s)\{.*?"related_issues".*?\}' /tmp/gemini_output.log > /tmp/temp_json.txt 2>/dev/null && [ -s /tmp/temp_json.txt ]; then
+              # Remove null bytes that might be added by grep -z
+              tr -d '\0' < /tmp/temp_json.txt > /tmp/related_issues.json
+              echo "✅ Strategy 3: Found JSON with regex extraction"
+              JSON_EXTRACTED=true
               rm -f /tmp/temp_json.txt
             fi
 
@@ -297,9 +303,18 @@ jobs:
             fi
 
             # Validate JSON structure
-            if ! jq empty /tmp/related_issues.json 2>/dev/null; then
-              echo "⚠️ Invalid JSON detected, creating empty result"
-              echo '{"related_issues": []}' > /tmp/related_issues.json
+            if [ "$JSON_EXTRACTED" = true ]; then
+              echo "🔍 Validating extracted JSON..."
+              if jq empty /tmp/related_issues.json 2>/dev/null; then
+                echo "✅ JSON validation successful"
+                echo "📋 Extracted JSON content:"
+                cat /tmp/related_issues.json | jq . 2>/dev/null || cat /tmp/related_issues.json
+              else
+                echo "⚠️ Invalid JSON detected, creating empty result"
+                echo "📋 Invalid JSON content:"
+                cat /tmp/related_issues.json
+                echo '{"related_issues": []}' > /tmp/related_issues.json
+              fi
             fi
           else
             echo "❌ Gemini CLI not available"
