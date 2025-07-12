@@ -36,6 +36,7 @@ describe("Firestore Store", () => {
     });
 
     it("should provide container data through the store", () => {
+        // Get the current value from the store
         const containerData = firestoreStore.firestoreStore.userContainer;
 
         expect(containerData).not.toBeNull();
