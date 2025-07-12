@@ -37,6 +37,7 @@ Gemini CLIをGitHub Actionsで使用するには認証が必要です。self-hos
    ```
 
 ### メリット
+
 - 最も確実で安全な認証方法
 - 60 RPM / 1,000 RPD の無料枠を利用可能
 - 設定が一度だけで済む
@@ -59,11 +60,13 @@ Gemini CLIをGitHub Actionsで使用するには認証が必要です。self-hos
    - 既存のワークフローファイルで自動的に設定される
 
 ### メリット
+
 - 設定が簡単
 - リモートから設定可能
 - CI環境でも確実に動作
 
 ### デメリット
+
 - 無料枠が100 requests/day と制限される
 - API Keyの管理が必要
 
@@ -82,7 +85,7 @@ Gemini CLIをGitHub Actionsで使用するには認証が必要です。self-hos
    ```bash
    # macOS/Linux
    base64 -i ~/.gemini/oauth_creds.json
-   
+
    # Windows (PowerShell)
    [Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:USERPROFILE\.gemini\oauth_creds.json"))
    ```
@@ -96,10 +99,12 @@ Gemini CLIをGitHub Actionsで使用するには認証が必要です。self-hos
    - 実行時に自動的に `~/.gemini/oauth_creds.json` が復元される
 
 ### メリット
+
 - リモートから設定可能
 - 複数のrunnerで同じ認証情報を使用可能
 
 ### デメリット
+
 - GitHub Secretsのサイズ制限（64KB）
 - ワークフロー実行時に毎回復元処理が必要
 
@@ -141,6 +146,7 @@ Gemini CLIにGitHub MCP サーバーを追加することで、GitHub操作を�
 - キーワード、参照番号、機能の類似性に基づいて関連性を判定
 
 **リンクキーワード:**
+
 - `Fixes #issue_number` - PRがマージされたときにissueを自動クローズ
 - `Closes #issue_number` - PRがマージされたときにissueを自動クローズ
 - `Related to #issue_number` - 関連付けのみ（issueはクローズされない）
@@ -157,6 +163,7 @@ Gemini CLIにGitHub MCP サーバーを追加することで、GitHub操作を�
 ## トラブルシューティング
 
 ### 認証エラー (401)
+
 ```bash
 # 認証情報をリセット（方法1の場合）
 rm -f ~/.gemini/oauth_creds.json
@@ -167,6 +174,7 @@ gemini
 ```
 
 ### Credentials not found
+
 ```bash
 # ファイルの存在と権限を確認
 ls -la ~/.gemini/oauth_creds.json
@@ -174,6 +182,7 @@ chmod 600 ~/.gemini/oauth_creds.json
 ```
 
 ### CLI が毎回ブラウザを開く
+
 - 認証ファイルが正しく復元されていない
 - ファイル内容に改行や空白の混入がないか確認
 
