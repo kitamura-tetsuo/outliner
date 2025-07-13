@@ -1,7 +1,7 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const { generateToken } = require("@fluidframework/azure-service-utils");
-const { ScopeType } = require("@fluidframework/azure-client");
+const azureClient = require("@fluidframework/azure-client");
 const jwt = require("jsonwebtoken");
 const { FieldValue } = require("firebase-admin/firestore");
 
@@ -168,14 +168,17 @@ function generateAzureFluidToken(user, containerId = undefined) {
       name: user.displayName || "Anonymous",
     };
 
+    // Azure Fluid Relay のスコープ定数を直接定義
+    const scopes = [
+      "doc:read",
+      "doc:write",
+      "summary:write",
+    ];
+
     const token = generateToken(
       azureConfig.tenantId, // テナントID
       keyToUse, // 署名キー
-      [
-        ScopeType.DocRead,
-        ScopeType.DocWrite,
-        ScopeType.SummaryWrite,
-      ], // 権限スコープ
+      scopes, // 権限スコープ
       containerId, // コンテナID (指定されていれば)
       fluidUser,
     );
