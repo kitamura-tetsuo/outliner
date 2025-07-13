@@ -1,11 +1,8 @@
 <script lang="ts">
 import { onMount } from "svelte";
-import {
-    createFluidClient,
-    getProjectTitle,
-} from "../lib/fluidService.svelte";
+import { createFluidClient } from "../lib/fluidService.svelte";
 import { getLogger } from "../lib/logger";
-import { firestoreStore } from "../stores/firestoreStore.svelte";
+import { containerStore } from "../stores/containerStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 const logger = getLogger();
 
@@ -28,17 +25,7 @@ let selectedContainerId = $state<string | null>(null);
 let isLoading = $state(false);
 let error = $state<string | null>(null);
 
-let containers = $derived.by<Array<Container>>(() => {
-    const userContainer = firestoreStore.userContainer;
-    if (!userContainer || !userContainer.accessibleContainerIds) {
-        return [];
-    }
-    return userContainer.accessibleContainerIds.map((id: string) => ({
-        id,
-        name: getProjectTitle(id),
-        isDefault: false,
-    }));
-});
+let containers = $derived(containerStore.containers);
 // 現在ロード中のコンテナIDを表示
 let currentContainerId = $derived(fluidStore.currentContainerId);
 

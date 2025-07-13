@@ -1,0 +1,20 @@
+id: CNT-12ee98aa
+title: Shared Container Store
+title-ja: 共有コンテナストア
+description: Expose accessible containers via a global store for reuse across components.
+category: project
+status: implemented
+components:
+- src/components/ContainerSelector.svelte
+- src/routes/projects/delete/+page.svelte
+- src/stores/containerStore.svelte.ts
+services:
+- src/lib/fluidService.svelte
+- src/stores/firestoreStore.svelte.ts
+tests:
+- client/e2e/new/cnt-shared-container-store-12ee98aa.spec.ts
+- client/src/stores/ContainerStore.test.ts
+- client/src/tests/integration/containerStore.integration.spec.ts
+acceptance:
+- ContainerSelector lists containers from the shared store
+- Deletion page displays projects from the shared store
