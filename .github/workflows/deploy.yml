@@ -31,7 +31,7 @@ jobs:
         run: |
           cat > client/.env.production <<EOF2
           VITE_AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}
-          VITE_AZURE_FLUID_RELAY_ENDPOINT=${{ secrets.AZURE_FLUID_RELAY_ENDPOINT }}
+          VITE_AZURE_FLUID_RELAY_ENDPOINT=${{ secrets.AZURE_ENDPOINT }}
           VITE_USE_FIREBASE_AUTH=true
           VITE_USE_API_AUTH=true
           VITE_USE_TINYLICIOUS=false
@@ -63,11 +63,10 @@ jobs:
         run: |
           cat > functions/.env <<EOF3
           AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}
-          AZURE_FLUID_RELAY_ENDPOINT=${{ secrets.AZURE_FLUID_RELAY_ENDPOINT }}
+          AZURE_ENDPOINT=${{ secrets.AZURE_ENDPOINT }}
           AZURE_PRIMARY_KEY=${{ secrets.AZURE_PRIMARY_KEY }}
           AZURE_SECONDARY_KEY=${{ secrets.AZURE_SECONDARY_KEY }}
           AZURE_ACTIVE_KEY=${{ secrets.AZURE_ACTIVE_KEY }}
-          AZURE_ENDPOINT=${{ secrets.AZURE_ENDPOINT }}
           NODE_ENV=production
           EOF3
 

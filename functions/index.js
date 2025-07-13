@@ -101,6 +101,18 @@ try {
   const config = getAzureConfig();
   if (!config.tenantId || !config.primaryKey) {
     logger.warn("Azure設定が不完全です。環境変数を確認してください。");
+    logger.warn(
+      `現在の設定: tenantId=${
+        config.tenantId ? "設定済み" : "未設定"
+      }, primaryKey=${config.primaryKey ? "設定済み" : "未設定"}, endpoint=${
+        config.endpoint ? "設定済み" : "未設定"
+      }`,
+    );
+  } else {
+    logger.info("Azure設定が正常に読み込まれました。");
+    logger.info(
+      `tenantId: ${config.tenantId}, endpoint: ${config.endpoint}, activeKey: ${config.activeKey}`,
+    );
   }
 } catch (error) {
   logger.error("Azure設定の取得に失敗しました:", error.message);
@@ -126,6 +138,11 @@ function generateAzureFluidToken(user, containerId = undefined) {
 
   if (!keyToUse) {
     logger.error("Azure Keyが設定されていません。環境変数を確認してください。");
+    logger.error(
+      `activeKey: ${azureConfig.activeKey}, primaryKey: ${
+        azureConfig.primaryKey ? "設定済み" : "未設定"
+      }, secondaryKey: ${azureConfig.secondaryKey ? "設定済み" : "未設定"}`,
+    );
     throw new Error("Azure Key is not configured");
   }
 
@@ -272,6 +289,17 @@ exports.fluidToken = onRequest({ cors: true }, async (req, res) => {
     });
   } catch (error) {
     logger.error(`Token validation error: ${error.message}`, { error });
+
+    // Azure設定の詳細をログに出力（デバッグ用）
+    const config = getAzureConfig();
+    logger.error(
+      `Azure設定状況: tenantId=${
+        config.tenantId ? "設定済み" : "未設定"
+      }, primaryKey=${config.primaryKey ? "設定済み" : "未設定"}, endpoint=${
+        config.endpoint ? "設定済み" : "未設定"
+      }`,
+    );
+
     return res.status(401).json({ error: "Authentication failed" });
   }
 });
