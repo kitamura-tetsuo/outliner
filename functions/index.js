@@ -227,12 +227,22 @@ exports.fluidToken = onRequest({ cors: true }, async (req, res) => {
     const { idToken, containerId } = req.body;
 
     if (!idToken) {
+      logger.error("ID token is missing from request body");
       return res.status(400).json({ error: "ID token is required" });
     }
+
+    logger.info(`Attempting to verify ID token (length: ${idToken.length})`);
 
     // Firebase IDトークンを検証
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
+
+    logger.info(`Successfully verified ID token for user: ${userId}`);
+    logger.debug(
+      `Token details: email=${decodedToken.email}, name=${
+        decodedToken.name || decodedToken.displayName
+      }`,
+    );
 
     // ユーザーのコンテナ情報を取得
     const userDoc = await userContainersCollection.doc(userId).get();

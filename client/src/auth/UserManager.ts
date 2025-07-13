@@ -595,6 +595,9 @@ export class UserManager {
 
             // IDトークンを取得
             const idToken = await this.auth.currentUser.getIdToken(true);
+            logger.info(
+                `[UserManager] Retrieved ID token (length: ${idToken.length}) for user: ${this.auth.currentUser.uid}`,
+            );
 
             // Fluidトークンを取得
             this.currentFluidToken = await this.getFluidToken(idToken, containerId);
