@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import * as fluidService from "../../../lib/fluidService.svelte";
-import { getProjectTitle } from "../../../lib/fluidService.svelte";
+import { containerStore } from "../../../stores/containerStore.svelte";
 
 interface ProjectEntry {
     id: string;
@@ -13,19 +13,6 @@ let projects: ProjectEntry[] = $state([]);
 let loading = $state(false);
 let error: string | undefined = $state(undefined);
 let success: string | undefined = $state(undefined);
-
-async function loadProjects() {
-    loading = true;
-    error = undefined;
-    try {
-        const { containers } = await fluidService.getUserContainers();
-        projects = containers.map(id => ({ id, title: getProjectTitle(id), selected: false }));
-    } catch (err) {
-        error = err instanceof Error ? err.message : "プロジェクト一覧の取得に失敗しました";
-    } finally {
-        loading = false;
-    }
-}
 
 async function deleteSelected() {
     const targets = projects.filter(p => p.selected);
@@ -47,7 +34,10 @@ async function deleteSelected() {
 }
 
 onMount(() => {
-    loadProjects();
+    const unsubscribe = containerStore.containers.subscribe(list => {
+        projects = list.map(c => ({ id: c.id, title: c.name, selected: false }));
+    });
+    return () => unsubscribe();
 });
 </script>
 
