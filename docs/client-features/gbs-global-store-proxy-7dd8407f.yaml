@@ -1,0 +1,19 @@
+id: GBS-7dd8407f
+title: Global Store Proxy
+title-ja: グローバルストアプロキシ
+description: Provide a unified proxy class that delegates to backend specific stores.
+category: project
+status: implemented
+components:
+- src/stores/globalStore.svelte.ts
+services:
+- src/stores/store.svelte.ts
+- src/stores/fluidStore.svelte.ts
+- src/stores/firestoreStore.svelte.ts
+tests:
+- client/e2e/new/gbs-global-store-proxy-7dd8407f.spec.ts
+- client/src/stores/globalStore.test.ts
+- client/src/tests/integration/globalStore.integration.spec.ts
+acceptance:
+- Setting project via the proxy updates the underlying store
+- The proxy exposes page data from the Fluid store
