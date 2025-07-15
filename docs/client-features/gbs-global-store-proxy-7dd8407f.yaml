@@ -11,7 +11,6 @@ services:
 - src/stores/fluidStore.svelte.ts
 - src/stores/firestoreStore.svelte.ts
 tests:
-- client/e2e/new/gbs-global-store-proxy-7dd8407f.spec.ts
 - client/src/stores/globalStore.test.ts
 - client/src/tests/integration/globalStore.integration.spec.ts
 acceptance:
