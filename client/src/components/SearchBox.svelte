@@ -8,6 +8,7 @@ let { project }: Props = $props();
 
 let query = $state('');
 let selected = $state(-1);
+let isFocused = $state(false);
 
 // リアクティブに結果を計算
 let results = $derived.by(() => {
@@ -79,8 +80,15 @@ function handlePageClick(page: Item) {
 </script>
 
 <div class="page-search-box">
-    <input type="text" placeholder="Search pages" bind:value={query} onkeydown={handleKeydown} />
-    {#if results.length}
+    <input
+        type="text"
+        placeholder="Search pages"
+        bind:value={query}
+        onkeydown={handleKeydown}
+        onfocus={() => (isFocused = true)}
+        onblur={() => (isFocused = false)}
+    />
+    {#if results.length && isFocused}
         <ul>
             {#each results as page, i}
                 <li class:selected={i === selected}>
