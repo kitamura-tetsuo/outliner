@@ -24,6 +24,12 @@ This document consolidates the key development policies for this repository. Fol
   cd client && npx tsc --noEmit --project tsconfig.json
   ```
 - Fix one test file at a time and run it immediately to confirm the fix.
+- When code or tests change, run only the related test file. Use the following
+  commands to run a specific test:
+  - Unit: `cd client && npm run test:unit -- path/to/test.spec.ts`
+  - Integration: `cd client && npm run test:integration -- path/to/test.spec.ts`
+  - E2E: `cd client && npm run test:e2e -- path/to/test.spec.ts` (or
+    `scripts/run-e2e-progress-for-codex.sh 1` in the Codex environment)
 - CI keeps tests green on the `main` branch. If tests fail in your branch, the
   cause lies in changes made after you diverged from `main`. Investigate those
   modifications to identify the problem.
