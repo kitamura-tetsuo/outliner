@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { firestoreStore } from "./firestoreStore.svelte";
-import { globalStore } from "./globalStore.svelte";
+import { store as globalStore } from "./globalStore.svelte";
 import { store } from "./store.svelte";
 
 describe("GlobalStoreProxy", () => {

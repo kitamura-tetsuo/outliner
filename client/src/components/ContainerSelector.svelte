@@ -25,9 +25,9 @@ let selectedContainerId = $state<string | null>(null);
 let isLoading = $state(false);
 let error = $state<string | null>(null);
 
-let containers = $derived(containerStore.containers);
+let containers = containerStore.containers;
 // 現在ロード中のコンテナIDを表示
-let currentContainerId = $derived(fluidStore.currentContainerId);
+let currentContainerId = fluidStore.currentContainerId;
 
 onMount(async () => {
     // 現在のコンテナIDがある場合はそれを選択済みに
