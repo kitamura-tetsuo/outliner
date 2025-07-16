@@ -859,15 +859,8 @@ export class Cursor {
         // 現在のアイテムを削除
         currentItem.delete();
 
-        // カーソルを更新
+        // 古いアイテムのカーソルをクリア
         store.clearCursorForItem(oldItemId);
-        store.setActiveItem(this.itemId);
-        store.setCursor({
-            itemId: this.itemId,
-            offset: this.offset,
-            isActive: true,
-            userId: this.userId,
-        });
     }
 
     /**

@@ -1,0 +1,12 @@
+id: ITM-ea76cd92
+title: Merge with previous item on Backspace at start
+description: Pressing Backspace at the beginning of an item joins it with the previous item and moves the cursor to the boundary.
+category: item-management
+status: implemented
+acceptance:
+- Backspaceキーをアイテムの先頭で押すと前のアイテムと結合する
+- カーソルは連結前のテキスト末尾に移動する
+- 連結されたテキストが正しく表示される
+tests:
+- client/e2e/core/itm-backspace-merge-previous-item-ea76cd92.spec.ts
+title-ja: Backspaceで前のアイテムと結合
