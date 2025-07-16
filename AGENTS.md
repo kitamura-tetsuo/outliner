@@ -28,8 +28,7 @@ This document consolidates the key development policies for this repository. Fol
   commands to run a specific test:
   - Unit: `cd client && npm run test:unit -- path/to/test.spec.ts`
   - Integration: `cd client && npm run test:integration -- path/to/test.spec.ts`
-  - E2E: `cd client && npm run test:e2e -- path/to/test.spec.ts` (or
-    `scripts/run-e2e-progress-for-codex.sh 1` in the Codex environment)
+  - E2E: `cd client && npm run test:e2e -- path/to/test.spec.ts`
 - CI keeps tests green on the `main` branch. If tests fail in your branch, the
   cause lies in changes made after you diverged from `main`. Investigate those
   modifications to identify the problem.
