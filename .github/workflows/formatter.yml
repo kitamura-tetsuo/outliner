@@ -12,7 +12,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          clean: true             # wipe workspace before fetch
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
