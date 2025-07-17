@@ -58,6 +58,7 @@ jobs:
             echo "   - GITHUB_TOKEN: $([ -n "${{ secrets.GITHUB_TOKEN }}" ] && echo "✅ Available" || echo "❌ Missing")"
             echo "   - GEMINI_API_KEY: $([ -n "${{ secrets.GEMINI_API_KEY }}" ] && echo "✅ Available" || echo "❌ Missing")"
             echo "   Failing workflow due to missing authentication..."
+            echo "   Runner: $(hostname)"
             exit 1
           fi
           
