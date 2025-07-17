@@ -49,10 +49,10 @@ test.describe("SLR-3724726f: 選択範囲の方向切り替え", () => {
             return store && Object.keys(store.selections).length > 0;
         });
 
-        const forwardSelectionDirection = await page.evaluate(() => {
+        const forwardSelectionDirection = await page.evaluate<boolean | null>(() => {
             const store = (window as any).editorOverlayStore;
-            const selection = Object.values(store.selections)[0];
-            return selection ? selection.isReversed : null;
+            const selection = Object.values<any>(store.selections)[0];
+            return selection ? (selection as any).isReversed : null;
         });
 
         // 正方向の選択範囲であることを確認
@@ -84,10 +84,10 @@ test.describe("SLR-3724726f: 選択範囲の方向切り替え", () => {
             return store && Object.keys(store.selections).length > 0;
         });
 
-        const reverseSelectionDirection = await page.evaluate(() => {
+        const reverseSelectionDirection = await page.evaluate<boolean | null>(() => {
             const store = (window as any).editorOverlayStore;
-            const selection = Object.values(store.selections)[0];
-            return selection ? selection.isReversed : null;
+            const selection = Object.values<any>(store.selections)[0];
+            return selection ? (selection as any).isReversed : null;
         });
 
         // 逆方向の選択範囲であることを確認

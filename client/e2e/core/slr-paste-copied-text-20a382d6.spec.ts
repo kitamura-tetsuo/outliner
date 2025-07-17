@@ -66,12 +66,12 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
         await page.keyboard.press("Control+c");
 
         // 手動でコピーイベントを発火させる
-        const selectedText = await page.evaluate(() => {
+        const selectedText = await page.evaluate<string>(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
-        await page.evaluate(text => {
+        await page.evaluate<void, string>(text => {
             const selectedText = text;
             console.log(`Selected text for copy: "${selectedText}"`);
 
@@ -118,7 +118,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
             // グローバル変数に設定（テスト用）
             (window as any).testClipboardText = selectedText;
             console.log("Stored test clipboard text:", selectedText);
-        });
+        }, selectedText);
 
         // 3つ目のアイテムをクリック
         const thirdItem = page.locator(".outliner-item").nth(2);
