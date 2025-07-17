@@ -1,0 +1,11 @@
+id: SBD-ebaa03c1
+title: Show search dropdown only on focus
+title-ja: フォーカス時のみ検索候補を表示
+description: The page title search dropdown menu appears only while the search box is focused.
+category: navigation
+status: implemented
+components:
+- client/src/components/SearchBox.svelte
+- client/src/components/Toolbar.svelte
+tests:
+- client/e2e/core/sbd-search-dropdown-focus-116cc703-d78d-4b4d-9e89-bdd868061898.spec.ts
