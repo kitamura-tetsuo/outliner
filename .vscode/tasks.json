@@ -118,6 +118,13 @@
             "group": "none"
         },
         {
+            "label": "Kill Production Firebase Emulators",
+            "type": "shell",
+            "command": "pkill -f \"firebase emulators.*outliner-d57b0\" || true",
+            "problemMatcher": [],
+            "group": "none"
+        },
+        {
             "label": "Start Firebase Functions Emulator",
             "type": "shell",
             "command": "cd ${workspaceFolder}/functions && firebase emulators:start --inspect-functions=9229 --only functions",
@@ -131,6 +138,35 @@
                     "beginsPattern": "Starting emulators",
                     "endsPattern": "All emulators ready"
                 }
+            }
+        },
+        {
+            "label": "Start Production Firebase Emulators",
+            "type": "shell",
+            "command": "AZURE_TENANT_ID=89b298bd-9aa3-4a6b-8ef0-2dc3019b0996 AZURE_ENDPOINT=https://us.fluidrelay.azure.com AZURE_PRIMARY_KEY=AOPktmYTWatr1dnpTYlzKtwJdnH2JvetxZtvHVAenjoeQQGig58SJQQJ99BDACRsaBGy71xuAAAAAZFRCYsB AZURE_SECONDARY_KEY=G1uCB4aPknENH7HVHBwkd5lnUjrov8ZfejV2ieeUeaK0gZMuh6plJQQJ99BDACRsaBGy71xuAAAAAZFR25QJ AZURE_ACTIVE_KEY=primary firebase emulators:start --project outliner-d57b0",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "custom",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "beginsPattern": "Starting emulators",
+                    "endsPattern": "All emulators ready"
+                }
+            },
+            "group": "none"
+        },
+        {
+            "label": "Restart Production Firebase Emulators",
+            "type": "shell",
+            "command": "${workspaceFolder}/scripts/check-firebase-emulator.sh",
+            "group": "none",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
             }
         }
     ],

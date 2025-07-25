@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";
@@ -48,8 +49,14 @@ export class KeyEventHandler {
             map.set({ key, ctrl, alt, shift }, handler);
         };
 
-        // Esc cancels box selection
+        // Esc cancels box selection or closes alias picker
         add("Escape", false, false, false, () => {
+            // エイリアスピッカーが表示されている場合は、エイリアスピッカーを閉じる
+            if (aliasPickerStore.isVisible) {
+                aliasPickerStore.hide();
+                return;
+            }
+
             if (KeyEventHandler.boxSelectionState.active) {
                 KeyEventHandler.cancelBoxSelection();
             }

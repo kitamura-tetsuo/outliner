@@ -1,13 +1,15 @@
 <script lang="ts">
 import * as fluidService from "../../../lib/fluidService.svelte";
-import { store } from "../../../stores/globalStore.svelte";
+import { containerStore } from "../../../stores/containerStore.svelte";
 
-let projects = store.containers;
+let projects = $derived(containerStore.containers);
 let selectedProjects = $state(new Set<string>());
 
 let loading = $state(false);
 let error: string | undefined = $state(undefined);
 let success: string | undefined = $state(undefined);
+
+
 
 async function deleteSelected() {
     const targets = projects.filter(p => selectedProjects.has(p.id));
@@ -52,6 +54,10 @@ async function deleteSelected() {
 
 <main class="p-4">
     <h1 class="text-2xl font-bold mb-4">Delete Projects</h1>
+
+
+
+
     {#if error}
         <div class="mb-2 text-red-600">{error}</div>
     {/if}

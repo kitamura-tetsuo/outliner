@@ -1,5 +1,7 @@
 require("@dotenvx/dotenvx").config();
 const admin = require("firebase-admin");
+const path = require("path");
+const fs = require("fs");
 const { serverLogger: logger } = require("./utils/logger");
 
 // Development auth helper
@@ -14,19 +16,35 @@ if (isDevelopment) {
     }
 }
 
-// Firebase service account from env
-const serviceAccount = {
-    type: "service_account",
-    project_id: process.env.FIREBASE_PROJECT_ID,
-    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-    private_key: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
-    client_email: process.env.FIREBASE_CLIENT_EMAIL,
-    client_id: process.env.FIREBASE_CLIENT_ID,
-    auth_uri: "https://accounts.google.com/o/oauth2/auth",
-    token_uri: "https://oauth2.googleapis.com/token",
-    auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-    client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
-};
+// Firebase service account configuration
+function getServiceAccount() {
+    // Firebase Admin SDKファイルが指定されている場合はそれを使用
+    if (process.env.FIREBASE_ADMIN_SDK_PATH) {
+        const sdkPath = path.resolve(__dirname, process.env.FIREBASE_ADMIN_SDK_PATH);
+        if (fs.existsSync(sdkPath)) {
+            logger.info(`Using Firebase Admin SDK file: ${sdkPath}`);
+            return require(sdkPath);
+        } else {
+            logger.warn(`Firebase Admin SDK file not found: ${sdkPath}`);
+        }
+    }
+
+    // 環境変数から設定を読み取る（従来の方式）
+    return {
+        type: "service_account",
+        project_id: process.env.FIREBASE_PROJECT_ID,
+        private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+        private_key: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        client_id: process.env.FIREBASE_CLIENT_ID,
+        auth_uri: "https://accounts.google.com/o/oauth2/auth",
+        token_uri: "https://oauth2.googleapis.com/token",
+        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+        client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
+    };
+}
+
+const serviceAccount = getServiceAccount();
 
 const isEmulatorEnvironment = process.env.USE_FIREBASE_EMULATOR === "true"
     || process.env.FIREBASE_AUTH_EMULATOR_HOST
@@ -87,43 +105,46 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
 }
 
 async function clearFirestoreEmulatorData() {
-    const db = admin.firestore();
     const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
     if (!isEmulator) {
         logger.warn("Firestore エミュレータが検出されなかったため、データ消去をスキップします");
         return false;
     }
-    try {
-        logger.info("Firestore エミュレータのデータを消去しています...");
-        const collections = await db.listCollections();
-        for (const collection of collections) {
-            const collectionName = collection.id;
-            logger.info(`コレクション '${collectionName}' のドキュメントを削除しています...`);
-            const batchSize = 500;
-            const query = db.collection(collectionName).limit(batchSize);
-            await deleteQueryBatch(query);
-            logger.info(`コレクション '${collectionName}' のドキュメントを削除しました`);
-        }
-        logger.info("Firestore エミュレータのデータを全て消去しました");
-        return true;
-    } catch (error) {
-        logger.error(`Firestore エミュレータのデータ消去中にエラーが発生しました: ${error.message}`);
+
+    // Test環境でのみデータ消去を実行
+    if (process.env.NODE_ENV !== "test" && process.env.NODE_ENV !== "development") {
+        logger.info("Production環境ではFirestoreエミュレータのデータ消去をスキップします");
         return false;
     }
-}
 
-async function deleteQueryBatch(query) {
-    const snapshot = await query.get();
-    if (snapshot.size === 0) {
-        return;
-    }
-    const batch = admin.firestore().batch();
-    snapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
-    });
-    await batch.commit();
-    if (snapshot.size > 0) {
-        await deleteQueryBatch(query);
+    try {
+        logger.info("Firestore エミュレータのデータを消去しています...");
+
+        // Firebase Admin REST APIを使用してデータを消去（より効率的）
+        const projectId = process.env.FIREBASE_PROJECT_ID || "test-project-id";
+        const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST || "localhost:58080";
+
+        // REST APIでデータベース全体をクリア
+        const clearUrl = `http://${emulatorHost}/emulator/v1/projects/${projectId}/databases/(default)/documents`;
+
+        const response = await fetch(clearUrl, {
+            method: "DELETE",
+            headers: {
+                "Authorization": "Bearer owner",
+            },
+        });
+
+        if (response.ok) {
+            logger.info("Firestore エミュレータのデータを全て消去しました");
+            return true;
+        } else {
+            logger.warn(`Firestore データ消去のレスポンス: ${response.status} ${response.statusText}`);
+            return false;
+        }
+    } catch (error) {
+        logger.error(`Firestore エミュレータのデータ消去中にエラーが発生しました: ${error.message}`);
+        // エラーが発生してもプロセスを継続
+        return false;
     }
 }
 
@@ -180,12 +201,15 @@ async function initializeFirebase() {
                 const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
                 if (isEmulator) {
                     try {
+                        // Firestoreデータ消去を実行（改善版）
                         const cleared = await clearFirestoreEmulatorData();
                         if (cleared) {
                             logger.info("開発環境の Firestore エミュレータデータを消去しました");
                         }
                     } catch (error) {
                         logger.error(`Firestore エミュレータデータの消去に失敗しました: ${error.message}`);
+                        // エラーが発生してもプロセスを継続
+                        logger.info("Firestore データ消去に失敗しましたが、処理を継続します");
                     }
                 }
             } catch (error) {

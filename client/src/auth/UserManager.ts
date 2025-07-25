@@ -115,9 +115,15 @@ export class UserManager {
             || process.env.NODE_ENV === "test"
             || import.meta.env.VITE_IS_TEST === "true";
 
-        const useEmulator = isTestEnv
+        // プロダクション環境では絶対にエミュレータを使用しない
+        const isProduction = process.env.NODE_ENV === "production"
+            || import.meta.env.MODE === "production";
+
+        const useEmulator = !isProduction && (
+            isTestEnv
             || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
-            || (typeof window !== "undefined" && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true");
+            || (typeof window !== "undefined" && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true")
+        );
 
         // サーバーサイドレンダリング環境かどうかを判定
         const isSSR = typeof window === "undefined";
@@ -310,7 +316,7 @@ export class UserManager {
     // Fluid Relayトークンを取得
     private async getFluidToken(idToken: string, containerId?: string): Promise<IFluidToken> {
         try {
-            logger.info(`[UserManager] Requesting Fluid token from: /api/fluidToken`);
+            logger.info(`[UserManager] Requesting Fluid token from: /api/fluid-token (via SvelteKit proxy)`);
 
             // リクエストボディの作成
             const requestBody: any = { idToken };
@@ -321,7 +327,7 @@ export class UserManager {
                 logger.info(`[UserManager] Requesting token for container: ${containerId}`);
             }
 
-            // フェッチオプションを明示的に設定
+            // フェッチオプションを明示的に設定（SvelteKitプロキシ経由）
             const response = await fetch(`/api/fluid-token`, {
                 method: "POST",
                 headers: {
@@ -465,6 +471,11 @@ export class UserManager {
         for (const listener of this.listeners) {
             listener(authResult);
         }
+    }
+
+    // 手動でリスナーに通知（デバッグ用）
+    public manualNotifyListeners(authResult: IAuthResult | null): void {
+        this.notifyListeners(authResult);
     }
 
     // Firebaseに認証済みかどうかを確認

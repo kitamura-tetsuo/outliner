@@ -3,6 +3,7 @@ import { onMount } from "svelte";
 import { createFluidClient } from "../lib/fluidService.svelte";
 import { getLogger } from "../lib/logger";
 import { containerStore } from "../stores/containerStore.svelte";
+import { firestoreStore } from "../stores/firestoreStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 const logger = getLogger();
 
@@ -15,12 +16,6 @@ interface Props {
 
 let { onContainerSelected = () => {} }: Props = $props();
 
-type Container = {
-    id: string;
-    name: string;
-    isDefault?: boolean;
-};
-
 let selectedContainerId = $state<string | null>(null);
 let isLoading = $state(false);
 let error = $state<string | null>(null);
@@ -29,11 +24,41 @@ let containers = containerStore.containers;
 // 現在ロード中のコンテナIDを表示
 let currentContainerId = fluidStore.currentContainerId;
 
+// デバッグ情報をログ出力
+$effect(() => {
+    logger.info("ContainerSelector - containers:", containers);
+    logger.info("ContainerSelector - containers length:", containers.length);
+    if (containers.length > 0) {
+        logger.info("ContainerSelector - first container:", containers[0]);
+    }
+    // firestoreStoreの状態も確認
+    logger.info("ContainerSelector - firestoreStore userContainer:", firestoreStore.userContainer);
+});
+
 onMount(async () => {
     // 現在のコンテナIDがある場合はそれを選択済みに
     if (currentContainerId) {
         selectedContainerId = currentContainerId;
     }
+
+    // 認証状態を確認
+    setTimeout(async () => {
+        const currentUser = (window as any).__USER_MANAGER__?.getCurrentUser();
+        const authUser = (window as any).__USER_MANAGER__?.auth?.currentUser;
+
+        logger.info("ContainerSelector - Current user:", currentUser);
+        logger.info("ContainerSelector - Auth user:", authUser);
+
+        if (!currentUser && !authUser) {
+            logger.info("ContainerSelector - No user found, attempting login...");
+            try {
+                await (window as any).__USER_MANAGER__?.loginWithEmailPassword('test@example.com', 'password');
+                logger.info("ContainerSelector - Login successful");
+            } catch (err) {
+                logger.error("ContainerSelector - Login failed:", err);
+            }
+        }
+    }, 1000);
 });
 
 // コンテナ選択時の処理
@@ -98,6 +123,53 @@ async function reloadCurrentContainer() {
         {#if isLoading}
             <span class="loading-indicator">読み込み中...</span>
         {/if}
+    </div>
+
+    <!-- デバッグ情報 -->
+    <div class="debug-info">
+        <p>Debug Info:</p>
+        <p>Containers length: {containers.length}</p>
+        <p>Containers data: {JSON.stringify(containers, null, 2)}</p>
+        <p>UserContainer: {JSON.stringify(firestoreStore.userContainer, null, 2)}</p>
+        <button onclick={() => {
+            console.log('Current user:', (window as any).__USER_MANAGER__?.getCurrentUser());
+            console.log('Auth state:', (window as any).__USER_MANAGER__?.auth?.currentUser);
+            console.log('Firestore userContainer:', (window as any).__FIRESTORE_STORE__?.userContainer);
+        }} class="debug-button">
+            Log Debug Info
+        </button>
+        <button onclick={async () => {
+            try {
+                await (window as any).__USER_MANAGER__?.loginWithEmailPassword('test@example.com', 'password');
+                console.log('Manual login successful');
+            } catch (err) {
+                console.error('Manual login failed:', err);
+            }
+        }} class="debug-button">
+            Manual Login
+        </button>
+        <button onclick={async () => {
+            try {
+                const response = await fetch('http://localhost:57000/createTestUserData', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: 'test-user-id',
+                        defaultContainerId: 'test-container-1',
+                        accessibleContainerIds: ['test-container-1', 'test-container-2']
+                    })
+                });
+                if (response.ok) {
+                    console.log('Test user data created successfully');
+                } else {
+                    console.error('Failed to create test user data:', await response.text());
+                }
+            } catch (err) {
+                console.error('Error creating test user data:', err);
+            }
+        }} class="debug-button">
+            Create Test Data
+        </button>
     </div>
 
     {#if error}
@@ -170,6 +242,31 @@ async function reloadCurrentContainer() {
 .loading-indicator {
     font-size: 14px;
     color: #666;
+}
+
+.debug-info {
+    background-color: #e8f4f8;
+    border: 1px solid #b3d9e6;
+    padding: 8px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    font-family: monospace;
+    border-radius: 4px;
+}
+
+.debug-button {
+    background-color: #007acc;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    margin: 2px;
+    border-radius: 3px;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.debug-button:hover {
+    background-color: #005a9e;
 }
 
 .error-message {

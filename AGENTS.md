@@ -84,13 +84,46 @@ Mocks are generally forbidden. Limited exceptions:
 
 **CRITICAL**: Always use Firebase Functions Emulator for testing, never mock Firebase Functions. The emulator provides the actual Firebase Functions environment and is essential for proper testing.
 
-- Firebase Functions Emulator runs on port 57000 (configured in firebase.json)
+**IMPORTANT**: Firebase Functions emulator DOES apply Firebase Hosting rewrite rules from firebase.json. Tests should use `/api/` endpoints (e.g., `/api/fluid-token`), not direct function URLs like `/outliner-d57b0/us-central1/functionName`. The emulator respects the hosting configuration and rewrites `/api/function-name` to the appropriate function.
+
+- Firebase Functions Emulator runs on port 57070 (configured in firebase.json)
 - Firebase Storage Emulator runs on port 59200 (configured in firebase.json)
 - Firebase Auth Emulator runs on port 59099 (configured in firebase.json)
 - Firebase Firestore Emulator runs on port 58080 (configured in firebase.json)
 - Use `scripts/codex-setup.sh` to start all Firebase emulators
 - All attachment upload/download functionality requires Firebase Functions Emulator to be running
 - Tests will fail with "API error 404" if Firebase Functions Emulator is not running
+
+### Production Environment Testing
+
+**Production Cloud Backend Testing**: For testing Firebase Auth token validation with production Firebase Auth services:
+
+1. **Start Production Cloud Backend Servers**:
+   ```bash
+   firebase emulators:start --only hosting,functions --project outliner-d57b0
+   ```
+   - Firebase Functions with Hosting emulator on port 57070
+   - Uses production Firebase Auth and Firestore services
+   - Azure Fluid Relay configuration loaded from environment variables
+
+2. **Start Production SvelteKit Server** (for API proxy testing):
+   ```bash
+   NODE_ENV=production npx dotenvx run --env-file=.env.production -- npm run dev -- --host 0.0.0.0 --port 7073 --mode production
+   ```
+
+3. **Run Production Tests**:
+   ```bash
+   cd client && npm run test:production
+   ```
+
+4. **Test Coverage**: Production tests validate:
+   - Firebase ID token validation against production Firebase Auth
+   - Azure Fluid Relay token generation
+   - Container-specific token requests
+   - SvelteKit API proxy functionality
+   - Error handling for invalid tokens
+
+**Important**: Production tests use real Firebase Auth services and require proper environment configuration. Test users are automatically created and deleted during test execution.
 
 ## 3. Code Style
 
@@ -126,10 +159,12 @@ Mocks are generally forbidden. Limited exceptions:
 ## 6. Project & Firebase Configuration
 
 - Projects use `title` (not `name`) and the project ID equals its Fluid container ID.
-- Firebase Functions are accessed through Hosting at `http://localhost:57000/api`.
+- **Firebase Functions Access**: Firebase Functions are accessed through Firebase Hosting at `http://localhost:57070/api` in development environments. This ensures proper routing and CORS handling.
+- **Production Cloud Backend**: For Production Cloud Backend configuration, Firebase Functions must be accessed through Firebase Hosting emulator (port 57070) rather than direct Functions emulator access.
 - In both deployed and test environments, call Firebase Functions through the host's `/api/` route.
 - Use `.env` files for Functions v2 environment variables and never hardcode credentials.
 - Do not bypass authentication; tests should authenticate against the Firebase Auth emulator.
+- **Firebase Emulator Setup**: Always start Firebase Functions with Hosting emulator using `firebase emulators:start --only hosting,functions --project outliner-d57b0` to ensure proper API routing. The hosting emulator applies rewrite rules from firebase.json, allowing `/api/` endpoints to work correctly.
 
 ## 7. Preferred Code Patterns
 

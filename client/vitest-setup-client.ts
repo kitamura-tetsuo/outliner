@@ -2,6 +2,14 @@ import "@testing-library/jest-dom/vitest";
 import "fake-indexeddb/auto";
 import { vi } from "vitest";
 
+// Define self for Firebase compatibility
+Object.defineProperty(globalThis, "self", {
+    value: globalThis,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+});
+
 // required for svelte5 + jsdom as jsdom does not support matchMedia
 Object.defineProperty(window, "matchMedia", {
     writable: true,

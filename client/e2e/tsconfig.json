@@ -22,7 +22,8 @@
     "include": [
         "../src/vite-env.d.ts",
         "**/*.ts",
-        "**/*.js"
+        "**/*.js",
+        "../../scripts/tests/tst-feature-map-removal-f9984020.spec.ts"
     ],
     "exclude": [
         "node_modules"

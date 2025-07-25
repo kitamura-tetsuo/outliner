@@ -20,6 +20,7 @@ import {
 } from "../stores/firestoreStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";
+import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
 import { createFluidConfigProvider, getTelemetryFilterLogger } from "./fluidTelemetryFilter";
 import { AsyncLockManager } from "./lock";
 import { getLogger, log } from "./logger";
@@ -487,7 +488,7 @@ export async function getUserContainers(): Promise<{ containers: string[]; defau
         log("fluidService", "info", `Getting user containers from Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナリストを取得
-        const response = await fetch(`${apiBaseUrl}/api/get-user-containers`, {
+        const response = await fetch(getFirebaseFunctionUrl("getUserContainers"), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -539,7 +540,7 @@ export async function deleteContainer(containerId: string): Promise<boolean> {
         log("fluidService", "info", `Deleting container ${containerId} via Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナを削除
-        const response = await fetch(`${apiBaseUrl}/api/delete-container`, {
+        const response = await fetch(getFirebaseFunctionUrl("deleteContainer"), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

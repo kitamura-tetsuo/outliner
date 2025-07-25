@@ -19,6 +19,7 @@
   },
   "main": "index.js",
   "dependencies": {
+    "@dotenvx/dotenvx": "^1.48.3",
     "@fluidframework/azure-client": "^2.50.0",
     "@fluidframework/azure-service-utils": "^2.50.0",
     "cors": "^2.8.5",
@@ -26,8 +27,7 @@
     "firebase": "^11.10.0",
     "firebase-admin": "^13.4.0",
     "firebase-functions": "^6.0.1",
-    "jsonwebtoken": "^9.0.0",
-    "@dotenvx/dotenvx": "^1.47.5"
+    "jsonwebtoken": "^9.0.0"
   },
   "devDependencies": {
     "axios": "^1.10.0",

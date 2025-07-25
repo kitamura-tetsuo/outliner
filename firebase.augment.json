@@ -67,7 +67,7 @@
             "host": "localhost"
         },
         "functions": {
-            "port": 57000,
+            "port": 57070,
             "host": "localhost"
         },
         "hosting": {

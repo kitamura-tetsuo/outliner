@@ -13,11 +13,17 @@ export class ContainerStore {
         if (!data || !data.accessibleContainerIds) {
             return [];
         }
-        return data.accessibleContainerIds.map(id => ({
-            id,
-            name: getProjectTitle(id),
-            isDefault: data.defaultContainerId === id,
-        }));
+        return data.accessibleContainerIds
+            .map(id => ({
+                id,
+                name: getProjectTitle(id),
+                isDefault: data.defaultContainerId === id,
+            }))
+            .filter(container =>
+                container.name
+                && container.name.trim() !== ""
+                && container.name !== "プロジェクト"
+            );
     });
 }
 

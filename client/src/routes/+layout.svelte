@@ -12,7 +12,8 @@ import "$lib";
 import { userManager } from "../auth/UserManager";
 import { setupGlobalDebugFunctions } from "../lib/debug";
 import * as fluidService from "../lib/fluidService.svelte";
-import "../utils/ScrapboxFormatter"; // グローバルに公開するためにインポート
+import "../utils/ScrapboxFormatter";
+// グローバルに公開するためにインポート
 import MobileActionToolbar from "../components/MobileActionToolbar.svelte";
 import {
     cleanupFluidClient,
@@ -151,7 +152,8 @@ onMount(() => {
         if (import.meta.env.DEV) {
             logger.info("アプリケーションがマウントされました");
         }
-        if ("serviceWorker" in navigator) {
+        // Service Workerの登録（プロダクション環境では無効化）
+        if (import.meta.env.MODE !== "production" && "serviceWorker" in navigator) {
             // SvelteKitのService Workerを登録
             navigator.serviceWorker.register("/service-worker.js", {
                 scope: "/",

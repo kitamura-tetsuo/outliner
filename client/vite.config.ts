@@ -71,6 +71,7 @@ export default defineConfig(async ({ mode }) => {
                         exclude: [
                             "src/lib/server/**",
                             "src/tests/integration/**",
+                            "src/tests/production/**",
                             "e2e/**",
                         ],
                         setupFiles: ["./vitest-setup-client.ts"],
@@ -93,6 +94,27 @@ export default defineConfig(async ({ mode }) => {
                         exclude: ["src/lib/server/**"],
                         envFile: ".env.test",
                         testTimeout: 30000, // Integration testは時間がかかる可能性があるため
+                    },
+                    server: {
+                        fs: {
+                            allow: [".."],
+                        },
+                    },
+                },
+                {
+                    extends: "./vite.config.ts",
+
+                    test: {
+                        name: "production",
+                        environment: "jsdom",
+                        clearMocks: true,
+                        include: ["src/tests/production/**/*{.svelte,}.{test,spec}.{js,ts}"],
+                        exclude: ["src/lib/server/**"],
+                        envFile: ".env.production",
+                        setupFiles: ["src/tests/production/setup.ts"],
+                        testTimeout: 30000, // Production testは時間がかかる可能性があるため
+                        hookTimeout: 30000,
+                        globals: true,
                     },
                     server: {
                         fs: {

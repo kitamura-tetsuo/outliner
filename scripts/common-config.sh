@@ -10,13 +10,19 @@
 # Firebase emulator ports
 : "${FIREBASE_AUTH_PORT:=59099}"
 : "${FIREBASE_FIRESTORE_PORT:=58080}"
-: "${FIREBASE_FUNCTIONS_PORT:=57000}"
+: "${FIREBASE_FUNCTIONS_PORT:=57070}"
 
 # Environment settings
 export NODE_ENV=test
 export TEST_ENV=localhost
 export FIREBASE_PROJECT_ID
 export VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+
+# Firebase emulator settings for test environment
+export USE_FIREBASE_EMULATOR=true
+export FIREBASE_AUTH_EMULATOR_HOST=localhost:${FIREBASE_AUTH_PORT}
+export FIRESTORE_EMULATOR_HOST=localhost:${FIREBASE_FIRESTORE_PORT}
+export FIREBASE_EMULATOR_HOST=localhost:${FIREBASE_FUNCTIONS_PORT}
 
 # Skip Paraglide compile in tests
 : "${SKIP_PARAGLIDE_COMPILE:=}"

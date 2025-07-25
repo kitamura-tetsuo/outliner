@@ -131,6 +131,8 @@ else
     echo "Some services may not be fully ready, but the environment is usable"
   fi
 fi
+sleep 10
+
 echo "Available services:"
 echo "- SvelteKit Server: http://localhost:${VITE_PORT}"
 echo "- API Server: http://localhost:${TEST_API_PORT}"
