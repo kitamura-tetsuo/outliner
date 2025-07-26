@@ -63,5 +63,6 @@ declare global {
         generalStore?: any;
         editorOverlayStore?: any;
         ScrapboxFormatter?: any;
+        __FIRESTORE_STORE__?: any;
     }
 }
