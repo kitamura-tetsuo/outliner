@@ -20,46 +20,85 @@ let selectedContainerId = $state<string | null>(null);
 let isLoading = $state(false);
 let error = $state<string | null>(null);
 
-let containers = containerStore.containers;
+// firestoreStoreから直接userContainerを取得
+let userContainer = firestoreStore.userContainer;
+
+// userContainerのaccessibleContainerIdsでフィルタリングされたコンテナリスト
+let containers = $derived.by(() => {
+    if (!userContainer?.accessibleContainerIds) {
+        return containerStore.containers;
+    }
+    return containerStore.containers.filter(container =>
+        userContainer.accessibleContainerIds!.includes(container.id)
+    );
+});
+
 // 現在ロード中のコンテナIDを表示
 let currentContainerId = fluidStore.currentContainerId;
 
-// デバッグ情報をログ出力
-$effect(() => {
-    logger.info("ContainerSelector - containers:", containers);
-    logger.info("ContainerSelector - containers length:", containers.length);
-    if (containers.length > 0) {
-        logger.info("ContainerSelector - first container:", containers[0]);
-    }
-    // firestoreStoreの状態も確認
-    logger.info("ContainerSelector - firestoreStore userContainer:", firestoreStore.userContainer);
-});
 
-onMount(async () => {
+
+onMount(() => {
     // 現在のコンテナIDがある場合はそれを選択済みに
     if (currentContainerId) {
         selectedContainerId = currentContainerId;
     }
 
-    // 認証状態を確認
-    setTimeout(async () => {
-        const currentUser = (window as any).__USER_MANAGER__?.getCurrentUser();
-        const authUser = (window as any).__USER_MANAGER__?.auth?.currentUser;
 
-        logger.info("ContainerSelector - Current user:", currentUser);
-        logger.info("ContainerSelector - Auth user:", authUser);
 
-        if (!currentUser && !authUser) {
-            logger.info("ContainerSelector - No user found, attempting login...");
-            try {
-                await (window as any).__USER_MANAGER__?.loginWithEmailPassword('test@example.com', 'password');
-                logger.info("ContainerSelector - Login successful");
-            } catch (err) {
-                logger.error("ContainerSelector - Login failed:", err);
+    // 認証状態を確認し、必要に応じてログインを試行（非同期で実行）
+    ensureUserLoggedIn();
+
+    // 認証状態の変化を監視
+    const userManagerInstance = (window as any).__USER_MANAGER__;
+    if (userManagerInstance) {
+        const unsubscribe = userManagerInstance.addEventListener((authResult: any) => {
+            if (authResult) {
+                logger.info("ContainerSelector - User authenticated, containers should be available");
+            } else {
+                logger.info("ContainerSelector - User signed out");
             }
-        }
-    }, 1000);
+        });
+
+        // クリーンアップ関数を返す
+        return () => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+    }
 });
+
+// ユーザーのログイン状態を確認し、必要に応じてログインを試行する関数
+async function ensureUserLoggedIn() {
+    // UserManagerのインスタンスを取得
+    const userManagerInstance = (window as any).__USER_MANAGER__;
+    if (!userManagerInstance) {
+        logger.warn("ContainerSelector - UserManager not available");
+        return;
+    }
+
+    const currentUser = userManagerInstance.getCurrentUser();
+    const authUser = userManagerInstance.auth?.currentUser;
+
+    logger.info("ContainerSelector - Current user:", currentUser);
+    logger.info("ContainerSelector - Auth user:", authUser);
+
+    if (!currentUser && !authUser) {
+        logger.info("ContainerSelector - No user found, attempting login...");
+        try {
+            await userManagerInstance.loginWithEmailPassword('test@example.com', 'password');
+            logger.info("ContainerSelector - Login successful");
+
+            // ログイン成功後、少し待ってからFirestoreの同期を確認
+            setTimeout(() => {
+                logger.info("ContainerSelector - Checking containers after login:", containers.length);
+            }, 1000);
+        } catch (err) {
+            logger.error("ContainerSelector - Login failed:", err);
+        }
+    }
+}
 
 // コンテナ選択時の処理
 async function handleContainerChange() {
@@ -125,52 +164,7 @@ async function reloadCurrentContainer() {
         {/if}
     </div>
 
-    <!-- デバッグ情報 -->
-    <div class="debug-info">
-        <p>Debug Info:</p>
-        <p>Containers length: {containers.length}</p>
-        <p>Containers data: {JSON.stringify(containers, null, 2)}</p>
-        <p>UserContainer: {JSON.stringify(firestoreStore.userContainer, null, 2)}</p>
-        <button onclick={() => {
-            console.log('Current user:', (window as any).__USER_MANAGER__?.getCurrentUser());
-            console.log('Auth state:', (window as any).__USER_MANAGER__?.auth?.currentUser);
-            console.log('Firestore userContainer:', (window as any).__FIRESTORE_STORE__?.userContainer);
-        }} class="debug-button">
-            Log Debug Info
-        </button>
-        <button onclick={async () => {
-            try {
-                await (window as any).__USER_MANAGER__?.loginWithEmailPassword('test@example.com', 'password');
-                console.log('Manual login successful');
-            } catch (err) {
-                console.error('Manual login failed:', err);
-            }
-        }} class="debug-button">
-            Manual Login
-        </button>
-        <button onclick={async () => {
-            try {
-                const response = await fetch('http://localhost:57000/createTestUserData', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: 'test-user-id',
-                        defaultContainerId: 'test-container-1',
-                        accessibleContainerIds: ['test-container-1', 'test-container-2']
-                    })
-                });
-                if (response.ok) {
-                    console.log('Test user data created successfully');
-                } else {
-                    console.error('Failed to create test user data:', await response.text());
-                }
-            } catch (err) {
-                console.error('Error creating test user data:', err);
-            }
-        }} class="debug-button">
-            Create Test Data
-        </button>
-    </div>
+
 
     {#if error}
         <div class="error-message">
@@ -244,30 +238,7 @@ async function reloadCurrentContainer() {
     color: #666;
 }
 
-.debug-info {
-    background-color: #e8f4f8;
-    border: 1px solid #b3d9e6;
-    padding: 8px;
-    margin-bottom: 12px;
-    font-size: 12px;
-    font-family: monospace;
-    border-radius: 4px;
-}
 
-.debug-button {
-    background-color: #007acc;
-    color: white;
-    border: none;
-    padding: 4px 8px;
-    margin: 2px;
-    border-radius: 3px;
-    font-size: 10px;
-    cursor: pointer;
-}
-
-.debug-button:hover {
-    background-color: #005a9e;
-}
 
 .error-message {
     background-color: #fff0f0;

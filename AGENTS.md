@@ -50,6 +50,9 @@ Mocks are generally forbidden. Limited exceptions:
 - **No mocking logic in production code**. If unit tests require mocks, place all
   mock-related code inside the test files and keep it out of the application
   code.
+- **No test data creation routines in production code**. Test data initialization,
+  debug buttons, and test-specific functionality must be isolated to test
+  environments only. Production code should not contain any test-related logic.
 
 ### Test Implementation Guidelines
 
