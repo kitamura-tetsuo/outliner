@@ -369,7 +369,7 @@ if (typeof window !== "undefined") {
         if (authResult) {
             cleanup = initFirestoreSync();
         } else {
-            // 未認証の場合はコンテナを空にする
+            // 未認証の場合はuserContainerを空にする
             firestoreStore.userContainer = null;
         }
     });
@@ -381,42 +381,4 @@ if (typeof window !== "undefined") {
         }
         unsubscribeAuth();
     });
-}
-
-// テストデータを作成する関数（デバッグ用）
-export async function createTestUserData(userId: string): Promise<boolean> {
-    try {
-        if (!db) {
-            logger.error("Firestore db is not initialized");
-            return false;
-        }
-
-        const testData = {
-            userId: userId,
-            defaultContainerId: "test-container-1",
-            accessibleContainerIds: ["test-container-1", "test-container-2"],
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        };
-
-        // Firestoreに直接書き込み
-        const userContainerRef = doc(db, "userContainers", userId);
-
-        // setDocをdynamic importで使用
-        const { setDoc } = await import("firebase/firestore");
-        await setDoc(userContainerRef, testData);
-
-        logger.info(`Test user data created for user: ${userId}`, testData);
-        return true;
-    } catch (error) {
-        logger.error("Error creating test user data:", error);
-        return false;
-    }
-}
-
-if (process.env.NODE_ENV === "test") {
-    if (typeof window !== "undefined") {
-        (window as any).__FIRESTORE_STORE__ = firestoreStore;
-        (window as any).__CREATE_TEST_USER_DATA__ = createTestUserData;
-    }
 }

@@ -5,6 +5,20 @@ import { loadContainer } from "../lib/fluidService.svelte";
 import { getLogger } from "../lib/logger";
 import { fluidStore } from "../stores/fluidStore.svelte";
 
+// Import test helper in test environments only
+if (typeof window !== "undefined" && (
+    import.meta.env.MODE === "test" ||
+    import.meta.env.VITE_IS_TEST === "true" ||
+    process.env.NODE_ENV === "test"
+)) {
+    // Dynamic import to ensure test helper is available
+    import("../tests/utils/testDataHelper").then(() => {
+        console.log("Test data helper loaded");
+    }).catch(err => {
+        console.error("Failed to load test data helper:", err);
+    });
+}
+
 const logger = getLogger("HomePage");
 
 // コンテナ選択時の処理
