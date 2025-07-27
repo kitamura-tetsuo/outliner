@@ -110,6 +110,23 @@ install_global_packages() {
 
 # Install OS utilities if needed
 install_os_utilities() {
+  # Check if Java is installed and compatible with Firebase
+  if ! command -v java >/dev/null 2>&1; then
+    echo "Java not found. Installing OpenJDK 17 for Firebase compatibility..."
+    sudo apt-get update
+    DEBIAN_FRONTEND=noninteractive sudo apt-get -y install --no-install-recommends openjdk-17-jre-headless
+  else
+    # Check Java version (Firebase requires Java 11+)
+    java_version=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
+    if [ "$java_version" -lt 11 ] 2>/dev/null; then
+      echo "Java version $java_version is too old for Firebase. Installing OpenJDK 17..."
+      sudo apt-get update
+      DEBIAN_FRONTEND=noninteractive sudo apt-get -y install --no-install-recommends openjdk-17-jre-headless
+    else
+      echo "Java version $java_version is compatible with Firebase"
+    fi
+  fi
+
   # For Playwright's --with-deps chromium
   local playwright_deps=(
     libatk1.0-0
