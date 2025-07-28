@@ -11,7 +11,7 @@
         "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000"
     },
     "dependencies": {
-        "@dotenvx/dotenvx": "^1.48.1",
+        "@dotenvx/dotenvx": "^1.48.3",
         "@fluidframework/azure-client": "^2.50.0",
         "@fluidframework/azure-service-utils": "^2.50.0",
         "cors": "^2.8.5",
