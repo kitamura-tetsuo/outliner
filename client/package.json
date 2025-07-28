@@ -92,7 +92,7 @@
         "@fluidframework/azure-client": "^2.50.0",
         "@fluidframework/fluid-static": "^2.43.0",
         "@fluidframework/sequence": "^2.30.0",
-        "@fluidframework/tree": "^2.30.0",
+        "@fluidframework/tree": "^2.51.0",
         "diff-match-patch": "^1.0.5",
         "echarts": "^5.6.0",
         "firebase": "^11.10.0",
