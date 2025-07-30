@@ -53,7 +53,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   echo "Installing OS utilities..."
   install_os_utilities
   echo "Installing Python packages..."
-  sudo apt install pre-commit python3-venv -y
+  sudo apt install python3-venv python3-pip -y
 
   # Create Python virtual environment if it doesn't exist
   if [ ! -d "${ROOT_DIR}/.venv" ]; then
@@ -65,6 +65,8 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   echo "Activating Python virtual environment..."
   source "${ROOT_DIR}/.venv/bin/activate"
 
+  # Install pre-commit via pip
+  pip install --no-cache-dir pre-commit
   pre-commit install --hook-type pre-commit
 
   if [ -f "${ROOT_DIR}/scripts/requirements.txt" ]; then
