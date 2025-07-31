@@ -1,6 +1,21 @@
 // Firebase Functionsでは主にFirebase Secretsを使用
-// 環境変数を読み込み
-require("dotenv").config();
+// 環境変数を読み込み（CI環境では.envファイルを使用しない）
+if (process.env.NODE_ENV !== "test" && process.env.CI !== "true") {
+  require("dotenv").config();
+}
+
+// CI環境用の追加設定（他の設定より前に実行）
+if (process.env.CI === "true") {
+  process.env.AZURE_PRIMARY_KEY = "test-primary-key";
+  process.env.AZURE_SECONDARY_KEY = "test-secondary-key";
+  process.env.AZURE_ACTIVE_KEY = "primary";
+  process.env.GCLOUD_PROJECT = "test-project-id";
+  process.env.NODE_ENV = "test";
+  process.env.FUNCTIONS_EMULATOR = "true";
+  process.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:59099";
+  process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
+  process.env.FIREBASE_STORAGE_EMULATOR_HOST = "localhost:59200";
+}
 
 // 環境変数を設定
 process.env.AZURE_TENANT_ID = "89b298bd-9aa3-4a6b-8ef0-2dc3019b0996";
@@ -222,8 +237,8 @@ function generateAzureFluidToken(user, containerId = undefined) {
   logger.info(
     `Azure Key selection: activeKey=${azureConfig.activeKey}, ` +
       `using ${
-        azureConfig.activeKey === "secondary" && azureConfig.secondaryKey
-          ? "secondary" : "primary"
+        azureConfig.activeKey === "secondary" && azureConfig.secondaryKey ?
+          "secondary" : "primary"
       } key`,
   );
 
@@ -1072,7 +1087,7 @@ exports.azureHealthCheck = onRequest({
         azureConfig.secondaryKey : azureConfig.primaryKey;
 
     // テスト用のトークン生成
-    let tokenTest = {
+    const tokenTest = {
       status: "failed",
       error: null,
       tokenGenerated: false,
@@ -1117,7 +1132,7 @@ exports.azureHealthCheck = onRequest({
     }
 
     // Azure Fluid Relayサービスへの接続テスト
-    let connectionTest = {
+    const connectionTest = {
       status: "skipped",
       note:
         "Connection test requires actual container creation which is not performed in health check",
