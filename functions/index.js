@@ -1,11 +1,11 @@
 // Firebase Functionsでは主にFirebase Secretsを使用
-// 環境変数を読み込み（CI環境では.envファイルを使用しない）
-if (process.env.NODE_ENV !== "test" && process.env.CI !== "true") {
-  require("dotenv").config();
-}
+// テスト環境では環境変数を直接設定するため、dotenvは使用しない
 
-// CI環境用の追加設定（他の設定より前に実行）
-if (process.env.CI === "true") {
+// テスト環境またはCI環境用の追加設定（他の設定より前に実行）
+if (
+  process.env.CI === "true" || process.env.NODE_ENV === "test" ||
+  process.env.FUNCTIONS_EMULATOR === "true"
+) {
   process.env.AZURE_PRIMARY_KEY = "test-primary-key";
   process.env.AZURE_SECONDARY_KEY = "test-secondary-key";
   process.env.AZURE_ACTIVE_KEY = "primary";
@@ -15,6 +15,9 @@ if (process.env.CI === "true") {
   process.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:59099";
   process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
   process.env.FIREBASE_STORAGE_EMULATOR_HOST = "localhost:59200";
+  process.env.AZURE_TENANT_ID = "test-tenant-id";
+  process.env.AZURE_ENDPOINT = "https://test-endpoint.fluidrelay.azure.com";
+  process.env.FIREBASE_PROJECT_ID = "test-project-id";
 }
 
 // 環境変数を設定
