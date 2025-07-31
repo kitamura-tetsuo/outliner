@@ -229,9 +229,52 @@ start_firebase_emulator() {
 
   echo "Starting Firebase emulator..."
   cd "${ROOT_DIR}"
+
+  # Create empty .env file for Firebase Functions if it doesn't exist
+  if [ ! -f "${ROOT_DIR}/functions/.env" ]; then
+    echo "Creating empty .env file for Firebase Functions..."
+    touch "${ROOT_DIR}/functions/.env"
+  fi
+
+  # Start Firebase emulator with detailed logging
+  echo "Firebase emulator starting with project: ${FIREBASE_PROJECT_ID}"
   firebase emulators:start --config firebase.emulator.json --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
+  FIREBASE_PID=$!
+  echo "Firebase emulator started with PID: ${FIREBASE_PID}"
+
   cd "${ROOT_DIR}"
   node "${ROOT_DIR}/server/scripts/init-firebase-emulator.js" &
+
+  # Wait for Firebase emulator to start and verify it's working
+  echo "Waiting for Firebase emulator to start..."
+  for i in {1..30}; do
+    if nc -z localhost ${FIREBASE_AUTH_PORT} >/dev/null 2>&1; then
+      echo "Firebase Auth emulator is running on port ${FIREBASE_AUTH_PORT}"
+      break
+    fi
+    echo "Waiting for Firebase Auth emulator... (attempt $i/30)"
+    sleep 2
+  done
+
+  # Check if Firebase Functions emulator is running
+  for i in {1..30}; do
+    if nc -z localhost ${FIREBASE_FUNCTIONS_PORT} >/dev/null 2>&1; then
+      echo "Firebase Functions emulator is running on port ${FIREBASE_FUNCTIONS_PORT}"
+      break
+    fi
+    echo "Waiting for Firebase Functions emulator... (attempt $i/30)"
+    sleep 2
+  done
+
+  # Test Firebase Functions endpoint
+  echo "Testing Firebase Functions endpoint..."
+  if curl -s -f "http://localhost:${FIREBASE_FUNCTIONS_PORT}/${FIREBASE_PROJECT_ID}/us-central1/health" >/dev/null 2>&1; then
+    echo "Firebase Functions health endpoint is responding"
+  else
+    echo "WARNING: Firebase Functions health endpoint is not responding"
+    echo "Checking Firebase emulator log..."
+    tail -20 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
+  fi
 }
 
 # Start Tinylicious server
