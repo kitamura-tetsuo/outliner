@@ -64,8 +64,12 @@ jobs:
       - name: Set Firebase project
         run: firebase use outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
 
-      - name: Update Firebase secrets
+      - name: Clean up old Firebase Functions config and update secrets
         run: |
+          # 既存のFirebase Functions環境変数を削除（シークレットとの競合を避けるため）
+          echo "Cleaning up old Firebase Functions config..."
+          firebase functions:config:unset azure --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No azure config to remove"
+
           # Firebase シークレットを GitHub Actions のシークレットから更新
           echo "Updating Firebase secrets..."
 
@@ -84,4 +88,4 @@ jobs:
           npm run lint -- --fix
 
       - name: Deploy to Firebase
-        run: firebase deploy --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive
+        run: firebase deploy --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive --force
