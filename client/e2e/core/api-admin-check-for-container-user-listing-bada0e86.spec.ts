@@ -47,9 +47,12 @@ test.describe("管理者チェック (API-0003)", () => {
                 console.log(`Functions health check error: ${error.message}`);
             }
 
-            response = await page.request.post("http://localhost:57070/outliner-d57b0/us-central1/adminCheckForContainerUserListing", {
-                data: { idToken: "invalid-token", containerId: "test-container" },
-            });
+            response = await page.request.post(
+                "http://localhost:57070/outliner-d57b0/us-central1/adminCheckForContainerUserListing",
+                {
+                    data: { idToken: "invalid-token", containerId: "test-container" },
+                },
+            );
             console.log(`Functions response status: ${response.status()}`);
             console.log(`Functions response headers:`, response.headers());
         }
