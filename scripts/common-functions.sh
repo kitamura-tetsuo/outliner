@@ -230,17 +230,15 @@ start_firebase_emulator() {
   echo "Starting Firebase emulator..."
   cd "${ROOT_DIR}"
 
-  # Create .env file for Firebase Functions if it doesn't exist
-  if [ ! -f "${ROOT_DIR}/functions/.env" ]; then
-    echo "Creating .env file for Firebase Functions..."
-    cat > "${ROOT_DIR}/functions/.env" << EOF
+  # Create .env file for Firebase Functions (without reserved environment variables)
+  echo "Creating .env file for Firebase Functions..."
+  cat > "${ROOT_DIR}/functions/.env" << EOF
 AZURE_TENANT_ID=test-tenant-id
 AZURE_ENDPOINT=https://test.fluidrelay.azure.com
 AZURE_PRIMARY_KEY=test-primary-key
 AZURE_SECONDARY_KEY=test-secondary-key
 AZURE_ACTIVE_KEY=primary
 EOF
-  fi
 
   echo "Firebase Functions .env file contents:"
   cat "${ROOT_DIR}/functions/.env" || echo "Failed to read .env file"
