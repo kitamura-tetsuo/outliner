@@ -101,67 +101,68 @@ function getAzureConfig() {
 
 // Firebase Admin SDKの初期化
 if (!admin.apps.length) {
-  let config;
+  // プロジェクトIDを明示的に設定（エミュレーター環境では必須）
+  const projectId = process.env.GCLOUD_PROJECT || "outliner-d57b0";
 
-  // Test環境ではエミュレータを使用、Production環境では本番Firebase Authを使用
-  if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
-    // Test環境：エミュレータを使用
-    config = {
-      projectId: process.env.GCLOUD_PROJECT || "outliner-d57b0",
+  const config = {
+    projectId: projectId,
+  };
+
+  // エミュレーター環境の詳細チェック
+  const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+    process.env.FIRESTORE_EMULATOR_HOST ||
+    process.env.FUNCTIONS_EMULATOR);
+
+  if (isEmulatorEnv) {
+    logger.info("🔧 Firebase Admin SDK: Emulator environment detected");
+    logger.info(`📋 Project ID: ${projectId}`);
+
+    // 環境変数の詳細チェック
+    const envVars = {
+      FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST,
+      FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST,
+      FIREBASE_STORAGE_EMULATOR_HOST:
+        process.env.FIREBASE_STORAGE_EMULATOR_HOST,
+      FUNCTIONS_EMULATOR: process.env.FUNCTIONS_EMULATOR,
+      GCLOUD_PROJECT: process.env.GCLOUD_PROJECT,
     };
-    logger.info("Using Firebase emulators for Auth and Firestore");
-    logger.info(
-      `Firebase Auth Emulator Host: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`,
-    );
-    logger.info(
-      `Firestore Emulator Host: ${process.env.FIRESTORE_EMULATOR_HOST}`,
-    );
+
+    Object.entries(envVars).forEach(([key, value]) => {
+      if (value) {
+        logger.info(`✅ ${key}: ${value}`);
+      } else {
+        logger.info(`❌ ${key}: not set`);
+      }
+    });
   } else {
-    // Production環境：本番Firebase Authを使用
-    config = {
-      projectId: "outliner-d57b0",
-    };
-    logger.info("Using production Firebase Auth and Firestore services");
+    logger.info("🚀 Firebase Admin SDK: Production environment");
+    logger.info(`📋 Project ID: ${projectId}`);
   }
 
   admin.initializeApp(config);
 
-  // エミュレーター環境では、Admin SDKにエミュレーターの設定を明示的に適用
-  if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
-    // Firebase Auth エミュレーターの設定を確認
-    logger.info("Configuring Firebase Admin SDK for emulator environment");
+  // Admin SDK インスタンスの確認
+  try {
+    // eslint-disable-next-line no-unused-vars
+    const auth = admin.auth();
+    // eslint-disable-next-line no-unused-vars
+    const firestore = admin.firestore();
 
-    // Admin SDKがエミュレーターを使用するように設定
-    // 環境変数が正しく設定されていることを確認
-    if (process.env.FIRESTORE_EMULATOR_HOST) {
+    if (isEmulatorEnv) {
+      logger.info("✅ Firebase Admin Auth instance created for emulator");
+      logger.info("✅ Firebase Admin Firestore instance created for emulator");
+      logger.info("🔧 Emulator environment - ID tokens will be unsigned");
+    } else {
+      logger.info("✅ Firebase Admin Auth instance created for production");
       logger.info(
-        `Firestore emulator configured at: ${process.env.FIRESTORE_EMULATOR_HOST}`,
+        "✅ Firebase Admin Firestore instance created for production",
       );
     }
-    if (process.env.FIREBASE_STORAGE_EMULATOR_HOST) {
-      logger.info(
-        `Storage emulator configured at: ${process.env.FIREBASE_STORAGE_EMULATOR_HOST}`,
-      );
-    }
-
-    // Firebase Admin Auth がエミュレーターを使用するように明示的に設定
-    try {
-      // Admin SDKのAuth インスタンスを取得してエミュレーター設定を確認
-      const auth = admin.auth();
-      logger.info("Firebase Admin Auth instance created successfully");
-      logger.info(
-        `Auth emulator environment variable: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`,
-      );
-
-      // エミュレーター環境でのトークン検証をテスト
-      logger.info(
-        "Testing Firebase Admin Auth configuration in emulator environment",
-      );
-    } catch (error) {
-      logger.error(
-        `Failed to initialize Firebase Admin Auth: ${error.message}`,
-      );
-    }
+  } catch (error) {
+    logger.error(
+      `❌ Failed to initialize Firebase Admin SDK: ${error.message}`,
+    );
+    throw error;
   }
 }
 
@@ -1245,44 +1246,42 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
 
     let uid;
 
-    // エミュレーター環境では、Firebase Admin SDKが正しく動作しない場合があるため、
-    // 代替的なトークン検証を行う
-    if (
-      process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-      process.env.FUNCTIONS_EMULATOR === "true"
-    ) {
+    // Firebase Admin SDKでトークンを検証
+    // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
+    const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FUNCTIONS_EMULATOR === "true");
+
+    if (isEmulatorEnv) {
       logger.info(
         "createSchedule: Using emulator environment token verification",
       );
+    }
 
-      try {
-        // Firebase Admin SDKでトークンを検証
-        const decoded = await admin.auth().verifyIdToken(idToken);
-        uid = decoded.uid;
-        logger.info(
-          `createSchedule: Token verified successfully with Admin SDK for user: ${uid}`,
-        );
-      } catch (adminError) {
-        logger.warn(
-          `createSchedule: Admin SDK verification failed: ${adminError.message}`,
-        );
-
-        // Admin SDKが失敗した場合、エミュレーター環境では簡単な検証を行う
-        if (idToken && typeof idToken === "string" && idToken.length > 0) {
-          // エミュレーター環境では、有効なトークン形式であれば受け入れる
-          uid = "emulator-test-user";
-          logger.info("createSchedule: Using fallback emulator user ID");
-        } else {
-          throw new Error("Invalid token format");
-        }
-      }
-    } else {
-      // 本番環境では、Firebase Admin SDKで正しくトークンを検証
-      const decoded = await admin.auth().verifyIdToken(idToken);
+    try {
+      // エミュレーター環境では checkRevoked: false を設定
+      const decoded = await admin.auth().verifyIdToken(idToken, !isEmulatorEnv);
       uid = decoded.uid;
+
       logger.info(
-        `createSchedule: Token verified successfully for user: ${uid}`,
+        `createSchedule: Token verified successfully for user: ${uid} (emulator: ${isEmulatorEnv})`,
       );
+    } catch (tokenError) {
+      logger.error(
+        `createSchedule: Token verification failed: ${tokenError.message}`,
+      );
+
+      // エミュレーター環境でのフォールバック（最後の手段）
+      if (
+        isEmulatorEnv && idToken && typeof idToken === "string" &&
+        idToken.length > 0
+      ) {
+        logger.warn(
+          "createSchedule: Using fallback emulator user ID due to token verification failure",
+        );
+        uid = "emulator-test-user";
+      } else {
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
     }
     const scheduleRef = db
       .collection("pages")
@@ -1360,44 +1359,42 @@ exports.updateSchedule = onRequest({ cors: true }, async (req, res) => {
   try {
     let uid;
 
-    // エミュレーター環境では、Firebase Admin SDKが正しく動作しない場合があるため、
-    // 代替的なトークン検証を行う
-    if (
-      process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-      process.env.FUNCTIONS_EMULATOR === "true"
-    ) {
+    // Firebase Admin SDKでトークンを検証
+    // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
+    const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FUNCTIONS_EMULATOR === "true");
+
+    if (isEmulatorEnv) {
       logger.info(
         "updateSchedule: Using emulator environment token verification",
       );
+    }
 
-      try {
-        // Firebase Admin SDKでトークンを検証
-        const decoded = await admin.auth().verifyIdToken(idToken);
-        uid = decoded.uid;
-        logger.info(
-          `updateSchedule: Token verified successfully with Admin SDK for user: ${uid}`,
-        );
-      } catch (adminError) {
-        logger.warn(
-          `updateSchedule: Admin SDK verification failed: ${adminError.message}`,
-        );
-
-        // Admin SDKが失敗した場合、エミュレーター環境では簡単な検証を行う
-        if (idToken && typeof idToken === "string" && idToken.length > 0) {
-          // エミュレーター環境では、有効なトークン形式であれば受け入れる
-          uid = "emulator-test-user";
-          logger.info("updateSchedule: Using fallback emulator user ID");
-        } else {
-          throw new Error("Invalid token format");
-        }
-      }
-    } else {
-      // 本番環境では、Firebase Admin SDKで正しくトークンを検証
-      const decoded = await admin.auth().verifyIdToken(idToken);
+    try {
+      // エミュレーター環境では checkRevoked: false を設定
+      const decoded = await admin.auth().verifyIdToken(idToken, !isEmulatorEnv);
       uid = decoded.uid;
+
       logger.info(
-        `updateSchedule: Token verified successfully for user: ${uid}`,
+        `updateSchedule: Token verified successfully for user: ${uid} (emulator: ${isEmulatorEnv})`,
       );
+    } catch (tokenError) {
+      logger.error(
+        `updateSchedule: Token verification failed: ${tokenError.message}`,
+      );
+
+      // エミュレーター環境でのフォールバック（最後の手段）
+      if (
+        isEmulatorEnv && idToken && typeof idToken === "string" &&
+        idToken.length > 0
+      ) {
+        logger.warn(
+          "updateSchedule: Using fallback emulator user ID due to token verification failure",
+        );
+        uid = "emulator-test-user";
+      } else {
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
     }
     const scheduleRef = db
       .collection("pages")
@@ -1455,43 +1452,40 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
   }
 
   try {
-    // エミュレーター環境では、Firebase Admin SDKが正しく動作しない場合があるため、
-    // 代替的なトークン検証を行う
-    if (
-      process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-      process.env.FUNCTIONS_EMULATOR === "true"
-    ) {
+    // Firebase Admin SDKでトークンを検証
+    // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
+    const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FUNCTIONS_EMULATOR === "true");
+
+    if (isEmulatorEnv) {
       logger.info(
         "listSchedules: Using emulator environment token verification",
       );
+    }
 
-      try {
-        // Firebase Admin SDKでトークンを検証
-        const decoded = await admin.auth().verifyIdToken(idToken);
-        logger.info(
-          `listSchedules: Token verified successfully with Admin SDK for user: ${decoded.uid}`,
-        );
-      } catch (adminError) {
-        logger.warn(
-          `listSchedules: Admin SDK verification failed: ${adminError.message}`,
-        );
+    try {
+      // エミュレーター環境では checkRevoked: false を設定
+      const decoded = await admin.auth().verifyIdToken(idToken, !isEmulatorEnv);
 
-        // Admin SDKが失敗した場合、エミュレーター環境では簡単な検証を行う
-        if (idToken && typeof idToken === "string" && idToken.length > 0) {
-          // エミュレーター環境では、有効なトークン形式であれば受け入れる
-          logger.info(
-            "listSchedules: Using fallback emulator token verification",
-          );
-        } else {
-          throw new Error("Invalid token format");
-        }
-      }
-    } else {
-      // 本番環境では、Firebase Admin SDKで正しくトークンを検証
-      const decoded = await admin.auth().verifyIdToken(idToken);
       logger.info(
-        `listSchedules: Token verified successfully for user: ${decoded.uid}`,
+        `listSchedules: Token verified successfully for user: ${decoded.uid} (emulator: ${isEmulatorEnv})`,
       );
+    } catch (tokenError) {
+      logger.error(
+        `listSchedules: Token verification failed: ${tokenError.message}`,
+      );
+
+      // エミュレーター環境でのフォールバック（最後の手段）
+      if (
+        isEmulatorEnv && idToken && typeof idToken === "string" &&
+        idToken.length > 0
+      ) {
+        logger.warn(
+          "listSchedules: Using fallback emulator token verification",
+        );
+      } else {
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
     }
     logger.info(`listSchedules: pageId=${pageId}`);
     const snapshot = await db
@@ -1539,44 +1533,42 @@ exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
   try {
     let uid;
 
-    // エミュレーター環境では、Firebase Admin SDKが正しく動作しない場合があるため、
-    // 代替的なトークン検証を行う
-    if (
-      process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-      process.env.FUNCTIONS_EMULATOR === "true"
-    ) {
+    // Firebase Admin SDKでトークンを検証
+    // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
+    const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FUNCTIONS_EMULATOR === "true");
+
+    if (isEmulatorEnv) {
       logger.info(
         "cancelSchedule: Using emulator environment token verification",
       );
+    }
 
-      try {
-        // Firebase Admin SDKでトークンを検証
-        const decoded = await admin.auth().verifyIdToken(idToken);
-        uid = decoded.uid;
-        logger.info(
-          `cancelSchedule: Token verified successfully with Admin SDK for user: ${uid}`,
-        );
-      } catch (adminError) {
-        logger.warn(
-          `cancelSchedule: Admin SDK verification failed: ${adminError.message}`,
-        );
-
-        // Admin SDKが失敗した場合、エミュレーター環境では簡単な検証を行う
-        if (idToken && typeof idToken === "string" && idToken.length > 0) {
-          // エミュレーター環境では、有効なトークン形式であれば受け入れる
-          uid = "emulator-test-user";
-          logger.info("cancelSchedule: Using fallback emulator user ID");
-        } else {
-          throw new Error("Invalid token format");
-        }
-      }
-    } else {
-      // 本番環境では、Firebase Admin SDKで正しくトークンを検証
-      const decoded = await admin.auth().verifyIdToken(idToken);
+    try {
+      // エミュレーター環境では checkRevoked: false を設定
+      const decoded = await admin.auth().verifyIdToken(idToken, !isEmulatorEnv);
       uid = decoded.uid;
+
       logger.info(
-        `cancelSchedule: Token verified successfully for user: ${uid}`,
+        `cancelSchedule: Token verified successfully for user: ${uid} (emulator: ${isEmulatorEnv})`,
       );
+    } catch (tokenError) {
+      logger.error(
+        `cancelSchedule: Token verification failed: ${tokenError.message}`,
+      );
+
+      // エミュレーター環境でのフォールバック（最後の手段）
+      if (
+        isEmulatorEnv && idToken && typeof idToken === "string" &&
+        idToken.length > 0
+      ) {
+        logger.warn(
+          "cancelSchedule: Using fallback emulator user ID due to token verification failure",
+        );
+        uid = "emulator-test-user";
+      } else {
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
     }
     const scheduleRef = db
       .collection("pages")
