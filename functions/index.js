@@ -1604,8 +1604,11 @@ exports.adminCheckForContainerUserListing = onRequest(
     }
 
     try {
-      // IDトークンの検証
-      const idToken = req.headers.authorization?.replace("Bearer ", "");
+      // IDトークンの検証（Authorizationヘッダーまたはリクエストボディから取得）
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
       logger.info("ID token received:", idToken ? "present" : "missing");
       if (!idToken) {
         logger.info("Returning 400: ID token required");
@@ -1620,7 +1623,7 @@ exports.adminCheckForContainerUserListing = onRequest(
       // containerId パラメータの検証
       const { containerId } = req.body;
       if (!containerId) {
-        return res.status(400).json({ error: "Container ID required" });
+        return res.status(400).json({ error: "Container ID is required" });
       }
 
       // Firebase Admin SDKでIDトークンを検証

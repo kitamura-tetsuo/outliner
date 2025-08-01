@@ -238,7 +238,7 @@ start_firebase_emulator() {
 
   # Start Firebase emulator with detailed logging
   echo "Firebase emulator starting with project: ${FIREBASE_PROJECT_ID}"
-  firebase emulators:start --config firebase.emulator.json --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
+  firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
   FIREBASE_PID=$!
   echo "Firebase emulator started with PID: ${FIREBASE_PID}"
 
@@ -266,14 +266,42 @@ start_firebase_emulator() {
     sleep 2
   done
 
-  # Test Firebase Functions endpoint
-  echo "Testing Firebase Functions endpoint..."
+  # Check if Firebase Hosting emulator is running
+  for i in {1..30}; do
+    if nc -z localhost ${FIREBASE_HOSTING_PORT} >/dev/null 2>&1; then
+      echo "Firebase Hosting emulator is running on port ${FIREBASE_HOSTING_PORT}"
+      break
+    fi
+    echo "Waiting for Firebase Hosting emulator... (attempt $i/30)"
+    sleep 2
+  done
+
+  # Test Firebase Functions endpoint directly
+  echo "Testing Firebase Functions endpoint directly..."
   if curl -s -f "http://localhost:${FIREBASE_FUNCTIONS_PORT}/${FIREBASE_PROJECT_ID}/us-central1/health" >/dev/null 2>&1; then
-    echo "Firebase Functions health endpoint is responding"
+    echo "Firebase Functions health endpoint is responding directly"
   else
-    echo "WARNING: Firebase Functions health endpoint is not responding"
+    echo "WARNING: Firebase Functions health endpoint is not responding directly"
+  fi
+
+  # Test Firebase Hosting endpoint
+  echo "Testing Firebase Hosting endpoint..."
+  if curl -s -f "http://localhost:${FIREBASE_HOSTING_PORT}/api/health" >/dev/null 2>&1; then
+    echo "Firebase Hosting health endpoint is responding"
+  else
+    echo "WARNING: Firebase Hosting health endpoint is not responding"
+  fi
+
+  # Test get-container-users endpoint
+  echo "Testing get-container-users endpoint..."
+  response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/get-container-users")
+  echo "get-container-users endpoint returned HTTP status: $response"
+  if [ "$response" = "401" ]; then
+    echo "✅ get-container-users endpoint is working correctly (401 for invalid token)"
+  else
+    echo "❌ get-container-users endpoint returned unexpected status: $response"
     echo "Checking Firebase emulator log..."
-    tail -20 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
+    tail -30 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
   fi
 }
 

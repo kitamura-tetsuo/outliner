@@ -25,7 +25,7 @@ test.describe("管理者チェック (API-0003)", () => {
         }
 
         // まずFirebase Hostingエミュレーター経由でアクセスを試行
-        let response = await page.request.post("http://localhost:57000/api/get-container-users", {
+        let response = await page.request.post("http://localhost:57000/api/adminCheckForContainerUserListing", {
             data: { idToken: "invalid-token", containerId: "test-container" },
         });
 
@@ -47,7 +47,7 @@ test.describe("管理者チェック (API-0003)", () => {
                 console.log(`Functions health check error: ${error.message}`);
             }
 
-            response = await page.request.post("http://localhost:57070/outliner-d57b0/us-central1/getContainerUsers", {
+            response = await page.request.post("http://localhost:57070/outliner-d57b0/us-central1/adminCheckForContainerUserListing", {
                 data: { idToken: "invalid-token", containerId: "test-container" },
             });
             console.log(`Functions response status: ${response.status()}`);
@@ -72,7 +72,7 @@ test.describe("管理者チェック (API-0003)", () => {
 
     test("containerId未指定では400が返る", async ({ page }) => {
         // containerIdを指定せずにFirebase Functions APIを呼び出し、400エラーが返ることを確認
-        const response = await page.request.post("http://localhost:57000/api/get-container-users", {
+        const response = await page.request.post("http://localhost:57000/api/adminCheckForContainerUserListing", {
             data: { idToken: "any-token" },
         });
 
@@ -84,7 +84,7 @@ test.describe("管理者チェック (API-0003)", () => {
 
     test("IDトークンが未指定では400が返る", async ({ page }) => {
         // IDトークンを指定せずにFirebase Functions APIを呼び出し、400エラーが返ることを確認
-        const response = await page.request.post("http://localhost:57000/api/get-container-users", {
+        const response = await page.request.post("http://localhost:57000/api/adminCheckForContainerUserListing", {
             data: { containerId: "test-container" },
         });
 
@@ -96,7 +96,7 @@ test.describe("管理者チェック (API-0003)", () => {
 
     test("空のIDトークンでは400が返る", async ({ page }) => {
         // 空のIDトークンでFirebase Functions APIを呼び出し、400エラーが返ることを確認
-        const response = await page.request.post("http://localhost:57000/api/get-container-users", {
+        const response = await page.request.post("http://localhost:57000/api/adminCheckForContainerUserListing", {
             data: { idToken: "", containerId: "test-container" },
         });
 
