@@ -230,11 +230,20 @@ start_firebase_emulator() {
   echo "Starting Firebase emulator..."
   cd "${ROOT_DIR}"
 
-  # Create empty .env file for Firebase Functions if it doesn't exist
+  # Create .env file for Firebase Functions if it doesn't exist
   if [ ! -f "${ROOT_DIR}/functions/.env" ]; then
-    echo "Creating empty .env file for Firebase Functions..."
-    touch "${ROOT_DIR}/functions/.env"
+    echo "Creating .env file for Firebase Functions..."
+    cat > "${ROOT_DIR}/functions/.env" << EOF
+AZURE_TENANT_ID=test-tenant-id
+AZURE_ENDPOINT=https://test.fluidrelay.azure.com
+AZURE_PRIMARY_KEY=test-primary-key
+AZURE_SECONDARY_KEY=test-secondary-key
+AZURE_ACTIVE_KEY=primary
+EOF
   fi
+
+  echo "Firebase Functions .env file contents:"
+  cat "${ROOT_DIR}/functions/.env" || echo "Failed to read .env file"
 
   # Start Firebase emulator with detailed logging
   echo "Firebase emulator starting with project: ${FIREBASE_PROJECT_ID}"
@@ -250,34 +259,38 @@ start_firebase_emulator() {
 
   # Wait for Firebase emulator to start and verify it's working
   echo "Waiting for Firebase emulator to start..."
-  for i in {1..30}; do
+  for i in {1..60}; do
     if nc -z localhost ${FIREBASE_AUTH_PORT} >/dev/null 2>&1; then
       echo "Firebase Auth emulator is running on port ${FIREBASE_AUTH_PORT}"
       break
     fi
-    echo "Waiting for Firebase Auth emulator... (attempt $i/30)"
-    sleep 2
+    echo "Waiting for Firebase Auth emulator... (attempt $i/60)"
+    sleep 3
   done
 
   # Check if Firebase Functions emulator is running
-  for i in {1..30}; do
+  for i in {1..60}; do
     if nc -z localhost ${FIREBASE_FUNCTIONS_PORT} >/dev/null 2>&1; then
       echo "Firebase Functions emulator is running on port ${FIREBASE_FUNCTIONS_PORT}"
       break
     fi
-    echo "Waiting for Firebase Functions emulator... (attempt $i/30)"
-    sleep 2
+    echo "Waiting for Firebase Functions emulator... (attempt $i/60)"
+    sleep 3
   done
 
   # Check if Firebase Hosting emulator is running
-  for i in {1..30}; do
+  for i in {1..60}; do
     if nc -z localhost ${FIREBASE_HOSTING_PORT} >/dev/null 2>&1; then
       echo "Firebase Hosting emulator is running on port ${FIREBASE_HOSTING_PORT}"
       break
     fi
-    echo "Waiting for Firebase Hosting emulator... (attempt $i/30)"
-    sleep 2
+    echo "Waiting for Firebase Hosting emulator... (attempt $i/60)"
+    sleep 3
   done
+
+  # Additional wait for Firebase Functions to fully initialize
+  echo "Waiting additional 10 seconds for Firebase Functions to fully initialize..."
+  sleep 10
 
   # Test Firebase Functions endpoint directly
   echo "Testing Firebase Functions endpoint directly..."
