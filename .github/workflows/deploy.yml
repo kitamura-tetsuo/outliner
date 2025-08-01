@@ -64,7 +64,7 @@ jobs:
       - name: Set Firebase project
         run: firebase use outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
 
-      - name: Update Firebase secrets and environment variables
+      - name: Update Firebase secrets
         run: |
           # Firebase シークレットを GitHub Actions のシークレットから更新
           echo "Updating Firebase secrets..."
@@ -73,13 +73,10 @@ jobs:
           echo "${{ secrets.AZURE_PRIMARY_KEY }}" | firebase functions:secrets:set AZURE_PRIMARY_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
           echo "${{ secrets.AZURE_SECONDARY_KEY }}" | firebase functions:secrets:set AZURE_SECONDARY_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
           echo "${{ secrets.AZURE_ACTIVE_KEY }}" | firebase functions:secrets:set AZURE_ACTIVE_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
+          echo "${{ secrets.AZURE_TENANT_ID }}" | firebase functions:secrets:set AZURE_TENANT_ID --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
+          echo "${{ secrets.AZURE_ENDPOINT }}" | firebase functions:secrets:set AZURE_ENDPOINT --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
 
-          # Firebase Functions の環境変数を設定
-          echo "Setting Firebase Functions environment variables..."
-          firebase functions:config:set azure.tenant_id="${{ secrets.AZURE_TENANT_ID }}" --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
-          firebase functions:config:set azure.endpoint="${{ secrets.AZURE_ENDPOINT }}" --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
-
-          echo "Firebase secrets and environment variables updated successfully"
+          echo "Firebase secrets updated successfully"
 
       - name: Lint functions
         run: |

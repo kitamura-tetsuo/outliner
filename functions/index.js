@@ -34,6 +34,8 @@ const logger = require("firebase-functions/logger");
 let azureActiveKeySecret;
 let azurePrimaryKeySecret;
 let azureSecondaryKeySecret;
+let azureTenantIdSecret;
+let azureEndpointSecret;
 
 // エミュレーター環境以外ではシークレットを使用
 if (!process.env.FUNCTIONS_EMULATOR) {
@@ -41,6 +43,8 @@ if (!process.env.FUNCTIONS_EMULATOR) {
     azureActiveKeySecret = defineSecret("AZURE_ACTIVE_KEY");
     azurePrimaryKeySecret = defineSecret("AZURE_PRIMARY_KEY");
     azureSecondaryKeySecret = defineSecret("AZURE_SECONDARY_KEY");
+    azureTenantIdSecret = defineSecret("AZURE_TENANT_ID");
+    azureEndpointSecret = defineSecret("AZURE_ENDPOINT");
     logger.info("Firebase secrets defined successfully");
   } catch (secretError) {
     logger.warn("Azure secrets not available, will use environment variables");
@@ -77,17 +81,12 @@ function setCorsHeaders(req, res) {
 
 // Azure Fluid Relay設定を取得する関数
 function getAzureConfig() {
-  // Firebase Functions の環境変数を取得
-  const config = functions.config();
-
-  // シークレットから値を取得、フォールバックとして環境変数やFirebase Functions設定を使用
+  // シークレットから値を取得、フォールバックとして環境変数を使用
   let activeKey = "primary"; // デフォルト値をprimaryに変更
   let primaryKey = process.env.AZURE_PRIMARY_KEY;
   let secondaryKey = process.env.AZURE_SECONDARY_KEY;
-
-  // Azure設定（テナントIDとエンドポイント）
-  const tenantId = config.azure?.tenant_id || process.env.AZURE_TENANT_ID;
-  const endpoint = config.azure?.endpoint || process.env.AZURE_ENDPOINT;
+  let tenantId = process.env.AZURE_TENANT_ID;
+  let endpoint = process.env.AZURE_ENDPOINT;
 
   try {
     activeKey = (azureActiveKeySecret && azureActiveKeySecret.value()) ||
@@ -112,6 +111,22 @@ function getAzureConfig() {
   } catch {
     // シークレットが利用できない場合は環境変数を使用
     secondaryKey = process.env.AZURE_SECONDARY_KEY;
+  }
+
+  try {
+    tenantId = (azureTenantIdSecret && azureTenantIdSecret.value()) ||
+      process.env.AZURE_TENANT_ID;
+  } catch {
+    // シークレットが利用できない場合は環境変数を使用
+    tenantId = process.env.AZURE_TENANT_ID;
+  }
+
+  try {
+    endpoint = (azureEndpointSecret && azureEndpointSecret.value()) ||
+      process.env.AZURE_ENDPOINT;
+  } catch {
+    // シークレットが利用できない場合は環境変数を使用
+    endpoint = process.env.AZURE_ENDPOINT;
   }
 
   return {
@@ -395,11 +410,16 @@ const fluidTokenOptions = {
 };
 
 // シークレットが定義されている場合のみ追加（エミュレーター環境以外）
-if (azureActiveKeySecret && azurePrimaryKeySecret && azureSecondaryKeySecret) {
+if (
+  azureActiveKeySecret && azurePrimaryKeySecret && azureSecondaryKeySecret &&
+  azureTenantIdSecret && azureEndpointSecret
+) {
   fluidTokenOptions.secrets = [
     azureActiveKeySecret,
     azurePrimaryKeySecret,
     azureSecondaryKeySecret,
+    azureTenantIdSecret,
+    azureEndpointSecret,
   ];
 }
 
@@ -1130,11 +1150,16 @@ const azureHealthCheckOptions = {
 };
 
 // シークレットが定義されている場合のみ追加（エミュレーター環境以外）
-if (azureActiveKeySecret && azurePrimaryKeySecret && azureSecondaryKeySecret) {
+if (
+  azureActiveKeySecret && azurePrimaryKeySecret && azureSecondaryKeySecret &&
+  azureTenantIdSecret && azureEndpointSecret
+) {
   azureHealthCheckOptions.secrets = [
     azureActiveKeySecret,
     azurePrimaryKeySecret,
     azureSecondaryKeySecret,
+    azureTenantIdSecret,
+    azureEndpointSecret,
   ];
 }
 
