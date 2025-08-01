@@ -27,25 +27,31 @@ process.env.FIREBASE_PROJECT_ID = "outliner-d57b0";
 
 const { onRequest } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
+const logger = require("firebase-functions/logger");
 
-// シークレットを定義（本番環境でのみ使用）
-let azureActiveKeySecret, azurePrimaryKeySecret, azureSecondaryKeySecret;
+// Firebase シークレットを定義
+// GitHub Actions で自動更新されるため、本番環境では常に利用可能
+let azureActiveKeySecret;
+let azurePrimaryKeySecret;
+let azureSecondaryKeySecret;
 
-try {
-  // 本番環境でシークレットが利用可能な場合のみ定義
-  if (
-    process.env.NODE_ENV === "production" && !process.env.FUNCTIONS_EMULATOR
-  ) {
+// エミュレーター環境以外ではシークレットを使用
+if (!process.env.FUNCTIONS_EMULATOR) {
+  try {
     azureActiveKeySecret = defineSecret("AZURE_ACTIVE_KEY");
     azurePrimaryKeySecret = defineSecret("AZURE_PRIMARY_KEY");
     azureSecondaryKeySecret = defineSecret("AZURE_SECONDARY_KEY");
+    logger.info("Firebase secrets defined successfully");
+  } catch (secretError) {
+    logger.warn("Azure secrets not available, will use environment variables");
   }
-} catch (error) {
-  logger.warn("Azure secrets not available, will use environment variables");
+} else {
+  logger.info("Using environment variables in emulator mode");
 }
 
 const admin = require("firebase-admin");
 const { generateToken } = require("@fluidframework/azure-service-utils");
+const functions = require("firebase-functions");
 
 const jwt = require("jsonwebtoken");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -68,15 +74,20 @@ function setCorsHeaders(req, res) {
   res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
-// ロガーの設定
-const logger = require("firebase-functions/logger");
 
 // Azure Fluid Relay設定を取得する関数
 function getAzureConfig() {
-  // シークレットから値を取得、フォールバックとして環境変数を使用
+  // Firebase Functions の環境変数を取得
+  const config = functions.config();
+
+  // シークレットから値を取得、フォールバックとして環境変数やFirebase Functions設定を使用
   let activeKey = "primary"; // デフォルト値をprimaryに変更
   let primaryKey = process.env.AZURE_PRIMARY_KEY;
   let secondaryKey = process.env.AZURE_SECONDARY_KEY;
+
+  // Azure設定（テナントIDとエンドポイント）
+  const tenantId = config.azure?.tenant_id || process.env.AZURE_TENANT_ID;
+  const endpoint = config.azure?.endpoint || process.env.AZURE_ENDPOINT;
 
   try {
     activeKey = (azureActiveKeySecret && azureActiveKeySecret.value()) ||
@@ -104,8 +115,8 @@ function getAzureConfig() {
   }
 
   return {
-    tenantId: process.env.AZURE_TENANT_ID,
-    endpoint: process.env.AZURE_ENDPOINT,
+    tenantId: tenantId,
+    endpoint: endpoint,
     primaryKey: primaryKey,
     secondaryKey: secondaryKey,
     activeKey: activeKey,
@@ -379,13 +390,11 @@ function generateAzureFluidToken(user, containerId = undefined) {
 }
 
 // Firebase認証トークン検証とFluid Relay JWT生成を一括処理するFunction
-// 本番環境でシークレットが設定されていない場合でもデプロイできるように、
-// シークレットの依存関係を条件付きで設定
 const fluidTokenOptions = {
   cors: true,
 };
 
-// シークレットが定義されている場合のみ追加
+// シークレットが定義されている場合のみ追加（エミュレーター環境以外）
 if (azureActiveKeySecret && azurePrimaryKeySecret && azureSecondaryKeySecret) {
   fluidTokenOptions.secrets = [
     azureActiveKeySecret,
@@ -1116,13 +1125,11 @@ exports.health = onRequest({ cors: true }, async (req, res) => {
 });
 
 // Azure Fluid Relayキーの動作確認エンドポイント
-// 本番環境でシークレットが設定されていない場合でもデプロイできるように、
-// シークレットの依存関係を条件付きで設定
 const azureHealthCheckOptions = {
   cors: true,
 };
 
-// シークレットが定義されている場合のみ追加
+// シークレットが定義されている場合のみ追加（エミュレーター環境以外）
 if (azureActiveKeySecret && azurePrimaryKeySecret && azureSecondaryKeySecret) {
   azureHealthCheckOptions.secrets = [
     azureActiveKeySecret,

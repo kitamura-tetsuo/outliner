@@ -61,19 +61,25 @@ jobs:
           cd functions
           npm ci
 
-      - name: Create functions env file
-        run: |
-          cat > functions/.env <<EOF3
-          AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}
-          AZURE_ENDPOINT=${{ secrets.AZURE_ENDPOINT }}
-          AZURE_PRIMARY_KEY=${{ secrets.AZURE_PRIMARY_KEY }}
-          AZURE_SECONDARY_KEY=${{ secrets.AZURE_SECONDARY_KEY }}
-          AZURE_ACTIVE_KEY=${{ secrets.AZURE_ACTIVE_KEY }}
-          NODE_ENV=production
-          EOF3
-
       - name: Set Firebase project
         run: firebase use outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
+
+      - name: Update Firebase secrets and environment variables
+        run: |
+          # Firebase シークレットを GitHub Actions のシークレットから更新
+          echo "Updating Firebase secrets..."
+
+          # Azure関連のシークレットを更新
+          echo "${{ secrets.AZURE_PRIMARY_KEY }}" | firebase functions:secrets:set AZURE_PRIMARY_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
+          echo "${{ secrets.AZURE_SECONDARY_KEY }}" | firebase functions:secrets:set AZURE_SECONDARY_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
+          echo "${{ secrets.AZURE_ACTIVE_KEY }}" | firebase functions:secrets:set AZURE_ACTIVE_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
+
+          # Firebase Functions の環境変数を設定
+          echo "Setting Firebase Functions environment variables..."
+          firebase functions:config:set azure.tenant_id="${{ secrets.AZURE_TENANT_ID }}" --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
+          firebase functions:config:set azure.endpoint="${{ secrets.AZURE_ENDPOINT }}" --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
+
+          echo "Firebase secrets and environment variables updated successfully"
 
       - name: Lint functions
         run: |
