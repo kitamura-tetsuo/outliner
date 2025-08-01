@@ -238,9 +238,12 @@ start_firebase_emulator() {
 
   # Start Firebase emulator with detailed logging
   echo "Firebase emulator starting with project: ${FIREBASE_PROJECT_ID}"
+  echo "Using config file: firebase.emulator.json"
+  echo "Starting emulators: auth,firestore,functions,hosting,storage"
   firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
   FIREBASE_PID=$!
   echo "Firebase emulator started with PID: ${FIREBASE_PID}"
+  echo "Firebase emulator log will be written to: ${ROOT_DIR}/server/logs/firebase-emulator.log"
 
   cd "${ROOT_DIR}"
   node "${ROOT_DIR}/server/scripts/init-firebase-emulator.js" &
@@ -302,6 +305,26 @@ start_firebase_emulator() {
     echo "❌ get-container-users endpoint returned unexpected status: $response"
     echo "Checking Firebase emulator log..."
     tail -30 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
+  fi
+
+  # Test adminCheckForContainerUserListing endpoint
+  echo "Testing adminCheckForContainerUserListing endpoint..."
+  response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/adminCheckForContainerUserListing")
+  echo "adminCheckForContainerUserListing endpoint returned HTTP status: $response"
+  if [ "$response" = "401" ]; then
+    echo "✅ adminCheckForContainerUserListing endpoint is working correctly (401 for invalid token)"
+  else
+    echo "❌ adminCheckForContainerUserListing endpoint returned unexpected status: $response"
+    echo "Response body:"
+    curl -s -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/adminCheckForContainerUserListing" || echo "Failed to get response body"
+
+    echo "Checking if Firebase Functions are loaded..."
+    echo "Firebase emulator log (last 50 lines):"
+    tail -50 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
+
+    echo "Checking Firebase Functions directly..."
+    direct_response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_FUNCTIONS_PORT}/${FIREBASE_PROJECT_ID}/us-central1/adminCheckForContainerUserListing")
+    echo "Direct Firebase Functions call returned HTTP status: $direct_response"
   fi
 }
 
