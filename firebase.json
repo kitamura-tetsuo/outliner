@@ -165,6 +165,7 @@
             "port": 54000,
             "host": "0.0.0.0",
             "enabled": false
-        }
+        },
+        "singleProjectMode": false
     }
 }
