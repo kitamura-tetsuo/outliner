@@ -265,9 +265,29 @@ async function checkContainerAccess(userId, containerId) {
     if (userContainerDoc.exists) {
       const userData = userContainerDoc.data();
       logger.info(`User data:`, JSON.stringify(userData));
-      const hasAccess = userData.containers &&
-        userData.containers[containerId] != null;
-      logger.info(`Access via userContainers: ${hasAccess}`);
+
+      // Check both old format (containers object) and new format (accessibleContainerIds array)
+      let hasAccess = false;
+
+      // Check new format first (accessibleContainerIds array)
+      if (
+        userData.accessibleContainerIds &&
+        Array.isArray(userData.accessibleContainerIds)
+      ) {
+        hasAccess = userData.accessibleContainerIds.includes(containerId);
+        logger.info(`Access via accessibleContainerIds: ${hasAccess}`);
+      }
+
+      // Fallback to old format (containers object) if not found in new format
+      if (
+        !hasAccess && userData.containers &&
+        userData.containers[containerId] != null
+      ) {
+        hasAccess = true;
+        logger.info(`Access via containers object: ${hasAccess}`);
+      }
+
+      logger.info(`Final access decision via userContainers: ${hasAccess}`);
       if (hasAccess) {
         return true;
       }
