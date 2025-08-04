@@ -88,45 +88,48 @@ function getAzureConfig() {
   let tenantId = process.env.AZURE_TENANT_ID;
   let endpoint = process.env.AZURE_ENDPOINT;
 
-  try {
-    activeKey = (azureActiveKeySecret && azureActiveKeySecret.value()) ||
-      process.env.AZURE_ACTIVE_KEY || "primary";
-  } catch {
-    // シークレットが利用できない場合は環境変数またはデフォルト値を使用
-    activeKey = process.env.AZURE_ACTIVE_KEY || "primary";
-  }
+  // エミュレーター環境以外でシークレットを使用
+  if (!process.env.FUNCTIONS_EMULATOR) {
+    try {
+      activeKey = (azureActiveKeySecret && azureActiveKeySecret.value()) ||
+        process.env.AZURE_ACTIVE_KEY || "primary";
+    } catch (error) {
+      logger.warn(`Failed to get AZURE_ACTIVE_KEY secret: ${error.message}`);
+      activeKey = process.env.AZURE_ACTIVE_KEY || "primary";
+    }
 
-  try {
-    primaryKey = (azurePrimaryKeySecret && azurePrimaryKeySecret.value()) ||
-      process.env.AZURE_PRIMARY_KEY;
-  } catch {
-    // シークレットが利用できない場合は環境変数を使用
-    primaryKey = process.env.AZURE_PRIMARY_KEY;
-  }
+    try {
+      primaryKey = (azurePrimaryKeySecret && azurePrimaryKeySecret.value()) ||
+        process.env.AZURE_PRIMARY_KEY;
+    } catch (error) {
+      logger.warn(`Failed to get AZURE_PRIMARY_KEY secret: ${error.message}`);
+      primaryKey = process.env.AZURE_PRIMARY_KEY;
+    }
 
-  try {
-    secondaryKey =
-      (azureSecondaryKeySecret && azureSecondaryKeySecret.value()) ||
-      process.env.AZURE_SECONDARY_KEY;
-  } catch {
-    // シークレットが利用できない場合は環境変数を使用
-    secondaryKey = process.env.AZURE_SECONDARY_KEY;
-  }
+    try {
+      secondaryKey =
+        (azureSecondaryKeySecret && azureSecondaryKeySecret.value()) ||
+        process.env.AZURE_SECONDARY_KEY;
+    } catch (error) {
+      logger.warn(`Failed to get AZURE_SECONDARY_KEY secret: ${error.message}`);
+      secondaryKey = process.env.AZURE_SECONDARY_KEY;
+    }
 
-  try {
-    tenantId = (azureTenantIdSecret && azureTenantIdSecret.value()) ||
-      process.env.AZURE_TENANT_ID;
-  } catch {
-    // シークレットが利用できない場合は環境変数を使用
-    tenantId = process.env.AZURE_TENANT_ID;
-  }
+    try {
+      tenantId = (azureTenantIdSecret && azureTenantIdSecret.value()) ||
+        process.env.AZURE_TENANT_ID;
+    } catch (error) {
+      logger.warn(`Failed to get AZURE_TENANT_ID secret: ${error.message}`);
+      tenantId = process.env.AZURE_TENANT_ID;
+    }
 
-  try {
-    endpoint = (azureEndpointSecret && azureEndpointSecret.value()) ||
-      process.env.AZURE_ENDPOINT;
-  } catch {
-    // シークレットが利用できない場合は環境変数を使用
-    endpoint = process.env.AZURE_ENDPOINT;
+    try {
+      endpoint = (azureEndpointSecret && azureEndpointSecret.value()) ||
+        process.env.AZURE_ENDPOINT;
+    } catch (error) {
+      logger.warn(`Failed to get AZURE_ENDPOINT secret: ${error.message}`);
+      endpoint = process.env.AZURE_ENDPOINT;
+    }
   }
 
   return {
@@ -239,22 +242,37 @@ async function checkContainerAccess(userId, containerId) {
       return true;
     }
 
+    // デバッグログを追加
+    logger.info(
+      `Checking container access for user: ${userId}, container: ${containerId}`,
+    );
+
     // Check if user is in containerUsers collection
     const containerUserDoc = await db.collection("containerUsers").doc(
       `${containerId}_${userId}`,
     ).get();
+    logger.info(`containerUsers doc exists: ${containerUserDoc.exists}`);
     if (containerUserDoc.exists) {
+      logger.info(`Access granted via containerUsers collection`);
       return true;
     }
 
     // Check if container is in user's containers list
     const userContainerDoc = await db.collection("userContainers").doc(userId)
       .get();
+    logger.info(`userContainers doc exists: ${userContainerDoc.exists}`);
     if (userContainerDoc.exists) {
       const userData = userContainerDoc.data();
-      return userData.containers && userData.containers[containerId] != null;
+      logger.info(`User data:`, JSON.stringify(userData));
+      const hasAccess = userData.containers &&
+        userData.containers[containerId] != null;
+      logger.info(`Access via userContainers: ${hasAccess}`);
+      if (hasAccess) {
+        return true;
+      }
     }
 
+    logger.warn(`Access denied for user ${userId} to container ${containerId}`);
     return false;
   } catch (error) {
     logger.error(`Error checking container access: ${error.message}`);
@@ -460,6 +478,7 @@ exports.fluidToken = onRequest(fluidTokenOptions, async (req, res) => {
 
     // ユーザーのコンテナ情報を取得
     const userDoc = await userContainersCollection.doc(userId).get();
+    logger.info(`User document exists: ${userDoc.exists} for user: ${userId}`);
 
     // ユーザーデータが存在しない場合のデフォルト値を設定
     const userData = userDoc.exists ?
@@ -467,6 +486,12 @@ exports.fluidToken = onRequest(fluidTokenOptions, async (req, res) => {
       { accessibleContainerIds: [] };
     const accessibleContainerIds = userData.accessibleContainerIds || [];
     const defaultContainerId = userData.defaultContainerId || null;
+
+    logger.info(
+      `User ${userId} - accessible containers: ${
+        JSON.stringify(accessibleContainerIds)
+      }, default: ${defaultContainerId}`,
+    );
 
     // 使用するコンテナIDを決定
     let targetContainerId = containerId;
@@ -480,14 +505,34 @@ exports.fluidToken = onRequest(fluidTokenOptions, async (req, res) => {
       targetContainerId = defaultContainerId;
     }
 
+    // ユーザーにデフォルトコンテナが設定されていない場合の処理
+    if (!targetContainerId && !userDoc.exists) {
+      logger.info(
+        `New user ${userId} detected, allowing access without container restriction`,
+      );
+      // 新規ユーザーの場合は、コンテナIDなしでトークンを生成
+      // クライアント側で新しいコンテナを作成し、後でFirestoreに保存される
+    }
+
     // コンテナIDが指定されている場合はアクセス権をチェック
     if (targetContainerId) {
+      logger.info(
+        `Checking access for user ${userId} to container ${targetContainerId}`,
+      );
       const hasAccess = await checkContainerAccess(userId, targetContainerId);
       if (!hasAccess) {
+        logger.error(
+          `Access denied for user ${userId} to container ${targetContainerId}`,
+        );
         return res.status(403).json({
           error: "Access to the container is denied",
         });
       }
+      logger.info(
+        `Access granted for user ${userId} to container ${targetContainerId}`,
+      );
+    } else if (!userDoc.exists) {
+      logger.info(`New user ${userId} - skipping container access check`);
     }
 
     // Azure Fluid RelayのJWT生成
@@ -2008,6 +2053,87 @@ exports.adminUserList = onRequest(
       }
 
       return res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
+// デバッグ用: ユーザーのコンテナアクセス権限を確認するAPI
+const debugUserContainersOptions = {
+  cors: true,
+};
+
+// シークレットが定義されている場合のみ追加（エミュレーター環境以外）
+if (
+  azureActiveKeySecret && azurePrimaryKeySecret && azureSecondaryKeySecret &&
+  azureTenantIdSecret && azureEndpointSecret
+) {
+  debugUserContainersOptions.secrets = [
+    azureActiveKeySecret,
+    azurePrimaryKeySecret,
+    azureSecondaryKeySecret,
+    azureTenantIdSecret,
+    azureEndpointSecret,
+  ];
+}
+
+exports.debugUserContainers = onRequest(
+  debugUserContainersOptions,
+  async (req, res) => {
+    setCorsHeaders(req, res);
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).send();
+    }
+
+    try {
+      const { idToken } = req.body;
+
+      if (!idToken) {
+        return res.status(400).json({ error: "ID token is required" });
+      }
+
+      // Firebase IDトークンを検証
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const userId = decodedToken.uid;
+
+      logger.info(`Debug: Checking containers for user: ${userId}`);
+
+      // userContainers コレクションを確認
+      const userContainerDoc = await db.collection("userContainers").doc(userId)
+        .get();
+      const userContainerData = userContainerDoc.exists
+        ? userContainerDoc.data() : null;
+
+      // containerUsers コレクションで該当するドキュメントを検索
+      const containerUsersQuery = await db.collection("containerUsers")
+        .where("accessibleUserIds", "array-contains", userId)
+        .get();
+
+      const containerUsersData = [];
+      containerUsersQuery.forEach(doc => {
+        containerUsersData.push({
+          id: doc.id,
+          data: doc.data(),
+        });
+      });
+
+      return res.status(200).json({
+        success: true,
+        userId: userId,
+        userEmail: decodedToken.email,
+        userContainers: {
+          exists: userContainerDoc.exists,
+          data: userContainerData,
+        },
+        containerUsers: containerUsersData,
+        environment: {
+          NODE_ENV: process.env.NODE_ENV,
+          FUNCTIONS_EMULATOR: process.env.FUNCTIONS_EMULATOR,
+        },
+      });
+    } catch (error) {
+      logger.error(`Debug user containers error: ${error.message}`, { error });
+      return res.status(500).json({ error: "Failed to debug user containers" });
     }
   },
 );
