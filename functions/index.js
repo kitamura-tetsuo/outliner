@@ -91,44 +91,46 @@ function getAzureConfig() {
   // エミュレーター環境以外でシークレットを使用
   if (!process.env.FUNCTIONS_EMULATOR) {
     try {
-      activeKey = (azureActiveKeySecret && azureActiveKeySecret.value()) ||
-        process.env.AZURE_ACTIVE_KEY || "primary";
+      activeKey =
+        (azureActiveKeySecret && azureActiveKeySecret.value()?.trim()) ||
+        process.env.AZURE_ACTIVE_KEY?.trim() || "primary";
     } catch (error) {
       logger.warn(`Failed to get AZURE_ACTIVE_KEY secret: ${error.message}`);
-      activeKey = process.env.AZURE_ACTIVE_KEY || "primary";
+      activeKey = process.env.AZURE_ACTIVE_KEY?.trim() || "primary";
     }
 
     try {
-      primaryKey = (azurePrimaryKeySecret && azurePrimaryKeySecret.value()) ||
-        process.env.AZURE_PRIMARY_KEY;
+      primaryKey =
+        (azurePrimaryKeySecret && azurePrimaryKeySecret.value()?.trim()) ||
+        process.env.AZURE_PRIMARY_KEY?.trim();
     } catch (error) {
       logger.warn(`Failed to get AZURE_PRIMARY_KEY secret: ${error.message}`);
-      primaryKey = process.env.AZURE_PRIMARY_KEY;
+      primaryKey = process.env.AZURE_PRIMARY_KEY?.trim();
     }
 
     try {
       secondaryKey =
-        (azureSecondaryKeySecret && azureSecondaryKeySecret.value()) ||
-        process.env.AZURE_SECONDARY_KEY;
+        (azureSecondaryKeySecret && azureSecondaryKeySecret.value()?.trim()) ||
+        process.env.AZURE_SECONDARY_KEY?.trim();
     } catch (error) {
       logger.warn(`Failed to get AZURE_SECONDARY_KEY secret: ${error.message}`);
-      secondaryKey = process.env.AZURE_SECONDARY_KEY;
+      secondaryKey = process.env.AZURE_SECONDARY_KEY?.trim();
     }
 
     try {
-      tenantId = (azureTenantIdSecret && azureTenantIdSecret.value()) ||
-        process.env.AZURE_TENANT_ID;
+      tenantId = (azureTenantIdSecret && azureTenantIdSecret.value()?.trim()) ||
+        process.env.AZURE_TENANT_ID?.trim();
     } catch (error) {
       logger.warn(`Failed to get AZURE_TENANT_ID secret: ${error.message}`);
-      tenantId = process.env.AZURE_TENANT_ID;
+      tenantId = process.env.AZURE_TENANT_ID?.trim();
     }
 
     try {
-      endpoint = (azureEndpointSecret && azureEndpointSecret.value()) ||
-        process.env.AZURE_ENDPOINT;
+      endpoint = (azureEndpointSecret && azureEndpointSecret.value()?.trim()) ||
+        process.env.AZURE_ENDPOINT?.trim();
     } catch (error) {
       logger.warn(`Failed to get AZURE_ENDPOINT secret: ${error.message}`);
-      endpoint = process.env.AZURE_ENDPOINT;
+      endpoint = process.env.AZURE_ENDPOINT?.trim();
     }
   }
 
