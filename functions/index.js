@@ -46,7 +46,7 @@ if (!process.env.FUNCTIONS_EMULATOR) {
     azureTenantIdSecret = defineSecret("AZURE_TENANT_ID");
     azureEndpointSecret = defineSecret("AZURE_ENDPOINT");
     logger.info("Firebase secrets defined successfully");
-  } catch (secretError) {
+  } catch {
     logger.warn("Azure secrets not available, will use environment variables");
   }
 } else {
@@ -55,7 +55,6 @@ if (!process.env.FUNCTIONS_EMULATOR) {
 
 const admin = require("firebase-admin");
 const { generateToken } = require("@fluidframework/azure-service-utils");
-const functions = require("firebase-functions");
 
 const jwt = require("jsonwebtoken");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -2103,8 +2102,8 @@ exports.debugUserContainers = onRequest(
       // userContainers コレクションを確認
       const userContainerDoc = await db.collection("userContainers").doc(userId)
         .get();
-      const userContainerData = userContainerDoc.exists
-        ? userContainerDoc.data() : null;
+      const userContainerData = userContainerDoc.exists ?
+        userContainerDoc.data() : null;
 
       // containerUsers コレクションで該当するドキュメントを検索
       const containerUsersQuery = await db.collection("containerUsers")
