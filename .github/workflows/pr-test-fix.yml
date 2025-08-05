@@ -128,18 +128,17 @@ jobs:
           
           echo "Gemini CLI version: $(gemini --version 2>/dev/null || echo 'version check failed')"
 
-      - name: Download Gemini CLI Transformer
+      - name: Setup Gemini CLI Transformer
         run: |
-          echo "📥 Downloading Gemini CLI transformer..."
-          
+          echo "📥 Setting up Gemini CLI transformer..."
+
           # Create plugins directory
           mkdir -p "$HOME/.claude-code-router/plugins"
-          
-          # Download the gemini-cli transformer
-          curl -fsSL https://gist.githubusercontent.com/musistudio/1c13a65f35916a7ab690649d3df8d1cd/raw/8a25f826499fd0f53c599bd9601b93bd02bccbd1/gemini-cli.js \
-            -o "$HOME/.claude-code-router/plugins/gemini-cli.js"
-          
-          echo "✅ Gemini CLI transformer downloaded"
+
+          # Copy our custom Gemini CLI transformer
+          cp scripts/gemini-cli-transformer.js "$HOME/.claude-code-router/plugins/gemini-cli-direct.js"
+
+          echo "✅ Gemini CLI transformer set up"
 
       - name: Create Claude Code Router Configuration
         env:
@@ -154,7 +153,7 @@ jobs:
             "API_TIMEOUT_MS": 600000,
             "transformers": [
               {
-                "path": "${HOME}/.claude-code-router/plugins/gemini-cli.js",
+                "path": "${HOME}/.claude-code-router/plugins/gemini-cli-direct.js",
                 "options": {
                   "project": "outliner-d57b0",
                   "forceModel": true
@@ -163,19 +162,19 @@ jobs:
             ],
             "Providers": [
               {
-                "name": "gemini-cli",
-                "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
+                "name": "gemini-cli-direct",
+                "api_base_url": "http://localhost:3456",
                 "api_key": "dummy-key",
                 "models": ["gemini-2.5-flash", "gemini-2.5-pro"],
                 "transformer": {
-                  "use": ["gemini-cli"]
+                  "use": ["gemini-cli-direct"]
                 }
               }
             ],
             "Router": {
-              "default": "gemini-cli,gemini-2.5-pro",
-              "think": "gemini-cli,gemini-2.5-pro",
-              "longContext": "gemini-cli,gemini-2.5-pro",
+              "default": "gemini-cli-direct,gemini-2.5-pro",
+              "think": "gemini-cli-direct,gemini-2.5-pro",
+              "longContext": "gemini-cli-direct,gemini-2.5-pro",
               "longContextThreshold": 60000,
               "forceModel": "gemini-2.5-pro"
             }

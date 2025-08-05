@@ -102,8 +102,10 @@ gemini auth login
 
 **重要な設定項目：**
 
-- `forceModel: true`: Transformerレベルでモデル強制使用を有効化
+- **カスタムTransformer**: 実際のGemini CLIコマンドを呼び出すカスタムtransformerを使用
+- `forceModel: true`: Gemini CLIに`--force-model`オプションを渡してモデル強制使用
 - `"forceModel": "gemini-2.5-pro"`: Routerレベルで特定のモデルを強制指定
+- **MCP対応**: 実際のGemini CLIを使用することでMCP等の高度な機能をサポート
 
 ```json
 {
@@ -111,7 +113,7 @@ gemini auth login
     "API_TIMEOUT_MS": 600000,
     "transformers": [
         {
-            "path": "$HOME/.claude-code-router/plugins/gemini-cli.js",
+            "path": "$HOME/.claude-code-router/plugins/gemini-cli-direct.js",
             "options": {
                 "project": "outliner-d57b0",
                 "forceModel": true
@@ -120,23 +122,41 @@ gemini auth login
     ],
     "Providers": [
         {
-            "name": "gemini-cli",
-            "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
+            "name": "gemini-cli-direct",
+            "api_base_url": "http://localhost:3456",
             "api_key": "dummy-key",
             "models": ["gemini-2.5-flash", "gemini-2.5-pro"],
             "transformer": {
-                "use": ["gemini-cli"]
+                "use": ["gemini-cli-direct"]
             }
         }
     ],
     "Router": {
-        "default": "gemini-cli,gemini-2.5-pro",
-        "think": "gemini-cli,gemini-2.5-pro",
-        "longContext": "gemini-cli,gemini-2.5-pro",
+        "default": "gemini-cli-direct,gemini-2.5-pro",
+        "think": "gemini-cli-direct,gemini-2.5-pro",
+        "longContext": "gemini-cli-direct,gemini-2.5-pro",
         "longContextThreshold": 60000,
         "forceModel": "gemini-2.5-pro"
     }
 }
+```
+
+### カスタムGemini CLI Transformer
+
+このプロジェクトでは、実際のGemini CLIコマンドを呼び出すカスタムtransformerを使用しています：
+
+**特徴：**
+
+- **実際のGemini CLI実行**: Google Cloud Code APIではなく、実際の`gemini`コマンドを実行
+- **MCP対応**: Gemini CLIの全機能（MCP等）をサポート
+- **Force-Model対応**: `--force-model`オプションでモデル強制使用
+- **JSON出力**: `--format json`で構造化された出力を取得
+- **一時ファイル管理**: 会話データを一時ファイルで管理し、実行後に自動削除
+
+**実行例：**
+
+```bash
+gemini chat --model gemini-2.5-pro --force-model --project outliner-d57b0 --format json --file /tmp/conversation.json
 ```
 
 ## トラブルシューティング
