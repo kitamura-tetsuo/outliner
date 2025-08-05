@@ -4,11 +4,21 @@
 
 ## 概要
 
+### Issue分析機能
+
 - **ワークフロー**: `.github/workflows/issue-claude-action.yml`
 - **トリガー**: Issue作成・編集時、または`@claude`を含むコメント作成時
 - **実行環境**: Self-hosted runner
 - **AI モデル**: Gemini 2.5 Pro (Gemini CLI経由)
 - **ルーティング**: Claude Code Router使用
+
+### PR自動テスト修正機能
+
+- **ワークフロー**: `.github/workflows/pr-test-fix.yml`
+- **トリガー**: PRのテストが失敗した時
+- **実行環境**: Self-hosted runner
+- **AI モデル**: Gemini 2.5 Pro (Gemini CLI経由)
+- **機能**: テスト失敗を自動分析・修正し、テストがパスするまで繰り返し実行
 
 ## 前提条件
 
@@ -59,12 +69,23 @@ gemini auth login
 
 ## ワークフローの動作
 
-### トリガー条件
+### Issue分析ワークフロー
+
+#### トリガー条件
 
 以下の場合にワークフローが実行されます：
 
 - Issue が作成または編集された時
 - Issue コメントが作成され、`@claude` が含まれている時
+
+### PR自動テスト修正ワークフロー
+
+#### トリガー条件
+
+以下の場合にワークフローが実行されます：
+
+- PRのテストワークフローが失敗で完了した時
+- 対象のPRがオープン状態である時
 
 ### 実行ステップ
 

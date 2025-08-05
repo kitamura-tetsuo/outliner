@@ -172,6 +172,7 @@ Mocks are generally forbidden. Limited exceptions:
 ## 7. GitHub Actions & Claude Code Integration
 
 - **Issue Analysis**: The `.github/workflows/issue-claude-action.yml` workflow automatically analyzes new issues and issue comments containing `@claude` using Claude Code Action with self-hosted runners.
+- **PR Auto-Fix**: The `.github/workflows/pr-test-fix.yml` workflow automatically fixes failing tests in PRs using Claude Code Action, repeating until tests pass or maximum attempts are reached.
 - **Claude Code Router**: Uses `@musistudio/claude-code-router` to route requests to Gemini CLI, enabling cost-effective AI analysis on self-hosted infrastructure.
 - **Self-Hosted Runner Requirements**:
   - Gemini CLI must be authenticated via `gemini auth login` or `GEMINI_API_KEY` secret
@@ -181,6 +182,7 @@ Mocks are generally forbidden. Limited exceptions:
   - Preferred: Run `gemini auth login` on the runner machine for persistent OAuth credentials
   - Alternative: Set `GEMINI_API_KEY` repository secret with a valid API key
 - **Router Configuration**: Automatically downloads and configures the Gemini CLI transformer from the official gist, routing all requests to `gemini-2.5-pro` for high-quality analysis and responses.
+- **Auto-Fix Process**: When PR tests fail, Claude analyzes the failures, implements fixes, runs tests again, and commits/pushes changes if tests pass. Maximum 5 attempts per failure.
 
 ## 8. Preferred Code Patterns
 

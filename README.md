@@ -17,6 +17,15 @@ Issue作成時に自動的にClaude Code Actionが実行され、AIによる分�
 - **AI モデル**: Gemini 2.5 Pro (Claude Code Router経由)
 - **機能**: Issue分析、コード提案、質問回答
 
+### PR自動テスト修正機能
+
+PRのテストが失敗した場合、Claude Code Actionが自動的に修正を試行します：
+
+- **トリガー**: PRテスト失敗時
+- **実行環境**: Self-hosted runner
+- **AI モデル**: Gemini 2.5 Pro (Claude Code Router経由)
+- **機能**: テスト失敗分析、コード修正、テストがパスするまで繰り返し実行（最大5回）
+
 詳細な設定手順は [docs/github-actions-setup.md](docs/github-actions-setup.md) を参照してください。
 
 ### 改善されたワークフロー
