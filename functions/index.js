@@ -2158,3 +2158,207 @@ exports.debugUserContainers = onRequest(
     }
   },
 );
+
+// 本番環境データ全削除エンドポイント（管理者専用）
+exports.deleteAllProductionData = onRequest(
+  { cors: true },
+  async (req, res) => {
+    // CORS設定
+    setCorsHeaders(req, res);
+
+    // プリフライト OPTIONS リクエストの処理
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+
+    // POSTメソッド以外は拒否
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
+    try {
+      const { adminToken, confirmationCode } = req.body;
+
+      // 管理者トークンの検証（簡易的な実装）
+      if (!adminToken || adminToken !== "ADMIN_DELETE_ALL_DATA_2024") {
+        logger.warn("Unauthorized attempt to delete all production data");
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // 確認コードの検証
+      if (
+        !confirmationCode ||
+        confirmationCode !== "DELETE_ALL_PRODUCTION_DATA_CONFIRM"
+      ) {
+        logger.warn("Invalid confirmation code for production data deletion");
+        return res.status(400).json({ error: "Invalid confirmation code" });
+      }
+
+      // 本番環境チェック
+      const isProduction = !process.env.FUNCTIONS_EMULATOR &&
+        !process.env.FIRESTORE_EMULATOR_HOST &&
+        process.env.NODE_ENV === "production";
+
+      if (!isProduction) {
+        logger.warn(
+          "Production data deletion attempted in non-production environment",
+        );
+        return res.status(400).json({
+          error: "This endpoint only works in production environment",
+        });
+      }
+
+      logger.warn("CRITICAL: Starting production data deletion process");
+
+      const deletionResults = {
+        firestore: { success: false, error: null, deletedCollections: [] },
+        auth: { success: false, error: null, deletedUsers: 0 },
+        storage: { success: false, error: null, deletedFiles: 0 },
+      };
+
+      // 1. Firestore データ削除
+      try {
+        logger.info("Deleting all Firestore data...");
+        const db = admin.firestore();
+
+        // 主要なコレクションを削除
+        const collections = [
+          "users",
+          "containers",
+          "projects",
+          "schedules",
+          "user-containers",
+        ];
+
+        for (const collectionName of collections) {
+          try {
+            const collectionRef = db.collection(collectionName);
+            const snapshot = await collectionRef.get();
+
+            const batch = db.batch();
+            let batchCount = 0;
+
+            for (const doc of snapshot.docs) {
+              batch.delete(doc.ref);
+              batchCount++;
+
+              // Firestoreのバッチ制限（500件）に達したら実行
+              if (batchCount >= 500) {
+                await batch.commit();
+                batchCount = 0;
+              }
+            }
+
+            // 残りのドキュメントを削除
+            if (batchCount > 0) {
+              await batch.commit();
+            }
+
+            deletionResults.firestore.deletedCollections.push({
+              name: collectionName,
+              count: snapshot.size,
+            });
+
+            logger.info(
+              `Deleted ${snapshot.size} documents from ${collectionName} collection`,
+            );
+          } catch (collectionError) {
+            logger.error(
+              `Error deleting collection ${collectionName}: ${collectionError.message}`,
+            );
+          }
+        }
+
+        deletionResults.firestore.success = true;
+        logger.info("Firestore data deletion completed");
+      } catch (firestoreError) {
+        logger.error(`Firestore deletion error: ${firestoreError.message}`);
+        deletionResults.firestore.error = firestoreError.message;
+      }
+
+      // 2. Firebase Auth ユーザー削除
+      try {
+        logger.info("Deleting all Firebase Auth users...");
+
+        let nextPageToken;
+        let totalDeleted = 0;
+
+        do {
+          const listUsersResult = await admin.auth().listUsers(
+            1000,
+            nextPageToken,
+          );
+
+          const uids = listUsersResult.users.map(user => user.uid);
+
+          if (uids.length > 0) {
+            await admin.auth().deleteUsers(uids);
+            totalDeleted += uids.length;
+            logger.info(
+              `Deleted ${uids.length} users (total: ${totalDeleted})`,
+            );
+          }
+
+          nextPageToken = listUsersResult.pageToken;
+        } while (nextPageToken);
+
+        deletionResults.auth.success = true;
+        deletionResults.auth.deletedUsers = totalDeleted;
+        logger.info(
+          `Firebase Auth deletion completed. Total users deleted: ${totalDeleted}`,
+        );
+      } catch (authError) {
+        logger.error(`Firebase Auth deletion error: ${authError.message}`);
+        deletionResults.auth.error = authError.message;
+      }
+
+      // 3. Firebase Storage ファイル削除
+      try {
+        logger.info("Deleting all Firebase Storage files...");
+
+        const bucket = admin.storage().bucket();
+        const [files] = await bucket.getFiles();
+
+        let deletedCount = 0;
+
+        for (const file of files) {
+          try {
+            await file.delete();
+            deletedCount++;
+          } catch (fileError) {
+            logger.error(
+              `Error deleting file ${file.name}: ${fileError.message}`,
+            );
+          }
+        }
+
+        deletionResults.storage.success = true;
+        deletionResults.storage.deletedFiles = deletedCount;
+        logger.info(
+          `Firebase Storage deletion completed. Files deleted: ${deletedCount}`,
+        );
+      } catch (storageError) {
+        logger.error(
+          `Firebase Storage deletion error: ${storageError.message}`,
+        );
+        deletionResults.storage.error = storageError.message;
+      }
+
+      logger.warn("CRITICAL: Production data deletion process completed");
+
+      return res.status(200).json({
+        success: true,
+        message: "Production data deletion completed",
+        results: deletionResults,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error(`Production data deletion error: ${error.message}`, {
+        error,
+      });
+      return res.status(500).json({
+        error: "Failed to delete production data",
+      });
+    }
+  },
+);
