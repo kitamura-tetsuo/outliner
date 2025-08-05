@@ -169,7 +169,20 @@ Mocks are generally forbidden. Limited exceptions:
 - Do not bypass authentication; tests should authenticate against the Firebase Auth emulator.
 - **Firebase Emulator Setup**: Always start Firebase Functions with Hosting emulator using `firebase emulators:start --only hosting,functions --project outliner-d57b0` to ensure proper API routing. The hosting emulator applies rewrite rules from firebase.json, allowing `/api/` endpoints to work correctly.
 
-## 7. Preferred Code Patterns
+## 7. GitHub Actions & Claude Code Integration
+
+- **Issue Analysis**: The `.github/workflows/issue-claude-action.yml` workflow automatically analyzes new issues and issue comments containing `@claude` using Claude Code Action with self-hosted runners.
+- **Claude Code Router**: Uses `@musistudio/claude-code-router` to route requests to Gemini CLI, enabling cost-effective AI analysis on self-hosted infrastructure.
+- **Self-Hosted Runner Requirements**:
+  - Gemini CLI must be authenticated via `gemini auth login` or `GEMINI_API_KEY` secret
+  - Node.js 22+ and npm must be available
+  - Network access to Google APIs required
+- **Authentication Setup**:
+  - Preferred: Run `gemini auth login` on the runner machine for persistent OAuth credentials
+  - Alternative: Set `GEMINI_API_KEY` repository secret with a valid API key
+- **Router Configuration**: Automatically downloads and configures the Gemini CLI transformer from the official gist, routing all requests to `gemini-2.5-pro` for high-quality analysis and responses.
+
+## 8. Preferred Code Patterns
 
 - Use Svelte 5 `$derived` for derived state and `$state` in stores. `$state` is only valid in `.svelte` or `.svelte.ts` files.
 - Avoid `svelte/store`; rely on Svelte 5 `$state` for all store functionality.

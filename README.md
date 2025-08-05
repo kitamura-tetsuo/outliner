@@ -2,9 +2,22 @@
 
 Outlinerは、Azure Fluid Relayを使用したリアルタイム共同編集アプリケーションです。
 
-## 自動PR-Issue連携機能
+## AI統合機能
+
+### 自動PR-Issue連携機能
 
 このリポジトリには、Gemini CLIとGitHub MCPサーバー統合を使用した自動PR-Issue連携機能が含まれています。PRを作成すると、システムが自動的にPRの内容を分析し、関連するオープンなissueにリンクします。
+
+### Claude Code Action統合
+
+Issue作成時に自動的にClaude Code Actionが実行され、AIによる分析とサポートを提供します：
+
+- **トリガー**: Issue作成・編集時、または`@claude`を含むコメント
+- **実行環境**: Self-hosted runner
+- **AI モデル**: Gemini 2.5 Pro (Claude Code Router経由)
+- **機能**: Issue分析、コード提案、質問回答
+
+詳細な設定手順は [docs/github-actions-setup.md](docs/github-actions-setup.md) を参照してください。
 
 ### 改善されたワークフロー
 
