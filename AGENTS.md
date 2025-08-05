@@ -181,7 +181,7 @@ Mocks are generally forbidden. Limited exceptions:
 - **Authentication Setup**:
   - Preferred: Run `gemini auth login` on the runner machine for persistent OAuth credentials
   - Alternative: Set `GEMINI_API_KEY` repository secret with a valid API key
-- **Router Configuration**: Automatically downloads and configures the Gemini CLI transformer from the official gist, routing all requests to `gemini-2.5-pro` for high-quality analysis and responses.
+- **Router Configuration**: Automatically downloads and configures the Gemini CLI transformer from the official gist, routing all requests to `gemini-2.5-pro` for high-quality analysis and responses. Uses `--force-model` option to ensure the specified model is used.
 - **Auto-Fix Process**: When PR tests fail, Claude analyzes the failures, implements fixes, runs tests again, and commits/pushes changes if tests pass. Maximum 5 attempts per failure.
 
 ## 8. Preferred Code Patterns

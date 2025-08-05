@@ -100,6 +100,11 @@ gemini auth login
 
 ワークフローは以下の設定でClaude Code Routerを起動します：
 
+**重要な設定項目：**
+
+- `forceModel: true`: Transformerレベルでモデル強制使用を有効化
+- `"forceModel": "gemini-2.5-pro"`: Routerレベルで特定のモデルを強制指定
+
 ```json
 {
     "LOG": true,
@@ -108,7 +113,8 @@ gemini auth login
         {
             "path": "$HOME/.claude-code-router/plugins/gemini-cli.js",
             "options": {
-                "project": "outliner-d57b0"
+                "project": "outliner-d57b0",
+                "forceModel": true
             }
         }
     ],
@@ -127,7 +133,8 @@ gemini auth login
         "default": "gemini-cli,gemini-2.5-pro",
         "think": "gemini-cli,gemini-2.5-pro",
         "longContext": "gemini-cli,gemini-2.5-pro",
-        "longContextThreshold": 60000
+        "longContextThreshold": 60000,
+        "forceModel": "gemini-2.5-pro"
     }
 }
 ```
