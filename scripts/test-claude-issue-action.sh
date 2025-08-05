@@ -59,11 +59,11 @@ ISSUE_BODY="This is a test issue to verify that the Claude Code Action workflow 
 
 Please also suggest any improvements to our GitHub Actions setup."
 
-# Create the issue
+# Create the issue (without labels since 'test' doesn't exist)
 ISSUE_URL=$(gh issue create \
     --title "$ISSUE_TITLE" \
     --body "$ISSUE_BODY" \
-    --label "test,claude-action")
+    --label "enhancement")
 
 echo "✅ Test issue created: $ISSUE_URL"
 

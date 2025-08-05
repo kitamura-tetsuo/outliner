@@ -43,16 +43,16 @@ jobs:
       - name: Setup Claude Code Router Environment
         run: |
           echo "🔧 Setting up Claude Code Router environment..."
-          
+
           # Create claude-code-router config directory
           mkdir -p "$HOME/.claude-code-router"
-          
+
           # Install claude-code-router globally if not available
           if ! command -v ccr >/dev/null 2>&1; then
             echo "Installing claude-code-router..."
             npm install -g @musistudio/claude-code-router
           fi
-          
+
           echo "✅ Claude Code Router environment ready"
 
       - name: Setup Gemini CLI authentication
@@ -104,14 +104,15 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           echo "⚙️ Creating Claude Code Router configuration..."
-          
-          cat > "$HOME/.claude-code-router/config.json" << 'EOF'
+
+          # Create config with proper path expansion
+          cat > "$HOME/.claude-code-router/config.json" << EOF
           {
             "LOG": true,
             "API_TIMEOUT_MS": 600000,
             "transformers": [
               {
-                "path": "$HOME/.claude-code-router/plugins/gemini-cli.js",
+                "path": "${HOME}/.claude-code-router/plugins/gemini-cli.js",
                 "options": {
                   "project": "outliner-d57b0"
                 }
@@ -153,16 +154,16 @@ jobs:
           # Wait for router to be ready
           echo "⏳ Waiting for Claude Code Router to be ready..."
           for i in {1..30}; do
-            if netstat -tuln | grep -q ":3456 "; then
-              echo "✅ Claude Code Router is ready (port 3456 is listening)"
+            if curl -s http://localhost:3456 >/dev/null 2>&1; then
+              echo "✅ Claude Code Router is ready (responding to HTTP requests)"
               break
             fi
             if [ $i -eq 30 ]; then
               echo "❌ Claude Code Router failed to start within 30 seconds"
               echo "📋 Router logs:"
               cat "$HOME/.claude-code-router.log" || echo "No logs available"
-              echo "📋 Port status:"
-              netstat -tuln | grep 3456 || echo "Port 3456 not found"
+              echo "📋 Process status:"
+              ps aux | grep ccr || echo "No ccr processes found"
               exit 1
             fi
             sleep 1
