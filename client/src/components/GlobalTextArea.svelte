@@ -149,9 +149,14 @@ function handleCopy(event: ClipboardEvent) {
     KeyEventHandler.handleCopy(event);
 }
 
-// ペーストイベントを KeyEventHandler へ委譲
-function handlePaste(event: ClipboardEvent) {
-    KeyEventHandler.handlePaste(event);
+/**
+ * ペーストイベントを KeyEventHandler に委譲する非同期ハンドラ。
+ * `KeyEventHandler.handlePaste` は Promise を返すため `await` して
+ * 権限拒否や読み取り失敗を捕捉し、`clipboard-permission-denied`
+ * または `clipboard-read-error` を dispatch してユーザーにはペーストされない。
+ */
+async function handlePaste(event: ClipboardEvent) {
+    await KeyEventHandler.handlePaste(event);
 }
 
 // フォーカス喪失時の処理を追加
@@ -186,7 +191,18 @@ function handleBlur(_event: FocusEvent) {
     on:compositionupdate={handleCompositionUpdate}
     on:compositionend={handleCompositionEnd}
     on:copy={handleCopy}
-    on:paste={handlePaste}
+    on:paste={async event => {
+        try {
+            await handlePaste(event);
+        } catch (error) {
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("clipboard-read-error"));
+            }
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.error("GlobalTextArea.handlePaste failed", error);
+            }
+        }
+    }}
     on:blur={handleBlur}
 ></textarea>
 
