@@ -237,6 +237,64 @@ jobs:
           cd functions
           npm run lint -- --fix
 
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@latest
+
+      - name: Firebase deployment dry run
+        run: |
+          # Create temporary env file for functions (similar to deploy workflow)
+          cat > functions/.env <<EOF
+          AZURE_TENANT_ID=test-tenant-id
+          AZURE_ENDPOINT=https://test.fluidrelay.azure.com
+          AZURE_PRIMARY_KEY=test-primary-key
+          AZURE_SECONDARY_KEY=test-secondary-key
+          AZURE_ACTIVE_KEY=primary
+          NODE_ENV=test
+          EOF
+
+          # Set Firebase project for testing
+          firebase use outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
+
+          # Validate Firebase configuration and functions
+          echo "Validating Firebase configuration..."
+          firebase functions:config:get --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No config found"
+
+          # Check functions source code for syntax errors
+          echo "Checking functions source code..."
+          cd functions
+          node -c index.js
+          cd ..
+
+          # Validate Firebase project configuration
+          echo "Validating Firebase project configuration..."
+          firebase projects:list --token "${{ secrets.FIREBASE_TOKEN }}" | grep outliner-d57b0
+
+          # Validate functions deployment (dry run)
+          echo "Performing Firebase Functions deployment validation..."
+          firebase deploy --only functions --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --dry-run || {
+            echo "❌ Firebase deployment validation failed!"
+            echo "This indicates that the deployment would fail in production."
+            exit 1
+          }
+
+          echo "✅ Firebase deployment validation passed!"
+
+          # Additional validation for other Firebase services
+          echo "Validating Firebase Hosting configuration..."
+          firebase hosting:channel:list --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No hosting channels found"
+
+          # Validate Firestore rules
+          echo "Validating Firestore rules..."
+          firebase firestore:rules:get --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No Firestore rules found"
+
+          # Validate Storage rules
+          echo "Validating Storage rules..."
+          firebase storage:rules:get --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No Storage rules found"
+
+          echo "✅ All Firebase services validation completed!"
+        env:
+          CI: true
+
       - name: Run codex setup script
         run: bash scripts/codex-setup.sh
         env:
@@ -290,12 +348,42 @@ jobs:
         run: |
           echo "## ❌ Test suite failed" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
+          # Check for test failures
           if [ -f /tmp/test.log ]; then
+            echo "### Test Failures:" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
             grep -E -A1 -B0 "FAIL|FAILED" /tmp/test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+            echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           fi
+
           if [ -f /tmp/env-test.log ]; then
+            echo "### Environment Test Failures:" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
             grep -E -A1 -B0 "FAIL|FAILED" /tmp/env-test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+            echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           fi
+
+          if [ -f /tmp/unit-test.log ]; then
+            echo "### Unit Test Failures:" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+            grep -E -A1 -B0 "FAIL|FAILED" /tmp/unit-test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+            echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -f /tmp/integration-test.log ]; then
+            echo "### Integration Test Failures:" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+            grep -E -A1 -B0 "FAIL|FAILED" /tmp/integration-test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+            echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -f /tmp/e2e-test.log ]; then
+            echo "### E2E Test Failures:" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+            grep -E -A1 -B0 "FAIL|FAILED" /tmp/e2e-test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+            echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # Check for Firebase deployment validation failures
+          echo "### Firebase Deployment Validation:" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "If Firebase deployment validation failed, this indicates that the production deployment would also fail." 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Please check the Firebase configuration, functions code, and secrets setup." 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Check disk space before upload
         if: failure()
@@ -375,10 +463,13 @@ jobs:
 
             if (testStatus === 'success') {
               comment += '✅ **All tests passed!** 🎉\n\n';
+              comment += '🚀 **Firebase deployment validation:** ✅ Passed\n\n';
             } else if (testStatus === 'cancelled') {
               comment += '⏹️ **Tests were cancelled** - You may want to restart the tests.\n\n';
             } else {
               comment += '❌ **Tests failed** - Please check the logs and fix the failing tests.\n\n';
+              comment += '🔥 **Firebase deployment validation:** May have failed - check logs for deployment issues\n\n';
+              comment += '🤖 **Auto-fix:** Claude Code Action will automatically attempt to fix the failing tests.\n\n';
             }
 
             comment += `📊 [View detailed results](${runUrl})\n`;
