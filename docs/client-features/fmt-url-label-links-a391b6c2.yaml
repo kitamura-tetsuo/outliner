@@ -1,0 +1,14 @@
+id: FMT-a391b6c2
+title: URL label links
+title-ja: URLラベルリンク
+description: Convert bracketed URL and label pairs into links that display only the label text.
+category: text-formatting
+status: implemented
+acceptance:
+- Bracketed pairs [URL label] render the label text linked to the URL.
+- No URL text remains visible when a label is provided.
+- Plain URLs are converted to clickable links.
+tests:
+- client/e2e/core/fmt-url-label-links-a391b6c2.spec.ts
+- client/src/tests/integration/linkFormat.test.ts
+- client/src/utils/ScrapboxFormatter.test.ts

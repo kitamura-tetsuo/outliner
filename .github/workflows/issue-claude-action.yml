@@ -1,0 +1,221 @@
+name: Claude Code Action on Issues
+
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created, edited]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  claude-issue-analysis:
+    runs-on: self-hosted
+    if: |
+      (github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'edited')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+    timeout-minutes: 300
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Git configuration
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions Bot"
+          echo "✅ Git configuration set for Claude Code compatibility"
+
+      - name: Setup Claude Code Router Environment
+        run: |
+          echo "🔧 Setting up Claude Code Router environment..."
+
+          # Create claude-code-router config directory
+          mkdir -p "$HOME/.claude-code-router"
+
+          # Install claude-code-router globally if not available
+          if ! command -v ccr >/dev/null 2>&1; then
+            echo "Installing claude-code-router..."
+            npm install -g @musistudio/claude-code-router
+          fi
+
+          echo "✅ Claude Code Router environment ready"
+
+      - name: Setup Gemini CLI authentication
+        run: |
+          echo "🔑 Setting up Gemini CLI authentication..."
+          
+          # Create .gemini directory
+          mkdir -p "$HOME/.gemini"
+          
+          # Method 1: Check if persistent oauth_creds.json exists on runner
+          if [ -f "$HOME/.gemini/oauth_creds.json" ]; then
+            echo "✅ Found persistent Gemini CLI credentials"
+            ls -la "$HOME/.gemini/oauth_creds.json"
+          elif [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
+            # Method 2: Use API key if available
+            echo "🔑 Using Gemini API key for authentication..."
+            export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
+            echo "✅ Gemini CLI will use API key authentication"
+          else
+            echo "❌ No Gemini CLI credentials found"
+            echo "   Method 1 (Recommended): Run 'gemini auth login' on the runner machine"
+            echo "   Method 2: Set GEMINI_API_KEY secret"
+            exit 1
+          fi
+          
+          # Install gemini-cli if not available
+          if ! command -v gemini >/dev/null 2>&1; then
+            echo "Installing gemini-cli..."
+            npm install -g @google/gemini-cli
+          fi
+          
+          echo "Gemini CLI version: $(gemini --version 2>/dev/null || echo 'version check failed')"
+
+      - name: Setup Gemini CLI Transformer
+        run: |
+          echo "📥 Setting up Gemini CLI transformer..."
+
+          # Create plugins directory
+          mkdir -p "$HOME/.claude-code-router/plugins"
+
+          # Copy our custom Gemini CLI transformer
+          cp scripts/gemini-cli-transformer.js "$HOME/.claude-code-router/plugins/gemini-cli-direct.js"
+
+          echo "✅ Gemini CLI transformer set up"
+
+      - name: Create Claude Code Router Configuration
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          echo "⚙️ Creating Claude Code Router configuration..."
+
+          # Create config with proper path expansion
+          cat > "$HOME/.claude-code-router/config.json" << EOF
+          {
+            "LOG": true,
+            "API_TIMEOUT_MS": 600000,
+            "transformers": [
+              {
+                "path": "${HOME}/.claude-code-router/plugins/gemini-cli-direct.js",
+                "options": {
+                  "project": "outliner-d57b0",
+                  "forceModel": true
+                }
+              }
+            ],
+            "Providers": [
+              {
+                "name": "gemini-cli-direct",
+                "api_base_url": "http://localhost:3456",
+                "api_key": "dummy-key",
+                "models": ["gemini-2.5-flash", "gemini-2.5-pro"],
+                "transformer": {
+                  "use": ["gemini-cli-direct"]
+                }
+              }
+            ],
+            "Router": {
+              "default": "gemini-cli-direct,gemini-2.5-pro",
+              "think": "gemini-cli-direct,gemini-2.5-pro",
+              "longContext": "gemini-cli-direct,gemini-2.5-pro",
+              "longContextThreshold": 60000,
+              "forceModel": "gemini-2.5-pro"
+            }
+          }
+          EOF
+          
+          echo "✅ Claude Code Router configuration created"
+          echo "📋 Configuration preview:"
+          cat "$HOME/.claude-code-router/config.json"
+
+      - name: Start Claude Code Router
+        run: |
+          echo "🚀 Starting Claude Code Router..."
+          
+          # Start claude-code-router in background
+          nohup ccr start > "$HOME/.claude-code-router.log" 2>&1 &
+          CCR_PID=$!
+          echo "CCR_PID=$CCR_PID" >> $GITHUB_ENV
+          
+          # Wait for router to be ready
+          echo "⏳ Waiting for Claude Code Router to be ready..."
+          for i in {1..30}; do
+            if curl -s http://localhost:3456 >/dev/null 2>&1; then
+              echo "✅ Claude Code Router is ready (responding to HTTP requests)"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "❌ Claude Code Router failed to start within 30 seconds"
+              echo "📋 Router logs:"
+              cat "$HOME/.claude-code-router.log" || echo "No logs available"
+              echo "📋 Process status:"
+              ps aux | grep ccr || echo "No ccr processes found"
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Run Claude Code Action
+        id: claude
+        uses: anthropics/claude-code-action@beta
+        env:
+          ANTHROPIC_BASE_URL: http://localhost:3456
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: "dummy-key-for-router"
+          trigger_phrase: "@claude"
+
+      - name: Cleanup Claude Code Router
+        if: always()
+        run: |
+          echo "🧹 Cleaning up Claude Code Router..."
+          
+          if [ -n "$CCR_PID" ]; then
+            kill $CCR_PID 2>/dev/null || true
+          fi
+          
+          # Kill any remaining ccr processes
+          pkill -f "ccr start" 2>/dev/null || true
+          
+          echo "✅ Cleanup completed"
+
+      - name: Log failure information
+        if: failure()
+        run: |
+          echo "🤖 Claude Code Action on Issues Failed"
+          echo ""
+          echo "The automated issue analysis process encountered an error."
+          echo "This could be due to:"
+          echo "- Claude Code Router startup issues"
+          echo "- Gemini CLI authentication problems"
+          echo "- Network connectivity issues"
+          echo "- Claude Code Action configuration problems"
+          echo ""
+          echo "📋 Debug Information:"
+          echo "Router logs:"
+          cat "$HOME/.claude-code-router.log" 2>/dev/null || echo "No router logs available"
+          echo ""
+          echo "Environment variables:"
+          echo "- ANTHROPIC_BASE_URL: $ANTHROPIC_BASE_URL"
+          echo "- HOME: $HOME"
+          echo ""
+          echo "Manual Action Required:"
+          echo "Please check the runner configuration and ensure:"
+          echo "1. Gemini CLI is properly authenticated"
+          echo "2. Claude Code Router can start successfully"
+          echo "3. Network connectivity is available"

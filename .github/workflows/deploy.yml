@@ -77,12 +77,12 @@ jobs:
           # Firebase シークレットを GitHub Actions のシークレットから更新
           echo "Updating Firebase secrets..."
 
-          # Azure関連のシークレットを更新
-          echo "${{ secrets.AZURE_PRIMARY_KEY }}" | firebase functions:secrets:set AZURE_PRIMARY_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
-          echo "${{ secrets.AZURE_SECONDARY_KEY }}" | firebase functions:secrets:set AZURE_SECONDARY_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
-          echo "${{ secrets.AZURE_ACTIVE_KEY }}" | firebase functions:secrets:set AZURE_ACTIVE_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
-          echo "${{ secrets.AZURE_TENANT_ID }}" | firebase functions:secrets:set AZURE_TENANT_ID --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
-          echo "${{ secrets.AZURE_ENDPOINT }}" | firebase functions:secrets:set AZURE_ENDPOINT --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
+          # Azure関連のシークレットを更新（改行文字を除去）
+          printf "%s" "${{ secrets.AZURE_PRIMARY_KEY }}" | firebase functions:secrets:set AZURE_PRIMARY_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
+          printf "%s" "${{ secrets.AZURE_SECONDARY_KEY }}" | firebase functions:secrets:set AZURE_SECONDARY_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
+          printf "%s" "${{ secrets.AZURE_ACTIVE_KEY }}" | firebase functions:secrets:set AZURE_ACTIVE_KEY --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
+          printf "%s" "${{ secrets.AZURE_TENANT_ID }}" | firebase functions:secrets:set AZURE_TENANT_ID --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
+          printf "%s" "${{ secrets.AZURE_ENDPOINT }}" | firebase functions:secrets:set AZURE_ENDPOINT --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --data-file=-
 
           echo "Firebase secrets updated successfully"
 
