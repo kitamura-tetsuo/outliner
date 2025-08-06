@@ -60,8 +60,8 @@
                 "function": "deleteUser"
             },
             {
-                "source": "/api/get-container-users",
-                "function": "getContainerUsers"
+                "source": "/api/get-user-containers",
+                "function": "getUserContainers"
             },
             {
                 "source": "/api/list-users",
@@ -109,6 +109,10 @@
             },
             {
                 "source": "/api/adminCheckForContainerUserListing",
+                "function": "adminCheckForContainerUserListing"
+            },
+            {
+                "source": "/api/get-container-users",
                 "function": "adminCheckForContainerUserListing"
             },
             {
@@ -165,6 +169,7 @@
             "port": 54000,
             "host": "0.0.0.0",
             "enabled": false
-        }
+        },
+        "singleProjectMode": false
     }
 }

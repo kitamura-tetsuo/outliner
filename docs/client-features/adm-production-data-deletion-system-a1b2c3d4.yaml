@@ -1,0 +1,37 @@
+id: ADM-0001
+title: Production Data Deletion System
+title-ja: 本番環境データ削除システム
+description: Comprehensive system for safely deleting all production data including Firestore, Firebase Auth, and Firebase Storage with backup and safety checks.
+category: admin
+status: implemented
+components:
+- functions/index.js (deleteAllProductionData endpoint)
+- scripts/backup-production-data.js
+- scripts/check-production-environment.js
+- scripts/delete-production-data.js
+- scripts/production-data-manager.js
+services:
+- Firebase Functions API endpoint
+- Firebase Admin SDK
+- Command-line management scripts
+tests:
+- scripts/tests/environment-check.spec.js
+- scripts/tests/production-data-deletion.spec.js
+acceptance:
+- API endpoint requires admin token and confirmation code
+- Command-line scripts support interactive confirmation
+- Creates backup before deletion
+- Deletes all Firebase Auth users
+- Deletes all Firebase Storage files
+- Deletes all Firestore collections (users, containers, projects, schedules, user-containers)
+- Environment detection prevents accidental execution in test environments
+- Only works in production environment (not in emulator)
+- Provides comprehensive logging
+- Returns detailed deletion results
+security:
+- Admin token authentication (ADMIN_DELETE_ALL_DATA_2024)
+- Confirmation code requirement (DELETE_ALL_PRODUCTION_DATA_CONFIRM)
+- Production environment validation
+- Comprehensive audit logging
+- Backup creation before deletion
+documentation: docs/PRODUCTION_DATA_DELETION.md

@@ -20,7 +20,7 @@ test.describe("VS Code clipboard behavior", () => {
         await TestHelpers.waitForCursorVisible(page);
         await page.locator(".outliner-item").nth(1).locator(".item-content").click({ force: true });
 
-        await page.evaluate(() => {
+        await page.evaluate(async () => {
             const data = new DataTransfer();
             data.setData("text/plain", "AAA\nBBB");
             const metadata = {
@@ -33,7 +33,7 @@ test.describe("VS Code clipboard behavior", () => {
             data.setData("application/vscode-editor", JSON.stringify(metadata));
             const evt = new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true });
             const handler = (window as any).__KEY_EVENT_HANDLER__;
-            handler.handlePaste(evt);
+            await handler.handlePaste(evt);
         });
 
         await page.waitForTimeout(500);
@@ -47,14 +47,14 @@ test.describe("VS Code clipboard behavior", () => {
         await TestHelpers.setCursor(page, firstId!, 0, "user1");
         await TestHelpers.setCursor(page, secondId!, 0, "user2");
 
-        await page.evaluate(() => {
+        await page.evaluate(async () => {
             const data = new DataTransfer();
             data.setData("text/plain", "111\n222");
             const metadata = { version: 1, isFromEmptySelection: false, mode: "plaintext" };
             data.setData("application/vscode-editor", JSON.stringify(metadata));
             const evt = new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true });
             const handler = (window as any).__KEY_EVENT_HANDLER__;
-            handler.handlePaste(evt);
+            await handler.handlePaste(evt);
         });
 
         await page.waitForTimeout(500);
