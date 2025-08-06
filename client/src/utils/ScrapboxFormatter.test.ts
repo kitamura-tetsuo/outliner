@@ -137,8 +137,38 @@ describe("ScrapboxFormatter", () => {
         });
 
         describe("external links", () => {
-            it("should generate correct HTML for external links", () => {
+            it("should render URL when no label is provided", () => {
                 const input = "[https://example.com]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toContain(
+                    '<a href="https://example.com" target="_blank" rel="noopener noreferrer">https://example.com</a>',
+                );
+            });
+
+            it("should display label text for bracketed URL with label", () => {
+                const input = "[https://example.com Example Site]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toContain(
+                    '<a href="https://example.com" target="_blank" rel="noopener noreferrer">Example Site</a>',
+                );
+                expect(result).not.toContain(
+                    '<a href="https://example.com" target="_blank" rel="noopener noreferrer">https://example.com</a>',
+                );
+            });
+
+            it("should preserve label text with extra spaces", () => {
+                const input = "[https://example.com     Label With Multiple Spaces]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toContain(
+                    '<a href="https://example.com" target="_blank" rel="noopener noreferrer">Label With Multiple Spaces</a>',
+                );
+            });
+
+            it("should fall back to URL when label is only whitespace", () => {
+                const input = "[https://example.com ]";
                 const result = ScrapboxFormatter.formatToHtml(input);
 
                 expect(result).toContain(
@@ -211,6 +241,46 @@ describe("ScrapboxFormatter", () => {
             expect(tokens[0].content).toBe("italic");
             expect(tokens[2].type).toBe("internalLink");
             expect(tokens[2].content).toBe("project/page");
+        });
+
+        it("should tokenize external links with labels", () => {
+            const input = "[https://example.com Example Site]";
+            const tokens = ScrapboxFormatter.tokenize(input);
+
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe("link");
+            expect(tokens[0].content).toBe("Example Site");
+            expect(tokens[0].url).toBe("https://example.com");
+        });
+
+        it("should tokenize external links with multiple spaces before label", () => {
+            const input = "[https://example.com     Label With Multiple Spaces]";
+            const tokens = ScrapboxFormatter.tokenize(input);
+
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe("link");
+            expect(tokens[0].content).toBe("Label With Multiple Spaces");
+            expect(tokens[0].url).toBe("https://example.com");
+        });
+
+        it("should tokenize external links with whitespace-only label as URL", () => {
+            const input = "[https://example.com ]";
+            const tokens = ScrapboxFormatter.tokenize(input);
+
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe("link");
+            expect(tokens[0].content).toBe("https://example.com");
+            expect(tokens[0].url).toBe("https://example.com");
+        });
+
+        it("should tokenize external links without label as URL", () => {
+            const input = "[https://example.com]";
+            const tokens = ScrapboxFormatter.tokenize(input);
+
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe("link");
+            expect(tokens[0].content).toBe("https://example.com");
+            expect(tokens[0].url).toBe("https://example.com");
         });
     });
 
