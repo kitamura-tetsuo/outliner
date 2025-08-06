@@ -1,0 +1,21 @@
+id: FTR-b6ebf516
+title: Paste text from the system clipboard
+description: 'Allow pasting text copied outside the app using the native clipboard API.
+
+  `KeyEventHandler.handlePaste` is asynchronous and should be awaited so
+
+  permission or read failures dispatch `clipboard-permission-denied` or
+
+  `clipboard-read-error` events and no text is inserted. When clipboard data is
+
+  unavailable the handler falls back to `window.lastCopiedText`.
+
+  '
+category: editing
+status: implemented
+acceptance:
+- Text copied in another application can be pasted into an item with Ctrl+V
+- The pasted text appears at the cursor position
+tests:
+- client/e2e/core/clp-system-clipboard-paste-b6ebf516.spec.ts
+title-ja: システムクリップボードからのテキストペースト
