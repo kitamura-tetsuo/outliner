@@ -135,7 +135,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
         await page.keyboard.press("Control+v");
 
         // KeyEventHandlerのhandlePasteを直接呼び出す
-        await page.evaluate(text => {
+        await page.evaluate(async text => {
             console.log("Calling KeyEventHandler.handlePaste directly with text:", text);
 
             // ClipboardEventを手動で作成
@@ -160,7 +160,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
             // KeyEventHandlerのhandlePasteを直接呼び出し
             const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
             if (KeyEventHandler && KeyEventHandler.handlePaste) {
-                KeyEventHandler.handlePaste(clipboardEvent);
+                await KeyEventHandler.handlePaste(clipboardEvent);
                 console.log("KeyEventHandler.handlePaste called successfully");
             } else {
                 console.log("KeyEventHandler.handlePaste not found");

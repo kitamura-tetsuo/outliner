@@ -110,6 +110,23 @@ install_global_packages() {
 
 # Install OS utilities if needed
 install_os_utilities() {
+  # Check if Java is installed and compatible with Firebase
+  if ! command -v java >/dev/null 2>&1; then
+    echo "Java not found. Installing OpenJDK 17 for Firebase compatibility..."
+    sudo apt-get update
+    DEBIAN_FRONTEND=noninteractive sudo apt-get -y install --no-install-recommends openjdk-17-jre-headless
+  else
+    # Check Java version (Firebase requires Java 11+)
+    java_version=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
+    if [ "$java_version" -lt 11 ] 2>/dev/null; then
+      echo "Java version $java_version is too old for Firebase. Installing OpenJDK 17..."
+      sudo apt-get update
+      DEBIAN_FRONTEND=noninteractive sudo apt-get -y install --no-install-recommends openjdk-17-jre-headless
+    else
+      echo "Java version $java_version is compatible with Firebase"
+    fi
+  fi
+
   # For Playwright's --with-deps chromium
   local playwright_deps=(
     libatk1.0-0
@@ -212,9 +229,114 @@ start_firebase_emulator() {
 
   echo "Starting Firebase emulator..."
   cd "${ROOT_DIR}"
-  firebase emulators:start --config firebase.emulator.json --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
+
+  # Create .env file for Firebase Functions (without reserved environment variables)
+  echo "Creating .env file for Firebase Functions..."
+  cat > "${ROOT_DIR}/functions/.env" << EOF
+AZURE_TENANT_ID=test-tenant-id
+AZURE_ENDPOINT=https://test.fluidrelay.azure.com
+AZURE_PRIMARY_KEY=test-primary-key
+AZURE_SECONDARY_KEY=test-secondary-key
+AZURE_ACTIVE_KEY=primary
+EOF
+
+  echo "Firebase Functions .env file contents:"
+  cat "${ROOT_DIR}/functions/.env" || echo "Failed to read .env file"
+
+  # Start Firebase emulator with detailed logging
+  echo "Firebase emulator starting with project: ${FIREBASE_PROJECT_ID}"
+  echo "Using config file: firebase.emulator.json"
+  echo "Starting emulators: auth,firestore,functions,hosting,storage"
+  firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
+  FIREBASE_PID=$!
+  echo "Firebase emulator started with PID: ${FIREBASE_PID}"
+  echo "Firebase emulator log will be written to: ${ROOT_DIR}/server/logs/firebase-emulator.log"
+
   cd "${ROOT_DIR}"
   node "${ROOT_DIR}/server/scripts/init-firebase-emulator.js" &
+
+  # Wait for Firebase emulator to start and verify it's working
+  echo "Waiting for Firebase emulator to start..."
+  for i in {1..60}; do
+    if nc -z localhost ${FIREBASE_AUTH_PORT} >/dev/null 2>&1; then
+      echo "Firebase Auth emulator is running on port ${FIREBASE_AUTH_PORT}"
+      break
+    fi
+    echo "Waiting for Firebase Auth emulator... (attempt $i/60)"
+    sleep 3
+  done
+
+  # Check if Firebase Functions emulator is running
+  for i in {1..60}; do
+    if nc -z localhost ${FIREBASE_FUNCTIONS_PORT} >/dev/null 2>&1; then
+      echo "Firebase Functions emulator is running on port ${FIREBASE_FUNCTIONS_PORT}"
+      break
+    fi
+    echo "Waiting for Firebase Functions emulator... (attempt $i/60)"
+    sleep 3
+  done
+
+  # Check if Firebase Hosting emulator is running
+  for i in {1..60}; do
+    if nc -z localhost ${FIREBASE_HOSTING_PORT} >/dev/null 2>&1; then
+      echo "Firebase Hosting emulator is running on port ${FIREBASE_HOSTING_PORT}"
+      break
+    fi
+    echo "Waiting for Firebase Hosting emulator... (attempt $i/60)"
+    sleep 3
+  done
+
+  # Additional wait for Firebase Functions to fully initialize
+  echo "Waiting additional 10 seconds for Firebase Functions to fully initialize..."
+  sleep 10
+
+  # Test Firebase Functions endpoint directly
+  echo "Testing Firebase Functions endpoint directly..."
+  if curl -s -f "http://localhost:${FIREBASE_FUNCTIONS_PORT}/${FIREBASE_PROJECT_ID}/us-central1/health" >/dev/null 2>&1; then
+    echo "Firebase Functions health endpoint is responding directly"
+  else
+    echo "WARNING: Firebase Functions health endpoint is not responding directly"
+  fi
+
+  # Test Firebase Hosting endpoint
+  echo "Testing Firebase Hosting endpoint..."
+  if curl -s -f "http://localhost:${FIREBASE_HOSTING_PORT}/api/health" >/dev/null 2>&1; then
+    echo "Firebase Hosting health endpoint is responding"
+  else
+    echo "WARNING: Firebase Hosting health endpoint is not responding"
+  fi
+
+  # Test get-container-users endpoint
+  echo "Testing get-container-users endpoint..."
+  response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/get-container-users")
+  echo "get-container-users endpoint returned HTTP status: $response"
+  if [ "$response" = "401" ]; then
+    echo "✅ get-container-users endpoint is working correctly (401 for invalid token)"
+  else
+    echo "❌ get-container-users endpoint returned unexpected status: $response"
+    echo "Checking Firebase emulator log..."
+    tail -30 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
+  fi
+
+  # Test adminCheckForContainerUserListing endpoint
+  echo "Testing adminCheckForContainerUserListing endpoint..."
+  response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/adminCheckForContainerUserListing")
+  echo "adminCheckForContainerUserListing endpoint returned HTTP status: $response"
+  if [ "$response" = "401" ]; then
+    echo "✅ adminCheckForContainerUserListing endpoint is working correctly (401 for invalid token)"
+  else
+    echo "❌ adminCheckForContainerUserListing endpoint returned unexpected status: $response"
+    echo "Response body:"
+    curl -s -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/adminCheckForContainerUserListing" || echo "Failed to get response body"
+
+    echo "Checking if Firebase Functions are loaded..."
+    echo "Firebase emulator log (last 50 lines):"
+    tail -50 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
+
+    echo "Checking Firebase Functions directly..."
+    direct_response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_FUNCTIONS_PORT}/${FIREBASE_PROJECT_ID}/us-central1/adminCheckForContainerUserListing")
+    echo "Direct Firebase Functions call returned HTTP status: $direct_response"
+  fi
 }
 
 # Start Tinylicious server
