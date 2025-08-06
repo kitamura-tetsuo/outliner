@@ -46,7 +46,7 @@ if (!process.env.FUNCTIONS_EMULATOR) {
     azureTenantIdSecret = defineSecret("AZURE_TENANT_ID");
     azureEndpointSecret = defineSecret("AZURE_ENDPOINT");
     logger.info("Firebase secrets defined successfully");
-  } catch (secretError) {
+  } catch {
     logger.warn("Azure secrets not available, will use environment variables");
   }
 } else {
@@ -55,7 +55,6 @@ if (!process.env.FUNCTIONS_EMULATOR) {
 
 const admin = require("firebase-admin");
 const { generateToken } = require("@fluidframework/azure-service-utils");
-const functions = require("firebase-functions");
 
 const jwt = require("jsonwebtoken");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -88,45 +87,50 @@ function getAzureConfig() {
   let tenantId = process.env.AZURE_TENANT_ID;
   let endpoint = process.env.AZURE_ENDPOINT;
 
-  try {
-    activeKey = (azureActiveKeySecret && azureActiveKeySecret.value()) ||
-      process.env.AZURE_ACTIVE_KEY || "primary";
-  } catch {
-    // シークレットが利用できない場合は環境変数またはデフォルト値を使用
-    activeKey = process.env.AZURE_ACTIVE_KEY || "primary";
-  }
+  // エミュレーター環境以外でシークレットを使用
+  if (!process.env.FUNCTIONS_EMULATOR) {
+    try {
+      activeKey =
+        (azureActiveKeySecret && azureActiveKeySecret.value()?.trim()) ||
+        process.env.AZURE_ACTIVE_KEY?.trim() || "primary";
+    } catch (error) {
+      logger.warn(`Failed to get AZURE_ACTIVE_KEY secret: ${error.message}`);
+      activeKey = process.env.AZURE_ACTIVE_KEY?.trim() || "primary";
+    }
 
-  try {
-    primaryKey = (azurePrimaryKeySecret && azurePrimaryKeySecret.value()) ||
-      process.env.AZURE_PRIMARY_KEY;
-  } catch {
-    // シークレットが利用できない場合は環境変数を使用
-    primaryKey = process.env.AZURE_PRIMARY_KEY;
-  }
+    try {
+      primaryKey =
+        (azurePrimaryKeySecret && azurePrimaryKeySecret.value()?.trim()) ||
+        process.env.AZURE_PRIMARY_KEY?.trim();
+    } catch (error) {
+      logger.warn(`Failed to get AZURE_PRIMARY_KEY secret: ${error.message}`);
+      primaryKey = process.env.AZURE_PRIMARY_KEY?.trim();
+    }
 
-  try {
-    secondaryKey =
-      (azureSecondaryKeySecret && azureSecondaryKeySecret.value()) ||
-      process.env.AZURE_SECONDARY_KEY;
-  } catch {
-    // シークレットが利用できない場合は環境変数を使用
-    secondaryKey = process.env.AZURE_SECONDARY_KEY;
-  }
+    try {
+      secondaryKey =
+        (azureSecondaryKeySecret && azureSecondaryKeySecret.value()?.trim()) ||
+        process.env.AZURE_SECONDARY_KEY?.trim();
+    } catch (error) {
+      logger.warn(`Failed to get AZURE_SECONDARY_KEY secret: ${error.message}`);
+      secondaryKey = process.env.AZURE_SECONDARY_KEY?.trim();
+    }
 
-  try {
-    tenantId = (azureTenantIdSecret && azureTenantIdSecret.value()) ||
-      process.env.AZURE_TENANT_ID;
-  } catch {
-    // シークレットが利用できない場合は環境変数を使用
-    tenantId = process.env.AZURE_TENANT_ID;
-  }
+    try {
+      tenantId = (azureTenantIdSecret && azureTenantIdSecret.value()?.trim()) ||
+        process.env.AZURE_TENANT_ID?.trim();
+    } catch (error) {
+      logger.warn(`Failed to get AZURE_TENANT_ID secret: ${error.message}`);
+      tenantId = process.env.AZURE_TENANT_ID?.trim();
+    }
 
-  try {
-    endpoint = (azureEndpointSecret && azureEndpointSecret.value()) ||
-      process.env.AZURE_ENDPOINT;
-  } catch {
-    // シークレットが利用できない場合は環境変数を使用
-    endpoint = process.env.AZURE_ENDPOINT;
+    try {
+      endpoint = (azureEndpointSecret && azureEndpointSecret.value()?.trim()) ||
+        process.env.AZURE_ENDPOINT?.trim();
+    } catch (error) {
+      logger.warn(`Failed to get AZURE_ENDPOINT secret: ${error.message}`);
+      endpoint = process.env.AZURE_ENDPOINT?.trim();
+    }
   }
 
   return {
@@ -239,22 +243,57 @@ async function checkContainerAccess(userId, containerId) {
       return true;
     }
 
+    // デバッグログを追加
+    logger.info(
+      `Checking container access for user: ${userId}, container: ${containerId}`,
+    );
+
     // Check if user is in containerUsers collection
     const containerUserDoc = await db.collection("containerUsers").doc(
       `${containerId}_${userId}`,
     ).get();
+    logger.info(`containerUsers doc exists: ${containerUserDoc.exists}`);
     if (containerUserDoc.exists) {
+      logger.info(`Access granted via containerUsers collection`);
       return true;
     }
 
     // Check if container is in user's containers list
     const userContainerDoc = await db.collection("userContainers").doc(userId)
       .get();
+    logger.info(`userContainers doc exists: ${userContainerDoc.exists}`);
     if (userContainerDoc.exists) {
       const userData = userContainerDoc.data();
-      return userData.containers && userData.containers[containerId] != null;
+      logger.info(`User data:`, JSON.stringify(userData));
+
+      // Check both old format (containers object) and new format (accessibleContainerIds array)
+      let hasAccess = false;
+
+      // Check new format first (accessibleContainerIds array)
+      if (
+        userData.accessibleContainerIds &&
+        Array.isArray(userData.accessibleContainerIds)
+      ) {
+        hasAccess = userData.accessibleContainerIds.includes(containerId);
+        logger.info(`Access via accessibleContainerIds: ${hasAccess}`);
+      }
+
+      // Fallback to old format (containers object) if not found in new format
+      if (
+        !hasAccess && userData.containers &&
+        userData.containers[containerId] != null
+      ) {
+        hasAccess = true;
+        logger.info(`Access via containers object: ${hasAccess}`);
+      }
+
+      logger.info(`Final access decision via userContainers: ${hasAccess}`);
+      if (hasAccess) {
+        return true;
+      }
     }
 
+    logger.warn(`Access denied for user ${userId} to container ${containerId}`);
     return false;
   } catch (error) {
     logger.error(`Error checking container access: ${error.message}`);
@@ -460,6 +499,7 @@ exports.fluidToken = onRequest(fluidTokenOptions, async (req, res) => {
 
     // ユーザーのコンテナ情報を取得
     const userDoc = await userContainersCollection.doc(userId).get();
+    logger.info(`User document exists: ${userDoc.exists} for user: ${userId}`);
 
     // ユーザーデータが存在しない場合のデフォルト値を設定
     const userData = userDoc.exists ?
@@ -467,6 +507,12 @@ exports.fluidToken = onRequest(fluidTokenOptions, async (req, res) => {
       { accessibleContainerIds: [] };
     const accessibleContainerIds = userData.accessibleContainerIds || [];
     const defaultContainerId = userData.defaultContainerId || null;
+
+    logger.info(
+      `User ${userId} - accessible containers: ${
+        JSON.stringify(accessibleContainerIds)
+      }, default: ${defaultContainerId}`,
+    );
 
     // 使用するコンテナIDを決定
     let targetContainerId = containerId;
@@ -480,14 +526,34 @@ exports.fluidToken = onRequest(fluidTokenOptions, async (req, res) => {
       targetContainerId = defaultContainerId;
     }
 
+    // ユーザーにデフォルトコンテナが設定されていない場合の処理
+    if (!targetContainerId && !userDoc.exists) {
+      logger.info(
+        `New user ${userId} detected, allowing access without container restriction`,
+      );
+      // 新規ユーザーの場合は、コンテナIDなしでトークンを生成
+      // クライアント側で新しいコンテナを作成し、後でFirestoreに保存される
+    }
+
     // コンテナIDが指定されている場合はアクセス権をチェック
     if (targetContainerId) {
+      logger.info(
+        `Checking access for user ${userId} to container ${targetContainerId}`,
+      );
       const hasAccess = await checkContainerAccess(userId, targetContainerId);
       if (!hasAccess) {
+        logger.error(
+          `Access denied for user ${userId} to container ${targetContainerId}`,
+        );
         return res.status(403).json({
           error: "Access to the container is denied",
         });
       }
+      logger.info(
+        `Access granted for user ${userId} to container ${targetContainerId}`,
+      );
+    } else if (!userDoc.exists) {
+      logger.info(`New user ${userId} - skipping container access check`);
     }
 
     // Azure Fluid RelayのJWT生成
@@ -2008,6 +2074,291 @@ exports.adminUserList = onRequest(
       }
 
       return res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
+// デバッグ用: ユーザーのコンテナアクセス権限を確認するAPI
+const debugUserContainersOptions = {
+  cors: true,
+};
+
+// シークレットが定義されている場合のみ追加（エミュレーター環境以外）
+if (
+  azureActiveKeySecret && azurePrimaryKeySecret && azureSecondaryKeySecret &&
+  azureTenantIdSecret && azureEndpointSecret
+) {
+  debugUserContainersOptions.secrets = [
+    azureActiveKeySecret,
+    azurePrimaryKeySecret,
+    azureSecondaryKeySecret,
+    azureTenantIdSecret,
+    azureEndpointSecret,
+  ];
+}
+
+exports.debugUserContainers = onRequest(
+  debugUserContainersOptions,
+  async (req, res) => {
+    setCorsHeaders(req, res);
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).send();
+    }
+
+    try {
+      const { idToken } = req.body;
+
+      if (!idToken) {
+        return res.status(400).json({ error: "ID token is required" });
+      }
+
+      // Firebase IDトークンを検証
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const userId = decodedToken.uid;
+
+      logger.info(`Debug: Checking containers for user: ${userId}`);
+
+      // userContainers コレクションを確認
+      const userContainerDoc = await db.collection("userContainers").doc(userId)
+        .get();
+      const userContainerData = userContainerDoc.exists ?
+        userContainerDoc.data() : null;
+
+      // containerUsers コレクションで該当するドキュメントを検索
+      const containerUsersQuery = await db.collection("containerUsers")
+        .where("accessibleUserIds", "array-contains", userId)
+        .get();
+
+      const containerUsersData = [];
+      containerUsersQuery.forEach(doc => {
+        containerUsersData.push({
+          id: doc.id,
+          data: doc.data(),
+        });
+      });
+
+      return res.status(200).json({
+        success: true,
+        userId: userId,
+        userEmail: decodedToken.email,
+        userContainers: {
+          exists: userContainerDoc.exists,
+          data: userContainerData,
+        },
+        containerUsers: containerUsersData,
+        environment: {
+          NODE_ENV: process.env.NODE_ENV,
+          FUNCTIONS_EMULATOR: process.env.FUNCTIONS_EMULATOR,
+        },
+      });
+    } catch (error) {
+      logger.error(`Debug user containers error: ${error.message}`, { error });
+      return res.status(500).json({ error: "Failed to debug user containers" });
+    }
+  },
+);
+
+// 本番環境データ全削除エンドポイント（管理者専用）
+exports.deleteAllProductionData = onRequest(
+  { cors: true },
+  async (req, res) => {
+    // CORS設定
+    setCorsHeaders(req, res);
+
+    // プリフライト OPTIONS リクエストの処理
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+
+    // POSTメソッド以外は拒否
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
+    try {
+      const { adminToken, confirmationCode } = req.body;
+
+      // 管理者トークンの検証（簡易的な実装）
+      if (!adminToken || adminToken !== "ADMIN_DELETE_ALL_DATA_2024") {
+        logger.warn("Unauthorized attempt to delete all production data");
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // 確認コードの検証
+      if (
+        !confirmationCode ||
+        confirmationCode !== "DELETE_ALL_PRODUCTION_DATA_CONFIRM"
+      ) {
+        logger.warn("Invalid confirmation code for production data deletion");
+        return res.status(400).json({ error: "Invalid confirmation code" });
+      }
+
+      // 本番環境チェック
+      const isProduction = !process.env.FUNCTIONS_EMULATOR &&
+        !process.env.FIRESTORE_EMULATOR_HOST &&
+        process.env.NODE_ENV === "production";
+
+      if (!isProduction) {
+        logger.warn(
+          "Production data deletion attempted in non-production environment",
+        );
+        return res.status(400).json({
+          error: "This endpoint only works in production environment",
+        });
+      }
+
+      logger.warn("CRITICAL: Starting production data deletion process");
+
+      const deletionResults = {
+        firestore: { success: false, error: null, deletedCollections: [] },
+        auth: { success: false, error: null, deletedUsers: 0 },
+        storage: { success: false, error: null, deletedFiles: 0 },
+      };
+
+      // 1. Firestore データ削除
+      try {
+        logger.info("Deleting all Firestore data...");
+        const db = admin.firestore();
+
+        // 主要なコレクションを削除
+        const collections = [
+          "users",
+          "containers",
+          "projects",
+          "schedules",
+          "user-containers",
+        ];
+
+        for (const collectionName of collections) {
+          try {
+            const collectionRef = db.collection(collectionName);
+            const snapshot = await collectionRef.get();
+
+            const batch = db.batch();
+            let batchCount = 0;
+
+            for (const doc of snapshot.docs) {
+              batch.delete(doc.ref);
+              batchCount++;
+
+              // Firestoreのバッチ制限（500件）に達したら実行
+              if (batchCount >= 500) {
+                await batch.commit();
+                batchCount = 0;
+              }
+            }
+
+            // 残りのドキュメントを削除
+            if (batchCount > 0) {
+              await batch.commit();
+            }
+
+            deletionResults.firestore.deletedCollections.push({
+              name: collectionName,
+              count: snapshot.size,
+            });
+
+            logger.info(
+              `Deleted ${snapshot.size} documents from ${collectionName} collection`,
+            );
+          } catch (collectionError) {
+            logger.error(
+              `Error deleting collection ${collectionName}: ${collectionError.message}`,
+            );
+          }
+        }
+
+        deletionResults.firestore.success = true;
+        logger.info("Firestore data deletion completed");
+      } catch (firestoreError) {
+        logger.error(`Firestore deletion error: ${firestoreError.message}`);
+        deletionResults.firestore.error = firestoreError.message;
+      }
+
+      // 2. Firebase Auth ユーザー削除
+      try {
+        logger.info("Deleting all Firebase Auth users...");
+
+        let nextPageToken;
+        let totalDeleted = 0;
+
+        do {
+          const listUsersResult = await admin.auth().listUsers(
+            1000,
+            nextPageToken,
+          );
+
+          const uids = listUsersResult.users.map(user => user.uid);
+
+          if (uids.length > 0) {
+            await admin.auth().deleteUsers(uids);
+            totalDeleted += uids.length;
+            logger.info(
+              `Deleted ${uids.length} users (total: ${totalDeleted})`,
+            );
+          }
+
+          nextPageToken = listUsersResult.pageToken;
+        } while (nextPageToken);
+
+        deletionResults.auth.success = true;
+        deletionResults.auth.deletedUsers = totalDeleted;
+        logger.info(
+          `Firebase Auth deletion completed. Total users deleted: ${totalDeleted}`,
+        );
+      } catch (authError) {
+        logger.error(`Firebase Auth deletion error: ${authError.message}`);
+        deletionResults.auth.error = authError.message;
+      }
+
+      // 3. Firebase Storage ファイル削除
+      try {
+        logger.info("Deleting all Firebase Storage files...");
+
+        const bucket = admin.storage().bucket();
+        const [files] = await bucket.getFiles();
+
+        let deletedCount = 0;
+
+        for (const file of files) {
+          try {
+            await file.delete();
+            deletedCount++;
+          } catch (fileError) {
+            logger.error(
+              `Error deleting file ${file.name}: ${fileError.message}`,
+            );
+          }
+        }
+
+        deletionResults.storage.success = true;
+        deletionResults.storage.deletedFiles = deletedCount;
+        logger.info(
+          `Firebase Storage deletion completed. Files deleted: ${deletedCount}`,
+        );
+      } catch (storageError) {
+        logger.error(
+          `Firebase Storage deletion error: ${storageError.message}`,
+        );
+        deletionResults.storage.error = storageError.message;
+      }
+
+      logger.warn("CRITICAL: Production data deletion process completed");
+
+      return res.status(200).json({
+        success: true,
+        message: "Production data deletion completed",
+        results: deletionResults,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error(`Production data deletion error: ${error.message}`, {
+        error,
+      });
+      return res.status(500).json({
+        error: "Failed to delete production data",
+      });
     }
   },
 );

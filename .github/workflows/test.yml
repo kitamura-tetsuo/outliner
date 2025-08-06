@@ -469,6 +469,7 @@ jobs:
             } else {
               comment += '❌ **Tests failed** - Please check the logs and fix the failing tests.\n\n';
               comment += '🔥 **Firebase deployment validation:** May have failed - check logs for deployment issues\n\n';
+              comment += '🤖 **Auto-fix:** Claude Code Action will automatically attempt to fix the failing tests.\n\n';
             }
 
             comment += `📊 [View detailed results](${runUrl})\n`;
