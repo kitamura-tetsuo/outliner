@@ -1,0 +1,357 @@
+name: PR Test Auto-Fix with Claude
+
+on:
+  workflow_run:
+    workflows: ["Test"]
+    types: [completed]
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  auto-fix-tests:
+    runs-on: self-hosted
+    if: |
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'pull_request'
+    timeout-minutes: 300
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+      id-token: write
+
+    steps:
+      - name: Get PR information
+        id: pr-info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: workflowRun } = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.payload.workflow_run.id
+            });
+
+            // Get associated pull requests
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:${workflowRun.head_branch}`,
+              state: 'open'
+            });
+
+            if (prs.length === 0) {
+              console.log('No open PR found for this branch');
+              return;
+            }
+
+            const pr = prs[0];
+            console.log(`Found PR #${pr.number}: ${pr.title}`);
+
+            core.setOutput('pr_number', pr.number);
+            core.setOutput('pr_title', pr.title);
+            core.setOutput('pr_branch', workflowRun.head_branch);
+            core.setOutput('pr_sha', workflowRun.head_sha);
+            core.setOutput('base_branch', pr.base.ref);
+
+      - name: Skip if no PR found
+        if: steps.pr-info.outputs.pr_number == ''
+        run: |
+          echo "No open PR found for this workflow run, skipping auto-fix"
+          exit 0
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr-info.outputs.pr_branch }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Git configuration
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions Bot"
+          echo "✅ Git configuration set for Claude Code compatibility"
+
+      - name: Setup Claude Code Router Environment
+        run: |
+          echo "🔧 Setting up Claude Code Router environment..."
+          
+          # Create claude-code-router config directory
+          mkdir -p "$HOME/.claude-code-router"
+          
+          # Install claude-code-router globally if not available
+          if ! command -v ccr >/dev/null 2>&1; then
+            echo "Installing claude-code-router..."
+            npm install -g @musistudio/claude-code-router
+          fi
+          
+          echo "✅ Claude Code Router environment ready"
+
+      - name: Setup Gemini CLI authentication
+        run: |
+          echo "🔑 Setting up Gemini CLI authentication..."
+          
+          # Create .gemini directory
+          mkdir -p "$HOME/.gemini"
+          
+          # Method 1: Check if persistent oauth_creds.json exists on runner
+          if [ -f "$HOME/.gemini/oauth_creds.json" ]; then
+            echo "✅ Found persistent Gemini CLI credentials"
+            ls -la "$HOME/.gemini/oauth_creds.json"
+          elif [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
+            # Method 2: Use API key if available
+            echo "🔑 Using Gemini API key for authentication..."
+            export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
+            echo "✅ Gemini CLI will use API key authentication"
+          else
+            echo "❌ No Gemini CLI credentials found"
+            echo "   Method 1 (Recommended): Run 'gemini auth login' on the runner machine"
+            echo "   Method 2: Set GEMINI_API_KEY secret"
+            exit 1
+          fi
+          
+          # Install gemini-cli if not available
+          if ! command -v gemini >/dev/null 2>&1; then
+            echo "Installing gemini-cli..."
+            npm install -g @google/gemini-cli
+          fi
+          
+          echo "Gemini CLI version: $(gemini --version 2>/dev/null || echo 'version check failed')"
+
+      - name: Setup Gemini CLI Transformer
+        run: |
+          echo "📥 Setting up Gemini CLI transformer..."
+
+          # Create plugins directory
+          mkdir -p "$HOME/.claude-code-router/plugins"
+
+          # Copy our custom Gemini CLI transformer
+          cp scripts/gemini-cli-transformer.js "$HOME/.claude-code-router/plugins/gemini-cli-direct.js"
+
+          echo "✅ Gemini CLI transformer set up"
+
+      - name: Create Claude Code Router Configuration
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          echo "⚙️ Creating Claude Code Router configuration..."
+          
+          # Create config with proper path expansion
+          cat > "$HOME/.claude-code-router/config.json" << EOF
+          {
+            "LOG": true,
+            "API_TIMEOUT_MS": 600000,
+            "transformers": [
+              {
+                "path": "${HOME}/.claude-code-router/plugins/gemini-cli-direct.js",
+                "options": {
+                  "project": "outliner-d57b0",
+                  "forceModel": true
+                }
+              }
+            ],
+            "Providers": [
+              {
+                "name": "gemini-cli-direct",
+                "api_base_url": "http://localhost:3456",
+                "api_key": "dummy-key",
+                "models": ["gemini-2.5-flash", "gemini-2.5-pro"],
+                "transformer": {
+                  "use": ["gemini-cli-direct"]
+                }
+              }
+            ],
+            "Router": {
+              "default": "gemini-cli-direct,gemini-2.5-pro",
+              "think": "gemini-cli-direct,gemini-2.5-pro",
+              "longContext": "gemini-cli-direct,gemini-2.5-pro",
+              "longContextThreshold": 60000,
+              "forceModel": "gemini-2.5-pro"
+            }
+          }
+          EOF
+          
+          echo "✅ Claude Code Router configuration created"
+          echo "📋 Configuration preview:"
+          cat "$HOME/.claude-code-router/config.json"
+
+      - name: Start Claude Code Router
+        run: |
+          echo "🚀 Starting Claude Code Router..."
+          
+          # Start claude-code-router in background
+          nohup ccr start > "$HOME/.claude-code-router.log" 2>&1 &
+          CCR_PID=$!
+          echo "CCR_PID=$CCR_PID" >> $GITHUB_ENV
+          
+          # Wait for router to be ready
+          echo "⏳ Waiting for Claude Code Router to be ready..."
+          for i in {1..30}; do
+            if curl -s http://localhost:3456 >/dev/null 2>&1; then
+              echo "✅ Claude Code Router is ready (responding to HTTP requests)"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "❌ Claude Code Router failed to start within 30 seconds"
+              echo "📋 Router logs:"
+              cat "$HOME/.claude-code-router.log" || echo "No logs available"
+              echo "📋 Process status:"
+              ps aux | grep ccr || echo "No ccr processes found"
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Create test fix script
+        run: |
+          cat > test-fix-loop.sh << 'EOF'
+          #!/bin/bash
+          set -e
+
+          MAX_ATTEMPTS=5
+          ATTEMPT=1
+
+          echo "🔄 Starting test fix loop (max $MAX_ATTEMPTS attempts)"
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "📊 Attempt $ATTEMPT of $MAX_ATTEMPTS"
+            
+            # Run tests and capture results
+            echo "🧪 Running tests..."
+            if npm run test:all 2>&1 | tee test-results.log; then
+              echo "✅ Tests passed on attempt $ATTEMPT!"
+              echo "🚀 Pushing changes..."
+              
+              # Check if there are changes to commit
+              if ! git diff --quiet || ! git diff --cached --quiet; then
+                git add .
+                git commit -m "🤖 Auto-fix: Tests now passing (attempt $ATTEMPT)"
+                git push origin HEAD
+                echo "✅ Changes pushed successfully"
+              else
+                echo "ℹ️ No changes to commit"
+              fi
+              
+              exit 0
+            else
+              echo "❌ Tests failed on attempt $ATTEMPT"
+              
+              if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+                echo "💥 Maximum attempts reached. Manual intervention required."
+                exit 1
+              fi
+              
+              echo "🤖 Requesting Claude to fix the failing tests..."
+              # This will be handled by Claude Code Action
+              ATTEMPT=$((ATTEMPT + 1))
+            fi
+          done
+          EOF
+          
+          chmod +x test-fix-loop.sh
+
+      - name: Run Claude Code Action for Test Fixes
+        id: claude-fix
+        uses: anthropics/claude-code-action@beta
+        env:
+          ANTHROPIC_BASE_URL: http://localhost:3456
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: "dummy-key-for-router"
+          custom_prompt: |
+            This PR has failing tests. Please analyze the test failures and fix them.
+
+            **Your task:**
+            1. Examine the failing tests and error messages
+            2. Identify the root cause of the failures
+            3. Make the necessary code changes to fix the tests
+            4. Ensure all tests pass
+            5. Follow the project's coding standards and patterns
+
+            **Test execution:**
+            - Run `npm run test:all` to execute all tests
+            - If tests fail, analyze the output and make fixes
+            - Repeat until all tests pass
+            - When tests pass, commit and push the changes
+
+            **Important guidelines:**
+            - Fix the actual issues, don't modify tests to make them pass
+            - Maintain backward compatibility
+            - Follow existing code patterns and conventions
+            - Add comments explaining complex fixes
+            - Test your changes thoroughly
+
+            Please start by running the tests to see what's failing, then systematically fix each issue.
+
+      - name: Cleanup Claude Code Router
+        if: always()
+        run: |
+          echo "🧹 Cleaning up Claude Code Router..."
+          
+          if [ -n "$CCR_PID" ]; then
+            kill $CCR_PID 2>/dev/null || true
+          fi
+          
+          # Kill any remaining ccr processes
+          pkill -f "ccr start" 2>/dev/null || true
+          
+          echo "✅ Cleanup completed"
+
+      - name: Comment on PR with results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = '${{ steps.pr-info.outputs.pr_number }}';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const originalRunUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${{ github.event.workflow_run.id }}`;
+            
+            let comment = '## 🤖 Auto-Fix Attempt\n\n';
+            comment += `**Original test failure:** [View logs](${originalRunUrl})\n`;
+            comment += `**Auto-fix attempt:** [View logs](${runUrl})\n\n`;
+            
+            if ('${{ job.status }}' === 'success') {
+              comment += '✅ **Auto-fix completed successfully!**\n\n';
+              comment += '🎉 Tests should now be passing. Please review the changes and merge if everything looks good.\n';
+            } else {
+              comment += '❌ **Auto-fix attempt failed**\n\n';
+              comment += '🔧 Manual intervention may be required. Please check the logs and fix the remaining issues.\n';
+            }
+            
+            comment += '\n---\n*This comment was generated by the PR Test Auto-Fix workflow*';
+
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Log failure information
+        if: failure()
+        run: |
+          echo "🤖 PR Test Auto-Fix Failed"
+          echo ""
+          echo "The automated test fixing process encountered an error."
+          echo "This could be due to:"
+          echo "- Complex test failures requiring manual intervention"
+          echo "- Claude Code Router startup issues"
+          echo "- Gemini CLI authentication problems"
+          echo "- Network connectivity issues"
+          echo ""
+          echo "📋 Debug Information:"
+          echo "Router logs:"
+          cat "$HOME/.claude-code-router.log" 2>/dev/null || echo "No router logs available"
+          echo ""
+          echo "Manual Action Required:"
+          echo "Please check the failing tests manually and fix them."

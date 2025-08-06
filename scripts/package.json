@@ -1,0 +1,23 @@
+{
+    "name": "scripts",
+    "version": "1.0.0",
+    "description": "VSCodeのlaunch.jsonで定義されているLocalhost設定をbashで実行するためのスクリプト集です。",
+    "main": "backup-production-data.js",
+    "directories": {
+        "test": "tests"
+    },
+    "scripts": {
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:coverage": "jest --coverage"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "jest": "^30.0.5"
+    },
+    "dependencies": {
+        "firebase-admin": "^13.4.0"
+    }
+}

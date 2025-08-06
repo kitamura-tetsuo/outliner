@@ -118,7 +118,13 @@ export class ScrapboxFormatter {
             { type: "strikethrough", start: "[-", end: "]", regex: /\[\-(.*?)\]/g },
             { type: "underline", start: "<u>", end: "</u>", regex: /<u>(.*?)<\/u>/g },
             { type: "code", start: "`", end: "`", regex: /`(.*?)`/g },
-            { type: "link", start: "[", end: "]", regex: /\[(https?:\/\/.*?)\]/g },
+            {
+                type: "link",
+                start: "[",
+                end: "]",
+                // URL と任意のラベルを解析（ラベルが空白のみの場合も許可）
+                regex: /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g,
+            },
             // 通常の内部リンク（page-name形式）- ハイフンを含むページ名も許可
             { type: "internalLink", start: "[", end: "]", regex: /\[([^\[\]\/][^\[\]]*?)\]/g },
             { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm },
@@ -135,14 +141,17 @@ export class ScrapboxFormatter {
                 const endIndex = startIndex + match[0].length;
                 const content = match[1];
 
-                // リンクの場合はURLも保存
+                // リンクの場合はURLとラベルを保存
                 if (pattern.type === "link") {
+                    const url = match[1];
+                    const rawLabel = match[2];
+                    const label = rawLabel && rawLabel.trim() !== "" ? rawLabel.trim() : url;
                     matches.push({
                         type: pattern.type,
                         start: startIndex,
                         end: endIndex,
-                        content: content,
-                        url: content,
+                        content: label,
+                        url,
                     });
                 } else {
                     matches.push({
@@ -204,10 +213,19 @@ export class ScrapboxFormatter {
 
             // フォーマットトークンを追加
             tokens.push({
-                type: match.type as "bold" | "italic" | "strikethrough" | "underline" | "code",
+                type: match.type as
+                    | "bold"
+                    | "italic"
+                    | "strikethrough"
+                    | "underline"
+                    | "code"
+                    | "link"
+                    | "internalLink"
+                    | "quote",
                 content: match.content,
                 start: match.start,
                 end: match.end,
+                url: (match as any).url,
             });
 
             lastIndex = match.end;
@@ -419,10 +437,12 @@ export class ScrapboxFormatter {
                 return `<code>${escapeHtml(content)}</code>`;
             });
 
-            // 外部リンク
-            const linkRegex = /\[(https?:\/\/.*?)\]/g;
-            input = input.replace(linkRegex, (match, url) => {
-                return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+            // 外部リンク（ラベルが空白のみの場合も許可）
+            const linkRegex = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
+            input = input.replace(linkRegex, (match, url, label) => {
+                const trimmedLabel = label?.trim();
+                const text = trimmedLabel ? processFormat(trimmedLabel) : url;
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
             });
 
             // プロジェクト内部リンクは上で処理済み
@@ -540,8 +560,11 @@ export class ScrapboxFormatter {
 
         // 外部リンク - カーソルがある時は制御文字のみ表示
         html = html.replace(
-            /(\[)(https?:\/\/.*?)(\])/g,
-            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
+            /(\[)(https?:\/\/[^\s\]]+)(?:\s+([^\]]+))?(\])/g,
+            (match, open, url, label, close) => {
+                const content = label ? `${url} ${label}` : url;
+                return `<span class="control-char">${open}</span>${content}<span class="control-char">${close}</span>`;
+            },
         );
 
         // 通常の内部リンク - カーソルがある時は制御文字のみ表示
@@ -568,7 +591,7 @@ export class ScrapboxFormatter {
         const basicFormatPattern = /\[\[(.*?)\]\]|\[\/(.*?)\]|\[\-(.*?)\]|`(.*?)`/;
 
         // 外部リンクの正規表現パターン
-        const linkPattern = /\[(https?:\/\/.*?)\]/;
+        const linkPattern = /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/;
 
         // 内部リンクの正規表現パターン
         const internalLinkPattern = /\[([^\[\]\/][^\[\]]*?)\]/;

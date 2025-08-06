@@ -14,7 +14,8 @@
         "allowImportingTsExtensions": false,
         "types": [
             "@playwright/test",
-            "node"
+            "node",
+            "vitest"
         ],
         "noUnusedLocals": false,
         "target": "es2017"
@@ -22,8 +23,7 @@
     "include": [
         "../src/vite-env.d.ts",
         "**/*.ts",
-        "**/*.js",
-        "../../scripts/tests/tst-feature-map-removal-f9984020.spec.ts"
+        "**/*.js"
     ],
     "exclude": [
         "node_modules"

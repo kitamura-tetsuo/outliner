@@ -15,7 +15,7 @@ test.describe("Schedule Management", () => {
         const pageId = await TestHelpers.getItemIdByIndex(page, 0);
         const idToken = await page.evaluate(async () => {
             const userManager = (window as any).__USER_MANAGER__;
-            return userManager?.auth?.currentUser?.getIdToken();
+            return await userManager?.auth?.currentUser?.getIdToken();
         });
         await page.request.post("http://localhost:57000/api/create-schedule", {
             data: {
