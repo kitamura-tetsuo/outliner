@@ -22,6 +22,7 @@ onMount(async () => {
 </script>
 
 <h1>Schedules</h1>
+<a href={`/api/export-schedules?pageId=${new URLSearchParams(window.location.search).get("pageId")}&idToken=${localStorage.getItem("firebase:authUser:*:idToken")}`} download="schedules.ics">Export to iCal</a>
 <table>
     <tbody>
         {#each schedules as sch}

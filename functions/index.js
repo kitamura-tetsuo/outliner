@@ -2159,6 +2159,87 @@ exports.debugUserContainers = onRequest(
   },
 );
 
+const ical = require("ical-generator");
+
+// Export schedules as iCal
+exports.exportSchedules = onRequest(async (req, res) => {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  const { idToken, pageId } = req.body || {};
+  if (!idToken || !pageId) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+
+  try {
+    const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FUNCTIONS_EMULATOR === "true");
+
+    if (isEmulatorEnv) {
+      logger.info(
+        "exportSchedules: Using emulator environment token verification",
+      );
+    }
+
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken, !isEmulatorEnv);
+      logger.info(
+        `exportSchedules: Token verified successfully for user: ${decoded.uid} (emulator: ${isEmulatorEnv})`,
+      );
+    } catch (tokenError) {
+      logger.error(
+        `exportSchedules: Token verification failed: ${tokenError.message}`,
+      );
+      if (
+        isEmulatorEnv && idToken && typeof idToken === "string" &&
+        idToken.length > 0
+      ) {
+        logger.warn(
+          "exportSchedules: Using fallback emulator token verification",
+        );
+      } else {
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
+    }
+
+    const snapshot = await db
+      .collection("pages")
+      .doc(pageId)
+      .collection("schedules")
+      .where("executedAt", "==", null)
+      .orderBy("nextRunAt")
+      .get();
+
+    const schedules = [];
+    snapshot.forEach(doc => schedules.push({ id: doc.id, ...doc.data() }));
+
+    const calendar = ical({ name: "Scheduled Posts" });
+
+    schedules.forEach(schedule => {
+      calendar.createEvent({
+        start: schedule.nextRunAt.toDate(),
+        end: schedule.nextRunAt.toDate(),
+        summary: schedule.strategy,
+      });
+    });
+
+    res.setHeader("Content-Type", "text/calendar;charset=utf-8");
+    res.setHeader("Content-Disposition", "attachment; filename=\"schedules.ics\"");
+    return res.status(200).send(calendar.toString());
+  } catch (err) {
+    logger.error(`exportSchedules error: ${err.message}`);
+    if (
+      err.code === "auth/id-token-expired" ||
+      err.code === "auth/invalid-id-token" ||
+      err.code === "auth/argument-error"
+    ) {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to export schedules" });
+  }
+});
+
 // 本番環境データ全削除エンドポイント（管理者専用）
 exports.deleteAllProductionData = onRequest(
   { cors: true },
