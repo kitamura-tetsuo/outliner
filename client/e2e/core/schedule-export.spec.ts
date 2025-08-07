@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test("downloads schedules as iCal", async ({ page }) => {
     // Navigate to the schedule page
@@ -7,7 +7,7 @@ test("downloads schedules as iCal", async ({ page }) => {
     // Click the download link
     const [download] = await Promise.all([
         page.waitForEvent("download"),
-        page.click("a[download=\"schedules.ics\"]"),
+        page.click('a[download="schedules.ics"]'),
     ]);
 
     // Verify the downloaded file

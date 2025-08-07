@@ -32,8 +32,8 @@ export const GET: RequestHandler = async ({ url }) => {
         return new Response(icsData, {
             headers: {
                 "Content-Type": "text/calendar;charset=utf-8",
-                "Content-Disposition": "attachment; filename=\"schedules.ics\"",
-            }
+                "Content-Disposition": 'attachment; filename="schedules.ics"',
+            },
         });
     } catch (error) {
         console.error("List schedules API error:", error);

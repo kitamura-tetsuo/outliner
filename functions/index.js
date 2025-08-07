@@ -2225,7 +2225,10 @@ exports.exportSchedules = onRequest(async (req, res) => {
     });
 
     res.setHeader("Content-Type", "text/calendar;charset=utf-8");
-    res.setHeader("Content-Disposition", "attachment; filename=\"schedules.ics\"");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="schedules.ics"',
+    );
     return res.status(200).send(calendar.toString());
   } catch (err) {
     logger.error(`exportSchedules error: ${err.message}`);
