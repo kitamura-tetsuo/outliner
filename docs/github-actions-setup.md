@@ -156,7 +156,7 @@ gemini auth login
 **実行例：**
 
 ```bash
-gemini chat --model gemini-2.5-pro --force-model --project outliner-d57b0 --format json --file /tmp/conversation.json
+gemini --model gemini-2.5-pro --force-model --project outliner-d57b0 --format json --file /tmp/conversation.json
 ```
 
 ## トラブルシューティング
