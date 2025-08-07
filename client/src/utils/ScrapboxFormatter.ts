@@ -387,12 +387,31 @@ export class ScrapboxFormatter {
         });
 
         // 再帰的にフォーマットを処理する関数
-        const processFormat = (input: string): string => {
+        const processFormat = (input: string, depth = 0): string => {
+            // ブラケットなしのプレーンURLをリンクに変換
+            const plainUrlRegex = /https?:\/\/[^\s<]+/g;
+            input = input.replace(plainUrlRegex, (url, offset, str) => {
+                const prevChar = str[offset - 1];
+                if (prevChar && !/\s/.test(prevChar)) return url;
+
+                // 現在のネスト深度または未閉じブラケット内の場合はリンク化しない
+                if (depth > 0) return url;
+                let openCount = 0;
+                for (let i = 0; i < offset; i++) {
+                    const ch = str[i];
+                    if (ch === "[") openCount++;
+                    else if (ch === "]" && openCount > 0) openCount--;
+                }
+                if (openCount > 0) return url;
+
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+            });
+
             // 太字
             const boldRegex = /\[\[(.*?)\]\]/g;
             input = input.replace(boldRegex, (match, content) => {
                 // 内部のコンテンツも再帰的に処理
-                return `<strong>${processFormat(content)}</strong>`;
+                return `<strong>${processFormat(content, depth + 1)}</strong>`;
             });
 
             // プロジェクト内部リンク - 斜体よりも先に処理する必要がある
@@ -422,13 +441,13 @@ export class ScrapboxFormatter {
             // スラッシュを含まない場合のみマッチ
             const italicRegex = /\[\/([^\/\]]*)\]/g;
             input = input.replace(italicRegex, (match, content) => {
-                return `<em>${processFormat(content)}</em>`;
+                return `<em>${processFormat(content, depth + 1)}</em>`;
             });
 
             // 取り消し線
             const strikethroughRegex = /\[\-(.*?)\]/g;
             input = input.replace(strikethroughRegex, (match, content) => {
-                return `<s>${processFormat(content)}</s>`;
+                return `<s>${processFormat(content, depth + 1)}</s>`;
             });
 
             // コード (コード内部は再帰処理しない)
@@ -441,7 +460,7 @@ export class ScrapboxFormatter {
             const linkRegex = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
             input = input.replace(linkRegex, (match, url, label) => {
                 const trimmedLabel = label?.trim();
-                const text = trimmedLabel ? processFormat(trimmedLabel) : url;
+                const text = trimmedLabel ? processFormat(trimmedLabel, depth + 1) : url;
                 return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
             });
 
@@ -465,6 +484,7 @@ export class ScrapboxFormatter {
         // 行ごとに処理するための関数
         const processLines = (lines: string[]): string => {
             let result = "";
+            let bracketDepth = 0;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
@@ -472,12 +492,23 @@ export class ScrapboxFormatter {
                 // 引用
                 const quoteMatch = line.match(/^>\s(.*?)$/);
                 if (quoteMatch) {
-                    result += `<blockquote>${processFormat(escapeHtml(quoteMatch[1]))}</blockquote>`;
+                    result += `<blockquote>${processFormat(escapeHtml(quoteMatch[1]), bracketDepth)}</blockquote>`;
+                    for (const ch of quoteMatch[1]) {
+                        if (ch === "[") bracketDepth++;
+                        else if (ch === "]" && bracketDepth > 0) bracketDepth--;
+                    }
+                    if (i < lines.length - 1) {
+                        result += "<br>";
+                    }
                     continue;
                 }
 
                 // 通常のテキスト
-                result += processFormat(escapeHtml(line));
+                result += processFormat(escapeHtml(line), bracketDepth);
+                for (const ch of line) {
+                    if (ch === "[") bracketDepth++;
+                    else if (ch === "]" && bracketDepth > 0) bracketDepth--;
+                }
 
                 // 最後の行でなければ改行を追加
                 if (i < lines.length - 1) {

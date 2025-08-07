@@ -175,6 +175,47 @@ describe("ScrapboxFormatter", () => {
                     '<a href="https://example.com" target="_blank" rel="noopener noreferrer">https://example.com</a>',
                 );
             });
+
+            it("should convert plain URLs into clickable links", () => {
+                const input = "Visit https://example.com for details";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toContain(
+                    '<a href="https://example.com" target="_blank" rel="noopener noreferrer">https://example.com</a>',
+                );
+            });
+
+            it("should not create nested links for bracketed URLs", () => {
+                const input = "[https://x.com label]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                const anchors = result.match(/<a /g) ?? [];
+                expect(anchors).toHaveLength(1);
+                expect(result).toContain(
+                    '<a href="https://x.com" target="_blank" rel="noopener noreferrer">label</a>',
+                );
+            });
+
+            it("should not linkify URLs inside double brackets", () => {
+                const input = "[[https://x.com label]]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).not.toContain('<a href="https://x.com"');
+            });
+
+            it("should not linkify URLs when brackets are unbalanced", () => {
+                const input = "[[foo https://bar.com]]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).not.toContain('<a href="https://bar.com"');
+            });
+
+            it("should not linkify URLs inside multiline bracket blocks", () => {
+                const input = `[multi\nhttps://example.com\nline]`;
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).not.toContain('<a href="https://example.com"');
+            });
         });
 
         describe("formatting combinations", () => {
