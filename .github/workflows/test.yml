@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, develop]
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: ["Format Check and Auto-Fix"]
+    types:
+      - completed
   workflow_dispatch:
 
 concurrency:
@@ -14,8 +18,16 @@ concurrency:
 
 jobs:
   test:
+    # Only run if formatter workflow succeeded (for workflow_run) or for direct triggers
+    # Skip if this is a push event and the commit message indicates auto-formatting
+    if: |
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') &&
+      !(github.event_name == 'push' && contains(github.event.head_commit.message, 'Auto-fix: Format code with dprint'))
     runs-on: self-hosted
     timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Debug workflow trigger
@@ -34,12 +46,64 @@ jobs:
         uses: actions/checkout@v4
         with:
           clean: true             # wipe workspace before fetch
+          # For workflow_run events, checkout the head commit that triggered the formatter workflow
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          # For PR events, ensure we have write permissions for auto-formatting
+          token: ${{ github.event_name == 'pull_request' && secrets.GITHUB_TOKEN || github.token }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dprint
+        run: npm install -g dprint
+
+      - name: Check and fix formatting
+        id: format_check
+        run: |
+          echo "Running formatting check..."
+          if ! ./scripts/check_format.sh; then
+            echo "❌ Code is not properly formatted!"
+            echo "🔧 Auto-fixing formatting issues..."
+            npx dprint fmt
+
+            # Check if there are any changes
+            if git diff --quiet; then
+              echo "No changes were made by dprint fmt"
+              echo "format_fixed=false" >> $GITHUB_OUTPUT
+            else
+              # Configure git
+              git config --local user.email "action@github.com"
+              git config --local user.name "GitHub Action"
+
+              # Only auto-commit for push/PR events, not workflow_run
+              if [[ "${{ github.event_name }}" == "push" || "${{ github.event_name }}" == "pull_request" ]]; then
+                # Check if we're behind remote to avoid conflicts
+                git fetch origin
+                if git merge-base --is-ancestor HEAD origin/${{ github.ref_name }}; then
+                  git add .
+                  git commit -m "Auto-fix: Format code with dprint"
+
+                  # Retry push with pull if needed
+                  if ! git push; then
+                    echo "Push failed, trying to pull and retry..."
+                    git pull --rebase origin ${{ github.ref_name }}
+                    git push
+                  fi
+                  echo "✅ Formatting issues have been automatically fixed and committed!"
+                else
+                  echo "⚠️ Local branch is behind remote, skipping auto-commit to avoid conflicts"
+                  echo "Please pull latest changes and run 'npx dprint fmt' manually"
+                fi
+              fi
+              echo "format_fixed=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "✅ All code is properly formatted!"
+            echo "format_fixed=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Check environment
         run: |
