@@ -36,7 +36,7 @@
         58080,
         59099,
         59200,
-        57000
+        57070
     ],
     "postStartCommand": "bash /workspace/outliner/scripts/codex-setup.sh",
     // node ユーザーとして接続

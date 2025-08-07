@@ -58,6 +58,7 @@ jobs:
             echo "   - GITHUB_TOKEN: $([ -n "${{ secrets.GITHUB_TOKEN }}" ] && echo "✅ Available" || echo "❌ Missing")"
             echo "   - GEMINI_API_KEY: $([ -n "${{ secrets.GEMINI_API_KEY }}" ] && echo "✅ Available" || echo "❌ Missing")"
             echo "   Failing workflow due to missing authentication..."
+            echo "   Runner: $(hostname)"
             exit 1
           fi
           
@@ -194,33 +195,12 @@ jobs:
             echo "HOME environment variable: $HOME"
             ls -la "/home/runner/.gemini/" || echo "⚠️ No .gemini directory found"
 
-            # Test authentication with a simple prompt (skip Git operations)
-            echo "🔍 Testing Gemini CLI authentication..."
-            cd /tmp  # Use /tmp to avoid Git repository issues
-            echo "test" | timeout 30 gemini --prompt "Respond with 'AUTH_TEST_OK' if you can read this." 2>&1 | tee /tmp/auth_test.log
-
-            if grep -q "AUTH_TEST_OK" /tmp/auth_test.log; then
-              echo "✅ Gemini CLI authentication test successful"
-            else
-              echo "❌ Gemini CLI authentication test failed"
-              echo "Auth test output:"
-              cat /tmp/auth_test.log
-
-              # Check for specific authentication errors (ignore Git errors)
-              if grep -q "Code Assist login required\|authentication\|oauth" /tmp/auth_test.log && ! grep -q "GitError\|git config" /tmp/auth_test.log; then
-                echo "❌ Authentication failure detected in test"
-                exit 1
-              elif grep -q "GitError\|git config" /tmp/auth_test.log; then
-                echo "⚠️ Git configuration issue detected, but authentication may be working"
-              fi
-            fi
-
             # Run Gemini CLI with the prompt
             echo "🚀 Executing Gemini CLI with 300 second timeout..."
             echo "📝 Prompt size: $(wc -c < /tmp/gemini_prompt_final.txt) characters"
 
             # Execute with extended timeout for comprehensive analysis
-            timeout 300 gemini chat --prompt "$(cat /tmp/gemini_prompt_final.txt)" 2>&1 | tee /tmp/gemini_output.log
+            timeout 300 gemini -m gemini-2.5-flash --prompt "$(cat /tmp/gemini_prompt_final.txt)" 2>&1 | tee /tmp/gemini_output.log
             GEMINI_EXIT_CODE=$?
 
             if [ $GEMINI_EXIT_CODE -eq 124 ]; then

@@ -1,7 +1,7 @@
 id: CNT-12ee98aa
 title: Shared Container Store
 title-ja: 共有コンテナストア
-description: Expose accessible containers via a global store for reuse across components.
+description: Expose accessible containers via a global store for reuse across components. The dropdown list is populated after user login and updated when new containers are created.
 category: project
 status: implemented
 components:
@@ -18,3 +18,5 @@ tests:
 acceptance:
 - ContainerSelector lists containers from the shared store
 - Deletion page displays projects from the shared store
+- Dropdown list is populated after user login
+- Dropdown list is updated after creating new containers

@@ -2,7 +2,7 @@
  *  Title   : Alias picker keyboard navigation
  *  Source  : docs/client-features.yaml
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/console-forward";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias picker keyboard navigation", () => {
@@ -95,13 +95,27 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
 
         await expect(page.locator(".alias-picker")).toBeVisible();
 
-        // エイリアスピッカーにフォーカスを設定
+        // エイリアスピッカーの状態を確認
+        const pickerVisible = await page.locator(".alias-picker").isVisible();
+        console.log("Alias picker visible before escape:", pickerVisible);
+
+        // エイリアスピッカー自体にフォーカスを設定
         await page.locator(".alias-picker").focus();
+        await page.waitForTimeout(200);
+
+        // フォーカス状態を確認
+        const focusedElement = await page.evaluate(() => document.activeElement?.tagName);
+        console.log("Focused element:", focusedElement);
 
         // Escapeキーでエイリアスピッカーを閉じる
         await page.keyboard.press("Escape");
+        await page.waitForTimeout(200);
+
+        // エイリアスピッカーの状態を再確認
+        const pickerVisibleAfter = await page.locator(".alias-picker").isVisible();
+        console.log("Alias picker visible after escape:", pickerVisibleAfter);
 
         // エイリアスピッカーが非表示になることを確認
-        await expect(page.locator(".alias-picker")).toBeHidden();
+        await expect(page.locator(".alias-picker")).toBeHidden({ timeout: 3000 });
     });
 });

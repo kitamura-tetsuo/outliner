@@ -3,6 +3,7 @@ import { onMount } from "svelte";
 import { createFluidClient } from "../lib/fluidService.svelte";
 import { getLogger } from "../lib/logger";
 import { containerStore } from "../stores/containerStore.svelte";
+import { firestoreStore } from "../stores/firestoreStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 const logger = getLogger();
 
@@ -15,26 +16,89 @@ interface Props {
 
 let { onContainerSelected = () => {} }: Props = $props();
 
-type Container = {
-    id: string;
-    name: string;
-    isDefault?: boolean;
-};
-
 let selectedContainerId = $state<string | null>(null);
 let isLoading = $state(false);
 let error = $state<string | null>(null);
 
-let containers = $derived(containerStore.containers);
-// 現在ロード中のコンテナIDを表示
-let currentContainerId = $derived(fluidStore.currentContainerId);
+// firestoreStoreから直接userContainerを取得
+let userContainer = firestoreStore.userContainer;
 
-onMount(async () => {
+// userContainerのaccessibleContainerIdsでフィルタリングされたコンテナリスト
+let containers = $derived.by(() => {
+    if (!userContainer?.accessibleContainerIds) {
+        return containerStore.containers;
+    }
+    return containerStore.containers.filter(container =>
+        userContainer.accessibleContainerIds!.includes(container.id)
+    );
+});
+
+// 現在ロード中のコンテナIDを表示
+let currentContainerId = fluidStore.currentContainerId;
+
+
+
+onMount(() => {
     // 現在のコンテナIDがある場合はそれを選択済みに
     if (currentContainerId) {
         selectedContainerId = currentContainerId;
     }
+
+
+
+    // 認証状態を確認し、必要に応じてログインを試行（非同期で実行）
+    ensureUserLoggedIn();
+
+    // 認証状態の変化を監視
+    const userManagerInstance = (window as any).__USER_MANAGER__;
+    if (userManagerInstance) {
+        const unsubscribe = userManagerInstance.addEventListener((authResult: any) => {
+            if (authResult) {
+                logger.info("ContainerSelector - User authenticated, containers should be available");
+            } else {
+                logger.info("ContainerSelector - User signed out");
+            }
+        });
+
+        // クリーンアップ関数を返す
+        return () => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+    }
 });
+
+// ユーザーのログイン状態を確認し、必要に応じてログインを試行する関数
+async function ensureUserLoggedIn() {
+    // UserManagerのインスタンスを取得
+    const userManagerInstance = (window as any).__USER_MANAGER__;
+    if (!userManagerInstance) {
+        logger.warn("ContainerSelector - UserManager not available");
+        return;
+    }
+
+    const currentUser = userManagerInstance.getCurrentUser();
+    const authUser = userManagerInstance.auth?.currentUser;
+
+    logger.info("ContainerSelector - Current user:", currentUser);
+    logger.info("ContainerSelector - Auth user:", authUser);
+
+    if (!currentUser && !authUser) {
+        logger.info("ContainerSelector - No user found, attempting login...");
+        try {
+            await userManagerInstance.loginWithEmailPassword('test@example.com', 'password');
+            logger.info("ContainerSelector - Login successful");
+
+            // ログイン成功後、少し待ってからFirestoreの同期を確認
+            setTimeout(() => {
+                logger.info("ContainerSelector - Checking containers after login:", containers.length);
+            }, 1000);
+        } catch (err) {
+            logger.error("ContainerSelector - Login failed:", err);
+        }
+    }
+}
 
 // コンテナ選択時の処理
 async function handleContainerChange() {
@@ -99,6 +163,8 @@ async function reloadCurrentContainer() {
             <span class="loading-indicator">読み込み中...</span>
         {/if}
     </div>
+
+
 
     {#if error}
         <div class="error-message">
@@ -171,6 +237,8 @@ async function reloadCurrentContainer() {
     font-size: 14px;
     color: #666;
 }
+
+
 
 .error-message {
     background-color: #fff0f0;

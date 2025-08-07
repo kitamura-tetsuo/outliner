@@ -851,23 +851,22 @@ export class Cursor {
         // 前のアイテムのテキストを更新
         prevItem.updateText(prevText + currentText);
 
+        // 現在のアイテムを削除
+        currentItem.delete();
+
         // カーソル位置を更新
         const oldItemId = this.itemId;
         this.itemId = prevItem.id;
         this.offset = prevText.length;
 
-        // 現在のアイテムを削除
-        currentItem.delete();
-
-        // カーソルを更新
+        // 古いアイテムのカーソルをクリア（アイテム削除後）
         store.clearCursorForItem(oldItemId);
+
+        // アクティブアイテムを設定
         store.setActiveItem(this.itemId);
-        store.setCursor({
-            itemId: this.itemId,
-            offset: this.offset,
-            isActive: true,
-            userId: this.userId,
-        });
+
+        // カーソルの点滅を開始
+        store.startCursorBlink();
     }
 
     /**

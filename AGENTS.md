@@ -24,6 +24,11 @@ This document consolidates the key development policies for this repository. Fol
   cd client && npx tsc --noEmit --project tsconfig.json
   ```
 - Fix one test file at a time and run it immediately to confirm the fix.
+- When code or tests change, run only the related test file. Use the following
+  commands to run a specific test:
+  - Unit: `cd client && npm run test:unit -- path/to/test.spec.ts`
+  - Integration: `cd client && npm run test:integration -- path/to/test.spec.ts`
+  - E2E: `cd client && npm run test:e2e -- path/to/test.spec.ts`
 - CI keeps tests green on the `main` branch. If tests fail in your branch, the
   cause lies in changes made after you diverged from `main`. Investigate those
   modifications to identify the problem.
@@ -45,6 +50,9 @@ Mocks are generally forbidden. Limited exceptions:
 - **No mocking logic in production code**. If unit tests require mocks, place all
   mock-related code inside the test files and keep it out of the application
   code.
+- **No test data creation routines in production code**. Test data initialization,
+  debug buttons, and test-specific functionality must be isolated to test
+  environments only. Production code should not contain any test-related logic.
 
 ### Test Implementation Guidelines
 
@@ -69,8 +77,9 @@ Mocks are generally forbidden. Limited exceptions:
 ### Troubleshooting
 
 - **Always check error logs first**: When encountering errors, immediately examine `server/logs/test-svelte-kit.log` for detailed error information before attempting fixes.
-- Check `server/logs/test-svelte-kit.log` when a test stalls.
-- Verify the server with `curl -s http://localhost:7090/ | head -c 100`.
+- If a specific test fails to start or stalls, inspect `server/logs/test-svelte-kit.log` for details.
+- Before assuming the test server is down, verify it with `curl -s http://localhost:7090/ | head -c 100`.
+- If the cause of an E2E test failure is unclear, investigate using Playwright MCP.
 - Duplicate Firebase initialization often causes 30 s timeouts—ensure `UserManager.initializeFirebaseApp()` checks `getApps()` before calling `initializeApp()`.
 - **Tinylicious Container Restoration Issue**: The error "default dataStore [rootDOId] must exist" occurs when trying to reload saved Fluid containers in Tinylicious (test environment). This is a known Tinylicious bug that doesn't occur in production. In test environments, avoid reloading saved containers and use alternative testing approaches instead.
 - **Test Isolation and Regression Prevention**: When troubleshooting failing tests, destructive changes to shared code may occur. If you modify common code outside the specific test target, run the basic E2E tests to verify no breaking changes have been introduced. If breaking changes are detected, revert the modifications to maintain test stability.
@@ -79,13 +88,48 @@ Mocks are generally forbidden. Limited exceptions:
 
 **CRITICAL**: Always use Firebase Functions Emulator for testing, never mock Firebase Functions. The emulator provides the actual Firebase Functions environment and is essential for proper testing.
 
-- Firebase Functions Emulator runs on port 57000 (configured in firebase.json)
+**IMPORTANT**: Firebase Functions emulator DOES apply Firebase Hosting rewrite rules from firebase.json. Tests should use `/api/` endpoints (e.g., `/api/fluid-token`), not direct function URLs like `/outliner-d57b0/us-central1/functionName`. The emulator respects the hosting configuration and rewrites `/api/function-name` to the appropriate function.
+
+- Firebase Functions Emulator runs on port 57070 (configured in firebase.json)
 - Firebase Storage Emulator runs on port 59200 (configured in firebase.json)
 - Firebase Auth Emulator runs on port 59099 (configured in firebase.json)
 - Firebase Firestore Emulator runs on port 58080 (configured in firebase.json)
 - Use `scripts/codex-setup.sh` to start all Firebase emulators
 - All attachment upload/download functionality requires Firebase Functions Emulator to be running
 - Tests will fail with "API error 404" if Firebase Functions Emulator is not running
+
+### Production Environment Testing
+
+**Production Cloud Backend Testing**: For testing Firebase Auth token validation with production Firebase Auth services:
+
+1. **Start Production Cloud Backend Servers**:
+   ```bash
+   firebase emulators:start --only hosting,functions --project outliner-d57b0
+   ```
+   - Firebase Functions with Hosting emulator on port 57070
+   - Uses production Firebase Auth and Firestore services
+   - Azure Fluid Relay configuration loaded from environment variables
+
+2. **Start Production SvelteKit Server** (for API proxy testing):
+   ```bash
+   NODE_ENV=production npx dotenvx run --env-file=.env.production -- npm run dev -- --host 0.0.0.0 --port 7073 --mode production
+   ```
+
+3. **Run Production Tests**:
+   ```bash
+   cd client && npm run test:production
+   ```
+
+4. **Test Coverage**: Production tests validate:
+   - Firebase ID token validation against production Firebase Auth
+   - Azure Fluid Relay token generation
+   - Container-specific token requests
+   - SvelteKit API proxy functionality
+   - Error handling for invalid tokens
+
+**Important**: Production tests use real Firebase Auth services and require proper environment configuration. Test users are automatically created and deleted during test execution.
+
+- When addressing production environment errors, wait at least 30 minutes after a GitHub Actions deployment completes and confirm in production that the issue is resolved.
 
 ## 3. Code Style
 
@@ -98,7 +142,7 @@ Mocks are generally forbidden. Limited exceptions:
 
 - At the end of each session, create a prompt for the next session describing remaining tasks. Mention that tasks should proceed sequentially.
 - Always track your working directory. Client code is in `client`, server code in `server`, and scripts in `scripts` (ENV-* tests are in `scripts/tests`). When using `launch-process`, set the `cwd` explicitly.
-- Keep Svelte HTML elements reactive and prioritize performance. Use asynchronous updates where appropriate.
+- Keep Svelte HTML elements reactive and prioritize performance. Prefer patterns where reactive variables are updated asynchronously, while overall processing remains synchronous when possible.
 - After implementing changes, run `npm run build` in the `client` directory to confirm the code compiles correctly.
 
 ### Merge Workflow
@@ -121,12 +165,29 @@ Mocks are generally forbidden. Limited exceptions:
 ## 6. Project & Firebase Configuration
 
 - Projects use `title` (not `name`) and the project ID equals its Fluid container ID.
-- Firebase Functions are accessed through Hosting at `http://localhost:57000/api`.
+- **Firebase Functions Access**: Firebase Functions are accessed through Firebase Hosting at `http://localhost:57070/api` in development environments. This ensures proper routing and CORS handling.
+- **Production Cloud Backend**: For Production Cloud Backend configuration, Firebase Functions must be accessed through Firebase Hosting emulator (port 57070) rather than direct Functions emulator access.
 - In both deployed and test environments, call Firebase Functions through the host's `/api/` route.
 - Use `.env` files for Functions v2 environment variables and never hardcode credentials.
 - Do not bypass authentication; tests should authenticate against the Firebase Auth emulator.
+- **Firebase Emulator Setup**: Always start Firebase Functions with Hosting emulator using `firebase emulators:start --only hosting,functions --project outliner-d57b0` to ensure proper API routing. The hosting emulator applies rewrite rules from firebase.json, allowing `/api/` endpoints to work correctly.
 
-## 7. Preferred Code Patterns
+## 7. GitHub Actions & Claude Code Integration
+
+- **Issue Analysis**: The `.github/workflows/issue-claude-action.yml` workflow automatically analyzes new issues and issue comments containing `@claude` using Claude Code Action with self-hosted runners.
+- **PR Auto-Fix**: The `.github/workflows/pr-test-fix.yml` workflow automatically fixes failing tests in PRs using Claude Code Action, repeating until tests pass or maximum attempts are reached.
+- **Claude Code Router**: Uses `@musistudio/claude-code-router` to route requests to Gemini CLI, enabling cost-effective AI analysis on self-hosted infrastructure.
+- **Self-Hosted Runner Requirements**:
+  - Gemini CLI must be authenticated via `gemini auth login` or `GEMINI_API_KEY` secret
+  - Node.js 22+ and npm must be available
+  - Network access to Google APIs required
+- **Authentication Setup**:
+  - Preferred: Run `gemini auth login` on the runner machine for persistent OAuth credentials
+  - Alternative: Set `GEMINI_API_KEY` repository secret with a valid API key
+- **Router Configuration**: Uses a custom Gemini CLI transformer that executes actual `gemini` CLI commands, routing all requests to `gemini-2.5-pro` for high-quality analysis and responses. Uses `--force-model` option to ensure the specified model is used and supports MCP and other advanced features.
+- **Auto-Fix Process**: When PR tests fail, Claude analyzes the failures, implements fixes, runs tests again, and commits/pushes changes if tests pass. Maximum 5 attempts per failure.
+
+## 8. Preferred Code Patterns
 
 - Use Svelte 5 `$derived` for derived state and `$state` in stores. `$state` is only valid in `.svelte` or `.svelte.ts` files.
 - Avoid `svelte/store`; rely on Svelte 5 `$state` for all store functionality.

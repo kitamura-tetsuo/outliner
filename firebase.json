@@ -44,6 +44,10 @@
                 "function": "fluidToken"
             },
             {
+                "source": "/api/fluidToken",
+                "function": "fluidToken"
+            },
+            {
                 "source": "/api/save-container",
                 "function": "saveContainer"
             },
@@ -56,8 +60,8 @@
                 "function": "deleteUser"
             },
             {
-                "source": "/api/get-container-users",
-                "function": "getContainerUsers"
+                "source": "/api/get-user-containers",
+                "function": "getUserContainers"
             },
             {
                 "source": "/api/list-users",
@@ -104,14 +108,38 @@
                 "function": "deleteAttachment"
             },
             {
+                "source": "/api/adminCheckForContainerUserListing",
+                "function": "adminCheckForContainerUserListing"
+            },
+            {
+                "source": "/api/get-container-users",
+                "function": "adminCheckForContainerUserListing"
+            },
+            {
+                "source": "/api/adminUserList",
+                "function": "adminUserList"
+            },
+            {
                 "source": "/health",
                 "function": "health"
+            },
+            {
+                "source": "/api/health",
+                "function": "health"
+            },
+            {
+                "source": "/api/azure-health-check",
+                "function": "azureHealthCheck"
             },
             {
                 "source": "**",
                 "destination": "/index.html"
             }
         ]
+    },
+    "firestore": {
+        "rules": "firestore.rules",
+        "indexes": "firestore.indexes.json"
     },
     "storage": {
         "rules": "storage.rules"
@@ -141,6 +169,7 @@
             "port": 54000,
             "host": "0.0.0.0",
             "enabled": false
-        }
+        },
+        "singleProjectMode": false
     }
 }

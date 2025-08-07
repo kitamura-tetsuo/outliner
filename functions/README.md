@@ -11,12 +11,13 @@ Functionsが含まれています。 主な機能は以下の通りです：
 3. `/api/get-user-containers` -
    ユーザーがアクセス可能なコンテナIDのリストを取得するエンドポイント
 4. `/health` - ヘルスチェックエンドポイント
-5. `/api/create-schedule` -
+5. `/api/azure-health-check` - Azure Fluid Relayキーの動作確認エンドポイント
+6. `/api/create-schedule` -
    指定したページに公開スケジュールを登録するエンドポイント
-6. `/api/update-schedule` - 既存のスケジュールを更新するエンドポイント
-7. `/api/list-schedules` -
+7. `/api/update-schedule` - 既存のスケジュールを更新するエンドポイント
+8. `/api/list-schedules` -
    ユーザーが作成したスケジュール一覧を取得するエンドポイント
-8. `/api/cancel-schedule` - スケジュールをキャンセルするエンドポイント
+9. `/api/cancel-schedule` - スケジュールをキャンセルするエンドポイント
 
 ### サンプル
 
@@ -80,6 +81,54 @@ firebase deploy --only functions
 ```bash
 firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="https://us.fluidrelay.azure.com" azure.primary_key="your-primary-key"
 ```
+
+## Azure Fluid Relayヘルスチェック
+
+### `/api/azure-health-check`
+
+Azure Fluid
+Relayキーの動作確認を行うエンドポイントです。プロダクション環境でAzure Fluid
+Relayの設定が正しく動作しているかを確認できます。
+
+**メソッド**: GET
+
+**レスポンス例**:
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-07-22T06:45:00.000Z",
+  "azure": {
+    "config": {
+      "tenantId": "設定済み",
+      "endpoint": "設定済み",
+      "primaryKey": "設定済み",
+      "secondaryKey": "設定済み",
+      "activeKey": "primary"
+    },
+    "tokenTest": {
+      "status": "success",
+      "error": null,
+      "tokenGenerated": true,
+      "tokenValid": true
+    },
+    "connectionTest": {
+      "status": "skipped",
+      "note": "Connection test requires actual container creation which is not performed in health check"
+    }
+  },
+  "environment": {
+    "isEmulator": false,
+    "projectId": "outliner-d57b0"
+  }
+}
+```
+
+**ステータス**:
+
+- `healthy`: すべてのテストが成功
+- `unhealthy`: 設定またはトークン生成に問題がある
+- `error`: 予期しないエラーが発生
 
 ## 注意事項
 

@@ -1,44 +1,51 @@
 <script lang="ts">
-import { onMount } from "svelte";
 import * as fluidService from "../../../lib/fluidService.svelte";
 import { containerStore } from "../../../stores/containerStore.svelte";
 
-interface ProjectEntry {
-    id: string;
-    title: string;
-    selected: boolean;
-}
+let projects = $derived(containerStore.containers);
+let selectedProjects = $state(new Set<string>());
 
-let projects: ProjectEntry[] = $state([]);
 let loading = $state(false);
 let error: string | undefined = $state(undefined);
 let success: string | undefined = $state(undefined);
 
+
+
 async function deleteSelected() {
-    const targets = projects.filter(p => p.selected);
+    const targets = projects.filter(p => selectedProjects.has(p.id));
     if (targets.length === 0) return;
     loading = true;
     error = undefined;
     success = undefined;
+
+    let deletedCount = 0;
     for (const p of targets) {
-        const ok = await fluidService.deleteContainer(p.id);
-        if (ok) {
-            projects = projects.filter(pr => pr.id !== p.id);
-        } else {
-            error = `削除に失敗しました: ${p.title}`;
+        try {
+            const ok = await fluidService.deleteContainer(p.id);
+            if (ok) {
+                selectedProjects.delete(p.id);
+                deletedCount++;
+            } else {
+                error = `削除に失敗しました: ${p.name}`;
+                break;
+            }
+        } catch (err) {
+            error = `削除エラー: ${p.name} - ${err instanceof Error ? err.message : String(err)}`;
             break;
         }
     }
-    if (!error) success = "選択したプロジェクトを削除しました";
+
+    if (!error && deletedCount > 0) {
+        success = "選択したプロジェクトを削除しました";
+        // 削除後にプロジェクトリストを更新するため、少し待ってからページをリロード
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    }
+
+    selectedProjects = new Set(selectedProjects);
     loading = false;
 }
-
-onMount(() => {
-    const unsubscribe = containerStore.containers.subscribe(list => {
-        projects = list.map(c => ({ id: c.id, title: c.name, selected: false }));
-    });
-    return () => unsubscribe();
-});
 </script>
 
 <svelte:head>
@@ -47,6 +54,10 @@ onMount(() => {
 
 <main class="p-4">
     <h1 class="text-2xl font-bold mb-4">Delete Projects</h1>
+
+
+
+
     {#if error}
         <div class="mb-2 text-red-600">{error}</div>
     {/if}
@@ -69,15 +80,24 @@ onMount(() => {
                 {#each projects as project}
                     <tr>
                         <td class="px-2 text-center">
-                            <input type="checkbox" bind:checked={project.selected} />
+                            <input type="checkbox" checked={selectedProjects.has(project.id)} onchange={(e) => {
+                                const target = e.target as HTMLInputElement;
+                                if (target.checked) {
+                                    selectedProjects.add(project.id);
+                                } else {
+                                    selectedProjects.delete(project.id);
+                                }
+                                // Svelteのリアクティビティのために再代入
+                                selectedProjects = new Set(selectedProjects);
+                            }} />
                         </td>
-                        <td class="px-2">{project.title || "(loading...)"}</td>
+                        <td class="px-2">{project.name || "(loading...)"}</td>
                         <td class="px-2">{project.id}</td>
                     </tr>
                 {/each}
             </tbody>
         </table>
-        <button on:click={deleteSelected} disabled={loading || projects.every(p => !p.selected)} class="bg-red-500 text-white px-4 py-2 rounded">Delete</button>
+        <button onclick={deleteSelected} disabled={loading || selectedProjects.size === 0} class="bg-red-500 text-white px-4 py-2 rounded">Delete</button>
     {:else}
         <p>No projects found.</p>
     {/if}

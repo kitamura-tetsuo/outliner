@@ -76,31 +76,28 @@ export class TestHelpers {
         console.log("TestHelper: UserManager found, attempting authentication");
 
         // 手動で認証を実行
-        const authResult = await page.evaluate(async () => {
+        // 認証を開始（エラーは無視）
+        await page.evaluate(async () => {
             const userManager = (window as any).__USER_MANAGER__;
             if (!userManager) {
-                return { success: false, error: "UserManager not found" };
+                throw new Error("UserManager not found");
             }
 
             try {
                 console.log("TestHelper: Calling loginWithEmailPassword");
                 await userManager.loginWithEmailPassword("test@example.com", "password");
-                return { success: true };
             } catch (error) {
-                console.error("TestHelper: Authentication failed", error);
-                return { success: false, error: error instanceof Error ? error.message : String(error) };
+                console.log(
+                    "TestHelper: Authentication method failed, but user may still be signed in via onAuthStateChanged",
+                );
             }
         });
 
-        // Wait for login to complete
+        // Wait for login to complete via onAuthStateChanged
         await page.waitForFunction(() => {
             const mgr = (window as any).__USER_MANAGER__;
             return mgr && mgr.getCurrentUser && mgr.getCurrentUser() !== null;
         }, { timeout: 30000 });
-
-        if (!authResult.success) {
-            throw new Error(`Authentication failed: ${authResult.error}`);
-        }
 
         console.log("TestHelper: Authentication successful, waiting for global variables");
 

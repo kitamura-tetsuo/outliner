@@ -8,7 +8,6 @@ class GeneralStore {
         return this._fluidClient;
     }
     public set fluidClient(v: FluidClient | undefined) {
-        debugger;
         console.log(`fluidStore: Setting fluidClient`, { exists: !!v, containerId: v?.containerId });
         this._fluidClient = v;
         if (v) {

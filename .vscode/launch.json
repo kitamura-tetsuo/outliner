@@ -31,7 +31,35 @@
         {
             "type": "chrome",
             "request": "launch",
-            "name": "Launch Chrome against localhost",
+            "name": "Launch Chrome against Firebase host",
+            "url": "https://outliner-d57b0.web.app/",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http:/localhost:7070/src/*": "${webRoot}/src/*",
+                "http:/localhost:7090/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "localhost꞉7070/src/*": "${webRoot}/src/*",
+                "localhost꞉7090/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
+                "**/node_modules/**"
+            ],
+            "port": 9876,
+            "justMyCode": false,
+            "console": "internalConsole", // ← Debug Console に出す
+            "trace": true // どこで拾えない時の調査用
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost test server",
             "url": "http://localhost:7090",
             "webRoot": "${workspaceFolder}/client",
             "sourceMaps": true,
@@ -59,20 +87,20 @@
         {
             "type": "chrome",
             "request": "launch",
-            "name": "Launch Chrome against dev server",
-            "url": "http://192.168.50.13:7070",
+            "name": "Launch Chrome against localhost production server",
+            "url": "http://localhost:7073",
             "webRoot": "${workspaceFolder}/client",
             "sourceMaps": true,
             "sourceMapPathOverrides": {
                 "webpack:///src/*": "${webRoot}/src/*",
-                "http://192.168.50.13:7070/src/*": "${webRoot}/src/*",
-                "http://192.168.50.13:7080/src/*": "${webRoot}/src/*",
+                "http://localhost:7073/src/*": "${webRoot}/src/*",
+                "http://localhost:7080/src/*": "${webRoot}/src/*",
                 "webpack:///./*": "${webRoot}/*",
                 "/./*": "${webRoot}/*",
                 "/*": "*",
                 "/src/*": "${webRoot}/src/*",
-                "192.168.50.13꞉7070/src/*": "${webRoot}/src/*",
-                "192.168.50.13꞉7080/src/*": "${webRoot}/src/*"
+                "localhost꞉7073/src/*": "${webRoot}/src/*",
+                "localhost꞉7080/src/*": "${webRoot}/src/*"
             },
             "skipFiles": [
                 "**/lib/logger.*",
@@ -80,25 +108,25 @@
                 "**/node_modules/**"
             ],
             "port": 9876,
-            "urlFilter": "*192.168.50.13:7070*"
+            "urlFilter": "*localhost:7070*"
         },
         {
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against test server",
-            "url": "http://192.168.50.13:7080",
+            "url": "http://localhost:7080",
             "webRoot": "${workspaceFolder}/client",
             "sourceMaps": true,
             "sourceMapPathOverrides": {
                 "webpack:///src/*": "${webRoot}/src/*",
-                "http://192.168.50.13:7070/src/*": "${webRoot}/src/*",
-                "http://192.168.50.13:7080/src/*": "${webRoot}/src/*",
+                "http://localhost:7070/src/*": "${webRoot}/src/*",
+                "http://localhost:7080/src/*": "${webRoot}/src/*",
                 "webpack:///./*": "${webRoot}/*",
                 "/./*": "${webRoot}/*",
                 "/*": "*",
                 "/src/*": "${webRoot}/src/*",
-                "192.168.50.13꞉7070/src/*": "${webRoot}/src/*",
-                "192.168.50.13꞉7080/src/*": "${webRoot}/src/*"
+                "localhost꞉7070/src/*": "${webRoot}/src/*",
+                "localhost꞉7080/src/*": "${webRoot}/src/*"
             },
             "skipFiles": [
                 "**/lib/logger.*",
@@ -106,7 +134,7 @@
                 "**/node_modules/**"
             ],
             // "port": 9877,
-            "urlFilter": "*192.168.50.13:7080*"
+            "urlFilter": "*localhost:7080*"
             // "runtimeExecutable": "powershell.exe",
             // "runtimeArgs": [
             //     "-NoProfile",
@@ -140,6 +168,30 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Production Cloud Backend SvelteKit Server",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "mkdir -p ${workspaceFolder}/server/logs && NODE_ENV=production npx dotenvx run --env-file=.env.production -- npm run dev -- --host 0.0.0.0 --port 7073 --mode production 2>&1 | tee ${workspaceFolder}/server/logs/production-cloud-svelte-kit.log"
+            ],
+            "localRoot": "${workspaceFolder}/client",
+            "env": {
+                "PORT": "7073",
+                "NODE_ENV": "production",
+                "VITE_USE_FIREBASE_EMULATOR": "true",
+                "VITE_FIREBASE_EMULATOR_HOST": "localhost",
+                "VITE_FIRESTORE_EMULATOR_PORT": "58080",
+                "VITE_AUTH_EMULATOR_PORT": "59099"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "restart": true
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Debug Server",
             "runtimeExecutable": "bash",
             "localRoot": "${workspaceFolder}/server",
@@ -149,6 +201,26 @@
             ],
             "env": {
                 "PORT": "7071"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "restart": true
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Production Cloud Backend Debug Server",
+            "runtimeExecutable": "bash",
+            "localRoot": "${workspaceFolder}/server",
+            "runtimeArgs": [
+                "-c",
+                "cd ${workspaceFolder}/server && mkdir -p ${workspaceFolder}/server/logs && NODE_ENV=production npx dotenvx run --env-file=.env.production -- npm run dev -- --host 0.0.0.0 --port 7074 2>&1 | tee ${workspaceFolder}/server/logs/production-cloud-log-service-tee.log"
+            ],
+            "env": {
+                "PORT": "7074",
+                "NODE_ENV": "production"
             },
             "console": "integratedTerminal",
             "skipFiles": [
@@ -347,6 +419,30 @@
             "urlFilter": "*localhost:7090*"
         },
         {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against Production Cloud Backend",
+            "url": "http://localhost:7073",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http://localhost:7073/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "localhost꞉7073/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
+                "**/node_modules/**"
+            ],
+            "port": 9879,
+            "urlFilter": "*localhost:7073*"
+        },
+        {
             "type": "node",
             "request": "launch",
             "name": "Debug Firestore Sequential",
@@ -371,6 +467,16 @@
             ],
             "stopAll": true,
             "preLaunchTask": "Kill Tinylicious Process"
+        },
+        {
+            "name": "Production Cloud Backend Servers",
+            "configurations": [
+                "Production Cloud Backend SvelteKit Server",
+                "Production Cloud Backend Debug Server",
+                "Launch Chrome against localhost production server"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "Restart Production Firebase Emulators"
         },
         {
             "name": "Test Servers",

@@ -1,0 +1,135 @@
+{
+    "functions": [
+        {
+            "source": "functions",
+            "codebase": "default",
+            "ignore": [
+                "node_modules",
+                ".git",
+                "firebase-debug.log",
+                "firebase-debug.*.log",
+                "*.local"
+            ],
+            "predeploy": [
+                "npm --prefix \"$RESOURCE_DIR\" run lint"
+            ],
+            "runtime": "nodejs22"
+        }
+    ],
+    "hosting": {
+        "public": "build",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "headers": [
+            {
+                "source": "/service-worker.js",
+                "headers": [
+                    {
+                        "key": "Cache-Control",
+                        "value": "no-cache"
+                    }
+                ]
+            },
+            {
+                "source": "**/*.@(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)",
+                "headers": [
+                    {
+                        "key": "Cache-Control",
+                        "value": "max-age=31536000"
+                    }
+                ]
+            }
+        ],
+        "rewrites": [
+            {
+                "source": "/api/fluid-token",
+                "function": "fluidToken"
+            },
+            {
+                "source": "/api/fluidToken",
+                "function": "fluidToken"
+            },
+            {
+                "source": "/api/save-container",
+                "function": "saveContainer"
+            },
+            {
+                "source": "/api/saveContainer",
+                "function": "saveContainer"
+            },
+            {
+                "source": "/api/get-user-containers",
+                "function": "getUserContainers"
+            },
+            {
+                "source": "/api/getUserContainers",
+                "function": "getUserContainers"
+            },
+            {
+                "source": "/api/create-schedule",
+                "function": "createSchedule"
+            },
+            {
+                "source": "/api/list-schedules",
+                "function": "listSchedules"
+            },
+            {
+                "source": "/api/cancel-schedule",
+                "function": "cancelSchedule"
+            },
+            {
+                "source": "/api/update-schedule",
+                "function": "updateSchedule"
+            },
+            {
+                "source": "/api/check-admin",
+                "function": "checkAdmin"
+            },
+            {
+                "source": "/api/list-admin-users",
+                "function": "listAdminUsers"
+            },
+            {
+                "source": "/health",
+                "function": "health"
+            },
+            {
+                "source": "**",
+                "destination": "/index.html"
+            }
+        ]
+    },
+    "firestore": {
+        "rules": "firestore.rules",
+        "indexes": "firestore.indexes.json"
+    },
+    "storage": {
+        "rules": "storage.rules"
+    },
+    "emulators": {
+        "firestore": {
+            "port": 58080,
+            "host": "0.0.0.0"
+        },
+        "functions": {
+            "port": 57070,
+            "host": "0.0.0.0"
+        },
+        "hosting": {
+            "port": 57000,
+            "host": "0.0.0.0"
+        },
+        "storage": {
+            "port": 59200,
+            "host": "0.0.0.0"
+        },
+        "ui": {
+            "port": 54000,
+            "host": "0.0.0.0",
+            "enabled": false
+        }
+    }
+}

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";
@@ -48,8 +49,14 @@ export class KeyEventHandler {
             map.set({ key, ctrl, alt, shift }, handler);
         };
 
-        // Esc cancels box selection
+        // Esc cancels box selection or closes alias picker
         add("Escape", false, false, false, () => {
+            // エイリアスピッカーが表示されている場合は、エイリアスピッカーを閉じる
+            if (aliasPickerStore.isVisible) {
+                aliasPickerStore.hide();
+                return;
+            }
+
             if (KeyEventHandler.boxSelectionState.active) {
                 KeyEventHandler.cancelBoxSelection();
             }
@@ -115,25 +122,6 @@ export class KeyEventHandler {
 
             // カットイベントをディスパッチ
             document.dispatchEvent(clipboardEvent);
-        });
-
-        // Ctrl+V paste
-        add("v", true, false, false, event => {
-            // ペーストイベントを手動で発生させる
-            const clipboardEvent = new ClipboardEvent("paste", {
-                clipboardData: new DataTransfer(),
-                bubbles: true,
-                cancelable: true,
-            });
-
-            // グローバル変数からテキストを取得（テスト用）
-            if (typeof window !== "undefined" && (window as any).lastCopiedText) {
-                const text = (window as any).lastCopiedText;
-                clipboardEvent.clipboardData?.setData("text/plain", text);
-                console.log(`Using text from global variable for paste: "${text}"`);
-            }
-
-            KeyEventHandler.handlePaste(clipboardEvent);
         });
     }
     /**
@@ -1099,10 +1087,14 @@ export class KeyEventHandler {
     }
 
     /**
-     * ペーストイベントを処理する
+     * ペーストイベントを処理する非同期メソッド。
+     * 呼び出し側は `await` して権限拒否や読み取り失敗を捕捉する。
+     * Clipboard API の権限エラーを捕捉し DEBUG_MODE 時にログ出力する。
+     * 失敗時は `clipboard-permission-denied` または `clipboard-read-error`
+     * を dispatch し、空文字を挿入してユーザーにはペーストされないように見せる。
      * @param event ClipboardEvent
      */
-    static handlePaste(event: ClipboardEvent) {
+    static async handlePaste(event: ClipboardEvent): Promise<void> {
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`KeyEventHandler.handlePaste called`);
@@ -1111,6 +1103,33 @@ export class KeyEventHandler {
         try {
             // プレーンテキストを取得
             let text = event.clipboardData?.getData("text/plain") || "";
+
+            // イベントから取得できない場合はClipboard APIを使用
+            if (!text && typeof navigator !== "undefined" && navigator.clipboard) {
+                try {
+                    text = await navigator.clipboard.readText();
+                } catch (error: any) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        if (error?.name === "NotAllowedError") {
+                            console.warn("Clipboard permission denied", error);
+                        } else {
+                            console.error("navigator.clipboard.readText failed", error);
+                        }
+                    }
+
+                    if (typeof window !== "undefined") {
+                        window.dispatchEvent(
+                            new CustomEvent(
+                                error?.name === "NotAllowedError"
+                                    ? "clipboard-permission-denied"
+                                    : "clipboard-read-error",
+                            ),
+                        );
+                    }
+
+                    text = "";
+                }
+            }
 
             // テキストが取得できない場合はグローバル変数から取得（テスト用）
             if (!text && typeof window !== "undefined" && (window as any).lastCopiedText) {
@@ -1367,9 +1386,12 @@ export class KeyEventHandler {
             const cursorInstances = store.getCursorInstances();
             cursorInstances.forEach(cursor => cursor.insertText(text));
         } catch (error) {
-            // エラーが発生した場合はログに出力
+            // エラーが発生した場合はログに出力し UI に通知
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Error in handlePaste:`, error);
+            }
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("clipboard-read-error"));
             }
         }
     }

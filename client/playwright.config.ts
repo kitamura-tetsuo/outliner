@@ -78,10 +78,10 @@ const debugArgs = isSingleSpecRun
 export default defineConfig({
     testDir: "./e2e",
     testMatch: "**/*.spec.ts",
-    fullyParallel: true,
+    fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: (process.env.CI || !isSingleSpecRun) ? 10 : 0,
-    workers: process.env.CI ? 1 : 2,
+    workers: process.env.CI ? 1 : 1,
     maxFailures: process.env.CI ? 1 : 5,
 
     reporter: [["html", { open: "never" }]],

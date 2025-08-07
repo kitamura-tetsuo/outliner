@@ -14,7 +14,8 @@
         "allowImportingTsExtensions": false,
         "types": [
             "@playwright/test",
-            "node"
+            "node",
+            "vitest"
         ],
         "noUnusedLocals": false,
         "target": "es2017"

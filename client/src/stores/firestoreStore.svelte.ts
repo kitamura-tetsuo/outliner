@@ -3,6 +3,7 @@ import { connectFirestoreEmulator, doc, Firestore, getDoc, getFirestore, onSnaps
 
 import { userManager } from "../auth/UserManager";
 import { getFirebaseApp } from "../lib/firebase-app";
+import { getFirebaseFunctionUrl } from "../lib/firebaseFunctionsUrl";
 import { getLogger } from "../lib/logger";
 const logger = getLogger();
 
@@ -17,7 +18,25 @@ export interface UserContainer {
 
 class GeneralStore {
     // ユーザーコンテナのストア
-    userContainer: UserContainer | null = $state(null);
+    private _userContainer: UserContainer | null = $state(null);
+
+    get userContainer(): UserContainer | null {
+        return this._userContainer;
+    }
+
+    set userContainer(value: UserContainer | null) {
+        this._userContainer = value;
+        // デバッグ情報をログ出力
+        logger.info("FirestoreStore - userContainer:", value);
+        if (value) {
+            logger.info("FirestoreStore - accessibleContainerIds:", value.accessibleContainerIds);
+            logger.info("FirestoreStore - defaultContainerId:", value.defaultContainerId);
+        }
+    }
+
+    constructor() {
+        // コンストラクタは空にする
+    }
 }
 export const firestoreStore = new GeneralStore();
 
@@ -40,10 +59,16 @@ try {
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.mockFluidClient === false);
 
-    const useEmulator = isTestEnv
+    // プロダクション環境では絶対にエミュレータを使用しない
+    const isProduction = process.env.NODE_ENV === "production"
+        || import.meta.env.MODE === "production";
+
+    const useEmulator = !isProduction && (
+        isTestEnv
         || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
         || (typeof window !== "undefined"
-            && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true");
+            && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true")
+    );
 
     // Firebase Emulatorに接続
     if (useEmulator) {
@@ -163,7 +188,8 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
         logger.info(`Saving container ID via /api/saveContainer`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
-        const response = await fetch(`/api/save-container`, {
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
+        const response = await fetch(`${apiBaseUrl}/api/save-container`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -302,7 +328,7 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
-        const response = await fetch(`${apiBaseUrl}/saveContainer`, {
+        const response = await fetch(getFirebaseFunctionUrl("saveContainer"), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -343,7 +369,7 @@ if (typeof window !== "undefined") {
         if (authResult) {
             cleanup = initFirestoreSync();
         } else {
-            // 未認証の場合はコンテナを空にする
+            // 未認証の場合はuserContainerを空にする
             firestoreStore.userContainer = null;
         }
     });
@@ -355,10 +381,4 @@ if (typeof window !== "undefined") {
         }
         unsubscribeAuth();
     });
-}
-
-if (process.env.NODE_ENV === "test") {
-    if (typeof window !== "undefined") {
-        (window as any).__FIRESTORE_STORE__ = firestoreStore;
-    }
 }

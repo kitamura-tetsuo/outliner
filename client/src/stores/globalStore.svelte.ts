@@ -1,7 +1,8 @@
 import type { Project } from "../schema/app-schema";
+import { containerStore } from "./containerStore.svelte";
 import { firestoreStore } from "./firestoreStore.svelte";
 import { fluidStore } from "./fluidStore.svelte";
-import { store } from "./store.svelte";
+import { store as appStore } from "./store.svelte";
 
 /**
  * Global store proxy that exposes a unified interface while
@@ -10,16 +11,16 @@ import { store } from "./store.svelte";
 class GlobalStoreProxy {
     // fluid page store
     get pages() {
-        return store.pages;
+        return appStore.pages;
     }
     get currentPage() {
-        return store.currentPage;
+        return appStore.currentPage;
     }
     get project(): Project | undefined {
-        return store.project;
+        return appStore.project;
     }
     set project(p: Project) {
-        store.project = p;
+        appStore.project = p;
     }
 
     // fluid connection store
@@ -49,10 +50,15 @@ class GlobalStoreProxy {
     set userContainer(v) {
         firestoreStore.userContainer = v;
     }
+
+    // container store
+    get containers() {
+        return containerStore.containers;
+    }
 }
 
-export const globalStore = new GlobalStoreProxy();
+export const store = new GlobalStoreProxy();
 
 if (process.env.NODE_ENV === "test" && typeof window !== "undefined") {
-    (window as any).__GLOBAL_STORE__ = globalStore;
+    (window as any).__GLOBAL_STORE__ = store;
 }

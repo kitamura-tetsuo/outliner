@@ -4,6 +4,7 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 let filteredOptions = $state<{ id: string; path: string; }[]>([]);
 let selectedIndex = $state(0);
 let pickerElement = $state<HTMLDivElement>();
+let inputElement = $state<HTMLInputElement>();
 
 $effect(() => {
     const q = aliasPickerStore.query.toLowerCase();
@@ -14,10 +15,14 @@ $effect(() => {
 
 // エイリアスピッカーが表示された時にフォーカスを設定
 $effect(() => {
-    if (aliasPickerStore.isVisible && pickerElement) {
+    if (aliasPickerStore.isVisible) {
         // 少し遅延してからフォーカスを設定
         setTimeout(() => {
-            pickerElement.focus();
+            if (inputElement) {
+                inputElement.focus();
+            } else if (pickerElement) {
+                pickerElement.focus();
+            }
         }, 100);
     }
 });
@@ -74,6 +79,7 @@ function handleKeydown(event: KeyboardEvent) {
             bind:value={aliasPickerStore.query}
             placeholder="Select item"
             onkeydown={handleKeydown}
+            bind:this={inputElement}
         />
         <ul>
             {#each filteredOptions as opt, index}
