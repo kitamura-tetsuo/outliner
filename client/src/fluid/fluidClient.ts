@@ -1,11 +1,14 @@
 import { AzureClient, type AzureContainerServices } from "@fluidframework/azure-client";
 import { type IFluidContainer } from "@fluidframework/fluid-static";
 import { TinyliciousClient, type TinyliciousContainerServices } from "@fluidframework/tinylicious-client";
+import { getPresence } from "@fluidframework/presence/beta";
 import { ConnectionState, type TreeView } from "fluid-framework";
 import { userManager } from "../auth/UserManager";
 import { getLogger } from "../lib/logger";
 import { Items, Project } from "../schema/app-schema";
+import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import { colorForUser, presenceStore } from "../stores/PresenceStore.svelte";
+import { getWorkspace } from "./presenceSchema";
 
 const logger = getLogger();
 
@@ -199,6 +202,31 @@ export class FluidClient {
     }
 
     private setupPresence() {
+        const presence = getPresence(this.container);
+        const workspace = getWorkspace(presence);
+
+        workspace.position.events.on("remoteUpdated", (update) => {
+            const pos = update.value();
+            if (pos) {
+                const user = presenceStore.users[update.attendee.attendeeId];
+                if (user) {
+                    editorOverlayStore.updateCursor({
+                        ...pos,
+                        userId: user.userId,
+                        userName: user.userName,
+                        color: user.color,
+                    });
+                }
+            }
+        });
+
+        $effect(() => {
+            const localCursors = Object.values(editorOverlayStore.cursors).filter(c => c.userId === "local");
+            if (localCursors.length > 0) {
+                workspace.position.local = localCursors[0];
+            }
+        });
+
         const audience = (this.services as any)?.audience;
         if (!audience) return;
 
@@ -212,7 +240,10 @@ export class FluidClient {
                 active.add(id);
             });
             presenceStore.getUsers().forEach(u => {
-                if (!active.has(u.userId)) presenceStore.removeUser(u.userId);
+                if (!active.has(u.userId)) {
+                    presenceStore.removeUser(u.userId);
+                    editorOverlayStore.clearCursorAndSelection(u.userId);
+                }
             });
         };
 

@@ -1,7 +1,10 @@
+import type { CursorPosition } from "./EditorOverlayStore.svelte";
+
 export interface PresenceUser {
     userId: string;
     userName: string;
     color: string;
+    cursor?: CursorPosition;
 }
 
 export class PresenceStore {
