@@ -4,6 +4,7 @@ import {
     Comments,
 } from "../schema/app-schema";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
+import Reaction from "./Reaction.svelte";
 
 interface Props {
     comments: Comments;
@@ -51,10 +52,13 @@ function saveEdit(id: string) {
                 <button onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}">Save</button>
                 <button onclick={() => editingId = null} data-testid="cancel-edit-{c.id}">Cancel</button>
             {:else}
-                <span class="author">{c.author}:</span>
-                <span class="text">{c.text}</span>
-                <button onclick={() => startEdit(c)} class="edit">✎</button>
-                <button onclick={() => remove(c.id)} class="delete">×</button>
+                <div class="comment-content">
+                    <span class="author">{c.author}:</span>
+                    <span class="text">{c.text}</span>
+                    <button onclick={() => startEdit(c)} class="edit">✎</button>
+                    <button onclick={() => remove(c.id)} class="delete">×</button>
+                </div>
+                <Reaction {comment} {currentUser} />
             {/if}
         </div>
     {/each}
@@ -69,9 +73,15 @@ function saveEdit(id: string) {
 }
 .comment {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 4px;
     margin-bottom: 2px;
+}
+.comment-content {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 .comment .delete {
     background: none;
