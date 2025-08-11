@@ -18,41 +18,33 @@ import { v4 as uuid } from "uuid";
 // スキーマファクトリを作成
 const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120003");
 
-// 絵文字リアクションのスキーマ定義
-export class Reactions extends sf.map("Reactions", sf.array(sf.string)) {}
-
 export class Comment extends sf.objectRecursive("Comment", {
     id: sf.string,
     text: sf.string,
     author: sf.string,
     created: sf.number,
     lastChanged: sf.number,
-    reactions: Reactions,
+    reactions: sf.map(sf.array(sf.string)),
 }) {
     public readonly updateText = (text: string) => {
         this.lastChanged = new Date().getTime();
         this.text = text;
     };
 
-    // リアクションをトグルするメソッド
     public readonly toggleReaction = (emoji: string, user: string) => {
-        const reactions = this.reactions;
-        if (!reactions.has(emoji)) {
-            reactions.set(emoji, [user]);
-        } else {
-            const users = reactions.get(emoji) ?? [];
-            const userIndex = users.indexOf(user);
-            if (userIndex > -1) {
-                // ユーザーが既にリアクションしている場合は削除
-                if (users.length === 1) {
-                    reactions.delete(emoji);
-                } else {
-                    users.removeAt(userIndex);
+        const users = this.reactions.get(emoji);
+        if (users) {
+            const index = users.indexOf(user);
+            if (index > -1) {
+                users.removeAt(index);
+                if (users.length === 0) {
+                    this.reactions.delete(emoji);
                 }
             } else {
-                // リアクションしていない場合は追加
                 users.insertAtEnd(user);
             }
+        } else {
+            this.reactions.set(emoji, [user]);
         }
         this.lastChanged = new Date().getTime();
     };
@@ -67,7 +59,7 @@ export class Comments extends sf.arrayRecursive("Comments", [Comment]) {
             author,
             created: time,
             lastChanged: time,
-            reactions: new Reactions(),
+            reactions: new Map(),
         });
         this.insertAtEnd(comment);
         return comment;
@@ -83,6 +75,17 @@ export class Comments extends sf.arrayRecursive("Comments", [Comment]) {
     public readonly updateComment = (commentId: string, text: string) => {
         const c = this.find(cm => cm.id === commentId);
         if (c) c.updateText(text);
+    };
+
+    public readonly toggleReaction = (
+        commentId: string,
+        emoji: string,
+        user: string,
+    ) => {
+        const c = this.find(cm => cm.id === commentId);
+        if (c) {
+            c.toggleReaction(emoji, user);
+        }
     };
 }
 

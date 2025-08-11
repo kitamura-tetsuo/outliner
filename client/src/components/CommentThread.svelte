@@ -4,7 +4,6 @@ import {
     Comments,
 } from "../schema/app-schema";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
-import Reaction from "./Reaction.svelte";
 
 interface Props {
     comments: Comments;
@@ -42,6 +41,12 @@ function saveEdit(id: string) {
     comments.updateComment(id, editText);
     editingId = null;
 }
+
+const availableReactions = ["❤️", "👍", "👎", "😂", "😮", "😢", "🤔"];
+
+function toggleReaction(commentId: string, emoji: string) {
+    comments.toggleReaction(commentId, emoji, currentUser);
+}
 </script>
 
 <div class="comment-thread" data-testid="comment-thread">
@@ -52,13 +57,22 @@ function saveEdit(id: string) {
                 <button onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}">Save</button>
                 <button onclick={() => editingId = null} data-testid="cancel-edit-{c.id}">Cancel</button>
             {:else}
-                <div class="comment-content">
-                    <span class="author">{c.author}:</span>
-                    <span class="text">{c.text}</span>
-                    <button onclick={() => startEdit(c)} class="edit">✎</button>
-                    <button onclick={() => remove(c.id)} class="delete">×</button>
+                <span class="author">{c.author}:</span>
+                <span class="text">{c.text}</span>
+                <button onclick={() => startEdit(c)} class="edit">✎</button>
+                <button onclick={() => remove(c.id)} class="delete">×</button>
+                <div class="reactions" data-testid="reactions-{c.id}">
+                    {#each availableReactions as emoji}
+                        <button
+                            class="reaction"
+                            data-testid="reaction-{c.id}-{emoji}"
+                            class:selected={c.reactions.get(emoji)?.includes(currentUser)}
+                            onclick={() => toggleReaction(c.id, emoji)}
+                        >
+                            {emoji} {c.reactions.get(emoji)?.length || 0}
+                        </button>
+                    {/each}
                 </div>
-                <Reaction {comment} {currentUser} />
             {/if}
         </div>
     {/each}
@@ -73,15 +87,9 @@ function saveEdit(id: string) {
 }
 .comment {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    margin-bottom: 2px;
-}
-.comment-content {
-    display: flex;
     align-items: center;
     gap: 4px;
+    margin-bottom: 2px;
 }
 .comment .delete {
     background: none;
@@ -94,5 +102,24 @@ function saveEdit(id: string) {
     border: none;
     color: #007acc;
     cursor: pointer;
+}
+
+.reactions {
+    display: flex;
+    gap: 4px;
+}
+
+.reaction {
+    background-color: #eee;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.reaction.selected {
+    background-color: #d0eaff;
+    border-color: #007acc;
 }
 </style>
