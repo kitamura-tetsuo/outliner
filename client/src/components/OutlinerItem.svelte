@@ -496,6 +496,11 @@ function toggleComments() {
  * @param event マウスイベント
  */
 function handleClick(event: MouseEvent) {
+    // Anchor click: navigate to link without entering edit mode
+    if ((event.target as HTMLElement).closest("a")) {
+        return;
+    }
+
     // Alt+Click: 新しいカーソルを追加
     if (event.altKey) {
         // イベントの伝播を確実に停止
@@ -572,6 +577,11 @@ function handleClick(event: MouseEvent) {
 function handleMouseDown(event: MouseEvent) {
     // 右クリックは無視
     if (event.button !== 0) return;
+
+    // Anchor click should not trigger editing or dragging
+    if ((event.target as HTMLElement).closest("a")) {
+        return;
+    }
 
     // Shift+クリックの場合は選択範囲を拡張
     if (event.shiftKey) {
