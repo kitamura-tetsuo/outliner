@@ -1,5 +1,8 @@
 {
     "devDependencies": {
         "@vitest/coverage-v8": "^3.2.4"
+    },
+    "dependencies": {
+        "@dotenvx/dotenvx": "^1.48.4"
     }
 }

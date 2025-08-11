@@ -14,6 +14,7 @@ import { setupGlobalDebugFunctions } from "../lib/debug";
 import * as fluidService from "../lib/fluidService.svelte";
 import "../utils/ScrapboxFormatter";
 // グローバルに公開するためにインポート
+import GlobalSearchBox from "../components/GlobalSearchBox.svelte";
 import MobileActionToolbar from "../components/MobileActionToolbar.svelte";
 import {
     cleanupFluidClient,
@@ -302,9 +303,12 @@ onDestroy(() => {
 
 <MobileActionToolbar />
 
-<button
-    class="fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
-    on:click={() => userPreferencesStore.toggleTheme()}
->
-    {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
-</button>
+<div class="fixed top-4 right-4 flex gap-4">
+    <GlobalSearchBox />
+    <button
+        class="p-2 rounded bg-gray-200 dark:bg-gray-700"
+        on:click={() => userPreferencesStore.toggleTheme()}
+    >
+        {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
+    </button>
+</div>
