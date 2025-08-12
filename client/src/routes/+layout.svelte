@@ -198,64 +198,72 @@ onMount(() => {
                         process.env.NODE_ENV === "test" ||
                         import.meta.env.VITE_IS_TEST === "true";
                     if (isTestEnv) {
-                        // テスト環境では、既存のコンテナを削除してからテスト用のコンテナを作成する
-                        (async () => {
-                            try {
-                                // ユーザーのコンテナリストを取得
-                                const { containers } = await fluidService.getUserContainers();
+                        // テストデータ自動投入をスキップするフラグ
+                        const skipSeed = window.localStorage.getItem("SKIP_TEST_CONTAINER_SEED") === "true";
+                        if (!skipSeed) {
+                            // テスト環境では、既存のコンテナを削除してからテスト用のコンテナを作成する
+                            (async () => {
+                                try {
+                                    // ユーザーのコンテナリストを取得
+                                    const { containers } = await fluidService.getUserContainers();
 
-                                // 既存のコンテナを削除
-                                for (const containerId of containers) {
-                                    try {
-                                        if (import.meta.env.DEV) {
-                                            logger.info(
-                                                `テスト環境のため、コンテナを削除します: ${containerId}`,
-                                            );
-                                        }
-                                        const success = await fluidService.deleteContainer(
-                                            containerId,
-                                        );
-
-                                        if (success) {
+                                    // 既存のコンテナを削除
+                                    for (const containerId of containers) {
+                                        try {
                                             if (import.meta.env.DEV) {
                                                 logger.info(
-                                                    `コンテナを削除しました: ${containerId}`,
+                                                    `テスト環境のため、コンテナを削除します: ${containerId}`,
                                                 );
                                             }
-                                        }
-                                        else {
-                                            if (import.meta.env.DEV) {
-                                                logger.warn(
-                                                    `コンテナの削除に失敗しました: ${containerId}`,
-                                                );
-                                            }
-                                        }
-                                    }
-                                    catch (error) {
-                                        logger.error(
-                                            `コンテナ削除エラー: ${containerId}`,
-                                            error,
-                                        );
-                                    }
-                                }
+                                            const success = await fluidService.deleteContainer(
+                                                containerId,
+                                            );
 
-                                // 新しいテスト用コンテナを作成
-                                const pageName = "test-page";
-                                const lines = [
-                                    "これはテスト用のページです。1",
-                                    "これはテスト用のページです。2",
-                                    "内部リンクのテスト: [test-link]",
-                                ];
-                                (await fluidService.createNewContainer("test-1")).createPage(pageName, lines);
-                                (await fluidService.createNewContainer("test-2")).createPage(pageName, lines);
+                                            if (success) {
+                                                if (import.meta.env.DEV) {
+                                                    logger.info(
+                                                        `コンテナを削除しました: ${containerId}`,
+                                                    );
+                                                }
+                                            }
+                                            else {
+                                                if (import.meta.env.DEV) {
+                                                    logger.warn(
+                                                        `コンテナの削除に失敗しました: ${containerId}`,
+                                                    );
+                                                }
+                                            }
+                                        }
+                                        catch (error) {
+                                            logger.error(
+                                                `コンテナ削除エラー: ${containerId}`,
+                                                error,
+                                            );
+                                        }
+                                    }
+
+                                    // 新しいテスト用コンテナを作成
+                                    const pageName = "test-page";
+                                    const lines = [
+                                        "これはテスト用のページです。1",
+                                        "これはテスト用のページです。2",
+                                        "内部リンクのテスト: [test-link]",
+                                    ];
+                                    (await fluidService.createNewContainer("test-1")).createPage(pageName, lines);
+                                    (await fluidService.createNewContainer("test-2")).createPage(pageName, lines);
+                                }
+                                catch (error) {
+                                    logger.error(
+                                        "テスト環境のコンテナ準備中にエラーが発生しました",
+                                        error,
+                                    );
+                                }
+                            })();
+                        } else {
+                            if (import.meta.env.DEV) {
+                                logger.info("SKIP_TEST_CONTAINER_SEED=true のため、テスト用コンテナの自動生成をスキップします");
                             }
-                            catch (error) {
-                                logger.error(
-                                    "テスト環境のコンテナ準備中にエラーが発生しました",
-                                    error,
-                                );
-                            }
-                        })();
+                        }
                     }
                 }
             });
