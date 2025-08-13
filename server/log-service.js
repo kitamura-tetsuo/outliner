@@ -129,11 +129,21 @@ function startLogService() {
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"], // 許可するヘッダーを明示
     }));
+
+    // すべてのOPTIONSリクエストに対するプレフライト応答（Express 5のpath-to-regexp制約に対応）
+    app.use((req, res, next) => {
+        if (req.method === "OPTIONS") {
+            res.header("Access-Control-Allow-Origin", getSafeOrigins());
+            res.header("Vary", "Origin");
+            res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+            res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+            return res.sendStatus(204);
+        }
+        next();
+    });
+
     app.use(express.json());
     app.use(bodyParser.json());
-
-    // プリフライトリクエスト用のルート
-    app.options("*", cors());
 
     // ヘルスチェックエンドポイント
     app.get("/health", (req, res) => {
