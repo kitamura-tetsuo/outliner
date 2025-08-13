@@ -1,0 +1,10 @@
+id: LNK-9a2f4dce
+title: External link navigation
+title-ja: 外部リンクナビゲーション
+description: Bracketed URLs open the target URL instead of entering edit mode.
+category: navigation
+status: implemented
+acceptance:
+- Clicking a bracketed URL opens the external site in a new tab.
+tests:
+- client/e2e/core/lnk-external-link-navigation-9a2f4dce.spec.ts
