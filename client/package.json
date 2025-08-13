@@ -99,7 +99,7 @@
         "firebase": "^11.10.0",
         "fluid-framework": "2.51.0",
         "jsonwebtoken": "^9.0.2",
-        "pino": "^9.7.0",
+        "pino": "^9.8.0",
         "rrule": "^2.8.1",
         "sql.js": "^1.13.0",
         "uuid": "^11.1.0",
