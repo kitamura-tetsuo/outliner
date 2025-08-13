@@ -1,7 +1,7 @@
 import { AzureClient, type AzureContainerServices } from "@fluidframework/azure-client";
 import { type IFluidContainer } from "@fluidframework/fluid-static";
-import { TinyliciousClient, type TinyliciousContainerServices } from "@fluidframework/tinylicious-client";
 import { getPresence } from "@fluidframework/presence/beta";
+import { TinyliciousClient, type TinyliciousContainerServices } from "@fluidframework/tinylicious-client";
 import { ConnectionState, type TreeView } from "fluid-framework";
 import { userManager } from "../auth/UserManager";
 import { getLogger } from "../lib/logger";

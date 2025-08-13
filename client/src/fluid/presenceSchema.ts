@@ -10,13 +10,12 @@ function isCursorPosition(value: unknown): value is CursorPosition {
 
 export const PresenceSchema = {
     position: StateFactory.latest<CursorPosition>({
-        validator: (v) => isCursorPosition(v) ? v : undefined
+        validator: (v) => isCursorPosition(v) ? v : undefined,
     }),
 } as const satisfies StatesWorkspaceSchema;
 
-export function getWorkspace(presence: Presence):
-    {
-        position: Latest<CursorPosition>;
-    } {
+export function getWorkspace(presence: Presence): {
+    position: Latest<CursorPosition>;
+} {
     return presence.states.getWorkspace("cursors", PresenceSchema).states;
 }

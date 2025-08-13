@@ -1,7 +1,7 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { testData, testData2 } from "../utils/testData";
-import { TreeValidation } from "../utils/treeValidation";
 import { TestHelpers } from "../utils/testHelpers";
+import { TreeValidation } from "../utils/treeValidation";
 
 test.describe("Collaborator Cursors", () => {
     let helpers: TestHelpers;
