@@ -198,6 +198,25 @@ Mocks are generally forbidden. Limited exceptions:
 - Rename `firestoreStore.ts` to `firestoreStore.svelte.ts` to enable `$state` usage.
 - When testing links and cursor behavior, apply the patterns proven in LNK-0003: programmatic cursor creation, text insertion, waits, and visibility checks.
 
+## 9. Node.js Package Management and NPM Operations Policy
+
+- Consent: The project owner has authorized the agent to run npm operations without prior confirmation for routine maintenance tasks within this repository.
+- Allowed without prior confirmation (repository scope only, default cwd: `client`):
+  - `npm ci`
+  - `npm install` / `npm uninstall` / `npm update` (use npm CLI only; never edit package files manually)
+  - `npm run build`, `npm run test:unit`, `npm run test:integration`, `npm run test:e2e` (headless)
+- Safety rules:
+  - Use npm commands only inside this repo (primarily `client/`).
+  - Do not use `--force` or `--legacy-peer-deps` unless explicitly requested.
+  - Prefer minimal, compatible upgrades that satisfy peerDependencies; avoid broad or unnecessary upgrades.
+  - After dependency changes, always run build and unit tests. For broader updates, run integration/E2E tests selectively as appropriate.
+  - Never deploy, modify production data, or run resource-intensive tasks without explicit instruction.
+  - Do not manually edit `package.json`, lock files, or config to change versions; always use the package manager.
+  - When a change needs to be tracked, commit via the normal Git workflow (branch, commit, PR) as required by the task.
+- Troubleshooting guidance:
+  - For peer conflicts, prefer upgrading the relevant peer plugins (e.g., `@sveltejs/vite-plugin-svelte`) to match the current Vite/SvelteKit rather than downgrading Vite.
+  - Avoid workaround flags (`--force`, `--legacy-peer-deps`) in favor of a correct dependency graph.
+
 ---
 
 Follow these guidelines to keep documentation, code, and tests consistent across the project.
