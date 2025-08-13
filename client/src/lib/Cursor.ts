@@ -1,8 +1,8 @@
 // @ts-nocheck
+import type { Item } from "@common/schema/app-schema";
+import { Items } from "@common/schema/app-schema";
 import { Tree } from "fluid-framework";
 import { TreeViewManager } from "../fluid/TreeViewManager";
-import type { Item } from "../schema/app-schema";
-import { Items } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";

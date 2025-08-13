@@ -66,7 +66,7 @@ function handlePageClick(page: any) {
         type="text"
         placeholder="Global Search"
         bind:value={query}
-        on:input={search}
+        oninput={search}
         onkeydown={handleKeydown}
         onfocus={() => (isFocused = true)}
         onblur={() => (isFocused = false)}

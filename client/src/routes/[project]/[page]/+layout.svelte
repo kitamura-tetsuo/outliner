@@ -3,7 +3,7 @@ import { page } from "$app/state";
 
 import { v4 as uuid } from "uuid";
 import { getLogger } from "../../../lib/logger";
-import { Item, Items } from "../../../schema/app-schema";
+import { Item, Items } from "@common/schema/app-schema";
 import { fluidStore } from "../../../stores/fluidStore.svelte";
 import { store } from "../../../stores/store.svelte";
 

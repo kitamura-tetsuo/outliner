@@ -1,11 +1,7 @@
 <script lang="ts">
 import { createEventDispatcher, onMount } from "svelte";
 import { TreeViewManager } from "../fluid/TreeViewManager";
-import {
-    Item,
-    Items,
-    Project,
-} from "../schema/app-schema";
+import { Item, Items, Project } from "@common/schema/app-schema";
 
 
 interface Props {
