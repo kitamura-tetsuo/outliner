@@ -1,3 +1,4 @@
+import { Items, Project } from "@common/schema/app-schema";
 import { AzureClient, type AzureContainerServices } from "@fluidframework/azure-client";
 import { type IFluidContainer } from "@fluidframework/fluid-static";
 import { getPresence } from "@fluidframework/presence/beta";
@@ -5,7 +6,6 @@ import { TinyliciousClient, type TinyliciousContainerServices } from "@fluidfram
 import { ConnectionState, type TreeView } from "fluid-framework";
 import { userManager } from "../auth/UserManager";
 import { getLogger } from "../lib/logger";
-import { Items, Project } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import { colorForUser, presenceStore } from "../stores/PresenceStore.svelte";
 import { getWorkspace } from "./presenceSchema";

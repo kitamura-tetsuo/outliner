@@ -1,4 +1,4 @@
-import type { Item, Items, Project } from "../schema/app-schema";
+import type { Item, Items, Project } from "@common/schema/app-schema";
 import { TreeSubscriber } from "./TreeSubscriber";
 
 class GeneralStore {

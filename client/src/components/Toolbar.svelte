@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { Project } from "../schema/app-schema";
+import type { Project } from "@common/schema/app-schema";
 import SearchBox from "./SearchBox.svelte";
 
 interface Props {
