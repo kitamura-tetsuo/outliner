@@ -1,27 +1,8 @@
 {
-  "name": "functions",
-  "description": "Firebase Cloud Functions for Outliner",
-  "scripts": {
-    "lint": "eslint .",
-    "serve": "firebase emulators:start --only auth,firestore,functions,hosting --project demo-test",
-    "shell": "firebase functions:shell",
-    "start": "npm run shell",
-    "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log",
-    "build": "echo 'No build step required for JavaScript functions'",
-    "debug": "firebase --debug emulators:start --inspect-functions=9229 --only auth,firestore,functions,hosting --project demo-test",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
-  },
-  "engines": {
-    "node": "22"
-  },
-  "main": "index.js",
   "dependencies": {
     "@dotenvx/dotenvx": "^1.48.4",
-    "@fluidframework/azure-client": "^2.50.0",
-    "@fluidframework/azure-service-utils": "^2.50.0",
+    "@fluidframework/azure-client": "^2.52.0",
+    "@fluidframework/azure-service-utils": "^2.52.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "firebase": "^12.0.0",
@@ -29,12 +10,33 @@
     "firebase-functions": "^6.4.0",
     "jsonwebtoken": "^9.0.0"
   },
+  "description": "Firebase Cloud Functions for Outliner",
   "devDependencies": {
-    "axios": "^1.10.0",
+    "axios": "^1.11.0",
     "eslint": "^9.32.0",
     "eslint-config-google": "^0.14.0",
     "firebase-functions-test": "^3.1.0",
-    "jest": "^30.0.4"
+    "jest": "^30.0.5"
   },
-  "private": true
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "name": "functions",
+  "optionalDependencies": {},
+  "peerDependencies": {},
+  "private": true,
+  "scripts": {
+    "build": "echo 'No build step required for JavaScript functions'",
+    "debug": "firebase --debug emulators:start --inspect-functions=9229 --only auth,firestore,functions,hosting --project demo-test",
+    "deploy": "firebase deploy --only functions",
+    "lint": "eslint .",
+    "logs": "firebase functions:log",
+    "serve": "firebase emulators:start --only auth,firestore,functions,hosting --project demo-test",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch"
+  }
 }

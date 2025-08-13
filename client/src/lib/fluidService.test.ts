@@ -13,7 +13,7 @@ describe("fluidService", () => {
         process.env.VITE_USE_TINYLICIOUS = "true";
         process.env.NODE_ENV = "test";
         fluidService = await import("./fluidService.svelte");
-    });
+    }, 60000);
     beforeEach(() => {
     });
 

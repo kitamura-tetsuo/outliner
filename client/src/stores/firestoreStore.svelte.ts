@@ -40,6 +40,17 @@ class GeneralStore {
 }
 export const firestoreStore = new GeneralStore();
 
+// テスト環境ではグローバルに公開してE2Eから制御できるようにする
+if (typeof window !== "undefined") {
+    const isTestEnv = import.meta.env.MODE === "test"
+        || process.env.NODE_ENV === "test"
+        || import.meta.env.VITE_IS_TEST === "true"
+        || window.location.hostname === "localhost";
+    if (isTestEnv) {
+        (window as any).__FIRESTORE_STORE__ = firestoreStore;
+    }
+}
+
 // Firestoreアプリとデータベースの初期化
 let app: FirebaseApp | undefined;
 let db: Firestore | undefined;
