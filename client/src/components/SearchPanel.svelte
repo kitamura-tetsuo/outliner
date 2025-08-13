@@ -8,17 +8,14 @@ import {
     replaceFirst,
     searchItems,
     type SearchOptions,
-} from "../lib/search";
+} from "@common/search";
 import {
     type PageItemMatch,
     replaceAllInProject,
     replaceFirstInProject,
     searchProject,
-} from "../lib/search/projectSearch";
-import type {
-    Item,
-    Project,
-} from "../schema/app-schema";
+} from "@common/search/projectSearch";
+import type { Item, Project } from "@common/schema/app-schema";
 
 interface Props {
     isVisible?: boolean;
@@ -310,7 +307,7 @@ onDestroy(() => {
     margin: 0;
 }
 
-.search-highlight {
+:global(.search-highlight) {
     background-color: #fff3cd;
     padding: 0 2px;
     border-radius: 2px;

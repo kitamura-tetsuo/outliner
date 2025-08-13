@@ -1,6 +1,6 @@
 // @ts-nocheck
+import type { Item } from "@common/schema/app-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Item } from "../schema/app-schema";
 import { Cursor } from "./Cursor";
 
 // Svelteストアのモック

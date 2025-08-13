@@ -2,7 +2,7 @@
 import { onDestroy, onMount } from "svelte";
 import { getLogger } from "$lib/logger";
 import { store } from "../stores/store.svelte";
-import type { Item } from "../schema/app-schema";
+import type { Item } from "@common/schema/app-schema";
 
 const logger = getLogger("LinkPreview");
 

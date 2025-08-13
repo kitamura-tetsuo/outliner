@@ -122,14 +122,14 @@ onDestroy(() => {
                     {#each backlinks as backlink}
                         <li class="backlink-item">
                             <div class="backlink-source">
-                                <a
-                                    href="javascript:void(0)"
+                                <button
+                                    type="button"
                                     onclick={() => navigateToPage(backlink.sourcePageId, backlink.sourcePageName)}
                                     class="source-page-link"
                                 >
                                     {backlink.sourcePageName}
-                                </a>
-                            </div>
+                                </button>
+                                </div>
                             <div class="backlink-context">
                                 {@html highlightLinkInContext(backlink.context, pageName)}
                             </div>
@@ -299,14 +299,14 @@ onDestroy(() => {
     word-break: break-word;
 }
 
-.highlight {
+:global(.highlight) {
     background-color: #fff3cd;
     padding: 0 2px;
     border-radius: 2px;
 }
 </style>
 
-<script lang="ts" context="module">
+<script lang="ts" module>
 // コンテキスト内のリンクをハイライトする
 function highlightLinkInContext(context: string, pageName: string): string {
     if (!context || !pageName) return context;

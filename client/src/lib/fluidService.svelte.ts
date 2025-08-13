@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { appTreeConfiguration, Project } from "@common/schema/app-schema";
 import {
     AzureClient,
     type AzureContainerServices,
@@ -13,7 +14,6 @@ import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";
 import { FluidClient } from "../fluid/fluidClient";
-import { appTreeConfiguration, Project } from "../schema/app-schema";
 import {
     getDefaultContainerId,
     saveContainerIdToServer as saveFirestoreContainerIdToServer,

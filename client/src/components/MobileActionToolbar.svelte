@@ -1,10 +1,7 @@
 <script lang="ts">
 import { Tree } from "fluid-framework";
 import { onMount } from "svelte";
-import {
-    Item,
-    Items,
-} from "../schema/app-schema";
+import { Item, Items } from "@common/schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
