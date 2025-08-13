@@ -7,16 +7,16 @@ test.describe("Global Search", () => {
         await page.fill('input[placeholder="Enter project title..."]', "Project 1");
         await page.click("button[type=submit]");
         await page.waitForURL("**/Project%201");
-        await page.fill('textarea', "Page 1 in Project 1");
-        await page.press('textarea', "Enter");
+        await page.fill("textarea", "Page 1 in Project 1");
+        await page.press("textarea", "Enter");
 
         // Create second project
         await page.goto("/");
         await page.fill('input[placeholder="Enter project title..."]', "Project 2");
         await page.click("button[type=submit]");
         await page.waitForURL("**/Project%202");
-        await page.fill('textarea', "Page 2 in Project 2");
-        await page.press('textarea', "Enter");
+        await page.fill("textarea", "Page 2 in Project 2");
+        await page.press("textarea", "Enter");
 
         // Search for page in Project 1
         await page.fill('input[placeholder="Global Search"]', "Page 1");

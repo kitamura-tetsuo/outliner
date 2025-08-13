@@ -1,4 +1,4 @@
-require('module-alias/register');
+require("module-alias/register");
 // Firebase Functionsでは主にFirebase Secretsを使用
 // テスト環境では環境変数を直接設定するため、dotenvは使用しない
 
@@ -2191,10 +2191,12 @@ exports.search = onRequest({ cors: true }, async (req, res) => {
     const userData = userDoc.data();
     const containerIds = userData.accessibleContainerIds || [];
 
-    const searchPromises = containerIds.map(async (containerId) => {
+    const searchPromises = containerIds.map(async containerId => {
       try {
         const { AzureClient } = require("@fluidframework/azure-client");
-        const { InsecureTokenProvider } = require("@fluidframework/test-client-utils");
+        const { InsecureTokenProvider } = require(
+          "@fluidframework/test-client-utils",
+        );
 
         const azureConfig = getAzureConfig();
 
@@ -2202,7 +2204,9 @@ exports.search = onRequest({ cors: true }, async (req, res) => {
           connection: {
             type: "remote",
             tenantId: azureConfig.tenantId,
-            tokenProvider: new InsecureTokenProvider(azureConfig.tenantId, { id: userId }),
+            tokenProvider: new InsecureTokenProvider(azureConfig.tenantId, {
+              id: userId,
+            }),
             endpoint: azureConfig.endpoint,
           },
         };
@@ -2214,16 +2218,21 @@ exports.search = onRequest({ cors: true }, async (req, res) => {
           },
         };
 
-        const { container } = await client.getContainer(containerId, containerSchema);
+        const { container } = await client.getContainer(
+          containerId,
+          containerSchema,
+        );
         const appData = container.initialObjects.appData.viewWith(
-          require("@common/schema/app-schema").appTreeConfiguration
+          require("@common/schema/app-schema").appTreeConfiguration,
         );
         const project = appData.root;
 
         const { searchProject } = require("@common/search/projectSearch");
         return searchProject(project, query);
       } catch (error) {
-        logger.error(`Error searching container ${containerId}: ${error.message}`);
+        logger.error(
+          `Error searching container ${containerId}: ${error.message}`,
+        );
         return [];
       }
     });
