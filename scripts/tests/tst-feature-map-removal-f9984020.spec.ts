@@ -2,6 +2,7 @@
  *  Title   : feature-map削除スクリプト
  *  Source  : docs/dev-features/tst-feature-map-removal-f9984020.yaml
  */
+/// <reference types="vitest" />
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
