@@ -37,6 +37,11 @@ export default defineConfig(async ({ mode }) => {
                 "uuid": (await import("node:path")).resolve("./node_modules/uuid"),
             },
         },
+        // Prevent Rollup from trying to resolve certain external deps when bundling files from ../common
+        // Externalize for SSR resolution from client's node_modules
+        ssr: {
+            external: ["fluid-framework"],
+        },
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,

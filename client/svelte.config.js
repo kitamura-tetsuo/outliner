@@ -29,6 +29,7 @@ const config = {
             register: false, // 手動でService Workerを登録するため無効化
         },
         alias: {
+            "@common/schema/app-schema": path.resolve(__dirname, "./src/schema/app-schema.ts"),
             "@common": path.resolve(__dirname, "../common"),
         },
     },
