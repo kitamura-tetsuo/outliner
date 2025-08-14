@@ -57,6 +57,34 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Ensure npm is available
+        run: |
+          echo "Checking Node and npm availability..."
+          echo "Node (pre-check): $(command -v node || echo 'not found')"
+          echo "npm  (pre-check): $(command -v npm || echo 'not found')"
+
+          # Try to activate npm via corepack first
+          if ! command -v npm >/dev/null 2>&1; then
+            if command -v corepack >/dev/null 2>&1; then
+              echo "Activating npm via corepack..."
+              corepack prepare npm@latest --activate || true
+            fi
+          fi
+
+          # As a last resort, install npm from APT on self-hosted runners
+          if ! command -v npm >/dev/null 2>&1; then
+            echo "npm still not found. Installing via apt-get..."
+            sudo apt-get update
+            sudo apt-get install -y npm
+          fi
+
+          # Final verification
+          if ! command -v npm >/dev/null 2>&1; then
+            echo "❌ npm is not available after setup"
+            exit 1
+          fi
+          echo "✅ npm is available: $(npm --version)"
+
       - name: Install dprint
         run: npm install -g dprint
 
