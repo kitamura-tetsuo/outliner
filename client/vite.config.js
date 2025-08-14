@@ -1,5 +1,6 @@
 import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import { sveltekit } from "@sveltejs/kit/vite";
+import path from "path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -7,6 +8,14 @@ export default defineConfig({
         paraglideVitePlugin({ project: "./project.inlang", outdir: "./src/paraglide./src/lib/paraglide" }),
         sveltekit(),
     ],
+    resolve: {
+        alias: {
+            "@common": path.resolve(__dirname, "../common"),
+            // Ensure modules imported from ../common resolve to this project's node_modules
+            "fluid-framework": path.resolve(__dirname, "./node_modules/fluid-framework"),
+            "uuid": path.resolve(__dirname, "./node_modules/uuid"),
+        },
+    },
     build: {
         // Firebase Hostingのpublicディレクトリに出力
         outDir: "../build",

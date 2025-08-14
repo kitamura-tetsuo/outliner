@@ -6,10 +6,7 @@ import {
     onMount,
 } from "svelte";
 import { getLogger } from "../lib/logger";
-import {
-    Item,
-    Items,
-} from "../schema/app-schema";
+import { Item, Items } from "@common/schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import type { DisplayItem } from "../stores/OutlinerViewModel";

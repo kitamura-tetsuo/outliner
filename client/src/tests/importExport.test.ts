@@ -1,5 +1,5 @@
+import { Project } from "@common/schema/app-schema";
 import { describe, expect, it } from "vitest";
-import { Project } from "../schema/app-schema";
 import {
     exportProjectToMarkdown,
     exportProjectToOpml,
@@ -16,9 +16,9 @@ describe("Import/Export Service", () => {
             importMarkdownIntoProject(markdown, project);
 
             // プロジェクトに1つのページが作成されているはず
-            expect((project.items as any).length).toBe(1);
+            expect(((project as any).items as any).length).toBe(1);
 
-            const page = (project.items as any)[0];
+            const page = ((project as any).items as any)[0];
             expect(page.text).toBe("ImportedPage");
 
             // ページに1つの子アイテムがあるはず
@@ -33,9 +33,9 @@ describe("Import/Export Service", () => {
             importMarkdownIntoProject(markdown, project);
 
             // プロジェクトに1つのページが作成されているはず
-            expect((project.items as any).length).toBe(1);
+            expect(((project as any).items as any).length).toBe(1);
 
-            const page = (project.items as any)[0];
+            const page = ((project as any).items as any)[0];
             expect(page.text).toBe("Parent");
 
             // ページに1つの子アイテムがあるはず
@@ -56,9 +56,9 @@ describe("Import/Export Service", () => {
 
             // 現在の実装では、最初のインデント0アイテムのみがページとして作成され、
             // 2番目以降のインデント0アイテムは最初のページの子として作成される
-            expect((project.items as any).length).toBe(1);
+            expect(((project as any).items as any).length).toBe(1);
 
-            const page = (project.items as any)[0];
+            const page = ((project as any).items as any)[0];
             expect(page.text).toBe("FirstPage");
 
             // ページに2つの子アイテムがあるはず（Child1とSecondItem）
@@ -67,7 +67,7 @@ describe("Import/Export Service", () => {
             expect((page.items as any)[1].text).toBe("SecondItem");
 
             // SecondItemに1つの子アイテムがあるはず
-            expect((page.items as any)[1].items.length).toBe(1);
+            expect(((page.items as any)[1].items as any).length).toBe(1);
             expect((page.items as any)[1].items[0].text).toBe("Child2");
         });
     });
@@ -80,9 +80,9 @@ describe("Import/Export Service", () => {
             importOpmlIntoProject(opml, project);
 
             // プロジェクトに1つのページが作成されているはず
-            expect((project.items as any).length).toBe(1);
+            expect(((project as any).items as any).length).toBe(1);
 
-            const page = (project.items as any)[0];
+            const page = ((project as any).items as any)[0];
             expect(page.text).toBe("Imported");
 
             // ページに1つの子アイテムがあるはず
@@ -95,7 +95,7 @@ describe("Import/Export Service", () => {
         it("should export project to markdown", () => {
             const project = Project.createInstance("Test Project");
             const page = project.addPage("TestPage", "test");
-            const child = (page.items as any).addNode("test");
+            const child = ((page as any).items as any).addNode("test");
             child.updateText("Child Item");
 
             const markdown = exportProjectToMarkdown(project);
@@ -106,7 +106,7 @@ describe("Import/Export Service", () => {
         it("should export project to OPML", () => {
             const project = Project.createInstance("Test Project");
             const page = project.addPage("TestPage", "test");
-            const child = (page.items as any).addNode("test");
+            const child = ((page as any).items as any).addNode("test");
             child.updateText("Child Item");
 
             const opml = exportProjectToOpml(project);

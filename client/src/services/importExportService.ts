@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Items, Project } from "../schema/app-schema";
+import { Items, Project } from "@common/schema/app-schema";
 
 function escapeHtml(str: string): string {
     return str

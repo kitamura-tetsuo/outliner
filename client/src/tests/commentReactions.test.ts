@@ -1,6 +1,7 @@
+// @ts-nocheck
+import { Comment } from "@common/schema/app-schema";
 import { v4 as uuid } from "uuid";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { Comment } from "../schema/app-schema";
 
 beforeEach(() => {
     vi.useFakeTimers();

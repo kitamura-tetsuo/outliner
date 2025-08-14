@@ -30,6 +30,13 @@ export default defineConfig(async ({ mode }) => {
                 strategy: ["url", "cookie", "baseLocale"],
             }),
         ],
+        resolve: {
+            alias: {
+                // Ensure bare imports from files in ../common resolve to this project's node_modules
+                "fluid-framework": (await import("node:path")).resolve("./node_modules/fluid-framework"),
+                "uuid": (await import("node:path")).resolve("./node_modules/uuid"),
+            },
+        },
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,

@@ -1,53 +1,37 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
-import type { Item, Items, Project } from '@common/schema/app-schema';
-import { searchHistoryStore } from '../stores/SearchHistoryStore.svelte';
-
-interface Props { project: Project }
-let { project }: Props = $props();
+import type { Item, Project } from '@common/schema/app-schema';
+import { userManager } from '../auth/UserManager';
 
 let query = $state('');
 let selected = $state(-1);
 let isFocused = $state(false);
+let results = $state([]);
 
-// リアクティブに結果を計算
-let results = $derived.by(() => {
-    if (!project?.items) {
-        return [];
-    }
-
-    const pages = project.items as Items;
-
+async function search() {
     if (!query) {
-        const historyResults = searchHistoryStore.history
-            .map(h => {
-                // Items配列から検索
-                for (let i = 0; i < pages.length; i++) {
-                    const page = pages.at(i);
-                    if (page && page.text === h) {
-                        return page;
-                    }
-                }
-                return null;
-            })
-            .filter(Boolean) as Item[];
-        return historyResults;
+        results = [];
+        return;
     }
 
-    const searchResults: Item[] = [];
-    for (let i = 0; i < pages.length; i++) {
-        const page = pages.at(i);
-        if (page && page.text.toLowerCase().includes(query.toLowerCase())) {
-            searchResults.push(page);
-        }
+    const idToken = await userManager.auth.currentUser?.getIdToken();
+    if (!idToken) {
+        return;
     }
-    return searchResults;
-});
 
-// 結果が変更されたときにselectedを更新
-$effect(() => {
-    selected = results.length ? 0 : -1;
-});
+    const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken, query }),
+    });
+
+    if (response.ok) {
+        const data = await response.json();
+        results = data.results;
+    }
+}
 
 function handleKeydown(e: KeyboardEvent) {
     if (e.isComposing) return;
@@ -63,18 +47,16 @@ function handleKeydown(e: KeyboardEvent) {
     }
 }
 
-function navigateToPage(page?: Item) {
+function navigateToPage(page?: any) {
     const targetPage = page || (selected >= 0 && results[selected] ? results[selected] : null);
     if (targetPage) {
-        const title = targetPage.text;
-        searchHistoryStore.add(title);
-        goto(`/${project.title}/${title}`);
+        goto(`/${targetPage.project.title}/${targetPage.page.text}`);
     } else if (query) {
         goto(`/search?query=${encodeURIComponent(query)}`);
     }
 }
 
-function handlePageClick(page: Item) {
+function handlePageClick(page: any) {
     navigateToPage(page);
 }
 </script>
@@ -82,8 +64,9 @@ function handlePageClick(page: Item) {
 <div class="page-search-box">
     <input
         type="text"
-        placeholder="Search pages"
+        placeholder="Global Search"
         bind:value={query}
+        oninput={search}
         onkeydown={handleKeydown}
         onfocus={() => (isFocused = true)}
         onblur={() => (isFocused = false)}
@@ -92,7 +75,9 @@ function handlePageClick(page: Item) {
         <ul>
             {#each results as page, i}
                 <li class:selected={i === selected}>
-                    <button type="button" onclick={() => handlePageClick(page)}>{page.text}</button>
+                    <button type="button" onclick={() => handlePageClick(page)}>
+                        {page.project.title} / {page.page.text}
+                    </button>
                 </li>
             {/each}
         </ul>
