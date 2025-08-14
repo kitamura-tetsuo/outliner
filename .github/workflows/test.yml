@@ -46,8 +46,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           clean: true             # wipe workspace before fetch
-          # For workflow_run events, checkout the head commit that triggered the formatter workflow
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          # For PR events, check out the PR head branch so we can push fixes
+          # For workflow_run events, checkout the head SHA of the triggering workflow
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || (github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha) }}
           # For PR events, ensure we have write permissions for auto-formatting
           token: ${{ github.event_name == 'pull_request' && secrets.GITHUB_TOKEN || github.token }}
 
@@ -80,16 +81,19 @@ jobs:
 
               # Only auto-commit for push/PR events, not workflow_run
               if [[ "${{ github.event_name }}" == "push" || "${{ github.event_name }}" == "pull_request" ]]; then
+                # Compute the correct remote ref to compare/rebase against
+                BRANCH_REF="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
+                echo "Using remote ref: $BRANCH_REF"
                 # Check if we're behind remote to avoid conflicts
                 git fetch origin
-                if git merge-base --is-ancestor HEAD origin/${{ github.ref_name }}; then
+                if git merge-base --is-ancestor HEAD origin/$BRANCH_REF; then
                   git add .
                   git commit -m "Auto-fix: Format code with dprint"
 
                   # Retry push with pull if needed
                   if ! git push; then
                     echo "Push failed, trying to pull and retry..."
-                    git pull --rebase origin ${{ github.ref_name }}
+                    git pull --rebase origin "$BRANCH_REF"
                     git push
                   fi
                   echo "✅ Formatting issues have been automatically fixed and committed!"
