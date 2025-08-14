@@ -210,8 +210,11 @@ export class FluidClient {
             if (pos) {
                 const user = presenceStore.users[update.attendee.attendeeId];
                 if (user) {
-                    editorOverlayStore.updateCursor({
-                        ...pos,
+                    // Ensure remote cursors use a stable entry via setCursor
+                    editorOverlayStore.setCursor({
+                        itemId: pos.itemId,
+                        offset: pos.offset,
+                        isActive: true,
                         userId: user.userId,
                         userName: user.userName,
                         color: user.color,
@@ -220,11 +223,9 @@ export class FluidClient {
             }
         });
 
-        $effect(() => {
-            const localCursors = Object.values(editorOverlayStore.cursors).filter(c => c.userId === "local");
-            if (localCursors.length > 0) {
-                workspace.position.local = localCursors[0];
-            }
+        // Publish local cursor updates to presence via a lightweight hook
+        editorOverlayStore.setPresencePublisher((cursor) => {
+            workspace.position.local = cursor;
         });
 
         const audience = (this.services as any)?.audience;

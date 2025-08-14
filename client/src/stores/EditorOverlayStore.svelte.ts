@@ -69,6 +69,17 @@ export class EditorOverlayStore {
 
     private timerId!: ReturnType<typeof setTimeout>;
 
+    // Optional publisher for broadcasting local cursor to presence
+    private presencePublisher:
+        | ((cursor: { itemId: string; offset: number; isActive: boolean; } | undefined) => void)
+        | null = null;
+
+    setPresencePublisher(
+        publisher: (cursor: { itemId: string; offset: number; isActive: boolean; } | undefined) => void,
+    ) {
+        this.presencePublisher = publisher;
+    }
+
     // テキストエリア参照を設定
     setTextareaRef(el: HTMLTextAreaElement | null) {
         this.textareaRef = el;
@@ -136,6 +147,11 @@ export class EditorOverlayStore {
         // アクティブアイテムを更新
         if (cursor.isActive) {
             this.setActiveItem(cursor.itemId);
+        }
+
+        // Broadcast local active cursor to presence if configured
+        if (this.presencePublisher && (cursor.userId === undefined || cursor.userId === "local")) {
+            this.presencePublisher({ itemId: cursor.itemId, offset: cursor.offset, isActive: cursor.isActive });
         }
     }
 
@@ -564,6 +580,11 @@ export class EditorOverlayStore {
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Cursors after clearing:`, this.cursors);
         }
+
+        // Notify presence that local cursor is cleared
+        if (this.presencePublisher && (userId === "local" || userId === undefined)) {
+            this.presencePublisher(undefined);
+        }
     }
 
     clearCursorInstance(cursorId: string) {
@@ -711,6 +732,11 @@ export class EditorOverlayStore {
         // アクティブなカーソルの場合はアクティブアイテムを更新
         if (cursorProps.isActive) {
             this.setActiveItem(itemId);
+        }
+
+        // Broadcast local active cursor to presence if configured
+        if (this.presencePublisher && (userId === "local" || userId === undefined)) {
+            this.presencePublisher({ itemId, offset: cursorProps.offset, isActive: cursorProps.isActive });
         }
 
         // カーソル履歴を更新
