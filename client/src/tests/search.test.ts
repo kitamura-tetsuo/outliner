@@ -1,6 +1,6 @@
+import { Project } from "@common/schema/app-schema";
+import { replaceAll, replaceFirst, searchItems } from "@common/search";
 import { describe, expect, it } from "vitest";
-import { replaceAll, replaceFirst, searchItems } from "../lib/search";
-import { Project } from "../schema/app-schema";
 
 function setupTree() {
     const project = Project.createInstance("Test");

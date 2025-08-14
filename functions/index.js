@@ -1,3 +1,4 @@
+require("module-alias/register");
 // Firebase Functionsでは主にFirebase Secretsを使用
 // テスト環境では環境変数を直接設定するため、dotenvは使用しない
 
@@ -2162,11 +2163,15 @@ exports.debugUserContainers = onRequest(
 const ical = require("ical-generator");
 
 // Export schedules as iCal
-exports.exportSchedules = onRequest(async (req, res) => {
+exports.exportSchedules = onRequest({ cors: true }, async (req, res) => {
+  // CORS and preflight
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
-
   const { idToken, pageId } = req.body || {};
   if (!idToken || !pageId) {
     return res.status(400).json({ error: "Invalid request" });
@@ -2240,6 +2245,91 @@ exports.exportSchedules = onRequest(async (req, res) => {
       return res.status(401).json({ error: "Authentication failed" });
     }
     return res.status(500).json({ error: "Failed to export schedules" });
+  }
+});
+
+// Global search endpoint
+exports.search = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+  try {
+    const { idToken, query } = req.body;
+
+    if (!idToken || !query) {
+      return res.status(400).json({ error: "ID token and query are required" });
+    }
+
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    const userDoc = await userContainersCollection.doc(userId).get();
+
+    if (!userDoc.exists) {
+      return res.status(200).json({ results: [] });
+    }
+
+    const userData = userDoc.data();
+    const containerIds = userData.accessibleContainerIds || [];
+
+    const searchPromises = containerIds.map(async containerId => {
+      try {
+        const { AzureClient } = require("@fluidframework/azure-client");
+        const { InsecureTokenProvider } = require(
+          "@fluidframework/test-client-utils",
+        );
+
+        const azureConfig = getAzureConfig();
+
+        const config = {
+          connection: {
+            type: "remote",
+            tenantId: azureConfig.tenantId,
+            tokenProvider: new InsecureTokenProvider(azureConfig.tenantId, {
+              id: userId,
+            }),
+            endpoint: azureConfig.endpoint,
+          },
+        };
+        const client = new AzureClient(config);
+
+        const containerSchema = {
+          initialObjects: {
+            appData: require("fluid-framework").SharedTree,
+          },
+        };
+
+        const { container } = await client.getContainer(
+          containerId,
+          containerSchema,
+        );
+        const appData = container.initialObjects.appData.viewWith(
+          require("@common/schema/app-schema").appTreeConfiguration,
+        );
+        const project = appData.root;
+
+        const { searchProject } = require("@common/search/projectSearch");
+        return searchProject(project, query);
+      } catch (error) {
+        logger.error(
+          `Error searching container ${containerId}: ${error.message}`,
+        );
+        return [];
+      }
+    });
+
+    const results = await Promise.all(searchPromises);
+    const flattenedResults = results.flat();
+
+    return res.status(200).json({ results: flattenedResults });
+  } catch (error) {
+    logger.error(`Error in global search: ${error.message}`, { error });
+    return res.status(500).json({ error: "Failed to perform global search" });
   }
 });
 
