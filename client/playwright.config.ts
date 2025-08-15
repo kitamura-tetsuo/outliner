@@ -71,6 +71,12 @@ const debugArgs = isSingleSpecRun
     ? [`--remote-debugging-port=${process.env.CDP_PORT ?? 9222 + workerIdx}`]
     : [];
 
+// Reporter設定を環境ごとに切り替え
+const isCI = !!process.env.CI;
+const reporters = isCI
+    ? [["github"], ["html", { open: "never" }]]
+    : [["list"], ["html", { open: "never" }]];
+
 // console.log(`workerIdx: ${workerIdx}`);
 // console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
 // console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
@@ -84,7 +90,7 @@ export default defineConfig({
     workers: process.env.CI ? 1 : 1,
     maxFailures: process.env.CI ? 1 : 5,
 
-    reporter: [["html", { open: "never" }]],
+    reporter: reporters,
     headless: true,
     // テスト実行時のタイムアウト設定を延長
     timeout: 30 * 1000, // 30秒
