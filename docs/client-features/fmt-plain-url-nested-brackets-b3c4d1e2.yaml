@@ -1,0 +1,6 @@
+id: FMT-0007
+title: Plain URL nested brackets
+title-ja: 角括弧内のプレーンURLはリンク化されない
+category: text-formatting
+status: implemented
+description: Plain URLs inside nested brackets should not be linkified; only explicit Scrapbox link syntax applies within brackets.
