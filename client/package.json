@@ -32,7 +32,7 @@
         "test:e2e:basic": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test ./e2e/basic --reporter=list",
         "test:e2e:debug": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test --reporter=list --debug",
         "test:e2e:ui": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test --reporter=list --ui",
-        "test:e2e:xvfb": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- playwright test --reporter=list",
+        "test:e2e:xvfb": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test --reporter=list",
         "ci:test:e2e": "playwright test --reporter=list",
         "ci:test:e2e:ui": "playwright test --ui --reporter=list"
     },
