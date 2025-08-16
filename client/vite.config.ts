@@ -50,10 +50,17 @@ export default defineConfig(async ({ mode }) => {
         build: {
             sourcemap: true,
             rollupOptions: {
+                // Externalize packages that may be imported from files outside the project root
+                // to avoid Rollup resolution failures during SSR build
+                external: ["fluid-framework"],
                 input: {
                     app: "./src/app.html",
                 },
             },
+        },
+        ssr: {
+            // Ensure SSR build does not try to bundle these packages
+            external: ["fluid-framework"],
         },
         optimizeDeps: {
             include: ["sql.js"],
