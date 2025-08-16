@@ -68,6 +68,16 @@ jobs:
             fi
           fi
 
+          # Fallback for self-hosted runners: use RUNNER_TOOL_CACHE if available
+          if ! command -v node >/dev/null 2>&1 && [ -n "${RUNNER_TOOL_CACHE:-}" ] && [ -d "$RUNNER_TOOL_CACHE/node" ]; then
+            NODE_TOOL_DIR=$(find "$RUNNER_TOOL_CACHE/node" -maxdepth 3 -name "x64" -type d | head -1)
+            if [ -n "$NODE_TOOL_DIR" ]; then
+              export PATH="$NODE_TOOL_DIR/bin:$PATH"
+              echo "Found Node.js in RUNNER_TOOL_CACHE: $(node --version)"
+              echo "NPM version: $(npm --version)"
+            fi
+          fi
+
           # Fallback: try to use system Node.js if actions/setup-node didn't work
           if ! command -v node >/dev/null 2>&1; then
             echo "Node.js not found via actions/setup-node, trying system installation..."
@@ -83,7 +93,32 @@ jobs:
 
           # Verify npm is available
           if ! command -v npm >/dev/null 2>&1; then
-            echo "npm not found, this will cause issues in subsequent steps"
+            echo "npm not found, attempting fallback PATH fixes..."
+            # Try adding actions tool cache path again
+            if [ -d "$GITHUB_WORKSPACE/../_tool/node" ]; then
+              NODE_TOOL_DIR=$(find "$GITHUB_WORKSPACE/../_tool/node" -name "x64" -type d | head -1)
+              if [ -n "$NODE_TOOL_DIR" ]; then
+                export PATH="$NODE_TOOL_DIR/bin:$PATH"
+              fi
+            fi
+            if [ -n "${RUNNER_TOOL_CACHE:-}" ] && [ -d "$RUNNER_TOOL_CACHE/node" ]; then
+              NODE_TOOL_DIR=$(find "$RUNNER_TOOL_CACHE/node" -maxdepth 3 -name "x64" -type d | head -1)
+              if [ -n "$NODE_TOOL_DIR" ]; then
+                export PATH="$NODE_TOOL_DIR/bin:$PATH"
+              fi
+            fi
+          fi
+
+          # Last resort on self-hosted: install Node.js if still missing
+          if ! command -v npm >/dev/null 2>&1; then
+            echo "npm still not found; installing Node.js (apt) as fallback..."
+            sudo apt-get update || true
+            sudo apt-get install -y nodejs npm || true
+          fi
+
+          # Final check
+          if ! command -v npm >/dev/null 2>&1; then
+            echo "npm not available after fallbacks"
             exit 1
           fi
 
@@ -101,7 +136,23 @@ jobs:
 
           # Verify npm is available
           if ! command -v npm >/dev/null 2>&1; then
-            echo "Error: npm command not found"
+            echo "npm not found; attempting to repair PATH..."
+            if [ -d "$GITHUB_WORKSPACE/../_tool/node" ]; then
+              NODE_TOOL_DIR=$(find "$GITHUB_WORKSPACE/../_tool/node" -name "x64" -type d | head -1)
+              if [ -n "$NODE_TOOL_DIR" ]; then
+                export PATH="$NODE_TOOL_DIR/bin:$PATH"
+              fi
+            fi
+            if [ -n "${RUNNER_TOOL_CACHE:-}" ] && [ -d "$RUNNER_TOOL_CACHE/node" ]; then
+              NODE_TOOL_DIR=$(find "$RUNNER_TOOL_CACHE/node" -maxdepth 3 -name "x64" -type d | head -1)
+              if [ -n "$NODE_TOOL_DIR" ]; then
+                export PATH="$NODE_TOOL_DIR/bin:$PATH"
+              fi
+            fi
+          fi
+
+          if ! command -v npm >/dev/null 2>&1; then
+            echo "Error: npm command not found after PATH repair"
             echo "PATH: $PATH"
             echo "Node location: $(which node || echo 'node not found')"
             exit 1
