@@ -74,5 +74,6 @@ jobs:
           else
             echo "⚠️ Local branch is behind remote, skipping auto-commit to avoid conflicts"
             echo "Please pull latest changes and run 'npx dprint fmt' manually"
-            exit 1
+            # Do not fail the workflow in this benign case; allow downstream jobs to proceed
+            exit 0
           fi
