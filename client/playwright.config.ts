@@ -160,4 +160,10 @@ export default defineConfig({
     //     // タイムアウトは開発サーバーが通常起動する時間より少し長めに設定
     //     timeout: 600,
     // },
+    resolve: {
+        alias: {
+            "@common": path.resolve(__dirname, "../common"),
+            "e2e": path.resolve(__dirname, "e2e"),
+        },
+    },
 });
