@@ -50,6 +50,16 @@ export default defineConfig(async ({ mode }) => {
         build: {
             sourcemap: true,
             rollupOptions: {
+                // Avoid inlining certain deps that are resolved from outside the client root
+                // and let Node resolve them at runtime during SSR build.
+                external: [
+                    "fluid-framework",
+                    "@fluidframework/azure-client",
+                    "@fluidframework/fluid-static",
+                    "@fluidframework/sequence",
+                    "@fluidframework/tree",
+                    "uuid",
+                ],
                 input: {
                     app: "./src/app.html",
                 },
@@ -60,6 +70,14 @@ export default defineConfig(async ({ mode }) => {
         },
         define: {
             global: "globalThis",
+        },
+        ssr: {
+            // Ensure SSR build does not try to inline Fluid packages from outside root
+            external: [
+                "fluid-framework",
+                /@fluidframework\/.*/,
+                "uuid",
+            ],
         },
         test: {
             projects: [

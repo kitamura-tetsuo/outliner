@@ -30,6 +30,9 @@ const config = {
         },
         alias: {
             "@common": path.resolve(__dirname, "../common"),
+            // Ensure imports from files in ../common resolve Fluid packages correctly during SSR build
+            "fluid-framework": path.resolve(__dirname, "./node_modules/fluid-framework"),
+            "uuid": path.resolve(__dirname, "./node_modules/uuid"),
         },
     },
 
