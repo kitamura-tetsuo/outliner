@@ -108,21 +108,24 @@ jobs:
 
               # Only auto-commit for push/PR events, not workflow_run
               if [[ "${{ github.event_name }}" == "push" || "${{ github.event_name }}" == "pull_request" ]]; then
+                # Determine correct branch name (PR head ref vs push ref)
+                BRANCH_NAME="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
+
                 # Check if we're behind remote to avoid conflicts
-                git fetch origin
-                if git merge-base --is-ancestor HEAD origin/${{ github.ref_name }}; then
+                git fetch origin "$BRANCH_NAME"
+                if git merge-base --is-ancestor HEAD "origin/${BRANCH_NAME}"; then
                   git add .
                   git commit -m "Auto-fix: Format code with dprint"
 
                   # Retry push with pull if needed
-                  if ! git push; then
+                  if ! git push origin "HEAD:${BRANCH_NAME}"; then
                     echo "Push failed, trying to pull and retry..."
-                    git pull --rebase origin ${{ github.ref_name }}
-                    git push
+                    git pull --rebase origin "${BRANCH_NAME}"
+                    git push origin "HEAD:${BRANCH_NAME}"
                   fi
                   echo "✅ Formatting issues have been automatically fixed and committed!"
                 else
-                  echo "⚠️ Local branch is behind remote, skipping auto-commit to avoid conflicts"
+                  echo "⚠️ Local branch is behind remote (${BRANCH_NAME}), skipping auto-commit to avoid conflicts"
                   echo "Please pull latest changes and run 'npx dprint fmt' manually"
                 fi
               fi

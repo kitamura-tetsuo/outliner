@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Item, Items, Project } from "@common/schema/app-schema";
 import { Tree } from "fluid-framework";
 

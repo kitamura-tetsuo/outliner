@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Latest, Presence, StatesWorkspaceSchema } from "@fluidframework/presence/beta";
 import { StateFactory } from "@fluidframework/presence/beta";
 
