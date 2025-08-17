@@ -151,9 +151,22 @@ jobs:
             fi
           fi
 
-          # Verify npm is available
+          # Verify npm is available; try to activate via corepack if missing
           if ! command -v npm >/dev/null 2>&1; then
-            echo "npm not found, this will cause issues in subsequent steps"
+            echo "npm not found; attempting to activate via corepack..."
+            if command -v corepack >/dev/null 2>&1; then
+              corepack enable || true
+              # Prefer a stable npm version compatible with Node 22
+              corepack prepare npm@latest --activate || corepack prepare npm@10 --activate || true
+            fi
+          fi
+
+          # Re-verify npm after attempting activation
+          if ! command -v npm >/dev/null 2>&1; then
+            echo "npm still not found after corepack attempt; this will cause issues in subsequent steps"
+            echo "PATH: $PATH"
+            echo "Node location: $(which node || echo 'node not found')"
+            echo "corepack version: $(corepack --version 2>/dev/null || echo 'corepack not available')"
             exit 1
           fi
 
@@ -169,11 +182,21 @@ jobs:
             echo "NPM version: $(npm --version)"
           fi
 
-          # Verify npm is available
+          # Verify npm is available; try to activate via corepack if missing
           if ! command -v npm >/dev/null 2>&1; then
-            echo "Error: npm command not found"
+            echo "Error: npm command not found. Attempting to activate via corepack..."
+            if command -v corepack >/dev/null 2>&1; then
+              corepack enable || true
+              corepack prepare npm@latest --activate || corepack prepare npm@10 --activate || true
+            fi
+          fi
+
+          # Re-verify npm after attempting activation
+          if ! command -v npm >/dev/null 2>&1; then
+            echo "Error: npm still not found after corepack attempt"
             echo "PATH: $PATH"
             echo "Node location: $(which node || echo 'node not found')"
+            echo "corepack version: $(corepack --version 2>/dev/null || echo 'corepack not available')"
             exit 1
           fi
 
