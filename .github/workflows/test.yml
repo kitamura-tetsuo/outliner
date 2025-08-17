@@ -278,9 +278,11 @@ jobs:
           npm run lint -- --fix
 
       - name: Install Firebase CLI
+        if: ${{ secrets.FIREBASE_TOKEN != '' && github.event_name == 'push' }}
         run: npm install -g firebase-tools@latest
 
       - name: Firebase deployment dry run
+        if: ${{ secrets.FIREBASE_TOKEN != '' && github.event_name == 'push' }}
         run: |
           # Create temporary env file for functions (similar to deploy workflow)
           cat > functions/.env <<EOF
