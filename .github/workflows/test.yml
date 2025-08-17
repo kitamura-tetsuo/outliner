@@ -80,16 +80,22 @@ jobs:
 
               # Only auto-commit for push/PR events, not workflow_run
               if [[ "${{ github.event_name }}" == "push" || "${{ github.event_name }}" == "pull_request" ]]; then
+                # Determine correct remote ref for push/PR events
+                REF_NAME="${{ github.ref_name }}"
+                if [[ "${{ github.event_name }}" == "pull_request" && -n "${{ github.head_ref }}" ]]; then
+                  REF_NAME="${{ github.head_ref }}"
+                fi
+
                 # Check if we're behind remote to avoid conflicts
                 git fetch origin
-                if git merge-base --is-ancestor HEAD origin/${{ github.ref_name }}; then
+                if git merge-base --is-ancestor HEAD "origin/${REF_NAME}"; then
                   git add .
                   git commit -m "Auto-fix: Format code with dprint"
 
                   # Retry push with pull if needed
                   if ! git push; then
                     echo "Push failed, trying to pull and retry..."
-                    git pull --rebase origin ${{ github.ref_name }}
+                    git pull --rebase origin "${REF_NAME}"
                     git push
                   fi
                   echo "✅ Formatting issues have been automatically fixed and committed!"
