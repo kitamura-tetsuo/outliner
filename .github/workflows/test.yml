@@ -16,6 +16,9 @@ jobs:
   test:
     runs-on: self-hosted
     timeout-minutes: 45
+    env:
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
 
     steps:
       - name: Debug workflow trigger
@@ -278,11 +281,11 @@ jobs:
           npm run lint -- --fix
 
       - name: Install Firebase CLI
-        if: ${{ secrets.FIREBASE_TOKEN != '' && github.event_name == 'push' }}
+        if: ${{ env.FIREBASE_TOKEN != '' && github.event_name == 'push' }}
         run: npm install -g firebase-tools@latest
 
       - name: Firebase deployment dry run
-        if: ${{ secrets.FIREBASE_TOKEN != '' && github.event_name == 'push' }}
+        if: ${{ env.FIREBASE_TOKEN != '' && github.event_name == 'push' }}
         run: |
           # Create temporary env file for functions (similar to deploy workflow)
           cat > functions/.env <<EOF
@@ -295,11 +298,11 @@ jobs:
           EOF
 
           # Set Firebase project for testing
-          firebase use outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
+          firebase use outliner-d57b0 --token "$FIREBASE_TOKEN"
 
           # Validate Firebase configuration and functions
           echo "Validating Firebase configuration..."
-          firebase functions:config:get --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No config found"
+          firebase functions:config:get --project outliner-d57b0 --token "$FIREBASE_TOKEN" || echo "No config found"
 
           # Check functions source code for syntax errors
           echo "Checking functions source code..."
@@ -309,11 +312,11 @@ jobs:
 
           # Validate Firebase project configuration
           echo "Validating Firebase project configuration..."
-          firebase projects:list --token "${{ secrets.FIREBASE_TOKEN }}" | grep outliner-d57b0
+          firebase projects:list --token "$FIREBASE_TOKEN" | grep outliner-d57b0
 
           # Validate functions deployment (dry run)
           echo "Performing Firebase Functions deployment validation..."
-          firebase deploy --only functions --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --dry-run || {
+          firebase deploy --only functions --project outliner-d57b0 --token "$FIREBASE_TOKEN" --dry-run || {
             echo "❌ Firebase deployment validation failed!"
             echo "This indicates that the deployment would fail in production."
             exit 1
@@ -323,15 +326,15 @@ jobs:
 
           # Additional validation for other Firebase services
           echo "Validating Firebase Hosting configuration..."
-          firebase hosting:channel:list --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No hosting channels found"
+          firebase hosting:channel:list --project outliner-d57b0 --token "$FIREBASE_TOKEN" || echo "No hosting channels found"
 
           # Validate Firestore rules
           echo "Validating Firestore rules..."
-          firebase firestore:rules:get --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No Firestore rules found"
+          firebase firestore:rules:get --project outliner-d57b0 --token "$FIREBASE_TOKEN" || echo "No Firestore rules found"
 
           # Validate Storage rules
           echo "Validating Storage rules..."
-          firebase storage:rules:get --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No Storage rules found"
+          firebase storage:rules:get --project outliner-d57b0 --token "$FIREBASE_TOKEN" || echo "No Storage rules found"
 
           echo "✅ All Firebase services validation completed!"
         env:
