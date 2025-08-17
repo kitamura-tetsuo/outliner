@@ -1,0 +1,106 @@
+=== Starting all Localhost servers ===
+Environment files are ready
+Installing dependencies...
+Stopping any existing servers...
+Starting cleanup of development processes...
+Starting cleanup of development processes...
+Checking for processes on port 7070...
+(node:16770) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///app/scripts/kill-tinylicious.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /app/scripts/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+No process found on port 7070
+Checking for processes on port 7071...
+No process found on port 7071
+Checking for processes on port 7072...
+No process found on port 7072
+Checking for processes on port 7090...
+No process found on port 7090
+Checking for processes on port 7091...
+No process found on port 7091
+Checking for processes on port 7092...
+No process found on port 7092
+Checking for processes on port 54000...
+No process found on port 54000
+Checking for processes on port 59099...
+No process found on port 59099
+Checking for processes on port 58080...
+No process found on port 58080
+Checking for processes on port 4400...
+No process found on port 4400
+Checking for processes on port 9099...
+No process found on port 9099
+Checking for processes on port 8080...
+No process found on port 8080
+Checking for processes on port 9323...
+No process found on port 9323
+Cleanup completed. Successfully processed 0/13 ports.
+Starting all servers...
+Starting Tinylicious server on port 7092...
+Starting API server on port 7091...
+All servers started!
+Firebase Functions PID: 16828
+Tinylicious PID: 16829
+API Server PID: 16830
+SvelteKit Server PID: 16833
+
+Waiting for all services to be ready...
+Waiting for port 7091...
+Starting SvelteKit server on port 7090...
+Starting Firebase emulator...
+Creating .env file for Firebase Functions...
+Firebase Functions .env file contents:
+AZURE_TENANT_ID=test-tenant-id
+AZURE_ENDPOINT=https://test.fluidrelay.azure.com
+AZURE_PRIMARY_KEY=test-primary-key
+AZURE_SECONDARY_KEY=test-secondary-key
+AZURE_ACTIVE_KEY=primary
+Firebase emulator starting with project: test-project-id
+Using config file: firebase.emulator.json
+Starting emulators: auth,firestore,functions,hosting,storage
+Firebase emulator started with PID: 16839
+Firebase emulator log will be written to: /app/server/logs/firebase-emulator.log
+Waiting for Firebase emulator to start...
+Waiting for Firebase Auth emulator... (attempt 1/60)
+Still waiting for port 7091... (180 seconds remaining)
+[38;5;142m[dotenvx@1.48.4] injecting env (0) from .env[39m
+[dotenv@17.2.1] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+{"level":30,"time":"2025-08-11T04:55:13.362Z","pid":16840,"hostname":"devbox","msg":"Development auth helper loaded"}{"level":40,"time":"2025-08-11T04:55:13.371Z","pid":16840,"hostname":"devbox","msg":"⚠️ Firebase Emulator環境変数が設定されています。本番環境では問題になる可能性があります！"}{"level":40,"time":"2025-08-11T04:55:13.372Z","pid":16840,"hostname":"devbox","msg":"設定されているEmulator環境変数: FIREBASE_EMULATOR_HOST=localhost, FIRESTORE_EMULATOR_HOST=localhost:58080, FIREBASE_AUTH_EMULATOR_HOST=localhost:59099"}{"level":40,"time":"2025-08-11T04:55:13.372Z","pid":16840,"hostname":"devbox","msg":"これらの環境変数は本来 .env.test に設定すべきもので、本番環境では設定しないでください。"}{"level":30,"time":"2025-08-11T04:55:13.373Z","pid":16840,"hostname":"devbox","msg":"Firebase Admin SDK initialized successfully. Project ID: test-project-id"}[32mINFO[39m [2025-08-11 04:55:13.362 +0000] (16840): [36mDevelopment auth helper loaded[39m
+{"level":30,"time":"2025-08-11T04:55:13.376Z","pid":16840,"hostname":"devbox","msg":"Firebase emulator detected, waiting for connection... (max retries: 30)"}{"level":30,"time":"2025-08-11T04:55:13.377Z","pid":16840,"hostname":"devbox","msg":"Firebase connection attempt 1/30..."}[33mWARN[39m [2025-08-11 04:55:13.371 +0000] (16840): [36m⚠️ Firebase Emulator環境変数が設定されています。本番環境では問題になる可能性があります！[39m
+[33mWARN[39m [2025-08-11 04:55:13.372 +0000] (16840): [36m設定されているEmulator環境変数: FIREBASE_EMULATOR_HOST=localhost, FIRESTORE_EMULATOR_HOST=localhost:58080, FIREBASE_AUTH_EMULATOR_HOST=localhost:59099[39m
+[33mWARN[39m [2025-08-11 04:55:13.372 +0000] (16840): [36mこれらの環境変数は本来 .env.test に設定すべきもので、本番環境では設定しないでください。[39m
+[32mINFO[39m [2025-08-11 04:55:13.373 +0000] (16840): [36mFirebase Admin SDK initialized successfully. Project ID: test-project-id[39m
+[32mINFO[39m [2025-08-11 04:55:13.376 +0000] (16840): [36mFirebase emulator detected, waiting for connection... (max retries: 30)[39m
+[32mINFO[39m [2025-08-11 04:55:13.377 +0000] (16840): [36mFirebase connection attempt 1/30...[39m
+{"level":40,"time":"2025-08-11T04:55:13.604Z","pid":16840,"hostname":"devbox","msg":"Firebase emulator not ready yet (attempt 1/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED"}{"level":30,"time":"2025-08-11T04:55:13.605Z","pid":16840,"hostname":"devbox","msg":"Waiting 1000ms before next retry..."}[33mWARN[39m [2025-08-11 04:55:13.604 +0000] (16840): [36mFirebase emulator not ready yet (attempt 1/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED[39m
+[32mINFO[39m [2025-08-11 04:55:13.605 +0000] (16840): [36mWaiting 1000ms before next retry...[39m
+{"level":30,"time":"2025-08-11T04:55:14.606Z","pid":16840,"hostname":"devbox","msg":"Firebase connection attempt 2/30..."}[32mINFO[39m [2025-08-11 04:55:14.606 +0000] (16840): [36mFirebase connection attempt 2/30...[39m
+{"level":40,"time":"2025-08-11T04:55:14.609Z","pid":16840,"hostname":"devbox","msg":"Firebase emulator not ready yet (attempt 2/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED"}{"level":30,"time":"2025-08-11T04:55:14.609Z","pid":16840,"hostname":"devbox","msg":"Waiting 1500ms before next retry..."}[33mWARN[39m [2025-08-11 04:55:14.609 +0000] (16840): [36mFirebase emulator not ready yet (attempt 2/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED[39m
+[32mINFO[39m [2025-08-11 04:55:14.609 +0000] (16840): [36mWaiting 1500ms before next retry...[39m
+Waiting for Firebase Auth emulator... (attempt 2/60)
+[32mINFO[39m [2025-08-11 04:55:16.110 +0000] (16840): [36mFirebase connection attempt 3/30...[39m
+{"level":30,"time":"2025-08-11T04:55:16.110Z","pid":16840,"hostname":"devbox","msg":"Firebase connection attempt 3/30..."}[33mWARN[39m [2025-08-11 04:55:16.113 +0000] (16840): [36mFirebase emulator not ready yet (attempt 3/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED[39m
+{"level":40,"time":"2025-08-11T04:55:16.113Z","pid":16840,"hostname":"devbox","msg":"Firebase emulator not ready yet (attempt 3/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED"}{"level":30,"time":"2025-08-11T04:55:16.113Z","pid":16840,"hostname":"devbox","msg":"Waiting 2250ms before next retry..."}[32mINFO[39m [2025-08-11 04:55:16.113 +0000] (16840): [36mWaiting 2250ms before next retry...[39m
+[32mINFO[39m [2025-08-11 04:55:18.366 +0000] (16840): [36mFirebase connection attempt 4/30...[39m
+{"level":30,"time":"2025-08-11T04:55:18.366Z","pid":16840,"hostname":"devbox","msg":"Firebase connection attempt 4/30..."}{"level":40,"time":"2025-08-11T04:55:18.368Z","pid":16840,"hostname":"devbox","msg":"Firebase emulator not ready yet (attempt 4/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED"}[33mWARN[39m [2025-08-11 04:55:18.368 +0000] (16840): [36mFirebase emulator not ready yet (attempt 4/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED[39m
+{"level":30,"time":"2025-08-11T04:55:18.368Z","pid":16840,"hostname":"devbox","msg":"Waiting 3375ms before next retry..."}[32mINFO[39m [2025-08-11 04:55:18.368 +0000] (16840): [36mWaiting 3375ms before next retry...[39m
+Waiting for Firebase Auth emulator... (attempt 3/60)
+[32mINFO[39m [2025-08-11 04:55:21.744 +0000] (16840): [36mFirebase connection attempt 5/30...[39m
+{"level":30,"time":"2025-08-11T04:55:21.744Z","pid":16840,"hostname":"devbox","msg":"Firebase connection attempt 5/30..."}[33mWARN[39m [2025-08-11 04:55:21.746 +0000] (16840): [36mFirebase emulator not ready yet (attempt 5/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED[39m
+{"level":40,"time":"2025-08-11T04:55:21.746Z","pid":16840,"hostname":"devbox","msg":"Firebase emulator not ready yet (attempt 5/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED"}{"level":30,"time":"2025-08-11T04:55:21.747Z","pid":16840,"hostname":"devbox","msg":"Waiting 5062.5ms before next retry..."}[32mINFO[39m [2025-08-11 04:55:21.747 +0000] (16840): [36mWaiting 5062.5ms before next retry...[39m
+Waiting for Firebase Auth emulator... (attempt 4/60)
+Still waiting for port 7091... (170 seconds remaining)
+Waiting for Firebase Auth emulator... (attempt 5/60)
+{"level":30,"time":"2025-08-11T04:55:26.809Z","pid":16840,"hostname":"devbox","msg":"Firebase connection attempt 6/30..."}[32mINFO[39m [2025-08-11 04:55:26.809 +0000] (16840): [36mFirebase connection attempt 6/30...[39m
+{"level":40,"time":"2025-08-11T04:55:26.812Z","pid":16840,"hostname":"devbox","msg":"Firebase emulator not ready yet (attempt 6/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED"}[33mWARN[39m [2025-08-11 04:55:26.812 +0000] (16840): [36mFirebase emulator not ready yet (attempt 6/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED[39m
+{"level":30,"time":"2025-08-11T04:55:26.812Z","pid":16840,"hostname":"devbox","msg":"Waiting 7593.75ms before next retry..."}[32mINFO[39m [2025-08-11 04:55:26.812 +0000] (16840): [36mWaiting 7593.75ms before next retry...[39m
+Waiting for Firebase Auth emulator... (attempt 6/60)
+Waiting for Firebase Auth emulator... (attempt 7/60)
+Waiting for Firebase Auth emulator... (attempt 8/60)
+Still waiting for port 7091... (160 seconds remaining)
+{"level":30,"time":"2025-08-11T04:55:34.408Z","pid":16840,"hostname":"devbox","msg":"Firebase connection attempt 7/30..."}[32mINFO[39m [2025-08-11 04:55:34.408 +0000] (16840): [36mFirebase connection attempt 7/30...[39m
+{"level":40,"time":"2025-08-11T04:55:34.410Z","pid":16840,"hostname":"devbox","msg":"Firebase emulator not ready yet (attempt 7/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED"}[33mWARN[39m [2025-08-11 04:55:34.410 +0000] (16840): [36mFirebase emulator not ready yet (attempt 7/30): Error while making request: connect ECONNREFUSED 127.0.0.1:59099. Error code: ECONNREFUSED[39m
+{"level":30,"time":"2025-08-11T04:55:34.411Z","pid":16840,"hostname":"devbox","msg":"Waiting 10000ms before next retry..."}[32mINFO[39m [2025-08-11 04:55:34.411 +0000] (16840): [36mWaiting 10000ms before next retry...[39m
+Waiting for Firebase Auth emulator... (attempt 9/60)
+Waiting for Firebase Auth emulator... (attempt 10/60)
+Waiting for Firebase Auth emulator... (attempt 11/60)

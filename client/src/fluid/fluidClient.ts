@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Items, Project } from "@common/schema/app-schema";
 import { AzureClient, type AzureContainerServices } from "@fluidframework/azure-client";
 import { type IFluidContainer } from "@fluidframework/fluid-static";

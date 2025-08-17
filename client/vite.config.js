@@ -11,6 +11,9 @@ export default defineConfig({
     resolve: {
         alias: {
             "@common": path.resolve(__dirname, "../common"),
+            // Ensure modules imported from ../common resolve to this project's node_modules
+            "fluid-framework": path.resolve(__dirname, "./node_modules/fluid-framework"),
+            "uuid": path.resolve(__dirname, "./node_modules/uuid"),
         },
     },
     build: {
