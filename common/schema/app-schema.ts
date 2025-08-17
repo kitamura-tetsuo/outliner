@@ -24,10 +24,29 @@ export class Comment extends sf.objectRecursive("Comment", {
     author: sf.string,
     created: sf.number,
     lastChanged: sf.number,
+    reactions: sf.map(sf.array(sf.string)),
 }) {
     public readonly updateText = (text: string) => {
         this.lastChanged = new Date().getTime();
         this.text = text;
+    };
+
+    public readonly toggleReaction = (emoji: string, user: string) => {
+        const users = this.reactions.get(emoji);
+        if (users) {
+            const index = users.indexOf(user);
+            if (index > -1) {
+                users.removeAt(index);
+                if (users.length === 0) {
+                    this.reactions.delete(emoji);
+                }
+            } else {
+                users.insertAtEnd(user);
+            }
+        } else {
+            this.reactions.set(emoji, [user]);
+        }
+        this.lastChanged = new Date().getTime();
     };
 }
 
@@ -40,6 +59,7 @@ export class Comments extends sf.arrayRecursive("Comments", [Comment]) {
             author,
             created: time,
             lastChanged: time,
+            reactions: new Map(),
         });
         this.insertAtEnd(comment);
         return comment;
@@ -55,6 +75,17 @@ export class Comments extends sf.arrayRecursive("Comments", [Comment]) {
     public readonly updateComment = (commentId: string, text: string) => {
         const c = this.find(cm => cm.id === commentId);
         if (c) c.updateText(text);
+    };
+
+    public readonly toggleReaction = (
+        commentId: string,
+        emoji: string,
+        user: string,
+    ) => {
+        const c = this.find(cm => cm.id === commentId);
+        if (c) {
+            c.toggleReaction(emoji, user);
+        }
     };
 }
 

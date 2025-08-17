@@ -87,7 +87,7 @@ export default defineConfig({
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: (process.env.CI || !isSingleSpecRun) ? 10 : 0,
-    workers: process.env.CI ? 1 : 1,
+    workers: process.env.CI ? 1 : 2,
     maxFailures: process.env.CI ? 1 : 5,
 
     reporter: reporters,

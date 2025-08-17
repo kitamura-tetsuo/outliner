@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 function setupTree() {
     const project = Project.createInstance("Test");
     const page = project.addPage("root", "user");
-    const child1 = (page.items as any).addNode("user");
+    const child1 = ((page as any).items as any).addNode("user");
     child1.updateText("hello world");
-    const child2 = (page.items as any).addNode("user");
+    const child2 = ((page as any).items as any).addNode("user");
     child2.updateText("Hello World");
     return { page, child1, child2 };
 }

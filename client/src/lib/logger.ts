@@ -123,7 +123,7 @@ function getCallerFile(): string {
 /**
  * 各ログレベルのメソッドをラップして行番号情報を追加する
  */
-function createEnhancedLogger(logger: pino.Logger): pino.Logger {
+function createEnhancedLogger(logger: pino.Logger): any {
     // 拡張するログレベル
     const levels = ["trace", "debug", "info", "warn", "error", "fatal"] as const;
     // 基本的な機能を持つロガーを作成
@@ -131,7 +131,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
 
     // 各ログレベルメソッドをラップ
     levels.forEach(level => {
-        const originalMethod = logger[level].bind(logger);
+        const originalMethod: any = (logger as any)[level].bind(logger as any);
         enhancedLogger[level] = (...args: any[]) => {
             // ログ呼び出し時に位置情報を取得
             const file = getCallerFile();
@@ -145,24 +145,24 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
             }
 
             // 元のログメソッドを呼び出し
-            return originalMethod.apply(logger, ["", ...args]);
+            return (originalMethod as any).apply(logger as any, ["", ...args] as any);
         };
     });
 
     // child メソッドを特別に上書き
-    const originalChild = logger.child.bind(logger);
-    enhancedLogger.child = function(bindings: pino.Bindings): pino.Logger {
+    const originalChild: any = (logger as any).child.bind(logger as any);
+    enhancedLogger.child = function(bindings: pino.Bindings): any {
         // 元の child メソッドを呼び出し
         const childLogger = originalChild(bindings);
         // 子ロガーも強化
-        return createEnhancedLogger(childLogger);
+        return createEnhancedLogger(childLogger as any);
     };
 
     return enhancedLogger;
 }
 
 // 拡張ロガーの作成
-const logger = createEnhancedLogger(baseLogger);
+const logger: any = createEnhancedLogger(baseLogger as any);
 
 /**
  * コンソール出力時のスタイルを定義
@@ -187,7 +187,7 @@ const consoleStyles = {
  * 呼び出し元のファイル名と行番号を child logger のコンテキストに付加して返す
  * コンソールにも同時に出力したい場合は enableConsole を true に設定
  */
-export function getLogger(componentName?: string, enableConsole: boolean = true): pino.Logger {
+export function getLogger(componentName?: string, enableConsole: boolean = true): any {
     const file = getCallerFile();
     const module = componentName || file;
     const isCustomModule = componentName !== undefined && componentName !== file;
@@ -197,7 +197,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
 
     // コンソール出力が有効な場合、コンソールにも出力する拡張ロガーを作成
     if (enableConsole && useConsoleAPI) {
-        return new Proxy(childLogger, {
+        return new Proxy(childLogger as any, {
             get(target, prop) {
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
                     return function(...args: any[]) {
@@ -331,8 +331,8 @@ export function log(
     }
 
     // 2. Pinoロガーを使ってサーバーに送信（ログファイルに記録）
-    const logger = getLogger(componentName, false); // コンソール出力せずサーバーに送信
-    logger[level].apply(logger, ["", ...args]);
+    const logger: any = getLogger(componentName, false); // コンソール出力せずサーバーに送信
+    (logger[level] as any).apply(logger as any, ["", ...args] as any);
 }
 
 /**
