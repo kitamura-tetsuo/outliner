@@ -37,8 +37,7 @@ export default defineConfig(async ({ mode }) => {
                 "fluid-framework": (await import("node:path")).resolve(
                     "./node_modules/fluid-framework/dist/index.js",
                 ),
-                // uuid is also used from common code; ensure resolution from client node_modules
-                "uuid": (await import("node:path")).resolve("./node_modules/uuid/dist/index.js"),
+                // Let Vite resolve 'uuid' via its package exports to avoid path mismatches in test/build
             },
         },
         server: {

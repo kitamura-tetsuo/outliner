@@ -1,0 +1,18 @@
+id: FLD-0002
+title: Tinylicious reachability check in fluidService
+title-ja: Tinylicious 到達性チェック（fluidService）
+description: Tinylicious クライアント生成時にポート到達性を短時間で検証し、未起動環境では即座に "network" エラーでテストをスキップ可能にする。実装は pingTinylicious モジュールとして共通化。
+category: fluid-service
+status: implemented
+components:
+- client/src/lib/pingTinylicious.ts
+- client/src/lib/fluidService.svelte.ts
+acceptance:
+- Tinylicious 使用時、接続不可のときは 1.5s 未満で "network" を含むエラーで失敗する
+- 到達時は 404 応答でも成功扱いとする
+- 実装は重複せず専用モジュールに切り出されている
+- ユニットテストで到達不可・タイムアウト・任意の到達可ケースを検証する
+- 既存の fluidService のネットワーク未起動時のハングが解消される
+tests:
+- client/src/lib/pingTinylicious.test.ts
+
