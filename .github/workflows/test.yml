@@ -43,8 +43,16 @@ jobs:
 
       - name: Check environment
         run: |
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
+          if command -v node >/dev/null 2>&1; then
+            echo "Node version: $(node --version)"
+          else
+            echo "Node not found yet"
+          fi
+          if command -v npm >/dev/null 2>&1; then
+            echo "NPM version: $(npm --version)"
+          else
+            echo "npm not found yet"
+          fi
           echo "Current user: $(whoami)"
           echo "Working directory: $(pwd)"
           echo "PATH: $PATH"
@@ -55,7 +63,7 @@ jobs:
           if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
             . "$HOME/.nvm/nvm.sh"
             echo "NVM loaded, Node version: $(node --version)"
-            echo "NPM version: $(npm --version)"
+            npm --version >/dev/null 2>&1 && echo "NPM version: $(npm --version)" || echo "npm not found yet"
           fi
 
           # Check if actions/setup-node installed Node.js in _tool directory
@@ -64,7 +72,7 @@ jobs:
             if [ -n "$NODE_TOOL_DIR" ]; then
               export PATH="$NODE_TOOL_DIR/bin:$PATH"
               echo "Found Node.js in tool cache: $(node --version)"
-              echo "NPM version: $(npm --version)"
+              npm --version >/dev/null 2>&1 && echo "NPM version: $(npm --version)" || echo "npm not found yet"
             fi
           fi
 
@@ -74,7 +82,7 @@ jobs:
             if [ -n "$NODE_TOOL_DIR" ]; then
               export PATH="$NODE_TOOL_DIR/bin:$PATH"
               echo "Found Node.js in RUNNER_TOOL_CACHE: $(node --version)"
-              echo "NPM version: $(npm --version)"
+              npm --version >/dev/null 2>&1 && echo "NPM version: $(npm --version)" || echo "npm not found yet"
             fi
           fi
 
@@ -119,7 +127,7 @@ jobs:
           if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
             . "$HOME/.nvm/nvm.sh"
             echo "NVM loaded, Node version: $(node --version)"
-            echo "NPM version: $(npm --version)"
+            npm --version >/dev/null 2>&1 && echo "NPM version: $(npm --version)" || echo "npm not found yet"
           fi
 
           # Verify npm is available; try to activate via corepack if missing
