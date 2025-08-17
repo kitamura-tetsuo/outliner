@@ -29,6 +29,10 @@ const config = {
             register: false, // 手動でService Workerを登録するため無効化
         },
         alias: {
+            // Route schema import to a client-local copy so Vite can resolve dependencies
+            "@common/schema/app-schema": path.resolve(__dirname, "./src/schema/app-schema.ts"),
+            // And route projectSearch to a client-local shim that depends on the above
+            "@common/search/projectSearch": path.resolve(__dirname, "./src/common/search/projectSearch.ts"),
             "@common": path.resolve(__dirname, "../common"),
         },
     },

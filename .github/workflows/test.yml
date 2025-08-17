@@ -44,6 +44,7 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
+
       - name: Check environment
         run: |
           if command -v node >/dev/null 2>&1; then

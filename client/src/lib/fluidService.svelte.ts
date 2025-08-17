@@ -301,12 +301,22 @@ async function getTokenProvider(userId?: string, containerId?: string): Promise<
     );
 }
 
+// pingTinylicious を専用モジュールから利用
+import { pingTinylicious } from "./pingTinylicious";
+
 async function createAzureOrTinyliciousClient(
     userId?: string,
     containerId?: string,
 ): Promise<TinyliciousClient | AzureClient> {
     if (useTinylicious) {
         const port = parseInt(import.meta.env.VITE_TINYLICIOUS_PORT || process.env.VITE_TINYLICIOUS_PORT || "7082");
+        // テスト環境で Tinylicious が未起動だとハングするため簡易到達性チェック
+        try {
+            await pingTinylicious(port, 1500);
+        } catch (e) {
+            // vitest 側で "network" を含むメッセージを検出して早期 return するため
+            throw e;
+        }
         // telemetryを無効化するための設定を追加
         const client = new TinyliciousClient({
             connection: { port },

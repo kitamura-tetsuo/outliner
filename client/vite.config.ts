@@ -32,9 +32,12 @@ export default defineConfig(async ({ mode }) => {
         ],
         resolve: {
             alias: {
-                // Ensure bare imports from files in ../common resolve to this project's node_modules
-                "fluid-framework": (await import("node:path")).resolve("./node_modules/fluid-framework"),
-                "uuid": (await import("node:path")).resolve("./node_modules/uuid"),
+                // Ensure bare imports from files in ../common resolve via this project's node_modules.
+                // Point to the ESM entry directly to avoid Rollup failing to resolve from outside root.
+                "fluid-framework": (await import("node:path")).resolve(
+                    "./node_modules/fluid-framework/dist/index.js",
+                ),
+                // Let Vite resolve 'uuid' via its package exports to avoid path mismatches in test/build
             },
         },
         server: {
@@ -53,6 +56,10 @@ export default defineConfig(async ({ mode }) => {
                 input: {
                     app: "./src/app.html",
                 },
+                // When importing shared code from ../common, Rollup resolves bare imports
+                // relative to the importer (outside of this package). Mark heavy browser-only
+                // Fluid packages as external for the SSR build to avoid resolution failures.
+                external: ["fluid-framework"],
             },
         },
         optimizeDeps: {
