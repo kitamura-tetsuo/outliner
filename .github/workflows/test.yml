@@ -256,10 +256,18 @@ jobs:
           fi
 
           # Install OS utilities if needed
-          echo "Installing OS utilities..."
+          echo "Installing OS utilities (if possible)..."
           if ! command -v xvfb-run &> /dev/null || ! command -v lsof &> /dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y xvfb lsof netcat-openbsd curl
+            if command -v apt-get >/dev/null 2>&1; then
+              if sudo -n true 2>/dev/null; then
+                sudo apt-get update || true
+                sudo apt-get install -y xvfb lsof netcat-openbsd curl || true
+              else
+                echo "Skipping apt-get install: no passwordless sudo on self-hosted runner"
+              fi
+            else
+              echo "Skipping OS utilities install: apt-get not available"
+            fi
           fi
 
           # Clean up any existing processes on test ports
