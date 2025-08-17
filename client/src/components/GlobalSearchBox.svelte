@@ -2,6 +2,7 @@
 import { goto } from '$app/navigation';
 import type { Item, Project } from '@common/schema/app-schema';
 import { userManager } from '../auth/UserManager';
+import { getUserContainers, getFluidClient } from '../lib/fluidService.svelte';
 
 let query = $state('');
 let selected = $state(-1);
@@ -14,22 +15,51 @@ async function search() {
         return;
     }
 
-    const idToken = await userManager.auth.currentUser?.getIdToken();
-    if (!idToken) {
-        return;
+    // Try server search first (if available), then gracefully fall back to client-side search.
+    try {
+        const idToken = await userManager.auth.currentUser?.getIdToken();
+        if (idToken) {
+            const response = await fetch('/api/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ idToken, query }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                results = data.results || [];
+                if (results.length) return; // Found results via server
+            }
+        }
+    } catch {
+        // ignore and fall back to client-side search
     }
 
-    const response = await fetch('/api/search', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ idToken, query }),
-    });
-
-    if (response.ok) {
-        const data = await response.json();
-        results = data.results;
+    // Fallback: client-side global search across accessible containers (used in tests)
+    try {
+        const { containers } = await getUserContainers();
+        const aggregated: any[] = [];
+        for (const containerId of containers) {
+            try {
+                const [, , , , project] = await getFluidClient(containerId);
+                if (!project?.items) continue;
+                // Linear scan of pages; items never contain newlines per project policy
+                const pages = project.items as any[];
+                for (let i = 0; i < pages.length; i++) {
+                    const page = pages[i];
+                    if (page?.text && page.text.toLowerCase().includes(query.toLowerCase())) {
+                        aggregated.push({ project: { title: project.title }, page: { text: page.text } });
+                    }
+                }
+            } catch {
+                // skip container on error
+            }
+        }
+        results = aggregated;
+    } catch {
+        results = [];
     }
 }
 
