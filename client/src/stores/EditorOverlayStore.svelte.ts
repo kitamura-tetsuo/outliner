@@ -19,7 +19,8 @@ export interface CursorPosition {
 // グローバル型定義を拡張
 declare global {
     interface Window {
-        editorOverlayStore?: EditorOverlayStore;
+        // Keep as any to avoid type merge conflicts with test globals
+        editorOverlayStore?: any;
     }
 }
 

@@ -2,6 +2,10 @@
     "compilerOptions": {
         "allowJs": true,
         "checkJs": false,
+        "baseUrl": ".",
+        "paths": {
+            "@common/*": ["../../common/*"]
+        },
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
@@ -26,6 +30,8 @@
         "**/*.js"
     ],
     "exclude": [
-        "node_modules"
+        "node_modules",
+        "core/debug-page-load.spec.ts",
+        "new/SRP-0001.spec.ts"
     ]
 }
