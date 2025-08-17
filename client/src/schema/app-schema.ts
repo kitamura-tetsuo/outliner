@@ -198,7 +198,6 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
     type _check = ValidateRecursiveSchema<typeof Items>;
 }
 
-
 // アイテム定義をシンプル化
 export class Project extends sf.objectRecursive("Project", {
     title: sf.string,
