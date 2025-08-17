@@ -336,10 +336,10 @@ jobs:
           echo "Validating Firebase configuration..."
           firebase functions:config:get --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No config found"
 
-          # Check functions source code for syntax errors
-          echo "Checking functions source code..."
+          # Basic functions source validation via ESLint (syntax and rules)
+          echo "Linting functions source for syntax issues..."
           cd functions
-          node -c index.js
+          npm run lint
           cd ..
 
           # Validate Firebase project configuration
