@@ -5,7 +5,10 @@ import {
     onMount,
 } from "svelte";
 import { getCurrentContainerId } from "../lib/fluidService.svelte";
-import { Item, Items } from "@common/schema/app-schema";
+import {
+    Item,
+    Items,
+} from "../schema/app-schema";
 import { uploadAttachment } from "../services/attachmentService";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import { fluidStore } from "../stores/fluidStore.svelte";

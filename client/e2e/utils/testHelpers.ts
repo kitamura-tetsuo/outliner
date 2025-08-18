@@ -69,7 +69,7 @@ export class TestHelpers {
         console.log("TestHelper: Waiting for UserManager initialization");
         await page.waitForFunction(
             () => (window as any).__USER_MANAGER__ !== undefined,
-            { timeout: 60000 }, // 60秒に延長
+            { timeout: 30000 }, // 30秒に延長
         );
         console.log("TestHelper: UserManager initialized");
 

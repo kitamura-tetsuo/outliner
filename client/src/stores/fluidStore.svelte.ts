@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { FluidClient } from "../fluid/fluidClient";
 import { store } from "./store.svelte";
 

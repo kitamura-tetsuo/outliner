@@ -1,5 +1,8 @@
 <script lang="ts">
-import { Comment, Comments } from "@common/schema/app-schema";
+import {
+    Comment,
+    Comments,
+} from "../schema/app-schema";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
 
 interface Props {
@@ -38,12 +41,6 @@ function saveEdit(id: string) {
     comments.updateComment(id, editText);
     editingId = null;
 }
-
-const availableReactions = ["❤️", "👍", "👎", "😂", "😮", "😢", "🤔"];
-
-function toggleReaction(commentId: string, emoji: string) {
-    comments.toggleReaction(commentId, emoji, currentUser);
-}
 </script>
 
 <div class="comment-thread" data-testid="comment-thread">
@@ -58,18 +55,6 @@ function toggleReaction(commentId: string, emoji: string) {
                 <span class="text">{c.text}</span>
                 <button onclick={() => startEdit(c)} class="edit">✎</button>
                 <button onclick={() => remove(c.id)} class="delete">×</button>
-                <div class="reactions" data-testid="reactions-{c.id}">
-                    {#each availableReactions as emoji}
-                        <button
-                            class="reaction"
-                            data-testid="reaction-{c.id}-{emoji}"
-                            class:selected={c.reactions.get(emoji)?.includes(currentUser)}
-                            onclick={() => toggleReaction(c.id, emoji)}
-                        >
-                            {emoji} {c.reactions.get(emoji)?.length || 0}
-                        </button>
-                    {/each}
-                </div>
             {/if}
         </div>
     {/each}
@@ -99,24 +84,5 @@ function toggleReaction(commentId: string, emoji: string) {
     border: none;
     color: #007acc;
     cursor: pointer;
-}
-
-.reactions {
-    display: flex;
-    gap: 4px;
-}
-
-.reaction {
-    background-color: #eee;
-    border: 1px solid #ccc;
-    border-radius: 12px;
-    padding: 2px 6px;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.reaction.selected {
-    background-color: #d0eaff;
-    border-color: #007acc;
 }
 </style>

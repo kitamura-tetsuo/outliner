@@ -1,6 +1,6 @@
 // src/types/fluid-framework.d.ts
 import "fluid-framework";
-import type { Items, Project } from "@common/schema/app-schema";
+import type { Items, Project } from "../schema/app-schema";
 
 declare module "fluid-framework" {
     // ← ジェネリックは１つだけ宣言する
