@@ -2,7 +2,7 @@
 // 最初に実行されるログ
 console.log("OutlinerBase script executed - console.log");
 
-import type { Item } from "@common/schema/app-schema";
+import type { Item } from "../schema/app-schema";
 import AliasPicker from "./AliasPicker.svelte";
 import GlobalTextArea from "./GlobalTextArea.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";

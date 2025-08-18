@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from "vitest";
 import { fluidStore } from "./fluidStore.svelte";
 import { store } from "./store.svelte";

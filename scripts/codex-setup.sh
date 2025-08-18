@@ -77,7 +77,6 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
 
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
   cd "${ROOT_DIR}/client"
-  npx playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
   npx -y playwright install chromium
   cd "${ROOT_DIR}"
 

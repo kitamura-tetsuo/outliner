@@ -1,11 +1,10 @@
-// @ts-nocheck
-import { Items, Project } from "@common/schema/app-schema";
 import { AzureClient, type AzureContainerServices } from "@fluidframework/azure-client";
 import { type IFluidContainer } from "@fluidframework/fluid-static";
 import { TinyliciousClient, type TinyliciousContainerServices } from "@fluidframework/tinylicious-client";
 import { ConnectionState, type TreeView } from "fluid-framework";
 import { userManager } from "../auth/UserManager";
 import { getLogger } from "../lib/logger";
+import { Items, Project } from "../schema/app-schema";
 import { colorForUser, presenceStore } from "../stores/PresenceStore.svelte";
 
 const logger = getLogger();

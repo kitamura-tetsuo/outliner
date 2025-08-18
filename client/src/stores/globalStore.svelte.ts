@@ -1,4 +1,4 @@
-import type { Project } from "@common/schema/app-schema";
+import type { Project } from "../schema/app-schema";
 import { containerStore } from "./containerStore.svelte";
 import { firestoreStore } from "./firestoreStore.svelte";
 import { fluidStore } from "./fluidStore.svelte";

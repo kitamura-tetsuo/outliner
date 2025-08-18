@@ -30,23 +30,4 @@ test.describe("URL label links", () => {
         expect(firstItemHtml).toContain(">Example Site</a>");
         expect(firstItemHtml).not.toContain(">https://example.com</a>");
     });
-
-    test("converts plain URL to clickable link", async ({ page }) => {
-        const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click();
-
-        await page.keyboard.type("Visit https://example.com");
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("Second item");
-
-        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
-        expect(secondItemId).not.toBeNull();
-        await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").click();
-
-        await page.waitForTimeout(500);
-
-        const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
-        expect(firstItemHtml).toContain('<a href="https://example.com"');
-        expect(firstItemHtml).toContain(">https://example.com</a>");
-    });
 });

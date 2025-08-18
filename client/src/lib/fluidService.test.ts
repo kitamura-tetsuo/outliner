@@ -1,7 +1,7 @@
 // @ts-nocheck
-import { appTreeConfiguration, Project } from "@common/schema/app-schema";
 import { type ViewableTree } from "fluid-framework";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { appTreeConfiguration, Project } from "../schema/app-schema";
 
 vi.setConfig({ testTimeout: 60000 });
 let fluidService: typeof import("./fluidService.svelte");

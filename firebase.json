@@ -132,10 +132,6 @@
                 "function": "azureHealthCheck"
             },
             {
-                "source": "/api/search",
-                "function": "search"
-            },
-            {
                 "source": "**",
                 "destination": "/index.html"
             }

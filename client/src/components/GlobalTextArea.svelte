@@ -5,7 +5,7 @@ import {
     onMount,
 } from "svelte";
 import { KeyEventHandler } from "../lib/KeyEventHandler";
-import { Items } from "@common/schema/app-schema";
+import { Items } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 

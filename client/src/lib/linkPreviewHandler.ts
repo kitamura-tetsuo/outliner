@@ -6,7 +6,7 @@
  * ScrapboxFormatterによって生成されたリンク要素に対して動作します。
  */
 
-import type { Item } from "@common/schema/app-schema";
+import type { Item } from "../schema/app-schema";
 import { store } from "../stores/store.svelte";
 import { getLogger } from "./logger";
 

@@ -1,7 +1,7 @@
 // @ts-nocheck
-import { Item, Items } from "@common/schema/app-schema";
 import { Tree } from "fluid-framework";
 import { getLogger } from "../lib/logger";
+import { Item, Items } from "../schema/app-schema";
 
 const logger = getLogger();
 
