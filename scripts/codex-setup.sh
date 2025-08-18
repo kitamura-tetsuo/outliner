@@ -2,7 +2,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SETUP_SENTINEL="${ROOT_DIR}/.codex-setup-installed"
-set -euo pipefail
+set -euxo pipefail
 
 export GIT_MERGE_AUTOEDIT=no
 
@@ -67,7 +67,8 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
 
   # Install pre-commit via pip
   pip install --no-cache-dir pre-commit
-  pre-commit install --hook-type pre-commit
+  git config --unset-all core.hooksPath || true
+  pre-commit install --hook-type pre-commit || true
 
   if [ -f "${ROOT_DIR}/scripts/requirements.txt" ]; then
     pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"
@@ -77,7 +78,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
 
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
   cd "${ROOT_DIR}/client"
-  npx -y playwright install chromium
+  npx playwright install
   cd "${ROOT_DIR}"
 
   # Ensure vitest and playwright packages are available for npm test

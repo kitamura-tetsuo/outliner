@@ -178,8 +178,7 @@ install_os_utilities() {
 
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
   cd "${ROOT_DIR}/client"
-  npx playwright install chromium || echo "Playwright install failed, continuing..."
-  npx playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
+  npx playwright install-deps || echo "Playwright deps install failed, continuing..."
 
   cd "${ROOT_DIR}"
 }
