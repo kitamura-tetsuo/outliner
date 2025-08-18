@@ -40,15 +40,13 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const linkClass = await linkElement.getAttribute("class");
         expect(linkClass).toContain("page-not-exists");
 
-        console.log("Non-existent page link test completed successfully");
-
-        // TODO: 内部リンクのナビゲーション機能が実装されたら、以下のテストを有効化
-        // await linkElement.click();
-        // await page.waitForTimeout(1000);
-        // // 存在しないページに移動し、新規ページが作成されることを確認
-        // await expect(page).toHaveURL(new RegExp(nonExistentPageName));
-        // const pageTitle = page.locator(".page-title-content .item-text");
-        // await expect(pageTitle).toBeVisible({ timeout: 5000 });
-        // await expect(pageTitle).toContainText(nonExistentPageName);
+        // 内部リンクをクリックしてナビゲーションを検証
+        await linkElement.click();
+        await page.waitForTimeout(1000);
+        // 存在しないページに移動し、新規ページが作成されることを確認
+        await expect(page).toHaveURL(new RegExp(nonExistentPageName));
+        const pageTitle = page.locator(".page-title-content .item-text");
+        await expect(pageTitle).toBeVisible({ timeout: 5000 });
+        await expect(pageTitle).toContainText(nonExistentPageName);
     });
 });

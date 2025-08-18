@@ -45,6 +45,12 @@ let currentUser = $derived(fluidStore.currentUser?.id ?? 'anonymous');
 
 // ビューストアを作成
 const viewModel = new OutlinerViewModel();
+let pageItemViewModel = $state(null);
+
+$effect(() => {
+    viewModel.updateFromModel(pageItem);
+    pageItemViewModel = viewModel.getViewModel(pageItem.id);
+});
 
 // コンテナ要素への参照
 let containerRef: HTMLDivElement;
@@ -1423,7 +1429,33 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
     </div>
 
     <div class="tree-container" role="region" aria-label="アウトライナーツリー">
-        <!-- フラット表示の各アイテム（絶対位置配置） -->
+        <!-- Page Title -->
+        {#if pageItemViewModel}
+            <div class="item-container" style="--item-depth: 0; top: 0px;">
+                <OutlinerItem
+                    model={pageItemViewModel}
+                    depth={0}
+                    currentUser={currentUser}
+                    isReadOnly={isReadOnly}
+                    isCollapsed={false}
+                    hasChildren={viewModel.hasChildren(pageItem.id)}
+                    isPageTitle={true}
+                    index={-1}
+                    on:toggle-collapse={handleToggleCollapse}
+                    on:indent={handleIndent}
+                    on:unindent={handleUnindent}
+                    on:navigate-to-item={handleNavigateToItem}
+                    on:resize={handleItemResize}
+                    on:add-sibling={handleAddSibling}
+                    on:drag-start={handleItemDragStart}
+                    on:drag={handleItemDrag}
+                    on:drop={handleItemDrop}
+                    on:drag-end={handleItemDragEnd}
+                />
+            </div>
+        {/if}
+
+        <!-- Child Items -->
         {#each displayItems.current as display, index (display.model.id)}
             <div
                 class="item-container"
@@ -1437,7 +1469,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
                     isReadOnly={isReadOnly}
                     isCollapsed={viewModel.isCollapsed(display.model.id)}
                     hasChildren={viewModel.hasChildren(display.model.id)}
-                    isPageTitle={index === 0}
+                    isPageTitle={false}
                     {index}
                     on:toggle-collapse={handleToggleCollapse}
                     on:indent={handleIndent}

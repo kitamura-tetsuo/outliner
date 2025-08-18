@@ -132,16 +132,22 @@ async function setCurrentPage() {
                         `After force reset - store.currentPage: ${store.currentPage?.text}, id: ${store.currentPage?.id}`,
                     );
                 }
-            }
-            else {
-                // プロジェクトは存在するが、ページが存在しない場合は仮ページを作成
-                const tempItem = createTemporaryItem(pageName);
-                store.currentPage = tempItem;
-
-                logger.info(`Creating temporary page: ${pageName}`);
-                logger.info(
-                    `store.currentPage set to temporary page: ${store.currentPage?.text}, id: ${store.currentPage?.id}`,
-                );
+            } else {
+                // ページが存在しない場合の処理
+                // isNewPageフラグは、存在しないページへのリンククリック時にtrueになる
+                if (page.state.isNewPage) {
+                    // 仮ページを作成
+                    const tempItem = createTemporaryItem(pageName);
+                    store.currentPage = tempItem;
+                    logger.info(`Creating temporary page: ${pageName}`);
+                    logger.info(
+                        `store.currentPage set to temporary page: ${store.currentPage?.text}, id: ${store.currentPage?.id}`,
+                    );
+                } else {
+                    // URL直打ちなどで来た場合はページを見つからない状態にする
+                    store.currentPage = undefined;
+                    logger.info(`Page not found: ${pageName}, not creating temporary page.`);
+                }
             }
         }
         else {

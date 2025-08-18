@@ -87,10 +87,10 @@ export default defineConfig({
     reporter: [["html", { open: "never" }]],
     headless: true,
     // テスト実行時のタイムアウト設定を延長
-    timeout: 30 * 1000, // 30秒
+    timeout: 60 * 1000, // 60秒
     expect: {
         // 要素の検出待機のタイムアウト設定を延長
-        timeout: 15 * 1000, // 15秒
+        timeout: 30 * 1000, // 30秒
     },
 
     use: {

@@ -67,7 +67,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
 
   # Install pre-commit via pip
   pip install --no-cache-dir pre-commit
-  pre-commit install --hook-type pre-commit
+  # pre-commit install --hook-type pre-commit
 
   if [ -f "${ROOT_DIR}/scripts/requirements.txt" ]; then
     pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"

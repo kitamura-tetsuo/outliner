@@ -1,5 +1,6 @@
 <script lang="ts">
 import { Tree } from "fluid-framework";
+import { goto } from "$app/navigation";
 import {
     createEventDispatcher,
     onMount,
@@ -494,7 +495,22 @@ function toggleComments() {
  */
 function handleClick(event: MouseEvent) {
     // Anchor click: navigate to link without entering edit mode
-    if ((event.target as HTMLElement).closest("a")) {
+    const anchor = (event.target as HTMLElement).closest("a");
+    if (anchor) {
+        // 内部リンクの場合はSvelteKitのgotoを使用
+        if (anchor.classList.contains("internal-link")) {
+            event.preventDefault();
+            const href = anchor.getAttribute("href");
+            if (href) {
+                goto(href, {
+                    state: {
+                        // 新規ページの場合に編集モードで開くためのフラグ
+                        isNewPage: anchor.classList.contains("page-not-exists"),
+                    },
+                });
+            }
+        }
+        // 通常の外部リンクなどはデフォルトの挙動に任せる
         return;
     }
 

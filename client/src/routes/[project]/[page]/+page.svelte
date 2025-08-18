@@ -35,6 +35,8 @@ let error: string | undefined = $state(undefined);
 let isLoading = $state(true);
 let isAuthenticated = $state(false);
 let pageNotFound = $state(false);
+let isTemporaryPage = $state(false);
+
 
 let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 
@@ -63,6 +65,18 @@ $effect(() => {
             `Effect: Skipping loadProjectAndPage: projectName="${projectName}" (${!!projectName}), pageName="${pageName}" (${!!pageName}), isAuthenticated=${isAuthenticated}`,
         );
     }
+});
+
+// currentPageの状態を監視してisTemporaryPageを更新
+$effect(() => {
+    isTemporaryPage = !!store.currentPage?.id.startsWith("temp-");
+    if (store.currentPage) {
+        pageNotFound = false;
+    } else {
+        // store.currentPageがnull/undefinedの場合、ページが見つからないと判断
+        pageNotFound = true;
+    }
+    logger.info(`Effect: isTemporaryPage set to ${isTemporaryPage}, pageNotFound set to ${pageNotFound}`);
 });
 
 // 認証成功時の処理
