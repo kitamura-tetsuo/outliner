@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { Tree } from "fluid-framework";
+import * as Y from "yjs";
 import { TreeViewManager } from "../fluid/TreeViewManager";
 import type { Item } from "../schema/app-schema";
 import { Items } from "../schema/app-schema";
@@ -663,9 +664,8 @@ export class Cursor {
             return;
         }
 
+        const ytext = (node as Item).text as Y.Text;
         console.log(`insertText: Inserting "${ch}" at offset ${this.offset} in item ${this.itemId}`);
-        const currentText = (node.text as any)?.toString?.() ?? String((node as any).text ?? "");
-        console.log(`insertText: Current text: "${currentText}"`);
 
         // 選択範囲がある場合は、選択範囲を削除してからテキストを挿入
         const selection = Object.values(store.selections).find(s =>
@@ -675,28 +675,21 @@ export class Cursor {
         );
 
         if (selection && selection.startOffset !== selection.endOffset) {
-            // 選択範囲のテキストを削除
             const startOffset = Math.min(selection.startOffset, selection.endOffset);
             const endOffset = Math.max(selection.startOffset, selection.endOffset);
-            let txt = currentText;
-            txt = txt.slice(0, startOffset) + ch + txt.slice(endOffset);
-            node.updateText(txt);
+            // Y.Text の範囲置換: delete -> insert
+            ytext.delete(startOffset, endOffset - startOffset);
+            ytext.insert(startOffset, ch);
 
             // カーソル位置を更新
             this.offset = startOffset + ch.length;
 
             // 選択範囲をクリア
             this.clearSelection();
-
-            console.log(`insertText: Updated text with selection: "${txt}"`);
         } else {
             // 通常の挿入
-            let txt = currentText;
-            txt = txt.slice(0, this.offset) + ch + txt.slice(this.offset);
-            node.updateText(txt);
+            ytext.insert(this.offset, ch);
             this.offset += ch.length;
-
-            console.log(`insertText: Updated text: "${txt}"`);
         }
 
         this.applyToStore();
@@ -719,6 +712,8 @@ export class Cursor {
         const node = this.findTarget();
         if (!node) return;
 
+        const ytext = (node as Item).text as Y.Text;
+
         // 選択範囲がある場合は、選択範囲を削除
         const selection = Object.values(store.selections).find(s => s.userId === this.userId);
 
@@ -731,12 +726,10 @@ export class Cursor {
 
             // 単一アイテム内の選択範囲の場合
             if (selection.startItemId === this.itemId && selection.endItemId === this.itemId) {
-                // 選択範囲のテキストを削除
                 const startOffset = Math.min(selection.startOffset, selection.endOffset);
                 const endOffset = Math.max(selection.startOffset, selection.endOffset);
-                let txt = node.text;
-                txt = txt.slice(0, startOffset) + txt.slice(endOffset);
-                node.updateText(txt);
+                // 選択範囲のテキストを削除
+                ytext.delete(startOffset, endOffset - startOffset);
 
                 // カーソル位置を更新
                 this.offset = startOffset;
@@ -747,10 +740,8 @@ export class Cursor {
         } else {
             // 通常の削除
             if (this.offset > 0) {
-                let txt = node.text;
                 const pos = this.offset - 1;
-                txt = txt.slice(0, pos) + txt.slice(pos + 1);
-                node.updateText(txt);
+                ytext.delete(pos, 1);
                 this.offset = Math.max(0, this.offset - 1);
             } else {
                 // 行頭で前アイテムとの結合
@@ -778,6 +769,8 @@ export class Cursor {
         const node = this.findTarget();
         if (!node) return;
 
+        const ytext = (node as Item).text as Y.Text;
+
         // 選択範囲がある場合は、選択範囲を削除
         const selection = Object.values(store.selections).find(s => s.userId === this.userId);
 
@@ -790,12 +783,10 @@ export class Cursor {
 
             // 単一アイテム内の選択範囲の場合
             if (selection.startItemId === this.itemId && selection.endItemId === this.itemId) {
-                // 選択範囲のテキストを削除
                 const startOffset = Math.min(selection.startOffset, selection.endOffset);
                 const endOffset = Math.max(selection.startOffset, selection.endOffset);
-                let txt = node.text;
-                txt = txt.slice(0, startOffset) + txt.slice(endOffset);
-                node.updateText(txt);
+                // 選択範囲のテキストを削除
+                ytext.delete(startOffset, endOffset - startOffset);
 
                 // カーソル位置を更新
                 this.offset = startOffset;
@@ -805,14 +796,13 @@ export class Cursor {
             }
         } else {
             // 通常の削除
-            let txt = node.text;
-            if (this.offset < txt.length) {
-                txt = txt.slice(0, this.offset) + txt.slice(this.offset + 1);
-                node.updateText(txt);
+            if (this.offset < ytext.length) {
+                ytext.delete(this.offset, 1);
             } else {
                 // 行末の場合
+                const len = ytext.length;
                 // アイテムが空の場合はアイテム自体を削除
-                if (txt.length === 0) {
+                if (len === 0) {
                     this.deleteEmptyItem();
                     return;
                 }
@@ -829,7 +819,7 @@ export class Cursor {
         // グローバルテキストエリアの値も同期
         const textarea = store.getTextareaRef();
         if (textarea) {
-            textarea.value = node.text;
+            textarea.value = ytext.toString();
             textarea.setSelectionRange(this.offset, this.offset);
             console.log(`deleteForward: Synced textarea value: "${textarea.value}"`);
         }
@@ -2584,13 +2574,12 @@ export class Cursor {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
         const startOffset = Math.min(selection.startOffset, selection.endOffset);
         const endOffset = Math.max(selection.startOffset, selection.endOffset);
 
-        // テキストを削除
-        const newText = text.substring(0, startOffset) + text.substring(endOffset);
-        target.updateText(newText);
+        // Y.Text で削除
+        const ytext = (target as any).text as any;
+        ytext.delete(startOffset, endOffset - startOffset);
 
         // カーソル位置を更新
         this.offset = startOffset;
