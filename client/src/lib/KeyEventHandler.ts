@@ -2,6 +2,8 @@
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
+import { store as generalStore } from "../stores/store.svelte";
+import { Cursor } from "./Cursor";
 import { CustomKeyMap } from "./CustomKeyMap";
 
 /**
@@ -122,6 +124,132 @@ export class KeyEventHandler {
 
             // カットイベントをディスパッチ
             document.dispatchEvent(clipboardEvent);
+        });
+
+        // Tab / Shift+Tab for indent / outdent（Cursor へ委譲）
+        const getSelectionItemIds = (): string[] | null => {
+            try {
+                const sels = Object.values((store as any).selections || {}) as any[];
+                const userSels = sels.filter(s => (s.userId ?? "local") === "local");
+                if (userSels.length === 0) return null;
+                const visible = (store as any).getVisibleItemIds?.() ?? [];
+                const normalize = (ids: string[]) => {
+                    if (!visible || visible.length === 0) {
+                        // フォールバック: DOM順
+                        const nodes = Array.from(
+                            document.querySelectorAll(".outliner-item[data-item-id]"),
+                        ) as HTMLElement[];
+                        const domOrder = nodes.map(n => n.getAttribute("data-item-id")!).filter(Boolean);
+                        const set = new Set(ids);
+                        return domOrder.filter(id => set.has(id));
+                    }
+                    return (store as any).normalizeOrder(ids);
+                };
+                // まず BoxSelection があれば、その union を返す
+                const box = userSels.find(s => s.isBoxSelection && Array.isArray(s.boxSelectionRanges));
+                if (box) {
+                    const ids = box.boxSelectionRanges.map((r: any) => r.itemId).filter(Boolean);
+                    return normalize(ids);
+                }
+                // 通常選択が複数ある場合は union を返す
+                if (userSels.length > 1) {
+                    const set = new Set<string>();
+                    for (const s of userSels) {
+                        const range = (store as any).getItemIdsInRange(s.startItemId, s.endItemId) || [s.startItemId];
+                        for (const id of range) set.add(id);
+                    }
+                    return normalize(Array.from(set));
+                }
+                // 通常選択1件
+                const s = userSels[0];
+                let range = (store as any).getItemIdsInRange(s.startItemId, s.endItemId);
+                let result = range ? normalize(range) : null;
+                if (!result || result.length <= 1) {
+                    // フォールバック: DOM順でスパンを解釈
+                    const nodes = Array.from(
+                        document.querySelectorAll(".outliner-item[data-item-id]"),
+                    ) as HTMLElement[];
+                    const ids = nodes.map(n => n.getAttribute("data-item-id")!).filter(Boolean);
+                    const si = ids.indexOf(s.startItemId);
+                    const ei = ids.indexOf(s.endItemId);
+                    if (si !== -1 && ei !== -1) {
+                        const a = Math.min(si, ei), b = Math.max(si, ei);
+                        result = ids.slice(a, b + 1);
+                    }
+                }
+                return result;
+            } catch (_e) {
+                return null;
+            }
+        };
+
+        add("Tab", false, false, false, (event) => {
+            try {
+                event.preventDefault();
+                const rangeIds = getSelectionItemIds();
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log("[KeyEventHandler] Tab rangeIds =", rangeIds);
+                }
+                if (rangeIds && rangeIds.length > 1) {
+                    Cursor.indentItems(rangeIds);
+                    return;
+                }
+                // 選択が存在するが rangeIds が取れない場合のフォールバック
+                try {
+                    const sels = Object.values((store as any).selections || {}) as any[];
+                    const localSels = sels.filter(s => (s.userId ?? "local") === "local");
+                    if (localSels.length > 0) {
+                        const set = new Set<string>();
+                        for (const s of localSels) {
+                            if (s.isBoxSelection && Array.isArray(s.boxSelectionRanges)) {
+                                s.boxSelectionRanges.forEach((r: any) => set.add(r.itemId));
+                            } else {
+                                set.add(s.startItemId);
+                                set.add(s.endItemId);
+                            }
+                        }
+                        const ids = Array.from(set);
+                        if (ids.length > 1) {
+                            Cursor.indentItems(ids);
+                            return;
+                        }
+                    }
+                } catch {}
+                const cursors = store.getCursorInstances();
+                if (cursors.length > 0) {
+                    // アクティブカーソルを優先
+                    const active = cursors.find(c => c.isActive) ?? cursors[0];
+                    active.indent();
+                }
+            } catch (e) {
+                console.error("Tab indent error:", e);
+            }
+        });
+
+        add("Tab", false, false, true, (event) => {
+            try {
+                const rangeIds = getSelectionItemIds();
+                if (rangeIds && rangeIds.length > 1) {
+                    // 複数選択は順次カーソル操作に委譲
+                    for (const id of rangeIds) {
+                        const c = new Cursor("multi-outdent", {
+                            itemId: id,
+                            offset: 0,
+                            isActive: false,
+                            userId: "local",
+                        });
+                        c.outdent();
+                    }
+                    return;
+                }
+                const cursors = store.getCursorInstances();
+                if (cursors.length > 0) {
+                    const active = cursors.find(c => c.isActive) ?? cursors[0];
+                    active.outdent();
+                }
+            } catch (e) {
+                console.error("Shift+Tab outdent error:", e);
+            }
         });
     }
     /**

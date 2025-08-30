@@ -67,6 +67,9 @@ export class EditorOverlayStore {
     // onEdit コールバック
     onEditCallback: (() => void) | null = null;
 
+    // 表示順序（Outliner のフラット順）のキャッシュ
+    visibleItemIds = $state<string[]>([]);
+
     private timerId!: ReturnType<typeof setTimeout>;
 
     // テキストエリア参照を設定
@@ -77,6 +80,33 @@ export class EditorOverlayStore {
     // テキストエリア参照を取得
     getTextareaRef(): HTMLTextAreaElement | null {
         return this.textareaRef;
+    }
+
+    // 表示順序を更新（OutlinerTree から呼ばれる）
+    setVisibleItemIds(ids: string[]) {
+        this.visibleItemIds = Array.isArray(ids) ? ids.slice() : [];
+    }
+
+    getVisibleItemIds(): string[] {
+        return this.visibleItemIds.slice();
+    }
+
+    // 表示順序に基づいて startId..endId を含む範囲の itemId 配列を返す
+    getItemIdsInRange(startId: string, endId: string): string[] | null {
+        const ids = this.visibleItemIds;
+        if (!ids || ids.length === 0) return null;
+        const si = ids.indexOf(startId);
+        const ei = ids.indexOf(endId);
+        if (si === -1 || ei === -1) return null;
+        const a = Math.min(si, ei), b = Math.max(si, ei);
+        return ids.slice(a, b + 1);
+    }
+
+    // 渡された ID 配列を表示順序に従い整列し一意化
+    normalizeOrder(itemIds: string[]): string[] {
+        const ids = this.visibleItemIds;
+        const set = new Set(itemIds.filter(Boolean));
+        return ids.filter(id => set.has(id));
     }
 
     // onEdit コールバックを設定

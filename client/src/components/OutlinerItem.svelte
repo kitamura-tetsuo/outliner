@@ -1498,6 +1498,7 @@ onMount(() => {
     onmouseup={handleMouseUp}
     bind:this={itemRef}
     data-item-id={model.id}
+    data-depth={depth}
     data-alias-target-id={aliasTargetId || ""}
 >
     <div class="item-header">

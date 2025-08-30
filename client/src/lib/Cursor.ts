@@ -939,6 +939,124 @@ export class Cursor {
         store.startCursorBlink();
     }
 
+    // ===== YTree 操作補助 =====
+    private getYTree(): any | undefined {
+        const root: any = (generalStore as any).currentPage;
+        return root?.items?.tree || root?.tree;
+    }
+
+    private getParentKey(key: string): string | undefined {
+        const ytree = this.getYTree();
+        return ytree?.getNodeParentFromKey?.(key);
+    }
+
+    private getOrderedSiblings(key: string): string[] | null {
+        const ytree = this.getYTree();
+        if (!ytree) return null;
+        const parentKey = ytree.getNodeParentFromKey(key);
+        if (!parentKey) return [];
+        return ytree.sortChildrenByOrder(
+            ytree.getNodeChildrenFromKey(parentKey),
+            parentKey,
+        );
+    }
+
+    // カーソルの現在アイテムをインデント（直前兄弟の子へ）
+    indent(): boolean {
+        const ytree = this.getYTree();
+        const key = this.itemId;
+        if (!ytree || !key) return false;
+        const siblings = this.getOrderedSiblings(key);
+        if (!siblings) return false;
+        const idx = siblings.indexOf(key);
+        if (idx <= 0) return false; // 先頭は不可
+        const prevSiblingKey = siblings[idx - 1];
+        ytree.moveChildToParent(key, prevSiblingKey);
+        ytree.setNodeOrderToEnd(key);
+        return true;
+    }
+
+    // カーソルの現在アイテムをアウトデント（親の親の直後へ）
+    outdent(): boolean {
+        const ytree = this.getYTree();
+        const key = this.itemId;
+        if (!ytree || !key) return false;
+        const parentKey = this.getParentKey(key);
+        if (!parentKey) return false; // ルート直下
+        const grandParentKey = this.getParentKey(parentKey);
+        if (!grandParentKey) return false;
+        ytree.moveChildToParent(key, grandParentKey);
+        ytree.setNodeAfter(key, parentKey);
+        return true;
+    }
+
+    static indentItems(itemIds: string[]) {
+        const root: any = (generalStore as any).currentPage;
+        const ytree: any = root?.items?.tree || root?.tree;
+        if (!ytree || !Array.isArray(itemIds) || itemIds.length === 0) return;
+        // シンプルかつ決定的: 表示順（渡された順）に単体 indent を順次実行
+        const ydoc = ytree.ydoc || (root?.items?.ydoc);
+        const run = () => {
+            for (const id of itemIds) {
+                const c = new Cursor("bulk-indent", { itemId: id, offset: 0, isActive: false, userId: "local" });
+                c.indent();
+            }
+        };
+        if (ydoc && ydoc.transact) {
+            ydoc.transact(run);
+        } else {
+            run();
+        }
+    }
+
+    static outdentItems(itemIds: string[]) {
+        const root: any = (generalStore as any).currentPage;
+        const ytree: any = root?.items?.tree || root?.tree;
+        if (!ytree || !Array.isArray(itemIds) || itemIds.length === 0) return;
+        // 全アイテムが同一親であることを前提（異なる場合は個別処理にフォールバック）
+        const parentKey = ytree.getNodeParentFromKey(itemIds[0]);
+        if (!parentKey) return;
+        const sameParent = itemIds.every(id => ytree.getNodeParentFromKey(id) === parentKey);
+        if (!sameParent) {
+            // フォールバック: 旧挙動（個別）
+            for (const key of itemIds) {
+                const pk = ytree.getNodeParentFromKey(key);
+                if (!pk) continue;
+                const gpk = ytree.getNodeParentFromKey(pk);
+                if (!gpk) continue;
+                ytree.moveChildToParent(key, gpk);
+                ytree.setNodeAfter(key, pk);
+            }
+            return;
+        }
+        const grandParentKey = ytree.getNodeParentFromKey(parentKey);
+        if (!grandParentKey) return;
+        // 親の子供リスト順に並べた選択ブロック
+        const siblings: string[] = ytree.sortChildrenByOrder(
+            ytree.getNodeChildrenFromKey(parentKey),
+            parentKey,
+        );
+        const blockKeys = siblings.filter(k => itemIds.includes(k));
+        const ydoc = ytree.ydoc || (root?.items?.ydoc);
+        if (ydoc && ydoc.transact) {
+            ydoc.transact(() => {
+                let afterKey: string | null = parentKey;
+                for (const key of blockKeys) {
+                    ytree.moveChildToParent(key, grandParentKey);
+                    ytree.setNodeAfter(key, afterKey!);
+                    afterKey = key;
+                }
+            });
+        } else {
+            let afterKey: string | null = parentKey;
+            for (const key of blockKeys) {
+                ytree.moveChildToParent(key, grandParentKey);
+                ytree.setNodeAfter(key, afterKey!);
+                afterKey = key;
+            }
+        }
+    }
+
     insertLineBreak() {
         const target = this.findTarget();
         if (!target) return;

@@ -45,6 +45,8 @@ export class OutlinerViewModel {
 
     // 更新中フラグ
     private _isUpdating = false;
+    // 更新取りこぼし防止フラグ
+    private _pendingUpdate: Item | null = null;
 
     /**
      * データモデルからビューモデルを更新する
@@ -52,7 +54,10 @@ export class OutlinerViewModel {
      */
     updateFromModel(pageItem: Item): void {
         // 更新中に既に処理中かどうかをチェック
-        if (this._isUpdating) return;
+        if (this._isUpdating) {
+            this._pendingUpdate = pageItem;
+            return;
+        }
 
         try {
             this._isUpdating = true;
@@ -81,6 +86,11 @@ export class OutlinerViewModel {
             logger.info("View models updated, count:", this.visibleOrder.length);
         } finally {
             this._isUpdating = false;
+            if (this._pendingUpdate) {
+                const next = this._pendingUpdate;
+                this._pendingUpdate = null;
+                queueMicrotask(() => this.updateFromModel(next));
+            }
         }
     }
 
@@ -215,19 +225,24 @@ export class OutlinerViewModel {
         );
 
         if (hasChildren && !isCollapsed) {
-            const children = item.items as any;
+            const children = item.items as Items;
             console.log(
-                `OutlinerViewModel: Processing ${children.length} children for "${item.text}"`,
+                `OutlinerViewModel: Processing ${children.length} children for "${
+                    (item.text as any)?.toString?.() ?? item.text
+                }"`,
             );
             for (let i = 0; i < children.length; i++) {
-                this.recalculateOrderAndDepthItem(children[i], depth + 1, item.id);
+                const child = (children as any).at ? (children as any).at(i) : undefined;
+                if (child) this.recalculateOrderAndDepthItem(child, depth + 1, item.id);
             }
         } else if (hasChildren && isCollapsed) {
             console.log(
-                `OutlinerViewModel: Skipping children for "${item.text}" because it's collapsed`,
+                `OutlinerViewModel: Skipping children for "${
+                    (item.text as any)?.toString?.() ?? item.text
+                }" because it's collapsed`,
             );
         } else if (!hasChildren) {
-            console.log(`OutlinerViewModel: No children for "${item.text}"`);
+            console.log(`OutlinerViewModel: No children for "${(item.text as any)?.toString?.() ?? item.text}"`);
         }
     }
 

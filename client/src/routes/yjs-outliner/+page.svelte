@@ -5,8 +5,10 @@ import { store as generalStore } from "../../stores/store.svelte";
 
 let proj = Project.createInstance("YjsOutlinerTest");
 let pageItem = proj.addPage("Untitled", "tester");
-// 初期子アイテムを1つ追加しておく（E2E簡便のため）
-pageItem.items.addNode("tester");
+// 初期子アイテム数を安定化（E2E 前提: 最低3つの子）
+while ((pageItem.items as any)?.length < 3) {
+  pageItem.items.addNode("tester");
+}
 
 // GeneralStore にプロジェクトとカレントページを設定（Cursor 検索用）
 generalStore.project = proj;

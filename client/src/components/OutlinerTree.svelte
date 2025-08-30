@@ -166,6 +166,15 @@ onMount(() => {
 // displayItemsが変更されたときにitemHeightsを更新
 $effect(() => {
     const itemCount = displayItems.current.length;
+
+    // 表示順序を EditorOverlayStore に通知（DOM依存の範囲列挙を排除）
+    try {
+        const ids = displayItems.current.map(d => d.model.id);
+        editorOverlayStore.setVisibleItemIds(ids);
+    } catch (e) {
+        console.warn("Failed to set visibleItemIds:", e);
+    }
+
     if (itemHeights.length !== itemCount) {
         // 既存のアイテムの高さを保持しつつ、新しい配列を作成
         const newHeights = new Array(itemCount).fill(28); // デフォルト値として28pxを設定
@@ -239,106 +248,33 @@ function handleToggleCollapse(event: CustomEvent) {
     viewModel.toggleCollapsed(itemId);
 }
 
+import { Cursor } from "../lib/Cursor";
+
 function handleIndent(event: CustomEvent) {
-    // ページタイトルの場合は無視
     if (event.detail.itemId === "page-title") return;
-
-    // インデントを増やす処理
     const { itemId } = event.detail;
-
-    // 元のアイテムを取得
-    const itemViewModel = viewModel.getViewModel(itemId);
-    if (!itemViewModel) return;
-
-    const item = itemViewModel.original;
-
-    logger.info("Indent event received for item:", item);
-
-    // 1. アイテムの親を取得
-    const parent = Tree.parent(item);
-    if (!Tree.is(parent, Items)) return;
-
-    // 2. 親内でのアイテムのインデックスを取得
-    const index = parent.indexOf(item);
-    if (index <= 0) return; // 最初のアイテムはインデントできない
-
-    // 3. 前のアイテムを取得
-    const previousItem = parent[index - 1];
-
+    const vm = viewModel.getViewModel(itemId);
+    if (!vm) return;
+    const cursor = new Cursor("tree-indent", { itemId, offset: 0, isActive: false, userId: "local" });
     try {
-        // 4. 前のアイテムの子リストへアイテムを移動
-        // itemIndexが確実に取得できるようにインデックスを再計算
-        const itemIndex = parent.indexOf(item);
-
-        // 移動操作の前にログを追加
-        logger.info(
-            `Moving item from parent (${parent.length} items) at index ${itemIndex} to previous item's children`,
-        );
-
-        // 厳密なトランザクション処理を行う
-        const prevItems = previousItem.items;
-        if (prevItems && Tree.is(prevItems, Items)) {
-            Tree.runTransaction(parent, () => {
-                // 型キャストを使用してTypeScriptエラーを回避
-                (prevItems as any).moveRangeToEnd(itemIndex, itemIndex + 1, parent);
-            });
-
-            logger.info(`Indented item under previous item`);
-        }
-    }
-    catch (error) {
-        console.error("Failed to indent item:", error);
+        cursor.indent();
+        logger.info("Indented via Cursor.indent()");
+    } catch (error) {
+        console.error("Failed to indent item (Cursor):", error);
     }
 }
 
 function handleUnindent(event: CustomEvent) {
-    // ページタイトルの場合は無視
     if (event.detail.itemId === "page-title") return;
-
-    // インデントを減らす処理
     const { itemId } = event.detail;
-
-    // 元のアイテムを取得
-    const itemViewModel = viewModel.getViewModel(itemId);
-    if (!itemViewModel) return;
-
-    const item = itemViewModel.original;
-
-    logger.info("Unindent event received for item:", item);
-
-    // 1. アイテムの親を取得
-    const parentList = Tree.parent(item);
-    if (!Tree.is(parentList, Items)) return;
-
-    // 2. 親の親を取得（親グループを取得）
-    const parentItem = Tree.parent(parentList);
-    if (!parentItem || !Tree.is(parentItem, Item)) return; // ルートアイテムの直下は既に最上位
-
-    const grandParentList = Tree.parent(parentItem);
-    if (!grandParentList || !Tree.is(grandParentList, Items)) return; // ルートアイテムの直下は既に最上位
-
+    const vm = viewModel.getViewModel(itemId);
+    if (!vm) return;
+    const cursor = new Cursor("tree-unindent", { itemId, offset: 0, isActive: false, userId: "local" });
     try {
-        // 3. 親アイテムのindex取得
-        const parentIndex = grandParentList.indexOf(parentItem);
-
-        // 4. 親の親の、親の次の位置にアイテムを移動
-        const itemIndex = parentList.indexOf(item);
-
-        // parentListの要素をgrandParentListに移動
-        const sourceItem = parentList[itemIndex];
-        if (sourceItem) {
-            // readonly array型に適合するようコピー
-            const targetArray = grandParentList as any;
-
-            Tree.runTransaction(grandParentList, () => {
-                targetArray.moveRangeToIndex(parentIndex + 1, itemIndex, itemIndex + 1, parentList);
-            });
-
-            logger.info("Unindented item to parent level");
-        }
-    }
-    catch (error) {
-        console.error("Failed to unindent item:", error);
+        cursor.outdent();
+        logger.info("Unindented via Cursor.outdent()");
+    } catch (error) {
+        console.error("Failed to unindent item (Cursor):", error);
     }
 }
 

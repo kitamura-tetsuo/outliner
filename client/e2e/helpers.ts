@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 /**
  * カーソルが表示されるのを待つ
@@ -44,6 +44,43 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
         console.log("Error in waitForCursorVisible:", error);
         return false;
     }
+}
+
+/**
+ * .outliner-item が minCount 以上になるまで待機し、ロケーターを返す
+ */
+export async function waitForOutlinerItems(page: Page, minCount = 2, timeoutMs = 5000): Promise<Locator> {
+    const locator = page.locator(".outliner-item");
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+        const count = await locator.count();
+        if (count >= minCount) return locator;
+        await page.waitForTimeout(50);
+    }
+    throw new Error(`waitForOutlinerItems timeout: expected >= ${minCount}`);
+}
+
+/**
+ * 目標数に満たない場合は「アイテム追加」ボタンで増やし、最終的に minCount 以上を保証
+ */
+export async function ensureOutlinerItemCount(page: Page, minCount = 4, maxTries = 8): Promise<void> {
+    try {
+        await waitForOutlinerItems(page, minCount, 5000);
+        return;
+    } catch (e) {
+        // fallthrough
+    }
+    const addBtn = page.getByRole("button", { name: "アイテム追加" });
+    for (let i = 0; i < maxTries; i++) {
+        if (await addBtn.isVisible()) {
+            await addBtn.click({ force: true });
+        }
+        const count = await page.locator(".outliner-item").count();
+        if (count >= minCount) return;
+        await page.waitForTimeout(80);
+    }
+    // 最後にもう一度待つ
+    await waitForOutlinerItems(page, minCount, 3000);
 }
 
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
