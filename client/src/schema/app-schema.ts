@@ -5,6 +5,14 @@ import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 
+export type Comment = {
+    id: string;
+    author: string;
+    text: string;
+    created: number;
+    lastChanged: number;
+};
+
 /**
  * コメントデータ（Y.Map）を操作する軽量ラッパ
  */
@@ -38,6 +46,27 @@ export class Comments {
 
     get length() {
         return this.yArray.length;
+    }
+
+    // Y.Array をそのまま配列として取得（Y.Mapの配列）
+    toArray(): Y.Map<any>[] {
+        return this.yArray.toArray();
+    }
+
+    // プレーンなコメント配列を取得
+    toPlain(): Comment[] {
+        return this.yArray.toArray().map((m) => ({
+            id: m.get("id"),
+            author: m.get("author"),
+            text: m.get("text"),
+            created: m.get("created"),
+            lastChanged: m.get("lastChanged"),
+        }));
+    }
+
+    [Symbol.iterator](): Iterator<Comment> {
+        const arr = this.toPlain();
+        return arr[Symbol.iterator]();
     }
 }
 

@@ -153,12 +153,13 @@ function handleComponentTypeChange(newType: string) {
     }
 }
 
-const text = new TreeSubscriber(
+const text = new TreeSubscriber<string>(
     item,
     "nodeChanged",
-    () => item.text,
-    value => {
-        item.text = value;
+    () => (item.text as any)?.toString?.() ?? String((item as any).text ?? ""),
+    (value: string) => {
+        if (typeof (item as any).updateText === "function") (item as any).updateText(value);
+        else (item as any).text = value as any;
     },
 );
 
@@ -1704,7 +1705,16 @@ onMount(() => {
     flex: 1;
     white-space: pre-wrap;
     display: inline-block;
-    min-width: 1px;
+    min-width: 4px; /* クリック安定化のため若干広げる */
+    min-height: 1em; /* 空テキストでもクリック可能に */
+}
+
+/* 空テキストでもクリックが成立するように疑似要素で最小幅を確保 */
+.item-text:empty::before {
+    content: "\00a0"; /* NBSPで可視領域を確保（UI表示は変わらない） */
+    display: inline-block;
+    width: 4px;
+    height: 1em;
 }
 
 .item-actions {

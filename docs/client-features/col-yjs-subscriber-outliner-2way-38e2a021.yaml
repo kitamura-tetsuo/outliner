@@ -1,0 +1,45 @@
+id: COL-yjs-subscriber-outliner-2way-38e2a021
+slug: col-yjs-subscriber-outliner-2way-38e2a021
+title: Yjs Outliner - Text editing round-trip via YTree and TreeSubscriber
+owner: client
+area: outliner
+status: active
+summary: 'yjs-outliner ページで、グローバルTextareaからの入力が Yjs (YTree) 上の Item.text に反映され、
+
+  TreeSubscriber 経由で OutlinerItem.svelte の表示へ即時反映されることを担保する。
+
+  往復（toString -> updateText）のラウンドトリップを安定化し、E2E で常時検証する。
+
+  '
+rationale: 'Fluid 実装からの移行中に、テキスト編集のみを先行安定化することで UI 開発を継続可能にする。
+
+  yjs-orderedtree を利用した Items/Item モデルの text 同期を確実にし、
+
+  後続の Tree API の差分吸収のための足場を作る。
+
+  '
+scope:
+- /yjs-outliner ページ内での Project/Items 初期化
+- generalStore の project/currentPage 設定
+- Cursor.insertText での Y.Text 文字列化 -> updateText 反映
+- OutlinerViewModel.hasChildren の安定化（Fluid Tree 依存の排除）
+- OutlinerItem/TreeSubscriber の text バインディングで UI 即時反映
+non_goals:
+- Fluid 接続/認証の安定化（本機能の対象外）
+- ツリー構造変更（挿入/移動/削除などの順序管理）
+impl_notes: '- +page.svelte で Project を生成し、pageItem を作成。
+
+  - generalStore.project/currentPage を明示的に設定（Cursor 検索で使用）。
+
+  - Cursor.insertText は node.text を toString() で取り出し、範囲置換後に node.updateText(txt)。
+
+  - OutlinerViewModel.hasChildren は Items インスタンス or length 存在の確認に簡素化。
+
+  '
+risks:
+- yjs-orderedtree の型定義が exports で拾えない可能性（tsc は CI 対象外とする）。
+- Fluid 初期化ログのノイズ（E2E では /yjs-outliner を直接開くため影響限定）。
+tests:
+- 'id: e2e-new-yjs-outliner-binding'
+last_verified: 2025-08-29
+title-ja: Yjs Outliner - Text editing round-trip via YTree and TreeSubscriber

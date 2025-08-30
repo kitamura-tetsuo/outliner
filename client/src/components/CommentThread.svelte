@@ -1,8 +1,5 @@
 <script lang="ts">
-import {
-    Comment,
-    Comments,
-} from "../schema/app-schema";
+import { Comments, type Comment } from "../schema/app-schema";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
 
 interface Props {
@@ -16,11 +13,10 @@ let editingId = $state<string | null>(null);
 let editText = $state("");
 
 // TreeSubscriberを使用してcommentsの変更を監視
-const commentsSubscriber = new TreeSubscriber(
+const commentsSubscriber = new TreeSubscriber<Comments, Comment[]>(
     comments,
     "nodeChanged",
-    () => [...comments],
-    () => {}, // 値の設定は不要
+    () => comments.toPlain(),
 );
 
 function add() {

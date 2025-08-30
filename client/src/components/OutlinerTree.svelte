@@ -72,15 +72,20 @@ const displayItems = new TreeSubscriber<Items, DisplayItem[]>(
         console.log("OutlinerTree: pageItem.items exists:", !!pageItem.items);
         console.log("OutlinerTree: pageItem.items length:", (pageItem.items as any)?.length || 0);
 
-        // 子アイテムの詳細をログ出力
-        if (pageItem.items && (pageItem.items as any).length > 0) {
-            for (let i = 0; i < (pageItem.items as any).length; i++) {
-                const item = (pageItem.items as any)[i];
-                console.log(`OutlinerTree: Item ${i}: text="${item.text}", hasChildren=${item.items?.length > 0}, childrenCount=${item.items?.length || 0}`);
-                if (item.items && item.items.length > 0) {
-                    for (let j = 0; j < item.items.length; j++) {
-                        const childItem = item.items[j];
-                        console.log(`OutlinerTree: Child ${j}: text="${childItem.text}"`);
+        // 子アイテムの詳細をログ出力（YTree対応）
+        const itemsList: any = (pageItem as any)?.items;
+        if (itemsList && typeof itemsList.length === "number" && itemsList.length > 0) {
+            for (let i = 0; i < itemsList.length; i++) {
+                const it = itemsList.at ? itemsList.at(i) : (itemsList as any)[i];
+                if (!it) continue;
+                const txt = (it.text as any)?.toString?.() ?? String((it as any).text ?? "");
+                const childLen = (it.items as any)?.length ?? 0;
+                console.log(`OutlinerTree: Item ${i}: text="${txt}", hasChildren=${childLen > 0}, childrenCount=${childLen}`);
+                if (childLen > 0) {
+                    for (let j = 0; j < childLen; j++) {
+                        const ch = (it.items as any).at ? (it.items as any).at(j) : (it.items as any)[j];
+                        const ctxt = (ch?.text as any)?.toString?.() ?? String(ch?.text ?? "");
+                        console.log(`OutlinerTree: Child ${j}: text="${ctxt}"`);
                     }
                 }
             }
@@ -194,9 +199,10 @@ onDestroy(() => {
 });
 
 function handleAddItem() {
-    if (pageItem && !isReadOnly && pageItem.items && Tree.is(pageItem.items, Items)) {
-        // 末尾にアイテム追加
-        pageItem.items.addNode(currentUser);
+    const list: any = (pageItem as any)?.items;
+    if (pageItem && !isReadOnly && list && typeof list.addNode === "function") {
+        // 末尾にアイテム追加（YTree版）
+        list.addNode(currentUser);
     }
 }
 
@@ -212,8 +218,9 @@ function handleEdit() {
     const activeId = editorOverlayStore.getActiveItem();
     if (!activeId || activeId !== last.model.id) return;
 
-    // 最下部アイテムが空でない場合のみ追加
-    if (last.model.original.text?.trim().length === 0) return;
+    // 最下部アイテムが空でない場合のみ追加（Y.Text対応）
+    const lastText = (last.model.original.text as any)?.toString?.() ?? String((last.model.original as any).text ?? "");
+    if (lastText.trim().length === 0) return;
 
     const parent = Tree.parent(last.model.original);
     if (parent && Tree.is(parent, Items)) {
