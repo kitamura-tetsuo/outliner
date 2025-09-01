@@ -1,10 +1,9 @@
 import http from "http";
-import pino from "pino";
 import { WebSocketServer } from "ws";
 import { type Config } from "./config";
+import { logger as defaultLogger } from "./logger";
 
-export function startServer(config: Config) {
-    const logger = pino({ level: config.LOG_LEVEL });
+export function startServer(config: Config, logger = defaultLogger) {
     const server = http.createServer();
     const wss = new WebSocketServer({ server });
 
@@ -13,7 +12,7 @@ export function startServer(config: Config) {
     });
 
     server.listen(config.PORT, "::", () => {
-        logger.info(`y-websocket server listening on :::${config.PORT}`);
+        logger.info({ port: config.PORT }, "y-websocket server listening");
     });
 
     const shutdown = () => {
