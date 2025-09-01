@@ -113,6 +113,22 @@ export class KeyEventHandler {
             cursors.forEach(c => c.formatCode());
         });
 
+        // Alt+ArrowUp/Down: キーボードで並べ替え（Yjs）
+        add("ArrowUp", false, true, false, () => {
+            try {
+                KeyEventHandler.reorderByKeyboard("up");
+            } catch (e) {
+                console.error("reorder up failed", e);
+            }
+        });
+        add("ArrowDown", false, true, false, () => {
+            try {
+                KeyEventHandler.reorderByKeyboard("down");
+            } catch (e) {
+                console.error("reorder down failed", e);
+            }
+        });
+
         // Ctrl+X cut
         add("x", true, false, false, event => {
             // カットイベントを手動で発生させる
@@ -255,6 +271,88 @@ export class KeyEventHandler {
     /**
      * KeyDown イベントを各カーソルに委譲
      */
+
+    // Alt+ArrowUp/Down のための並べ替え実装（Yjs）
+    private static reorderByKeyboard(direction: "up" | "down") {
+        const gs: any = typeof window !== "undefined" ? (window as any).generalStore : null;
+        const ed: any = typeof window !== "undefined" ? (window as any).editorOverlayStore : null;
+        if (!gs || !ed || !gs.currentPage) return;
+        const pageItem = gs.currentPage;
+        // OutlinerTree から渡された表示順序（タイトル含む）
+        const visibleIds: string[] = typeof ed.getVisibleItemIds === "function"
+            ? ed.getVisibleItemIds()
+            : Array.from(document.querySelectorAll(".outliner-item[data-item-id]")).map((n: any) =>
+                n.getAttribute("data-item-id")
+            );
+        const active = (typeof ed.getLastActiveCursor === "function" ? ed.getLastActiveCursor() : null)
+            || Object.values(ed.cursors || {}).find((c: any) => c && c.isActive);
+        if (!active || !active.itemId) return;
+        const idx = visibleIds.indexOf(active.itemId);
+        if (idx < 0) return;
+        const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= visibleIds.length) return;
+
+        // 画面上のフラット順序: 0 はページタイトル、1.. は pageItem.items の 0.. に対応
+        const sourceFlat = idx;
+        const destFlat = targetIdx;
+        if (sourceFlat === destFlat) return;
+        if (sourceFlat === 0) return; // タイトルは対象外
+
+        const items = pageItem.items;
+        const srcIndex = sourceFlat - 1;
+        const dstIndex = destFlat - 1;
+        const src = items?.at ? items.at(srcIndex) : undefined;
+        if (!src) return;
+        const text = (src.text as any)?.toString?.() ?? String((src as any).text ?? "");
+        const author = (src as any).author ?? "local";
+
+        try {
+            items.removeAt(srcIndex);
+            const inserted = items.addNode(author, dstIndex);
+            inserted.updateText(text);
+            // アクティブアイテムとカーソル位置を更新（既存カーソルは明示的にクリアして単一化）
+            if (typeof ed.clearCursorAndSelection === "function") {
+                ed.clearCursorAndSelection(active.userId ?? "local", false, false);
+            }
+            if (typeof ed.setActiveItem === "function") ed.setActiveItem(inserted.id);
+            if (typeof ed.setCursor === "function") {
+                ed.setCursor({
+                    itemId: inserted.id,
+                    offset: Math.min(active.offset ?? 0, text.length),
+                    isActive: true,
+                    userId: active.userId ?? "local",
+                });
+            }
+            if (typeof ed.clearSelections === "function") ed.clearSelections();
+
+            // レンダリング待ち後にも念のため再設定してアクティブカーソルを1つに保つ
+            if (typeof window !== "undefined") {
+                const ensure = () => {
+                    try {
+                        if (typeof ed.clearCursorAndSelection === "function") {
+                            ed.clearCursorAndSelection(active.userId ?? "local", false, false);
+                        }
+                        if (typeof ed.setActiveItem === "function") ed.setActiveItem(inserted.id);
+                        if (typeof ed.setCursor === "function") {
+                            ed.setCursor({
+                                itemId: inserted.id,
+                                offset: Math.min(active.offset ?? 0, text.length),
+                                isActive: true,
+                                userId: active.userId ?? "local",
+                            });
+                        }
+                        if (typeof ed.clearSelections === "function") ed.clearSelections();
+                    } catch (e) { /* no-op */ }
+                };
+                // rAF と setTimeout の二段階で追従
+                requestAnimationFrame(() => ensure());
+                setTimeout(() => ensure(), 50);
+            }
+        } catch (e) {
+            console.error("Key reorder failed", e);
+        }
+    }
+
     static handleKeyDown(event: KeyboardEvent) {
         const cursorInstances = store.getCursorInstances();
 

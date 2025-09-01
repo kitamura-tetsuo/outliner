@@ -1,0 +1,82 @@
+id: keymap-multi-cursor-and-reorder
+slug: keymap-multi-cursor-and-reorder
+title: キーバインド仕様の集約 - マルチカーソル/並べ替え
+title-ja: キーバインド仕様の集約 - マルチカーソル/並べ替え
+owner: client
+area: outliner
+status: active
+summary: 'マルチカーソルの追加/取り消しと Alt+矢印による並べ替えの仕様を集約。GlobalTextArea と KeyEventHandler の責務境界を明記し、
+
+  関連E2Eへの相互参照を提供する。
+
+  '
+responsibility:
+  GlobalTextArea: '- キーダウンの一次受け取りと IME/テキスト入力の管理
+
+    - Alt/Ctrl/Shift の組み合わせ検出と KeyEventHandler への委譲
+
+    '
+  KeyEventHandler: '- カーソル追加（Ctrl+Shift+Alt+ArrowUp/Down）を editorOverlayStore.addCursorRelativeToActive に委譲
+
+    - 並べ替え（Alt+ArrowUp/Down）を Yjs ツリー更新に委譲し、終了時に editorOverlayStore の setCursor を再設定
+
+    - タイトル(index 0)は並べ替え対象外、先頭/末尾越えの移動は無視
+
+    '
+cross_refs:
+- docs/client-features/itm-yjs-keyboard-reorder-multi-7a9c2ef1.yaml
+- docs/client-features/itm-yjs-keyboard-reorder-boundary-b2c4d8e1.yaml
+- docs/client-features/itm-yjs-keyboard-reorder-spam-press-4d7a9b20.yaml
+acceptance:
+- マルチカーソル追加/取り消しと並べ替えのキーバインドが一貫した動作をする
+- 並べ替え後はアクティブカーソルが1つに収束する
+- 先頭/末尾/タイトルでの非移動が徹底される
+components:
+- client/src/components/GlobalTextArea.svelte
+- client/src/lib/KeyEventHandler.ts
+- client/src/stores/EditorOverlayStore.svelte.ts
+matrix:
+- operation: Alt+ArrowUp
+  cases:
+  - state: title_focused
+    expected: 移動しない（タイトルは常に不変）
+  - state: first_child
+    expected: 移動しない（先頭境界で無視）
+  - state: middle
+    expected: 一つ上に移動し、移動後のアイテムがアクティブ（active=1）
+  - state: last
+    expected: 一つ上に移動し、移動後のアイテムがアクティブ（active=1）
+  - state: multi_cursors
+    expected: 最後に追加されたアクティブカーソルのアイテムのみが移動し、最終的にactive=1
+- operation: Alt+ArrowDown
+  cases:
+  - state: title_focused
+    expected: 移動しない（タイトルは常に不変）
+  - state: first_child
+    expected: 一つ下に移動し、移動後のアイテムがアクティブ（active=1）
+  - state: middle
+    expected: 一つ下に移動し、移動後のアイテムがアクティブ（active=1）
+  - state: last
+    expected: 移動しない（末尾境界で無視）
+  - state: multi_cursors
+    expected: 最後に追加されたアクティブカーソルのアイテムのみが移動し、最終的にactive=1
+- operation: Ctrl+Shift+Alt+ArrowUp
+  cases:
+  - state: any
+    expected: 直近アクティブを基準に上方向へカーソル追加。履歴末尾が新アクティブ。
+- operation: Ctrl+Shift+Alt+ArrowDown
+  cases:
+  - state: any
+    expected: 直近アクティブを基準に下方向へカーソル追加。履歴末尾が新アクティブ。
+- operation: Drag&Drop
+  cases:
+  - state: self_drop
+    expected: 自分自身へのドロップは順序不変（no-op）
+  - state: drop_on_title
+    expected: タイトル(index 0)へのドロップは無視（no-op）
+  - state: normal_reorder
+    expected: 直上下いずれかへのドロップで1つ分の相対移動。完了後 active=1 に収束。
+known_pitfalls:
+- setCursor 再設定は requestAnimationFrame + setTimeout の二段で行われるため、E2Eでは waitForFunction(active=1 かつ activeItemId の存在)で安定待ちすること。
+- 境界（先頭/末尾）での Alt 押下は無視すべき。無視時も active は 1 を維持する必要がある。
+- タイトル(index 0)は移動対象外。Alt 押下でタイトルが移動しないことを常に確認する。

@@ -1206,6 +1206,14 @@ function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position
         return;
     }
 
+    // タイトル（先頭）へのドロップは no-op
+    if (targetIndex === 0) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Drop onto title (index 0) ignored`);
+        }
+        return;
+    }
+
     // ソースアイテムとターゲットアイテムが同じ場合は何もしない
     if (sourceIndex === targetIndex) {
         if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
@@ -1218,11 +1226,12 @@ function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position
 
     // ソースアイテムを取得
     const sourceItem = displayItems.current[sourceIndex].model.original;
-    const sourceText = sourceItem.text || '';
+    const sourceText: string = (sourceItem.text as any)?.toString?.() ?? String((sourceItem as any).text ?? "");
 
     // ターゲットの位置を計算
     let targetPosition = targetIndex;
-    if (position === 'bottom') {
+    if (position === 'bottom' || position === 'middle') {
+        // Yjs版では 'middle' も 'bottom' として扱い、対象の直後に移動させる
         targetPosition = targetIndex + 1;
     }
 
@@ -1240,24 +1249,25 @@ function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position
         // ソースアイテムを削除
         items.removeAt(sourceIndex);
 
-        // 新しい位置にアイテムを追加
-        items.addNode(currentUser, targetPosition);
-        const newItem = items[targetPosition];
-        if (newItem) {
-            newItem.text = sourceText;
+        // 新しい位置にアイテムを追加し、テキストを設定（Yjs）
+        const inserted = items.addNode(currentUser, targetPosition);
+        if (inserted) {
+            inserted.updateText(sourceText);
         }
 
-        // カーソル位置を更新
+        // 既存カーソルと選択をクリアして単一アクティブに収束させる
+        if (typeof editorOverlayStore.clearCursorAndSelection === 'function') {
+            editorOverlayStore.clearCursorAndSelection('local', false, false);
+        }
+        // アクティブアイテムを設定
+        editorOverlayStore.setActiveItem(inserted.id);
+        // カーソル位置を更新（単一化）
         editorOverlayStore.setCursor({
-            itemId: newItem.id,
+            itemId: inserted.id,
             offset: 0,
             isActive: true,
             userId: 'local'
         });
-
-        // アクティブアイテムを設定
-        editorOverlayStore.setActiveItem(newItem.id);
-
         // 選択範囲をクリア
         editorOverlayStore.clearSelections();
     } catch (error) {
@@ -1285,7 +1295,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
 
     // ターゲットアイテムのテキストを取得
     const targetItem = displayItems.current[targetIndex].model.original;
-    const targetText = targetItem.text || '';
+    const targetText: string = (targetItem.text as any)?.toString?.() ?? String((targetItem as any).text ?? "");
 
     // テキストを行に分割
     const lines = text.split('\n');
@@ -1295,40 +1305,21 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
     // ターゲットアイテムにテキストを挿入
     if (position === 'top') {
         // アイテムの先頭に挿入
-        targetItem.text = lines[0] + targetText;
+        targetItem.updateText(lines[0] + targetText);
 
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
-            items.addNode(currentUser, targetIndex + i);
-            const newItem = items[targetIndex + i];
-            if (newItem) {
-                newItem.text = lines[i];
-            }
+            const inserted = items.addNode(currentUser, targetIndex + i);
+            inserted.updateText(lines[i]);
         }
-    } else if (position === 'bottom') {
-        // アイテムの末尾に挿入
-        targetItem.text = targetText + lines[0];
+    } else if (position === 'bottom' || position === 'middle') {
+        // bottom/middle は末尾に挿入扱い
+        targetItem.updateText(targetText + lines[0]);
 
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
-            items.addNode(currentUser, targetIndex + i);
-            const newItem = items[targetIndex + i];
-            if (newItem) {
-                newItem.text = lines[i];
-            }
-        }
-    } else if (position === 'middle') {
-        // アイテムの中央に挿入（カーソル位置を計算）
-        const middleOffset = Math.floor(targetText.length / 2);
-        targetItem.text = targetText.substring(0, middleOffset) + lines[0] + targetText.substring(middleOffset);
-
-        // 残りの行を新しいアイテムとして追加
-        for (let i = 1; i < lines.length; i++) {
-            items.addNode(currentUser, targetIndex + i);
-            const newItem = items[targetIndex + i];
-            if (newItem) {
-                newItem.text = lines[i];
-            }
+            const inserted = items.addNode(currentUser, targetIndex + i);
+            inserted.updateText(lines[i]);
         }
     }
 

@@ -1,0 +1,38 @@
+id: ITM-yjs-drag-reorder-a1b2c3d4
+slug: itm-yjs-drag-reorder-a1b2c3d4
+title: Yjs Outliner - Drag & Drop reorder
+title-ja: Yjsアウトライナー - ドラッグ&ドロップでの並べ替え
+owner: client
+area: outliner
+status: active
+summary: '/yjs-outliner ページで、アイテムをドラッグ&ドロップすると、
+
+  表示順が正しく更新されることをE2Eで検証する。
+
+  2番目のアイテムを3番目の位置へ移動した場合、移動後の3番目のアイテムが
+
+  もとの2番目のテキストであることを厳密に確認する。
+
+  '
+rationale: 'Fluid実装からYjs実装への移行において、テキスト編集に続き
+
+  並べ替えの基本操作を安全に担保するため。
+
+  yjs-orderedtree による順序付けと、Outliner表示の同期を保証する。
+
+  '
+scope:
+- /yjs-outliner ルートでのOutlinerBaseレンダリング
+- OutlinerItemのHTML5 DnDを用いた並べ替え
+- OutlinerTree.handleItemMoveDropのYjs対応
+- 3件以上のアイテムが存在する前提での並べ替え検証
+non_goals:
+- 複数選択状態のドラッグ&ドロップ（別機能）
+- 入れ子（インデント）構造ごとのドラッグ&ドロップ（別機能）
+impl_notes: "- E2E: client/e2e/new/itm-yjs-drag-reorder-a1b2c3d4.spec.ts\n- 既存のFluid向けドラッグテスト(core/itm-drag-items-to-reorder-00cbb408.spec.ts)を参考に、\n  /yjs-outliner ページで同等のアサーションを行う。\n- OutlinerTree.svelte の handleItemMoveDrop をYjsのItem/Items APIに合わせて実装。\n  具体的には Item.text への直接代入ではなく Item.updateText を用いて Y.Text を更新する。\n"
+acceptance:
+- 2番目のアイテムを3番目の位置へドラッグすると、3番目が元「Item 2」になる
+- 同一アイテムへのドラッグ（自分自身へドロップ）は順序が変化しない
+known_pitfalls:
+- ドラッグ&ドロップ後のDOM反映は非同期。waitForFunction で特定の並びを確認してからアサートする
+- ドロップ先が自分自身や境界の無効位置の場合は no-op であること
