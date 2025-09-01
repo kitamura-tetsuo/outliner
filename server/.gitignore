@@ -1,2 +1,17 @@
+# Dependencies
+/node_modules
 
-.env.keys
+# Build output
+/dist
+
+# Environment variables
+.env*
+!/.env.example
+
+# Logs
+*.log
+/logs
+
+# IDE
+.vscode/
+*.tsbuildinfo
