@@ -1,31 +1,31 @@
-import http from 'http';
-import { WebSocketServer } from 'ws';
-import { setupWSConnection } from 'y-websocket/bin/utils';
-import pino from 'pino';
+import http from "http";
+import pino from "pino";
+import { WebSocketServer } from "ws";
+import { setupWSConnection } from "y-websocket/bin/utils";
 
-const logger = pino({ level: 'info' });
+const logger = pino({ level: "info" });
 
 export function createServer(host: string, port: number) {
-  const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('ok');
-  });
+    const server = http.createServer((req, res) => {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        res.end("ok");
+    });
 
-  const wss = new WebSocketServer({ server });
+    const wss = new WebSocketServer({ server });
 
-  wss.on('connection', (ws, req) => {
-    logger.info('New connection', { remoteAddress: req.socket.remoteAddress });
-    setupWSConnection(ws, req);
-  });
+    wss.on("connection", (ws, req) => {
+        logger.info("New connection", { remoteAddress: req.socket.remoteAddress });
+        setupWSConnection(ws, req);
+    });
 
-  server.listen(port, host, () => {
-    logger.info(`Server listening on ws://${host}:${port}`);
-  });
+    server.listen(port, host, () => {
+        logger.info(`Server listening on ws://${host}:${port}`);
+    });
 
-  const close = () => {
-    wss.close();
-    server.close();
-  };
+    const close = () => {
+        wss.close();
+        server.close();
+    };
 
-  return { server, wss, close };
+    return { server, wss, close };
 }
