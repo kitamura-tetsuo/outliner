@@ -1,0 +1,17 @@
+import { expect, test } from "@playwright/test";
+import WebSocket from "ws";
+import { TestHelpers } from "./utils/TestHelpers";
+
+test.beforeEach(async ({ page }) => {
+    await TestHelpers.prepareTestEnvironment(page);
+});
+
+test("oversized websocket message closes connection", async () => {
+    await expect(async () => {
+        await new Promise<void>(resolve => {
+            const ws = new WebSocket("ws://localhost:3000/projects/testproj?auth=token");
+            ws.on("open", () => ws.send("1234567890"));
+            ws.on("close", () => resolve());
+        });
+    }).resolves.not.toThrow();
+});

@@ -1,0 +1,10 @@
+tunnel: YOUR_TUNNEL_ID
+credentials-file: /etc/cloudflared/credentials.json
+protocol: http2
+
+ingress:
+  - hostname: example.com
+    service: http://server:3000
+  - service: http_status:404
+# Replace YOUR_TUNNEL_ID and example.com accordingly.
+# This sample routes WebSocket traffic over HTTPS via Cloudflare Tunnel.
