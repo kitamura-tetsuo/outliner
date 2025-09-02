@@ -139,22 +139,30 @@ export default defineConfig({
             testDir: "./e2e/server",
         },
     ],
-    webServer: {
-        command: `npm run dev:localhost`,
-        url: `http://localhost:${process.env.TEST_PORT || TEST_PORT}`,
-        reuseExistingServer: !process.env.CI,
-        env: {
-            NODE_ENV: "test",
-            TEST_ENV: "localhost",
-            VITE_USE_TINYLICIOUS: "false",
-            VITE_FORCE_AZURE: "false",
-            VITE_IS_TEST: "true",
-            VITE_PORT: TEST_PORT,
-            VITE_TINYLICIOUS_PORT: TINYLICIOUS_PORT,
-        },
-        stdout: "pipe",
-        stderr: "pipe",
-        // readyCondition は指定しない（URL疎通で待機）
-        timeout: 120000,
-    },
+    // webServer: {
+    //     command: `npx dotenv -e .env.test -- npm run dev -- --host 0.0.0.0 --port ${TEST_PORT}`,
+    //     url: `http://localhost:${TEST_PORT}`,
+    //     reuseExistingServer: !process.env.CI,
+    //     env: {
+    //         NODE_ENV: "test",
+    //         VITE_USE_TINYLICIOUS: "true",
+    //         VITE_FORCE_AZURE: "false",
+    //         VITE_IS_TEST: "true", // 明示的にテスト環境フラグを設定
+    //         // ポートを明示的に設定
+    //         VITE_PORT: TEST_PORT,
+    //         // TinyliciousのポートをVITE_TINYLICIOUS_PORTとして設定
+    //         // global-setup.tsではこの値を取得してPORT環境変数に設定します
+    //         VITE_TINYLICIOUS_PORT: TINYLICIOUS_PORT,
+    //     },
+    //     // ready文字列を指定して、Viteサーバーの準備完了を検知
+    //     stdout: "pipe",
+    //     stderr: "pipe",
+    //     // Viteの "ready in" メッセージを待機
+    //     readyCondition: {
+    //         pattern: "ready in",
+    //         flags: "i",
+    //     },
+    //     // タイムアウトは開発サーバーが通常起動する時間より少し長めに設定
+    //     timeout: 600,
+    // },
 });

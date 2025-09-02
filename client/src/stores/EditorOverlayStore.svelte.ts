@@ -67,9 +67,6 @@ export class EditorOverlayStore {
     // onEdit コールバック
     onEditCallback: (() => void) | null = null;
 
-    // 表示順序（Outliner のフラット順）のキャッシュ
-    visibleItemIds = $state<string[]>([]);
-
     private timerId!: ReturnType<typeof setTimeout>;
 
     // テキストエリア参照を設定
@@ -80,33 +77,6 @@ export class EditorOverlayStore {
     // テキストエリア参照を取得
     getTextareaRef(): HTMLTextAreaElement | null {
         return this.textareaRef;
-    }
-
-    // 表示順序を更新（OutlinerTree から呼ばれる）
-    setVisibleItemIds(ids: string[]) {
-        this.visibleItemIds = Array.isArray(ids) ? ids.slice() : [];
-    }
-
-    getVisibleItemIds(): string[] {
-        return this.visibleItemIds.slice();
-    }
-
-    // 表示順序に基づいて startId..endId を含む範囲の itemId 配列を返す
-    getItemIdsInRange(startId: string, endId: string): string[] | null {
-        const ids = this.visibleItemIds;
-        if (!ids || ids.length === 0) return null;
-        const si = ids.indexOf(startId);
-        const ei = ids.indexOf(endId);
-        if (si === -1 || ei === -1) return null;
-        const a = Math.min(si, ei), b = Math.max(si, ei);
-        return ids.slice(a, b + 1);
-    }
-
-    // 渡された ID 配列を表示順序に従い整列し一意化
-    normalizeOrder(itemIds: string[]): string[] {
-        const ids = this.visibleItemIds;
-        const set = new Set(itemIds.filter(Boolean));
-        return ids.filter(id => set.has(id));
     }
 
     // onEdit コールバックを設定
@@ -240,11 +210,6 @@ export class EditorOverlayStore {
                 }
             }
 
-            // 履歴の末尾に移動（再アクティブ化を履歴に反映）
-            this.cursorHistory = [
-                ...this.cursorHistory.filter(id => id !== existingCursor.cursorId),
-                existingCursor.cursorId,
-            ];
             return existingCursor.cursorId;
         }
 
@@ -320,8 +285,6 @@ export class EditorOverlayStore {
         const newCursors = { ...this.cursors };
         delete newCursors[cursorId];
         this.cursors = newCursors;
-        // 履歴からも削除（将来のフォールバックのために整合を保つ）
-        this.cursorHistory = this.cursorHistory.filter(id => id !== cursorId);
     }
 
     undoLastCursor() {
@@ -333,13 +296,9 @@ export class EditorOverlayStore {
     }
 
     getLastActiveCursor(): CursorPosition | null {
-        // 履歴の末尾から存在するものを返す
-        for (let i = this.cursorHistory.length - 1; i >= 0; i--) {
-            const id = this.cursorHistory[i];
-            const c = this.cursors[id];
-            if (c) return c;
-        }
-        return null;
+        const lastId = this.cursorHistory[this.cursorHistory.length - 1];
+        if (!lastId) return null;
+        return this.cursors[lastId] || null;
     }
 
     setSelection(selection: SelectionRange) {
@@ -791,17 +750,7 @@ export class EditorOverlayStore {
                 delete newCursors[id];
             });
             this.cursors = newCursors;
-
-            // 履歴からも完全に除去して整合を保つ
-            this.cursorHistory = this.cursorHistory.filter(id => !cursorIdsToRemove.includes(id));
         }
-    }
-
-    /**
-     * getItemsMapping のキャッシュを無効化する（テスト/強制更新用）
-     */
-    invalidateItemsMappingCache() {
-        this._itemsMappingCache = null;
     }
 
     // 登録された Cursor インスタンスを取得する
@@ -1141,16 +1090,12 @@ export class EditorOverlayStore {
     }
 
     addCursorRelativeToActive(direction: "up" | "down") {
-        // 直近のアクティブカーソルを優先
-        const last = this.getLastActiveCursor?.() || null;
-        // フォールバック: isActive の最後のもの
-        const actives = Object.values(this.cursors).filter(c => c.isActive && (c.userId === "local" || !c.userId));
-        const base = last && last.isActive ? last : (actives.length > 0 ? actives[actives.length - 1] : null);
-        if (!base) return;
-        const adj = this.getAdjacentItem(base.itemId, direction === "up" ? "prev" : "next");
+        const active = Object.values(this.cursors).find(c => c.isActive && (c.userId === "local" || !c.userId));
+        if (!active) return;
+        const adj = this.getAdjacentItem(active.itemId, direction === "up" ? "prev" : "next");
         if (!adj) return;
-        const offset = Math.min(base.offset, adj.text.length);
-        this.addCursor({ itemId: adj.id, offset, isActive: true, userId: base.userId ?? "local" });
+        const offset = Math.min(active.offset, adj.text.length);
+        this.addCursor({ itemId: adj.id, offset, isActive: true, userId: active.userId ?? "local" });
     }
 
     private getAdjacentItem(itemId: string | null, dir: "prev" | "next"): { id: string; text: string; } | null {
