@@ -50,18 +50,6 @@ export function setupMocks({
             });
         }
 
-        if (url.includes("/api/fluid-token")) {
-            return Promise.resolve({
-                ok: true,
-                status: 200,
-                json: () =>
-                    Promise.resolve({
-                        token: "mock-fluid-token",
-                        user: { id: "test-user-id", name: "Test User" },
-                    }),
-            });
-        }
-
         // Fall back to original implementation for unhandled requests
         return originalFetch(url, options);
     });

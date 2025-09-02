@@ -200,7 +200,7 @@ function startLogService() {
         }
     });
 
-    // 注意: /api/fluid-token エンドポイントはFirebase Functionsに移行しました
+    // 注意: /api/fluid-token エンドポイントは削除されました
 
     // クライアントからのログを受信するエンドポイント
     app.post("/api/log", (req, res) => {

@@ -9,7 +9,6 @@ acceptance:
 - Firebase Hosting経由でのリクエストが正しくFunctionsにルーティングされる
 - deleteContainerエンドポイント（/api/deleteContainer）が認証エラーを適切に処理する
 - deleteUserエンドポイント（/api/deleteUser）が認証エラーを適切に処理する
-- fluid-tokenエンドポイント（/api/fluid-token）が認証エラーを適切に処理する
 - getUserContainersエンドポイント（/api/getUserContainers）が認証エラーを適切に処理する
 - save-containerエンドポイント（/api/save-container）が認証エラーを適切に処理する
 - ヘルスチェックエンドポイント（/health）が正常に応答する
