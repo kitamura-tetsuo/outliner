@@ -65,6 +65,7 @@ describe("server integration: persistence and sync", () => {
         provider2.destroy();
         doc2.destroy();
         server.close();
+        await once(server, "close");
         await fs.remove(dir);
     });
 
