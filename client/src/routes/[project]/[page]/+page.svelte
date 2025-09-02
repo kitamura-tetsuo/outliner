@@ -24,8 +24,8 @@ import { store } from "../../../stores/store.svelte";
 const logger = getLogger("ProjectPage");
 
 // URLパラメータを取得
-let projectName = page.params.project;
-let pageName = page.params.page;
+let projectName: string = page.params.project ?? "";
+let pageName: string = page.params.page ?? "";
 
 // デバッグ用ログ
 logger.info(`Page component initialized with params: project="${projectName}", page="${pageName}"`);
@@ -101,10 +101,7 @@ async function loadProjectAndPage() {
 
         // fluidClientストアを更新
         logger.info(`loadProjectAndPage: Setting fluidStore.fluidClient`);
-        logger.info(`loadProjectAndPage: Client before setting:`, {
-            containerId: client?.containerId,
-            clientId: client?.clientId,
-        });
+        logger.info(`loadProjectAndPage: Client before setting: containerId=${client?.containerId}, clientId=${client?.clientId}`);
         fluidStore.fluidClient = client;
         logger.info(`loadProjectAndPage: FluidStore updated with client`);
         logger.info(`loadProjectAndPage: FluidStore.fluidClient exists: ${!!fluidStore.fluidClient}`);
@@ -151,11 +148,35 @@ async function loadProjectAndPage() {
         // ページの読み込み完了をログ出力
         if (store.pages) {
             logger.info(`Available pages count: ${store.pages.current.length}`);
-            for (let i = 0; i < store.pages.current.length; i++) {
-                const page = store.pages.current[i];
-                logger.info(`Page ${i}: "${page.text}"`);
+            {
+                const arr: any = store.pages.current as any;
+                const len = arr?.length ?? 0;
+                for (let i = 0; i < len; i++) {
+                    const p = arr?.at ? arr.at(i) : arr[i];
+                    const title = (p?.text as any)?.toString?.() ?? String((p as any)?.text ?? "");
+                    logger.info(`Page ${i}: "${title}"`);
+                }
             }
         }
+            // 必要なら currentPage をここでフォールバック設定（+layout に依存しすぎない）
+            if (store.pages && !store.currentPage) {
+                try {
+                    const arr: any = store.pages.current as any;
+                    const len = arr?.length ?? 0;
+                    for (let i = 0; i < len; i++) {
+                        const p = arr?.at ? arr.at(i) : arr[i];
+                        const title = (p?.text as any)?.toString?.() ?? String((p as any)?.text ?? "");
+                        if (title.toLowerCase() === String(pageName).toLowerCase()) {
+                            store.currentPage = p;
+                            logger.info(`Fallback: store.currentPage set in +page.svelte to "${title}" (id=${p?.id})`);
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to set currentPage fallback:", e);
+                }
+            }
+
         else {
             pageNotFound = true;
             logger.error("No pages available - store.pages is null/undefined");
@@ -202,7 +223,12 @@ function goToGraphView() {
 
 // 検索パネルの表示を切り替える
 function toggleSearchPanel() {
+    const before = isSearchPanelVisible;
     isSearchPanelVisible = !isSearchPanelVisible;
+    if (typeof window !== "undefined") {
+        (window as any).__SEARCH_PANEL_VISIBLE__ = isSearchPanelVisible;
+    }
+    console.log("toggleSearchPanel called", { before, after: isSearchPanelVisible });
 }
 
 onMount(async () => {
@@ -246,6 +272,25 @@ onMount(async () => {
 
     logger.info(`onMount: Final authentication status: ${isAuthenticated}`);
     logger.info(`onMount: About to complete, $effect should trigger with isAuthenticated=${isAuthenticated}`);
+
+    // E2E デバッグ用: 検索パネルを強制的に開く関数を公開
+    if (typeof window !== "undefined") {
+        (window as any).__OPEN_SEARCH__ = async () => {
+            // 現在非表示のときだけトグルボタンをクリックして開く（二重トグル防止）
+            if (!isSearchPanelVisible) {
+                const btn = document.querySelector<HTMLButtonElement>(".search-btn");
+                btn?.click();
+            }
+            // search-panel の DOM 出現を待機
+            let tries = 0;
+            while (!document.querySelector('[data-testid="search-panel"]') && tries < 40) {
+                await new Promise(r => setTimeout(r, 25));
+                tries++;
+            }
+            (window as any).__SEARCH_PANEL_VISIBLE__ = true;
+            console.log("E2E: __OPEN_SEARCH__ ensured visible (no double toggle)", { found: !!document.querySelector('[data-testid="search-panel"]'), tries });
+        };
+    }
 
     // ページ読み込み後にリンクプレビューハンドラーを設定
     // DOMが完全に読み込まれるのを待つ
@@ -312,6 +357,7 @@ onDestroy(() => {
                 <button
                     onclick={toggleSearchPanel}
                     class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    data-testid="search-toggle-button"
                 >
                     検索
                 </button>
@@ -340,38 +386,27 @@ onDestroy(() => {
         />
     </div>
 
-    {#if store.currentPage}
-        <!-- デバッグ用ログ -->
-        {
-            logger.info(
-                `Rendering OutlinerBase: pageItem.id=${store.currentPage.id}, isTemporary=${store.currentPage.id.startsWith('temp-')}`,
-            )
-        }
+    <!-- OutlinerBase は常にマウントし、内部で pageItem の有無に応じて表示を切り替える -->
+    <OutlinerBase
+        pageItem={store.currentPage}
+        projectName={projectName || ""}
+        pageName={pageName || ""}
+        isReadOnly={false}
+        isTemporary={store.currentPage ? store.currentPage.id.startsWith('temp-') : false}
+        onEdit={undefined}
+    />
 
-        <!-- OutlinerBase コンポーネントでアウトライナーを表示 -->
-        <OutlinerBase
-            pageItem={store.currentPage}
-            projectName={projectName}
-            pageName={pageName}
-            isReadOnly={false}
-            isTemporary={store.currentPage.id.startsWith('temp-')}
-            onEdit={undefined}
-        />
-
-        <!-- バックリンクパネル -->
-        {#if !store.currentPage.id.startsWith('temp-')}
-            <BacklinkPanel {pageName} {projectName} />
-        {/if}
-
-        <!-- 検索パネル -->
-        <SearchPanel
-            isVisible={isSearchPanelVisible}
-            pageItem={store.currentPage}
-            project={store.project}
-        />
-    {:else}
-        <!-- デバッグ用ログ --> {logger.info(`OutlinerBase not rendered: store.currentPage=${!!store.currentPage}`)}
+    <!-- バックリンクパネル（仮ページのときは非表示） -->
+    {#if store.currentPage && !store.currentPage.id.startsWith('temp-')}
+        <BacklinkPanel {pageName} {projectName} />
     {/if}
+
+    <!-- 検索パネル -->
+    <SearchPanel
+        isVisible={isSearchPanelVisible}
+        pageItem={store.currentPage}
+        project={store.project}
+    />
     {#if isLoading}
         <div class="flex justify-center py-8">
             <div class="loader">読み込み中...</div>
@@ -400,7 +435,7 @@ onDestroy(() => {
                 </div>
             </div>
         </div>
-    {:else if pageNotFound && !isTemporaryPage}
+    {:else if pageNotFound}
         <div class="rounded-md bg-yellow-50 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">

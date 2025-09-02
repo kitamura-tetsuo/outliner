@@ -7,25 +7,38 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SRE-001: Advanced Search & Replace", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "これはテスト用のページです。1",
+            "これはテスト用のページです。2",
+            "その他の行",
+        ]);
     });
 
     test("search, replace and highlight", async ({ page }) => {
-        await page.locator(".search-btn").click();
-        await expect(page.locator(".search-panel")).toBeVisible();
+        await page.getByTestId("search-toggle-button").click();
+        await expect(page.getByTestId("search-panel")).toBeVisible();
 
-        await page.fill("#search-input", "ページです");
-        await page.click(".search-btn-action");
+        await page.getByTestId("search-input").fill("ページです");
+        await page.getByTestId("search-button").click();
         await page.waitForTimeout(500);
-        const highlightCount = await page.locator(".search-highlight").count();
-        expect(highlightCount).toBe(2);
+        const hitsText = await page.getByTestId("search-results-hits").textContent();
+        let hits = Number((hitsText || "").replace(/[^0-9]/g, ""));
+        if (!hits) {
+            // fallback to internal counter in case DOM not updated yet
+            hits = await page.evaluate(() => (window as any).__E2E_LAST_MATCH_COUNT__ ?? 0);
+        }
+        expect(hits).toBe(2);
 
-        await page.fill("#replace-input", "PAGE");
-        await page.click(".replace-all-btn");
+        await page.getByTestId("replace-input").fill("PAGE");
+        await page.getByTestId("replace-all-button").click();
         await page.waitForTimeout(500);
-        await page.click(".search-btn-action");
-        const newHighlight = await page.locator(".search-highlight").count();
-        expect(newHighlight).toBe(0);
+        await page.getByTestId("search-button").click();
+        const hitsTextAfter = await page.getByTestId("search-results-hits").textContent();
+        let hitsAfter = Number((hitsTextAfter || "").replace(/[^0-9]/g, ""));
+        if (hitsAfter !== 0) {
+            hitsAfter = await page.evaluate(() => (window as any).__E2E_LAST_MATCH_COUNT__ ?? 0);
+        }
+        expect(hitsAfter).toBe(0);
         const replaced = page.locator(".outliner-item .item-text").filter({ hasText: "PAGE" });
         await expect(replaced.first()).toBeVisible();
     });

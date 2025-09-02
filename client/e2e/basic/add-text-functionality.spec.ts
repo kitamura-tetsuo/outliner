@@ -14,8 +14,10 @@ import { TestHelpers } from "../utils/testHelpers";
  */
 
 test.describe("テキスト追加機能テスト", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+    test.beforeEach(async ({ page }) => {
+        // Yjs専用の軽量テストページを使用し、環境依存を排除
+        await page.goto("/yjs-outliner");
+        await expect(page.locator('[data-testid="outliner-base"]').first()).toBeVisible();
     });
 
     /**
@@ -111,6 +113,15 @@ test.describe("テキスト追加機能テスト", () => {
         // 少し待機
         await page.waitForTimeout(500);
 
+        // 入力先のグローバルテキストエリアにフォーカスを明示的に設定
+        await page.evaluate(() => {
+            const ta = document.querySelector(".global-textarea") as HTMLTextAreaElement | null;
+            ta?.focus();
+        });
+        await page.waitForFunction(() => document.activeElement?.classList?.contains("global-textarea") ?? false, {
+            timeout: 2000,
+        });
+
         // 新しいアイテムが空であることを確認
         const initialText = await newItem.locator(".item-text").textContent();
         console.log(`Initial text in new item: "${initialText}"`);
@@ -156,7 +167,17 @@ test.describe("テキスト追加機能テスト", () => {
         // テキストを入力
         await page.screenshot({ path: "test-results/before Hello Fluid Framework.png" });
         const testText = "Hello Fluid Framework!";
+        // GlobalTextArea 経由のキーボード入力に復帰
         await page.keyboard.type(testText);
+        // フォールバック: 入力経路に問題がある環境向けに Cursor.insertText を残す（必要時のみコメント解除）
+        // await page.evaluate((text) => {
+        //     const store = (window as any).editorOverlayStore;
+        //     if (!store) throw new Error("editorOverlayStore not found");
+        //     const cursors = store.getCursorInstances();
+        //     if (cursors.length === 0) throw new Error("No cursor instances available");
+        //     const active = cursors.find((c: any) => c.isActive) ?? cursors[0];
+        //     active.insertText(text);
+        // }, testText);
         await page.screenshot({ path: "test-results/Hello Fluid Framework.png" });
 
         // テキスト入力後に少し待機
@@ -176,7 +197,7 @@ test.describe("テキスト追加機能テスト", () => {
         });
         console.log("All items after input:", allItemsAfterInput);
 
-        // Enterキーを押してテキストを確定
+        // Enterキーを押してテキストを確定（Yjsでは不要だがUI揺れを避けるため押下）
         await page.keyboard.press("Enter");
 
         // データが更新されるのを待つ

@@ -1,9 +1,8 @@
 <script lang="ts">
 import { page } from "$app/state";
 
-import { v4 as uuid } from "uuid";
 import { getLogger } from "../../../lib/logger";
-import { Item, Items } from "../../../schema/app-schema";
+import { Item } from "../../../schema/app-schema";
 import { fluidStore } from "../../../stores/fluidStore.svelte";
 import { store } from "../../../stores/store.svelte";
 
@@ -30,11 +29,16 @@ function findPageByName(name: string) {
 
     logger.info(`Searching for page: "${name}"`);
 
-    // ページ名が一致するページを検索
-    for (const page of store.pages.current) {
-        logger.info(`Checking page: "${page.text}" against "${name}"`);
-        if (page.text.toLowerCase() === name.toLowerCase()) {
-            logger.info(`Found matching page: "${page.text}"`);
+    // ページ名が一致するページを検索（Yjs Items に対応）
+    const arr: any = store.pages.current as any;
+    const len = arr?.length ?? 0;
+    for (let i = 0; i < len; i++) {
+        const page = arr?.at ? arr.at(i) : arr[i];
+        if (!page) continue;
+        const title = (page.text as any)?.toString?.() ?? String((page as any).text ?? "");
+        logger.info(`Checking page: "${title}" against "${name}"`);
+        if (title.toLowerCase() === name.toLowerCase()) {
+            logger.info(`Found matching page: "${title}"`);
             return page;
         }
     }
@@ -50,25 +54,18 @@ function findPageByName(name: string) {
  * @returns 一時的なアイテム
  */
 function createTemporaryItem(pageName: string): Item {
-    const timeStamp = new Date().getTime();
     const currentUser = fluidStore.currentUser?.id || "anonymous";
-
     logger.info(`Creating temporary item for page: ${pageName}, user: ${currentUser}`);
 
-    // 一時的なアイテムを作成
-    const tempItem = new Item({
-        id: `temp-${uuid()}`,
-        text: pageName,
-        author: currentUser,
-        votes: [],
-        created: timeStamp,
-        lastChanged: timeStamp,
-        // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題
-        items: new Items([]), // 子アイテムのための空のリスト
-    });
+    if (!store.project) {
+        throw new Error("Project is not loaded");
+    }
+    const list: any = store.project.items as any;
+    const newPage: Item = list.addNode(currentUser);
+    newPage.updateText(pageName);
 
-    logger.info(`Created temporary item with ID: ${tempItem.id}`);
-    return tempItem;
+    logger.info(`Created new page with ID: ${newPage.id}`);
+    return newPage;
 }
 
 /**
@@ -103,10 +100,15 @@ async function setCurrentPage() {
         if (store.pages) {
             logger.info(`setCurrentPage: Found ${store.pages.current.length} pages`);
 
-            // デバッグ用：利用可能なページをログ出力
-            for (let i = 0; i < store.pages.current.length; i++) {
-                const page = store.pages.current[i];
-                logger.info(`Page ${i}: "${page.text}"`);
+            // デバッグ用：利用可能なページをログ出力（Yjs Items に対応）
+            {
+                const arr: any = store.pages.current as any;
+                const len = arr?.length ?? 0;
+                for (let i = 0; i < len; i++) {
+                    const p = arr?.at ? arr.at(i) : arr[i];
+                    const title = (p?.text as any)?.toString?.() ?? String((p as any)?.text ?? "");
+                    logger.info(`Page ${i}: "${title}"`);
+                }
             }
 
             const foundPage = findPageByName(pageName);
@@ -150,7 +152,7 @@ async function setCurrentPage() {
         }
     }
     catch (error) {
-        logger.error("Failed to set current page:", error);
+        logger.error(`Failed to set current page: ${String(error)}`);
     }
 }
 
@@ -161,9 +163,16 @@ async function setCurrentPage() {
 // URLパラメータが変更されたときにcurrentPageを設定
 $effect(() => {
     logger.info(`Effect triggered: project=${projectName}, page=${pageName}`);
+    // store.project / store.pages の変化でも再実行されるよう、参照しておく
+    const projReady = !!store.project;
+    const pagesReady = !!store.pages;
 
-    if (projectName && pageName) {
+    if (projectName && pageName && projReady && pagesReady) {
         setCurrentPage();
+    } else {
+        logger.info(
+            `Effect: Waiting conditions - projectName=${!!projectName}, pageName=${!!pageName}, projReady=${projReady}, pagesReady=${pagesReady}`,
+        );
     }
 });
 </script>

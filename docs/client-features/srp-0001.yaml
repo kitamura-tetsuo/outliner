@@ -1,0 +1,37 @@
+id: SRP-bb11cc22
+title: Project-Wide Search & Replace
+title-ja: ''
+status: experimental
+scope: client
+spec:
+  goal:
+  - Across multiple pages in a project, search for a term and replace it (first/all)
+  ui:
+  - Page header contains a visible search button (.search-btn)
+  - Clicking the search button opens a search panel (.search-panel)
+  - Search panel contains inputs: null
+  behavior:
+  - When the search panel is visible, entering a query highlights matches in the current view
+  - Replace All applies changes across all pages within the project
+E2E:
+  policy:
+  - In E2E, use window.__FLUID_SERVICE__, window.__FLUID_STORE__, window.__USER_MANAGER__
+  - Wait until generalStore.project and generalStore.pages are available (do not rely on pages.current early)
+  - Avoid SSR during E2E; +layout.ts sets ssr=false
+  preparation:
+  - Create a new container via __FLUID_SERVICE__.createNewContainer(projectTitle)
+  - Ensure at least one page exists (client.createPage(pageName, lines))
+  - Reflect the client to the app by setting __FLUID_STORE__.fluidClient = client
+  navigation:
+  - Use Svelte-managed navigation or page.goto to reach /:project/:page
+  waits:
+  - OutlinerBase [data-testid=outliner-base] exists
+  - generalStore.project exists
+  - generalStore.pages exists (no access to pages.current required)
+  notes:
+  - Items/Pages are ArrayLike; convert to arrays in tests before using filter/map (e.g., Array.from or by length/at)
+verification:
+  minimal:
+  - Search button exists and is clickable
+  - Search panel becomes visible after clicking
+  - Entering a query yields at least one match in realistic fixtures

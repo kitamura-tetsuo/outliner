@@ -1,4 +1,4 @@
-id: ITM-0004
+id: ITM-auto-add-sibling-item-on-edit-84442697
 title: Auto-add sibling on editing last item
 description: When the last visible outliner item is edited, a new empty sibling is automatically appended.
 category: item-management

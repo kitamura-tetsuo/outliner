@@ -5,6 +5,7 @@
 : "${TEST_FLUID_PORT:=7092}"
 : "${TEST_API_PORT:=7091}"
 : "${VITE_PORT:=7090}"
+: "${TEST_YJS_PORT:=7093}"
 : "${FIREBASE_PROJECT_ID:=outliner-d57b0}"
 
 # Firebase emulator ports
@@ -19,6 +20,7 @@ export NODE_ENV=test
 export TEST_ENV=localhost
 export FIREBASE_PROJECT_ID
 export VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+export VITE_YJS_PORT=${TEST_YJS_PORT}
 
 # Firebase emulator settings for test environment
 export USE_FIREBASE_EMULATOR=true
@@ -42,6 +44,7 @@ LOG_DIRS=(
 REQUIRED_PORTS=(
   ${TEST_API_PORT}
   ${TEST_FLUID_PORT}
+  ${TEST_YJS_PORT}
   ${VITE_PORT}
   ${FIREBASE_FUNCTIONS_PORT}
   ${FIREBASE_AUTH_PORT}

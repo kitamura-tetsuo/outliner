@@ -1,6 +1,5 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
-import { Tree } from "fluid-framework";
 import {
     onDestroy,
     onMount,
@@ -231,13 +230,13 @@ function handleEdit() {
     const lastText = (last.model.original.text as any)?.toString?.() ?? String((last.model.original as any).text ?? "");
     if (lastText.trim().length === 0) return;
 
-    const parent = Tree.parent(last.model.original);
-    if (parent && Tree.is(parent, Items)) {
+    const parent = last.model.original.parent;
+    if (parent) {
         const idx = parent.indexOf(last.model.original);
         parent.addNode(currentUser, idx + 1);
-    } else if (pageItem.items && Tree.is(pageItem.items, Items)) {
-        const idx = pageItem.items.indexOf(last.model.original);
-        pageItem.items.addNode(currentUser, idx + 1);
+    } else if (pageItem.items) {
+        const idx = (pageItem.items as any).indexOf(last.model.original);
+        (pageItem.items as any).addNode(currentUser, idx + 1);
     }
 }
 
@@ -502,16 +501,16 @@ function handleAddSibling(event: CustomEvent) {
 
     if (currentIndex >= 0) {
         const currentItem = displayItems.current[currentIndex];
-        const parent = Tree.parent(currentItem.model.original);
+        const parent = currentItem.model.original.parent;
 
-        if (parent && Tree.is(parent, Items)) {
+        if (parent) {
             // 親アイテムが存在する場合、現在のアイテムの直後に追加
             const itemIndex = parent.indexOf(currentItem.model.original);
             parent.addNode(currentUser, itemIndex + 1);
         } else {
             // ルートレベルのアイテムとして追加
-            const items = pageItem.items;
-            if (items && Tree.is(items, Items)) {
+            const items = pageItem.items as any;
+            if (items) {
                 const itemIndex = items.indexOf(currentItem.model.original);
                 items.addNode(currentUser, itemIndex + 1);
             }
@@ -575,16 +574,16 @@ function handlePasteMultiItem(event: CustomEvent) {
             // 最初のアイテムにペースト
             const items = pageItem.items as Items;
             const baseOriginal = displayItems.current[firstAvailableIndex].model.original;
-            baseOriginal.text = lines[0] || '';
+            baseOriginal.updateText(lines[0] || '');
 
             // 残りの行を新しいアイテムとして追加
             for (let i = 1; i < lines.length; i++) {
                 const newIndex = firstAvailableIndex + i;
                 items.addNode(currentUser, newIndex);
                 // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-                const newItem = items[newIndex];
+                const newItem = (items as any).at(newIndex);
                 if (newItem) {
-                    newItem.text = lines[i];
+                    newItem.updateText(lines[i]);
                 }
             }
 
@@ -598,16 +597,16 @@ function handlePasteMultiItem(event: CustomEvent) {
 
     // 既存の選択アイテムを更新
     const baseOriginal = displayItems.current[itemIndex].model.original;
-    baseOriginal.text = lines[0] || '';
+    baseOriginal.updateText(lines[0] || '');
 
     // 残りの行でアイテムを追加
     for (let i = 1; i < lines.length; i++) {
         const newIndex = itemIndex + i;
         items.addNode(currentUser, newIndex);
         // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-        const newItem = items[newIndex];
+        const newItem = (items as any).at(newIndex);
         if (newItem) {
-            newItem.text = lines[i];
+            newItem.updateText(lines[i]);
         }
     }
 }
@@ -652,7 +651,7 @@ function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
         if (i === actualStartIndex) {
             // 開始アイテムは削除せず、テキストを更新
             const startItem = displayItems.current[i].model.original;
-            startItem.text = lines[0] || '';
+            startItem.updateText(lines[0] || '');
 
             if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
                 console.log(`Updated first item text to: "${lines[0] || ''}"`);
@@ -674,9 +673,9 @@ function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
         }
         items.addNode(currentUser, newIndex);
         // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-        const newItem = items[newIndex];
+        const newItem = (items as any).at(newIndex);
         if (newItem) {
-            newItem.text = lines[i];
+            newItem.updateText(lines[i]);
         }
     }
 
@@ -729,7 +728,7 @@ function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
 
     const items = pageItem.items as Items;
     const item = displayItems.current[itemIndex].model.original;
-    const text = item.text || '';
+    const text: string = (item.text as any)?.toString?.() ?? "";
 
     if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
         console.log(`Original text: "${text}"`);
@@ -739,7 +738,7 @@ function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
     if (lines.length === 1) {
         // 単一行のペーストの場合は、選択範囲を置き換え
         const newText = text.substring(0, startOffset) + lines[0] + text.substring(endOffset);
-        item.text = newText;
+        item.updateText(newText);
 
         if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
             console.log(`Updated text to: "${newText}"`);
@@ -759,7 +758,7 @@ function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
         // 複数行のペーストの場合
         // 最初の行は現在のアイテムの選択範囲を置き換え
         const newFirstText = text.substring(0, startOffset) + lines[0];
-        item.text = newFirstText;
+        item.updateText(newFirstText);
 
         if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
             console.log(`Updated first item text to: "${newFirstText}"`);
@@ -775,18 +774,18 @@ function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
 
             items.addNode(currentUser, newIndex);
             // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-            const newItem = items[newIndex];
+            const newItem = (items as any).at(newIndex);
             if (newItem) {
                 if (i === lines.length - 1) {
                     // 最後の行は、選択範囲の後ろのテキストを追加
                     const lastItemText = lines[i] + text.substring(endOffset);
-                    newItem.text = lastItemText;
+                    newItem.updateText(lastItemText);
 
                     if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
                         console.log(`Last item text set to: "${lastItemText}"`);
                     }
                 } else {
-                    newItem.text = lines[i];
+                    newItem.updateText(lines[i]);
 
                     if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
                         console.log(`Item ${i} text set to: "${lines[i]}"`);
@@ -984,7 +983,7 @@ function handleItemDragEnd(event: CustomEvent) {
 }
 
 // 単一アイテム内の選択範囲をドロップする
-function handleSingleItemSelectionDrop(selection: any, targetItemId: string, position: string, text: string) {
+function handleSingleItemSelectionDrop(selection: any, targetItemId: string, position: string, _text: string) {
     // デバッグ情報
     if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
         console.log(`handleSingleItemSelectionDrop called with selection:`, selection);
@@ -1008,11 +1007,11 @@ function handleSingleItemSelectionDrop(selection: any, targetItemId: string, pos
 
     // ソースアイテムのテキストを取得
     const sourceItem = displayItems.current[sourceIndex].model.original;
-    const sourceText = sourceItem.text || '';
+    const sourceText: string = (sourceItem.text as any)?.toString?.() ?? "";
 
     // ターゲットアイテムのテキストを取得
     const targetItem = displayItems.current[targetIndex].model.original;
-    const targetText = targetItem.text || '';
+    const targetText: string = (targetItem.text as any)?.toString?.() ?? "";
 
     // 選択範囲のテキストを取得
     const selectedText = sourceText.substring(startOffset, endOffset);
@@ -1023,7 +1022,7 @@ function handleSingleItemSelectionDrop(selection: any, targetItemId: string, pos
 
     // ソースアイテムから選択範囲を削除
     const newSourceText = sourceText.substring(0, startOffset) + sourceText.substring(endOffset);
-    sourceItem.text = newSourceText;
+    sourceItem.updateText(newSourceText);
 
     if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
         console.log(`Updated source text: "${newSourceText}"`);
@@ -1032,14 +1031,14 @@ function handleSingleItemSelectionDrop(selection: any, targetItemId: string, pos
     // ターゲットアイテムに選択範囲を挿入
     if (position === 'top') {
         // アイテムの先頭に挿入
-        targetItem.text = selectedText + targetText;
+        targetItem.updateText(selectedText + targetText);
     } else if (position === 'bottom') {
         // アイテムの末尾に挿入
-        targetItem.text = targetText + selectedText;
+        targetItem.updateText(targetText + selectedText);
     } else if (position === 'middle') {
         // アイテムの中央に挿入（カーソル位置を計算）
         const middleOffset = Math.floor(targetText.length / 2);
-        targetItem.text = targetText.substring(0, middleOffset) + selectedText + targetText.substring(middleOffset);
+        targetItem.updateText(targetText.substring(0, middleOffset) + selectedText + targetText.substring(middleOffset));
     }
 
     if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
@@ -1088,7 +1087,7 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
     }
 
     // 選択範囲の方向を考慮
-    const isReversed = selection.isReversed || false;
+    const _isReversed = selection.isReversed || false;
     const actualStartIndex = Math.min(startIndex, endIndex);
     const actualEndIndex = Math.max(startIndex, endIndex);
 
@@ -1106,7 +1105,7 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
         if (i === actualStartIndex) {
             // 開始アイテムは削除せず、テキストを更新
             const startItem = displayItems.current[i].model.original;
-            startItem.text = '';
+            startItem.updateText('');
 
             if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
                 console.log(`Cleared first item text`);
@@ -1130,39 +1129,39 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
     // ターゲットアイテムに選択範囲を挿入
     if (position === 'top') {
         // アイテムの先頭に挿入
-        targetItem.text = lines[0] + targetText;
+        targetItem.updateText(lines[0] + targetText);
 
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
             items.addNode(currentUser, targetIndex + i);
-            const newItem = items[targetIndex + i];
+            const newItem = (items as any).at(targetIndex + i);
             if (newItem) {
-                newItem.text = lines[i];
+                newItem.updateText(lines[i]);
             }
         }
     } else if (position === 'bottom') {
         // アイテムの末尾に挿入
-        targetItem.text = targetText + lines[0];
+        targetItem.updateText(targetText + lines[0]);
 
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
             items.addNode(currentUser, targetIndex + i);
-            const newItem = items[targetIndex + i];
+            const newItem = (items as any).at(targetIndex + i);
             if (newItem) {
-                newItem.text = lines[i];
+                newItem.updateText(lines[i]);
             }
         }
     } else if (position === 'middle') {
         // アイテムの中央に挿入（カーソル位置を計算）
         const middleOffset = Math.floor(targetText.length / 2);
-        targetItem.text = targetText.substring(0, middleOffset) + lines[0] + targetText.substring(middleOffset);
+        targetItem.updateText(targetText.substring(0, middleOffset) + lines[0] + targetText.substring(middleOffset));
 
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
             items.addNode(currentUser, targetIndex + i);
-            const newItem = items[targetIndex + i];
+            const newItem = (items as any).at(targetIndex + i);
             if (newItem) {
-                newItem.text = lines[i];
+                newItem.updateText(lines[i]);
             }
         }
     }

@@ -16,7 +16,17 @@ const logger = getLogger();
  * グローバルデバッグ関数を設定する
  * @param fluidClient FluidClientインスタンス
  */
-export function setupGlobalDebugFunctions() {
+export function setupGlobalDebugFunctions(service?: any) {
+    if (typeof window !== "undefined") {
+        // ナビゲーション関数
+        (window as any).__SVELTE_GOTO__ = goto;
+        // サービス / ストア / ユーザーマネージャ
+        (window as any).__FLUID_SERVICE__ = service ?? fluidService;
+        (window as any).__FLUID_STORE__ = fluidStore;
+        (window as any).__USER_MANAGER__ = userManager;
+        (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
+        logger.debug("Global debug functions initialized");
+    }
 }
 
 // グローバル型定義を拡張
@@ -33,8 +43,13 @@ declare global {
 
 if (process.env.NODE_ENV === "test") {
     if (typeof window !== "undefined") {
-        // グローバルオブジェクトにFluidClientインスタンスを保存
+        // E2E から利用するためにグローバル公開
         (window as any).__SVELTE_GOTO__ = goto;
+        (window as any).__FLUID_SERVICE__ = fluidService;
+        (window as any).__FLUID_STORE__ = fluidStore;
+        (window as any).__USER_MANAGER__ = userManager;
+        (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
+
         // SharedTreeのデータ構造を取得するデバッグ関数
         window.getFluidTreeDebugData = function() {
             if (!fluidStore.fluidClient) {

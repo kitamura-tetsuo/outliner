@@ -98,8 +98,8 @@ test.describe("IND: Yjs Tab/Shift+Tab indent/outdent", () => {
             return await getDepth(page, id);
         };
 
-        const after2 = await waitDepth(id2!, before2 + 1);
-        const after3 = await waitDepth(id3!, before3 + 1);
+        let after2 = await waitDepth(id2!, before2 + 1);
+        let after3 = await waitDepth(id3!, before3 + 1);
 
         // 片方が先に +1 になり、もう片方が遅延するケースを吸収
         const start = Date.now();

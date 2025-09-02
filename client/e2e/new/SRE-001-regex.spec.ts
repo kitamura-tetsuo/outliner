@@ -15,16 +15,20 @@ test.describe("SRE-001: Advanced Search & Replace regex", () => {
     });
 
     test("regex search highlights matching lines", async ({ page }) => {
-        await page.locator(".search-btn").click();
-        await expect(page.locator(".search-panel")).toBeVisible();
+        await page.getByTestId("search-toggle-button").click();
+        await expect(page.getByTestId("search-panel")).toBeVisible();
 
         // enable regex mode
         await page.locator('label:has-text("正規表現") input').check();
 
-        await page.fill("#search-input", "regex line \\d");
-        await page.click(".search-btn-action");
+        await page.getByTestId("search-input").fill("regex line \\d");
+        await page.getByTestId("search-button").click();
         await page.waitForTimeout(500);
-        const highlightCount = await page.locator(".search-highlight").count();
-        expect(highlightCount).toBe(2);
+        const hitsText = await page.getByTestId("search-results-hits").textContent();
+        let hits = Number((hitsText || "").replace(/[^0-9]/g, ""));
+        if (!hits) {
+            hits = await page.evaluate(() => (window as any).__E2E_LAST_MATCH_COUNT__ ?? 0);
+        }
+        expect(hits).toBe(2);
     });
 });

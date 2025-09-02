@@ -1,11 +1,11 @@
-/** @feature ITM-0004
+/** @feature ITM-multi-line-input-6dcdbeef
  *  Title   : 複数行テキスト入力
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("ITM-0004: 複数行テキスト入力", () => {
+test.describe("ITM-multi-line-input-6dcdbeef: 複数行テキスト入力", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // start with an empty page so item indices are predictable
         await TestHelpers.prepareTestEnvironment(page, testInfo, []);

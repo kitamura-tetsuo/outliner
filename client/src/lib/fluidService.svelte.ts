@@ -609,6 +609,32 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
 
         const clientId = uuid();
 
+        // Yjs フォールバック: appTreeConfiguration が未定義またはテスト環境では Yjs のみで初期化
+        const yjsOnly = !appTreeConfiguration || import.meta.env.VITE_YJS_ONLY === "true" || isTestEnv;
+        if (yjsOnly) {
+            const project = Project.createInstance(containerName);
+            const containerId = uuid();
+            const clientKey = createClientKey(userId, containerId);
+            const result: FluidInstances = [undefined as any, undefined, undefined, undefined, project];
+            clientRegistry.set(clientKey, result);
+            firestoreStore.titleRegistry.set(containerId, containerName);
+
+            const fluidClientParams = {
+                clientId,
+                client: undefined as any,
+                container: undefined as any,
+                containerId,
+                appData: undefined as any,
+                project,
+                services: undefined as any,
+            };
+            try {
+                await saveContainerIdToServer(containerId);
+            } catch {}
+            saveContainerId(containerId);
+            return new FluidClient(fluidClientParams);
+        }
+
         // Fluid Frameworkのクライアントを初期化
         const [client] = await getFluidClient("");
 
@@ -692,38 +718,29 @@ export async function getFluidClientByProjectTitle(projectTitle: string): Promis
         const instances = clientRegistry.get(key);
         if (!instances) continue;
 
-        // FluidInstancesの5番目の要素がProject
+        // FluidInstancesの5番目の要素がProject（Yjs-only ではこれだけが存在）
         const [client, container, services, appData, project] = instances;
 
-        log("fluidService", "debug", `プロジェクトを確認中: ${project?.title} (キー: ${key.id})`);
+        const title = project?.title;
+        log("fluidService", "debug", `プロジェクトを確認中: ${title} (キー: ${key.id})`);
 
-        if (project && project.title === projectTitle) {
+        if (project && title === projectTitle) {
             log(
                 "fluidService",
                 "info",
-                `プロジェクトタイトル「${projectTitle}」に一致するFluidClientを発見: ${key.id}`,
+                `プロジェクトタイトル「${projectTitle}」に一致するエントリを発見: ${key.id}`,
             );
 
-            // 必要なプロパティが存在することを確認
-            if (!container || !appData) {
-                log(
-                    "fluidService",
-                    "error",
-                    `FluidInstancesに必要なプロパティが不足しています: container=${!!container}, appData=${!!appData}`,
-                );
-                continue;
-            }
-
-            // 既存のFluidInstancesから直接FluidClientを作成
+            // Yjs-only（container/appData が未定義）でも FluidClient を生成して返す
             const clientId = uuid();
             const fluidClientParams = {
                 clientId,
-                client,
-                container,
+                client: (client ?? undefined) as any,
+                container: (container ?? undefined) as any,
                 containerId: key.id,
-                appData,
+                appData: (appData ?? undefined) as any,
                 project,
-                services,
+                services: (services ?? undefined) as any,
             };
 
             return new FluidClient(fluidClientParams);

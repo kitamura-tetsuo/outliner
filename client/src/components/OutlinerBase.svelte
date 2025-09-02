@@ -13,7 +13,7 @@ import { TreeSubscriber } from "../stores/TreeSubscriber";
 console.log("OutlinerBase imports completed");
 
 interface Props {
-    pageItem: Item;
+    pageItem?: Item; // undefined を許容して常時マウント可能に
     projectName: string;
     pageName: string;
     isReadOnly?: boolean;

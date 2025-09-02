@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { test } from "@playwright/test";
 
 test.describe("Debug Page Load", () => {
@@ -46,9 +48,9 @@ test.describe("Debug Page Load", () => {
             // プロジェクト作成を試行
             const projectResult = await page.evaluate(async () => {
                 try {
-                    const { createNewContainer } = await import("../../src/lib/fluidService.svelte.js");
+                    const fluidService: any = (window as any).__FLUID_SERVICE__;
                     const projectName = "Debug Project";
-                    const client = await createNewContainer(projectName);
+                    const client = await fluidService.createNewContainer(projectName);
 
                     const project = client.getProject();
                     client.createPage("debug-page", ["Debug line 1", "Debug line 2"]);
@@ -81,10 +83,8 @@ test.describe("Debug Page Load", () => {
 
                     if (currentUser) {
                         try {
-                            const { getFluidClientByProjectTitle } = await import(
-                                "../../src/lib/fluidService.svelte.js"
-                            );
-                            const client = await getFluidClientByProjectTitle(projectName);
+                            const fluidService: any = (window as any).__FLUID_SERVICE__;
+                            const client = await fluidService.getFluidClientByProjectTitle(projectName);
 
                             const fluidStore = (window as any).__FLUID_STORE__;
                             const generalStore = (window as any).generalStore;

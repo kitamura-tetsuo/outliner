@@ -21,11 +21,13 @@
         "target": "es2017"
     },
     "include": [
-        "../src/vite-env.d.ts",
         "**/*.ts",
-        "**/*.js"
+        "**/*.js",
+        "**/*.d.ts"
     ],
     "exclude": [
-        "node_modules"
+        "node_modules",
+        "../src",
+        "../src/**"
     ]
 }

@@ -1,11 +1,11 @@
-/** @feature ITM-0004
+/** @feature ITM-auto-add-sibling-item-on-edit-84442697
  *  Title   : Auto-add sibling on editing last item
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("ITM-0004: auto add sibling item", () => {
+test.describe("ITM-auto-add-sibling-item-on-edit-84442697: auto add sibling item", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First"]);
         await TestHelpers.waitForOutlinerItems(page);

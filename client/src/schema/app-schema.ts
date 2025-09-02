@@ -156,8 +156,24 @@ export class Item {
         return this.comments.updateComment(commentId, text);
     }
 
-    get items(): Items {
-        return new Items(this.ydoc, this.tree, this.key);
+    get items(): any {
+        // Array風アクセス可能な Proxy を返す
+        return new Items(this.ydoc, this.tree, this.key).asArrayLike();
+    }
+
+    /** 親の子集合（Items）を返す。ルート直下の場合は null */
+    get parent(): Items | null {
+        // yjs-orderedtree の API で親キーを取得
+        const parentKey = (this.tree as any).getNodeParentFromKey(this.key);
+        if (!parentKey) return null;
+        return new Items(this.ydoc, this.tree, parentKey);
+    }
+
+    /** 親内でのインデックス（親がない場合は -1） */
+    indexInParent(): number {
+        const p = this.parent;
+        if (!p) return -1;
+        return p.indexOf(this);
     }
 
     delete() {
@@ -187,6 +203,63 @@ export class Items {
     at(index: number): Item | undefined {
         const key = this.childrenKeys()[index];
         return key ? new Item(this.ydoc, this.tree, key) : undefined;
+    }
+
+    /**
+     * Array風アクセス互換: items[0] で at(0) を返す Proxy を生成
+     */
+    asArrayLike(): any {
+        const self = this;
+        return new Proxy(self as any, {
+            get(target, prop, receiver) {
+                const isIndex = (p: any) => (typeof p === "number") || (typeof p === "string" && /^\d+$/.test(p));
+                if (isIndex(prop)) {
+                    const idx = Number(prop as any);
+                    return self.at(idx);
+                }
+                if (prop === "length") return self.length;
+                if (prop === (Symbol as any).iterator) {
+                    // for..of 対応
+                    return function*() {
+                        const len = self.length;
+                        for (let i = 0; i < len; i++) {
+                            const it = self.at(i);
+                            if (it) yield it;
+                        }
+                    };
+                }
+                return Reflect.get(target, prop, receiver);
+            },
+            has(target, prop) {
+                const isIndex = (p: any) => (typeof p === "number") || (typeof p === "string" && /^\d+$/.test(p));
+                if (isIndex(prop)) {
+                    const idx = Number(prop as any);
+                    return idx >= 0 && idx < self.length;
+                }
+                return Reflect.has(target, prop);
+            },
+            getOwnPropertyDescriptor(target, prop) {
+                const isIndex = (p: any) => (typeof p === "number") || (typeof p === "string" && /^\d+$/.test(p));
+                if (isIndex(prop)) {
+                    const idx = Number(prop as any);
+                    return {
+                        configurable: true,
+                        enumerable: true,
+                        value: self.at(idx),
+                        writable: false,
+                    };
+                }
+                if (prop === "length") {
+                    return {
+                        configurable: true,
+                        enumerable: false,
+                        value: self.length,
+                        writable: false,
+                    } as any;
+                }
+                return Object.getOwnPropertyDescriptor(target, prop as any);
+            },
+        });
     }
 
     indexOf(item: Item): number {
@@ -271,8 +344,8 @@ export class Project {
     }
 
     /** ルート直下のItems（親キー 'root'） */
-    get items(): Items {
-        return new Items(this.ydoc, this.tree, "root");
+    get items(): any {
+        return new Items(this.ydoc, this.tree, "root").asArrayLike();
     }
 
     /** ページ（最上位アイテム）を追加し、textにタイトルを設定 */

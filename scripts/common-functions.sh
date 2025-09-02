@@ -105,7 +105,7 @@ install_global_packages() {
   # if ! command -v dprint >/dev/null; then
   #   curl -fsSL https://dprint.dev/install.sh | sudo sh
   # fi
-  
+
 }
 
 # Install OS utilities if needed
@@ -188,7 +188,7 @@ install_os_utilities() {
 setup_environment_files() {
   chmod +x "${ROOT_DIR}/scripts/setup-local-env.sh"
   "${ROOT_DIR}/scripts/setup-local-env.sh"
-  
+
   set -a
   source "${ROOT_DIR}/server/.env"
   source "${ROOT_DIR}/client/.env"
@@ -201,15 +201,15 @@ setup_environment_files() {
 # Install all npm dependencies
 install_all_dependencies() {
   echo "Installing dependencies..."
-  
+
   # Server dependencies
   cd "${ROOT_DIR}/server"
   npm_ci_if_needed
-  
+
   # Firebase Functions dependencies
   cd "${ROOT_DIR}/functions"
   npm_ci_if_needed
-  
+
   # Client dependencies
   cd "${ROOT_DIR}/client"
   npm_ci_if_needed
@@ -217,12 +217,12 @@ install_all_dependencies() {
   # Development environment test dependencies
   cd "${ROOT_DIR}/scripts/tests"
   npm_ci_if_needed
-  
+
   # Compile Paraglide if needed
   # if [ -z "${SKIP_PARAGLIDE_COMPILE}" ] && [ -d node_modules ]; then
   #   npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
   # fi
-  
+
   cd "${ROOT_DIR}"
 }
 
@@ -344,6 +344,28 @@ EOF
     direct_response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_FUNCTIONS_PORT}/${FIREBASE_PROJECT_ID}/us-central1/adminCheckForContainerUserListing")
     echo "Direct Firebase Functions call returned HTTP status: $direct_response"
   fi
+
+# Start Yjs WebSocket server
+start_yjs_server() {
+  echo "Starting Yjs WebSocket server on port ${TEST_YJS_PORT}..."
+  cd "${ROOT_DIR}"
+  # Ensure data directory exists for persistence
+  mkdir -p "${ROOT_DIR}/yjs-data"
+  # Use y-websocket CLI via npx with LevelDB persistence if available
+  # YPERSISTENCE enables y-leveldb persistence in y-websocket >= 2.x
+  YPERSISTENCE="${ROOT_DIR}/yjs-data" npx y-websocket --port ${TEST_YJS_PORT} > "${ROOT_DIR}/server/logs/yjs-websocket.log" 2>&1 &
+  local yjs_pid=$!
+  echo "Yjs WebSocket server started with PID: ${yjs_pid}"
+  cd "${ROOT_DIR}"
+
+  # Wait for the Yjs server to be ready
+  if ! wait_for_port ${TEST_YJS_PORT} 30; then
+    echo "Warning: Yjs WebSocket server may not be ready on port ${TEST_YJS_PORT}"
+    echo "Last 50 lines of Yjs server log:"
+    tail -50 "${ROOT_DIR}/server/logs/yjs-websocket.log" || echo "No Yjs log found"
+  fi
+}
+
 }
 
 # Start Tinylicious server
