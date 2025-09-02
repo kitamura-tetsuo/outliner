@@ -1,29 +1,41 @@
-// Firebase Functionsでは主にFirebase Secretsを使用
-// テスト環境では環境変数を直接設定するため、dotenvは使用しない
+// Firebase Functionsでは本番でFirebase Secretsを使用
+// テスト/エミュレーター環境ではdotenvxで.envを読み込む
+try {
+  if (
+    process.env.CI === "true" || process.env.NODE_ENV === "test" ||
+    process.env.FUNCTIONS_EMULATOR === "true"
+  ) {
+    require("@dotenvx/dotenvx").config();
+  }
+} catch {
+  // dotenvx が無くても処理継続（本番はSecretsを使用）
+}
 
 // テスト環境またはCI環境用の追加設定（他の設定より前に実行）
 if (
   process.env.CI === "true" || process.env.NODE_ENV === "test" ||
   process.env.FUNCTIONS_EMULATOR === "true"
 ) {
-  process.env.AZURE_PRIMARY_KEY = "test-primary-key";
-  process.env.AZURE_SECONDARY_KEY = "test-secondary-key";
-  process.env.AZURE_ACTIVE_KEY = "primary";
-  process.env.GCLOUD_PROJECT = "outliner-d57b0";
+  process.env.AZURE_PRIMARY_KEY ||= "test-primary-key";
+  process.env.AZURE_SECONDARY_KEY ||= "test-secondary-key";
+  process.env.AZURE_ACTIVE_KEY ||= "primary";
+  process.env.GCLOUD_PROJECT ||= "outliner-d57b0";
   process.env.NODE_ENV = "test";
   process.env.FUNCTIONS_EMULATOR = "true";
-  process.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:59099";
-  process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
-  process.env.FIREBASE_STORAGE_EMULATOR_HOST = "localhost:59200";
-  process.env.AZURE_TENANT_ID = "test-tenant-id";
-  process.env.AZURE_ENDPOINT = "https://test-endpoint.fluidrelay.azure.com";
-  process.env.FIREBASE_PROJECT_ID = "outliner-d57b0";
+  process.env.FIREBASE_AUTH_EMULATOR_HOST ||= "localhost:59099";
+  process.env.FIRESTORE_EMULATOR_HOST ||= "localhost:58080";
+  process.env.FIREBASE_STORAGE_EMULATOR_HOST ||= "localhost:59200";
+  process.env.AZURE_TENANT_ID ||= "test-tenant-id";
+  process.env.AZURE_ENDPOINT ||= "https://test.fluidrelay.azure.com";
+  process.env.FIREBASE_PROJECT_ID ||= "outliner-d57b0";
 }
 
-// 環境変数を設定
-process.env.AZURE_TENANT_ID = "89b298bd-9aa3-4a6b-8ef0-2dc3019b0996";
-process.env.AZURE_ENDPOINT = "https://us.fluidrelay.azure.com";
-process.env.FIREBASE_PROJECT_ID = "outliner-d57b0";
+// 本番向けのフォールバック（Secrets未設定時）
+if (!process.env.FUNCTIONS_EMULATOR) {
+  process.env.AZURE_TENANT_ID ||= "89b298bd-9aa3-4a6b-8ef0-2dc3019b0996";
+  process.env.AZURE_ENDPOINT ||= "https://us.fluidrelay.azure.com";
+  process.env.FIREBASE_PROJECT_ID ||= "outliner-d57b0";
+}
 
 const { onRequest } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
