@@ -133,6 +133,11 @@ export default defineConfig({
             name: "utils",
             testDir: "./e2e/utils",
         },
+        {
+            // サーバーテスト: バックエンド接続の検証用
+            name: "server",
+            testDir: "./e2e/server",
+        },
     ],
     // webServer: {
     //     command: `npx dotenv -e .env.test -- npm run dev -- --host 0.0.0.0 --port ${TEST_PORT}`,
