@@ -1,0 +1,12 @@
+id: YPP-c83a5f4b
+title: Page subdoc per-page provider
+description: Each project page uses a YJS subdocument connected to its own WebSocket room.
+category: yjs
+status: implemented
+acceptance:
+- Awareness updates are isolated per page
+- Opening two pages in the same project connects to different rooms
+tests:
+- client/e2e/yjs/ypp-page-subdoc-provider-c83a5f4b.spec.ts
+- client/src/tests/integration/yjs/ypp-page-subdoc-provider-c83a5f4b.integration.spec.ts
+title-ja: ページごとに独立したYJSサブドキュメントとプロバイダー
