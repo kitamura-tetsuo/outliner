@@ -28,6 +28,16 @@ export class Item {
         if (text) t.insert(0, text);
         this.value.set("lastChanged", Date.now());
     }
+
+    get items(): Items {
+        return new Items(this.ydoc, this.tree, this.key);
+    }
+
+    get parent(): Items | null {
+        const parentKey = (this.tree as any).getNodeParentFromKey(this.key);
+        if (!parentKey) return null;
+        return new Items(this.ydoc, this.tree, parentKey);
+    }
 }
 
 export class Items {
@@ -81,6 +91,24 @@ export class Items {
         }
 
         return new Item(this.ydoc, this.tree, nodeKey);
+    }
+
+    indexOf(item: Item): number {
+        return this.childrenKeys().indexOf(item.key);
+    }
+
+    [Symbol.iterator](): Iterator<Item> {
+        const keys = this.childrenKeys();
+        let i = 0;
+        return {
+            next: () => {
+                if (i < keys.length) {
+                    const value = new Item(this.ydoc, this.tree, keys[i++]);
+                    return { value, done: false };
+                }
+                return { value: undefined, done: true } as IteratorResult<Item>;
+            },
+        };
     }
 }
 

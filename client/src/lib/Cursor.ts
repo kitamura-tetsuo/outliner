@@ -1,11 +1,15 @@
 // @ts-nocheck
 import { Tree } from "fluid-framework";
-import { TreeViewManager } from "../fluid/TreeViewManager";
-import type { Item } from "../schema/app-schema";
-import { Items } from "../schema/app-schema";
+import type { Item } from "../schema/yjs-schema";
+import { Items } from "../schema/yjs-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
+
+export function isPageItem(item: Item): boolean {
+    const parent = item.parent;
+    return !!parent && parent.parentKey === "root";
+}
 
 interface CursorOptions {
     itemId: string;
@@ -959,11 +963,11 @@ export class Cursor {
         const afterText = text.slice(this.offset);
 
         // タイトルかどうかを判断
-        const isPageTitle = TreeViewManager.isPageItem(target);
+        const isPageTitle = isPageItem(target);
 
         if (isPageTitle) {
             // タイトルの場合は最初の子として追加
-            if (target.items && Tree.is(target.items, Items)) {
+            if (target.items && target.items instanceof Items) {
                 // 現在のアイテムのテキストを更新（カーソル位置より前のテキスト）
                 target.updateText(beforeText);
 

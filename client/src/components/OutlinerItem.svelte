@@ -1,20 +1,17 @@
 <script lang="ts">
-import { Tree } from "fluid-framework";
 import {
     createEventDispatcher,
     onMount,
 } from "svelte";
-import { getCurrentContainerId } from "../lib/fluidService.svelte";
 import {
     Item,
     Items,
-} from "../schema/app-schema";
+} from "../schema/yjs-schema";
 import { uploadAttachment } from "../services/attachmentService";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
-import { fluidStore } from "../stores/fluidStore.svelte";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
-import { TreeSubscriber } from "../stores/TreeSubscriber";
+import { YjsSubscriber } from "../stores/YjsSubscriber";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 import ChartPanel from "./ChartPanel.svelte";
 import CommentThread from "./CommentThread.svelte";
@@ -64,9 +61,8 @@ let showComments = $state(false);
 
 let item = model.original;
 
-const aliasTargetIdSub = new TreeSubscriber(
-    item,
-    "nodeChanged",
+const aliasTargetIdSub = new YjsSubscriber(
+    item.ydoc,
     () => (item as any).aliasTargetId,
     value => {
         (item as any).aliasTargetId = value;
@@ -82,9 +78,8 @@ $effect(() => {
 let aliasTarget = $state<Item | undefined>(undefined);
 
 let attachments = $state<string[]>([...(item.attachments as any)]);
-const attachmentsSub = new TreeSubscriber(
-    item,
-    "nodeChanged",
+const attachmentsSub = new YjsSubscriber(
+    item.ydoc,
     () => item.attachments,
 );
 
@@ -93,9 +88,8 @@ $effect(() => {
 });
 let aliasPath = $state<Item[]>([]);
 
-const aliasTargetSub = new TreeSubscriber<Item, Item | undefined>(
-    generalStore.currentPage,
-    "nodeChanged",
+const aliasTargetSub = new YjsSubscriber<Item | undefined>(
+    generalStore.currentPage.ydoc,
     () => {
         if (!aliasTargetId) return undefined;
         return findItem(generalStore.currentPage, aliasTargetId);
@@ -153,12 +147,11 @@ function handleComponentTypeChange(newType: string) {
     }
 }
 
-const text = new TreeSubscriber(
-    item,
-    "nodeChanged",
-    () => item.text,
+const text = new YjsSubscriber(
+    item.ydoc,
+    () => item.text.toString(),
     value => {
-        item.text = value;
+        item.updateText(value);
     },
 );
 
@@ -469,7 +462,7 @@ function finishEditing() {
 }
 
 function addNewItem() {
-    if (!isReadOnly && model.original.items && Tree.is(model.original.items, Items)) {
+    if (!isReadOnly && model.original.items && model.original.items instanceof Items) {
         model.original.items.addNode(currentUser, 0);
     }
 }
@@ -1043,63 +1036,7 @@ async function handleDrop(event: DragEvent) {
     if (!event.dataTransfer) return;
 
     if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-        // getCurrentContainerIdを使用してコンテナIDを取得
-        let containerId = getCurrentContainerId();
-
-        console.log("OutlinerItem handleDrop: containerId =", containerId);
-        console.log("OutlinerItem handleDrop: fluidStore.fluidClient =", fluidStore.fluidClient);
-        console.log("OutlinerItem handleDrop: fluidStore.currentContainerId =", fluidStore.getCurrentContainerId());
-        console.log("OutlinerItem handleDrop: generalStore =", generalStore);
-        console.log("OutlinerItem handleDrop: currentProject =", generalStore?.currentProject);
-
-        if (!containerId) {
-            console.error("No container ID available for file upload");
-            return;
-        }
-
-        for (const file of event.dataTransfer.files) {
-            try {
-                console.log(
-                    "OutlinerItem handleDrop: uploading file",
-                    file.name,
-                    "to container",
-                    containerId,
-                    "item",
-                    model.id,
-                );
-
-                // テスト環境では、ダミーのURLを使用
-                const isTest = import.meta.env.MODE === "test" ||
-                              process.env.NODE_ENV === "test" ||
-                              import.meta.env.VITE_IS_TEST === "true";
-
-                let url: string;
-                if (isTest) {
-                    // テスト環境では、ファイル名を使ったダミーURLを生成
-                    url = `data:text/plain;base64,${btoa(file.name)}`;
-                    console.log("OutlinerItem handleDrop: using test URL =", url);
-                } else {
-                    url = await uploadAttachment(containerId, model.id, file);
-                    console.log("OutlinerItem handleDrop: upload successful, url =", url);
-                }
-
-                item.addAttachment(url);
-                attachments = [...attachments, url];
-            }
-            catch (err) {
-                console.error("upload failed", err);
-                // エラーが発生した場合でも、テスト環境ではダミーURLを使用
-                const isTest = import.meta.env.MODE === "test" ||
-                              process.env.NODE_ENV === "test" ||
-                              import.meta.env.VITE_IS_TEST === "true";
-                if (isTest) {
-                    const url = `data:text/plain;base64,${btoa(file.name)}`;
-                    console.log("OutlinerItem handleDrop: using fallback test URL =", url);
-                    item.addAttachment(url);
-                    attachments = [...attachments, url];
-                }
-            }
-        }
+        console.warn("OutlinerItem handleDrop: attachment uploads not implemented");
         dropTargetPosition = null;
         return;
     }

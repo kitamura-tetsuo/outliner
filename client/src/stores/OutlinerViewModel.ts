@@ -1,7 +1,6 @@
 // @ts-nocheck
-import { Tree } from "fluid-framework";
 import { getLogger } from "../lib/logger";
-import { Item, Items } from "../schema/app-schema";
+import { Item, Items } from "../schema/yjs-schema";
 
 const logger = getLogger();
 
@@ -95,7 +94,8 @@ export class OutlinerViewModel {
         if (!items) return;
 
         for (let i = 0; i < items.length; i++) {
-            this.ensureViewModelsItemExist(items[i], parentId);
+            const child = items.at(i);
+            if (child) this.ensureViewModelsItemExist(child, parentId);
         }
     }
 
@@ -103,7 +103,7 @@ export class OutlinerViewModel {
         item: Item,
         parentId: string | null = null,
     ): void {
-        if (!Tree.is(item, Item) || !item.id) return;
+        if (!(item instanceof Item) || !item.id) return;
 
         console.log(
             `OutlinerViewModel: ensureViewModelsItemExist for item "${item.text}" (id: ${item.id})`,
@@ -113,10 +113,10 @@ export class OutlinerViewModel {
         const existingViewModel = this.viewModels.get(item.id);
         if (existingViewModel) {
             // プロパティを更新（参照は維持）
-            existingViewModel.text = item.text;
-            existingViewModel.votes = [...item.votes];
-            existingViewModel.lastChanged = item.lastChanged;
-            existingViewModel.commentCount = item.comments?.length ?? 0;
+            existingViewModel.text = item.text.toString();
+            existingViewModel.votes = [...((item as any).votes || [])];
+            existingViewModel.lastChanged = (item as any).lastChanged;
+            existingViewModel.commentCount = (item as any).comments?.length ?? 0;
             console.log(
                 `OutlinerViewModel: Updated existing view model for "${item.text}"`,
             );
@@ -125,12 +125,12 @@ export class OutlinerViewModel {
             this.viewModels.set(item.id, {
                 id: item.id,
                 original: item,
-                text: item.text,
-                votes: [...item.votes],
-                author: item.author,
-                created: item.created,
-                lastChanged: item.lastChanged,
-                commentCount: item.comments?.length ?? 0,
+                text: item.text.toString(),
+                votes: [...((item as any).votes || [])],
+                author: (item as any).author,
+                created: (item as any).created,
+                lastChanged: (item as any).lastChanged,
+                commentCount: (item as any).comments?.length ?? 0,
             });
             console.log(
                 `OutlinerViewModel: Created new view model for "${item.text}"`,
@@ -141,14 +141,14 @@ export class OutlinerViewModel {
         this.parentMap.set(item.id, parentId);
 
         // 子アイテムも処理
-        if (item.items && Tree.is(item.items, Items)) {
-            const children = item.items as any;
+        if (item.items && item.items instanceof Items) {
+            const children = item.items;
             console.log(
-                `OutlinerViewModel: Processing ${children.length} children for "${item.text}"`,
+                `OutlinerViewModel: Processing ${children.length} children for "${item.text.toString()}"`,
             );
             this.ensureViewModelsItemsExist(children, item.id);
         } else {
-            console.log(`OutlinerViewModel: No children for "${item.text}"`);
+            console.log(`OutlinerViewModel: No children for "${item.text.toString()}"`);
         }
     }
     /**
@@ -167,7 +167,8 @@ export class OutlinerViewModel {
         }
 
         for (let i = 0; i < items.length; i++) {
-            this.recalculateOrderAndDepthItem(items[i], depth, parentId);
+            const child = items.at(i);
+            if (child) this.recalculateOrderAndDepthItem(child, depth, parentId);
         }
     }
     /**
@@ -178,7 +179,7 @@ export class OutlinerViewModel {
         depth: number = 0,
         parentId: string | null = null,
     ): void {
-        if (!Tree.is(item, Item) || !item.id) return;
+        if (!(item instanceof Item) || !item.id) return;
 
         // 表示順序を最初に初期化（ルートアイテムの場合のみ）
         if (depth === 0) {
@@ -186,7 +187,7 @@ export class OutlinerViewModel {
         }
 
         console.log(
-            `OutlinerViewModel: recalculateOrderAndDepthItem for "${item.text}" (depth: ${depth})`,
+            `OutlinerViewModel: recalculateOrderAndDepthItem for "${item.text.toString()}" (depth: ${depth})`,
         );
 
         // 表示順序に追加
@@ -196,26 +197,27 @@ export class OutlinerViewModel {
         this.depthMap.set(item.id, depth);
         const vm = this.viewModels.get(item.id);
         if (vm) {
-            vm.commentCount = item.comments?.length ?? 0;
+            vm.commentCount = (item as any).comments?.length ?? 0;
         }
 
         // 子アイテムを処理（折りたたまれていない場合のみ）
         const isCollapsed = this.collapsedMap.get(item.id);
-        const hasChildren = item.items && Tree.is(item.items, Items) && (item.items as any).length > 0;
+        const hasChildren = item.items && item.items instanceof Items && item.items.length > 0;
 
         console.log(
-            `OutlinerViewModel: Item "${item.text}" - hasChildren: ${hasChildren}, isCollapsed: ${isCollapsed}, childrenCount: ${
+            `OutlinerViewModel: Item "${item.text.toString()}" - hasChildren: ${hasChildren}, isCollapsed: ${isCollapsed}, childrenCount: ${
                 hasChildren ? item.items.length : 0
             }`,
         );
 
         if (hasChildren && !isCollapsed) {
-            const children = item.items as any;
+            const children = item.items;
             console.log(
-                `OutlinerViewModel: Processing ${children.length} children for "${item.text}"`,
+                `OutlinerViewModel: Processing ${children.length} children for "${item.text.toString()}"`,
             );
             for (let i = 0; i < children.length; i++) {
-                this.recalculateOrderAndDepthItem(children[i], depth + 1, item.id);
+                const child = children.at(i);
+                if (child) this.recalculateOrderAndDepthItem(child, depth + 1, item.id);
             }
         } else if (hasChildren && isCollapsed) {
             console.log(
@@ -235,7 +237,7 @@ export class OutlinerViewModel {
 
         // モデルから表示情報を再計算（アイテムインスタンスは維持）
         const rootItem = this.findRootItem(itemId);
-        if (rootItem && rootItem.items && Tree.is(rootItem.items, Items)) {
+        if (rootItem && rootItem.items && rootItem.items instanceof Items) {
             this.recalculateOrderAndDepth(rootItem.items);
         }
     }
@@ -247,12 +249,12 @@ export class OutlinerViewModel {
         const item = this.viewModels.get(itemId)?.original;
         if (!item) return null;
 
-        let current = item;
-        let parent: unknown;
+        let current: Item = item;
+        let parentList = current.parent;
 
-        // ルートに到達するまで親を辿る
-        while ((parent = Tree.parent(current)) && Tree.is(parent, Item)) {
-            current = parent;
+        while (parentList && parentList.parentKey !== "root") {
+            current = new Item(current.ydoc, current.tree, parentList.parentKey);
+            parentList = current.parent;
         }
 
         return current;
@@ -293,7 +295,7 @@ export class OutlinerViewModel {
         const model = this.viewModels.get(itemId);
         if (!model || !model.original || !model.original.items) return false;
         return (
-            Tree.is(model.original.items, Items) && model.original.items.length > 0
+            model.original.items instanceof Items && model.original.items.length > 0
         );
     }
 

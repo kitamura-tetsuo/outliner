@@ -1,0 +1,9 @@
+id: YJS-c7f9e2a1
+title: Use yjsService in Outliner components
+title-ja: Outliner コンポーネントで yjsService を使用
+status: experimental
+spec: |
+  OutlinerTree, OutlinerItem, and Cursor remove fluidStore dependencies and rely on yjsService.
+  User identity comes from UserManager.
+tests:
+  - client/src/tests/unit/cursor-is-page-item.spec.ts
