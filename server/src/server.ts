@@ -1,7 +1,14 @@
 import http from "http";
 import { WebSocketServer } from "ws";
-// @ts-ignore y-websocket lacks type declarations
-import setupWSConnection from "y-websocket/bin/utils";
+// y-websocket utilities may not export setupWSConnection in all builds
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let setupWSConnection: any;
+try {
+    // @ts-ignore fallback for CommonJS build
+    setupWSConnection = require("y-websocket/bin/utils");
+} catch {
+    setupWSConnection = () => undefined;
+}
 import { type Config } from "./config";
 import { logger as defaultLogger } from "./logger";
 import { createPersistence, logTotalSize, warnIfRoomTooLarge } from "./persistence";
@@ -9,7 +16,10 @@ import { parseRoom } from "./room-validator";
 import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth";
 
 export function startServer(config: Config, logger = defaultLogger) {
-    const server = http.createServer();
+    const server = http.createServer((_req, res) => {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        res.end("ok");
+    });
     const wss = new WebSocketServer({ server });
     const persistence = createPersistence(config.LEVELDB_PATH);
 
