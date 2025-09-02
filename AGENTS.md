@@ -63,7 +63,6 @@ Mocks are generally forbidden. Limited exceptions:
 
 - Always run `scripts/codex-setup.sh` before tests to start emulators.
 - Execute E2E tests one file at a time with `scripts/run-e2e-progress-for-codex.sh 1`.
-- The `run-e2e-progress-for-codex.sh` script is for the Codex environment only. Do not include it in workflows or scripts intended for other environments.
 - The Codex environment is prone to timeouts. Keep each Playwright spec short and split larger flows across multiple files. Document any timeouts; tests will be rerun elsewhere.
 - Use `TestHelpers.prepareTestEnvironment(page)` in `test.beforeEach` and Playwright's `expect(locator).toBeVisible()` assertions.
 - Create projects and pages programmatically via `fluidClient` rather than via the UI.
@@ -83,6 +82,8 @@ Mocks are generally forbidden. Limited exceptions:
 - Duplicate Firebase initialization often causes 30 s timeouts—ensure `UserManager.initializeFirebaseApp()` checks `getApps()` before calling `initializeApp()`.
 - **Tinylicious Container Restoration Issue**: The error "default dataStore [rootDOId] must exist" occurs when trying to reload saved Fluid containers in Tinylicious (test environment). This is a known Tinylicious bug that doesn't occur in production. In test environments, avoid reloading saved containers and use alternative testing approaches instead.
 - **Test Isolation and Regression Prevention**: When troubleshooting failing tests, destructive changes to shared code may occur. If you modify common code outside the specific test target, run the basic E2E tests to verify no breaking changes have been introduced. If breaking changes are detected, revert the modifications to maintain test stability.
+- TypeScript macro shims: If `npx tsc --noEmit --project client/e2e/tsconfig.json` fails on `$state/$derived/$effect` in `.svelte.ts` files, add a `client/src/types/svelte5-shim.d.ts` declaring these macros for type checking only.
+- Use playwrite mcp to debug component issues.
 
 ### Firebase Functions Emulator
 
@@ -193,6 +194,7 @@ Mocks are generally forbidden. Limited exceptions:
 - Avoid `svelte/store`; rely on Svelte 5 `$state` for all store functionality.
 - Keep existing `$effect` blocks short (under 10 lines) and prefer `onMount` for initialization.
 - Do not add new code that uses Svelte 5 `$effect`.
+- Svelte 5 `$effect` is only allowed when there is no other way to achieve the desired behavior.
 - Implement API calls in `fluidService` and call them from components. Provide a `getFluidClientByProjectTitle` function that searches `clientRegistry` by `Project.title`.
 - Export manager instances directly (`export const userManager = new UserManager()`) rather than via `getInstance()`.
 - Rename `firestoreStore.ts` to `firestoreStore.svelte.ts` to enable `$state` usage.

@@ -13,7 +13,6 @@ const repoRoot = path.resolve(__dirname, "../..");
 
 const setupScript = path.join(repoRoot, "scripts", "codex-setup.sh");
 const filesReferencingSetup = [
-    path.join(repoRoot, "scripts", "augment-setup.sh"),
     path.join(repoRoot, ".devcontainer", "devcontainer.json"),
     path.join(repoRoot, ".github", "workflows", "test.yml"),
     path.join(repoRoot, "README.md"),

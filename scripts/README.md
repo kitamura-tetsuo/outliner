@@ -1,83 +1,35 @@
-# Localhost Server Startup Scripts
+# Test Environment Scripts
 
-VSCodeのlaunch.jsonで定義されているLocalhost設定をbashで実行するためのスクリプト集です。
+ローカルのテスト用サーバーは `scripts/codex-setup.sh` が一括で起動・準備します。個別のローカル起動スクリプトは廃止しました。
 
-## 個別サーバー起動スクリプト
+## 使い方
 
-### 1. SvelteKit Server
+1. テスト環境のセットアップとサーバー起動
 
 ```bash
-./scripts/start-localhost-sveltekit-server.sh
+scripts/codex-setup.sh
 ```
 
-- **ポート**: 7090
-- **説明**: SvelteKitクライアント開発サーバーを起動
-- **ログ**: `/workspace/server/logs/test-svelte-kit.log`
-- **URL**: http://localhost:7090
+- Firebase エミュレーター (Auth/Firestore/Functions/Hosting)
+- Yjs WebSocket サーバー
+- SvelteKit サーバー
 
-### 2. Debug Server
+初回実行時のみ依存関係のインストールとOS依存パッケージの導入を実施します。2回目以降は高速に完了します。
+
+2. Playwright の逐次実行（Codex 環境向け）
 
 ```bash
-./scripts/start-localhost-debug-server.sh
+scripts/run-e2e-progress-for-codex.sh 1
 ```
 
-- **ポート**: 7091
-- **説明**: バックエンドAPIサーバーを起動
-- **ログ**: `/workspace/server/logs/test-log-service-tee.log`
-- **URL**: http://localhost:7091
+Codex 環境ではタイムアウト回避のため、E2E を 1 ファイルずつ実行します。
 
-### 3. Tinylicious
+3. 環境維持テスト（ENV-*)
 
 ```bash
-./scripts/start-localhost-tinylicious.sh
-```
-
-- **ポート**: 7092
-- **説明**: Fluid Frameworkのローカルサーバーを起動
-- **URL**: http://localhost:7092
-
-### 4. Firebase Functions
-
-```bash
-./scripts/start-localhost-firebase-functions.sh
-```
-
-- **説明**: Firebaseエミュレーターをデバッグモードで起動
-- **デバッグポート**: 9229
-- **プロジェクト**: outliner-d57b0
-
-## 全サーバー一括起動
-
-```bash
-./scripts/start-all-localhost-servers.sh
-```
-
-すべてのサーバーをバックグラウンドで同時に起動します。
-Ctrl+Cで全サーバーを停止できます。
-
-## 対応するVSCode設定
-
-これらのスクリプトは以下のVSCode launch.json設定に対応しています：
-
-- `For Localhost SvelteKit Server`
-- `For Localhost Debug Server`
-- `For Localhost Launch Tinylicious`
-- `For Localhost Debug Firebase Functions`
-
-## 前提条件
-
-- Node.js がインストールされていること
-- npm パッケージがインストールされていること
-- Firebase CLI がインストールされていること（Firebase Functions使用時）
-- 初回実行前に環境設定ファイルを生成する
-
-```bash
-./scripts/setup-local-env.sh
+scripts/run-env-tests.sh
 ```
 
 ## ログファイル
 
-サーバーのログは以下の場所に出力されます：
-
-- `/workspace/server/logs/test-svelte-kit.log`
-- `/workspace/server/logs/test-log-service-tee.log`
+- `server/logs/` 配下に各サービスのログを出力します

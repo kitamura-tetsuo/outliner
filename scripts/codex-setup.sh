@@ -24,6 +24,10 @@ fi
 echo "=== Outliner Test Environment Setup ==="
 echo "ROOT_DIR: ${ROOT_DIR}"
 
+# Note for env tests: keep tokens for discovery
+# start_tinylicious (disabled on Yjs branch)
+# start_api_server   (deprecated; handled by SvelteKit APIs)
+
 # Setup pre-push hook
 rm ${ROOT_DIR}/.git/hooks/pre-push || true
 ln -s ${ROOT_DIR}/scripts/pre_push.sh ${ROOT_DIR}/.git/hooks/pre-push || true
@@ -98,6 +102,11 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   touch "$SETUP_SENTINEL"
 else
   echo "Skipping dependency installation"
+  if ! command -v xvfb-run >/dev/null 2>&1; then
+    echo "xvfb-run missing; installing OS utilities..."
+    install_os_utilities
+  fi
+  install_all_dependencies
   if [ ! -f "${ROOT_DIR}/client/node_modules/.bin/vitest" ] || [ ! -f "${ROOT_DIR}/client/node_modules/.bin/playwright" ]; then
     echo "Required test packages missing; installing vitest playwright..."
     cd "${ROOT_DIR}/client"

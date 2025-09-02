@@ -1,0 +1,8 @@
+id: FTR-bd6b971b
+title: yjsService operations API
+title-ja: yjsService 操作API
+description: Provides basic tree operations and presence helpers for Yjs.
+category: api
+status: implemented
+tests:
+- client/e2e/new/yjs-service-operations-bd6b971b.spec.ts

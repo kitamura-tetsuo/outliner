@@ -83,7 +83,7 @@ clear_log_files() {
 
 # Install npm dependencies if needed
 npm_ci_if_needed() {
-  if [ ! -d node_modules ]; then
+  if [ ! -d node_modules ] || ! npm ls >/dev/null 2>&1; then
     if [ -f package-lock.json ]; then
       npm --proxy='' --https-proxy='' ci
     else
@@ -188,17 +188,64 @@ install_os_utilities() {
   cd "${ROOT_DIR}"
 }
 
-# Setup environment files
+# Setup environment files (inline; no external script)
 setup_environment_files() {
-  chmod +x "${ROOT_DIR}/scripts/setup-local-env.sh"
-  "${ROOT_DIR}/scripts/setup-local-env.sh"
-
-  set -a
-  source "${ROOT_DIR}/server/.env"
-  source "${ROOT_DIR}/client/.env"
-  if [ -f "${ROOT_DIR}/client/.env.test" ]; then
-    source "${ROOT_DIR}/client/.env.test"
+  # Root .env for dotenvx compatibility
+  if [ ! -f "${ROOT_DIR}/.env" ]; then
+    cat >> "${ROOT_DIR}/.env" <<'EOV'
+# Root environment file for dotenvx compatibility
+NODE_ENV=development
+EOV
+    echo "Created .env"
   fi
+
+  # Client env files
+  if [ ! -f "${ROOT_DIR}/client/.env.test" ]; then
+    cat >> "${ROOT_DIR}/client/.env.test" <<'EOV'
+VITE_IS_TEST=true
+VITE_USE_FIREBASE_EMULATOR=true
+VITE_FIREBASE_EMULATOR_HOST=localhost
+VITE_USE_TINYLICIOUS=true
+EOV
+    echo "Created client/.env.test"
+  fi
+  if [ ! -f "${ROOT_DIR}/client/.env" ] && [ -f "${ROOT_DIR}/client/.env.test" ]; then
+    cp "${ROOT_DIR}/client/.env.test" "${ROOT_DIR}/client/.env"
+    echo "Created client/.env"
+  fi
+
+  # Server env files
+  if [ ! -f "${ROOT_DIR}/server/.env.test" ]; then
+    # Keep empty unless needed
+    touch "${ROOT_DIR}/server/.env.test"
+    echo "Created server/.env.test"
+  fi
+  if [ ! -f "${ROOT_DIR}/server/.env" ]; then
+    cp "${ROOT_DIR}/server/.env.test" "${ROOT_DIR}/server/.env"
+    echo "Created server/.env"
+  fi
+
+  # Functions env files (non-reserved variables only)
+  if [ ! -f "${ROOT_DIR}/functions/.env.test" ]; then
+    cat >> "${ROOT_DIR}/functions/.env.test" <<'EOV'
+AZURE_TENANT_ID=test-tenant-id
+AZURE_ENDPOINT=https://test.fluidrelay.azure.com
+AZURE_PRIMARY_KEY=test-primary-key
+AZURE_SECONDARY_KEY=test-secondary-key
+AZURE_ACTIVE_KEY=primary
+EOV
+    echo "Created functions/.env.test"
+  fi
+  if [ ! -f "${ROOT_DIR}/functions/.env" ]; then
+    cp "${ROOT_DIR}/functions/.env.test" "${ROOT_DIR}/functions/.env"
+    echo "Created functions/.env"
+  fi
+
+  # Export for this session
+  set -a
+  [ -f "${ROOT_DIR}/server/.env" ] && source "${ROOT_DIR}/server/.env"
+  [ -f "${ROOT_DIR}/client/.env" ] && source "${ROOT_DIR}/client/.env"
+  [ -f "${ROOT_DIR}/client/.env.test" ] && source "${ROOT_DIR}/client/.env.test"
   set +a
 }
 
