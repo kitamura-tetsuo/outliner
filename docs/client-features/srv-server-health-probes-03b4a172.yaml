@@ -1,0 +1,9 @@
+id: FTR-03b4a172
+title: Server health probes and metrics
+title-ja: サーバーのヘルスチェックとメトリクス
+description: Exposes /livez, /readyz, and /metrics endpoints with socket and room counters.
+category: server
+status: implemented
+tests:
+- client/e2e/utils/srv-server-health-probes-03b4a172.spec.ts
+- server/tests/server-probes.test.js
