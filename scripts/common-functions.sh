@@ -196,6 +196,17 @@ setup_environment_files() {
     source "${ROOT_DIR}/client/.env.test"
   fi
   set +a
+
+  # Normalize Firebase emulator host/ports to common-config values
+  # This avoids mismatches caused by locally edited .env files.
+  export FIREBASE_AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
+  export FIRESTORE_EMULATOR_HOST="localhost:${FIREBASE_FIRESTORE_PORT}"
+  export FIREBASE_EMULATOR_HOST="localhost:${FIREBASE_FUNCTIONS_PORT}"
+
+  # Also align client-side Vite variables for emulator usage
+  export VITE_FIREBASE_EMULATOR_HOST="localhost"
+  export VITE_FIRESTORE_EMULATOR_PORT="${FIREBASE_FIRESTORE_PORT}"
+  export VITE_AUTH_EMULATOR_PORT="${FIREBASE_AUTH_PORT}"
 }
 
 # Install all npm dependencies
@@ -367,6 +378,33 @@ start_sveltekit_server() {
   echo "Starting SvelteKit server on port ${VITE_PORT}..."
   cd "${ROOT_DIR}/client"
   npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${VITE_PORT} </dev/null > "${ROOT_DIR}/server/logs/test-svelte-kit.log" 2>&1 &
+  cd "${ROOT_DIR}"
+}
+
+# Start Yjs server
+start_yjs_server() {
+  echo "Starting Yjs server on port ${YJS_SERVER_PORT}..."
+  cd "${ROOT_DIR}/yjs-server"
+
+  # Install dependencies if needed
+  if [ ! -d node_modules ]; then
+    npm --proxy='' --https-proxy='' ci
+  fi
+
+  # Start the server with environment variables
+  NODE_ENV=test \
+  PORT=${YJS_SERVER_PORT} \
+  HOST=0.0.0.0 \
+  LOG_LEVEL=info \
+  YPERSISTENCE="${ROOT_DIR}/yjs-server/test-yjs-data" \
+  FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID} \
+  USE_FIREBASE_EMULATOR=true \
+  FIREBASE_AUTH_EMULATOR_HOST=localhost:${FIREBASE_AUTH_PORT} \
+  FIRESTORE_EMULATOR_HOST=localhost:${FIREBASE_FIRESTORE_PORT} \
+  FIREBASE_EMULATOR_HOST=localhost:${FIREBASE_FUNCTIONS_PORT} \
+  npm start > "${ROOT_DIR}/server/logs/yjs-server.log" 2>&1 &
+  YJS_PID=$!
+  echo "Yjs server started with PID: ${YJS_PID}"
   cd "${ROOT_DIR}"
 }
 

@@ -379,8 +379,13 @@ export class TreeValidator {
 declare global {
     interface Window {
         mockFluidClient?: boolean;
-        mockUser?: { id: string; name: string; email?: string; };
-        mockFluidToken?: { token: string; user: { id: string; name: string; }; };
+        mockUser?: { id: string; name: string; email?: string; photoURL?: string; };
+        mockFluidToken?: {
+            token: string;
+            user: { id: string; name: string; };
+            tenantId?: string;
+            containerId?: string;
+        };
         getFluidTreeDebugData?: () => any;
         fluidServerPort?: number;
     }

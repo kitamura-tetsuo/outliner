@@ -13,14 +13,13 @@ const logger = getLogger("PageLayout");
 // このレイアウトは /[project]/[page] に適用されます
 let { children } = $props();
 
-// URLパラメータを取得
-let projectName = page.params.project;
-let pageName = page.params.page;
+// URLパラメータを取得（リアクティブに）
+let projectName = $derived(page.params.project);
+let pageName = $derived(page.params.page);
 
 
 
-// デバッグ用ログ
-logger.info(`Page layout initialized with params: project="${projectName}", page="${pageName}"`);
+// デバッグ用ログは$effect内で実行
 
 /**
  * ページ名からページを検索する
@@ -32,10 +31,10 @@ function findPageByName(name: string) {
 
     // ページ名が一致するページを検索
     for (const page of store.pages.current) {
-        logger.info(`Checking page: "${page.text}" against "${name}"`);
-        if (page.text.toLowerCase() === name.toLowerCase()) {
-            logger.info(`Found matching page: "${page.text}"`);
-            return page;
+        logger.info(`Checking page: "${(page as any).text}" against "${name}"`);
+        if ((page as any).text.toLowerCase() === name.toLowerCase()) {
+            logger.info(`Found matching page: "${(page as any).text}"`);
+            return page as any;
         }
     }
 
@@ -160,11 +159,11 @@ async function setCurrentPage() {
 
 // URLパラメータが変更されたときにcurrentPageを設定
 $effect(() => {
+    logger.info(`Page layout initialized with params: project="${projectName}", page="${pageName}"`);
     logger.info(`Effect triggered: project=${projectName}, page=${pageName}`);
 
-    if (projectName && pageName) {
-        setCurrentPage();
-    }
+    // Yjsモードでは +page.svelte 側で currentPage を設定するため、ここでは何もしない
+    // ループ回避のため setCurrentPage() 呼び出しを無効化
 });
 </script>
 

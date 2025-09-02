@@ -5,16 +5,21 @@
 
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("フォーマット表示", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("カーソルがないアイテムではフォーマットされた内容が表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -25,6 +30,7 @@ test.describe("フォーマット表示", () => {
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
@@ -36,10 +42,10 @@ test.describe("フォーマット表示", () => {
         // フォーマットされたHTMLを確認（制御文字は非表示、フォーマットは適用）
         expect(firstItemHtml).toContain("<strong>太字</strong>");
     });
-
     test("カーソルがあるアイテムではプレーンテキストの入力内容がそのまま表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -62,10 +68,10 @@ test.describe("フォーマット表示", () => {
         // 注: 実際の実装では制御文字の表示方法が異なる可能性があるため、部分一致で確認
         expect(itemHtml).toContain('class="control-char"');
     });
-
     test("太字フォーマット（[[text]]）が視覚的に太字で表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -76,6 +82,7 @@ test.describe("フォーマット表示", () => {
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
@@ -87,10 +94,10 @@ test.describe("フォーマット表示", () => {
         // 太字フォーマットが適用されていることを確認
         expect(firstItemHtml).toContain("<strong>太字</strong>");
     });
-
     test("斜体フォーマット（[/ text]）が視覚的に斜体で表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -101,6 +108,7 @@ test.describe("フォーマット表示", () => {
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
@@ -112,10 +120,10 @@ test.describe("フォーマット表示", () => {
         // 斜体フォーマットが適用されていることを確認
         expect(firstItemHtml).toContain("<em>斜体</em>");
     });
-
     test("取り消し線フォーマット（[- text]）が視覚的に取り消し線付きで表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -126,6 +134,7 @@ test.describe("フォーマット表示", () => {
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
@@ -137,10 +146,10 @@ test.describe("フォーマット表示", () => {
         // 取り消し線フォーマットが適用されていることを確認
         expect(firstItemHtml).toContain("<s>取り消し線</s>");
     });
-
     test("コードフォーマット（`text`）が視覚的にコードスタイルで表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -151,6 +160,7 @@ test.describe("フォーマット表示", () => {
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
@@ -162,10 +172,10 @@ test.describe("フォーマット表示", () => {
         // コードフォーマットが適用されていることを確認
         expect(firstItemHtml).toContain("<code>コード</code>");
     });
-
     test("アイテムをクリックするとプレーンテキストが表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -176,6 +186,7 @@ test.describe("フォーマット表示", () => {
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ

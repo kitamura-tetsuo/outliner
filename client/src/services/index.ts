@@ -12,15 +12,10 @@ export {
 // FluidService関連の関数をエクスポート
 export {
     cleanupFluidClient,
-    createFluidClient,
-    createNewContainer,
-    deleteContainer,
-    getCurrentContainerId,
+    getConnectionState,
     getFluidClientByProjectTitle,
-    getProjectTitle,
-    getUserContainers,
-    initFluidClientWithAuth,
-    loadContainer,
+    initializeFluidClient,
+    isConnected,
 } from "../lib/fluidService.svelte";
 
 // SnapshotService

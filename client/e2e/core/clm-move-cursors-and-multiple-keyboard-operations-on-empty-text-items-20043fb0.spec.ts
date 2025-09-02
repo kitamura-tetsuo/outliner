@@ -3,36 +3,47 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 // このテストは時間がかかるため、タイムアウトを増やす
 
 test.describe("空のテキストアイテムでのカーソル移動", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("空のテキストアイテムでのカーソル移動と複数回のキーボード操作", async ({ page }) => {
         // 1. 最初のアイテムをクリック
         await page.locator(".item-content").first().click();
+
         await page.waitForTimeout(1000);
 
         // 2. テキストを全て削除して空にする
         await page.keyboard.press("Control+a");
+
         await page.keyboard.press("Delete");
+
         await page.waitForTimeout(1000);
 
         // 3. 2番目のアイテムを作成
         await page.keyboard.press("Enter");
+
         await page.waitForTimeout(1000);
 
         // 4. 2番目のアイテムも空にする
         await page.keyboard.press("Control+a");
+
         await page.keyboard.press("Delete");
+
         await page.waitForTimeout(1000);
 
         // 5. 1番目のアイテムに戻る
         await page.locator(".outliner-item").first().locator(".item-content").click();
+
         await page.waitForTimeout(1000);
 
         // 6. カーソルの数を確認（1つだけのはず）
@@ -44,6 +55,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 7. 右矢印キーを押して2番目のアイテムに移動
         await page.keyboard.press("ArrowRight");
+
         await page.waitForTimeout(1000);
 
         // 8. カーソルの数を確認（1つだけのはず）
@@ -55,6 +67,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 9. 左矢印キーを押して1番目のアイテムに戻る
         await page.keyboard.press("ArrowLeft");
+
         await page.waitForTimeout(1000);
 
         // 10. カーソルの数を確認（1つだけのはず）
@@ -66,6 +79,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 11. 右矢印キーを押して2番目のアイテムに移動
         await page.keyboard.press("ArrowRight");
+
         await page.waitForTimeout(1000);
 
         // 12. カーソルの数を確認（1つだけのはず）
@@ -77,6 +91,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 13. 左矢印キーを押して1番目のアイテムに戻る
         await page.keyboard.press("ArrowLeft");
+
         await page.waitForTimeout(1000);
 
         // 14. カーソルの数を確認（1つだけのはず）
@@ -88,6 +103,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 15. 1番目のアイテムにテキストを入力
         await page.keyboard.type("Test text 1");
+
         await page.waitForTimeout(1000);
 
         // 16. 1番目のアイテムのテキスト内容を確認
@@ -97,12 +113,16 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 17. 右矢印キーを押して2番目のアイテムに移動
         await page.keyboard.press("End");
+
         await page.waitForTimeout(1000);
+
         await page.keyboard.press("ArrowRight");
+
         await page.waitForTimeout(1000);
 
         // 18. 2番目のアイテムにテキストを入力
         await page.keyboard.type("Test text 2");
+
         await page.waitForTimeout(1000);
 
         // 19. 2番目のアイテムのテキスト内容を確認
@@ -113,10 +133,13 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
         // 2番目のアイテムが存在するかどうかを確認
         if (itemCount >= 2) {
             // 2番目のアイテムが表示されるまで待機（タイムアウトを短くする）
+
             try {
                 await page.waitForSelector(".outliner-item:nth-child(2)", { timeout: 5000 });
                 const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+
                 console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
+
                 expect(secondItemText).toContain("Test text 2"); // 2番目のアイテムに入力したテキストが含まれていることを確認
             } catch (error) {
                 console.log("2番目のアイテムが見つかりませんでした。テストを続行します。");

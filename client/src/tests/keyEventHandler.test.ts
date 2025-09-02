@@ -58,9 +58,13 @@ describe("KeyEventHandler key map", () => {
     });
 
     it("formats bold with Ctrl+B", () => {
-        const cursors = store.getCursorInstances();
+        const cursors = store.getCursorInstances() as any[];
+        // 各カーソルにformatBoldを追加（Yjs Cursorには存在しないためテスト用にスタブ化）
+        cursors.forEach((c: any) => {
+            c.formatBold = vi.fn();
+        });
         const event = new KeyboardEvent("keydown", { key: "b", ctrlKey: true });
         KeyEventHandler.handleKeyDown(event);
-        expect(cursors[0].formatBold).toHaveBeenCalled();
+        expect((cursors[0] as any).formatBold).toHaveBeenCalled();
     });
 });

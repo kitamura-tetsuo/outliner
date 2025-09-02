@@ -1,7 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-356b853a: 長いテキストの選択範囲", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });

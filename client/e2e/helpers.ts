@@ -50,8 +50,13 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
 declare global {
     interface Window {
         mockFluidClient?: boolean;
-        mockUser?: { id: string; name: string; email?: string; };
-        mockFluidToken?: { token: string; user: { id: string; name: string; }; };
+        mockUser?: { id: string; name: string; email?: string; photoURL?: string; };
+        mockFluidToken?: {
+            token: string;
+            user: { id: string; name: string; };
+            tenantId?: string;
+            containerId?: string;
+        };
         getFluidTreeDebugData?: () => any;
         getFluidTreePathData?: (path?: string) => any;
         getCursorDebugData?: () => any;

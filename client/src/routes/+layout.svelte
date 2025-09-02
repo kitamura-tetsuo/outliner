@@ -12,12 +12,13 @@ import "$lib";
 import { userManager } from "../auth/UserManager";
 import { setupGlobalDebugFunctions } from "../lib/debug";
 import * as fluidService from "../lib/fluidService.svelte";
+import { yjsService } from "../lib/yjsService.svelte";
 import "../utils/ScrapboxFormatter";
 // グローバルに公開するためにインポート
 import MobileActionToolbar from "../components/MobileActionToolbar.svelte";
 import {
     cleanupFluidClient,
-    initFluidClientWithAuth,
+    initializeFluidClient,
 } from "../services";
 import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
@@ -152,8 +153,10 @@ onMount(() => {
         if (import.meta.env.DEV) {
             logger.info("アプリケーションがマウントされました");
         }
-        // Service Workerの登録（プロダクション環境では無効化）
-        if (import.meta.env.MODE !== "production" && "serviceWorker" in navigator) {
+        // Service Workerの登録（プロダクション環境とテスト環境では無効化）
+        const isTestEnv = (import.meta.env.MODE === "test") || (import.meta.env.VITE_IS_TEST === "true");
+
+        if (import.meta.env.MODE !== "production" && !isTestEnv && "serviceWorker" in navigator) {
             // SvelteKitのService Workerを登録
             navigator.serviceWorker.register("/service-worker.js", {
                 scope: "/",
@@ -178,22 +181,46 @@ onMount(() => {
             }).catch(err => {
                 logger.error("Service worker registration failed:", err);
             });
+        } else if (isTestEnv) {
+            if (import.meta.env.DEV) {
+                logger.info("Service worker registration skipped in test environment");
+            }
         }
 
-        // 認証状態を確認
-        isAuthenticated = userManager.getCurrentUser() !== null;
+        // Yjsブランチ: デバッグ関数を常に初期化（認証状態に関係なく）
+        setupGlobalDebugFunctions();
 
-        if (isAuthenticated) {
-            // デバッグ関数を初期化
-            setupGlobalDebugFunctions(fluidService);
+        // Yjsブランチ: Firebase認証の設定を確認
+        const useFirebaseAuth = getEnv("VITE_USE_FIREBASE_AUTH", "true") !== "false";
+
+        if (useFirebaseAuth) {
+            // Firebase認証が有効な場合の処理
+            isAuthenticated = userManager.getCurrentUser() !== null;
+
+            if (isAuthenticated) {
+                // Fluidクライアントを初期化
+                initializeFluidClient().catch(err => {
+                    logger.error("Failed to initialize Fluid client:", err);
+                });
+            }
+        } else {
+            // Yjsブランチ: Firebase認証が無効化されている場合は認証済みとして扱う
+            isAuthenticated = true;
+            logger.info("Firebase auth disabled, treating as authenticated");
         }
-        else {
+
+        // テスト環境でYjsServiceのWebSocketURLを設定
+        if (isTestEnv) {
+            yjsService.setWebsocketUrl('ws://localhost:1234');
+        }
+
+        if (!isAuthenticated && useFirebaseAuth) {
             // 認証状態の変更を監視
             userManager.addEventListener(authResult => {
                 isAuthenticated = authResult !== null;
                 // デバッグ関数を初期化
                 if (isAuthenticated && browser) {
-                    setupGlobalDebugFunctions(fluidService);
+                    setupGlobalDebugFunctions();
                     const isTestEnv = import.meta.env.MODE === "test" ||
                         process.env.NODE_ENV === "test" ||
                         import.meta.env.VITE_IS_TEST === "true";
@@ -201,67 +228,11 @@ onMount(() => {
                         // テストデータ自動投入をスキップするフラグ
                         const skipSeed = window.localStorage.getItem("SKIP_TEST_CONTAINER_SEED") === "true";
                         if (!skipSeed) {
-                            // テスト環境では、既存のコンテナを削除してからテスト用のコンテナを作成する
-                            (async () => {
-                                try {
-                                    // ユーザーのコンテナリストを取得
-                                    const { containers } = await fluidService.getUserContainers();
-
-                                    // 既存のコンテナを削除
-                                    for (const containerId of containers) {
-                                        try {
-                                            if (import.meta.env.DEV) {
-                                                logger.info(
-                                                    `テスト環境のため、コンテナを削除します: ${containerId}`,
-                                                );
-                                            }
-                                            const success = await fluidService.deleteContainer(
-                                                containerId,
-                                            );
-
-                                            if (success) {
-                                                if (import.meta.env.DEV) {
-                                                    logger.info(
-                                                        `コンテナを削除しました: ${containerId}`,
-                                                    );
-                                                }
-                                            }
-                                            else {
-                                                if (import.meta.env.DEV) {
-                                                    logger.warn(
-                                                        `コンテナの削除に失敗しました: ${containerId}`,
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        catch (error) {
-                                            logger.error(
-                                                `コンテナ削除エラー: ${containerId}`,
-                                                error,
-                                            );
-                                        }
-                                    }
-
-                                    // 新しいテスト用コンテナを作成
-                                    const pageName = "test-page";
-                                    const lines = [
-                                        "これはテスト用のページです。1",
-                                        "これはテスト用のページです。2",
-                                        "内部リンクのテスト: [test-link]",
-                                    ];
-                                    (await fluidService.createNewContainer("test-1")).createPage(pageName, lines);
-                                    (await fluidService.createNewContainer("test-2")).createPage(pageName, lines);
-                                }
-                                catch (error) {
-                                    logger.error(
-                                        "テスト環境のコンテナ準備中にエラーが発生しました",
-                                        error,
-                                    );
-                                }
-                            })();
+                            // Yjsモードではテストデータ自動投入は無効化
+                            console.log("Yjs mode: Test data seeding disabled");
                         } else {
                             if (import.meta.env.DEV) {
-                                logger.info("SKIP_TEST_CONTAINER_SEED=true のため、テスト用コンテナの自動生成をスキップします");
+                                logger.info("SKIP_TEST_CONTAINER_SEED=true のため、テスト用データの自動生成をスキップします");
                             }
                         }
                     }
@@ -269,7 +240,7 @@ onMount(() => {
             });
         }
 
-        initFluidClientWithAuth();
+        // initFluidClientWithAuth(); // Yjsモードでは無効化
 
         // ブラウザ終了時のイベントリスナーを登録
         window.addEventListener("beforeunload", handleBeforeUnload);

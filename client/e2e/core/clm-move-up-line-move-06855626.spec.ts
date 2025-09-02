@@ -4,9 +4,14 @@
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0004: 上へ移動", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
@@ -33,13 +38,11 @@ test.describe("CLM-0004: 上へ移動", () => {
         // テキストが入力されるのを待機
         await page.waitForTimeout(300);
     });
-
     test("カーソルを1行上に移動する", async ({ page }) => {
         // デバッグモードを有効にする
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
-
         // カーソルデータを取得して確認
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBeGreaterThan(0);
@@ -50,12 +53,15 @@ test.describe("CLM-0004: 上へ移動", () => {
             ".item-content",
         ).evaluate(el => {
             const rect = el.getBoundingClientRect();
+
             const computedStyle = window.getComputedStyle(el);
+
             const lineHeight = parseInt(computedStyle.lineHeight) || 20;
+
             const estimatedLines = Math.round(rect.height / lineHeight);
+
             return { height: rect.height, lineHeight, estimatedLines };
         });
-
         console.log(`アイテムの高さ情報:`, itemHeight);
 
         // 複数行になっていることを確認
@@ -71,10 +77,11 @@ test.describe("CLM-0004: 上へ移動", () => {
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
-        await cursor.waitFor({ state: "visible" });
 
+        await cursor.waitFor({ state: "visible" });
         // 初期カーソル位置とオフセットを取得
         const initialPosition = await cursor.boundingBox();
+
         const initialOffset = await cursor.evaluate(el => parseInt(el.getAttribute("data-offset") || "-1"));
         console.log(`初期カーソル位置:`, initialPosition);
         console.log(`初期オフセット: ${initialOffset}`);
@@ -82,22 +89,30 @@ test.describe("CLM-0004: 上へ移動", () => {
         // 視覚的な行の情報をテスト
         const visualLineInfo = await page.evaluate(({ itemId, offset }: { itemId: string; offset: number; }) => {
             const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
+
             if (!itemElement) return null;
 
             const textElement = itemElement.querySelector(".item-text") as HTMLElement;
+
             if (!textElement) return null;
 
             const text = textElement.textContent || "";
+
             console.log(`Text content: "${text}"`);
+
             console.log(`Text length: ${text.length}`);
+
             console.log(`Current offset: ${offset}`);
 
             // Range API を使用して視覚的な行を判定
             const textNode = Array.from(textElement.childNodes).find(node => node.nodeType === Node.TEXT_NODE) as Text;
+
             if (!textNode) return null;
 
             const lines: { startOffset: number; endOffset: number; y: number; }[] = [];
+
             let currentLineY: number | null = null;
+
             let currentLineStart = 0;
 
             // 10文字ごとにサンプリング
@@ -105,12 +120,17 @@ test.describe("CLM-0004: 上へ移動", () => {
 
             for (let i = 0; i <= text.length; i += step) {
                 const actualOffset = Math.min(i, text.length);
+
                 const range = document.createRange();
+
                 const safeOffset = Math.min(actualOffset, textNode.textContent?.length || 0);
+
                 range.setStart(textNode, safeOffset);
+
                 range.setEnd(textNode, safeOffset);
 
                 const rect = range.getBoundingClientRect();
+
                 const y = Math.round(rect.top);
 
                 console.log(`Offset ${actualOffset}: Y=${y}`);
@@ -119,31 +139,41 @@ test.describe("CLM-0004: 上へ移動", () => {
                     currentLineY = y;
                 } else if (Math.abs(y - currentLineY) > 5) { // 5px以上の差があれば新しい行
                     // 新しい行が始まった
+
                     lines.push({
                         startOffset: currentLineStart,
+
                         endOffset: actualOffset - 1,
+
                         y: currentLineY,
                     });
+
                     console.log(`Line detected: start=${currentLineStart}, end=${actualOffset - 1}, y=${currentLineY}`);
+
                     currentLineStart = actualOffset;
+
                     currentLineY = y;
                 }
             }
 
             // 最後の行を追加
+
             if (currentLineY !== null) {
                 lines.push({
                     startOffset: currentLineStart,
+
                     endOffset: text.length,
+
                     y: currentLineY,
                 });
+
                 console.log(`Last line: start=${currentLineStart}, end=${text.length}, y=${currentLineY}`);
             }
 
             console.log(`Total lines detected: ${lines.length}`);
+
             return { lines, totalLines: lines.length };
         }, { itemId: cursorData.activeItemId, offset: initialOffset });
-
         console.log(`視覚的な行の情報:`, visualLineInfo);
 
         // 上矢印キーを押下
@@ -153,6 +183,7 @@ test.describe("CLM-0004: 上へ移動", () => {
 
         // 新しいカーソル位置を取得
         const newPosition = await cursor.boundingBox();
+
         const newOffset = await cursor.evaluate(el => parseInt(el.getAttribute("data-offset") || "-1"));
         console.log(`新しいカーソル位置:`, newPosition);
         console.log(`新しいオフセット: ${newOffset}`);
@@ -164,9 +195,11 @@ test.describe("CLM-0004: 上へ移動", () => {
             } else if (newPosition.y === initialPosition.y && newPosition.x !== initialPosition.x) {
                 console.log("⚠ カーソルは同じ行内で移動しました（視覚的な行の移動が機能していない可能性）");
                 // 視覚的な行の移動が実装されていない場合は、オフセットの変化で確認
+
                 expect(newOffset).not.toBe(initialOffset);
             } else {
                 console.log("✗ カーソルが移動していません");
+
                 expect(newPosition.y).toBeLessThan(initialPosition.y);
             }
         }

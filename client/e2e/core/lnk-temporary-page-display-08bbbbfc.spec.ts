@@ -3,25 +3,30 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("LNK-0004: 仮ページ表示", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("存在しないページへのリンクをクリックした場合に仮ページが表示される", async ({ page }) => {
         const sourceUrl = page.url();
+
         const nonExistentPage = "non-existent-page-" + Date.now().toString().slice(-6);
+
         await page.goto(`${sourceUrl}${nonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
-
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
+
             await page.waitForTimeout(1000);
         }
-
         const currentUrl = page.url();
         expect(currentUrl).toContain(nonExistentPage);
 

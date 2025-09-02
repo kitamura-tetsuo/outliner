@@ -1,0 +1,41 @@
+id: FTR-bbe3c2a9
+slug: yjs
+category: e2e
+created: 2025-08-28
+updated: 2025-08-28
+title: Yjs smoke test - Outliner renders and shows Add Item button
+title-ja: Yjsスモークテスト - Outlinerが描画され「アイテム追加」ボタンが表示される
+status: active
+owner: client
+spec:
+  summary: 'In Yjs mode, navigating to /{project}/{page} renders the OutlinerBase and the toolbar shows the "アイテム追加" button.
+
+    SSR pitfalls are guarded and the page can render headlessly in tests.
+
+    '
+  given:
+  - A running Yjs server and Firebase emulators (via scripts/codex-setup.sh)
+  - A test user is set up by TestHelpers.prepareTestEnvironment
+  - A project and a page are programmatically created via TestHelpers
+  when:
+  - Navigate to the created page route
+  then:
+  - An element with data-testid="outliner-base" is visible
+  - A button with text "アイテム追加" is visible
+implementation-notes:
+- OutlinerBase and nested components are SSR-guarded where necessary
+- GlobalTextArea and EditorOverlay access document/window only in onMount or with browser guards
+- SearchPanel DOM operations are guarded from SSR
+related-tests:
+- path: client/e2e/core/yjs-smoke.spec.ts
+  project: core-yjs
+  expectations:
+  - locator '[data-testid="outliner-base"]' is visible within 20s
+  - locator 'button:has-text("アイテム追加")' is visible within 20s
+links:
+- path: client/src/components/OutlinerBase.svelte
+- path: client/src/components/OutlinerTree.svelte
+- path: client/src/components/GlobalTextArea.svelte
+- path: client/src/components/EditorOverlay.svelte
+- path: client/src/components/SearchPanel.svelte
+- path: client/src/routes/[project]/[page]/+page.svelte

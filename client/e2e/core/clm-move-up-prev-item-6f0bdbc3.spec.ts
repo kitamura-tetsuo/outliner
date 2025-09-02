@@ -1,15 +1,20 @@
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("一番上の行にある時は、一つ前のアイテムの最後の行へ移動する", async ({ page }) => {
         // 最初のアイテムをクリックしてカーソルを作成
         await page.locator(".outliner-item").first().click();
+
         await page.waitForTimeout(300);
 
         // カーソルデータを取得して確認
@@ -33,6 +38,7 @@ test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
         await page.keyboard.type(
             "これは2つ目のアイテムです。このテキストも十分に長くして、複数行になるようにします。アイテムの幅に応じて自動的に折り返されて表示されるはずです。",
         );
+
         await page.waitForTimeout(300);
 
         // 2つ目のアイテムの先頭に移動
@@ -56,23 +62,25 @@ test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
         await cursor.waitFor({ state: "visible" });
-
         // カーソル位置を取得
         const cursorPosition = await cursor.boundingBox();
         console.log(`カーソル位置: `, cursorPosition);
 
         // 上矢印キーを押下（2つ目のアイテムの先頭から1つ目のアイテムの最後の行へ移動するはず）
         await page.keyboard.press("ArrowUp");
+
         await page.waitForTimeout(500);
 
         // 押下後のカーソル位置を取得
         const cursorAfterKeyPress = page.locator(".editor-overlay .cursor.active").first();
+
         await cursorAfterKeyPress.waitFor({ state: "visible" });
         const newCursorPosition = await cursorAfterKeyPress.boundingBox();
         console.log(`新しいカーソル位置: `, newCursorPosition);
 
         // 押下後のカーソルデータを取得
         const afterKeyPressCursorData = await CursorValidator.getCursorData(page);
+
         const activeItemIdAfterKeyPress = afterKeyPressCursorData.activeItemId;
         console.log(`押下後のアクティブアイテムID: ${activeItemIdAfterKeyPress}`);
 
@@ -83,22 +91,28 @@ test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
         // 1つ目のアイテムの行数と高さを取得
         const firstItemLines = await page.evaluate(itemId => {
             const itemElement = document.querySelector(`.outliner-item[data-item-id="${itemId}"]`);
+
             if (!itemElement) return { lineCount: 0, height: 0 };
 
             const itemContent = itemElement.querySelector(".item-content");
+
             if (!itemContent) return { lineCount: 0, height: 0 };
 
             // 行の高さを推定（一般的な行の高さ）
             const computedStyle = window.getComputedStyle(itemContent);
+
             const lineHeight = parseInt(computedStyle.lineHeight) || 20; // デフォルト値として20pxを使用
 
             // アイテムの高さから行数を推定
             const itemHeight = itemContent.getBoundingClientRect().height;
+
             const estimatedLineCount = Math.round(itemHeight / lineHeight);
 
             return {
                 lineCount: estimatedLineCount,
+
                 height: itemHeight,
+
                 lineHeight: lineHeight,
             };
         }, firstItemId);
@@ -112,16 +126,16 @@ test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
             ".item-content",
         ).evaluate(el => {
             const rect = el.getBoundingClientRect();
+
             return rect.top;
         });
-
         const firstItemBottom = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(
             ".item-content",
         ).evaluate(el => {
             const rect = el.getBoundingClientRect();
+
             return rect.top + rect.height;
         });
-
         const cursorY = newCursorPosition?.y || 0;
 
         console.log(

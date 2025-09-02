@@ -3,22 +3,30 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "../fixtures/console-forward";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("LNK-0002: 内部リンクURL生成", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "[simple-page]",
+
             "[/project/page]",
+
             "[/multi/level/path/page]",
         ]);
     });
-
     test("内部リンクのURLが正しく生成される", async ({ page }) => {
         const links = await page.locator("a.internal-link").all();
+
         const hrefs = [] as string[];
         for (const link of links) {
             const href = await link.getAttribute("href");
+
             hrefs.push(href || "");
         }
 

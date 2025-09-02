@@ -3,16 +3,22 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Schedule Management", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("shows newly created schedule", async ({ page }, testInfo) => {
         await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+
         const pageId = await TestHelpers.getItemIdByIndex(page, 0);
+
         const idToken = await page.evaluate(async () => {
             const userManager = (window as any).__USER_MANAGER__;
             return await userManager?.auth?.currentUser?.getIdToken();
@@ -20,11 +26,12 @@ test.describe("Schedule Management", () => {
         await page.request.post("http://localhost:57000/api/create-schedule", {
             data: {
                 idToken,
+
                 pageId,
+
                 schedule: { strategy: "one_shot", nextRunAt: Date.now() + 60000 },
             },
         });
-
         const res = await page.request.post(
             `http://localhost:57000/api/list-schedules`,
             {
@@ -32,6 +39,7 @@ test.describe("Schedule Management", () => {
             },
         );
         expect(res.status()).toBe(200);
+
         const json = await res.json();
         expect(json.schedules.length).toBeGreaterThan(0);
     });

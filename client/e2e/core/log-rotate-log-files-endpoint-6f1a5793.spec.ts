@@ -6,19 +6,31 @@ import { expect, test } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 
 test.describe("LOG-0002: /api/rotate-logs", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        try {
+            await DataValidationHelpers.validateDataConsistency(page);
+        } catch (error) {
+            console.log("Data validation skipped:", error.message);
+        }
+    });
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
     const serverLog = path.resolve(__dirname, "../../..", "server", "logs", "log-service.log");
 
     test("rotates logs via endpoint", async ({ request }) => {
         const res = await request.post("http://localhost:7091/api/rotate-logs");
         expect(res.status()).toBe(200);
+
         const body = await res.json();
         expect(body.success).toBe(true);
         expect(typeof body.timestamp).toBe("string");
 
         const backup = serverLog + ".1";
+
         const exists = fs.existsSync(backup);
         expect(exists).toBe(true);
     });

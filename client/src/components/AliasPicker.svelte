@@ -20,8 +20,10 @@ $effect(() => {
         setTimeout(() => {
             if (inputElement) {
                 inputElement.focus();
+                console.log("AliasPicker: Focus set to input element");
             } else if (pickerElement) {
                 pickerElement.focus();
+                console.log("AliasPicker: Focus set to picker element");
             }
         }, 100);
     }
@@ -39,8 +41,12 @@ function confirm(id: string) {
 }
 
 function handleKeydown(event: KeyboardEvent) {
+    console.log("AliasPicker handleKeydown:", event.key);
+
     if (event.key === "Escape") {
         event.preventDefault();
+        event.stopPropagation();
+        console.log("AliasPicker: Escape key pressed, hiding picker");
         aliasPickerStore.hide();
         return;
     }
@@ -48,18 +54,21 @@ function handleKeydown(event: KeyboardEvent) {
     if (event.key === "ArrowDown") {
         event.preventDefault();
         selectedIndex = Math.min(selectedIndex + 1, filteredOptions.length - 1);
+        console.log("AliasPicker: ArrowDown, selectedIndex:", selectedIndex);
         return;
     }
 
     if (event.key === "ArrowUp") {
         event.preventDefault();
         selectedIndex = Math.max(selectedIndex - 1, 0);
+        console.log("AliasPicker: ArrowUp, selectedIndex:", selectedIndex);
         return;
     }
 
     if (event.key === "Enter") {
         event.preventDefault();
         if (filteredOptions[selectedIndex]) {
+            console.log("AliasPicker: Enter key pressed, confirming:", filteredOptions[selectedIndex].id);
             confirm(filteredOptions[selectedIndex].id);
         }
         return;

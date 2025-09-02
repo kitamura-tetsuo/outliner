@@ -3,6 +3,8 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { MigrationPhase } from "../utils/dataValidationHelpers";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
@@ -13,10 +15,13 @@ import { TestHelpers } from "../utils/testHelpers";
  * @check テキスト入力が可能になる
  */
 test.describe("プロジェクトページ表示時のフォーカス設定", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("プロジェクトページ表示時にグローバルテキストエリアにフォーカスが設定される", async ({ page }) => {
         // OutlinerItem が表示されるのを待つ
         await page.waitForSelector(".outliner-item", { timeout: 30000 });
@@ -26,8 +31,11 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         const elements = await page.evaluate(() => {
             return {
                 outlinerItems: document.querySelectorAll(".outliner-item").length,
+
                 pageTitle: document.querySelector(".outliner-item.page-title") ? true : false,
+
                 firstItem: document.querySelector(".outliner-item") ? true : false,
+
                 globalTextarea: document.querySelector(".global-textarea") ? true : false,
             };
         });
@@ -38,16 +46,22 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
 
         // 最初のアイテムをクリックしてフォーカスを設定
         const firstItem = page.locator(".outliner-item").first();
+
         await firstItem.locator(".item-content").click();
+
         await TestHelpers.waitForCursorVisible(page);
 
         // フォーカス状態を確認
         const focusState = await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
+
             return {
                 textareaExists: !!textarea,
+
                 focused: document.activeElement === textarea,
+
                 activeElementTag: document.activeElement?.tagName,
+
                 textareaValue: textarea?.value || "",
             };
         });
@@ -59,13 +73,16 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         // カーソルの状態を確認し、必要に応じて作成
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
+
             if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
+
             const cursorInstances = editorStore.getCursorInstances();
 
             return {
                 activeItem,
+
                 cursorInstancesCount: cursorInstances.length,
             };
         });
@@ -74,17 +91,24 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         // カーソルインスタンスが存在しない場合、作成する
         if (cursorState.cursorInstancesCount === 0) {
             console.log("No cursor instances found, creating cursor");
+
             await page.evaluate(() => {
                 const editorStore = (window as any).editorOverlayStore;
+
                 if (editorStore) {
                     const activeItemId = editorStore.getActiveItem();
+
                     if (activeItemId) {
                         editorStore.setCursor({
                             itemId: activeItemId,
+
                             offset: 0,
+
                             isActive: true,
+
                             userId: "local",
                         });
+
                         console.log("Created cursor for active item");
                     }
                 }
@@ -93,21 +117,26 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
 
         // テキスト入力が可能であることを確認（cursor.insertText()を使用）
         const testText = "テスト用テキスト";
+
         await page.evaluate(text => {
             const editorStore = (window as any).editorOverlayStore;
+
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
+
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
                     // 既存のテキストをクリア
                     const target = cursor.findTarget();
+
                     if (target) {
                         target.updateText("");
+
                         cursor.offset = 0;
                     }
                     // 新しいテキストを挿入
+
                     cursor.insertText(text);
-                    console.log("Text inserted via cursor.insertText");
                 }
             }
         }, testText);
@@ -119,5 +148,8 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         const itemText = await firstItem.textContent();
         console.log("Item text after input:", itemText);
         expect(itemText).toContain(testText);
+
+        // データ一致チェック
+        await DataValidationHelpers.validateDataConsistency(page, { phase: MigrationPhase.PHASE_1_COEXISTENCE });
     });
 });

@@ -1,4 +1,4 @@
-import { firestoreStore as titleRegistryStore } from "../../lib/fluidService.svelte";
+// import { firestoreStore as titleRegistryStore } from "../../lib/fluidService.svelte"; // Yjsモードでは無効化
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
 
 /**
@@ -30,9 +30,8 @@ export function createTestUserData(): TestUserContainer {
     // Set test data in firestoreStore
     firestoreStore.userContainer = testUserContainer;
 
-    // Set test titles in titleRegistry
-    titleRegistryStore.titleRegistry.set("test-container-1", "テストプロジェクト1");
-    titleRegistryStore.titleRegistry.set("test-container-2", "テストプロジェクト2");
+    // Yjsモードでは簡易タイトル設定
+    console.log("Yjs mode: Title registry not available");
 
     return testUserContainer;
 }
@@ -43,7 +42,7 @@ export function createTestUserData(): TestUserContainer {
  */
 export function clearTestData(): void {
     firestoreStore.userContainer = null;
-    titleRegistryStore.titleRegistry.clear();
+    // titleRegistryStore.titleRegistry.clear(); // Yjsモードでは無効化
 }
 
 /**
@@ -86,7 +85,7 @@ export function logDebugInfo(): void {
     console.log("Current user:", (window as any).__USER_MANAGER__?.getCurrentUser());
     console.log("Auth state:", (window as any).__USER_MANAGER__?.auth?.currentUser);
     console.log("Firestore userContainer:", firestoreStore.userContainer);
-    console.log("Title registry:", Array.from(titleRegistryStore.titleRegistry.entries()));
+    console.log("Yjs mode: Title registry not available");
     console.log("======================");
 }
 

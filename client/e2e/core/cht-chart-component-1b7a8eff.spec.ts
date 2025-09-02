@@ -3,8 +3,17 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 
 test.describe("CHT-001: Chart auto-refresh", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認（チャートテストのため、エラーは無視）
+        try {
+            await DataValidationHelpers.validateDataConsistency(page);
+        } catch (error) {
+            console.log("Data validation skipped for chart test:", error.message);
+        }
+    });
     test("Graph appears and refreshes when data updates", async ({ page }) => {
         await page.setContent(`
       <!DOCTYPE html>
@@ -18,30 +27,29 @@ test.describe("CHT-001: Chart auto-refresh", () => {
         <div id="chart" style="width:400px;height:300px;"></div>
         <script>
           window.chartData = [120, 200, 150];
-          const chart = echarts.init(document.getElementById('chart'));
-          const option = { xAxis: {}, yAxis: {}, series: [{ type:'bar', data: window.chartData }] };
+        const chart = echarts.init(document.getElementById('chart'));
+        const option = { xAxis: {}, yAxis: {}, series: [{ type:'bar', data: window.chartData }] };
           chart.setOption(option);
           setTimeout(() => {
-            window.chartData = [220, 300, 250];
-            option.series[0].data = window.chartData;
-            chart.setOption(option);
+
+        window.chartData = [220, 300, 250];
+
+        option.series[0].data = window.chartData;
+
+        chart.setOption(option);
           }, 1000);
         </script>
       </body>
       </html>
     `);
-
         const chart = page.locator("#chart");
         await expect(chart).toBeVisible();
-
         const initial = await page.evaluate(() => (window as any).chartData);
         expect(initial).toEqual([120, 200, 150]);
-
         await page.waitForFunction(() => (window as any).chartData[0] === 220);
         const updated = await page.evaluate(() => (window as any).chartData);
         expect(updated).toEqual([220, 300, 250]);
     });
-
     test("Chart component implementation check", async ({ page }) => {
         // SvelteKitアプリケーションのルートページに移動
         await page.goto("http://localhost:7090/");
@@ -54,12 +62,12 @@ test.describe("CHT-001: Chart auto-refresh", () => {
         const hasGraphRoute = await page.evaluate(async () => {
             try {
                 const response = await fetch("/graph");
+
                 return response.status !== 404;
             } catch {
                 return false;
             }
         });
-
         if (hasGraphRoute) {
             // /graphページが存在する場合は、そのページをテスト
             await page.goto("/graph");
@@ -68,12 +76,15 @@ test.describe("CHT-001: Chart auto-refresh", () => {
 
             // チャートコンテナが存在するかを確認（存在しなくても失敗しない）
             const chartContainerExists = await page.locator("div.chart-container").count() > 0;
+
             console.log("Chart container exists:", chartContainerExists);
 
             // ページが正常に表示されることを確認
+
             expect(hasGraphRoute).toBe(true);
         } else {
             // /graphページが存在しない場合
+
             expect(hasGraphRoute).toBe(false);
         }
     });

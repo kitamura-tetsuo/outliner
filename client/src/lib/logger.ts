@@ -123,7 +123,7 @@ function getCallerFile(): string {
 /**
  * 各ログレベルのメソッドをラップして行番号情報を追加する
  */
-function createEnhancedLogger(logger: pino.Logger): pino.Logger {
+function createEnhancedLogger(logger: any): any {
     // 拡張するログレベル
     const levels = ["trace", "debug", "info", "warn", "error", "fatal"] as const;
     // 基本的な機能を持つロガーを作成
@@ -144,8 +144,8 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
                 args.unshift({ file });
             }
 
-            // 元のログメソッドを呼び出し
-            return originalMethod.apply(logger, ["", ...args]);
+            // 元のログメソッドを呼び出し（最初の引数はオブジェクト想定）
+            return (originalMethod as any).apply(logger, args);
         };
     });
 
@@ -187,7 +187,7 @@ const consoleStyles = {
  * 呼び出し元のファイル名と行番号を child logger のコンテキストに付加して返す
  * コンソールにも同時に出力したい場合は enableConsole を true に設定
  */
-export function getLogger(componentName?: string, enableConsole: boolean = true): pino.Logger {
+export function getLogger(componentName?: string, enableConsole: boolean = true): any {
     const file = getCallerFile();
     const module = componentName || file;
     const isCustomModule = componentName !== undefined && componentName !== file;
@@ -332,7 +332,7 @@ export function log(
 
     // 2. Pinoロガーを使ってサーバーに送信（ログファイルに記録）
     const logger = getLogger(componentName, false); // コンソール出力せずサーバーに送信
-    logger[level].apply(logger, ["", ...args]);
+    (logger as any)[level](...args);
 }
 
 /**

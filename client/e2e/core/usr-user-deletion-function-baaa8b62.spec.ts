@@ -3,6 +3,7 @@
  *  Source  : docs/client-features/usr-user-deletion-function-baaa8b62.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 
 test("delete-user returns 405 with invalid token", async ({ request }) => {
     const res = await request.post("http://localhost:7091/api/delete-user", {

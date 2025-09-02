@@ -3,9 +3,14 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-0002: Add item via button", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         // TestHelpersを使用してテスト環境を準備
         await TestHelpers.prepareTestEnvironment(page, testInfo);
@@ -13,7 +18,6 @@ test.describe("ITM-0002: Add item via button", () => {
         // アイテム追加ボタンが表示されるまで待機
         await page.waitForSelector('button:has-text("アイテム追加")', { timeout: 10000 });
     });
-
     test("clicking add item button appends new item", async ({ page }) => {
         // アイテム追加前のアイテム数を取得
         const itemCountBefore = await page.locator(".outliner-item").count();
@@ -29,5 +33,8 @@ test.describe("ITM-0002: Add item via button", () => {
 
         // アイテムが追加されたことを確認
         expect(itemCountAfter).toBeGreaterThan(itemCountBefore);
+
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
     });
 });

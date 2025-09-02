@@ -1,0 +1,863 @@
+// @ts-nocheck
+// Fluid Framework関連のimportは削除（Yjsモードのみ）
+import { getLogger } from "../lib/logger";
+import type { YjsOrderedTreeManager } from "../lib/yjsOrderedTreeManager.svelte";
+
+const logger = getLogger();
+
+// Yjsアイテムの参照情報
+export interface YjsItemReference {
+    treeManager: YjsOrderedTreeManager;
+    yjsItemId: string;
+}
+
+// ビューモデルのインターフェース（Fluid + Yjs 1:1:1対応）
+export interface OutlinerItemViewModel {
+    id: string;
+    original: Item; // 元のFluidオブジェクトへの参照
+    yjsRef?: YjsItemReference; // 対応するYjsオブジェクトへの参照
+    text: string;
+    votes: string[];
+    author: string;
+    created: number;
+    lastChanged: number;
+    commentCount: number;
+}
+
+// 表示用のアイテム情報
+export interface DisplayItem {
+    model: OutlinerItemViewModel;
+    depth: number;
+    parentId: string | null;
+}
+
+/**
+ * アウトライナーのビューモデルを管理するストア
+ * DOMの再生成を避けるために、アイテムの参照同一性を維持する
+ * Fluid + Yjs 1:1:1対応を管理する
+ */
+export class OutlinerViewModel {
+    // IDによるビューモデルマップ（参照同一性を維持）
+    private viewModels = new Map<string, OutlinerItemViewModel>();
+
+    // 表示順序を示すID配列
+    private visibleOrder: string[] = [];
+
+    // アイテムの深度マップ
+    private depthMap = new Map<string, number>();
+
+    // 親アイテムIDのマップ
+    private parentMap = new Map<string, string | null>();
+
+    // 折りたたみ状態のマップ
+    private collapsedMap = new Map<string, boolean>();
+
+    // 更新中フラグ
+    private _isUpdating = false;
+
+    // Yjs統合用のページTreeManager（ページごとに1つ）
+    private pageTreeManager?: YjsOrderedTreeManager;
+
+    // Yjs作成中のアイテムを追跡（重複作成を防ぐ）
+    private creatingYjsItems = new Set<string>();
+
+    /**
+     * データモデルからビューモデルを更新する
+     * @param pageItem ルートアイテムのコレクション
+     */
+    updateFromModel(pageItem: Item): void {
+        // 更新中に既に処理中かどうかをチェック
+        if (this._isUpdating) return;
+
+        try {
+            this._isUpdating = true;
+
+            console.log("🔧 [OutlinerViewModel] updateFromModel called");
+            console.log(
+                "🔧 [OutlinerViewModel] pageItem.items length:",
+                (pageItem.items as any)?.length || 0,
+            );
+
+            // まずルート（ページ）アイテム自体のビューモデルを確保し、表示順序の先頭に含める
+            this.ensureViewModelsItemExist(pageItem, null);
+
+            // ページアイテムの子アイテムを処理
+            if (pageItem.items && Tree.is(pageItem.items, Items)) {
+                this.ensureViewModelsItemsExist(pageItem.items, pageItem.id);
+            }
+
+            console.log(
+                "🔧 [OutlinerViewModel] viewModels count after ensure:",
+                this.viewModels.size,
+            );
+            console.log(
+                "🔧 [OutlinerViewModel] viewModel IDs:",
+                Array.from(this.viewModels.keys()).join(", "),
+            );
+
+            // 新しく追加されたアイテムに対してYjs統合を実行（メソッド内で無効化済み）
+            this.ensureYjsItemsForNewViewModels();
+
+            // 表示順序と深度を再計算 - ルートを含めて開始
+            this.visibleOrder = [];
+            this.depthMap.clear();
+            this.parentMap.clear();
+            this.recalculateOrderAndDepthItem(pageItem, 0, null);
+
+            console.log(
+                "🔧 [OutlinerViewModel] visibleOrder length after recalculate:",
+                this.visibleOrder.length,
+            );
+            logger.info("View models updated, count:", this.visibleOrder.length);
+        } finally {
+            this._isUpdating = false;
+        }
+    }
+
+    /**
+     * アイテムのビューモデルが存在することを確認し、必要に応じて作成または更新する
+     */
+    private ensureViewModelsItemsExist(
+        items: Items,
+        parentId: string | null = null,
+    ): void {
+        if (!items) return;
+
+        for (let i = 0; i < items.length; i++) {
+            this.ensureViewModelsItemExist(items[i], parentId);
+        }
+    }
+
+    private ensureViewModelsItemExist(
+        item: Item,
+        parentId: string | null = null,
+    ): void {
+        if (!Tree.is(item, Item) || !item.id) return;
+
+        console.log(
+            `OutlinerViewModel: ensureViewModelsItemExist for item "${item.text}" (id: ${item.id})`,
+        );
+
+        // 既存のビューモデルを更新または新規作成
+        const existingViewModel = this.viewModels.get(item.id);
+        if (existingViewModel) {
+            // プロパティを更新（参照は維持）
+            existingViewModel.text = item.text;
+            existingViewModel.votes = [...item.votes];
+            existingViewModel.lastChanged = item.lastChanged;
+            existingViewModel.commentCount = item.comments?.length ?? 0;
+            console.log(
+                `OutlinerViewModel: Updated existing view model for "${item.text}"`,
+            );
+        } else {
+            // 新しいビューモデルを作成
+            this.viewModels.set(item.id, {
+                id: item.id,
+                original: item,
+                text: item.text,
+                votes: [...item.votes],
+                author: item.author,
+                created: item.created,
+                lastChanged: item.lastChanged,
+                commentCount: item.comments?.length ?? 0,
+            });
+            console.log(
+                `OutlinerViewModel: Created new view model for "${item.text}"`,
+            );
+        }
+
+        // 親の設定
+        this.parentMap.set(item.id, parentId);
+
+        // 子アイテムも処理
+        if (item.items && Tree.is(item.items, Items)) {
+            const children = item.items as any;
+            console.log(
+                `OutlinerViewModel: Processing ${children.length} children for "${item.text}"`,
+            );
+            this.ensureViewModelsItemsExist(children, item.id);
+        } else {
+            console.log(`OutlinerViewModel: No children for "${item.text}"`);
+        }
+    }
+    /**
+     * 表示順序と深度を再計算する
+     */
+    private recalculateOrderAndDepth(
+        items: Items,
+        depth: number = 0,
+        parentId: string | null = null,
+    ): void {
+        if (!items) return;
+
+        // 表示順序と深度を最初に初期化
+        if (depth === 0) {
+            this.visibleOrder = [];
+        }
+
+        for (let i = 0; i < items.length; i++) {
+            this.recalculateOrderAndDepthItem(items[i], depth, parentId);
+        }
+    }
+    /**
+     * 表示順序と深度を再計算する（単一アイテム用）
+     */
+    private recalculateOrderAndDepthItem(
+        item: Item,
+        depth: number = 0,
+        parentId: string | null = null,
+    ): void {
+        if (!Tree.is(item, Item) || !item.id) return;
+
+        console.log(
+            `OutlinerViewModel: recalculateOrderAndDepthItem for "${item.text}" (depth: ${depth})`,
+        );
+
+        // 表示順序に追加
+        this.visibleOrder.push(item.id);
+
+        // 深度を設定
+        this.depthMap.set(item.id, depth);
+        const vm = this.viewModels.get(item.id);
+        if (vm) {
+            vm.commentCount = item.comments?.length ?? 0;
+        }
+
+        // 子アイテムを処理（折りたたまれていない場合のみ）
+        const isCollapsed = this.collapsedMap.get(item.id);
+        const hasChildren = item.items && Tree.is(item.items, Items) && (item.items as any).length > 0;
+
+        console.log(
+            `OutlinerViewModel: Item "${item.text}" - hasChildren: ${hasChildren}, isCollapsed: ${isCollapsed}, childrenCount: ${
+                hasChildren ? item.items.length : 0
+            }`,
+        );
+
+        if (hasChildren && !isCollapsed) {
+            const children = item.items as any;
+            console.log(
+                `OutlinerViewModel: Processing ${children.length} children for "${item.text}"`,
+            );
+            for (let i = 0; i < children.length; i++) {
+                this.recalculateOrderAndDepthItem(children[i], depth + 1, item.id);
+            }
+        } else if (hasChildren && isCollapsed) {
+            console.log(
+                `OutlinerViewModel: Skipping children for "${item.text}" because it's collapsed`,
+            );
+        } else if (!hasChildren) {
+            console.log(`OutlinerViewModel: No children for "${item.text}"`);
+        }
+    }
+
+    /**
+     * アイテムの折りたたみ状態を切り替える
+     */
+    toggleCollapsed(itemId: string): void {
+        const isCollapsed = this.collapsedMap.get(itemId) || false;
+        this.collapsedMap.set(itemId, !isCollapsed);
+
+        // モデルから表示情報を再計算（アイテムインスタンスは維持）
+        const rootItem = this.findRootItem(itemId);
+        if (rootItem && rootItem.items && Tree.is(rootItem.items, Items)) {
+            this.recalculateOrderAndDepth(rootItem.items);
+        }
+    }
+
+    /**
+     * ルートアイテムを見つける
+     */
+    private findRootItem(itemId: string): Item | null {
+        const item = this.viewModels.get(itemId)?.original;
+        if (!item) return null;
+
+        let current = item;
+        let parent: unknown;
+
+        // ルートに到達するまで親を辿る
+        while ((parent = Tree.parent(current)) && Tree.is(parent, Item)) {
+            current = parent;
+        }
+
+        return current;
+    }
+
+    /**
+     * 表示用のアイテムリストを取得する
+     */
+    getVisibleItems(): DisplayItem[] {
+        return this.visibleOrder
+            .map(id => {
+                const model = this.viewModels.get(id);
+                if (!model) {
+                    logger.error("View model not found for ID:", id);
+                    return null;
+                }
+
+                return {
+                    model,
+                    depth: this.depthMap.get(id) || 0,
+                    parentId: this.parentMap.get(id) || null,
+                };
+            })
+            .filter((item): item is DisplayItem => item !== null);
+    }
+
+    /**
+     * アイテムの折りたたみ状態を取得
+     */
+    isCollapsed(itemId: string): boolean {
+        return this.collapsedMap.get(itemId) || false;
+    }
+
+    /**
+     * アイテムが子を持っているかを確認
+     */
+    hasChildren(itemId: string): boolean {
+        const model = this.viewModels.get(itemId);
+        if (!model || !model.original || !model.original.items) return false;
+        return (
+            Tree.is(model.original.items, Items) && model.original.items.length > 0
+        );
+    }
+
+    /**
+     * ビューモデルを直接取得
+     */
+    getViewModel(id: string): OutlinerItemViewModel | undefined {
+        return this.viewModels.get(id);
+    }
+
+    /**
+     * Yjs TreeManagerを設定（ページ接続時に呼び出される）
+     */
+    setYjsTreeManager(treeManager: YjsOrderedTreeManager): void {
+        this.pageTreeManager = treeManager;
+        console.log("OutlinerViewModel: Yjs TreeManager set");
+    }
+
+
+
+    /**
+     * 新しく追加されたビューモデルに対してYjs統合を実行
+     * 既存のYjsアイテムとの1:1対応を確立（データ同期ではなく参照の確立）
+     */
+    private ensureYjsItemsForNewViewModels(): void {
+        if (!this.pageTreeManager) {
+            console.log("🔧 [OutlinerViewModel] ensureYjsItemsForNewViewModels: TreeManager not available");
+            return;
+        }
+
+        let integrationCount = 0;
+        let totalViewModels = 0;
+
+        // 全てのViewModelに対してYjs参照を確立
+        for (const [fluidItemId, viewModel] of this.viewModels) {
+            totalViewModels++;
+
+            // 既にYjs参照がある場合はスキップ
+            if (viewModel.yjsRef) {
+                integrationCount++;
+                continue;
+            }
+
+            // YjsアイテムがFluidアイテムIDと同じIDで存在するかチェック
+            try {
+                const yjsItem = this.pageTreeManager.getItem(fluidItemId);
+                if (yjsItem) {
+                    // Yjs参照を設定
+                    viewModel.yjsRef = {
+                        treeManager: this.pageTreeManager,
+                        yjsItemId: fluidItemId,
+                    };
+                    integrationCount++;
+                    console.log(`🔧 [OutlinerViewModel] Established Yjs reference for item: ${fluidItemId}`);
+
+                    // 既存のYjsアイテムのテキストがFluidアイテムと異なる場合は同期
+                    if (yjsItem.text !== viewModel.text) {
+                        console.log(`🔧 [OutlinerViewModel] Syncing text for existing Yjs item ${fluidItemId}: "${yjsItem.text}" -> "${viewModel.text}"`);
+                        // 非同期処理を同期的に実行（Promise.resolve()で包む）
+                        this.pageTreeManager.updateItemText(fluidItemId, viewModel.text)
+                            .then(() => {
+                                console.log(`🔧 [OutlinerViewModel] ✅ Synced text for existing Yjs item: ${fluidItemId}`);
+                            })
+                            .catch((syncError) => {
+                                console.error(`🔧 [OutlinerViewModel] ❌ Failed to sync text for existing Yjs item ${fluidItemId}:`, syncError);
+                            });
+                    }
+                } else {
+                    // 対応するYjsアイテムが存在しない場合、新規作成（UI層での1:1:1対応確立）
+                    console.log(`🔧 [OutlinerViewModel] Creating new Yjs item for Fluid item: ${fluidItemId}`);
+
+                    try {
+                        // 正しい位置を計算するため、前のアイテムを探す
+                        let afterItemId: string | undefined = undefined;
+                        const allViewModelIds = Array.from(this.viewModels.keys());
+                        const currentIndex = allViewModelIds.indexOf(fluidItemId);
+
+                        // 前のアイテムでYjs参照があるものを探す
+                        for (let i = currentIndex - 1; i >= 0; i--) {
+                            const prevViewModel = this.viewModels.get(allViewModelIds[i]);
+                            if (prevViewModel?.yjsRef) {
+                                afterItemId = prevViewModel.yjsRef.yjsItemId;
+                                console.log(`🔧 [OutlinerViewModel] Found previous Yjs item for positioning: ${afterItemId}`);
+                                break;
+                            }
+                        }
+
+                        // タイトルノードを探してその配下に配置
+                        const rootItems = this.pageTreeManager.getRootItems();
+                        const titleNode = rootItems.find(item => item.text === this.pageTitle);
+                        const parentId = titleNode ? titleNode.id : undefined;
+
+                        const yjsItemId = this.pageTreeManager.insertItem(
+                            viewModel.text,
+                            viewModel.author,
+                            parentId, // parentId - タイトルノード配下
+                            afterItemId, // afterItemId - 前のアイテムの後に配置
+                            fluidItemId // customItemId - FluidアイテムIDと同じIDを使用
+                        );
+
+                        // Yjs参照を設定
+                        viewModel.yjsRef = {
+                            treeManager: this.pageTreeManager,
+                            yjsItemId: yjsItemId,
+                        };
+                        integrationCount++;
+
+                        console.log(`🔧 [OutlinerViewModel] ✅ Created new Yjs item: ${yjsItemId} for Fluid item: ${fluidItemId} after: ${afterItemId || 'start'}`);
+                    } catch (createError) {
+                        console.error(`🔧 [OutlinerViewModel] ❌ Failed to create Yjs item for ${fluidItemId}:`, createError);
+                    }
+                }
+            } catch (error) {
+                console.warn(`🔧 [OutlinerViewModel] Error checking Yjs item ${fluidItemId}:`, error);
+            }
+        }
+
+        console.log(
+            `🔧 [OutlinerViewModel] Integration status: ${integrationCount}/${totalViewModels} items have Yjs references`,
+        );
+
+        // 統合完了の判定
+        if (integrationCount === totalViewModels && totalViewModels > 0) {
+            console.log(`🔧 [OutlinerViewModel] Yjs integration completed`);
+        }
+    }
+
+    /**
+     * Yjsアイテムの順序をログ出力
+     */
+    private logYjsItemOrder(parentId?: string): void {
+        try {
+            if (!this.pageTreeManager) return;
+
+            let items: any[] = [];
+
+            if (parentId) {
+                // 親アイテムの子アイテムを取得
+                const parentViewModel = this.viewModels.get(parentId);
+                if (parentViewModel?.yjsRef) {
+                    const parentYjsId = parentViewModel.yjsRef.yjsItemId;
+                    console.log(`🔧 [OutlinerViewModel] Getting children for parent Yjs ID: ${parentYjsId}`);
+                    items = this.pageTreeManager.getChildren(parentYjsId) || [];
+                    console.log(`🔧 [OutlinerViewModel] Found ${items.length} children for parent ${parentYjsId}`);
+                } else {
+                    console.log(`🔧 [OutlinerViewModel] Parent ViewModel or Yjs ref not found for ${parentId}`);
+                }
+            } else {
+                // ルートレベルのアイテムを取得
+                console.log(`🔧 [OutlinerViewModel] Getting root items`);
+                items = this.pageTreeManager.getRootItems() || [];
+                console.log(`🔧 [OutlinerViewModel] Found ${items.length} root items`);
+            }
+
+            console.log(`🔧 [OutlinerViewModel] Yjs item order for parent ${parentId || "root"}:`);
+            console.log(`🔧 [OutlinerViewModel] Items array length: ${items.length}`);
+            items.forEach((item, index) => {
+                console.log(`  ${index}: id=${item?.id || "no-id"}, text="${item?.text || "no-text"}"`);
+                console.log(`    Keys:`, Object.keys(item || {}));
+                console.log(`    Type:`, typeof item);
+                if (item && typeof item === "object") {
+                    console.log(`    Properties: id=${item.id}, text=${item.text}, author=${item.author}`);
+                }
+            });
+        } catch (error) {
+            console.error(`🔧 [OutlinerViewModel] Failed to log Yjs item order:`, error);
+        }
+    }
+
+    /**
+     * Fluidアイテムの前にあるYjsアイテムを見つける
+     */
+    private findPreviousYjsItem(fluidItemId: string, parentId?: string): string | null {
+        try {
+            // 親アイテムの子アイテムリストを取得
+            let siblingItems: string[] = [];
+
+            if (parentId) {
+                // 親アイテムの子アイテムを取得
+                const parentViewModel = this.viewModels.get(parentId);
+                if (parentViewModel) {
+                    // 親の子アイテムを取得（Fluidから）
+                    const parentItem = parentViewModel.original;
+                    if (parentItem.items && Tree.is(parentItem.items, Items)) {
+                        siblingItems = Array.from(parentItem.items).map(item => item.id as string);
+                    }
+                }
+            } else {
+                // ルートレベルのアイテムの場合、ページアイテムの子を取得
+                if (this.pageItem && this.pageItem.items && Tree.is(this.pageItem.items, Items)) {
+                    siblingItems = Array.from(this.pageItem.items).map(item => item.id as string);
+                }
+            }
+
+            // 対象アイテムの位置を見つける
+            const fluidIndex = siblingItems.indexOf(fluidItemId);
+            if (fluidIndex === -1) {
+                return null;
+            }
+
+            // 前のアイテムでYjs参照があるものを探す
+            for (let i = fluidIndex - 1; i >= 0; i--) {
+                const siblingViewModel = this.viewModels.get(siblingItems[i]);
+                if (siblingViewModel?.yjsRef) {
+                    return siblingViewModel.yjsRef.yjsItemId;
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.error(`🔧 [OutlinerViewModel] Failed to find previous Yjs item for ${fluidItemId}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * YjsアイテムをFluidアイテムと同じ位置に配置
+     */
+    private positionYjsItem(fluidItemId: string, yjsItemId: string, parentId?: string): void {
+        try {
+            // 親アイテムの子アイテムリストを取得
+            let siblingItems: string[] = [];
+
+            if (parentId) {
+                // 親アイテムの子アイテムを取得
+                const parentViewModel = this.viewModels.get(parentId);
+                if (parentViewModel) {
+                    // 親の子アイテムを取得（Fluidから）
+                    const parentItem = parentViewModel.original;
+                    if (parentItem.items && Tree.is(parentItem.items, Items)) {
+                        siblingItems = Array.from(parentItem.items).map(item => item.id as string);
+                    }
+                }
+            } else {
+                // ルートレベルのアイテムの場合、ページアイテムの子を取得
+                if (this.pageItem && this.pageItem.items && Tree.is(this.pageItem.items, Items)) {
+                    siblingItems = Array.from(this.pageItem.items).map(item => item.id as string);
+                }
+            }
+
+            console.log(`🔧 [OutlinerViewModel] Positioning Yjs item ${yjsItemId} for Fluid item ${fluidItemId}`);
+            console.log(`🔧 [OutlinerViewModel] Sibling items:`, siblingItems);
+
+            // 対象アイテムの位置を見つける
+            const fluidIndex = siblingItems.indexOf(fluidItemId);
+            if (fluidIndex === -1) {
+                console.warn(`🔧 [OutlinerViewModel] Fluid item ${fluidItemId} not found in sibling list`);
+                return;
+            }
+
+            console.log(`🔧 [OutlinerViewModel] Fluid item ${fluidItemId} is at index ${fluidIndex}`);
+
+            // 前のアイテムでYjs参照があるものを探す
+            let previousYjsItemId: string | null = null;
+            for (let i = fluidIndex - 1; i >= 0; i--) {
+                const siblingViewModel = this.viewModels.get(siblingItems[i]);
+                console.log(
+                    `🔧 [OutlinerViewModel] Checking sibling ${siblingItems[i]}: yjsRef=${!!siblingViewModel?.yjsRef}`,
+                );
+                if (siblingViewModel?.yjsRef) {
+                    previousYjsItemId = siblingViewModel.yjsRef.yjsItemId;
+                    console.log(
+                        `🔧 [OutlinerViewModel] Found previous Yjs item: ${previousYjsItemId} (Fluid: ${
+                            siblingItems[i]
+                        })`,
+                    );
+                    break;
+                }
+            }
+
+            if (previousYjsItemId) {
+                // 前のアイテムの後に配置
+                try {
+                    this.pageTreeManager.getTree().setNodeAfter(yjsItemId, previousYjsItemId);
+                    console.log(
+                        `🔧 [OutlinerViewModel] ✅ Positioned Yjs item ${yjsItemId} after ${previousYjsItemId}`,
+                    );
+                } catch (error) {
+                    console.error(
+                        `🔧 [OutlinerViewModel] ❌ Failed to position Yjs item ${yjsItemId} after ${previousYjsItemId}:`,
+                        error,
+                    );
+
+                    // setNodeAfterが失敗した場合、setNodeBeforeを試す
+                    try {
+                        // 次のアイテムを見つけて、その前に配置
+                        let nextYjsItemId: string | null = null;
+                        for (let i = fluidIndex + 1; i < siblingItems.length; i++) {
+                            const siblingViewModel = this.viewModels.get(siblingItems[i]);
+                            if (siblingViewModel?.yjsRef) {
+                                nextYjsItemId = siblingViewModel.yjsRef.yjsItemId;
+                                break;
+                            }
+                        }
+
+                        if (nextYjsItemId) {
+                            this.pageTreeManager.getTree().setNodeBefore(yjsItemId, nextYjsItemId);
+                            console.log(
+                                `🔧 [OutlinerViewModel] ✅ Positioned Yjs item ${yjsItemId} before ${nextYjsItemId} (fallback)`,
+                            );
+                        }
+                    } catch (fallbackError) {
+                        console.error(`🔧 [OutlinerViewModel] ❌ Fallback positioning also failed:`, fallbackError);
+                    }
+                }
+            } else {
+                console.log(`🔧 [OutlinerViewModel] Yjs item ${yjsItemId} positioned at beginning (no previous item)`);
+            }
+        } catch (error) {
+            console.error(`🔧 [OutlinerViewModel] Failed to position Yjs item ${yjsItemId}:`, error);
+        }
+    }
+
+    /**
+     * Fluidアイテムの位置に基づいてYjsアイテムの挿入位置を計算
+     */
+    private calculateInsertIndex(fluidItemId: string, parentId?: string): number {
+        // 親アイテムの子アイテムリストを取得
+        let siblingItems: string[] = [];
+
+        if (parentId) {
+            // 親アイテムの子アイテムを取得
+            const parentViewModel = this.viewModels.get(parentId);
+            if (parentViewModel) {
+                // 親の子アイテムを取得（Fluidから）
+                const parentItem = parentViewModel.original;
+                if (parentItem.items && Tree.is(parentItem.items, Items)) {
+                    siblingItems = Array.from(parentItem.items).map(item => item.id as string);
+                }
+            }
+        } else {
+            // ルートレベルのアイテムの場合、ページアイテムの子を取得
+            if (this.pageItem && this.pageItem.items && Tree.is(this.pageItem.items, Items)) {
+                siblingItems = Array.from(this.pageItem.items).map(item => item.id as string);
+            }
+        }
+
+        // 対象アイテムの位置を見つける
+        const fluidIndex = siblingItems.indexOf(fluidItemId);
+        if (fluidIndex === -1) {
+            console.warn(
+                `🔧 [OutlinerViewModel] Fluid item ${fluidItemId} not found in sibling list, inserting at end`,
+            );
+            return -1; // 末尾に挿入
+        }
+
+        // Yjsに既に存在する兄弟アイテムの数を数える
+        let yjsIndex = 0;
+        for (let i = 0; i < fluidIndex; i++) {
+            const siblingViewModel = this.viewModels.get(siblingItems[i]);
+            if (siblingViewModel?.yjsRef) {
+                yjsIndex++;
+            }
+        }
+
+        console.log(
+            `🔧 [OutlinerViewModel] Fluid index: ${fluidIndex}, Yjs index: ${yjsIndex} for item ${fluidItemId}`,
+        );
+        return yjsIndex;
+    }
+
+    /**
+     * FluidアイテムとYjsアイテムの1:1対応を確立
+     * 既存のYjsアイテムとの参照を確立、存在しない場合は新規作成
+     */
+    async ensureYjsItemExists(fluidItemId: string): Promise<string | null> {
+        if (!this.pageTreeManager) {
+            console.log(`🔧 [OutlinerViewModel] ensureYjsItemExists: TreeManager not available for ${fluidItemId}`);
+            return null;
+        }
+
+        const viewModel = this.viewModels.get(fluidItemId);
+        if (!viewModel) {
+            console.log(`🔧 [OutlinerViewModel] ensureYjsItemExists: ViewModel not found for ${fluidItemId}`);
+            return null;
+        }
+
+        // 既にYjs参照がある場合はそれを返す
+        if (viewModel.yjsRef) {
+            return viewModel.yjsRef.yjsItemId;
+        }
+
+        // YjsアイテムがFluidアイテムIDと同じIDで存在するかチェック
+        try {
+            const yjsItem = this.pageTreeManager.getItem(fluidItemId);
+            if (yjsItem) {
+                // Yjs参照を設定
+                viewModel.yjsRef = {
+                    treeManager: this.pageTreeManager,
+                    yjsItemId: fluidItemId,
+                };
+                console.log(`🔧 [OutlinerViewModel] Established Yjs reference for existing item: ${fluidItemId}`);
+
+                // 既存のYjsアイテムのテキストがFluidアイテムと異なる場合は同期
+                if (yjsItem.text !== viewModel.text) {
+                    console.log(`🔧 [OutlinerViewModel] Syncing text for existing Yjs item ${fluidItemId}: "${yjsItem.text}" -> "${viewModel.text}"`);
+                    // 非同期処理を同期的に実行（Promise.resolve()で包む）
+                    this.pageTreeManager.updateItemText(fluidItemId, viewModel.text)
+                        .then(() => {
+                            console.log(`🔧 [OutlinerViewModel] ✅ Synced text for existing Yjs item: ${fluidItemId}`);
+                        })
+                        .catch((syncError) => {
+                            console.error(`🔧 [OutlinerViewModel] ❌ Failed to sync text for existing Yjs item ${fluidItemId}:`, syncError);
+                        });
+                }
+
+                return fluidItemId;
+            } else {
+                // 対応するYjsアイテムが存在しない場合、新規作成（UI層での1:1:1対応確立）
+                console.log(`🔧 [OutlinerViewModel] Creating new Yjs item for Fluid item: ${fluidItemId}`);
+
+                try {
+                    // 正しい位置を計算するため、前のアイテムを探す
+                    let afterItemId: string | undefined = undefined;
+                    const allViewModelIds = Array.from(this.viewModels.keys());
+                    const currentIndex = allViewModelIds.indexOf(fluidItemId);
+
+                    // 前のアイテムでYjs参照があるものを探す
+                    for (let i = currentIndex - 1; i >= 0; i--) {
+                        const prevViewModel = this.viewModels.get(allViewModelIds[i]);
+                        if (prevViewModel?.yjsRef) {
+                            afterItemId = prevViewModel.yjsRef.yjsItemId;
+                            console.log(`🔧 [OutlinerViewModel] Found previous Yjs item for positioning: ${afterItemId}`);
+                            break;
+                        }
+                    }
+
+                    // タイトルノードを探してその配下に配置
+                    const rootItems = this.pageTreeManager.getRootItems();
+                    const titleNode = rootItems.find(item => item.text === this.pageTitle);
+                    const parentId = titleNode ? titleNode.id : undefined;
+
+                    const yjsItemId = this.pageTreeManager.insertItem(
+                        viewModel.text,
+                        viewModel.author,
+                        parentId, // parentId - タイトルノード配下
+                        afterItemId, // afterItemId - 前のアイテムの後に配置
+                        fluidItemId // customItemId - FluidアイテムIDと同じIDを使用
+                    );
+
+                    // Yjs参照を設定
+                    viewModel.yjsRef = {
+                        treeManager: this.pageTreeManager,
+                        yjsItemId: yjsItemId,
+                    };
+
+                    console.log(`🔧 [OutlinerViewModel] ✅ Created new Yjs item: ${yjsItemId} for Fluid item: ${fluidItemId} after: ${afterItemId || 'start'}`);
+                    return yjsItemId;
+                } catch (createError) {
+                    console.error(`🔧 [OutlinerViewModel] ❌ Failed to create Yjs item for ${fluidItemId}:`, createError);
+                    return null;
+                }
+            }
+        } catch (error) {
+            console.warn(`🔧 [OutlinerViewModel] Error checking Yjs item ${fluidItemId}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Fluidアイテムのテキスト更新をYjsに同期
+     * 対応するYjsアイテムのテキストを更新
+     */
+    async syncTextToYjs(fluidItemId: string, newText: string): Promise<void> {
+        if (!this.pageTreeManager) {
+            console.log(`🔧 [OutlinerViewModel] syncTextToYjs: TreeManager not available for ${fluidItemId}`);
+            return;
+        }
+
+        const viewModel = this.viewModels.get(fluidItemId);
+        if (!viewModel || !viewModel.yjsRef) {
+            console.log(`🔧 [OutlinerViewModel] syncTextToYjs: No Yjs reference for ${fluidItemId}`);
+            return;
+        }
+
+        try {
+            this.pageTreeManager.updateItemText(viewModel.yjsRef.yjsItemId, newText);
+            console.log(`🔧 [OutlinerViewModel] Updated Yjs item text: ${fluidItemId} -> "${newText}"`);
+        } catch (error) {
+            console.warn(`🔧 [OutlinerViewModel] Error updating Yjs item text ${fluidItemId}:`, error);
+        }
+    }
+
+    /**
+     * FluidアイテムのYjs参照を取得
+     */
+    getYjsReference(fluidItemId: string): YjsItemReference | null {
+        const viewModel = this.viewModels.get(fluidItemId);
+        return viewModel?.yjsRef || null;
+    }
+
+    /**
+     * Yjs統合の完了を待機
+     */
+    async waitForYjsIntegration(): Promise<void> {
+        console.log("🔧 [OutlinerViewModel] Waiting for Yjs integration to complete...");
+
+        // 最大10秒間待機
+        const maxWaitTime = 10000;
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < maxWaitTime) {
+            // すべてのFluidアイテムにYjs参照があるかチェック
+            let allItemsHaveYjsRef = true;
+            let pendingItemsCount = 0;
+
+            for (const [itemId, viewModel] of this.viewModels) {
+                if (!viewModel.yjsRef) {
+                    allItemsHaveYjsRef = false;
+                    pendingItemsCount++;
+                }
+            }
+
+            console.log(
+                `🔧 [OutlinerViewModel] Integration status: ${
+                    this.viewModels.size - pendingItemsCount
+                }/${this.viewModels.size} items have Yjs references`,
+            );
+
+            if (allItemsHaveYjsRef) {
+                console.log("🔧 [OutlinerViewModel] ✅ All items have Yjs references");
+                break;
+            }
+
+            // 100ms待機してから再チェック
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        console.log("🔧 [OutlinerViewModel] Yjs integration completed");
+    }
+
+    /**
+     * リソースの解放
+     */
+    dispose(): void {
+        this.viewModels.clear();
+        this.visibleOrder = [];
+        this.depthMap.clear();
+        this.parentMap.clear();
+        this.collapsedMap.clear();
+        this.pageTreeManager = undefined;
+    }
+}

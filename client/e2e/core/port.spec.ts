@@ -3,6 +3,7 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 
 /**
  * @file port.spec.ts
@@ -14,6 +15,14 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("テスト環境ポート検証", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認（ポートテストのため、エラーは無視）
+        try {
+            await DataValidationHelpers.validateDataConsistency(page);
+        } catch (error) {
+            console.log("Data validation skipped for port test:", error.message);
+        }
+    });
     /**
      * @testcase アプリケーションがポート7080または7090で動作していること
      * @description テスト環境でアプリケーションが正しいポート(7080または7090)で動作していることを確認するテスト

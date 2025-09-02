@@ -1,54 +1,56 @@
 // @ts-nocheck
-import { type ViewableTree } from "fluid-framework";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { appTreeConfiguration, Project } from "../schema/app-schema";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { Project } from "../schema/app-schema";
+import { YjsProjectManager } from "./yjsProjectManager.svelte";
+import { yjsService } from "./yjsService.svelte";
 
 vi.setConfig({ testTimeout: 60000 });
-let fluidService: typeof import("./fluidService.svelte");
 
-describe("fluidService", () => {
+describe("YjsProjectManager", () => {
     beforeAll(async () => {
-        process.env.VITE_USE_FIREBASE_EMULATOR = "true";
-        process.env.VITE_TINYLICIOUS_PORT = process.env.VITE_TINYLICIOUS_PORT || "7092";
-        process.env.VITE_USE_TINYLICIOUS = "true";
         process.env.NODE_ENV = "test";
-        fluidService = await import("./fluidService.svelte");
+        process.env.VITE_IS_TEST = "true";
+        // ネットワークに依存しないようにWebSocket URLを無効ポートに設定
+        yjsService.setWebsocketUrl("ws://localhost:0");
     }, 60000);
-    beforeEach(() => {
-    });
 
-    it("getContainer", async () => {
-        try {
-            const [client] = await fluidService.getFluidClient("");
+    it("connects to a project and can create a page with items", async () => {
+        const projectId = `test-project-${Date.now()}`;
+        const initialTitle = "新規プロジェクト";
+        const mgr = new YjsProjectManager(projectId);
 
-            const createResponse = await client.createContainer(fluidService.containerSchema, "2");
-            const container = createResponse.container;
-            // console.log(container)
-            const appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
-            if (appData.compatibility.canInitialize) {
-                appData.initialize(Project.createInstance("新規プロジェクト"));
-            }
+        await mgr.connect(initialTitle);
 
-            // コンテナをアタッチして永続化（コンテナIDを取得）
-            // console.log("fluidService", "info", "Attaching container");
-            const newContainerId = await container.attach();
-            console.log("fluidService", "info", `Container created with ID: ${newContainerId}`);
+        // Projectオブジェクトが取得できること
+        const project: Project | null = mgr.getProject();
+        expect(project).not.toBeNull();
+        expect(project!.title).toBe(initialTitle);
 
-            // client.getContainer(newContainerId, fluidService.containerSchema, "2"); does not work with tinylicious.
-            // const getResponse = await client.getContainer(newContainerId, fluidService.containerSchema, "2");
-            // console.log(getResponse.container);
-        } catch (error) {
-            if ((error as Error).message?.includes("network")) {
-                console.warn("Skipping getContainer test due to network error");
-                return;
-            }
-            console.error(error);
-            expect(error).toBeUndefined();
-        }
+        // ページを作成できること
+        const pageId = await mgr.createPage("PageA", "tester", ["line1", "line2"]);
+        expect(typeof pageId).toBe("string");
+
+        // ページのItemを取得して内容を検証
+        const pageItem = await mgr.getPageItem(pageId);
+        expect(pageItem).not.toBeNull();
+        expect(pageItem!.text).toBe("PageA");
+        // DataValidator仕様では、ページタイトルがルート直下にあり、その配下にline1/line2が並ぶ
+        const rootChildren = (pageItem as any).items as any[];
+        expect(rootChildren.length).toBe(1);
+        expect(rootChildren[0].text).toBe("PageA");
+
+        // ツリーマネージャ経由でタイトルノード配下の子を検証
+        const treeManager = await mgr.connectToPage(pageId);
+        const roots = treeManager.getRootItems();
+        const titleNode = roots.find(r => r.text === "PageA");
+        expect(titleNode).toBeTruthy();
+        const titleChildren = treeManager.getChildren(titleNode!.id);
+        expect(titleChildren.length).toBe(2);
+        expect(titleChildren[0].text).toBe("line1");
+        expect(titleChildren[1].text).toBe("line2");
     }, 60000);
 
     afterEach(() => {
-        // タイマーや状態をリセット
         vi.useRealTimers();
     });
 });

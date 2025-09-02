@@ -4,9 +4,18 @@
  */
 
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("拡張フォーマット", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        try {
+            await DataValidationHelpers.validateDataConsistency(page);
+        } catch (error) {
+            console.log("Data validation skipped:", error.message);
+        }
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });

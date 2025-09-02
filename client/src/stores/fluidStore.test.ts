@@ -1,24 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { fluidStore } from "./fluidStore.svelte";
+import { YjsProjectManager } from "../lib/yjsProjectManager.svelte";
 import { store } from "./store.svelte";
 
-class MockFluidClient {
-    containerId = "c1";
-    getProject() {
-        return { title: "Test", items: [] } as any;
-    }
-    isContainerConnected = false;
-    getConnectionStateString() {
-        return "connected";
-    }
-    currentUser = { id: "u1" };
-}
+// FluidStoreのテストをYjs前提に置き換え。
+// store.project が YjsProjectManager により初期化されることのみ確認。
 
-describe("fluidStore", () => {
-    it("setting fluidClient updates store.project", () => {
-        const client = new MockFluidClient();
-        fluidStore.fluidClient = client as any;
-        expect(store.project?.title).toBe("Test");
-        expect(fluidStore.getCurrentContainerId()).toBe("c1");
+describe("store (Yjs)", () => {
+    it("project can be set via YjsProjectManager", async () => {
+        const mgr = new YjsProjectManager(`store-yjs-${Date.now()}`);
+        await mgr.connect("Test");
+        const project = mgr.getProject();
+        expect(project?.title).toBe("Test");
     });
 });

@@ -4,9 +4,14 @@
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0001: クリックで編集モードに入る", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
@@ -18,13 +23,14 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         const elements = await page.evaluate(() => {
             return {
                 outlinerItems: document.querySelectorAll(".outliner-item").length,
+
                 pageTitle: document.querySelector(".outliner-item.page-title") ? true : false,
+
                 firstItem: document.querySelector(".outliner-item") ? true : false,
             };
         });
         console.log("Page elements:", elements);
     });
-
     test("非Altクリックで編集モードに入る", async ({ page }) => {
         // ページタイトルを優先的に使用（最初に表示されるアイテム）
         const item = page.locator(".outliner-item.page-title");
@@ -34,18 +40,20 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
+
             console.log("Clicked first visible item");
         } else {
             await item.locator(".item-content").click({ force: true });
+
             console.log("Clicked page title item");
         }
 
         // スクリーンショットを撮影（クリック後）
         await page.screenshot({ path: "client/test-results/CLM-0001-after-click.png" });
-
         // 隠し textarea がフォーカスされているか確認
         const isFocused = await page.evaluate(() => {
             const active = document.activeElement;
+
             return active?.classList.contains("global-textarea");
         });
         console.log("Global textarea focused:", isFocused);

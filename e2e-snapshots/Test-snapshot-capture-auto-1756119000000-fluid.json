@@ -1,0 +1,36 @@
+{
+    "mode": "fluid",
+    "projectTitle": "Test Project",
+    "timestamp": "2025-08-25T11:00:00.000Z",
+    "pages": [
+        {
+            "id": "test-page-1",
+            "title": "Test Page 1",
+            "items": [
+                {
+                    "id": "item-1",
+                    "text": "Test item 1",
+                    "level": 0,
+                    "children": []
+                },
+                {
+                    "id": "item-2",
+                    "text": "Test item 2",
+                    "level": 0,
+                    "children": []
+                },
+                {
+                    "id": "item-3",
+                    "text": "Test item 3",
+                    "level": 0,
+                    "children": []
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "testName": "Test snapshot capture",
+        "branch": "fluid",
+        "version": "1.0.0"
+    }
+}

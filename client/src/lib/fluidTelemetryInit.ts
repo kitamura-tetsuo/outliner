@@ -1,8 +1,10 @@
-/**
- * Fluid Framework Telemetry初期化ファイル
- * アプリケーション起動時に自動的にtelemetryフィルタを初期化する
+/*
+ * DISABLED: Fluid Framework Telemetry初期化ファイル
+ *
+ * このファイルはFluid Framework専用のため、Yjsモードでは無効化されています。
  */
-import "./fluidTelemetryFilter";
+
+// import "./fluidTelemetryFilter";
 
 // このファイルはimportするだけで効果があります
 // 何も実行する必要はありません

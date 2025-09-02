@@ -4,13 +4,17 @@
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("IME-0001: IMEを使用した日本語入力", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("入力途中の文字がカーソル位置に表示される", async ({ page }) => {
         // ページタイトルを優先的に使用
         const item = page.locator(".outliner-item.page-title");
@@ -26,6 +30,7 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
 
         // 編集モードに入ったことを確認
         const textarea = page.locator("textarea.global-textarea");
+
         await textarea.waitFor({ state: "visible" });
         await textarea.focus();
 
@@ -39,7 +44,9 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         // simulate composition events for intermediate text
         await page.evaluate(() => {
             const el = document.querySelector("textarea.global-textarea")!;
+
             el.dispatchEvent(new CompositionEvent("compositionstart", { data: "" }));
+
             el.dispatchEvent(new CompositionEvent("compositionupdate", { data: "にほん" }));
         });
         // 表示を待機
@@ -50,7 +57,6 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
             .textContent();
         expect(interimText).toContain("にほん");
     });
-
     test("変換候補がカーソル位置に表示される", async ({ page }) => {
         // ページタイトルを優先的に使用
         const item = page.locator(".outliner-item.page-title");
@@ -66,6 +72,7 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
 
         // 編集モードに入ったことを確認
         const textarea = page.locator("textarea.global-textarea");
+
         await textarea.waitFor({ state: "visible" });
         await textarea.focus();
 
@@ -79,12 +86,16 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         // simulate composition events for intermediate and candidate text
         await page.evaluate(() => {
             const el = document.querySelector("textarea.global-textarea")!;
+
             el.dispatchEvent(new CompositionEvent("compositionstart", { data: "" }));
+
             el.dispatchEvent(new CompositionEvent("compositionupdate", { data: "にほん" }));
         });
         await page.waitForTimeout(50);
+
         await page.evaluate(() => {
             const el = document.querySelector("textarea.global-textarea")!;
+
             el.dispatchEvent(new CompositionEvent("compositionupdate", { data: "日本" }));
         });
         await page.waitForTimeout(100);
@@ -94,7 +105,6 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
             .textContent();
         expect(candidateText).toContain("日本");
     });
-
     test("日本語IME入力が可能", async ({ page }) => {
         // ページタイトルを優先的に使用
         const item = page.locator(".outliner-item.page-title");
@@ -110,6 +120,7 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
 
         // 編集モードに入ったことを確認
         const textarea = page.locator("textarea.global-textarea");
+
         await textarea.waitFor({ state: "visible" });
         await textarea.focus();
 
@@ -123,8 +134,11 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         // simulate full composition events
         await page.evaluate(() => {
             const el = document.querySelector("textarea.global-textarea")!;
+
             el.dispatchEvent(new CompositionEvent("compositionstart", { data: "にほん" }));
+
             el.dispatchEvent(new CompositionEvent("compositionupdate", { data: "にほん" }));
+
             el.dispatchEvent(new CompositionEvent("compositionend", { data: "日本" }));
         });
         // DOMの更新を待機

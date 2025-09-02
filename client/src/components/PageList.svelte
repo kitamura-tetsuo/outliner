@@ -1,11 +1,16 @@
 <script lang="ts">
 import { createEventDispatcher, onMount } from "svelte";
-import { TreeViewManager } from "../fluid/TreeViewManager";
+// import { TreeViewManager } from "../fluid/TreeViewManager"; // Yjsモードでは無効化
+import { getLogger } from "../lib/logger";
+
 import {
     Item,
     Items,
     Project,
 } from "../schema/app-schema";
+// import { fluidStore } from "../stores/fluidStore.svelte"; // Yjsモードでは無効化
+
+const logger = getLogger();
 
 
 interface Props {
@@ -29,16 +34,15 @@ const dispatch = createEventDispatcher();
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
 let pageTitle = $state(isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : "");
 
-function handleCreatePage() {
+async function handleCreatePage() {
     if (!pageTitle.trim() && !isDev) {
         pageTitle = "新しいページ " + new Date().toLocaleString();
     }
 
-    // TreeViewManagerを使用して、正しくページを追加
-    const newPage = TreeViewManager.addPage(project, pageTitle, currentUser);
+    // Yjsモードでは簡易ページ作成
+    console.log("Yjs mode: Page creation not implemented");
+
     pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : "";
-
-
 }
 
 function selectPage(page: Item) {
@@ -46,8 +50,8 @@ function selectPage(page: Item) {
     if (onPageSelected) {
         const event = new CustomEvent("pageSelected", {
             detail: {
-                pageId: page.id,
-                pageName: page.text,
+                pageId: String(page.id),
+                pageName: String(page.text),
             },
         });
         onPageSelected(event);

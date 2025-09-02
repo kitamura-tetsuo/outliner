@@ -1,0 +1,20 @@
+id: ITM-84442697
+title: Scoped item counting and edit debounce for auto-add sibling
+title-ja: 自動兄弟追加のためのアイテム数スコープと編集デバウンス
+category: item-management
+status: implemented
+components:
+- client/e2e/core/itm-auto-add-sibling-item-on-edit-84442697.spec.ts
+- client/e2e/utils/snapshotReporter.js
+- client/src/components/OutlinerTree.svelte
+acceptance:
+- .outliner-item のDOMカウントはOutlinerBase内にスコープして検証する
+- 単一スペック実行（PLAYWRIGHT_SINGLE_SPEC_RUN=true）時、SnapshotReporterは他ケースの差分でfailさせない
+- 最下部アイテムの編集で空の兄弟アイテムが1つだけ追加される
+- 連続編集による重複追加を防ぐため、handleEditは800ms一律デバウンスされる
+tests:
+- client/e2e/core/itm-auto-add-sibling-item-on-edit-84442697.spec.ts
+notes:
+- 以前はグローバルな .outliner-item カウントにより3件→4件の誤カウントが発生
+- OutlinerBase配下のスコープ化で安定化
+- OutlinerTree.handleEditの厳密デバウンスで重複追加を抑止

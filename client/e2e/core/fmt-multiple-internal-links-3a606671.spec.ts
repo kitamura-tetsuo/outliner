@@ -3,6 +3,7 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { LinkTestHelpers } from "../utils/linkTestHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
@@ -12,14 +13,18 @@ import { TestHelpers } from "../utils/testHelpers";
  */
 
 test.describe("FMT-0008: multiple internal links", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("multiple internal links are displayed", async ({ page }) => {
         // select first item
         const firstId = await TestHelpers.getItemIdByIndex(page, 0);
         expect(firstId).not.toBeNull();
+
         await TestHelpers.clickItemToEdit(
             page,
             `.outliner-item[data-item-id="${firstId}"] .item-content`,
@@ -30,6 +35,7 @@ test.describe("FMT-0008: multiple internal links", () => {
 
         // add second item to apply formatting
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("second item");
 
         // wait for formatting
@@ -49,14 +55,19 @@ test.describe("FMT-0008: multiple internal links", () => {
         );
 
         const firstLink = itemLocator.locator('a[href="/test-page"]');
+
         const secondLink = itemLocator.locator('a[href="/project/other-page"]');
+
         await expect(firstLink).toHaveClass(/page-not-exists/);
+
         await expect(secondLink).toHaveClass(/page-not-exists/);
 
         await LinkTestHelpers.forceLinkPreview(page, "test-page", undefined, false);
+
         const preview = page.locator(".link-preview-popup");
         if ((await preview.count()) > 0) {
             await expect(preview).toBeVisible();
+
             await expect(preview.locator("h3")).toHaveText(/test-page/i);
         }
     });

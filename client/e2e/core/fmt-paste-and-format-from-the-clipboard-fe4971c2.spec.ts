@@ -5,34 +5,41 @@
 
 import { expect, test } from "@playwright/test";
 
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("フォーマット文字列の入力と表示", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("プレーンテキストの入力が正しく機能する", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // テキストを直接入力
         const textToInput = "これはテキスト入力です";
+
         await page.keyboard.type(textToInput);
 
         // 入力されたテキストが表示されていることを確認
         const itemText = await item.locator(".item-text").textContent();
         expect(itemText).toContain(textToInput);
     });
-
     test("フォーマット構文を含むテキストの入力が正しく機能する", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // フォーマット構文を含むテキストを直接入力
         const formattedText = "[[太字]]と[/斜体]と[-取り消し線]と`コード`と[https://example.com]";
+
         await page.keyboard.type(formattedText);
 
         // 入力されたテキストが表示されていることを確認
@@ -47,7 +54,9 @@ test.describe("フォーマット文字列の入力と表示", () => {
 
         // フォーカスを外してフォーマットが適用されることを確認
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
+
         await page.locator(".outliner-item").nth(1).locator(".item-content").click();
 
         // フォーマットが適用されるのを待つ
@@ -63,10 +72,10 @@ test.describe("フォーマット文字列の入力と表示", () => {
         expect(firstItemHtml).toContain("<code>");
         expect(firstItemHtml).toContain('<a href="https://example.com"');
     });
-
     test("複数行テキストの入力が正しく機能する", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // 複数行テキストを直接入力
@@ -75,10 +84,12 @@ test.describe("フォーマット文字列の入力と表示", () => {
 
         // Enterキーで改行して2行目を入力
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("2行目");
 
         // Enterキーで改行して3行目を入力
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("3行目");
 
         // 入力されたテキストが表示されていることを確認
@@ -98,25 +109,29 @@ test.describe("フォーマット文字列の入力と表示", () => {
         // 2行目と3行目は、同じアイテム内に改行として保持されているか、
         // 新しいアイテムとして作成されているかのどちらか
         const itemCount = await page.locator(".outliner-item").count();
+
         const secondItemExists = itemCount > 1;
 
         if (secondItemExists) {
             // 新しいアイテムが作成された場合
             const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+
             expect(secondItemText).toContain("2行目");
         } else {
             // 同じアイテム内に改行として保持された場合
+
             expect(itemText).toContain("2行目");
         }
     });
-
     test("カーソル位置にテキストが入力される", async ({ page, context }) => {
         // クリップボードへのアクセス権限を付与
         await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
         // 最初のアイテムを選択して既存のテキストを入力
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
+
         await TestHelpers.waitForCursorVisible(page);
         console.log("アイテムをクリックしました");
 
@@ -134,7 +149,9 @@ test.describe("フォーマット文字列の入力と表示", () => {
 
         // 新しいタブでクリップボードテストページにアクセス
         const clipboardPage = await context.newPage();
+
         await clipboardPage.goto("/clipboard-test");
+
         await clipboardPage.waitForSelector("#clipboard-text", { timeout: 10000 });
         console.log("クリップボードテストページが読み込まれました");
 
@@ -161,22 +178,27 @@ test.describe("フォーマット文字列の入力と表示", () => {
             // 方法1: グローバル変数を使用
             await page.evaluate(text => {
                 // グローバル変数に保存
+
                 (window as any).lastCopiedText = text;
 
                 // ClipboardEventを作成
                 const clipboardEvent = new ClipboardEvent("paste", {
                     clipboardData: new DataTransfer(),
+
                     bubbles: true,
+
                     cancelable: true,
                 });
-
                 // データを設定
+
                 clipboardEvent.clipboardData?.setData("text/plain", text);
 
                 // アクティブな要素にイベントをディスパッチ
+
                 document.activeElement?.dispatchEvent(clipboardEvent);
 
                 console.log(`グローバル変数からペースト: ${text}`);
+
                 return true;
             }, textToPaste);
 
@@ -185,12 +207,14 @@ test.describe("フォーマット文字列の入力と表示", () => {
 
             // 方法2: キーボードショートカット
             await page.keyboard.press("Control+v");
+
             console.log("Control+v キーを押しました");
         } catch (err) {
             console.log(`ペースト操作中にエラーが発生しました: ${err instanceof Error ? err.message : String(err)}`);
 
             // 方法3: 直接テキスト入力（フォールバック）
             await page.keyboard.type(textToPaste);
+
             console.log(`フォールバック: テキストを直接入力しました: ${textToPaste}`);
         }
 
@@ -210,7 +234,6 @@ test.describe("フォーマット文字列の入力と表示", () => {
         console.log("ペーストが成功しました！");
         expect(actualText).toContain("ペーストされたテキスト");
     });
-
     /**
      * @testcase クリップボードAPIの基本機能テスト
      * @description クリップボードAPIの基本機能が正しく動作することを確認するテスト
@@ -222,7 +245,9 @@ test.describe("フォーマット文字列の入力と表示", () => {
 
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
+
         await TestHelpers.waitForCursorVisible(page);
         console.log("アイテムをクリックしました");
 
@@ -232,14 +257,18 @@ test.describe("フォーマット文字列の入力と表示", () => {
 
         // 新しいタブでクリップボードテストページにアクセス
         const clipboardPage = await context.newPage();
+
         await clipboardPage.goto("/clipboard-test");
+
         await clipboardPage.waitForSelector("#clipboard-text", { timeout: 10000 });
         console.log("クリップボードテストページが読み込まれました");
 
         // クリップボード権限を確認
         await clipboardPage.locator(".test-section").nth(2).locator('button:has-text("クリップボード権限を確認")')
             .click();
+
         await clipboardPage.waitForTimeout(1000);
+
         const permissionResult = await clipboardPage.locator(".test-section").nth(2).locator(".result").textContent();
         console.log(`クリップボード権限: ${permissionResult}`);
 
@@ -262,6 +291,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
         const clipboardContent = await clipboardPage.evaluate(async () => {
             try {
                 const text = await navigator.clipboard.readText();
+
                 return `クリップボードの内容: ${text}`;
             } catch (err) {
                 return `クリップボードの読み取りに失敗: ${err.message}`;
@@ -280,22 +310,27 @@ test.describe("フォーマット文字列の入力と表示", () => {
             // 方法1: グローバル変数を使用
             await page.evaluate(text => {
                 // グローバル変数に保存
+
                 (window as any).lastCopiedText = text;
 
                 // ClipboardEventを作成
                 const clipboardEvent = new ClipboardEvent("paste", {
                     clipboardData: new DataTransfer(),
+
                     bubbles: true,
+
                     cancelable: true,
                 });
-
                 // データを設定
+
                 clipboardEvent.clipboardData?.setData("text/plain", text);
 
                 // アクティブな要素にイベントをディスパッチ
+
                 document.activeElement?.dispatchEvent(clipboardEvent);
 
                 console.log(`グローバル変数からペースト: ${text}`);
+
                 return true;
             }, testText);
 
@@ -304,12 +339,14 @@ test.describe("フォーマット文字列の入力と表示", () => {
 
             // 方法2: キーボードショートカット
             await page.keyboard.press("Control+v");
+
             console.log("Control+v キーを押しました");
         } catch (err) {
             console.log(`ペースト操作中にエラーが発生しました: ${err instanceof Error ? err.message : String(err)}`);
 
             // 方法3: 直接テキスト入力（フォールバック）
             await page.keyboard.type(testText);
+
             console.log(`フォールバック: テキストを直接入力しました: ${testText}`);
         }
 

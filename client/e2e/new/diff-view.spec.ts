@@ -4,15 +4,20 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("snapshot diff viewer", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("display diff and revert", async ({ page }, testInfo) => {
         const { projectName, pageName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+
         await page.evaluate(
             ({ projectName, pageName }) => {
                 window.__SNAPSHOT_SERVICE__.setCurrentContent(
@@ -20,6 +25,7 @@ test.describe("snapshot diff viewer", () => {
                     pageName,
                     "second",
                 );
+
                 window.__SNAPSHOT_SERVICE__.addSnapshot(
                     projectName,
                     pageName,
@@ -29,7 +35,9 @@ test.describe("snapshot diff viewer", () => {
             },
             { projectName, pageName },
         );
+
         await page.goto(`/${projectName}/${pageName}/diff`);
+
         await page.waitForTimeout(1000);
 
         // ページの状態をデバッグ
@@ -45,7 +53,9 @@ test.describe("snapshot diff viewer", () => {
         const pageParams = await page.evaluate(() => {
             return {
                 url: window.location.href,
+
                 pathname: window.location.pathname,
+
                 params: (window as any).$page?.params,
             };
         });
@@ -60,29 +70,39 @@ test.describe("snapshot diff viewer", () => {
 
         if (addSnapshotButton === 0) {
             const allButtons = await page.locator("button").allTextContents();
+
             console.log("All buttons on page:", allButtons);
 
             // ページの主要な要素を確認
             const mainContent = await page.locator("main, body > div").first().innerHTML();
+
             console.log("Main content (first 500 chars):", mainContent.substring(0, 500));
         }
-
         await page.getByText("Add Snapshot").click();
+
         await page.waitForSelector("li");
+
         const count = await page.evaluate(
             ({ projectName, pageName }) => {
                 const { listSnapshots } = window.__SNAPSHOT_SERVICE__;
+
                 return listSnapshots(projectName, pageName).length;
             },
             { projectName, pageName },
         );
+
         await expect(page.locator("li")).toHaveCount(count);
+
         await page.locator("li").first().click();
+
         await expect(page.locator("ins")).toBeVisible();
+
         await page.getByText("Revert").click();
+
         const current = await page.evaluate(
             ({ projectName, pageName }) => {
                 const { getCurrentContent } = window.__SNAPSHOT_SERVICE__;
+
                 return getCurrentContent(projectName, pageName);
             },
             { projectName, pageName },

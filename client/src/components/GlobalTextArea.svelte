@@ -1,18 +1,20 @@
 <script lang="ts">
-import { Tree } from "fluid-framework";
+// import { Tree } from "fluid-framework"; // Yjsモードでは無効化
 import {
     onDestroy,
     onMount,
 } from "svelte";
 import { KeyEventHandler } from "../lib/KeyEventHandler";
-import { Items } from "../schema/app-schema";
+import { Items, Tree } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 
+const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
+
 let textareaRef: HTMLTextAreaElement;
 let isComposing = false;
-const measureCanvas = document.createElement("canvas");
-const measureCtx = measureCanvas.getContext("2d");
+let measureCanvas: HTMLCanvasElement | null = null;
+let measureCtx: CanvasRenderingContext2D | null = null;
 
 // store.activeItemId 変化時に再フォーカス
 $effect(() => {
@@ -53,40 +55,48 @@ $effect(() => {
     }
 });
 
-// global textarea をストアに登録
+// global textarea をストアに登録（SSRガード）
 onMount(() => {
+    if (!isBrowser) return;
+
+    // 計測用キャンバスを初期化（SSRでは未作成）
+    measureCanvas = document.createElement("canvas");
+    measureCtx = measureCanvas.getContext("2d");
+
     store.setTextareaRef(textareaRef);
     console.log("GlobalTextArea: Textarea reference set in store");
 
-    // 初期フォーカスを設定
-    if (textareaRef) {
+    const ensureFocus = () => {
+        if (!textareaRef) return;
         textareaRef.focus();
-        console.log("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
+        requestAnimationFrame(() => textareaRef && textareaRef.focus());
+        setTimeout(() => textareaRef && textareaRef.focus(), 10);
+    };
 
-        // フォーカス確保のための追加試行
-        requestAnimationFrame(() => {
-            if (textareaRef) {
-                textareaRef.focus();
-                console.log("GlobalTextArea: RAF focus set, activeElement:", document.activeElement?.tagName);
+    // 初期フォーカスを設定
+    ensureFocus();
 
-                setTimeout(() => {
-                    if (textareaRef) {
-                        textareaRef.focus();
-                        const isFocused = document.activeElement === textareaRef;
-                        console.log("GlobalTextArea: Final focus set, focused:", isFocused);
-                    }
-                }, 10);
-            }
-        });
-    }
+    // ドキュメント全体でのマウスダウン後に確実にフォーカスを戻す（キャプチャ段階）
+    const onDocMouseDown = () => {
+        // アクティブアイテムがあるときのみ強制復帰
+        if (store.getActiveItem()) {
+            setTimeout(ensureFocus, 0);
+        }
+    };
+    document.addEventListener("mousedown", onDocMouseDown, true);
 
-    // テスト用にKeyEventHandlerをグローバルに公開
+    // テスト用にKeyEventHandlerをグローバルに公開 / ストアを公開（E2Eで参照）
     if (typeof window !== "undefined") {
         (window as any).__KEY_EVENT_HANDLER__ = KeyEventHandler;
         (window as any).Tree = Tree;
         (window as any).Items = Items;
         (window as any).generalStore = generalStore;
+        (window as any).editorOverlayStore = store;
     }
+
+    return () => {
+        document.removeEventListener("mousedown", onDocMouseDown, true);
+    };
 });
 
 onDestroy(() => {
@@ -112,10 +122,13 @@ function handleCompositionStart(event: CompositionEvent) {
 
 // キーダウンイベントを KeyEventHandler へ委譲
 function handleKeyDown(event: KeyboardEvent) {
-    console.log("GlobalTextArea.handleKeyDown called with key:", event.key);
+    const tGA = (typeof performance !== 'undefined' && (performance as any).now) ? (performance as any).now() : Date.now();
+    console.log("GlobalTextArea.handleKeyDown called with key:", event.key, " at t=", tGA);
     console.log("GlobalTextArea.handleKeyDown: event.target:", event.target);
     console.log("GlobalTextArea.handleKeyDown: textareaRef:", textareaRef);
     console.log("GlobalTextArea.handleKeyDown: activeElement:", document.activeElement);
+
+    // Enterも含め、すべて同期処理（KeyEventHandlerが制御）
     KeyEventHandler.handleKeyDown(event);
 }
 
@@ -167,6 +180,11 @@ function handleBlur(_event: FocusEvent) {
         setTimeout(() => {
             if (textareaRef) {
                 textareaRef.focus();
+                requestAnimationFrame(() => {
+                    if (textareaRef) {
+                        textareaRef.focus();
+                    }
+                });
 
                 // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -177,7 +195,7 @@ function handleBlur(_event: FocusEvent) {
                     );
                 }
             }
-        }, 10);
+        }, 16);
     }
 }
 </script>

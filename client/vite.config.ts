@@ -51,6 +51,12 @@ export default defineConfig(async ({ mode }) => {
         optimizeDeps: {
             include: ["sql.js"],
         },
+        resolve: {
+            alias: {
+                // テストで 'fluid-framework' を参照してもローカルのモックに差し替える
+                "fluid-framework": "/src/tests/mocks/fluid-framework.ts",
+            },
+        },
         define: {
             global: "globalThis",
         },

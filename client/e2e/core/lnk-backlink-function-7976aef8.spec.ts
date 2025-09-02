@@ -4,6 +4,7 @@
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 
@@ -14,10 +15,13 @@ import { TreeValidator } from "../utils/treeValidation";
  * @title バックリンク機能
  */
 test.describe("LNK-0007: バックリンク機能", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     /**
      * @testcase ページにバックリンクパネルが表示される
      * @description ページにバックリンクパネルが表示されることを確認するテスト
@@ -26,7 +30,6 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // 認証状態を設定
         await page.addInitScript(() => {
         });
-
         // テストページをセットアップ
 
         // 最初のページのURLを保存
@@ -37,37 +40,43 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // テスト用のページを作成
         await page.keyboard.type(`[${targetPageName}]`);
+
         await page.keyboard.press("Enter");
+
         await page.waitForTimeout(500);
 
         // リンクをクリックして新しいページに移動
         const link = page.locator(`text=${targetPageName}`);
         if (await link.count() === 0) {
             console.log("Link not found:", targetPageName);
+
             return;
         }
         await link.click();
+
         await page.waitForTimeout(1000);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
+
             await page.waitForTimeout(1000);
         }
 
         // 新しいページにテキストを入力
         await page.keyboard.type("これはターゲットページの内容です。");
+
         await page.waitForTimeout(500);
 
         // バックリンクパネルが表示されていることを確認
         const backlinkPanel = page.locator(".backlink-panel");
+
         await expect(backlinkPanel).toBeVisible();
 
         // テスト成功
         console.log("ページにバックリンクパネルが表示されるテストが成功しました。");
     });
-
     /**
      * @testcase バックリンクパネルにリンク元ページの一覧が表示される
      * @description バックリンクパネルにリンク元ページの一覧が表示されることを確認するテスト
@@ -76,7 +85,6 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // 認証状態を設定
         await page.addInitScript(() => {
         });
-
         // テストページをセットアップ
 
         // 最初のページのURLを保存
@@ -90,42 +98,52 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // テスト用のページを作成
         await page.keyboard.type(`[${targetPageName}]`);
+
         await page.keyboard.press("Enter");
+
         await page.waitForTimeout(500);
 
         // リンクをクリックして新しいページに移動
         const link2 = page.locator(`text=${targetPageName}`);
         if (await link2.count() === 0) {
             console.log("Link not found:", targetPageName);
+
             return;
         }
         await link2.click();
+
         await page.waitForTimeout(1000);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
+
             await page.waitForTimeout(1000);
         }
 
         // 新しいページにテキストを入力
         await page.keyboard.type("これはターゲットページの内容です。");
+
         await page.waitForTimeout(500);
 
         // バックリンクパネルを開く
         await TestHelpers.openBacklinkPanel(page);
+
         await page.waitForTimeout(500);
 
         // バックリンクパネルの内容が表示されていることを確認
         const backlinkContent = page.locator(".backlink-content");
+
         const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
 
         if (!isContentVisible) {
             console.log("バックリンクパネルの内容が表示されていません。もう一度開くボタンをクリックします。");
             // もう一度トグルボタンをクリックしてみる
             const toggleButton = page.locator(".backlink-toggle-button");
+
             await toggleButton.click();
+
             await page.waitForTimeout(500);
         }
 
@@ -134,6 +152,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // バックリンクリストが表示されていることを確認
         const backlinkList = page.locator(".backlink-list");
+
         await expect(backlinkList).toBeVisible();
 
         // リンク元ページが表示されていることを確認
@@ -143,13 +162,16 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
             // リンク元ページのコンテキストが表示されていることを確認
             const backlinkContext = backlinkList.locator(".backlink-context");
+
             if (await backlinkContext.count() > 0) {
                 await expect(backlinkContext).toBeVisible();
 
                 // コンテキストにターゲットページ名が含まれているか確認
                 const contextText = await backlinkContext.textContent();
+
                 if (contextText) {
                     // 大文字小文字を区別せずに検索
+
                     expect(contextText.toLowerCase()).toContain(targetPageName.toLowerCase());
                 }
             } else {
@@ -162,7 +184,6 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テスト成功
         console.log("バックリンクパネルにリンク元ページの一覧が表示されるテストが成功しました。");
     });
-
     /**
      * @testcase バックリンクの数がバッジとして表示される
      * @description バックリンクの数がバッジとして表示されることを確認するテスト
@@ -171,7 +192,6 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // 認証状態を設定
         await page.addInitScript(() => {
         });
-
         // テストページをセットアップ
 
         // 最初のページのURLを保存
@@ -182,31 +202,38 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // テスト用のページを作成
         await page.keyboard.type(`[${targetPageName}]`);
+
         await page.keyboard.press("Enter");
+
         await page.waitForTimeout(500);
 
         // リンクをクリックして新しいページに移動
         const link3 = page.locator(`text=${targetPageName}`);
         if (await link3.count() === 0) {
             console.log("Link not found:", targetPageName);
+
             return;
         }
         await link3.click();
+
         await page.waitForTimeout(1000);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
+
             await page.waitForTimeout(1000);
         }
 
         // 新しいページにテキストを入力
         await page.keyboard.type("これはターゲットページの内容です。");
+
         await page.waitForTimeout(500);
 
         // バックリンクの数を表示するバッジが表示されていることを確認
         const backlinkCount = page.locator(".backlink-count");
+
         await expect(backlinkCount).toBeVisible();
 
         // バッジに数字が表示されていることを確認
@@ -216,7 +243,6 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テスト成功
         console.log("バックリンクの数がバッジとして表示されるテストが成功しました。");
     });
-
     /**
      * @testcase バックリンクパネルを開閉できる
      * @description バックリンクパネルを開閉できることを確認するテスト
@@ -226,7 +252,6 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // 認証状態を設定
         await page.addInitScript(() => {
         });
-
         // テストページをセットアップ
 
         // 最初のページのURLを保存
@@ -237,36 +262,45 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // テスト用のページを作成
         await page.keyboard.type(`[${targetPageName}]`);
+
         await page.keyboard.press("Enter");
+
         await page.waitForTimeout(500);
 
         // リンクをクリックして新しいページに移動
         const link4 = page.locator(`text=${targetPageName}`);
         if (await link4.count() === 0) {
             console.log("Link not found:", targetPageName);
+
             return;
         }
         await link4.click();
+
         await page.waitForTimeout(1000);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
+
             await page.waitForTimeout(1000);
         }
 
         // 新しいページにテキストを入力
         await page.keyboard.type("これはターゲットページの内容です。");
+
         await page.waitForTimeout(500);
 
         // 初期状態ではバックリンクパネルの内容が非表示であることを確認
         const backlinkContent = page.locator(".backlink-content");
+
         await expect(backlinkContent).not.toBeVisible();
 
         // バックリンクパネルのトグルボタンをクリック
         const toggleButton = page.locator(".backlink-toggle-button");
+
         await toggleButton.click();
+
         await page.waitForTimeout(500);
 
         // バックリンクパネルの内容が表示されていることを確認
@@ -274,6 +308,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // もう一度トグルボタンをクリック
         await toggleButton.click();
+
         await page.waitForTimeout(500);
 
         // バックリンクパネルの内容が非表示になっていることを確認
@@ -282,7 +317,6 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テスト成功
         console.log("バックリンクパネルを開閉できるテストが成功しました。");
     });
-
     /**
      * @testcase バックリンクをクリックするとリンク元ページに移動できる
      * @description バックリンクをクリックするとリンク元ページに移動できることを確認するテスト
@@ -291,7 +325,6 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // 認証状態を設定
         await page.addInitScript(() => {
         });
-
         // テストページをセットアップ
 
         // 最初のページのURLを保存
@@ -305,42 +338,52 @@ test.describe("LNK-0007: バックリンク機能", () => {
 
         // テスト用のページを作成
         await page.keyboard.type(`[${targetPageName}]`);
+
         await page.keyboard.press("Enter");
+
         await page.waitForTimeout(500);
 
         // リンクをクリックして新しいページに移動
         const link5 = page.locator(`text=${targetPageName}`);
         if (await link5.count() === 0) {
             console.log("Link not found:", targetPageName);
+
             return;
         }
         await link5.click();
+
         await page.waitForTimeout(1000);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
+
             await page.waitForTimeout(1000);
         }
 
         // 新しいページにテキストを入力
         await page.keyboard.type("これはターゲットページの内容です。");
+
         await page.waitForTimeout(500);
 
         // バックリンクパネルを開く
         await TestHelpers.openBacklinkPanel(page);
+
         await page.waitForTimeout(500);
 
         // バックリンクパネルの内容が表示されていることを確認
         const backlinkContent = page.locator(".backlink-content");
+
         const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
 
         if (!isContentVisible) {
             console.log("バックリンクパネルの内容が表示されていません。もう一度開くボタンをクリックします。");
             // もう一度トグルボタンをクリックしてみる
             const toggleButton = page.locator(".backlink-toggle-button");
+
             await toggleButton.click();
+
             await page.waitForTimeout(500);
         }
 
@@ -350,6 +393,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         const sourcePageLink = backlinkList.locator(".source-page-link").first();
         // リンクをクリック
         await sourcePageLink.click();
+
         await page.waitForTimeout(1000);
 
         // 元のページに戻ったことを確認
@@ -362,7 +406,9 @@ test.describe("LNK-0007: バックリンク機能", () => {
         if (sourceUrl) {
             // URLのパス部分だけを比較（クエリパラメータなどは無視）
             const currentPath = new URL(currentUrl).pathname;
+
             const sourcePath = new URL(sourceUrl).pathname;
+
             expect(currentPath).toBe(sourcePath);
         }
 

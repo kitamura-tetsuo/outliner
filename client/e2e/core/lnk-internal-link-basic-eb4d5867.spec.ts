@@ -4,20 +4,28 @@
  */
 import { expect, test } from "@playwright/test";
 import { waitForCursorVisible } from "../helpers";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("LNK-0002: 内部リンクの基本機能", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "[test-page]",
+
             "別のアイテム",
+
             "3つ目のアイテム",
         ]);
     });
-
     test("内部リンクが正しく機能する", async ({ page }) => {
         await page.waitForTimeout(500);
+
         const internalLink = page.locator('a.internal-link[href="/test-page"]');
+
         await expect(internalLink).toHaveCount(1);
 
         const target = await internalLink.getAttribute("target");

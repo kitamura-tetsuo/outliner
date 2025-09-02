@@ -4,13 +4,17 @@
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0001: Click to enter edit mode", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("カーソルが点滅する", async ({ page }) => {
         await page.screenshot({ path: "client/test-results/CLM-0001-blink-start.png" });
         const item = page.locator(".outliner-item.page-title");
@@ -21,7 +25,9 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
             await item.locator(".item-content").click({ force: true });
         }
         await TestHelpers.waitForCursorVisible(page);
+
         await page.waitForTimeout(500);
+
         await page.screenshot({ path: "client/test-results/CLM-0001-blink-end.png" });
     });
 });

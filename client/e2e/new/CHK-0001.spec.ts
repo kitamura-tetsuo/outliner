@@ -3,13 +3,17 @@
  *  Source  : docs/client-features/chk-universal-checklist-*.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CHK-0001: Universal Checklist", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("add and archive item in shopping mode", async ({ page }) => {
         await page.goto("/checklist");
         await expect(page.locator('[data-testid="add-input"]')).toBeVisible();
@@ -20,7 +24,6 @@ test.describe("CHK-0001: Universal Checklist", () => {
         await checkbox.check();
         await expect(checkbox).toBeChecked();
     });
-
     test("reset unchecks items", async ({ page }) => {
         await page.goto("/checklist");
         await expect(page.locator('[data-testid="add-input"]')).toBeVisible();
@@ -32,10 +35,10 @@ test.describe("CHK-0001: Universal Checklist", () => {
         await page.click('[data-testid="reset-button"]');
         await expect(checkbox).not.toBeChecked();
     });
-
     test("habit list auto resets", async ({ page }) => {
         await page.evaluate(() => {
             localStorage.setItem("CHK_MODE", "habit");
+
             localStorage.setItem("CHK_RRULE", "FREQ=SECONDLY;INTERVAL=1");
         });
         await page.goto("/checklist");

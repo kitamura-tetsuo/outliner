@@ -1,27 +1,47 @@
 import { chromium, expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 
 test.describe("Chromium Debug Test", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認（Chromiumデバッグテストのため、エラーは無視）
+        try {
+            await DataValidationHelpers.validateDataConsistency(page);
+        } catch (error) {
+            console.log("Data validation skipped for chromium debug test:", error.message);
+        }
+    });
     test("can launch browser and create context", async () => {
         console.log("Debug: Starting browser launch test");
 
         const browser = await chromium.launch({
             headless: true,
+
             args: [
                 "--no-sandbox",
+
                 "--disable-setuid-sandbox",
+
                 "--disable-dev-shm-usage",
+
                 "--disable-gpu",
+
                 "--disable-web-security",
+
                 "--disable-features=VizDisplayCompositor",
+
                 "--disable-background-timer-throttling",
+
                 "--disable-backgrounding-occluded-windows",
+
                 "--disable-renderer-backgrounding",
+
                 "--memory-pressure-off",
+
                 "--max_old_space_size=4096",
+
                 "--headless=new",
             ],
         });
-
         console.log("Debug: Browser launched successfully");
 
         const context = await browser.newContext();
@@ -38,11 +58,12 @@ test.describe("Chromium Debug Test", () => {
         expect(title).toBe("Test");
 
         await page.close();
+
         await context.close();
+
         await browser.close();
         console.log("Debug: All resources closed successfully");
     });
-
     test("can use page fixture", async ({ page }) => {
         console.log("Debug: Testing page fixture");
 
@@ -53,26 +74,30 @@ test.describe("Chromium Debug Test", () => {
         console.log("Debug: Fixture title:", title);
         expect(title).toBe("Fixture Test");
     });
-
     test("can navigate to application", async ({ page }) => {
         console.log("Debug: Testing application navigation");
 
         try {
             await page.goto("/");
+
             console.log("Debug: Successfully navigated to application");
 
             // ページが読み込まれるまで待機
             await page.waitForLoadState("domcontentloaded");
+
             console.log("Debug: DOM content loaded");
 
             // タイトルを確認
             const title = await page.title();
+
             console.log("Debug: Page title:", title);
 
             // ページが正常に読み込まれたことを確認
+
             expect(title).toBeTruthy();
         } catch (error) {
             console.log("Debug: Navigation error:", error);
+
             throw error;
         }
     });

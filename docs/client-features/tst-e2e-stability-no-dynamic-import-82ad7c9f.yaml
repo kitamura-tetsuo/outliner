@@ -1,0 +1,23 @@
+id: TST-82ad7c9f
+title: E2E stability for Yjs branch (no dynamic import in page.evaluate)
+title-ja: YjsブランチのE2E安定化（page.evaluate内の動的import禁止）
+category: testing
+status: implemented
+components:
+- client/e2e/utils/dataValidationHelpers.ts
+- client/e2e/utils/testHelpers.ts
+- client/playwright.config.ts
+- client/src/lib/yjsProjectManager.svelte.ts
+acceptance:
+- Playwright のグローバルタイムアウトを拡張して重い初期化にも耐える
+- Yjs スナップショット取得は window.YjsProjectManager を利用して行う
+- YjsProjectManager.getPageItem は ID だけでなくページタイトル文字列でも解決できる
+- beforeEach/afterEach で page.title() が原因の Test ended 例外を発生させない
+- page.evaluate 内での動的 import を使用しない（ブラウザコンテキスト終了時の例外を回避）
+- 既存の basic/add-text-functionality.spec.ts が安定実行できる
+notes:
+- Yjs専用ブランチでは DataValidationHelpers.validateDataConsistency は実行をスキップし、早期終了のための待機を阻害しない実装とする
+- __SVELTE_GOTO__ / YjsProjectManager は +layout.svelte 経由の setupGlobalDebugFunctions で window に公開
+tests:
+- client/e2e/basic/add-text-functionality.spec.ts
+- client/e2e/core/itm-add-item-button-a4430f1e.spec.ts

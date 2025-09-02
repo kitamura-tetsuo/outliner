@@ -53,6 +53,7 @@ export class KeyEventHandler {
         add("Escape", false, false, false, () => {
             // エイリアスピッカーが表示されている場合は、エイリアスピッカーを閉じる
             if (aliasPickerStore.isVisible) {
+                console.log("KeyEventHandler: Escape key pressed, hiding alias picker");
                 aliasPickerStore.hide();
                 return;
             }
@@ -128,34 +129,43 @@ export class KeyEventHandler {
      * KeyDown イベントを各カーソルに委譲
      */
     static handleKeyDown(event: KeyboardEvent) {
+        const __tKeyDown = (typeof performance !== "undefined" && (performance as any).now)
+            ? (performance as any).now()
+            : Date.now();
         const cursorInstances = store.getCursorInstances();
 
         // デバッグ情報
         console.log(
-            `KeyEventHandler.handleKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}, altKey=${event.altKey}`,
+            `KeyEventHandler.handleKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}, altKey=${event.altKey} at t=${__tKeyDown}`,
         );
         console.log(`KeyEventHandler.handleKeyDown: event.target:`, event.target);
         console.log(`KeyEventHandler.handleKeyDown: activeElement:`, document.activeElement);
         console.log(`Current cursor instances: ${cursorInstances.length}`);
 
         if (commandPaletteStore.isVisible) {
+            console.log("KeyEventHandler: Command palette is visible, handling key:", event.key);
             if (event.key === "ArrowDown") {
+                console.log("KeyEventHandler: ArrowDown pressed, moving down");
                 commandPaletteStore.move(1);
                 event.preventDefault();
                 return;
             } else if (event.key === "ArrowUp") {
+                console.log("KeyEventHandler: ArrowUp pressed, moving up");
                 commandPaletteStore.move(-1);
                 event.preventDefault();
                 return;
             } else if (event.key === "Enter") {
+                console.log("KeyEventHandler: Enter pressed, calling confirm");
                 commandPaletteStore.confirm();
                 event.preventDefault();
                 return;
             } else if (event.key === "Escape") {
+                console.log("KeyEventHandler: Escape pressed, hiding command palette");
                 commandPaletteStore.hide();
                 event.preventDefault();
                 return;
             } else if (event.key === "Backspace") {
+                console.log("KeyEventHandler: Backspace pressed, handling command backspace");
                 commandPaletteStore.handleCommandBackspace();
                 event.preventDefault();
                 return;
@@ -207,6 +217,9 @@ export class KeyEventHandler {
                 requestAnimationFrame(() => {
                     globalTextarea.focus();
                 });
+
+                // 次タスクでも再確保
+                setTimeout(() => globalTextarea.focus(), 0);
             }
         }
 
@@ -259,31 +272,38 @@ export class KeyEventHandler {
 
         if (inputEvent.data === "/") {
             // カーソル位置の前の文字をチェックして、内部リンクの一部かどうか判定
+            console.log("KeyEventHandler: Slash input detected");
             if (cursorInstances.length > 0) {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
                 const text = node?.text || "";
                 const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
+                console.log("KeyEventHandler: Previous character:", prevChar);
 
                 // [の直後の/の場合、または既に[で始まる内部リンク内の場合はコマンドパレットを表示しない
                 if (prevChar === "[") {
+                    console.log("KeyEventHandler: Previous char is '[', continuing normal input");
                     // 通常の入力処理を続行
                 } else {
                     // [で始まる内部リンク内かどうかをチェック
                     const beforeCursor = text.slice(0, cursor.offset);
                     const lastOpenBracket = beforeCursor.lastIndexOf("[");
                     const lastCloseBracket = beforeCursor.lastIndexOf("]");
+                    console.log("KeyEventHandler: Bracket check:", { lastOpenBracket, lastCloseBracket });
 
                     // 最後の[が最後の]より後にある場合は内部リンク内
                     if (lastOpenBracket > lastCloseBracket) {
+                        console.log("KeyEventHandler: Inside internal link, continuing normal input");
                         // 通常の入力処理を続行
                     } else {
+                        console.log("KeyEventHandler: Showing command palette");
                         // コマンドパレットを表示
                         const pos = commandPaletteStore.getCursorScreenPosition();
                         commandPaletteStore.show(pos || { top: 0, left: 0 });
                     }
                 }
             } else {
+                console.log("KeyEventHandler: No cursor instances, showing command palette");
                 // カーソルがない場合はコマンドパレットを表示
                 const pos = commandPaletteStore.getCursorScreenPosition();
                 commandPaletteStore.show(pos || { top: 0, left: 0 });
@@ -293,10 +313,13 @@ export class KeyEventHandler {
             commandPaletteStore.hide();
         } else if (commandPaletteStore.isVisible) {
             // CommandPaletteが表示されている場合は、専用の入力処理を使用
+            console.log("KeyEventHandler: Command palette is visible, handling input:", inputEvent.data);
             if (inputEvent.data) {
+                console.log("KeyEventHandler: Calling handleCommandInput with:", inputEvent.data);
                 commandPaletteStore.handleCommandInput(inputEvent.data);
                 // 通常の入力処理をスキップ
                 inputEvent.preventDefault?.();
+                console.log("KeyEventHandler: Input event prevented, returning");
                 return;
             }
         }

@@ -5,6 +5,7 @@ const execAsync = promisify(exec);
 
 // 終了したいポートのリスト
 const PORTS_TO_KILL = [
+    1234, // Yjs server
     7070,
     7071,
     7072,
@@ -14,6 +15,11 @@ const PORTS_TO_KILL = [
     54000,
     59099,
     58080,
+    57070,
+    8081,
+    9100,
+    57000,
+    59200,
     4400,
     9099,
     8080,

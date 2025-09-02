@@ -1,12 +1,13 @@
 <script lang="ts">
-import { Tree } from "fluid-framework";
+// import { Tree } from "fluid-framework"; // Yjsモードでは無効化
 import { onMount } from "svelte";
 import {
     Item,
     Items,
+    Tree, // Yjsモード専用のTree実装を使用
 } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
-import { fluidStore } from "../stores/fluidStore.svelte";
+// import { fluidStore } from "../stores/fluidStore.svelte"; // Yjsモードでは無効化
 import { store as generalStore } from "../stores/store.svelte";
 
 let isVisible = $state(false);
@@ -25,7 +26,8 @@ onMount(() => {
 });
 
 function getCurrentUser() {
-    return fluidStore.currentUser?.id ?? "anonymous";
+    // Yjsモードでは簡易ユーザー管理
+    return "anonymous";
 }
 
 function findItem(node: Item, id: string): Item | undefined {
@@ -49,122 +51,28 @@ function getActiveItem(): Item | undefined {
 }
 
 function indent() {
-    const id = editorOverlayStore.activeItemId;
-    if (!id || id === "page-title") return;
-    const item = getActiveItem();
-    if (!item) return;
-    const parent = Tree.parent(item);
-    if (!Tree.is(parent, Items)) return;
-    const index = parent.indexOf(item);
-    if (index <= 0) return;
-    const previousItem = parent[index - 1];
-
-    try {
-        // アイテムのテキストを保存
-        const itemText = item.text || "";
-        const itemAuthor = item.author;
-
-        // 前のアイテムの子リストを取得
-        const prevItems = previousItem.items;
-        if (prevItems && Tree.is(prevItems, Items)) {
-            let newItemId: string = "";
-            Tree.runTransaction(parent, () => {
-                // 元のアイテムを削除
-                parent.removeAt(index);
-
-                // 前のアイテムの子として追加
-                const newItem = prevItems.addNode(itemAuthor);
-                newItem.text = itemText;
-                newItemId = newItem.id;
-            });
-
-            generalStore.currentPage = generalStore.currentPage;
-            if (newItemId) {
-                editorOverlayStore.setActiveItem(newItemId);
-            }
-        }
-    }
-    catch (error) {
-        console.error("Failed to indent item:", error);
-    }
+    // Yjsモードでは簡略化
+    console.log("Yjs mode: Indent function not implemented");
 }
 
 function outdent() {
-    const id = editorOverlayStore.activeItemId;
-    if (!id || id === "page-title") return;
-    const item = getActiveItem();
-    if (!item) return;
-    const parentList = Tree.parent(item);
-    if (!Tree.is(parentList, Items)) return;
-    const parentItem = Tree.parent(parentList);
-    if (!parentItem || !Tree.is(parentItem, Item)) return;
-    const grandParentList = Tree.parent(parentItem);
-    if (!grandParentList || !Tree.is(grandParentList, Items)) return;
-
-    try {
-        // アイテムのテキストを保存
-        const itemText = item.text || "";
-        const itemAuthor = item.author;
-
-        // 親アイテムのindex取得
-        const parentIndex = grandParentList.indexOf(parentItem);
-        const itemIndex = parentList.indexOf(item);
-
-        let newItemId: string = "";
-        Tree.runTransaction(grandParentList, () => {
-            // 元のアイテムを削除
-            parentList.removeAt(itemIndex);
-
-            // 親の次の位置に追加
-            const newItem = grandParentList.addNode(itemAuthor, parentIndex + 1);
-            newItem.text = itemText;
-            newItemId = newItem.id;
-        });
-
-        generalStore.currentPage = generalStore.currentPage;
-        if (newItemId) {
-            editorOverlayStore.setActiveItem(newItemId);
-        }
-    }
-    catch (error) {
-        console.error("Failed to outdent item:", error);
-    }
+    // Yjsモードでは簡略化
+    console.log("Yjs mode: Outdent function not implemented");
 }
 
 function insertAbove() {
-    const id = editorOverlayStore.activeItemId;
-    const item = getActiveItem();
-    if (!item) return;
-    const parent = Tree.parent(item);
-    if (!parent || !Tree.is(parent, Items)) return;
-    const index = parent.indexOf(item);
-    parent.addNode(getCurrentUser(), index);
-    generalStore.currentPage = generalStore.currentPage;
-    if (id) editorOverlayStore.setActiveItem(id);
+    // Yjsモードでは簡略化
+    console.log("Yjs mode: Insert above function not implemented");
 }
 
 function insertBelow() {
-    const id = editorOverlayStore.activeItemId;
-    const item = getActiveItem();
-    if (!item) return;
-    const parent = Tree.parent(item);
-    if (!parent || !Tree.is(parent, Items)) return;
-    const index = parent.indexOf(item);
-    parent.addNode(getCurrentUser(), index + 1);
-    generalStore.currentPage = generalStore.currentPage;
-    if (id) editorOverlayStore.setActiveItem(id);
+    // Yjsモードでは簡略化
+    console.log("Yjs mode: Insert below function not implemented");
 }
 
 function newChild() {
-    const id = editorOverlayStore.activeItemId;
-    const item = getActiveItem();
-    if (!item) return;
-    const children = item.items as Items;
-    if (children && Tree.is(children, Items)) {
-        children.addNode(getCurrentUser(), 0);
-        generalStore.currentPage = generalStore.currentPage;
-        if (id) editorOverlayStore.setActiveItem(id);
-    }
+    // Yjsモードでは簡略化
+    console.log("Yjs mode: New child function not implemented");
 }
 </script>
 

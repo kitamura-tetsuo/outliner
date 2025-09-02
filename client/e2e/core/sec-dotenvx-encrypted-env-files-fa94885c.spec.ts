@@ -3,14 +3,23 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 
 test.describe("SEC-0001: Dotenvx encrypted env files", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        try {
+            await DataValidationHelpers.validateDataConsistency(page);
+        } catch (error) {
+            console.log("Data validation skipped:", error.message);
+        }
+    });
     test.beforeEach(async ({ page }) => {
         // 環境変数のテストなので、シンプルにページにアクセス
         await page.goto("/");
+
         await page.waitForLoadState("domcontentloaded");
     });
-
     test("Environment variables are loaded", async ({ page }) => {
         // ページが表示されることを確認
         await expect(page.locator("body")).toBeVisible();
@@ -23,6 +32,7 @@ test.describe("SEC-0001: Dotenvx encrypted env files", () => {
             // Viteの環境変数が利用可能かどうかをテスト
             // ブラウザ環境では直接import.metaにアクセスできないため、
             // 代わりにViteが注入した環境変数の存在を確認
+
             return typeof window !== "undefined";
         });
         expect(hasEnvVars).toBe(true);

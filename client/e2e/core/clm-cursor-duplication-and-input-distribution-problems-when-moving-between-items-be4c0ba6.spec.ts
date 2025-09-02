@@ -5,35 +5,48 @@
 import { expect, test } from "@playwright/test";
 
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("カーソル重複問題の検証", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("修正後：アイテム間をクリックで移動してもカーソルが1つだけ存在する", async ({ page }) => {
         // 1. 最初のアイテムを3回クリック（重複カーソル作成の可能性をテスト）
         await page.locator(".item-content").first().click();
+
         await TestHelpers.waitForCursorVisible(page);
+
         await CursorValidator.validateCursorState(page, 1, "1回目のクリック後");
 
         await page.locator(".item-content").first().click();
+
         await TestHelpers.waitForCursorVisible(page);
+
         await CursorValidator.validateCursorState(page, 1, "2回目のクリック後");
 
         await page.locator(".item-content").first().click();
+
         await TestHelpers.waitForCursorVisible(page);
+
         await CursorValidator.validateCursorState(page, 1, "3回目のクリック後");
 
         // 2. 2番目のアイテムをクリック
         await page.locator("div:nth-child(2) > .outliner-item > .item-header > .item-content-container > .item-content")
             .click();
+
         await TestHelpers.waitForCursorVisible(page);
+
         await CursorValidator.validateCursorState(page, 1, "2番目のアイテムクリック後");
 
         // 3. テキスト「123」を入力
         await page.keyboard.type("123");
+
         await page.waitForTimeout(500); // テキスト入力の反映を待つ
         await CursorValidator.validateCursorState(page, 1, "テキスト入力後");
 
@@ -50,11 +63,14 @@ test.describe("カーソル重複問題の検証", () => {
 
         // 6. 1番目のアイテムをクリック
         await page.locator(".item-content").first().click();
+
         await TestHelpers.waitForCursorVisible(page);
+
         await CursorValidator.validateCursorState(page, 1, "1番目のアイテムに戻った後");
 
         // 7. テキスト「456」を入力
         await page.keyboard.type("456");
+
         await page.waitForTimeout(500); // テキスト入力の反映を待つ
         await CursorValidator.validateCursorState(page, 1, "2回目のテキスト入力後");
 

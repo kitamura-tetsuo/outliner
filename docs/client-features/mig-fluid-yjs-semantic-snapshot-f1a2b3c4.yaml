@@ -1,0 +1,25 @@
+id: MIG-0001
+title: Fluid/Yjs Semantic Snapshot and E2E Consistency Check
+title-ja: Fluid/Yjs 意味的スナップショットとE2E整合性チェック
+category: migration
+status: implemented
+components:
+- client/e2e/basic/add-text-functionality.spec.ts
+- client/e2e/basic/sea-page-title-search-box-a3674e4f-dce0-4543-9e85-1f1899f97f73.spec.ts
+- client/e2e/utils/dataValidationHelpers.ts
+- client/src/lib/dataValidation.ts
+- client/src/lib/snapshotExport.ts
+- client/src/lib/yjsOrderedTree.ts
+tests:
+- client/e2e/basic/add-text-functionality.spec.ts
+- client/e2e/basic/sea-page-title-search-box-a3674e4f-dce0-4543-9e85-1f1899f97f73.spec.ts
+acceptance:
+- DataValidatorでもページタイトルは比較対象から除外し、タイトル直下の子要素のみを比較する（子が無い場合は同階層のルート直下の非タイトル要素を比較）
+- E2Eテストの最後にFluidモードとYjsモードのスナップショットをJSONで保存する
+- FluidとYjsのスナップショットが厳密比較で完全一致する
+- Fluid側のルート直下に存在する空テキスト要素（末尾の空行等）に対応して、Yjs側も不足分のみ空要素を補完してから保存する
+- Yjsモードの比較では、ディスク上のFluidスナップショットが古い可能性に備え、可能な場合は直近に取得したFluidスナップショットを優先して比較に用いる
+- Yjs側のスナップショットは「タイトル」ノードを除外し、ルート直下のその他ノードをページのchildrenとして比較対象にする
+- スナップショットはIDや作成時刻に依存せず、textと階層のみで正規化される
+- スナップショット保存直前に200msの安定化待ちを行い、非同期反映のぶれを排除する
+- 一致しない場合はテストを失敗させる

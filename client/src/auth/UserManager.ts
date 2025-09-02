@@ -76,6 +76,12 @@ export class UserManager {
      * SSR環境での重複初期化を防ぐ
      */
     private get app(): FirebaseApp {
+        // Firebase認証が無効化されている場合はエラーを投げる
+        const useFirebaseAuth = getEnv("VITE_USE_FIREBASE_AUTH", "true") === "true";
+        if (!useFirebaseAuth) {
+            throw new Error("Firebase app is disabled");
+        }
+
         if (!this._app) {
             this._app = getFirebaseApp();
         }
@@ -86,6 +92,12 @@ export class UserManager {
      * Firebase Authインスタンスを遅延初期化で取得
      */
     get auth(): Auth {
+        // Firebase認証が無効化されている場合はnullを返す
+        const useFirebaseAuth = getEnv("VITE_USE_FIREBASE_AUTH", "true") === "true";
+        if (!useFirebaseAuth) {
+            throw new Error("Firebase authentication is disabled");
+        }
+
         if (!this._auth) {
             this._auth = getAuth(this.app);
         }
@@ -302,15 +314,31 @@ export class UserManager {
 
     // ユーザー情報を取得する関数
     public getCurrentUser(): IUser | null {
-        const firebaseUser = this.auth.currentUser;
-        if (!firebaseUser) return null;
+        // Firebase認証が無効化されている場合はテスト用ユーザーを返す
+        const useFirebaseAuth = getEnv("VITE_USE_FIREBASE_AUTH", "true") === "true";
+        if (!useFirebaseAuth) {
+            return {
+                id: getEnv("VITE_DEBUG_USER_ID", "test-user-id"),
+                name: getEnv("VITE_DEBUG_USER_NAME", "Test User"),
+                email: getEnv("VITE_DEBUG_USER_EMAIL", "test@example.com"),
+                photoURL: undefined,
+            };
+        }
 
-        return {
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || "Anonymous User",
-            email: firebaseUser.email || undefined,
-            photoURL: firebaseUser.photoURL || undefined,
-        };
+        try {
+            const firebaseUser = this.auth.currentUser;
+            if (!firebaseUser) return null;
+
+            return {
+                id: firebaseUser.uid,
+                name: firebaseUser.displayName || "Anonymous User",
+                email: firebaseUser.email || undefined,
+                photoURL: firebaseUser.photoURL || undefined,
+            };
+        } catch (error) {
+            logger.warn("Firebase auth access failed, returning null user:", error);
+            return null;
+        }
     }
 
     // Fluid Relayトークンを取得
@@ -444,16 +472,30 @@ export class UserManager {
     public addEventListener(listener: AuthEventListener): () => void {
         this.listeners.push(listener);
 
-        // 既に認証済みの場合は即座に通知（FluidTokenは不要）
-        if (this.auth.currentUser) {
+        // Firebase認証が無効化されている場合はテスト用ユーザーで即座に通知
+        const useFirebaseAuth = getEnv("VITE_USE_FIREBASE_AUTH", "true") === "true";
+        if (!useFirebaseAuth) {
             const user = this.getCurrentUser();
             if (user) {
-                logger.debug("addEventListener: User already authenticated, notifying immediately", {
+                logger.debug("addEventListener: Firebase auth disabled, using test user", {
                     userId: user.id,
                 });
                 listener({
                     user,
                 });
+            }
+        } else {
+            // 既に認証済みの場合は即座に通知（FluidTokenは不要）
+            if (this.auth.currentUser) {
+                const user = this.getCurrentUser();
+                if (user) {
+                    logger.debug("addEventListener: User already authenticated, notifying immediately", {
+                        userId: user.id,
+                    });
+                    listener({
+                        user,
+                    });
+                }
             }
         }
 
@@ -535,7 +577,7 @@ export class UserManager {
         return this.currentFluidToken;
     }
 
-    // 同期バージョンも保持（互換性のため）
+    // 即座に値を返すバージョンも保持（互換性のため）
     public getFluidTokenSync(): IFluidToken | null {
         if (this.isRefreshingToken) {
             logger.warn("[UserManager] Warning: Token is being refreshed, returning current value synchronously");

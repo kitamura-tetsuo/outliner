@@ -84,6 +84,8 @@ Mocks are generally forbidden. Limited exceptions:
 - **Tinylicious Container Restoration Issue**: The error "default dataStore [rootDOId] must exist" occurs when trying to reload saved Fluid containers in Tinylicious (test environment). This is a known Tinylicious bug that doesn't occur in production. In test environments, avoid reloading saved containers and use alternative testing approaches instead.
 - **Test Isolation and Regression Prevention**: When troubleshooting failing tests, destructive changes to shared code may occur. If you modify common code outside the specific test target, run the basic E2E tests to verify no breaking changes have been introduced. If breaking changes are detected, revert the modifications to maintain test stability.
 
+- TypeScript macro shims: If `npx tsc --noEmit --project client/e2e/tsconfig.json` fails on `$state/$derived/$effect` in `.svelte.ts` files, add a `client/src/types/svelte5-shim.d.ts` declaring these macros for type checking only.
+
 ### Firebase Functions Emulator
 
 **CRITICAL**: Always use Firebase Functions Emulator for testing, never mock Firebase Functions. The emulator provides the actual Firebase Functions environment and is essential for proper testing.
@@ -93,6 +95,8 @@ Mocks are generally forbidden. Limited exceptions:
 - Firebase Functions Emulator runs on port 57070 (configured in firebase.json)
 - Firebase Storage Emulator runs on port 59200 (configured in firebase.json)
 - Firebase Auth Emulator runs on port 59099 (configured in firebase.json)
+- Snapshot Reporter: 単一スペック実行時（PLAYWRIGHT_SINGLE_SPEC_RUN=true）はテストタイトル由来のスナップショットのみ比較し、フォールバック比較は行わない（他ケースの差分で失敗させない）。クロスモード比較を行う場合はスイート全体を実行すること。
+
 - Firebase Firestore Emulator runs on port 58080 (configured in firebase.json)
 - Use `scripts/codex-setup.sh` to start all Firebase emulators
 - All attachment upload/download functionality requires Firebase Functions Emulator to be running
@@ -193,10 +197,13 @@ Mocks are generally forbidden. Limited exceptions:
 - Avoid `svelte/store`; rely on Svelte 5 `$state` for all store functionality.
 - Keep existing `$effect` blocks short (under 10 lines) and prefer `onMount` for initialization.
 - Do not add new code that uses Svelte 5 `$effect`.
+- Svelte 5 `$effect` is only allowed when there is no other way to achieve the desired behavior.
 - Implement API calls in `fluidService` and call them from components. Provide a `getFluidClientByProjectTitle` function that searches `clientRegistry` by `Project.title`.
 - Export manager instances directly (`export const userManager = new UserManager()`) rather than via `getInstance()`.
 - Rename `firestoreStore.ts` to `firestoreStore.svelte.ts` to enable `$state` usage.
 - When testing links and cursor behavior, apply the patterns proven in LNK-0003: programmatic cursor creation, text insertion, waits, and visibility checks.
+
+- When updating view models passed as props to child components, prefer creating a new object (preserving the same id) rather than mutating properties in-place to ensure Svelte re-renders children that rely on object identity.
 
 ## 9. Node.js Package Management and NPM Operations Policy
 
@@ -220,3 +227,174 @@ Mocks are generally forbidden. Limited exceptions:
 ---
 
 Follow these guidelines to keep documentation, code, and tests consistent across the project.
+
+殆どのコードはコーディングエージェントによって書かれており、尊重して残すべきコードはありません。
+より良い設計が見つかった場合は、コメントアウトして新しいコードを追加してください。
+
+使用ライブラリの変更など、大規模な改修を行う場合、古いコードはコメントアウトして下さい。
+新たなライブラリの実装が完了し、新たなコードの全てのテストがパスしてから、コメントアウトした古いコードを削除してください。
+コメントアウトにして残すのは、セッションを跨ぐとあなたが削除したコードを覚えていない上に、gitの履歴を見ようとしないためです。
+
+gitを使って、削除されたファイルがどの様に機能していたかも適宜確認してください。
+コードの編集ミスによる文法エラーが推測される場合、gitで以前のコードを確認してください。
+
+実装方針を決める時、禁止事項を遵守しているか、再確認して下さい。
+
+既存の Fluid Framework による共同編集を Yjs に置き換えます。サーバは y-websocket（自宅サーバ、LevelDB 永続）、認証は Firebase Auth（ID トークン） を使用します。アウトラインの木構造は yjs-orderedtree を利用し、Project を Y.Doc、各 Page は Y.Subdoc として実装してください。将来 Cloudflare Durable Objects へ移行可能にするため、ネットワーク層と永続層の結合を弱めますが、過度な抽象化は行わないでください。
+
+目標
+最終的にはFluid 依存コードを削除し、Yjs に完全に移行しますが、段階的に行います。
+
+fluid_to_yjs.md に対応関係と作業状況を記録・確認しながら進めて下さい。
+
+テストの動作に問題がある場合は、playwrite MCP(browser_navigate)で目視で確認して下さい。
+
+Please run all tasks in the current task list to comple all tasks.
+
+ドキュメント構成:
+Project = Y.Doc（ルート）
+Page = Subdoc（Y.Doc） 複数。
+各 Page Doc 内のアウトライン木を yjs-orderedtree で表現（挿入/移動/削除/並べ替え対応）。
+通信: WebsocketProvider（y-websocket）で接続。接続 URL は wss://<host>/<room>。
+ルーム命名規約：Project = project:<projectId>／Page = page:<projectId>:<pageId>
+Firebase ID トークンをクエリ ?auth=<token> で付与（再接続時も更新）。
+ローカル永続: y-indexeddb を Project Doc / Page Doc それぞれに適用（docName はルーム名と同一）。
+プレゼンス: Awareness を利用。
+Project では「誰がプロジェクトに参加中か」
+Page では「カーソル・選択範囲・色」など（必要最小限でOK）
+サーバ: y-websocket（Node）＋ y-leveldb 永続。接続時に Firebase Admin で ID トークン検証。Cloudflare Tunnel で外部公開。
+実装要件（クライアント）
+接続管理（Svelte 5 / TS）
+createProjectConnection(projectId)：
+const projectDoc = new Y.Doc({ guid: projectId })
+new IndexeddbPersistence('project:'+projectId, projectDoc)
+Firebase から getIdToken()→ new WebsocketProvider(wssUrl, 'project:'+projectId, projectDoc, { params: { auth: token } })
+provider.params.auth を定期的に更新（トークン更新イベントで差し替え）。
+Subdoc 管理：Project Doc の subdocs イベントで Page Doc 生成/検出。各 Page Doc に対し：
+new IndexeddbPersistence(roomNameForPage, pageDoc)
+new WebsocketProvider(wssUrl, roomNameForPage, pageDoc, { params: { auth: token } })
+ルーム命名：
+Project: project:<projectId>
+Page: page:<projectId>:<pageId>
+データモデル
+Project Doc にはページ一覧メタを持たせる（例：project.getMap('pagesIndex') に {title, createdAt, order} 等）。
+Page Doc 内で yjs-orderedtree の木を作成。
+例：const tree = createOrderedTree(pageDoc, { rootKey: 'outline' })（※正確な API はライブラリ README に従うこと）
+操作 API（insert/move/remove/indent/outdent/reorder）を ユーティリティ関数で提供し、UI から呼ぶ。
+各ノードは { id, text, author, created, lastChanged, comments[], votes[] } 等のフィールドを保持（orderedtree のノードメタへ格納）。
+テキスト編集はまずはプロパティ置換（必要になれば Y.Text へ拡張可）。
+Awareness（Presence）
+Project 参加時：provider.awareness.setLocalStateField('user', { userId, name, color })
+Page 参加時：同様に Page 側 provider の Awareness にカーソル/選択範囲などを必要最低限で載せる。
+awareness.on('change') で getStates() を読み、PresenceStore を更新。
+ページ作成/削除
+新規 Page：const pageDoc = new Y.Doc({ guid: pageId }) を Project Doc 側の構造に登録（pagesIndex.set(pageId, {title, ...}) 等）。
+Page Doc の初期化時に yjs-orderedtree の空ルートを作成。
+削除は pagesIndex 側のフラグにし、実データは残す（簡易 GC。後で圧縮/掃除）。
+オフライン/再接続
+y-indexeddb と自動再接続で整合を保つ。切断時も編集可。
+Cloud Run への将来移行・Workers への将来移行でもURL とトークン更新のみで基本動作する実装に。
+実装要件（サーバ）
+Node / y-websocket ベース。
+接続時に URLSearchParams.get('auth') を取り、admin.auth().verifyIdToken(token) を await。失敗なら ws.close()。
+YPERSISTENCE=./yjs-data で y-leveldb 永続を有効化。
+可能なら y-websocket-auth を採用し、authenticate(token) フックで検証。
+Room は Project 用 と Page 用 を分ける（上記命名規約）。
+ローテーション/バックアップ：yjs-data/ を定期スナップショット圧縮→R2/S3 へ（後回し可）。
+受け入れ基準
+複数ブラウザ/アカウントで同一 Project を開き、同一 Page で 行の挿入・移動・削除がリアルタイム反映。
+Awareness により参加ユーザが表示され、Page 内でのカーソル位置（簡易）共有ができる。
+ブラウザをオフライン→編集→オンライン復帰で内容が正しくマージ。
+トークン期限切れ後の 自動再接続で再度認証され継続動作。
+サーバ再起動後も内容が保持される（LevelDB 永続確認）。
+注意
+過度な抽象化は禁止。ただし (a) 接続 URL/params と (b) ルーム名生成 と (c) Page Doc プロバイダ生成 は関数にまとめ、将来 D へ差し替えやすくする。
+yjs-orderedtree の API 差異に注意。操作はユーティリティ関数に閉じ込め、UI 側ロジックを薄く保つ。
+Subdoc のプロバイダと IndexedDB は Page ごとに生成・破棄。メモリリークを避ける。
+
+## 9. Git Worktree Migration Strategy
+
+**重要**: Fluid FrameworkからYjsへの移行は、Git worktreeを使用してブランチを完全分離します。
+
+### ブランチ構成
+
+1. **Yjsブランチ** (現在のブランチ):
+   - Yjsライブラリのみ使用
+   - Fluidライブラリの依存を完全削除
+   - クリーンなYjsのみのコード
+   - fluid関連テストは全てyjsテストに書き換える
+
+2. **Fluidブランチ** (別worktree):
+   - Fluidライブラリのみ使用
+   - origin/mainベース + スナップショット機能のみ追加
+   - 既存のFluidコードはそのまま維持
+
+### 作業手順
+
+#### Phase 1: ブランチ分離
+
+```bash
+# Fluidモード専用ブランチを作成
+git worktree add ../outliner-fluid fluid-mode
+cd ../outliner-fluid
+git checkout -b fluid-mode origin/main
+
+# Fluidブランチにスナップショット機能のみ追加
+# 既存のFluidコードはそのまま維持
+
+# 現在のブランチ（Yjs専用）でFluidコード削除
+cd ../outliner
+# Fluidライブラリの依存を完全削除
+```
+
+#### Phase 2: スナップショット比較
+
+```bash
+# 外部スクリプトでスナップショット比較
+./scripts/compare-snapshots.sh
+```
+
+### E2Eテストの要件
+
+1. **Fluidブランチ**: E2Eテスト実行 → JSONスナップショット保存
+2. **Yjsブランチ**: E2Eテスト実行 → JSONスナップショット保存
+3. **外部比較**: 両スナップショットの完全一致を検証
+
+### 実装ガイドライン
+
+1. **完全分離**:
+   - 各ブランチは単一ライブラリのみに依存
+   - 条件分岐によるモード切り替えは廃止
+   - クリーンで読みやすいコード
+
+2. **独立開発**:
+   - 各ブランチで集中して開発
+   - LLMの混乱を回避
+   - バグの原因特定が容易
+   - fluid ブランチではfirebase関連は問題なく動いている。
+   - fluid/yjsと直接関係ない部分は同じにして下さい。
+   - fluidブランチを参考にしてください。
+
+3. **スナップショット比較**:
+   - 外部プロセスで実行
+   - 意図しない相互作用を排除
+   - 信頼性の高いテスト
+
+### データ構造の対応
+
+| Fluid Framework           | Yjs                                     | 説明                             |
+| ------------------------- | --------------------------------------- | -------------------------------- |
+| Project (SharedTree)      | Y.Doc (Project Doc)                     | プロジェクトのルートドキュメント |
+| Project.title             | Y.Map('metadata').get('metadata').title | プロジェクトタイトル             |
+| Container ID              | Project ID                              | プロジェクトの一意識別子         |
+| Item (Page)               | Y.Doc (Page Subdoc)                     | 個別ページのドキュメント         |
+| Item.text (Page Title)    | PageMetadata.title                      | ページタイトル                   |
+| Item.items (Page Content) | YjsOrderedTreeManager                   | ページ内のアウトライン構造       |
+
+### 利点
+
+- **シンプルなコード**: 条件分岐が不要
+- **高い信頼性**: 意図しない相互作用を排除
+- **開発効率**: LLMの混乱を回避、集中して開発可能
+- **保守性**: バグの原因特定が容易
+- **将来性**: Yjsへの最終移行が容易

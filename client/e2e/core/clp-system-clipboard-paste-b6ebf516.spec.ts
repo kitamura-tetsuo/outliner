@@ -4,25 +4,31 @@
  */
 
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("System clipboard paste", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("pastes text from clipboard", async ({ page, context }) => {
         await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
         await page.evaluate(async () => {
             await navigator.clipboard.writeText("pasted text");
         });
-
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
+
         await TestHelpers.waitForCursorVisible(page);
 
         await page.keyboard.press("Control+v");
+
         await page.waitForTimeout(500);
 
         const text = await item.locator(".item-text").textContent();

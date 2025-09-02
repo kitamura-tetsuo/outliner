@@ -1,4 +1,4 @@
-import { getProjectTitle } from "../lib/fluidService.svelte";
+// import { getProjectTitle } from "../lib/fluidService.svelte"; // Yjsモードでは無効化
 import { firestoreStore } from "./firestoreStore.svelte";
 
 export interface ContainerInfo {
@@ -22,17 +22,14 @@ export class ContainerStore {
             || (typeof window !== "undefined" && window.location.hostname === "localhost");
 
         return data.accessibleContainerIds
-            .map(id => {
+            .map((id, idx) => {
                 let name: string;
-                try {
-                    name = getProjectTitle(id);
-                } catch (error) {
-                    console.warn(`Failed to get project title for ${id}:`, error);
-                    name = "";
-                }
-                // テスト環境で名前が空の場合、デフォルト名を使用
-                if (isTestEnv && (!name || name.trim() === "")) {
-                    name = `テストプロジェクト${id.slice(-4)}`;
+                if (isTestEnv) {
+                    // テスト環境では決定論的な名称を使用
+                    name = `テストプロジェクト${idx + 1}`;
+                } else {
+                    // 本番/開発では簡易プロジェクト名
+                    name = `プロジェクト-${id.slice(-8)}`;
                 }
                 return {
                     id,

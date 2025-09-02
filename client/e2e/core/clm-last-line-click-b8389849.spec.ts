@@ -1,16 +1,19 @@
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("最後の行のテキスト外クリックでカーソルが行末に表示される", async ({ page }) => {
         // スクリーンショットを撮影（テスト開始時）
         await page.screenshot({ path: "client/test-results/CLM-0001-last-line-start.png" });
-
         // ページタイトル以外のアイテムを使用（2番目のアイテム）
         const testItem = page.locator(".outliner-item").nth(1);
         console.log("Using second item (non-page-title) for last line test");
@@ -29,36 +32,50 @@ test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => 
         expect(itemId).not.toBeNull();
 
         const longText = "A".repeat(80);
+
         await page.keyboard.type(longText);
+
         await page.waitForTimeout(100);
 
         // テキストが反映されているか確認
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
+
         const text = await activeItem.locator(".item-text").textContent();
         expect(text).toContain("A".repeat(80));
 
         // Range APIでビジュアル上の各行の中央y座標を取得
         const visualLineYs = await activeItem.locator(".item-text").evaluate(el => {
             const rects = [] as { top: number; bottom: number; y: number; }[];
+
             const node = el.firstChild;
+
             if (!node) return [];
+
             const range = document.createRange();
+
             const text = (node.textContent ?? "") as string;
+
             const len = text.length;
+
             let lastBottom = -1;
+
             for (let i = 0; i <= len; i++) {
                 range.setStart(node, i);
+
                 range.setEnd(node, i);
+
                 const rect = range.getBoundingClientRect();
+
                 if (rect.height > 0 && rect.bottom !== lastBottom) {
                     rects.push({ top: rect.top, bottom: rect.bottom, y: rect.top + rect.height / 2 });
+
                     lastBottom = rect.bottom;
                 }
             }
+
             return rects.map(r => r.y);
         });
-
         // 最後の行のy座標を取得
         const lastLineY = visualLineYs[visualLineYs.length - 1];
 
@@ -76,10 +93,12 @@ test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => 
 
         // 編集モードを確実に開始
         await page.keyboard.press("Escape");
+
         await page.waitForTimeout(100);
 
         // アイテムをクリックして編集モードに入る
         await targetItem.locator(".item-content").click();
+
         await page.waitForTimeout(100);
 
         // カーソルが表示されることを確認
@@ -87,6 +106,7 @@ test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => 
 
         // Endキーでカーソルを末尾に移動（確実な方法）
         await page.keyboard.press("End");
+
         await page.waitForTimeout(100);
 
         // カーソルが表示されるまで待機
@@ -95,15 +115,20 @@ test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => 
 
         if (!lastLineCursorVisible) {
             // それでもカーソルが表示されない場合は、テキスト領域内をクリック
+
             console.log("Fallback: clicking inside text area");
+
             const fallbackX = textRect.left + textRect.width - 10; // テキスト内の右端近く
             await page.mouse.click(fallbackX, lastLineY);
+
             await page.waitForTimeout(200);
+
             await TestHelpers.waitForCursorVisible(page, 5000);
         }
 
         // 複数のカーソルがある場合は最初のものを使用
         const cursor = page.locator(".editor-overlay .cursor.active").first();
+
         const cursorBox = await cursor.boundingBox();
 
         expect(cursorBox).not.toBeNull();

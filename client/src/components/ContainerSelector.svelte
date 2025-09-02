@@ -1,10 +1,10 @@
 <script lang="ts">
 import { onMount } from "svelte";
-import { createFluidClient } from "../lib/fluidService.svelte";
+// import { createFluidClient } from "../lib/fluidService.svelte"; // Yjsモードでは無効化
 import { getLogger } from "../lib/logger";
 import { containerStore } from "../stores/containerStore.svelte";
 import { firestoreStore } from "../stores/firestoreStore.svelte";
-import { fluidStore } from "../stores/fluidStore.svelte";
+// import { fluidStore } from "../stores/fluidStore.svelte"; // Yjsモードでは無効化
 const logger = getLogger();
 
 interface Props {
@@ -33,8 +33,8 @@ let containers = $derived.by(() => {
     );
 });
 
-// 現在ロード中のコンテナIDを表示
-let currentContainerId = fluidStore.currentContainerId;
+// 現在ロード中のプロジェクトIDを表示（Yjsモード）
+let currentContainerId = "";
 
 
 
@@ -130,7 +130,7 @@ async function handleContainerChange() {
     }
 }
 
-// 現在のコンテナIDのリロード
+// 現在のプロジェクトのリロード（Yjsモード）
 async function reloadCurrentContainer() {
     if (!currentContainerId) return;
 
@@ -138,17 +138,14 @@ async function reloadCurrentContainer() {
         isLoading = true;
         error = null;
 
-        // ファクトリーメソッドを使用して現在のコンテナを再ロード
-        const client = await createFluidClient(currentContainerId);
-
-        // fluidClientストアを更新
-        fluidStore.fluidClient = client;
+        // Yjsモードでは簡易リロード
+        console.log("Yjs mode: Project reload not implemented");
     }
     catch (err) {
-        logger.error("コンテナ再ロードエラー:", err);
+        logger.error("プロジェクト再ロードエラー:", err);
         error = err instanceof Error
             ? err.message
-            : "コンテナの再ロード中にエラーが発生しました";
+            : "プロジェクトの再ロード中にエラーが発生しました";
     }
     finally {
         isLoading = false;

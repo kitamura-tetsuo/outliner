@@ -5,14 +5,12 @@ import {
     onMount,
 } from "svelte";
 import {
-    UserManager,
     userManager,
 } from "../../auth/UserManager";
 import AuthComponent from "../../components/AuthComponent.svelte";
-import * as fluidService from "../../lib/fluidService.svelte";
 import { getLogger } from "../../lib/logger";
+import { YjsProjectManager } from "../../lib/yjsProjectManager.svelte";
 import { saveContainerId } from "../../stores/firestoreStore.svelte";
-import { fluidStore } from "../../stores/fluidStore.svelte";
 const logger = getLogger();
 
 let isLoading = $state(false);
@@ -23,7 +21,7 @@ let isAuthenticated = $state(false);
 let createdContainerId: string | undefined = $state(undefined);
 
 // 認証成功時の処理
-async function handleAuthSuccess(authResult) {
+async function handleAuthSuccess(authResult: any) {
     logger.info("認証成功:", authResult);
     isAuthenticated = true;
 }
@@ -46,24 +44,19 @@ async function createNewContainer() {
     success = undefined;
 
     try {
-        // 現在のFluidClientインスタンスを破棄してリセット
-        const client = fluidStore.fluidClient;
-        if (client) {
-            client.dispose();
-            fluidStore.fluidClient = undefined;
-        }
+        // Yjsプロジェクトマネージャーを作成
+        const projectId = crypto.randomUUID();
+        const yjsProjectManager = new YjsProjectManager(projectId);
 
-        // 新規コンテナを作成し、新しいFluidClientインスタンスを取得
-        const newClient = await fluidService.createNewContainer(containerName);
+        // プロジェクトに接続
+        await yjsProjectManager.connect(containerName);
 
-        // 作成されたコンテナIDを取得
-        createdContainerId = newClient.containerId;
+        // 作成されたプロジェクトIDを取得
+        createdContainerId = projectId;
 
-        // fluidClientストアを更新
-        fluidStore.fluidClient = newClient;
-
-        // サーバーに保存（デフォルトコンテナとして設定）
+        // サーバーに保存（デフォルトプロジェクトとして設定）
         await saveContainerId(createdContainerId);
+
 
         success = `新しいアウトライナーが作成されました！ (ID: ${createdContainerId})`;
 

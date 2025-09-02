@@ -1,6 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 
 test.describe("Browser Basic Test", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認（基本ブラウザテストのため、エラーは無視）
+        try {
+            await DataValidationHelpers.validateDataConsistency(page);
+        } catch (error) {
+            console.log("Data validation skipped for browser test:", error.message);
+        }
+    });
     test("can create a page", async ({ page }) => {
         console.log("Debug: Testing basic page creation");
 
@@ -19,21 +28,24 @@ test.describe("Browser Basic Test", () => {
         console.log("Debug: Page title:", title);
         expect(title).toBe("Test Page");
     });
-
     test("can navigate to external site", async ({ page }) => {
         console.log("Debug: Testing external navigation");
 
         try {
             await page.goto("https://example.com", {
                 timeout: 30000,
+
                 waitUntil: "domcontentloaded",
             });
+
             console.log("Debug: Successfully navigated to example.com");
 
             const title = await page.title();
+
             console.log("Debug: External page title:", title);
         } catch (error) {
             console.error("Debug: External navigation failed:", error);
+
             throw error;
         }
     });

@@ -5,16 +5,21 @@
 
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("フォーマット組み合わせ", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("太字と斜体の組み合わせが正しく表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -25,6 +30,7 @@ test.describe("フォーマット組み合わせ", () => {
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
@@ -42,10 +48,10 @@ test.describe("フォーマット組み合わせ", () => {
         expect(firstItemHtml).toContain("の組み合わせ");
         expect(firstItemHtml).toContain("</strong>");
     });
-
     test("太字と取り消し線の組み合わせが正しく表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -56,6 +62,7 @@ test.describe("フォーマット組み合わせ", () => {
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
@@ -73,10 +80,10 @@ test.describe("フォーマット組み合わせ", () => {
         expect(firstItemHtml).toContain("の組み合わせ");
         expect(firstItemHtml).toContain("</strong>");
     });
-
     test("斜体とコードの組み合わせが正しく表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -87,6 +94,7 @@ test.describe("フォーマット組み合わせ", () => {
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
@@ -104,10 +112,10 @@ test.describe("フォーマット組み合わせ", () => {
         expect(firstItemHtml).toContain("の組み合わせ");
         expect(firstItemHtml).toContain("</em>");
     });
-
     test("複数のフォーマットが入れ子になっている場合も正しく表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -118,6 +126,7 @@ test.describe("フォーマット組み合わせ", () => {
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
@@ -141,10 +150,10 @@ test.describe("フォーマット組み合わせ", () => {
         expect(firstItemHtml).toContain("</em>");
         expect(firstItemHtml).toContain("</strong>");
     });
-
     test("カーソルがあるアイテムでは組み合わせフォーマットもプレーンテキストで表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
+
         await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
@@ -152,6 +161,7 @@ test.describe("フォーマット組み合わせ", () => {
 
         // 組み合わせフォーマットのテキストを入力
         const complexText = "これは[[太字と[/斜体と[-取り消し線]と`コード`]]]です";
+
         await page.keyboard.type(complexText);
 
         // カーソルがあるアイテムのHTMLを確認

@@ -71,6 +71,30 @@ class AliasPickerStore {
             if (item) {
                 (item as any).aliasTargetId = option.id;
                 console.log("AliasPickerStore set aliasTargetId:", option.id);
+
+                // DOM更新を確実にするために、複数のフレームを待機
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        setTimeout(() => {
+                            const itemElement = document.querySelector(`[data-item-id="${this.itemId}"]`);
+                            if (itemElement) {
+                                console.log(
+                                    "AliasPickerStore: Alias item DOM element found after update:",
+                                    this.itemId,
+                                );
+                                // エイリアスパスが表示されるかチェック
+                                const aliasPath = itemElement.querySelector(".alias-path");
+                                if (aliasPath) {
+                                    console.log("AliasPickerStore: Alias path element found");
+                                } else {
+                                    console.log("AliasPickerStore: Alias path element not found yet");
+                                }
+                            } else {
+                                console.warn("AliasPickerStore: Alias item DOM element still not found:", this.itemId);
+                            }
+                        }, 100);
+                    });
+                });
             } else {
                 console.error("AliasPickerStore: Item not found:", this.itemId);
             }

@@ -16,7 +16,9 @@ class GeneralStore {
                 projectExists: !!project,
                 projectTitle: project?.title,
             });
-            store.project = project;
+            if (project) {
+                store.project = project as any; // Yjsブランチ: Project型はFluid互換の簡易型
+            }
             console.log(`fluidStore: Set store.project`, { storeProjectExists: !!store.project });
         }
     }
@@ -49,8 +51,14 @@ class GeneralStore {
 }
 export const fluidStore = new GeneralStore();
 
-if (process.env.NODE_ENV === "test") {
-    if (typeof window !== "undefined") {
+// テスト環境ではグローバルに公開してE2Eから制御できるようにする
+if (typeof window !== "undefined") {
+    const isTestEnv = process.env.NODE_ENV === "test"
+        || import.meta.env.MODE === "test"
+        || import.meta.env.VITE_IS_TEST === "true"
+        || window.location.hostname === "localhost";
+    if (isTestEnv) {
         (window as any).__FLUID_STORE__ = fluidStore;
+        console.log("FluidStore: Set global __FLUID_STORE__ for test environment");
     }
 }

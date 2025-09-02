@@ -1,17 +1,21 @@
 <script lang="ts">
-import { Tree } from "fluid-framework";
+// import { Tree } from "fluid-framework"; // Yjsモードでは無効化
 import {
     createEventDispatcher,
     onMount,
 } from "svelte";
-import { getCurrentContainerId } from "../lib/fluidService.svelte";
+// import { getCurrentContainerId } from "../lib/fluidService.svelte"; // Yjsモードでは無効化
+import { getLogger } from "../lib/logger";
+import { YjsProjectManager } from "../lib/yjsProjectManager.svelte";
 import {
     Item,
     Items,
+    Project,
+    Tree,
 } from "../schema/app-schema";
 import { uploadAttachment } from "../services/attachmentService";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
-import { fluidStore } from "../stores/fluidStore.svelte";
+// import { fluidStore } from "../stores/fluidStore.svelte"; // Yjsモードでは無効化
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
@@ -43,6 +47,24 @@ let {
 }: Props = $props();
 
 const dispatch = createEventDispatcher();
+const logger = getLogger();
+
+// ページアイテムを見つけるヘルパー関数
+function findPageItem(item: Item): Item | null {
+    let current = item;
+    while (current) {
+        const parent = Tree.parent(current);
+        if (Tree.is(parent, Items) && Tree.is(Tree.parent(parent), Project)) {
+            return current;
+        }
+        if (Tree.is(parent, Item)) {
+            current = parent;
+        } else {
+            break;
+        }
+    }
+    return null;
+}
 
 // Stateの管理
 let lastSelectionStart = $state(0);
@@ -81,16 +103,35 @@ $effect(() => {
 
 let aliasTarget = $state<Item | undefined>(undefined);
 
-let attachments = $state<string[]>([...(item.attachments as any)]);
+// Yjsモードでは item.attachments が存在しないためガード
+let attachments = $state<string[]>(Array.isArray((item as any).attachments) ? [...(item as any).attachments] : []);
 const attachmentsSub = new TreeSubscriber(
-    item,
+    item as any,
     "nodeChanged",
-    () => item.attachments,
+    () => {
+        const a = (item as any).attachments;
+        return Array.isArray(a) ? a : [];
+    },
 );
 
 $effect(() => {
-    attachments = [...attachmentsSub.current];
+    const current = attachmentsSub.current as any;
+    attachments = Array.isArray(current) ? [...current] : [];
 });
+
+// コメント数を直接監視 - item.commentsを直接監視
+const commentCountSub = new TreeSubscriber(
+    item.comments,
+    "nodeChanged",
+    () => item.comments?.length ?? 0,
+);
+
+let commentCount = $state(commentCountSub.current);
+
+$effect(() => {
+    commentCount = commentCountSub.current;
+});
+
 let aliasPath = $state<Item[]>([]);
 
 const aliasTargetSub = new TreeSubscriber<Item, Item | undefined>(
@@ -98,15 +139,26 @@ const aliasTargetSub = new TreeSubscriber<Item, Item | undefined>(
     "nodeChanged",
     () => {
         if (!aliasTargetId) return undefined;
-        return findItem(generalStore.currentPage, aliasTargetId);
+        try {
+            return findItem(generalStore.currentPage, aliasTargetId);
+        } catch (error) {
+            console.warn("OutlinerItem: Error finding alias target:", error);
+            return undefined;
+        }
     },
 );
 
 $effect(() => {
     if (aliasTargetId && generalStore.currentPage) {
-        aliasTarget = aliasTargetSub.current;
-        const p = findPath(generalStore.currentPage, aliasTargetId);
-        aliasPath = p || [];
+        try {
+            aliasTarget = aliasTargetSub.current;
+            const p = findPath(generalStore.currentPage, aliasTargetId);
+            aliasPath = p || [];
+        } catch (error) {
+            console.warn("OutlinerItem: Error updating alias target:", error);
+            aliasTarget = undefined;
+            aliasPath = [];
+        }
     }
     else {
         aliasTarget = undefined;
@@ -168,8 +220,10 @@ let displayRef: HTMLDivElement;
 let itemRef: HTMLDivElement;
 let lastHeight = 0;
 
-// グローバルテキストエリアの参照
-let hiddenTextareaRef: HTMLTextAreaElement;
+// グローバルテキストエリア取得ヘルパ
+function getGlobalTextarea(): HTMLTextAreaElement | null {
+    return editorOverlayStore.getTextareaRef() ?? (document.querySelector(".global-textarea") as HTMLTextAreaElement | null);
+}
 
 // アイテムにカーソルがあるかどうかを判定する
 function hasActiveCursor(): boolean {
@@ -188,12 +242,6 @@ function hasCursorBasedOnState(): boolean {
     return cursors.length > 0;
 }
 
-// グローバル textarea 要素を参照にセット
-onMount(() => {
-    const globalTextarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
-    if (!globalTextarea) return;
-    hiddenTextareaRef = globalTextarea;
-});
 
 function getClickPosition(event: MouseEvent, content: string): number {
     const x = event.clientX;
@@ -285,15 +333,10 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     if (isReadOnly) return;
 
     // グローバル textarea を取得（ストアから、なければDOMからフォールバック）
-    let textareaEl = editorOverlayStore.getTextareaRef();
+    const textareaEl = getGlobalTextarea();
     if (!textareaEl) {
-        textareaEl = document.querySelector(".global-textarea") as HTMLTextAreaElement | null;
-        if (!textareaEl) {
-            console.error("Global textarea not found");
-            return;
-        }
-        // ストアに再登録
-        editorOverlayStore.setTextareaRef(textareaEl);
+        console.error("Global textarea not found");
+        return;
     }
 
     // グローバルテキストエリアにフォーカスを設定（最優先）
@@ -313,7 +356,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
         }, 10);
     });
     // テキスト内容を同期
-    textareaEl.value = text.current;
+    textareaEl.value = model.text;
     textareaEl.focus();
     console.log(
         "OutlinerItem startEditing: focus called, activeElement:",
@@ -325,11 +368,11 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
 
     if (event) {
         // クリック位置に基づいてカーソル位置を設定
-        cursorPosition = getClickPosition(event, text.current);
+        cursorPosition = getClickPosition(event, model.text);
     }
     else if (initialCursorPosition === undefined) {
         // デフォルトでは末尾にカーソルを配置（外部から指定がない場合のみ）
-        cursorPosition = text.current.length;
+        cursorPosition = model.text.length;
     }
 
     if (cursorPosition !== undefined) {
@@ -384,6 +427,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
  * カーソル位置と選択範囲を更新する共通関数
  */
 function updateSelectionAndCursor() {
+    const hiddenTextareaRef = getGlobalTextarea();
     if (!hiddenTextareaRef) return;
 
     const currentStart = hiddenTextareaRef.selectionStart;
@@ -420,7 +464,7 @@ function updateSelectionAndCursor() {
     }
     else {
         // 選択範囲がある場合
-        const isReversed = hiddenTextareaRef.selectionDirection === "backward";
+        const isReversed = (hiddenTextareaRef as HTMLTextAreaElement).selectionDirection === "backward";
         const cursorOffset = isReversed ? currentStart : currentEnd;
 
         // カーソル位置を設定
@@ -468,9 +512,47 @@ function finishEditing() {
     editorOverlayStore.setActiveItem(null);
 }
 
-function addNewItem() {
+async function addNewItem() {
     if (!isReadOnly && model.original.items && Tree.is(model.original.items, Items)) {
-        model.original.items.addNode(currentUser, 0);
+        // Fluidアイテム追加
+        const newItem = model.original.items.addNode(currentUser, 0);
+
+        if (newItem) {
+            logger.info(`Adding child item: "${newItem.text}" to parent: ${model.original.text}`);
+            console.log(`🔧 [OutlinerItem] Fluid child item created: ${newItem.id} for "${newItem.text}"`);
+
+            // 並行してYjsアイテムも作成（独立した操作）
+            try {
+                const yjsProjectManager = (window as any).__YJS_PROJECT_MANAGER__;
+                if (yjsProjectManager) {
+                    // 現在のページIDを取得
+                    const pageId = generalStore.currentPage?.id;
+                    if (pageId) {
+                        const itemText = newItem.text as string;
+                        const author = (currentUser as any)?.name || "unknown";
+                        const parentId = model.id; // 親アイテムのID
+
+                        console.log(`🔧 [OutlinerItem] Creating parallel Yjs child item for page ${pageId}, parent ${parentId}: "${itemText}" with ID ${newItem.id}`);
+
+                        const yjsItemId = await yjsProjectManager.addItemToPage(pageId, itemText, author, parentId, newItem.id as string);
+                        if (yjsItemId) {
+                            console.log(`🔧 [OutlinerItem] ✅ Yjs child item created: ${yjsItemId} for "${itemText}"`);
+                        } else {
+                            console.warn(`🔧 [OutlinerItem] ❌ Failed to create Yjs child item for "${itemText}"`);
+                        }
+                    } else {
+                        console.warn(`🔧 [OutlinerItem] ❌ Current page ID not available`);
+                    }
+                } else {
+                    console.warn(`🔧 [OutlinerItem] ❌ YjsProjectManager not available`);
+                }
+            } catch (yjsError) {
+                console.error(`🔧 [OutlinerItem] ❌ Yjs child item creation failed:`, yjsError);
+            }
+
+        } else {
+            logger.warn('Cannot add child item: New Fluid item not created');
+        }
     }
 }
 
@@ -509,7 +591,7 @@ function handleClick(event: MouseEvent) {
         event.stopImmediatePropagation();
 
         // クリック位置を取得
-        const pos = getClickPosition(event, text.current);
+        const pos = getClickPosition(event, model.text);
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -606,7 +688,7 @@ function handleMouseDown(event: MouseEvent) {
         }
 
         // クリック位置を取得
-        const clickPosition = getClickPosition(event, text.current);
+        const clickPosition = getClickPosition(event, model.text);
 
         // 選択範囲を拡張
         const isReversed = activeItemId === model.id ?
@@ -640,7 +722,7 @@ function handleMouseDown(event: MouseEvent) {
     }
 
     // 通常のマウスダウン: ドラッグ開始準備
-    const clickPosition = getClickPosition(event, text.current);
+    const clickPosition = getClickPosition(event, model.text);
     dragStartPosition = clickPosition;
 
     // 編集モードを開始
@@ -670,7 +752,7 @@ function handleMouseMove(event: MouseEvent) {
     isDragging = true;
 
     // 現在のマウス位置を取得
-    const currentPosition = getClickPosition(event, text.current);
+    const currentPosition = getClickPosition(event, model.text);
 
     // Alt+Shift+ドラッグの場合は矩形選択（ボックス選択）
     if (event.altKey && event.shiftKey) {
@@ -680,42 +762,43 @@ function handleMouseMove(event: MouseEvent) {
     }
 
     // 通常の選択範囲を更新
-    if (hiddenTextareaRef) {
-        const start = Math.min(dragStartPosition, currentPosition);
-        const end = Math.max(dragStartPosition, currentPosition);
-        const isReversed = currentPosition < dragStartPosition;
+    const ta = getGlobalTextarea();
+    const start = Math.min(dragStartPosition, currentPosition);
+    const end = Math.max(dragStartPosition, currentPosition);
+    const isReversed = currentPosition < dragStartPosition;
 
+    if (ta) {
         // テキストエリアの選択範囲を設定
-        hiddenTextareaRef.setSelectionRange(
+        ta.setSelectionRange(
             start,
             end,
             isReversed ? "backward" : "forward",
         );
-
-        // 選択範囲をストアに反映
-        editorOverlayStore.setSelection({
-            startItemId: model.id,
-            startOffset: start,
-            endItemId: model.id,
-            endOffset: end,
-            userId: "local",
-            isReversed: isReversed,
-        });
-
-        // カーソル位置を更新
-        editorOverlayStore.setCursor({
-            itemId: model.id,
-            offset: isReversed ? start : end,
-            isActive: true,
-            userId: "local",
-        });
-
-        // ドラッグイベントを発火
-        dispatch("drag", {
-            itemId: model.id,
-            offset: currentPosition,
-        });
     }
+
+    // 選択範囲をストアに反映
+    editorOverlayStore.setSelection({
+        startItemId: model.id,
+        startOffset: start,
+        endItemId: model.id,
+        endOffset: end,
+        userId: "local",
+        isReversed: isReversed,
+    });
+
+    // カーソル位置を更新
+    editorOverlayStore.setCursor({
+        itemId: model.id,
+        offset: isReversed ? start : end,
+        isActive: true,
+        userId: "local",
+    });
+
+    // ドラッグイベントを発火
+    dispatch("drag", {
+        itemId: model.id,
+        offset: currentPosition,
+    });
 }
 
 /**
@@ -955,7 +1038,7 @@ function handleDragStart(event: DragEvent) {
     else {
         // 単一アイテムのテキストをドラッグ
         if (event.dataTransfer) {
-            event.dataTransfer.setData("text/plain", text.current);
+            event.dataTransfer.setData("text/plain", model.text);
             event.dataTransfer.setData("application/x-outliner-item", model.id);
             event.dataTransfer.effectAllowed = "move";
         }
@@ -1043,12 +1126,12 @@ async function handleDrop(event: DragEvent) {
     if (!event.dataTransfer) return;
 
     if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-        // getCurrentContainerIdを使用してコンテナIDを取得
-        let containerId = getCurrentContainerId();
+        // Yjsモードでは簡易コンテナID取得
+        let containerId = "yjs-project";
 
         console.log("OutlinerItem handleDrop: containerId =", containerId);
-        console.log("OutlinerItem handleDrop: fluidStore.fluidClient =", fluidStore.fluidClient);
-        console.log("OutlinerItem handleDrop: fluidStore.currentContainerId =", fluidStore.getCurrentContainerId());
+        // console.log("OutlinerItem handleDrop: fluidStore.fluidClient =", fluidStore.fluidClient); // Yjsモードでは無効化
+        // console.log("OutlinerItem handleDrop: fluidStore.currentContainerId =", fluidStore.getCurrentContainerId()); // Yjsモードでは無効化
         console.log("OutlinerItem handleDrop: generalStore =", generalStore);
         console.log("OutlinerItem handleDrop: currentProject =", generalStore?.currentProject);
 
@@ -1139,12 +1222,6 @@ function handleDragEnd() {
 // SvelteKitのルーティングを使用して内部リンクを処理
 
 onMount(() => {
-    // テキストエリアがレンダリングされているか確認
-    if (!hiddenTextareaRef) {
-        console.error("Hidden textarea reference is not available");
-        return;
-    }
-
     // 内部リンクのクリックイベントリスナーは削除
     // SvelteKitのルーティングを使用して内部リンクを処理
 
@@ -1172,7 +1249,8 @@ onMount(() => {
         }
 
         // テキストエリアの内容を同期
-        hiddenTextareaRef.value = text.current;
+        const hiddenTextareaRef = getGlobalTextarea();
+        if (hiddenTextareaRef) hiddenTextareaRef.value = model.text;
 
         // カーソル位置を決定
         let textPosition = 0;
@@ -1180,7 +1258,7 @@ onMount(() => {
         // 方向に基づいてカーソル位置を設定
         if (direction === "up") {
             // 上方向の移動の場合、末尾に配置
-            textPosition = text.current.length;
+            textPosition = model.text.length;
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             }
         }
@@ -1194,7 +1272,7 @@ onMount(() => {
             // 特殊な値の処理
             if (cursorScreenX === Number.MAX_SAFE_INTEGER) {
                 // 末尾位置
-                textPosition = text.current.length;
+                textPosition = model.text.length;
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 }
             }
@@ -1213,57 +1291,56 @@ onMount(() => {
             }
             else {
                 // デフォルトは末尾
-                textPosition = text.current.length;
+                textPosition = model.text.length;
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 }
             }
         }
 
-        // 一連の処理をリクエストアニメーションフレームで最適化
-        requestAnimationFrame(() => {
-            try {
-                // まずフォーカスを設定（最優先）
-                hiddenTextareaRef.focus();
-
-                // ローカル変数を更新 (shiftKey時はクロスアイテム選択拡張)
-                if (!shiftKey) {
-                    lastSelectionStart = lastSelectionEnd = textPosition;
-                    lastCursorPosition = textPosition;
-                }
-                else if (direction === "down" || direction === "right") {
-                    // 次アイテム: 行頭からカーソル位置まで選択
-                    lastSelectionStart = 0;
-                    lastSelectionEnd = textPosition;
-                    lastCursorPosition = textPosition;
-                }
-                else if (direction === "up" || direction === "left") {
-                    // 前アイテム: カーソル位置から行末まで選択
-                    lastSelectionStart = textPosition;
-                    lastSelectionEnd = hiddenTextareaRef.value.length;
-                    lastCursorPosition = textPosition;
-                }
-
-                // 再度カーソルが表示されていることを確認
-                editorOverlayStore.startCursorBlink();
-
-                // editorOverlayStoreにアクティブアイテムとカーソル位置を設定（選択範囲はOutlinerTree側で管理）
-                editorOverlayStore.setCursor({
-                    itemId: model.id,
-                    offset: textPosition,
-                    isActive: true,
-                    userId: "local",
-                });
-
-                // カーソル位置設定を実行
-                setCaretPosition(textPosition);
-
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                }
+        // 一連の処理を次タスクに委譲してイベント競合を避ける
+        // 即座にフォーカス設定（遅延なし）
+        try {
+            // hiddenTextarea は global textarea と同じ要素を参照
+            const globalTextarea = editorOverlayStore.getTextareaRef();
+            if (globalTextarea) {
+                globalTextarea.focus();
+                requestAnimationFrame(() => globalTextarea.focus());
+                setTimeout(() => globalTextarea.focus(), 0);
             }
-            catch (error) {
-                console.error("Error setting focus and cursor position:", error);
+
+            // ローカル変数を更新 (shiftKey時はクロスアイテム選択拡張)
+            if (!shiftKey) {
+                lastSelectionStart = lastSelectionEnd = textPosition;
+                lastCursorPosition = textPosition;
+            } else if (direction === "down" || direction === "right") {
+                // 次アイテム: 行頭からカーソル位置まで選択
+                lastSelectionStart = 0;
+                lastSelectionEnd = textPosition;
+                lastCursorPosition = textPosition;
+            } else if (direction === "up" || direction === "left") {
+                // 前アイテム: カーソル位置から行末まで選択
+                lastSelectionStart = textPosition;
+                lastSelectionEnd = model.text.length;
+                lastCursorPosition = textPosition;
             }
-        });
+
+            // 再度カーソルが表示されていることを確認
+            editorOverlayStore.startCursorBlink();
+
+            // editorOverlayStoreにアクティブアイテムとカーソル位置を設定（選択範囲はOutlinerTree側で管理）
+            editorOverlayStore.setCursor({
+                itemId: model.id,
+                offset: textPosition,
+                isActive: true,
+                userId: "local",
+            });
+
+            // カーソル位置設定を実行
+            setCaretPosition(textPosition);
+            console.log(`⏱️ [Enter] OutlinerItem.handleFocusItem setCaretPosition at ${textPosition}`);
+        } catch (error) {
+            console.error("Error setting focus and cursor position:", error);
+        }
     };
 
     // 編集完了イベントハンドラ
@@ -1316,7 +1393,7 @@ function pixelPositionToTextPosition(screenX: number): number {
     const textElement = displayRef.querySelector(".item-text") as HTMLElement;
     if (!textElement) return 0;
 
-    const currentText = text.current || ""; // 現在のテキストを取得
+    const currentText = model.text || ""; // 現在のテキストを取得
     if (currentText.length === 0) return 0;
 
     // テキスト要素の位置を取得
@@ -1392,24 +1469,28 @@ function pixelPositionToTextPosition(screenX: number): number {
 
 // 指定したテキスト位置にカーソルを設定する関数
 function setCaretPosition(position: number) {
-    if (!hiddenTextareaRef) return;
+    const ta = getGlobalTextarea();
+    if (!ta) return;
 
+    const __t3 = (typeof performance !== 'undefined' && (performance as any).now) ? (performance as any).now() : Date.now();
     try {
         // 範囲内に収める
-        const safePosition = Math.min(Math.max(0, position), hiddenTextareaRef.value.length);
+        const safePosition = Math.min(Math.max(0, position), ta.value.length);
 
         // フォーカスを確保
-        hiddenTextareaRef.focus();
+        ta.focus();
 
         // カーソル位置を設定（複数回試行）
-        hiddenTextareaRef.setSelectionRange(safePosition, safePosition, "none");
+        ta.setSelectionRange(safePosition, safePosition, "none");
 
         // 確実に設定されるよう、少し遅延後にもう一度試行
         setTimeout(() => {
-            if (document.activeElement === hiddenTextareaRef) {
-                hiddenTextareaRef.setSelectionRange(safePosition, safePosition, "none");
+            if (document.activeElement === ta) {
+                ta.setSelectionRange(safePosition, safePosition, "none");
             }
         }, 0);
+
+        console.log(`⏱️ [Enter] setCaretPosition(${safePosition}) dt=${((typeof performance!=='undefined' && (performance as any).now)? (performance as any).now(): Date.now()) - __t3}ms`);
 
         // ローカル変数を更新
         lastSelectionStart = lastSelectionEnd = safePosition;
@@ -1442,9 +1523,10 @@ function setCaretPosition(position: number) {
 
 // 外部から呼び出されるカーソル位置設定メソッド
 export function setSelectionPosition(start: number, end: number = start) {
-    if (!hiddenTextareaRef || !hasCursorBasedOnState()) return;
+    const ta = getGlobalTextarea();
+    if (!ta || !hasCursorBasedOnState()) return;
 
-    hiddenTextareaRef.setSelectionRange(start, end);
+    ta.setSelectionRange(start, end);
     lastSelectionStart = start;
     lastSelectionEnd = end;
     lastCursorPosition = end;
@@ -1536,25 +1618,25 @@ onMount(() => {
                     <span
                         class="item-text"
                         class:title-text={isPageTitle}
-                        class:formatted={ScrapboxFormatter.hasFormatting(text.current)}
+                        class:formatted={ScrapboxFormatter.hasFormatting(model.text)}
                     >
-                        {@html ScrapboxFormatter.formatWithControlChars(text.current)}
+                        {@html ScrapboxFormatter.formatWithControlChars(model.text)}
                     </span>
                 {:else}
                     <!-- フォーカスがない場合：制御文字は非表示、フォーマットは適用 -->
                     <span
                         class="item-text"
                         class:title-text={isPageTitle}
-                        class:formatted={ScrapboxFormatter.hasFormatting(text.current)}
+                        class:formatted={ScrapboxFormatter.hasFormatting(model.text)}
                     >
-                        {@html ScrapboxFormatter.formatToHtml(text.current)}
+                        {@html ScrapboxFormatter.formatToHtml(model.text)}
                     </span>
                 {/if}
                 {#if !isPageTitle && model.votes.length > 0}
                     <span class="vote-count">{model.votes.length}</span>
                 {/if}
-                {#if !isPageTitle && model.commentCount > 0}
-                    <span class="comment-count">{model.commentCount}</span>
+                {#if !isPageTitle && commentCount > 0}
+                    <span class="comment-count">{commentCount}</span>
                 {/if}
                 {#if !isPageTitle}
                     <button

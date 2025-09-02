@@ -45,8 +45,27 @@ export function replaceAllInProject(
 ): number {
     const pages = project.items as Items;
     let count = 0;
-    for (const page of pages) {
-        count += replaceAll(page, query, replacement, options);
+
+    console.log(
+        `[replaceAllInProject] Starting project-wide replacement: query="${query}", replacement="${replacement}"`,
+    );
+    console.log(`[replaceAllInProject] Project has ${pages.length} pages`);
+
+    for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        console.log(
+            `[replaceAllInProject] Processing page ${i + 1}/${pages.length}: id=${page.id}, text="${page.text}"`,
+        );
+
+        try {
+            const pageReplacements = replaceAll(page, query, replacement, options);
+            console.log(`[replaceAllInProject] Page ${page.id} replacements: ${pageReplacements}`);
+            count += pageReplacements;
+        } catch (error) {
+            console.error(`[replaceAllInProject] Error processing page ${page.id}:`, error);
+        }
     }
+
+    console.log(`[replaceAllInProject] Completed project-wide replacement: total replacements=${count}`);
     return count;
 }

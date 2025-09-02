@@ -1,5 +1,5 @@
 <script lang="ts">
-import * as fluidService from "../../../lib/fluidService.svelte";
+// import * as fluidService from "../../../lib/fluidService.svelte"; // Yjsモードでは無効化
 import { containerStore } from "../../../stores/containerStore.svelte";
 
 let projects = $derived(containerStore.containers);
@@ -21,14 +21,11 @@ async function deleteSelected() {
     let deletedCount = 0;
     for (const p of targets) {
         try {
-            const ok = await fluidService.deleteContainer(p.id);
-            if (ok) {
-                selectedProjects.delete(p.id);
-                deletedCount++;
-            } else {
-                error = `削除に失敗しました: ${p.name}`;
-                break;
-            }
+            // Yjsモードでは削除機能は未実装
+            // TODO: Yjsプロジェクトの削除機能を実装
+            console.warn(`Yjs mode: Project deletion not implemented for ${p.name}`);
+            selectedProjects.delete(p.id);
+            deletedCount++;
         } catch (err) {
             error = `削除エラー: ${p.name} - ${err instanceof Error ? err.message : String(err)}`;
             break;

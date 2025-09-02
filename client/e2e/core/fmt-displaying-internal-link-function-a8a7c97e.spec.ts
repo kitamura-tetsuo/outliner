@@ -3,6 +3,7 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 
@@ -15,10 +16,13 @@ import { TreeValidator } from "../utils/treeValidation";
  */
 
 test.describe("FMT-0007: 内部リンク機能", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     /**
      * @testcase 通常の内部リンク構文が正しく表示される
      * @description [page-name] 形式の内部リンクが正しく表示されることを確認するテスト
@@ -28,7 +32,9 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // 最初のアイテムを選択
         const firstItem = page.locator(".outliner-item").first();
+
         await firstItem.locator(".item-content").click();
+
         await TestHelpers.waitForCursorVisible(page);
 
         // 内部リンクテキストを入力
@@ -36,6 +42,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // 2つ目のアイテムを作成
         await page.keyboard.press("Enter");
+
         await TestHelpers.waitForCursorVisible(page);
 
         // 別のテキストを入力
@@ -43,7 +50,9 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // 3つ目のアイテムをクリック（カーソルを最初のアイテムから離す）
         await page.keyboard.press("Enter");
+
         await TestHelpers.waitForCursorVisible(page);
+
         await page.keyboard.type("3つ目のアイテム");
 
         // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
@@ -54,7 +63,6 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         expect(firstItemText).toContain("test-page");
         expect(firstItemText).toContain('href="/test-page"');
     });
-
     /**
      * @testcase プロジェクト内部リンク構文が正しく表示される
      * @description [/project-name/page-name] 形式の内部リンクが正しく表示されることを確認するテスト
@@ -64,7 +72,9 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // 最初のアイテムを選択
         const firstItem = page.locator(".outliner-item").first();
+
         await firstItem.locator(".item-content").click();
+
         await TestHelpers.waitForCursorVisible(page);
 
         // プロジェクト内部リンクテキストを入力
@@ -72,6 +82,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // 2つ目のアイテムを作成
         await page.keyboard.press("Enter");
+
         await TestHelpers.waitForCursorVisible(page);
 
         // 別のテキストを入力
@@ -79,7 +90,9 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // 3つ目のアイテムをクリック（カーソルを最初のアイテムから離す）
         await page.keyboard.press("Enter");
+
         await TestHelpers.waitForCursorVisible(page);
+
         await page.keyboard.type("3つ目のアイテム");
 
         // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
@@ -91,7 +104,6 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         expect(firstItemText).toContain("project-name/page-name");
         expect(firstItemText).toContain('href="/project-name/page-name"');
     });
-
     /**
      * @testcase カーソルがあるアイテムでは内部リンクがプレーンテキストで表示される
      * @description カーソルがあるアイテムでは内部リンクがプレーンテキストで表示されることを確認するテスト
@@ -101,7 +113,9 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // 最初のアイテムを選択
         const firstItem = page.locator(".outliner-item").first();
+
         await firstItem.locator(".item-content").click();
+
         await TestHelpers.waitForCursorVisible(page);
 
         // 内部リンクテキストを入力
@@ -118,7 +132,9 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // 2つ目のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await TestHelpers.waitForCursorVisible(page);
+
         await page.keyboard.type("別のアイテム");
 
         // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
@@ -129,7 +145,6 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         expect(firstItemTextWithoutCursor).toContain("test-page");
         expect(firstItemTextWithoutCursor).toContain('href="/test-page"');
     });
-
     /**
      * @testcase 内部リンクのデータが正しく保存される
      * @description 内部リンクのデータが正しく保存されることを確認するテスト
@@ -137,34 +152,43 @@ test.describe("FMT-0007: 内部リンク機能", () => {
     test("内部リンクのデータが正しく保存される", async ({ page }) => {
         // ページタイトル以外のアイテムを選択（2番目のアイテム）
         const firstItem = page.locator(".outliner-item").nth(1);
+
         await firstItem.locator(".item-content").click();
+
         await TestHelpers.waitForCursorVisible(page);
 
         // カーソルの状態を確認し、必要に応じて作成
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
+
             if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
+
             const cursorInstances = editorStore.getCursorInstances();
 
             return {
                 activeItem,
+
                 cursorInstancesCount: cursorInstances.length,
             };
         });
-
         // カーソルインスタンスが存在しない場合、作成する
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
                 const editorStore = (window as any).editorOverlayStore;
+
                 if (editorStore) {
                     const activeItemId = editorStore.getActiveItem();
+
                     if (activeItemId) {
                         editorStore.setCursor({
                             itemId: activeItemId,
+
                             offset: 0,
+
                             isActive: true,
+
                             userId: "local",
                         });
                     }
@@ -175,46 +199,54 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         // cursor.insertText()を使用して通常の内部リンクを挿入
         await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
+
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
+
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
                     // 既存のテキストをクリア
                     const target = cursor.findTarget();
+
                     if (target) {
                         target.updateText("");
+
                         cursor.offset = 0;
                     }
                     // 通常の内部リンクを挿入
+
                     cursor.insertText("[test-page]");
                 }
             }
         });
-
         // 改行を挿入して新しいアイテムを作成
         await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
+
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
+
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
+
                     cursor.insertText("\n");
                 }
             }
         });
-
         // プロジェクト内部リンクを挿入
         await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
+
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
+
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
+
                     cursor.insertText("[/project-name/page-name]");
                 }
             }
         });
-
         // 少し待機してデータが反映されるのを待つ
         await page.waitForTimeout(500);
 
@@ -225,13 +257,13 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         console.log("Tree data items:");
         treeData.items.forEach((item: any, index: number) => {
             console.log(`  Item ${index}: "${item.text}"`);
+
             if (item.items && item.items.length > 0) {
                 item.items.forEach((subItem: any, subIndex: number) => {
                     console.log(`    SubItem ${subIndex}: "${subItem.text}"`);
                 });
             }
         });
-
         // データが正しく保存されていることを確認
         // サブアイテムから両方のリンクを含むアイテムを検索
         let linkItem = null;
@@ -240,9 +272,11 @@ test.describe("FMT-0007: 内部リンク機能", () => {
             if (item.items) {
                 // itemsがオブジェクトの場合（実際のデータ構造）
                 const itemsArray = Array.isArray(item.items) ? item.items : Object.values(item.items);
+
                 for (const subItem of itemsArray) {
                     if (subItem.text.includes("[test-page]") && subItem.text.includes("[/project-name/page-name]")) {
                         linkItem = subItem;
+
                         break;
                     }
                 }

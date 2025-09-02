@@ -1,7 +1,6 @@
 // place files you want to import through the `$lib` alias in this folder.
 
-// Fluid Framework Telemetryフィルタを初期化
-import "./fluidTelemetryInit";
+// Fluid Framework関連は削除（Yjsモードのみ）
 
 // 開発モードのみ適用する場合
 if (import.meta.env.MODE === "development") {

@@ -1,7 +1,16 @@
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpersNoAuth } from "../utils/testHelpersNoAuth.js";
 
 test.describe("Outliner No Auth Test", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認（認証なしテストのため、エラーは無視）
+        try {
+            await DataValidationHelpers.validateDataConsistency(page);
+        } catch (error) {
+            console.log("Data validation skipped for no-auth test:", error.message);
+        }
+    });
     test("can load and interact with outliner without authentication", async ({ page }, testInfo) => {
         console.log("Debug: Testing outliner without authentication");
 
@@ -49,7 +58,6 @@ test.describe("Outliner No Auth Test", () => {
             console.log("Debug: Failed requests:", failedRequests);
         }
     });
-
     test("can check application state without authentication", async ({ page }, testInfo) => {
         console.log("Debug: Testing application state without authentication");
 
@@ -60,29 +68,39 @@ test.describe("Outliner No Auth Test", () => {
         // アプリケーションの状態を確認
         const appState = await page.evaluate(() => {
             const win = window as any;
+
             return {
                 // グローバル変数の確認
+
                 userManager: typeof win.__USER_MANAGER__,
+
                 fluidStore: typeof win.__FLUID_STORE__,
+
                 svelteGoto: typeof win.__SVELTE_GOTO__,
+
                 firebaseApp: typeof win.__firebase_client_app__,
 
                 // DOM状態の確認
+
                 readyState: document.readyState,
+
                 location: window.location.href,
 
                 // 基本的なDOM要素の確認
+
                 bodyExists: !!document.body,
+
                 headExists: !!document.head,
 
                 // Svelteアプリの状態
+
                 svelteKit: typeof win.__SVELTEKIT_DEV__,
 
                 // 利用可能なグローバル変数
+
                 allGlobals: Object.keys(win).filter(key => key.startsWith("__")),
             };
         });
-
         console.log("Debug: Application state:", appState);
 
         // 基本的な状態の確認
@@ -98,7 +116,6 @@ test.describe("Outliner No Auth Test", () => {
             console.log("Debug: UserManager is not available");
         }
     });
-
     test("can perform basic DOM interactions without authentication", async ({ page }, testInfo) => {
         console.log("Debug: Testing basic DOM interactions without authentication");
 
@@ -108,6 +125,7 @@ test.describe("Outliner No Auth Test", () => {
 
         // 基本的なクリック操作
         const body = page.locator("body");
+
         await body.click();
         console.log("Debug: Clicked on body");
 

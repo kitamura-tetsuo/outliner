@@ -1,8 +1,21 @@
-import type { ConfigTypes, IConfigProviderBase } from "@fluidframework/core-interfaces";
+/*
+ * DISABLED: Fluid Framework Telemetry Filter
+ *
+ * このファイルはFluid Framework専用のため、Yjsモードでは無効化されています。
+ */
+
+// import type { ConfigTypes, IConfigProviderBase } from "@fluidframework/core-interfaces";
 import { getLogger } from "./logger";
 
-// 環境変数からtelemetry無効化設定を取得
-const disableTelemetry = import.meta.env.VITE_DISABLE_FLUID_TELEMETRY === "true";
+// 型のスタブ（Yjsモード用に最低限の型を定義してビルドを通す）
+// Fluid依存を避けるため any で代用
+export type ConfigTypes = any;
+export interface IConfigProviderBase {
+    getRawConfig: (name: string) => any;
+}
+
+// 環境変数からtelemetry無効化設定を取得（Yjsモードでは常にfalse）
+const disableTelemetry = false;
 
 // APIサーバーのURLを取得
 const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";

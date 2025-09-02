@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { browser } from "$app/environment";
 import { onDestroy } from "svelte";
 import {
     buildRegExp,
@@ -37,6 +38,7 @@ let isCaseSensitive = $state(false);
 let matchCount = $state(0);
 
 function highlight(results: Array<ItemMatch<Item>>, options: SearchOptions) {
+    if (typeof document === "undefined") return; // SSRガード
     removeHighlights();
     const regex = buildRegExp(searchQuery, options);
     for (const { item } of results) {
@@ -55,6 +57,7 @@ function highlight(results: Array<ItemMatch<Item>>, options: SearchOptions) {
 }
 
 function removeHighlights() {
+    if (typeof document === "undefined") return; // SSRガード
     document
         .querySelectorAll<HTMLElement>(".item-text[data-orig-html]")
         .forEach(el => {
@@ -99,7 +102,11 @@ function handleReplace() {
 }
 
 function handleReplaceAll() {
+    console.log(`[handleReplaceAll] Starting replacement: project=${!!project}, pageItem=${!!pageItem}`);
+    console.log(`[handleReplaceAll] searchQuery="${searchQuery}", replaceText="${replaceText}"`);
+
     if (project) {
+        console.log(`[handleReplaceAll] Using replaceAllInProject`);
         replaceAllInProject(project, searchQuery, replaceText, {
             regex: isRegexMode,
             caseSensitive: isCaseSensitive,
@@ -107,11 +114,15 @@ function handleReplaceAll() {
         handleSearch();
     }
     else if (pageItem) {
-        replaceAll(pageItem, searchQuery, replaceText, {
+        console.log(`[handleReplaceAll] Using replaceAll for pageItem: id=${pageItem.id}, text="${pageItem.text}"`);
+        const replacements = replaceAll(pageItem, searchQuery, replaceText, {
             regex: isRegexMode,
             caseSensitive: isCaseSensitive,
         });
+        console.log(`[handleReplaceAll] replaceAll returned: ${replacements} replacements`);
         handleSearch();
+    } else {
+        console.log(`[handleReplaceAll] No project or pageItem available`);
     }
 }
 

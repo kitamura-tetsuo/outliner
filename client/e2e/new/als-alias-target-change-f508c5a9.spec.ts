@@ -1,11 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias change target", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("change alias target and update path", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
         const firstId = await TestHelpers.getItemIdByIndex(page, 0);
@@ -18,6 +22,7 @@ test.describe("ALS-0001: Alias change target", () => {
         await page.waitForTimeout(1000);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
+
             textarea?.focus();
         });
         await page.waitForTimeout(500);
@@ -37,7 +42,6 @@ test.describe("ALS-0001: Alias change target", () => {
 
         // エイリアスアイテムが作成されたことを確認
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
-
         // 最初のaliasTargetIdが正しく設定されていることを確認
         let aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
         expect(aliasTargetId).toBe(secondId);

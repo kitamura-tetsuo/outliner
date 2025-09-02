@@ -80,58 +80,209 @@ export default defineConfig({
     testMatch: "**/*.spec.ts",
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
-    retries: (process.env.CI || !isSingleSpecRun) ? 10 : 0,
+    retries: process.env.CI ? 0 : (!isSingleSpecRun ? 0 : 0),
     workers: process.env.CI ? 1 : 1,
-    maxFailures: process.env.CI ? 1 : 5,
+    maxFailures: process.env.CI ? 1 : 1,
 
-    reporter: [["html", { open: "never" }]],
+    reporter: [["list"], ["html", { open: "never" }], ["./e2e/utils/snapshotReporter.js"]],
     headless: true,
-    // テスト実行時のタイムアウト設定を延長
-    timeout: 30 * 1000, // 30秒
+    globalTeardown: "./e2e/global-teardown.ts",
+    // テスト実行時のタイムアウト設定を延長（フックも含む）
+    timeout: 120 * 1000, // 120秒（beforeEach/afterEachを含む重い初期化に対応）
     expect: {
         // 要素の検出待機のタイムアウト設定を延長
-        timeout: 15 * 1000, // 15秒
-    },
-
-    use: {
-        ...devices["Desktop Chrome"],
-        // Chromium用のタイムアウト設定を延長
-        launchOptions: {
-            // 共有メモリの問題を回避するためのオプション
-            args: [...commonArgs, ...debugArgs],
-        },
-        // Clipboard APIを有効にするためにlocalhostを使用
-        baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
-        trace: "on-first-retry",
-        // クリップボードへのアクセスを許可
-        permissions: ["clipboard-read", "clipboard-write"],
+        timeout: 20 * 1000, // 20秒
     },
 
     projects: [
         {
-            // 基本テスト: 環境確認や最小構成の検証用
+            // 基本テスト: 環境確認や最小構成の検証用 (Fluid)
             name: "basic",
             testDir: "./e2e/basic",
+            use: {
+                ...devices["Desktop Chrome"],
+                launchOptions: {
+                    args: [...commonArgs, ...debugArgs],
+                },
+                baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+                trace: "on-first-retry",
+                permissions: ["clipboard-read", "clipboard-write"],
+            },
+            env: {
+                E2E_OUTLINER_MODE: "fluid",
+                VITE_IS_TEST: "true",
+            },
         },
+
         {
-            // 新機能テスト
+            // 基本テスト: 環境確認や最小構成の検証用 (Yjs)
+            name: "basic-yjs",
+            testDir: "./e2e/basic",
+            use: {
+                ...devices["Desktop Chrome"],
+                launchOptions: {
+                    args: [...commonArgs, ...debugArgs],
+                },
+                baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+                trace: "on-first-retry",
+                permissions: ["clipboard-read", "clipboard-write"],
+            },
+            env: {
+                E2E_OUTLINER_MODE: "yjs",
+                VITE_IS_TEST: "true",
+            },
+        },
+
+        {
+            // 新機能テスト (Fluid)
             name: "new",
             testDir: "./e2e/new",
+            use: {
+                ...devices["Desktop Chrome"],
+                launchOptions: {
+                    args: [...commonArgs, ...debugArgs],
+                },
+                baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+                trace: "on-first-retry",
+                permissions: ["clipboard-read", "clipboard-write"],
+            },
+            env: {
+                E2E_OUTLINER_MODE: "fluid",
+                VITE_IS_TEST: "true",
+            },
         },
+
         {
-            // コアテスト: 認証不要の基本機能テスト
+            // 新機能テスト (Yjs)
+            name: "new-yjs",
+            testDir: "./e2e/new",
+            use: {
+                ...devices["Desktop Chrome"],
+                launchOptions: {
+                    args: [...commonArgs, ...debugArgs],
+                },
+                baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+                trace: "on-first-retry",
+                permissions: ["clipboard-read", "clipboard-write"],
+            },
+            env: {
+                E2E_OUTLINER_MODE: "yjs",
+                VITE_IS_TEST: "true",
+            },
+        },
+
+        {
+            // コアテスト: 認証不要の基本機能テスト (Fluid)
             name: "core",
             testDir: "./e2e/core",
+            use: {
+                ...devices["Desktop Chrome"],
+                launchOptions: {
+                    args: [...commonArgs, ...debugArgs],
+                },
+                baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+                trace: "on-first-retry",
+                permissions: ["clipboard-read", "clipboard-write"],
+            },
+            env: {
+                E2E_OUTLINER_MODE: "fluid",
+                VITE_IS_TEST: "true",
+            },
         },
+
         {
-            // 認証テスト: 本番環境でのみ実行
+            // コアテスト: 認証不要の基本機能テスト (Yjs)
+            name: "core-yjs",
+            testDir: "./e2e/core",
+            use: {
+                ...devices["Desktop Chrome"],
+                launchOptions: {
+                    args: [...commonArgs, ...debugArgs],
+                },
+                baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+                trace: "on-first-retry",
+                permissions: ["clipboard-read", "clipboard-write"],
+            },
+            env: {
+                E2E_OUTLINER_MODE: "yjs",
+                VITE_IS_TEST: "true",
+            },
+        },
+
+        {
+            // 認証テスト: 本番環境でのみ実行 (Fluid)
             name: "auth",
             testDir: "./e2e/auth",
+            use: {
+                ...devices["Desktop Chrome"],
+                launchOptions: {
+                    args: [...commonArgs, ...debugArgs],
+                },
+                baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+                trace: "on-first-retry",
+                permissions: ["clipboard-read", "clipboard-write"],
+            },
+            env: {
+                E2E_OUTLINER_MODE: "fluid",
+                VITE_IS_TEST: "true",
+            },
         },
+
         {
-            // ユーティリティテスト: 共通機能のテスト
+            // 認証テスト: 本番環境でのみ実行 (Yjs)
+            name: "auth-yjs",
+            testDir: "./e2e/auth",
+            use: {
+                ...devices["Desktop Chrome"],
+                launchOptions: {
+                    args: [...commonArgs, ...debugArgs],
+                },
+                baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+                trace: "on-first-retry",
+                permissions: ["clipboard-read", "clipboard-write"],
+            },
+            env: {
+                E2E_OUTLINER_MODE: "yjs",
+                VITE_IS_TEST: "true",
+            },
+        },
+
+        {
+            // ユーティリティテスト: 共通機能のテスト (Fluid)
             name: "utils",
             testDir: "./e2e/utils",
+            use: {
+                ...devices["Desktop Chrome"],
+                launchOptions: {
+                    args: [...commonArgs, ...debugArgs],
+                },
+                baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+                trace: "on-first-retry",
+                permissions: ["clipboard-read", "clipboard-write"],
+            },
+            env: {
+                E2E_OUTLINER_MODE: "fluid",
+                VITE_IS_TEST: "true",
+            },
+        },
+
+        {
+            // ユーティリティテスト: 共通機能のテスト (Yjs)
+            name: "utils-yjs",
+            testDir: "./e2e/utils",
+            use: {
+                ...devices["Desktop Chrome"],
+                launchOptions: {
+                    args: [...commonArgs, ...debugArgs],
+                },
+                baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
+                trace: "on-first-retry",
+                permissions: ["clipboard-read", "clipboard-write"],
+            },
+            env: {
+                E2E_OUTLINER_MODE: "yjs",
+                VITE_IS_TEST: "true",
+            },
         },
     ],
     // webServer: {

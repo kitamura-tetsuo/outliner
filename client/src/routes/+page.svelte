@@ -1,9 +1,8 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
 import ContainerSelector from "../components/ContainerSelector.svelte";
-import { loadContainer } from "../lib/fluidService.svelte";
 import { getLogger } from "../lib/logger";
-import { fluidStore } from "../stores/fluidStore.svelte";
+import { YjsProjectManager } from "../lib/yjsProjectManager.svelte";
 
 // Import test helper in test environments only
 if (typeof window !== "undefined" && (
@@ -21,23 +20,15 @@ if (typeof window !== "undefined" && (
 
 const logger = getLogger("HomePage");
 
-// コンテナ選択時の処理
+// プロジェクト選択時の処理
 async function handleContainerSelected(
     selectedContainerId: string,
     containerName: string,
 ) {
-    // const client = fluidStore.fluidClient;
-    // if (client?.containerId === selectedContainerId) {
-    //     logger.info("Selected container is already loaded");
-    //     return;
-    // }
-
     try {
-        // 新しいコンテナIDで ファクトリーメソッドを使用してFluidClientを作成
-        const client = await loadContainer(selectedContainerId);
-
-        // fluidClientストアを更新
-        fluidStore.fluidClient = client;
+        // Yjsプロジェクトマネージャーを作成
+        const yjsProjectManager = new YjsProjectManager(selectedContainerId);
+        await yjsProjectManager.connect(containerName);
 
         // プロジェクトページへ遷移
         // コンテナ名をプロジェクト名として使用
@@ -46,20 +37,20 @@ async function handleContainerSelected(
         goto(`/${projectName}`);
     }
     catch (error) {
-        logger.error("Failed to switch container:", error);
+        logger.error("Failed to switch project:", error);
     }
 }
 </script>
 
 <svelte:head>
-    <title>Fluid Outliner App</title>
+    <title>Yjs Outliner App</title>
 </svelte:head>
 
 <main class="main-content">
-    <h1>Fluid Outliner App</h1>
+    <h1>Yjs Outliner App</h1>
 
     <div class="welcome-message">
-        <p>Fluid Outlinerへようこそ！</p>
+        <p>Yjs Outlinerへようこそ！</p>
         <p>以下のオプションから選択してください：</p>
     </div>
 

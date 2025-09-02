@@ -3,9 +3,14 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Multi-Page Schedule Management", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     let testProject: { projectName: string; pageName: string; };
 
     test.beforeEach(async ({ page }, testInfo) => {
@@ -14,20 +19,20 @@ test.describe("Multi-Page Schedule Management", () => {
         // Enable console logging
         page.on("console", msg => console.log("PAGE LOG:", msg.text()));
     });
-
     test("schedule operations across pages", async ({ page }, testInfo) => {
         const { projectName, pageName } = testProject;
 
         // Create another page in the same project using the correct method
         await page.evaluate(async () => {
             const store = window.generalStore;
+
             if (store && store.project) {
                 // Use the addPage method to create a new page
                 const newPage = store.project.addPage("other-page", "test-user");
+
                 console.log("Created other-page in same project");
             }
         });
-
         // Wait for the page to be created
         await page.waitForTimeout(500);
 
@@ -36,7 +41,6 @@ test.describe("Multi-Page Schedule Management", () => {
             return window.generalStore?.currentPage?.id;
         });
         console.log("First page ID:", firstPageId);
-
         await page.locator("text=予約管理").click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
         const input = page.locator('input[type="datetime-local"]');
@@ -54,9 +58,7 @@ test.describe("Multi-Page Schedule Management", () => {
         await page.locator('button:has-text("Save")').click();
         await page.waitForTimeout(1000);
         await expect(items).toHaveCount(1);
-
         await page.locator('button:has-text("Back")').click();
-
         const encodedProject = encodeURIComponent(projectName);
         await page.goto(`/${encodedProject}/other-page`);
 
@@ -66,12 +68,10 @@ test.describe("Multi-Page Schedule Management", () => {
             return window.generalStore?.currentPage?.id;
         });
         console.log("Current page ID for other-page:", currentPageId);
-
         await page.locator("text=予約管理").click();
         await expect(page.locator('[data-testid="schedule-item"]')).toHaveCount(0);
         // Use force click to avoid interception issues
         await page.locator('button:has-text("Back")').click({ force: true });
-
         const encodedPage = encodeURIComponent(pageName);
         await page.goto(`/${encodedProject}/${encodedPage}`);
         await page.locator("text=予約管理").click();

@@ -1,0 +1,69 @@
+id: MIG-8f31a2c9
+slug: mig
+category: migration
+scope: client
+status: implemented
+created: 2025-08-29
+updated: 2025-08-29
+title: Remove DataOperationHooks and hooks-based realtime validation in Yjs branch
+title-ja: YjsブランチでのDataOperationHooksとフック型リアルタイム検証の撤去
+summary:
+  en: 'In the Yjs-only branch, removed all references to DataOperationHooks and its initializer. This code path was part of the prior Fluid mode and caused dead imports and unnecessary side-effects. Validation logic via DataOperationHooks is not applicable in Yjs mode and relevant E2E is skipped.
+
+    '
+  ja: 'Yjs専用ブランチにおいて、DataOperationHooksおよびその初期化コードの全参照を削除しました。これは旧Fluidモード用の経路であり、Yjsモードでは不要かつ副作用の原因となっていました。DataOperationHooks経由のリアルタイム検証はYjsモードでは非適用であり、該当E2Eはskipされます。
+
+    '
+changes:
+- path: client/src/lib/dataOperationHooks.ts
+  action: removed
+- path: client/src/lib/dataOperationHooksInitializer.ts
+  action: removed
+- path: client/src/components/OutlinerItem.svelte
+  action: updated
+  details: Remove import/use of dataOperationHooks.afterItemCreate
+- path: client/src/routes/containers/+page.svelte
+  action: updated
+  details: Remove import/use of dataOperationHooks.afterProjectCreate
+- path: client/src/lib/Cursor.ts
+  action: updated
+  details: Remove import of dataOperationHooks (Fluid-only path)
+- path: client/src/lib/YjsCursor.ts
+  action: updated
+  details: Remove import of dataOperationHooks (no-op in Yjs)
+- path: client/e2e/shims-app-modules.d.ts
+  action: updated
+  details: Remove shim for dataOperationHooksInitializer
+motivation:
+  en: 'The DataOperationHooks path belonged to the Fluid mode. In the Yjs branch we avoid mixed-mode code to keep the implementation clean and avoid dead or misleading code paths. Realtime validation in Yjs should be provided by Yjs-native mechanisms when needed, not by legacy hooks.
+
+    '
+  ja: 'DataOperationHooksはFluidモード由来の経路です。Yjsブランチではモード混在を避け、不要・誤解を招くコードを排除します。Yjsでのリアルタイム検証が必要な場合はYjsネイティブな仕組みで提供します。
+
+    '
+acceptance-criteria:
+- TypeScript build passes in client and client/e2e without references to DataOperationHooks.
+- Unit tests pass (no regressions introduced by removal).
+- E2E Yjs smoke spec passes: e2e/basic/snapshot-yjs-test.spec.ts.
+- Search for "dataOperationHooks" shows no references outside of *.backup files.
+- The E2E spec that depended on the hooks is skipped in Yjs mode: e2e/basic/realtime-validation-via-hooks.spec.ts.
+verification:
+  commands:
+  - cd client && npx tsc --noEmit --project tsconfig.json
+  - cd client && npx tsc --noEmit --project e2e/tsconfig.json
+  - cd client && npm run build
+  - cd client && npm run test:unit
+  - cd client && npm run test:e2e -- e2e/basic/snapshot-yjs-test.spec.ts
+  notes:
+    en: 'The realtime-validation-via-hooks E2E is retained for historical coverage but is skipped in Yjs mode as documented. Any future Yjs-native validation should add Yjs-specific E2E instead of reusing the legacy hooks test.
+
+      '
+    ja: 'realtime-validation-via-hooks のE2Eは履歴として残しますが、Yjsモードではskipされる挙動が仕様です。将来的にYjsネイティブの検証を導入する場合は、専用のE2Eを新規に追加してください。
+
+      '
+notes:
+  deprecates:
+  - Fluid-mode DataOperationHooks in this branch
+  followups:
+  - Clean up *.backup files that still contain legacy references to avoid confusion in greps.
+  - Consider implementing Yjs-native realtime validation paths with dedicated tests.

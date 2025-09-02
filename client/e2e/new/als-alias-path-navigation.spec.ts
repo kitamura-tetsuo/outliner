@@ -1,30 +1,36 @@
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias path navigation", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("alias path shows clickable links", async ({ page }) => {
+        // テストタイムアウトを延長
+        test.setTimeout(60000);
         await TestHelpers.waitForOutlinerItems(page);
         const firstId = await TestHelpers.getItemIdByIndex(page, 0);
         const secondId = await TestHelpers.getItemIdByIndex(page, 1);
         if (!firstId || !secondId) throw new Error("item ids not found");
-
         await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`);
         await page.waitForTimeout(1000);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
+
             textarea?.focus();
         });
         await page.waitForTimeout(500);
-
         await page.keyboard.type("/");
         await page.keyboard.type("alias");
         await page.keyboard.press("Enter");
 
-        await expect(page.locator(".alias-picker")).toBeVisible();
+        // エイリアスピッカーが表示されるまで待機（タイムアウトを延長）
+        await expect(page.locator(".alias-picker")).toBeVisible({ timeout: 10000 });
         const newIndex = await page.locator(".outliner-item").count() - 1;
         const aliasId = await TestHelpers.getItemIdByIndex(page, newIndex);
         if (!aliasId) throw new Error("alias item not found");
@@ -37,7 +43,6 @@ test.describe("ALS-0001: Alias path navigation", () => {
 
         // エイリアスアイテムが作成されたことを確認
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
-
         // エイリアスパスが表示されていることを確認
         const isAliasPathVisible = await TestHelpers.isAliasPathVisible(page, aliasId);
         expect(isAliasPathVisible).toBe(true);

@@ -146,11 +146,11 @@
     },
     "emulators": {
         "auth": {
-            "port": 59099,
+            "port": 9100,
             "host": "0.0.0.0"
         },
         "firestore": {
-            "port": 58080,
+            "port": 8081,
             "host": "0.0.0.0"
         },
         "functions": {
@@ -166,7 +166,7 @@
             "host": "0.0.0.0"
         },
         "ui": {
-            "port": 54000,
+            "port": 4002,
             "host": "0.0.0.0",
             "enabled": false
         },

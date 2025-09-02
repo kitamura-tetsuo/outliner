@@ -14,18 +14,23 @@
         "allowImportingTsExtensions": false,
         "types": [
             "@playwright/test",
-            "node",
-            "vitest"
+            "node"
+        ],
+        "typeRoots": [
+            "./",
+            "./node_modules/@types"
         ],
         "noUnusedLocals": false,
         "target": "es2017"
     },
     "include": [
-        "../src/vite-env.d.ts",
         "**/*.ts",
-        "**/*.js"
+        "**/*.js",
+        "**/*.d.ts",
+        "./svelte5-shim.d.ts"
     ],
     "exclude": [
-        "node_modules"
+        "node_modules",
+        "../src"
     ]
 }

@@ -2,8 +2,8 @@
 import { onMount } from "svelte";
 import { userManager } from "../../auth/UserManager";
 import Toolbar from "../../components/Toolbar.svelte";
-import { getFluidClientByProjectTitle } from "../../services";
-import { fluidStore } from "../../stores/fluidStore.svelte";
+// import { getFluidClientByProjectTitle } from "../../services"; // Yjsモードでは無効化
+// import { fluidStore } from "../../stores/fluidStore.svelte"; // Yjsモードでは無効化
 
 // プロジェクトレベルのレイアウト
 // このレイアウトは /[project] と /[project]/[page] の両方に適用されます
@@ -12,33 +12,21 @@ let { data, children } = $props();
 let project: any = $state(null);
 let isAuthenticated = $state(false);
 
-// fluidStoreからプロジェクトを取得
+// Yjsモードでは簡易プロジェクト情報を使用
 $effect(() => {
-    if (fluidStore.fluidClient) {
-        project = fluidStore.fluidClient.getProject();
+    const projectName = (data as any)?.project;
+    if (projectName) {
+        project = {
+            title: projectName,
+            id: projectName,
+        };
     }
 });
 
-// URLパラメータからプロジェクト名を取得
-$effect(() => {
-    if ((data as any)?.project && isAuthenticated && !fluidStore.fluidClient) {
-        loadProject();
-    }
-});
-
+// Yjsモードでは追加の読み込み処理は不要
 async function loadProject() {
-    try {
-        const projectName = (data as any).project;
-
-        // プロジェクト名からFluidClientを取得
-        const client = await getFluidClientByProjectTitle(projectName);
-        if (client) {
-            fluidStore.fluidClient = client;
-            project = client.getProject();
-        }
-    } catch (err) {
-        console.error("Failed to load project:", err);
-    }
+    // Yjsモードでは何もしない
+    console.log("Yjs mode: No additional project loading needed");
 }
 
 onMount(() => {

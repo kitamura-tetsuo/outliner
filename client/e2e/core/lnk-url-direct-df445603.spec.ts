@@ -4,25 +4,27 @@
  */
 import { expect, test } from "@playwright/test";
 import { waitForCursorVisible } from "../helpers";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 
 test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
-
     test("URLを直接入力して内部リンク先のページにアクセスする", async ({ page }) => {
         // 認証状態を設定
         await page.addInitScript(() => {
         });
-
         // まずホームページにアクセス
         await page.goto("http://localhost:7090/");
 
         // ページが読み込まれるのを待つ
         await page.waitForSelector("body", { timeout: 10000 });
-
         // 現在のURLを確認
         const homeUrl = page.url();
         console.log("Home URL:", homeUrl);
@@ -35,7 +37,6 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         // 新しいURLに遷移するのを待つ
         await page.waitForURL(`**/${randomPage}`, { timeout: 10000 });
-
         // 現在のURLを確認
         const pageUrl = page.url();
         console.log("Page URL:", pageUrl);

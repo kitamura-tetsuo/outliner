@@ -4,26 +4,29 @@
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         // デバッグモードを有効化
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
-
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click({ force: true });
 
+        await item.locator(".item-content").click({ force: true });
         // デバッグモードを有効化（ページ読み込み後）
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
-
         // カーソルが表示されるのを待つ
         await TestHelpers.waitForCursorVisible(page);
 
@@ -32,11 +35,14 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // 2つ目のアイテムを作成
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("This is another line for multi-item selection");
 
         // 最初のアイテムに戻る
         await page.keyboard.press("Home");
+
         await page.keyboard.press("ArrowUp");
+
         await page.keyboard.press("Home");
 
         // カーソルが表示されていることを確認
@@ -44,7 +50,6 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(cursorData.cursorCount).toBeGreaterThan(0);
         expect(cursorData.cursorVisible).toBe(true);
     });
-
     test("単一アイテム内の選択範囲を太字に変更できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
         const firstItem = page.locator(".outliner-item").nth(0);
@@ -53,11 +58,13 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
+
         await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
             await page.keyboard.press("ArrowRight");
         }
         await page.keyboard.up("Shift");
+
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
@@ -66,6 +73,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // Ctrl+Bを押して太字に変更
         await page.keyboard.press("Control+b");
+
         await page.waitForTimeout(300);
 
         // テキストが太字になったことを確認（Scrapbox構文: [[text]] または [* text]）
@@ -74,7 +82,6 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(textContent).toContain("This");
         expect(textContent).toContain("]]");
     });
-
     test("単一アイテム内の選択範囲を斜体に変更できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
         const firstItem = page.locator(".outliner-item").nth(0);
@@ -83,11 +90,13 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
+
         await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
             await page.keyboard.press("ArrowRight");
         }
         await page.keyboard.up("Shift");
+
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
@@ -96,6 +105,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // Ctrl+Iを押して斜体に変更
         await page.keyboard.press("Control+i");
+
         await page.waitForTimeout(300);
 
         // テキストが斜体になったことを確認（Scrapbox構文: [/ text]）
@@ -103,7 +113,6 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         // 選択範囲が空の場合もあるので、[/が含まれていることを確認
         expect(textContent).toContain("[/");
     });
-
     test("単一アイテム内の選択範囲に下線を追加できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
         const firstItem = page.locator(".outliner-item").nth(0);
@@ -112,11 +121,13 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
+
         await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
             await page.keyboard.press("ArrowRight");
         }
         await page.keyboard.up("Shift");
+
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
@@ -125,15 +136,19 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // Ctrl+Uを押して下線を追加
         await page.keyboard.press("Control+u");
+
         await page.waitForTimeout(300);
 
         // 新しいアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("別のアイテム");
+
         await page.waitForTimeout(500);
 
         // デバッグ: テキストの状態を確認
         const innerHTML = await firstItem.locator(".item-text").innerHTML();
+
         const textContent = await firstItem.locator(".item-text").textContent();
         console.log("After Ctrl+U - innerHTML:", innerHTML);
         console.log("After Ctrl+U - textContent:", textContent);
@@ -144,7 +159,6 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(innerHTML).toContain("test");
         expect(innerHTML).toContain("</u>");
     });
-
     test("単一アイテム内の選択範囲を取り消し線に変更できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
         const firstItem = page.locator(".outliner-item").nth(0);
@@ -153,11 +167,13 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
+
         await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
             await page.keyboard.press("ArrowRight");
         }
         await page.keyboard.up("Shift");
+
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
@@ -166,6 +182,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // Ctrl+Kを押して取り消し線に変更
         await page.keyboard.press("Control+k");
+
         await page.waitForTimeout(300);
 
         // テキストが取り消し線になったことを確認（Scrapbox構文: [- text]）
@@ -174,7 +191,6 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(textContent).toContain("This");
         expect(textContent).toContain("]");
     });
-
     test("単一アイテム内の選択範囲をコードに変更できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
         const firstItem = page.locator(".outliner-item").nth(0);
@@ -183,11 +199,13 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
+
         await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
             await page.keyboard.press("ArrowRight");
         }
         await page.keyboard.up("Shift");
+
         await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
@@ -196,6 +214,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // Ctrl+`を押してコードに変更
         await page.keyboard.press("Control+`");
+
         await page.waitForTimeout(300);
 
         // テキストがコードになったことを確認
@@ -204,7 +223,6 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(textContent).toContain("This");
         expect(textContent).toContain("`");
     });
-
     test("複数アイテムにまたがる選択範囲をフォーマット変更できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
         const firstItem = page.locator(".outliner-item").nth(0);
@@ -213,6 +231,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // テキストの一部を選択（Shift+右矢印キーを4回押下）
         await page.keyboard.press("Home");
+
         await page.keyboard.down("Shift");
         for (let i = 0; i < 4; i++) {
             await page.keyboard.press("ArrowRight");
@@ -220,7 +239,9 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // Shift+Downで次のアイテムまで選択範囲を拡張
         await page.keyboard.press("Shift+ArrowDown");
+
         await page.keyboard.up("Shift");
+
         await page.waitForTimeout(300);
 
         // 複数アイテムにまたがる選択範囲が作成されたことを確認
@@ -229,6 +250,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // Ctrl+Bを押して太字に変更
         await page.keyboard.press("Control+b");
+
         await page.waitForTimeout(300);
 
         // 注: 複数アイテムにまたがる選択範囲のフォーマット変更は実装が難しいため、
@@ -239,6 +261,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // 2つ目のアイテムのテキストを確認
         const secondItem = page.locator(".outliner-item").nth(1);
+
         const secondItemText = await secondItem.locator(".item-text").textContent();
         expect(secondItemText).toBeTruthy();
     });

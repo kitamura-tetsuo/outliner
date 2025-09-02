@@ -5,9 +5,14 @@
 import { expect, test } from "@playwright/test";
 import { waitForCursorVisible } from "../helpers";
 import { CursorValidator } from "./cursorValidation";
+import { DataValidationHelpers } from "./dataValidationHelpers";
 import { TestHelpers } from "./testHelpers";
 
 test.describe("CursorValidator: カーソル情報検証ユーティリティ", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         // テストページをセットアップ
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
@@ -18,6 +23,33 @@ test.describe("CursorValidator: カーソル情報検証ユーティリティ", 
 
         // 少し待機してデータが反映されるのを待つ
         await page.waitForTimeout(500);
+
+        // まず、OutlinerTreeコンポーネントが表示されるまで待機
+        console.log("🔧 [Test] Waiting for outliner components to be visible...");
+        try {
+            await page.waitForFunction(() => {
+                const outlinerTree = document.querySelector(".outliner");
+                const outlinerBase = document.querySelector('[data-testid="outliner-base"]');
+                const hasOutlinerTree = !!outlinerTree;
+                const hasOutlinerBase = !!outlinerBase;
+
+                console.log("🔧 [Test] Outliner component check", {
+                    hasOutlinerTree,
+                    hasOutlinerBase,
+                    outlinerTreeContent: outlinerTree?.textContent?.substring(0, 50),
+                });
+
+                return hasOutlinerTree || hasOutlinerBase;
+            }, { timeout: 20000, polling: 1000 });
+            console.log("🔧 [Test] Outliner components are visible");
+        } catch (error) {
+            console.log("🔧 [Test] Outliner components not visible, but continuing...");
+        }
+
+        // 次に、outliner-itemが表示されるまで待機
+        console.log("🔧 [Test] Waiting for outliner items to be visible...");
+        await page.waitForSelector(".outliner-item", { timeout: 20000 });
+        console.log("🔧 [Test] Outliner items are visible");
 
         // 最初のアイテムをクリックしてカーソルを表示
         await page.locator(".outliner-item").first().click();

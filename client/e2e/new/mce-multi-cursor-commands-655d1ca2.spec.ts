@@ -3,13 +3,17 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("MCE-0002: multi-cursor commands", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["first", "second"]);
     });
-
     test("add cursor below and undo", async ({ page }) => {
         const firstId = await page.locator(".outliner-item").nth(1).getAttribute("data-item-id");
         await TestHelpers.setCursor(page, firstId!, 0, "local");

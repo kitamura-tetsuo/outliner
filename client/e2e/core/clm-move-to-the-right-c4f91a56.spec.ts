@@ -4,9 +4,14 @@
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0003: 右へ移動", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
@@ -30,7 +35,6 @@ test.describe("CLM-0003: 右へ移動", () => {
         // 文字入力が可能
         await page.keyboard.type("Test data");
     });
-
     test("ArrowRightキーでカーソルが1文字右に移動する", async ({ page }) => {
         // アクティブなアイテム要素を取得
         const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
@@ -42,7 +46,6 @@ test.describe("CLM-0003: 右へ移動", () => {
         // アクティブなカーソルを取得
         const cursor = page.locator(".editor-overlay .cursor.active");
         await cursor.waitFor({ state: "visible" });
-
         // 初期カーソル位置を取得
         const initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
 
@@ -62,7 +65,6 @@ test.describe("CLM-0003: 右へ移動", () => {
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBe(1);
     });
-
     test("一番最後の文字にある時は、一つ次のアイテムの最初の文字へ移動する", async ({ page }) => {
         // テスト開始時のアイテム数を確認
         const initialItemCount = await page.locator(".outliner-item").count();
@@ -76,12 +78,12 @@ test.describe("CLM-0003: 右へ移動", () => {
         // 2つ目のアイテムを追加
         await page.keyboard.press("End"); // 最後に移動
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("Second item");
 
         // 2つ目のアイテムが存在することを確認
         const secondItem = page.locator(".outliner-item").nth(1);
         await secondItem.waitFor({ state: "visible" });
-
         // 2つ目のアイテムのテキスト内容を確認
         const secondItemText = await secondItem.locator(".item-text").textContent();
         console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
@@ -103,6 +105,7 @@ test.describe("CLM-0003: 右へ移動", () => {
 
         // 右矢印キーを押下
         await page.keyboard.press("ArrowRight");
+
         await page.waitForTimeout(500);
 
         // カーソル情報を取得して検証

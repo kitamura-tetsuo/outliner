@@ -3,16 +3,21 @@
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0003: 行末まで選択", () => {
+    test.afterEach(async ({ page }) => {
+        // FluidとYjsのデータ整合性を確認
+        await DataValidationHelpers.validateDataConsistency(page);
+    });
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click({ force: true });
 
+        await item.locator(".item-content").click({ force: true });
         await page.waitForSelector("textarea.global-textarea:focus");
 
         // カーソルが表示されるまで待機
@@ -20,18 +25,24 @@ test.describe("SLR-0003: 行末まで選択", () => {
 
         // テスト用のテキストを入力（改行を明示的に入力）
         await page.keyboard.type("First line");
+
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("Second line");
+
         await page.keyboard.press("Enter");
+
         await page.keyboard.type("Third line");
 
         // カーソルを2行目の先頭に移動
         await page.keyboard.press("Home");
+
         await page.keyboard.press("ArrowUp");
+
         await page.keyboard.press("ArrowDown");
+
         await page.keyboard.press("Home");
     });
-
     test("Shift + Endで現在位置から行末までを選択する", async ({ page }) => {
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -43,10 +54,11 @@ test.describe("SLR-0003: 行末まで選択", () => {
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: "visible" });
-
         // カーソルを行の途中に移動
         await page.keyboard.press("Home");
+
         await page.keyboard.press("ArrowRight");
+
         await page.keyboard.press("ArrowRight");
 
         // 初期状態では選択範囲がないことを確認
@@ -57,7 +69,9 @@ test.describe("SLR-0003: 行末まで選択", () => {
 
         // Shift + Endを押下
         await page.keyboard.down("Shift");
+
         await page.keyboard.press("End");
+
         await page.keyboard.up("Shift");
 
         // 更新を待機
@@ -69,14 +83,14 @@ test.describe("SLR-0003: 行末まで選択", () => {
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
+
             if (!store) return "";
+
             return store.getSelectedText();
         });
-
         // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
     });
-
     test("複数行のアイテムでは、現在のカーソルがある行の末尾までを選択する", async ({ page }) => {
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -88,12 +102,15 @@ test.describe("SLR-0003: 行末まで選択", () => {
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: "visible" });
-
         // カーソルを3行目に移動し、行の途中に配置
         await page.keyboard.press("ArrowDown");
+
         await page.keyboard.press("ArrowDown");
+
         await page.keyboard.press("Home");
+
         await page.keyboard.press("ArrowRight");
+
         await page.keyboard.press("ArrowRight");
 
         // 初期状態では選択範囲がないことを確認
@@ -104,7 +121,9 @@ test.describe("SLR-0003: 行末まで選択", () => {
 
         // Shift + Endを押下
         await page.keyboard.down("Shift");
+
         await page.keyboard.press("End");
+
         await page.keyboard.up("Shift");
 
         // 更新を待機（十分な時間を確保）
@@ -116,10 +135,11 @@ test.describe("SLR-0003: 行末まで選択", () => {
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
+
             if (!store) return "";
+
             return store.getSelectedText();
         });
-
         // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
     });

@@ -1,5 +1,6 @@
 <script lang="ts">
 import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+import { browser } from '$app/environment';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
 
@@ -77,8 +78,8 @@ $effect(() => {
         // positionMapの更新も監視
         const itemInfo = currentPositionMap[lastCursor.itemId];
         if (!itemInfo) {
-            // positionMapが更新されていない場合は、強制的に更新してから再試行
-            updatePositionMap();
+            // positionMapが未反映。同期的な更新は循環を生むため避け、debounce経由で更新し再試行
+            debouncedUpdatePositionMap();
             setTimeout(() => {
                 updateTextareaPosition();
             }, 50);
@@ -88,7 +89,7 @@ $effect(() => {
         const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
         if (!pos) {
             // 位置計算に失敗した場合も、positionMapを更新してから再試行
-            updatePositionMap();
+            debouncedUpdatePositionMap();
             setTimeout(() => {
                 updateTextareaPosition();
             }, 50);
@@ -358,10 +359,13 @@ function debouncedUpdatePositionMap() {
     }, 100) as unknown as number;
 }
 
-// store からのデータを反映するリアクティブ処理
+const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
+
+// store からのデータを反映するリアクティブ処理（SSRではDOM参照を行わない）
 $effect(() => {
-  // DOM 更新を反映して positionMap を更新
-  updatePositionMap();
+  if (!isBrowser) return;
+  // DOM 更新を反映して positionMap を更新（同期更新は再帰ループを招くため、debounceで遅延実行）
+  debouncedUpdatePositionMap();
   allCursors = Object.values(store.cursors);
   allSelections = Object.values(store.selections);
   localActiveItemId = store.activeItemId;

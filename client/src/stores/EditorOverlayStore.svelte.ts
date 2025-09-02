@@ -1,4 +1,5 @@
 import { Cursor } from "../lib/Cursor"; // Cursor クラスを import
+import type { OutlinerViewModel } from "./OutlinerViewModel";
 
 // Exported types
 export interface CursorPosition {
@@ -56,6 +57,8 @@ export class EditorOverlayStore {
     cursorInstances = new Map<string, Cursor>();
     // 追加されたカーソルの履歴
     cursorHistory = $state<string[]>([]);
+    // OutlinerViewModelへの参照（Yjs統合用）
+    outlinerViewModel: OutlinerViewModel | null = null;
     selections = $state<Record<string, SelectionRange>>({});
     activeItemId = $state<string | null>(null);
     cursorVisible = $state<boolean>(true);
@@ -82,6 +85,11 @@ export class EditorOverlayStore {
     // onEdit コールバックを設定
     setOnEditCallback(callback: (() => void) | null) {
         this.onEditCallback = callback;
+    }
+
+    // OutlinerViewModelを設定
+    setOutlinerViewModel(viewModel: OutlinerViewModel | null) {
+        this.outlinerViewModel = viewModel;
     }
 
     // onEdit コールバックを取得
@@ -459,6 +467,12 @@ export class EditorOverlayStore {
     startCursorBlink() {
         this.cursorVisible = true;
         clearInterval(this.timerId);
+
+        // 初期表示を確実にするため、0ms で一度 visible を再設定
+        setTimeout(() => {
+            this.cursorVisible = true;
+        }, 0);
+
         // 単純に toggle するので Node でも動作
         this.timerId = setInterval(() => {
             this.cursorVisible = !this.cursorVisible;
@@ -715,6 +729,16 @@ export class EditorOverlayStore {
 
         // カーソル履歴を更新
         this.cursorHistory = [...this.cursorHistory, id];
+
+        // フォーカスをグローバルテキストエリアに当てる（フォールバック経路対応）
+        const textarea = this.getTextareaRef();
+        if (textarea) {
+            textarea.focus();
+            requestAnimationFrame(() => textarea.focus());
+            setTimeout(() => textarea.focus(), 10);
+        } else if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.error(`Global textarea not found in setCursor`);
+        }
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
