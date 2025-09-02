@@ -77,7 +77,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
 
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
   cd "${ROOT_DIR}/client"
-  npx -y playwright install chromium
+  npx --yes playwright install chromium
   cd "${ROOT_DIR}"
 
   # Ensure vitest and playwright packages are available for npm test
