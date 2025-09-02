@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 import WebSocket from "ws";
-import { TestHelpers } from "./utils/TestHelpers";
+import { TestHelpers } from "./utils/testHelpers";
 
-test.beforeEach(async ({ page }) => {
-    await TestHelpers.prepareTestEnvironment(page);
+test.beforeEach(async ({ page }, testInfo) => {
+    await TestHelpers.prepareTestEnvironment(page, testInfo);
 });
 
 test("oversized websocket message closes connection", async () => {
