@@ -13,6 +13,7 @@ import { type Config } from "./config";
 import { logger as defaultLogger } from "./logger";
 import { createPersistence, logTotalSize, warnIfRoomTooLarge } from "./persistence";
 import { parseRoom } from "./room-validator";
+import { addRoomSizeListener, removeRoomSizeListener } from "./update-listeners";
 import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth";
 
 export function startServer(config: Config, logger = defaultLogger) {
@@ -44,17 +45,13 @@ export function startServer(config: Config, logger = defaultLogger) {
             }
             const docName = roomInfo.page ? `${roomInfo.project}/${roomInfo.page}` : roomInfo.project;
             logger.info({ event: "ws_connection_accepted", uid: decoded.uid, room: docName });
-            const warn = () =>
-                warnIfRoomTooLarge(
-                    persistence,
-                    docName,
-                    config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024,
-                    logger,
-                );
-            const doc = await persistence.getYDoc(docName);
-            doc.on("update", warn);
-            await warn();
+            const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
+            await addRoomSizeListener(persistence, docName, limitBytes, logger);
+            await warnIfRoomTooLarge(persistence, docName, limitBytes, logger);
             setupWSConnection(ws, req, { docName, persistence });
+            ws.on("close", () => {
+                removeRoomSizeListener(persistence, docName).catch(() => undefined);
+            });
         } catch {
             logger.warn({ event: "ws_connection_denied", reason: "invalid_token" });
             ws.close(4001, "UNAUTHORIZED");
