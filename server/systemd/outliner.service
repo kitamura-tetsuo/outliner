@@ -16,7 +16,6 @@ PrivateTmp=true
 PrivateDevices=yes
 ProtectSystem=strict
 ProtectHome=yes
-LockPersonality=yes
 ReadWritePaths=/srv/outliner
 
 [Install]
