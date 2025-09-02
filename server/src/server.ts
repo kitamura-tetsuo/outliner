@@ -2,6 +2,7 @@ import http from "http";
 import { WebSocketServer } from "ws";
 import { type Config } from "./config";
 import { logger as defaultLogger } from "./logger";
+import { parseRoom } from "./room-validator";
 import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth";
 
 export function startServer(config: Config, logger = defaultLogger) {
@@ -17,7 +18,13 @@ export function startServer(config: Config, logger = defaultLogger) {
         }
         try {
             const decoded = await verifyIdTokenCached(token);
-            logger.info({ event: "ws_connection_accepted", uid: decoded.uid });
+            const room = parseRoom(req.url ?? "/");
+            if (!room) {
+                logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: req.url });
+                ws.close(4002, "INVALID_ROOM");
+                return;
+            }
+            logger.info({ event: "ws_connection_accepted", uid: decoded.uid, room });
         } catch {
             logger.warn({ event: "ws_connection_denied", reason: "invalid_token" });
             ws.close(4001, "UNAUTHORIZED");

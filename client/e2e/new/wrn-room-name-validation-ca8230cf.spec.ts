@@ -13,20 +13,19 @@ test.afterEach(() => {
     proc?.kill();
 });
 
-test("websocket requires auth token", async ({ page }) => {
+test("rejects invalid room name", async ({ page }) => {
     const serverPath = path.resolve(__dirname, "../../../server");
     proc = spawn("pnpm", ["dev"], {
         cwd: serverPath,
-        env: { ...process.env, PORT: "12352", LOG_LEVEL: "silent" },
+        env: { ...process.env, PORT: "12353", LOG_LEVEL: "silent" },
         stdio: "ignore",
     });
-    await new Promise((res) => setTimeout(res, 1000));
-
-    const closeCode = await page.evaluate(() =>
-        new Promise<number>((resolve) => {
-            const ws = new WebSocket("ws://localhost:12352/projects/testproj");
+    await new Promise(res => setTimeout(res, 1000));
+    const token = await page.evaluate(() => window.__USER_MANAGER__.getIdToken());
+    const closeCode = await page.evaluate(token =>
+        new Promise<number>(resolve => {
+            const ws = new WebSocket(`ws://localhost:12353/invalid?auth=${token}`);
             ws.onclose = e => resolve(e.code);
-        })
-    );
-    expect(closeCode).toBe(4001);
+        }), token);
+    expect(closeCode).toBe(4002);
 });

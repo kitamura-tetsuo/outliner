@@ -19,7 +19,7 @@ describe("server websocket auth", () => {
         const { server } = startServer(cfg);
         await waitListening(server);
         await new Promise(resolve => {
-            const ws = new WebSocket(`ws://localhost:${cfg.PORT}`);
+            const ws = new WebSocket(`ws://localhost:${cfg.PORT}/projects/testproj`);
             ws.on("close", code => {
                 expect(code).to.equal(4001);
                 resolve();
@@ -33,7 +33,7 @@ describe("server websocket auth", () => {
         const cfg = loadConfig({ PORT: "12348", LOG_LEVEL: "silent" });
         const { server } = startServer(cfg);
         await waitListening(server);
-        const ws = new WebSocket(`ws://localhost:${cfg.PORT}/?auth=token`);
+        const ws = new WebSocket(`ws://localhost:${cfg.PORT}/projects/testproj?auth=token`);
         await once(ws, "open");
         ws.close();
         server.close();
@@ -45,7 +45,7 @@ describe("server websocket auth", () => {
         const { server } = startServer(cfg);
         await waitListening(server);
         await new Promise(resolve => {
-            const ws = new WebSocket(`ws://localhost:${cfg.PORT}/?auth=bad`);
+            const ws = new WebSocket(`ws://localhost:${cfg.PORT}/projects/testproj?auth=bad`);
             ws.on("close", code => {
                 expect(code).to.equal(4001);
                 resolve();
