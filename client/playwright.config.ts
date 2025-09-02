@@ -80,7 +80,7 @@ export default defineConfig({
     testMatch: "**/*.spec.ts",
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
-    retries: (process.env.CI || !isSingleSpecRun) ? 10 : 0,
+    retries: (process.env.CI || !isSingleSpecRun) ? 0 : 0,
     workers: process.env.CI ? 1 : 1,
     maxFailures: process.env.CI ? 1 : 5,
 

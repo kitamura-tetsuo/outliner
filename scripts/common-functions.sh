@@ -344,36 +344,39 @@ EOF
     direct_response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_FUNCTIONS_PORT}/${FIREBASE_PROJECT_ID}/us-central1/adminCheckForContainerUserListing")
     echo "Direct Firebase Functions call returned HTTP status: $direct_response"
   fi
+}
 
-# Start Yjs WebSocket server
+# Start Yjs WebSocket server (auth + persistence)
 start_yjs_server() {
   echo "Starting Yjs WebSocket server on port ${TEST_YJS_PORT}..."
-  cd "${ROOT_DIR}"
-  # Ensure data directory exists for persistence
+  cd "${ROOT_DIR}/server"
   mkdir -p "${ROOT_DIR}/yjs-data"
-  # Use y-websocket CLI via npx with LevelDB persistence if available
-  # YPERSISTENCE enables y-leveldb persistence in y-websocket >= 2.x
-  YPERSISTENCE="${ROOT_DIR}/yjs-data" npx y-websocket --port ${TEST_YJS_PORT} > "${ROOT_DIR}/server/logs/yjs-websocket.log" 2>&1 &
+  # Ensure dependencies
+  if [ ! -d node_modules ]; then
+    echo "Installing server dependencies (npm ci) ..."
+    npm --proxy='' --https-proxy='' ci
+  fi
+  # Build TypeScript and start compiled server to avoid ts-node dependency issues
+  echo "Building server..."
+  npm run build --silent || npm run build
+  echo "Launching compiled server..."
+  npx dotenvx run --env-file=.env.test -- bash -lc "PORT=${TEST_YJS_PORT} LEVELDB_PATH='${ROOT_DIR}/yjs-data' npm start --silent" \
+    </dev/null > "${ROOT_DIR}/server/logs/yjs-websocket.log" 2>&1 &
   local yjs_pid=$!
   echo "Yjs WebSocket server started with PID: ${yjs_pid}"
   cd "${ROOT_DIR}"
 
   # Wait for the Yjs server to be ready
-  if ! wait_for_port ${TEST_YJS_PORT} 30; then
+  if ! wait_for_port ${TEST_YJS_PORT}; then
     echo "Warning: Yjs WebSocket server may not be ready on port ${TEST_YJS_PORT}"
     echo "Last 50 lines of Yjs server log:"
     tail -50 "${ROOT_DIR}/server/logs/yjs-websocket.log" || echo "No Yjs log found"
   fi
 }
 
-}
-
 # Start Tinylicious server
 start_tinylicious() {
-  echo "Starting Tinylicious server on port ${TEST_FLUID_PORT}..."
-  cd "${ROOT_DIR}/client"
-  PORT=${TEST_FLUID_PORT} npx tinylicious > "${ROOT_DIR}/server/logs/tinylicious.log" 2>&1 &
-  cd "${ROOT_DIR}"
+  echo "Tinylicious is disabled on the Yjs branch. Skipping."
 }
 
 # Start API server

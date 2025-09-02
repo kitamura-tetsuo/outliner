@@ -1,7 +1,6 @@
 id: FTR-d67f3a5b
 title: Server health endpoint
 title-ja: サーバーヘルスエンドポイント
-description: Provides an endpoint for server health checks.
 description: Health check endpoint returns OK.
 category: server
 status: implemented

@@ -124,10 +124,8 @@ else
   echo "Starting test servers..."
   echo "Starting Firebase emulator..."
   start_firebase_emulator
-  echo "Starting Tinylicious..."
-  start_tinylicious
-  echo "Starting API server..."
-  start_api_server
+  echo "Starting Yjs server..."
+  start_yjs_server
   echo "Starting SvelteKit server..."
   start_sveltekit_server
 fi
@@ -148,8 +146,8 @@ sleep 10
 
 echo "Available services:"
 echo "- SvelteKit Server: http://localhost:${VITE_PORT}"
-echo "- API Server: http://localhost:${TEST_API_PORT}"
-echo "- Tinylicious: http://localhost:${TEST_FLUID_PORT}"
+echo "- API Server: (disabled; using SvelteKit APIs)"
+echo "- Yjs WebSocket: ws://localhost:${TEST_YJS_PORT}"
 echo "- Firebase Auth: http://localhost:${FIREBASE_AUTH_PORT}"
 echo "- Firebase Firestore: http://localhost:${FIREBASE_FIRESTORE_PORT}"
 echo "- Firebase Functions: http://localhost:${FIREBASE_FUNCTIONS_PORT}"

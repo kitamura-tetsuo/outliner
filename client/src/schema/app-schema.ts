@@ -156,9 +156,8 @@ export class Item {
         return this.comments.updateComment(commentId, text);
     }
 
-    get items(): any {
-        // Array風アクセス可能な Proxy を返す
-        return new Items(this.ydoc, this.tree, this.key).asArrayLike();
+    get items(): Items {
+        return new Items(this.ydoc, this.tree, this.key);
     }
 
     /** 親の子集合（Items）を返す。ルート直下の場合は null */
@@ -335,6 +334,13 @@ export class Project {
         return new Project(doc, tree);
     }
 
+    // Create a Project wrapper from an existing Y.Doc
+    static fromDoc(doc: Y.Doc): Project {
+        const ymap = doc.getMap("orderedTree");
+        const tree = new YTree(ymap);
+        return new Project(doc, tree);
+    }
+
     get title(): string {
         return (this.ydoc.getMap("metadata").get("title") as string) ?? "";
     }
@@ -344,8 +350,8 @@ export class Project {
     }
 
     /** ルート直下のItems（親キー 'root'） */
-    get items(): any {
-        return new Items(this.ydoc, this.tree, "root").asArrayLike();
+    get items(): Items {
+        return new Items(this.ydoc, this.tree, "root");
     }
 
     /** ページ（最上位アイテム）を追加し、textにタイトルを設定 */
