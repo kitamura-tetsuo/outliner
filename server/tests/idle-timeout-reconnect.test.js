@@ -51,16 +51,25 @@ describe("idle timeout", () => {
             WebSocketPolyfill: WebSocket,
         });
         await waitConnected(provider1);
-        doc1.getText("t").insert(0, "hello");
-        await new Promise(r => setTimeout(r, 60));
         const closed = new Promise(resolve => {
             provider1.ws.on("close", code => {
                 expect(code).to.equal(4004);
+                provider1.destroy();
                 resolve();
             });
         });
+        const synced1 = new Promise(resolve => {
+            const handler = state => {
+                if (state) {
+                    provider1.off("synced", handler);
+                    resolve();
+                }
+            };
+            provider1.on("synced", handler);
+        });
+        doc1.getText("t").insert(0, "hello");
+        await synced1;
         await closed;
-        provider1.destroy();
         doc1.destroy();
 
         const doc2 = new Y.Doc();
@@ -69,6 +78,17 @@ describe("idle timeout", () => {
             WebSocketPolyfill: WebSocket,
         });
         await waitConnected(provider2);
+        if (!provider2.synced) {
+            await new Promise(resolve => {
+                const handler = state => {
+                    if (state) {
+                        provider2.off("synced", handler);
+                        resolve();
+                    }
+                };
+                provider2.on("synced", handler);
+            });
+        }
         expect(doc2.getText("t").toString()).to.equal("hello");
         provider2.destroy();
         doc2.destroy();
