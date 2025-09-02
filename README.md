@@ -276,7 +276,7 @@ scripts/run-e2e-progress-for-codex.sh 1
 
 ### ローカルサーバーをまとめて起動する
 
-手元で手動テストを行うときは `scripts/start-all-localhost-servers.sh` を実行します。SvelteKit、API、Tinylicious、Firebase エミュレータがバックグラウンドで起動し、`Ctrl+C` で全て停止できます。
+手元で手動テストを行うときは `scripts/codex-setup.sh` を実行します。SvelteKit、Yjs WebSocket、Firebase エミュレータが起動し、以降のテストが実行可能になります。
 
 ## 機能ドキュメントの集約
 
