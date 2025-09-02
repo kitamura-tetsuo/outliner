@@ -13,7 +13,7 @@ import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import { userManager } from "../auth/UserManager";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
 import { OutlinerViewModel } from "../stores/OutlinerViewModel";
-import { TreeSubscriber } from "../stores/TreeSubscriber";
+import { YjsSubscriber } from "../stores/YjsSubscriber";
 import EditorOverlay from "./EditorOverlay.svelte";
 import OutlinerItem from "./OutlinerItem.svelte";
 
@@ -62,9 +62,8 @@ let dragStartOffset = $state(0);
 let dragCurrentItemId = $state<string | null>(null);
 let dragCurrentOffset = $state(0);
 
-const displayItems = new TreeSubscriber<Items, DisplayItem[]>(
-    pageItem.items as Items,
-    "treeChanged",
+const displayItems = new YjsSubscriber<DisplayItem[]>(
+    pageItem.ydoc,
     () => {
         console.log("OutlinerTree: displayItems transformer called");
         console.log("OutlinerTree: pageItem exists:", !!pageItem);

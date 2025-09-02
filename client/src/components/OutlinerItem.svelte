@@ -11,7 +11,7 @@ import { uploadAttachment } from "../services/attachmentService";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
-import { TreeSubscriber } from "../stores/TreeSubscriber";
+import { YjsSubscriber } from "../stores/YjsSubscriber";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 import ChartPanel from "./ChartPanel.svelte";
 import CommentThread from "./CommentThread.svelte";
@@ -61,9 +61,8 @@ let showComments = $state(false);
 
 let item = model.original;
 
-const aliasTargetIdSub = new TreeSubscriber(
-    item,
-    "nodeChanged",
+const aliasTargetIdSub = new YjsSubscriber(
+    item.ydoc,
     () => (item as any).aliasTargetId,
     value => {
         (item as any).aliasTargetId = value;
@@ -79,9 +78,8 @@ $effect(() => {
 let aliasTarget = $state<Item | undefined>(undefined);
 
 let attachments = $state<string[]>([...(item.attachments as any)]);
-const attachmentsSub = new TreeSubscriber(
-    item,
-    "nodeChanged",
+const attachmentsSub = new YjsSubscriber(
+    item.ydoc,
     () => item.attachments,
 );
 
@@ -90,9 +88,8 @@ $effect(() => {
 });
 let aliasPath = $state<Item[]>([]);
 
-const aliasTargetSub = new TreeSubscriber<Item, Item | undefined>(
-    generalStore.currentPage,
-    "nodeChanged",
+const aliasTargetSub = new YjsSubscriber<Item | undefined>(
+    generalStore.currentPage.ydoc,
     () => {
         if (!aliasTargetId) return undefined;
         return findItem(generalStore.currentPage, aliasTargetId);
@@ -150,12 +147,11 @@ function handleComponentTypeChange(newType: string) {
     }
 }
 
-const text = new TreeSubscriber(
-    item,
-    "nodeChanged",
-    () => item.text,
+const text = new YjsSubscriber(
+    item.ydoc,
+    () => item.text.toString(),
     value => {
-        item.text = value;
+        item.updateText(value);
     },
 );
 
