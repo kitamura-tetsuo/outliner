@@ -167,14 +167,15 @@ try {
 
 ## ブラウザでのデバッグ
 
-ブラウザのコンソールからもSharedTreeのデータを取得できます。
+ブラウザのコンソールからもYjsツリーのデータを取得できます。
 
 ```javascript
-// コンソールからSharedTreeのデータを取得
-const treeData = window.getFluidTreeDebugData();
+// コンソールからツリーデータを取得
+const treeData = window.getYjsTreeDebugData?.() ?? window.getFluidTreeDebugData?.();
 console.log(treeData);
 
 // 特定のパスのデータを取得
-const firstItemText = window.getFluidTreePathData("items.0.text");
+const firstItemText = window.getYjsTreePathData?.("items.0.text")
+    ?? window.getFluidTreePathData?.("items.0.text");
 console.log(firstItemText);
 ```

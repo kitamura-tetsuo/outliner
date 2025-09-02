@@ -66,6 +66,9 @@ export async function pathValidationExample(page: Page): Promise<void> {
 
     // 存在しないパスの検証
     const nonExistentPath = await page.evaluate(() => {
+        if (typeof window.getYjsTreePathData === "function") {
+            return window.getYjsTreePathData("items.0.nonexistent");
+        }
         if (typeof window.getFluidTreePathData === "function") {
             return window.getFluidTreePathData("items.0.nonexistent");
         }

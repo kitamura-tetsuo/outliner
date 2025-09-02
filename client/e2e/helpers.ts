@@ -1,6 +1,27 @@
 import type { Page } from "@playwright/test";
 
 /**
+ * 指定数のアウトライナーアイテムが表示されるまで待機
+ */
+export async function waitForOutlinerItems(page: Page, count: number, timeout = 10000): Promise<void> {
+    await page.waitForFunction(
+        (expected) => document.querySelectorAll(".outliner-item").length >= expected,
+        count,
+        { timeout },
+    );
+}
+
+/**
+ * アウトライナーアイテム数が不足していれば追加描画を待機
+ */
+export async function ensureOutlinerItemCount(page: Page, count: number, timeout = 10000): Promise<void> {
+    const current = await page.locator(".outliner-item").count();
+    if (current < count) {
+        await waitForOutlinerItems(page, count, timeout);
+    }
+}
+
+/**
  * カーソルが表示されるのを待つ
  * @param page Playwrightのページオブジェクト
  * @param timeout タイムアウト時間（ミリ秒）
@@ -54,6 +75,8 @@ declare global {
         mockFluidToken?: { token: string; user: { id: string; name: string; }; };
         getFluidTreeDebugData?: () => any;
         getFluidTreePathData?: (path?: string) => any;
+        getYjsTreeDebugData?: () => any;
+        getYjsTreePathData?: (path?: string) => any;
         getCursorDebugData?: () => any;
         getCursorPathData?: (path?: string) => any;
         fluidServerPort?: number;

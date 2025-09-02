@@ -6,6 +6,7 @@
 import { goto } from "$app/navigation";
 import { userManager } from "../auth/UserManager";
 import * as fluidService from "../lib/fluidService.svelte";
+import { Items } from "../schema/app-schema";
 import * as snapshotService from "../services/snapshotService";
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { getLogger } from "./logger";
@@ -34,6 +35,8 @@ declare global {
     interface Window {
         getFluidTreeDebugData?: () => any;
         getFluidTreePathData?: (path?: string) => any;
+        getYjsTreeDebugData?: () => any;
+        getYjsTreePathData?: (path?: string) => any;
         __FLUID_SERVICE__?: typeof fluidService;
         __FLUID_STORE__?: typeof fluidStore;
         __USER_MANAGER__?: typeof userManager;
@@ -68,6 +71,34 @@ if (process.env.NODE_ENV === "test") {
                 );
             }
             return fluidStore.fluidClient.getTreeAsJson(path);
+        };
+
+        // Yjs tree structure debug helpers
+        window.getYjsTreeDebugData = function() {
+            const fc = fluidStore.fluidClient;
+            if (!fc?.project) {
+                throw new Error("FluidClient project not initialized");
+            }
+            const project = fc.project;
+            const toPlain = (item: any): any => {
+                const children = new Items(project.ydoc, project.tree, item.key);
+                return {
+                    id: item.id,
+                    text: item.text?.toString() ?? "",
+                    items: [...children].map(child => toPlain(child)),
+                };
+            };
+            const rootItems = project.items as Items;
+            return {
+                itemCount: rootItems.length,
+                items: [...rootItems].map(item => toPlain(item)),
+            };
+        };
+
+        window.getYjsTreePathData = function(path?: string) {
+            const data = window.getYjsTreeDebugData();
+            if (!path) return data;
+            return path.split(".").reduce((prev: any, curr: string) => prev?.[curr], data);
         };
 
         logger.debug("Global debug functions initialized");

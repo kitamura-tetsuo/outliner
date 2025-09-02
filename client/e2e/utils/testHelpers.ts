@@ -409,6 +409,10 @@ export class TestHelpers {
                     return { error: error instanceof Error ? error.message : "Unknown error" };
                 }
             };
+
+            // Yjs helpers mirror the Fluid versions
+            window.getYjsTreeDebugData = window.getFluidTreeDebugData;
+            window.getYjsTreePathData = window.getFluidTreePathData;
         });
     }
 

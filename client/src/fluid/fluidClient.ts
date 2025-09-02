@@ -289,7 +289,7 @@ export class FluidClient {
 
         const result: ItemData = {
             id: item.id,
-            text: item.text,
+            text: item.text?.toString() ?? "",
             author: item.author,
             votes: [...item.votes],
             created: item.created,

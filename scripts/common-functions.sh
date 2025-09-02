@@ -409,7 +409,9 @@ start_yjs_server() {
   fi
   # Build TypeScript and start compiled server to avoid ts-node dependency issues
   echo "Building server..."
-  npm run build --silent || npm run build
+  if npm run | grep -q " build"; then
+    npm run build --silent || npm run build
+  fi
   echo "Launching compiled server..."
   npx dotenvx run --env-file=.env.test -- bash -lc "PORT=${TEST_YJS_PORT} LEVELDB_PATH='${ROOT_DIR}/yjs-data' npm start --silent" \
     </dev/null > "${ROOT_DIR}/server/logs/yjs-websocket.log" 2>&1 &

@@ -16,4 +16,6 @@ interface Window {
     _alertMessage?: string;
     __FLUID_CLIENT__?: any;
     getFluidTreeDebugData?: () => any;
+    getYjsTreeDebugData?: () => any;
+    getYjsTreePathData?: (path?: string) => any;
 }
