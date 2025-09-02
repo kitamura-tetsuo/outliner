@@ -2,5 +2,9 @@ id: FTR-db5e7a9c
 slug: db5
 title: LevelDB persistence
 title-ja: LevelDB 永続化
+description: Persistence layer using LevelDB for local data storage.
+category: core
+status: implemented
+components: []
 tests:
-  - client/e2e/new/db5-leveldb-persistence-db5e7a9c.spec.ts
+- client/e2e/new/db5-leveldb-persistence-db5e7a9c.spec.ts
