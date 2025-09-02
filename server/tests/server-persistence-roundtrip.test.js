@@ -51,6 +51,7 @@ describe("server integration: persistence and sync", () => {
         provider1.destroy();
         doc1.destroy();
         server.close();
+        await once(server, "close"); // ensure server fully closed before restart
 
         ({ server } = startServer(cfg));
         await waitListening(server);
