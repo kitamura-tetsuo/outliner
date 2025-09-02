@@ -44,7 +44,7 @@ cp .env.example .env
 2. 「Your apps」セクションで「Add app」をクリック（Webアプリ）
 3. アプリを登録し、Firebaseの設定情報を取得
 4. クライアントプロジェクトの `.env` ファイルに以下の情報を設定:
- 
+
 ## systemd でのデプロイ
 
 1. 専用ユーザーとディレクトリを作成:
@@ -72,6 +72,7 @@ sudo systemctl enable --now outliner.service
 ```
 
 このユニットは `Restart=on-failure` で自動再起動し、`NoNewPrivileges` や `ProtectSystem=strict` などのハードニングを有効化しています。
+
 ## systemd でのデプロイ
 
 1. 専用ユーザーとディレクトリを作成:
@@ -101,6 +102,7 @@ sudo systemctl enable --now outliner.service
 このユニットは `Restart=on-failure` で自動再起動し、`NoNewPrivileges` や `ProtectSystem=strict` などのハードニングを有効化しています。
 
 >>>>>>> origin/550-1-server-bootstrap-y-websocket-server-typescript-with-env-config
+
 ## Docker Quickstart
 
 ```bash
@@ -109,7 +111,7 @@ docker compose up --build
 ```
 
 Expected output includes the y-websocket server listening log and a Cloudflare Tunnel URL for the configured hostname.
- 
+
 ## Cloudflare Tunnel Setup
 
 1. Install and log in to Cloudflare Tunnel:

@@ -20,7 +20,9 @@ import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth";
 
 export function startServer(config: Config, logger = defaultLogger, autoReady = true) {
     let isReady = false;
-    const markReady = () => { isReady = true; };
+    const markReady = () => {
+        isReady = true;
+    };
     const ipCounts = new Map<string, number>();
     const roomCounts = new Map<string, number>();
     let totalSockets = 0;
@@ -62,7 +64,7 @@ export function startServer(config: Config, logger = defaultLogger, autoReady = 
     });
     const wss = new WebSocketServer({ server });
     const persistence = createPersistence(config.LEVELDB_PATH);
-    if (autoReady) { markReady(); }
+    if (autoReady) markReady();
 
     setInterval(() => {
         logTotalSize(persistence, logger).catch(() => undefined);
