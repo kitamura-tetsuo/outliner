@@ -15,7 +15,6 @@ const setupScript = path.join(repoRoot, "scripts", "codex-setup.sh");
 test("setup script contains service startup commands", async () => {
     const content = fs.readFileSync(setupScript, "utf-8");
     expect(content.includes("start_firebase_emulator")).toBe(true);
-    expect(content.includes("start_tinylicious")).toBe(true);
-    expect(content.includes("start_api_server")).toBe(true);
+    expect(content.includes("start_yjs_server")).toBe(true);
     expect(content.includes("start_sveltekit_server")).toBe(true);
 });

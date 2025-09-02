@@ -2,6 +2,10 @@
 
 Outlinerは、Azure Fluid Relayを使用したリアルタイム共同編集アプリケーションです。
 
+## Yjs migration
+
+See [docs/fluid_to_yjs.md](docs/fluid_to_yjs.md) for the mapping between Fluid and Yjs data structures and current migration status.
+
 ## AI統合機能
 
 ### 自動PR-Issue連携機能

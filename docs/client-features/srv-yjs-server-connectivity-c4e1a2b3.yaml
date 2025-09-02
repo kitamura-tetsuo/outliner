@@ -1,0 +1,8 @@
+id: SRV-c4e1a2b3
+title: Yjs server accepts WebSocket connection
+title-ja: YjsサーバーがWebSocket接続を受け付ける
+category: server
+status: experimental
+components: []
+tests:
+- client/e2e/server/srv-yjs-server-connectivity-c4e1a2b3.spec.ts

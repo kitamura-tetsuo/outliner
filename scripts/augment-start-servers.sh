@@ -6,6 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -euo pipefail
 
+# Load common functions for server startup
+source "${SCRIPT_DIR}/common-functions.sh"
+
 # Error handling
 trap 'echo "Error occurred at line $LINENO. Exit code: $?" >&2' ERR
 
@@ -13,7 +16,7 @@ echo "=== Augment Test Servers Startup ==="
 echo "ROOT_DIR: ${ROOT_DIR}"
 
 # ポート設定
-TEST_FLUID_PORT=7092
+TEST_YJS_PORT=7092
 TEST_API_PORT=7091
 VITE_PORT=7090
 FIREBASE_AUTH_PORT=59099
@@ -27,53 +30,8 @@ export NODE_ENV=test
 export TEST_ENV=localhost
 export FIREBASE_PROJECT_ID
 export VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
-
-# ポートが使用中かチェック
-check_port() {
-    local port="$1"
-    if lsof -i ":${port}" >/dev/null 2>&1; then
-        return 0  # ポートが使用中
-    else
-        return 1  # ポートが空いている
-    fi
-}
-
-# ポートの待機
-wait_for_port() {
-    local port="$1"
-    local timeout="${2:-60}"
-    local count=0
-    
-    echo "Waiting for port ${port}..."
-    while [ $count -lt $timeout ]; do
-        if nc -z localhost "${port}" >/dev/null 2>&1; then
-            echo "Port ${port} is ready"
-            return 0
-        fi
-        sleep 1
-        count=$((count + 1))
-        if [ $((count % 10)) -eq 0 ]; then
-            echo "Still waiting for port ${port}... (${count}/${timeout})"
-        fi
-    done
-    
-    echo "Timeout waiting for port ${port}"
-    return 1
-}
-
-# プロセス終了
-kill_port_processes() {
-    local ports=(${TEST_FLUID_PORT} ${TEST_API_PORT} ${VITE_PORT} ${FIREBASE_AUTH_PORT} ${FIREBASE_FIRESTORE_PORT} ${FIREBASE_FUNCTIONS_PORT} ${FIREBASE_HOSTING_PORT})
-    
-    echo "Stopping existing processes..."
-    for port in "${ports[@]}"; do
-        if check_port ${port}; then
-            echo "Killing process on port ${port}..."
-            lsof -ti ":${port}" | xargs kill -9 2>/dev/null || true
-            sleep 1
-        fi
-    done
-}
+export TEST_YJS_PORT
+export VITE_YJS_PORT=${TEST_YJS_PORT}
 
 # Firebase emulator起動
 start_firebase_emulator() {
@@ -98,19 +56,6 @@ start_firebase_emulator() {
     fi
 }
 
-# Tinylicious起動
-start_tinylicious() {
-    echo "Starting Tinylicious server on port ${TEST_FLUID_PORT}..."
-    cd "${ROOT_DIR}/client"
-    PORT=${TEST_FLUID_PORT} npx tinylicious > "${ROOT_DIR}/server/logs/tinylicious.log" 2>&1 &
-    local tinylicious_pid=$!
-    echo "Tinylicious started with PID: ${tinylicious_pid}"
-    cd "${ROOT_DIR}"
-    
-    if ! wait_for_port ${TEST_FLUID_PORT} 30; then
-        echo "Warning: Tinylicious may not be ready"
-    fi
-}
 
 # API server起動
 start_api_server() {
@@ -174,7 +119,7 @@ check_servers() {
     local services=(
         "SvelteKit:${VITE_PORT}"
         "API:${TEST_API_PORT}"
-        "Tinylicious:${TEST_FLUID_PORT}"
+        "Yjs:${TEST_YJS_PORT}"
         "Firebase Auth:${FIREBASE_AUTH_PORT}"
         "Firebase Firestore:${FIREBASE_FIRESTORE_PORT}"
         "Firebase Functions:${FIREBASE_FUNCTIONS_PORT}"
@@ -194,7 +139,7 @@ check_servers() {
 # メイン実行
 main() {
     # 既存プロセスの停止
-    kill_port_processes
+    kill_ports
     sleep 2
     
     # ログディレクトリの作成
@@ -203,7 +148,7 @@ main() {
     # サーバーの起動
     start_firebase_emulator
     sleep 3
-    start_tinylicious
+    start_yjs_server
     sleep 2
     start_api_server
     sleep 2
@@ -218,7 +163,7 @@ main() {
     echo "Available services:"
     echo "- SvelteKit Server: http://localhost:${VITE_PORT}"
     echo "- API Server: http://localhost:${TEST_API_PORT}"
-    echo "- Tinylicious: http://localhost:${TEST_FLUID_PORT}"
+    echo "- Yjs WebSocket: ws://localhost:${TEST_YJS_PORT}"
     echo "- Firebase Auth: http://localhost:${FIREBASE_AUTH_PORT}"
     echo "- Firebase Firestore: http://localhost:${FIREBASE_FIRESTORE_PORT}"
     echo "- Firebase Functions: http://localhost:${FIREBASE_FUNCTIONS_PORT}"
