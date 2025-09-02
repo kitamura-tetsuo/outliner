@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import http from "http";
 import { WebSocketServer } from "ws";
+import { getMetrics, recordMessage } from "./metrics";
 // y-websocket utilities may not export setupWSConnection in all builds
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let setupWSConnection: any;
@@ -14,15 +15,18 @@ import { type Config } from "./config";
 import { logger as defaultLogger } from "./logger";
 import { createPersistence, logTotalSize, warnIfRoomTooLarge } from "./persistence";
 import { parseRoom } from "./room-validator";
+import { addRoomSizeListener, removeRoomSizeListener } from "./update-listeners";
 import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth";
 
 export function startServer(config: Config, logger = defaultLogger, autoReady = true) {
     let isReady = false;
-    const markReady = () => {
-        isReady = true;
-    };
+    const markReady = () => { isReady = true; };
+    const ipCounts = new Map<string, number>();
     const roomCounts = new Map<string, number>();
-    let openSockets = 0;
+    let totalSockets = 0;
+    const allowedOrigins = new Set(
+        config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean),
+    );
     const server = http.createServer((req, res) => {
         if (req.method !== "GET") {
             res.writeHead(405).end();
@@ -42,64 +46,122 @@ export function startServer(config: Config, logger = defaultLogger, autoReady = 
                 return;
             }
             case "/metrics": {
-                const body = JSON.stringify({ sockets: openSockets, rooms: roomCounts.size });
+                const base = getMetrics(wss);
+                const body = JSON.stringify({
+                    ...base,
+                    sockets: wss.clients.size,
+                    rooms: roomCounts.size,
+                });
                 res.writeHead(200, { "Content-Type": "application/json" }).end(body);
                 return;
             }
             default:
                 res.writeHead(404).end();
+                return;
         }
     });
     const wss = new WebSocketServer({ server });
     const persistence = createPersistence(config.LEVELDB_PATH);
-    if (autoReady) {
-        markReady();
-    }
+    if (autoReady) { markReady(); }
 
     setInterval(() => {
         logTotalSize(persistence, logger).catch(() => undefined);
     }, config.LEVELDB_LOG_INTERVAL_MS);
 
     wss.on("connection", async (ws, req) => {
+        const ip = req.socket.remoteAddress ?? "";
+        const origin = req.headers.origin ?? "";
+        if (allowedOrigins.size && !allowedOrigins.has(origin)) {
+            logger.warn({ event: "ws_connection_denied", reason: "invalid_origin", origin });
+            ws.close(4003, "ORIGIN_NOT_ALLOWED");
+            return;
+        }
+        if (totalSockets >= config.MAX_SOCKETS_TOTAL) {
+            logger.warn({ event: "ws_connection_denied", reason: "max_sockets_total" });
+            ws.close(4006, "MAX_SOCKETS_TOTAL");
+            return;
+        }
+        if ((ipCounts.get(ip) ?? 0) >= config.MAX_SOCKETS_PER_IP) {
+            logger.warn({ event: "ws_connection_denied", reason: "max_sockets_ip", ip });
+            ws.close(4006, "MAX_SOCKETS_PER_IP");
+            return;
+        }
         const token = extractAuthToken(req);
         if (!token) {
             logger.warn({ event: "ws_connection_denied", reason: "missing_token" });
             ws.close(4001, "UNAUTHORIZED");
             return;
         }
+        const roomInfo = parseRoom(req.url ?? "/");
+        if (!roomInfo) {
+            logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: req.url });
+            ws.close(4002, "INVALID_ROOM");
+            return;
+        }
+        const docName = roomInfo.page ? `${roomInfo.project}/${roomInfo.page}` : roomInfo.project;
+        if ((roomCounts.get(docName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
+            logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: docName });
+            ws.close(4006, "MAX_SOCKETS_PER_ROOM");
+            return;
+        }
+        totalSockets++;
+        ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
+        roomCounts.set(docName, (roomCounts.get(docName) ?? 0) + 1);
         try {
             const decoded = await verifyIdTokenCached(token);
-            const roomInfo = parseRoom(req.url ?? "/");
-            if (!roomInfo) {
-                logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: req.url });
-                ws.close(4002, "INVALID_ROOM");
-                return;
-            }
-            const docName = roomInfo.page ? `${roomInfo.project}/${roomInfo.page}` : roomInfo.project;
+            let idleTimer = setTimeout(() => {
+                logger.warn({ event: "ws_connection_closed", reason: "idle_timeout" });
+                ws.close(4004, "IDLE_TIMEOUT");
+            }, config.IDLE_TIMEOUT_MS);
+            const resetIdle = () => {
+                clearTimeout(idleTimer);
+                idleTimer = setTimeout(() => {
+                    logger.warn({ event: "ws_connection_closed", reason: "idle_timeout" });
+                    ws.close(4004, "IDLE_TIMEOUT");
+                }, config.IDLE_TIMEOUT_MS);
+            };
+            ws.on("message", data => {
+                resetIdle();
+                let size: number;
+                if (typeof data === "string") {
+                    size = Buffer.byteLength(data);
+                } else if (Buffer.isBuffer(data)) {
+                    size = data.length;
+                } else if (data instanceof ArrayBuffer) {
+                    size = data.byteLength;
+                } else if (Array.isArray(data)) {
+                    size = Buffer.concat(data).length;
+                } else {
+                    size = Buffer.from(data as Uint8Array).length;
+                }
+                if (size > config.MAX_MESSAGE_SIZE_BYTES) {
+                    logger.warn({ event: "ws_connection_closed", reason: "message_too_large", size });
+                    ws.close(4005, "MESSAGE_TOO_LARGE");
+                }
+                recordMessage();
+            });
+            ws.on("close", () => {
+                clearTimeout(idleTimer);
+                totalSockets--;
+                ipCounts.set(ip, (ipCounts.get(ip) ?? 1) - 1);
+                if (ipCounts.get(ip)! <= 0) ipCounts.delete(ip);
+                roomCounts.set(docName, (roomCounts.get(docName) ?? 1) - 1);
+                if (roomCounts.get(docName)! <= 0) roomCounts.delete(docName);
+            });
             logger.info({ event: "ws_connection_accepted", uid: decoded.uid, room: docName });
-            openSockets++;
-            roomCounts.set(docName, (roomCounts.get(docName) ?? 0) + 1);
-            const warn = () =>
-                warnIfRoomTooLarge(
-                    persistence,
-                    docName,
-                    config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024,
-                    logger,
-                );
-            const doc = await persistence.getYDoc(docName);
-            doc.on("update", warn);
-            await warn();
+            const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
+            await addRoomSizeListener(persistence, docName, limitBytes, logger);
+            await warnIfRoomTooLarge(persistence, docName, limitBytes, logger);
             setupWSConnection(ws, req, { docName, persistence });
             ws.on("close", () => {
-                openSockets--;
-                const cnt = (roomCounts.get(docName) ?? 1) - 1;
-                if (cnt <= 0) {
-                    roomCounts.delete(docName);
-                } else {
-                    roomCounts.set(docName, cnt);
-                }
+                removeRoomSizeListener(persistence, docName).catch(() => undefined);
             });
         } catch {
+            totalSockets--;
+            ipCounts.set(ip, (ipCounts.get(ip) ?? 1) - 1);
+            if (ipCounts.get(ip)! <= 0) ipCounts.delete(ip);
+            roomCounts.set(docName, (roomCounts.get(docName) ?? 1) - 1);
+            if (roomCounts.get(docName)! <= 0) roomCounts.delete(docName);
             logger.warn({ event: "ws_connection_denied", reason: "invalid_token" });
             ws.close(4001, "UNAUTHORIZED");
         }
