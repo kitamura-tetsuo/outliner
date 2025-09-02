@@ -105,6 +105,9 @@
         "sql.js": "^1.13.0",
         "uuid": "^11.1.0",
         "wx-svelte-grid": "^2.2.0",
+        "y-indexeddb": "^9.0.12",
+        "y-protocols": "^1.0.6",
+        "y-websocket": "^3.0.0",
         "yjs": "^13.6.27",
         "yjs-orderedtree": "^1.0.1-beta.3"
     }
