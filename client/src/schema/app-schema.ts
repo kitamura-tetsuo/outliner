@@ -68,8 +68,8 @@ export class Comments {
 // 1ノード（アイテム）ラッパ
 export class Item {
     constructor(
-        private readonly ydoc: Y.Doc,
-        private readonly tree: YTree,
+        public readonly ydoc: Y.Doc,
+        public readonly tree: YTree,
         public readonly key: string,
     ) {}
 
@@ -93,9 +93,8 @@ export class Item {
         return this.value.get("lastChanged") ?? 0;
     }
 
-    get text(): string {
-        const t = this.value.get("text") as Y.Text;
-        return t ? t.toString() : "";
+    get text(): Y.Text {
+        return this.value.get("text") as Y.Text;
     }
 
     set text(v: string) {
@@ -179,9 +178,9 @@ export class Item {
 // 子ノード集合ラッパ
 export class Items implements Iterable<Item> {
     constructor(
-        private readonly ydoc: Y.Doc,
-        private readonly tree: YTree,
-        private readonly parentKey: string,
+        public readonly ydoc: Y.Doc,
+        public readonly tree: YTree,
+        public readonly parentKey: string,
     ) {}
 
     private childrenKeys(): string[] {
@@ -295,6 +294,10 @@ export class Project {
     addPage(title: string, author: string) {
         const page = (this.items as Items).addNode(author);
         page.updateText(title);
+        const pages = this.ydoc.getMap<Y.Doc>("pages");
+        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc });
+        pages.set(page.id, subdoc);
+        subdoc.load();
         return page;
     }
 }
