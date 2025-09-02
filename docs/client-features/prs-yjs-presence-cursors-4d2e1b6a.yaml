@@ -1,0 +1,8 @@
+id: PRS-4d2e1b6a
+title: Yjs cursor presence sync
+title-ja: Yjsカーソルプレゼンス同期
+description: Sync cursors via Yjs awareness and show remote avatars.
+category: yjs
+status: experimental
+tests:
+- client/e2e/new/prs-cursor-sync-4d2e1b6a.spec.ts

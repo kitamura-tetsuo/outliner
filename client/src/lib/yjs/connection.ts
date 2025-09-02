@@ -4,6 +4,7 @@ import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
 import { pageRoomPath, projectRoomPath } from "./roomPath";
+import { yjsService } from "./service";
 import { attachTokenRefresh } from "./tokenRefresh";
 
 export type PageConnection = {
@@ -65,8 +66,12 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
             color: undefined,
         });
     }
+    const unbind = yjsService.bindPagePresence(awareness);
     const unsub = attachTokenRefresh(provider);
     const dispose = () => {
+        try {
+            unbind();
+        } catch {}
         try {
             unsub();
         } catch {}
@@ -101,6 +106,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
             color: undefined,
         });
     }
+    const unbind = yjsService.bindProjectPresence(awareness);
 
     // Refresh auth param on token refresh
     const unsub = attachTokenRefresh(provider);
@@ -119,6 +125,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     });
 
     const dispose = () => {
+        try {
+            unbind();
+        } catch {}
         try {
             unsub();
         } catch {}

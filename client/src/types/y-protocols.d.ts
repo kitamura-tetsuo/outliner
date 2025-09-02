@@ -5,5 +5,6 @@ declare module "y-protocols/awareness" {
         setLocalStateField(field: string, value: any): void;
         on(event: string, cb: (...args: any[]) => void): void;
         off(event: string, cb: (...args: any[]) => void): void;
+        getStates(): Map<number, any>;
     }
 }

@@ -2,6 +2,7 @@
 import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
+import { presenceStore } from '../stores/PresenceStore.svelte';
 
 // store API (関数のみ)
 const { stopCursorBlink } = store;
@@ -951,7 +952,7 @@ function handlePaste(event: ClipboardEvent) {
                     left: {cursorPos.left}px;
                     top: {cursorPos.top}px;
                     height: {isPageTitle ? '1.5em' : positionMap[cursor.itemId]?.lineHeight || '1.2em'};
-                    background-color: {cursor.color || '#0078d7'};
+                    background-color: {cursor.color || presenceStore.users[cursor.userId || '']?.color || '#0078d7'};
                     pointer-events: none;
                 "
                 title={cursor.userName || ''}
