@@ -12,5 +12,8 @@ const ConfigSchema = z.object({
 export type Config = z.infer<typeof ConfigSchema>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+    if (env.YJS_DATA_DIR && !env.LEVELDB_PATH) {
+        env.LEVELDB_PATH = env.YJS_DATA_DIR;
+    }
     return ConfigSchema.parse(env);
 }
