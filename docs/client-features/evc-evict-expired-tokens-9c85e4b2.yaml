@@ -1,6 +1,6 @@
 id: EVC-9c85e4b2
 title: Evict expired tokens from WebSocket auth cache
 title-ja: WebSocket認証キャッシュから期限切れトークンを削除
-status: proposed
+status: implemented
 tests:
 - server/tests/websocket-auth.test.js::removes expired tokens from cache
