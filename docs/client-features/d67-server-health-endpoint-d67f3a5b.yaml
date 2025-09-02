@@ -1,5 +1,8 @@
 id: FTR-d67f3a5b
 title: Server health endpoint
 title-ja: サーバーヘルスエンドポイント
+description: Health check endpoint returns OK.
+category: server
+status: implemented
 tests:
 - client/e2e/d67-server-health-endpoint-d67f3a5b.spec.ts
