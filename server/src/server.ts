@@ -1,5 +1,6 @@
 import http from "http";
 import { WebSocketServer } from "ws";
+import { getMetrics, recordMessage } from "./metrics";
 // y-websocket utilities may not export setupWSConnection in all builds
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let setupWSConnection: any;
@@ -17,7 +18,12 @@ import { addRoomSizeListener, removeRoomSizeListener } from "./update-listeners"
 import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth";
 
 export function startServer(config: Config, logger = defaultLogger) {
-    const server = http.createServer((_req, res) => {
+    const server = http.createServer((req, res) => {
+        if (req.url === "/metrics") {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify(getMetrics(wss)));
+            return;
+        }
         res.writeHead(200, { "Content-Type": "text/plain" });
         res.end("ok");
     });
@@ -49,6 +55,7 @@ export function startServer(config: Config, logger = defaultLogger) {
             await addRoomSizeListener(persistence, docName, limitBytes, logger);
             await warnIfRoomTooLarge(persistence, docName, limitBytes, logger);
             setupWSConnection(ws, req, { docName, persistence });
+            ws.on("message", () => recordMessage());
             ws.on("close", () => {
                 removeRoomSizeListener(persistence, docName).catch(() => undefined);
             });
