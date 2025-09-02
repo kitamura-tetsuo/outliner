@@ -8,9 +8,9 @@ import { getLogger } from "../lib/logger";
 import {
     Item,
     Items,
-} from "../schema/app-schema";
+} from "../schema/yjs-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
-import { fluidStore } from "../stores/fluidStore.svelte";
+import { userManager } from "../auth/UserManager";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
 import { OutlinerViewModel } from "../stores/OutlinerViewModel";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
@@ -43,7 +43,7 @@ interface Props {
 
 let { pageItem, projectName, pageName, isReadOnly = false, onEdit }: Props = $props();
 
-let currentUser = $derived(fluidStore.currentUser?.id ?? 'anonymous');
+let currentUser = $derived(userManager.getCurrentUser()?.id ?? 'anonymous');
 
 // ビューストアを作成
 const viewModel = new OutlinerViewModel();
@@ -135,9 +135,9 @@ function handleItemResize(event: CustomEvent) {
 }
 
 onMount(() => {
-    const client = fluidStore.fluidClient;
-    if (client?.currentUser) {
-        currentUser = client.currentUser.id;
+    const user = userManager.getCurrentUser();
+    if (user) {
+        currentUser = user.id;
     }
 
     // onEdit コールバックをストアに設定
