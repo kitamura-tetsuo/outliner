@@ -121,6 +121,14 @@ else
   fi
 fi
 
+# Ensure essential client CLI tools are available
+cd "${ROOT_DIR}/client"
+if [ ! -f node_modules/.bin/paraglide-js ] || [ ! -f node_modules/.bin/dotenvx ]; then
+  echo "Missing client CLI tools; reinstalling client dependencies..."
+  npm --proxy='' --https-proxy='' ci
+fi
+cd "${ROOT_DIR}"
+
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
 kill_ports || echo "Warning: Some ports could not be killed"

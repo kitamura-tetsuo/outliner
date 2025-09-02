@@ -1,0 +1,6 @@
+id: COL-a8219d57
+title: Yjs collaboration typing sync
+title-ja: Yjs コラボレーションのタイピング同期
+status: experimental
+tests:
+- client/e2e/new/col-typing-sync-a8219d57.spec.ts

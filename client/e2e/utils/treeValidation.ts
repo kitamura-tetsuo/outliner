@@ -11,7 +11,10 @@ export class TreeValidator {
     static async getTreeData(page: Page): Promise<any> {
         return page.evaluate(() => {
             // デバッグ関数の存在確認
-            if (typeof window.getFluidTreeDebugData !== "function") {
+            if (
+                typeof window.getYjsTreeDebugData !== "function"
+                && typeof window.getFluidTreeDebugData !== "function"
+            ) {
                 console.warn("getFluidTreeDebugData function is not available");
                 // フォールバック: AppStoreから基本的なデータを取得
                 const appStore = (window as any).appStore;
@@ -45,6 +48,9 @@ export class TreeValidator {
                 throw new Error("FluidClient is not initialized and no fallback data found");
             }
 
+            if (typeof window.getYjsTreeDebugData === "function") {
+                return window.getYjsTreeDebugData();
+            }
             return window.getFluidTreeDebugData();
         });
     }
@@ -76,7 +82,10 @@ export class TreeValidator {
     static async getTreePathData(page: Page, path?: string): Promise<any> {
         return page.evaluate(async path => {
             // デバッグ関数の存在確認
-            if (typeof window.getFluidTreePathData !== "function") {
+            if (
+                typeof window.getYjsTreePathData !== "function"
+                && typeof window.getFluidTreePathData !== "function"
+            ) {
                 console.warn("getFluidTreePathData function is not available");
                 // フォールバック: 基本的なパス解決を実装
                 if (!path) return undefined;
@@ -138,6 +147,9 @@ export class TreeValidator {
                 return undefined;
             }
 
+            if (typeof window.getYjsTreePathData === "function") {
+                return window.getYjsTreePathData(path);
+            }
             return window.getFluidTreePathData(path);
         }, path);
     }
@@ -382,6 +394,8 @@ declare global {
         mockUser?: { id: string; name: string; email?: string; };
         mockFluidToken?: { token: string; user: { id: string; name: string; }; };
         getFluidTreeDebugData?: () => any;
+        getYjsTreeDebugData?: () => any;
+        getYjsTreePathData?: (path?: string) => any;
         fluidServerPort?: number;
     }
 }
