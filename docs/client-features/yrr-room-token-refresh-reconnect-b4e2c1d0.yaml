@@ -1,0 +1,11 @@
+id: YRR-b4e2c1d0
+title: YJS token refresh reconnect
+description: Ensures YJS connections refresh auth tokens and reconnect without manual reload.
+category: yjs
+status: implemented
+acceptance:
+- Token expiry mid-session recovers without manual reload
+- Room paths are generated consistently across client
+tests:
+- client/e2e/yjs/yrr-token-refresh-reconnect-b4e2c1d0.spec.ts
+title-ja: YJSトークン更新後の自動再接続
