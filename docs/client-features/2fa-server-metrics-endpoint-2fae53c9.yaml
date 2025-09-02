@@ -1,0 +1,8 @@
+id: FTR-2fae53c9
+title: Server metrics endpoint
+title-ja: サーバーメトリクスエンドポイント
+description: Exposes connection and message rate metrics.
+category: server
+status: implemented
+tests:
+- client/e2e/2fa-server-metrics-endpoint-2fae53c9.spec.ts
