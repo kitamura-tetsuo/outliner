@@ -1,6 +1,7 @@
 id: FTR-db5e7a9c
 slug: db5
 title: LevelDB persistence
+status: implemented
 title-ja: LevelDB 永続化
 tests:
-  - client/e2e/new/db5-leveldb-persistence-db5e7a9c.spec.ts
+- client/e2e/new/db5-leveldb-persistence-db5e7a9c.spec.ts
