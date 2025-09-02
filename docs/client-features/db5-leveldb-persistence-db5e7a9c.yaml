@@ -3,8 +3,9 @@ slug: db5
 title: LevelDB persistence
 status: implemented
 title-ja: LevelDB 永続化
+category: server
+status: implemented
 description: Persistence layer using LevelDB for local data storage.
 components: []
-category: server
 tests:
 - client/e2e/new/db5-leveldb-persistence-db5e7a9c.spec.ts
