@@ -1,0 +1,11 @@
+id: FTR-dc38b81a
+slug: srv
+title: Server backup script creates timestamped archive
+title-ja: サーバーバックアップスクリプトがタイムスタンプ付きアーカイブを作成する
+description: Nightly script archives server data and uploads via rclone with retention.
+category: server
+status: implemented
+components:
+- server/scripts/rclone-backup.js
+tests:
+- client/e2e/core/server-backup-script-runs-dc38b81a.spec.ts

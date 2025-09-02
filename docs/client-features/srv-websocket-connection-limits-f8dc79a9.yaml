@@ -1,0 +1,11 @@
+id: SRV-f8dc79a9
+title: WebSocket connection limits
+title-ja: WebSocket接続制限
+category: server
+status: experimental
+components:
+- server/src/server.ts
+tests:
+- client/e2e/server/srv-websocket-connection-limits-f8dc79a9.spec.ts
+- server/tests/connection-limits.test.js
+- server/tests/idle-timeout-reconnect.test.js

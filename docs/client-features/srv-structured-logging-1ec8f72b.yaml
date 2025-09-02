@@ -1,0 +1,10 @@
+id: FTR-1ec8f72b
+title: Structured logging with redaction
+title-ja: 構造化ログとマスキング
+description: Server emits JSON logs and redacts sensitive data; Playwright tests import the compiled logger to verify redaction.
+category: server
+status: implemented
+tests:
+- client/e2e/utils/srv-structured-logging-1ec8f72b.spec.ts
+- server/tests/logger-redaction.test.js
+- server/tests/server-logging.test.js
