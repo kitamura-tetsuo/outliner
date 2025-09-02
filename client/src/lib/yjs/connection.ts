@@ -6,10 +6,18 @@ import { userManager } from "../../auth/UserManager";
 import { pageRoomPath, projectRoomPath } from "./roomPath";
 import { attachTokenRefresh } from "./tokenRefresh";
 
+export type PageConnection = {
+    doc: Y.Doc;
+    provider: WebsocketProvider;
+    awareness: Awareness;
+    dispose: () => void;
+};
+
 export type ProjectConnection = {
     doc: Y.Doc;
     provider: WebsocketProvider;
     awareness: Awareness;
+    getPageConnection: (pageId: string) => PageConnection | undefined;
     dispose: () => void;
 };
 
@@ -34,6 +42,39 @@ async function getFreshIdToken(): Promise<string> {
     const token = await auth.currentUser?.getIdToken(true);
     if (!token) throw new Error("No Firebase ID token available");
     return token;
+}
+
+export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: string): Promise<PageConnection> {
+    const wsBase = getWsBase();
+    const room = pageRoomPath(projectId, pageId);
+    new IndexeddbPersistence(room, doc);
+    let token = "";
+    try {
+        token = await getFreshIdToken();
+    } catch {}
+    const provider = new WebsocketProvider(wsBase, room, doc, {
+        params: token ? { auth: token } : undefined,
+        connect: !!token,
+    });
+    const awareness = provider.awareness;
+    const current = userManager.getCurrentUser();
+    if (current) {
+        awareness.setLocalStateField("user", {
+            userId: current.id,
+            name: current.name,
+            color: undefined,
+        });
+    }
+    const unsub = attachTokenRefresh(provider);
+    const dispose = () => {
+        try {
+            unsub();
+        } catch {}
+        try {
+            provider.destroy();
+        } catch {}
+    };
+    return { doc, provider, awareness, dispose };
 }
 
 export async function createProjectConnection(projectId: string): Promise<ProjectConnection> {
@@ -64,6 +105,19 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // Refresh auth param on token refresh
     const unsub = attachTokenRefresh(provider);
 
+    const pages = new Map<string, PageConnection>();
+
+    doc.on("subdoc", (evt: any) => {
+        evt.added.forEach((s: Y.Doc) => {
+            void connectPageDoc(s, projectId, s.guid).then(c => pages.set(s.guid, c));
+        });
+        evt.removed.forEach((s: Y.Doc) => {
+            const c = pages.get(s.guid);
+            c?.dispose();
+            pages.delete(s.guid);
+        });
+    });
+
     const dispose = () => {
         try {
             unsub();
@@ -71,12 +125,17 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         try {
             provider.destroy();
         } catch {}
+        pages.forEach(p => {
+            try {
+                p.dispose();
+            } catch {}
+        });
         try {
             doc.destroy();
         } catch {}
     };
 
-    return { doc, provider, awareness, dispose };
+    return { doc, provider, awareness, getPageConnection: id => pages.get(id), dispose };
 }
 
 export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<{
