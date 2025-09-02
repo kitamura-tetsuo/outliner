@@ -1,0 +1,10 @@
+id: SRV-fd3a7b21
+title: WebSocket client synchronization
+title-ja: WebSocketクライアント間の同期
+category: server
+status: experimental
+components:
+- server/src/server.ts
+tests:
+- client/e2e/server/srv-websocket-sync-updates-fd3a7b21.spec.ts
+- server/tests/server-persistence-roundtrip.test.js
