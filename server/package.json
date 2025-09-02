@@ -15,7 +15,7 @@
     },
     "description": "Authentication server for Fluid Outliner app",
     "devDependencies": {
-        "chai": "^5.2.1",
+        "chai": "^6.0.1",
         "dotenv": "^17.2.0",
         "jest": "^30.0.5",
         "mocha": "^11.7.1",
