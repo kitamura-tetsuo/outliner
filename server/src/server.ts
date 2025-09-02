@@ -57,23 +57,23 @@ export function startServer(config: Config, logger = defaultLogger) {
             ws.close(4001, "UNAUTHORIZED");
             return;
         }
+        const roomInfo = parseRoom(req.url ?? "/");
+        if (!roomInfo) {
+            logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: req.url });
+            ws.close(4002, "INVALID_ROOM");
+            return;
+        }
+        const docName = roomInfo.page ? `${roomInfo.project}/${roomInfo.page}` : roomInfo.project;
+        if ((roomCounts.get(docName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
+            logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: docName });
+            ws.close(4006, "MAX_SOCKETS_PER_ROOM");
+            return;
+        }
+        totalSockets++;
+        ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
+        roomCounts.set(docName, (roomCounts.get(docName) ?? 0) + 1);
         try {
             const decoded = await verifyIdTokenCached(token);
-            const roomInfo = parseRoom(req.url ?? "/");
-            if (!roomInfo) {
-                logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: req.url });
-                ws.close(4002, "INVALID_ROOM");
-                return;
-            }
-            const docName = roomInfo.page ? `${roomInfo.project}/${roomInfo.page}` : roomInfo.project;
-            if ((roomCounts.get(docName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
-                logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: docName });
-                ws.close(4006, "MAX_SOCKETS_PER_ROOM");
-                return;
-            }
-            totalSockets++;
-            ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
-            roomCounts.set(docName, (roomCounts.get(docName) ?? 0) + 1);
             let idleTimer = setTimeout(() => {
                 logger.warn({ event: "ws_connection_closed", reason: "idle_timeout" });
                 ws.close(4004, "IDLE_TIMEOUT");
@@ -125,6 +125,11 @@ export function startServer(config: Config, logger = defaultLogger) {
             await warn();
             setupWSConnection(ws, req, { docName, persistence });
         } catch {
+            totalSockets--;
+            ipCounts.set(ip, (ipCounts.get(ip) ?? 1) - 1);
+            if (ipCounts.get(ip)! <= 0) ipCounts.delete(ip);
+            roomCounts.set(docName, (roomCounts.get(docName) ?? 1) - 1);
+            if (roomCounts.get(docName)! <= 0) roomCounts.delete(docName);
             logger.warn({ event: "ws_connection_denied", reason: "invalid_token" });
             ws.close(4001, "UNAUTHORIZED");
         }
