@@ -1,3 +1,4 @@
+import admin from "firebase-admin";
 import http from "http";
 import { WebSocketServer } from "ws";
 import { getMetrics, recordMessage } from "./metrics";
@@ -17,24 +18,51 @@ import { parseRoom } from "./room-validator";
 import { addRoomSizeListener, removeRoomSizeListener } from "./update-listeners";
 import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth";
 
-export function startServer(config: Config, logger = defaultLogger) {
-    const server = http.createServer((req, res) => {
-        if (req.url === "/metrics") {
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify(getMetrics(wss)));
-            return;
-        }
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        res.end("ok");
-    });
-    const wss = new WebSocketServer({ server });
-    const persistence = createPersistence(config.LEVELDB_PATH);
+export function startServer(config: Config, logger = defaultLogger, autoReady = true) {
+    let isReady = false;
+    const markReady = () => { isReady = true; };
     const ipCounts = new Map<string, number>();
     const roomCounts = new Map<string, number>();
     let totalSockets = 0;
     const allowedOrigins = new Set(
         config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean),
     );
+    const server = http.createServer((req, res) => {
+        if (req.method !== "GET") {
+            res.writeHead(405).end();
+            return;
+        }
+        switch (req.url) {
+            case "/livez": {
+                res.writeHead(200).end("OK");
+                return;
+            }
+            case "/readyz": {
+                if (isReady && admin.apps.length > 0) {
+                    res.writeHead(200).end("READY");
+                } else {
+                    res.writeHead(503).end("NOT_READY");
+                }
+                return;
+            }
+            case "/metrics": {
+                const base = getMetrics(wss);
+                const body = JSON.stringify({
+                    ...base,
+                    sockets: wss.clients.size,
+                    rooms: roomCounts.size,
+                });
+                res.writeHead(200, { "Content-Type": "application/json" }).end(body);
+                return;
+            }
+            default:
+                res.writeHead(404).end();
+                return;
+        }
+    });
+    const wss = new WebSocketServer({ server });
+    const persistence = createPersistence(config.LEVELDB_PATH);
+    if (autoReady) { markReady(); }
 
     setInterval(() => {
         logTotalSize(persistence, logger).catch(() => undefined);
@@ -110,6 +138,7 @@ export function startServer(config: Config, logger = defaultLogger) {
                     logger.warn({ event: "ws_connection_closed", reason: "message_too_large", size });
                     ws.close(4005, "MESSAGE_TOO_LARGE");
                 }
+                recordMessage();
             });
             ws.on("close", () => {
                 clearTimeout(idleTimer);
@@ -124,7 +153,6 @@ export function startServer(config: Config, logger = defaultLogger) {
             await addRoomSizeListener(persistence, docName, limitBytes, logger);
             await warnIfRoomTooLarge(persistence, docName, limitBytes, logger);
             setupWSConnection(ws, req, { docName, persistence });
-            ws.on("message", () => recordMessage());
             ws.on("close", () => {
                 removeRoomSizeListener(persistence, docName).catch(() => undefined);
             });
@@ -150,5 +178,5 @@ export function startServer(config: Config, logger = defaultLogger) {
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
 
-    return { server, wss, persistence };
+    return { server, wss, persistence, markReady };
 }
