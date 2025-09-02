@@ -2,6 +2,7 @@ export interface PresenceUser {
     userId: string;
     userName: string;
     color: string;
+    cursor?: { left: number; top: number; };
 }
 
 export class PresenceStore {
@@ -14,6 +15,13 @@ export class PresenceStore {
     removeUser(userId: string) {
         const { [userId]: _removed, ...rest } = this.users;
         this.users = rest;
+    }
+
+    updateCursor(userId: string, pos: { left: number; top: number; }) {
+        const user = this.users[userId];
+        if (user) {
+            this.users = { ...this.users, [userId]: { ...user, cursor: pos } };
+        }
     }
 
     getUsers(): PresenceUser[] {

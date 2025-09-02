@@ -8,6 +8,9 @@ import GlobalTextArea from "./GlobalTextArea.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
 import PresenceAvatars from "./PresenceAvatars.svelte";
 import SlashCommandPalette from "./SlashCommandPalette.svelte";
+import { onMount } from "svelte";
+import { userManager } from "../auth/UserManager";
+import { initYjsPresence } from "../lib/yjs/service";
 
 console.log("OutlinerBase imports completed");
 
@@ -37,6 +40,14 @@ console.log("OutlinerBase props received:", {
 });
 
 console.log("OutlinerBase script completed successfully");
+
+onMount(() => {
+    let user = userManager.getCurrentUser() || { id: "guest", name: "Guest" };
+    if (typeof window !== "undefined" && (window as any).__TEST_USER__) {
+        user = (window as any).__TEST_USER__;
+    }
+    initYjsPresence(`${projectName}/${pageName}`, { userId: user.id, userName: user.name });
+});
 </script>
 
 <div class="outliner-base" data-testid="outliner-base">

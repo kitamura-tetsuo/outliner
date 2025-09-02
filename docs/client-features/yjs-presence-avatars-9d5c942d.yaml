@@ -1,0 +1,14 @@
+id: YJS-9d5c942d
+title: Show Yjs presence avatars
+title-ja: Yjsプレゼンスアバターの表示
+category: collaboration
+description: Display active users with avatars synchronized via Yjs awareness.
+status: experimental
+acceptance:
+- Avatars appear for all connected clients
+- Avatars update when users join or leave
+- Presence propagates via Yjs awareness
+tests:
+- client/e2e/new/yjs-presence-avatars-9d5c942d.spec.ts
+- client/src/tests/integration/yjsPresence.integration.spec.ts
+- client/src/tests/yjsService.test.ts
