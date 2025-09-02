@@ -153,13 +153,12 @@ function handleComponentTypeChange(newType: string) {
     }
 }
 
-const text = new TreeSubscriber<string>(
+const text = new TreeSubscriber(
     item,
     "nodeChanged",
-    () => (item.text as any)?.toString?.() ?? String((item as any).text ?? ""),
-    (value: string) => {
-        if (typeof (item as any).updateText === "function") (item as any).updateText(value);
-        else (item as any).text = value as any;
+    () => item.text,
+    value => {
+        item.text = value;
     },
 );
 
@@ -1498,7 +1497,6 @@ onMount(() => {
     onmouseup={handleMouseUp}
     bind:this={itemRef}
     data-item-id={model.id}
-    data-depth={depth}
     data-alias-target-id={aliasTargetId || ""}
 >
     <div class="item-header">
@@ -1706,16 +1704,7 @@ onMount(() => {
     flex: 1;
     white-space: pre-wrap;
     display: inline-block;
-    min-width: 4px; /* クリック安定化のため若干広げる */
-    min-height: 1em; /* 空テキストでもクリック可能に */
-}
-
-/* 空テキストでもクリックが成立するように疑似要素で最小幅を確保 */
-.item-text:empty::before {
-    content: "\00a0"; /* NBSPで可視領域を確保（UI表示は変わらない） */
-    display: inline-block;
-    width: 4px;
-    height: 1em;
+    min-width: 1px;
 }
 
 .item-actions {

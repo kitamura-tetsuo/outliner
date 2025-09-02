@@ -102,6 +102,11 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   touch "$SETUP_SENTINEL"
 else
   echo "Skipping dependency installation"
+  if ! command -v xvfb-run >/dev/null 2>&1; then
+    echo "xvfb-run missing; installing OS utilities..."
+    install_os_utilities
+  fi
+  install_all_dependencies
   if [ ! -f "${ROOT_DIR}/client/node_modules/.bin/vitest" ] || [ ! -f "${ROOT_DIR}/client/node_modules/.bin/playwright" ]; then
     echo "Required test packages missing; installing vitest playwright..."
     cd "${ROOT_DIR}/client"

@@ -83,7 +83,7 @@ clear_log_files() {
 
 # Install npm dependencies if needed
 npm_ci_if_needed() {
-  if [ ! -d node_modules ]; then
+  if [ ! -d node_modules ] || ! npm ls >/dev/null 2>&1; then
     if [ -f package-lock.json ]; then
       npm --proxy='' --https-proxy='' ci
     else

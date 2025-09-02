@@ -1,6 +1,0 @@
-id: SRV-addb74b2
-title: systemd service rejects unauthenticated websocket
-status: experimental
-title-ja: systemdサービスは認証されていないWebSocket接続を拒否する
-tests:
-- client/e2e/utils/srv-systemd-service-rejects-unauthenticated-addb74b2.spec.ts

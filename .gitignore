@@ -79,7 +79,6 @@ client/coverage/
 
 docs/feature-map.md
 docs/client-features.yaml
-client-features.yaml
 docs/dev-features.yaml
 docs/unimplemented-features.md
 
@@ -89,9 +88,6 @@ next-session-prompt.txt
 gemini_interactions.log
 outliner-d57b0-firebase-adminsdk-fbsvc-a989b4a237.json
 backups/
-
-AGENTS.md
-
 yjs-data/
 
 server/dist/
