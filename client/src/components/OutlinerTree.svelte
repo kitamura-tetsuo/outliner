@@ -71,20 +71,15 @@ const displayItems = new TreeSubscriber<Items, DisplayItem[]>(
         console.log("OutlinerTree: pageItem.items exists:", !!pageItem.items);
         console.log("OutlinerTree: pageItem.items length:", (pageItem.items as any)?.length || 0);
 
-        // 子アイテムの詳細をログ出力（YTree対応）
-        const itemsList: any = (pageItem as any)?.items;
-        if (itemsList && typeof itemsList.length === "number" && itemsList.length > 0) {
-            for (let i = 0; i < itemsList.length; i++) {
-                const it = itemsList.at ? itemsList.at(i) : (itemsList as any)[i];
-                if (!it) continue;
-                const txt = (it.text as any)?.toString?.() ?? String((it as any).text ?? "");
-                const childLen = (it.items as any)?.length ?? 0;
-                console.log(`OutlinerTree: Item ${i}: text="${txt}", hasChildren=${childLen > 0}, childrenCount=${childLen}`);
-                if (childLen > 0) {
-                    for (let j = 0; j < childLen; j++) {
-                        const ch = (it.items as any).at ? (it.items as any).at(j) : (it.items as any)[j];
-                        const ctxt = (ch?.text as any)?.toString?.() ?? String(ch?.text ?? "");
-                        console.log(`OutlinerTree: Child ${j}: text="${ctxt}"`);
+        // 子アイテムの詳細をログ出力
+        if (pageItem.items && (pageItem.items as any).length > 0) {
+            for (let i = 0; i < (pageItem.items as any).length; i++) {
+                const item = (pageItem.items as any)[i];
+                console.log(`OutlinerTree: Item ${i}: text="${item.text}", hasChildren=${item.items?.length > 0}, childrenCount=${item.items?.length || 0}`);
+                if (item.items && item.items.length > 0) {
+                    for (let j = 0; j < item.items.length; j++) {
+                        const childItem = item.items[j];
+                        console.log(`OutlinerTree: Child ${j}: text="${childItem.text}"`);
                     }
                 }
             }
@@ -165,15 +160,6 @@ onMount(() => {
 // displayItemsが変更されたときにitemHeightsを更新
 $effect(() => {
     const itemCount = displayItems.current.length;
-
-    // 表示順序を EditorOverlayStore に通知（DOM依存の範囲列挙を排除）
-    try {
-        const ids = displayItems.current.map(d => d.model.id);
-        editorOverlayStore.setVisibleItemIds(ids);
-    } catch (e) {
-        console.warn("Failed to set visibleItemIds:", e);
-    }
-
     if (itemHeights.length !== itemCount) {
         // 既存のアイテムの高さを保持しつつ、新しい配列を作成
         const newHeights = new Array(itemCount).fill(28); // デフォルト値として28pxを設定
@@ -207,10 +193,9 @@ onDestroy(() => {
 });
 
 function handleAddItem() {
-    const list: any = (pageItem as any)?.items;
-    if (pageItem && !isReadOnly && list && typeof list.addNode === "function") {
-        // 末尾にアイテム追加（YTree版）
-        list.addNode(currentUser);
+    if (pageItem && !isReadOnly && pageItem.items && Tree.is(pageItem.items, Items)) {
+        // 末尾にアイテム追加
+        pageItem.items.addNode(currentUser);
     }
 }
 
@@ -226,9 +211,8 @@ function handleEdit() {
     const activeId = editorOverlayStore.getActiveItem();
     if (!activeId || activeId !== last.model.id) return;
 
-    // 最下部アイテムが空でない場合のみ追加（Y.Text対応）
-    const lastText = (last.model.original.text as any)?.toString?.() ?? String((last.model.original as any).text ?? "");
-    if (lastText.trim().length === 0) return;
+    // 最下部アイテムが空でない場合のみ追加
+    if (last.model.original.text?.trim().length === 0) return;
 
     const parent = last.model.original.parent;
     if (parent) {
@@ -247,33 +231,106 @@ function handleToggleCollapse(event: CustomEvent) {
     viewModel.toggleCollapsed(itemId);
 }
 
-import { Cursor } from "../lib/Cursor";
-
 function handleIndent(event: CustomEvent) {
+    // ページタイトルの場合は無視
     if (event.detail.itemId === "page-title") return;
+
+    // インデントを増やす処理
     const { itemId } = event.detail;
-    const vm = viewModel.getViewModel(itemId);
-    if (!vm) return;
-    const cursor = new Cursor("tree-indent", { itemId, offset: 0, isActive: false, userId: "local" });
+
+    // 元のアイテムを取得
+    const itemViewModel = viewModel.getViewModel(itemId);
+    if (!itemViewModel) return;
+
+    const item = itemViewModel.original;
+
+    logger.info("Indent event received for item:", item);
+
+    // 1. アイテムの親を取得
+    const parent = Tree.parent(item);
+    if (!Tree.is(parent, Items)) return;
+
+    // 2. 親内でのアイテムのインデックスを取得
+    const index = parent.indexOf(item);
+    if (index <= 0) return; // 最初のアイテムはインデントできない
+
+    // 3. 前のアイテムを取得
+    const previousItem = parent[index - 1];
+
     try {
-        cursor.indent();
-        logger.info("Indented via Cursor.indent()");
-    } catch (error) {
-        console.error("Failed to indent item (Cursor):", error);
+        // 4. 前のアイテムの子リストへアイテムを移動
+        // itemIndexが確実に取得できるようにインデックスを再計算
+        const itemIndex = parent.indexOf(item);
+
+        // 移動操作の前にログを追加
+        logger.info(
+            `Moving item from parent (${parent.length} items) at index ${itemIndex} to previous item's children`,
+        );
+
+        // 厳密なトランザクション処理を行う
+        const prevItems = previousItem.items;
+        if (prevItems && Tree.is(prevItems, Items)) {
+            Tree.runTransaction(parent, () => {
+                // 型キャストを使用してTypeScriptエラーを回避
+                (prevItems as any).moveRangeToEnd(itemIndex, itemIndex + 1, parent);
+            });
+
+            logger.info(`Indented item under previous item`);
+        }
+    }
+    catch (error) {
+        console.error("Failed to indent item:", error);
     }
 }
 
 function handleUnindent(event: CustomEvent) {
+    // ページタイトルの場合は無視
     if (event.detail.itemId === "page-title") return;
+
+    // インデントを減らす処理
     const { itemId } = event.detail;
-    const vm = viewModel.getViewModel(itemId);
-    if (!vm) return;
-    const cursor = new Cursor("tree-unindent", { itemId, offset: 0, isActive: false, userId: "local" });
+
+    // 元のアイテムを取得
+    const itemViewModel = viewModel.getViewModel(itemId);
+    if (!itemViewModel) return;
+
+    const item = itemViewModel.original;
+
+    logger.info("Unindent event received for item:", item);
+
+    // 1. アイテムの親を取得
+    const parentList = Tree.parent(item);
+    if (!Tree.is(parentList, Items)) return;
+
+    // 2. 親の親を取得（親グループを取得）
+    const parentItem = Tree.parent(parentList);
+    if (!parentItem || !Tree.is(parentItem, Item)) return; // ルートアイテムの直下は既に最上位
+
+    const grandParentList = Tree.parent(parentItem);
+    if (!grandParentList || !Tree.is(grandParentList, Items)) return; // ルートアイテムの直下は既に最上位
+
     try {
-        cursor.outdent();
-        logger.info("Unindented via Cursor.outdent()");
-    } catch (error) {
-        console.error("Failed to unindent item (Cursor):", error);
+        // 3. 親アイテムのindex取得
+        const parentIndex = grandParentList.indexOf(parentItem);
+
+        // 4. 親の親の、親の次の位置にアイテムを移動
+        const itemIndex = parentList.indexOf(item);
+
+        // parentListの要素をgrandParentListに移動
+        const sourceItem = parentList[itemIndex];
+        if (sourceItem) {
+            // readonly array型に適合するようコピー
+            const targetArray = grandParentList as any;
+
+            Tree.runTransaction(grandParentList, () => {
+                targetArray.moveRangeToIndex(parentIndex + 1, itemIndex, itemIndex + 1, parentList);
+            });
+
+            logger.info("Unindented item to parent level");
+        }
+    }
+    catch (error) {
+        console.error("Failed to unindent item:", error);
     }
 }
 
@@ -1205,14 +1262,6 @@ function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position
         return;
     }
 
-    // タイトル（先頭）へのドロップは no-op
-    if (targetIndex === 0) {
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.log(`Drop onto title (index 0) ignored`);
-        }
-        return;
-    }
-
     // ソースアイテムとターゲットアイテムが同じ場合は何もしない
     if (sourceIndex === targetIndex) {
         if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
@@ -1225,12 +1274,11 @@ function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position
 
     // ソースアイテムを取得
     const sourceItem = displayItems.current[sourceIndex].model.original;
-    const sourceText: string = (sourceItem.text as any)?.toString?.() ?? String((sourceItem as any).text ?? "");
+    const sourceText = sourceItem.text || '';
 
     // ターゲットの位置を計算
     let targetPosition = targetIndex;
-    if (position === 'bottom' || position === 'middle') {
-        // Yjs版では 'middle' も 'bottom' として扱い、対象の直後に移動させる
+    if (position === 'bottom') {
         targetPosition = targetIndex + 1;
     }
 
@@ -1248,25 +1296,24 @@ function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position
         // ソースアイテムを削除
         items.removeAt(sourceIndex);
 
-        // 新しい位置にアイテムを追加し、テキストを設定（Yjs）
-        const inserted = items.addNode(currentUser, targetPosition);
-        if (inserted) {
-            inserted.updateText(sourceText);
+        // 新しい位置にアイテムを追加
+        items.addNode(currentUser, targetPosition);
+        const newItem = items[targetPosition];
+        if (newItem) {
+            newItem.text = sourceText;
         }
 
-        // 既存カーソルと選択をクリアして単一アクティブに収束させる
-        if (typeof editorOverlayStore.clearCursorAndSelection === 'function') {
-            editorOverlayStore.clearCursorAndSelection('local', false, false);
-        }
-        // アクティブアイテムを設定
-        editorOverlayStore.setActiveItem(inserted.id);
-        // カーソル位置を更新（単一化）
+        // カーソル位置を更新
         editorOverlayStore.setCursor({
-            itemId: inserted.id,
+            itemId: newItem.id,
             offset: 0,
             isActive: true,
             userId: 'local'
         });
+
+        // アクティブアイテムを設定
+        editorOverlayStore.setActiveItem(newItem.id);
+
         // 選択範囲をクリア
         editorOverlayStore.clearSelections();
     } catch (error) {
@@ -1294,7 +1341,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
 
     // ターゲットアイテムのテキストを取得
     const targetItem = displayItems.current[targetIndex].model.original;
-    const targetText: string = (targetItem.text as any)?.toString?.() ?? String((targetItem as any).text ?? "");
+    const targetText = targetItem.text || '';
 
     // テキストを行に分割
     const lines = text.split('\n');
@@ -1304,21 +1351,40 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
     // ターゲットアイテムにテキストを挿入
     if (position === 'top') {
         // アイテムの先頭に挿入
-        targetItem.updateText(lines[0] + targetText);
+        targetItem.text = lines[0] + targetText;
 
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
-            const inserted = items.addNode(currentUser, targetIndex + i);
-            inserted.updateText(lines[i]);
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
         }
-    } else if (position === 'bottom' || position === 'middle') {
-        // bottom/middle は末尾に挿入扱い
-        targetItem.updateText(targetText + lines[0]);
+    } else if (position === 'bottom') {
+        // アイテムの末尾に挿入
+        targetItem.text = targetText + lines[0];
 
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
-            const inserted = items.addNode(currentUser, targetIndex + i);
-            inserted.updateText(lines[i]);
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
+        }
+    } else if (position === 'middle') {
+        // アイテムの中央に挿入（カーソル位置を計算）
+        const middleOffset = Math.floor(targetText.length / 2);
+        targetItem.text = targetText.substring(0, middleOffset) + lines[0] + targetText.substring(middleOffset);
+
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
         }
     }
 

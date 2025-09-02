@@ -1,6 +1,0 @@
-id: SVR-4f5a1b2c
-title: WebSocket server accepts connections
-title-ja: WebSocketサーバーが接続を受け付ける
-status: implemented
-tests:
-- client/e2e/new/svr-websocket-server-connect-4f5a1b2c.spec.ts

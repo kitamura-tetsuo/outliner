@@ -44,6 +44,7 @@ cp .env.example .env
 2. 「Your apps」セクションで「Add app」をクリック（Webアプリ）
 3. アプリを登録し、Firebaseの設定情報を取得
 4. クライアントプロジェクトの `.env` ファイルに以下の情報を設定:
+<<<<<<< HEAD
 
 ## systemd でのデプロイ
 
@@ -117,3 +118,5 @@ Expected output includes the y-websocket server listening log and a Cloudflare T
    ```
 
 Cloudflare's edge provides both IPv4 and IPv6 access even from an IPv6-only uplink.
+=======
+>>>>>>> origin/main
