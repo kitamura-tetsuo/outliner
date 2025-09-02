@@ -21,6 +21,19 @@ export function clearTokenCache() {
     tokenCache.clear();
 }
 
+// exported for tests
+export function getTokenCacheSize() {
+    return tokenCache.size;
+}
+
+function pruneExpiredTokens(now: number) {
+    for (const [t, entry] of tokenCache) {
+        if (entry.exp <= now) {
+            tokenCache.delete(t);
+        }
+    }
+}
+
 export function extractAuthToken(req: IncomingMessage): string | undefined {
     try {
         const url = new URL(req.url ?? "", "http://localhost");
@@ -32,8 +45,9 @@ export function extractAuthToken(req: IncomingMessage): string | undefined {
 }
 
 export async function verifyIdTokenCached(token: string): Promise<admin.auth.DecodedIdToken> {
-    const cached = tokenCache.get(token);
     const now = Date.now();
+    pruneExpiredTokens(now);
+    const cached = tokenCache.get(token);
     if (cached && cached.exp > now) {
         return cached.decoded;
     }
