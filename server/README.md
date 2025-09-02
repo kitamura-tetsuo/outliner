@@ -81,3 +81,39 @@ docker compose up --build
 ```
 
 Expected output includes the y-websocket server listening log and a Cloudflare Tunnel URL for the configured hostname.
+
+## Cloudflare Tunnel Setup
+
+1. Install and log in to Cloudflare Tunnel:
+   ```bash
+   cloudflared tunnel login
+   ```
+2. Create a tunnel named `outliner`:
+   ```bash
+   cloudflared tunnel create outliner
+   ```
+3. Place the generated credentials file in `cloudflared/` and edit `cloudflared/config.yml`:
+   ```yaml
+   tunnel: YOUR_TUNNEL_ID
+   credentials-file: /etc/cloudflared/credentials.json
+   ingress:
+       - hostname: example.com
+         service: http://server:3000
+       - service: http_status:404
+   ```
+4. Bind the hostname with DNS:
+   ```bash
+   cloudflared tunnel route dns outliner example.com
+   ```
+5. Start the tunnel locally or via Docker Compose:
+   ```bash
+   cloudflared tunnel --config cloudflared/config.yml run outliner
+   # or
+   docker compose up cloudflared
+   ```
+6. Verify from outside your network:
+   ```bash
+   curl -I https://example.com/
+   ```
+
+Cloudflare's edge provides both IPv4 and IPv6 access even from an IPv6-only uplink.
