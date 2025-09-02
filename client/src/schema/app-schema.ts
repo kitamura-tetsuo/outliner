@@ -242,4 +242,3 @@ export class Project extends sf.objectRecursive("Project", {
 export const appTreeConfiguration = new TreeViewConfiguration({
     schema: Project,
 });
-
