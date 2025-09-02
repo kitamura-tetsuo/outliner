@@ -1,0 +1,14 @@
+id: FTR-3f7a0c9b
+title: WebSocket connection limits
+title-ja: WebSocket接続制限
+description: Limits total, per-IP, and per-room WebSocket connections and enforces idle timeout and message size.
+status: experimental
+components:
+- server/src/config.ts
+- server/src/server.ts
+services:
+- WebSocket server
+- Firebase Auth
+tests:
+- client/e2e/ws-connection-limit-3f7a0c9b.spec.ts
+- server/tests/connection-limits.test.js
