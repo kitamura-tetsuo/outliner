@@ -1,0 +1,10 @@
+id: SRV-9a4b1c2d
+title: WebSocket server basic integration
+title-ja: WebSocketサーバー基本統合テスト
+category: server
+status: experimental
+components:
+- server/src/server.ts
+tests:
+- client/e2e/server/srv-websocket-basic-integration-9a4b1c2d.spec.ts
+- server/tests/server-persistence-roundtrip.test.js

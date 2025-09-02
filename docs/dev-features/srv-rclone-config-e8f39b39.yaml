@@ -1,0 +1,19 @@
+id: FTR-e8f39b39
+slug: srv
+title: Document rclone configuration for backups
+title-ja: バックアップ用rclone設定のドキュメント
+description: 'Required environment variables:
+
+  - `RCLONE_REMOTE`: destination like `r2:bucket/backups` or `s3:bucket/path`
+
+  - `BACKUP_RETENTION_DAYS`: days to retain local archives
+
+  - `BACKUP_SOURCE`: directory to archive (default `server/data`)
+
+  - `BACKUP_DIR`: local directory to store archives
+
+  '
+category: environment
+status: implemented
+components: []
+tests: []

@@ -1,0 +1,6 @@
+id: WSL-6fe3a9c1
+title: Remove per-connection update listener
+title-ja: 接続ごとの更新リスナーを削除
+status: implemented
+tests:
+- client/e2e/new/wsl-update-listener-cleanup-6fe3a9c1.spec.ts
