@@ -1,4 +1,4 @@
-const { once } = require("events");
+const { expect } = require("chai");
 const WebSocket = require("ws");
 require("ts-node/register");
 const admin = require("firebase-admin");
@@ -10,16 +10,21 @@ function waitListening(server) {
     return new Promise(resolve => server.on("listening", resolve));
 }
 
-describe("server", () => {
+describe("server room validation", () => {
     afterEach(() => sinon.restore());
-    it("accepts websocket connections", async () => {
+
+    it("rejects invalid room", async () => {
         sinon.stub(admin.auth(), "verifyIdToken").resolves({ uid: "user", exp: Math.floor(Date.now() / 1000) + 60 });
-        const cfg = loadConfig({ PORT: "12346", LOG_LEVEL: "silent" });
+        const cfg = loadConfig({ PORT: "12360", LOG_LEVEL: "silent" });
         const { server } = startServer(cfg);
         await waitListening(server);
-        const ws = new WebSocket(`ws://localhost:${cfg.PORT}/projects/testproj?auth=token`);
-        await once(ws, "open");
-        ws.close();
+        await new Promise(resolve => {
+            const ws = new WebSocket(`ws://localhost:${cfg.PORT}/invalid?auth=token`);
+            ws.on("close", code => {
+                expect(code).to.equal(4002);
+                resolve();
+            });
+        });
         server.close();
     });
 });

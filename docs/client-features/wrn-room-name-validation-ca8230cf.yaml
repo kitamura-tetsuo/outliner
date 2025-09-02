@@ -1,0 +1,6 @@
+id: WRN-ca8230cf
+title: WebSocket room name validation
+title-ja: WebSocketルーム名の検証
+status: implemented
+tests:
+- client/e2e/new/wrn-room-name-validation-ca8230cf.spec.ts
