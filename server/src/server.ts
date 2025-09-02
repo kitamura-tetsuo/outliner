@@ -1,6 +1,15 @@
 import admin from "firebase-admin";
 import http from "http";
 import { WebSocketServer } from "ws";
+// y-websocket utilities may not export setupWSConnection in all builds
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let setupWSConnection: any;
+try {
+    // @ts-ignore fallback for CommonJS build
+    setupWSConnection = require("y-websocket/bin/utils");
+} catch {
+    setupWSConnection = () => undefined;
+}
 import { type Config } from "./config";
 import { logger as defaultLogger } from "./logger";
 import { createPersistence, logTotalSize, warnIfRoomTooLarge } from "./persistence";
@@ -14,14 +23,6 @@ export function startServer(config: Config, logger = defaultLogger, autoReady = 
     };
     const roomCounts = new Map<string, number>();
     let openSockets = 0;
-    // Lazy load y-websocket setup, fallback to noop if unavailable
-    let setupWSConnection: any;
-    try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        setupWSConnection = require("y-websocket/bin/utils");
-    } catch {
-        setupWSConnection = () => undefined;
-    }
     const server = http.createServer((req, res) => {
         if (req.method !== "GET") {
             res.writeHead(405).end();

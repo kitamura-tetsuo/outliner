@@ -43,6 +43,7 @@
     "scripts": {
         "create-test-user": "node utils/create-test-user.js",
         "dev": "ts-node src/index.ts",
+        "build": "tsc",
         "start": "node dist/index.js",
         "test": "bash ../scripts/run-server-tests.sh",
         "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000"
