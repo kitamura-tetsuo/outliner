@@ -1,0 +1,34 @@
+/** @feature YRR-b4e2c1d0
+ *  Title   : YJS token refresh reconnect
+ *  Source  : docs/client-features/yrr-room-token-refresh-reconnect-b4e2c1d0.yaml
+ */
+import { expect, test } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+
+test.describe("YJS token refresh reconnect", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
+    });
+
+    test("reconnects after token refresh", async ({ page }) => {
+        const projectId = `p-${Date.now()}`;
+        await page.evaluate(async pid => {
+            // @ts-ignore - resolved by Vite in browser
+            const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
+            const conn = await createProjectConnection(pid);
+            (window as any).__CONN__ = conn;
+        }, projectId);
+
+        await page.waitForFunction(() => (window as any).__CONN__?.provider.wsconnected === true);
+        await page.evaluate(() => {
+            (window as any).__CONN__.provider.disconnect();
+        });
+        await page.waitForFunction(() => (window as any).__CONN__.provider.wsconnected === false);
+        await page.evaluate(async () => {
+            await (window as any).__USER_MANAGER__.refreshToken();
+        });
+        await page.waitForFunction(() => (window as any).__CONN__.provider.wsconnected === true);
+        const authParam = await page.evaluate(() => (window as any).__CONN__.provider.wsParams.auth);
+        expect(authParam).toBeTruthy();
+    });
+});

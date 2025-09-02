@@ -3,6 +3,8 @@ import type { Awareness } from "y-protocols/awareness";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
+import { pageRoomPath, projectRoomPath } from "./roomPath";
+import { attachTokenRefresh } from "./tokenRefresh";
 
 export type ProjectConnection = {
     doc: Y.Doc;
@@ -14,16 +16,6 @@ export type ProjectConnection = {
 function getWsBase(): string {
     const url = import.meta.env.VITE_YJS_WS_URL || `ws://localhost:${import.meta.env.VITE_YJS_PORT || 7093}`;
     return url as string;
-}
-
-export function projectRoomPath(projectId: string): string {
-    // Server expects /projects/<projectId>
-    return `projects/${encodeURIComponent(projectId)}`;
-}
-
-export function pageRoomPath(projectId: string, pageId: string): string {
-    // Server expects /projects/<projectId>/pages/<pageId>
-    return `projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}`;
 }
 
 async function getFreshIdToken(): Promise<string> {
@@ -70,12 +62,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     }
 
     // Refresh auth param on token refresh
-    const unsub = userManager.addEventListener(async () => {
-        try {
-            const t = await userManager.auth.currentUser?.getIdToken(true);
-            if (t) provider.wsParams = { ...(provider.wsParams || {}), auth: t } as any;
-        } catch {}
-    });
+    const unsub = attachTokenRefresh(provider);
 
     const dispose = () => {
         try {
@@ -119,14 +106,6 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         });
     }
     // Refresh auth param on token refresh
-    userManager.addEventListener(async () => {
-        try {
-            const t = await userManager.auth.currentUser?.getIdToken(true);
-            if (t) {
-                provider.wsParams = { ...(provider.wsParams || {}), auth: t } as any;
-                if (provider.shouldConnect && provider.wsconnected !== true) provider.connect();
-            }
-        } catch {}
-    });
+    attachTokenRefresh(provider);
     return { provider, awareness };
 }
