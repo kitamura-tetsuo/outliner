@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const sinon = require("sinon");
 require("ts-node/register");
 const admin = require("firebase-admin");
-const { extractAuthToken, verifyIdTokenCached, clearTokenCache } = require("../src/websocket-auth");
+const { extractAuthToken, verifyIdTokenCached, clearTokenCache, getTokenCacheSize } = require("../src/websocket-auth");
 
 describe("websocket auth helpers", () => {
     afterEach(() => {
@@ -43,5 +43,19 @@ describe("websocket auth helpers", () => {
             err = e;
         }
         expect(err).to.be.instanceOf(Error);
+    });
+
+    it("removes expired tokens from cache", async () => {
+        const stub = sinon.stub(admin.auth(), "verifyIdToken").resolves({
+            uid: "u1",
+            exp: Math.floor(Date.now() / 1000) + 1,
+        });
+        const token = "short";
+        await verifyIdTokenCached(token);
+        expect(getTokenCacheSize()).to.equal(1);
+        await new Promise((r) => setTimeout(r, 1100));
+        await verifyIdTokenCached(token);
+        expect(stub.calledTwice).to.be.true;
+        expect(getTokenCacheSize()).to.equal(1);
     });
 });

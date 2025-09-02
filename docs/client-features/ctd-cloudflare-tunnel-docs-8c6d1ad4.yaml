@@ -1,0 +1,7 @@
+id: CTD-8c6d1ad4
+title: Cloudflare Tunnel setup documentation
+title-ja: Cloudflare Tunnel 設定ドキュメント
+description: Sample configuration and setup steps for exposing WSS via Cloudflare Tunnel.
+status: implemented
+tests:
+- client/e2e/ctd-cloudflare-tunnel-docs-8c6d1ad4.spec.ts
