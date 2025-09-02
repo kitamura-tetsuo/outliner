@@ -1,6 +1,0 @@
-id: WSA-6d3a1b2c
-title: WebSocket requires authentication
-title-ja: WebSocket接続には認証が必要
-status: proposed
-tests:
-- client/e2e/new/wsa-websocket-auth-required-6d3a1b2c.spec.ts
