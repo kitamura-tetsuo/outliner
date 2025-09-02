@@ -38,7 +38,7 @@ export function getFirebaseFunctionUrl(functionName: string): string {
 
 /**
  * SvelteKit APIプロキシ経由でアクセスする場合のURL
- * @param apiPath - APIパス（例: 'fluid-token', 'azure-health-check'）
+ * @param apiPath - APIパス（例: 'save-container', 'azure-health-check'）
  * @returns SvelteKit APIプロキシのURL
  */
 export function getSvelteKitApiUrl(apiPath: string): string {

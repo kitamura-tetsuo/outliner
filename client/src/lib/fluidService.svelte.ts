@@ -235,64 +235,8 @@ export function getCurrentContainerId(): string | undefined {
 }
 
 // TokenProviderの取得
-async function getTokenProvider(userId?: string, containerId?: string): Promise<ITokenProvider> {
-    if (!useTinylicious) {
-        // Azureモードの場合はUserManagerからトークンを取得
-
-        // 特定のコンテナID用のトークンが必要な場合
-        if (containerId !== undefined) {
-            log("fluidService", "debug", `Requesting token for specific container: ${containerId}`);
-            // コンテナID付きで強制的にトークンを更新
-            await userManager.refreshToken(containerId);
-        }
-
-        // トークンが利用可能になるまで待機
-        const fluidToken = await userManager.getCurrentFluidToken();
-
-        if (fluidToken) {
-            // サーバーから受け取ったテナントIDを確認
-            const tokenTenantId = (fluidToken as any).tenantId;
-
-            // テナントIDをログに出力（デバッグ用）
-            log("fluidService", "debug", `Server provided tenantId: ${tokenTenantId || "not provided"}`);
-            log("fluidService", "debug", `Local configured tenantId: ${azureConfig.tenantId}`);
-
-            // サーバーから受け取ったテナントIDがある場合は、それを使用する
-            if (tokenTenantId) {
-                azureConfig.tenantId = tokenTenantId;
-            }
-
-            log(
-                "fluidService",
-                "info",
-                `Using Azure Fluid Relay with token for user: ${fluidToken.user.name} and tenantId: ${azureConfig.tenantId}`,
-            );
-
-            // コンテナID制限のログ出力
-            if (fluidToken.containerId) {
-                log("fluidService", "debug", `Token is scoped to container: ${fluidToken.containerId}`);
-            }
-
-            return {
-                fetchOrdererToken: async () => {
-                    return {
-                        jwt: fluidToken.token,
-                        fromCache: true,
-                    };
-                },
-                fetchStorageToken: async () => {
-                    return {
-                        jwt: fluidToken.token,
-                        fromCache: true,
-                    };
-                },
-            };
-        } else {
-            log("fluidService", "warn", "No Fluid token available for Azure mode, fallback to insecure provider");
-        }
-    }
-
-    // Tinyliciousモードまたはトークンが無い場合はInsecureTokenProviderを使用
+async function getTokenProvider(userId?: string): Promise<ITokenProvider> {
+    // すべての環境でInsecureTokenProviderを使用
     const userName = userId ? `User-${userId}` : "Anonymous";
     log("fluidService", "info", `Using InsecureTokenProvider for user: ${userName}`);
     return new InsecureTokenProvider(
@@ -317,8 +261,8 @@ async function createAzureOrTinyliciousClient(
     }
     let tokenProvider;
     try {
-        // TokenProvider設定 - コンテナIDが指定されている場合はそれも渡す
-        tokenProvider = await getTokenProvider(userId, containerId);
+        // TokenProvider設定
+        tokenProvider = await getTokenProvider(userId);
     } catch (error) {
         log(
             "fluidService",

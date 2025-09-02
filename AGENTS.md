@@ -88,7 +88,7 @@ Mocks are generally forbidden. Limited exceptions:
 
 **CRITICAL**: Always use Firebase Functions Emulator for testing, never mock Firebase Functions. The emulator provides the actual Firebase Functions environment and is essential for proper testing.
 
-**IMPORTANT**: Firebase Functions emulator DOES apply Firebase Hosting rewrite rules from firebase.json. Tests should use `/api/` endpoints (e.g., `/api/fluid-token`), not direct function URLs like `/outliner-d57b0/us-central1/functionName`. The emulator respects the hosting configuration and rewrites `/api/function-name` to the appropriate function.
+**IMPORTANT**: Firebase Functions emulator DOES apply Firebase Hosting rewrite rules from firebase.json. Tests should use `/api/` endpoints (e.g., `/api/save-container`), not direct function URLs like `/outliner-d57b0/us-central1/functionName`. The emulator respects the hosting configuration and rewrites `/api/function-name` to the appropriate function.
 
 - Firebase Functions Emulator runs on port 57070 (configured in firebase.json)
 - Firebase Storage Emulator runs on port 59200 (configured in firebase.json)

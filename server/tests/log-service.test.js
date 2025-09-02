@@ -96,11 +96,6 @@ jest.mock("firebase-admin", () => {
 });
 
 // Fluid Service Utils モック
-jest.mock("@fluidframework/azure-service-utils", () => ({
-    generateToken: (tenantId, key, scopes, containerId, user) =>
-        `mock-fluid-token-for-${user.id}-container-${containerId || "default"}`,
-}));
-
 // テスト前に.envファイルを読み込む
 require("dotenv").config({ path: path.join(__dirname, "..", ".env.test") });
 
@@ -128,48 +123,6 @@ describe("認証サービスのテスト", () => {
     // テスト後のクリーンアップ
     afterAll(() => {
         jest.resetAllMocks();
-    });
-
-    // /api/fluid-token エンドポイントのテスト
-    describe("POST /api/fluid-token", () => {
-        test("有効なIDトークンでFluidトークンを取得できる", async () => {
-            const response = await request(app)
-                .post("/api/fluid-token")
-                .send({ idToken: "valid-token" })
-                .expect("Content-Type", /json/)
-                .expect(200);
-
-            expect(response.body).to.have.property("token");
-            expect(response.body).to.have.property("user");
-            expect(response.body).to.have.property("tenantId", "test-tenant-id");
-            expect(response.body.user).to.have.property("id", "test-user-123");
-        });
-
-        test("無効なIDトークンで401エラーを返す", async () => {
-            const response = await request(app)
-                .post("/api/fluid-token")
-                .send({ idToken: "invalid-token" })
-                .expect("Content-Type", /json/)
-                .expect(401);
-
-            expect(response.body).to.have.property("error", "Authentication failed");
-        });
-
-        test("特定のコンテナIDを指定してトークンを取得できる", async () => {
-            const response = await request(app)
-                .post("/api/fluid-token")
-                .send({
-                    idToken: "valid-token",
-                    containerId: "specific-container-id",
-                })
-                .expect("Content-Type", /json/)
-                .expect(200);
-
-            expect(response.body).to.have.property("token");
-            expect(response.body).to.have.property("containerId", "specific-container-id");
-            // モックTokenに対象コンテナIDが含まれていることを検証
-            expect(response.body.token).to.contain("specific-container-id");
-        });
     });
 
     // /api/save-container エンドポイントのテスト
