@@ -25,17 +25,6 @@ export interface IUser {
     photoURL?: string;
 }
 
-// Fluid Relayトークンの型定義
-interface IFluidToken {
-    token: string;
-    user: {
-        id: string;
-        name: string;
-    };
-    tenantId?: string; // サーバーから受け取ったテナントIDを格納できるように追加
-    containerId?: string; // 対象コンテナID
-}
-
 // 認証結果の型定義
 interface IAuthResult {
     user: IUser;
@@ -60,12 +49,8 @@ export class UserManager {
     private _app: FirebaseApp | null = null;
     private _auth: Auth | null = null;
 
-    private currentFluidToken: IFluidToken | null = null;
     private listeners: AuthEventListener[] = [];
     private unsubscribeAuth: (() => void) | null = null;
-    private isRefreshingToken = false; // トークン更新中フラグ
-    private tokenRefreshPromise: Promise<IFluidToken | null> | null = null;
-    private readonly TOKEN_REFRESH_TIMEOUT = 10000; // 10秒のタイムアウト
 
     // 開発環境かどうかの判定
     private isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development"
@@ -160,8 +145,6 @@ export class UserManager {
                     logger.info("Running in SSR environment, will retry connection on client side");
                 }
             }
-        } else {
-            this.loadSavedUser();
         }
     }
 
@@ -290,13 +273,6 @@ export class UserManager {
     // ユーザーサインアウト処理
     private handleUserSignedOut(): void {
         logger.debug("User signed out");
-        this.currentFluidToken = null;
-
-        // ブラウザ環境でのみlocalStorageを使用
-        if (typeof window !== "undefined") {
-            localStorage.removeItem("fluidUser"); // 不要になる可能性あり
-        }
-
         this.notifyListeners(null);
     }
 
@@ -313,61 +289,6 @@ export class UserManager {
         };
     }
 
-    // Fluid Relayトークンを取得
-    private async getFluidToken(idToken: string, containerId?: string): Promise<IFluidToken> {
-        try {
-            logger.info(`[UserManager] Requesting Fluid token from: /api/fluid-token (via SvelteKit proxy)`);
-
-            // リクエストボディの作成
-            const requestBody: any = { idToken };
-
-            // コンテナIDが指定されている場合は追加
-            if (containerId) {
-                requestBody.containerId = containerId;
-                logger.info(`[UserManager] Requesting token for container: ${containerId}`);
-            }
-
-            // フェッチオプションを明示的に設定（SvelteKitプロキシ経由）
-            const response = await fetch(`/api/fluid-token`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                },
-                mode: "cors",
-                body: JSON.stringify(requestBody),
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                logger.error(`[UserManager] Fluid token request failed: ${response.status}`, errorText);
-                throw new Error(`Fluid token request failed: ${response.status} ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            logger.info("[UserManager] Fluid token received successfully");
-            return data;
-        } catch (error) {
-            logger.error("[UserManager] Error getting fluid token:", error);
-            throw error;
-        }
-    }
-
-    // 保存されたユーザー情報を読み込む
-    public loadSavedUser(): IUser | null {
-        if (typeof window !== "undefined") {
-            const savedUser = localStorage.getItem("fluidUser");
-            if (savedUser) {
-                try {
-                    return JSON.parse(savedUser);
-                } catch (e) {
-                    logger.error("[UserManager] Error parsing saved user:", e);
-                    localStorage.removeItem("fluidUser");
-                }
-            }
-        }
-        return null;
-    }
 
     // Googleでログイン
     public async loginWithGoogle(): Promise<void> {
@@ -481,154 +402,6 @@ export class UserManager {
     // Firebaseに認証済みかどうかを確認
     public isAuthenticated(): boolean {
         return !!this.auth.currentUser;
-    }
-
-    // 現在のFluid Relayトークンを取得（なければ取得を試みる）
-    public async getCurrentFluidToken(forceRefresh = false): Promise<IFluidToken | null> {
-        // 既存のトークン更新が進行中の場合はそのプロミスを返す
-        if (this.tokenRefreshPromise) {
-            logger.info("[UserManager] Token refresh already in progress, waiting...");
-            return this.tokenRefreshPromise;
-        }
-
-        // トークンが存在しないか強制更新が要求された場合
-        if ((forceRefresh || !this.currentFluidToken) && this.isAuthenticated() && !this.isRefreshingToken) {
-            try {
-                // 更新中フラグをセット（無限ループ防止）
-                this.isRefreshingToken = true;
-
-                logger.info("[UserManager] No token available, attempting to refresh");
-
-                // 更新処理をプロミスとして保存（他の呼び出しが同じプロミスを共有できるように）
-                this.tokenRefreshPromise = new Promise<IFluidToken | null>(async resolve => {
-                    // タイムアウト処理
-                    const timeoutId = setTimeout(() => {
-                        logger.warn("[UserManager] Token refresh timed out after", this.TOKEN_REFRESH_TIMEOUT, "ms");
-                        this.isRefreshingToken = false;
-                        this.tokenRefreshPromise = null;
-                        resolve(this.currentFluidToken); // タイムアウト時は現在の状態を返す
-                    }, this.TOKEN_REFRESH_TIMEOUT);
-
-                    try {
-                        await this.refreshToken();
-                        clearTimeout(timeoutId);
-                        resolve(this.currentFluidToken);
-                    } catch (error) {
-                        logger.error("[UserManager] Failed to get fluid token:", error);
-                        clearTimeout(timeoutId);
-                        resolve(this.currentFluidToken); // エラー時は現在の状態を返す
-                    } finally {
-                        this.isRefreshingToken = false;
-                        this.tokenRefreshPromise = null;
-                    }
-                });
-
-                return await this.tokenRefreshPromise;
-            } catch (error) {
-                logger.error("[UserManager] Error in getCurrentFluidToken:", error);
-                this.isRefreshingToken = false;
-                this.tokenRefreshPromise = null;
-                return this.currentFluidToken;
-            }
-        }
-
-        return this.currentFluidToken;
-    }
-
-    // 同期バージョンも保持（互換性のため）
-    public getFluidTokenSync(): IFluidToken | null {
-        if (this.isRefreshingToken) {
-            logger.warn("[UserManager] Warning: Token is being refreshed, returning current value synchronously");
-        }
-        return this.currentFluidToken;
-    }
-
-    // Fluid Relayに接続する際に必要なユーザー情報
-    public getFluidUserInfo(): { id: string; name: string; } | null {
-        const currentUser = this.getCurrentUser();
-        if (!currentUser) return null;
-
-        return {
-            id: currentUser.id,
-            name: currentUser.name,
-        };
-    }
-
-    // Firebase認証の完了を待機するためのヘルパーメソッド
-    private waitForFirebaseAuth(timeoutMs = 10000): Promise<boolean> {
-        return new Promise(resolve => {
-            // すでに認証済みなら即座に完了
-            if (this.auth.currentUser) {
-                return resolve(true);
-            }
-
-            // タイムアウト用のタイマー
-            const timeoutId = setTimeout(() => {
-                unsubscribe();
-                logger.warn("[UserManager] Firebase auth state timeout after", timeoutMs, "ms");
-                resolve(false);
-            }, timeoutMs);
-
-            // 認証状態変更のリスナー
-            const unsubscribe = this.auth.onAuthStateChanged(user => {
-                if (user) {
-                    clearTimeout(timeoutId);
-                    unsubscribe();
-                    resolve(true);
-                }
-            });
-        });
-    }
-
-    // トークンをリフレッシュする
-    public async refreshToken(containerId?: string): Promise<string | null> {
-        if (this.isRefreshingToken) {
-            logger.info("[UserManager] Token refresh already in progress, waiting...");
-            return this.tokenRefreshPromise?.then(token => token?.token || null) || null;
-        }
-
-        this.isRefreshingToken = true;
-
-        // リフレッシュの詳細をログ出力
-        if (containerId) {
-            logger.info(`[UserManager] Refreshing token specifically for container: ${containerId}`);
-        } else {
-            logger.info(`[UserManager] Refreshing token (no specific container)`);
-        }
-
-        try {
-            // Firebase認証を待機
-            const isAuthenticated = await this.waitForFirebaseAuth();
-            if (!isAuthenticated || !this.auth.currentUser) {
-                console.warn("[UserManager] Cannot refresh token - user not authenticated");
-                return null;
-            }
-
-            // IDトークンを取得
-            const idToken = await this.auth.currentUser.getIdToken(true);
-            logger.info(
-                `[UserManager] Retrieved ID token (length: ${idToken.length}) for user: ${this.auth.currentUser.uid}`,
-            );
-
-            // Fluidトークンを取得
-            this.currentFluidToken = await this.getFluidToken(idToken, containerId);
-
-            if (containerId && this.currentFluidToken.containerId !== containerId) {
-                console.warn(
-                    `[UserManager] Warning: Requested token for container ${containerId} `
-                        + `but received token for ${this.currentFluidToken.containerId || "unspecified container"}`,
-                );
-            }
-
-            return this.currentFluidToken.token;
-        } catch (error) {
-            logger.error("[UserManager] Token refresh failed:", error);
-            // エラーを上位に伝播させる
-            throw error;
-        } finally {
-            this.isRefreshingToken = false;
-            this.tokenRefreshPromise = null;
-        }
     }
 
     // クリーンアップ

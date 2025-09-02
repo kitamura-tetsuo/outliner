@@ -39,9 +39,8 @@
 本番環境で以下のエラーが発生しています：
 
 ```
-[HTTP/1.1 401] /api/fluid-token
-[ERROR]: Fluid token request failed: 401 {"error":"Authentication failed"}
-[ERROR]: R11s fetch error: {"message":"Invalid token validated with key2.","canRetry":false,"isFatal":false}
+[HTTP/1.1 404] /api/fluid-token
+[ERROR]: Endpoint not found
 ```
 
 ### 考えられる原因

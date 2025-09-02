@@ -32,10 +32,6 @@
         ],
         "rewrites": [
             {
-                "source": "/api/fluid-token",
-                "function": "fluidToken"
-            },
-            {
                 "source": "/api/save-container",
                 "function": "saveContainer"
             },

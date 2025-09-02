@@ -6,7 +6,6 @@ const baseURL = "http://localhost:57000/api";
 
 // List of endpoints and methods to verify invocation only
 const endpoints = [
-  { method: "post", path: "/fluid-token", data: { idToken: "invalid" } },
   {
     method: "post",
     path: "/save-container",
