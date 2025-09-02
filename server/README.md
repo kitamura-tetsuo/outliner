@@ -72,3 +72,12 @@ sudo systemctl enable --now outliner.service
 ```
 
 このユニットは `Restart=on-failure` で自動再起動し、`NoNewPrivileges` や `ProtectSystem=strict` などのハードニングを有効化しています。
+
+## Docker Quickstart
+
+```bash
+cp ../.env.example .env
+docker compose up --build
+```
+
+Expected output includes the y-websocket server listening log and a Cloudflare Tunnel URL for the configured hostname.
