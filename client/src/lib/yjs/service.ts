@@ -1,8 +1,7 @@
-type Awareness = {
-    getLocalState(): any;
-    setLocalStateField(field: string, value: any): void;
-};
+import type { Awareness } from "y-protocols/awareness";
 import { Item, Items, Project } from "../../schema/yjs-schema";
+import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
+import { colorForUser, presenceStore } from "../../stores/PresenceStore.svelte";
 
 function childrenKeys(tree: any, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);
@@ -80,6 +79,54 @@ export const yjsService = {
 
     getPresence(awareness: Awareness) {
         return awareness.getLocalState()?.presence as any;
+    },
+
+    bindProjectPresence(awareness: Awareness) {
+        const update = ({ added, updated, removed }: any) => {
+            const states = (awareness as any).getStates();
+            [...added, ...updated].forEach((id: number) => {
+                const s = states.get(id);
+                const user = s?.user;
+                if (!user) return;
+                const color = user.color || colorForUser(user.userId);
+                presenceStore.setUser({ userId: user.userId, userName: user.name, color });
+            });
+            removed.forEach((id: number) => {
+                const s = states.get(id);
+                const user = s?.user;
+                if (user) presenceStore.removeUser(user.userId);
+            });
+        };
+        (awareness as any).on("change", update);
+        update({ added: Array.from((awareness as any).getStates().keys()), updated: [], removed: [] });
+        return () => (awareness as any).off("change", update);
+    },
+
+    bindPagePresence(awareness: Awareness) {
+        const update = ({ added, updated, removed }: any) => {
+            const states = (awareness as any).getStates();
+            [...added, ...updated].forEach((id: number) => {
+                const s = states.get(id);
+                const user = s?.user;
+                const p = s?.presence;
+                if (!user || !p?.cursor) return;
+                editorOverlayStore.setCursor({
+                    itemId: p.cursor.itemId,
+                    offset: p.cursor.offset,
+                    isActive: false,
+                    userId: user.userId,
+                    userName: user.name,
+                    color: user.color || colorForUser(user.userId),
+                });
+            });
+            removed.forEach((id: number) => {
+                const s = states.get(id);
+                const user = s?.user;
+                if (user) editorOverlayStore.clearCursorAndSelection(user.userId, true);
+            });
+        };
+        (awareness as any).on("change", update);
+        return () => (awareness as any).off("change", update);
     },
 };
 

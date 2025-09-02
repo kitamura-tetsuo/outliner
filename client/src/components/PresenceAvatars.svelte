@@ -1,8 +1,8 @@
 <script lang="ts">
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
-// プレゼンスストアのusersオブジェクトを直接監視
-let users = $derived(Object.values(presenceStore.users));
+// プレゼンスストアのユーザー一覧を取得
+let users = $derived(presenceStore.getUsers());
 </script>
 <div class="presence-row" data-testid="presence-row">
   {#each users as u (u.userId)}

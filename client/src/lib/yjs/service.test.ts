@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { Items } from "../../schema/yjs-schema";
+import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
+import { presenceStore } from "../../stores/PresenceStore.svelte";
 import { yjsService } from "./service";
 
 describe("yjsService", () => {
@@ -32,5 +34,29 @@ describe("yjsService", () => {
         yjsService.setPresence(awareness, { cursor: { itemId: "i1", offset: 0 } });
         const presence = yjsService.getPresence(awareness);
         expect(presence.cursor.itemId).toBe("i1");
+    });
+
+    it("binds project presence to store", () => {
+        const awareness = new Awareness(new Y.Doc());
+        presenceStore.users = {} as any;
+        const unbind = yjsService.bindProjectPresence(awareness);
+        awareness.setLocalState({ user: { userId: "u1", name: "Alice" } });
+        expect(presenceStore.users["u1"].userName).toBe("Alice");
+        awareness.setLocalState(null);
+        unbind();
+    });
+
+    it("binds page presence to overlay", () => {
+        const awareness = new Awareness(new Y.Doc());
+        editorOverlayStore.cursors = {} as any;
+        const unbind = yjsService.bindPagePresence(awareness);
+        awareness.setLocalState({
+            user: { userId: "u2", name: "Bob" },
+            presence: { cursor: { itemId: "i1", offset: 0 } },
+        });
+        const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
+        expect(cursor?.itemId).toBe("i1");
+        awareness.setLocalState(null);
+        unbind();
     });
 });
