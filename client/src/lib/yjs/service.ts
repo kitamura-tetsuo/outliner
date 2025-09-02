@@ -2,7 +2,7 @@ type Awareness = {
     getLocalState(): any;
     setLocalStateField(field: string, value: any): void;
 };
-import { Item, Items, Project } from "../../schema/app-schema";
+import { Item, Items, Project } from "../../schema/yjs-schema";
 
 function childrenKeys(tree: any, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);

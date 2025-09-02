@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { yjsService } from "../../lib/yjs/service";
-import { Items } from "../../schema/app-schema";
+import { Items } from "../../schema/yjs-schema";
 
 describe("yjsService integration", () => {
     it("moves items between parents", () => {

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { yjsService } from "../../src/lib/yjs/service";
-import { Items } from "../../src/schema/app-schema";
+import { Items } from "../../src/schema/yjs-schema";
 import { TestHelpers } from "../utils/testHelpers";
 
 test("yjs service basic operations", async ({ page }, testInfo) => {
