@@ -44,3 +44,12 @@ cp .env.example .env
 2. 「Your apps」セクションで「Add app」をクリック（Webアプリ）
 3. アプリを登録し、Firebaseの設定情報を取得
 4. クライアントプロジェクトの `.env` ファイルに以下の情報を設定:
+
+## Docker Quickstart
+
+```bash
+cp ../.env.example .env
+docker compose up --build
+```
+
+Expected output includes the y-websocket server listening log and a Cloudflare Tunnel URL for the configured hostname.
