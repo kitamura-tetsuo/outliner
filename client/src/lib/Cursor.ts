@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { Tree } from "fluid-framework";
+import * as Y from "yjs";
 import { TreeViewManager } from "../fluid/TreeViewManager";
 import type { Item } from "../schema/app-schema";
 import { Items } from "../schema/app-schema";
@@ -663,8 +664,8 @@ export class Cursor {
             return;
         }
 
+        const ytext = (node as Item).text as Y.Text;
         console.log(`insertText: Inserting "${ch}" at offset ${this.offset} in item ${this.itemId}`);
-        console.log(`insertText: Current text: "${node.text}"`);
 
         // 選択範囲がある場合は、選択範囲を削除してからテキストを挿入
         const selection = Object.values(store.selections).find(s =>
@@ -674,28 +675,21 @@ export class Cursor {
         );
 
         if (selection && selection.startOffset !== selection.endOffset) {
-            // 選択範囲のテキストを削除
             const startOffset = Math.min(selection.startOffset, selection.endOffset);
             const endOffset = Math.max(selection.startOffset, selection.endOffset);
-            let txt = node.text;
-            txt = txt.slice(0, startOffset) + ch + txt.slice(endOffset);
-            node.updateText(txt);
+            // Y.Text の範囲置換: delete -> insert
+            ytext.delete(startOffset, endOffset - startOffset);
+            ytext.insert(startOffset, ch);
 
             // カーソル位置を更新
             this.offset = startOffset + ch.length;
 
             // 選択範囲をクリア
             this.clearSelection();
-
-            console.log(`insertText: Updated text with selection: "${txt}"`);
         } else {
             // 通常の挿入
-            let txt = node.text;
-            txt = txt.slice(0, this.offset) + ch + txt.slice(this.offset);
-            node.updateText(txt);
+            ytext.insert(this.offset, ch);
             this.offset += ch.length;
-
-            console.log(`insertText: Updated text: "${txt}"`);
         }
 
         this.applyToStore();
@@ -718,6 +712,8 @@ export class Cursor {
         const node = this.findTarget();
         if (!node) return;
 
+        const ytext = (node as Item).text as Y.Text;
+
         // 選択範囲がある場合は、選択範囲を削除
         const selection = Object.values(store.selections).find(s => s.userId === this.userId);
 
@@ -730,12 +726,10 @@ export class Cursor {
 
             // 単一アイテム内の選択範囲の場合
             if (selection.startItemId === this.itemId && selection.endItemId === this.itemId) {
-                // 選択範囲のテキストを削除
                 const startOffset = Math.min(selection.startOffset, selection.endOffset);
                 const endOffset = Math.max(selection.startOffset, selection.endOffset);
-                let txt = node.text;
-                txt = txt.slice(0, startOffset) + txt.slice(endOffset);
-                node.updateText(txt);
+                // 選択範囲のテキストを削除
+                ytext.delete(startOffset, endOffset - startOffset);
 
                 // カーソル位置を更新
                 this.offset = startOffset;
@@ -746,10 +740,8 @@ export class Cursor {
         } else {
             // 通常の削除
             if (this.offset > 0) {
-                let txt = node.text;
                 const pos = this.offset - 1;
-                txt = txt.slice(0, pos) + txt.slice(pos + 1);
-                node.updateText(txt);
+                ytext.delete(pos, 1);
                 this.offset = Math.max(0, this.offset - 1);
             } else {
                 // 行頭で前アイテムとの結合
@@ -777,6 +769,8 @@ export class Cursor {
         const node = this.findTarget();
         if (!node) return;
 
+        const ytext = (node as Item).text as Y.Text;
+
         // 選択範囲がある場合は、選択範囲を削除
         const selection = Object.values(store.selections).find(s => s.userId === this.userId);
 
@@ -789,12 +783,10 @@ export class Cursor {
 
             // 単一アイテム内の選択範囲の場合
             if (selection.startItemId === this.itemId && selection.endItemId === this.itemId) {
-                // 選択範囲のテキストを削除
                 const startOffset = Math.min(selection.startOffset, selection.endOffset);
                 const endOffset = Math.max(selection.startOffset, selection.endOffset);
-                let txt = node.text;
-                txt = txt.slice(0, startOffset) + txt.slice(endOffset);
-                node.updateText(txt);
+                // 選択範囲のテキストを削除
+                ytext.delete(startOffset, endOffset - startOffset);
 
                 // カーソル位置を更新
                 this.offset = startOffset;
@@ -804,14 +796,13 @@ export class Cursor {
             }
         } else {
             // 通常の削除
-            let txt = node.text;
-            if (this.offset < txt.length) {
-                txt = txt.slice(0, this.offset) + txt.slice(this.offset + 1);
-                node.updateText(txt);
+            if (this.offset < ytext.length) {
+                ytext.delete(this.offset, 1);
             } else {
                 // 行末の場合
+                const len = ytext.length;
                 // アイテムが空の場合はアイテム自体を削除
-                if (txt.length === 0) {
+                if (len === 0) {
                     this.deleteEmptyItem();
                     return;
                 }
@@ -828,7 +819,7 @@ export class Cursor {
         // グローバルテキストエリアの値も同期
         const textarea = store.getTextareaRef();
         if (textarea) {
-            textarea.value = node.text;
+            textarea.value = ytext.toString();
             textarea.setSelectionRange(this.offset, this.offset);
             console.log(`deleteForward: Synced textarea value: "${textarea.value}"`);
         }
@@ -946,6 +937,124 @@ export class Cursor {
 
         // カーソル点滅を開始
         store.startCursorBlink();
+    }
+
+    // ===== YTree 操作補助 =====
+    private getYTree(): any | undefined {
+        const root: any = (generalStore as any).currentPage;
+        return root?.items?.tree || root?.tree;
+    }
+
+    private getParentKey(key: string): string | undefined {
+        const ytree = this.getYTree();
+        return ytree?.getNodeParentFromKey?.(key);
+    }
+
+    private getOrderedSiblings(key: string): string[] | null {
+        const ytree = this.getYTree();
+        if (!ytree) return null;
+        const parentKey = ytree.getNodeParentFromKey(key);
+        if (!parentKey) return [];
+        return ytree.sortChildrenByOrder(
+            ytree.getNodeChildrenFromKey(parentKey),
+            parentKey,
+        );
+    }
+
+    // カーソルの現在アイテムをインデント（直前兄弟の子へ）
+    indent(): boolean {
+        const ytree = this.getYTree();
+        const key = this.itemId;
+        if (!ytree || !key) return false;
+        const siblings = this.getOrderedSiblings(key);
+        if (!siblings) return false;
+        const idx = siblings.indexOf(key);
+        if (idx <= 0) return false; // 先頭は不可
+        const prevSiblingKey = siblings[idx - 1];
+        ytree.moveChildToParent(key, prevSiblingKey);
+        ytree.setNodeOrderToEnd(key);
+        return true;
+    }
+
+    // カーソルの現在アイテムをアウトデント（親の親の直後へ）
+    outdent(): boolean {
+        const ytree = this.getYTree();
+        const key = this.itemId;
+        if (!ytree || !key) return false;
+        const parentKey = this.getParentKey(key);
+        if (!parentKey) return false; // ルート直下
+        const grandParentKey = this.getParentKey(parentKey);
+        if (!grandParentKey) return false;
+        ytree.moveChildToParent(key, grandParentKey);
+        ytree.setNodeAfter(key, parentKey);
+        return true;
+    }
+
+    static indentItems(itemIds: string[]) {
+        const root: any = (generalStore as any).currentPage;
+        const ytree: any = root?.items?.tree || root?.tree;
+        if (!ytree || !Array.isArray(itemIds) || itemIds.length === 0) return;
+        // シンプルかつ決定的: 表示順（渡された順）に単体 indent を順次実行
+        const ydoc = ytree.ydoc || (root?.items?.ydoc);
+        const run = () => {
+            for (const id of itemIds) {
+                const c = new Cursor("bulk-indent", { itemId: id, offset: 0, isActive: false, userId: "local" });
+                c.indent();
+            }
+        };
+        if (ydoc && ydoc.transact) {
+            ydoc.transact(run);
+        } else {
+            run();
+        }
+    }
+
+    static outdentItems(itemIds: string[]) {
+        const root: any = (generalStore as any).currentPage;
+        const ytree: any = root?.items?.tree || root?.tree;
+        if (!ytree || !Array.isArray(itemIds) || itemIds.length === 0) return;
+        // 全アイテムが同一親であることを前提（異なる場合は個別処理にフォールバック）
+        const parentKey = ytree.getNodeParentFromKey(itemIds[0]);
+        if (!parentKey) return;
+        const sameParent = itemIds.every(id => ytree.getNodeParentFromKey(id) === parentKey);
+        if (!sameParent) {
+            // フォールバック: 旧挙動（個別）
+            for (const key of itemIds) {
+                const pk = ytree.getNodeParentFromKey(key);
+                if (!pk) continue;
+                const gpk = ytree.getNodeParentFromKey(pk);
+                if (!gpk) continue;
+                ytree.moveChildToParent(key, gpk);
+                ytree.setNodeAfter(key, pk);
+            }
+            return;
+        }
+        const grandParentKey = ytree.getNodeParentFromKey(parentKey);
+        if (!grandParentKey) return;
+        // 親の子供リスト順に並べた選択ブロック
+        const siblings: string[] = ytree.sortChildrenByOrder(
+            ytree.getNodeChildrenFromKey(parentKey),
+            parentKey,
+        );
+        const blockKeys = siblings.filter(k => itemIds.includes(k));
+        const ydoc = ytree.ydoc || (root?.items?.ydoc);
+        if (ydoc && ydoc.transact) {
+            ydoc.transact(() => {
+                let afterKey: string | null = parentKey;
+                for (const key of blockKeys) {
+                    ytree.moveChildToParent(key, grandParentKey);
+                    ytree.setNodeAfter(key, afterKey!);
+                    afterKey = key;
+                }
+            });
+        } else {
+            let afterKey: string | null = parentKey;
+            for (const key of blockKeys) {
+                ytree.moveChildToParent(key, grandParentKey);
+                ytree.setNodeAfter(key, afterKey!);
+                afterKey = key;
+            }
+        }
     }
 
     insertLineBreak() {
@@ -2583,13 +2692,12 @@ export class Cursor {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
         const startOffset = Math.min(selection.startOffset, selection.endOffset);
         const endOffset = Math.max(selection.startOffset, selection.endOffset);
 
-        // テキストを削除
-        const newText = text.substring(0, startOffset) + text.substring(endOffset);
-        target.updateText(newText);
+        // Y.Text で削除
+        const ytext = (target as any).text as any;
+        ytext.delete(startOffset, endOffset - startOffset);
 
         // カーソル位置を更新
         this.offset = startOffset;

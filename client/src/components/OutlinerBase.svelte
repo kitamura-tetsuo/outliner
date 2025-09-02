@@ -8,6 +8,7 @@ import GlobalTextArea from "./GlobalTextArea.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
 import PresenceAvatars from "./PresenceAvatars.svelte";
 import SlashCommandPalette from "./SlashCommandPalette.svelte";
+import { TreeSubscriber } from "../stores/TreeSubscriber";
 
 console.log("OutlinerBase imports completed");
 
