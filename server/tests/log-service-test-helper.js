@@ -100,50 +100,6 @@ app.get("/health", (req, res) => {
     res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-// Fluid トークン生成エンドポイント
-app.post("/api/fluid-token", async (req, res) => {
-    try {
-        const { idToken, containerId } = req.body;
-
-        // Firebase IDトークンを検証
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
-        const userId = decodedToken.uid;
-
-        // コンテナIDの取得（指定されていればそれを使用、なければユーザーのデフォルト）
-        let targetContainerId = containerId;
-
-        if (!targetContainerId) {
-            // ユーザーのデフォルトコンテナを取得
-            const userDocRef = userContainersCollection.doc(userId);
-            const userDoc = await userDocRef.get();
-
-            if (userDoc.exists && userDoc.data().defaultContainerId) {
-                targetContainerId = userDoc.data().defaultContainerId;
-            }
-        }
-
-        // Azure Fluid RelayのJWT生成
-        const jwt = generateAzureFluidToken({
-            uid: userId,
-            displayName: decodedToken.name || "Anonymous User",
-        }, targetContainerId);
-
-        // レスポンスを返す
-        res.status(200).json({
-            token: jwt.token,
-            user: {
-                id: userId,
-                name: decodedToken.name || "Anonymous User",
-            },
-            tenantId: azureConfig.tenantId,
-            containerId: targetContainerId,
-        });
-    } catch (error) {
-        console.error("Token validation error:", error);
-        res.status(401).json({ error: "Authentication failed", details: error.message });
-    }
-});
-
 // コンテナID保存エンドポイント
 app.post("/api/save-container", async (req, res) => {
     try {

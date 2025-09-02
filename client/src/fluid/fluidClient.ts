@@ -322,25 +322,8 @@ export class FluidClient {
     private async reconnect() {
         try {
             logger.info("Attempting to reconnect...");
-
-            // 現在のコンテナIDがある場合は、そのIDに特化したトークンを更新
-            if (this.containerId) {
-                logger.info(`Refreshing token for container: ${this.containerId}`);
-                await userManager.refreshToken(this.containerId);
-
-                // 更新したトークンで再接続
-                if (this.container) {
-                    logger.info("Reconnecting with refreshed token...");
-                    this.container.connect();
-                }
-            } else {
-                // 一般的なトークン更新
-
-                await userManager.refreshToken();
-
-                if (this.container) {
-                    this.container.connect();
-                }
+            if (this.container) {
+                this.container.connect();
             }
         } catch (error) {
             logger.error("Reconnection failed:", error);

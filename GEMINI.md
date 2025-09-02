@@ -185,7 +185,7 @@ Prioritize performance.
 
 # Deployment and Firebase Configuration
 
-- User plans to deploy to Firebase Hosting + Functions with only /api/fluid-token and /api/save-container needing implementation in Firebase Functions.
+- User plans to deploy to Firebase Hosting + Functions with only /api/save-container needing implementation in Firebase Functions.
 - The Firebase project is deployed at https://outliner-d57b0.web.app with project console at https://console.firebase.google.com/project/outliner-d57b0/overview.
 - For Firebase Functions v2, environment variables should be set using .env files instead of functions.config() method.
 - Authentication service needs to be migrated from server/log-service.js to Firebase Functions, and client-side code needs to be updated accordingly.

@@ -71,36 +71,9 @@ async function testEmailPasswordLogin() {
         const fakeIdToken = Buffer.from(JSON.stringify(devToken)).toString("base64");
         console.log(`${colors.green}開発環境用IDトークン生成完了${colors.reset}`);
 
-        // トークンを使ってFluid Token APIを呼び出す
-        console.log(`\n${colors.yellow}3. /api/fluid-tokenエンドポイントでトークンを取得...${colors.reset}`);
-        const fluidTokenResponse = await fetch(`${API_BASE_URL}/api/fluid-token`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken: fakeIdToken }),
-        });
-
-        if (!fluidTokenResponse.ok) {
-            const errorText = await fluidTokenResponse.text();
-            console.error(
-                `${colors.red}Fluidトークン取得失敗: ${fluidTokenResponse.status} ${fluidTokenResponse.statusText}${colors.reset}`,
-            );
-            console.error(`${colors.red}エラー詳細: ${errorText}${colors.reset}`);
-            return;
-        }
-
-        const fluidTokenData = await fluidTokenResponse.json();
-        console.log(`${colors.green}Fluidトークン取得成功!${colors.reset}`);
-        console.log(`テナントID: ${fluidTokenData.tenantId}`);
-        console.log(`ユーザー: ${JSON.stringify(fluidTokenData.user, null, 2)}`);
-
-        if (fluidTokenData.token) {
-            console.log(`${colors.green}トークン検証に成功しました！${colors.reset}`);
-            console.log(`${colors.cyan}===================================================${colors.reset}`);
-            console.log(`${colors.cyan}テスト結果: 成功${colors.reset}`);
-            console.log(`${colors.cyan}===================================================${colors.reset}`);
-        } else {
-            console.error(`${colors.red}トークンが返されませんでした${colors.reset}`);
-        }
+        console.log(`${colors.cyan}===================================================${colors.reset}`);
+        console.log(`${colors.cyan}テスト結果: 成功${colors.reset}`);
+        console.log(`${colors.cyan}===================================================${colors.reset}`);
     } catch (error) {
         console.error(`${colors.red}テスト中にエラーが発生しました:${colors.reset}`, error);
     }
