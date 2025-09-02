@@ -1,7 +1,17 @@
 import { expect, test } from "@playwright/test";
+import { execSync } from "child_process";
+import { existsSync } from "fs";
+import path from "path";
 import { Writable } from "stream";
+import { fileURLToPath } from "url";
 test("srv-structured-logging redacts sensitive data", async () => {
-    const { createLogger } = await import("../../../server/src/logger.ts");
+    const serverDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../server");
+    const distPath = path.join(serverDir, "dist/logger.js");
+    if (!existsSync(distPath)) {
+        execSync("npm run build", { cwd: serverDir, stdio: "inherit" });
+    }
+    const loggerModule: any = await import(distPath);
+    const { createLogger } = loggerModule.createLogger ? loggerModule : loggerModule.default;
     let output = "";
     const stream = new Writable({
         write(chunk, _enc, cb) {
