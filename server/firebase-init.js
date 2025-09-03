@@ -4,6 +4,40 @@ const path = require("path");
 const fs = require("fs");
 const { serverLogger: logger } = require("./utils/logger");
 
+// Normalize emulator env hosts to expected ports when provided by parent process
+// This avoids accidental drift (e.g., external 9100) breaking local setup
+try {
+    const expectedAuthPort = process.env.FIREBASE_AUTH_PORT;
+    const expectedFsPort = process.env.FIREBASE_FIRESTORE_PORT;
+    const expectedFnPort = process.env.FIREBASE_FUNCTIONS_PORT;
+    if (expectedAuthPort) {
+        const expected = `localhost:${expectedAuthPort}`;
+        if (process.env.FIREBASE_AUTH_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST !== expected) {
+            logger.warn(
+                `Overriding FIREBASE_AUTH_EMULATOR_HOST ${process.env.FIREBASE_AUTH_EMULATOR_HOST} -> ${expected}`,
+            );
+        }
+        process.env.FIREBASE_AUTH_EMULATOR_HOST = expected;
+        process.env.AUTH_EMULATOR_HOST = expected; // legacy
+    }
+    if (expectedFsPort) {
+        const expected = `localhost:${expectedFsPort}`;
+        if (process.env.FIRESTORE_EMULATOR_HOST && process.env.FIRESTORE_EMULATOR_HOST !== expected) {
+            logger.warn(`Overriding FIRESTORE_EMULATOR_HOST ${process.env.FIRESTORE_EMULATOR_HOST} -> ${expected}`);
+        }
+        process.env.FIRESTORE_EMULATOR_HOST = expected;
+    }
+    if (expectedFnPort) {
+        const expected = `localhost:${expectedFnPort}`;
+        if (process.env.FIREBASE_EMULATOR_HOST && process.env.FIREBASE_EMULATOR_HOST !== expected) {
+            logger.warn(`Overriding FIREBASE_EMULATOR_HOST ${process.env.FIREBASE_EMULATOR_HOST} -> ${expected}`);
+        }
+        process.env.FIREBASE_EMULATOR_HOST = expected;
+    }
+} catch (e) {
+    // Non-fatal; continue with existing env
+}
+
 // Development auth helper
 const isDevelopment = process.env.NODE_ENV !== "production";
 let devAuthHelper;
@@ -67,6 +101,12 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
         return;
     }
     logger.info(`Firebase emulator detected, waiting for connection... (max retries: ${maxRetries})`);
+    logger.info(
+        `Emulator hosts: AUTH=${process.env.FIREBASE_AUTH_EMULATOR_HOST || "(unset)"}, `
+            + `FIRESTORE=${process.env.FIRESTORE_EMULATOR_HOST || "(unset)"}, FUNCTIONS=${
+                process.env.FIREBASE_EMULATOR_HOST || "(unset)"
+            }`,
+    );
     let retryCount = 0;
     let delay = initialDelay;
     while (retryCount < maxRetries) {

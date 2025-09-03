@@ -8,12 +8,23 @@
 : "${TEST_YJS_PORT:=7093}"
 : "${FIREBASE_PROJECT_ID:=outliner-d57b0}"
 
-# Firebase emulator ports
-: "${FIREBASE_AUTH_PORT:=59099}"
-: "${FIREBASE_FIRESTORE_PORT:=58080}"
-: "${FIREBASE_FUNCTIONS_PORT:=57070}"
-: "${FIREBASE_HOSTING_PORT:=57000}"
-: "${FIREBASE_STORAGE_PORT:=59200}"
+# Normalize Firebase emulator ports from firebase.emulator.json when available
+# This prevents drift and overrides any external mismatched env like 9100
+if [ -n "${ROOT_DIR:-}" ] && [ -f "${ROOT_DIR}/firebase.emulator.json" ]; then
+  # Use node to safely read JSON without jq dependency
+  AUTH_FROM_CFG=$(node -e 'try{const c=require(process.argv[1]);console.log(c.emulators.auth.port)}catch{process.exit(1)}' "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || true)
+  FS_FROM_CFG=$(node -e 'try{const c=require(process.argv[1]);console.log(c.emulators.firestore.port)}catch{process.exit(1)}' "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || true)
+  FN_FROM_CFG=$(node -e 'try{const c=require(process.argv[1]);console.log(c.emulators.functions.port)}catch{process.exit(1)}' "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || true)
+  HS_FROM_CFG=$(node -e 'try{const c=require(process.argv[1]);console.log(c.emulators.hosting.port)}catch{process.exit(1)}' "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || true)
+  ST_FROM_CFG=$(node -e 'try{const c=require(process.argv[1]);console.log(c.emulators.storage.port)}catch{process.exit(1)}' "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || true)
+fi
+
+# Firebase emulator ports (defaults fall back to config when present)
+: "${FIREBASE_AUTH_PORT:=${AUTH_FROM_CFG:-59099}}"
+: "${FIREBASE_FIRESTORE_PORT:=${FS_FROM_CFG:-58080}}"
+: "${FIREBASE_FUNCTIONS_PORT:=${FN_FROM_CFG:-57070}}"
+: "${FIREBASE_HOSTING_PORT:=${HS_FROM_CFG:-57000}}"
+: "${FIREBASE_STORAGE_PORT:=${ST_FROM_CFG:-59200}}"
 
 # Environment settings
 export NODE_ENV=test
@@ -24,9 +35,29 @@ export VITE_YJS_PORT=${TEST_YJS_PORT}
 
 # Firebase emulator settings for test environment
 export USE_FIREBASE_EMULATOR=true
-export FIREBASE_AUTH_EMULATOR_HOST=localhost:${FIREBASE_AUTH_PORT}
-export FIRESTORE_EMULATOR_HOST=localhost:${FIREBASE_FIRESTORE_PORT}
-export FIREBASE_EMULATOR_HOST=localhost:${FIREBASE_FUNCTIONS_PORT}
+
+# If external env pre-sets a different port (e.g., 9100/9099), normalize to repo config
+_AUTH_HOST_CURRENT=${FIREBASE_AUTH_EMULATOR_HOST:-}
+_AUTH_HOST_EXPECTED="localhost:${FIREBASE_AUTH_PORT}"
+if [ -n "${_AUTH_HOST_CURRENT}" ] && [ "${_AUTH_HOST_CURRENT}" != "${_AUTH_HOST_EXPECTED}" ]; then
+  echo "Warning: Overriding FIREBASE_AUTH_EMULATOR_HOST (${_AUTH_HOST_CURRENT}) -> ${_AUTH_HOST_EXPECTED}"
+fi
+export FIREBASE_AUTH_EMULATOR_HOST=${_AUTH_HOST_EXPECTED}
+export AUTH_EMULATOR_HOST=${_AUTH_HOST_EXPECTED}  # legacy var used by some tools
+
+_FS_HOST_CURRENT=${FIRESTORE_EMULATOR_HOST:-}
+_FS_HOST_EXPECTED="localhost:${FIREBASE_FIRESTORE_PORT}"
+if [ -n "${_FS_HOST_CURRENT}" ] && [ "${_FS_HOST_CURRENT}" != "${_FS_HOST_EXPECTED}" ]; then
+  echo "Warning: Overriding FIRESTORE_EMULATOR_HOST (${_FS_HOST_CURRENT}) -> ${_FS_HOST_EXPECTED}"
+fi
+export FIRESTORE_EMULATOR_HOST=${_FS_HOST_EXPECTED}
+
+_FN_HOST_CURRENT=${FIREBASE_EMULATOR_HOST:-}
+_FN_HOST_EXPECTED="localhost:${FIREBASE_FUNCTIONS_PORT}"
+if [ -n "${_FN_HOST_CURRENT}" ] && [ "${_FN_HOST_CURRENT}" != "${_FN_HOST_EXPECTED}" ]; then
+  echo "Warning: Overriding FIREBASE_EMULATOR_HOST (${_FN_HOST_CURRENT}) -> ${_FN_HOST_EXPECTED}"
+fi
+export FIREBASE_EMULATOR_HOST=${_FN_HOST_EXPECTED}
 
 # Skip Paraglide compile in tests
 : "${SKIP_PARAGLIDE_COMPILE:=}"

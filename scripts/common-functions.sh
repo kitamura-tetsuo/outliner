@@ -311,7 +311,6 @@ EOF
   echo "Firebase emulator log will be written to: ${ROOT_DIR}/server/logs/firebase-emulator.log"
 
   cd "${ROOT_DIR}"
-  node "${ROOT_DIR}/server/scripts/init-firebase-emulator.js" &
 
   # Wait for Firebase emulator to start and verify it's working
   echo "Waiting for Firebase emulator to start..."
@@ -347,6 +346,19 @@ EOF
   # Additional wait for Firebase Functions to fully initialize
   echo "Waiting additional 10 seconds for Firebase Functions to fully initialize..."
   sleep 10
+
+  # Now that emulators are listening, initialize admin and test user in background
+  echo "Launching Firebase emulator initializer (admin + test user) ..."
+  # Force-correct emulator env for the initializer to avoid external drift
+  export FIREBASE_AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
+  export AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
+  export FIRESTORE_EMULATOR_HOST="localhost:${FIREBASE_FIRESTORE_PORT}"
+  export FIREBASE_EMULATOR_HOST="localhost:${FIREBASE_FUNCTIONS_PORT}"
+  echo "Using env: FIREBASE_AUTH_EMULATOR_HOST=${FIREBASE_AUTH_EMULATOR_HOST} FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST} FIREBASE_EMULATOR_HOST=${FIREBASE_EMULATOR_HOST}"
+  FIREBASE_AUTH_EMULATOR_HOST="${FIREBASE_AUTH_EMULATOR_HOST}" \
+  FIRESTORE_EMULATOR_HOST="${FIRESTORE_EMULATOR_HOST}" \
+  FIREBASE_EMULATOR_HOST="${FIREBASE_EMULATOR_HOST}" \
+  node "${ROOT_DIR}/server/scripts/init-firebase-emulator.js" &
 
   # Test Firebase Functions endpoint directly
   echo "Testing Firebase Functions endpoint directly..."

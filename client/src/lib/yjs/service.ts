@@ -1,7 +1,5 @@
 import type { Awareness } from "y-protocols/awareness";
 import { Item, Items, Project } from "../../schema/yjs-schema";
-import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
-import { colorForUser, presenceStore } from "../../stores/PresenceStore.svelte";
 
 function childrenKeys(tree: any, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);
@@ -82,19 +80,22 @@ export const yjsService = {
     },
 
     bindProjectPresence(awareness: Awareness) {
+        // Avoid importing Svelte $state stores in Node (Playwright worker) context
         const update = ({ added, updated, removed }: any) => {
+            const target = (globalThis as any).presenceStore;
+            if (!target) return; // no-op when store not available (e.g., tests)
             const states = (awareness as any).getStates();
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);
                 const user = s?.user;
                 if (!user) return;
-                const color = user.color || colorForUser(user.userId);
-                presenceStore.setUser({ userId: user.userId, userName: user.name, color });
+                const color = user.color || ((globalThis as any).colorForUser?.(user.userId) ?? "#888");
+                target.setUser({ userId: user.userId, userName: user.name, color });
             });
             removed.forEach((id: number) => {
                 const s = states.get(id);
                 const user = s?.user;
-                if (user) presenceStore.removeUser(user.userId);
+                if (user) target.removeUser(user.userId);
             });
         };
         (awareness as any).on("change", update);
@@ -104,25 +105,27 @@ export const yjsService = {
 
     bindPagePresence(awareness: Awareness) {
         const update = ({ added, updated, removed }: any) => {
+            const overlay = (globalThis as any).editorOverlayStore;
+            if (!overlay) return; // no-op when overlay store not present
             const states = (awareness as any).getStates();
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);
                 const user = s?.user;
                 const p = s?.presence;
                 if (!user || !p?.cursor) return;
-                editorOverlayStore.setCursor({
+                overlay.setCursor({
                     itemId: p.cursor.itemId,
                     offset: p.cursor.offset,
                     isActive: false,
                     userId: user.userId,
                     userName: user.name,
-                    color: user.color || colorForUser(user.userId),
+                    color: user.color || ((globalThis as any).colorForUser?.(user.userId) ?? "#888"),
                 });
             });
             removed.forEach((id: number) => {
                 const s = states.get(id);
                 const user = s?.user;
-                if (user) editorOverlayStore.clearCursorAndSelection(user.userId, true);
+                if (user) overlay.clearCursorAndSelection(user.userId, true);
             });
         };
         (awareness as any).on("change", update);

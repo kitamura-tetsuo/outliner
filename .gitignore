@@ -92,3 +92,4 @@ backups/
 yjs-data/
 
 server/dist/
+client/e2e-snapshots/
