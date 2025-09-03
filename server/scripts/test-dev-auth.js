@@ -70,7 +70,6 @@ async function testEmailPasswordLogin() {
         // トークンを文字列化して署名を追加（開発環境用の簡易版）
         const fakeIdToken = Buffer.from(JSON.stringify(devToken)).toString("base64");
         console.log(`${colors.green}開発環境用IDトークン生成完了${colors.reset}`);
-
     } catch (error) {
         console.error(`${colors.red}テスト中にエラーが発生しました:${colors.reset}`, error);
     }

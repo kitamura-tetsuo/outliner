@@ -6,12 +6,15 @@
 Functionsが含まれています。 主な機能は以下の通りです：
 
 1. `/api/save-container` - ユーザーのコンテナIDを保存するエンドポイント
-2. `/api/get-user-containers` - ユーザーがアクセス可能なコンテナIDのリストを取得するエンドポイント
+2. `/api/get-user-containers` -
+   ユーザーがアクセス可能なコンテナIDのリストを取得するエンドポイント
 3. `/health` - ヘルスチェックエンドポイント
 4. `/api/azure-health-check` - Azure Fluid Relayキーの動作確認エンドポイント
-5. `/api/create-schedule` - 指定したページに公開スケジュールを登録するエンドポイント
+5. `/api/create-schedule` -
+   指定したページに公開スケジュールを登録するエンドポイント
 6. `/api/update-schedule` - 既存のスケジュールを更新するエンドポイント
-7. `/api/list-schedules` - ユーザーが作成したスケジュール一覧を取得するエンドポイント
+7. `/api/list-schedules` -
+   ユーザーが作成したスケジュール一覧を取得するエンドポイント
 8. `/api/cancel-schedule` - スケジュールをキャンセルするエンドポイント
 
 ### サンプル

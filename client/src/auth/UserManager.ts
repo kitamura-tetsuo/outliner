@@ -289,7 +289,6 @@ export class UserManager {
         };
     }
 
-
     // Googleでログイン
     public async loginWithGoogle(): Promise<void> {
         try {
