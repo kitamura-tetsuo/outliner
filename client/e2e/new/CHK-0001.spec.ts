@@ -49,3 +49,4 @@ test.describe("CHK-0001: Universal Checklist", () => {
         await expect(checkbox).not.toBeChecked();
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -62,3 +62,4 @@ test.describe("VS Code clipboard behavior", () => {
         expect(last).toBe("111\n222");
     });
 });
+import "../utils/registerAfterEachSnapshot";

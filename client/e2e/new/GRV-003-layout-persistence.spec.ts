@@ -307,3 +307,4 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         expect(layoutRestoreResult.layoutRestored).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

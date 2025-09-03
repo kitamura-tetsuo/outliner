@@ -114,3 +114,5 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";

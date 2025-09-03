@@ -36,3 +36,4 @@ test.describe("Schedule Management", () => {
         expect(json.schedules.length).toBeGreaterThan(0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -8,3 +8,4 @@ test("password reset page not implemented", async ({ request }) => {
     const res = await request.get("http://localhost:7090/auth/forgot");
     expect(res.status()).toBe(200);
 });
+import "../utils/registerAfterEachSnapshot";

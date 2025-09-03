@@ -206,3 +206,4 @@ test.describe("フォーマット表示", () => {
         expect(itemText).toContain("のテキストです");
     });
 });
+import "../utils/registerAfterEachSnapshot";

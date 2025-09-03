@@ -355,3 +355,4 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         expect(firstItemTextAfter).toContain("INSERTED");
     });
 });
+import "../utils/registerAfterEachSnapshot";

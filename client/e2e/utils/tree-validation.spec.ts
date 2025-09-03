@@ -133,3 +133,4 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
         }
     });
 });
+import "./registerAfterEachSnapshot";

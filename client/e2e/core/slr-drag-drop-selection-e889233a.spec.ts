@@ -122,3 +122,4 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         expect(thirdItemTextAfter).toContain("First");
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -40,3 +40,4 @@ test.describe("LNK-0004: 仮ページ編集保存", () => {
         expect(currentUrl).toContain(nonExistentPage);
     });
 });
+import "../utils/registerAfterEachSnapshot";

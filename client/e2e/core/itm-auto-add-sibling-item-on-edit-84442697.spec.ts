@@ -26,3 +26,4 @@ test.describe("ITM-auto-add-sibling-item-on-edit-84442697: auto add sibling item
         expect(countAfter).toBe(countBefore + 1);
     });
 });
+import "../utils/registerAfterEachSnapshot";

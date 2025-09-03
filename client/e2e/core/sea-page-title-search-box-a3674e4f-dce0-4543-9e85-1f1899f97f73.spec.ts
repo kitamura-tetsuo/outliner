@@ -22,3 +22,4 @@ test.describe("SEA-0001: page title search box", () => {
         await expect(page).toHaveURL(/second-page/);
     });
 });
+import "../utils/registerAfterEachSnapshot";

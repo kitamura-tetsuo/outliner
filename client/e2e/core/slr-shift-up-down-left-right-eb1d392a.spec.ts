@@ -226,3 +226,4 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         expect(cursorData.selectionCount).toBeGreaterThan(0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

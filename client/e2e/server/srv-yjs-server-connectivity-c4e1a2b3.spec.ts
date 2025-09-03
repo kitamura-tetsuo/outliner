@@ -26,3 +26,4 @@ test.describe("Yjs server", () => {
         expect(true).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -23,3 +23,4 @@ test.describe("LOG-0002: /api/rotate-logs", () => {
         expect(exists).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

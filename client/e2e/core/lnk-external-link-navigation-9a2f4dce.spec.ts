@@ -37,3 +37,4 @@ import { TestHelpers } from "../utils/testHelpers";
         await popup.close();
     });
 });
+import "../utils/registerAfterEachSnapshot";

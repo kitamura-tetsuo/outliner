@@ -23,3 +23,4 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         expect(await firstItem.count()).toBe(1);
     });
 });
+import "../utils/registerAfterEachSnapshot";

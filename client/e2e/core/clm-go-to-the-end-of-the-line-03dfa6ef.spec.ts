@@ -80,3 +80,4 @@ test.describe("CLM-0008: 行末へ移動", () => {
         expect(cursorOffset).not.toBeNull();
     });
 });
+import "../utils/registerAfterEachSnapshot";

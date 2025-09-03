@@ -53,3 +53,4 @@ test.describe("Schedule Management UI", () => {
         await expect(scheduleItems).toHaveCount(0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -32,3 +32,4 @@ test.describe("PRS-4d2e1b6a: cursor presence", () => {
         expect(received).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

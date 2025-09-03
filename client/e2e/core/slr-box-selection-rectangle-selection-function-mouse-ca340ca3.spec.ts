@@ -206,3 +206,4 @@ test.describe("マウスによる矩形選択テスト", () => {
         });
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -45,3 +45,4 @@ test.describe("Basic Navigation Debug", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

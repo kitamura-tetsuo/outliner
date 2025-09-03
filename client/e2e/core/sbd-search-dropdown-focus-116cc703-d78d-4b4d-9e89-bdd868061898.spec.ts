@@ -25,3 +25,4 @@ test.describe("SBD-ebaa03c1: search dropdown visibility", () => {
         await expect(dropdown).not.toBeVisible();
     });
 });
+import "../utils/registerAfterEachSnapshot";

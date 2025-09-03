@@ -33,3 +33,4 @@ test.describe("MCE-0002: multi-cursor commands", () => {
         expect(countUndo).toBe(1);
     });
 });
+import "../utils/registerAfterEachSnapshot";

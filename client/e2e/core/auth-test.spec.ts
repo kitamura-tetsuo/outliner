@@ -108,3 +108,4 @@ test.describe("Authentication Test", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

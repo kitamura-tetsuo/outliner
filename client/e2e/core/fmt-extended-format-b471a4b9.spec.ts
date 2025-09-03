@@ -118,3 +118,4 @@ test.describe("拡張フォーマット", () => {
         expect(itemHtml).toContain('class="control-char"'); // 制御文字が特別なクラスで表示されていることを確認
     });
 });
+import "../utils/registerAfterEachSnapshot";

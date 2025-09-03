@@ -18,3 +18,4 @@ test.describe("LOG-0001: log service health", () => {
         expect(res.status()).toBe(405);
     });
 });
+import "../utils/registerAfterEachSnapshot";

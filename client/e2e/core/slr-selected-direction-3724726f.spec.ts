@@ -94,3 +94,4 @@ test.describe("SLR-3724726f: 選択範囲の方向切り替え", () => {
         expect(reverseSelectionDirection).toBe(false);
     });
 });
+import "../utils/registerAfterEachSnapshot";

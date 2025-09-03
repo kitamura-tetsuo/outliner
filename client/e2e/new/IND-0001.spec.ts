@@ -99,3 +99,4 @@ test.describe("IND-0001: Advanced indentation and selection", () => {
         expect(finalCount).toBeGreaterThanOrEqual(initialCount);
     });
 });
+import "../utils/registerAfterEachSnapshot";

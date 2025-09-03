@@ -21,3 +21,4 @@ test.describe("SLR-0008: Selected Edge Case", () => {
         expect(itemCount).toBeGreaterThan(0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -30,3 +30,5 @@ test.describe("API-0002: emulator wait-and-retry", () => {
         expect(json.status).toBe("OK");
     });
 });
+import "../utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";

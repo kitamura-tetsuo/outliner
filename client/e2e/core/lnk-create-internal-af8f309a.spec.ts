@@ -33,3 +33,4 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         expect(focusState.focused).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

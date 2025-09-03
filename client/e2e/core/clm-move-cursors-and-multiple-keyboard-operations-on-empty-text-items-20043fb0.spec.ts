@@ -131,3 +131,4 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
         expect(true).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -255,3 +255,4 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         expect(linkItem!.text).toContain("[/project-name/page-name]");
     });
 });
+import "../utils/registerAfterEachSnapshot";

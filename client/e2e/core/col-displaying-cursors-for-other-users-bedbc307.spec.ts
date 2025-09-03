@@ -19,3 +19,4 @@ test.describe("COL-bedbc307: remote cursor display", () => {
         expect(count).toBe(2);
     });
 });
+import "../utils/registerAfterEachSnapshot";

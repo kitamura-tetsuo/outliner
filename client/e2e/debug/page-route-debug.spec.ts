@@ -117,3 +117,4 @@ test.describe("Page Route Debug", () => {
         expect(true).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

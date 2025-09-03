@@ -25,3 +25,4 @@ test("ホームページが正常に表示される", async ({ page }) => {
     // タイトルが表示されることを確認
     await expect(page.locator("h1")).toContainText("Fluid Outliner App");
 });
+import "../utils/registerAfterEachSnapshot";

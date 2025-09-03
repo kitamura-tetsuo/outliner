@@ -67,3 +67,4 @@ test.describe("CLM-0004: Move up", () => {
         expect(itemText).toBeTruthy(); // テキストが存在することを確認
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -38,3 +38,4 @@ test.describe("Browser Basic Test", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

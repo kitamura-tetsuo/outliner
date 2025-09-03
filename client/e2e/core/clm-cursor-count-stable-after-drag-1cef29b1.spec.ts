@@ -50,3 +50,4 @@ test.describe("CLM-1cef29b1: ドラッグ後もカーソル数は変化しない
         expect(cursorCountAfter).toBe(cursorCountBefore);
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -75,3 +75,4 @@ test.describe("TOO-0001: ツールバーのSearchBox表示機能", () => {
         await expect(searchInput).toHaveValue("test");
     });
 });
+import "../utils/registerAfterEachSnapshot";

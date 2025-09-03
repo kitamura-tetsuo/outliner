@@ -63,3 +63,4 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         expect(cursorData.activeItemId).not.toBeNull();
     });
 });
+import "../utils/registerAfterEachSnapshot";

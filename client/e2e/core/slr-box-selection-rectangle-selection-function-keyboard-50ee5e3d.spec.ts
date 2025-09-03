@@ -157,3 +157,4 @@ test.describe("選択範囲管理テスト", () => {
         expect(totalSelectionsAfterCancel).toBe(0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

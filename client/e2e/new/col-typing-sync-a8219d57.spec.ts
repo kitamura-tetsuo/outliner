@@ -21,3 +21,4 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
 
     await expect(page2.locator(".outliner-item .item-text").first()).toContainText("hello");
 });
+import "../utils/registerAfterEachSnapshot";

@@ -22,3 +22,4 @@ test.describe("MCE-37b78b62: multi-cursor editing", () => {
         expect(count).toBe(2);
     });
 });
+import "../utils/registerAfterEachSnapshot";

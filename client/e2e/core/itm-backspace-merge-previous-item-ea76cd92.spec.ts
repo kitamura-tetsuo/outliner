@@ -65,3 +65,4 @@ test.describe("ITM-ea76cd92: Backspace merge previous item", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

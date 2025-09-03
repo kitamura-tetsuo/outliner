@@ -4,6 +4,7 @@
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
+import "../utils/registerAfterEachSnapshot";
 
 /**
  * @playwright
@@ -15,10 +16,16 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("テキスト追加機能テスト", () => {
     test.beforeEach(async ({ page }) => {
-        // Yjs専用の軽量テストページを使用し、環境依存を排除
-        await page.goto("/yjs-outliner");
+        // Yjs専用の軽量テストページを優先。なければルートにフォールバック。
+        try {
+            await page.goto("/yjs-outliner");
+        } catch {
+            await page.goto("/");
+        }
         await expect(page.locator('[data-testid="outliner-base"]').first()).toBeVisible();
     });
+
+    // スナップショットは ../utils/registerAfterEachSnapshot の afterEach で一括保存
 
     /**
      * @testcase Add Text button should add text to shared content
@@ -242,7 +249,7 @@ test.describe("テキスト追加機能テスト", () => {
      * @check データ構造に入力したテキストが反映されていることを確認する
      * @check ページを再読み込みしても入力したデータが保持されていることを確認する
      */
-    test("Adding text updates data structure", async ({ page }) => {
+    test("Adding text updates data structure", async ({ page }, testInfo) => {
         // FluidClientが初期化されるまで待機
         await page.waitForTimeout(3000);
 

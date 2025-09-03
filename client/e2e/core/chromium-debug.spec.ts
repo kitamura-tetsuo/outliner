@@ -77,3 +77,4 @@ test.describe("Chromium Debug Test", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

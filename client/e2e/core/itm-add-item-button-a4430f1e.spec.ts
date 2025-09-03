@@ -31,3 +31,4 @@ test.describe("ITM-0002: Add item via button", () => {
         expect(itemCountAfter).toBeGreaterThan(itemCountBefore);
     });
 });
+import "../utils/registerAfterEachSnapshot";

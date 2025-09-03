@@ -63,3 +63,4 @@ test.describe("CMT-0001: comment threads", () => {
         ).toHaveCount(0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

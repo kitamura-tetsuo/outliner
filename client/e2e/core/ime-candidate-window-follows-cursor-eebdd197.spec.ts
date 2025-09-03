@@ -198,3 +198,4 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
         expect(Math.abs(cursorTop - taTop)).toBeLessThanOrEqual(2);
     });
 });
+import "../utils/registerAfterEachSnapshot";

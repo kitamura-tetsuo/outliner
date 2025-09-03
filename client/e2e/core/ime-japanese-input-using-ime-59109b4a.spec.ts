@@ -136,3 +136,4 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         expect(finalText).toContain("日本");
     });
 });
+import "../utils/registerAfterEachSnapshot";

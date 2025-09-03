@@ -29,3 +29,4 @@ test.describe("System clipboard paste", () => {
         expect(text).toContain("pasted text");
     });
 });
+import "../utils/registerAfterEachSnapshot";

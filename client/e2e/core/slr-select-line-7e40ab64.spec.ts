@@ -81,3 +81,4 @@ test.describe("SLR-0013: 現在行を選択", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

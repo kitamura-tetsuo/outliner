@@ -56,3 +56,4 @@ test.describe("ALS-0001: Alias path navigation", () => {
         expect(stillVisible).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

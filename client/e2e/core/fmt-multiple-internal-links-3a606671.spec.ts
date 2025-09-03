@@ -61,3 +61,4 @@ test.describe("FMT-0008: multiple internal links", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

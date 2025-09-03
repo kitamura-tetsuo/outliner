@@ -82,3 +82,4 @@ test.describe("SLR-0009: アイテムドラッグ＆ドロップ", () => {
         expect(firstItemAfter).toBe(firstItemText);
     });
 });
+import "../utils/registerAfterEachSnapshot";

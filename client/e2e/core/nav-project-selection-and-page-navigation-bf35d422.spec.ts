@@ -35,3 +35,4 @@ test.describe("NAV-0001: プロジェクト選択とページナビゲーショ�
         expect(pageUrl).toContain(`/${projectName}/${pageName}`);
     });
 });
+import "../utils/registerAfterEachSnapshot";

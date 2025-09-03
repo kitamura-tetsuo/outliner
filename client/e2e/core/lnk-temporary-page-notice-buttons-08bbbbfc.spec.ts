@@ -59,3 +59,4 @@ test.describe("LNK-0004: 仮ページ通知ボタン", () => {
         expect(currentUrl).not.toContain(anotherNonExistentPage);
     });
 });
+import "../utils/registerAfterEachSnapshot";

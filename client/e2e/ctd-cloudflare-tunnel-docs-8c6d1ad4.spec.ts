@@ -7,3 +7,5 @@ test("Cloudflare Tunnel docs mention setup steps", async () => {
     expect(readme).toContain("Cloudflare Tunnel Setup");
     expect(readme).toContain("cloudflared tunnel create");
 });
+import "./utils/registerAfterEachSnapshot";
+import "./utils/registerAfterEachSnapshot";

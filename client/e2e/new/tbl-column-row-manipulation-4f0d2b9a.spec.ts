@@ -47,3 +47,4 @@ test.describe("TBL-4f0d2b9a: Table column and row manipulation", () => {
         await expect(firstCell).toHaveText("2");
     });
 });
+import "../utils/registerAfterEachSnapshot";

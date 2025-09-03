@@ -97,3 +97,4 @@ test.describe("認証機能テスト", () => {
         await expect(page.locator("button.logout-btn")).toBeVisible({ timeout: 10000 });
     });
 });
+import "../utils/registerAfterEachSnapshot";

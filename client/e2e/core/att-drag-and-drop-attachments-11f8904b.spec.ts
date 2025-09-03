@@ -59,3 +59,5 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
         await expect(item.locator(".attachment-preview")).toHaveCount(2);
     });
 });
+import "../utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";

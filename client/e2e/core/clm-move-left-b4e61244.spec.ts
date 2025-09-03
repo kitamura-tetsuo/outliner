@@ -97,3 +97,4 @@ test.describe("CLM-0002: 左へ移動", () => {
         expect(text).toContain("Test data update");
     });
 });
+import "../utils/registerAfterEachSnapshot";

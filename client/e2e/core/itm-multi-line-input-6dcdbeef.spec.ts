@@ -96,3 +96,4 @@ test.describe("ITM-multi-line-input-6dcdbeef: 複数行テキスト入力", () =
         ).toHaveText("abd");
     });
 });
+import "../utils/registerAfterEachSnapshot";

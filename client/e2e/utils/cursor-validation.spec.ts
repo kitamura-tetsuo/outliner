@@ -137,3 +137,4 @@ test.describe("CursorValidator: カーソル情報検証ユーティリティ", 
         }
     });
 });
+import "./registerAfterEachSnapshot";

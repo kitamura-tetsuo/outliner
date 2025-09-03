@@ -81,3 +81,4 @@ test.describe("Multi-Page Schedule Management", () => {
         await expect(finalItems).toHaveCount(0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -124,3 +124,4 @@ test.describe("SLR-0003: 行末まで選択", () => {
         expect(selectionText.length).toBeGreaterThan(0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

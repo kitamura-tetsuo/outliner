@@ -35,3 +35,4 @@ test.describe("SLR-0012: 選択範囲の縮小", () => {
         expect(count).toBe(0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

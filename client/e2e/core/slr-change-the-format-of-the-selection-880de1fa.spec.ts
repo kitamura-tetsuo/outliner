@@ -243,3 +243,4 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(secondItemText).toBeTruthy();
     });
 });
+import "../utils/registerAfterEachSnapshot";

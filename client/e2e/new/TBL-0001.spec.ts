@@ -99,3 +99,4 @@ test.describe("TBL-0001: Editable JOIN Table", () => {
         await expect(page.locator(".chart-panel .no-data")).toBeHidden();
     });
 });
+import "../utils/registerAfterEachSnapshot";

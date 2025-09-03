@@ -143,3 +143,4 @@ test.describe("Network Connectivity Test", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

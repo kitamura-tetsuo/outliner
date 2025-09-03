@@ -259,3 +259,4 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
         expect(data.links).toBeGreaterThanOrEqual(1);
     });
 });
+import "../utils/registerAfterEachSnapshot";

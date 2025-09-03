@@ -31,3 +31,4 @@ test.describe("LNK-0002: プロジェクト内部リンク", () => {
         expect(text).toBe("project-name/page-name");
     });
 });
+import "../utils/registerAfterEachSnapshot";

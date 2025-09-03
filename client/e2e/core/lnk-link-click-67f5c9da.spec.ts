@@ -76,3 +76,4 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
      * @description URLを直接入力して内部リンク先のページにアクセスできることを確認するテスト
      */
 });
+import "../utils/registerAfterEachSnapshot";

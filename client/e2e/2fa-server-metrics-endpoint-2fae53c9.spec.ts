@@ -25,3 +25,5 @@ test("server metrics endpoint", async ({ request }) => {
     expect(body).toHaveProperty("totalMessages");
     proc.kill();
 });
+import "./utils/registerAfterEachSnapshot";
+import "./utils/registerAfterEachSnapshot";

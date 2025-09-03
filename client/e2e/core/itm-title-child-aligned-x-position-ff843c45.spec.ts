@@ -26,3 +26,4 @@ test.describe("ITM-ff843c45: タイトルと子アイテムの位置", () => {
         expect(Math.abs((titleBox?.x || 0) - (childBox?.x || 0))).toBeLessThan(1);
     });
 });
+import "../utils/registerAfterEachSnapshot";

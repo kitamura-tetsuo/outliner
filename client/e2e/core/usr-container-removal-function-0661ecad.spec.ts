@@ -10,3 +10,4 @@ test("delete-container returns 405 with invalid token", async ({ request }) => {
     });
     expect(res.status()).toBe(404);
 });
+import "../utils/registerAfterEachSnapshot";

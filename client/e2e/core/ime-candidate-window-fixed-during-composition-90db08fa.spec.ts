@@ -50,3 +50,4 @@ test.describe("IME-0004: IME candidate window remains fixed during composition",
         });
     });
 });
+import "../utils/registerAfterEachSnapshot";

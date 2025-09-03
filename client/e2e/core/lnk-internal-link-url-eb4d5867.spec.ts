@@ -27,3 +27,4 @@ test.describe("LNK-0002: 内部リンクURL生成", () => {
         expect(hrefs).toContain("/multi/level/path/page");
     });
 });
+import "../utils/registerAfterEachSnapshot";

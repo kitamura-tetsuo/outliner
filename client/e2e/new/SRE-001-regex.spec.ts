@@ -32,3 +32,4 @@ test.describe("SRE-001: Advanced Search & Replace regex", () => {
         expect(hits).toBe(2);
     });
 });
+import "../utils/registerAfterEachSnapshot";

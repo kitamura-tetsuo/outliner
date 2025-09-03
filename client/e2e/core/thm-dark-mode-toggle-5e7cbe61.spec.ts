@@ -16,3 +16,4 @@ test.describe("THM-0001: Dark mode theme toggle", () => {
         await expect(page.evaluate(() => document.documentElement.classList.contains("dark"))).resolves.toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

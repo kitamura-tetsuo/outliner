@@ -15,3 +15,4 @@ test.describe("SCH-6974F589: Schedule Management Page", () => {
         await expect(page).toHaveTitle(/Fluid Outliner/);
     });
 });
+import "../utils/registerAfterEachSnapshot";

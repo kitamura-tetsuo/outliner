@@ -123,3 +123,4 @@ test.describe("Outliner Basic Test (No Auth)", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

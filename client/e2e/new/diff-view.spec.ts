@@ -90,3 +90,4 @@ test.describe("snapshot diff viewer", () => {
         expect(current).toBe("first");
     });
 });
+import "../utils/registerAfterEachSnapshot";

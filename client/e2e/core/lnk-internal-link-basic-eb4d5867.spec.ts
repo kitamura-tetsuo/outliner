@@ -30,3 +30,4 @@ test.describe("LNK-0002: 内部リンクの基本機能", () => {
         expect(text).toBe("test-page");
     });
 });
+import "../utils/registerAfterEachSnapshot";

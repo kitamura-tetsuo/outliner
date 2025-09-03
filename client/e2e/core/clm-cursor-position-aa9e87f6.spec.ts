@@ -23,3 +23,4 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
         expect(cursorData.activeItemId).not.toBeNull();
     });
 });
+import "../utils/registerAfterEachSnapshot";

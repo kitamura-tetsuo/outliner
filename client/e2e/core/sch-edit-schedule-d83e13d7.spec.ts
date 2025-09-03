@@ -17,3 +17,4 @@ test.describe("Schedule Editing", () => {
         expect(update.status()).toBeGreaterThanOrEqual(400);
     });
 });
+import "../utils/registerAfterEachSnapshot";

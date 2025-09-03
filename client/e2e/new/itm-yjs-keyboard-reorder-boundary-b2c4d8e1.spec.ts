@@ -199,3 +199,4 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         expect(info2.activeCount).toBe(1);
     });
 });
+import "../utils/registerAfterEachSnapshot";

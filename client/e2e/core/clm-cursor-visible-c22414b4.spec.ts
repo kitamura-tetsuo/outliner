@@ -16,3 +16,4 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
         await page.screenshot({ path: "client/test-results/CLM-0001-cursor-visible.png" });
     });
 });
+import "../utils/registerAfterEachSnapshot";

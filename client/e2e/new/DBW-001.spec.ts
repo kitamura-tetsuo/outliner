@@ -24,3 +24,4 @@ test.describe("DBW-001: Client-Side SQL Database", () => {
         await expect(page.locator(".editable-query-grid")).toContainText("1");
     });
 });
+import "../utils/registerAfterEachSnapshot";

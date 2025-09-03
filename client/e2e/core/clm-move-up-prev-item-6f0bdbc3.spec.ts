@@ -148,3 +148,4 @@ test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
         expect(newCursorPosition).not.toBeNull();
     });
 });
+import "../utils/registerAfterEachSnapshot";

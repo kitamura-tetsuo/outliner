@@ -43,3 +43,4 @@ test.describe("SRE-001: Advanced Search & Replace", () => {
         await expect(replaced.first()).toBeVisible();
     });
 });
+import "../utils/registerAfterEachSnapshot";

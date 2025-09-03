@@ -43,3 +43,4 @@ test.describe("テスト環境ポート検証", () => {
         await page.screenshot({ path: "test-results/test-port-confirmation.png" });
     });
 });
+import "../utils/registerAfterEachSnapshot";

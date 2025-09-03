@@ -42,3 +42,4 @@ test.describe("IME-0003: IME composition underline follows cursor", () => {
         await expect(textarea).not.toHaveClass(/ime-input/);
     });
 });
+import "../utils/registerAfterEachSnapshot";

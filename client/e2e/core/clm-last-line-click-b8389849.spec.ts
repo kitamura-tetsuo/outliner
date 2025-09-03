@@ -129,3 +129,4 @@ test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => 
         expect(finalCursorData.cursors[0].offset).toBe(actualTextContent?.length || 0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

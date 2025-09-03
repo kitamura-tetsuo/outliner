@@ -60,3 +60,4 @@ test.describe("ALS-0001: Alias self-reference prevention", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

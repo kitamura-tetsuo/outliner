@@ -48,3 +48,4 @@ test.describe("WebSocket connection limits", () => {
         sinon.restore();
     });
 });
+import "../utils/registerAfterEachSnapshot";

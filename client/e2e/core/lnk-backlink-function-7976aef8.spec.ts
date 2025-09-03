@@ -370,3 +370,4 @@ test.describe("LNK-0007: バックリンク機能", () => {
         console.log("バックリンクをクリックするとリンク元ページに移動できるテストが成功しました。");
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -75,3 +75,4 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
         await expect(page.locator("body")).toBeVisible();
     });
 });
+import "../utils/registerAfterEachSnapshot";

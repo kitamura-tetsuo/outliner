@@ -124,3 +124,4 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         expect(itemCount).toBeGreaterThan(0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

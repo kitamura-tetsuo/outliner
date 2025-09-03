@@ -29,3 +29,4 @@ test.describe("LNK-0004: 仮ページ表示", () => {
         expect(pageTitle).not.toBe("");
     });
 });
+import "../utils/registerAfterEachSnapshot";

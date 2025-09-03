@@ -77,3 +77,4 @@ test.describe("NAV-0002: プロジェクトページへのリンク機能", () =
         await expect(separators.first()).toHaveClass(/mx-2/);
     });
 });
+import "../utils/registerAfterEachSnapshot";

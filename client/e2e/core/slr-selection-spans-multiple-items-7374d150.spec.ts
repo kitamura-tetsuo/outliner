@@ -272,3 +272,4 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         expect(backgroundColor).toMatch(/rgba\(.*\)/);
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -148,3 +148,4 @@ test.describe("SLR-0002: 行頭まで選択", () => {
         expect(updatedCursorData.selectionCount).toBeGreaterThan(0);
     });
 });
+import "../utils/registerAfterEachSnapshot";

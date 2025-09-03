@@ -214,3 +214,4 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         await expect(page.locator(".chart-panel")).toBeVisible();
     });
 });
+import "../utils/registerAfterEachSnapshot";

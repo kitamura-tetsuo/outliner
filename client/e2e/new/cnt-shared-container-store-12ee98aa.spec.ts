@@ -190,3 +190,4 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         expect(optionCount).toBeGreaterThanOrEqual(2);
     });
 });
+import "../utils/registerAfterEachSnapshot";

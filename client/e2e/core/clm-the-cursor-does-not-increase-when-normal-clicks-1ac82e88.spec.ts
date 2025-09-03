@@ -87,3 +87,4 @@ test.describe("カーソル管理テスト", () => {
         expect(cursorCountAfterThirdClick).toBeLessThanOrEqual(initialCursorCount);
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -24,3 +24,4 @@ test("backup script creates archive", async () => {
     const files = await fs.promises.readdir(backupDir);
     expect(files.length).toBe(1);
 });
+import "../utils/registerAfterEachSnapshot";

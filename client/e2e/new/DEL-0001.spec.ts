@@ -51,3 +51,4 @@ test.describe("DEL-0001: Project Deletion Page", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

@@ -132,3 +132,4 @@ test.describe("CLM-0003: 右へ移動", () => {
         expect(updatedSecondItemText).toContain("Test input");
     });
 });
+import "../utils/registerAfterEachSnapshot";

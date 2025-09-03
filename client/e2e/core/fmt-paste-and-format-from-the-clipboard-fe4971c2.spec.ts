@@ -329,3 +329,4 @@ test.describe("フォーマット文字列の入力と表示", () => {
         expect(itemText).toContain(testText);
     });
 });
+import "../utils/registerAfterEachSnapshot";

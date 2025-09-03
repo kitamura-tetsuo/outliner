@@ -69,3 +69,4 @@ test.describe("SLR-356b853a: 長いテキストの選択範囲", () => {
         // expect(secondItemText).toContain("This is a very long text");
     });
 });
+import "../utils/registerAfterEachSnapshot";

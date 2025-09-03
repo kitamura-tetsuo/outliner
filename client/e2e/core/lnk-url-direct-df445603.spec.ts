@@ -45,3 +45,4 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         expect(pageUrl).not.toBe(homeUrl);
     });
 });
+import "../utils/registerAfterEachSnapshot";

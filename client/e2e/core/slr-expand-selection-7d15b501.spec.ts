@@ -82,3 +82,4 @@ test.describe("SLR-0011: 選択範囲の拡張", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

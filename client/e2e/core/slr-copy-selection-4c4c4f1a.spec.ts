@@ -203,3 +203,4 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

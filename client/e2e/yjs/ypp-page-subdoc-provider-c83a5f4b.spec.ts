@@ -51,3 +51,4 @@ test.describe("Page subdoc provider", () => {
         expect(presence.p2).toBeUndefined();
     });
 });
+import "../utils/registerAfterEachSnapshot";

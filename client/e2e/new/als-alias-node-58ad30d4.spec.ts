@@ -55,3 +55,4 @@ test.describe("ALS-0001: Alias node", () => {
         expect(isAliasSubtreeVisible).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

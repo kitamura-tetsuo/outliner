@@ -58,3 +58,4 @@ test.describe("ALS-0001: Alias change target", () => {
         expect(isAliasPathVisible).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

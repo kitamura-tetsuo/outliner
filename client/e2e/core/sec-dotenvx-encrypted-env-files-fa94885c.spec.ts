@@ -28,3 +28,4 @@ test.describe("SEC-0001: Dotenvx encrypted env files", () => {
         expect(hasEnvVars).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

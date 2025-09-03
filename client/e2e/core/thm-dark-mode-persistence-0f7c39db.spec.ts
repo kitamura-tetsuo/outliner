@@ -49,3 +49,4 @@ test.describe("THM-0002: Dark mode preference persists", () => {
         await expect(page.evaluate(() => document.documentElement.classList.contains("dark"))).resolves.toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

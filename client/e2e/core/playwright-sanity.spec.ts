@@ -11,3 +11,4 @@ test("Playwright is operational", async ({ page }) => {
     await expect(page).toHaveTitle("Playwright Test");
     await expect(page.locator("h1")).toHaveText("Hello Playwright");
 });
+import "../utils/registerAfterEachSnapshot";

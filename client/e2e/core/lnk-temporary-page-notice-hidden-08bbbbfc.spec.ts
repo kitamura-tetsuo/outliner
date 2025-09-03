@@ -34,3 +34,4 @@ test.describe("LNK-0004: 仮ページ通知非表示", () => {
         await expect(noticeElement).not.toBeVisible();
     });
 });
+import "../utils/registerAfterEachSnapshot";

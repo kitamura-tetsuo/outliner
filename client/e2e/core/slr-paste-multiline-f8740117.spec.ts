@@ -21,3 +21,4 @@ test.describe("SLR-0006: Copy and paste multiple item selection ranges", () => {
         expect(await items.count()).toBeGreaterThan(1);
     });
 });
+import "../utils/registerAfterEachSnapshot";

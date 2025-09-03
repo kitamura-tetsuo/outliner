@@ -18,3 +18,4 @@ test.describe("Scheduled Page Publishing", () => {
         expect(response.status()).toBeGreaterThanOrEqual(400);
     });
 });
+import "../utils/registerAfterEachSnapshot";

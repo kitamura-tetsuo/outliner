@@ -250,3 +250,4 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         expect(cursorVisible).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

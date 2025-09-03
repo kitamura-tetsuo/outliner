@@ -32,3 +32,4 @@ test.describe("YJS token refresh reconnect", () => {
         expect(authParam).toBeTruthy();
     });
 });
+import "../utils/registerAfterEachSnapshot";

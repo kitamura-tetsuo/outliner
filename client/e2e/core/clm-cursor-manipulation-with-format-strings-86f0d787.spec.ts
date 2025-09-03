@@ -267,3 +267,4 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         await TestHelpers.waitForCursorVisible(page);
     });
 });
+import "../utils/registerAfterEachSnapshot";

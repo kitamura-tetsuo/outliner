@@ -159,3 +159,4 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
         expect(newItemText).not.toBeNull();
     });
 });
+import "../utils/registerAfterEachSnapshot";

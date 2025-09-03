@@ -11,3 +11,4 @@ test.skip("VITE_IS_TEST is true in client runtime", async ({ page }, testInfo) =
     });
     expect(value).toBe("true");
 });
+import "../utils/registerAfterEachSnapshot";

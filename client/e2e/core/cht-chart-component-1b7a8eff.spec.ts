@@ -78,3 +78,4 @@ test.describe("CHT-001: Chart auto-refresh", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

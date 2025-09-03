@@ -75,3 +75,4 @@ test.describe("PRS-0001: presence indicators", () => {
         await expect(avatars).toHaveCount(1, { timeout: 10000 });
     });
 });
+import "../utils/registerAfterEachSnapshot";

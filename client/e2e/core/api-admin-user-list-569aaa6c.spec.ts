@@ -26,3 +26,5 @@ test.describe("API-0004: admin user list", () => {
         expect(res.status()).toBe(204);
     });
 });
+import "../utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";

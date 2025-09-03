@@ -89,3 +89,4 @@ test.describe("IND-0001: Indentation variations", () => {
         expect(depth3After).toBeLessThanOrEqual(depth3);
     });
 });
+import "../utils/registerAfterEachSnapshot";

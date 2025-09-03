@@ -25,3 +25,4 @@ test("srv-structured-logging redacts sensitive data", async () => {
     expect(log.authorization).toBe("[REDACTED]");
     expect(log.email).toBe("[REDACTED]");
 });
+import "./registerAfterEachSnapshot";

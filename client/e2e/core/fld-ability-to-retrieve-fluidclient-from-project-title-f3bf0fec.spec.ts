@@ -92,3 +92,4 @@ test.describe("FLD-0001: プロジェクトタイトルからFluidClientを取�
         expect(fluidClientInfo.project.title).toBe(testProjectTitle);
     });
 });
+import "../utils/registerAfterEachSnapshot";

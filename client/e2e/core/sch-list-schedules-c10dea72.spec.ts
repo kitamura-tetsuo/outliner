@@ -12,3 +12,4 @@ test.describe("Schedule List Refresh", () => {
         expect(response.status()).toBeGreaterThanOrEqual(400);
     });
 });
+import "../utils/registerAfterEachSnapshot";

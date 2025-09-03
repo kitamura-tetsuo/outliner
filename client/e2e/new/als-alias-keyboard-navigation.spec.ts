@@ -119,3 +119,4 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await expect(page.locator(".alias-picker")).toBeHidden({ timeout: 3000 });
     });
 });
+import "../utils/registerAfterEachSnapshot";

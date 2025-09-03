@@ -121,3 +121,4 @@ test.describe("GRV-0001: Graph View navigation", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

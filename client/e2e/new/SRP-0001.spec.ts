@@ -432,3 +432,4 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         expect(updatedPages.length).toBeGreaterThanOrEqual(2);
     });
 });
+import "../utils/registerAfterEachSnapshot";

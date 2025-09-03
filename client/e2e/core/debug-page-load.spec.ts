@@ -155,3 +155,4 @@ test.describe("Debug Page Load", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

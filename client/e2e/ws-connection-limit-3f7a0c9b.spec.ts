@@ -15,3 +15,5 @@ test("oversized websocket message closes connection", async () => {
         });
     }).resolves.not.toThrow();
 });
+import "./utils/registerAfterEachSnapshot";
+import "./utils/registerAfterEachSnapshot";

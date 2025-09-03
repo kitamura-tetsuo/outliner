@@ -137,3 +137,4 @@ test.describe("Outliner No Auth Test", () => {
         expect(finalUrl).toMatch(/localhost:7090/);
     });
 });
+import "../utils/registerAfterEachSnapshot";

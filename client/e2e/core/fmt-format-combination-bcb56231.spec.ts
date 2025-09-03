@@ -168,3 +168,4 @@ test.describe("フォーマット組み合わせ", () => {
         expect(itemText).toContain("これは[[太字と[/斜体と[-取り消し線]と`コード`]]]です");
     });
 });
+import "../utils/registerAfterEachSnapshot";

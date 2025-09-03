@@ -121,3 +121,5 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         expect(itemText).toContain(testText);
     });
 });
+import "../utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";

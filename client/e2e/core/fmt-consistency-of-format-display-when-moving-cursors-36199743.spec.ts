@@ -266,3 +266,4 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         expect(hasFormattedText).toBe(true);
     });
 });
+import "../utils/registerAfterEachSnapshot";

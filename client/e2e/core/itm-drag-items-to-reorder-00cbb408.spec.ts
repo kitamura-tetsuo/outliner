@@ -87,3 +87,4 @@ test.describe("ITM-00cbb408: ドラッグでアイテムを移動", () => {
         expect(movedText).toBe(secondText);
     });
 });
+import "../utils/registerAfterEachSnapshot";

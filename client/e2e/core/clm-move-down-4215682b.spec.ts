@@ -179,3 +179,4 @@ test.describe("CLM-0005: 下へ移動", () => {
         expect(itemText).toContain("First line");
     });
 });
+import "../utils/registerAfterEachSnapshot";

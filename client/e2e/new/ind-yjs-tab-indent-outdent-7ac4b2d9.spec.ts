@@ -162,3 +162,4 @@ test.describe("IND: Yjs Tab/Shift+Tab indent/outdent", () => {
         expect(d3).toBe(d2 - 1);
     });
 });
+import "../utils/registerAfterEachSnapshot";

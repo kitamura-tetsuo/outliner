@@ -505,3 +505,4 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
         console.log("存在しないページへのリンクの場合は、その旨が表示されるテストが成功しました。");
     });
 });
+import "../utils/registerAfterEachSnapshot";

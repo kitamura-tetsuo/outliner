@@ -46,3 +46,4 @@ test.describe("CLM-0105: Dictionary-based key handler", () => {
         expect(after.cursorInstances.length).toBe(before.cursorInstances.length - 1);
     });
 });
+import "../utils/registerAfterEachSnapshot";

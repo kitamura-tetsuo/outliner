@@ -44,3 +44,5 @@ test("認証UIが正しく表示される", async ({ page }) => {
     const loginButton = page.locator('button:has-text("Google")');
     await expect(loginButton).toBeVisible();
 });
+import "./utils/registerAfterEachSnapshot";
+import "./utils/registerAfterEachSnapshot";

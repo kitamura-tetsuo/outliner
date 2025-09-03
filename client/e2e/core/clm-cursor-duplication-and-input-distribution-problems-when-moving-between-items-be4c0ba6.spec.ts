@@ -74,3 +74,4 @@ test.describe("カーソル重複問題の検証", () => {
         await CursorValidator.validateCursorState(page, 1, "テスト終了時");
     });
 });
+import "../utils/registerAfterEachSnapshot";

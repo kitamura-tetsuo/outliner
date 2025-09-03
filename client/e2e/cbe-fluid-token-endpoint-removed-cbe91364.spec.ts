@@ -10,3 +10,5 @@ test.describe("FTR-cbe91364: fluid token endpoint removed", () => {
         expect(response.status()).toBe(404);
     });
 });
+import "./utils/registerAfterEachSnapshot";
+import "./utils/registerAfterEachSnapshot";

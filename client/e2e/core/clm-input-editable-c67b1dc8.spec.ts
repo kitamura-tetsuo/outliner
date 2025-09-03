@@ -56,3 +56,4 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";

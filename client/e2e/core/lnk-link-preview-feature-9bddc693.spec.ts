@@ -14,3 +14,4 @@ test.describe("LNK-9bddc693: link preview", () => {
         await expect(page).toHaveURL(/Test\%20Project/);
     });
 });
+import "../utils/registerAfterEachSnapshot";

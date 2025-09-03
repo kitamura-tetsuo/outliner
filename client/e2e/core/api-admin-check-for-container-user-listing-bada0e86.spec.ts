@@ -109,3 +109,5 @@ test.describe("管理者チェック (API-0003)", () => {
         expect(responseBody.error).toBe("ID token required");
     });
 });
+import "../utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";

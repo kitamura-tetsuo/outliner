@@ -31,3 +31,4 @@ test.describe("URL label links", () => {
         expect(firstItemHtml).not.toContain(">https://example.com</a>");
     });
 });
+import "../utils/registerAfterEachSnapshot";

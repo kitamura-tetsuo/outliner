@@ -197,3 +197,4 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
         expect(fourthItemText).toBeTruthy();
     });
 });
+import "../utils/registerAfterEachSnapshot";

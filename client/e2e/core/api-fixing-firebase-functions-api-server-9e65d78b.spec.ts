@@ -23,3 +23,5 @@ test.describe("API-0001: Firebase Functions CORS and token validation", () => {
         expect(body.error).toBe("Failed to save container ID");
     });
 });
+import "../utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";

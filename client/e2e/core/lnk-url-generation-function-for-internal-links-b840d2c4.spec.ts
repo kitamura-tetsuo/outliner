@@ -384,3 +384,4 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         expect(linkItemHTML).toMatch(projectLinkPattern);
     });
 });
+import "../utils/registerAfterEachSnapshot";

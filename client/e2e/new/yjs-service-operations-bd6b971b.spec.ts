@@ -30,3 +30,4 @@ test("yjs service basic operations", async ({ page }, testInfo) => {
     yjsService.setPresence(awareness, { cursor: { itemId: second.key, offset: 1 } });
     expect(yjsService.getPresence(awareness)?.cursor.itemId).toBe(second.key);
 });
+import "../utils/registerAfterEachSnapshot";

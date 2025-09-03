@@ -172,3 +172,4 @@ test.describe("CLM-0004: 上へ移動", () => {
         }
     });
 });
+import "../utils/registerAfterEachSnapshot";
