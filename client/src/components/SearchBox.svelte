@@ -41,31 +41,59 @@ let results = $derived.by(() => {
         }
     }
 
-    // Resolve pages from project or global store as a robust fallback
-    // NOTE: We must search page TITLES, which live under project.items, not the current page's items
-    let pages: Items | any[] | undefined = projectToUse?.items as Items | undefined;
-    if (!pages && typeof window !== 'undefined') {
-        const gs = (window as any).generalStore;
-        // Prefer explicit pages collection when available
-        const pagesFromStore = gs?.pages?.current as Items | undefined;
-        const projectItems = gs?.project?.items as Items | undefined;
-        if (pagesFromStore) pages = pagesFromStore as any;
-        else if (projectItems) pages = projectItems as any;
-    }
+    // Resolve pages robustly. Prefer a non-empty generalStore.pages.current,
+    // otherwise fall back to project.items. This avoids getting stuck on an
+    // empty Items collection during early initialization.
+    const collectPages = (): any[] => {
+        try {
+            if (typeof window !== 'undefined') {
+                const gs = (window as any).generalStore;
+                const pages = gs?.pages?.current;
+                const arr: any[] = [];
+                if (pages) {
+                    if (typeof pages[Symbol.iterator] === 'function') {
+                        for (const p of pages as any) arr.push(p);
+                    } else if (typeof (pages as any).length === 'number') {
+                        const len = (pages as any).length;
+                        for (let i = 0; i < len; i++) {
+                            const v = (pages as any).at ? (pages as any).at(i) : (pages as any)[i];
+                            if (typeof v !== 'undefined') arr.push(v);
+                        }
+                    }
+                }
+                if (arr.length) return arr;
+            }
+        } catch {}
 
-    if (!pages) return [];
+        // Fallback: use project.items
+        try {
+            const items = projectToUse?.items as Items | undefined;
+            const arr: any[] = [];
+            if (items) {
+                if (typeof items[Symbol.iterator] === 'function') {
+                    for (const p of items as any) arr.push(p);
+                } else if (typeof (items as any).length === 'number') {
+                    const len = (items as any).length;
+                    for (let i = 0; i < len; i++) {
+                        const v = (items as any).at ? (items as any).at(i) : (items as any)[i];
+                        if (typeof v !== 'undefined') arr.push(v);
+                    }
+                }
+            }
+            return arr;
+        } catch { return []; }
+    };
+
+    const pagesArr = collectPages();
+    if (!pagesArr.length) return [];
 
     if (!query) {
         const historyResults = searchHistoryStore.history
             .map(h => {
-                // Items配列から検索
-                const len = (pages as any).length ?? 0;
-                for (let i = 0; i < len; i++) {
-                    const page = (pages as any).at ? (pages as any).at(i) : (pages as any)[i];
+                for (let i = 0; i < pagesArr.length; i++) {
+                    const page = pagesArr[i];
                     const title = page?.text?.toString?.() ?? '';
-                    if (page && title === h) {
-                        return page;
-                    }
+                    if (page && title === h) return page;
                 }
                 return null;
             })
@@ -74,9 +102,8 @@ let results = $derived.by(() => {
     }
 
     const searchResults: Item[] = [];
-    const len = (pages as any).length ?? 0;
-    for (let i = 0; i < len; i++) {
-        const page = (pages as any).at ? (pages as any).at(i) : (pages as any)[i];
+    for (let i = 0; i < pagesArr.length; i++) {
+        const page = pagesArr[i];
         const title = page?.text?.toString?.() ?? '';
         if (page && title.toLowerCase().includes(query.toLowerCase())) {
             searchResults.push(page);
