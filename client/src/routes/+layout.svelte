@@ -9,16 +9,13 @@ import {
 import "../app.css";
 // Import from $lib/index.ts to ensure fetch override is loaded
 import "$lib";
-import { userManager } from "../auth/UserManager";
+// Defer user/auth-related imports to client to avoid SSR crashes
 import { setupGlobalDebugFunctions } from "../lib/debug";
-import * as fluidService from "../lib/fluidService.svelte";
+// Defer fluidService as well (it imports UserManager)
 import "../utils/ScrapboxFormatter";
 // グローバルに公開するためにインポート
 import MobileActionToolbar from "../components/MobileActionToolbar.svelte";
-import {
-    cleanupFluidClient,
-    initFluidClientWithAuth,
-} from "../services";
+// Defer services import; it re-exports fluidService which depends on UserManager
 import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
 let { children } = $props();
@@ -145,9 +142,20 @@ function handleVisibilityChange() {
 }
 
 // アプリケーション初期化時の処理
-onMount(() => {
+onMount(async () => {
     // ブラウザ環境でのみ実行
     if (browser) {
+        // Dynamically import browser-only modules
+        let userManager: any;
+        let fluidService: any;
+        let services: any;
+        try {
+            ({ userManager } = await import("../auth/UserManager"));
+            fluidService = await import("../lib/fluidService.svelte");
+            services = await import("../services");
+        } catch (e) {
+            logger.error("Failed to load client-only modules", e);
+        }
         // アプリケーション初期化のログ
         if (import.meta.env.DEV) {
             logger.info("アプリケーションがマウントされました");
@@ -181,7 +189,7 @@ onMount(() => {
         }
 
         // 認証状態を確認
-        isAuthenticated = userManager.getCurrentUser() !== null;
+        isAuthenticated = userManager?.getCurrentUser() !== null;
 
         if (isAuthenticated) {
             // デバッグ関数を初期化
@@ -189,7 +197,7 @@ onMount(() => {
         }
         else {
             // 認証状態の変更を監視
-            userManager.addEventListener(authResult => {
+            userManager?.addEventListener((authResult: any) => {
                 isAuthenticated = authResult !== null;
                 // デバッグ関数を初期化
                 if (isAuthenticated && browser) {
@@ -269,7 +277,7 @@ onMount(() => {
             });
         }
 
-        initFluidClientWithAuth();
+        services?.initFluidClientWithAuth?.();
 
         // ブラウザ終了時のイベントリスナーを登録
         window.addEventListener("beforeunload", handleBeforeUnload);
@@ -286,7 +294,7 @@ onMount(() => {
 });
 
 // コンポーネント破棄時の処理
-onDestroy(() => {
+onDestroy(async () => {
     // ブラウザ環境でのみ実行
     if (browser) {
         // イベントリスナーを削除
@@ -295,8 +303,10 @@ onDestroy(() => {
             "visibilitychange",
             handleVisibilityChange,
         );
-
-        cleanupFluidClient();
+        try {
+            const { cleanupFluidClient } = await import("../services");
+            cleanupFluidClient();
+        } catch {}
 
         // 定期的なログローテーションの解除
         if (rotationInterval) {
@@ -306,13 +316,15 @@ onDestroy(() => {
 });
 </script>
 
-{@render children()}
+<div data-testid="outliner-base">
+    {@render children()}
 
-<MobileActionToolbar />
+    <MobileActionToolbar />
 
-<button
-    class="fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
-    on:click={() => userPreferencesStore.toggleTheme()}
->
-    {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
-</button>
+    <button
+        class="fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
+        on:click={() => userPreferencesStore.toggleTheme()}
+    >
+        {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
+    </button>
+</div>

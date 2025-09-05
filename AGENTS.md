@@ -1,3 +1,6 @@
+Read AGENTS.temp.md if exists.
+Follow it as guideline.
+
 # Outliner Project Guidelines
 
 This document consolidates the key development policies for this repository. Follow these rules whenever you work on the project.

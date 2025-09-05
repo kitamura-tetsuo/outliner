@@ -1,8 +1,11 @@
 // @ts-nocheck
 import { Items, Project } from "../schema/app-schema";
 
-function escapeHtml(str: string): string {
-    return str
+function escapeHtml(str: unknown): string {
+    const s = (typeof str === "string" || typeof (str as any)?.toString === "function")
+        ? String(str ?? "")
+        : "";
+    return s
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")

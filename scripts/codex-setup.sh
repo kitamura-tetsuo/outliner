@@ -6,8 +6,24 @@ set -euo pipefail
 
 export GIT_MERGE_AUTOEDIT=no
 
-# Error handling
-trap 'echo "Error occurred at line $LINENO. Exit code: $?" >&2' ERR
+SCRIPT_ARGS=("$@")
+RETRY_COUNT=${CODEX_SETUP_RETRY:-0}
+
+handle_error() {
+  local line=$1
+  local exit_code=$2
+  echo "Error occurred at line ${line}. Exit code: ${exit_code}" >&2
+  if [ "$RETRY_COUNT" -eq 0 ]; then
+    echo "codex-setup.sh did not complete. Re-running..."
+    export CODEX_SETUP_RETRY=$((RETRY_COUNT + 1))
+    exec "$0" "${SCRIPT_ARGS[@]}"
+  else
+    echo "codex-setup.sh failed again. Exiting." >&2
+    exit "${exit_code}"
+  fi
+}
+
+trap 'handle_error ${LINENO} $?' ERR
 
 # Load common configuration and functions
 source "${SCRIPT_DIR}/common-config.sh"

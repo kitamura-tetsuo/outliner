@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte";
+import { page as pageStore } from "$app/state";
 import { userManager } from "../../auth/UserManager";
 import Toolbar from "../../components/Toolbar.svelte";
 import { getFluidClientByProjectTitle } from "../../services";
@@ -21,14 +22,17 @@ $effect(() => {
 
 // URLパラメータからプロジェクト名を取得
 $effect(() => {
-    if ((data as any)?.project && isAuthenticated && !fluidStore.fluidClient) {
-        loadProject();
+    // Prefer explicit param over optional data prop
+    const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
+    // Do not gate on isAuthenticated in tests/Yjs-only; attempt to load whenever param is present
+    if (projectParam && !fluidStore.fluidClient) {
+        loadProject(projectParam);
     }
 });
 
-async function loadProject() {
+async function loadProject(projectNameFromParam?: string) {
     try {
-        const projectName = (data as any).project;
+        const projectName = projectNameFromParam ?? (data as any).project;
 
         // プロジェクト名からFluidClientを取得
         const client = await getFluidClientByProjectTitle(projectName);
@@ -43,6 +47,17 @@ async function loadProject() {
 
 onMount(() => {
     isAuthenticated = userManager.getCurrentUser() !== null;
+    // Keep it in sync when auth state changes
+    try {
+        userManager.addEventListener((authResult: any) => {
+            isAuthenticated = authResult !== null;
+            // If project not yet loaded but param exists, try again when auth flips
+            const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
+            if (projectParam && !fluidStore.fluidClient) {
+                loadProject(projectParam);
+            }
+        });
+    } catch {}
 });
 </script>
 

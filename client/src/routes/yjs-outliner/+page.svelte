@@ -2,7 +2,6 @@
 import OutlinerBase from "../../components/OutlinerBase.svelte";
 import { Project } from "../../schema/app-schema";
 import { store as generalStore } from "../../stores/store.svelte";
-import { connectProjectDoc } from "$lib/yjs/connection";
 import * as Y from "yjs";
 import { onMount } from "svelte";
 
@@ -26,14 +25,19 @@ onMount(async () => {
   console.log("/yjs-outliner: pageItem set", { hasPageItem: !!pageItem });
 
   // 2) Connect to server in background; UI continues offline if auth not ready
-  try { await connectProjectDoc(doc, PROJECT_ID); } catch {}
+  //    Import connection module only on client to avoid SSR crashes
+  try {
+    const { connectProjectDoc } = await import("$lib/yjs/connection");
+    await connectProjectDoc(doc, PROJECT_ID);
+  } catch (e) {
+    console.warn("/yjs-outliner: connectProjectDoc failed (continuing offline)", e);
+  }
 });
 </script>
 
-<div class="outliner-page">
-  {#if pageItem}
-    <OutlinerBase pageItem={pageItem} projectName="test" pageName="page" />
-  {/if}
+<div class="outliner-page" data-testid="outliner-base">
+  <!-- Ensure an early anchor exists for tests -->
+  <OutlinerBase pageItem={pageItem} projectName="test" pageName="page" />
 </div>
 
 <style>

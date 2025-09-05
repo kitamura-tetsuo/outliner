@@ -1,8 +1,6 @@
 <script lang="ts">
-import {
-    Comment,
-    Comments,
-} from "../schema/app-schema";
+import { Comments } from "../schema/app-schema";
+import type { Comment } from "../schema/app-schema";
 import { TreeSubscriber } from "../stores/TreeSubscriber";
 
 interface Props {

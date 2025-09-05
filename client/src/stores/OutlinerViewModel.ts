@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { getLogger } from "../lib/logger";
-import { Item, Items } from "../schema/yjs-schema";
+import { Item, Items } from "../schema/app-schema";
 
 const logger = getLogger();
 

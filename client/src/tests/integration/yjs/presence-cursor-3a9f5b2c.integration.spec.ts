@@ -9,9 +9,18 @@ describe("yjs presence", () => {
         const c2 = await createProjectConnection(projectId);
         const project = Project.fromDoc(c1.doc);
         const page = project.addPage("P1", "u1");
-        await new Promise(r => setTimeout(r, 100));
-        const p1c1 = c1.getPageConnection(page.id)!;
-        const p1c2 = c2.getPageConnection(page.id)!;
+        // Wait for page connections to be established
+        const waitFor = async <T>(fn: () => T | undefined, timeout = 1000) => {
+            const start = Date.now();
+            while (Date.now() - start < timeout) {
+                const v = fn();
+                if (v) return v;
+                await new Promise(r => setTimeout(r, 25));
+            }
+            return fn();
+        };
+        const p1c1 = await waitFor(() => c1.getPageConnection(page.id))!;
+        const p1c2 = await waitFor(() => c2.getPageConnection(page.id))!;
         p1c1.awareness.setLocalState({
             user: { userId: "u1", name: "A" },
             presence: { cursor: { itemId: "root", offset: 0 } },

@@ -667,8 +667,9 @@ export class Cursor {
             return;
         }
 
+        const currentText = node.text?.toString?.() ?? "";
         console.log(`insertText: Inserting "${ch}" at offset ${this.offset} in item ${this.itemId}`);
-        console.log(`insertText: Current text: "${node.text}"`);
+        console.log(`insertText: Current text: "${currentText}"`);
 
         // 選択範囲がある場合は、選択範囲を削除してからテキストを挿入
         const selection = Object.values(store.selections).find(s =>
@@ -681,8 +682,7 @@ export class Cursor {
             // 選択範囲のテキストを削除
             const startOffset = Math.min(selection.startOffset, selection.endOffset);
             const endOffset = Math.max(selection.startOffset, selection.endOffset);
-            let txt = node.text;
-            txt = txt.slice(0, startOffset) + ch + txt.slice(endOffset);
+            const txt = currentText.slice(0, startOffset) + ch + currentText.slice(endOffset);
             node.updateText(txt);
 
             // カーソル位置を更新
@@ -691,15 +691,14 @@ export class Cursor {
             // 選択範囲をクリア
             this.clearSelection();
 
-            console.log(`insertText: Updated text with selection: "${txt}"`);
+            console.log(`insertText: Updated text with selection: "${node.text?.toString?.() ?? ""}"`);
         } else {
             // 通常の挿入
-            let txt = node.text;
-            txt = txt.slice(0, this.offset) + ch + txt.slice(this.offset);
+            const txt = currentText.slice(0, this.offset) + ch + currentText.slice(this.offset);
             node.updateText(txt);
             this.offset += ch.length;
 
-            console.log(`insertText: Updated text: "${txt}"`);
+            console.log(`insertText: Updated text: "${node.text?.toString?.() ?? ""}"`);
         }
 
         this.applyToStore();

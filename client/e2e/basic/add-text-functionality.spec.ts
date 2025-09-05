@@ -16,13 +16,24 @@ import "../utils/registerAfterEachSnapshot";
 
 test.describe("テキスト追加機能テスト", () => {
     test.beforeEach(async ({ page }) => {
+        // Debug browser console to diagnose 500s/hydration errors
+        page.on("console", msg => console.log(`[browser:${msg.type()}]`, msg.text()));
+        page.on("pageerror", err => console.log("[pageerror]", err.message));
         // Yjs専用の軽量テストページを優先。なければルートにフォールバック。
+        // Prefer lightweight Yjs page; if not ready, fall back to root
         try {
             await page.goto("/yjs-outliner");
         } catch {
             await page.goto("/");
         }
-        await expect(page.locator('[data-testid="outliner-base"]').first()).toBeVisible();
+        const baseLocator = page.locator('[data-testid="outliner-base"]').first();
+        try {
+            await expect(baseLocator).toBeVisible({ timeout: 5000 });
+        } catch {
+            // If the Yjs page didn't render quickly, try the root page
+            await page.goto("/");
+            await expect(baseLocator).toBeVisible();
+        }
     });
 
     // スナップショットは ../utils/registerAfterEachSnapshot の afterEach で一括保存
@@ -41,10 +52,16 @@ test.describe("テキスト追加機能テスト", () => {
     test("Add Text button should add text to shared content", async ({ page }, testInfo) => {
         // 追加前のアイテムIDリストを取得
         const itemIdsBefore = await page.evaluate(() => {
-            return Array.from(document.querySelectorAll(".outliner-item")).map(el => el.getAttribute("data-item-id"));
+            const arr = Array.from(document.querySelectorAll(".outliner-item")).map(el =>
+                el.getAttribute("data-item-id")
+            );
+            console.log("E2E: initial .outliner-item count", arr.length);
+            return arr;
         });
 
         // アウトラインにアイテムを追加
+        const hasButton = await page.locator('button:has-text("アイテム追加")').count();
+        console.log("E2E: add button count", hasButton);
         await page.click('button:has-text("アイテム追加")');
 
         // 新しいアイテムが表示されるのを待つ

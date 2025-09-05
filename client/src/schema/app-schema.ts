@@ -68,10 +68,58 @@ export class Comments {
 // 1ノード（アイテム）ラッパ
 export class Item {
     constructor(
-        public readonly ydoc: Y.Doc,
-        public readonly tree: YTree,
-        public readonly key: string,
-    ) {}
+        public readonly ydoc: Y.Doc | any,
+        public readonly tree?: YTree,
+        public readonly key?: string,
+    ) {
+        // Backward-compatible constructor: allow `new Item({ id, text, ... })` in tests
+        if (arguments.length === 1 && this.tree === undefined && this.key === undefined) {
+            const plain = this.ydoc as any;
+            // Initialize a fresh Y.Doc + YTree
+            const doc = new Y.Doc();
+            const ymap = doc.getMap("orderedTree");
+            const tree = new YTree(ymap);
+
+            const nodeKey = tree.generateNodeKey();
+            const value = new Y.Map<any>();
+
+            // Map basic fields; prefer provided values with safe defaults
+            value.set("id", plain?.id ?? nodeKey);
+            value.set("author", plain?.author ?? "");
+            value.set("created", plain?.created ?? 0);
+            value.set("lastChanged", plain?.lastChanged ?? 0);
+            value.set("componentType", undefined);
+            value.set("aliasTargetId", undefined);
+
+            const text = new Y.Text();
+            const srcText = typeof plain?.text === "string" ? plain.text : "";
+            if (srcText) text.insert(0, srcText);
+            value.set("text", text);
+
+            const votes = new Y.Array<string>();
+            if (Array.isArray(plain?.votes) && plain.votes.length > 0) {
+                // push expects an array of items
+                votes.push(plain.votes as string[]);
+            }
+            value.set("votes", votes);
+
+            value.set("attachments", new Y.Array<string>());
+            value.set("comments", new Y.Array<Y.Map<any>>());
+
+            // Create the node under root and finalize fields on `this`
+            tree.createNode("root", nodeKey, value);
+
+            // Reassign instance fields to the initialized structures
+            (this as any).ydoc = doc;
+            (this as any).tree = tree;
+            (this as any).key = nodeKey;
+        } else {
+            // Ensure required fields exist in normal constructor usage
+            if (!(this.ydoc instanceof Y.Doc) || !(this.tree instanceof YTree) || typeof this.key !== "string") {
+                throw new Error("Invalid Item constructor arguments");
+            }
+        }
+    }
 
     private get value(): Y.Map<any> {
         return this.tree.getNodeValueFromKey(this.key) as Y.Map<any>;
@@ -79,6 +127,9 @@ export class Item {
 
     get id(): string {
         return this.value.get("id");
+    }
+    set id(v: string) {
+        this.value.set("id", v ?? "");
     }
 
     get author(): string {
@@ -93,8 +144,9 @@ export class Item {
         return this.value.get("lastChanged") ?? 0;
     }
 
-    get text(): Y.Text {
-        return this.value.get("text") as Y.Text;
+    get text(): string {
+        const t = this.value.get("text") as Y.Text;
+        return t ? t.toString() : "";
     }
 
     set text(v: string) {

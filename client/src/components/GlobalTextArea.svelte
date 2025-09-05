@@ -11,8 +11,8 @@ import { store as generalStore } from "../stores/store.svelte";
 
 let textareaRef: HTMLTextAreaElement;
 let isComposing = false;
-const measureCanvas = document.createElement("canvas");
-const measureCtx = measureCanvas.getContext("2d");
+let measureCanvas: HTMLCanvasElement | null = null;
+let measureCtx: CanvasRenderingContext2D | null = null;
 
 // store.activeItemId 変化時に再フォーカス
 $effect(() => {
@@ -55,6 +55,12 @@ $effect(() => {
 
 // global textarea をストアに登録
 onMount(() => {
+    // Initialize measurement canvas on client only
+    try {
+        measureCanvas = document.createElement("canvas");
+        measureCtx = measureCanvas.getContext("2d");
+    } catch {}
+
     store.setTextareaRef(textareaRef);
     console.log("GlobalTextArea: Textarea reference set in store");
 

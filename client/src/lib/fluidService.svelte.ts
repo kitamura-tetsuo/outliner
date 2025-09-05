@@ -47,7 +47,16 @@ class GeneralStore {
 export const firestoreStore = new GeneralStore();
 
 // シングルトンからマップ型に変更して複数クライアントを管理
-const clientRegistry = new CustomKeyMap<FluidClientKey, FluidInstances>();
+// ページ遷移（フルリロード含む）でも維持されるように window 経由で共有
+let clientRegistry: CustomKeyMap<FluidClientKey, FluidInstances>;
+if (typeof window !== "undefined" && (window as any).__FLUID_CLIENT_REGISTRY__) {
+    clientRegistry = (window as any).__FLUID_CLIENT_REGISTRY__ as CustomKeyMap<FluidClientKey, FluidInstances>;
+} else {
+    clientRegistry = new CustomKeyMap<FluidClientKey, FluidInstances>();
+    if (typeof window !== "undefined") {
+        (window as any).__FLUID_CLIENT_REGISTRY__ = clientRegistry;
+    }
+}
 
 // Azure Fluid Relayエンドポイント設定
 const azureConfig = {
@@ -561,6 +570,11 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
             const result: FluidInstances = [undefined as any, undefined, undefined, undefined, project];
             clientRegistry.set(clientKey, result);
             firestoreStore.titleRegistry.set(containerId, containerName);
+            // Expose latest project for simple consumers/tests
+            if (typeof window !== "undefined") {
+                (window as any).__CURRENT_PROJECT__ = project;
+                (window as any).__CURRENT_PROJECT_TITLE__ = containerName;
+            }
 
             const fluidClientParams = {
                 clientId,
@@ -598,6 +612,10 @@ export async function createNewContainer(containerName: string): Promise<FluidCl
         const result: FluidInstances = [client, container, createResponse.services, appData, project];
         const clientKey = createClientKey(userId, containerId);
         clientRegistry.set(clientKey, result);
+        if (typeof window !== "undefined") {
+            (window as any).__CURRENT_PROJECT__ = project;
+            (window as any).__CURRENT_PROJECT_TITLE__ = containerName;
+        }
         // loadTitleを非同期で実行し、エラーが発生してもメインの処理を妨げない
         loadTitle(containerId).catch(error => {
             log("fluidService", "warn", `Failed to load title in background for ${containerId}:`, error);

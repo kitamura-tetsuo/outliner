@@ -48,9 +48,7 @@ class GeneralStore {
     }
 }
 export const fluidStore = new GeneralStore();
-
-if (process.env.NODE_ENV === "test") {
-    if (typeof window !== "undefined") {
-        (window as any).__FLUID_STORE__ = fluidStore;
-    }
+// Expose for E2E, debugging, and runtime helpers in all modes
+if (typeof window !== "undefined") {
+    (window as any).__FLUID_STORE__ = fluidStore;
 }

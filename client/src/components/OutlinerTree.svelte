@@ -5,12 +5,8 @@ import {
     onMount,
 } from "svelte";
 import { getLogger } from "../lib/logger";
-import {
-    Item,
-    Items,
-} from "../schema/yjs-schema";
+import { Item, Items } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
-import { userManager } from "../auth/UserManager";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
 import { OutlinerViewModel } from "../stores/OutlinerViewModel";
 import { YjsSubscriber } from "../stores/YjsSubscriber";
@@ -43,7 +39,7 @@ interface Props {
 
 let { pageItem, projectName, pageName, isReadOnly = false, onEdit }: Props = $props();
 
-let currentUser = $derived(userManager.getCurrentUser()?.id ?? 'anonymous');
+let currentUser = $state('anonymous');
 
 // ビューストアを作成
 const viewModel = new OutlinerViewModel();
@@ -133,11 +129,14 @@ function handleItemResize(event: CustomEvent) {
     }
 }
 
-onMount(() => {
-    const user = userManager.getCurrentUser();
-    if (user) {
-        currentUser = user.id;
-    }
+onMount(async () => {
+    try {
+        const { userManager } = await import("../auth/UserManager");
+        const user = userManager.getCurrentUser();
+        if (user) {
+            currentUser = user.id;
+        }
+    } catch {}
 
     // onEdit コールバックをストアに設定
     editorOverlayStore.setOnEditCallback(handleEdit);
@@ -192,9 +191,9 @@ onDestroy(() => {
 });
 
 function handleAddItem() {
-    if (pageItem && !isReadOnly && pageItem.items && Tree.is(pageItem.items, Items)) {
+    if (pageItem && !isReadOnly && (pageItem as any).items) {
         // 末尾にアイテム追加
-        pageItem.items.addNode(currentUser);
+        (pageItem as any).items.addNode(currentUser);
     }
 }
 

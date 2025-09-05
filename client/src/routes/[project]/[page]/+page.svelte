@@ -23,9 +23,9 @@ import { store } from "../../../stores/store.svelte";
 
 const logger = getLogger("ProjectPage");
 
-// URLパラメータを取得
-let projectName: string = page.params.project ?? "";
-let pageName: string = page.params.page ?? "";
+// URLパラメータを取得（SvelteKit page store に追従）
+let projectName: string = $derived.by(() => page.params.project ?? "");
+let pageName: string = $derived.by(() => page.params.page ?? "");
 
 // デバッグ用ログ
 logger.info(`Page component initialized with params: project="${projectName}", page="${pageName}"`);
@@ -95,14 +95,25 @@ async function loadProjectAndPage() {
     try {
         // コンテナを読み込む
         logger.info(`loadProjectAndPage: Calling getFluidClientByProjectTitle("${projectName}")`);
-        const client = await getFluidClientByProjectTitle(projectName);
+        let client = await getFluidClientByProjectTitle(projectName);
+        // Fallback: reuse existing client from store if lookup failed (SPA navigation retains it)
+        if (!client && fluidStore.fluidClient) {
+            const fallbackProject = fluidStore.fluidClient.getProject?.();
+            if (fallbackProject && (fallbackProject.title === projectName)) {
+                client = fluidStore.fluidClient as any;
+            }
+        }
         logger.info(`loadProjectAndPage: FluidClient loaded for project: ${projectName}`);
         logger.info(`loadProjectAndPage: Client containerId: ${client?.containerId}`);
 
-        // fluidClientストアを更新
-        logger.info(`loadProjectAndPage: Setting fluidStore.fluidClient`);
+        // fluidClientストアを更新（undefined の場合は既存値を保持してクリアしない）
+        logger.info(`loadProjectAndPage: Setting fluidStore.fluidClient when available`);
         logger.info(`loadProjectAndPage: Client before setting: containerId=${client?.containerId}, clientId=${client?.clientId}`);
-        fluidStore.fluidClient = client;
+        if (client) {
+            fluidStore.fluidClient = client;
+        } else {
+            logger.warn("loadProjectAndPage: getFluidClientByProjectTitle returned undefined; keeping existing fluidClient");
+        }
         logger.info(`loadProjectAndPage: FluidStore updated with client`);
         logger.info(`loadProjectAndPage: FluidStore.fluidClient exists: ${!!fluidStore.fluidClient}`);
         logger.info(`loadProjectAndPage: FluidStore.fluidClient containerId: ${fluidStore.fluidClient?.containerId}`);

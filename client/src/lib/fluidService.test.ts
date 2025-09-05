@@ -24,9 +24,13 @@ describe("fluidService", () => {
             const createResponse = await client.createContainer(fluidService.containerSchema, "2");
             const container = createResponse.container;
             // console.log(container)
-            const appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
-            if (appData.compatibility.canInitialize) {
-                appData.initialize(Project.createInstance("新規プロジェクト"));
+            // In current codebase, Fluid schema is removed (Yjs-only).
+            // Guard against undefined appTreeConfiguration to avoid SharedTree view initialization.
+            if (appTreeConfiguration) {
+                const appData = (container!.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
+                if (appData.compatibility.canInitialize) {
+                    appData.initialize(Project.createInstance("新規プロジェクト"));
+                }
             }
 
             // コンテナをアタッチして永続化（コンテナIDを取得）

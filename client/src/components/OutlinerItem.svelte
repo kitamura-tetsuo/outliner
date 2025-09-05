@@ -3,10 +3,7 @@ import {
     createEventDispatcher,
     onMount,
 } from "svelte";
-import {
-    Item,
-    Items,
-} from "../schema/yjs-schema";
+import { Item, Items } from "../schema/app-schema";
 import { uploadAttachment } from "../services/attachmentService";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";

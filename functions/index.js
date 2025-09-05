@@ -744,6 +744,13 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
   }
 });
 
+// Legacy Fluid token endpoint (removed) — return 404
+exports.fluidToken404 = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") { return res.status(204).end(); }
+  return res.status(404).json({ error: "Not Found" });
+});
+
 // コンテナにアクセス可能なユーザーのリストを取得するエンドポイント（管理者用）
 exports.getContainerUsers = onRequest({ cors: true }, async (req, res) => {
   // CORS設定

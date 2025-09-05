@@ -14,8 +14,11 @@ test.describe("SEA-0001: page title search box", () => {
     });
 
     test("search box navigates to another page", async ({ page }) => {
-        await page.waitForSelector(".page-search-box input");
-        await page.fill(".page-search-box input", "second");
+        // Ensure input is focused before typing to show dropdown reliably
+        const input = page.locator(".page-search-box input");
+        await input.waitFor();
+        await input.focus();
+        await input.fill("second");
         await page.waitForSelector(".page-search-box li");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("Enter");

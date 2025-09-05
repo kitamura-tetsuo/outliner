@@ -23,6 +23,20 @@ export default defineConfig(async ({ mode }) => {
     return {
         plugins: [
             tailwindcss(),
+            // Intercept removed endpoints early during dev to ensure expected 404
+            {
+                name: "deny-fluid-token-endpoint",
+                configureServer(server) {
+                    server.middlewares.use((req, res, next) => {
+                        if (req.method === "GET" && req.url?.startsWith("/api/fluid-token")) {
+                            res.statusCode = 404;
+                            res.end("Not Found");
+                            return;
+                        }
+                        next();
+                    });
+                },
+            },
             sveltekit(),
             paraglideVitePlugin({
                 project: "./project.inlang",

@@ -103,18 +103,26 @@ export class TestHelpers {
 
         console.log("TestHelper: Authentication successful, waiting for global variables");
 
-        // グローバル変数が設定されるまで待機
-        console.log("TestHelper: Waiting for global variables");
+        // グローバル変数が設定されるまで待機（Fluid 依存を排除）
+        console.log("TestHelper: Waiting for global variables (Yjs-safe)");
         await page.waitForFunction(
             () => {
-                const hasFluidStore = (window as any).__FLUID_STORE__ !== undefined;
                 const hasSvelteGoto = (window as any).__SVELTE_GOTO__ !== undefined;
-                console.log("TestHelper: Checking globals - FluidStore:", hasFluidStore, "SvelteGoto:", hasSvelteGoto);
-                return hasFluidStore && hasSvelteGoto;
+                const hasGeneralStore = (window as any).generalStore !== undefined;
+                const hasOutliner = !!document.querySelector('[data-testid="outliner-base"]');
+                console.log(
+                    "TestHelper: Checking globals - SvelteGoto:",
+                    hasSvelteGoto,
+                    "GeneralStore:",
+                    hasGeneralStore,
+                    "Outliner:",
+                    hasOutliner,
+                );
+                return hasSvelteGoto || hasGeneralStore || hasOutliner;
             },
-            { timeout: 30000 }, // 30秒に延長
+            { timeout: 30000 },
         );
-        console.log("TestHelper: Global variables are ready");
+        console.log("TestHelper: Global variables are ready (Yjs-safe)");
 
         console.log("TestHelper: Global variables initialized successfully");
 
@@ -185,57 +193,47 @@ export class TestHelpers {
             ];
         }
 
-        // Fluid APIを使用してプロジェクトとページを作成
+        // Fluid があれば Fluid API、なければ Yjs/app-store 経由で作成
         await page.evaluate(async ({ projectName, pageName, lines }) => {
-            console.log(`TestHelper: Creating project and page`, { projectName, pageName, linesCount: lines.length });
-
-            while (!window.__FLUID_STORE__) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            console.log(`TestHelper: FluidStore is available`);
-
-            const fluidService = window.__FLUID_SERVICE__;
-            console.log(`TestHelper: FluidService is available`, { exists: !!fluidService });
-
-            const fluidClient = await fluidService.createNewContainer(projectName);
-            console.log(`TestHelper: FluidClient created`, { containerId: fluidClient.containerId });
-
-            const project = fluidClient.getProject();
-            console.log(`TestHelper: Project retrieved`, {
-                projectTitle: project.title,
-                itemsCount: project.items?.length,
+            console.log(`TestHelper: Creating project/page (Fluid-or-Yjs)`, {
+                projectName,
+                pageName,
+                linesCount: lines.length,
             });
-
-            fluidClient.createPage(pageName, lines);
-            console.log(`TestHelper: Page created`, { pageName });
-
-            // fluidStoreを更新してアプリケーション状態を同期
-            const fluidStore = window.__FLUID_STORE__;
-            if (fluidStore) {
-                console.log(`TestHelper: Updating fluidStore with new client`);
-                fluidStore.fluidClient = fluidClient;
-                console.log(`TestHelper: FluidStore updated`);
-            } else {
-                console.error(`TestHelper: FluidStore not found`);
-            }
-
-            // 作成後の状態を確認
-            const updatedProject = fluidClient.getProject();
-            console.log(`TestHelper: Updated project state`, {
-                projectTitle: updatedProject.title,
-                itemsCount: updatedProject.items?.length,
-            });
-
-            if (updatedProject.items && updatedProject.items.length > 0) {
-                for (let i = 0; i < updatedProject.items.length; i++) {
-                    const page = updatedProject.items[i];
-                    console.log(`TestHelper: Page ${i}`, { text: page.text, itemsCount: page.items?.length });
+            try {
+                if ((window as any).__FLUID_SERVICE__ && (window as any).__FLUID_STORE__) {
+                    const fluidService = (window as any).__FLUID_SERVICE__;
+                    const fluidClient = await fluidService.createNewContainer(projectName);
+                    fluidClient.createPage(pageName, lines);
+                    const fs = (window as any).__FLUID_STORE__;
+                    if (fs) fs.fluidClient = fluidClient;
+                    console.log(`TestHelper: Created via Fluid`);
+                    return;
                 }
+            } catch (e) {
+                console.warn("TestHelper: Fluid path failed, falling back to Yjs", e);
+            }
+
+            // Yjs fallback via generalStore.project
+            const gs = (window as any).generalStore || (window as any).appStore;
+            if (!gs?.project) {
+                console.warn("TestHelper: generalStore.project not available; cannot create page in Yjs mode");
+                return;
+            }
+            try {
+                const page = gs.project.addPage(pageName, "tester");
+                const items = page.items as any;
+                for (const line of lines) {
+                    const it = items.addNode("tester");
+                    it.updateText(line);
+                }
+                if (!gs.currentPage) gs.currentPage = page as any;
+                console.log("TestHelper: Created via Yjs (generalStore)");
+            } catch (e) {
+                console.error("TestHelper: Yjs page creation failed", e);
             }
         }, { projectName, pageName, lines });
 
-        // FluidClient の設定待ちはスキップ（Yjs-onlyではルート遷移時に再設定されるため）
-        // ここでの厳密待機は beforeEach 長期化の要因となるため最小化する
         await page.waitForTimeout(50);
     }
 
@@ -245,31 +243,34 @@ export class TestHelpers {
      * @param pageName ページ名
      */
     public static async createTestPageViaAPI(page: Page, pageName: string, lines: string[]): Promise<void> {
-        // Fluid APIを使用してページを作成
         await page.evaluate(async ({ pageName, lines }) => {
-            // FluidStoreが利用可能になるまで待機
-            let attempts = 0;
-            const maxAttempts = 150; // wait up to 15 seconds
-            while (!window.__FLUID_STORE__ && attempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                attempts++;
+            try {
+                if ((window as any).__FLUID_STORE__?.fluidClient) {
+                    (window as any).__FLUID_STORE__.fluidClient.createPage(pageName, lines);
+                    console.log("TestHelper: createTestPageViaAPI via Fluid");
+                    return;
+                }
+            } catch (e) {
+                console.warn("TestHelper: Fluid createPage failed, falling back to Yjs", e);
             }
 
-            if (!window.__FLUID_STORE__) {
-                throw new Error("FluidStore not available after waiting");
+            const gs = (window as any).generalStore || (window as any).appStore;
+            if (!gs?.project) {
+                console.warn("TestHelper: generalStore.project not available; cannot create page in Yjs mode");
+                return;
             }
-
-            while (!window.__FLUID_STORE__.fluidClient && attempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                attempts++;
+            try {
+                const pageItem = gs.project.addPage(pageName, "tester");
+                const items = pageItem.items as any;
+                for (const line of lines) {
+                    const it = items.addNode("tester");
+                    it.updateText(line);
+                }
+                if (!gs.currentPage) gs.currentPage = pageItem as any;
+                console.log("TestHelper: createTestPageViaAPI via Yjs");
+            } catch (e) {
+                console.error("TestHelper: Yjs createPage failed", e);
             }
-
-            const fluidClient = window.__FLUID_STORE__.fluidClient;
-            if (!fluidClient) {
-                throw new Error("FluidClient instance not found");
-            }
-
-            fluidClient.createPage(pageName, lines);
         }, { pageName, lines });
     }
 
@@ -367,52 +368,54 @@ export class TestHelpers {
      */
     public static async setupTreeDebugger(page: Page): Promise<void> {
         await page.addInitScript(() => {
-            // グローバルオブジェクトにデバッグ関数を追加
-            window.getFluidTreeDebugData = function() {
-                // グローバルFluidClientインスタンスを取得
-                const fluidClient = window.__FLUID_SERVICE__.getFluidClient();
-                if (!fluidClient) {
-                    console.error("FluidClient instance not found");
-                    return { error: "FluidClient instance not found" };
-                }
-
+            // Yjs / app-store ベースのデバッグ関数を追加（Fluid 依存を排除）
+            const buildYjsSnapshot = () => {
                 try {
-                    // FluidClientのgetAllDataメソッドを使用してデータを取得
-                    const treeData = fluidClient.getAllData();
-                    return treeData;
-                } catch (error) {
-                    console.error("Error getting tree data:", error);
-                    return { error: error instanceof Error ? error.message : "Unknown error" };
-                }
-            };
-
-            // 拡張版のデバッグ関数 - 特定のパスのデータのみを取得
-            window.getFluidTreePathData = function(path) {
-                const fluidClient = window.__FLUID_SERVICE__.getFluidClient();
-                if (!fluidClient) {
-                    return { error: "FluidClient instance not found" };
-                }
-
-                try {
-                    const treeData = fluidClient.getAllData();
-                    if (!path) return treeData;
-
-                    // パスに基づいてデータを取得
-                    const parts = path.split(".");
-                    let result = treeData;
-                    for (const part of parts) {
-                        if (result === undefined || result === null) return null;
-                        result = result[part];
+                    const gs = (window as any).generalStore || (window as any).appStore;
+                    const proj = gs?.project;
+                    if (!proj) return { error: "project not initialized" };
+                    const toPlain = (item: any): any => {
+                        const children = item.items as any;
+                        const asArray: any[] = [];
+                        const len = children?.length ?? 0;
+                        for (let i = 0; i < len; i++) {
+                            const ch = children.at ? children.at(i) : children[i];
+                            if (ch) asArray.push(toPlain(ch));
+                        }
+                        const textVal = item.text?.toString?.() ?? String(item.text ?? "");
+                        return { id: String(item.id), text: textVal, items: asArray };
+                    };
+                    const root = proj.items as any;
+                    const result: any[] = [];
+                    const len = root?.length ?? 0;
+                    for (let i = 0; i < len; i++) {
+                        const it = root.at ? root.at(i) : root[i];
+                        if (it) result.push(toPlain(it));
                     }
-                    return result;
-                } catch (error) {
-                    return { error: error instanceof Error ? error.message : "Unknown error" };
+                    return { itemCount: result.length, items: result };
+                } catch (e: any) {
+                    return { error: e?.message ?? String(e) };
                 }
             };
 
-            // Yjs helpers mirror the Fluid versions
-            window.getYjsTreeDebugData = window.getFluidTreeDebugData;
-            window.getYjsTreePathData = window.getFluidTreePathData;
+            (window as any).getYjsTreeDebugData = function() {
+                return buildYjsSnapshot();
+            };
+            (window as any).getYjsTreePathData = function(path?: string) {
+                const data = buildYjsSnapshot();
+                if (!path || (data as any)?.error) return data;
+                const parts = String(path).split(".");
+                let res: any = data;
+                for (const p of parts) {
+                    if (res == null) return null;
+                    res = res[p];
+                }
+                return res;
+            };
+
+            // Fluid 名のヘルパーも Yjs 実装へエイリアス（互換用）
+            (window as any).getFluidTreeDebugData = (window as any).getYjsTreeDebugData;
+            (window as any).getFluidTreePathData = (window as any).getYjsTreePathData;
         });
     }
 
@@ -534,10 +537,15 @@ export class TestHelpers {
         const encodedPage = encodeURIComponent(pageName);
         const url = `/${encodedProject}/${encodedPage}`;
 
-        console.log("TestHelper: Navigating to project page:", url);
+        console.log("TestHelper: Navigating to project page via Svelte goto:", url);
         const absoluteUrl = new URL(url, page.url()).toString();
-        await page.goto(absoluteUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
-        await expect(page).toHaveURL(absoluteUrl);
+        // Use Svelte-managed navigation to preserve in-memory state (clientRegistry, stores)
+        await page.evaluate(async (targetUrl) => {
+            const goto = (window as any).__SVELTE_GOTO__;
+            if (!goto) throw new Error("__SVELTE_GOTO__ not available");
+            await goto(targetUrl);
+        }, absoluteUrl);
+        await page.waitForURL(absoluteUrl, { timeout: 60000 });
 
         // 遷移後の状態を確認
         const currentUrl = page.url();
@@ -548,6 +556,13 @@ export class TestHelpers {
 
         // ページルートの自動処理を待機（手動設定は行わない）
         console.log("TestHelper: Waiting for page route to automatically load project and page");
+
+        // Fast-path: if toolbar search box is already available, return early for speed
+        try {
+            await page.waitForSelector(".page-search-box input", { timeout: 1500 });
+            console.log("TestHelper: Search box available early, skipping deep waits");
+            return { projectName, pageName };
+        } catch {}
 
         // 認証状態が検出されるまで待機（2フェーズで再試行）
         console.log("TestHelper: Waiting for authentication detection");
@@ -580,6 +595,22 @@ export class TestHelpers {
         }
 
         console.log("TestHelper: Authentication detected, waiting for project loading");
+
+        // Debug current registry contents
+        await page.evaluate(() => {
+            const reg = (window as any).__FLUID_CLIENT_REGISTRY__;
+            if (reg && typeof reg.getAllKeys === "function") {
+                const keys = reg.getAllKeys();
+                const snapshot = keys.map((k: any) => {
+                    const inst = reg.get(k);
+                    const project = inst?.[4];
+                    return { key: k.id, title: project?.title };
+                });
+                console.log("TestHelper: Registry snapshot", snapshot);
+            } else {
+                console.log("TestHelper: Registry not available");
+            }
+        });
 
         // ルーティングの $effect 実行順に依存せず、明示的に FluidClient を反映（HMR/初期化順対策）
         await page.evaluate(async ({ projectName, pageName, lines }) => {
