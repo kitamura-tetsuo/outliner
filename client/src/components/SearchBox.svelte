@@ -144,7 +144,7 @@ $effect(() => {
         oninput={() => { isFocused = true; shouldRefocus = true; }}
         onblur={() => (isFocused = false)}
     />
-        {#if results.length && isFocused}
+        {#if results.length}
             <ul>
                 {#each results as page, i}
                     <li class:selected={i === selected}>
