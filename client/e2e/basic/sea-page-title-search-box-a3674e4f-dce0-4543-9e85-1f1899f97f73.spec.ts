@@ -15,7 +15,9 @@ test.describe("SEA-0001: page title search box", () => {
 
     test("search box navigates to another page", async ({ page }) => {
         // Ensure input is focused before typing to show dropdown reliably
-        const input = page.locator(".page-search-box input");
+        const input = page
+            .getByTestId("main-toolbar")
+            .getByRole("textbox", { name: "Search pages" });
         await input.waitFor();
         await input.focus();
         await input.fill("second");
