@@ -2,7 +2,6 @@
 import { onMount } from "svelte";
 import { page as pageStore } from "$app/state";
 import { userManager } from "../../auth/UserManager";
-import Toolbar from "../../components/Toolbar.svelte";
 import { getFluidClientByProjectTitle } from "../../services";
 import { fluidStore } from "../../stores/fluidStore.svelte";
 
@@ -60,8 +59,6 @@ onMount(() => {
     } catch {}
 });
 </script>
-
-<Toolbar {project} />
 
 <div class="main-content">
     {@render children()}
