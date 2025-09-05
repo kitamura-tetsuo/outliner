@@ -320,7 +320,11 @@ onDestroy(async () => {
 <div data-testid="outliner-base">
     <!-- Global main toolbar with SearchBox (SEA-0001) -->
     <Toolbar />
-    {@render children()}
+
+    <!-- Ensure content is not hidden behind fixed toolbar -->
+    <div class="main-content">
+        {@render children()}
+    </div>
 
     <MobileActionToolbar />
 
@@ -331,3 +335,8 @@ onDestroy(async () => {
         {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
     </button>
 </div>
+
+<style>
+/* Keep content clear of the fixed Toolbar (height ~4rem) */
+.main-content { padding-top: 5rem; }
+</style>
