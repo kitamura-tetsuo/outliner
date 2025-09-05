@@ -24,7 +24,6 @@ let shouldRefocus = $state(false);
 
 // リアクティブに結果を計算
 let results = $derived.by(() => {
-    console.log('SearchBox: computing results for query=', query);
     let projectToUse: Project | null = effectiveProject;
     if (!projectToUse && typeof window !== 'undefined') {
         // try global fallbacks
@@ -42,20 +41,23 @@ let results = $derived.by(() => {
         }
     }
 
-    if (!projectToUse?.items) {
-        console.log('SearchBox: no projectToUse');
-        return [];
+    // Resolve pages from project or global store as a robust fallback
+    let pages: Items | any[] | undefined = projectToUse?.items as Items | undefined;
+    if (!pages && typeof window !== 'undefined') {
+        const gs = (window as any).generalStore;
+        const current = gs?.pages?.current;
+        if (current) pages = current as any[];
     }
 
-    const pages = projectToUse.items as Items;
-    console.log('SearchBox: pages length=', pages.length);
+    if (!pages) return [];
 
     if (!query) {
         const historyResults = searchHistoryStore.history
             .map(h => {
                 // Items配列から検索
-                for (let i = 0; i < pages.length; i++) {
-                    const page = pages.at(i);
+                const len = (pages as any).length ?? 0;
+                for (let i = 0; i < len; i++) {
+                    const page = (pages as any).at ? (pages as any).at(i) : (pages as any)[i];
                     const title = page?.text?.toString?.() ?? '';
                     if (page && title === h) {
                         return page;
@@ -68,8 +70,9 @@ let results = $derived.by(() => {
     }
 
     const searchResults: Item[] = [];
-    for (let i = 0; i < pages.length; i++) {
-        const page = pages.at(i);
+    const len = (pages as any).length ?? 0;
+    for (let i = 0; i < len; i++) {
+        const page = (pages as any).at ? (pages as any).at(i) : (pages as any)[i];
         const title = page?.text?.toString?.() ?? '';
         if (page && title.toLowerCase().includes(query.toLowerCase())) {
             searchResults.push(page);
