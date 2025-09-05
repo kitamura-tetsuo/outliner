@@ -46,8 +46,11 @@ let results = $derived.by(() => {
     let pages: Items | any[] | undefined = projectToUse?.items as Items | undefined;
     if (!pages && typeof window !== 'undefined') {
         const gs = (window as any).generalStore;
-        const projectItems = gs?.project?.items;
-        if (projectItems) pages = projectItems as any[];
+        // Prefer explicit pages collection when available
+        const pagesFromStore = gs?.pages?.current as Items | undefined;
+        const projectItems = gs?.project?.items as Items | undefined;
+        if (pagesFromStore) pages = pagesFromStore as any;
+        else if (projectItems) pages = projectItems as any;
     }
 
     if (!pages) return [];
