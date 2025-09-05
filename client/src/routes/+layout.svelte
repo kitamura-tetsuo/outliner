@@ -15,6 +15,7 @@ import { setupGlobalDebugFunctions } from "../lib/debug";
 import "../utils/ScrapboxFormatter";
 // グローバルに公開するためにインポート
 import MobileActionToolbar from "../components/MobileActionToolbar.svelte";
+import Toolbar from "../components/Toolbar.svelte";
 // Defer services import; it re-exports fluidService which depends on UserManager
 import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
@@ -317,6 +318,8 @@ onDestroy(async () => {
 </script>
 
 <div data-testid="outliner-base">
+    <!-- Global main toolbar with SearchBox (SEA-0001) -->
+    <Toolbar />
     {@render children()}
 
     <MobileActionToolbar />
