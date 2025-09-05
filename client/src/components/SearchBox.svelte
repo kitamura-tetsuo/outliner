@@ -42,11 +42,12 @@ let results = $derived.by(() => {
     }
 
     // Resolve pages from project or global store as a robust fallback
+    // NOTE: We must search page TITLES, which live under project.items, not the current page's items
     let pages: Items | any[] | undefined = projectToUse?.items as Items | undefined;
     if (!pages && typeof window !== 'undefined') {
         const gs = (window as any).generalStore;
-        const current = gs?.pages?.current;
-        if (current) pages = current as any[];
+        const projectItems = gs?.project?.items;
+        if (projectItems) pages = projectItems as any[];
     }
 
     if (!pages) return [];
@@ -147,7 +148,7 @@ $effect(() => {
         oninput={() => { isFocused = true; shouldRefocus = true; }}
         onblur={() => (isFocused = false)}
     />
-        {#if results.length}
+        {#if results.length && isFocused}
             <ul>
                 {#each results as page, i}
                     <li class:selected={i === selected}>
