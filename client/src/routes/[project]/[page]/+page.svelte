@@ -11,6 +11,7 @@ import AuthComponent from "../../../components/AuthComponent.svelte";
 import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
 import OutlinerBase from "../../../components/OutlinerBase.svelte";
 import SearchPanel from "../../../components/SearchPanel.svelte";
+import SearchBox from "../../../components/SearchBox.svelte";
 import {
     cleanupLinkPreviews,
     setupLinkPreviewHandlers,
@@ -364,7 +365,9 @@ onDestroy(() => {
                     ページ
                 {/if}
             </h1>
-            <div class="space-x-2">
+            <div class="flex items-center space-x-2">
+                <!-- Page title search box (SEA-0001) -->
+                <SearchBox project={store.project} />
                 <button
                     onclick={toggleSearchPanel}
                     class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
