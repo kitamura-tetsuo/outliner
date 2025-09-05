@@ -1,3 +1,4 @@
 // SvelteKit のページオプション設定
-export const ssr = false; // E2E/開発時はクライアント側でのみレンダリングして安定化
+// Enable SSR so test hooks like [data-testid="outliner-base"] are present immediately
+export const ssr = true;
 export const prerender = false;
