@@ -156,7 +156,7 @@ $effect(() => {
             <ul>
                 {#each results as page, i}
                     <li class:selected={i === selected}>
-                        <button type="button" on:click={() => handlePageClick(page)}>{page.text}</button>
+                        <button type="button" onclick={() => handlePageClick(page)}>{page.text}</button>
                     </li>
                 {/each}
             </ul>

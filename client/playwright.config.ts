@@ -85,7 +85,6 @@ export default defineConfig({
     maxFailures: process.env.CI ? 1 : 1,
 
     reporter: [["html", { open: "never" }]],
-    headless: true,
     // テスト実行時のタイムアウト設定を延長
     timeout: 30 * 1000, // 30秒
     expect: {
@@ -94,6 +93,7 @@ export default defineConfig({
     },
 
     use: {
+        headless: true,
         ...devices["Desktop Chrome"],
         // Chromium用のタイムアウト設定を延長
         launchOptions: {
