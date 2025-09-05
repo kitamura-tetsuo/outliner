@@ -57,7 +57,8 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   echo "Installing OS utilities..."
   install_os_utilities
   echo "Installing Python packages..."
-  sudo apt install python3-venv python3-pip -y
+  retry_apt_get update
+  retry_apt_get -y install python3-venv python3-pip
 
   # Create Python virtual environment if it doesn't exist
   if [ ! -d "${ROOT_DIR}/.venv" ]; then
@@ -106,7 +107,9 @@ else
     echo "xvfb-run missing; installing OS utilities..."
     install_os_utilities
   fi
-  install_all_dependencies
+  if [ ! -d "${ROOT_DIR}/client/node_modules" ] || [ ! -d "${ROOT_DIR}/scripts/tests/node_modules" ]; then
+    install_all_dependencies
+  fi
   if [ ! -f "${ROOT_DIR}/client/node_modules/.bin/vitest" ] || [ ! -f "${ROOT_DIR}/client/node_modules/.bin/playwright" ]; then
     echo "Required test packages missing; installing vitest playwright..."
     cd "${ROOT_DIR}/client"

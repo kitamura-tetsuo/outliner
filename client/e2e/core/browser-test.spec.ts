@@ -24,7 +24,7 @@ test.describe("Browser Basic Test", () => {
         console.log("Debug: Testing external navigation");
 
         try {
-            await page.goto("https://example.com", {
+            await page.goto("http://example.com", {
                 timeout: 30000,
                 waitUntil: "domcontentloaded",
             });

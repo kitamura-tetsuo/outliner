@@ -42,24 +42,31 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         // 最初のアイテムが選択されていることを確認
         const selectedItems = page.locator(".alias-picker li.selected");
         await expect(selectedItems).toHaveCount(1);
+        const firstSelected = await page.locator(".alias-picker li.selected button").textContent();
+        if (!firstSelected) throw new Error("first option not found");
 
         // 下矢印キーで次のアイテムに移動
         await page.keyboard.press("ArrowDown");
         await page.waitForTimeout(200);
 
-        // 選択されたアイテムが1つあることを確認（インデックスが変わった）
-        await expect(selectedItems).toHaveCount(1);
+        // 選択されたアイテムが変更されたことを確認
+        const secondSelected = await page.locator(".alias-picker li.selected button").textContent();
+        if (!secondSelected) throw new Error("second option not found");
+        expect(secondSelected).not.toBe(firstSelected);
 
         // 上矢印キーで前のアイテムに戻る
         await page.keyboard.press("ArrowUp");
         await page.waitForTimeout(200);
 
-        // 選択されたアイテムが1つあることを確認
-        await expect(selectedItems).toHaveCount(1);
+        // 元のアイテムに戻ったことを確認
+        const restoredSelected = await page.locator(".alias-picker li.selected button").textContent();
+        if (!restoredSelected) throw new Error("restored option not found");
+        expect(restoredSelected).toBe(firstSelected);
 
-        // キーボードナビゲーションの基本動作を確認したので、
-        // 実際の選択は従来の方法で行う（Enterキーの問題を回避）
-        await TestHelpers.selectAliasOption(page, secondId);
+        // 再度下矢印キーで次のアイテムに移動し、Enterキーでエイリアスを確定
+        await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(200);
+        await page.keyboard.press("Enter");
 
         // エイリアスピッカーが非表示になることを確認
         await expect(page.locator(".alias-picker")).toBeHidden();

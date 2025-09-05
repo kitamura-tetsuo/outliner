@@ -8,6 +8,24 @@ load_nvm() {
   fi
 }
 
+# Run apt-get with automatic retry and dpkg repair to handle transient failures
+retry_apt_get() {
+  local attempts=0
+  local max_attempts=3
+  while true; do
+    if sudo apt-get "$@"; then
+      break
+    fi
+    attempts=$((attempts+1))
+    if [ "$attempts" -ge "$max_attempts" ]; then
+      return 1
+    fi
+    echo "apt-get $* failed (attempt ${attempts}/${max_attempts}); repairing and retrying..."
+    sudo dpkg --configure -a || true
+    sleep 2
+  done
+}
+
 # Wait for a port to become available
 wait_for_port() {
   local port="$1"
@@ -117,15 +135,15 @@ install_os_utilities() {
   # Check if Java is installed and compatible with Firebase
   if ! command -v java >/dev/null 2>&1; then
     echo "Java not found. Installing OpenJDK 17 for Firebase compatibility..."
-    sudo apt-get update
-    DEBIAN_FRONTEND=noninteractive sudo apt-get -y install --no-install-recommends openjdk-17-jre-headless
+    retry_apt_get update
+    DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends openjdk-17-jre-headless
   else
     # Check Java version (Firebase requires Java 11+)
     java_version=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
     if [ "$java_version" -lt 11 ] 2>/dev/null; then
       echo "Java version $java_version is too old for Firebase. Installing OpenJDK 17..."
-      sudo apt-get update
-      DEBIAN_FRONTEND=noninteractive sudo apt-get -y install --no-install-recommends openjdk-17-jre-headless
+      retry_apt_get update
+      DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends openjdk-17-jre-headless
     else
       echo "Java version $java_version is compatible with Firebase"
     fi
@@ -174,8 +192,8 @@ install_os_utilities() {
   done
 
   if [ "$needs_install" = true ]; then
-    sudo apt-get update
-    DEBIAN_FRONTEND=noninteractive sudo apt-get -y install --no-install-recommends \
+    retry_apt_get update
+    DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends \
       "${original_deps[@]}" \
       "${playwright_deps[@]}"
   fi

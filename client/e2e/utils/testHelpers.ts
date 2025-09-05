@@ -763,7 +763,9 @@ export class TestHelpers {
                 );
                 if (attempts < maxAttempts) {
                     console.log("TestHelper: Retrying...");
-                    await page.waitForTimeout(2000); // 2秒待機してから再試行
+                    // ページが閉じられていてもリトライ待機できるように、page.waitForTimeoutではなく
+                    // setTimeoutを直接使用する
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
                 }
             }
         }

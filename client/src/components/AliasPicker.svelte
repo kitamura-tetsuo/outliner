@@ -41,24 +41,28 @@ function confirm(id: string) {
 function handleKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
         event.preventDefault();
+        event.stopPropagation();
         aliasPickerStore.hide();
         return;
     }
 
     if (event.key === "ArrowDown") {
         event.preventDefault();
+        event.stopPropagation();
         selectedIndex = Math.min(selectedIndex + 1, filteredOptions.length - 1);
         return;
     }
 
     if (event.key === "ArrowUp") {
         event.preventDefault();
+        event.stopPropagation();
         selectedIndex = Math.max(selectedIndex - 1, 0);
         return;
     }
 
     if (event.key === "Enter") {
         event.preventDefault();
+        event.stopPropagation();
         if (filteredOptions[selectedIndex]) {
             confirm(filteredOptions[selectedIndex].id);
         }
