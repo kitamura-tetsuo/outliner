@@ -144,6 +144,7 @@ $effect(() => {
     <input
         type="text"
         placeholder="Search pages"
+        aria-label="Search pages"
         bind:this={inputEl}
         bind:value={query}
         onkeydown={handleKeydown}
@@ -151,11 +152,11 @@ $effect(() => {
         oninput={() => { isFocused = true; shouldRefocus = true; }}
         onblur={() => (isFocused = false)}
     />
-        {#if results.length && isFocused}
+        {#if results.length && (query.length > 0)}
             <ul>
                 {#each results as page, i}
                     <li class:selected={i === selected}>
-                        <button type="button" onclick={() => handlePageClick(page)}>{page.text}</button>
+                        <button type="button" on:click={() => handlePageClick(page)}>{page.text}</button>
                     </li>
                 {/each}
             </ul>
