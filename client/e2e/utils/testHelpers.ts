@@ -180,6 +180,15 @@ export class TestHelpers {
         pageName: string,
         lines: string[] = [],
     ): Promise<void> {
+        // Ensure project store is initialized before attempting creation
+        try {
+            await page.waitForFunction(() => {
+                const gs = (window as any).generalStore || (window as any).appStore;
+                return !!(gs && gs.project);
+            }, { timeout: 15000 });
+        } catch {
+            // Continue with retries below; creation path already handles transient unavailability
+        }
         if (lines.length == 0) {
             lines = [
                 "これはテスト用のページです。1",
@@ -260,6 +269,15 @@ export class TestHelpers {
      * @param pageName ページ名
      */
     public static async createTestPageViaAPI(page: Page, pageName: string, lines: string[]): Promise<void> {
+        // Ensure project store is initialized before attempting creation
+        try {
+            await page.waitForFunction(() => {
+                const gs = (window as any).generalStore || (window as any).appStore;
+                return !!(gs && gs.project);
+            }, { timeout: 15000 });
+        } catch {
+            // Continue with retries below; creation path already handles transient unavailability
+        }
         const runCreate = async () => {
             await page.evaluate(async ({ pageName, lines }) => {
                 const gs = (window as any).generalStore || (window as any).appStore;
@@ -601,8 +619,16 @@ export class TestHelpers {
         const currentUrl = page.url();
         console.log(`TestHelper: Current URL after navigation: ${currentUrl}`);
 
-        const pageTitle = await page.title();
-        console.log(`TestHelper: Page title: ${pageTitle}`);
+        // Fetching title can hang in rare states; don't block setup
+        try {
+            const pageTitle = await Promise.race([
+                page.title(),
+                new Promise<string>((resolve) => setTimeout(() => resolve("<title-timeout>"), 2000)),
+            ]);
+            console.log(`TestHelper: Page title: ${pageTitle}`);
+        } catch {
+            console.log("TestHelper: Page title fetch skipped due to transient state");
+        }
 
         // ページルートの自動処理を待機（手動設定は行わない）
         console.log("TestHelper: Waiting for page route to automatically load project and page");

@@ -2,7 +2,7 @@
 import { onMount } from "svelte";
 import { page as pageStore } from "$app/state";
 import { userManager } from "../../auth/UserManager";
-import { getFluidClientByProjectTitle } from "../../services";
+import { getFluidClientByProjectTitle, createNewContainer } from "../../services";
 import { fluidStore } from "../../stores/fluidStore.svelte";
 
 // プロジェクトレベルのレイアウト
@@ -34,7 +34,15 @@ async function loadProject(projectNameFromParam?: string) {
         const projectName = projectNameFromParam ?? (data as any).project;
 
         // プロジェクト名からFluidClientを取得
-        const client = await getFluidClientByProjectTitle(projectName);
+        let client = await getFluidClientByProjectTitle(projectName);
+        // In tests/Yjs-only mode, auto-create a project if none exists for this title
+        if (!client && (import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true")) {
+            try {
+                client = await createNewContainer(projectName);
+            } catch (e) {
+                console.warn("Auto-create container failed:", e);
+            }
+        }
         if (client) {
             fluidStore.fluidClient = client;
             project = client.getProject();
