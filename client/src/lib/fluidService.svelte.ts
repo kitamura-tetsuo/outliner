@@ -741,12 +741,12 @@ export async function createFluidClient(containerId?: string): Promise<FluidClie
             let userId = userInfo?.id;
 
             // テスト環境では認証をバイパス
-            const isTestEnv = import.meta.env.MODE === "test"
+            const isTestEnvLocal = import.meta.env.MODE === "test"
                 || process.env.NODE_ENV === "test"
                 || import.meta.env.VITE_IS_TEST === "true"
                 || (typeof window !== "undefined" && window.mockUser);
 
-            if (!userId && isTestEnv) {
+            if (!userId && isTestEnvLocal) {
                 userId = "test-user-id";
                 log("fluidService", "info", "Using test user ID for test environment");
             }
@@ -799,7 +799,7 @@ export async function createFluidClient(containerId?: string): Promise<FluidClie
             // コンテナIDを解決できない場合（テスト環境や初回起動直後）は
             // Yjs のみで動作する簡易プロジェクトを作成して返す。
             // これにより E2E テストの初期化（generalStore.project の存在）が保証される。
-            const isTestEnv = import.meta.env.MODE === "test"
+            const isTestEnvironmentFallback = import.meta.env.MODE === "test"
                 || process.env.NODE_ENV === "test"
                 || import.meta.env.VITE_IS_TEST === "true";
 
@@ -811,7 +811,7 @@ export async function createFluidClient(containerId?: string): Promise<FluidClie
             }
 
             // テスト/開発では Yjs-only の新規プロジェクトを即時作成
-            if (isTestEnv || !appTreeConfiguration) {
+            if (isTestEnvironmentFallback || !appTreeConfiguration) {
                 return await createNewContainer(inferredTitle);
             }
 

@@ -19,8 +19,17 @@ const logger = getLogger();
  */
 export function setupGlobalDebugFunctions(service?: any) {
     if (typeof window !== "undefined") {
-        // ナビゲーション関数
-        (window as any).__SVELTE_GOTO__ = goto;
+        // In Playwright tests, avoid exposing goto to prevent navigation loops.
+        if (process.env.NODE_ENV !== "test") {
+            (window as any).__SVELTE_GOTO__ = async (url: string, opts?: any) => {
+                await Promise.resolve();
+                return goto(url, opts);
+            };
+        } else {
+            try {
+                delete (window as any).__SVELTE_GOTO__;
+            } catch {}
+        }
         // サービス / ストア / ユーザーマネージャ
         (window as any).__FLUID_SERVICE__ = service ?? fluidService;
         (window as any).__FLUID_STORE__ = fluidStore;
@@ -46,8 +55,10 @@ declare global {
 
 if (process.env.NODE_ENV === "test") {
     if (typeof window !== "undefined") {
-        // E2E から利用するためにグローバル公開
-        (window as any).__SVELTE_GOTO__ = goto;
+        // Do not expose __SVELTE_GOTO__ in tests to force page.goto in helpers
+        try {
+            delete (window as any).__SVELTE_GOTO__;
+        } catch {}
         (window as any).__FLUID_SERVICE__ = fluidService;
         (window as any).__FLUID_STORE__ = fluidStore;
         (window as any).__USER_MANAGER__ = userManager;
