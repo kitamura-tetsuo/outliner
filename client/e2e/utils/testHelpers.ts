@@ -635,11 +635,21 @@ export class TestHelpers {
 
         // Fast-path: if toolbar search box is already available, return early for speed
         try {
-            // Allow a bit more time to stabilize on slower boots
-            await page.waitForSelector(".page-search-box input", { timeout: 5000 });
+            // Prefer role-based lookup in the main toolbar for stability
+            const input = page
+                .getByTestId("main-toolbar")
+                .getByRole("textbox", { name: "Search pages" });
+            await input.waitFor({ timeout: 12000 });
             console.log("TestHelper: Search box available early, skipping deep waits");
             return { projectName, pageName };
-        } catch {}
+        } catch {
+            // Fallback to CSS selector for environments without testid plumbing
+            try {
+                await page.waitForSelector(".page-search-box input", { timeout: 12000 });
+                console.log("TestHelper: Search box (CSS) available, skipping deep waits");
+                return { projectName, pageName };
+            } catch {}
+        }
 
         // 認証状態が検出されるまで待機（2フェーズで再試行）
         console.log("TestHelper: Waiting for authentication detection");
