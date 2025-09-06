@@ -55,6 +55,7 @@ let isCaseSensitive = $state(false);
 let matchCount = $state(0);
 
 function highlight(results: Array<ItemMatch<Item>>, options: SearchOptions) {
+    if (typeof document === "undefined") return; // SSR guard
     removeHighlights();
     const regex = buildRegExp(searchQuery, options);
     for (const { item } of results) {
@@ -73,6 +74,7 @@ function highlight(results: Array<ItemMatch<Item>>, options: SearchOptions) {
 }
 
 function removeHighlights() {
+    if (typeof document === "undefined") return; // SSR guard
     document
         .querySelectorAll<HTMLElement>(".item-text[data-orig-html]")
         .forEach(el => {

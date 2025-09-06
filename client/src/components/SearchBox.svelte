@@ -62,6 +62,21 @@ let results = $derived.by(() => {
                     }
                 }
                 if (arr.length) return arr;
+                // Fallback: if pages.current is empty, use project.items
+                const projItems = gs?.project?.items as any;
+                const projArr: any[] = [];
+                if (projItems) {
+                    if (typeof projItems[Symbol.iterator] === 'function') {
+                        for (const p of projItems as any) projArr.push(p);
+                    } else if (typeof (projItems as any).length === 'number') {
+                        const len = (projItems as any).length;
+                        for (let i = 0; i < len; i++) {
+                            const v = (projItems as any).at ? (projItems as any).at(i) : (projItems as any)[i];
+                            if (typeof v !== 'undefined') projArr.push(v);
+                        }
+                    }
+                }
+                if (projArr.length) return projArr;
             }
         } catch {}
 

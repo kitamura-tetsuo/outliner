@@ -199,8 +199,7 @@ export class TestHelpers {
                 // Yjs via generalStore.project
                 const gs = (window as any).generalStore || (window as any).appStore;
                 if (!gs?.project) {
-                    console.warn("TestHelper: generalStore.project not available; cannot create page in Yjs mode");
-                    return;
+                    throw new Error("TestHelper: generalStore.project not available");
                 }
                 try {
                     const page = gs.project.addPage(pageName, "tester");
@@ -232,6 +231,7 @@ export class TestHelpers {
                         msg.includes("Target page, context or browser has been closed")
                         || msg.includes("Execution context was destroyed")
                         || msg.includes("Navigation")
+                        || msg.includes("generalStore.project not available")
                     ) {
                         console.log(`TestHelper: createProject retry ${attempt}/3 after navigation/close race`);
                         try {
@@ -264,8 +264,7 @@ export class TestHelpers {
             await page.evaluate(async ({ pageName, lines }) => {
                 const gs = (window as any).generalStore || (window as any).appStore;
                 if (!gs?.project) {
-                    console.warn("TestHelper: generalStore.project not available; cannot create page in Yjs mode");
-                    return;
+                    throw new Error("TestHelper: generalStore.project not available");
                 }
                 try {
                     const pageItem = gs.project.addPage(pageName, "tester");
@@ -297,6 +296,7 @@ export class TestHelpers {
                         msg.includes("Target page, context or browser has been closed")
                         || msg.includes("Execution context was destroyed")
                         || msg.includes("Navigation")
+                        || msg.includes("generalStore.project not available")
                     ) {
                         console.log(`TestHelper: createPage retry ${attempt}/3 after navigation/close race`);
                         try {
@@ -579,9 +579,6 @@ export class TestHelpers {
         const projectName = `Test Project ${testInfo.workerIndex} ${Date.now()}`;
         const pageName = `test-page-${Date.now()}`;
 
-        console.log("TestHelper: Creating test project and page via API");
-        await TestHelpers.createTestProjectAndPageViaAPI(page, projectName, pageName, lines);
-
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
         const url = `/${encodedProject}/${encodedPage}`;
@@ -612,7 +609,8 @@ export class TestHelpers {
 
         // Fast-path: if toolbar search box is already available, return early for speed
         try {
-            await page.waitForSelector(".page-search-box input", { timeout: 1500 });
+            // Allow a bit more time to stabilize on slower boots
+            await page.waitForSelector(".page-search-box input", { timeout: 5000 });
             console.log("TestHelper: Search box available early, skipping deep waits");
             return { projectName, pageName };
         } catch {}
@@ -703,6 +701,46 @@ export class TestHelpers {
                 });
             });
             throw error;
+        }
+
+        // Ensure the target page exists after navigation (create if missing)
+        try {
+            await page.evaluate(({ targetPageName, lines }) => {
+                const gs = (window as any).generalStore;
+                if (!gs?.project) return;
+                // Check existence by title match
+                let exists = false;
+                try {
+                    const arr: any = gs.pages?.current as any;
+                    const len = arr?.length ?? 0;
+                    for (let i = 0; i < len; i++) {
+                        const p = arr?.at ? arr.at(i) : arr[i];
+                        const title = p?.text?.toString?.() ?? String(p?.text ?? "");
+                        if (String(title).toLowerCase() === String(targetPageName).toLowerCase()) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                } catch {}
+                if (!exists) {
+                    try {
+                        const p = gs.project.addPage(targetPageName, "tester");
+                        const items = p?.items as any;
+                        if (items && Array.isArray(lines)) {
+                            for (const line of lines) {
+                                const it = items.addNode?.("tester");
+                                if (it?.updateText) it.updateText(line);
+                            }
+                        }
+                        if (!gs.currentPage) gs.currentPage = p;
+                        console.log("TestHelper: Created missing page after navigation");
+                    } catch (e) {
+                        console.warn("TestHelper: Failed to create page after navigation", e);
+                    }
+                }
+            }, { targetPageName: pageName, lines });
+        } catch (e) {
+            console.log("TestHelper: Post-navigation ensure-page step skipped:", (e as any)?.message ?? e);
         }
 
         // プロジェクトとページの自動読み込みを待機
