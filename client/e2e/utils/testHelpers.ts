@@ -17,6 +17,24 @@ export class TestHelpers {
         testInfo: any,
         lines: string[] = [],
     ): Promise<{ projectName: string; pageName: string; }> {
+        // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
+        await page.addInitScript(() => {
+            try {
+                localStorage.setItem("VITE_IS_TEST", "true");
+                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+                // Vite エラーオーバーレイ抑止
+                (window as any).__vite_plugin_react_preamble_installed__ = true;
+                const originalCreateElement = document.createElement;
+                document.createElement = function(tagName: string, ...args: any[]) {
+                    if (tagName === "vite-error-overlay") {
+                        return originalCreateElement.call(this, "div", ...args);
+                    }
+                    return originalCreateElement.call(this, tagName, ...args);
+                } as typeof document.createElement;
+            } catch {}
+        });
+
         // ホームページにアクセスしてアプリの初期化を待つ
         console.log("TestHelper: Starting navigation to home page");
         console.log("TestHelper: Page URL before navigation:", page.url());
@@ -37,35 +55,7 @@ export class TestHelpers {
             throw error;
         }
 
-        // テスト環境フラグを設定
-        await page.evaluate(() => {
-            // テスト環境であることを明示的に設定
-            localStorage.setItem("VITE_IS_TEST", "true");
-            localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-            // レイアウトのテスト用シード処理を明示的にスキップ（競合防止）
-            localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
-            console.log("TestHelper: Set test environment flags and SKIP_TEST_CONTAINER_SEED=true");
-        });
-
-        // Viteエラーオーバーレイを無効化
-        await page.addInitScript(() => {
-            // Viteエラーオーバーレイを無効化
-            if (typeof window !== "undefined") {
-                (window as any).__vite_plugin_react_preamble_installed__ = true;
-                // エラーオーバーレイの表示を防ぐ
-                const originalCreateElement = document.createElement;
-                document.createElement = function(tagName: string, ...args: any[]) {
-                    if (tagName === "vite-error-overlay") {
-                        return originalCreateElement.call(this, "div", ...args);
-                    }
-                    return originalCreateElement.call(this, tagName, ...args);
-                };
-            }
-        });
-
-        // フラグを適用するためページを再読み込み
-        await page.reload({ waitUntil: "domcontentloaded" });
-        await page.waitForLoadState("domcontentloaded");
+        // 初回ナビゲーション前に addInitScript でフラグを設定しているため再読み込みは不要
 
         // UserManagerが初期化されるまで待機（寛容に）
         console.log("TestHelper: Waiting for UserManager initialization (tolerant)");
