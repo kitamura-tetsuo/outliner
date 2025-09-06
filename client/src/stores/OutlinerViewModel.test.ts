@@ -11,9 +11,9 @@ function createSimpleTree() {
         votes: [],
         created: 0,
         lastChanged: 0,
-        // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
+        // @ts-ignore - Known upstream typing quirk
         items: new Items([]),
-        // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題(https://github.com/microsoft/FluidFramework/issues/22101)
+        // @ts-ignore - Known upstream typing quirk
         comments: new Comments([]),
     });
     const child1 = root.items.addNode("u");

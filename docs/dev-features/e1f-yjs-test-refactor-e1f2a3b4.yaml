@@ -1,0 +1,32 @@
+id: FTR-e1f2a3b4
+title: Refactor unit/integration tests to Yjs
+title-ja: ユニット/統合テストをYjsへ移行
+description: 'Removed Fluid Framework dependencies from unit and integration tests, migrated
+
+  verification to Yjs or neutral abstractions, and deleted Fluid-only tests with
+
+  no Yjs equivalent. Introduced a neutral project title provider used by tests
+
+  to avoid coupling to Fluid-specific services.
+
+  '
+category: testing
+status: implemented
+changes:
+- Added neutral `projectTitleProvider` for title resolution in tests
+- Rewrote ContainerStore tests to mock the neutral provider
+- Removed Fluid-only tests (Fluid Token endpoint and presence via Fluid)
+- Ensured unit/integration suites pass using Yjs-backed services
+tests:
+- client/src/stores/ContainerStore.test.ts
+- client/src/stores/OutlinerViewModel.test.ts
+- client/src/tests/integration/containerStore.integration.spec.ts
+- client/src/tests/integration/globalStore.integration.spec.ts
+- client/src/tests/integration/yjs-service.integration.spec.ts
+notes: 'Fluid Token endpoint tests were intentionally deleted because the feature has
+
+  no Yjs equivalent. Endpoint disabling is enforced via hosting/Vite middleware
+
+  and production configuration.
+
+  '

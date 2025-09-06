@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { firestoreStore as fluidServiceStore, getProjectTitle } from "../../lib/fluidService.svelte";
+import { vi } from "vitest";
+import { getProjectTitle } from "../../lib/projectTitleProvider";
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
 
 describe("ContainerStore integration", () => {
-    it("can access firestore store data and project titles", () => {
+    it("can access store data and resolve project titles", async () => {
         // 初期状態をクリア
         firestoreStore.userContainer = null;
-        fluidServiceStore.titleRegistry.clear();
 
-        // テストデータを設定
-        fluidServiceStore.titleRegistry.set("a", "Project A");
-        fluidServiceStore.titleRegistry.set("b", "Project B");
+        // タイトル解決をモック
+        const mod = await import("../../lib/projectTitleProvider");
+        const spy = vi.spyOn(mod, "getProjectTitle").mockImplementation((id: string) => {
+            return id === "a" ? "Project A" : id === "b" ? "Project B" : "";
+        });
 
         // firestoreStoreの更新をテスト
         firestoreStore.userContainer = {
@@ -54,5 +56,6 @@ describe("ContainerStore integration", () => {
 
         expect(firestoreStore.userContainer!.accessibleContainerIds).toEqual(["a", "b"]);
         expect(firestoreStore.userContainer!.defaultContainerId).toBe("a");
+        spy.mockRestore();
     });
 });

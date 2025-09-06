@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { containerStore } from "./containerStore.svelte";
 import { firestoreStore, type UserContainer } from "./firestoreStore.svelte";
 
-// Neutral title provider mock (no Fluid references in tests)
+// Neutral title provider mock
 vi.mock("../lib/projectTitleProvider", () => ({
     getProjectTitle: vi.fn((id: string) => {
         const titles: Record<string, string> = {

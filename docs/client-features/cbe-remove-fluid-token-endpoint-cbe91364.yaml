@@ -7,10 +7,14 @@ status: implemented
 acceptance:
 - /api/fluidToken returns 404
 - UserManager exposes no Fluid token methods
-tests:
-- client/e2e/cbe-fluid-token-endpoint-removed-cbe91364.spec.ts
-- client/src/tests/integration/cbe-fluid-token-endpoint-removed-cbe91364.spec.ts
-- client/src/tests/unit/cbe-user-manager-no-fluid-token-method-cbe91364.spec.ts
+tests: []
+validation: 'This legacy endpoint remains disabled via hosting/Vite middleware and production configuration.
+
+  During the Yjs migration, all Fluid Token tests were retired because there is no Yjs equivalent.
+
+  Behavior is validated by server routing and manual verification in production-like environments.
+
+  '
 components:
 - client/src/auth/UserManager.ts
 - client/src/lib/fluidService.svelte.ts
