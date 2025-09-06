@@ -242,7 +242,12 @@ export class TestHelpers {
                 try {
                     await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
                 } catch {}
-                await page.waitForTimeout(200);
+                // Avoid calling wait on a closed page
+                if (!page.isClosed()) {
+                    await page.waitForTimeout(200);
+                } else {
+                    console.log("TestHelper: page already closed; skipping short wait before retry");
+                }
                 await runCreate();
             } else {
                 throw e;
@@ -293,7 +298,11 @@ export class TestHelpers {
                 try {
                     await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
                 } catch {}
-                await page.waitForTimeout(200);
+                if (!page.isClosed()) {
+                    await page.waitForTimeout(200);
+                } else {
+                    console.log("TestHelper: page already closed; skipping short wait before retry");
+                }
                 await runCreate();
             } else {
                 throw e;
