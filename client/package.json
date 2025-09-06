@@ -35,6 +35,8 @@
         "@inlang/paraglide-js": "2.2.0",
         "@inlang/plugin-m-function-matcher": "^2.0.10",
         "@inlang/plugin-message-format": "^4.0.0",
+        "@modelcontextprotocol/sdk": "^1.17.5",
+        "@playwright/mcp": "^0.0.36",
         "@playwright/test": "^1.53.0-alpha-2025-05-30",
         "@sveltejs/adapter-auto": "^6.0.1",
         "@sveltejs/adapter-static": "^3.0.8",
@@ -75,8 +77,6 @@
         "vitest": "^3.2.4"
     },
     "name": "outliner",
-    "optionalDependencies": {},
-    "peerDependencies": {},
     "private": true,
     "scripts": {
         "build": "npm run paraglide:compile && vite build",

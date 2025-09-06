@@ -226,9 +226,9 @@ export class TestHelpers {
         };
 
         {
-            // 一時的なページ再読み込み/クローズに強くするため最大3回まで再試行
+            // 一時的なページ再読み込み/クローズに強くするため再試行回数を増加
             let lastErr: any = null;
-            for (let attempt = 1; attempt <= 3; attempt++) {
+            for (let attempt = 1; attempt <= 8; attempt++) {
                 try {
                     await runCreate();
                     lastErr = null;
@@ -242,7 +242,7 @@ export class TestHelpers {
                         || msg.includes("Navigation")
                         || msg.includes("generalStore.project not available")
                     ) {
-                        console.log(`TestHelper: createProject retry ${attempt}/3 after navigation/close race`);
+                        console.log(`TestHelper: createProject retry ${attempt}/8 after navigation/close race`);
                         try {
                             await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
                         } catch {}
@@ -300,9 +300,9 @@ export class TestHelpers {
         };
 
         {
-            // 一時的なページ再読み込み/クローズに強くするため最大3回まで再試行
+            // 一時的なページ再読み込み/クローズに強くするため再試行回数を増加
             let lastErr: any = null;
-            for (let attempt = 1; attempt <= 3; attempt++) {
+            for (let attempt = 1; attempt <= 8; attempt++) {
                 try {
                     await runCreate();
                     lastErr = null;
@@ -316,7 +316,7 @@ export class TestHelpers {
                         || msg.includes("Navigation")
                         || msg.includes("generalStore.project not available")
                     ) {
-                        console.log(`TestHelper: createPage retry ${attempt}/3 after navigation/close race`);
+                        console.log(`TestHelper: createPage retry ${attempt}/8 after navigation/close race`);
                         try {
                             await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
                         } catch {}
