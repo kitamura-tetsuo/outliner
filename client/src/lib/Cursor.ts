@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { Tree } from "fluid-framework";
 import type { Item } from "../schema/yjs-schema";
 import { Items } from "../schema/yjs-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";

@@ -1,6 +1,5 @@
 <script lang="ts">
 import { createEventDispatcher, onMount } from "svelte";
-import { TreeViewManager } from "../fluid/TreeViewManager";
 import {
     Item,
     Items,
@@ -34,8 +33,8 @@ function handleCreatePage() {
         pageTitle = "新しいページ " + new Date().toLocaleString();
     }
 
-    // TreeViewManagerを使用して、正しくページを追加
-    const newPage = TreeViewManager.addPage(project, pageTitle, currentUser);
+    // プロジェクトに直接ページを追加
+    project.addPage(pageTitle, currentUser);
     pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : "";
 
 

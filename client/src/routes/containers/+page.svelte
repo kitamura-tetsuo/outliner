@@ -12,7 +12,7 @@ import AuthComponent from "../../components/AuthComponent.svelte";
 import * as yjsHighService from "../../lib/yjsService.svelte";
 import { getLogger } from "../../lib/logger";
 import { saveContainerId } from "../../stores/firestoreStore.svelte";
-import { yjsStore } from "../../stores/yjsStore.svelte.ts";
+import { yjsStore } from "../../stores/yjsStore.svelte";
 const logger = getLogger();
 
 let isLoading = $state(false);
@@ -95,7 +95,7 @@ onDestroy(() => {
 </script>
 
 <svelte:head>
-    <title>新規アウトライナー作成 - Fluid Outliner</title>
+    <title>新規アウトライナー作成 - Outliner</title>
 </svelte:head>
 
 <main class="container mx-auto px-4 py-8">

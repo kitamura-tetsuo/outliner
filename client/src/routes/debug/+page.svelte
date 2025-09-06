@@ -10,7 +10,7 @@ import EnvDebugger from "../../components/EnvDebugger.svelte";
 import NetworkErrorAlert from "../../components/NetworkErrorAlert.svelte";
 import { getDebugConfig } from "../../lib/env";
 import { getLogger } from "../../lib/logger";
-import { yjsStore } from "../../stores/yjsStore.svelte.ts";
+import { yjsStore } from "../../stores/yjsStore.svelte";
 
 import { createYjsClient } from "../../services";
 
@@ -127,11 +127,11 @@ onDestroy(() => {
 </script>
 
 <svelte:head>
-    <title>Fluid Outliner Debug</title>
+    <title>Outliner Debug</title>
 </svelte:head>
 
 <main>
-    <h1>Fluid Outliner Debug</h1>
+    <h1>Outliner Debug</h1>
     <p class="subtitle">接続テストとデバッグ情報</p>
 
     <!-- 認証コンポーネント -->

@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Comments } from "../schema/app-schema";
 import type { Comment } from "../schema/app-schema";
-import { TreeSubscriber } from "../stores/TreeSubscriber";
+import { YjsSubscriber } from "../stores/YjsSubscriber";
 
 interface Props {
     comments: Comments;
@@ -13,12 +13,10 @@ let newText = $state("");
 let editingId = $state<string | null>(null);
 let editText = $state("");
 
-// TreeSubscriberを使用してcommentsの変更を監視
-const commentsSubscriber = new TreeSubscriber(
-    comments,
-    "nodeChanged",
-    () => [...comments],
-    () => {}, // 値の設定は不要
+// YjsSubscriberを使用してcommentsの変更を監視
+const commentsSubscriber = new YjsSubscriber<Comment[]>(
+    (comments as any).yArray.doc,
+    () => comments.toPlain(),
 );
 
 function add() {

@@ -66,30 +66,13 @@ function loadLayout(nodes: any[]) {
 function update() {
     if (!chart) return;
 
-    // storeまたはfluidStoreからデータを取得
+    // storeからデータを取得
     let pages: any[] = [];
     let project = "";
 
     if (Array.isArray(store.pages?.current)) {
         pages = store.pages.current;
         project = store.project?.title || "";
-    }
-    else {
-        // fluidStoreから直接データを取得
-        try {
-            const fluidClient = (window as any).__FLUID_STORE__?.fluidClient;
-            if (fluidClient) {
-                const projectData = fluidClient.getProject();
-                const treeData = fluidClient.getTree();
-                if (projectData && treeData) {
-                    project = projectData.title || "";
-                    pages = Array.isArray(treeData.current) ? treeData.current : [];
-                }
-            }
-        }
-        catch (error) {
-            console.warn("Failed to get data from fluidStore:", error);
-        }
     }
 
     const { nodes, links } = buildGraph(pages, project);

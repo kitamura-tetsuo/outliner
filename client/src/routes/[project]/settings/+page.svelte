@@ -8,7 +8,7 @@ import {
     importMarkdownIntoProject,
     importOpmlIntoProject,
 } from "../../../services";
-import { yjsStore } from "../../../stores/yjsStore.svelte.ts";
+import { yjsStore } from "../../../stores/yjsStore.svelte";
 import { store } from "../../../stores/store.svelte";
 
 let project: any = undefined;

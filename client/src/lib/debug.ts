@@ -3,7 +3,7 @@ import { userManager } from "../auth/UserManager";
 import * as yjsHighService from "../lib/yjsService.svelte";
 import { Items } from "../schema/app-schema";
 import * as snapshotService from "../services/snapshotService";
-import { yjsStore } from "../stores/yjsStore.svelte.ts";
+import { yjsStore } from "../stores/yjsStore.svelte";
 import { getLogger } from "./logger";
 
 const logger = getLogger();

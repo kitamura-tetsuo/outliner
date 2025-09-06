@@ -4,7 +4,7 @@ import { createYjsClient } from "../services";
 import { getLogger } from "../lib/logger";
 import { containerStore } from "../stores/containerStore.svelte";
 import { firestoreStore } from "../stores/firestoreStore.svelte";
-import { yjsStore } from "../stores/yjsStore.svelte.ts";
+import { yjsStore } from "../stores/yjsStore.svelte";
 const logger = getLogger();
 
 interface Props {

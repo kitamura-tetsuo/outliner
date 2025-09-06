@@ -1,0 +1,11 @@
+id: YJS-a1b2c3d4
+title: Verify Yjs store connection
+title-ja: Yjsストア接続の確認
+category: data
+description: Ensure Yjs client connects and exposes connection state.
+status: experimental
+acceptance:
+- Yjs store initializes after authentication
+- Connection state is accessible via __YJS_STORE__
+tests:
+- client/e2e/new/yjs-basic-sync-a1b2c3d4.spec.ts

@@ -64,7 +64,7 @@ onDestroy(() => {
 </script>
 
 <svelte:head>
-    <title>{projectName ? projectName : "プロジェクト"} | Fluid Outliner</title>
+    <title>{projectName ? projectName : "プロジェクト"} | Outliner</title>
 </svelte:head>
 
 <main class="container mx-auto px-4 py-4">

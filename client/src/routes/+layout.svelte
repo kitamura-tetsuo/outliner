@@ -11,12 +11,10 @@ import "../app.css";
 import "$lib";
 // Defer user/auth-related imports to client to avoid SSR crashes
 import { setupGlobalDebugFunctions } from "../lib/debug";
-// Defer fluidService as well (it imports UserManager)
 import "../utils/ScrapboxFormatter";
 // グローバルに公開するためにインポート
-import MobileActionToolbar from "../components/MobileActionToolbar.svelte";
 import Toolbar from "../components/Toolbar.svelte";
-// Defer services import; it re-exports fluidService which depends on UserManager
+// Defer services import; it depends on UserManager
 import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
 let { children } = $props();
@@ -287,7 +285,6 @@ onDestroy(async () => {
         {@render children()}
     </div>
 
-    <MobileActionToolbar />
 
     <button
         class="fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"

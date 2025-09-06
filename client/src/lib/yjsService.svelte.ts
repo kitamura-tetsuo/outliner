@@ -1,4 +1,4 @@
-// High-level Yjs service mirroring fluidService responsibilities
+// High-level Yjs service providing shared document utilities
 // @ts-nocheck
 import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
