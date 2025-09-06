@@ -217,31 +217,38 @@ export class TestHelpers {
             }, { projectName, pageName, lines });
         };
 
-        try {
-            await runCreate();
-        } catch (e: any) {
-            const msg = String(e?.message ?? e);
-            // ページの再読み込み/クローズ競合時に一度だけリトライ
-            if (
-                msg.includes("Target page, context or browser has been closed")
-                || msg.includes("Execution context was destroyed")
-                || msg.includes("Navigation")
-            ) {
-                console.log("TestHelper: createProject retry after page navigation/close race");
-                // ページが生きていれば安定化を待つ
+        {
+            // 一時的なページ再読み込み/クローズに強くするため最大3回まで再試行
+            let lastErr: any = null;
+            for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                    await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
-                } catch {}
-                // Avoid calling wait on a closed page
-                if (!page.isClosed()) {
-                    await page.waitForTimeout(200);
-                } else {
-                    console.log("TestHelper: page already closed; skipping short wait before retry");
+                    await runCreate();
+                    lastErr = null;
+                    break;
+                } catch (e: any) {
+                    lastErr = e;
+                    const msg = String(e?.message ?? e);
+                    if (
+                        msg.includes("Target page, context or browser has been closed")
+                        || msg.includes("Execution context was destroyed")
+                        || msg.includes("Navigation")
+                    ) {
+                        console.log(`TestHelper: createProject retry ${attempt}/3 after navigation/close race`);
+                        try {
+                            await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
+                        } catch {}
+                        if (!page.isClosed()) {
+                            await page.waitForTimeout(200);
+                        } else {
+                            console.log("TestHelper: page already closed; skipping short wait before retry");
+                        }
+                        continue;
+                    } else {
+                        throw e;
+                    }
                 }
-                await runCreate();
-            } else {
-                throw e;
             }
+            if (lastErr) throw lastErr;
         }
 
         await page.waitForTimeout(50);
@@ -275,28 +282,38 @@ export class TestHelpers {
             }, { pageName, lines });
         };
 
-        try {
-            await runCreate();
-        } catch (e: any) {
-            const msg = String(e?.message ?? e);
-            if (
-                msg.includes("Target page, context or browser has been closed")
-                || msg.includes("Execution context was destroyed")
-                || msg.includes("Navigation")
-            ) {
-                console.log("TestHelper: createPage retry after page navigation/close race");
+        {
+            // 一時的なページ再読み込み/クローズに強くするため最大3回まで再試行
+            let lastErr: any = null;
+            for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                    await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
-                } catch {}
-                if (!page.isClosed()) {
-                    await page.waitForTimeout(200);
-                } else {
-                    console.log("TestHelper: page already closed; skipping short wait before retry");
+                    await runCreate();
+                    lastErr = null;
+                    break;
+                } catch (e: any) {
+                    lastErr = e;
+                    const msg = String(e?.message ?? e);
+                    if (
+                        msg.includes("Target page, context or browser has been closed")
+                        || msg.includes("Execution context was destroyed")
+                        || msg.includes("Navigation")
+                    ) {
+                        console.log(`TestHelper: createPage retry ${attempt}/3 after navigation/close race`);
+                        try {
+                            await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
+                        } catch {}
+                        if (!page.isClosed()) {
+                            await page.waitForTimeout(200);
+                        } else {
+                            console.log("TestHelper: page already closed; skipping short wait before retry");
+                        }
+                        continue;
+                    } else {
+                        throw e;
+                    }
                 }
-                await runCreate();
-            } else {
-                throw e;
             }
+            if (lastErr) throw lastErr;
         }
     }
 
