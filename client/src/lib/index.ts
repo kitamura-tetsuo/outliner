@@ -1,8 +1,5 @@
 // place files you want to import through the `$lib` alias in this folder.
 
-// Fluid Framework Telemetryフィルタを初期化
-import "./fluidTelemetryInit";
-
 // 開発モードのみ適用する場合
 if (import.meta.env.MODE === "development") {
     // 開発モードのときだけ、fetch のエラーハンドリングを追加
