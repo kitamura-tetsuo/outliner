@@ -198,32 +198,56 @@ export class TestHelpers {
             ];
         }
 
-        // Yjs/app-store 経由で作成
-        await page.evaluate(async ({ projectName, pageName, lines }) => {
-            console.log(`TestHelper: Creating project/page (Yjs)`, {
-                projectName,
-                pageName,
-                linesCount: lines.length,
-            });
-            // Yjs via generalStore.project
-            const gs = (window as any).generalStore || (window as any).appStore;
-            if (!gs?.project) {
-                console.warn("TestHelper: generalStore.project not available; cannot create page in Yjs mode");
-                return;
-            }
-            try {
-                const page = gs.project.addPage(pageName, "tester");
-                const items = page.items as any;
-                for (const line of lines) {
-                    const it = items.addNode("tester");
-                    it.updateText(line);
+        // Yjs/app-store 経由で作成（ページのリロード競合に耐性）
+        const runCreate = async () => {
+            await page.evaluate(async ({ projectName, pageName, lines }) => {
+                console.log(`TestHelper: Creating project/page (Yjs)`, {
+                    projectName,
+                    pageName,
+                    linesCount: lines.length,
+                });
+                // Yjs via generalStore.project
+                const gs = (window as any).generalStore || (window as any).appStore;
+                if (!gs?.project) {
+                    console.warn("TestHelper: generalStore.project not available; cannot create page in Yjs mode");
+                    return;
                 }
-                if (!gs.currentPage) gs.currentPage = page as any;
-                console.log("TestHelper: Created via Yjs (generalStore)");
-            } catch (e) {
-                console.error("TestHelper: Yjs page creation failed", e);
+                try {
+                    const page = gs.project.addPage(pageName, "tester");
+                    const items = page.items as any;
+                    for (const line of lines) {
+                        const it = items.addNode("tester");
+                        it.updateText(line);
+                    }
+                    if (!gs.currentPage) gs.currentPage = page as any;
+                    console.log("TestHelper: Created via Yjs (generalStore)");
+                } catch (e) {
+                    console.error("TestHelper: Yjs page creation failed", e);
+                }
+            }, { projectName, pageName, lines });
+        };
+
+        try {
+            await runCreate();
+        } catch (e: any) {
+            const msg = String(e?.message ?? e);
+            // ページの再読み込み/クローズ競合時に一度だけリトライ
+            if (
+                msg.includes("Target page, context or browser has been closed")
+                || msg.includes("Execution context was destroyed")
+                || msg.includes("Navigation")
+            ) {
+                console.log("TestHelper: createProject retry after page navigation/close race");
+                // ページが生きていれば安定化を待つ
+                try {
+                    await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
+                } catch {}
+                await page.waitForTimeout(200);
+                await runCreate();
+            } else {
+                throw e;
             }
-        }, { projectName, pageName, lines });
+        }
 
         await page.waitForTimeout(50);
     }
@@ -234,25 +258,47 @@ export class TestHelpers {
      * @param pageName ページ名
      */
     public static async createTestPageViaAPI(page: Page, pageName: string, lines: string[]): Promise<void> {
-        await page.evaluate(async ({ pageName, lines }) => {
-            const gs = (window as any).generalStore || (window as any).appStore;
-            if (!gs?.project) {
-                console.warn("TestHelper: generalStore.project not available; cannot create page in Yjs mode");
-                return;
-            }
-            try {
-                const pageItem = gs.project.addPage(pageName, "tester");
-                const items = pageItem.items as any;
-                for (const line of lines) {
-                    const it = items.addNode("tester");
-                    it.updateText(line);
+        const runCreate = async () => {
+            await page.evaluate(async ({ pageName, lines }) => {
+                const gs = (window as any).generalStore || (window as any).appStore;
+                if (!gs?.project) {
+                    console.warn("TestHelper: generalStore.project not available; cannot create page in Yjs mode");
+                    return;
                 }
-                if (!gs.currentPage) gs.currentPage = pageItem as any;
-                console.log("TestHelper: createTestPageViaAPI via Yjs");
-            } catch (e) {
-                console.error("TestHelper: Yjs createPage failed", e);
+                try {
+                    const pageItem = gs.project.addPage(pageName, "tester");
+                    const items = pageItem.items as any;
+                    for (const line of lines) {
+                        const it = items.addNode("tester");
+                        it.updateText(line);
+                    }
+                    if (!gs.currentPage) gs.currentPage = pageItem as any;
+                    console.log("TestHelper: createTestPageViaAPI via Yjs");
+                } catch (e) {
+                    console.error("TestHelper: Yjs createPage failed", e);
+                }
+            }, { pageName, lines });
+        };
+
+        try {
+            await runCreate();
+        } catch (e: any) {
+            const msg = String(e?.message ?? e);
+            if (
+                msg.includes("Target page, context or browser has been closed")
+                || msg.includes("Execution context was destroyed")
+                || msg.includes("Navigation")
+            ) {
+                console.log("TestHelper: createPage retry after page navigation/close race");
+                try {
+                    await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
+                } catch {}
+                await page.waitForTimeout(200);
+                await runCreate();
+            } else {
+                throw e;
             }
-        }, { pageName, lines });
+        }
     }
 
     /**
