@@ -652,16 +652,30 @@ export class TestHelpers {
 
         if (!authReady) {
             console.log("TestHelper: Phase1 auth wait timed out; re-invoking login and retrying");
-            await page.evaluate(async () => {
-                try {
-                    const mgr = (window as any).__USER_MANAGER__;
-                    if (mgr?.loginWithEmailPassword) {
-                        await mgr.loginWithEmailPassword("test@example.com", "password");
+            // Guard evaluate against transient navigation/context-destroy races
+            try {
+                await page.evaluate(async () => {
+                    try {
+                        const mgr = (window as any).__USER_MANAGER__;
+                        if (mgr?.loginWithEmailPassword) {
+                            await mgr.loginWithEmailPassword("test@example.com", "password");
+                        }
+                    } catch (e) {
+                        console.log("TestHelper: Re-login attempt failed (continuing)", e);
                     }
-                } catch (e) {
-                    console.log("TestHelper: Re-login attempt failed (continuing)", e);
+                });
+            } catch (e: any) {
+                const msg = String(e?.message ?? e);
+                if (
+                    msg.includes("Target page, context or browser has been closed")
+                    || msg.includes("Execution context was destroyed")
+                    || msg.includes("Navigation")
+                ) {
+                    console.log("TestHelper: Re-login evaluate skipped due to transient page/context state");
+                } else {
+                    throw e;
                 }
-            });
+            }
 
             await page.waitForFunction(() => {
                 const userManager = (window as any).__USER_MANAGER__;
