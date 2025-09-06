@@ -2,8 +2,8 @@
 import { onMount } from "svelte";
 import { page as pageStore } from "$app/state";
 import { userManager } from "../../auth/UserManager";
-import { getFluidClientByProjectTitle, createNewContainer } from "../../services";
-import { fluidStore } from "../../stores/fluidStore.svelte";
+import { getYjsClientByProjectTitle, createNewYjsProject } from "../../services";
+import { yjsStore } from "../../stores/yjsStore.svelte.ts";
 
 // プロジェクトレベルのレイアウト
 // このレイアウトは /[project] と /[project]/[page] の両方に適用されます
@@ -14,8 +14,8 @@ let isAuthenticated = $state(false);
 
 // fluidStoreからプロジェクトを取得
 $effect(() => {
-    if (fluidStore.fluidClient) {
-        project = fluidStore.fluidClient.getProject();
+    if (yjsStore.yjsClient) {
+        project = yjsStore.yjsClient.getProject();
     }
 });
 
@@ -23,8 +23,7 @@ $effect(() => {
 $effect(() => {
     // Prefer explicit param over optional data prop
     const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
-    // Do not gate on isAuthenticated in tests/Yjs-only; attempt to load whenever param is present
-    if (projectParam && !fluidStore.fluidClient) {
+    if (projectParam && !yjsStore.yjsClient) {
         loadProject(projectParam);
     }
 });
@@ -34,17 +33,17 @@ async function loadProject(projectNameFromParam?: string) {
         const projectName = projectNameFromParam ?? (data as any).project;
 
         // プロジェクト名からFluidClientを取得
-        let client = await getFluidClientByProjectTitle(projectName);
+        let client = await getYjsClientByProjectTitle(projectName);
         // In tests/Yjs-only mode, auto-create a project if none exists for this title
         if (!client && (import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true")) {
             try {
-                client = await createNewContainer(projectName);
+                client = await createNewYjsProject(projectName);
             } catch (e) {
                 console.warn("Auto-create container failed:", e);
             }
         }
         if (client) {
-            fluidStore.fluidClient = client;
+            yjsStore.yjsClient = client as any;
             project = client.getProject();
         }
     } catch (err) {
@@ -60,7 +59,7 @@ onMount(() => {
             isAuthenticated = authResult !== null;
             // If project not yet loaded but param exists, try again when auth flips
             const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
-            if (projectParam && !fluidStore.fluidClient) {
+            if (projectParam && !yjsStore.yjsClient) {
                 loadProject(projectParam);
             }
         });

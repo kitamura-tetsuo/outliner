@@ -40,10 +40,6 @@
         ],
         "rewrites": [
             {
-                "source": "/api/fluid-token",
-                "function": "fluidToken404"
-            },
-            {
                 "source": "/api/save-container",
                 "function": "saveContainer"
             },

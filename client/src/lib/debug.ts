@@ -5,10 +5,10 @@
 
 import { goto } from "$app/navigation";
 import { userManager } from "../auth/UserManager";
-import * as fluidService from "../lib/fluidService.svelte";
+import * as yjsHighService from "../lib/yjsService.svelte";
 import { Items } from "../schema/app-schema";
 import * as snapshotService from "../services/snapshotService";
-import { fluidStore } from "../stores/fluidStore.svelte";
+import { yjsStore } from "../stores/yjsStore.svelte.ts";
 import { getLogger } from "./logger";
 
 const logger = getLogger();
@@ -31,8 +31,8 @@ export function setupGlobalDebugFunctions(service?: any) {
             } catch {}
         }
         // サービス / ストア / ユーザーマネージャ
-        (window as any).__FLUID_SERVICE__ = service ?? fluidService;
-        (window as any).__FLUID_STORE__ = fluidStore;
+        (window as any).__FLUID_SERVICE__ = service ?? yjsHighService;
+        (window as any).__FLUID_STORE__ = yjsStore as any; // keep legacy name for helpers
         (window as any).__USER_MANAGER__ = userManager;
         (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
         logger.debug("Global debug functions initialized");
@@ -46,8 +46,8 @@ declare global {
         getFluidTreePathData?: (path?: string) => any;
         getYjsTreeDebugData?: () => any;
         getYjsTreePathData?: (path?: string) => any;
-        __FLUID_SERVICE__?: typeof fluidService;
-        __FLUID_STORE__?: typeof fluidStore;
+        __FLUID_SERVICE__?: typeof yjsHighService;
+        __FLUID_STORE__?: typeof yjsStore;
         __USER_MANAGER__?: typeof userManager;
         __SNAPSHOT_SERVICE__?: typeof snapshotService;
     }
@@ -59,34 +59,34 @@ if (process.env.NODE_ENV === "test") {
         try {
             delete (window as any).__SVELTE_GOTO__;
         } catch {}
-        (window as any).__FLUID_SERVICE__ = fluidService;
-        (window as any).__FLUID_STORE__ = fluidStore;
+        (window as any).__FLUID_SERVICE__ = yjsHighService;
+        (window as any).__FLUID_STORE__ = yjsStore as any;
         (window as any).__USER_MANAGER__ = userManager;
         (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
 
         // SharedTreeのデータ構造を取得するデバッグ関数
         window.getFluidTreeDebugData = function() {
-            if (!fluidStore.fluidClient) {
+            if (!yjsStore.yjsClient) {
                 throw new Error(
-                    "FluidClient is not initialized. Please wait for the client to be ready.",
+                    "YjsClient is not initialized. Please wait for the client to be ready.",
                 );
             }
-            return fluidStore.fluidClient.getAllData();
+            return (yjsStore.yjsClient as any).getAllData();
         };
 
         // 特定のパスのデータを取得するデバッグ関数
         window.getFluidTreePathData = function(path?: string) {
-            if (!fluidStore.fluidClient) {
+            if (!yjsStore.yjsClient) {
                 throw new Error(
-                    "FluidClient is not initialized. Please wait for the client to be ready.",
+                    "YjsClient is not initialized. Please wait for the client to be ready.",
                 );
             }
-            return fluidStore.fluidClient.getTreeAsJson(path);
+            return (yjsStore.yjsClient as any).getTreeAsJson(path);
         };
 
         // Yjs tree structure debug helpers
         window.getYjsTreeDebugData = function() {
-            const fc = fluidStore.fluidClient;
+            const fc = yjsStore.yjsClient as any;
             if (!fc?.project) {
                 throw new Error("FluidClient project not initialized");
             }

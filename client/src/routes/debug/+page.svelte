@@ -10,9 +10,9 @@ import EnvDebugger from "../../components/EnvDebugger.svelte";
 import NetworkErrorAlert from "../../components/NetworkErrorAlert.svelte";
 import { getDebugConfig } from "../../lib/env";
 import { getLogger } from "../../lib/logger";
-import { fluidStore } from "../../stores/fluidStore.svelte";
+import { yjsStore } from "../../stores/yjsStore.svelte.ts";
 
-import { createFluidClient } from "../../services";
+import { createYjsClient } from "../../services";
 
 const logger = getLogger();
 
@@ -44,12 +44,12 @@ function handleAuthLogout() {
     isConnected = false;
 }
 
-// Fluidクライアントの初期化
+// Yjsクライアントの初期化
 async function initializeFluidClient() {
     isInitializing = true;
 
     try {
-        await createFluidClient();
+        await createYjsClient();
         updateConnectionStatus();
     }
     catch (err) {
@@ -69,7 +69,7 @@ async function retryConnection() {
 
 // 接続状態の更新
 function updateConnectionStatus() {
-    const client = fluidStore.fluidClient;
+    const client = yjsStore.yjsClient as any;
     if (client) {
         connectionStatus = client.getConnectionStateString() || "未接続";
         isConnected = client.isContainerConnected || false;

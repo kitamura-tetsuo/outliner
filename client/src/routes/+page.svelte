@@ -2,7 +2,7 @@
 import { goto } from "$app/navigation";
 import ContainerSelector from "../components/ContainerSelector.svelte";
 import { getLogger } from "../lib/logger";
-import { fluidStore } from "../stores/fluidStore.svelte";
+import { yjsStore } from "../stores/yjsStore.svelte.ts";
 
 // Import test helper in test environments only
 if (typeof window !== "undefined" && (
@@ -46,12 +46,9 @@ async function handleContainerSelected(
 
     try {
         // Defer import to avoid SSR issues in test/SSR context
-        const { loadContainer } = await import("../lib/fluidService.svelte");
-        // 新しいコンテナIDで ファクトリーメソッドを使用してFluidClientを作成
-        const client = await loadContainer(selectedContainerId);
-
-        // fluidClientストアを更新
-        fluidStore.fluidClient = client;
+        const { createYjsClient } = await import("../services");
+        const client = await createYjsClient(selectedContainerId);
+        yjsStore.yjsClient = client as any;
 
         // プロジェクトページへ遷移
         // コンテナ名をプロジェクト名として使用

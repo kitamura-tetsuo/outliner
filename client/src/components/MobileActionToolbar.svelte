@@ -6,7 +6,7 @@ import {
     Items,
 } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
-import { fluidStore } from "../stores/fluidStore.svelte";
+import { userManager } from "../auth/UserManager";
 import { store as generalStore } from "../stores/store.svelte";
 
 let isVisible = $state(false);
@@ -25,7 +25,7 @@ onMount(() => {
 });
 
 function getCurrentUser() {
-    return fluidStore.currentUser?.id ?? "anonymous";
+    return userManager.getCurrentUser()?.id ?? "anonymous";
 }
 
 function findItem(node: Item, id: string): Item | undefined {

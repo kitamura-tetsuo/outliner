@@ -9,7 +9,6 @@ import { userManager } from "../../auth/UserManager";
 import AuthComponent from "../../components/AuthComponent.svelte";
 import PageList from "../../components/PageList.svelte";
 import { getLogger } from "../../lib/logger";
-import { fluidStore } from "../../stores/fluidStore.svelte";
 import { store } from "../../stores/store.svelte";
 
 const logger = getLogger("ProjectIndex");
@@ -98,7 +97,7 @@ onDestroy(() => {
             <h2 class="mb-4 text-xl font-semibold">ページ一覧</h2>
             <div class="rounded-lg bg-white p-4 shadow-md">
                 <PageList
-                    currentUser={fluidStore.currentUser?.id || "anonymous"}
+                    currentUser={userManager.getCurrentUser()?.id || "anonymous"}
                     project={store.project!}
                     rootItems={store.pages.current}
                     onPageSelected={handlePageSelected}

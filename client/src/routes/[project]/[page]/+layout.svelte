@@ -3,7 +3,7 @@ import { page } from "$app/state";
 
 import { getLogger } from "../../../lib/logger";
 import { Item } from "../../../schema/app-schema";
-import { fluidStore } from "../../../stores/fluidStore.svelte";
+import { userManager } from "../../../auth/UserManager";
 import { store } from "../../../stores/store.svelte";
 
 const logger = getLogger("PageLayout");
@@ -54,7 +54,7 @@ function findPageByName(name: string) {
  * @returns 一時的なアイテム
  */
 function createTemporaryItem(pageName: string): Item {
-    const currentUser = fluidStore.currentUser?.id || "anonymous";
+    const currentUser = userManager.getCurrentUser()?.id || "anonymous";
     logger.info(`Creating temporary item for page: ${pageName}, user: ${currentUser}`);
 
     if (!store.project) {

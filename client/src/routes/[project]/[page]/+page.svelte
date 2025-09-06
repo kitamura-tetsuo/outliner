@@ -17,8 +17,8 @@ import {
     setupLinkPreviewHandlers,
 } from "../../../lib/linkPreviewHandler";
 import { getLogger } from "../../../lib/logger";
-import { getFluidClientByProjectTitle } from "../../../services";
-import { fluidStore } from "../../../stores/fluidStore.svelte";
+import { getYjsClientByProjectTitle } from "../../../services";
+import { yjsStore } from "../../../stores/yjsStore.svelte.ts";
 import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
 import { store } from "../../../stores/store.svelte";
 
@@ -91,33 +91,33 @@ async function loadProjectAndPage() {
     error = undefined;
     pageNotFound = false;
 
-    logger.info(`loadProjectAndPage: Set isLoading=true, calling getFluidClientByProjectTitle`);
+        logger.info(`loadProjectAndPage: Set isLoading=true, calling getYjsClientByProjectTitle`);
 
     try {
         // コンテナを読み込む
-        logger.info(`loadProjectAndPage: Calling getFluidClientByProjectTitle("${projectName}")`);
-        let client = await getFluidClientByProjectTitle(projectName);
+        logger.info(`loadProjectAndPage: Calling getYjsClientByProjectTitle("${projectName}")`);
+        let client = await getYjsClientByProjectTitle(projectName);
         // Fallback: reuse existing client from store if lookup failed (SPA navigation retains it)
-        if (!client && fluidStore.fluidClient) {
-            const fallbackProject = fluidStore.fluidClient.getProject?.();
+        if (!client && yjsStore.yjsClient) {
+            const fallbackProject = yjsStore.yjsClient.getProject?.();
             if (fallbackProject && (fallbackProject.title === projectName)) {
-                client = fluidStore.fluidClient as any;
+                client = yjsStore.yjsClient as any;
             }
         }
-        logger.info(`loadProjectAndPage: FluidClient loaded for project: ${projectName}`);
+        logger.info(`loadProjectAndPage: YjsClient loaded for project: ${projectName}`);
         logger.info(`loadProjectAndPage: Client containerId: ${client?.containerId}`);
 
         // fluidClientストアを更新（undefined の場合は既存値を保持してクリアしない）
-        logger.info(`loadProjectAndPage: Setting fluidStore.fluidClient when available`);
+        logger.info(`loadProjectAndPage: Setting yjsStore.yjsClient when available`);
         logger.info(`loadProjectAndPage: Client before setting: containerId=${client?.containerId}, clientId=${client?.clientId}`);
         if (client) {
-            fluidStore.fluidClient = client;
+            yjsStore.yjsClient = client as any;
         } else {
-            logger.warn("loadProjectAndPage: getFluidClientByProjectTitle returned undefined; keeping existing fluidClient");
+            logger.warn("loadProjectAndPage: getYjsClientByProjectTitle returned undefined; keeping existing yjsClient");
         }
-        logger.info(`loadProjectAndPage: FluidStore updated with client`);
-        logger.info(`loadProjectAndPage: FluidStore.fluidClient exists: ${!!fluidStore.fluidClient}`);
-        logger.info(`loadProjectAndPage: FluidStore.fluidClient containerId: ${fluidStore.fluidClient?.containerId}`);
+        logger.info(`loadProjectAndPage: YjsStore updated with client`);
+        logger.info(`loadProjectAndPage: yjsStore.yjsClient exists: ${!!yjsStore.yjsClient}`);
+        logger.info(`loadProjectAndPage: yjsStore.yjsClient containerId: ${yjsStore.yjsClient?.containerId}`);
 
         // グローバルストアの状態をログ出力
         if (typeof window !== "undefined") {

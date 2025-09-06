@@ -1,5 +1,5 @@
 <script lang="ts">
-import * as fluidService from "../../../lib/fluidService.svelte";
+import * as yjsService from "../../../lib/yjsService.svelte";
 import { containerStore } from "../../../stores/containerStore.svelte";
 
 let projects = $derived(containerStore.containers);
@@ -21,7 +21,7 @@ async function deleteSelected() {
     let deletedCount = 0;
     for (const p of targets) {
         try {
-            const ok = await fluidService.deleteContainer(p.id);
+            const ok = await yjsService.deleteContainer(p.id);
             if (ok) {
                 selectedProjects.delete(p.id);
                 deletedCount++;

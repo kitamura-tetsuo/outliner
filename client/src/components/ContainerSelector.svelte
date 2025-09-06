@@ -1,10 +1,10 @@
 <script lang="ts">
 import { onMount } from "svelte";
-import { createFluidClient } from "../lib/fluidService.svelte";
+import { createYjsClient } from "../services";
 import { getLogger } from "../lib/logger";
 import { containerStore } from "../stores/containerStore.svelte";
 import { firestoreStore } from "../stores/firestoreStore.svelte";
-import { fluidStore } from "../stores/fluidStore.svelte";
+import { yjsStore } from "../stores/yjsStore.svelte.ts";
 const logger = getLogger();
 
 interface Props {
@@ -34,7 +34,7 @@ let containers = $derived.by(() => {
 });
 
 // 現在ロード中のコンテナIDを表示
-let currentContainerId = fluidStore.currentContainerId;
+let currentContainerId = yjsStore.currentContainerId as any;
 
 
 
@@ -139,10 +139,8 @@ async function reloadCurrentContainer() {
         error = null;
 
         // ファクトリーメソッドを使用して現在のコンテナを再ロード
-        const client = await createFluidClient(currentContainerId);
-
-        // fluidClientストアを更新
-        fluidStore.fluidClient = client;
+        const client = await createYjsClient(currentContainerId);
+        yjsStore.yjsClient = client as any;
     }
     catch (err) {
         logger.error("コンテナ再ロードエラー:", err);

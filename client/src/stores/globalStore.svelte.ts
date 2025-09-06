@@ -1,8 +1,9 @@
 import type { Project } from "../schema/app-schema";
 import { containerStore } from "./containerStore.svelte";
 import { firestoreStore } from "./firestoreStore.svelte";
-import { fluidStore } from "./fluidStore.svelte";
+// Switch backend connection store from Fluid to Yjs
 import { store as appStore } from "./store.svelte";
+import { yjsStore } from "./yjsStore.svelte.ts";
 
 /**
  * Global store proxy that exposes a unified interface while
@@ -23,24 +24,24 @@ class GlobalStoreProxy {
         appStore.project = p;
     }
 
-    // fluid connection store
-    get fluidClient() {
-        return fluidStore.fluidClient;
+    // yjs connection store
+    get yjsClient() {
+        return yjsStore.yjsClient;
     }
-    set fluidClient(v) {
-        fluidStore.fluidClient = v;
+    set yjsClient(v) {
+        yjsStore.yjsClient = v;
     }
     get isConnected() {
-        return fluidStore.isConnected;
+        return yjsStore.isConnected as any;
     }
     get connectionState() {
-        return fluidStore.connectionState;
+        return yjsStore.connectionState as any;
     }
     get currentContainerId() {
-        return fluidStore.currentContainerId;
+        return yjsStore.currentContainerId as any;
     }
     get currentUser() {
-        return fluidStore.currentUser;
+        return yjsStore.currentUser as any;
     }
 
     // firestore store

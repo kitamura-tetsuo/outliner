@@ -9,10 +9,10 @@ import {
     userManager,
 } from "../../auth/UserManager";
 import AuthComponent from "../../components/AuthComponent.svelte";
-import * as fluidService from "../../lib/fluidService.svelte";
+import * as yjsHighService from "../../lib/yjsService.svelte";
 import { getLogger } from "../../lib/logger";
 import { saveContainerId } from "../../stores/firestoreStore.svelte";
-import { fluidStore } from "../../stores/fluidStore.svelte";
+import { yjsStore } from "../../stores/yjsStore.svelte.ts";
 const logger = getLogger();
 
 let isLoading = $state(false);
@@ -46,21 +46,21 @@ async function createNewContainer() {
     success = undefined;
 
     try {
-        // 現在のFluidClientインスタンスを破棄してリセット
-        const client = fluidStore.fluidClient;
+        // 現在のクライアントを破棄してリセット
+        const client = yjsStore.yjsClient as any;
         if (client) {
-            client.dispose();
-            fluidStore.fluidClient = undefined;
+            client.dispose?.();
+            yjsStore.yjsClient = undefined;
         }
 
-        // 新規コンテナを作成し、新しいFluidClientインスタンスを取得
-        const newClient = await fluidService.createNewContainer(containerName);
+        // 新規プロジェクトを作成
+        const newClient = await yjsHighService.createNewProject(containerName);
 
-        // 作成されたコンテナIDを取得
+        // 作成されたIDを取得
         createdContainerId = newClient.containerId;
 
-        // fluidClientストアを更新
-        fluidStore.fluidClient = newClient;
+        // ストアを更新
+        yjsStore.yjsClient = newClient as any;
 
         // サーバーに保存（デフォルトコンテナとして設定）
         await saveContainerId(createdContainerId);

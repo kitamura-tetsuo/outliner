@@ -9,19 +9,13 @@ export {
     saveContainerIdToServer as saveFirestoreContainerIdToServer,
 } from "../stores/firestoreStore.svelte";
 
-// FluidService関連の関数をエクスポート
+// Yjs Service functions (Fluid replacement)
 export {
-    cleanupFluidClient,
-    createFluidClient,
-    createNewContainer,
-    deleteContainer,
-    getCurrentContainerId,
-    getFluidClientByProjectTitle,
-    getProjectTitle,
-    getUserContainers,
-    initFluidClientWithAuth,
-    loadContainer,
-} from "../lib/fluidService.svelte";
+    cleanupClient as cleanupYjsClient,
+    createClient as createYjsClient,
+    createNewProject as createNewYjsProject,
+    getClientByProjectTitle as getYjsClientByProjectTitle,
+} from "../lib/yjsService.svelte";
 
 // SnapshotService
 export {

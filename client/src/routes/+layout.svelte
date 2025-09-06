@@ -148,11 +148,11 @@ onMount(async () => {
     if (browser) {
         // Dynamically import browser-only modules
         let userManager: any;
-        let fluidService: any;
+        let yjsService: any;
         let services: any;
         try {
             ({ userManager } = await import("../auth/UserManager"));
-            fluidService = await import("../lib/fluidService.svelte");
+            yjsService = await import("../lib/yjsService.svelte");
             services = await import("../services");
         } catch (e) {
             logger.error("Failed to load client-only modules", e);
@@ -194,7 +194,7 @@ onMount(async () => {
 
         if (isAuthenticated) {
             // デバッグ関数を初期化
-            setupGlobalDebugFunctions(fluidService);
+            setupGlobalDebugFunctions(yjsService);
         }
         else {
             // 認証状態の変更を監視
@@ -202,7 +202,7 @@ onMount(async () => {
                 isAuthenticated = authResult !== null;
                 // デバッグ関数を初期化
                 if (isAuthenticated && browser) {
-                    setupGlobalDebugFunctions(fluidService);
+                    setupGlobalDebugFunctions(yjsService);
                     const isTestEnv = import.meta.env.MODE === "test" ||
                         process.env.NODE_ENV === "test" ||
                         import.meta.env.VITE_IS_TEST === "true";
@@ -213,44 +213,6 @@ onMount(async () => {
                             // テスト環境では、既存のコンテナを削除してからテスト用のコンテナを作成する
                             (async () => {
                                 try {
-                                    // ユーザーのコンテナリストを取得
-                                    const { containers } = await fluidService.getUserContainers();
-
-                                    // 既存のコンテナを削除
-                                    for (const containerId of containers) {
-                                        try {
-                                            if (import.meta.env.DEV) {
-                                                logger.info(
-                                                    `テスト環境のため、コンテナを削除します: ${containerId}`,
-                                                );
-                                            }
-                                            const success = await fluidService.deleteContainer(
-                                                containerId,
-                                            );
-
-                                            if (success) {
-                                                if (import.meta.env.DEV) {
-                                                    logger.info(
-                                                        `コンテナを削除しました: ${containerId}`,
-                                                    );
-                                                }
-                                            }
-                                            else {
-                                                if (import.meta.env.DEV) {
-                                                    logger.warn(
-                                                        `コンテナの削除に失敗しました: ${containerId}`,
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        catch (error) {
-                                            logger.error(
-                                                `コンテナ削除エラー: ${containerId}`,
-                                                error,
-                                            );
-                                        }
-                                    }
-
                                     // 新しいテスト用コンテナを作成
                                     const pageName = "test-page";
                                     const lines = [
@@ -258,8 +220,8 @@ onMount(async () => {
                                         "これはテスト用のページです。2",
                                         "内部リンクのテスト: [test-link]",
                                     ];
-                                    (await fluidService.createNewContainer("test-1")).createPage(pageName, lines);
-                                    (await fluidService.createNewContainer("test-2")).createPage(pageName, lines);
+                                    (await yjsService.createNewProject("test-1")).createPage(pageName, lines);
+                                    (await yjsService.createNewProject("test-2")).createPage(pageName, lines);
                                 }
                                 catch (error) {
                                     logger.error(
@@ -278,7 +240,7 @@ onMount(async () => {
             });
         }
 
-        services?.initFluidClientWithAuth?.();
+        // Yjs: no auth-coupled init hook required
 
         // ブラウザ終了時のイベントリスナーを登録
         window.addEventListener("beforeunload", handleBeforeUnload);
@@ -305,8 +267,8 @@ onDestroy(async () => {
             handleVisibilityChange,
         );
         try {
-            const { cleanupFluidClient } = await import("../services");
-            cleanupFluidClient();
+            const { cleanupYjsClient } = await import("../services");
+            cleanupYjsClient();
         } catch {}
 
         // 定期的なログローテーションの解除

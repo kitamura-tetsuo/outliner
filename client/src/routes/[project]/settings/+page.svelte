@@ -8,7 +8,7 @@ import {
     importMarkdownIntoProject,
     importOpmlIntoProject,
 } from "../../../services";
-import { fluidStore } from "../../../stores/fluidStore.svelte";
+import { yjsStore } from "../../../stores/yjsStore.svelte.ts";
 import { store } from "../../../stores/store.svelte";
 
 let project: any = undefined;
@@ -17,7 +17,7 @@ let importText = $state("");
 let importFormat = $state("opml");
 
 onMount(() => {
-    project = fluidStore.fluidClient?.getProject();
+    project = yjsStore.yjsClient?.getProject();
 });
 
 function doExport(format: "opml" | "markdown") {

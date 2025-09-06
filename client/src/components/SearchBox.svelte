@@ -3,16 +3,13 @@ import { goto } from '$app/navigation';
 import type { Item, Items, Project } from '../schema/app-schema';
 import { searchHistoryStore } from '../stores/SearchHistoryStore.svelte';
 import { store } from '../stores/store.svelte';
-import { fluidStore } from '../stores/fluidStore.svelte';
 
 interface Props { project?: Project }
 let { project }: Props = $props();
 
 // Resolve project from multiple sources for robustness in tests
 let effectiveProject: Project | null = $derived.by(() => {
-    return project
-        ?? (store.project ?? null)
-        ?? (fluidStore.fluidClient ? fluidStore.fluidClient.getProject() : null);
+    return project ?? (store.project ?? null);
 });
 
 let query = $state('');
@@ -29,17 +26,8 @@ let results = $derived.by(() => {
         // try global fallbacks
         const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
         if (cur) projectToUse = cur;
-        else {
-            const reg = (window as any).__FLUID_CLIENT_REGISTRY__;
-            const keys = reg?.getAllKeys?.() ?? [];
-            if (keys.length) {
-                const last = keys[keys.length - 1];
-                const inst = reg.get(last);
-                const proj = inst?.[4];
-                if (proj) projectToUse = proj;
+                
             }
-        }
-    }
 
     // Resolve pages robustly. Prefer a non-empty generalStore.pages.current,
     // otherwise fall back to project.items. This avoids getting stuck on an
