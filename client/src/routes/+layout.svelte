@@ -200,7 +200,6 @@ onMount(async () => {
             // 認証状態の変更を監視
             userManager?.addEventListener((authResult: any) => {
                 isAuthenticated = authResult !== null;
-                // デバッグ関数を初期化
                 if (isAuthenticated && browser) {
                     setupGlobalDebugFunctions(yjsService);
                     const isTestEnv = import.meta.env.MODE === "test" ||

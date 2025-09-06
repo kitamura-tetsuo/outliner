@@ -1,8 +1,3 @@
-/**
- * デバッグ用のユーティリティ関数
- * 開発環境でのみ使用する
- */
-
 import { goto } from "$app/navigation";
 import { userManager } from "../auth/UserManager";
 import * as yjsHighService from "../lib/yjsService.svelte";
@@ -13,11 +8,7 @@ import { getLogger } from "./logger";
 
 const logger = getLogger();
 
-/**
- * グローバルデバッグ関数を設定する
- * @param fluidClient FluidClientインスタンス
- */
-export function setupGlobalDebugFunctions(service?: any) {
+export function setupGlobalDebugFunctions() {
     if (typeof window !== "undefined") {
         // In Playwright tests, avoid exposing goto to prevent navigation loops.
         if (process.env.NODE_ENV !== "test") {
@@ -39,7 +30,6 @@ export function setupGlobalDebugFunctions(service?: any) {
     }
 }
 
-// グローバル型定義を拡張
 declare global {
     interface Window {
         getFluidTreeDebugData?: () => any;
