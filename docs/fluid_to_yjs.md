@@ -20,3 +20,7 @@ This document outlines the mapping between Azure Fluid Relay data structures and
 - **Token refresh**: restart the Yjs server if authentication tokens expire during long test runs.
 - **LevelDB persistence**: the server stores data in `yjs-data/`. Remove this directory for a clean state.
 - **Offline mode**: when developing without a network connection, start the Yjs server locally and point the client to `ws://localhost:${TEST_YJS_PORT}`.
+
+## Progress
+
+- Removed Fluid telemetry and global Fluid service; the application now operates with a Yjs-first architecture.

@@ -11,14 +11,7 @@ import "../app.css";
 import "$lib";
 import { userManager } from "../auth/UserManager";
 import { setupGlobalDebugFunctions } from "../lib/debug";
-import * as fluidService from "../lib/fluidService.svelte";
 import "../utils/ScrapboxFormatter";
-// グローバルに公開するためにインポート
-import MobileActionToolbar from "../components/MobileActionToolbar.svelte";
-import {
-    cleanupFluidClient,
-    initFluidClientWithAuth,
-} from "../services";
 import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
 let { children } = $props();
@@ -184,92 +177,15 @@ onMount(() => {
         isAuthenticated = userManager.getCurrentUser() !== null;
 
         if (isAuthenticated) {
-            // デバッグ関数を初期化
-            setupGlobalDebugFunctions(fluidService);
-        }
-        else {
-            // 認証状態の変更を監視
+            setupGlobalDebugFunctions();
+        } else {
             userManager.addEventListener(authResult => {
                 isAuthenticated = authResult !== null;
-                // デバッグ関数を初期化
                 if (isAuthenticated && browser) {
-                    setupGlobalDebugFunctions(fluidService);
-                    const isTestEnv = import.meta.env.MODE === "test" ||
-                        process.env.NODE_ENV === "test" ||
-                        import.meta.env.VITE_IS_TEST === "true";
-                    if (isTestEnv) {
-                        // テストデータ自動投入をスキップするフラグ
-                        const skipSeed = window.localStorage.getItem("SKIP_TEST_CONTAINER_SEED") === "true";
-                        if (!skipSeed) {
-                            // テスト環境では、既存のコンテナを削除してからテスト用のコンテナを作成する
-                            (async () => {
-                                try {
-                                    // ユーザーのコンテナリストを取得
-                                    const { containers } = await fluidService.getUserContainers();
-
-                                    // 既存のコンテナを削除
-                                    for (const containerId of containers) {
-                                        try {
-                                            if (import.meta.env.DEV) {
-                                                logger.info(
-                                                    `テスト環境のため、コンテナを削除します: ${containerId}`,
-                                                );
-                                            }
-                                            const success = await fluidService.deleteContainer(
-                                                containerId,
-                                            );
-
-                                            if (success) {
-                                                if (import.meta.env.DEV) {
-                                                    logger.info(
-                                                        `コンテナを削除しました: ${containerId}`,
-                                                    );
-                                                }
-                                            }
-                                            else {
-                                                if (import.meta.env.DEV) {
-                                                    logger.warn(
-                                                        `コンテナの削除に失敗しました: ${containerId}`,
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        catch (error) {
-                                            logger.error(
-                                                `コンテナ削除エラー: ${containerId}`,
-                                                error,
-                                            );
-                                        }
-                                    }
-
-                                    // 新しいテスト用コンテナを作成
-                                    const pageName = "test-page";
-                                    const lines = [
-                                        "これはテスト用のページです。1",
-                                        "これはテスト用のページです。2",
-                                        "内部リンクのテスト: [test-link]",
-                                    ];
-                                    (await fluidService.createNewContainer("test-1")).createPage(pageName, lines);
-                                    (await fluidService.createNewContainer("test-2")).createPage(pageName, lines);
-                                }
-                                catch (error) {
-                                    logger.error(
-                                        "テスト環境のコンテナ準備中にエラーが発生しました",
-                                        error,
-                                    );
-                                }
-                            })();
-                        } else {
-                            if (import.meta.env.DEV) {
-                                logger.info("SKIP_TEST_CONTAINER_SEED=true のため、テスト用コンテナの自動生成をスキップします");
-                            }
-                        }
-                    }
+                    setupGlobalDebugFunctions();
                 }
             });
         }
-
-        initFluidClientWithAuth();
 
         // ブラウザ終了時のイベントリスナーを登録
         window.addEventListener("beforeunload", handleBeforeUnload);
@@ -296,8 +212,6 @@ onDestroy(() => {
             handleVisibilityChange,
         );
 
-        cleanupFluidClient();
-
         // 定期的なログローテーションの解除
         if (rotationInterval) {
             clearInterval(rotationInterval);
@@ -307,8 +221,6 @@ onDestroy(() => {
 </script>
 
 {@render children()}
-
-<MobileActionToolbar />
 
 <button
     class="fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"

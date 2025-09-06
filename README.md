@@ -1,10 +1,10 @@
 # Outliner
 
-Outlinerは、Azure Fluid Relayを使用したリアルタイム共同編集アプリケーションです。
+Outliner is a real-time collaborative application built on Yjs.
 
 ## Yjs migration
 
-See [docs/fluid_to_yjs.md](docs/fluid_to_yjs.md) for the mapping between Fluid and Yjs data structures and current migration status.
+See [docs/fluid_to_yjs.md](docs/fluid_to_yjs.md) for the mapping between legacy data structures and Yjs and current migration status.
 
 ## AI統合機能
 
@@ -171,14 +171,7 @@ firebase login
 firebase use your-project-id
 ```
 
-4. 環境変数を設定:
-
-```bash
-# Azure Fluid Relay設定
-firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="https://us.fluidrelay.azure.com" azure.primary_key="your-primary-key"
-```
-
-5. クライアントをビルド:
+4. クライアントをビルド:
 
 ```bash
 cd client
@@ -197,12 +190,10 @@ firebase deploy
 
 - クライアント: `VITE_PORT=7070`
 - API: `PORT=7071`
-- Tinylicious: `VITE_TINYLICIOUS_PORT=7072`
 
 ### テスト環境
 
 - クライアント: `VITE_PORT=7080`
-- Tinylicious: `VITE_TINYLICIOUS_PORT=7082`
 - Firebase Emulator host: `VITE_FIREBASE_EMULATOR_HOST=localhost`
 
 ## Firebase Hosting + Functions
@@ -216,13 +207,7 @@ cd client
 cp .env.firebase.example .env
 ```
 
-2. Firebase Functionsの環境変数を設定:
-
-```bash
-firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="https://us.fluidrelay.azure.com" azure.primary_key="your-primary-key"
-```
-
-3. デプロイ:
+2. デプロイ:
 
 ```bash
 firebase deploy
@@ -235,7 +220,6 @@ firebase deploy
 - **SvelteKit** / **Svelte** - クライアント UI 開発に使用。
 - **Express** - 認証サーバーを構築。
 - **Firebase** - 認証やホスティングに利用。
-- **Fluid Framework** - リアルタイムコラボレーション機能の基盤。
 
 各ライブラリはMITやApacheなどのライセンスの下で公開されており、`package.json`に詳細が記載されています。
 

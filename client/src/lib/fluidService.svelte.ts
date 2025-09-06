@@ -21,7 +21,6 @@ import {
 import { fluidStore } from "../stores/fluidStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";
 import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
-import { createFluidConfigProvider, getTelemetryFilterLogger } from "./fluidTelemetryFilter";
 import { AsyncLockManager } from "./lock";
 import { getLogger, log } from "./logger";
 
@@ -253,8 +252,7 @@ async function createAzureOrTinyliciousClient(
         // telemetryを無効化するための設定を追加
         const client = new TinyliciousClient({
             connection: { port },
-            logger: getTelemetryFilterLogger(), // telemetryをフィルタリングするカスタムロガー
-            // configProvider: createFluidConfigProvider(), // telemetry関連の機能を無効化する設定
+            // telemetry logger removed
         });
         return client;
     }
@@ -284,8 +282,7 @@ async function createAzureOrTinyliciousClient(
     // telemetryを無効化するための設定を追加
     const clientProps = {
         connection: connectionConfig,
-        logger: getTelemetryFilterLogger(), // telemetryをフィルタリングするカスタムロガー
-        configProvider: createFluidConfigProvider(), // telemetry関連の機能を無効化する設定
+        // telemetry logger removed
     };
     const client = new AzureClient(clientProps);
     return client;
@@ -298,8 +295,7 @@ export async function getFluidClient(containerId?: string): Promise<FluidInstanc
     //     // telemetryを無効化するための設定を追加
     //     const client = new TinyliciousClient({
     //         connection: { port },
-    //         logger: getTelemetryFilterLogger(), // telemetryをフィルタリングするカスタムロガー
-    //         // configProvider: createFluidConfigProvider(), // telemetry関連の機能を無効化する設定
+    //         // telemetry logger removed
     //     });
     //     const createResponse = await client.createContainer(containerSchema, "2");
     //     const container = createResponse.container;
