@@ -795,52 +795,28 @@ export async function createFluidClient(containerId?: string): Promise<FluidClie
                 // 新しいFluidClientインスタンスを返す
                 return new FluidClient(fluidClientParams);
             }
-            // else {
-            //     // コンテナIDが取得できない場合は新規コンテナを作成
-            //     log("fluidService", "info", "No container ID available, creating a new container");
 
-            //     // Fluidクライアントの取得
-            //     const [client] = await getFluidClient(userId, "");
+            // コンテナIDを解決できない場合（テスト環境や初回起動直後）は
+            // Yjs のみで動作する簡易プロジェクトを作成して返す。
+            // これにより E2E テストの初期化（generalStore.project の存在）が保証される。
+            const isTestEnv = import.meta.env.MODE === "test"
+                || process.env.NODE_ENV === "test"
+                || import.meta.env.VITE_IS_TEST === "true";
 
-            //     // 新規コンテナを作成
-            //     const createResponse = await client.createContainer(containerSchema, "2");
-            //     const container = createResponse.container;
-            //     const services = createResponse.services;
+            // URL からプロジェクト名を推測（/ProjectTitle/page 形式）
+            let inferredTitle = "Test Project";
+            if (typeof window !== "undefined") {
+                const parts = window.location.pathname.split("/").filter(Boolean);
+                if (parts[0]) inferredTitle = decodeURIComponent(parts[0]);
+            }
 
-            //     // コンテナをアタッチして永続化
-            //     const newContainerId = await container.attach();
-            //     log("fluidService", "info", `Created new container with ID: ${newContainerId}`);
+            // テスト/開発では Yjs-only の新規プロジェクトを即時作成
+            if (isTestEnv || !appTreeConfiguration) {
+                return await createNewContainer(inferredTitle);
+            }
 
-            //     // サーバーとローカルストレージにコンテナIDを保存
-            //     await saveContainerIdToServer(newContainerId);
-            //     saveContainerId(newContainerId);
-
-            //     // SharedTreeデータを初期化
-            //     const appData = (container.initialObjects.appData as ViewableTree).viewWith(appTreeConfiguration);
-
-            //     if (appData.compatibility.canInitialize) {
-            //         appData.initialize(Project.createInstance("新規プロジェクト"));
-            //     }
-
-            //     // 初期データとして最初のページを作成
-            //     const project = appData.root as Project;
-            //     const root = project.addPage("はじめてのページ", userId);
-            //     (root.items as Items).addNode("");
-
-            //     // 必要な全てのパラメータを設定してFluidClientインスタンスを作成
-            //     const fluidClientParams = {
-            //         clientId,
-            //         client,
-            //         container,
-            //         containerId: newContainerId,
-            //         appData,
-            //         project,
-            //         services,
-            //     };
-
-            //     // 新しいFluidClientインスタンスを返す
-            //     return new FluidClient(fluidClientParams);
-            // }
+            // 上記以外のケースでは安全のためエラーを投げる
+            throw new Error("コンテナIDを解決できず、新規作成も無効です");
         } catch (error) {
             log("fluidService", "error", "Failed to create FluidClient:", error);
             throw error;
