@@ -1,4 +1,3 @@
-import { firestoreStore as titleRegistryStore } from "../../lib/fluidService.svelte";
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
 
 /**
@@ -30,10 +29,6 @@ export function createTestUserData(): TestUserContainer {
     // Set test data in firestoreStore
     firestoreStore.userContainer = testUserContainer;
 
-    // Set test titles in titleRegistry
-    titleRegistryStore.titleRegistry.set("test-container-1", "テストプロジェクト1");
-    titleRegistryStore.titleRegistry.set("test-container-2", "テストプロジェクト2");
-
     return testUserContainer;
 }
 
@@ -43,7 +38,6 @@ export function createTestUserData(): TestUserContainer {
  */
 export function clearTestData(): void {
     firestoreStore.userContainer = null;
-    titleRegistryStore.titleRegistry.clear();
 }
 
 /**

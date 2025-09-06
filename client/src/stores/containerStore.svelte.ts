@@ -1,4 +1,4 @@
-import { getProjectTitle } from "../lib/fluidService.svelte";
+import { getProjectTitle } from "../lib/projectTitleProvider";
 import { firestoreStore } from "./firestoreStore.svelte";
 
 export interface ContainerInfo {

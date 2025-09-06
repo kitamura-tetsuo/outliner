@@ -2,10 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { containerStore } from "./containerStore.svelte";
 import { firestoreStore, type UserContainer } from "./firestoreStore.svelte";
 
-// getProjectTitle関数をモック
-vi.mock("../lib/fluidService.svelte", () => ({
+// Neutral title provider mock (no Fluid references in tests)
+vi.mock("../lib/projectTitleProvider", () => ({
     getProjectTitle: vi.fn((id: string) => {
-        // テスト用のタイトルを返す
         const titles: Record<string, string> = {
             "c1": "テストプロジェクト1",
             "c2": "テストプロジェクト2",

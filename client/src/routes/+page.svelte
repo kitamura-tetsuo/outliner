@@ -23,12 +23,13 @@ const logger = getLogger("HomePage");
 // In test runs, redirect to lightweight test page for stability
 import { onMount } from "svelte";
 onMount(() => {
-    const isTest = import.meta.env.MODE === "test" ||
-        import.meta.env.VITE_IS_TEST === "true" ||
-        process.env.NODE_ENV === "test";
+    const isTest = import.meta.env.MODE === "test"
+        || import.meta.env.VITE_IS_TEST === "true"
+        || process.env.NODE_ENV === "test";
     if (isTest) {
-        // Ensure tests land on the Yjs outliner demo page
-        goto("/yjs-outliner");
+        // In unit tests, avoid real navigation to keep jsdom stable.
+        // E2E/integration tests will handle navigation explicitly.
+        return;
     }
 });
 
