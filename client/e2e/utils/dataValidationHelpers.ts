@@ -52,7 +52,7 @@ export class DataValidationHelpers {
                     if (!child) continue;
                     children.push({ text: yTextToString(child.text) });
                 }
-                // First item is the page title by convention to align with Fluid snapshotter
+                // First item is the page title by convention (legacy snapshotter alignment)
                 pages.push({ title: pageTitle, items: [{ text: pageTitle }, ...children] });
             }
 

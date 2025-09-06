@@ -44,17 +44,12 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         // チャートが利用可能になったら、データの初期化を待機
         const chartInitResult = await page.evaluate(() => {
             const chart = (window as any).__GRAPH_CHART__;
-            const store = (window as any).appStore;
-            const fluidStore = (window as any).__FLUID_STORE__;
+            const store = (window as any).appStore || (window as any).generalStore;
 
             return {
                 chartExists: !!chart,
                 storeExists: !!store,
-                fluidStoreExists: !!fluidStore,
                 storePages: store?.pages?.current?.length || 0,
-                fluidClient: !!fluidStore?.fluidClient,
-                projectData: fluidStore?.fluidClient ? !!fluidStore.fluidClient.getProject() : false,
-                treeData: fluidStore?.fluidClient ? !!fluidStore.fluidClient.getTree() : false,
             };
         });
 

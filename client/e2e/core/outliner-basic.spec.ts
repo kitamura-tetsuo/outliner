@@ -77,7 +77,6 @@ test.describe("Outliner Basic Test (No Auth)", () => {
             const win = window as any;
             return {
                 userManager: typeof win.__USER_MANAGER__,
-                fluidStore: typeof win.__FLUID_STORE__,
                 svelteGoto: typeof win.__SVELTE_GOTO__,
                 allGlobals: Object.keys(win).filter(key => key.startsWith("__")),
             };

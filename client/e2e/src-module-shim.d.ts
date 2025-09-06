@@ -37,7 +37,4 @@ declare module "../../src/lib/*" {
     export = mod;
 }
 
-declare module "../../src/lib/fluidService.svelte.js" {
-    const mod: any;
-    export = mod;
-}
+// Intentionally avoid declaring Fluid-specific modules; tests are Yjs-first.

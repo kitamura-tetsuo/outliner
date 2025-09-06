@@ -267,20 +267,23 @@ test.describe("テキスト追加機能テスト", () => {
      * @check ページを再読み込みしても入力したデータが保持されていることを確認する
      */
     test("Adding text updates data structure", async ({ page }, testInfo) => {
-        // FluidClientが初期化されるまで待機
-        await page.waitForTimeout(3000);
+        // ストア初期化の完了待機（Yjs）
+        await page.waitForFunction(() => {
+            const gs: any = (window as any).generalStore;
+            return !!(gs && gs.project);
+        }, { timeout: 10000 });
 
-        // テキスト追加前の状態を確認（FluidStoreから直接取得）
+        // テキスト追加前の状態を確認（Yjs/generalStore経由）
         const initialDebugInfo = await page.evaluate(() => {
-            const fluidStore = (window as any).__FLUID_STORE__;
-            if (!fluidStore || !fluidStore.fluidClient) {
-                return { error: "FluidClient not available", items: [] };
+            const gs: any = (window as any).generalStore;
+            const pages: any = gs?.project?.items;
+            const items = [] as any[];
+            const len = pages?.length ?? 0;
+            for (let i = 0; i < len; i++) {
+                const it = pages.at ? pages.at(i) : pages[i];
+                if (it) items.push({ id: String(it.id), text: it.text?.toString?.() ?? String(it.text ?? "") });
             }
-            try {
-                return fluidStore.fluidClient.getAllData();
-            } catch (error) {
-                return { error: (error as Error).message, items: [] };
-            }
+            return { error: null, items };
         });
 
         // アイテムを追加して編集
@@ -347,17 +350,17 @@ test.describe("テキスト追加機能テスト", () => {
         // データが更新されるのを待つ
         await page.waitForTimeout(2000);
 
-        // 更新後のDebugInfoを取得（FluidStoreから直接取得）
+        // 更新後のDebugInfoを取得（Yjs/generalStore経由）
         const updatedDebugInfo = await page.evaluate(() => {
-            const fluidStore = (window as any).__FLUID_STORE__;
-            if (!fluidStore || !fluidStore.fluidClient) {
-                return { error: "FluidClient not available", items: [] };
+            const gs: any = (window as any).generalStore;
+            const pages: any = gs?.project?.items;
+            const items = [] as any[];
+            const len = pages?.length ?? 0;
+            for (let i = 0; i < len; i++) {
+                const it = pages.at ? pages.at(i) : pages[i];
+                if (it) items.push({ id: String(it.id), text: it.text?.toString?.() ?? String(it.text ?? "") });
             }
-            try {
-                return fluidStore.fluidClient.getAllData();
-            } catch (error) {
-                return { error: (error as Error).message, items: [] };
-            }
+            return { error: null, items };
         });
 
         // テキストが正しく入力されたことを確認

@@ -27,16 +27,11 @@ test.describe("PRS-0001: presence indicators", () => {
         // プレゼンスストアの状態をデバッグ
         const presenceDebug = await page.evaluate(() => {
             const store = (window as any).presenceStore;
-            const fluidStore = (window as any).__FLUID_STORE__;
             return {
                 presenceStoreExists: !!store,
                 users: store ? store.getUsers() : [],
-                fluidClientExists: !!fluidStore?.fluidClient,
-                containerExists: !!fluidStore?.fluidClient?.container,
-                servicesExists: !!fluidStore?.fluidClient?.services,
             };
         });
-
         console.log("Presence debug info:", presenceDebug);
 
         // 既存のユーザーがいることを確認（自動的に追加されたユーザー）

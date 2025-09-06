@@ -1,5 +1,5 @@
 /**
- * Snapshot comparison utilities (Fluid vs Yjs)
+ * Snapshot comparison utilities (legacy vs Yjs)
  * Compares minimal project/page/item text structure saved to e2e-snapshots.
  */
 

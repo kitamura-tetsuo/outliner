@@ -64,13 +64,10 @@ export async function pathValidationExample(page: Page): Promise<void> {
     await TreeValidator.assertTreePath(page, "items.0.items.0.text", "Second item");
     await TreeValidator.assertTreePath(page, "items.0.items.1.text", "Third item");
 
-    // 存在しないパスの検証
+    // 存在しないパスの検証（Yjs デバッグ関数）
     const nonExistentPath = await page.evaluate(() => {
         if (typeof window.getYjsTreePathData === "function") {
             return window.getYjsTreePathData("items.0.nonexistent");
-        }
-        if (typeof window.getFluidTreePathData === "function") {
-            return window.getFluidTreePathData("items.0.nonexistent");
         }
         return undefined;
     });

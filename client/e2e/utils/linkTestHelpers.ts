@@ -5,7 +5,7 @@ import { expect } from "@playwright/test";
 import { TestHelpers } from "./testHelpers";
 
 /**
- * 内部リンクのテスト用のヘルパー関数群
+ * 内部リンクのテスト用のヘルパー関数群（Yjs ベース）
  */
 export class LinkTestHelpers {
     /**
@@ -21,62 +21,52 @@ export class LinkTestHelpers {
         pageName: string,
         content: string[] = ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"],
     ): Promise<void> {
-        // まずテストページをセットアップ（基本的なページを表示）
-
-        // TreeDebuggerをセットアップ
+        // 状態デバッガをセットアップ
         await TestHelpers.setupTreeDebugger(page);
 
-        // FluidClientインスタンスが初期化されるのを待つ
-        await page.waitForFunction(() => window.__FLUID_CLIENT__, { timeout: 30000 });
+        // Yjs backing store の初期化待ち
+        await page.waitForFunction(() => {
+            const gs: any = (window as any).generalStore || (window as any).appStore;
+            return !!(gs && gs.project);
+        }, { timeout: 30000 });
 
-        // Fluid APIを使用してプロジェクトとページを作成
+        // Yjs API 経由で作成
         await page.evaluate(({ projectName, pageName, content }) => {
-            // グローバルFluidClientインスタンスを取得
-            const fluidClient = window.__FLUID_CLIENT__;
-            if (!fluidClient) {
-                throw new Error("FluidClient instance not found");
-            }
+            const gs: any = (window as any).generalStore || (window as any).appStore;
+            if (!gs?.project) throw new Error("generalStore.project not ready");
 
             try {
-                // プロジェクトとページのデータを取得
-                const appData = fluidClient.appData;
-                const project = appData.root;
+                gs.project.title = projectName;
 
-                // プロジェクト名を設定
-                project.title = projectName;
-
-                // 既存のページを取得
-                const existingItems = project.items;
-                if (existingItems && existingItems.length > 0) {
-                    // 最初のページのテキストを更新
-                    const firstPage = existingItems[0];
-                    firstPage.updateText(pageName);
-
-                    // 内部リンクを含むテキストを追加
-                    const pageItems = firstPage.items;
-                    if (pageItems) {
-                        // 既存のアイテムをクリア
-                        while (pageItems.length > 0) {
-                            pageItems.removeAt(0);
-                        }
-
-                        // 新しいアイテムを追加
-                        for (const text of content) {
-                            const item = pageItems.addNode("test-user");
-                            item.updateText(text);
-                        }
+                const pages: any = gs.project.items;
+                const len = pages?.length ?? 0;
+                let target: any = undefined;
+                for (let i = 0; i < len; i++) {
+                    const it = pages.at ? pages.at(i) : pages[i];
+                    const t = it?.text?.toString?.() ?? String(it?.text ?? "");
+                    if (String(t) === pageName) {
+                        target = it;
+                        break;
                     }
                 }
 
-                return { success: true };
-            } catch (error) {
-                console.error("Error creating project and page:", error);
-                throw error;
+                if (!target) target = gs.project.addPage(pageName, "tester");
+                else target.updateText(pageName);
+
+                const items = target.items as any;
+                while ((items?.length ?? 0) > 0) items.removeAt(0);
+                for (const line of content) {
+                    const it = items.addNode("tester");
+                    it.updateText(line);
+                }
+                if (!gs.currentPage) gs.currentPage = target;
+            } catch (e) {
+                console.error("Error creating project/page via Yjs:", e);
+                throw e;
             }
         }, { projectName, pageName, content });
 
-        // 少し待機してデータが保存されるのを待つ
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(200);
     }
 
     /**
@@ -94,80 +84,51 @@ export class LinkTestHelpers {
             }>;
         }>,
     ): Promise<void> {
-        // まずテストページをセットアップ（基本的なページを表示）
-
-        // TreeDebuggerをセットアップ
+        // 状態デバッガをセットアップ
         await TestHelpers.setupTreeDebugger(page);
 
-        // FluidClientインスタンスが初期化されるのを待つ
-        await page.waitForFunction(() => window.__FLUID_CLIENT__, { timeout: 30000 });
+        // Yjs 初期化待ち
+        await page.waitForFunction(() => {
+            const gs: any = (window as any).generalStore || (window as any).appStore;
+            return !!(gs && gs.project);
+        }, { timeout: 30000 });
 
-        // Fluid APIを使用してプロジェクトとページを作成
-        await page.evaluate(projects => {
-            // グローバルFluidClientインスタンスを取得
-            const fluidClient = window.__FLUID_CLIENT__;
-            if (!fluidClient) {
-                throw new Error("FluidClient instance not found");
-            }
-
+        // 単一プロジェクト内にページを複数用意
+        await page.evaluate((projects) => {
+            const gs: any = (window as any).generalStore || (window as any).appStore;
+            if (!gs?.project) throw new Error("generalStore.project not ready");
             try {
-                // プロジェクトとページのデータを取得
-                const appData = fluidClient.appData;
-                const rootProject = appData.root;
-
-                // 既存のプロジェクトを取得
-                const existingProjects = rootProject.items;
-
-                // 各プロジェクトを作成
-                for (let i = 0; i < projects.length; i++) {
-                    const projectInfo = projects[i];
-
-                    // プロジェクトを作成または更新
-                    let project;
-                    if (i === 0 && existingProjects && existingProjects.length > 0) {
-                        // 最初のプロジェクトは既存のものを更新
-                        project = existingProjects[0];
-                        project.updateText(projectInfo.projectName);
-                    } else {
-                        // 新しいプロジェクトを作成
-                        project = rootProject.items.addNode("test-user");
-                        project.updateText(projectInfo.projectName);
-                    }
-
-                    // 各ページを作成
-                    for (const pageInfo of projectInfo.pages) {
-                        // ページを作成
-                        const page = project.items.addNode("test-user");
-                        page.updateText(pageInfo.pageName);
-
-                        // ページの内容を追加
-                        const pageItems = page.items;
-                        if (pageItems) {
-                            // 既存のアイテムをクリア
-                            while (pageItems.length > 0) {
-                                pageItems.removeAt(0);
+                if (projects.length > 0) gs.project.title = projects[0].projectName;
+                for (const p of projects) {
+                    for (const pg of p.pages) {
+                        const pages: any = gs.project.items;
+                        const len = pages?.length ?? 0;
+                        let target: any = undefined;
+                        for (let i = 0; i < len; i++) {
+                            const it = pages.at ? pages.at(i) : pages[i];
+                            const t = it?.text?.toString?.() ?? String(it?.text ?? "");
+                            if (String(t) === pg.pageName) {
+                                target = it;
+                                break;
                             }
-
-                            // 新しいアイテムを追加
-                            const content = pageInfo.content
-                                || ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"];
-                            for (const text of content) {
-                                const item = pageItems.addNode("test-user");
-                                item.updateText(text);
-                            }
+                        }
+                        if (!target) target = gs.project.addPage(pg.pageName, "tester");
+                        const items = target.items as any;
+                        while ((items?.length ?? 0) > 0) items.removeAt(0);
+                        const lines = pg.content || ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"];
+                        for (const line of lines) {
+                            const it = items.addNode("tester");
+                            it.updateText(line);
                         }
                     }
                 }
-
-                return { success: true };
-            } catch (error) {
-                console.error("Error creating projects and pages:", error);
-                throw error;
+            } catch (e) {
+                console.error("Error creating pages via Yjs:", e);
+                throw e;
             }
         }, projects);
 
-        // 少し待機してデータが保存されるのを待つ
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(200);
     }
 
     /**
@@ -201,7 +162,7 @@ export class LinkTestHelpers {
     }
 
     /**
-     * テスト用のページを直接作成する（UI操作ではなくFluid APIを使用）
+     * テスト用のページを直接作成する（UI操作ではなく Yjs API を使用）
      * @param page Playwrightのページオブジェクト
      * @param projectName プロジェクト名
      * @param pageName ページ名
@@ -218,106 +179,44 @@ export class LinkTestHelpers {
         // TreeDebuggerをセットアップ
         await TestHelpers.setupTreeDebugger(page);
 
-        // FluidClientインスタンスが初期化されるのを待つ
-        await page.waitForFunction(() => window.__FLUID_CLIENT__, { timeout: 30000 });
+        // Yjs 初期化待ち
+        await page.waitForFunction(() => {
+            const gs: any = (window as any).generalStore || (window as any).appStore;
+            return !!(gs && gs.project);
+        }, { timeout: 30000 });
 
-        // Fluid APIを使用してページを作成
-        const result = await page.evaluate(({ projectName, pageName, content }) => {
-            // グローバルFluidClientインスタンスを取得
-            const fluidClient = window.__FLUID_CLIENT__;
-            if (!fluidClient) {
-                return { success: false, error: "FluidClient instance not found" };
-            }
-
+        await page.evaluate(({ projectName, pageName, content }) => {
+            const gs: any = (window as any).generalStore || (window as any).appStore;
+            if (!gs?.project) throw new Error("generalStore.project not ready");
             try {
-                // プロジェクトとページのデータを取得
-                const appData = fluidClient.appData;
-                const rootProject = appData.root;
-
-                // プロジェクトを検索または作成
-                let project = null;
-
-                // 既存のプロジェクトを検索
-                if (rootProject.items && rootProject.items.length > 0) {
-                    for (let i = 0; i < rootProject.items.length; i++) {
-                        const p = rootProject.items[i];
-                        if (p.text === projectName) {
-                            project = p;
-                            break;
-                        }
+                gs.project.title = projectName;
+                const pages: any = gs.project.items;
+                const len = pages?.length ?? 0;
+                let target: any = undefined;
+                for (let i = 0; i < len; i++) {
+                    const it = pages.at ? pages.at(i) : pages[i];
+                    const t = it?.text?.toString?.() ?? String(it?.text ?? "");
+                    if (String(t) === pageName) {
+                        target = it;
+                        break;
                     }
                 }
-
-                // プロジェクトが見つからない場合は新規作成
-                if (!project) {
-                    project = rootProject.items.addNode("test-user");
-                    project!.updateText(projectName);
+                if (!target) target = gs.project.addPage(pageName, "tester");
+                const items = target.items as any;
+                while ((items?.length ?? 0) > 0) items.removeAt(0);
+                for (const line of content) {
+                    const it = items.addNode("tester");
+                    it.updateText(line);
                 }
-
-                // ページを検索または作成
-                let page = null;
-
-                // 既存のページを検索
-                if (project.items && project.items.length > 0) {
-                    for (let i = 0; i < project.items.length; i++) {
-                        const p = project.items[i];
-                        if (p.text === pageName) {
-                            page = p;
-                            break;
-                        }
-                    }
-                }
-
-                // ページが見つからない場合は新規作成
-                if (!page) {
-                    page = project.items.addNode("test-user");
-                    page.updateText(pageName);
-                }
-
-                // ページの内容を設定
-                const pageItems = page.items;
-
-                // 既存のアイテムをクリア
-                if (pageItems) {
-                    while (pageItems.length > 0) {
-                        pageItems.removeAt(0);
-                    }
-
-                    // 新しいアイテムを追加
-                    for (const text of content) {
-                        const item = pageItems.addNode("test-user");
-                        item.updateText(text);
-                    }
-                }
-
-                return {
-                    success: true,
-                    projectId: project.id,
-                    pageId: page.id,
-                };
-            } catch (error) {
-                console.error("Error creating page:", error);
-                return {
-                    success: false,
-                    error: error.message || "Unknown error",
-                };
+                if (!gs.currentPage) gs.currentPage = target;
+            } catch (e) {
+                console.error("Error creating page via Yjs:", e);
+                throw e;
             }
         }, { projectName, pageName, content });
 
-        // エラーチェック
-        if (!result.success) {
-            console.error(`ページ作成に失敗しました: ${result.error}`);
-            throw new Error(`ページ作成に失敗しました: ${result.error}`);
-        }
-
-        console.log(`テストページ「${projectName}/${pageName}」を作成しました (ID: ${result.pageId})`);
-
-        // 作成したページに移動する場合
         if (navigateToPage) {
             await page.goto(`/${projectName}/${pageName}`);
-            await page.waitForTimeout(1000);
-
-            // ページが正しく読み込まれたことを確認
             await page.waitForSelector(".outliner-item", { timeout: 10000 });
         }
     }
@@ -355,49 +254,52 @@ export class LinkTestHelpers {
      */
     static async forceCreateInternalLink(page: Page, itemId: string, linkText: string): Promise<void> {
         await page.evaluate(({ itemId, linkText }) => {
-            // グローバルFluidClientインスタンスを取得
-            const fluidClient = window.__FLUID_CLIENT__;
-            if (!fluidClient) {
-                console.error("FluidClient instance not found");
-                return false;
-            }
-
+            const gs: any = (window as any).generalStore || (window as any).appStore;
+            if (!gs?.project) return false;
             try {
-                // アイテムを検索
-                const appData = fluidClient.appData;
-                const findItemById = (node: any, id: string): any => {
-                    if (node.id === id) return node;
-
-                    if (node.items) {
-                        for (let i = 0; i < node.items.length; i++) {
-                            const found = findItemById(node.items[i], id);
-                            if (found) return found;
-                        }
+                const findById = (parent: any): any => {
+                    if (!parent) return null;
+                    const items: any = parent.items;
+                    const len = items?.length ?? 0;
+                    for (let i = 0; i < len; i++) {
+                        const it = items.at ? items.at(i) : items[i];
+                        if (!it) continue;
+                        if (String(it.id) === String(itemId)) return it;
+                        const found = findById(it);
+                        if (found) return found;
                     }
-
                     return null;
                 };
 
-                // ルートから検索
-                const item = findItemById(appData.root, itemId);
-                if (!item) {
-                    console.error(`Item with ID ${itemId} not found`);
-                    return false;
+                // ルート（ページ一覧）から検索
+                const pages: any = gs.project.items;
+                const plen = pages?.length ?? 0;
+                let target: any = null;
+                for (let i = 0; i < plen; i++) {
+                    const p = pages.at ? pages.at(i) : pages[i];
+                    if (String(p?.id) === String(itemId)) {
+                        target = p;
+                        break;
+                    }
+                    const found = findById(p);
+                    if (found) {
+                        target = found;
+                        break;
+                    }
                 }
+                if (!target) return false;
 
-                // テキストを更新
-                const currentText = item.text || "";
-                const newText = currentText + ` [${linkText}]`;
-                item.updateText(newText);
-
+                const currentText = target?.text?.toString?.() ?? String(target?.text ?? "");
+                const newText = `${currentText} [${linkText}]`;
+                target.updateText(newText);
                 return true;
-            } catch (error) {
-                console.error("Error creating internal link:", error);
+            } catch (e) {
+                console.error("Error creating internal link (Yjs):", e);
                 return false;
             }
         }, { itemId, linkText });
 
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(200);
     }
 
     /**
@@ -676,7 +578,6 @@ export class LinkTestHelpers {
 // グローバル型定義を拡張
 declare global {
     interface Window {
-        __FLUID_CLIENT__?: any;
         __linkPreviewMutationObserver?: MutationObserver;
         __testShowLinkPreview?: (pageName: string, projectName?: string, pageExists?: boolean) => HTMLElement;
     }

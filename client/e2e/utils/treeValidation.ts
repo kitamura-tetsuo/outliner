@@ -2,21 +2,17 @@ import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
 /**
- * UIとSharedTree構造を同時に検証するユーティリティ関数群
+ * UI と Yjs ツリー構造を同時に検証するユーティリティ関数群
  */
 export class TreeValidator {
     /**
-     * SharedTreeのデータ構造を取得する
+     * ツリー（Yjs）のデータ構造を取得する
      */
     static async getTreeData(page: Page): Promise<any> {
         return page.evaluate(() => {
-            // デバッグ関数の存在確認
-            if (
-                typeof window.getYjsTreeDebugData !== "function"
-                && typeof window.getFluidTreeDebugData !== "function"
-            ) {
-                console.warn("getFluidTreeDebugData function is not available");
-                // フォールバック: AppStoreから基本的なデータを取得
+            // デバッグ関数の存在確認（Yjs）
+            if (typeof window.getYjsTreeDebugData !== "function") {
+                // フォールバック: appStore から基本的なデータを取得
                 const appStore = (window as any).appStore;
                 if (appStore && appStore.pages && appStore.pages.current) {
                     return {
@@ -27,66 +23,32 @@ export class TreeValidator {
                         })),
                     };
                 }
-                throw new Error("getFluidTreeDebugData function is not available and no fallback data found");
+                throw new Error("getYjsTreeDebugData function is not available and no fallback data found");
             }
 
-            // FluidClientが初期化されているかチェック
-            const fluidStore = (window as any).__FLUID_STORE__;
-            if (!fluidStore || !fluidStore.fluidClient) {
-                console.warn("FluidClient is not initialized, attempting fallback");
-                // フォールバック: AppStoreから基本的なデータを取得
-                const appStore = (window as any).appStore;
-                if (appStore && appStore.pages && appStore.pages.current) {
-                    return {
-                        itemCount: appStore.pages.current.length,
-                        items: appStore.pages.current.map((page: any) => ({
-                            text: page.text || page.id,
-                            items: page.items || [],
-                        })),
-                    };
-                }
-                throw new Error("FluidClient is not initialized and no fallback data found");
-            }
-
-            if (typeof window.getYjsTreeDebugData === "function") {
-                return window.getYjsTreeDebugData();
-            }
-            return window.getFluidTreeDebugData();
+            return window.getYjsTreeDebugData();
         });
     }
 
     /**
-     * FluidClientが初期化されるまで待機する
+     * Yjs バッキングストア（generalStore.project）が初期化されるまで待機する
      */
-    static async waitForFluidClientReady(page: Page, timeout: number = 5000): Promise<void> {
+    static async waitForProjectReady(page: Page, timeout: number = 5000): Promise<void> {
         try {
             await page.waitForFunction(() => {
-                const fluidStore = (window as any).__FLUID_STORE__;
-                const hasFluidStore = !!fluidStore;
-                const hasFluidClient = !!(fluidStore && fluidStore.fluidClient);
-
-                console.log("TreeValidator: FluidClient check", {
-                    hasFluidStore,
-                    hasFluidClient,
-                    fluidClientType: hasFluidClient ? typeof fluidStore.fluidClient : "undefined",
-                });
-
-                return hasFluidClient;
+                const gs = (window as any).generalStore || (window as any).appStore;
+                return !!(gs && gs.project);
             }, { timeout });
         } catch (error) {
-            console.error("TreeValidator: FluidClient not ready within timeout", error);
-            throw new Error(`FluidClient not ready within ${timeout}ms`);
+            console.error("TreeValidator: project not ready within timeout", error);
+            throw new Error(`Project not ready within ${timeout}ms`);
         }
     }
 
     static async getTreePathData(page: Page, path?: string): Promise<any> {
         return page.evaluate(async path => {
-            // デバッグ関数の存在確認
-            if (
-                typeof window.getYjsTreePathData !== "function"
-                && typeof window.getFluidTreePathData !== "function"
-            ) {
-                console.warn("getFluidTreePathData function is not available");
+            // デバッグ関数の存在確認（Yjs）
+            if (typeof window.getYjsTreePathData !== "function") {
                 // フォールバック: 基本的なパス解決を実装
                 if (!path) return undefined;
 
@@ -115,42 +77,7 @@ export class TreeValidator {
                 return undefined;
             }
 
-            // FluidClientが初期化されているかチェック
-            const fluidStore = (window as any).__FLUID_STORE__;
-            if (!fluidStore || !fluidStore.fluidClient) {
-                console.warn("FluidClient is not initialized, attempting fallback for path:", path);
-                // フォールバック: 基本的なパス解決を実装
-                if (!path) return undefined;
-
-                const appStore = (window as any).appStore;
-                if (appStore && appStore.pages && appStore.pages.current) {
-                    const data = {
-                        itemCount: appStore.pages.current.length,
-                        items: appStore.pages.current.map((page: any) => ({
-                            text: page.text || page.id,
-                            items: page.items || {},
-                        })),
-                    };
-
-                    // 簡単なパス解決
-                    const parts = path.split(".");
-                    let current = data;
-                    for (const part of parts) {
-                        if (current && typeof current === "object" && part in current) {
-                            current = current[part];
-                        } else {
-                            return undefined;
-                        }
-                    }
-                    return current;
-                }
-                return undefined;
-            }
-
-            if (typeof window.getYjsTreePathData === "function") {
-                return window.getYjsTreePathData(path);
-            }
-            return window.getFluidTreePathData(path);
+            return window.getYjsTreePathData(path);
         }, path);
     }
 
@@ -271,7 +198,7 @@ export class TreeValidator {
     }
 
     /**
-     * SharedTreeの内容を取得し、期待値と厳密に比較する
+     * ツリーの内容を取得し、期待値と厳密に比較する
      * @param page Playwrightのページオブジェクト
      * @param expectedData 期待されるデータ構造（部分的な構造も可）
      * @param strict 厳密に比較するかどうか（デフォルトはfalse）
@@ -322,7 +249,7 @@ export class TreeValidator {
     }
 
     /**
-     * SharedTreeの特定のパスにあるデータを取得して検証する
+     * ツリーの特定のパスにあるデータを取得して検証する
      * @param page Playwrightのページオブジェクト
      * @param path データのパス（例: "items.0.text"）
      * @param expectedValue 期待される値
@@ -346,7 +273,7 @@ export class TreeValidator {
     }
 
     /**
-     * SharedTreeの内容をスナップショットとして保存し、後で比較できるようにする
+     * ツリーの内容をスナップショットとして保存し、後で比較できるようにする
      * @param page Playwrightのページオブジェクト
      * @returns 現在のツリーデータのスナップショット
      */
@@ -355,7 +282,7 @@ export class TreeValidator {
     }
 
     /**
-     * 現在のSharedTreeの内容と以前のスナップショットを比較する
+     * 現在のツリーの内容と以前のスナップショットを比較する
      * @param page Playwrightのページオブジェクト
      * @param snapshot 以前のスナップショット
      * @param ignorePaths 無視するパスの配列（例: ["items.0.lastChanged"]）
@@ -390,12 +317,8 @@ export class TreeValidator {
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
 declare global {
     interface Window {
-        mockFluidClient?: boolean;
         mockUser?: { id: string; name: string; email?: string; };
-        mockFluidToken?: { token: string; user: { id: string; name: string; }; };
-        getFluidTreeDebugData?: () => any;
         getYjsTreeDebugData?: () => any;
         getYjsTreePathData?: (path?: string) => any;
-        fluidServerPort?: number;
     }
 }

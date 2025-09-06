@@ -1,5 +1,4 @@
 interface Window {
-    mockFluidClient?: boolean;
     alert: (message: string) => void;
     mockUser?: {
         id: string;
@@ -7,17 +6,7 @@ interface Window {
         email?: string;
         photoURL?: string;
     };
-    mockFluidToken?: {
-        token: string;
-        user: {
-            id: string;
-            name: string;
-        };
-        tenantId?: string;
-        containerId?: string;
-    };
     _alertMessage?: string | null;
-    mockContainerConnected?: boolean;
 }
 
 declare namespace jest {
@@ -65,31 +54,13 @@ export const test = base.extend({
                 process.env.VITE_AUTH_EMULATOR_PORT || "59099",
             );
 
-            // Tinylicious設定（必要に応じて）
-            window.localStorage.setItem("VITE_USE_TINYLICIOUS", "true");
-
             // 認証済み状態をシミュレート
-
             // テスト用のユーザーデータ
             window.mockUser = {
                 id: "test-user-id",
                 name: "Test User",
                 email: "test@example.com",
             };
-
-            // テスト用のFluidトークン
-            window.mockFluidToken = {
-                token: "mock-jwt-token",
-                user: {
-                    id: "test-user-id",
-                    name: "Test User",
-                },
-            };
-
-            // ページがロードされたときにコンテナのステータスをモック
-            window.addEventListener("DOMContentLoaded", () => {
-                window.mockContainerConnected = true;
-            });
         });
 
         await use(page);

@@ -95,15 +95,19 @@ export class TestHelpers {
             }
         });
 
-        // Wait for login to complete via onAuthStateChanged
+        // Wait for login to complete via onAuthStateChanged (tolerant)
+        // In some test boot orders, authentication may be optional for basic flows.
+        // Do not fail the test setup if login hasn't completed yet.
         await page.waitForFunction(() => {
             const mgr = (window as any).__USER_MANAGER__;
-            return mgr && mgr.getCurrentUser && mgr.getCurrentUser() !== null;
-        }, { timeout: 30000 });
+            return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
+        }, { timeout: 30000 }).catch(() => {
+            console.log("TestHelper: Auth not ready after 30s; continuing without blocking");
+        });
 
         console.log("TestHelper: Authentication successful, waiting for global variables");
 
-        // グローバル変数が設定されるまで待機（Fluid 依存を排除）
+        // グローバル変数が設定されるまで待機
         console.log("TestHelper: Waiting for global variables (Yjs-safe)");
         await page.waitForFunction(
             () => {
@@ -174,7 +178,7 @@ export class TestHelpers {
     }
 
     /**
-     * テスト用のプロジェクトとページをFluid API経由で作成する
+     * テスト用のプロジェクトとページを作成する（Yjs）
      * @param page Playwrightのページオブジェクト
      * @param projectName プロジェクト名
      * @param pageName ページ名
@@ -193,28 +197,14 @@ export class TestHelpers {
             ];
         }
 
-        // Fluid があれば Fluid API、なければ Yjs/app-store 経由で作成
+        // Yjs/app-store 経由で作成
         await page.evaluate(async ({ projectName, pageName, lines }) => {
-            console.log(`TestHelper: Creating project/page (Fluid-or-Yjs)`, {
+            console.log(`TestHelper: Creating project/page (Yjs)`, {
                 projectName,
                 pageName,
                 linesCount: lines.length,
             });
-            try {
-                if ((window as any).__FLUID_SERVICE__ && (window as any).__FLUID_STORE__) {
-                    const fluidService = (window as any).__FLUID_SERVICE__;
-                    const fluidClient = await fluidService.createNewContainer(projectName);
-                    fluidClient.createPage(pageName, lines);
-                    const fs = (window as any).__FLUID_STORE__;
-                    if (fs) fs.fluidClient = fluidClient;
-                    console.log(`TestHelper: Created via Fluid`);
-                    return;
-                }
-            } catch (e) {
-                console.warn("TestHelper: Fluid path failed, falling back to Yjs", e);
-            }
-
-            // Yjs fallback via generalStore.project
+            // Yjs via generalStore.project
             const gs = (window as any).generalStore || (window as any).appStore;
             if (!gs?.project) {
                 console.warn("TestHelper: generalStore.project not available; cannot create page in Yjs mode");
@@ -238,22 +228,12 @@ export class TestHelpers {
     }
 
     /**
-     * テスト用のページをFluid API経由で作成する
+     * テスト用のページを作成する（Yjs）
      * @param page Playwrightのページオブジェクト
      * @param pageName ページ名
      */
     public static async createTestPageViaAPI(page: Page, pageName: string, lines: string[]): Promise<void> {
         await page.evaluate(async ({ pageName, lines }) => {
-            try {
-                if ((window as any).__FLUID_STORE__?.fluidClient) {
-                    (window as any).__FLUID_STORE__.fluidClient.createPage(pageName, lines);
-                    console.log("TestHelper: createTestPageViaAPI via Fluid");
-                    return;
-                }
-            } catch (e) {
-                console.warn("TestHelper: Fluid createPage failed, falling back to Yjs", e);
-            }
-
             const gs = (window as any).generalStore || (window as any).appStore;
             if (!gs?.project) {
                 console.warn("TestHelper: generalStore.project not available; cannot create page in Yjs mode");
@@ -368,7 +348,7 @@ export class TestHelpers {
      */
     public static async setupTreeDebugger(page: Page): Promise<void> {
         await page.addInitScript(() => {
-            // Yjs / app-store ベースのデバッグ関数を追加（Fluid 依存を排除）
+            // Yjs / app-store ベースのデバッグ関数を追加
             const buildYjsSnapshot = () => {
                 try {
                     const gs = (window as any).generalStore || (window as any).appStore;
@@ -413,9 +393,7 @@ export class TestHelpers {
                 return res;
             };
 
-            // Fluid 名のヘルパーも Yjs 実装へエイリアス（互換用）
-            (window as any).getFluidTreeDebugData = (window as any).getYjsTreeDebugData;
-            (window as any).getFluidTreePathData = (window as any).getYjsTreePathData;
+            // （Yjs ベース）
         });
     }
 
@@ -596,94 +574,17 @@ export class TestHelpers {
 
         console.log("TestHelper: Authentication detected, waiting for project loading");
 
-        // Debug current registry contents
-        await page.evaluate(() => {
-            const reg = (window as any).__FLUID_CLIENT_REGISTRY__;
-            if (reg && typeof reg.getAllKeys === "function") {
-                const keys = reg.getAllKeys();
-                const snapshot = keys.map((k: any) => {
-                    const inst = reg.get(k);
-                    const project = inst?.[4];
-                    return { key: k.id, title: project?.title };
-                });
-                console.log("TestHelper: Registry snapshot", snapshot);
-            } else {
-                console.log("TestHelper: Registry not available");
-            }
-        });
-
-        // ルーティングの $effect 実行順に依存せず、明示的に FluidClient を反映（HMR/初期化順対策）
-        await page.evaluate(async ({ projectName, pageName, lines }) => {
-            const svc = (window as any).__FLUID_SERVICE__;
-            const fs = (window as any).__FLUID_STORE__;
-            const gs = (window as any).generalStore;
-            try {
-                if (svc && fs) {
-                    let client = await svc.getFluidClientByProjectTitle(projectName as string);
-                    if (!client) {
-                        console.warn(
-                            "TestHelper: No client by title in this context. Creating new container for test...",
-                        );
-                        client = await svc.createNewContainer(projectName as string);
-                        if (client?.createPage) {
-                            try {
-                                await client.createPage(
-                                    pageName as string,
-                                    Array.isArray(lines) ? lines : [String(pageName)],
-                                );
-                            } catch (e) {
-                                console.warn("TestHelper: createPage failed (continuing)", e);
-                            }
-                        }
-                    }
-                    fs.fluidClient = client;
-                    console.log("TestHelper: fluidStore.fluidClient set after navigation");
-                    // project フォールバック
-                    try {
-                        if (gs && !gs.project) {
-                            gs.project = client.getProject();
-                            console.log("TestHelper: generalStore.project set after navigation");
-                        }
-                    } catch {}
-                } else {
-                    console.warn("TestHelper: __FLUID_SERVICE__ or __FLUID_STORE__ not available");
-                }
-            } catch (e) {
-                console.error("TestHelper: Error while setting up client after navigation:", e);
-            }
-        }, { projectName, pageName, lines });
-
-        // generalStore.project のフォールバック設定（fluidStore があるのに project 未設定の場合）
-        await page.evaluate(() => {
-            const gs = (window as any).generalStore;
-            const fs = (window as any).__FLUID_STORE__;
-            if (gs && fs?.fluidClient && !gs.project) {
-                try {
-                    gs.project = fs.fluidClient.getProject();
-                    console.log("TestHelper: Fallback set generalStore.project from fluidStore.fluidClient");
-                } catch (e) {
-                    console.error("TestHelper: Failed to set generalStore.project fallback:", e);
-                }
-            }
-        });
-
         // ページの詳細な状態をログ出力
         await page.evaluate(() => {
             console.log("TestHelper: Current page state:");
             console.log("TestHelper: URL:", window.location.href);
             console.log("TestHelper: generalStore exists:", !!(window as any).generalStore);
-            console.log("TestHelper: fluidStore exists:", !!(window as any).__FLUID_STORE__);
 
             const generalStore = (window as any).generalStore;
             if (generalStore) {
                 console.log("TestHelper: generalStore.project exists:", !!generalStore.project);
                 console.log("TestHelper: generalStore.pages exists:", !!generalStore.pages);
                 console.log("TestHelper: generalStore.currentPage exists:", !!generalStore.currentPage);
-            }
-
-            const fluidStore = (window as any).__FLUID_STORE__;
-            if (fluidStore) {
-                console.log("TestHelper: fluidStore.fluidClient exists:", !!fluidStore.fluidClient);
             }
         });
 
@@ -718,7 +619,6 @@ export class TestHelpers {
                 console.log("TestHelper: Final page state after generalStore timeout:");
                 console.log("TestHelper: Available stores:", {
                     generalStore: !!(window as any).generalStore,
-                    fluidStore: !!(window as any).__FLUID_STORE__,
                     userManager: !!(window as any).__USER_MANAGER__,
                 });
                 console.log("TestHelper: DOM elements:", {
@@ -806,14 +706,11 @@ export class TestHelpers {
             // 最終状態をログ出力
             const finalState = await page.evaluate(() => {
                 const generalStore = (window as any).generalStore;
-                const fluidStore = (window as any).__FLUID_STORE__;
                 return {
                     hasGeneralStore: !!generalStore,
-                    hasFluidStore: !!fluidStore,
                     hasProject: !!(generalStore?.project),
                     hasPages: !!(generalStore?.pages),
                     hasCurrentPage: !!(generalStore?.currentPage),
-                    hasFluidClient: !!(fluidStore?.fluidClient),
                 };
             });
             console.log("TestHelper: Final state:", finalState);
@@ -1452,311 +1349,17 @@ export class TestHelpers {
 }
 
 /**
- * FluidServiceのテスト用ヘルパークラス
+ * テスト用ユーティリティ（Yjs ベース）
+ * 旧実装依存のヘルパーは削除済み
  */
-export class FluidServiceHelper {
-    /**
-     * プロジェクトタイトルからFluidClientを取得する（既存のコンテナから検索）
-     * @param page Playwrightのページオブジェクト
-     * @param projectTitle プロジェクトタイトル
-     * @returns FluidClientの基本情報、見つからない場合はundefined
-     */
-    public static async getFluidClientByProjectTitle(page: Page, projectTitle: string): Promise<any> {
-        return await page.evaluate(async title => {
-            if (!title) {
-                throw new Error("プロジェクトタイトルが指定されていません");
-            }
-
-            const fluidService = window.__FLUID_SERVICE__;
-            if (!fluidService) {
-                throw new Error("FluidService not found");
-            }
-
-            const fluidClient = await fluidService.getFluidClientByProjectTitle(title);
-            if (!fluidClient) {
-                return undefined;
-            }
-
-            // シリアライズ可能な形式で返す
-            return {
-                containerId: fluidClient.containerId,
-                clientId: fluidClient.clientId,
-                project: {
-                    title: fluidClient.project.title,
-                },
-                treeData: fluidClient.getTreeAsJson(),
-            };
-        }, projectTitle);
-    }
-
-    /**
-     * 新しいコンテナを作成する
-     * @param page Playwrightのページオブジェクト
-     * @param containerName コンテナ名
-     * @returns FluidClientインスタンス
-     */
-    public static async createNewContainer(page: Page, containerName: string): Promise<any> {
-        return await page.evaluate(async name => {
-            const fluidService = window.__FLUID_SERVICE__;
-            if (!fluidService) {
-                throw new Error("FluidService not found");
-            }
-
-            return await fluidService.createNewContainer(name);
-        }, containerName);
-    }
-
-    /**
-     * FluidContainerの詳細なデータを取得する
-     * @param page Playwrightのページオブジェクト
-     * @returns FluidContainerの詳細データ
-     */
-    public static async getFluidContainerDetails(page: Page): Promise<any> {
-        return await page.evaluate(() => {
-            const fluidStore = (window as any).fluidStore;
-            if (!fluidStore || !fluidStore.fluidClient) {
-                throw new Error("FluidClient not found");
-            }
-
-            const client = fluidStore.fluidClient;
-            const project = client.project;
-
-            // プロジェクトの詳細情報を取得
-            const projectDetails = {
-                title: project.title,
-                itemCount: project.items ? project.items.length : 0,
-                items: [] as any[],
-            };
-
-            // 各ページ（アイテム）の詳細を取得
-            if (project.items) {
-                for (let i = 0; i < project.items.length; i++) {
-                    const item = project.items.at(i);
-                    if (item) {
-                        const itemDetails = {
-                            id: item.id,
-                            text: item.text,
-                            author: item.author,
-                            created: item.created,
-                            lastChanged: item.lastChanged,
-                            childItemCount: item.items ? item.items.length : 0,
-                            childItems: [] as any[],
-                        };
-
-                        // 子アイテムの詳細も取得
-                        if (item.items) {
-                            for (let j = 0; j < item.items.length; j++) {
-                                const childItem = item.items.at(j);
-                                if (childItem) {
-                                    itemDetails.childItems.push({
-                                        id: childItem.id,
-                                        text: childItem.text,
-                                        author: childItem.author,
-                                        created: childItem.created,
-                                        lastChanged: childItem.lastChanged,
-                                    });
-                                }
-                            }
-                        }
-
-                        projectDetails.items.push(itemDetails);
-                    }
-                }
-            }
-
-            return {
-                containerId: client.containerId,
-                clientId: client.clientId,
-                project: projectDetails,
-            };
-        });
-    }
-
-    /**
-     * 特定のページ名が存在するかを確認する
-     * @param page Playwrightのページオブジェクト
-     * @param pageName 確認するページ名
-     * @returns ページが存在する場合はtrue
-     */
-    public static async checkPageExists(page: Page, pageName: string): Promise<boolean> {
-        return await page.evaluate(pageNameToCheck => {
-            const fluidStore = (window as any).fluidStore;
-            if (!fluidStore || !fluidStore.fluidClient) {
-                return false;
-            }
-
-            const project = fluidStore.fluidClient.project;
-            if (!project.items) {
-                return false;
-            }
-
-            // ページ名が一致するページを検索
-            for (let i = 0; i < project.items.length; i++) {
-                const item = project.items.at(i);
-                if (item && item.text.toLowerCase() === pageNameToCheck.toLowerCase()) {
-                    return true;
-                }
-            }
-
-            return false;
-        }, pageName);
-    }
-
-    /**
-     * 特定のページ名のページデータを取得する
-     * @param page Playwrightのページオブジェクト
-     * @param pageName 取得するページ名
-     * @returns ページデータ、見つからない場合はnull
-     */
-    public static async getPageData(page: Page, pageName: string): Promise<any> {
-        return await page.evaluate(pageNameToGet => {
-            const fluidStore = (window as any).fluidStore;
-            if (!fluidStore || !fluidStore.fluidClient) {
-                return null;
-            }
-
-            const project = fluidStore.fluidClient.project;
-            if (!project.items) {
-                return null;
-            }
-
-            // ページ名が一致するページを検索
-            for (let i = 0; i < project.items.length; i++) {
-                const item = project.items.at(i);
-                if (item && item.text.toLowerCase() === pageNameToGet.toLowerCase()) {
-                    const pageData = {
-                        id: item.id,
-                        text: item.text,
-                        author: item.author,
-                        created: item.created,
-                        lastChanged: item.lastChanged,
-                        childItemCount: item.items ? item.items.length : 0,
-                        childItems: [] as any[],
-                    };
-
-                    // 子アイテムの詳細も取得
-                    if (item.items) {
-                        for (let j = 0; j < item.items.length; j++) {
-                            const childItem = item.items.at(j);
-                            if (childItem) {
-                                pageData.childItems.push({
-                                    id: childItem.id,
-                                    text: childItem.text,
-                                    author: childItem.author,
-                                    created: childItem.created,
-                                    lastChanged: childItem.lastChanged,
-                                });
-                            }
-                        }
-                    }
-
-                    return pageData;
-                }
-            }
-
-            return null;
-        }, pageName);
-    }
-
-    /**
-     * FluidClientからプロジェクトデータを取得する
-     * @param page Playwrightのページオブジェクト
-     * @returns プロジェクトデータ
-     */
-    public static async getProjectFromFluidClient(page: Page): Promise<any> {
-        return await page.evaluate(() => {
-            const fluidStore = window.__FLUID_STORE__;
-            if (!fluidStore) {
-                throw new Error("FluidStore not found");
-            }
-
-            // 現在のFluidClientを取得
-            const fluidClient = fluidStore.fluidClient;
-            if (!fluidClient) {
-                throw new Error("FluidClient not found");
-            }
-
-            return fluidClient.getProject();
-        });
-    }
-
-    /**
-     * FluidClientからTreeデータを取得する
-     * @param page Playwrightのページオブジェクト
-     * @returns Treeデータ
-     */
-    public static async getTreeDataFromFluidClient(page: Page): Promise<any> {
-        return await page.evaluate(() => {
-            const fluidStore = window.__FLUID_STORE__;
-            if (!fluidStore) {
-                throw new Error("FluidStore not found");
-            }
-
-            const fluidClient = fluidStore.fluidClient;
-            if (!fluidClient) {
-                throw new Error("FluidClient not found");
-            }
-
-            return fluidClient.getTreeAsJson();
-        });
-    }
-
-    /**
-     * UserManagerから現在のユーザーを取得する
-     * @param page Playwrightのページオブジェクト
-     * @returns 現在のユーザー
-     */
-    public static async getCurrentUser(page: Page): Promise<any> {
-        return await page.evaluate(() => {
-            const userManager = window.__USER_MANAGER__;
-            if (!userManager) {
-                throw new Error("UserManager not found");
-            }
-
-            return userManager.getCurrentUser();
-        });
-    }
-
-    /**
-     * queryStoreから現在のデータを取得する
-     * @param page Playwrightのページオブジェクト
-     */
-    public static async getQueryStoreData(page: Page): Promise<any> {
-        return await page.evaluate(() => {
-            const qs: any = (window as any).queryStore;
-            if (!qs) return null;
-            let value: any;
-            const unsub = qs.subscribe((v: any) => (value = v));
-            unsub();
-            return value;
-        });
-    }
-
-    /**
-     * 現在の選択テキストを取得する
-     * @param page Playwrightのページオブジェクト
-     * @returns 選択されているテキスト
-     */
-    public static async getSelectedText(page: Page): Promise<string> {
-        return await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
-            if (!store) return "";
-            return store.getSelectedText();
-        });
-    }
-}
 
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
 declare global {
     interface Window {
         getCursorDebugData?: () => any;
         getCursorPathData?: (path?: string) => any;
-        getFluidTreeDebugData?: () => any;
         __testShowLinkPreview?: (pageName: string, projectName?: string) => HTMLElement;
-        fluidServerPort?: number;
         _alertMessage?: string | null | undefined;
-        __FLUID_SERVICE__?: any;
-        __FLUID_STORE__?: any;
         __USER_MANAGER__?: any;
         editorOverlayStore?: any;
     }

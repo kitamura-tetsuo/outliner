@@ -21,7 +21,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         // Hydration完了とグローバルの公開を待つ
         await page.waitForFunction(() => {
             return typeof (window as any).__FIRESTORE_STORE__ !== "undefined"
-                && typeof (window as any).__FLUID_SERVICE__ !== "undefined"
+                && typeof (window as any).__TEST_DATA_HELPER__ !== "undefined"
                 && typeof (window as any).__USER_MANAGER__ !== "undefined";
         }, { timeout: 10000 });
 
@@ -35,27 +35,15 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
             }
         }, { timeout: 20000 });
 
-        await page.evaluate(() => {
-            const fsStore = (window as any).__FLUID_SERVICE__.firestoreStore;
-            fsStore.titleRegistry.set("c1", "Project A");
-            fsStore.titleRegistry.set("c2", "Project B");
-            const store = (window as any).__FIRESTORE_STORE__;
-            store.userContainer = {
-                userId: "u1",
-                defaultContainerId: "c1",
-                accessibleContainerIds: ["c1", "c2"],
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            };
-        });
+        await page.evaluate(() => (window as any).__TEST_DATA_HELPER__?.setupTestEnvironment?.());
 
         // UI反映を待つ
         await page.waitForFunction(() => document.querySelectorAll("select.container-select option").length >= 2);
 
         const options = page.locator("select.container-select option");
         await expect(options).toHaveCount(2);
-        await expect(options.nth(0)).toHaveText(/Project A/);
-        await expect(options.nth(1)).toHaveText(/Project B/);
+        await expect(options.nth(0)).toHaveText(/テストプロジェクト/);
+        await expect(options.nth(1)).toHaveText(/テストプロジェクト/);
     });
 
     test("deletion page shows projects from store", async ({ page }) => {
@@ -70,7 +58,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         // Hydration完了とグローバルの公開を待つ
         await page.waitForFunction(() => {
             return typeof (window as any).__FIRESTORE_STORE__ !== "undefined"
-                && typeof (window as any).__FLUID_SERVICE__ !== "undefined"
+                && typeof (window as any).__TEST_DATA_HELPER__ !== "undefined"
                 && typeof (window as any).__USER_MANAGER__ !== "undefined";
         }, { timeout: 10000 });
 
@@ -85,26 +73,14 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         }, { timeout: 20000 });
 
         // 削除ページに到着してからストアを直接更新
-        await page.evaluate(() => {
-            const fsStore = (window as any).__FLUID_SERVICE__.firestoreStore;
-            fsStore.titleRegistry.set("c1", "Project A");
-            fsStore.titleRegistry.set("c2", "Project B");
-            const store = (window as any).__FIRESTORE_STORE__;
-            store.userContainer = {
-                userId: "u1",
-                defaultContainerId: "c1",
-                accessibleContainerIds: ["c1", "c2"],
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            };
-        });
+        await page.evaluate(() => (window as any).__TEST_DATA_HELPER__?.setupTestEnvironment?.());
 
         // テーブル反映を待つ
         await page.waitForFunction(() => document.querySelectorAll("tbody tr").length >= 2);
         const rows = page.locator("tbody tr");
         await expect(rows).toHaveCount(2);
-        await expect(rows.nth(0).locator("td").nth(1)).toHaveText("Project A");
-        await expect(rows.nth(1).locator("td").nth(1)).toHaveText("Project B");
+        await expect(rows.nth(0).locator("td").nth(1)).toContainText("テストプロジェクト");
+        await expect(rows.nth(1).locator("td").nth(1)).toContainText("テストプロジェクト");
     });
 
     test("dropdown list shows containers after initialization", async ({ page }) => {

@@ -21,7 +21,6 @@ test.describe("Authentication Test", () => {
             const win = window as any;
             return {
                 userManager: typeof win.__USER_MANAGER__,
-                fluidStore: typeof win.__FLUID_STORE__,
                 svelteGoto: typeof win.__SVELTE_GOTO__,
                 currentUser: win.__USER_MANAGER__?.currentUser || null,
             };
@@ -79,7 +78,6 @@ test.describe("Authentication Test", () => {
             const win = window as any;
             return {
                 userManager: typeof win.__USER_MANAGER__,
-                fluidStore: typeof win.__FLUID_STORE__,
                 svelteGoto: typeof win.__SVELTE_GOTO__,
                 currentUser: win.__USER_MANAGER__?.currentUser || null,
                 allGlobals: Object.keys(win).filter(key => key.startsWith("__")),
@@ -89,15 +87,14 @@ test.describe("Authentication Test", () => {
 
         // 認証が成功した場合の追加チェック
         if (authResult.success) {
-            // FluidStoreとSvelteGotoが設定されるまで待機（最大30秒）
+            // SvelteGotoが設定されるまで待機（最大30秒）
             try {
                 await page.waitForFunction(
                     () => {
                         const win = window as any;
-                        const hasFluidStore = typeof win.__FLUID_STORE__ !== "undefined";
                         const hasSvelteGoto = typeof win.__SVELTE_GOTO__ !== "undefined";
-                        console.log("Waiting for globals - FluidStore:", hasFluidStore, "SvelteGoto:", hasSvelteGoto);
-                        return hasFluidStore && hasSvelteGoto;
+                        console.log("Waiting for globals - SvelteGoto:", hasSvelteGoto);
+                        return hasSvelteGoto;
                     },
                     { timeout: 30000 },
                 );

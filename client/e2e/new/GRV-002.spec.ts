@@ -132,90 +132,52 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
             }
         }, { timeout: 10000 });
 
-        // プロジェクト内でページを作成（FluidClientが利用可能）
+        // プロジェクト内でページを作成（Yjs）
         const pageCreateResult = await page.evaluate(async () => {
             try {
-                // FluidClientの利用可能性を確認
-                const fluidStore = (window as any).__FLUID_STORE__;
-                const appStore = (window as any).appStore;
-
-                console.log("FluidStore available:", !!fluidStore);
-                console.log("FluidClient available:", !!(fluidStore && fluidStore.fluidClient));
-                console.log("AppStore available:", !!appStore);
-
-                if (!fluidStore || !fluidStore.fluidClient) {
-                    // FluidClientが利用できない場合は、グラフの更新のみテスト
-                    console.log("FluidClient not available, testing graph update with mock data");
-
-                    const chart = (window as any).__GRAPH_CHART__;
-                    if (!chart) {
-                        return { success: false, error: "Chart not available" };
-                    }
-
-                    // モックデータでグラフを更新
-                    const mockPages = [
-                        { id: "page1", text: "First page with [test-link] reference" },
-                        { id: "page2", text: "test-link" },
-                    ];
-
-                    const nodes = mockPages.map((p: any) => ({ id: p.id, name: p.text }));
-                    const links = [{ source: "page1", target: "page2" }];
-
-                    chart.setOption({
-                        series: [{
-                            type: "graph",
-                            layout: "force",
-                            roam: true,
-                            data: nodes,
-                            links,
-                            label: { position: "right" },
-                        }],
-                    });
-
-                    return { success: true, nodesCount: nodes.length, linksCount: links.length, mockData: true };
-                }
-
-                // FluidClientが利用可能な場合は実際にページを作成
-                fluidStore.fluidClient.createPage("test-link", ["second page content"]);
-
-                // ストアの更新を待つ
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // グラフを手動で更新
+                const gs = (window as any).generalStore || (window as any).appStore;
                 const chart = (window as any).__GRAPH_CHART__;
-                const store = (window as any).appStore;
-                if (chart && store && store.pages) {
-                    const pages = store.pages.current || [];
-                    const nodes = pages.map((p: any) => ({ id: p.id, name: p.text }));
-                    const links: any[] = [];
+                if (!gs?.project || !chart) return { success: false, error: "Store or chart not available" };
 
-                    // リンクを検出
-                    for (const src of pages) {
-                        const texts = [src.text, ...((src.items || []).map((i: any) => i.text))];
-                        for (const dst of pages) {
-                            if (src.id === dst.id) continue;
-                            const target = dst.text.toLowerCase();
-                            if (texts.some((t: string) => t.toLowerCase().includes(`[${target}]`))) {
-                                links.push({ source: src.id, target: dst.id });
-                            }
+                // 新規ページを追加（Yjs）
+                const newPage = gs.project.addPage("test-link", "tester");
+                const items = newPage.items as any;
+                items.addNode("tester").updateText("second page content");
+
+                // 反映を待つ
+                await new Promise(r => setTimeout(r, 200));
+
+                // グラフを更新
+                const pages = gs.pages?.current || [];
+                const nodes = pages.map((p: any) => ({ id: p.id, name: (p?.text?.toString?.() ?? String(p.text)) }));
+                const links: any[] = [];
+                for (const src of pages) {
+                    const srcText = (src?.text?.toString?.() ?? String(src.text)) as string;
+                    const childTexts = ((src.items || []) as any[]).map((
+                        i: any,
+                    ) => (i?.text?.toString?.() ?? String(i.text)));
+                    const texts = [srcText, ...childTexts];
+                    for (const dst of pages) {
+                        if (src.id === dst.id) continue;
+                        const target = (dst?.text?.toString?.() ?? String(dst.text)).toLowerCase();
+                        if (texts.some((t: string) => t.toLowerCase().includes(`[${target}]`))) {
+                            links.push({ source: src.id, target: dst.id });
                         }
                     }
-
-                    chart.setOption({
-                        series: [{
-                            type: "graph",
-                            layout: "force",
-                            roam: true,
-                            data: nodes,
-                            links,
-                            label: { position: "right" },
-                        }],
-                    });
-
-                    return { success: true, nodesCount: nodes.length, linksCount: links.length, mockData: false };
-                } else {
-                    return { success: false, error: "Chart or store not available for update" };
                 }
+
+                chart.setOption({
+                    series: [{
+                        type: "graph",
+                        layout: "force",
+                        roam: true,
+                        data: nodes,
+                        links,
+                        label: { position: "right" },
+                    }],
+                });
+
+                return { success: true, nodesCount: nodes.length, linksCount: links.length };
             } catch (error) {
                 return { success: false, error: error.message };
             }

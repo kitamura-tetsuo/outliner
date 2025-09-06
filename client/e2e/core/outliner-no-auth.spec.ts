@@ -63,7 +63,6 @@ test.describe("Outliner No Auth Test", () => {
             return {
                 // グローバル変数の確認
                 userManager: typeof win.__USER_MANAGER__,
-                fluidStore: typeof win.__FLUID_STORE__,
                 svelteGoto: typeof win.__SVELTE_GOTO__,
                 firebaseApp: typeof win.__firebase_client_app__,
 

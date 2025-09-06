@@ -15,53 +15,14 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         ]);
 
         // TestHelpersのcreateTestPageViaAPI機能を使用して追加ページを作成
-        try {
-            console.log("Creating additional pages for search test using TestHelpers...");
-
-            // 2番目のページ: "Second page line"
-            await page.evaluate(async () => {
-                const fluidService = (window as any).__FLUID_SERVICE__;
-                if (!fluidService || typeof fluidService.createNewContainer !== "function") {
-                    throw new Error("__FLUID_SERVICE__ not available");
-                }
-                const fluidClient = await fluidService.createNewContainer("Search Test Project");
-                fluidClient.createPage("second-page", ["Second page line"]);
-
-                // fluidStoreを更新
-                const fluidStore = (window as any).__FLUID_STORE__;
-                if (fluidStore) {
-                    fluidStore.fluidClient = fluidClient;
-                }
-
-                return { success: true };
-            });
-
-            // 3番目のページ: "Third page line"
-            await page.evaluate(async () => {
-                const fluidStore = (window as any).__FLUID_STORE__;
-                if (fluidStore && fluidStore.fluidClient) {
-                    fluidStore.fluidClient.createPage("third-page", ["Third page line"]);
-                }
-                return { success: true };
-            });
-
-            // 4番目のページ: "Different content" (検索結果の精度確認用)
-            await page.evaluate(async () => {
-                const fluidStore = (window as any).__FLUID_STORE__;
-                if (fluidStore && fluidStore.fluidClient) {
-                    fluidStore.fluidClient.createPage("different-content", ["Different content here"]);
-                }
-                return { success: true };
-            });
-
-            // ページ作成後の待機
-            await page.waitForTimeout(3000);
-
-            console.log("Additional pages created successfully");
-        } catch (error) {
-            console.error("Error creating additional pages:", error);
-            // エラーが発生してもテストを続行（既存のページで検索テストを実行）
-        }
+        console.log("Creating additional pages for search test using Yjs generalStore...");
+        // 2番目のページ
+        await TestHelpers.createTestPageViaAPI(page, "second-page", ["Second page line"]);
+        // 3番目のページ
+        await TestHelpers.createTestPageViaAPI(page, "third-page", ["Third page line"]);
+        // 4番目のページ（検索の誤検出防止用）
+        await TestHelpers.createTestPageViaAPI(page, "different-content", ["Different content here"]);
+        await page.waitForTimeout(500);
 
         // 最終確認（ページ作成が成功したかどうかに関わらず、現在のページ状況を確認）
         const finalCheck = await page.evaluate(() => {

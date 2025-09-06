@@ -70,18 +70,12 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
 declare global {
     interface Window {
-        mockFluidClient?: boolean;
         mockUser?: { id: string; name: string; email?: string; };
-        mockFluidToken?: { token: string; user: { id: string; name: string; }; };
-        getFluidTreeDebugData?: () => any;
-        getFluidTreePathData?: (path?: string) => any;
         getYjsTreeDebugData?: () => any;
         getYjsTreePathData?: (path?: string) => any;
         getCursorDebugData?: () => any;
         getCursorPathData?: (path?: string) => any;
-        fluidServerPort?: number;
         _alertMessage?: string | null;
-        __FLUID_SERVICE__?: any;
         __SVELTE_GOTO__?: any;
         generalStore?: any;
         editorOverlayStore?: any;

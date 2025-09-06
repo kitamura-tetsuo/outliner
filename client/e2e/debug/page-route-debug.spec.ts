@@ -35,7 +35,7 @@ test.describe("Page Route Debug", () => {
 
         // グローバル変数の設定を待機
         await page.waitForFunction(() => {
-            return (window as any).__FLUID_STORE__ && (window as any).__SVELTE_GOTO__;
+            return (window as any).__SVELTE_GOTO__;
         }, { timeout: 30000 });
 
         // プロジェクトとページを作成
@@ -54,18 +54,15 @@ test.describe("Page Route Debug", () => {
 
         // ページの状態を定期的にチェック
         for (let i = 0; i < 30; i++) {
-            const state = await page.evaluate(() => {
+            const state = await page.evaluate((i) => {
                 const generalStore = (window as any).generalStore;
-                const fluidStore = (window as any).__FLUID_STORE__;
 
                 return {
-                    iteration: i,
+                    iteration: i as number,
                     hasGeneralStore: !!generalStore,
-                    hasFluidStore: !!fluidStore,
                     hasProject: !!(generalStore?.project),
                     hasPages: !!(generalStore?.pages),
                     hasCurrentPage: !!(generalStore?.currentPage),
-                    hasFluidClient: !!(fluidStore?.fluidClient),
                     pagesCount: generalStore?.pages?.current?.length || 0,
                     currentPageText: generalStore?.currentPage?.text || "none",
                     projectTitle: generalStore?.project?.title || "none",
@@ -73,12 +70,12 @@ test.describe("Page Route Debug", () => {
                     pageTitle: document.title,
                     url: window.location.href,
                 };
-            });
+            }, i);
 
             console.log(`Debug iteration ${i}:`, state);
 
             // 条件が満たされたら終了
-            if (state.hasProject && state.hasFluidClient && state.hasPages && state.hasCurrentPage) {
+            if (state.hasProject && state.hasPages && state.hasCurrentPage) {
                 console.log("Debug: All conditions met!");
                 break;
             }
@@ -89,15 +86,12 @@ test.describe("Page Route Debug", () => {
         // 最終状態を確認
         const finalState = await page.evaluate(() => {
             const generalStore = (window as any).generalStore;
-            const fluidStore = (window as any).__FLUID_STORE__;
 
             return {
                 hasGeneralStore: !!generalStore,
-                hasFluidStore: !!fluidStore,
                 hasProject: !!(generalStore?.project),
                 hasPages: !!(generalStore?.pages),
                 hasCurrentPage: !!(generalStore?.currentPage),
-                hasFluidClient: !!(fluidStore?.fluidClient),
                 pagesCount: generalStore?.pages?.current?.length || 0,
                 currentPageText: generalStore?.currentPage?.text || "none",
                 projectTitle: generalStore?.project?.title || "none",
