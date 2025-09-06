@@ -15,14 +15,14 @@ import { expect, test } from "@playwright/test";
 /**
  * @testcase ホームページが正常に表示される
  * @description アプリのホームページが正しく表示されることを確認するテスト
- * @check ホームページにアクセスするとタイトル「Fluid Outliner App」が表示される
+ * @check ホームページにアクセスするとタイトル「Outliner App」が表示される
  * @check 認証コンポーネントが画面に表示される
  */
 test("ホームページが正常に表示される", async ({ page }) => {
     await page.goto("/");
 
     // タイトルが表示されることを確認
-    await expect(page.locator("h1")).toContainText("Fluid Outliner App");
+    await expect(page.locator("h1")).toContainText("Outliner App");
 
     // 認証コンポーネントが表示されることを確認
     await expect(page.locator(".auth-section")).toBeVisible();

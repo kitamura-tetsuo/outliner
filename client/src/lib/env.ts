@@ -44,6 +44,5 @@ export function getDebugConfig() {
         isTest: import.meta.env.VITE_IS_TEST,
         host: typeof window !== "undefined" ? window.location.host : "server-side",
         nodeEnv: import.meta.env.MODE,
-        fluidEndpoint: import.meta.env.VITE_AZURE_FLUID_RELAY_ENDPOINT || "development-endpoint",
     };
 }

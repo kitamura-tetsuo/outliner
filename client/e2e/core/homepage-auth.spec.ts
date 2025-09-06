@@ -16,13 +16,13 @@ import { expect, test } from "@playwright/test";
  * @testcase ホームページが正常に表示される
  * @description アプリのホームページが正常に表示されることを確認するテスト
  * @check エミュレータを使用して初期状態を設定する
- * @check ページにアクセスするとタイトル「Fluid Outliner App」が表示される
+ * @check ページにアクセスするとタイトル「Outliner App」が表示される
  * @check 認証コンポーネントが画面上に表示される
  */
 test("ホームページが正常に表示される", async ({ page }) => {
     await page.goto("/");
 
     // タイトルが表示されることを確認
-    await expect(page.locator("h1")).toContainText("Fluid Outliner App");
+    await expect(page.locator("h1")).toContainText("Outliner App");
 });
 import "../utils/registerAfterEachSnapshot";

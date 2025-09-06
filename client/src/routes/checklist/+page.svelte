@@ -14,7 +14,7 @@ if (browser) {
 </script>
 
 <svelte:head>
-    <title>Checklist | Fluid Outliner</title>
+    <title>Checklist | Outliner</title>
 </svelte:head>
 
 <main class="container mx-auto px-4 py-8">

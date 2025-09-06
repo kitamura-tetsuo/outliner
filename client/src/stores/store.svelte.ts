@@ -1,8 +1,8 @@
 import type { Item, Items, Project } from "../schema/app-schema";
-import { TreeSubscriber } from "./TreeSubscriber";
+import { YjsSubscriber } from "./YjsSubscriber";
 
 class GeneralStore {
-    pages = $state<TreeSubscriber<Items>>();
+    pages = $state<YjsSubscriber<Items>>();
     currentPage = $state<Item>();
     private _project = $state<Project>();
 
@@ -18,17 +18,16 @@ class GeneralStore {
         console.log(`store: Setting project`, { projectExists: !!v, projectTitle: v?.title });
 
         this._project = v;
-        console.log(`store: Creating TreeSubscriber for pages`);
+        console.log(`store: Creating YjsSubscriber for pages`);
 
-        // Fluid TreeSubscriber relies on Fluid Tree nodes; our Items is a Yjs wrapper.
-        // Use a lightweight wrapper that exposes `.current` for reactive consumers.
+        // Wrap Items for reactive consumption via YjsSubscriber
         const items = v.items as Items;
         this.pages = {
             get current() {
                 return items;
             },
             set current(_val: any) {/* no-op */},
-        } as unknown as TreeSubscriber<Items>;
+        } as unknown as YjsSubscriber<Items>;
     }
 }
 

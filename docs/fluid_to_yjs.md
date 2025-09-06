@@ -11,6 +11,12 @@ This document outlines the mapping between Azure Fluid Relay data structures and
 | SharedTree                  | `Y.Map` + `Y.Array` nodes            | in progress |
 | Fluid service (Tinylicious) | Yjs WebSocket server (`y-websocket`) | replaced    |
 
+## Recent changes
+
+- Removed remaining `TreeSubscriber` and related Fluid classes. `YjsSubscriber` now provides reactive access to Yjs documents.
+- Uninstalled Fluid dependencies and deleted Fluid-specific components.
+- Added an end-to-end test verifying Yjs store connectivity.
+
 ## CI setup
 
 `scripts/codex-setup.sh` starts the Yjs WebSocket server for tests. Tinylicious is never started on Yjs branches.

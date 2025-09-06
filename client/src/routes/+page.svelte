@@ -2,7 +2,7 @@
 import { goto } from "$app/navigation";
 import ContainerSelector from "../components/ContainerSelector.svelte";
 import { getLogger } from "../lib/logger";
-import { yjsStore } from "../stores/yjsStore.svelte.ts";
+import { yjsStore } from "../stores/yjsStore.svelte";
 
 // Import test helper in test environments only
 if (typeof window !== "undefined" && (
@@ -38,7 +38,7 @@ async function handleContainerSelected(
     selectedContainerId: string,
     containerName: string,
 ) {
-    // const client = fluidStore.fluidClient;
+    // const client = yjsStore.yjsClient;
     // if (client?.containerId === selectedContainerId) {
     //     logger.info("Selected container is already loaded");
     //     return;
@@ -63,14 +63,14 @@ async function handleContainerSelected(
 </script>
 
 <svelte:head>
-    <title>Fluid Outliner App</title>
+    <title>Outliner App</title>
 </svelte:head>
 
 <main class="main-content" data-testid="outliner-base">
-    <h1>Fluid Outliner App</h1>
+    <h1>Outliner App</h1>
 
     <div class="welcome-message">
-        <p>Fluid Outlinerへようこそ！</p>
+        <p>Outlinerへようこそ！</p>
         <p>以下のオプションから選択してください：</p>
     </div>
 
