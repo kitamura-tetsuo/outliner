@@ -701,34 +701,60 @@ export class TestHelpers {
 
         console.log("TestHelper: Authentication detected, waiting for project loading");
 
-        // ページの詳細な状態をログ出力
-        await page.evaluate(() => {
-            console.log("TestHelper: Current page state:");
-            console.log("TestHelper: URL:", window.location.href);
-            console.log("TestHelper: generalStore exists:", !!(window as any).generalStore);
+        // ページの詳細な状態をログ出力（ページ閉鎖などの一時的状態に寛容）
+        try {
+            await page.evaluate(() => {
+                console.log("TestHelper: Current page state:");
+                console.log("TestHelper: URL:", window.location.href);
+                console.log("TestHelper: generalStore exists:", !!(window as any).generalStore);
 
-            const generalStore = (window as any).generalStore;
-            if (generalStore) {
-                console.log("TestHelper: generalStore.project exists:", !!generalStore.project);
-                console.log("TestHelper: generalStore.pages exists:", !!generalStore.pages);
-                console.log("TestHelper: generalStore.currentPage exists:", !!generalStore.currentPage);
+                const generalStore = (window as any).generalStore;
+                if (generalStore) {
+                    console.log("TestHelper: generalStore.project exists:", !!generalStore.project);
+                    console.log("TestHelper: generalStore.pages exists:", !!generalStore.pages);
+                    console.log("TestHelper: generalStore.currentPage exists:", !!generalStore.currentPage);
+                }
+            });
+        } catch (e: any) {
+            const msg = String(e?.message ?? e);
+            if (
+                msg.includes("Target page, context or browser has been closed")
+                || msg.includes("Execution context was destroyed")
+                || msg.includes("Navigation")
+            ) {
+                console.log("TestHelper: Skipping state log due to transient page/context state");
+            } else {
+                throw e;
             }
-        });
+        }
 
         // generalStoreが設定されるまで待機（OutlinerBaseのマウントは後で確認）
         console.log("TestHelper: Waiting for generalStore to be available");
 
-        // より詳細なデバッグ情報を追加
-        await page.evaluate(() => {
-            console.log("TestHelper: Current page state before generalStore wait:");
-            console.log("TestHelper: URL:", window.location.href);
-            console.log(
-                "TestHelper: Available global objects:",
-                Object.keys(window).filter(k => k.startsWith("__") || k.includes("Store") || k.includes("store")),
-            );
-            console.log("TestHelper: Document ready state:", document.readyState);
-            console.log("TestHelper: Body innerHTML length:", document.body.innerHTML.length);
-        });
+        // より詳細なデバッグ情報を追加（ページ閉鎖などに寛容）
+        try {
+            await page.evaluate(() => {
+                console.log("TestHelper: Current page state before generalStore wait:");
+                console.log("TestHelper: URL:", window.location.href);
+                console.log(
+                    "TestHelper: Available global objects:",
+                    Object.keys(window).filter(k => k.startsWith("__") || k.includes("Store") || k.includes("store")),
+                );
+                console.log("TestHelper: Document ready state:", document.readyState);
+                console.log("TestHelper: Body innerHTML length:", document.body.innerHTML.length);
+            });
+        } catch (e: any) {
+            const msg = String(e?.message ?? e);
+            if (
+                msg.includes("Target page, context or browser has been closed")
+                || msg.includes("Execution context was destroyed")
+                || msg.includes("Navigation")
+            ) {
+                console.log("TestHelper: Skipping pre-wait debug log due to transient page/context state");
+            } else {
+                throw e;
+            }
+        }
 
         try {
             await page.waitForFunction(() => {
@@ -742,18 +768,31 @@ export class TestHelpers {
             }, { timeout: 30000 });
         } catch (error) {
             console.log("TestHelper: generalStore wait failed, checking page state");
-            await page.evaluate(() => {
-                console.log("TestHelper: Final page state after generalStore timeout:");
-                console.log("TestHelper: Available stores:", {
-                    generalStore: !!(window as any).generalStore,
-                    userManager: !!(window as any).__USER_MANAGER__,
+            try {
+                await page.evaluate(() => {
+                    console.log("TestHelper: Final page state after generalStore timeout:");
+                    console.log("TestHelper: Available stores:", {
+                        generalStore: !!(window as any).generalStore,
+                        userManager: !!(window as any).__USER_MANAGER__,
+                    });
+                    console.log("TestHelper: DOM elements:", {
+                        outlinerBase: !!document.querySelector('[data-testid="outliner-base"]'),
+                        searchBox: !!document.querySelector(".page-search-box"),
+                        main: !!document.querySelector("main"),
+                    });
                 });
-                console.log("TestHelper: DOM elements:", {
-                    outlinerBase: !!document.querySelector('[data-testid="outliner-base"]'),
-                    searchBox: !!document.querySelector(".page-search-box"),
-                    main: !!document.querySelector("main"),
-                });
-            });
+            } catch (e: any) {
+                const msg = String(e?.message ?? e);
+                if (
+                    msg.includes("Target page, context or browser has been closed")
+                    || msg.includes("Execution context was destroyed")
+                    || msg.includes("Navigation")
+                ) {
+                    console.log("TestHelper: Skipping final state log due to transient page/context state");
+                } else {
+                    throw e;
+                }
+            }
             throw error;
         }
 
