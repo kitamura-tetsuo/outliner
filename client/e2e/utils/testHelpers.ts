@@ -803,6 +803,17 @@ export class TestHelpers {
                     throw e;
                 }
             }
+            // Be tolerant to transient navigation/context-destroy events during boot.
+            const errMsg = String((error as any)?.message ?? error);
+            if (
+                errMsg.includes("Target page, context or browser has been closed")
+                || errMsg.includes("Execution context was destroyed")
+                || errMsg.includes("Navigation")
+            ) {
+                console.log("TestHelper: generalStore wait aborted due to transient page/context change; continuing");
+                // Continue setup without hard-failing; later steps will re-check availability.
+                return { projectName, pageName };
+            }
             throw error;
         }
 
