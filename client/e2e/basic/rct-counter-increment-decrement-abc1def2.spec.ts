@@ -1,0 +1,26 @@
+/** @feature RCT-0001
+ *  Title   : Counter increments and decrements
+ *  Source  : docs/client-features.yaml
+ */
+import { expect, test } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+import "../utils/registerAfterEachSnapshot";
+
+test.describe("counter", () => {
+    test.beforeEach(async ({ page }) => {
+        await TestHelpers.prepareTestEnvironment(page);
+        await page.goto("/counter");
+    });
+
+    test("increments and decrements", async ({ page }) => {
+        const inc = page.getByTestId("inc");
+        const dec = page.getByTestId("dec");
+        const value = page.getByTestId("value");
+
+        await expect(value).toHaveText("0");
+        await inc.click();
+        await expect(value).toHaveText("1");
+        await dec.click();
+        await expect(value).toHaveText("0");
+    });
+});

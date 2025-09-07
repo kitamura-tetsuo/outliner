@@ -10,6 +10,7 @@ import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
 import { OutlinerViewModel } from "../stores/OutlinerViewModel";
 import { YjsSubscriber } from "../stores/YjsSubscriber";
+import { userManager } from "../auth/UserManager";
 import EditorOverlay from "./EditorOverlay.svelte";
 import OutlinerItem from "./OutlinerItem.svelte";
 
@@ -39,7 +40,8 @@ interface Props {
 
 let { pageItem, projectName, pageName, isReadOnly = false, onEdit }: Props = $props();
 
-let currentUser = $state('anonymous');
+let currentUser = $state("anonymous");
+let unsubscribeUser: (() => void) | null = null;
 
 // ビューストアを作成
 const viewModel = new OutlinerViewModel();
@@ -129,22 +131,13 @@ function handleItemResize(event: CustomEvent) {
     }
 }
 
-onMount(async () => {
-    try {
-        const { userManager } = await import("../auth/UserManager");
-        const user = userManager.getCurrentUser();
-        if (user) {
-            currentUser = user.id;
-        }
-    } catch {}
-
-    // onEdit コールバックをストアに設定
+onMount(() => {
+    currentUser = userManager.getCurrentUser()?.id ?? "anonymous";
+    unsubscribeUser = userManager.addEventListener((result) => {
+        currentUser = result?.user.id ?? "anonymous";
+    });
     editorOverlayStore.setOnEditCallback(handleEdit);
-
-    // 初期状態でアイテムの高さを初期化
     itemHeights = new Array(displayItems.current.length).fill(0);
-
-    // 各アイテムの初期高さを取得して設定
     requestAnimationFrame(() => {
         const items = document.querySelectorAll('.item-container');
         items.forEach((item, index) => {
@@ -188,6 +181,10 @@ onDestroy(() => {
 
     // リソースを解放
     viewModel.dispose();
+    if (unsubscribeUser) {
+        unsubscribeUser();
+        unsubscribeUser = null;
+    }
 });
 
 function handleAddItem() {
