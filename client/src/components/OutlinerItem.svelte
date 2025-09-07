@@ -4,7 +4,6 @@ import {
     onMount,
 } from "svelte";
 import { Item, Items } from "../schema/app-schema";
-import { uploadAttachment } from "../services/attachmentService";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
@@ -134,11 +133,11 @@ let componentType = $state<string | undefined>(item.componentType);
 
 // コンポーネントタイプが変更された時にアイテムを更新
 function handleComponentTypeChange(newType: string) {
+    if (!item) return;
     if (newType === "none") {
         item.componentType = undefined;
         componentType = undefined;
-    }
-    else {
+    } else {
         item.componentType = newType;
         componentType = newType;
     }

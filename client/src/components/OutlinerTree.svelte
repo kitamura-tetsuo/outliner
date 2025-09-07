@@ -129,22 +129,10 @@ function handleItemResize(event: CustomEvent) {
     }
 }
 
-onMount(async () => {
-    try {
-        const { userManager } = await import("../auth/UserManager");
-        const user = userManager.getCurrentUser();
-        if (user) {
-            currentUser = user.id;
-        }
-    } catch {}
-
-    // onEdit コールバックをストアに設定
+onMount(() => {
+    currentUser = "local";
     editorOverlayStore.setOnEditCallback(handleEdit);
-
-    // 初期状態でアイテムの高さを初期化
     itemHeights = new Array(displayItems.current.length).fill(0);
-
-    // 各アイテムの初期高さを取得して設定
     requestAnimationFrame(() => {
         const items = document.querySelectorAll('.item-container');
         items.forEach((item, index) => {

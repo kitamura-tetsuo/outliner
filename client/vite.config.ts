@@ -99,10 +99,11 @@ export default defineConfig(async ({ mode }) => {
                 },
                 {
                     extends: "./vite.config.ts",
+                    plugins: [svelteTesting()],
 
                     test: {
                         name: "integration",
-                        environment: "node",
+                        environment: "jsdom",
                         clearMocks: true,
                         include: ["src/tests/integration/**/*{.svelte,}.{test,spec}.{js,ts}"],
                         exclude: ["src/lib/server/**"],
