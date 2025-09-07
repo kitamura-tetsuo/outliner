@@ -1,5 +1,5 @@
 import { type FirebaseApp } from "firebase/app";
-import { connectFirestoreEmulator, doc, Firestore, getDoc, getFirestore, onSnapshot } from "firebase/firestore";
+import { connectFirestoreEmulator, doc, type Firestore, getDoc, getFirestore, onSnapshot } from "firebase/firestore";
 
 import { userManager } from "../auth/UserManager";
 import { getFirebaseApp } from "../lib/firebase-app";

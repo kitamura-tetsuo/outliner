@@ -26,7 +26,8 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Initialize Firestore without storing the instance
+getFirestore(app);
 const functions = getFunctions(app);
 
 const auth = getAuth(app);

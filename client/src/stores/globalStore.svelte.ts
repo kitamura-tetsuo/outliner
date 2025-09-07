@@ -1,16 +1,16 @@
 import type { Project } from "../schema/app-schema";
 import { containerStore } from "./containerStore.svelte";
 import { firestoreStore } from "./firestoreStore.svelte";
-// Switch backend connection store from Fluid to Yjs
+// Switch backend connection store to Yjs
 import { store as appStore } from "./store.svelte";
-import { yjsStore } from "./yjsStore.svelte.ts";
+import { yjsStore } from "./yjsStore.svelte";
 
 /**
  * Global store proxy that exposes a unified interface while
  * delegating to backend specific stores internally.
  */
 class GlobalStoreProxy {
-    // fluid page store
+    // page store
     get pages() {
         return appStore.pages;
     }

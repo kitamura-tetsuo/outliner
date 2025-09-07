@@ -1,5 +1,4 @@
 <script lang="ts">
-import { Tree } from "fluid-framework";
 import {
     onDestroy,
     onMount,
@@ -89,7 +88,6 @@ onMount(() => {
     // テスト用にKeyEventHandlerをグローバルに公開
     if (typeof window !== "undefined") {
         (window as any).__KEY_EVENT_HANDLER__ = KeyEventHandler;
-        (window as any).Tree = Tree;
         (window as any).Items = Items;
         (window as any).generalStore = generalStore;
     }

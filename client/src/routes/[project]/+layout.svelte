@@ -3,7 +3,7 @@ import { onMount } from "svelte";
 import { page as pageStore } from "$app/state";
 import { userManager } from "../../auth/UserManager";
 import { getYjsClientByProjectTitle, createNewYjsProject } from "../../services";
-import { yjsStore } from "../../stores/yjsStore.svelte.ts";
+import { yjsStore } from "../../stores/yjsStore.svelte";
 
 // プロジェクトレベルのレイアウト
 // このレイアウトは /[project] と /[project]/[page] の両方に適用されます
@@ -12,7 +12,7 @@ let { data, children } = $props();
 let project: any = $state(null);
 let isAuthenticated = $state(false);
 
-// fluidStoreからプロジェクトを取得
+// ストアからプロジェクトを取得
 $effect(() => {
     if (yjsStore.yjsClient) {
         project = yjsStore.yjsClient.getProject();

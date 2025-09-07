@@ -18,7 +18,7 @@ import {
 } from "../../../lib/linkPreviewHandler";
 import { getLogger } from "../../../lib/logger";
 import { getYjsClientByProjectTitle } from "../../../services";
-import { yjsStore } from "../../../stores/yjsStore.svelte.ts";
+import { yjsStore } from "../../../stores/yjsStore.svelte";
 import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
 import { store } from "../../../stores/store.svelte";
 
@@ -107,7 +107,7 @@ async function loadProjectAndPage() {
         logger.info(`loadProjectAndPage: YjsClient loaded for project: ${projectName}`);
         logger.info(`loadProjectAndPage: Client containerId: ${client?.containerId}`);
 
-        // fluidClientストアを更新（undefined の場合は既存値を保持してクリアしない）
+        // クライアントストアを更新（undefined の場合は既存値を保持してクリアしない）
         logger.info(`loadProjectAndPage: Setting yjsStore.yjsClient when available`);
         logger.info(`loadProjectAndPage: Client before setting: containerId=${client?.containerId}, clientId=${client?.clientId}`);
         if (client) {
@@ -327,7 +327,7 @@ onDestroy(() => {
             projectName
             ? projectName
             : "プロジェクト"
-        } | Fluid Outliner
+        } | Outliner
     </title>
 </svelte:head>
 

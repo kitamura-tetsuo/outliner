@@ -12,7 +12,7 @@ test.describe("SCH-6974F589: Schedule Management Page", () => {
 
     test("page loads", async ({ page }) => {
         await page.goto("http://localhost:7090/schedule");
-        await expect(page).toHaveTitle(/Fluid Outliner/);
+        await expect(page).toHaveTitle(/Outliner/);
     });
 });
 import "../utils/registerAfterEachSnapshot";
