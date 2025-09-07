@@ -1,0 +1,12 @@
+id: RCT-0001
+title: Counter increments and decrements
+title-ja: カウンターの増減
+description: Demonstrates Svelte 5 runes reactivity with a simple counter component.
+category: example
+status: implemented
+components:
+- client/src/tests/fixtures/Counter.svelte
+- client/src/routes/counter/+page.svelte
+tests:
+- client/src/tests/integration/counter.integration.spec.ts
+- client/e2e/basic/rct-counter-increment-decrement-abc1def2.spec.ts

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import OutlinerBase from "../../components/OutlinerBase.svelte";
+import OutlinerTree from "../../components/OutlinerTree.svelte";
 import { Project } from "../../schema/app-schema";
 import { store as generalStore } from "../../stores/store.svelte";
 
@@ -26,7 +26,7 @@ describe("add-text-functionality", () => {
         // Provide global store references expected by components
         generalStore.project = project;
         generalStore.currentPage = page;
-        render(OutlinerBase, { pageItem: page, projectName: "test", pageName: "page" });
+        render(OutlinerTree, { pageItem: page, projectName: "test", pageName: "page" });
 
         await user.click(screen.getByText("アイテム追加"));
         const newItem = page.items.at(0);

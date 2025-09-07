@@ -3,7 +3,11 @@
 console.log("OutlinerBase script executed - console.log");
 
 import type { Item } from "../schema/app-schema";
+import AliasPicker from "./AliasPicker.svelte";
+import GlobalTextArea from "./GlobalTextArea.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
+import PresenceAvatars from "./PresenceAvatars.svelte";
+import SlashCommandPalette from "./SlashCommandPalette.svelte";
 
 console.log("OutlinerBase imports completed");
 
@@ -48,6 +52,11 @@ console.log("OutlinerBase script completed successfully");
         <div class="outliner-item">Loading...</div>
     {/if}
 
+    <!-- グローバルテキストエリア -->
+    <GlobalTextArea />
+    <SlashCommandPalette />
+    <AliasPicker />
+    <PresenceAvatars />
 </div>
 
 <style>
