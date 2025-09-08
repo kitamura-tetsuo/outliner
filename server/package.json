@@ -1,7 +1,7 @@
 {
     "dependencies": {
         "@dotenvx/dotenvx": "^1.48.4",
-        "@fluidframework/azure-client": "^2.52.0",
+        "@fluidframework/azure-client": "^2.60.0",
         "@fluidframework/azure-service-utils": "^2.52.0",
         "cors": "^2.8.5",
         "express": "^5.1.0",
