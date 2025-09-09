@@ -17,6 +17,7 @@ components:
 - client/src/stores/CommandPaletteStore.svelte.ts
 tests:
 - client/e2e/new/als-alias-keyboard-navigation.spec.ts
+- client/src/tests/integration/als-alias-keyboard-navigation.integration.spec.ts
 - client/e2e/new/als-alias-node-58ad30d4.spec.ts
 - client/e2e/new/als-alias-path-navigation.spec.ts
 - client/e2e/new/als-alias-self-reference-test.spec.ts
