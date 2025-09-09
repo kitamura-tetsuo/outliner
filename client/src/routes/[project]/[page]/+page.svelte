@@ -169,9 +169,8 @@ async function loadProjectAndPage() {
                     logger.info(`Page ${i}: "${title}"`);
                 }
             }
-        }
             // 必要なら currentPage をここでフォールバック設定（+layout に依存しすぎない）
-            if (store.pages && !store.currentPage) {
+            if (!store.currentPage) {
                 try {
                     const arr: any = store.pages.current as any;
                     const len = arr?.length ?? 0;
@@ -188,8 +187,7 @@ async function loadProjectAndPage() {
                     console.error("Failed to set currentPage fallback:", e);
                 }
             }
-
-        else {
+        } else {
             pageNotFound = true;
             logger.error("No pages available - store.pages is null/undefined");
             logger.error(`store.project exists: ${!!store.project}`);
