@@ -5,8 +5,8 @@ description: Demonstrates Svelte 5 runes reactivity with a simple counter compon
 category: example
 status: implemented
 components:
-- client/src/tests/fixtures/Counter.svelte
 - client/src/routes/counter/+page.svelte
+- client/src/tests/fixtures/Counter.svelte
 tests:
-- client/src/tests/integration/rct-counter-increment-decrement-abc1def2.integration.spec.ts
 - client/e2e/basic/rct-counter-increment-decrement-abc1def2.spec.ts
+- client/src/tests/integration/rct-counter-increment-decrement-abc1def2.integration.spec.ts
