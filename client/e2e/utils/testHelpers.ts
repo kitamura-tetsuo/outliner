@@ -14,7 +14,7 @@ export class TestHelpers {
      */
     public static async prepareTestEnvironment(
         page: Page,
-        testInfo: any,
+        testInfo?: any,
         lines: string[] = [],
     ): Promise<{ projectName: string; pageName: string; }> {
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
