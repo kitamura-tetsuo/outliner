@@ -4,4 +4,4 @@ title-ja: windowに公開されるFirestoreストア
 description: Firestoreストアがテスト環境でwindowオブジェクトに公開されることを確認する。
 status: implemented
 tests:
-  - client/e2e/core/fse-firestore-store-exposed-9d3f2b1c.spec.ts
+- client/e2e/core/fse-firestore-store-exposed-9d3f2b1c.spec.ts

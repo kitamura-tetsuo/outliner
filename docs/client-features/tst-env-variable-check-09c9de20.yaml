@@ -5,5 +5,5 @@ category: testing
 description: Verify that VITE_IS_TEST from .env loads in the client runtime.
 status: implemented
 tests:
-- client/src/tests/integration/tst-env-variable-check-09c9de20.integration.spec.ts
 - client/e2e/basic/tst-env-variable-check-09c9de20.spec.ts
+- client/src/tests/integration/tst-env-variable-check-09c9de20.integration.spec.ts
