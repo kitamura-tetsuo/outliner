@@ -7,5 +7,6 @@ acceptance:
 - Room paths are generated consistently across client
 - Token expiry mid-session recovers without manual reload
 tests:
+- client/src/tests/integration/yjs/yrr-token-refresh-reconnect-b4e2c1d0.integration.spec.ts
 - client/e2e/yjs/yrr-token-refresh-reconnect-b4e2c1d0.spec.ts
 title-ja: YJSトークン更新後の自動再接続

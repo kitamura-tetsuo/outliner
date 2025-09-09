@@ -10,4 +10,5 @@ components:
 - client/src/routes/[project]/[page]/+page.svelte
 - client/src/stores/SearchHistoryStore.svelte.ts
 tests:
+- client/src/tests/integration/sea-page-title-search-box-a3674e4f-dce0-4543-9e85-1f1899f97f73.integration.spec.ts
 - client/e2e/core/sea-page-title-search-box-a3674e4f-dce0-4543-9e85-1f1899f97f73.spec.ts

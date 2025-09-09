@@ -1,0 +1,23 @@
+import { render, screen } from "@testing-library/svelte";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import AliasPicker from "../../components/AliasPicker.svelte";
+import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
+import { store as generalStore } from "../../stores/store.svelte";
+
+// Mirrors e2e/new/als-alias-self-reference-test.spec.ts
+
+describe("ALS alias self reference", () => {
+    it("prevents selecting self", async () => {
+        const items = [{ id: "alias", text: "alias", items: [] }];
+        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        render(AliasPicker);
+        const user = userEvent.setup();
+
+        aliasPickerStore.show("alias");
+        const option = await screen.findByRole("button", { name: "root/alias" });
+        await user.click(option);
+        expect((items[0] as any).aliasTargetId).toBeUndefined();
+        expect(aliasPickerStore.isVisible).toBe(false);
+    });
+});
