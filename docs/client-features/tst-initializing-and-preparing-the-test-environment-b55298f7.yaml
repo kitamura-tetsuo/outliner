@@ -13,6 +13,8 @@ tests:
 - client/e2e/helpers.ts
 - client/e2e/utils/linkTestHelpers.ts
 - client/e2e/utils/testHelpers.ts
+- client/src/tests/integration/tst-initializing-and-preparing-the-test-environment-b55298f7.integration.spec.ts
+- client/e2e/basic.spec.ts
 - client/src/tests/integration/homepage-auth.integration.spec.ts
 notes:
 - テスト環境では要素の検出が不安定な場合があるため、再試行機能を持つヘルパー関数を使用してテストを安定化
