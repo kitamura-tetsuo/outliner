@@ -591,10 +591,12 @@ export class TestHelpers {
      */
     public static async navigateToTestProjectPage(
         page: Page,
-        testInfo: any,
+        testInfo?: any,
         lines: string[],
     ): Promise<{ projectName: string; pageName: string; }> {
-        const projectName = `Test Project ${testInfo.workerIndex} ${Date.now()}`;
+        // Derive worker index for unique naming; default to 1 when testInfo is absent
+        const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
+        const projectName = `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = `test-page-${Date.now()}`;
 
         const encodedProject = encodeURIComponent(projectName);
