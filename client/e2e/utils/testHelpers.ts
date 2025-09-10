@@ -635,21 +635,19 @@ export class TestHelpers {
         // ページルートの自動処理を待機（手動設定は行わない）
         console.log("TestHelper: Waiting for page route to automatically load project and page");
 
-        // Fast-path: if toolbar search box is already available, return early for speed
+        // Ensure toolbar search box is ready but continue waiting for project/page load
         try {
             // Prefer role-based lookup in the main toolbar for stability
             const input = page
                 .getByTestId("main-toolbar")
                 .getByRole("textbox", { name: "Search pages" });
             await input.waitFor({ timeout: 12000 });
-            console.log("TestHelper: Search box available early, skipping deep waits");
-            return { projectName, pageName };
+            console.log("TestHelper: Search box available");
         } catch {
             // Fallback to CSS selector for environments without testid plumbing
             try {
                 await page.waitForSelector(".page-search-box input", { timeout: 12000 });
-                console.log("TestHelper: Search box (CSS) available, skipping deep waits");
-                return { projectName, pageName };
+                console.log("TestHelper: Search box (CSS) available");
             } catch {}
         }
 

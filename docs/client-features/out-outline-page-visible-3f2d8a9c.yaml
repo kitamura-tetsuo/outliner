@@ -1,0 +1,12 @@
+id: OUT-3f2d8a9c
+title: Outline page is displayed after environment setup
+description: Ensure that TestHelpers.prepareTestEnvironment navigates to the new project page and displays the outline view.
+category: core
+status: implemented
+acceptance:
+  - prepareTestEnvironment navigates to the created project page
+  - OutlinerBase element becomes visible
+  - Outliner items are rendered
+tests:
+  - client/e2e/core/out-outline-page-visible-3f2d8a9c.spec.ts
+title-ja: テスト環境準備後にアウトラインページが表示される
