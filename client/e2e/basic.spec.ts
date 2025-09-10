@@ -44,5 +44,19 @@ test("認証UIが正しく表示される", async ({ page }) => {
     const loginButton = page.locator('button:has-text("Google")');
     await expect(loginButton).toBeVisible();
 });
+
+/**
+ * @testcase ログアウト後にGoogleログインボタンが表示される
+ * @description ログイン状態からログアウトするとGoogleログインボタンが再表示されることを確認
+ * @check ログアウトボタンをクリックするとGoogleログインボタンが表示される
+ */
+test("ログアウト後にGoogleログインボタンが表示される", async ({ page }) => {
+    await page.goto("/");
+    const logoutButton = page.locator("button.logout-btn");
+    if (await logoutButton.isVisible()) {
+        await logoutButton.click();
+    }
+    await expect(page.locator(".google-btn")).toBeVisible();
+});
 import "./utils/registerAfterEachSnapshot";
 import "./utils/registerAfterEachSnapshot";

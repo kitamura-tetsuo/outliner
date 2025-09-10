@@ -5,8 +5,7 @@ export interface PresenceUser {
 }
 
 export class PresenceStore {
-    // $state は .svelte(.ts) 以外では使えないため、E2E でも動くように通常プロパティで管理
-    users: Record<string, PresenceUser> = {};
+    users = $state<Record<string, PresenceUser>>({});
 
     setUser(user: PresenceUser) {
         this.users = { ...this.users, [user.userId]: user };
