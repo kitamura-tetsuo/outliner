@@ -80,7 +80,6 @@ export function logDebugInfo(): void {
     console.log("Current user:", (window as any).__USER_MANAGER__?.getCurrentUser());
     console.log("Auth state:", (window as any).__USER_MANAGER__?.auth?.currentUser);
     console.log("Firestore userContainer:", firestoreStore.userContainer);
-    console.log("Title registry:", Array.from(titleRegistryStore.titleRegistry.entries()));
     console.log("======================");
 }
 

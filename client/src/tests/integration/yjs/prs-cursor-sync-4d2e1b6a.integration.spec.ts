@@ -19,8 +19,9 @@ describe("yjs presence", () => {
             }
             return fn();
         };
-        const p1c1 = await waitFor(() => c1.getPageConnection(page.id))!;
-        const p1c2 = await waitFor(() => c2.getPageConnection(page.id))!;
+        const p1c1 = await waitFor(() => c1.getPageConnection(page.id));
+        const p1c2 = await waitFor(() => c2.getPageConnection(page.id));
+        if (!p1c1 || !p1c2) throw new Error("page connection not established");
         p1c1.awareness.setLocalState({
             user: { userId: "u1", name: "A" },
             presence: { cursor: { itemId: "root", offset: 0 } },

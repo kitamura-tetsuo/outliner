@@ -22,7 +22,7 @@ export function setupGlobalDebugFunctions() {
             } catch {}
         }
         // サービス / ストア / ユーザーマネージャ
-        (window as any).__FLUID_SERVICE__ = service ?? yjsHighService;
+        (window as any).__FLUID_SERVICE__ = yjsHighService;
         (window as any).__FLUID_STORE__ = yjsStore as any; // keep legacy name for helpers
         (window as any).__USER_MANAGER__ = userManager;
         (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
@@ -97,7 +97,7 @@ if (process.env.NODE_ENV === "test") {
         };
 
         window.getYjsTreePathData = function(path?: string) {
-            const data = window.getYjsTreeDebugData();
+            const data = window.getYjsTreeDebugData?.();
             if (!path) return data;
             return path.split(".").reduce((prev: any, curr: string) => prev?.[curr], data);
         };

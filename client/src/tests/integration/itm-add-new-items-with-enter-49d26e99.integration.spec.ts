@@ -1,6 +1,6 @@
 import { render } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
-import { Tree } from "yjs-orderedtree";
+import { YTree as Tree } from "yjs-orderedtree";
 import OutlinerTree from "../../components/OutlinerTree.svelte";
 import { Cursor } from "../../lib/Cursor";
 import { Project } from "../../schema/app-schema";

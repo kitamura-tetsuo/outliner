@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { expect, type Page } from "@playwright/test";
+import { type Browser, expect, type Page } from "@playwright/test";
 import { CursorValidator } from "./cursorValidation.js";
 
 /**
@@ -16,7 +16,8 @@ export class TestHelpers {
         page: Page,
         testInfo?: any,
         lines: string[] = [],
-    ): Promise<{ projectName: string; pageName: string; }> {
+        browser?: Browser,
+    ): Promise<{ projectName: string; pageName: string; page: Page; }> {
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
         await page.addInitScript(() => {
             try {
@@ -128,7 +129,7 @@ export class TestHelpers {
         await TestHelpers.setupCursorDebugger(page);
 
         // テストページをセットアップ
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines);
+        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
     }
 
     /**
@@ -593,7 +594,8 @@ export class TestHelpers {
         page: Page,
         testInfo?: any,
         lines: string[],
-    ): Promise<{ projectName: string; pageName: string; }> {
+        browser?: Browser,
+    ): Promise<{ projectName: string; pageName: string; page: Page; }> {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
         const projectName = `Test Project ${workerIndex} ${Date.now()}`;
@@ -607,15 +609,36 @@ export class TestHelpers {
         const absoluteUrl = new URL(url, page.url()).toString();
         // Prefer Svelte-managed navigation; fallback to direct navigation if unavailable
         const hasGoto = await page.evaluate(() => !!(window as any).__SVELTE_GOTO__).catch(() => false);
-        if (hasGoto) {
-            await page.evaluate(async (targetUrl) => {
-                const goto = (window as any).__SVELTE_GOTO__;
-                await goto(targetUrl);
-            }, absoluteUrl);
-        } else {
-            await page.goto(absoluteUrl, { waitUntil: "domcontentloaded" });
+        try {
+            if (hasGoto) {
+                await page.evaluate(async (targetUrl) => {
+                    const goto = (window as any).__SVELTE_GOTO__;
+                    await goto(targetUrl);
+                }, absoluteUrl);
+            } else {
+                await page.goto(absoluteUrl, { waitUntil: "domcontentloaded" });
+            }
+            await page.waitForURL(absoluteUrl, { timeout: 60000 });
+        } catch (error) {
+            const msg = String((error as any)?.message ?? error);
+            if (msg.includes("Target page, context or browser has been closed")) {
+                console.log("TestHelper: Page closed during navigation; reopening context");
+                try {
+                    const browserInstance = browser ?? page.context().browser();
+                    let context = page.context();
+                    if (context.isClosed()) {
+                        context = await browserInstance.newContext();
+                    }
+                    page = await context.newPage();
+                    await page.goto(absoluteUrl, { waitUntil: "domcontentloaded" });
+                    await page.waitForURL(absoluteUrl, { timeout: 60000 });
+                } catch (reopenErr) {
+                    console.warn("TestHelper: Failed to reopen context after navigation", reopenErr);
+                }
+            } else {
+                throw error;
+            }
         }
-        await page.waitForURL(absoluteUrl, { timeout: 60000 });
 
         // 遷移後の状態を確認
         const currentUrl = page.url();
@@ -812,7 +835,7 @@ export class TestHelpers {
             ) {
                 console.log("TestHelper: generalStore wait aborted due to transient page/context change; continuing");
                 // Continue setup without hard-failing; later steps will re-check availability.
-                return { projectName, pageName };
+                return { projectName, pageName, page };
             }
             throw error;
         }
@@ -915,10 +938,28 @@ export class TestHelpers {
                 success = true;
                 console.log(`TestHelper: Successfully satisfied ready conditions on attempt ${attempts}`);
             } catch (error) {
-                console.log(
-                    `TestHelper: Attempt ${attempts} failed:`,
-                    error instanceof Error ? error.message : String(error),
-                );
+                const msg = error instanceof Error ? error.message : String(error);
+                console.log(`TestHelper: Attempt ${attempts} failed:`, msg);
+
+                // ブラウザコンテキストが閉じられた場合は新しいページを開き直して再試行
+                if (
+                    msg.includes("Target page, context or browser has been closed")
+                    || msg.includes("Context closed")
+                ) {
+                    try {
+                        console.log("TestHelper: Reopening page after context closed");
+                        const browserInstance = browser ?? page.context().browser();
+                        let context = page.context();
+                        if (context.isClosed()) {
+                            context = await browserInstance.newContext();
+                        }
+                        page = await context.newPage();
+                        await page.goto(absoluteUrl, { waitUntil: "domcontentloaded" });
+                    } catch (e) {
+                        console.warn("TestHelper: Failed to reopen page", e);
+                    }
+                }
+
                 if (attempts < maxAttempts) {
                     console.log("TestHelper: Retrying...");
                     // ページが閉じられていてもリトライ待機できるように、page.waitForTimeoutではなく
@@ -1047,7 +1088,7 @@ export class TestHelpers {
         console.log("TestHelper: Proceeding to tests (OutlinerTree presence not strictly required at this point)");
 
         // ここでの最終 evaluate はテスト中のページクローズと競合しうるため省略
-        return { projectName, pageName };
+        return { projectName, pageName, page };
     }
 
     /**

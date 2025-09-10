@@ -4,7 +4,7 @@ import { Item, Project } from "./app-schema";
 // モック: Cursor が依存するストアのうち、今回のテストで使用するのは currentPage のみ
 vi.mock("../stores/store.svelte", () => ({
     store: {
-        currentPage: undefined as unknown as Item | undefined,
+        currentPage: undefined as any,
         subscribe: vi.fn(),
         update: vi.fn(),
         set: vi.fn(),
@@ -73,7 +73,7 @@ describe("Cursor.searchItem recursion over children (no exceptions)", () => {
         } as any);
 
         // 例外が出ないこと、および見つかること
-        let found: Item | undefined;
+        let found: any;
         expect(() => {
             found = cursor.findTarget();
         }).not.toThrow();

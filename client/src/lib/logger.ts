@@ -145,7 +145,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
             }
 
             // 元のログメソッドを呼び出し
-            return originalMethod.apply(logger, ["", ...args]);
+            return originalMethod("", ...args);
         };
     });
 

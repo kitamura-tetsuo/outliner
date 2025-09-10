@@ -35,10 +35,8 @@ async function getFreshIdToken(): Promise<string> {
         await new Promise(resolve => setTimeout(resolve, 200));
     }
     if (!auth.currentUser) {
-        // As a fallback, trigger userManager.refreshToken to ensure auth flow started
-        try {
-            await userManager.refreshToken();
-        } catch {}
+        // As a fallback, wait briefly to allow auth flow to start
+        await new Promise(resolve => setTimeout(resolve, 200));
     }
     const token = await auth.currentUser?.getIdToken(true);
     if (!token) {
@@ -136,7 +134,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
     const pages = new Map<string, PageConnection>();
 
-    doc.on("subdoc", (evt: any) => {
+    doc.on("subdocs", (evt: any) => {
         evt.added.forEach((s: Y.Doc) => {
             void connectPageDoc(s, projectId, s.guid).then(c => pages.set(s.guid, c));
         });

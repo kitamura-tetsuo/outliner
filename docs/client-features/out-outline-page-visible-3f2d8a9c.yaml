@@ -4,9 +4,14 @@ description: Ensure that TestHelpers.prepareTestEnvironment navigates to the new
 category: core
 status: implemented
 acceptance:
-  - prepareTestEnvironment navigates to the created project page
-  - OutlinerBase element becomes visible
-  - Outliner items are rendered
+- Breadcrumb shows project and page names
+- First outliner item accepts text input
+- Outliner items are rendered
+- OutlinerBase element becomes visible
+- Toolbar search box is displayed
+- prepareTestEnvironment navigates to the created project page
+- Enter creates a new outliner item
+- Consecutive Enter keys append additional outliner items
 tests:
-  - client/e2e/core/out-outline-page-visible-3f2d8a9c.spec.ts
+- client/e2e/core/out-outline-page-visible-3f2d8a9c.spec.ts
 title-ja: テスト環境準備後にアウトラインページが表示される
