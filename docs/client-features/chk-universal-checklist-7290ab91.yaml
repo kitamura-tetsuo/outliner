@@ -9,8 +9,8 @@ services:
 - src/services/checklistService.ts
 tests:
 - client/e2e/new/CHK-0001.spec.ts
+- client/src/tests/integration/CHK-0001.integration.spec.ts
 - src/tests/checklistService.test.ts
-- src/tests/integration/checklist.integration.spec.ts
 acceptance:
 - Habit lists auto reset based on RRule
 - Items can be added to the checklist

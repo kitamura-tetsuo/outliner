@@ -6,3 +6,4 @@ category: api
 status: implemented
 tests:
 - client/e2e/new/yjs-service-operations-bd6b971b.spec.ts
+- client/src/tests/integration/yjs-service-operations-bd6b971b.integration.spec.ts

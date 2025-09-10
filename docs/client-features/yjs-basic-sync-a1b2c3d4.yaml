@@ -9,3 +9,4 @@ acceptance:
 - Yjs store initializes after authentication
 tests:
 - client/e2e/new/yjs-basic-sync-a1b2c3d4.spec.ts
+- client/src/tests/integration/yjs/yjs-basic-sync-a1b2c3d4.integration.spec.ts

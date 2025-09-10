@@ -1,0 +1,11 @@
+id: TXT-8c8218a3
+title: Add text to new item
+title-ja: 新しいアイテムにテキストを追加
+description: Verify that creating an item and updating its text persists in the project tree.
+category: example
+status: implemented
+components:
+- client/src/components/OutlinerTree.svelte
+tests:
+- client/e2e/basic/add-text-functionality.spec.ts
+- client/src/tests/integration/add-text-functionality.integration.spec.ts

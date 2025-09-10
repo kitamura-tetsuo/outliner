@@ -14,7 +14,7 @@ services:
 tests:
 - client/e2e/new/cnt-shared-container-store-12ee98aa.spec.ts
 - client/src/stores/ContainerStore.test.ts
-- client/src/tests/integration/containerStore.integration.spec.ts
+- client/src/tests/integration/cnt-shared-container-store-12ee98aa.integration.spec.ts
 acceptance:
 - ContainerSelector lists containers from the shared store
 - Deletion page displays projects from the shared store

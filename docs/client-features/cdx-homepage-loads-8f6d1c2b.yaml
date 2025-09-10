@@ -1,0 +1,11 @@
+id: CDX-8f6d1c2b
+title: Home page loads after setup
+title-ja: セットアップ後にホームページが表示される
+category: core
+status: implemented
+acceptance:
+- After environment setup, navigating to "/" displays the home page
+- Main toolbar and basic UI are visible
+- No errors are thrown during initial render
+tests:
+- client/e2e/new/cdx-homepage-loads-8f6d1c2b.spec.ts

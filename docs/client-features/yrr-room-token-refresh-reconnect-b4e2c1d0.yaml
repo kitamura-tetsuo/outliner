@@ -8,4 +8,5 @@ acceptance:
 - Token expiry mid-session recovers without manual reload
 tests:
 - client/e2e/yjs/yrr-token-refresh-reconnect-b4e2c1d0.spec.ts
+- client/src/tests/integration/yjs/yrr-token-refresh-reconnect-b4e2c1d0.integration.spec.ts
 title-ja: YJSトークン更新後の自動再接続

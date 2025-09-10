@@ -13,5 +13,5 @@ acceptance:
 - 通常のアイテムでは、新しいアイテムは兄弟として追加される
 tests:
 - client/e2e/core/itm-add-new-items-with-enter-49d26e99.spec.ts
-- client/e2e/core/itm-add-new-items-with-enter-49d26e99.spec.ts
+- client/src/tests/integration/itm-add-new-items-with-enter-49d26e99.integration.spec.ts
 title-ja: Enterで新規アイテム追加

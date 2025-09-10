@@ -11,4 +11,5 @@ acceptance:
 tests:
 - client/e2e/new/prs-real-time-presence-indicators-7b6a1ea8.spec.ts
 - client/src/tests/fluidPresence.test.ts
+- client/src/tests/integration/yjs/prs-real-time-presence-indicators-7b6a1ea8.integration.spec.ts
 - client/src/tests/presenceStore.test.ts

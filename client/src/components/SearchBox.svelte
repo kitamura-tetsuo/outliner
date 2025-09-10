@@ -51,48 +51,33 @@ let results = $derived.by(() => {
         if (cur) projectToUse = cur;
     }
 
-    // Resolve pages robustly. Prefer a non-empty generalStore.pages.current,
-    // otherwise fall back to project.items. This avoids getting stuck on an
-    // empty Items collection during early initialization.
+    // Resolve pages robustly. Prefer a non-empty store.pages.current, otherwise
+    // fall back to project.items. Reading from `store` ensures reactivity when
+    // pages load after the user begins typing.
     const collectPages = (): any[] => {
         try {
-            if (typeof window !== 'undefined') {
-                const gs = (window as any).generalStore;
-                const pages = gs?.pages?.current;
-                const arr: any[] = [];
-                if (pages) {
-                    if (typeof pages[Symbol.iterator] === 'function') {
-                        for (const p of pages as any) arr.push(p);
-                    } else if (typeof (pages as any).length === 'number') {
-                        const len = (pages as any).length;
-                        for (let i = 0; i < len; i++) {
-                            const v = (pages as any).at ? (pages as any).at(i) : (pages as any)[i];
-                            if (typeof v !== 'undefined') arr.push(v);
-                        }
+            const pages = store.pages?.current;
+            const arr: any[] = [];
+            if (pages) {
+                if (typeof pages[Symbol.iterator] === 'function') {
+                    for (const p of pages as any) arr.push(p);
+                } else if (typeof (pages as any).length === 'number') {
+                    const len = (pages as any).length;
+                    for (let i = 0; i < len; i++) {
+                        const v = (pages as any).at ? (pages as any).at(i) : (pages as any)[i];
+                        if (typeof v !== 'undefined') arr.push(v);
                     }
                 }
-                if (arr.length) return arr;
-                // Fallback: if pages.current is empty, use project.items
-                const projItems = gs?.project?.items as any;
-                const projArr: any[] = [];
-                if (projItems) {
-                    if (typeof projItems[Symbol.iterator] === 'function') {
-                        for (const p of projItems as any) projArr.push(p);
-                    } else if (typeof (projItems as any).length === 'number') {
-                        const len = (projItems as any).length;
-                        for (let i = 0; i < len; i++) {
-                            const v = (projItems as any).at ? (projItems as any).at(i) : (projItems as any)[i];
-                            if (typeof v !== 'undefined') projArr.push(v);
-                        }
-                    }
-                }
-                if (projArr.length) return projArr;
             }
+            if (arr.length) return arr;
         } catch {}
 
-        // Fallback: use project.items
+        // Fallback: use project items from the effective project or window
         try {
-            const items = projectToUse?.items as Items | undefined;
+            const items =
+                effectiveProject?.items
+                || projectToUse?.items
+                || (typeof window !== 'undefined' ? (window as any).generalStore?.project?.items : undefined);
             const arr: any[] = [];
             if (items) {
                 if (typeof items[Symbol.iterator] === 'function') {
@@ -106,7 +91,9 @@ let results = $derived.by(() => {
                 }
             }
             return arr;
-        } catch { return []; }
+        } catch {
+            return [];
+        }
     };
 
     const pagesArr = collectPages();

@@ -19,4 +19,9 @@ tests:
 - client/e2e/new/als-alias-keyboard-navigation.spec.ts
 - client/e2e/new/als-alias-node-58ad30d4.spec.ts
 - client/e2e/new/als-alias-path-navigation.spec.ts
+- client/e2e/new/als-alias-self-reference-test.spec.ts
 - client/e2e/new/als-alias-target-change-f508c5a9.spec.ts
+- client/src/tests/integration/als-alias-keyboard-navigation.integration.spec.ts
+- client/src/tests/integration/als-alias-node-58ad30d4.integration.spec.ts
+- client/src/tests/integration/als-alias-path-navigation.integration.spec.ts
+- client/src/tests/integration/als-alias-self-reference-test.integration.spec.ts

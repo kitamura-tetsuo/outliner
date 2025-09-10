@@ -14,7 +14,7 @@ export class TestHelpers {
      */
     public static async prepareTestEnvironment(
         page: Page,
-        testInfo: any,
+        testInfo?: any,
         lines: string[] = [],
     ): Promise<{ projectName: string; pageName: string; }> {
         // LNK 系テストかの判定（ファイル名/タイトル）
@@ -894,10 +894,12 @@ export class TestHelpers {
      */
     public static async navigateToTestProjectPage(
         page: Page,
-        testInfo: any,
+        testInfo?: any,
         lines: string[],
     ): Promise<{ projectName: string; pageName: string; }> {
-        const projectName = `Test Project ${testInfo.workerIndex} ${Date.now()}`;
+        // Derive worker index for unique naming; default to 1 when testInfo is absent
+        const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
+        const projectName = `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = `test-page-${Date.now()}`;
 
         // Browser console capture for debugging hydration/CSR failures
@@ -984,6 +986,18 @@ export class TestHelpers {
             await page.waitForSelector(".outliner-item .item-content", { timeout: 1500 });
             console.log("TestHelper: Outliner items detected (light check)");
         } catch {}
+
+        // ツールバーの検索ボックス準備を軽く確認（環境差に配慮しロール/セレクタの両方を試す）
+        try {
+            const input = page.getByTestId("main-toolbar").getByRole("textbox", { name: "Search pages" });
+            await input.waitFor({ timeout: 12000 });
+            console.log("TestHelper: Search box available");
+        } catch {
+            try {
+                await page.waitForSelector(".page-search-box input", { timeout: 12000 });
+                console.log("TestHelper: Search box (CSS) available");
+            } catch {}
+        }
 
         // LNK 系テストでは、ページに最低 1 件のアイテムが必要となるため、存在しない場合は軽量に追加（テスト専用）
         try {
