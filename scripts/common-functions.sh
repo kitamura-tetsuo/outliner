@@ -83,6 +83,22 @@ wait_for_port() {
   return 1  # Return error instead of exit to allow script to continue
 }
 
+# Quick check: is a port open without waiting (no dependency on nc)
+port_is_open() {
+  local port="$1"
+  if nc -z localhost "${port}" >/dev/null 2>&1; then
+    return 0
+  fi
+  if curl -s --connect-timeout 2 "http://localhost:${port}/" >/dev/null 2>&1; then
+    return 0
+  fi
+  if command -v lsof >/dev/null 2>&1 && lsof -i ":${port}" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+
 # Create log directories
 create_log_directories() {
   for dir in "${LOG_DIRS[@]}"; do
@@ -297,7 +313,7 @@ install_all_dependencies() {
 
 # Start Firebase emulator
 start_firebase_emulator() {
-  if nc -z localhost ${FIREBASE_AUTH_PORT} >/dev/null 2>&1; then
+  if port_is_open ${FIREBASE_AUTH_PORT}; then
     echo "Firebase emulator already running, stopping it first..."
     kill_ports
     sleep 2
@@ -332,34 +348,25 @@ EOF
 
   # Wait for Firebase emulator to start and verify it's working
   echo "Waiting for Firebase emulator to start..."
-  for i in {1..60}; do
-    if nc -z localhost ${FIREBASE_AUTH_PORT} >/dev/null 2>&1; then
-      echo "Firebase Auth emulator is running on port ${FIREBASE_AUTH_PORT}"
-      break
-    fi
-    echo "Waiting for Firebase Auth emulator... (attempt $i/60)"
-    sleep 3
-  done
+  if wait_for_port ${FIREBASE_AUTH_PORT}; then
+    echo "Firebase Auth emulator is running on port ${FIREBASE_AUTH_PORT}"
+  else
+    echo "Warning: Firebase Auth emulator may not be ready on port ${FIREBASE_AUTH_PORT}"
+  fi
 
   # Check if Firebase Functions emulator is running
-  for i in {1..60}; do
-    if nc -z localhost ${FIREBASE_FUNCTIONS_PORT} >/dev/null 2>&1; then
-      echo "Firebase Functions emulator is running on port ${FIREBASE_FUNCTIONS_PORT}"
-      break
-    fi
-    echo "Waiting for Firebase Functions emulator... (attempt $i/60)"
-    sleep 3
-  done
+  if wait_for_port ${FIREBASE_FUNCTIONS_PORT}; then
+    echo "Firebase Functions emulator is running on port ${FIREBASE_FUNCTIONS_PORT}"
+  else
+    echo "Warning: Firebase Functions emulator may not be ready on port ${FIREBASE_FUNCTIONS_PORT}"
+  fi
 
   # Check if Firebase Hosting emulator is running
-  for i in {1..60}; do
-    if nc -z localhost ${FIREBASE_HOSTING_PORT} >/dev/null 2>&1; then
-      echo "Firebase Hosting emulator is running on port ${FIREBASE_HOSTING_PORT}"
-      break
-    fi
-    echo "Waiting for Firebase Hosting emulator... (attempt $i/60)"
-    sleep 3
-  done
+  if wait_for_port ${FIREBASE_HOSTING_PORT}; then
+    echo "Firebase Hosting emulator is running on port ${FIREBASE_HOSTING_PORT}"
+  else
+    echo "Warning: Firebase Hosting emulator may not be ready on port ${FIREBASE_HOSTING_PORT}"
+  fi
 
   # Additional wait for Firebase Functions to fully initialize
   echo "Waiting additional 10 seconds for Firebase Functions to fully initialize..."
