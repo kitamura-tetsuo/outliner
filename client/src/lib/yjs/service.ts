@@ -1,5 +1,6 @@
 import type { Awareness } from "y-protocols/awareness";
 import { Item, Items, Project } from "../../schema/yjs-schema";
+import { colorForUser, presenceStore } from "../../stores/PresenceStore.svelte";
 
 function childrenKeys(tree: any, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);
@@ -80,16 +81,17 @@ export const yjsService = {
     },
 
     bindProjectPresence(awareness: Awareness) {
-        // Avoid importing Svelte $state stores in Node (Playwright worker) context
         const update = ({ added, updated, removed }: any) => {
-            const target = (globalThis as any).presenceStore;
-            if (!target) return; // no-op when store not available (e.g., tests)
+            // グローバルに登録されたストアがあればそれを使い、なければ直接importしたものを使う
+            const target = (globalThis as any).presenceStore ?? presenceStore;
             const states = (awareness as any).getStates();
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);
                 const user = s?.user;
                 if (!user) return;
-                const color = user.color || ((globalThis as any).colorForUser?.(user.userId) ?? "#888");
+                const color = user.color
+                    || ((globalThis as any).colorForUser?.(user.userId) ?? colorForUser(user.userId));
+                // テストが即時反映を期待しているため同期更新する
                 target.setUser({ userId: user.userId, userName: user.name, color });
             });
             removed.forEach((id: number) => {

@@ -1,4 +1,7 @@
 // @ts-nocheck
+
+// Do not add webServer.
+
 import { defineConfig, devices } from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -139,25 +142,4 @@ export default defineConfig({
             testDir: "./e2e/server",
         },
     ],
-    webServer: {
-        // Use dedicated dev script that binds to localhost:7090 with test env
-        command: `npm run dev:localhost`,
-        url: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
-        reuseExistingServer: !process.env.CI,
-        env: {
-            NODE_ENV: "test",
-            TEST_ENV: "localhost",
-            VITE_IS_TEST: "true",
-            VITE_PORT: TEST_PORT,
-            VITE_TINYLICIOUS_PORT: TINYLICIOUS_PORT,
-        },
-        stdout: "pipe",
-        stderr: "pipe",
-        readyCondition: {
-            pattern: "ready in",
-            flags: "i",
-        },
-        // Increase timeout to allow dev server to start
-        timeout: 120000,
-    },
 });

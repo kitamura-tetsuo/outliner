@@ -35,10 +35,10 @@ export class Cursor {
     }
 
     // SharedTree 上の Item を再帰検索
-    findTarget(): Item | undefined {
+    findTarget(): any {
         const root = generalStore.currentPage;
         if (!root) return undefined;
-        return this.searchItem(root, this.itemId);
+        return this.searchItem(root as any, this.itemId);
     }
 
     // 前のアイテムを探す

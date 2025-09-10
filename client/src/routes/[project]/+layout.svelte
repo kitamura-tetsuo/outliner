@@ -32,10 +32,15 @@ async function loadProject(projectNameFromParam?: string) {
     try {
         const projectName = projectNameFromParam ?? (data as any).project;
 
-        // プロジェクト名からFluidClientを取得
+        // プロジェクト名からYjsクライアントを取得
         let client = await getYjsClientByProjectTitle(projectName);
-        // In tests/Yjs-only mode, auto-create a project if none exists for this title
-        if (!client && (import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true")) {
+        // テスト実行時は localStorage の VITE_IS_TEST も考慮して自動作成
+        const isTestEnv = (
+            import.meta.env.MODE === "test"
+            || import.meta.env.VITE_IS_TEST === "true"
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        );
+        if (!client && isTestEnv) {
             try {
                 client = await createNewYjsProject(projectName);
             } catch (e) {

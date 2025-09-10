@@ -1126,7 +1126,7 @@ function handlePaste(event: ClipboardEvent) {
 }
 
 /* 矩形選択の更新時のスタイル */
-.selection-box-updating {
+:global(.selection-box-updating) {
     animation: box-selection-update 0.3s ease-out;
 }
 

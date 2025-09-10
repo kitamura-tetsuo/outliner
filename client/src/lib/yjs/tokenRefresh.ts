@@ -6,8 +6,10 @@ export function refreshAuthAndReconnect(provider: WebsocketProvider): () => Prom
         try {
             const t = await userManager.auth.currentUser?.getIdToken(true);
             if (t) {
-                provider.wsParams = { ...(provider.wsParams || {}), auth: t } as any;
-                if (provider.shouldConnect && provider.wsconnected !== true) provider.connect();
+                (provider as any).params = { ...((provider as any).params || {}), auth: t };
+                if ((provider as any).shouldConnect && (provider as any).wsconnected !== true) {
+                    (provider as any).connect();
+                }
             }
         } catch {}
     };

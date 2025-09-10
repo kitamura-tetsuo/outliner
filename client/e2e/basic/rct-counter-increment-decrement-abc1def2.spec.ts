@@ -7,8 +7,8 @@ import { TestHelpers } from "../utils/testHelpers";
 import "../utils/registerAfterEachSnapshot";
 
 test.describe("counter", () => {
-    test.beforeEach(async ({ page }) => {
-        await TestHelpers.prepareTestEnvironment(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
         await page.goto("/counter");
     });
 

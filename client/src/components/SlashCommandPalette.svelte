@@ -15,7 +15,7 @@ function handleClick(type: "table" | "chart" | "alias") {
     <ul>
         {#each commandPaletteStore.filtered as cmd, i}
             <li class:selected={i === commandPaletteStore.selectedIndex}>
-                <button on:click={() => handleClick(cmd.type)}>{cmd.label}</button>
+                <button type="button" onclick={() => handleClick(cmd.type)}>{cmd.label}</button>
             </li>
         {/each}
     </ul>

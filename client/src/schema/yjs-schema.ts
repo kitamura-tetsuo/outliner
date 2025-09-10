@@ -124,7 +124,29 @@ export class Project {
         return new Project(doc, tree);
     }
 
+    static fromDoc(doc: Y.Doc): Project {
+        const ymap = doc.getMap("orderedTree");
+        const tree = new YTree(ymap);
+        return new Project(doc, tree);
+    }
+
+    get title(): string {
+        try {
+            const meta = this.ydoc.getMap("metadata") as Y.Map<any>;
+            return String(meta.get("title") ?? "");
+        } catch {
+            return "";
+        }
+    }
+
     get items(): Items {
         return new Items(this.ydoc, this.tree, "root");
+    }
+
+    // Fluid互換API: ページ（最上位アイテム）を追加
+    addPage(title: string, author: string): Item {
+        const page = this.items.addNode(author ?? "user");
+        page.updateText(title ?? "");
+        return page;
     }
 }

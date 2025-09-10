@@ -35,15 +35,20 @@ async function getFreshIdToken(): Promise<string> {
         await new Promise(resolve => setTimeout(resolve, 200));
     }
     if (!auth.currentUser) {
-        // As a fallback, trigger userManager.refreshToken to ensure auth flow started
+        // As a fallback, trigger listeners to ensure auth flow is started in tests
         try {
-            await userManager.refreshToken();
+            userManager.manualNotifyListeners(
+                userManager.getCurrentUser() ? { user: userManager.getCurrentUser()! } : null,
+            );
         } catch {}
     }
     const token = await auth.currentUser?.getIdToken(true);
     if (!token) {
         // In test/integration environments, allow proceeding without a token
-        if (import.meta.env.MODE === "test" || process.env.NODE_ENV === "test") {
+        const isE2E = (import.meta.env.VITE_IS_TEST === "true")
+            || (import.meta.env.MODE === "test")
+            || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
+        if (isE2E) {
             return "";
         }
         throw new Error("No Firebase ID token available");
@@ -60,14 +65,23 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         } catch { /* no-op in Node */ }
     }
     let token = "";
-    if (!(import.meta.env.MODE === "test" || process.env.NODE_ENV === "test")) {
+    const isE2E_env = (import.meta.env.VITE_IS_TEST === "true")
+        || (import.meta.env.MODE === "test")
+        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
+    if (!isE2E_env) {
         try {
             token = await getFreshIdToken();
         } catch {}
     }
+    const isE2E = (import.meta.env.VITE_IS_TEST === "true")
+        || (import.meta.env.MODE === "test")
+        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
+    const disableWs = (import.meta.env.VITE_YJS_DISABLE_WS === "true")
+        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_YJS_DISABLE_WS") === "true");
+    const connectFlag = !(isE2E && disableWs);
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: true,
+        connect: connectFlag,
     });
     const awareness = provider.awareness;
     const current = userManager.getCurrentUser();
@@ -107,16 +121,25 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     }
 
     let token = "";
-    if (!(import.meta.env.MODE === "test" || process.env.NODE_ENV === "test")) {
+    const isE2E_env2 = (import.meta.env.VITE_IS_TEST === "true")
+        || (import.meta.env.MODE === "test")
+        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
+    if (!isE2E_env2) {
         try {
             token = await getFreshIdToken();
         } catch {
             // Tolerate missing token; provider will attempt reconnect later
         }
     }
+    const isE2E2 = (import.meta.env.VITE_IS_TEST === "true")
+        || (import.meta.env.MODE === "test")
+        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
+    const disableWs2 = (import.meta.env.VITE_YJS_DISABLE_WS === "true")
+        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_YJS_DISABLE_WS") === "true");
+    const connectFlag = !(isE2E2 && disableWs2);
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: true,
+        connect: connectFlag,
     });
 
     // Awareness (presence)
@@ -136,14 +159,21 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
     const pages = new Map<string, PageConnection>();
 
-    doc.on("subdoc", (evt: any) => {
+    doc.on("subdocs", (evt: any) => {
         evt.added.forEach((s: Y.Doc) => {
-            void connectPageDoc(s, projectId, s.guid).then(c => pages.set(s.guid, c));
+            const gid = (s as any).guid ?? "";
+            if (!gid) {
+                // Avoid connecting to an empty page room (would hit ws:///projects/.../pages/ and 404)
+                // Wait until the subdoc has a guid before attempting a connection
+                return;
+            }
+            void connectPageDoc(s, projectId, gid).then(c => pages.set(gid, c));
         });
         evt.removed.forEach((s: Y.Doc) => {
-            const c = pages.get(s.guid);
+            const id = (s as any).guid ?? "";
+            const c = pages.get(id);
             c?.dispose();
-            pages.delete(s.guid);
+            pages.delete(id);
         });
     });
 
@@ -201,16 +231,25 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         } catch { /* no-op in Node */ }
     }
     let token = "";
-    if (!(import.meta.env.MODE === "test" || process.env.NODE_ENV === "test")) {
+    const isE2E_env3 = (import.meta.env.VITE_IS_TEST === "true")
+        || (import.meta.env.MODE === "test")
+        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
+    if (!isE2E_env3) {
         try {
             token = await getFreshIdToken();
         } catch {
             // Stay offline if auth is not ready; provider will attempt reconnect later.
         }
     }
+    const isE2E3 = (import.meta.env.VITE_IS_TEST === "true")
+        || (import.meta.env.MODE === "test")
+        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
+    const disableWs3 = (import.meta.env.VITE_YJS_DISABLE_WS === "true")
+        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_YJS_DISABLE_WS") === "true");
+    const connectFlag = !(isE2E3 && disableWs3);
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: true,
+        connect: connectFlag,
     });
     const awareness = provider.awareness;
     const current = userManager.getCurrentUser();

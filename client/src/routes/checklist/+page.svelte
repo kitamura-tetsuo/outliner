@@ -2,8 +2,8 @@
 import { browser } from "$app/environment";
 import Checklist from "../../components/Checklist.svelte";
 
-let mode: "shopping" | "packing" | "habit" | "custom" = "shopping";
-let rrule: string | undefined;
+let mode: "shopping" | "packing" | "habit" | "custom" = $state("shopping");
+let rrule: string | undefined = $state(undefined);
 
 if (browser) {
     const stored = localStorage.getItem("CHK_MODE");

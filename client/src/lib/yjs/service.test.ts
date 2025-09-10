@@ -40,9 +40,9 @@ describe("yjsService", () => {
         const awareness = new Awareness(new Y.Doc());
         presenceStore.users = {} as any;
         const unbind = yjsService.bindProjectPresence(awareness);
-        awareness.setLocalState({ user: { userId: "u1", name: "Alice" } });
+        awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
         expect(presenceStore.users["u1"].userName).toBe("Alice");
-        awareness.setLocalState(null);
+        awareness.setLocalStateField("user", null as any);
         unbind();
     });
 
@@ -50,13 +50,12 @@ describe("yjsService", () => {
         const awareness = new Awareness(new Y.Doc());
         editorOverlayStore.cursors = {} as any;
         const unbind = yjsService.bindPagePresence(awareness);
-        awareness.setLocalState({
-            user: { userId: "u2", name: "Bob" },
-            presence: { cursor: { itemId: "i1", offset: 0 } },
-        });
+        awareness.setLocalStateField("user", { userId: "u2", name: "Bob" });
+        awareness.setLocalStateField("presence", { cursor: { itemId: "i1", offset: 0 } });
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
-        awareness.setLocalState(null);
+        awareness.setLocalStateField("user", null as any);
+        awareness.setLocalStateField("presence", null as any);
         unbind();
     });
 });

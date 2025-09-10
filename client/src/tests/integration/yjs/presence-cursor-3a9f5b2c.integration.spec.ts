@@ -19,15 +19,13 @@ describe("yjs presence", () => {
             }
             return fn();
         };
-        const p1c1 = await waitFor(() => c1.getPageConnection(page.id))!;
-        const p1c2 = await waitFor(() => c2.getPageConnection(page.id))!;
-        p1c1.awareness.setLocalState({
-            user: { userId: "u1", name: "A" },
-            presence: { cursor: { itemId: "root", offset: 0 } },
-        });
+        const p1c1 = await waitFor(() => c1.getPageConnection(page.id)) as any;
+        const p1c2 = await waitFor(() => c2.getPageConnection(page.id)) as any;
+        p1c1!.awareness.setLocalStateField("user", { userId: "u1", name: "A" });
+        p1c1!.awareness.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } });
         await new Promise(r => setTimeout(r, 500));
-        const states = p1c2.awareness.getStates();
-        const received = Array.from(states.values()).some(s => s.presence?.cursor?.itemId === "root");
+        const states = p1c2!.awareness.getStates();
+        const received = Array.from(states.values()).some((s: any) => s.presence?.cursor?.itemId === "root");
         expect(received).toBe(true);
         c1.dispose();
         c2.dispose();

@@ -73,7 +73,7 @@ describe("Cursor.searchItem recursion over children (no exceptions)", () => {
         } as any);
 
         // 例外が出ないこと、および見つかること
-        let found: Item | undefined;
+        let found: any;
         expect(() => {
             found = cursor.findTarget();
         }).not.toThrow();

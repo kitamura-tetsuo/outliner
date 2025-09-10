@@ -290,8 +290,8 @@ onMount(() => {
                 placeholder="ここにコピーするテキストを入力してください"
             ></textarea>
             <div>
-                <button on:click={handleClipboardCopy}>コピー</button>
-                <button on:click={handleClipboardPaste}>ペースト</button>
+                <button onclick={handleClipboardCopy}>コピー</button>
+                <button onclick={handleClipboardPaste}>ペースト</button>
             </div>
             <div
                 class="result"
@@ -310,8 +310,8 @@ onMount(() => {
                 placeholder="ここにコピーするテキストを入力してください"
             ></textarea>
             <div>
-                <button on:click={handleExecCommandCopy}>コピー</button>
-                <button on:click={handleExecCommandPaste}>ペースト</button>
+                <button onclick={handleExecCommandCopy}>コピー</button>
+                <button onclick={handleExecCommandPaste}>ペースト</button>
             </div>
             <div
                 class="result"
@@ -324,7 +324,7 @@ onMount(() => {
 
         <div class="test-section">
             <h2>3. クリップボード権限テスト</h2>
-            <button on:click={checkPermissions}>クリップボード権限を確認</button>
+            <button onclick={checkPermissions}>クリップボード権限を確認</button>
             <div
                 class="result"
                 class:success={permissionResult.startsWith("✅")}
@@ -342,8 +342,8 @@ onMount(() => {
                 placeholder="Playwrightからのテキストがここに表示されます"
             ></textarea>
             <div>
-                <button on:click={handlePlaywrightCopy}>コピー</button>
-                <button on:click={handlePlaywrightPaste}>ペースト</button>
+                <button onclick={handlePlaywrightCopy}>コピー</button>
+                <button onclick={handlePlaywrightPaste}>ペースト</button>
             </div>
             <div
                 class="result"
