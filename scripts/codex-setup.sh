@@ -8,17 +8,20 @@ export GIT_MERGE_AUTOEDIT=no
 
 SCRIPT_ARGS=("$@")
 RETRY_COUNT=${CODEX_SETUP_RETRY:-0}
+MAX_RETRIES=${CODEX_SETUP_MAX_RETRIES:-3}
+unset CODEX_SETUP_RETRY
 
 handle_error() {
   local line=$1
   local exit_code=$2
   echo "Error occurred at line ${line}. Exit code: ${exit_code}" >&2
-  if [ "$RETRY_COUNT" -eq 0 ]; then
-    echo "codex-setup.sh did not complete. Re-running..."
-    export CODEX_SETUP_RETRY=$((RETRY_COUNT + 1))
+  if [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; then
+    local next=$((RETRY_COUNT + 1))
+    echo "codex-setup.sh did not complete. Re-running (attempt ${next}/${MAX_RETRIES})..."
+    export CODEX_SETUP_RETRY=$next
     exec "$0" "${SCRIPT_ARGS[@]}"
   else
-    echo "codex-setup.sh failed again. Exiting." >&2
+    echo "codex-setup.sh failed after ${MAX_RETRIES} attempts. Exiting." >&2
     exit "${exit_code}"
   fi
 }
