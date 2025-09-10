@@ -1,5 +1,6 @@
 import { render } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
+// @ts-ignore yjs-orderedtree types expose YTree but runtime exports Tree
 import { Tree } from "yjs-orderedtree";
 import OutlinerTree from "../../components/OutlinerTree.svelte";
 import { Cursor } from "../../lib/Cursor";
