@@ -28,8 +28,28 @@ test.describe("YJS token refresh reconnect", () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
         await page.waitForFunction(() => (window as any).__CONN__.provider.wsconnected === true);
-        const authParam = await page.evaluate(() => (window as any).__CONN__.provider.wsParams.auth);
+        const authParam = await page.evaluate(() => (window as any).__CONN__.provider.params.auth);
         expect(authParam).toBeTruthy();
+    });
+
+    test("updates auth param when token changes", async ({ page }) => {
+        const projectId = `p-${Date.now()}-upd`;
+        await page.evaluate(async pid => {
+            // @ts-ignore - resolved by Vite in browser
+            const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
+            const conn = await createProjectConnection(pid);
+            (window as any).__CONN__ = conn;
+        }, projectId);
+
+        await page.waitForFunction(() => (window as any).__CONN__?.provider.wsconnected === true);
+        const initialAuth = await page.evaluate(() => (window as any).__CONN__.provider.params.auth);
+        await page.evaluate(async () => {
+            await (window as any).__USER_MANAGER__.refreshToken();
+        });
+        await page.waitForFunction(initial => (window as any).__CONN__.provider.params.auth !== initial, initialAuth);
+        const newAuth = await page.evaluate(() => (window as any).__CONN__.provider.params.auth);
+        expect(newAuth).toBeTruthy();
+        expect(newAuth).not.toEqual(initialAuth);
     });
 });
 import "../utils/registerAfterEachSnapshot";
