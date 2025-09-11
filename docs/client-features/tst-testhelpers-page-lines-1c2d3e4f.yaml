@@ -1,0 +1,13 @@
+id: TST-1c2d3e4f
+title: TestHelpers seeds page with provided lines
+description: Ensure prepareTestEnvironment creates a page containing the given text lines.
+category: testing
+status: implemented
+acceptance:
+  - prepareTestEnvironment returns after creating a page with provided lines
+  - created items match the provided text in UI and store
+  - page title matches the created page name
+tests:
+  - client/e2e/basic/tst-testhelpers-page-lines-1c2d3e4f.spec.ts
+  - client/src/tests/integration/tst-create-project-page-via-api-1c2d3e4f.integration.spec.ts
+title-ja: TestHelpersで指定した行がページに追加される

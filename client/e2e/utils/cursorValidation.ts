@@ -50,8 +50,9 @@ export class CursorValidator {
                         selectionCount: selections.length,
                     };
                 } catch (error) {
-                    console.error("Error getting cursor data:", error);
-                    return { error: error.message || "Unknown error" };
+                    const err = error as any;
+                    console.error("Error getting cursor data:", err);
+                    return { error: err?.message || "Unknown error" };
                 }
             };
         });

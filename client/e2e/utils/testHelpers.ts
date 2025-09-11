@@ -17,383 +17,55 @@ export class TestHelpers {
         testInfo?: any,
         lines: string[] = [],
     ): Promise<{ projectName: string; pageName: string; }> {
-        // LNK 系テストかの判定（ファイル名/タイトル）
-        let isLnk = false;
-        try {
-            const anyInfo = testInfo as any;
-            const file = String(anyInfo?.file || "");
-            const title = String(anyInfo?.title || "");
-            isLnk = /\/lnk-/.test(file) || /\bLNK-/.test(title);
-        } catch {}
-
-        // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
-                // Vite エラーオーバーレイ抑止
                 (window as any).__vite_plugin_react_preamble_installed__ = true;
-                const originalCreateElement = document.createElement;
-                document.createElement = function(tagName: string, ...args: any[]) {
-                    if (tagName === "vite-error-overlay") {
-                        return originalCreateElement.call(this, "div", ...args);
-                    }
-                    return originalCreateElement.call(this, tagName, ...args);
-                } as typeof document.createElement;
             } catch {}
         });
 
-        // LNK: pre-mount 安定化（requestAnimationFrame による短時間ポーリング + 初期例外検知で 1 回だけ再遷移）
-        if (isLnk) {
-            await page.addInitScript((opts: any) => {
-                try {
-                    const duration = Math.max(500, Math.min(2500, Number(opts?.durationMs) || 1800));
-                    const started = Date.now();
-                    let retried = false;
+        await page.goto("/", { timeout: 120000, waitUntil: "domcontentloaded" });
 
-                    // 1) pre-mount 期間、currentPage.attachments を配列に正規化
-                    const tick = () => {
-                        try {
-                            const win: any = window as any;
-                            const gs = win.generalStore || win.appStore;
-                            const p = gs?.currentPage;
-                            if (p) {
-                                const a = (p as any).attachments;
-                                if (!Array.isArray(a)) {
-                                    (p as any).attachments = [];
-                                    console.info("[LNK] pre-mount: normalized page.attachments=[]");
-                                }
-                            }
-                        } catch {}
-                        if (Date.now() - started < duration) requestAnimationFrame(tick);
-                    };
-                    requestAnimationFrame(tick);
-
-                    // 2) 初期例外（is not iterable）検知時のみ、整備後に同一URLへ 1 回だけ再遷移
-                    const onError = (ev: ErrorEvent) => {
-                        try {
-                            const msg = String(ev?.message || "");
-                            if (!retried && /is not iterable/i.test(msg)) {
-                                retried = true;
-                                try {
-                                    const win: any = window as any;
-                                    const gs = win.generalStore || win.appStore;
-                                    const p = gs?.currentPage;
-                                    if (p && !Array.isArray((p as any).attachments)) {
-                                        (p as any).attachments = [];
-                                        console.info("[LNK] error-hook: normalized attachments([])");
-                                    }
-                                } catch {}
-                                const goto = (window as any).__SVELTE_GOTO__;
-                                if (typeof goto === "function") {
-                                    try {
-                                        goto(location.pathname + location.search + location.hash);
-                                        console.info("[LNK] error-hook: re-goto same URL once");
-                                    } catch {}
-                                }
-                            }
-                        } catch {}
-                    };
-                    window.addEventListener("error", onError, { once: false });
-
-                    // 3) DOM 補正の前倒し: 非タイトル .outliner-item が出たら .page-title から .outliner-item を 1 度だけ除去
-                    const domFixTick = () => {
-                        try {
-                            const nonTitle = document.querySelector(".outliner-item:not(.page-title)");
-                            const titleNode = document.querySelector(".outliner-item.page-title") as HTMLElement | null;
-                            if (nonTitle && titleNode && titleNode.classList.contains("outliner-item")) {
-                                titleNode.classList.remove("outliner-item");
-                                console.info("[LNK] dom-fix: removed .outliner-item from .page-title");
-                                return; // 一度だけ
-                            }
-                        } catch {}
-                        if (Date.now() - started < duration) requestAnimationFrame(domFixTick);
-                    };
-                    requestAnimationFrame(domFixTick);
-                } catch {}
-            }, { durationMs: 1800 });
-        }
-
-        // ホームページにアクセスしてアプリの初期化を待つ
-        console.log("TestHelper: Starting navigation to home page");
-        console.log("TestHelper: Page URL before navigation:", page.url());
-
-        try {
-            // より段階的なアプローチを試す
-            console.log("TestHelper: Attempting to navigate to /");
-            await page.goto("/", {
-                timeout: 120000, // 120秒のタイムアウト
-                waitUntil: "domcontentloaded", // DOMコンテンツロード完了まで待機
-            });
-            console.log("TestHelper: Successfully navigated to home page");
-            console.log("TestHelper: Page URL after navigation:", page.url());
-        } catch (error) {
-            console.error("TestHelper: Failed to navigate to home page:", error);
-            console.log("TestHelper: Current page URL:", page.url());
-            console.log("TestHelper: Page title:", await page.title().catch(() => "Unable to get title"));
-            throw error;
-        }
-
-        // 初回ナビゲーション前に addInitScript でフラグを設定しているため再読み込みは不要
-
-        // UserManagerが初期化されるまで待機（寛容に）
-        console.log("TestHelper: Waiting for UserManager initialization (tolerant)");
-        const userManagerReady = await page
-            .waitForFunction(() => (window as any).__USER_MANAGER__ !== undefined, { timeout: 10000 })
-            .then(() => true)
-            .catch(() => false);
-        if (userManagerReady) {
-            console.log("TestHelper: UserManager initialized");
-        } else {
-            console.log("TestHelper: __USER_MANAGER__ not detected in 10s; continuing without blocking");
-        }
-
-        console.log("TestHelper: UserManager found, attempting authentication");
-
-        // 手動で認証を実行
-        // 認証を開始（エラーは無視）
+        await page.waitForFunction(() => (window as any).__USER_MANAGER__ !== undefined, { timeout: 10000 }).catch(
+            () => {},
+        );
         await page.evaluate(async () => {
             const userManager = (window as any).__USER_MANAGER__;
-            if (!userManager) {
-                console.log("TestHelper: UserManager not found; skipping manual login");
-                return;
-            }
-
-            try {
-                console.log("TestHelper: Calling loginWithEmailPassword");
-                await userManager.loginWithEmailPassword("test@example.com", "password");
-            } catch (error) {
-                console.log(
-                    "TestHelper: Authentication method failed, but user may still be signed in via onAuthStateChanged",
-                );
+            if (userManager?.loginWithEmailPassword) {
+                try {
+                    await userManager.loginWithEmailPassword("test@example.com", "password");
+                } catch {}
             }
         });
-
-        // Wait for login to complete via onAuthStateChanged (tolerant)
-        // In some test boot orders, authentication may be optional for basic flows.
-        // Do not fail the test setup if login hasn't completed yet.
         await page.waitForFunction(() => {
             const mgr = (window as any).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
-        }, { timeout: 10000 }).catch(() => {
-            console.log("TestHelper: Auth not ready after 30s; continuing without blocking");
-        });
+        }, { timeout: 10000 }).catch(() => {});
 
-        console.log("TestHelper: Authentication successful, waiting for global variables");
+        await page.waitForFunction(() => {
+            const win: any = window as any;
+            return win.__SVELTE_GOTO__ || win.generalStore || document.querySelector('[data-testid="outliner-base"]');
+        }, { timeout: 7000 }).catch(() => {});
 
-        // グローバル変数が設定されるまで待機（寛容に）
-        console.log("TestHelper: Waiting for global variables (tolerant)");
-        try {
-            await page.waitForFunction(
-                () => {
-                    const hasSvelteGoto = (window as any).__SVELTE_GOTO__ !== undefined;
-                    const hasGeneralStore = (window as any).generalStore !== undefined;
-                    const hasOutliner = !!document.querySelector('[data-testid="outliner-base"]');
-                    return hasSvelteGoto || hasGeneralStore || hasOutliner;
-                },
-                { timeout: 7000 },
-            );
-            console.log("TestHelper: Global variables are ready (tolerant)");
-        } catch {
-            console.log("TestHelper: Global variables not detected in time; continuing");
-        }
-
-        console.log("TestHelper: Global variables initialized successfully");
-
-        // __SVELTE_GOTO__ はアプリ側で利用可能だが、テストのナビゲーションは安定性重視で Playwright の page.goto を使用する
-
-        // デバッガーをセットアップ
         await TestHelpers.setupTreeDebugger(page);
         await TestHelpers.setupCursorDebugger(page);
 
-        // テストページをセットアップ
-        if (isLnk) {
-            // LNK 系は高速・安定化ルートを使用
-            const result = await TestHelpers.navigateToTestProjectPage(page, testInfo, lines);
-            // 追加の最終保証：クリック対象が用意できているか確認
-            try {
-                await page.waitForSelector(".outliner-item .item-content", { timeout: 12000 });
-            } catch {
-                await page.evaluate(() => {
-                    try {
-                        const base = document.querySelector('[data-testid="outliner-base"]');
-                        if (!base) return;
-                        const title = document.querySelector(".page-title .item-content, .page-title-content") as
-                            | HTMLElement
-                            | null;
-                        if (!document.querySelector(".lnk-proxy.outliner-item")) {
-                            const proxy = document.createElement("div");
-                            proxy.className = "lnk-proxy outliner-item";
-                            const ic = document.createElement("div");
-                            ic.className = "item-content";
-                            ic.style.position = "absolute";
-                            ic.style.left = "0";
-                            ic.style.top = "0";
-                            ic.style.width = "1px";
-                            ic.style.height = "1px";
-                            ic.style.opacity = "0";
-                            ic.addEventListener("click", (e) => {
-                                e.stopPropagation();
-                                title?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-                            });
-                            proxy.appendChild(ic);
-                            base.appendChild(proxy);
-                        }
-                    } catch {}
-                });
+        if (lines.length === 0) {
+        await page.evaluate(async ({ projectName, pageName, lines }) => {
+            const gs = (window as any).generalStore || (window as any).appStore;
+            if (!gs?.project) {
+                throw new Error("TestHelper: generalStore.project not available");
+            const pageObj = gs.project.addPage(pageName, "tester");
+            const items = pageObj.items as any;
+            for (const line of lines) {
+                const it = items.addNode("tester");
+                it.updateText(line);
             }
-            // デバッグ: 要素数を出力
-            try {
-                const c = await page.locator(".outliner-item .item-content").count();
-                console.log("TestHelper(LNK): .outliner-item .item-content count =", c);
-            } catch {}
-            // 要素消失対策（LNK限定・E2E限定）: 最低1つの .outliner-item/.item-content を維持
-            try {
-                await page.evaluate(() => {
-                    try {
-                        if ((window as any).__lnk_keep_alive) return;
-                        const ensure = () => {
-                            try {
-                                const base = document.querySelector('[data-testid="outliner-base"]');
-                                if (!base) return;
-                                const exists = document.querySelector(".outliner-item .item-content");
-                                if (!exists) {
-                                    const proxy = document.createElement("div");
-                                    proxy.className = "lnk-proxy outliner-item";
-                                    const ic = document.createElement("div");
-                                    ic.className = "item-content";
-                                    ic.style.position = "absolute";
-                                    ic.style.left = "0";
-                                    ic.style.top = "0";
-                                    ic.style.width = "1px";
-                                    ic.style.height = "1px";
-                                    ic.style.opacity = "0";
-                                    base.appendChild(proxy);
-                                    proxy.appendChild(ic);
-                                }
-                            } catch {}
-                        };
-                        ensure();
-                        const obs = new MutationObserver(() => setTimeout(ensure, 0));
-                        obs.observe(document.documentElement, { childList: true, subtree: true });
-                        (window as any).__lnk_keep_alive = obs;
-                    } catch {}
-                });
-            } catch {}
-            // URL b9 a b a a a:  a a a a a
-            try {
-                console.log("TestHelper(LNK): URL before test body =", await page.url());
-            } catch {}
-            return result;
-        }
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines);
-    }
-
-    /**
-     * 現在の generalStore.pages.current からページのテキストを安定的に取得する
-     * Y.Text の場合は toString() を呼び出し、プレーン文字列に正規化する
-     */
-    public static async getPageTexts(page: Page): Promise<Array<{ id: string; text: string; }>> {
-        return await page.evaluate(() => {
-            const store = (window as any).appStore || (window as any).generalStore;
-            if (!store || !store.pages) return [] as Array<{ id: string; text: string; }>;
-
-            const toArray = (p: any) => {
-                if (!p) return [] as any[];
-                try {
-                    if (Array.isArray(p)) return p;
-                    if (typeof p[Symbol.iterator] === "function") return Array.from(p);
-                    const len = (p as any).length;
-                    if (typeof len === "number" && len >= 0) {
-                        const r: any[] = [];
-                        for (let i = 0; i < len; i++) {
-                            const v = (p as any).at ? p.at(i) : p[i];
-                            if (typeof v !== "undefined") r.push(v);
-                        }
-                        return r;
-                    }
-                } catch {}
-                return Object.values(p).filter((x: any) => x && typeof x === "object" && ("id" in x || "text" in x));
-            };
-
-            const pages = toArray(store.pages.current);
-            return pages.map((p: any) => {
-                const textVal = (p?.text && typeof (p.text as any).toString === "function")
-                    ? (p.text as any).toString()
-                    : String(p?.text ?? "");
-                return { id: String(p.id), text: textVal };
-            });
-        });
-    }
-
-    /**
-     * テスト用のプロジェクトとページを作成する（Yjs）
-     * @param page Playwrightのページオブジェクト
-     * @param projectName プロジェクト名
-     * @param pageName ページ名
-     */
-    public static async createTestProjectAndPageViaAPI(
-        page: Page,
-        projectName: string,
-        pageName: string,
-        lines: string[] = [],
-    ): Promise<void> {
-        // Ensure project store is initialized before attempting creation
-        try {
-            await page.waitForFunction(() => {
-                const gs = (window as any).generalStore || (window as any).appStore;
-                return !!(gs && gs.project);
-            }, { timeout: 15000 });
-        } catch {
-            // Continue with retries below; creation path already handles transient unavailability
-        }
-        if (lines.length == 0) {
-            lines = [
-                "これはテスト用のページです。1",
-                "これはテスト用のページです。2",
-                "内部リンクのテスト: [test-link]",
-            ];
-        }
-
-        // Yjs/app-store 経由で作成（ページのリロード競合に耐性）
-        const runCreate = async () => {
-            await page.evaluate(async ({ projectName, pageName, lines }) => {
-                console.log(`TestHelper: Creating project/page (Yjs)`, {
-                    projectName,
-                    pageName,
-                    linesCount: lines.length,
-                });
-                // Yjs via generalStore.project
-                const gs = (window as any).generalStore || (window as any).appStore;
-                if (!gs?.project) {
-                    throw new Error("TestHelper: generalStore.project not available");
-                }
-                try {
-                    const page = gs.project.addPage(pageName, "tester");
-                    const items = page.items as any;
-                    for (const line of lines) {
-                        const it = items.addNode("tester");
-                        it.updateText(line);
-                    }
-                    if (!gs.currentPage) gs.currentPage = page as any;
-                    console.log("TestHelper: Created via Yjs (generalStore)");
-                } catch (e) {
-                    console.error("TestHelper: Yjs page creation failed", e);
-                }
-            }, { projectName, pageName, lines });
-        };
-
-        {
-            // 一時的なページ再読み込み/クローズに強くするため再試行回数を増加
-            let lastErr: any = null;
-            for (let attempt = 1; attempt <= 12; attempt++) {
-                try {
-                    // ページが閉じている/直前に遷移中だった場合のセルフヒール
-                    if (page.isClosed()) {
-                        console.log("TestHelper: page isClosed() detected; attempting to re-navigate to current URL");
-                        try {
+            if (!gs.currentPage) gs.currentPage = pageObj as any;
+        }, { projectName, pageName, lines });
                             const current = page.url();
                             await page.goto(current, { waitUntil: "domcontentloaded", timeout: 30000 });
                         } catch (navErr) {
