@@ -51,7 +51,7 @@ function add() {
                         <input
                             type="checkbox"
                             checked={item.state === "checked" || item.state === "archived"}
-                            on:change={() => toggleItem(list!.id, item.id)}
+                            onchange={() => toggleItem(list!.id, item.id)}
                         />
                         {item.label}
                     </label>
@@ -63,11 +63,11 @@ function add() {
         data-testid="add-input"
         placeholder="Add item"
         bind:value={newItem}
-        on:keydown={e => e.key === "Enter" && add()}
+        onkeydown={e => e.key === "Enter" && add()}
     />
-    <button data-testid="add-button" on:click={add}>Add</button>
+    <button data-testid="add-button" onclick={add}>Add</button>
     {#if list}
-        <button data-testid="reset-button" on:click={() => resetChecklist(list!.id)}>Reset</button>
+        <button data-testid="reset-button" onclick={() => resetChecklist(list!.id)}>Reset</button>
     {/if}
 </div>
 

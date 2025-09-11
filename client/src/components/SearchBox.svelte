@@ -2,6 +2,7 @@
 import { goto } from '$app/navigation';
 import type { Item, Items, Project } from '../schema/app-schema';
 import { searchHistoryStore } from '../stores/SearchHistoryStore.svelte';
+import { onMount } from 'svelte';
 import { store } from '../stores/store.svelte';
 
 interface Props { project?: Project }
@@ -9,7 +10,23 @@ let { project }: Props = $props();
 
 // Resolve project from multiple sources for robustness in tests
 let effectiveProject: Project | null = $derived.by(() => {
-    return project ?? (store.project ?? null);
+    const fromProps = project ?? (store.project ?? null);
+    if (fromProps) return fromProps;
+    if (typeof window !== 'undefined') {
+        const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
+        if (cur) return cur;
+        const gs = (window as any).generalStore;
+        if (gs?.project) return gs.project as Project;
+        const parts = window.location.pathname.split("/").filter(Boolean);
+        const projectTitle = parts[0] ? decodeURIComponent(parts[0]) : '';
+        const service = (window as any).__YJS_SERVICE__;
+        const yjsStoreRef = (window as any).__YJS_STORE__;
+        // Do NOT auto-create a project here. In tests this can create an empty
+        // project separate from the one prepared by TestHelpers, which breaks
+        // SearchBox results. Wait for store.project or global state instead.
+        // Keeping this block as a no-op fallback only.
+    }
+    return null;
 });
 
 let query = $state('');
@@ -18,16 +35,21 @@ let isFocused = $state(false);
 let inputEl: HTMLInputElement | null = null;
 // Preserve focus across reactive project changes to keep dropdown stable in tests
 let shouldRefocus = $state(false);
+// Micro-sync tick to retrigger results during early init so that fallback pages populate
+let refreshTick = $state(0);
+
 
 // リアクティブに結果を計算
 let results = $derived.by(() => {
+    // include refreshTick as a reactive dependency to re-evaluate during init
+    void refreshTick;
+
     let projectToUse: Project | null = effectiveProject;
     if (!projectToUse && typeof window !== 'undefined') {
         // try global fallbacks
         const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
         if (cur) projectToUse = cur;
-                
-            }
+    }
 
     // Resolve pages robustly. Prefer a non-empty store.pages.current, otherwise
     // fall back to project.items. Reading from `store` ensures reactivity when
@@ -155,13 +177,84 @@ $effect(() => {
         queueMicrotask(() => inputEl?.focus());
     }
 });
+
+// Debug mount to verify presence during E2E and schedule micro-sync ticks
+onMount(() => {
+    try {
+        const logPrefix = "[SEA-0001][SearchBox]";
+        const styles = (el: Element | null) => {
+            if (!el) return null as any;
+            const cs = getComputedStyle(el as Element);
+            return {
+                display: cs.display,
+                visibility: cs.visibility,
+                opacity: cs.opacity,
+                transform: cs.transform,
+                clipPath: (cs as any).clipPath ?? (cs as any)["clip-path"],
+                pointerEvents: cs.pointerEvents,
+            };
+        };
+        const rect = inputEl?.getBoundingClientRect?.();
+        const e20 = document.elementFromPoint?.(20, 20) as Element | null;
+        // 可視性の追加チェック（Playwright に近い指標）
+        const clientRectsCount = inputEl?.getClientRects?.().length ?? 0;
+        const inDOM = !!(inputEl && document.contains(inputEl));
+        const bboxNonZero = !!(rect && rect.width > 0 && rect.height > 0);
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const viewportIntersect = !!(rect && rect.right > 0 && rect.bottom > 0 && rect.left < vw && rect.top < vh);
+        const cx = rect ? Math.max(0, Math.min(vw - 1, rect.left + Math.min(rect.width - 1, 5))) : 0;
+        const cy = rect ? Math.max(0, Math.min(vh - 1, rect.top + Math.min(rect.height - 1, Math.floor(rect.height/2)))) : 0;
+        const eCenter = (rect ? document.elementFromPoint?.(cx, cy) : null) as Element | null;
+        const eCenterInfo = eCenter ? { tag: eCenter.tagName, id: (eCenter as HTMLElement).id, cls: (eCenter as HTMLElement).className } : null;
+        console.info(logPrefix, "mount",
+            {
+                inputReady: !!inputEl,
+                inputRect: rect ? { x: rect.x, y: rect.y, w: rect.width, h: rect.height } : null,
+                at20x20: e20 ? { tag: e20.tagName, id: (e20 as HTMLElement).id, cls: (e20 as HTMLElement).className } : null,
+                atCenter: eCenterInfo,
+                clientRectsCount,
+                inDOM,
+                bboxNonZero,
+                viewportIntersect,
+                inputStyles: styles(inputEl as Element),
+            }
+        );
+        // 親チェーンの computed styles を上位へ辿って計測
+        const chain: any[] = [];
+        let node: HTMLElement | null = inputEl;
+        const limit = 15;
+        let count = 0;
+        while (node && count < limit) {
+            chain.push({
+                tag: node.tagName,
+                id: node.id,
+                cls: node.className,
+                styles: styles(node),
+            });
+            node = node.parentElement;
+            count++;
+        }
+        console.info(logPrefix, "ancestor-styles", chain);
+        const toolbar = document.querySelector('[data-testid="main-toolbar"]') as HTMLElement | null;
+        console.info(logPrefix, "main-toolbar styles", styles(toolbar));
+    } catch {}
+    // schedule a few ticks to help early reactivity with global generalStore
+    for (let i = 0; i < 8; i++) setTimeout(() => (refreshTick += 1), i * 50);
+});
 </script>
 
 <div class="page-search-box">
+
+    <label id="search-pages-label" for="search-pages-input" class="visually-hidden">Search pages</label>
     <input
         type="text"
-        placeholder="Search pages"
+        role="textbox"
+        aria-hidden="false"
         aria-label="Search pages"
+        aria-labelledby="search-pages-label"
+        placeholder="Search pages"
+        data-testid="search-pages-input"
+        id="search-pages-input"
         bind:this={inputEl}
         bind:value={query}
         onkeydown={handleKeydown}
@@ -188,12 +281,17 @@ $effect(() => {
 }
 
 .page-search-box input {
-    width: 100%;
+    width: 340px;
     padding: 0.5rem 0.75rem;
     border: 1px solid #d1d5db;
     border-radius: 0.375rem;
     font-size: 0.875rem;
     background: white;
+    /* place naturally within toolbar content for stable visibility */
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
 }
 
 .page-search-box input:focus {
@@ -247,4 +345,17 @@ $effect(() => {
     background: #eff6ff;
     color: #1d4ed8;
 }
+
+/* screen-reader friendly label style without clipping */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
 </style>

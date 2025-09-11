@@ -48,16 +48,20 @@ export class YjsClient {
 
     // Build a client with active provider/awareness
     static async connect(projectId: string, project: Project): Promise<YjsClient> {
-        const { doc, provider, awareness, dispose } = await createProjectConnection(projectId);
-        // Replace project's internal Doc with the connected one if needed
+        const { doc, provider, awareness } = await createProjectConnection(projectId);
+        // Build a Project bound to the provider's doc to ensure schema/awareness consistency
+        let connectedProject: Project = project;
         try {
-            if ((project as any).ydoc && (project as any).ydoc !== doc) {
-                // No strict coupling required; yjs-schema consumers use project.ydoc
-                (project as any).ydoc = doc;
-            }
+            // Preserve title if present
+            const title = project?.title ?? "";
+            connectedProject = Project.fromDoc(doc);
+            try {
+                const meta = doc.getMap("metadata") as any;
+                if (title && !meta.get("title")) meta.set("title", title);
+            } catch {}
         } catch {}
         const clientId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-        return new YjsClient({ clientId, projectId, project, doc, provider, awareness });
+        return new YjsClient({ clientId, projectId, project: connectedProject, doc, provider, awareness });
     }
 
     // Surface compatible with FluidClient

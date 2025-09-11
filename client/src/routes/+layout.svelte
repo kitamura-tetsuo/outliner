@@ -159,32 +159,22 @@ onMount(async () => {
         if (import.meta.env.DEV) {
             logger.info("アプリケーションがマウントされました");
         }
-        // Service Workerの登録（プロダクション環境では無効化）
-        if (import.meta.env.MODE !== "production" && "serviceWorker" in navigator) {
-            // SvelteKitのService Workerを登録
-            navigator.serviceWorker.register("/service-worker.js", {
-                scope: "/",
-            }).then(reg => {
-                if (import.meta.env.DEV) {
-                    logger.info("Service worker registered successfully");
-                }
-
-                // Background Syncが利用可能な場合は登録
-                if ("sync" in reg) {
-                    (reg as any).sync.register("sync-ops").catch((err: any) => {
-                        logger.warn("Failed to register background sync:", err);
-                    });
-                }
-
-                // Service Workerの更新をチェック
-                reg.addEventListener("updatefound", () => {
-                    if (import.meta.env.DEV) {
-                        logger.info("Service worker update found");
+        // Service WorkerはE2Eテストでは無効化して、ナビゲーションやページクローズ干渉を防ぐ
+        const isE2e = import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true";
+        if (!isE2e && "serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
+                .then(reg => {
+                    if (import.meta.env.DEV) logger.info("Service worker registered successfully");
+                    if ("sync" in reg) {
+                        (reg as any).sync.register("sync-ops").catch((err: any) => {
+                            logger.warn("Failed to register background sync:", err);
+                        });
                     }
-                });
-            }).catch(err => {
-                logger.error("Service worker registration failed:", err);
-            });
+                    reg.addEventListener("updatefound", () => {
+                        if (import.meta.env.DEV) logger.info("Service worker update found");
+                    });
+                })
+                .catch(err => { logger.error("Service worker registration failed:", err); });
         }
 
         // 認証状態を確認
@@ -192,14 +182,14 @@ onMount(async () => {
 
         if (isAuthenticated) {
             // デバッグ関数を初期化
-            setupGlobalDebugFunctions(yjsService);
+            setupGlobalDebugFunctions(yjsService?.yjsHighService);
         }
         else {
             // 認証状態の変更を監視
             userManager?.addEventListener((authResult: any) => {
                 isAuthenticated = authResult !== null;
                 if (isAuthenticated && browser) {
-                    setupGlobalDebugFunctions(yjsService);
+                    setupGlobalDebugFunctions(yjsService?.yjsHighService);
                     const isTestEnv = import.meta.env.MODE === "test" ||
                         process.env.NODE_ENV === "test" ||
                         import.meta.env.VITE_IS_TEST === "true";
@@ -239,17 +229,15 @@ onMount(async () => {
 
         // Yjs: no auth-coupled init hook required
 
-        // ブラウザ終了時のイベントリスナーを登録
-        window.addEventListener("beforeunload", handleBeforeUnload);
-
-        // visibilitychangeイベントリスナーを登録（追加の保険）
-        document.addEventListener(
-            "visibilitychange",
-            handleVisibilityChange,
-        );
-
-        // 定期的なログローテーションを設定
-        rotationInterval = schedulePeriodicLogRotation();
+        // E2E ではページ遷移に干渉しないようにクリーンアップ系のリスナーを無効化
+        if (!(import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true")) {
+            // ブラウザ終了時のイベントリスナーを登録
+            window.addEventListener("beforeunload", handleBeforeUnload);
+            // visibilitychangeイベントリスナーを登録（追加の保険）
+            document.addEventListener("visibilitychange", handleVisibilityChange);
+            // 定期的なログローテーションを設定
+            rotationInterval = schedulePeriodicLogRotation();
+        }
     }
 });
 
@@ -288,7 +276,7 @@ onDestroy(async () => {
 
     <button
         class="fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
-        on:click={() => userPreferencesStore.toggleTheme()}
+        onclick={() => userPreferencesStore.toggleTheme()}
     >
         {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
     </button>

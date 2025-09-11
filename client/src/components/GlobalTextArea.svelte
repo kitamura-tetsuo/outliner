@@ -189,13 +189,13 @@ function handleBlur(_event: FocusEvent) {
 <textarea
     bind:this={textareaRef}
     class="global-textarea"
-    on:keydown={handleKeyDown}
-    on:input={handleInput}
-    on:compositionstart={handleCompositionStart}
-    on:compositionupdate={handleCompositionUpdate}
-    on:compositionend={handleCompositionEnd}
-    on:copy={handleCopy}
-    on:paste={async event => {
+    onkeydown={handleKeyDown}
+    oninput={handleInput}
+    oncompositionstart={handleCompositionStart}
+    oncompositionupdate={handleCompositionUpdate}
+    oncompositionend={handleCompositionEnd}
+    oncopy={handleCopy}
+    onpaste={async event => {
         try {
             await handlePaste(event);
         } catch (error) {
@@ -207,7 +207,7 @@ function handleBlur(_event: FocusEvent) {
             }
         }
     }}
-    on:blur={handleBlur}
+    onblur={handleBlur}
 ></textarea>
 
 <style>
@@ -220,7 +220,7 @@ function handleBlur(_event: FocusEvent) {
     opacity: 0;
     pointer-events: none;
 }
-.ime-input {
+:global(.ime-input) {
     z-index: 10;
     color: transparent;
     background-color: transparent;

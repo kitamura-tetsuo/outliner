@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte";
 
-let schedules: any[] = [];
+let schedules: any[] = $state([]);
 
 onMount(async () => {
     const params = new URLSearchParams(window.location.search);

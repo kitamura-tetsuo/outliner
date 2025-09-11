@@ -174,7 +174,8 @@ onDestroy(() => {
 </main>
 
 <style>
-.loader {
+/* .loader {  未使用のため削除 */
+/* .loader {
     border: 4px solid #f3f3f3;
     border-top: 4px solid #3498db;
     border-radius: 50%;
@@ -182,7 +183,7 @@ onDestroy(() => {
     height: 30px;
     animation: spin 1s linear infinite;
     margin: 0 auto;
-}
+} */
 
 @keyframes spin {
     0% {

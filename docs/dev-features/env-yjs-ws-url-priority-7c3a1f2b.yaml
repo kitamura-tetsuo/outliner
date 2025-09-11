@@ -1,0 +1,28 @@
+id: ENV-7c3a1f2b
+title: Yjs WebSocket URL priority and single source of truth
+title-ja: Yjs WebSocket URL の優先順位と単一化
+category: env
+status: implemented
+components:
+- client/e2e/utils/testHelpers.ts
+- client/src/lib/yjs/connection.ts
+- client/src/routes/[project]/[page]/+page.svelte
+priority:
+- VITE_YJS_WS_URL > VITE_YJS_PORT > default(7093)
+notes:
+- client/src/lib/yjs/connection.ts の getWsBase() を WS ベース URL の単一の取得元とする
+- E2E 環境では VITE_YJS_DISABLE_WS と VITE_IS_TEST/localStorage により WebSocket 接続を抑止
+- 既存のハードコード（ポート直指定等）は撤廃・抑制
+verification:
+- client/e2e/core/nav-outlinerbase-min-visibility-7a3c91e2.spec.ts で最低限の可視性と WS 誤接続なしを確認
+- getWsBase() の優先順位: VITE_YJS_WS_URL を最優先、無ければ VITE_YJS_PORT、最後に 7093 を既定
+changelog:
+- Implemented getWsBase() as single source and updated related code paths
+- Suppressed noisy ERROR logs on empty pages in standard flow (downgraded to WARN)
+examples:
+  production:
+  - VITE_YJS_WS_URL=wss://yjs.example.com
+  - VITE_YJS_PORT=443
+  e2e:
+  - '"VITE_YJS_DISABLE_WS=true" を .env.test または localStorage に設定して Yjs WS を抑止'
+  - Playwright では page.on('websocket', ...) で WS を収集し、Yjs 系 (port 7093, /yjs, /projects/) の接続本数が 0 であることを確認

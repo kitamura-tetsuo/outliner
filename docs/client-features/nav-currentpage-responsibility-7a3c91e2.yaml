@@ -1,0 +1,28 @@
+id: NAV-7a3c91e2
+title: Consolidate currentPage responsibility into +page.svelte
+title-ja: currentPage 設定の責務を +page.svelte に集約
+category: navigation
+status: implemented
+description: '+layout.svelte と +page.svelte の両方に存在していた currentPage 設定処理を整理し、
+
+  currentPage の決定・フォールバックは +page.svelte に集約。再入・二重待機と重複設定を解消して
+
+  ルーティングの安定性とテストの堅牢性を高めた。
+
+  '
+acceptance:
+- E2E テスト実行時、必要に応じて（テスト環境のみ）最小限のページ自動作成で安定化する
+- URL パラメータ変更時に該当ページが存在すれば currentPage がそのページに設定される
+- currentPage の設定は +page.svelte のみが行う（+layout.svelte は行わない）
+- サブテストにて OutlinerBase アンカーとメインツールバーの可視性を保証する
+- 既存のナビゲーション系E2E（LNK-0003 等）がグリーンである
+components:
+- client/src/routes/[project]/[page]/+layout.svelte
+- client/src/routes/[project]/[page]/+page.svelte
+notes:
+- E2E 環境では localStorage/env フラグにより Yjs WebSocket 接続を抑止し、404 ログノイズを防止済み
+- outliner-base の最小可視化チェックをサブテストで保証
+tests:
+- client/e2e/core/lnk-url-direct-df445603.spec.ts
+- client/e2e/core/nav-link-function-to-project-page-a0e7d28a.spec.ts
+- client/e2e/core/nav-outlinerbase-min-visibility-7a3c91e2.spec.ts

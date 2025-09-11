@@ -12,7 +12,7 @@ import { colorForUser, presenceStore } from "../../../stores/PresenceStore.svelt
 describe("PRS-0001 presence indicators", () => {
     it("renders and updates user avatars", async () => {
         // reset store
-        (presenceStore as any).users = {};
+        presenceStore.users = {};
         // initial user
         presenceStore.setUser({ userId: "u1", userName: "User 1", color: colorForUser("u1") });
         const { container } = render(PresenceAvatars);

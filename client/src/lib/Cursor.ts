@@ -35,10 +35,10 @@ export class Cursor {
     }
 
     // SharedTree 上の Item を再帰検索
-    findTarget(): Item | undefined {
+    findTarget(): any {
         const root = generalStore.currentPage;
         if (!root) return undefined;
-        return this.searchItem(root, this.itemId);
+        return this.searchItem(root as any, this.itemId);
     }
 
     // 前のアイテムを探す
@@ -1003,8 +1003,8 @@ export class Cursor {
             }
         } else {
             // 通常のアイテムの場合は兄弟として追加
-            const parent = Tree.parent(target);
-            if (parent && Tree.is(parent, Items)) {
+            const parent = target.parent;
+            if (parent) {
                 // 現在のアイテムのインデックスを取得
                 const currentIndex = parent.indexOf(target);
 
@@ -2441,11 +2441,11 @@ export class Cursor {
         if (!root) return;
 
         // アイテムの親を取得
-        const startParent = Tree.parent(firstItem);
-        const endParent = Tree.parent(lastItem);
+        const startParent = firstItem.parent;
+        const endParent = lastItem.parent;
 
         // 親が異なる場合は処理を中止（現在はサポート外）
-        if (startParent !== endParent || !Tree.is(startParent, Items)) {
+        if (startParent !== endParent || !startParent) {
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Parents are different or not Items: startParent=${startParent}, endParent=${endParent}`);
             }

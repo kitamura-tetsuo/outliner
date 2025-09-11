@@ -15,25 +15,8 @@ import "../utils/registerAfterEachSnapshot";
  */
 
 test.describe("テキスト追加機能テスト", () => {
-    test.beforeEach(async ({ page }) => {
-        // Debug browser console to diagnose 500s/hydration errors
-        page.on("console", msg => console.log(`[browser:${msg.type()}]`, msg.text()));
-        page.on("pageerror", err => console.log("[pageerror]", err.message));
-        // Yjs専用の軽量テストページを優先。なければルートにフォールバック。
-        // Prefer lightweight Yjs page; if not ready, fall back to root
-        try {
-            await page.goto("/yjs-outliner");
-        } catch {
-            await page.goto("/");
-        }
-        const baseLocator = page.locator('[data-testid="outliner-base"]').first();
-        try {
-            await expect(baseLocator).toBeVisible({ timeout: 5000 });
-        } catch {
-            // If the Yjs page didn't render quickly, try the root page
-            await page.goto("/");
-            await expect(baseLocator).toBeVisible();
-        }
+    test.beforeEach(async ({ page }, testInfo) => {
+        const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     // スナップショットは ../utils/registerAfterEachSnapshot の afterEach で一括保存

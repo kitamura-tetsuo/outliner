@@ -59,22 +59,23 @@ $effect(() => {
     <div class="flex">
         <ul class="w-1/3 pr-4 overflow-y-auto max-h-60 border-r">
             {#each snapshots as s}
-                <li
-                    class="cursor-pointer hover:bg-gray-200 p-1"
-                    on:click={() => showDiff(s.id)}
+                <button
+                    type="button"
+                    class="cursor-pointer hover:bg-gray-200 p-1 text-left w-full"
+                    onclick={() => showDiff(s.id)}
                 >
                     {new Date(s.timestamp).toLocaleString()} - {s.author}
-                </li>
+                </button>
             {/each}
         </ul>
-        <div class="flex-1 pl-4">
+        <div class="flex-1 pl-4 diff">
             {@html diffHtml}
         </div>
     </div>
     <div class="mt-4 flex justify-end space-x-2">
         <button
             class="bg-gray-300 px-3 py-1 rounded"
-            on:click={() => {
+            onclick={() => {
                 addSnapshot(project, page, currentContent, author);
                 refresh();
             }}
@@ -83,7 +84,7 @@ $effect(() => {
         </button>
         <button
             class="bg-blue-500 text-white px-3 py-1 rounded"
-            on:click={revert}
+            onclick={revert}
             disabled={!selectedId}
         >
             Revert
@@ -92,11 +93,11 @@ $effect(() => {
 </div>
 
 <style>
-.diff ins {
+:global(.diff ins) {
     background-color: #e6ffe6;
     text-decoration: none;
 }
-.diff del {
+:global(.diff del) {
     background-color: #ffe6e6;
 }
 </style>

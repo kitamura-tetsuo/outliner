@@ -1712,19 +1712,19 @@ onMount(() => {
 }
 
 /* フォーマットされたテキストのスタイル */
-.item-text.formatted strong {
+:global(.item-text.formatted strong) {
     font-weight: bold;
 }
 
-.item-text.formatted em {
+:global(.item-text.formatted em) {
     font-style: italic;
 }
 
-.item-text.formatted s {
+:global(.item-text.formatted s) {
     text-decoration: line-through;
 }
 
-.item-text.formatted code {
+:global(.item-text.formatted code) {
     font-family: monospace;
     background-color: #f5f5f5;
     padding: 0 4px;
@@ -1732,17 +1732,17 @@ onMount(() => {
 }
 
 /* リンクのスタイル */
-.item-text.formatted a {
+:global(.item-text.formatted a) {
     color: #0078d7;
     text-decoration: none;
 }
 
-.item-text.formatted a:hover {
+:global(.item-text.formatted a:hover) {
     text-decoration: underline;
 }
 
 /* 引用のスタイル */
-.item-text.formatted blockquote {
+:global(.item-text.formatted blockquote) {
     margin: 0;
     padding-left: 10px;
     border-left: 3px solid #ccc;

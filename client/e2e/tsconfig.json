@@ -23,7 +23,8 @@
     "include": [
         "**/*.ts",
         "**/*.js",
-        "**/*.d.ts"
+        "**/*.d.ts",
+        "./svelte5-shim.d.ts"
     ],
     "exclude": [
         "node_modules",

@@ -279,12 +279,12 @@ $effect(() => {
 </script>
 
 {#if isVisible || isTestEnv}
-    <div class="search-panel {(!isVisible && isTestEnv && !e2eForceShow) ? 'e2e-hidden' : ''}" data-testid="search-panel">
+    <div class="search-panel {(!isVisible && isTestEnv && !e2eForceShow) ? 'e2e-hidden' : ''}" data-testid="search-panel" role="region" aria-label="検索・置換">
         <div class="search-panel-header">
             <h3>検索・置換</h3>
         </div>
 
-        <div class="search-panel-content">
+        <section class="search-panel-content" aria-label="検索・置換">
             <div class="search-input-group">
                 <label for="search-input">検索:</label>
                 <input
@@ -342,7 +342,7 @@ $effect(() => {
                     {/each}
                 </ul>
             </div>
-        </div>
+        </section>
     </div>
 {/if}
 
@@ -460,7 +460,7 @@ $effect(() => {
     margin: 0;
 }
 
-.search-highlight {
+:global(.search-highlight) {
     background-color: #fff3cd;
     padding: 0 2px;
     border-radius: 2px;

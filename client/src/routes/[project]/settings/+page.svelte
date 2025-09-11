@@ -78,8 +78,8 @@ async function doImport() {
 
 <h2>Import / Export</h2>
 <div class="export-section">
-    <button on:click={() => doExport("opml")}>Export OPML</button>
-    <button on:click={() => doExport("markdown")}>Export Markdown</button>
+    <button onclick={() => doExport("opml")}>Export OPML</button>
+    <button onclick={() => doExport("markdown")}>Export Markdown</button>
     <textarea readonly bind:value={exportText} data-testid="export-output"></textarea>
 </div>
 <div class="import-section">
@@ -88,5 +88,5 @@ async function doImport() {
         <option value="markdown">Markdown</option>
     </select>
     <textarea bind:value={importText} data-testid="import-input"></textarea>
-    <button on:click={doImport}>Import</button>
+    <button onclick={doImport}>Import</button>
 </div>

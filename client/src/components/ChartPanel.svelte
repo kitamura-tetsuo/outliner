@@ -5,7 +5,7 @@ import { queryStore } from "../services/sqlService";
 
 let chartDiv: HTMLDivElement;
 let chart: echarts.ECharts | undefined;
-let hasData = false;
+let hasData = $state(false);
 
 onMount(() => {
     chart = echarts.init(chartDiv);
