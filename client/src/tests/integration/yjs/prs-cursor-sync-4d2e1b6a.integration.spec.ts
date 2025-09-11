@@ -30,7 +30,10 @@ describe("yjs presence", () => {
         const states = p1c2.awareness.getStates();
         const received = Array.from(states.values()).some(s => s.presence?.cursor?.itemId === "root");
         expect(received).toBe(true);
+        p1c1.dispose();
+        p1c2.dispose();
         c1.dispose();
         c2.dispose();
+        await new Promise(r => setTimeout(r, 0));
     });
 });
