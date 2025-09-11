@@ -1,19 +1,18 @@
 declare module "yjs-orderedtree" {
     // Minimal type shim to satisfy TypeScript in this repo.
     // The library ships types under dist/types but package exports prevent resolution.
-    // Provide only the members we actually use in the codebase.
+    // We only need the symbol names; detailed typing is not required for our usage.
     export class YTree {
-        constructor(map?: any);
-        generateNodeKey(): string;
-        createNode(parentKey: string, key: string, value: any): void;
-        setNodeOrderToEnd(key: string): void;
-        setNodeBefore(key: string, targetKey: string): void;
-        setNodeAfter(key: string, targetKey: string): void;
-        getNodeChildrenFromKey(parentKey: string): string[];
-        sortChildrenByOrder(children: string[], parentKey: string): string[];
-        getNodeParentFromKey(key: string): string | undefined;
+        constructor(ymap?: any);
         deleteNodeAndDescendants(key: string): void;
-        getNodeValueFromKey(key: string): any;
+        getNodeChildrenFromKey(key: string): string[];
+        getNodeParentFromKey(key: string): string | undefined;
+        getNodeValueFromKey(key: string): unknown;
+        sortChildrenByOrder(children: string[], parentKey: string): string[];
+        generateNodeKey(): string;
+        createNode(parentKey: string, childKey: string, value: any): void;
+        setNodeOrderToEnd(key: string): void;
+        setNodeBefore(key: string, target: string): void;
+        setNodeAfter(key: string, target: string): void;
     }
-    export { YTree as Tree };
 }

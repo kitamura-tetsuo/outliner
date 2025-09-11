@@ -80,13 +80,6 @@ export function logDebugInfo(): void {
     console.log("Current user:", (window as any).__USER_MANAGER__?.getCurrentUser());
     console.log("Auth state:", (window as any).__USER_MANAGER__?.auth?.currentUser);
     console.log("Firestore userContainer:", firestoreStore.userContainer);
-    // Title registry is app-specific; skip if not available in this environment
-    try {
-        // @ts-ignore - optional global in app runtime
-        const reg = (window as any).titleRegistryStore?.titleRegistry;
-        if (reg) console.log("Title registry:", Array.from(reg.entries()));
-    } catch {}
-
     console.log("======================");
 }
 

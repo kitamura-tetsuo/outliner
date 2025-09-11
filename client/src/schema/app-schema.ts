@@ -122,7 +122,7 @@ export class Item {
     }
 
     private get value(): Y.Map<any> {
-        return (this.tree as any).getNodeValueFromKey(this.key! as string) as Y.Map<any>;
+        return this.tree!.getNodeValueFromKey(this.key!) as Y.Map<any>;
     }
 
     get id(): string {
@@ -205,14 +205,14 @@ export class Item {
     }
 
     get items(): Items {
-        return wrapArrayLike(new Items(this.ydoc as any, this.tree as any, this.key! as string));
+        return wrapArrayLike(new Items(this.ydoc, this.tree!, this.key!));
     }
 
     // 親の子集合（Items）。ルート直下は null
     get parent(): Items | null {
-        const parentKey = (this.tree as any).getNodeParentFromKey(this.key);
+        const parentKey = (this.tree as any).getNodeParentFromKey(this.key!);
         if (!parentKey) return null;
-        return new Items(this.ydoc as any, this.tree as any, parentKey as string);
+        return new Items(this.ydoc, this.tree!, parentKey);
     }
 
     // 親内でのインデックス（親がない場合は -1）
@@ -223,7 +223,7 @@ export class Item {
     }
 
     delete() {
-        (this.tree as any).deleteNodeAndDescendants(this.key! as string);
+        this.tree!.deleteNodeAndDescendants(this.key!);
     }
 }
 
@@ -262,7 +262,7 @@ export class Items implements Iterable<Item> {
     }
 
     indexOf(item: Item): number {
-        return this.childrenKeys().indexOf((item as any).key as string);
+        return this.childrenKeys().indexOf(item.key!);
     }
 
     removeAt(index: number) {
@@ -296,7 +296,7 @@ export class Items implements Iterable<Item> {
             const target = keys[clamped];
             if (!target) this.tree.setNodeOrderToEnd(nodeKey);
             else if (clamped === 0) this.tree.setNodeBefore(nodeKey, target);
-            else this.tree.setNodeAfter(nodeKey, keys[clamped - 1]);
+            else this.tree.setNodeAfter(nodeKey, keys[clamped - 1]!);
         }
 
         return new Item(this.ydoc, this.tree, nodeKey);
@@ -347,7 +347,7 @@ export class Project {
         const page = (this.items as Items).addNode(author);
         page.updateText(title);
         const pages = this.ydoc.getMap<Y.Doc>("pages");
-        const subdoc = new Y.Doc({ guid: page.id });
+        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as any);
         pages.set(page.id, subdoc);
         subdoc.load();
         return page;
