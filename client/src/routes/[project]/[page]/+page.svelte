@@ -11,7 +11,6 @@ import AuthComponent from "../../../components/AuthComponent.svelte";
 import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
 import OutlinerBase from "../../../components/OutlinerBase.svelte";
 import SearchPanel from "../../../components/SearchPanel.svelte";
-import SearchBox from "../../../components/SearchBox.svelte";
 import {
     cleanupLinkPreviews,
     setupLinkPreviewHandlers,
@@ -40,34 +39,50 @@ let pageNotFound = $state(false);
 let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 
 // URLパラメータと認証状態を監視して更新
+// 同一条件での多重実行を避け、Svelte の update depth exceeded を回避するためのキー
+// 注意: $state を使うと $effect が自分で読んで書く依存を持ちループになるため、通常変数で保持する
+let lastLoadKey: string | null = null;
 $effect(() => {
-    logger.info(`Effect triggered: project=${projectName}, page=${pageName}, isAuthenticated=${isAuthenticated}`);
-    logger.info(`Effect: projectName="${projectName}", pageName="${pageName}"`);
-    logger.info(`Effect: URL params - project exists: ${!!projectName}, page exists: ${!!pageName}`);
-    logger.info(`Effect: Authentication status: ${isAuthenticated}`);
-
-    // プロジェクトとページが指定されており、認証済み（またはテスト環境）ならデータを読み込む
+    if (typeof window !== "undefined") (window as any).__LAST_EFFECT__ = "+page.svelte:loadProjectAndPageTrigger";
     const isTestEnv = (
         import.meta.env.MODE === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
     );
-    if (projectName && pageName && (isAuthenticated || isTestEnv)) {
-        logger.info(`Effect: Conditions met (auth=${isAuthenticated}, test=${isTestEnv}) - calling loadProjectAndPage()`);
 
-        // 現在のプロジェクトとURLパラメータのプロジェクトが一致するかチェック
-        const currentProjectTitle = store.project?.title;
-        if (currentProjectTitle && currentProjectTitle !== projectName) {
-            logger.info(`Effect: Project mismatch - current: "${currentProjectTitle}", URL: "${projectName}"`);
-            logger.info(`Effect: Need to load different project`);
-        }
+    logger.info(`Effect triggered: project=${projectName}, page=${pageName}, isAuthenticated=${isAuthenticated}`);
+    logger.info(`Effect: projectName="${projectName}", pageName="${pageName}"`);
+    logger.info(`Effect: URL params - project exists: ${!!projectName}, page exists: ${!!pageName}`);
+    logger.info(`Effect: Authentication status: ${isAuthenticated}`);
 
-        loadProjectAndPage();
-    } else {
+    const key = projectName && pageName ? `${projectName}::${pageName}::${isAuthenticated || isTestEnv}` : null;
+
+    // 条件未成立
+    if (!projectName || !pageName || !(isAuthenticated || isTestEnv)) {
         logger.info(
             `Effect: Skipping loadProjectAndPage: projectName="${projectName}" (${!!projectName}), pageName="${pageName}" (${!!pageName}), isAuthenticated=${isAuthenticated}, isTestEnv=${isTestEnv}`,
         );
+        return;
     }
+
+    // 直前と同じ条件での重複実行を避ける
+    if (lastLoadKey === key) {
+        logger.info("Effect: Same key as previous run; skipping redundant loadProjectAndPage");
+        return;
+    }
+    // 通常変数への代入は $effect の再評価トリガーにならない
+    lastLoadKey = key;
+
+    logger.info(`Effect: Conditions met (auth=${isAuthenticated}, test=${isTestEnv}) - calling loadProjectAndPage()`);
+
+    // 現在のプロジェクトとURLパラメータのプロジェクトが一致するかチェック
+    const currentProjectTitle = store.project?.title;
+    if (currentProjectTitle && currentProjectTitle !== projectName) {
+        logger.info(`Effect: Project mismatch - current: "${currentProjectTitle}", URL: "${projectName}"`);
+        logger.info(`Effect: Need to load different project`);
+    }
+
+    loadProjectAndPage();
 });
 
 // 認証成功時の処理
@@ -437,11 +452,8 @@ onDestroy(() => {
                     ページ
                 {/if}
             </h1>
-            <div class="flex items-center space-x-2" data-testid="main-toolbar">
-                <!-- Page title search box (SEA-0001) -->
-                <div role="search">
-                    <SearchBox project={store.project} />
-                </div>
+            <div class="flex items-center space-x-2" data-testid="page-toolbar">
+
                 <button
                     onclick={toggleSearchPanel}
                     class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"

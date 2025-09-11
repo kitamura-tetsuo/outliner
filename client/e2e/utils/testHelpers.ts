@@ -1479,7 +1479,7 @@ export class TestHelpers {
      * @param timeout タイムアウト時間（ミリ秒）
      */
     public static async waitForOutlinerItems(page: Page, timeout = 30000): Promise<void> {
-        console.log("Waiting for outliner items to be visible...");
+        console.log("Waiting for outliner items (with data-item-id) to be visible...");
 
         // 現在のURLを確認
         const currentUrl = page.url();
@@ -1495,19 +1495,63 @@ export class TestHelpers {
             await page.waitForTimeout(2000);
         }
 
-        // アウトライナーアイテムが表示されるのを待つ
+        // データ属性付きの実アイテムが出現するまで待つ（プレースホルダー .outliner-item は除外）
         try {
-            await page.waitForSelector(".outliner-item", { timeout: timeout });
-            const itemCount = await page.locator(".outliner-item").count();
-            console.log(`Found ${itemCount} outliner items`);
+            await page.waitForSelector(".outliner-item[data-item-id]", { timeout });
+
+            // 目標: タイトル以外も含めて2件以上のアイテムを確保（タイトル+1行以上）
+            const deadline = Date.now() + timeout;
+            let ensured = false;
+            while (Date.now() < deadline) {
+                const countNow = await page.locator(".outliner-item[data-item-id]").count();
+                if (countNow >= 2) {
+                    ensured = true;
+                    break;
+                }
+
+                // 生成手段1: ツールバーの「アイテム追加」ボタン
+                try {
+                    const addBtn = page.locator(".outliner .toolbar .actions button").first();
+                    if (await addBtn.count().then(c => c > 0)) {
+                        await addBtn.click({ force: true }).catch(() => {});
+                    }
+                } catch {}
+
+                // 生成手段2: Yjs API で currentPage.items に 1 行追加
+                try {
+                    await page.evaluate(() => {
+                        try {
+                            const win: any = window as any;
+                            const gs = win.generalStore || win.appStore;
+                            const pageItem = gs?.currentPage;
+                            const items = pageItem?.items;
+                            if (items && typeof items.addNode === "function") {
+                                const node = items.addNode("tester");
+                                if (node && typeof node.updateText === "function") node.updateText("");
+                            }
+                        } catch {}
+                    });
+                } catch {}
+
+                await page.waitForTimeout(200);
+            }
+
+            if (!ensured) {
+                throw new Error("Failed to ensure at least 2 real outliner items");
+            }
+
+            const itemCount = await page.locator(".outliner-item[data-item-id]").count();
+            console.log(`Found ${itemCount} outliner items with data-item-id`);
         } catch (e) {
-            console.log("Timeout waiting for outliner items, taking screenshot...");
-            await page.screenshot({ path: "client/test-results/outliner-items-timeout.png" });
+            console.log("Timeout/Failure waiting for real outliner items, taking screenshot...");
+            try {
+                await page.screenshot({ path: "client/test-results/outliner-items-timeout.png" });
+            } catch {}
             throw e;
         }
 
         // 少し待機して安定させる
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
     }
 
     /**
@@ -1537,8 +1581,8 @@ export class TestHelpers {
      */
     public static async getItemIdByIndex(page: Page, index: number): Promise<string | null> {
         return await page.evaluate(i => {
-            const items = document.querySelectorAll(".outliner-item");
-            const target = items[i] as HTMLElement | undefined;
+            const items = Array.from(document.querySelectorAll<HTMLElement>(".outliner-item[data-item-id]"));
+            const target = items[i];
             return target?.dataset.itemId ?? null;
         }, index);
     }

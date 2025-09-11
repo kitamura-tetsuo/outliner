@@ -954,7 +954,7 @@ export class Cursor {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        const text: string = (target.text as any)?.toString?.() ?? "";
 
         // カーソル位置でテキストを分割
         const beforeText = text.slice(0, this.offset);

@@ -78,21 +78,15 @@ $effect(() => {
         // positionMapの更新も監視
         const itemInfo = currentPositionMap[lastCursor.itemId];
         if (!itemInfo) {
-            // positionMapが更新されていない場合は、強制的に更新してから再試行
-            updatePositionMap();
-            setTimeout(() => {
-                updateTextareaPosition();
-            }, 50);
+            // positionMapの更新を軽く依頼し、今回のサイクルでは終了（無限ループ防止）
+            debouncedUpdatePositionMap();
             return;
         }
 
         const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
         if (!pos) {
-            // 位置計算に失敗した場合も、positionMapを更新してから再試行
-            updatePositionMap();
-            setTimeout(() => {
-                updateTextareaPosition();
-            }, 50);
+            // 位置計算に失敗した場合も、過剰反応を避けて一旦抜ける（別経路の更新に任せる）
+            debouncedUpdatePositionMap();
             return;
         }
 

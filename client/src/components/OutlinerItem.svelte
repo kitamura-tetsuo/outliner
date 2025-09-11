@@ -8,6 +8,7 @@ import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
 import { YjsSubscriber } from "../stores/YjsSubscriber";
+import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 import ChartPanel from "./ChartPanel.svelte";
 import CommentThread from "./CommentThread.svelte";
@@ -59,46 +60,82 @@ let item = model.original;
 
 const aliasTargetIdSub = new YjsSubscriber(
     item.ydoc,
-    () => (item as any).aliasTargetId,
+    () => item.aliasTargetId,
     value => {
-        (item as any).aliasTargetId = value;
+        item.aliasTargetId = value as any;
     },
 );
 
 let aliasTargetId = $state<string | undefined>(aliasTargetIdSub.current);
+let aliasTargetIdEffective = $state<string | undefined>(aliasTargetIdSub.current);
 
 $effect(() => {
     aliasTargetId = aliasTargetIdSub.current;
+    aliasTargetIdEffective = aliasTargetIdSub.current;
+    // エイリアス選択直後は Yjs 経由の反映より先にフォールバックを使って安定化
+    const lastItemId = (aliasPickerStore as any)?.lastConfirmedItemId;
+    const lastTargetId = (aliasPickerStore as any)?.lastConfirmedTargetId;
+    if (!aliasTargetIdEffective && lastItemId === model.id && lastTargetId) {
+        aliasTargetIdEffective = lastTargetId;
+    }
 });
 
 let aliasTarget = $state<Item | undefined>(undefined);
 
-let attachments = $state<string[]>([...(item.attachments as any)]);
+let attachments = $state<string[]>(
+    Array.isArray((item as any).attachments)
+        ? ([...((item as any).attachments as string[])])
+        : (typeof (item as any).attachments?.[Symbol.iterator] === "function"
+            ? Array.from((item as any).attachments as Iterable<string>)
+            : [])
+);
 const attachmentsSub = new YjsSubscriber(
     item.ydoc,
     () => item.attachments,
 );
 
 $effect(() => {
-    attachments = [...attachmentsSub.current];
+    const cur: any = attachmentsSub.current as any;
+    if (Array.isArray(cur)) {
+        attachments = [...cur];
+    } else if (cur && typeof cur[Symbol.iterator] === "function") {
+        attachments = Array.from(cur as Iterable<string>);
+    } else {
+        attachments = [];
+    }
 });
 let aliasPath = $state<Item[]>([]);
 
-const aliasTargetSub = new YjsSubscriber<Item | undefined>(
-    generalStore.currentPage.ydoc,
-    () => {
-        if (!aliasTargetId) return undefined;
-        return findItem(generalStore.currentPage, aliasTargetId);
-    },
-);
+let aliasTargetSub: YjsSubscriber<Item | undefined> | null = null;
 
 $effect(() => {
-    if (aliasTargetId && generalStore.currentPage) {
-        aliasTarget = aliasTargetSub.current;
-        const p = findPath(generalStore.currentPage, aliasTargetId);
-        aliasPath = p || [];
-    }
-    else {
+    try {
+        if (generalStore.currentPage) {
+            // currentPage が利用可能になったタイミングで購読をセットアップ
+            aliasTargetSub = new YjsSubscriber<Item | undefined>(
+                generalStore.currentPage.ydoc,
+                () => {
+                    if (!aliasTargetId) return undefined;
+                    return findItem(generalStore.currentPage, aliasTargetId);
+                },
+            );
+            if (aliasTargetId) {
+                aliasTarget = aliasTargetSub.current;
+                const p = findPath(generalStore.currentPage, aliasTargetId);
+                aliasPath = p || [];
+            } else {
+                aliasTarget = undefined;
+                aliasPath = [];
+            }
+        } else {
+            // ページ未準備時は空
+            aliasTargetSub = null;
+            aliasTarget = undefined;
+            aliasPath = [];
+        }
+    } catch (e) {
+        console.warn("OutlinerItem: aliasTargetSub setup error", e);
+        aliasTargetSub = null;
         aliasTarget = undefined;
         aliasPath = [];
     }
@@ -1430,7 +1467,7 @@ onMount(() => {
     onmouseup={handleMouseUp}
     bind:this={itemRef}
     data-item-id={model.id}
-    data-alias-target-id={aliasTargetId || ""}
+    data-alias-target-id={aliasTargetIdEffective || ""}
 >
     <div class="item-header">
         {#if !isPageTitle}

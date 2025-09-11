@@ -15,9 +15,7 @@ import "../utils/registerAfterEachSnapshot";
  */
 
 test.describe("テキスト追加機能テスト", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
-    });
+    // このspecはbeforeEachを使わず、各テスト内で環境を初期化して安定化させます
 
     // スナップショットは ../utils/registerAfterEachSnapshot の afterEach で一括保存
 
@@ -33,52 +31,74 @@ test.describe("テキスト追加機能テスト", () => {
      * @updated 2023-04-09 フォーカスの問題は修正済み
      */
     test("Add Text button should add text to shared content", async ({ page }, testInfo) => {
-        // 追加前のアイテムIDリストを取得
-        const itemIdsBefore = await page.evaluate(() => {
-            const arr = Array.from(document.querySelectorAll(".outliner-item")).map(el =>
-                el.getAttribute("data-item-id")
-            );
-            console.log("E2E: initial .outliner-item count", arr.length);
-            return arr;
+        // --- 環境初期化（各テスト内で実施） ---
+        await page.addInitScript(() => {
+            try {
+                localStorage.setItem("VITE_IS_TEST", "true");
+                localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
+                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+            } catch {}
         });
+        await page.goto("/", { waitUntil: "domcontentloaded", timeout: 120000 });
+        await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+        await page.waitForSelector('[data-testid="outliner-base"]', { timeout: 30000 });
+        // ------------------------------------
 
-        // アウトラインにアイテムを追加
-        const hasButton = await page.locator('button:has-text("アイテム追加")').count();
-        console.log("E2E: add button count", hasButton);
+        // 追加前のDOMカウントを取得
+        const initialCount = await page.locator(".outliner-item").count();
+
+        // 追加ボタンで新規アイテムを作成（UI操作）
         await page.click('button:has-text("アイテム追加")');
 
-        // 新しいアイテムが表示されるのを待つ
-        await page.waitForFunction(
-            beforeIds => {
-                const currentIds = Array.from(document.querySelectorAll(".outliner-item")).map(el =>
-                    el.getAttribute("data-item-id")
-                );
-                return currentIds.length > beforeIds.length;
-            },
-            itemIdsBefore,
-            { timeout: 30000 },
-        );
-
-        // 新しく追加されたアイテムIDを特定
-        const itemIdsAfter = await page.evaluate(() => {
-            return Array.from(document.querySelectorAll(".outliner-item")).map(el => el.getAttribute("data-item-id"));
+        // DOMの .outliner-item 数が増えるのを待機
+        await page.waitForFunction((n) => document.querySelectorAll(".outliner-item").length > n, initialCount, {
+            timeout: 30000,
         });
 
-        const newItemIds = itemIdsAfter.filter(id => !itemIdsBefore.includes(id));
-        console.log(`Items before: ${itemIdsBefore.length}, after: ${itemIdsAfter.length}`);
-        console.log(`New item IDs: ${newItemIds.join(", ")}`);
-
-        if (newItemIds.length === 0) throw new Error("No new item was added");
-
-        const newId = newItemIds[0];
-        const newItem = page.locator(`.outliner-item[data-item-id="${newId}"]`);
-
-        console.log(`Selected new item with ID: ${newId}`);
-
-        // アイテムの存在を確認
+        // 新規アイテム（最後の要素）を取得
+        const newCount = await page.locator(".outliner-item").count();
+        const newItem = page.locator(".outliner-item").nth(newCount - 1);
         await expect(newItem).toBeVisible();
+        const newId = await newItem.getAttribute("data-item-id");
 
-        // 全てのアイテムの状態をデバッグ
+        // クリックして編集モードへ
+        await newItem.locator(".item-content").click({ force: true });
+        // 保険: フォーカスをグローバルテキストエリアへ
+        await page.evaluate(() => {
+            (document.querySelector(".global-textarea") as HTMLTextAreaElement | null)?.focus();
+        });
+
+        // テキスト入力
+        const targetText = "Hello from E2E";
+        await page.keyboard.type(targetText);
+
+        // DOMへ反映されたことを確認
+        await expect(newItem.locator(".item-text")).toContainText(targetText, { timeout: 15000 });
+
+        // 共有内容への反映を厳密確認（Yjs層に対する安定ポーリング）
+        if (newId) {
+            await page.waitForFunction(
+                ({ id, text }) => {
+                    const gs: any = (window as any).generalStore;
+                    const pageItem: any = gs?.currentPage;
+                    const items: any = pageItem?.items;
+                    if (!items) return false;
+                    const len = typeof items.length === "number" ? items.length : 0;
+                    for (let i = 0; i < len; i++) {
+                        const it = items.at ? items.at(i) : items[i];
+                        if (it?.id === id) {
+                            const t = (it.text as any)?.toString?.() ?? String(it.text ?? "");
+                            return t === text;
+                        }
+                    }
+                    return false;
+                },
+                { id: newId, text: targetText },
+                { timeout: 10000 },
+            );
+        }
+
+        // 以降のデバッグコードは不要のため削除
         const allItemsDebug = await page.evaluate(() => {
             return Array.from(document.querySelectorAll(".outliner-item")).map(el => ({
                 id: el.getAttribute("data-item-id"),
@@ -237,6 +257,7 @@ test.describe("テキスト追加機能テスト", () => {
         ).toContainText(testText, { timeout: 15000 });
 
         // デバッグ用のスクリーンショットを保存
+
         await page.screenshot({ path: "test-results/add-text-result.png" });
     });
 
@@ -250,6 +271,19 @@ test.describe("テキスト追加機能テスト", () => {
      * @check ページを再読み込みしても入力したデータが保持されていることを確認する
      */
     test("Adding text updates data structure", async ({ page }, testInfo) => {
+        // --- 環境初期化（各テスト内で実施） ---
+        await page.addInitScript(() => {
+            try {
+                localStorage.setItem("VITE_IS_TEST", "true");
+                localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
+                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+            } catch {}
+        });
+        await page.goto("/", { waitUntil: "domcontentloaded", timeout: 120000 });
+        await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+        await page.waitForSelector('[data-testid="outliner-base"]', { timeout: 30000 });
+        // ------------------------------------
+
         // ストア初期化の完了待機（Yjs）
         await page.waitForFunction(() => {
             const gs: any = (window as any).generalStore;
@@ -262,6 +296,7 @@ test.describe("テキスト追加機能テスト", () => {
             const pages: any = gs?.project?.items;
             const items = [] as any[];
             const len = pages?.length ?? 0;
+
             for (let i = 0; i < len; i++) {
                 const it = pages.at ? pages.at(i) : pages[i];
                 if (it) items.push({ id: String(it.id), text: it.text?.toString?.() ?? String(it.text ?? "") });

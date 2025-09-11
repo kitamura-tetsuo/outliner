@@ -7,49 +7,27 @@ import { KeyEventHandler } from "../lib/KeyEventHandler";
 import { Items } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
+import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 
 let textareaRef: HTMLTextAreaElement;
 let isComposing = false;
 let measureCanvas: HTMLCanvasElement | null = null;
 let measureCtx: CanvasRenderingContext2D | null = null;
 
-// store.activeItemId 変化時に再フォーカス
+// 再入防止と無限ループ防止用のフラグ/直近ID
+let __focusSyncing = false;
+let __lastFocusedItemId: string | number | null = null;
+
+// store.activeItemId 変化時の副作用
 $effect(() => {
-    const id = store.activeItemId;
+    if (typeof window !== "undefined") (window as any).__LAST_EFFECT__ = "GlobalTextArea:activeItemId";
+    const id = store.activeItemId as any;
     console.log(`GlobalTextArea: activeItemId changed to ${id}`);
-    if (id && textareaRef) {
-        console.log(`GlobalTextArea: Setting focus for activeItemId ${id}`);
 
-        // フォーカスを確実に設定するための複数の試行
-        if (textareaRef) {
-            textareaRef.focus();
-            console.log(`GlobalTextArea: Initial focus call, activeElement: ${document.activeElement?.tagName}`);
-
-            // requestAnimationFrameを使用してフォーカスを設定
-            requestAnimationFrame(() => {
-                if (textareaRef) {
-                    textareaRef.focus();
-                    console.log(`GlobalTextArea: RAF focus call, activeElement: ${document.activeElement?.tagName}`);
-
-                    // さらに確実にするためにsetTimeoutも併用
-                    setTimeout(() => {
-                        if (textareaRef) {
-                            textareaRef.focus();
-                            const isFocused = document.activeElement === textareaRef;
-                            console.log(`GlobalTextArea: Final focus call, focused: ${isFocused}`);
-
-                            // デバッグ情報
-                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                                console.log(
-                                    `GlobalTextArea: focus set on activeItemId change. Active element is textarea: ${isFocused}`,
-                                );
-                            }
-                        }
-                    }, 10);
-                }
-            });
-        }
-    }
+    // 無限ループ回避のため、本エフェクトではテキストエリアへのフォーカス操作を一切行わない。
+    // フォーカスは onMount 初期化と OutlinerItem.startEditing() 側で責務分担する。
+    __lastFocusedItemId = id ?? null;
+    return;
 });
 
 // global textarea をストアに登録
@@ -166,10 +144,14 @@ async function handlePaste(event: ClipboardEvent) {
 // フォーカス喪失時の処理を追加
 function handleBlur(_event: FocusEvent) {
     const activeItemId = store.getActiveItem();
+    // エイリアスピッカー表示中はフォーカス復元しない
+    if (aliasPickerStore.isVisible) {
+        return;
+    }
     if (activeItemId) {
         // フォーカスを確実に設定するための複数の試行
         setTimeout(() => {
-            if (textareaRef) {
+            if (textareaRef && !aliasPickerStore.isVisible) {
                 textareaRef.focus();
 
                 // デバッグ情報

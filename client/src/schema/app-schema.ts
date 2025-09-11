@@ -153,6 +153,15 @@ export class Item {
         this.updateText(v ?? "");
     }
 
+    // alias target id stored in Y.Map
+    get aliasTargetId(): string | undefined {
+        return this.value.get("aliasTargetId");
+    }
+    set aliasTargetId(v: string | undefined) {
+        this.value.set("aliasTargetId", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
     updateText(text: string) {
         const t = this.value.get("text") as Y.Text;
         t.delete(0, t.length);

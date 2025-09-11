@@ -351,7 +351,15 @@ function extractErrorDetails(
     } else if (typeof error === "string") {
         return { message: error };
     } else if (error && typeof error === "object") {
-        return { ...error as object, message: String(error) };
+        // 任意のオブジェクトをスプレッドすると Playwright のコンソール転送で
+        // [unserializable] が多発することがあるため、必要最小限のみ返す
+        const anyErr = error as any;
+        const name = typeof anyErr.name === "string" ? anyErr.name : undefined;
+        const message = typeof anyErr.message === "string" ? anyErr.message : String(anyErr);
+        const stack = typeof anyErr.stack === "string" ? anyErr.stack : undefined;
+        const type = typeof anyErr.type === "string" ? anyErr.type : undefined;
+
+        return { name, message, stack, type };
     }
     return { message: String(error) };
 }
@@ -375,14 +383,14 @@ function setupGlobalErrorHandlers(): void {
             ...extractErrorDetails(error || message),
         };
 
-        // ロガーとコンソールの両方に出力
+        // ロガーとコンソールの両方に出力（PlaywrightfVitefHMRfErrorEventfDOMException    などの非直列化 対象            を避けるため、コンソールへは文字列のみ出力）
         uncaughtLogger.error(errorInfo);
-        console.error(
-            `%c[UncaughtError]%c [ERROR]: Uncaught Exception`,
-            `color: #6699cc; font-weight: bold`,
-            `color: #d9534f; font-weight: bold`,
-            errorInfo,
-        );
+        const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
+        const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
+        const marker = (window as any).__LAST_EFFECT__ || "<unknown>";
+        console.error(`%c${errMsg}`, consoleStyles.fileInfo, stackTop);
+        console.error("[EFFECT-MARKER]", marker);
+        console.error("[STACK]", stackTop);
 
         // デフォルトのエラーハンドリングは継続する（falseを返さない）
         return false;
@@ -396,18 +404,47 @@ function setupGlobalErrorHandlers(): void {
             ...extractErrorDetails(reason),
         };
 
-        // ロガーとコンソールの両方に出力
+        // ロガーとコンソールの両方に出力（コンソールへは文字列のみ出力）
         uncaughtLogger.error(errorInfo);
-        console.error(
-            `%c[UncaughtError]%c [ERROR]: Unhandled Promise Rejection`,
-            `color: #6699cc; font-weight: bold`,
-            `color: #d9534f; font-weight: bold`,
-            errorInfo,
-        );
+        const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
+        const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
+        const marker = (window as any).__LAST_EFFECT__ || "<unknown>";
+        console.error(`%c${errMsg}`, consoleStyles.fileInfo, stackTop);
+        console.error("[EFFECT-MARKER]", marker);
+        console.error("[STACK]", stackTop);
     };
+}
+
+// Playwright での [unserializable] スパム抑制のため、console.error/warn の引数を安全に文字列化
+function setupConsoleSanitizer(): void {
+    if (typeof window === "undefined") return;
+    const safe = (arg: any): string => {
+        try {
+            if (typeof arg === "string") return arg;
+            if (arg instanceof Error) {
+                const top = (arg.stack || "").split("\n").slice(0, 2).join("\n");
+                return `${arg.name}: ${arg.message}\n${top}`;
+            }
+            if (arg && typeof arg === "object") {
+                const name = typeof (arg as any).name === "string" ? (arg as any).name : undefined;
+                const msg = typeof (arg as any).message === "string" ? (arg as any).message : undefined;
+                if (name || msg) return `${name || "Object"}: ${msg || ""}`;
+                // 最低限の JSON 文字列化（循環参照は避ける）
+                return JSON.stringify(arg, (_k, v) => (typeof v === "object" ? undefined : v)) || "[object]";
+            }
+            return String(arg);
+        } catch {
+            return "[unserializable-arg]";
+        }
+    };
+    const origError = console.error.bind(console);
+    const origWarn = console.warn.bind(console);
+    console.error = (...args: any[]) => origError(...args.map(safe));
+    console.warn = (...args: any[]) => origWarn(...args.map(safe));
 }
 
 // ブラウザ環境ならグローバルエラーハンドラーを初期化
 if (typeof window !== "undefined") {
+    setupConsoleSanitizer();
     setupGlobalErrorHandlers();
 }

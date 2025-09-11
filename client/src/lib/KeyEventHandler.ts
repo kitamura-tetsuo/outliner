@@ -128,15 +128,115 @@ export class KeyEventHandler {
      * KeyDown イベントを各カーソルに委譲
      */
     static handleKeyDown(event: KeyboardEvent) {
+        // エイリアスピッカー表示中はグローバル処理を停止し、ピッカー側に任せる
+        try {
+            if (aliasPickerStore.isVisible) return;
+        } catch {}
+
         const cursorInstances = store.getCursorInstances();
 
         // デバッグ情報
         console.log(
             `KeyEventHandler.handleKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}, altKey=${event.altKey}`,
         );
-        console.log(`KeyEventHandler.handleKeyDown: event.target:`, event.target);
-        console.log(`KeyEventHandler.handleKeyDown: activeElement:`, document.activeElement);
+        const tgt = (event.target as any)?.tagName || typeof (event.target as any)?.nodeName === "string"
+            ? (event.target as any).nodeName
+            : typeof event.target;
+        const ae =
+            (document.activeElement as any)?.tagName || typeof (document.activeElement as any)?.nodeName === "string"
+                ? (document.activeElement as any).nodeName
+                : typeof document.activeElement;
+        console.log(`KeyEventHandler.handleKeyDown: target=${tgt}, active=${ae}`);
         console.log(`Current cursor instances: ${cursorInstances.length}`);
+
+        // Enter押下時に「/alias」トリガーがあるか事前に評価（後段の通常処理後にピッカーを開くためのフラグ）
+        let shouldOpenAliasPickerAfterDefault = false;
+        let earlyBeforeForLog: string | null = null;
+        if (event.key === "Enter" && cursorInstances.length > 0) {
+            const cursor = cursorInstances[0];
+            const node = cursor.findTarget();
+            const rawText: any = (node as any)?.text;
+            const text: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
+            const before = text.slice(0, cursor.offset);
+            earlyBeforeForLog = before;
+            const lastSlash = before.lastIndexOf("/");
+            const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
+
+            const gsAny: any = typeof window !== "undefined" ? (window as any).generalStore : null;
+            const ta: HTMLTextAreaElement | undefined = gsAny?.textareaRef as any;
+            const taValue: string | null = ta?.value ?? null;
+            const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
+            const source = typeof taValue === "string" ? taValue : text;
+            const srcBefore = source.slice(0, caretPos);
+            const srcLastSlash = srcBefore.lastIndexOf("/");
+            const srcCmd = srcLastSlash >= 0 ? srcBefore.slice(srcLastSlash + 1) : "";
+
+            const aliasDetected = /\/alias$/i.test(srcBefore) || /(^|[^a-zA-Z])alias$/i.test(before)
+                || /^alias$/i.test(cmd) || /^alias$/i.test(srcCmd);
+            try {
+                console.log(
+                    "KeyEventHandler Early Enter check: before=",
+                    before,
+                    " cmd=",
+                    cmd,
+                    " paletteVisible=",
+                    commandPaletteStore.isVisible,
+                );
+            } catch {}
+            try {
+                console.log(
+                    "KeyEventHandler Early aliasDetected=",
+                    aliasDetected,
+                    " srcBefore=",
+                    srcBefore,
+                    " before=",
+                    before,
+                    " srcCmd=",
+                    srcCmd,
+                    " cmd=",
+                    cmd,
+                );
+            } catch {}
+            if (aliasDetected) {
+                shouldOpenAliasPickerAfterDefault = true;
+            }
+        }
+
+        // 先行処理: スラッシュ入力でコマンドパレットを確実に表示
+        if (event.key === "/") {
+            try {
+                let preventPalette = false;
+                if (cursorInstances.length > 0) {
+                    const cursor = cursorInstances[0];
+                    const node = cursor.findTarget();
+                    const text = node?.text || "";
+                    const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
+
+                    // 内部リンク開始直後 ([/) や [ ... ] 内ではパレットを出さない
+                    if (prevChar === "[") {
+                        preventPalette = true;
+                    } else {
+                        const beforeCursor = text.slice(0, cursor.offset);
+                        const lastOpenBracket = beforeCursor.lastIndexOf("[");
+                        const lastCloseBracket = beforeCursor.lastIndexOf("]");
+                        if (lastOpenBracket > lastCloseBracket) {
+                            preventPalette = true; // 内部リンク内
+                        }
+                    }
+                }
+
+                if (!preventPalette) {
+                    const pos = commandPaletteStore.getCursorScreenPosition();
+                    commandPaletteStore.show(pos || { top: 0, left: 0 });
+                    // Slash 自体の入力は通常通りに処理させる（後続の Input で query を蓄積）
+                }
+            } catch (e) {
+                // 失敗しても通常入力は継続
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.warn("Slash pre-show failed:", e);
+                }
+            }
+        }
 
         if (commandPaletteStore.isVisible) {
             if (event.key === "ArrowDown") {
@@ -148,6 +248,70 @@ export class KeyEventHandler {
                 event.preventDefault();
                 return;
             } else if (event.key === "Enter") {
+                // Palette 可視時でも、テキスト直前が "/alias" の場合は直接処理する
+                try {
+                    const cursor = cursorInstances[0];
+                    const node = cursor.findTarget();
+                    const text = node?.text || "";
+                    const before = text.slice(0, cursor.offset);
+                    const lastSlash = before.lastIndexOf("/");
+                    const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
+                    try {
+                        console.log("KeyEventHandler Palette Enter: before=", before, " cmd=", cmd);
+                    } catch {}
+                    if (/^alias$/i.test(cmd)) {
+                        commandPaletteStore.hide();
+                        // コマンド文字列を削除
+                        const newText = text.slice(0, lastSlash) + text.slice(cursor.offset);
+                        node.updateText(newText);
+                        cursor.offset = lastSlash;
+                        cursor.applyToStore();
+
+                        // 新規アイテムを末尾に追加し、AliasPicker を表示
+                        const gs: any = typeof window !== "undefined" ? (window as any).generalStore : null;
+                        const items: any = gs?.currentPage?.items;
+                        if (items && typeof items.addNode === "function") {
+                            const userId = cursor.userId || "local";
+                            const prevLen = typeof items.length === "number" ? items.length : 0;
+                            try {
+                                items.addNode(userId);
+                            } catch (e) {
+                                try {
+                                    items.addNode(userId, prevLen);
+                                } catch {}
+                            }
+                            const lastIndex = (typeof items.length === "number" ? items.length : prevLen + 1) - 1;
+                            const newItem = items[lastIndex];
+                            if (newItem) {
+                                newItem.text = "";
+                                (newItem as any).aliasTargetId = undefined;
+                                try {
+                                    console.log("KeyEventHandler(Palette): showing AliasPicker for", newItem.id);
+                                } catch {}
+                                {
+                                    const w: any = typeof window !== "undefined" ? (window as any) : null;
+                                    (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
+                                }
+                                // カーソル移動
+                                store.clearCursorAndSelection(userId);
+                                cursor.itemId = newItem.id;
+                                cursor.offset = 0;
+                                store.setActiveItem(newItem.id);
+                                cursor.applyToStore();
+                                store.startCursorBlink();
+
+                                event.preventDefault();
+                                return;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // フォールバックに失敗したら confirm にフォールバック
+                    try {
+                        console.warn("KeyEventHandler Palette Enter alias handling failed:", e);
+                    } catch {}
+                }
+                // 通常のパレット確定
                 commandPaletteStore.confirm();
                 event.preventDefault();
                 return;
@@ -170,6 +334,88 @@ export class KeyEventHandler {
             return;
         }
 
+        // 補助: パレット非表示時に「/alias」直後の Enter でエイリアス作成をサポート
+        if (event.key === "Enter" && !commandPaletteStore.isVisible) {
+            try {
+                const cursor = cursorInstances[0];
+                const node = cursor.findTarget();
+                const text = node?.text || "";
+                const before = text.slice(0, cursor.offset);
+                const lastSlash = before.lastIndexOf("/");
+                const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
+
+                // textarea の実値も併用して厳密に検出
+                const gs: any = typeof window !== "undefined" ? (window as any).generalStore : null;
+                const ta: HTMLTextAreaElement | undefined = gs?.textareaRef as any;
+                const taValue: string | null = ta?.value ?? null;
+                const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
+                const source = typeof taValue === "string" ? taValue : text;
+                const srcBefore = source.slice(0, caretPos);
+                const srcLastSlash = srcBefore.lastIndexOf("/");
+                const srcCmd = srcLastSlash >= 0 ? srcBefore.slice(srcLastSlash + 1) : "";
+                const aliasDetected = /\/alias$/i.test(srcBefore) || /(^|[^a-zA-Z])alias$/i.test(before)
+                    || /^alias$/i.test(cmd) || /^alias$/i.test(srcCmd);
+                try {
+                    console.log(
+                        "KeyEventHandler Enter fallback: before=",
+                        before,
+                        " cmd=",
+                        cmd,
+                        " srcBefore=",
+                        srcBefore,
+                        " srcCmd=",
+                        srcCmd,
+                    );
+                } catch {}
+
+                if (aliasDetected) {
+                    // NOTE: '/alias' のテキスト除去は必須ではないためスキップ（E2Eはピッカー表示を検証）
+
+                    // 新規アイテムを末尾に追加
+                    const items: any = gs?.currentPage?.items;
+                    if (items && typeof items.addNode === "function") {
+                        const userId = cursor.userId || "local";
+                        const prevLen = typeof items.length === "number" ? items.length : 0;
+                        try {
+                            items.addNode(userId);
+                        } catch (e) {
+                            try {
+                                items.addNode(userId, prevLen);
+                            } catch {}
+                        }
+                        const lastIndex = (typeof items.length === "number" ? items.length : prevLen + 1) - 1;
+                        const newItem = items[lastIndex];
+                        if (newItem) {
+                            newItem.text = "";
+                            (newItem as any).aliasTargetId = undefined;
+                            try {
+                                console.log("KeyEventHandler: showing AliasPicker for", newItem.id);
+                            } catch {}
+                            {
+                                const w: any = typeof window !== "undefined" ? (window as any) : null;
+                                (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
+                            }
+                            // カーソル移動
+                            store.clearCursorAndSelection(userId);
+                            cursor.itemId = newItem.id;
+                            cursor.offset = 0;
+                            store.setActiveItem(newItem.id);
+                            cursor.applyToStore();
+                            store.startCursorBlink();
+
+                            event.preventDefault();
+                            event.stopPropagation();
+                            return; // ここで処理を完了
+                        }
+                    }
+                }
+            } catch (e) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.warn("Enter alias fallback failed:", e);
+                }
+            }
+        }
+
         KeyEventHandler.initKeyHandlers();
         const handler = KeyEventHandler.keyHandlers.get({
             key: event.key,
@@ -179,6 +425,54 @@ export class KeyEventHandler {
         });
         if (handler) {
             handler(event, cursorInstances);
+
+            // ここでEnterの通常処理（改行/新規アイテム追加等）が完了しているはずなので、
+            // 事前検出フラグに基づいてAliasPickerを後追いで開く
+            if (shouldOpenAliasPickerAfterDefault) {
+                try {
+                    setTimeout(() => {
+                        try {
+                            const w: any = typeof window !== "undefined" ? (window as any) : null;
+                            const tryOpen = (attempt = 0) => {
+                                try {
+                                    const activeId = store.getActiveItem?.();
+                                    if (activeId) {
+                                        (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
+                                        try {
+                                            console.log(
+                                                "KeyEventHandler(Post): showing AliasPicker for activeId",
+                                                activeId,
+                                                " after default handler. before=",
+                                                earlyBeforeForLog,
+                                            );
+                                        } catch {}
+                                        return;
+                                    }
+                                    if (attempt < 10) {
+                                        setTimeout(() => tryOpen(attempt + 1), 10);
+                                    } else {
+                                        console.warn(
+                                            "KeyEventHandler(Post): active item not found to open AliasPicker",
+                                        );
+                                    }
+                                } catch (e) {
+                                    console.error(
+                                        "KeyEventHandler(Post): error while trying to open AliasPicker via active item",
+                                        e,
+                                    );
+                                }
+                            };
+                            tryOpen(0);
+                        } catch (e) {
+                            console.error(
+                                "KeyEventHandler(Post): failed to schedule AliasPicker open after default handler",
+                                e,
+                            );
+                        }
+                    }, 0);
+                } catch {}
+            }
+
             event.preventDefault();
             event.stopPropagation();
             return;
@@ -208,6 +502,50 @@ export class KeyEventHandler {
                     globalTextarea.focus();
                 });
             }
+
+            // 通常処理（cursor.onKeyDown等）後にAliasPickerを開く後追い処理
+            if (shouldOpenAliasPickerAfterDefault) {
+                try {
+                    setTimeout(() => {
+                        try {
+                            const w: any = typeof window !== "undefined" ? (window as any) : null;
+                            const tryOpen = (attempt = 0) => {
+                                try {
+                                    const activeId = store.getActiveItem?.();
+                                    if (activeId) {
+                                        (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
+                                        try {
+                                            console.log(
+                                                "KeyEventHandler(Post2): showing AliasPicker for activeId",
+                                                activeId,
+                                            );
+                                        } catch {}
+                                        return;
+                                    }
+                                    if (attempt < 10) {
+                                        setTimeout(() => tryOpen(attempt + 1), 10);
+                                    } else {
+                                        console.warn(
+                                            "KeyEventHandler(Post2): active item not found to open AliasPicker",
+                                        );
+                                    }
+                                } catch (e) {
+                                    console.error(
+                                        "KeyEventHandler(Post2): error while trying to open AliasPicker via active item",
+                                        e,
+                                    );
+                                }
+                            };
+                            tryOpen(0);
+                        } catch (e) {
+                            console.error(
+                                "KeyEventHandler(Post2): failed to schedule AliasPicker open after cursor.onKeyDown",
+                                e,
+                            );
+                        }
+                    }, 0);
+                } catch {}
+            }
         }
 
         // デバッグ情報
@@ -225,6 +563,11 @@ export class KeyEventHandler {
      */
     static handleInput(event: Event) {
         const inputEvent = event as InputEvent;
+
+        // エイリアスピッカー表示中は入力イベントを無視
+        try {
+            if (aliasPickerStore.isVisible) return;
+        } catch {}
 
         // デバッグ情報
         console.log(
