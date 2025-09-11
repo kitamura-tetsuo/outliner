@@ -15,5 +15,4 @@ declare module "yjs-orderedtree" {
         deleteNodeAndDescendants(key: string): void;
         getNodeValueFromKey(key: string): any;
     }
-    export { YTree as Tree };
 }
