@@ -340,7 +340,11 @@ export class KeyEventHandler {
                     textareaElement.focus();
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (
+                        typeof window !== "undefined"
+                        && typeof document !== "undefined"
+                        && (window as any).DEBUG_MODE
+                    ) {
                         console.log(
                             `Focus set after input. Active element is textarea: ${
                                 document.activeElement === textareaElement
@@ -603,8 +607,10 @@ export class KeyEventHandler {
 
                 // 一定時間後にスタイルを削除
                 setTimeout(() => {
-                    const el = document.getElementById("box-selection-feedback");
-                    if (el) el.remove();
+                    if (typeof document !== "undefined") {
+                        const el = document.getElementById("box-selection-feedback");
+                        if (el) el.remove();
+                    }
                 }, 500);
             }
 
@@ -673,9 +679,11 @@ export class KeyEventHandler {
 
                     // 一定時間後にクラスを削除
                     setTimeout(() => {
-                        document.querySelectorAll(".selection-box-updating").forEach(el => {
-                            el.classList.remove("selection-box-updating");
-                        });
+                        if (typeof document !== "undefined") {
+                            document.querySelectorAll(".selection-box-updating").forEach(el => {
+                                el.classList.remove("selection-box-updating");
+                            });
+                        }
                     }, 300);
                 }
 
