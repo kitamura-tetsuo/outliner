@@ -8,14 +8,21 @@ import { getLogger } from "./logger";
 
 const logger = getLogger();
 
-export function setupGlobalDebugFunctions(svc?: typeof yjsHighService) {
+export function setupGlobalDebugFunctions() {
     if (typeof window !== "undefined") {
-        (window as any).__SVELTE_GOTO__ = async (url: string, opts?: any) => {
-            await Promise.resolve();
-            return goto(url, opts);
-        };
+        // In Playwright tests, avoid exposing goto to prevent navigation loops.
+        if (process.env.NODE_ENV !== "test") {
+            (window as any).__SVELTE_GOTO__ = async (url: string, opts?: any) => {
+                await Promise.resolve();
+                return goto(url, opts);
+            };
+        } else {
+            try {
+                delete (window as any).__SVELTE_GOTO__;
+            } catch {}
+        }
         // サービス / ストア / ユーザーマネージャ
-        (window as any).__FLUID_SERVICE__ = svc ?? yjsHighService;
+        (window as any).__FLUID_SERVICE__ = yjsHighService;
         (window as any).__FLUID_STORE__ = yjsStore as any; // keep legacy name for helpers
         (window as any).__USER_MANAGER__ = userManager;
         (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
@@ -38,6 +45,10 @@ declare global {
 
 if (process.env.NODE_ENV === "test") {
     if (typeof window !== "undefined") {
+        // Do not expose __SVELTE_GOTO__ in tests to force page.goto in helpers
+        try {
+            delete (window as any).__SVELTE_GOTO__;
+        } catch {}
         (window as any).__FLUID_SERVICE__ = yjsHighService;
         (window as any).__FLUID_STORE__ = yjsStore as any;
         (window as any).__USER_MANAGER__ = userManager;
@@ -86,10 +97,9 @@ if (process.env.NODE_ENV === "test") {
         };
 
         window.getYjsTreePathData = function(path?: string) {
-            const getter = window.getYjsTreeDebugData;
-            const data = typeof getter === "function" ? getter() : undefined;
+            const data = window.getYjsTreeDebugData?.();
             if (!path) return data;
-            return path.split(".").reduce((prev: any, curr: string) => prev?.[curr], data as any);
+            return path.split(".").reduce((prev: any, curr: string) => prev?.[curr], data);
         };
 
         logger.debug("Global debug functions initialized");

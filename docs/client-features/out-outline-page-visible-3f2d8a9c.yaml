@@ -4,8 +4,13 @@ description: Ensure that TestHelpers.prepareTestEnvironment navigates to the new
 category: core
 status: implemented
 acceptance:
+- Breadcrumb shows project and page names
+- Consecutive Enter keys append additional outliner items
+- Enter creates a new outliner item
+- First outliner item accepts text input
 - Outliner items are rendered
 - OutlinerBase element becomes visible
+- Toolbar search box is displayed
 - prepareTestEnvironment navigates to the created project page
 tests:
 - client/e2e/core/out-outline-page-visible-3f2d8a9c.spec.ts

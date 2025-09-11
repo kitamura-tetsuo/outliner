@@ -4,6 +4,7 @@ import { page as pageStore } from "$app/state";
 import { userManager } from "../../auth/UserManager";
 import { getYjsClientByProjectTitle, createNewYjsProject } from "../../services";
 import { yjsStore } from "../../stores/yjsStore.svelte";
+import { store } from "../../stores/store.svelte";
 
 // プロジェクトレベルのレイアウト
 // このレイアウトは /[project] と /[project]/[page] の両方に適用されます
@@ -50,6 +51,8 @@ async function loadProject(projectNameFromParam?: string) {
         if (client) {
             yjsStore.yjsClient = client as any;
             project = client.getProject();
+            // expose project to the global store so pages become available immediately
+            store.project = project;
         }
     } catch (err) {
         console.error("Failed to load project:", err);

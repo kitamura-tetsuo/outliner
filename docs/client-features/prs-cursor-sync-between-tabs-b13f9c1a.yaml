@@ -1,0 +1,6 @@
+id: PRS-b13f9c1a
+title: Cursor sync between tabs
+title-ja: タブ間のカーソル同期
+status: proposed
+tests:
+- client/e2e/basic/prs-cursor-sync-between-tabs-b13f9c1a.spec.ts

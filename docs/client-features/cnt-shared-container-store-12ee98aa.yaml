@@ -12,6 +12,7 @@ services:
 - src/lib/fluidService.svelte
 - src/stores/firestoreStore.svelte.ts
 tests:
+- client/e2e/new/cnt-container-selector-updates-after-new-container-cb2f94a1.spec.ts
 - client/e2e/new/cnt-shared-container-store-12ee98aa.spec.ts
 - client/src/stores/ContainerStore.test.ts
 - client/src/tests/integration/cnt-shared-container-store-12ee98aa.integration.spec.ts

@@ -145,7 +145,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
             }
 
             // 元のログメソッドを呼び出し
-            return (originalMethod as any).apply(logger, args as any[]);
+            return originalMethod("", ...args);
         };
     });
 
@@ -332,7 +332,7 @@ export function log(
 
     // 2. Pinoロガーを使ってサーバーに送信（ログファイルに記録）
     const logger = getLogger(componentName, false); // コンソール出力せずサーバーに送信
-    (logger[level] as (...a: any[]) => void).apply(logger, args);
+    logger[level].apply(logger, ["", ...args]);
 }
 
 /**
