@@ -35,20 +35,13 @@ async function getFreshIdToken(): Promise<string> {
         await new Promise(resolve => setTimeout(resolve, 200));
     }
     if (!auth.currentUser) {
-        // As a fallback, trigger listeners to ensure auth flow is started in tests
-        try {
-            userManager.manualNotifyListeners(
-                userManager.getCurrentUser() ? { user: userManager.getCurrentUser()! } : null,
-            );
-        } catch {}
+        // As a fallback, wait briefly to allow auth flow to start
+        await new Promise(resolve => setTimeout(resolve, 200));
     }
     const token = await auth.currentUser?.getIdToken(true);
     if (!token) {
         // In test/integration environments, allow proceeding without a token
-        const isE2E = (import.meta.env.VITE_IS_TEST === "true")
-            || (import.meta.env.MODE === "test")
-            || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
-        if (isE2E) {
+        if (import.meta.env.MODE === "test" || process.env.NODE_ENV === "test") {
             return "";
         }
         throw new Error("No Firebase ID token available");
@@ -65,23 +58,14 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         } catch { /* no-op in Node */ }
     }
     let token = "";
-    const isE2E_env = (import.meta.env.VITE_IS_TEST === "true")
-        || (import.meta.env.MODE === "test")
-        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
-    if (!isE2E_env) {
+    if (!(import.meta.env.MODE === "test" || process.env.NODE_ENV === "test")) {
         try {
             token = await getFreshIdToken();
         } catch {}
     }
-    const isE2E = (import.meta.env.VITE_IS_TEST === "true")
-        || (import.meta.env.MODE === "test")
-        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
-    const disableWs = (import.meta.env.VITE_YJS_DISABLE_WS === "true")
-        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_YJS_DISABLE_WS") === "true");
-    const connectFlag = !(isE2E && disableWs);
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: connectFlag,
+        connect: true,
     });
     const awareness = provider.awareness;
     const current = userManager.getCurrentUser();
@@ -121,25 +105,16 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     }
 
     let token = "";
-    const isE2E_env2 = (import.meta.env.VITE_IS_TEST === "true")
-        || (import.meta.env.MODE === "test")
-        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
-    if (!isE2E_env2) {
+    if (!(import.meta.env.MODE === "test" || process.env.NODE_ENV === "test")) {
         try {
             token = await getFreshIdToken();
         } catch {
             // Tolerate missing token; provider will attempt reconnect later
         }
     }
-    const isE2E2 = (import.meta.env.VITE_IS_TEST === "true")
-        || (import.meta.env.MODE === "test")
-        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
-    const disableWs2 = (import.meta.env.VITE_YJS_DISABLE_WS === "true")
-        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_YJS_DISABLE_WS") === "true");
-    const connectFlag = !(isE2E2 && disableWs2);
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: connectFlag,
+        connect: true,
     });
 
     // Awareness (presence)
@@ -161,19 +136,12 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
     doc.on("subdocs", (evt: any) => {
         evt.added.forEach((s: Y.Doc) => {
-            const gid = (s as any).guid ?? "";
-            if (!gid) {
-                // Avoid connecting to an empty page room (would hit ws:///projects/.../pages/ and 404)
-                // Wait until the subdoc has a guid before attempting a connection
-                return;
-            }
-            void connectPageDoc(s, projectId, gid).then(c => pages.set(gid, c));
+            void connectPageDoc(s, projectId, s.guid).then(c => pages.set(s.guid, c));
         });
         evt.removed.forEach((s: Y.Doc) => {
-            const id = (s as any).guid ?? "";
-            const c = pages.get(id);
+            const c = pages.get(s.guid);
             c?.dispose();
-            pages.delete(id);
+            pages.delete(s.guid);
         });
     });
 
@@ -231,25 +199,16 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         } catch { /* no-op in Node */ }
     }
     let token = "";
-    const isE2E_env3 = (import.meta.env.VITE_IS_TEST === "true")
-        || (import.meta.env.MODE === "test")
-        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
-    if (!isE2E_env3) {
+    if (!(import.meta.env.MODE === "test" || process.env.NODE_ENV === "test")) {
         try {
             token = await getFreshIdToken();
         } catch {
             // Stay offline if auth is not ready; provider will attempt reconnect later.
         }
     }
-    const isE2E3 = (import.meta.env.VITE_IS_TEST === "true")
-        || (import.meta.env.MODE === "test")
-        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true");
-    const disableWs3 = (import.meta.env.VITE_YJS_DISABLE_WS === "true")
-        || (typeof localStorage !== "undefined" && localStorage.getItem("VITE_YJS_DISABLE_WS") === "true");
-    const connectFlag = !(isE2E3 && disableWs3);
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: connectFlag,
+        connect: true,
     });
     const awareness = provider.awareness;
     const current = userManager.getCurrentUser();
