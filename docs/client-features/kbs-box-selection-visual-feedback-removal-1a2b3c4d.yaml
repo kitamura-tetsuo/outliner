@@ -5,6 +5,6 @@ description: When using box selection, temporary visual feedback is removed afte
 category: selection
 status: implemented
 components:
-  - client/src/lib/KeyEventHandler.ts
+- client/src/lib/KeyEventHandler.ts
 tests:
-  - client/e2e/core/kbs-box-selection-visual-feedback-removal-1a2b3c4d.spec.ts
+- client/e2e/core/kbs-box-selection-visual-feedback-removal-1a2b3c4d.spec.ts
