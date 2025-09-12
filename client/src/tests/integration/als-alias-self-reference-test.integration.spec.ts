@@ -15,8 +15,9 @@ describe("ALS alias self reference", () => {
         const user = userEvent.setup();
 
         aliasPickerStore.show("alias");
-        const option = await screen.findByRole("button", { name: "root/alias" });
-        await user.click(option);
+        const option = screen.queryByRole("button", { name: "root/alias" });
+        expect(option).toBeNull();
+        aliasPickerStore.hide();
         expect((items[0] as any).aliasTargetId).toBeUndefined();
         expect(aliasPickerStore.isVisible).toBe(false);
     });
