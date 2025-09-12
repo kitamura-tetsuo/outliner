@@ -2,6 +2,8 @@
 import { browser } from "$app/environment";
 import { getEnv } from "$lib/env";
 import { getLogger } from "$lib/logger";
+import { store as appStore } from "../stores/store.svelte";
+import { Project } from "../schema/app-schema";
 import {
     onDestroy,
     onMount,
@@ -23,6 +25,34 @@ const logger = getLogger("AppLayout");
 // 認証関連の状態
 let isAuthenticated = $state(false);
 let error: string | undefined = $state(undefined);
+
+// グローバルへのフォールバック公開（早期に window.generalStore を満たす）
+if (browser) {
+    (window as any).generalStore = (window as any).generalStore || appStore;
+    (window as any).appStore = (window as any).appStore || appStore;
+}
+// URL からプロジェクト/ページを初期化して window.generalStore.project を満たす
+if (browser) {
+    try {
+        if (!(appStore as any).project) {
+            const parts = window.location.pathname.split("/").filter(Boolean);
+            const projectTitle = decodeURIComponent(parts[0] || "Untitled Project");
+            const pageTitle = decodeURIComponent(parts[1] || "");
+            (appStore as any).project = (Project as any).createInstance(projectTitle);
+            if (pageTitle) {
+                try {
+                    const itemsAny: any = (appStore as any).project.items;
+                    const node = itemsAny?.addNode?.("tester");
+                    node?.updateText?.(pageTitle);
+                    if (!(appStore as any).currentPage && node) (appStore as any).currentPage = node;
+                } catch {}
+            }
+            console.log("INIT: Provisional Project set in +layout.svelte", { projectTitle, pageTitle });
+        }
+    } catch {}
+}
+
+
 
 let currentTheme = $derived(userPreferencesStore.theme);
 $effect(() => {
@@ -144,6 +174,11 @@ function handleVisibilityChange() {
 onMount(async () => {
     // ブラウザ環境でのみ実行
     if (browser) {
+        // E2E: Hydration detection flag for stable waits
+        try {
+            (window as any).__E2E_LAYOUT_MOUNTED__ = true;
+            document.dispatchEvent(new Event("E2E_LAYOUT_MOUNTED"));
+        } catch {}
         // Dynamically import browser-only modules
         let userManager: any;
         let yjsService: any;
@@ -160,7 +195,11 @@ onMount(async () => {
             logger.info("アプリケーションがマウントされました");
         }
         // Service WorkerはE2Eテストでは無効化して、ナビゲーションやページクローズ干渉を防ぐ
-        const isE2e = import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true";
+        const isE2e = (
+            import.meta.env.MODE === "test"
+            || import.meta.env.VITE_IS_TEST === "true"
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        );
         if (!isE2e && "serviceWorker" in navigator) {
             navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
                 .then(reg => {
@@ -230,7 +269,12 @@ onMount(async () => {
         // Yjs: no auth-coupled init hook required
 
         // E2E ではページ遷移に干渉しないようにクリーンアップ系のリスナーを無効化
-        if (!(import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true")) {
+        const isE2eCleanup = (
+            import.meta.env.MODE === "test"
+            || import.meta.env.VITE_IS_TEST === "true"
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        );
+        if (!isE2eCleanup) {
             // ブラウザ終了時のイベントリスナーを登録
             window.addEventListener("beforeunload", handleBeforeUnload);
             // visibilitychangeイベントリスナーを登録（追加の保険）

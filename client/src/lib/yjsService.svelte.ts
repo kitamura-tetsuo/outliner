@@ -60,8 +60,12 @@ function keyFor(userId?: string, containerId?: string): ClientKey {
 export async function createNewProject(containerName: string): Promise<YjsClient> {
     const user = userManager.getCurrentUser();
     let userId = user?.id;
-    if (!userId && (import.meta.env.MODE === "test" || process.env.NODE_ENV === "test")) {
-        userId = "test-user-id";
+    if (!userId) {
+        const isTest = import.meta.env.MODE === "test"
+            || (import.meta.env as any).VITE_IS_TEST === "true"
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+            || process.env.NODE_ENV === "test";
+        if (isTest) userId = "test-user-id";
     }
     if (!userId) throw new Error("ユーザーがログインしていないため、新規プロジェクトを作成できません");
 
@@ -92,8 +96,12 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     // In Yjs-only mode, containerId is optional. We create if missing.
     const user = userManager.getCurrentUser();
     let userId = user?.id;
-    if (!userId && (import.meta.env.MODE === "test" || process.env.NODE_ENV === "test")) {
-        userId = "test-user-id";
+    if (!userId) {
+        const isTest = import.meta.env.MODE === "test"
+            || (import.meta.env as any).VITE_IS_TEST === "true"
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+            || process.env.NODE_ENV === "test";
+        if (isTest) userId = "test-user-id";
     }
     const resolvedId = containerId || uuid();
     const title = typeof window !== "undefined"

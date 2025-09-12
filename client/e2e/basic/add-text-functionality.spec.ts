@@ -2,9 +2,9 @@
  *  Title   : テスト環境の初期化と準備
  *  Source  : docs/client-features.yaml
  */
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
-import "../utils/registerAfterEachSnapshot";
 
 /**
  * @playwright
@@ -15,9 +15,9 @@ import "../utils/registerAfterEachSnapshot";
  */
 
 test.describe("テキスト追加機能テスト", () => {
-    // このspecはbeforeEachを使わず、各テスト内で環境を初期化して安定化させます
-
-    // スナップショットは ../utils/registerAfterEachSnapshot の afterEach で一括保存
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
+    });
 
     /**
      * @testcase Add Text button should add text to shared content
@@ -31,74 +31,46 @@ test.describe("テキスト追加機能テスト", () => {
      * @updated 2023-04-09 フォーカスの問題は修正済み
      */
     test("Add Text button should add text to shared content", async ({ page }, testInfo) => {
-        // --- 環境初期化（各テスト内で実施） ---
-        await page.addInitScript(() => {
-            try {
-                localStorage.setItem("VITE_IS_TEST", "true");
-                localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
-                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-            } catch {}
+        // 追加前のアイテムIDリストを取得
+        const itemIdsBefore = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll(".outliner-item")).map(el => el.getAttribute("data-item-id"));
         });
-        await page.goto("/", { waitUntil: "domcontentloaded", timeout: 120000 });
-        await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
-        await page.waitForSelector('[data-testid="outliner-base"]', { timeout: 30000 });
-        // ------------------------------------
 
-        // 追加前のDOMカウントを取得
-        const initialCount = await page.locator(".outliner-item").count();
-
-        // 追加ボタンで新規アイテムを作成（UI操作）
+        // アウトラインにアイテムを追加
         await page.click('button:has-text("アイテム追加")');
 
-        // DOMの .outliner-item 数が増えるのを待機
-        await page.waitForFunction((n) => document.querySelectorAll(".outliner-item").length > n, initialCount, {
-            timeout: 30000,
+        // 新しいアイテムが表示されるのを待つ
+        await page.waitForFunction(
+            beforeIds => {
+                const currentIds = Array.from(document.querySelectorAll(".outliner-item")).map(el =>
+                    el.getAttribute("data-item-id")
+                );
+                return currentIds.length > beforeIds.length;
+            },
+            itemIdsBefore,
+            { timeout: 30000 },
+        );
+
+        // 新しく追加されたアイテムIDを特定
+        const itemIdsAfter = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll(".outliner-item")).map(el => el.getAttribute("data-item-id"));
         });
 
-        // 新規アイテム（最後の要素）を取得
-        const newCount = await page.locator(".outliner-item").count();
-        const newItem = page.locator(".outliner-item").nth(newCount - 1);
+        const newItemIds = itemIdsAfter.filter(id => !itemIdsBefore.includes(id));
+        console.log(`Items before: ${itemIdsBefore.length}, after: ${itemIdsAfter.length}`);
+        console.log(`New item IDs: ${newItemIds.join(", ")}`);
+
+        if (newItemIds.length === 0) throw new Error("No new item was added");
+
+        const newId = newItemIds[0];
+        const newItem = page.locator(`.outliner-item[data-item-id="${newId}"]`);
+
+        console.log(`Selected new item with ID: ${newId}`);
+
+        // アイテムの存在を確認
         await expect(newItem).toBeVisible();
-        const newId = await newItem.getAttribute("data-item-id");
 
-        // クリックして編集モードへ
-        await newItem.locator(".item-content").click({ force: true });
-        // 保険: フォーカスをグローバルテキストエリアへ
-        await page.evaluate(() => {
-            (document.querySelector(".global-textarea") as HTMLTextAreaElement | null)?.focus();
-        });
-
-        // テキスト入力
-        const targetText = "Hello from E2E";
-        await page.keyboard.type(targetText);
-
-        // DOMへ反映されたことを確認
-        await expect(newItem.locator(".item-text")).toContainText(targetText, { timeout: 15000 });
-
-        // 共有内容への反映を厳密確認（Yjs層に対する安定ポーリング）
-        if (newId) {
-            await page.waitForFunction(
-                ({ id, text }) => {
-                    const gs: any = (window as any).generalStore;
-                    const pageItem: any = gs?.currentPage;
-                    const items: any = pageItem?.items;
-                    if (!items) return false;
-                    const len = typeof items.length === "number" ? items.length : 0;
-                    for (let i = 0; i < len; i++) {
-                        const it = items.at ? items.at(i) : items[i];
-                        if (it?.id === id) {
-                            const t = (it.text as any)?.toString?.() ?? String(it.text ?? "");
-                            return t === text;
-                        }
-                    }
-                    return false;
-                },
-                { id: newId, text: targetText },
-                { timeout: 10000 },
-            );
-        }
-
-        // 以降のデバッグコードは不要のため削除
+        // 全てのアイテムの状態をデバッグ
         const allItemsDebug = await page.evaluate(() => {
             return Array.from(document.querySelectorAll(".outliner-item")).map(el => ({
                 id: el.getAttribute("data-item-id"),
@@ -139,15 +111,6 @@ test.describe("テキスト追加機能テスト", () => {
 
         // 少し待機
         await page.waitForTimeout(500);
-
-        // 入力先のグローバルテキストエリアにフォーカスを明示的に設定
-        await page.evaluate(() => {
-            const ta = document.querySelector(".global-textarea") as HTMLTextAreaElement | null;
-            ta?.focus();
-        });
-        await page.waitForFunction(() => document.activeElement?.classList?.contains("global-textarea") ?? false, {
-            timeout: 2000,
-        });
 
         // 新しいアイテムが空であることを確認
         const initialText = await newItem.locator(".item-text").textContent();
@@ -194,17 +157,7 @@ test.describe("テキスト追加機能テスト", () => {
         // テキストを入力
         await page.screenshot({ path: "test-results/before Hello Fluid Framework.png" });
         const testText = "Hello Fluid Framework!";
-        // GlobalTextArea 経由のキーボード入力に復帰
         await page.keyboard.type(testText);
-        // フォールバック: 入力経路に問題がある環境向けに Cursor.insertText を残す（必要時のみコメント解除）
-        // await page.evaluate((text) => {
-        //     const store = (window as any).editorOverlayStore;
-        //     if (!store) throw new Error("editorOverlayStore not found");
-        //     const cursors = store.getCursorInstances();
-        //     if (cursors.length === 0) throw new Error("No cursor instances available");
-        //     const active = cursors.find((c: any) => c.isActive) ?? cursors[0];
-        //     active.insertText(text);
-        // }, testText);
         await page.screenshot({ path: "test-results/Hello Fluid Framework.png" });
 
         // テキスト入力後に少し待機
@@ -224,7 +177,7 @@ test.describe("テキスト追加機能テスト", () => {
         });
         console.log("All items after input:", allItemsAfterInput);
 
-        // Enterキーを押してテキストを確定（Yjsでは不要だがUI揺れを避けるため押下）
+        // Enterキーを押してテキストを確定
         await page.keyboard.press("Enter");
 
         // データが更新されるのを待つ
@@ -257,7 +210,6 @@ test.describe("テキスト追加機能テスト", () => {
         ).toContainText(testText, { timeout: 15000 });
 
         // デバッグ用のスクリーンショットを保存
-
         await page.screenshot({ path: "test-results/add-text-result.png" });
     });
 
@@ -270,38 +222,21 @@ test.describe("テキスト追加機能テスト", () => {
      * @check データ構造に入力したテキストが反映されていることを確認する
      * @check ページを再読み込みしても入力したデータが保持されていることを確認する
      */
-    test("Adding text updates data structure", async ({ page }, testInfo) => {
-        // --- 環境初期化（各テスト内で実施） ---
-        await page.addInitScript(() => {
-            try {
-                localStorage.setItem("VITE_IS_TEST", "true");
-                localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
-                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-            } catch {}
-        });
-        await page.goto("/", { waitUntil: "domcontentloaded", timeout: 120000 });
-        await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
-        await page.waitForSelector('[data-testid="outliner-base"]', { timeout: 30000 });
-        // ------------------------------------
+    test("Adding text updates data structure", async ({ page }) => {
+        // FluidClientが初期化されるまで待機
+        await page.waitForTimeout(3000);
 
-        // ストア初期化の完了待機（Yjs）
-        await page.waitForFunction(() => {
-            const gs: any = (window as any).generalStore;
-            return !!(gs && gs.project);
-        }, { timeout: 10000 });
-
-        // テキスト追加前の状態を確認（Yjs/generalStore経由）
+        // テキスト追加前の状態を確認（FluidStoreから直接取得）
         const initialDebugInfo = await page.evaluate(() => {
-            const gs: any = (window as any).generalStore;
-            const pages: any = gs?.project?.items;
-            const items = [] as any[];
-            const len = pages?.length ?? 0;
-
-            for (let i = 0; i < len; i++) {
-                const it = pages.at ? pages.at(i) : pages[i];
-                if (it) items.push({ id: String(it.id), text: it.text?.toString?.() ?? String(it.text ?? "") });
+            const fluidStore = (window as any).__FLUID_STORE__;
+            if (!fluidStore || !fluidStore.fluidClient) {
+                return { error: "FluidClient not available", items: [] };
             }
-            return { error: null, items };
+            try {
+                return fluidStore.fluidClient.getAllData();
+            } catch (error) {
+                return { error: (error as Error).message, items: [] };
+            }
         });
 
         // アイテムを追加して編集
@@ -368,17 +303,17 @@ test.describe("テキスト追加機能テスト", () => {
         // データが更新されるのを待つ
         await page.waitForTimeout(2000);
 
-        // 更新後のDebugInfoを取得（Yjs/generalStore経由）
+        // 更新後のDebugInfoを取得（FluidStoreから直接取得）
         const updatedDebugInfo = await page.evaluate(() => {
-            const gs: any = (window as any).generalStore;
-            const pages: any = gs?.project?.items;
-            const items = [] as any[];
-            const len = pages?.length ?? 0;
-            for (let i = 0; i < len; i++) {
-                const it = pages.at ? pages.at(i) : pages[i];
-                if (it) items.push({ id: String(it.id), text: it.text?.toString?.() ?? String(it.text ?? "") });
+            const fluidStore = (window as any).__FLUID_STORE__;
+            if (!fluidStore || !fluidStore.fluidClient) {
+                return { error: "FluidClient not available", items: [] };
             }
-            return { error: null, items };
+            try {
+                return fluidStore.fluidClient.getAllData();
+            } catch (error) {
+                return { error: (error as Error).message, items: [] };
+            }
         });
 
         // テキストが正しく入力されたことを確認

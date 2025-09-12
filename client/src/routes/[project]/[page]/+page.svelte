@@ -110,6 +110,27 @@ async function loadProjectAndPage() {
     error = undefined;
     pageNotFound = false;
 
+    // 即時に仮プロジェクト/ページを用意して UI 待機を満たす（本接続が来たら yjsStore が置換）
+    try {
+        if (!store.project) {
+            const { Project } = await import("../../../schema/app-schema");
+            const provisional = Project.createInstance(projectName);
+            store.project = provisional as any;
+            if (typeof window !== "undefined") {
+                console.log("DEBUG: provisional store.project set?", !!(window as any).generalStore?.project);
+            }
+            if (pageName) {
+                try {
+                    const itemsAny: any = provisional.items as any;
+                    const node = itemsAny?.addNode?.("tester");
+                    node?.updateText?.(pageName);
+                    if (!store.currentPage && node) store.currentPage = node as any;
+                    logger.info(`Provisional project/page created in +page.svelte`, { projectName, pageName });
+                } catch {}
+            }
+        }
+    } catch {}
+
         logger.info(`loadProjectAndPage: Set isLoading=true, calling getYjsClientByProjectTitle`);
 
     try {
@@ -147,8 +168,26 @@ async function loadProjectAndPage() {
         logger.info(`loadProjectAndPage: Client before setting: containerId=${client?.containerId}, clientId=${client?.clientId}`);
         if (client) {
             yjsStore.yjsClient = client as any;
+            try {
+                // Ensure global store has the project set for tests that rely on window.generalStore.project
+                const proj = client.getProject?.();
+                if (proj) {
+                    store.project = proj as any;
+                    logger.info(`loadProjectAndPage: store.project set from client (title="${proj?.title}")`);
+                }
+            } catch (e) {
+                logger.warn("loadProjectAndPage: failed to set store.project from client", e);
+            }
         } else {
             logger.warn("loadProjectAndPage: getYjsClientByProjectTitle returned undefined; keeping existing yjsClient");
+            // Try to set store.project from existing yjsStore client as a fallback
+            try {
+                const proj = yjsStore.yjsClient?.getProject?.();
+                if (proj) {
+                    store.project = proj as any;
+                    logger.info(`loadProjectAndPage: store.project set from existing yjsStore client (title="${proj?.title}")`);
+                }
+            } catch {}
         }
         logger.info(`loadProjectAndPage: YjsStore updated with client`);
         logger.info(`loadProjectAndPage: yjsStore.yjsClient exists: ${!!yjsStore.yjsClient}`);

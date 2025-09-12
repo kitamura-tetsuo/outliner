@@ -91,7 +91,7 @@
         "ci:test:e2e:ui": "env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test --ui --reporter=list' --",
         "dev": "npm run paraglide:compile && vite dev",
         "dev:host": "npm run paraglide:compile && vite dev --host 0.0.0.0",
-        "dev:localhost": "npm run paraglide:compile && NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- vite dev --host 0.0.0.0 --port 7090",
+        "dev:localhost": "npm run paraglide:compile && NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- E2E_DISABLE_HMR=1 E2E_DISABLE_WATCH=1 vite dev --host 0.0.0.0 --port 7090",
         "dev:localhost:tinylicious": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- npx tinylicious --port 7092",
         "format": "dprint fmt",
         "github:test:e2e": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test --reporter=github,line \"$@\"' --",

@@ -5,6 +5,7 @@ export interface PresenceUser {
 }
 
 export class PresenceStore {
+    // Use Svelte 5 $state rune (compiled away by Svelte)
     users = $state<Record<string, PresenceUser>>({});
 
     setUser(user: PresenceUser) {
