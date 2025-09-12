@@ -33,4 +33,20 @@ export default ts.config(
             },
         },
     },
+    {
+        files: ["e2e/utils/testHelpers.ts"],
+        rules: {
+            "no-restricted-syntax": [
+                "error",
+                {
+                    selector: "ReturnStatement[argument.name='page']",
+                    message: "Forbidden: do not return the global 'page' object.",
+                },
+                {
+                    selector: "ArrowFunctionExpression[body.name='page']",
+                    message: "Forbidden: arrow function should not implicitly return 'page'.",
+                },
+            ],
+        },
+    },
 );
