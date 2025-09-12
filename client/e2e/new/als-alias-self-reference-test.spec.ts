@@ -37,27 +37,16 @@ test.describe("ALS-0001: Alias self-reference prevention", () => {
         // 自己参照エイリアスを試行（自分自身を選択）
         const selfSelector = `.alias-picker button[data-id="${aliasId}"]`;
         const selfButton = page.locator(selfSelector);
+        await expect(selfButton).toHaveCount(0);
+        await TestHelpers.hideAliasPicker(page);
 
-        // 自分自身のボタンが存在するかチェック
-        const selfButtonExists = await selfButton.count() > 0;
-        if (selfButtonExists) {
-            await selfButton.click();
+        // aliasTargetIdが設定されていないことを確認（自己参照は防止される）
+        const aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+        expect(aliasTargetId).toBeNull();
 
-            // エイリアスピッカーが閉じることを確認
-            await expect(page.locator(".alias-picker")).toBeHidden();
-
-            // aliasTargetIdが設定されていないことを確認（自己参照は防止される）
-            const aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
-            expect(aliasTargetId).toBeNull();
-
-            // エイリアスパスが表示されていないことを確認
-            const isAliasPathVisible = await TestHelpers.isAliasPathVisible(page, aliasId);
-            expect(isAliasPathVisible).toBe(false);
-        } else {
-            // 自分自身のボタンが存在しない場合（正常な動作）
-            console.log("Self-reference button not found in options (expected behavior)");
-            await TestHelpers.hideAliasPicker(page);
-        }
+        // エイリアスパスが表示されていないことを確認
+        const isAliasPathVisible = await TestHelpers.isAliasPathVisible(page, aliasId);
+        expect(isAliasPathVisible).toBe(false);
     });
 });
 import "../utils/registerAfterEachSnapshot";
