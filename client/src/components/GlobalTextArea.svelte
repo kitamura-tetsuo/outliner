@@ -18,17 +18,9 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 let __focusSyncing = false;
 let __lastFocusedItemId: string | number | null = null;
 
-// store.activeItemId 変化時の副作用
-$effect(() => {
-    if (typeof window !== "undefined") (window as any).__LAST_EFFECT__ = "GlobalTextArea:activeItemId";
-    const id = store.activeItemId as any;
-    console.log(`GlobalTextArea: activeItemId changed to ${id}`);
-
-    // 無限ループ回避のため、本エフェクトではテキストエリアへのフォーカス操作を一切行わない。
-    // フォーカスは onMount 初期化と OutlinerItem.startEditing() 側で責務分担する。
-    __lastFocusedItemId = id ?? null;
-    return;
-});
+// Note: Removed reactive effect on activeItemId to avoid potential
+// update-depth loops during E2E when alias picker and focus logic interact.
+// Focus management is handled in onMount and OutlinerItem.startEditing().
 
 // global textarea をストアに登録
 onMount(() => {

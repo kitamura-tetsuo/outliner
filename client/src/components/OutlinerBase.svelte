@@ -4,6 +4,8 @@ console.log("OutlinerBase script executed - console.log");
 
 import type { Item } from "../schema/app-schema";
 import AliasPicker from "./AliasPicker.svelte";
+import { store as generalStore } from "../stores/store.svelte";
+import { onMount } from "svelte";
 import GlobalTextArea from "./GlobalTextArea.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
 import PresenceAvatars from "./PresenceAvatars.svelte";
@@ -37,17 +39,48 @@ console.log("OutlinerBase props received:", {
 });
 
 console.log("OutlinerBase script completed successfully");
+
+// Fallback: if pageItem is not yet provided, ensure a minimal page from global store
+onMount(() => {
+    if (!pageItem && typeof window !== "undefined") {
+        try {
+            const gs: any = (window as any).generalStore || generalStore;
+            if (gs?.project) {
+                if (!gs.currentPage) {
+                    const items: any = gs.project.items as any;
+                    let found: any = null;
+                    const len = items?.length ?? 0;
+                    for (let i = 0; i < len; i++) {
+                        const p = items.at ? items.at(i) : items[i];
+                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                        if (String(t).toLowerCase() === String(pageName || "").toLowerCase()) { found = p; break; }
+                    }
+                    if (!found) {
+                        found = items?.addNode?.("tester");
+                        if (found && pageName) found.updateText?.(pageName);
+                    }
+                    if (found) gs.currentPage = found;
+                }
+                if (gs.currentPage) {
+                    pageItem = gs.currentPage as any;
+                }
+            }
+        } catch {}
+    }
+});
 </script>
 
 <div class="outliner-base" data-testid="outliner-base">
     {#if pageItem}
-        <OutlinerTree
-            pageItem={pageItem}
-            projectName={projectName}
-            pageName={pageName}
-            isReadOnly={isReadOnly}
-            onEdit={onEdit}
-        />
+        {#key (pageItem?.ydoc ? (pageItem.ydoc as any).guid ?? pageItem.id : pageItem.id)}
+            <OutlinerTree
+                pageItem={pageItem}
+                projectName={projectName}
+                pageName={pageName}
+                isReadOnly={isReadOnly}
+                onEdit={onEdit}
+            />
+        {/key}
     {:else}
         <div class="outliner-item">Loading...</div>
     {/if}

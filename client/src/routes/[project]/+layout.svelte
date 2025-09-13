@@ -1,6 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte";
-import { page as pageStore } from "$app/state";
+import { page as pageStore } from "$app/stores";
 import { userManager } from "../../auth/UserManager";
 import { getYjsClientByProjectTitle, createNewYjsProject } from "../../services";
 import { yjsStore } from "../../stores/yjsStore.svelte";

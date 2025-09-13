@@ -31,23 +31,36 @@ if (browser) {
     (window as any).generalStore = (window as any).generalStore || appStore;
     (window as any).appStore = (window as any).appStore || appStore;
 }
-// URL からプロジェクト/ページを初期化して window.generalStore.project を満たす
+// URL からプロジェクト/ページを初期化して window.generalStore.project と currentPage を満たす
 if (browser) {
     try {
+        const parts = window.location.pathname.split("/").filter(Boolean);
+        const projectTitle = decodeURIComponent(parts[0] || "Untitled Project");
+        const pageTitle = decodeURIComponent(parts[1] || "");
+
         if (!(appStore as any).project) {
-            const parts = window.location.pathname.split("/").filter(Boolean);
-            const projectTitle = decodeURIComponent(parts[0] || "Untitled Project");
-            const pageTitle = decodeURIComponent(parts[1] || "");
             (appStore as any).project = (Project as any).createInstance(projectTitle);
-            if (pageTitle) {
-                try {
-                    const itemsAny: any = (appStore as any).project.items;
-                    const node = itemsAny?.addNode?.("tester");
-                    node?.updateText?.(pageTitle);
-                    if (!(appStore as any).currentPage && node) (appStore as any).currentPage = node;
-                } catch {}
-            }
             console.log("INIT: Provisional Project set in +layout.svelte", { projectTitle, pageTitle });
+        }
+
+        // currentPage が未設定で、URL に pageTitle がある場合は準備
+        if (pageTitle && !(appStore as any).currentPage && (appStore as any).project) {
+            try {
+                const itemsAny: any = (appStore as any).project.items;
+                // 既存ページにタイトル一致があるかチェック
+                let found: any = null;
+                const len = itemsAny?.length ?? 0;
+                for (let i = 0; i < len; i++) {
+                    const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
+                    const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                    if (String(t).toLowerCase() === String(pageTitle).toLowerCase()) { found = p; break; }
+                }
+                if (!found) {
+                    found = itemsAny?.addNode?.("tester");
+                    found?.updateText?.(pageTitle);
+                }
+                if (found) (appStore as any).currentPage = found;
+            } catch {}
         }
     } catch {}
 }
