@@ -33,4 +33,27 @@ export default ts.config(
             },
         },
     },
+    // Tests: disallow importing .svelte.ts directly
+    {
+        files: [
+            "**/*.{test,spec}.{js,ts,tsx}",
+            "**/*.integration.spec.{js,ts}",
+            "**/tests/**/*.{js,ts,tsx}",
+            "e2e/**/*.{js,ts,tsx}",
+        ],
+        rules: {
+            "no-restricted-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            group: ["**/*.svelte.ts", "**/*.svelte.js"],
+                            message:
+                                "Do not import .svelte.ts modules from tests. Use window-exposed instances, local stubs, or render a component to initialize stores.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
 );

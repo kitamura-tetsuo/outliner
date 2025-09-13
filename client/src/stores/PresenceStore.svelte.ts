@@ -11,11 +11,21 @@ export class PresenceStore {
 
     setUser(user: PresenceUser) {
         this.users = { ...this.users, [user.userId]: user };
+        try {
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("presence-users-changed"));
+            }
+        } catch {}
     }
 
     removeUser(userId: string) {
         const { [userId]: _removed, ...rest } = this.users;
         this.users = rest;
+        try {
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("presence-users-changed"));
+            }
+        } catch {}
     }
 
     getUsers(): PresenceUser[] {

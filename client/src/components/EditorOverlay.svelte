@@ -40,29 +40,33 @@ let localAnimationPaused = $state<boolean>(false);
 // DOM要素への参照
 let overlayRef: HTMLDivElement;
 
-// テキストエリア位置更新: ポーリングで安定反映（runes準拠）
+function updateTextareaPosition() {
+    try {
+        const textareaRef = store.getTextareaRef();
+        const isComposing = store.isComposing;
+        if (!textareaRef || !overlayRef || isComposing) return;
+        const lastCursor = store.getLastActiveCursor();
+        if (!lastCursor) return;
+        const itemInfo = positionMap[lastCursor.itemId];
+        if (!itemInfo) { debouncedUpdatePositionMap(); return; }
+        const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
+        if (!pos) { debouncedUpdatePositionMap(); return; }
+        const treeContainer = overlayRef.closest('.tree-container');
+        if (!treeContainer) return;
+        const rect = treeContainer.getBoundingClientRect();
+        textareaRef.style.left = `${rect.left + pos.left}px`;
+        textareaRef.style.top = `${rect.top + pos.top}px`;
+        const height = positionMap[lastCursor.itemId]?.lineHeight || 16;
+        textareaRef.style.height = `${height}px`;
+    } catch {}
+}
+
+// 変更通知に応じて位置更新（ポーリング排除）
 onMount(() => {
-    const timer = setInterval(() => {
-        try {
-            const textareaRef = store.getTextareaRef();
-            const isComposing = store.isComposing;
-            if (!textareaRef || !overlayRef || isComposing) return;
-            const lastCursor = store.getLastActiveCursor();
-            if (!lastCursor) return;
-            const itemInfo = positionMap[lastCursor.itemId];
-            if (!itemInfo) { debouncedUpdatePositionMap(); return; }
-            const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
-            if (!pos) { debouncedUpdatePositionMap(); return; }
-            const treeContainer = overlayRef.closest('.tree-container');
-            if (!treeContainer) return;
-            const rect = treeContainer.getBoundingClientRect();
-            textareaRef.style.left = `${rect.left + pos.left}px`;
-            textareaRef.style.top = `${rect.top + pos.top}px`;
-            const height = positionMap[lastCursor.itemId]?.lineHeight || 16;
-            textareaRef.style.height = `${height}px`;
-        } catch {}
-    }, 100);
-    return () => clearInterval(timer);
+    const unsubscribe = store.subscribe(() => updateTextareaPosition());
+    // 初期化
+    updateTextareaPosition();
+    return () => unsubscribe();
 });
 
 // より正確なテキスト測定を行うヘルパー関数

@@ -22,14 +22,12 @@ class GeneralStore {
         this._project = v;
         console.log(`store: Creating YjsSubscriber for pages`);
 
-        // Wrap Items for reactive consumption via YjsSubscriber
-        const items = v.items as Items;
-        this.pages = {
-            get current() {
-                return items;
-            },
-            set current(_val: any) {/* no-op */},
-        } as unknown as YjsSubscriber<Items>;
+        // Expose Items via a proper YjsSubscriber so components can react
+        const project = v;
+        this.pages = new YjsSubscriber<Items>(
+            project.ydoc,
+            () => project.items,
+        ) as unknown as any;
     }
 }
 

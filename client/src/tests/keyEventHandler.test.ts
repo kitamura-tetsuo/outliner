@@ -15,23 +15,23 @@ const cursor = {
     userId: "local",
 };
 
-vi.mock("../stores/EditorOverlayStore.svelte", () => {
-    return {
-        editorOverlayStore: {
-            getCursorInstances: vi.fn(() => [cursor]),
-            addCursorRelativeToActive: vi.fn(),
-            undoLastCursor: vi.fn(),
-            clearSelections: vi.fn(),
-            setCursor: vi.fn(),
-            setBoxSelection: vi.fn(),
-            getTextareaRef: vi.fn(),
-            logCursorState: vi.fn(),
-        },
+// Define hoisted mocks to avoid top-level evaluation order issues
+const { mockStore } = vi.hoisted(() => {
+    const store = {
+        getCursorInstances: vi.fn(() => [cursor]),
+        addCursorRelativeToActive: vi.fn(),
+        undoLastCursor: vi.fn(),
+        clearSelections: vi.fn(),
+        setCursor: vi.fn(),
+        setBoxSelection: vi.fn(),
+        getTextareaRef: vi.fn(),
+        logCursorState: vi.fn(),
     };
+    return { mockStore: store };
 });
+vi.mock("../stores/EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockStore }));
 
 import { KeyEventHandler } from "../lib/KeyEventHandler";
-import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 
 describe("KeyEventHandler key map", () => {
     beforeEach(() => {
@@ -41,13 +41,13 @@ describe("KeyEventHandler key map", () => {
     it("adds cursor below with Ctrl+Shift+Alt+ArrowDown", () => {
         const event = new KeyboardEvent("keydown", { key: "ArrowDown", ctrlKey: true, shiftKey: true, altKey: true });
         KeyEventHandler.handleKeyDown(event);
-        expect(store.addCursorRelativeToActive).toHaveBeenCalledWith("down");
+        expect(mockStore.addCursorRelativeToActive).toHaveBeenCalledWith("down");
     });
 
     it("undoes last cursor with Ctrl+Shift+Z", () => {
         const event = new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true });
         KeyEventHandler.handleKeyDown(event);
-        expect(store.undoLastCursor).toHaveBeenCalled();
+        expect(mockStore.undoLastCursor).toHaveBeenCalled();
     });
 
     it("calls box selection for Alt+Shift+ArrowRight", () => {
@@ -58,7 +58,7 @@ describe("KeyEventHandler key map", () => {
     });
 
     it("formats bold with Ctrl+B", () => {
-        const cursors = store.getCursorInstances();
+        const cursors = mockStore.getCursorInstances();
         const event = new KeyboardEvent("keydown", { key: "b", ctrlKey: true });
         KeyEventHandler.handleKeyDown(event);
         expect(cursors[0].formatBold).toHaveBeenCalled();
