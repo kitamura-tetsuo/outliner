@@ -9,19 +9,6 @@ const { stopCursorBlink } = store;
 
 // デバッグモード
 let DEBUG_MODE = $state(false);
-
-// デバッグモードの変更を監視して、グローバル変数を更新
-$effect(() => {
-    if (typeof window !== 'undefined') {
-        (window as any).DEBUG_MODE = DEBUG_MODE;
-        console.log(`Debug mode ${DEBUG_MODE ? 'enabled' : 'disabled'}`);
-
-        // カーソル状態をログに出力
-        if (DEBUG_MODE) {
-            store.logCursorState();
-        }
-    }
-});
 // 上位へイベント dispatch
 const dispatch = createEventDispatcher();
 
@@ -42,8 +29,9 @@ interface CursorPositionMap {
 
 // カーソル位置・選択範囲などの状態をリアクティブに管理
 let positionMap = $state<CursorPositionMap>({});
-let allCursors = $state<CursorPosition[]>([]);
-let allSelections = $state<SelectionRange[]>([]);
+// store の内容に追従する導出値
+let allCursors = $derived.by(() => Object.values(store.cursors));
+let allSelections = $derived.by(() => Object.values(store.selections));
 let clipboardRef: HTMLTextAreaElement;
 let localActiveItemId = $state<string | null>(null);
 let localCursorVisible = $state<boolean>(false);
@@ -52,69 +40,29 @@ let localAnimationPaused = $state<boolean>(false);
 // DOM要素への参照
 let overlayRef: HTMLDivElement;
 
-// テキストエリアの位置を更新する$effect
-$effect(() => {
-    // 依存関係を明示的に追跡
-    const cursors = store.cursors; // カーソルの変更を追跡
-    const activeItemId = store.activeItemId; // アクティブアイテムの変更を追跡
-    const currentPositionMap = positionMap; // positionMapの変更を追跡
-    const textareaRef = store.getTextareaRef();
-    const isComposing = store.isComposing;
-
-    if (!textareaRef || !overlayRef) return;
-
-    const lastCursor = store.getLastActiveCursor();
-    if (!lastCursor) return;
-
-    // Composition中はテキストエリア位置を固定
-    if (!isComposing) {
-        // 即座に位置を更新し、positionMapが不完全な場合は再試行
-        updateTextareaPosition();
-    }
-
-    function updateTextareaPosition() {
-        if (!lastCursor || !textareaRef) return;
-
-        // positionMapの更新も監視
-        const itemInfo = currentPositionMap[lastCursor.itemId];
-        if (!itemInfo) {
-            // positionMapの更新を軽く依頼し、今回のサイクルでは終了（無限ループ防止）
-            debouncedUpdatePositionMap();
-            return;
-        }
-
-        const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
-        if (!pos) {
-            // 位置計算に失敗した場合も、過剰反応を避けて一旦抜ける（別経路の更新に任せる）
-            debouncedUpdatePositionMap();
-            return;
-        }
-
-        const treeContainer = overlayRef.closest('.tree-container');
-        if (!treeContainer) return;
-
-        const rect = treeContainer.getBoundingClientRect();
-
-        // デバッグ情報を追加
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log('Textarea positioning debug:', {
-                cursorItemId: lastCursor.itemId,
-                cursorOffset: lastCursor.offset,
-                calculatedPos: pos,
-                treeContainerRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-                finalLeft: rect.left + pos.left,
-                finalTop: rect.top + pos.top,
-                hasItemInfo: !!itemInfo
-            });
-        }
-
-        // posは既にtreeContainerを基準とした相対位置なので、
-        // ページ上の絶対位置にするためにrectの位置を加算する
-        textareaRef.style.left = `${rect.left + pos.left}px`;
-        textareaRef.style.top = `${rect.top + pos.top}px`;
-        const height = currentPositionMap[lastCursor.itemId]?.lineHeight || 16;
-        textareaRef.style.height = `${height}px`;
-    }
+// テキストエリア位置更新: ポーリングで安定反映（runes準拠）
+onMount(() => {
+    const timer = setInterval(() => {
+        try {
+            const textareaRef = store.getTextareaRef();
+            const isComposing = store.isComposing;
+            if (!textareaRef || !overlayRef || isComposing) return;
+            const lastCursor = store.getLastActiveCursor();
+            if (!lastCursor) return;
+            const itemInfo = positionMap[lastCursor.itemId];
+            if (!itemInfo) { debouncedUpdatePositionMap(); return; }
+            const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
+            if (!pos) { debouncedUpdatePositionMap(); return; }
+            const treeContainer = overlayRef.closest('.tree-container');
+            if (!treeContainer) return;
+            const rect = treeContainer.getBoundingClientRect();
+            textareaRef.style.left = `${rect.left + pos.left}px`;
+            textareaRef.style.top = `${rect.top + pos.top}px`;
+            const height = positionMap[lastCursor.itemId]?.lineHeight || 16;
+            textareaRef.style.height = `${height}px`;
+        } catch {}
+    }, 100);
+    return () => clearInterval(timer);
 });
 
 // より正確なテキスト測定を行うヘルパー関数
@@ -353,16 +301,7 @@ function debouncedUpdatePositionMap() {
     }, 100) as unknown as number;
 }
 
-// store からのデータを反映するリアクティブ処理
-$effect(() => {
-  // DOM 更新を反映して positionMap を更新
-  updatePositionMap();
-  allCursors = Object.values(store.cursors);
-  allSelections = Object.values(store.selections);
-  localActiveItemId = store.activeItemId;
-  localCursorVisible = store.cursorVisible;
-  localAnimationPaused = store.animationPaused;
-});
+// store からのデータ反映は MutationObserver と onMount 初期化で担保
 
 // MutationObserver を設定して DOM の変更を監視
 onMount(() => {

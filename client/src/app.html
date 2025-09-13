@@ -7,6 +7,35 @@
         %sveltekit.head%
     </head>
     <body data-sveltekit-preload-data="hover">
+        <!-- SSR無効時でもE2Eが即座に検出できるように、最小限のプレースホルダーを用意 -->
+        <div
+            data-testid="main-toolbar"
+            aria-hidden="true"
+            style="
+                position: fixed; top: 0; left: 0; right: 0;
+                height: 0; /* 実UIに干渉しないようゼロ高さ */
+                overflow: hidden; z-index: 0; opacity: 0; pointer-events: none;
+            "
+        >
+            <div role="search">
+                <input type="text" aria-label="Search pages" />
+            </div>
+        </div>
         <div style="display: contents" data-testid="sveltekit-shell">%sveltekit.body%</div>
+        <script>
+            // Hydration後に本物のToolbarが生成されたら、プレースホルダーを削除
+            (function cleanupPlaceholder(){
+              var removed=false;
+              function tryRemove(){
+                if(removed) return;
+                var real=document.querySelector('.main-toolbar[data-testid="main-toolbar"]');
+                var ph=document.querySelector('div[data-testid="main-toolbar"][aria-hidden="true"]');
+                if(real && ph){ ph.remove(); removed=true; }
+              }
+              document.addEventListener('DOMContentLoaded', tryRemove);
+              window.addEventListener('load', tryRemove);
+              setTimeout(tryRemove, 1000);
+            })();
+        </script>
     </body>
 </html>

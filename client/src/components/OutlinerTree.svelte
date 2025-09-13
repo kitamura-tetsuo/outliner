@@ -93,6 +93,8 @@ const displayItems = new YjsSubscriber<DisplayItem[]>(
 
         viewModel.updateFromModel(pageItem);
         const visibleItems = viewModel.getVisibleItems();
+        // 可視リスト長の変化を検出して再測定
+        try { remeasureIfLengthChanged(visibleItems.length); } catch {}
         if (!isE2E) {
             console.log("OutlinerTree: visibleItems length:", visibleItems.length);
             // 表示アイテムの詳細をログ出力
@@ -160,11 +162,9 @@ onMount(() => {
     });
 });
 
-// When the visible list length changes (e.g., items added post‑attach),
-// remeasure heights once to ensure positions are recalculated for new items.
-$effect(() => {
-    const len = displayItems.current.length;
-    // Extend or shrink the heights array to match new length
+// 可視アイテム数の変化に反応して高さを再測定（$effect を使わずに実施）
+// YjsSubscriber のトランスフォーマで検出し、ここでは関数として使用
+function remeasureIfLengthChanged(len: number) {
     if (itemHeights.length !== len) {
         const next = new Array(len).fill(0);
         for (let i = 0; i < Math.min(len, itemHeights.length); i++) next[i] = itemHeights[i];
@@ -178,7 +178,7 @@ $effect(() => {
             updateItemPositions();
         });
     }
-});
+}
 
 onDestroy(() => {
     // onEdit コールバックをクリア

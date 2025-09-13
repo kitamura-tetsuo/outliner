@@ -1,31 +1,21 @@
 <script lang="ts">
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 
-let filteredOptions = $state<{ id: string; path: string; }[]>([]);
 let selectedIndex = $state(0);
 let pickerElement = $state<HTMLDivElement>();
 let inputElement = $state<HTMLInputElement>();
 
-$effect(() => {
-    const q = aliasPickerStore.query.toLowerCase();
-    filteredOptions = aliasPickerStore.options.filter(o => o.path.toLowerCase().includes(q));
-    // フィルタリング後は選択インデックスをリセット
-    selectedIndex = 0;
+// 検索クエリと候補から導出（副作用なし）
+let filteredOptions = $derived.by(() => {
+    const q = (aliasPickerStore.query || "").toLowerCase();
+    const opts = aliasPickerStore.options || [];
+    return opts.filter(o => o.path.toLowerCase().includes(q));
 });
 
-// エイリアスピッカーが表示された時にフォーカスを設定
-$effect(() => {
-    if (aliasPickerStore.isVisible) {
-        // 少し遅延してからフォーカスを設定
-        setTimeout(() => {
-            if (inputElement) {
-                inputElement.focus();
-            } else if (pickerElement) {
-                pickerElement.focus();
-            }
-        }, 100);
-    }
-});
+// 入力値が変わった時のみ選択インデックスをリセット（DOMイベントで副作用を限定）
+function handleInput() {
+    selectedIndex = 0;
+}
 
 function confirm(id: string) {
     console.log("AliasPicker confirm called with id:", id);
@@ -82,6 +72,7 @@ function handleKeydown(event: KeyboardEvent) {
             type="text"
             bind:value={aliasPickerStore.query}
             placeholder="Select item"
+            oninput={handleInput}
             onkeydown={handleKeydown}
             bind:this={inputElement}
         />

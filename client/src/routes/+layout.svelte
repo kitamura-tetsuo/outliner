@@ -1,6 +1,7 @@
 <script lang="ts">
 import { browser } from "$app/environment";
 import { getEnv } from "$lib/env";
+import { page } from "$app/stores";
 import { getLogger } from "$lib/logger";
 import { store as appStore } from "../stores/store.svelte";
 import { Project } from "../schema/app-schema";
@@ -65,17 +66,31 @@ if (browser) {
     } catch {}
 }
 
+// ルート変化を購読して currentPage を補完（runes準拠）
+function ensureCurrentPageByRoute(pj: string, pg: string) {
+    try {
+        if (!browser || !pg) return;
+        const gs: any = appStore;
+        if (!gs?.project) return;
+        const items: any = gs.project.items;
+        let found: any = null;
+        const len = items?.length ?? 0;
+        for (let i = 0; i < len; i++) {
+            const p = items.at ? items.at(i) : items[i];
+            const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+            if (String(t).toLowerCase() === String(pg).toLowerCase()) { found = p; break; }
+        }
+        if (!found) {
+            found = items?.addNode?.("tester");
+            found?.updateText?.(pg);
+        }
+        if (found) gs.currentPage = found;
+    } catch {}
+}
+
 
 
 let currentTheme = $derived(userPreferencesStore.theme);
-$effect(() => {
-    if (browser) {
-        document.documentElement.classList.toggle(
-            "dark",
-            currentTheme === "dark",
-        );
-    }
-});
 
 // APIサーバーのURLを取得
 const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
@@ -207,6 +222,12 @@ onMount(async () => {
         if (import.meta.env.DEV) {
             logger.info("アプリケーションがマウントされました");
         }
+        // ルート変化に追従（currentPage補完）
+        try {
+            const unsub = page.subscribe(($p) => ensureCurrentPageByRoute($p.params.project ?? "", $p.params.page ?? ""));
+            onDestroy(unsub);
+        } catch {}
+
         // Service WorkerはE2Eテストでは無効化して、ナビゲーションやページクローズ干渉を防ぐ
         const isE2e = (
             import.meta.env.MODE === "test"

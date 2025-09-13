@@ -248,7 +248,6 @@ onMount(() => {
     <label id="search-pages-label" for="search-pages-input" class="visually-hidden">Search pages</label>
     <input
         type="text"
-        role="textbox"
         aria-hidden="false"
         aria-label="Search pages"
         aria-labelledby="search-pages-label"

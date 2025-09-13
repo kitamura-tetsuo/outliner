@@ -42,10 +42,20 @@ export class UserPreferencesStore {
     setTheme(theme: "light" | "dark") {
         this.preferences = { ...this.preferences, theme };
         savePreferencesToStorage(this.preferences);
+        // Reflect theme to document root without using $effect
+        if (typeof document !== "undefined") {
+            document.documentElement.classList.toggle("dark", theme === "dark");
+        }
     }
 
     toggleTheme() {
         this.setTheme(this.preferences.theme === "light" ? "dark" : "light");
+    }
+
+    applyDocumentTheme() {
+        if (typeof document !== "undefined") {
+            document.documentElement.classList.toggle("dark", this.preferences.theme === "dark");
+        }
     }
 }
 
@@ -53,4 +63,6 @@ export const userPreferencesStore = new UserPreferencesStore();
 
 if (typeof window !== "undefined") {
     (window as any).userPreferencesStore = userPreferencesStore;
+    // Ensure initial theme is applied on startup
+    userPreferencesStore.applyDocumentTheme();
 }

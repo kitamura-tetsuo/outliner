@@ -134,13 +134,9 @@ onMount(() => {
     return () => {
         chart?.dispose();
     };
-});
-
-$effect(() => {
-    // Trigger update when project or pages change
-    store.project;
-    store.pages?.current;
-    update();
+    // 低頻度ポーリングで最新を反映（runes準拠）
+    const timer = setInterval(() => { try { update(); } catch {} }, 500);
+    return () => { clearInterval(timer); };
 });
 </script>
 
