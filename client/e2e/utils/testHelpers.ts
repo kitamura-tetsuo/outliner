@@ -84,19 +84,37 @@ export class TestHelpers {
             });
             console.log("TestHelper: Successfully navigated to home page");
             console.log("TestHelper: Page URL after navigation:", page.url());
-            // E2E 安定化: ホームはランディングのみのため、プロジェクトページへ遷移
-            try {
-                const projectName = "e2e-project";
-                const pageName = "e2e-page";
-                const target = `/${projectName}/${pageName}`;
-                console.log("TestHelper: Navigating to project page:", target);
-                await page.goto(target, {
-                    timeout: 120000,
-                    waitUntil: "domcontentloaded",
-                });
-                console.log("TestHelper: Arrived:", page.url());
-            } catch (navErr) {
-                console.log("TestHelper: Project-page navigation skipped/failed:", String(navErr));
+            // E2E 安定化: 通常はプロジェクトページへ遷移するが、ホーム到達のみを検証するテストでは遷移をスキップ
+            const shouldStayOnHome = (() => {
+                try {
+                    const title = String(testInfo?.title ?? "");
+                    const file = String(testInfo?.file ?? "");
+                    return /home\s*page|homepage|cdx-homepage/i.test(title) || /cdx-homepage/i.test(file);
+                } catch {
+                    return false;
+                }
+            })();
+            if (!shouldStayOnHome) {
+                try {
+                    const projectName = "e2e-project";
+                    const pageName = "e2e-page";
+                    const target = `/${projectName}/${pageName}`;
+                    console.log("TestHelper: Navigating to project page:", target);
+                    await page.goto(target, {
+                        timeout: 120000,
+                        waitUntil: "domcontentloaded",
+                    });
+                    console.log("TestHelper: Arrived:", page.url());
+                } catch (navErr) {
+                    console.log("TestHelper: Project-page navigation skipped/failed:", String(navErr));
+                }
+            } else {
+                try {
+                    const txt = await page.evaluate(() => document.body?.innerText?.slice(0, 400) || "");
+                    const html = await page.evaluate(() => document.body?.innerHTML?.slice(0, 400) || "");
+                    console.log("TestHelper: Home body text head:", txt);
+                    console.log("TestHelper: Home body HTML head:", html);
+                } catch {}
             }
         } catch (error) {
             console.error("TestHelper: Failed to navigate to home page:", error);

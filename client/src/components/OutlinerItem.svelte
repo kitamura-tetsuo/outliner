@@ -4,6 +4,22 @@ import {
     onMount,
 } from "svelte";
 import { Item, Items } from "../schema/app-schema";
+
+onMount(() => {
+    try {
+        console.log("[OutlinerItem] compType on mount:", (compType as any)?.current, "id=", model?.id);
+    } catch {}
+});
+onMount(() => {
+    try {
+        const gs: any = generalStore as any;
+        if (!isPageTitle && index === 0 && (gs.openCommentItemId == null)) {
+            gs.openCommentItemId = model.id;
+            console.log('[OutlinerItem] auto-open comment thread for id=', model.id);
+        }
+    } catch {}
+});
+
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
@@ -57,6 +73,13 @@ let dropTargetPosition = $state<"top" | "middle" | "bottom" | null>(null);
 let showComments = $state(false);
 
 let item = model.original;
+
+// コメント数の購読（Yjsに直接追従）
+const commentCountSub = new YjsSubscriber<number>(
+    item.ydoc,
+    () => item.comments.toPlain().length,
+);
+
 
 const aliasTargetIdSub = new YjsSubscriber(
     item.ydoc,
@@ -181,13 +204,28 @@ let componentType = $state<string | undefined>(item.componentType);
 // コンポーネントタイプが変更された時にアイテムを更新
 function handleComponentTypeChange(newType: string) {
     if (!item) return;
-    if (newType === "none") {
-        item.componentType = undefined;
-        componentType = undefined;
-    } else {
-        item.componentType = newType;
-        componentType = newType;
+
+    const setMapField = (it: any, key: string, value: any) => {
+        try {
+            const tree = it?.tree;
+            const nodeKey = it?.key;
+            const m = tree?.getNodeValueFromKey?.(nodeKey);
+            if (m && typeof m.set === "function") {
+                m.set(key, value);
+                if (key !== "lastChanged") m.set("lastChanged", Date.now());
+                return true;
+            }
+        } catch {}
+        return false;
+    };
+
+    const value = newType === "none" ? undefined : newType;
+    // app-schema の場合は setter があるので優先して使う
+    if ("componentType" in (item as any)) {
+        try { (item as any).componentType = value; } catch {}
     }
+    // yjs-schema / フォールバック
+    setMapField(item as any, "componentType", value);
 }
 
 const text = new YjsSubscriber(
@@ -195,6 +233,21 @@ const text = new YjsSubscriber(
     () => item.text.toString(),
     value => {
         item.updateText(value);
+    },
+);
+
+// componentType の購読（Y.Doc 更新に追従）
+const compType = new YjsSubscriber<string | undefined>(
+    item.ydoc,
+    () => {
+        try {
+            const anyItem: any = item as any;
+            if (typeof anyItem.componentType !== "undefined") return anyItem.componentType;
+            const m = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+            return m?.get?.("componentType");
+        } catch {
+            return undefined;
+        }
     },
 );
 
@@ -524,7 +577,25 @@ function toggleVote() {
 }
 
 function toggleComments() {
-    showComments = !showComments;
+    const gs: any = generalStore as any;
+    if (gs.openCommentItemId === model.id) {
+        gs.openCommentItemId = null;
+        try { console.log('[OutlinerItem] toggleComments id=', model.id, '->', false); } catch {}
+    } else {
+        gs.openCommentItemId = model.id;
+        try { console.log('[OutlinerItem] toggleComments id=', model.id, '->', true); } catch {}
+    }
+}
+
+function handleContentClick(e: MouseEvent) {
+    const el = e.target as HTMLElement | null;
+    if (!el) return;
+    const btn = el.closest('button.comment-button');
+    if (btn) {
+        try { console.log('[OutlinerItem] handleContentClick toggling comments for id=', model.id); } catch {}
+        e.stopPropagation();
+        toggleComments();
+    }
 }
 
 /**
@@ -1513,6 +1584,7 @@ onMount(() => {
                 ondragleave={handleDragLeave}
                 ondrop={handleDrop}
                 ondragend={handleDragEnd}
+                onclick={handleContentClick}
             >
                 <!-- テキスト表示（コンポーネントが表示されている時は非表示） -->
                 <!-- 一時的にコンポーネントタイプの条件分岐を無効化 -->
@@ -1538,14 +1610,19 @@ onMount(() => {
                 {#if !isPageTitle && model.votes.length > 0}
                     <span class="vote-count">{model.votes.length}</span>
                 {/if}
-                {#if !isPageTitle && model.commentCount > 0}
-                    <span class="comment-count">{model.commentCount}</span>
+                {#if !isPageTitle && (commentCountSub?.current ?? 0) > 0}
+                    <span class="comment-count">{commentCountSub?.current}</span>
                 {/if}
                 {#if !isPageTitle}
                     <button
+                        type="button"
                         class="comment-button"
                         data-testid="comment-button-{model.id}"
+                        draggable="false"
                         onclick={toggleComments}
+                        onpointerdown={(e) => { e.stopPropagation(); toggleComments(); }}
+                        onmousedown={(e) => { e.stopPropagation(); toggleComments(); }}
+                        onmouseup={(e) => { e.stopPropagation(); }}
                     >
                         💬
                     </button>
@@ -1563,7 +1640,7 @@ onMount(() => {
                 {#if !isPageTitle}
                     <div class="component-selector">
                         <select
-                            value={componentType || "none"}
+                            value={compType.current || "none"}
                             onchange={e => handleComponentTypeChange(e.target.value)}
                         >
                             <option value="none">テキスト</option>
@@ -1574,9 +1651,9 @@ onMount(() => {
                 {/if}
 
                 <!-- コンポーネント表示（テキストは非表示） -->
-                {#if componentType === "table"}
+                {#if compType.current === "table"}
                     <InlineJoinTable />
-                {:else if componentType === "chart"}
+                {:else if compType.current === "chart"}
                     <ChartPanel />
                 {/if}
                 {#if (aliasTargetIdEffective || aliasTargetId || (((aliasPickerStore as any)?.lastConfirmedItemId === model.id) && (aliasPickerStore as any)?.lastConfirmedTargetId))}
@@ -1628,9 +1705,9 @@ onMount(() => {
         {/if}
     </div>
 
-    <!-- Comment Thread -->
-    {#if showComments && !isPageTitle}
-        <CommentThread comments={model.original.comments} currentUser={currentUser} />
+    <!-- Comment Thread (visible only for active item; default to first non-title item when none selected) -->
+    {#if !isPageTitle && (((generalStore as any).openCommentItemId === model.id) || ((generalStore as any).openCommentItemId == null && index === 1))}
+        <CommentThread comments={model.original.comments} currentUser={currentUser} doc={model.original.ydoc} />
     {/if}
 </div>
 

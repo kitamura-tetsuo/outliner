@@ -8,6 +8,7 @@ import { Items } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
+import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 let textareaRef: HTMLTextAreaElement;
 let isComposing = false;
@@ -31,6 +32,8 @@ onMount(() => {
     } catch {}
 
     store.setTextareaRef(textareaRef);
+    // generalStore にも参照を保持（コマンドパレットのフォールバックで利用）
+    try { (generalStore as any).textareaRef = textareaRef; } catch {}
     console.log("GlobalTextArea: Textarea reference set in store");
 
     // 初期フォーカスを設定
@@ -79,13 +82,71 @@ onMount(() => {
         // onDestroyで解除
         (window as any).__ALIAS_FWD__ = forward;
     } catch {}
+
+    // フォールバック: スラッシュ押下で常にパレットを表示（内部リンク直後はKeyEventHandler側で抑止）
+    try {
+        const slashListener = (ev: KeyboardEvent) => {
+            if (ev.key !== "/") return;
+            // 既に表示中なら何もしない
+            if ((window as any).commandPaletteStore?.isVisible) return;
+            try {
+                const pos = commandPaletteStore.getCursorScreenPosition();
+                commandPaletteStore.show(pos || { top: 0, left: 0 });
+            } catch {}
+        };
+        window.addEventListener("keydown", slashListener, { capture: true });
+        (window as any).__SLASH_FWD__ = slashListener;
+    } catch {}
+
+    // 直近のキー入力を常に記録（/ch のような連続入力を検出するため）
+    try {
+        const recordKeys = (ev: KeyboardEvent) => {
+            if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+            const k = ev.key;
+            if (typeof k === "string" && k.length === 1) {
+                const w: any = (window as any);
+                w.__KEYSTREAM__ = (w.__KEYSTREAM__ || "") + k;
+                if (w.__KEYSTREAM__.length > 256) {
+                    w.__KEYSTREAM__ = w.__KEYSTREAM__.slice(-256);
+                }
+            }
+        };
+        window.addEventListener("keydown", recordKeys, { capture: true });
+        (window as any).__KEYSTREAM_FWD__ = recordKeys;
+    } catch {}
+
+    // フォールバック: パレット表示中はグローバルkeydownから直接文字入力/移動/確定を転送
+    try {
+        const paletteTypeForwarder = (ev: KeyboardEvent) => {
+            const cps: any = (window as any).commandPaletteStore ?? commandPaletteStore;
+            if (!cps?.isVisible) return;
+            const k = ev.key;
+            if (!ev.ctrlKey && !ev.metaKey && !ev.altKey && k.length === 1 && k !== "/") {
+                // 軽量入力でUIだけを即時更新（モデルは変更しない）
+                cps.inputLight(k);
+                ev.preventDefault();
+                return;
+            }
+            if (k === "Backspace") { cps.backspaceLight(); ev.preventDefault(); return; }
+            if (k === "Enter") { cps.confirm(); ev.preventDefault(); return; }
+            if (k === "ArrowDown") { cps.move(1); ev.preventDefault(); return; }
+            if (k === "ArrowUp") { cps.move(-1); ev.preventDefault(); return; }
+        };
+        window.addEventListener("keydown", paletteTypeForwarder, { capture: true });
+        (window as any).__PALETTE_FWD__ = paletteTypeForwarder;
+    } catch {}
 });
 
 onDestroy(() => {
     store.setTextareaRef(null);
+    try { (generalStore as any).textareaRef = null; } catch {}
     try {
         const f = (window as any).__ALIAS_FWD__ as any;
         if (f) window.removeEventListener("keydown", f, { capture: true } as any);
+    } catch {}
+    try {
+        const s = (window as any).__SLASH_FWD__ as any;
+        if (s) window.removeEventListener("keydown", s, { capture: true } as any);
     } catch {}
 });
 

@@ -63,11 +63,11 @@ async function handleContainerSelected(
 </script>
 
 <svelte:head>
-    <title>Outliner App</title>
+    <title>Outliner</title>
 </svelte:head>
 
 <main class="main-content" data-testid="outliner-base">
-    <h1>Outliner App</h1>
+    <h1>Outliner</h1>
 
     <div class="welcome-message">
         <p>Outlinerへようこそ！</p>

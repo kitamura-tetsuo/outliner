@@ -6,6 +6,8 @@ class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
     pages = $state<any>({ current: [] });
     currentPage = $state<Item>();
+    // 現在開いているコメントスレッドのアイテムID（同時に1つのみ表示）
+    openCommentItemId = $state<string | null>(null);
     private _project = $state<Project>();
 
     public get project(): Project | undefined {
