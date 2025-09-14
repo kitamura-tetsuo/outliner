@@ -59,13 +59,15 @@ $effect(() => {
     <div class="flex">
         <ul class="w-1/3 pr-4 overflow-y-auto max-h-60 border-r">
             {#each snapshots as s}
-                <button
-                    type="button"
-                    class="cursor-pointer hover:bg-gray-200 p-1 text-left w-full"
-                    onclick={() => showDiff(s.id)}
-                >
-                    {new Date(s.timestamp).toLocaleString()} - {s.author}
-                </button>
+                <li onclick={() => showDiff(s.id)}>
+                    <button
+                        type="button"
+                        class="cursor-pointer hover:bg-gray-200 p-1 text-left w-full"
+                        onclick={() => showDiff(s.id)}
+                    >
+                        {new Date(s.timestamp).toLocaleString()} - {s.author}
+                    </button>
+                </li>
             {/each}
         </ul>
         <div class="flex-1 pl-4 diff">

@@ -27,6 +27,21 @@ function getWsBase(): string {
     return url as string;
 }
 
+function isWsEnabled(): boolean {
+    try {
+        // Test override to forcibly enable WS even if env disables it
+        const override = typeof window !== "undefined"
+            && window.localStorage?.getItem?.("VITE_YJS_ENABLE_WS") === "true";
+        if (override) return true;
+        const envDisabled = String(import.meta.env.VITE_YJS_DISABLE_WS || "") === "true";
+        const lsDisabled = typeof window !== "undefined"
+            && window.localStorage?.getItem?.("VITE_YJS_DISABLE_WS") === "true";
+        return !(envDisabled || lsDisabled);
+    } catch {
+        return true;
+    }
+}
+
 async function getFreshIdToken(): Promise<string> {
     // Wait for auth and fetch a fresh ID token
     const auth = userManager.auth;
@@ -58,14 +73,16 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         } catch { /* no-op in Node */ }
     }
     let token = "";
-    if (!(import.meta.env.MODE === "test" || process.env.NODE_ENV === "test")) {
-        try {
-            token = await getFreshIdToken();
-        } catch {}
+    try {
+        token = await getFreshIdToken();
+    } catch {
+        // Tolerate missing token in tests; server will reject unauthenticated connections,
+        // but local-only mode may still function for offline scenarios.
+        token = "";
     }
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: true,
+        connect: isWsEnabled(),
     });
     const awareness = provider.awareness;
     const current = userManager.getCurrentUser();
@@ -105,16 +122,15 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     }
 
     let token = "";
-    if (!(import.meta.env.MODE === "test" || process.env.NODE_ENV === "test")) {
-        try {
-            token = await getFreshIdToken();
-        } catch {
-            // Tolerate missing token; provider will attempt reconnect later
-        }
+    try {
+        token = await getFreshIdToken();
+    } catch {
+        // Tolerate missing token; provider will attempt reconnect later
+        token = "";
     }
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: true,
+        connect: isWsEnabled(),
     });
 
     // Awareness (presence)
@@ -208,7 +224,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     }
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: true,
+        connect: isWsEnabled(),
     });
     const awareness = provider.awareness;
     const current = userManager.getCurrentUser();

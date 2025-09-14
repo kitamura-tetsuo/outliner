@@ -33,6 +33,7 @@ export class TestHelpers {
         testInfo?: any,
         lines: string[] = [],
         browser?: Browser,
+        options?: { stayOnHome?: boolean; enableYjsWs?: boolean; },
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
@@ -70,6 +71,13 @@ export class TestHelpers {
                 } as typeof document.createElement;
             } catch {}
         });
+        if (options?.enableYjsWs) {
+            await page.addInitScript(() => {
+                try {
+                    localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+                } catch {}
+            });
+        }
 
         // ホームページにアクセスしてアプリの初期化を待つ
         console.log("TestHelper: Starting navigation to home page");
@@ -84,17 +92,28 @@ export class TestHelpers {
             });
             console.log("TestHelper: Successfully navigated to home page");
             console.log("TestHelper: Page URL after navigation:", page.url());
-            // E2E 安定化: ホームはランディングのみのため、プロジェクトページへ遷移
+            // E2E 安定化: 通常はプロジェクトページへ遷移するが、オプションでホームに留まる
             try {
-                const projectName = "e2e-project";
-                const pageName = "e2e-page";
-                const target = `/${projectName}/${pageName}`;
-                console.log("TestHelper: Navigating to project page:", target);
-                await page.goto(target, {
-                    timeout: 120000,
-                    waitUntil: "domcontentloaded",
-                });
-                console.log("TestHelper: Arrived:", page.url());
+                const stayOnHome = (options?.stayOnHome === true) || (await page.evaluate(() => {
+                    try {
+                        return window.localStorage?.getItem?.("E2E_STAY_ON_HOME") === "true";
+                    } catch {
+                        return false;
+                    }
+                }));
+                if (!stayOnHome) {
+                    const projectName = "e2e-project";
+                    const pageName = "e2e-page";
+                    const target = `/${projectName}/${pageName}`;
+                    console.log("TestHelper: Navigating to project page:", target);
+                    await page.goto(target, {
+                        timeout: 120000,
+                        waitUntil: "domcontentloaded",
+                    });
+                    console.log("TestHelper: Arrived:", page.url());
+                } else {
+                    console.log("TestHelper: stayOnHome option set; staying on home page");
+                }
             } catch (navErr) {
                 console.log("TestHelper: Project-page navigation skipped/failed:", String(navErr));
             }
@@ -187,7 +206,11 @@ export class TestHelpers {
         await TestHelpers.setupTreeDebugger(page);
         await TestHelpers.setupCursorDebugger(page);
 
-        // テストページをセットアップ
+        // テストページをセットアップ（ホームに留まるオプションに対応）
+        if (options?.stayOnHome) {
+            console.log("TestHelper: stayOnHome option set; skipping navigation to project page");
+            return { projectName: "home", pageName: "" };
+        }
         return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
     }
 

@@ -10,9 +10,20 @@ if (typeof window !== "undefined" && (
     import.meta.env.VITE_IS_TEST === "true" ||
     process.env.NODE_ENV === "test"
 )) {
-    // Dynamic import to ensure test helper is available
-    import("../tests/utils/testDataHelper").then(() => {
+    // Dynamic import to ensure test helper is available and seed default data if allowed
+    import("../tests/utils/testDataHelper").then((mod) => {
         console.log("Test data helper loaded");
+        try {
+            const skip = window.localStorage.getItem("SKIP_TEST_CONTAINER_SEED") === "true";
+            if (!skip && typeof mod.setupTestEnvironment === "function") {
+                mod.setupTestEnvironment();
+                console.log("Test data helper: setupTestEnvironment called on home page");
+            } else if (skip) {
+                console.log("SKIP_TEST_CONTAINER_SEED=true; skipping default test data setup on home page");
+            }
+        } catch (e) {
+            console.warn("Test data helper: auto-setup failed", e);
+        }
     }).catch(err => {
         console.error("Failed to load test data helper:", err);
     });

@@ -12,9 +12,21 @@ const __dirname = path.dirname(__filename);
 
 test.describe("GRV-0001: Graph View real-time updates", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "First page with [test-link] reference",
-        ]);
+        await TestHelpers.prepareTestEnvironment(
+            page,
+            testInfo,
+            [
+                "First page with [test-link] reference",
+            ],
+            undefined,
+            { enableYjsWs: true },
+        );
+        // Ensure store pages are ready
+        await page.waitForFunction(() => {
+            const gs = (window as any).generalStore || (window as any).appStore;
+            const pages = gs?.pages?.current;
+            return Array.isArray(pages) && pages.length >= 1;
+        }, { timeout: 15000 });
     });
 
     test("ECharts library initialization", async ({ page }) => {
@@ -73,6 +85,10 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
         // プロジェクトページ内でGraph Viewコンポーネントを動的に追加してテスト
         const graphInitResult = await page.evaluate(() => {
             try {
+                // Wait a tick for store readiness in case of slow hydration
+                const gs = (window as any).generalStore || (window as any).appStore;
+                const ready = !!(gs && gs.pages && gs.project);
+                if (!ready) return { success: false, error: "Store not available" };
                 // Graph Viewコンポーネントを動的に作成
                 const graphDiv = document.createElement("div");
                 graphDiv.className = "graph-view";
