@@ -7,20 +7,18 @@ function handleClick(type: "table" | "chart" | "alias") {
 }
 </script>
 
-{#if commandPaletteStore.isVisible}
 <div
     class="slash-command-palette"
-    style="position:absolute;top:{commandPaletteStore.position.top}px;left:{commandPaletteStore.position.left}px;z-index:1000;"
+    style="position:absolute;top:{commandPaletteStore.position.top}px;left:{commandPaletteStore.position.left}px;z-index:1000;display:{commandPaletteStore.isVisible ? 'block' : 'none'};"
 >
     <ul>
-        {#each commandPaletteStore.filtered as cmd, i}
+        {#each commandPaletteStore.visible as cmd, i}
             <li class:selected={i === commandPaletteStore.selectedIndex}>
                 <button type="button" onclick={() => handleClick(cmd.type)}>{cmd.label}</button>
             </li>
         {/each}
     </ul>
 </div>
-{/if}
 
 <style>
 .slash-command-palette ul {

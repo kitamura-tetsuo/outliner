@@ -92,16 +92,26 @@ export class TestHelpers {
             });
             console.log("TestHelper: Successfully navigated to home page");
             console.log("TestHelper: Page URL after navigation:", page.url());
-            // E2E 安定化: 通常はプロジェクトページへ遷移するが、オプションでホームに留まる
-            try {
-                const stayOnHome = (options?.stayOnHome === true) || (await page.evaluate(() => {
-                    try {
-                        return window.localStorage?.getItem?.("E2E_STAY_ON_HOME") === "true";
-                    } catch {
-                        return false;
-                    }
-                }));
-                if (!stayOnHome) {
+            // E2E 安定化: ホーム滞在判定（オプション/テストメタ/ローカルストレージの総合）
+            const stayOnHomeByOption = (options?.stayOnHome === true) || (await page.evaluate(() => {
+                try {
+                    return window.localStorage?.getItem?.("E2E_STAY_ON_HOME") === "true";
+                } catch {
+                    return false;
+                }
+            }));
+            const stayOnHomeByMeta = (() => {
+                try {
+                    const title = String(testInfo?.title ?? "");
+                    const file = String(testInfo?.file ?? "");
+                    return /home\s*page|homepage|cdx-homepage/i.test(title) || /cdx-homepage/i.test(file);
+                } catch {
+                    return false;
+                }
+            })();
+            const shouldStayOnHome = !!(stayOnHomeByOption || stayOnHomeByMeta);
+            if (!shouldStayOnHome) {
+                try {
                     const projectName = "e2e-project";
                     const pageName = "e2e-page";
                     const target = `/${projectName}/${pageName}`;
@@ -111,11 +121,16 @@ export class TestHelpers {
                         waitUntil: "domcontentloaded",
                     });
                     console.log("TestHelper: Arrived:", page.url());
-                } else {
-                    console.log("TestHelper: stayOnHome option set; staying on home page");
+                } catch (navErr) {
+                    console.log("TestHelper: Project-page navigation skipped/failed:", String(navErr));
                 }
-            } catch (navErr) {
-                console.log("TestHelper: Project-page navigation skipped/failed:", String(navErr));
+            } else {
+                try {
+                    const txt = await page.evaluate(() => document.body?.innerText?.slice(0, 400) || "");
+                    const html = await page.evaluate(() => document.body?.innerHTML?.slice(0, 400) || "");
+                    console.log("TestHelper: Home body text head:", txt);
+                    console.log("TestHelper: Home body HTML head:", html);
+                } catch {}
             }
         } catch (error) {
             console.error("TestHelper: Failed to navigate to home page:", error);

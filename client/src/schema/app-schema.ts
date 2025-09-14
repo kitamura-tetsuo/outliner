@@ -153,6 +153,15 @@ export class Item {
         this.updateText(v ?? "");
     }
 
+    // componentType stored in Y.Map ("table" | "chart" | undefined)
+    get componentType(): string | undefined {
+        return this.value.get("componentType");
+    }
+    set componentType(v: string | undefined) {
+        this.value.set("componentType", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
     // alias target id stored in Y.Map
     get aliasTargetId(): string | undefined {
         return this.value.get("aliasTargetId");

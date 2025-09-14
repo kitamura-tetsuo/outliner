@@ -728,6 +728,17 @@ export class KeyEventHandler {
         console.log(`Input data: "${inputEvent.data}"`);
         console.log(`Current active element: ${document.activeElement?.tagName}`);
 
+        // 直近の入力ストリームをバッファリング（パレットのフォールバック検出用）
+        try {
+            const w: any = typeof window !== "undefined" ? (window as any) : null;
+            const gs: any = w?.generalStore ?? {};
+            const ch: string = typeof inputEvent.data === "string" ? inputEvent.data : "";
+            gs.__lastInputStream = (gs.__lastInputStream || "") + ch;
+            if (gs.__lastInputStream.length > 256) {
+                gs.__lastInputStream = gs.__lastInputStream.slice(-256);
+            }
+        } catch {}
+
         // テキストエリアの現在の値を確認
         const textareaRef = store.getTextareaRef();
         if (textareaRef) {

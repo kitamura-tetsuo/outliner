@@ -164,6 +164,7 @@ if (typeof window !== "undefined") {
 
 <div class="main-toolbar" data-testid="main-toolbar" bind:this={toolbarEl} aria-hidden="false">
     <div class="main-toolbar-content" aria-hidden="false">
+        <div class="brand" aria-label="brand">Outliner</div>
         <div role="search">
             <SearchBox project={effectiveProject ?? undefined} />
         </div>
