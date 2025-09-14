@@ -61,10 +61,32 @@ onMount(() => {
         (window as any).Items = Items;
         (window as any).generalStore = generalStore;
     }
+
+    // エイリアスピッカー可視時のキーを常にピッカーへフォワード（フォーカスに依存しない）
+    try {
+        const forward = (ev: KeyboardEvent) => {
+            if (!aliasPickerStore.isVisible) return;
+            const k = ev.key;
+            if (k !== "ArrowDown" && k !== "ArrowUp" && k !== "Enter" && k !== "Escape") return;
+            try { console.log("GlobalTextArea: forward key to alias-picker:", k); } catch {}
+            const picker = document.querySelector(".alias-picker") as HTMLElement | null;
+            if (!picker) return;
+            const forwarded = new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true });
+            picker.dispatchEvent(forwarded);
+            ev.preventDefault();
+        };
+        window.addEventListener("keydown", forward, { capture: true });
+        // onDestroyで解除
+        (window as any).__ALIAS_FWD__ = forward;
+    } catch {}
 });
 
 onDestroy(() => {
     store.setTextareaRef(null);
+    try {
+        const f = (window as any).__ALIAS_FWD__ as any;
+        if (f) window.removeEventListener("keydown", f, { capture: true } as any);
+    } catch {}
 });
 
 function updateCompositionWidth(text: string) {

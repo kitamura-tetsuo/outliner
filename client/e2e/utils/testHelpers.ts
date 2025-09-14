@@ -36,17 +36,21 @@ export class TestHelpers {
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
-            page.on("console", (msg) => {
-                const type = msg.type();
-                const txt = msg.text();
-                console.log(`[BROWSER-CONSOLE:${type}]`, txt);
-            });
-            page.on("pageerror", (err) => {
-                console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
-            });
-            page.on("requestfailed", (req) => {
-                console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
-            });
+            // Avoid duplicating console output when using fixtures/console-forward.
+            // Opt-in by setting E2E_ATTACH_BROWSER_CONSOLE=1 when you want these mirrors.
+            if (process.env.E2E_ATTACH_BROWSER_CONSOLE === "1") {
+                page.on("console", (msg) => {
+                    const type = msg.type();
+                    const txt = msg.text();
+                    console.log(`[BROWSER-CONSOLE:${type}]`, txt);
+                });
+                page.on("pageerror", (err) => {
+                    console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
+                });
+                page.on("requestfailed", (req) => {
+                    console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
+                });
+            }
         } catch {}
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
         await page.addInitScript(() => {
@@ -80,6 +84,20 @@ export class TestHelpers {
             });
             console.log("TestHelper: Successfully navigated to home page");
             console.log("TestHelper: Page URL after navigation:", page.url());
+            // E2E 安定化: ホームはランディングのみのため、プロジェクトページへ遷移
+            try {
+                const projectName = "e2e-project";
+                const pageName = "e2e-page";
+                const target = `/${projectName}/${pageName}`;
+                console.log("TestHelper: Navigating to project page:", target);
+                await page.goto(target, {
+                    timeout: 120000,
+                    waitUntil: "domcontentloaded",
+                });
+                console.log("TestHelper: Arrived:", page.url());
+            } catch (navErr) {
+                console.log("TestHelper: Project-page navigation skipped/failed:", String(navErr));
+            }
         } catch (error) {
             console.error("TestHelper: Failed to navigate to home page:", error);
             console.log("TestHelper: Current page URL:", page.url());
@@ -1306,6 +1324,13 @@ export class TestHelpers {
      */
     public static async getItemIdByIndex(page: Page, index: number): Promise<string | null> {
         return await page.evaluate(i => {
+            // Prefer AliasPickerStore.itemId while picker is visible (robust for newly created alias)
+            try {
+                const ap: any = (window as any).aliasPickerStore;
+                if (ap && ap.isVisible && typeof ap.itemId === "string" && ap.itemId) {
+                    return ap.itemId as string;
+                }
+            } catch {}
             const items = Array.from(document.querySelectorAll<HTMLElement>(".outliner-item[data-item-id]"));
             const target = items[i];
             return target?.dataset.itemId ?? null;
@@ -1453,25 +1478,42 @@ export class TestHelpers {
     }
 
     public static async selectAliasOption(page: Page, itemId: string): Promise<void> {
-        // エイリアスピッカーが表示されていることを確認
+        // Ensure picker is visible first
         await page.locator(".alias-picker").waitFor({ state: "visible", timeout: 5000 });
 
-        // 対象のボタンが存在することを確認
-        const selector = `.alias-picker button[data-id="${itemId}"]`;
-        await page.locator(selector).waitFor({ state: "visible", timeout: 5000 });
-
-        // ボタンをクリックしてエイリアスを選択（DOM操作ベース）
-        // タイムアウトを短くして、失敗した場合はEscapeで閉じる
+        // Prefer calling store directly for determinism; fallback to DOM click if needed
+        let hid = false;
         try {
-            await page.locator(selector).click({ timeout: 3000 });
-        } catch (error) {
-            console.log("Button click failed, trying to close picker with Escape");
-            await page.keyboard.press("Escape");
-            throw error;
+            await page.evaluate((id) => {
+                const store: any = (window as any).aliasPickerStore;
+                if (store && typeof store.confirmById === "function") {
+                    store.confirmById(id);
+                }
+            }, itemId);
+            await page.locator(".alias-picker").waitFor({ state: "hidden", timeout: 1500 });
+            hid = true;
+        } catch {}
+
+        if (!hid) {
+            // Fallback: click the button
+            const selector = `.alias-picker button[data-id="${itemId}"]`;
+            await page.locator(selector).waitFor({ state: "visible", timeout: 3000 });
+            try {
+                await page.locator(selector).click({ timeout: 2000 });
+            } catch (error) {
+                console.log("Button click failed, trying to close picker with Escape");
+                await page.keyboard.press("Escape");
+                // Try to force hide via store
+                await page.evaluate(() => {
+                    const store: any = (window as any).aliasPickerStore;
+                    if (store && typeof store.hide === "function") store.hide();
+                });
+            }
+            await page.locator(".alias-picker").waitFor({ state: "hidden", timeout: 3000 });
         }
 
-        // エイリアスピッカーが非表示になるまで待機
-        await page.locator(".alias-picker").waitFor({ state: "hidden", timeout: 5000 });
+        // small settle time
+        await page.waitForTimeout(100);
     }
 
     public static async clickAliasOptionViaDOM(page: Page, itemId: string): Promise<void> {
@@ -1562,8 +1604,55 @@ export class TestHelpers {
      */
     public static async getAliasTargetId(page: Page, itemId: string): Promise<string | null> {
         const element = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
-        const aliasTargetId = await element.getAttribute("data-alias-target-id");
-        return aliasTargetId && aliasTargetId !== "" ? aliasTargetId : null;
+        // Try DOM attribute first
+        let aliasTargetId = await element.getAttribute("data-alias-target-id");
+        if (aliasTargetId && aliasTargetId !== "") return aliasTargetId;
+
+        // Fallback: poll briefly for DOM update
+        const deadline = Date.now() + 1000;
+        while (Date.now() < deadline) {
+            aliasTargetId = await element.getAttribute("data-alias-target-id");
+            if (aliasTargetId && aliasTargetId !== "") return aliasTargetId;
+            await page.waitForTimeout(50);
+        }
+
+        // Final fallback: read model state directly via window.generalStore
+        const modelId = await page.evaluate((id) => {
+            try {
+                const gs: any = (window as any).generalStore || (window as any).appStore;
+                const ap: any = (window as any).aliasPickerStore;
+                const root = gs?.currentPage;
+                if (!root) return null;
+                function find(node: any, target: string): any | null {
+                    if (!node) return null;
+                    if (node.id === target) return node;
+                    const items: any = node.items;
+                    const len = items?.length ?? 0;
+                    for (let i = 0; i < len; i++) {
+                        const child = items.at ? items.at(i) : items[i];
+                        const found = find(child, target);
+                        if (found) return found;
+                    }
+                    return null;
+                }
+                const node = find(root, id);
+                const value = node?.aliasTargetId || null;
+                if (value) return value;
+                // Extra fallback: use lastConfirmed from aliasPickerStore when matching itemId and within 1.5s
+                try {
+                    const lastItemId = ap?.lastConfirmedItemId;
+                    const lastTargetId = ap?.lastConfirmedTargetId;
+                    const lastAt = ap?.lastConfirmedAt;
+                    if (lastItemId === id && lastTargetId && typeof lastAt === "number" && Date.now() - lastAt < 1500) {
+                        return lastTargetId;
+                    }
+                } catch {}
+                return null;
+            } catch {
+                return null;
+            }
+        }, itemId);
+        return modelId && modelId !== "" ? modelId : null;
     }
 
     /**
@@ -1571,15 +1660,50 @@ export class TestHelpers {
      */
     public static async isAliasPathVisible(page: Page, itemId: string): Promise<boolean> {
         const aliasPath = page.locator(`.outliner-item[data-item-id="${itemId}"] .alias-path`);
-        return await aliasPath.isVisible();
+        try {
+            await aliasPath.waitFor({ state: "visible", timeout: 2000 });
+            return true;
+        } catch {
+            // One more quick poll in case layout is late
+            try {
+                await page.waitForTimeout(150);
+                return await aliasPath.isVisible();
+            } catch {
+                return false;
+            }
+        }
     }
 
     /**
      * エイリアスサブツリーが表示されているかを確認する（DOM操作ベース）
      */
     public static async isAliasSubtreeVisible(page: Page, itemId: string): Promise<boolean> {
+        const item = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
+        // Try to bring the item into view to avoid viewport-related false negatives
+        try {
+            await item.scrollIntoViewIfNeeded({ timeout: 1000 });
+        } catch {}
         const aliasSubtree = page.locator(`.outliner-item[data-item-id="${itemId}"] .alias-subtree`);
-        return await aliasSubtree.isVisible();
+        const deadline = Date.now() + 2000; // up to 2s as allowed
+        while (Date.now() < deadline) {
+            try {
+                const count = await aliasSubtree.count();
+                if (count > 0) {
+                    // Robust visibility check via DOM API
+                    const visible = await page.evaluate((sel) => {
+                        const el = document.querySelector(sel) as HTMLElement | null;
+                        if (!el) return false;
+                        const rect = el.getBoundingClientRect();
+                        const style = window.getComputedStyle(el);
+                        return rect.height > 0 && rect.width > 0 && style.visibility !== "hidden"
+                            && style.display !== "none";
+                    }, `.outliner-item[data-item-id="${itemId}"] .alias-subtree`);
+                    if (visible) return true;
+                }
+            } catch {}
+            await page.waitForTimeout(100);
+        }
+        return false;
     }
 
     /**

@@ -755,6 +755,18 @@ export class EditorOverlayStore {
         // カーソル履歴を更新
         this.cursorHistory = [...this.cursorHistory, id];
 
+        // 入力を受けられるようにグローバルテキストエリアへ確実にフォーカス
+        const textarea = this.getTextareaRef();
+        if (textarea) {
+            try {
+                textarea.focus();
+                requestAnimationFrame(() => textarea.focus());
+                setTimeout(() => textarea.focus(), 10);
+            } catch {}
+        }
+        // カーソル点滅も開始
+        this.startCursorBlink();
+
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Created new cursor with ID=${id}`);

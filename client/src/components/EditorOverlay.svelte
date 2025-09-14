@@ -3,6 +3,7 @@ import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
 import { presenceStore } from '../stores/PresenceStore.svelte';
+import { aliasPickerStore } from '../stores/AliasPickerStore.svelte';
 
 // store API (関数のみ)
 const { stopCursorBlink } = store;
@@ -36,12 +37,17 @@ let clipboardRef: HTMLTextAreaElement;
 let localActiveItemId = $state<string | null>(null);
 let localCursorVisible = $state<boolean>(false);
 let localAnimationPaused = $state<boolean>(false);
+// derive a stable visibility that does not blink while alias picker is open
+let overlayCursorVisible = $derived.by(() => store.cursorVisible && !aliasPickerStore.isVisible);
 
 // DOM要素への参照
 let overlayRef: HTMLDivElement;
+let measureCanvas: HTMLCanvasElement | null = null;
+let measureCtx: CanvasRenderingContext2D | null = null;
 
 function updateTextareaPosition() {
     try {
+        if (aliasPickerStore.isVisible) return; // avoid churn while alias picker open
         const textareaRef = store.getTextareaRef();
         const isComposing = store.isComposing;
         if (!textareaRef || !overlayRef || isComposing) return;
@@ -63,6 +69,11 @@ function updateTextareaPosition() {
 
 // 変更通知に応じて位置更新（ポーリング排除）
 onMount(() => {
+    // setup text measurement without DOM mutations
+    try {
+        measureCanvas = document.createElement('canvas');
+        measureCtx = measureCanvas.getContext('2d');
+    } catch {}
     const unsubscribe = store.subscribe(() => updateTextareaPosition());
     // 初期化
     updateTextareaPosition();
@@ -71,29 +82,20 @@ onMount(() => {
 
 // より正確なテキスト測定を行うヘルパー関数
 function createMeasurementSpan(itemId: string, text: string): HTMLSpanElement {
-    const itemInfo = positionMap[itemId];
-    if (!itemInfo) {
-        throw new Error(`Item info not found for ${itemId}`);
-    }
-
-    // 仮想測定用のspan要素を作成
+    // legacy helper kept for safety; no longer used to append nodes
     const span = document.createElement('span');
-
-    // スタイルを正確に継承
-    const { fontProperties } = itemInfo;
-    span.style.fontFamily = fontProperties.fontFamily;
-    span.style.fontSize = fontProperties.fontSize;
-    span.style.fontWeight = fontProperties.fontWeight;
-    span.style.letterSpacing = fontProperties.letterSpacing;
-
-    // その他の重要なスタイル
-    span.style.whiteSpace = 'pre';
-    span.style.visibility = 'hidden';
-    span.style.position = 'absolute';
-    span.style.pointerEvents = 'none';
     span.textContent = text;
-
     return span;
+}
+
+function measureTextWidthCanvas(itemId: string, text: string): number {
+    const itemInfo = positionMap[itemId];
+    if (!itemInfo || !measureCtx) return 0;
+    const { fontProperties } = itemInfo;
+    const font = `${fontProperties.fontWeight} ${fontProperties.fontSize} ${fontProperties.fontFamily}`.trim();
+    try { measureCtx.font = font; } catch {}
+    const m = measureCtx.measureText(text);
+    return m.width || 0;
 }
 
 // カーソル位置をピクセル値に変換する関数
@@ -136,12 +138,9 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
             const relativeTop = caretRect.top - treeContainerRect.top;
             return { left: relativeLeft, top: relativeTop };
         }
-        // フォールバック: 仮想spanで幅を測定
+        // フォールバック: Canvas で幅を測定（DOMを変更しない）
         const textBeforeCursor = text.substring(0, offset);
-        const span = createMeasurementSpan(itemId, textBeforeCursor);
-        textElement.parentElement?.appendChild(span);
-        const cursorWidth = span.getBoundingClientRect().width;
-        textElement.parentElement?.removeChild(span);
+        const cursorWidth = measureTextWidthCanvas(itemId, textBeforeCursor);
         const contentContainer = textElement.closest('.item-content-container');
         const contentRect = contentContainer?.getBoundingClientRect() || textRect;
         const contentLeft = contentRect.left - treeContainerRect.left;
@@ -195,16 +194,10 @@ function calculateSelectionPixelRange(
         const selectedText = text.substring(actualStart, actualEnd);
 
         // 開始位置の計算
-        const startSpan = createMeasurementSpan(itemId, textBeforeStart);
-        textElement.parentElement?.appendChild(startSpan);
-        const startX = startSpan.getBoundingClientRect().width;
-        textElement.parentElement?.removeChild(startSpan);
+        const startX = measureTextWidthCanvas(itemId, textBeforeStart);
 
         // 選択範囲の幅を計算
-        const selectionSpan = createMeasurementSpan(itemId, selectedText);
-        textElement.parentElement?.appendChild(selectionSpan);
-        const width = selectionSpan.getBoundingClientRect().width || 5; // 最小幅を確保
-        textElement.parentElement?.removeChild(selectionSpan);
+        const width = measureTextWidthCanvas(itemId, selectedText) || 5; // 最小幅
 
         // テキスト要素の左端からの距離
         const contentContainer = textElement.closest('.item-content-container');
@@ -301,7 +294,7 @@ let updatePositionMapTimer: number;
 function debouncedUpdatePositionMap() {
     clearTimeout(updatePositionMapTimer);
     updatePositionMapTimer = setTimeout(() => {
-        updatePositionMap();
+        if (!aliasPickerStore.isVisible) updatePositionMap();
     }, 100) as unknown as number;
 }
 
@@ -322,14 +315,17 @@ onMount(() => {
     // MutationObserverを単純化 - 変更検出後すぐに再計算するのではなく、
     // debounceを使用して頻度を制限
     mutationObserver = new MutationObserver(() => {
-        debouncedUpdatePositionMap();
+        if (!aliasPickerStore.isVisible) debouncedUpdatePositionMap();
     });
 
-    mutationObserver.observe(document.body, {
+    // Observe only structural changes under the tree container to avoid
+    // feedback from our own overlay class/style updates.
+    const rootToObserve = document.querySelector('.tree-container') || document.body;
+    mutationObserver.observe(rootToObserve, {
         childList: true,
         subtree: true,
-        attributes: true,
-        attributeFilter: ['style', 'class']
+        // Do not observe attributes to avoid loops on style/class changes
+        attributes: false
     });
 
     // リサイズやスクロール時に位置マップを更新
@@ -342,6 +338,32 @@ onMount(() => {
             store.startCursorBlink();
         }
     }, 200);
+});
+
+// While AliasPicker is open, fully disconnect observers and pause blinking
+$effect(() => {
+    const open = aliasPickerStore.isVisible;
+    try {
+        if (open) {
+            // stop observing DOM changes to avoid feedback loops
+            if (mutationObserver) mutationObserver.disconnect();
+            // stop blinking to avoid periodic updates
+            stopCursorBlink();
+        } else {
+            // resume observing and recalc once
+            if (mutationObserver) {
+                try {
+                    mutationObserver.observe(document.body, {
+                        childList: true,
+                        subtree: true,
+                        attributes: true,
+                        attributeFilter: ['style', 'class']
+                    });
+                } catch {}
+            }
+            debouncedUpdatePositionMap();
+        }
+    } catch {}
 });
 
 onDestroy(() => {
@@ -753,7 +775,7 @@ function handlePaste(event: ClipboardEvent) {
 }
 </script>
 
-<div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={store.cursorVisible}>
+<div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={overlayCursorVisible}>
     <!-- デバッグボタン -->
     <button
         class="debug-button"
@@ -766,6 +788,8 @@ function handlePaste(event: ClipboardEvent) {
 
     <!-- 隠しクリップボード用textarea -->
     <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
+    <!-- 選択範囲とカーソルは AliasPicker 表示中は抑制してループを避ける -->
+    {#if !aliasPickerStore.isVisible}
     <!-- 選択範囲のレンダリング -->
     {#each Object.values(store.selections) as sel}
         {#if sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId}
@@ -896,6 +920,7 @@ function handlePaste(event: ClipboardEvent) {
             ></div>
         {/if}
     {/each}
+    {/if}
 
     {#if DEBUG_MODE && localActiveItemId}
         <div class="debug-info">

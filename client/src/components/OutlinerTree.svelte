@@ -93,8 +93,6 @@ const displayItems = new YjsSubscriber<DisplayItem[]>(
 
         viewModel.updateFromModel(pageItem);
         const visibleItems = viewModel.getVisibleItems();
-        // 可視リスト長の変化を検出して再測定
-        try { remeasureIfLengthChanged(visibleItems.length); } catch {}
         if (!isE2E) {
             console.log("OutlinerTree: visibleItems length:", visibleItems.length);
             // 表示アイテムの詳細をログ出力
@@ -108,6 +106,29 @@ const displayItems = new YjsSubscriber<DisplayItem[]>(
         return visibleItems;
     },
 );
+
+// 可視アイテム数の変化に応じた再測定は、描画外で安全に行う
+$effect(() => {
+    const len = displayItems.current.length;
+    if (__lastHeightsLen !== len) {
+        __lastHeightsLen = len;
+        // 現在の配列サイズだけ先に拡張/縮小（同期書き込みは最小限）
+        const next = new Array(len).fill(0);
+        for (let i = 0; i < Math.min(len, itemHeights.length); i++) next[i] = itemHeights[i];
+        itemHeights = next;
+        // 実測は次フレームで反映してレイアウトの変化と分離
+        requestAnimationFrame(() => {
+            try {
+                const nodes = document.querySelectorAll('.item-container');
+                nodes.forEach((el, idx) => {
+                    const h = (el as HTMLElement).getBoundingClientRect().height;
+                    itemHeights[idx] = h || 28;
+                });
+                updateItemPositions();
+            } catch {}
+        });
+    }
+});
 
 // アイテムの高さが変更されたときに位置を再計算
 function updateItemPositions() {
@@ -164,21 +185,7 @@ onMount(() => {
 
 // 可視アイテム数の変化に反応して高さを再測定（$effect を使わずに実施）
 // YjsSubscriber のトランスフォーマで検出し、ここでは関数として使用
-function remeasureIfLengthChanged(len: number) {
-    if (itemHeights.length !== len) {
-        const next = new Array(len).fill(0);
-        for (let i = 0; i < Math.min(len, itemHeights.length); i++) next[i] = itemHeights[i];
-        itemHeights = next;
-        requestAnimationFrame(() => {
-            const nodes = document.querySelectorAll('.item-container');
-            nodes.forEach((el, idx) => {
-                const h = (el as HTMLElement).getBoundingClientRect().height;
-                itemHeights[idx] = h || 28;
-            });
-            updateItemPositions();
-        });
-    }
-}
+function remeasureIfLengthChanged(_len: number) { /* legacy no-op; handled by $effect above */ }
 
 onDestroy(() => {
     // onEdit コールバックをクリア
