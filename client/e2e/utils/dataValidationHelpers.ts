@@ -17,6 +17,17 @@ export class DataValidationHelpers {
         } catch (e: any) {
             // Do not fail the test if snapshot saving fails
             console.warn("[afterEach] snapshot skipped:", e?.message ?? e);
+        } finally {
+            // Dump E2E logs if present
+            try {
+                const logs = await page.evaluate(() => {
+                    const w: any = window as any;
+                    return Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS.slice(-200) : [];
+                });
+                if (Array.isArray(logs) && logs.length) {
+                    console.log("[afterEach] E2E_LOGS (last 200):", logs);
+                }
+            } catch {}
         }
     }
     static async saveSnapshotsAndCompare(page: Page, label: string = "default"): Promise<void> {
@@ -64,7 +75,8 @@ export class DataValidationHelpers {
 
         const path = await import("path");
         const fsPromises = await import("fs/promises");
-        const outDir = path.resolve(process.cwd(), "e2e-snapshots");
+        // Write snapshots outside the Vite root to avoid dev server reloads
+        const outDir = path.resolve(process.cwd(), "..", "e2e-snapshots");
         await fsPromises.mkdir(outDir, { recursive: true }).catch(() => {});
         const yjsPath = path.join(outDir, `${label}-yjs.json`);
         if (!result.yjsJson) throw new Error("Yjs snapshot missing");

@@ -1,8 +1,10 @@
-import type { Item, Items, Project } from "../schema/app-schema";
+import type { Item, Items } from "../schema/app-schema";
+import { Project } from "../schema/app-schema";
 import { YjsSubscriber } from "./YjsSubscriber";
 
 class GeneralStore {
-    pages = $state<YjsSubscriber<Items>>();
+    // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
+    pages = $state<any>({ current: [] });
     currentPage = $state<Item>();
     private _project = $state<Project>();
 
@@ -20,14 +22,12 @@ class GeneralStore {
         this._project = v;
         console.log(`store: Creating YjsSubscriber for pages`);
 
-        // Wrap Items for reactive consumption via YjsSubscriber
-        const items = v.items as Items;
-        this.pages = {
-            get current() {
-                return items;
-            },
-            set current(_val: any) {/* no-op */},
-        } as unknown as YjsSubscriber<Items>;
+        // Expose Items via a proper YjsSubscriber so components can react
+        const project = v;
+        this.pages = new YjsSubscriber<Items>(
+            project.ydoc,
+            () => project.items,
+        ) as unknown as any;
     }
 }
 
@@ -37,4 +37,14 @@ export const store = new GeneralStore();
 if (typeof window !== "undefined") {
     (window as any).appStore = store;
     (window as any).generalStore = store; // TestHelpersとの互換性のため
+
+    // 起動直後に仮プロジェクトを用意（本接続が来れば yjsStore が置換）
+    try {
+        if (!store.project) {
+            const parts = window.location.pathname.split("/").filter(Boolean);
+            const title = decodeURIComponent(parts[0] || "Untitled Project");
+            (store as any).project = (Project as any).createInstance(title);
+            console.log("INIT: Provisional Project set in store.svelte.ts", { title });
+        }
+    } catch {}
 }

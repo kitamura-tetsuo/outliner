@@ -53,6 +53,8 @@ let containerRef: HTMLDivElement;
 
 
 let itemHeights = $state<number[]>([]);
+// 非リアクティブな前回長さの記録（$effect内での自己参照ループを防ぐ）
+let __lastHeightsLen = 0;
 let itemPositions = $state<number[]>([]);
 
 // ドラッグ選択関連の状態
@@ -104,6 +106,29 @@ const displayItems = new YjsSubscriber<DisplayItem[]>(
         return visibleItems;
     },
 );
+
+// 可視アイテム数の変化に応じた再測定は、描画外で安全に行う
+$effect(() => {
+    const len = displayItems.current.length;
+    if (__lastHeightsLen !== len) {
+        __lastHeightsLen = len;
+        // 現在の配列サイズだけ先に拡張/縮小（同期書き込みは最小限）
+        const next = new Array(len).fill(0);
+        for (let i = 0; i < Math.min(len, itemHeights.length); i++) next[i] = itemHeights[i];
+        itemHeights = next;
+        // 実測は次フレームで反映してレイアウトの変化と分離
+        requestAnimationFrame(() => {
+            try {
+                const nodes = document.querySelectorAll('.item-container');
+                nodes.forEach((el, idx) => {
+                    const h = (el as HTMLElement).getBoundingClientRect().height;
+                    itemHeights[idx] = h || 28;
+                });
+                updateItemPositions();
+            } catch {}
+        });
+    }
+});
 
 // アイテムの高さが変更されたときに位置を再計算
 function updateItemPositions() {
@@ -158,46 +183,9 @@ onMount(() => {
     });
 });
 
-// displayItemsが変更されたときにitemHeightsを更新
-let __heightsSyncing = false; // 非リアクティブな再入防止フラグ
-$effect(() => {
-    if (typeof window !== "undefined") (window as any).__LAST_EFFECT__ = "OutlinerTree:itemHeightsSync";
-
-    // テスト環境では高さ計測の同期をスキップ（E2E安定化）
-    const isTestEnv = (
-        import.meta.env.MODE === "test"
-        || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-    );
-    if (isTestEnv) return;
-
-    const itemCount = displayItems.current.length;
-    if (__heightsSyncing) return;
-    if (itemHeights.length !== itemCount) {
-        __heightsSyncing = true;
-        // 既存のアイテムの高さを保持しつつ、新しい配列を作成
-        const newHeights = new Array(itemCount).fill(28); // デフォルト値として28pxを設定
-        itemHeights.forEach((height, index) => {
-            if (index < itemCount) {
-                newHeights[index] = height || 28; // 0の場合は28pxを使用
-            }
-        });
-        itemHeights = newHeights;
-
-        // DOMの更新を待ってから実際の高さを取得
-        requestAnimationFrame(() => {
-            const items = document.querySelectorAll('.item-container');
-            items.forEach((item, index) => {
-                const height = item.getBoundingClientRect().height;
-                if (height > 0) {  // 実際の高さが取得できた場合のみ更新
-                    itemHeights[index] = height;
-                }
-            });
-            updateItemPositions();
-            __heightsSyncing = false;
-        });
-    }
-});
+// 可視アイテム数の変化に反応して高さを再測定（$effect を使わずに実施）
+// YjsSubscriber のトランスフォーマで検出し、ここでは関数として使用
+function remeasureIfLengthChanged(_len: number) { /* legacy no-op; handled by $effect above */ }
 
 onDestroy(() => {
     // onEdit コールバックをクリア

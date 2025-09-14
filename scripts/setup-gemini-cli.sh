@@ -236,7 +236,7 @@ else
     run_as_target_user "mkdir -p '$TARGET_HOME/.gemini'"
 fi
 
-# Create settings.json with GitHub MCP server
+# Create settings.json with GitHub MCP server and optional Playwright MCP (localhost)
 cat > "$SETTINGS_FILE" << 'EOF'
 {
   "theme": "Default Dark",
@@ -249,6 +249,12 @@ cat > "$SETTINGS_FILE" << 'EOF'
         "Authorization": "${GEMINI_GITHUB_PAT}"
       },
       "timeout": 10000
+    },
+    "playwright": {
+      "transport": "sse",
+      "url": "http://localhost:4312",
+      "requiresAuth": false,
+      "timeout": 15000
     }
   }
 }

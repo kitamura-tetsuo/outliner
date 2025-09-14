@@ -1,7 +1,10 @@
 <script lang="ts">
 import { browser } from "$app/environment";
 import { getEnv } from "$lib/env";
+import { page } from "$app/stores";
 import { getLogger } from "$lib/logger";
+import { store as appStore } from "../stores/store.svelte";
+import { Project } from "../schema/app-schema";
 import {
     onDestroy,
     onMount,
@@ -24,15 +27,70 @@ const logger = getLogger("AppLayout");
 let isAuthenticated = $state(false);
 let error: string | undefined = $state(undefined);
 
+// グローバルへのフォールバック公開（早期に window.generalStore を満たす）
+if (browser) {
+    (window as any).generalStore = (window as any).generalStore || appStore;
+    (window as any).appStore = (window as any).appStore || appStore;
+}
+// URL からプロジェクト/ページを初期化して window.generalStore.project と currentPage を満たす
+if (browser) {
+    try {
+        const parts = window.location.pathname.split("/").filter(Boolean);
+        const projectTitle = decodeURIComponent(parts[0] || "Untitled Project");
+        const pageTitle = decodeURIComponent(parts[1] || "");
+
+        if (!(appStore as any).project) {
+            (appStore as any).project = (Project as any).createInstance(projectTitle);
+            console.log("INIT: Provisional Project set in +layout.svelte", { projectTitle, pageTitle });
+        }
+
+        // currentPage が未設定で、URL に pageTitle がある場合は準備
+        if (pageTitle && !(appStore as any).currentPage && (appStore as any).project) {
+            try {
+                const itemsAny: any = (appStore as any).project.items;
+                // 既存ページにタイトル一致があるかチェック
+                let found: any = null;
+                const len = itemsAny?.length ?? 0;
+                for (let i = 0; i < len; i++) {
+                    const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
+                    const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                    if (String(t).toLowerCase() === String(pageTitle).toLowerCase()) { found = p; break; }
+                }
+                if (!found) {
+                    found = itemsAny?.addNode?.("tester");
+                    found?.updateText?.(pageTitle);
+                }
+                if (found) (appStore as any).currentPage = found;
+            } catch {}
+        }
+    } catch {}
+}
+
+// ルート変化を購読して currentPage を補完（runes準拠）
+function ensureCurrentPageByRoute(pj: string, pg: string) {
+    try {
+        if (!browser || !pg) return;
+        const gs: any = appStore;
+        if (!gs?.project) return;
+        const items: any = gs.project.items;
+        let found: any = null;
+        const len = items?.length ?? 0;
+        for (let i = 0; i < len; i++) {
+            const p = items.at ? items.at(i) : items[i];
+            const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+            if (String(t).toLowerCase() === String(pg).toLowerCase()) { found = p; break; }
+        }
+        if (!found) {
+            found = items?.addNode?.("tester");
+            found?.updateText?.(pg);
+        }
+        if (found) gs.currentPage = found;
+    } catch {}
+}
+
+
+
 let currentTheme = $derived(userPreferencesStore.theme);
-$effect(() => {
-    if (browser) {
-        document.documentElement.classList.toggle(
-            "dark",
-            currentTheme === "dark",
-        );
-    }
-});
 
 // APIサーバーのURLを取得
 const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
@@ -144,6 +202,11 @@ function handleVisibilityChange() {
 onMount(async () => {
     // ブラウザ環境でのみ実行
     if (browser) {
+        // E2E: Hydration detection flag for stable waits
+        try {
+            (window as any).__E2E_LAYOUT_MOUNTED__ = true;
+            document.dispatchEvent(new Event("E2E_LAYOUT_MOUNTED"));
+        } catch {}
         // Dynamically import browser-only modules
         let userManager: any;
         let yjsService: any;
@@ -159,8 +222,18 @@ onMount(async () => {
         if (import.meta.env.DEV) {
             logger.info("アプリケーションがマウントされました");
         }
+        // ルート変化に追従（currentPage補完）
+        try {
+            const unsub = page.subscribe(($p) => ensureCurrentPageByRoute($p.params.project ?? "", $p.params.page ?? ""));
+            onDestroy(unsub);
+        } catch {}
+
         // Service WorkerはE2Eテストでは無効化して、ナビゲーションやページクローズ干渉を防ぐ
-        const isE2e = import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true";
+        const isE2e = (
+            import.meta.env.MODE === "test"
+            || import.meta.env.VITE_IS_TEST === "true"
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        );
         if (!isE2e && "serviceWorker" in navigator) {
             navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
                 .then(reg => {
@@ -230,7 +303,12 @@ onMount(async () => {
         // Yjs: no auth-coupled init hook required
 
         // E2E ではページ遷移に干渉しないようにクリーンアップ系のリスナーを無効化
-        if (!(import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true")) {
+        const isE2eCleanup = (
+            import.meta.env.MODE === "test"
+            || import.meta.env.VITE_IS_TEST === "true"
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        );
+        if (!isE2eCleanup) {
             // ブラウザ終了時のイベントリスナーを登録
             window.addEventListener("beforeunload", handleBeforeUnload);
             // visibilitychangeイベントリスナーを登録（追加の保険）

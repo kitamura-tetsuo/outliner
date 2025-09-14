@@ -1,6 +1,13 @@
 repos:
   - repo: local
     hooks:
+      - id: forbid-webserver-in-playwright
+        name: Forbid webServer in client/playwright.config.ts
+        language: python
+        entry: python ./scripts/check_playwright_webserver.py
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
       - id: remove-feature-docs
         name: Remove feature docs before commit
         language: script

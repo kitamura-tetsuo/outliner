@@ -1,8 +1,27 @@
 <script lang="ts">
-import { presenceStore } from "../stores/PresenceStore.svelte";
+import { onMount, onDestroy } from "svelte";
+// Ensure presence store side-effects (window.presenceStore) are initialized
+import "../stores/PresenceStore.svelte";
 
-// プレゼンスストアのユーザー一覧を取得
-let users = $derived(presenceStore.getUsers());
+type PresenceUser = { userId: string; userName: string; color: string };
+
+let users = $state<PresenceUser[]>([]);
+
+function readUsers(): PresenceUser[] {
+  try {
+    const store = (globalThis as any).presenceStore;
+    return store ? Object.values(store.users || {}) : [];
+  } catch { return []; }
+}
+
+function sync() { users = readUsers(); }
+
+onMount(() => {
+  sync();
+  const handler = () => sync();
+  window.addEventListener("presence-users-changed", handler);
+  return () => window.removeEventListener("presence-users-changed", handler);
+});
 </script>
 <div class="presence-row" data-testid="presence-row">
   {#each users as u (u.userId)}

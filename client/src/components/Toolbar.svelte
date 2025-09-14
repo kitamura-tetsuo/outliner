@@ -196,7 +196,7 @@ if (typeof window !== "undefined") {
     transform: none !important;
 
 /* Force visibility for all descendants to avoid ancestor-origin visibility issues in tests */
-.main-toolbar, .main-toolbar *, .main-toolbar-content, .main-toolbar-content * {
+:global(.main-toolbar), :global(.main-toolbar *), :global(.main-toolbar-content), :global(.main-toolbar-content *) {
     visibility: visible !important;
     opacity: 1 !important;
     transform: none !important;

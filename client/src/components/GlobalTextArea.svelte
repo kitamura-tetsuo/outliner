@@ -18,17 +18,9 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 let __focusSyncing = false;
 let __lastFocusedItemId: string | number | null = null;
 
-// store.activeItemId 変化時の副作用
-$effect(() => {
-    if (typeof window !== "undefined") (window as any).__LAST_EFFECT__ = "GlobalTextArea:activeItemId";
-    const id = store.activeItemId as any;
-    console.log(`GlobalTextArea: activeItemId changed to ${id}`);
-
-    // 無限ループ回避のため、本エフェクトではテキストエリアへのフォーカス操作を一切行わない。
-    // フォーカスは onMount 初期化と OutlinerItem.startEditing() 側で責務分担する。
-    __lastFocusedItemId = id ?? null;
-    return;
-});
+// Note: Removed reactive effect on activeItemId to avoid potential
+// update-depth loops during E2E when alias picker and focus logic interact.
+// Focus management is handled in onMount and OutlinerItem.startEditing().
 
 // global textarea をストアに登録
 onMount(() => {
@@ -69,10 +61,32 @@ onMount(() => {
         (window as any).Items = Items;
         (window as any).generalStore = generalStore;
     }
+
+    // エイリアスピッカー可視時のキーを常にピッカーへフォワード（フォーカスに依存しない）
+    try {
+        const forward = (ev: KeyboardEvent) => {
+            if (!aliasPickerStore.isVisible) return;
+            const k = ev.key;
+            if (k !== "ArrowDown" && k !== "ArrowUp" && k !== "Enter" && k !== "Escape") return;
+            try { console.log("GlobalTextArea: forward key to alias-picker:", k); } catch {}
+            const picker = document.querySelector(".alias-picker") as HTMLElement | null;
+            if (!picker) return;
+            const forwarded = new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true });
+            picker.dispatchEvent(forwarded);
+            ev.preventDefault();
+        };
+        window.addEventListener("keydown", forward, { capture: true });
+        // onDestroyで解除
+        (window as any).__ALIAS_FWD__ = forward;
+    } catch {}
 });
 
 onDestroy(() => {
     store.setTextareaRef(null);
+    try {
+        const f = (window as any).__ALIAS_FWD__ as any;
+        if (f) window.removeEventListener("keydown", f, { capture: true } as any);
+    } catch {}
 });
 
 function updateCompositionWidth(text: string) {

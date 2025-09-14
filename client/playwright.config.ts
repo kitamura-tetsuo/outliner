@@ -89,7 +89,7 @@ export default defineConfig({
 
     reporter: [["html", { open: "never" }]],
     // テスト実行時のタイムアウトを延長（環境初期化の揺らぎに対応）
-    timeout: 120 * 1000, // 120秒
+    timeout: 30 * 1000, // 120秒
     expect: {
         // 要素の検出待機のタイムアウト設定を延長
         timeout: 15 * 1000, // 15秒

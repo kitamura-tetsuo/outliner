@@ -3,6 +3,7 @@ import { goto } from "$app/navigation";
 import * as echarts from "echarts";
 import { onMount } from "svelte";
 import { store } from "../stores/store.svelte";
+import type * as Y from "yjs";
 import { buildGraph } from "../utils/graphUtils";
 
 let graphDiv: HTMLDivElement;
@@ -130,17 +131,29 @@ onMount(() => {
         saveLayout();
     });
 
+    // Initial render
     update();
+
+    // React to project structure changes via Y.Doc updates (no polling)
+    let detachDocListener: (() => void) | undefined;
+    try {
+        const doc: Y.Doc | undefined = (store.project as any)?.ydoc;
+        if (doc) {
+            const onDocUpdate = () => { try { update(); } catch {} };
+            doc.on("update", onDocUpdate);
+            detachDocListener = () => doc.off("update", onDocUpdate);
+        }
+    } catch {}
+
+    // Keep chart sized correctly on container resizes
+    const onResize = () => { try { chart?.resize(); } catch {} };
+    window.addEventListener("resize", onResize);
+
     return () => {
+        detachDocListener?.();
+        window.removeEventListener("resize", onResize);
         chart?.dispose();
     };
-});
-
-$effect(() => {
-    // Trigger update when project or pages change
-    store.project;
-    store.pages?.current;
-    update();
 });
 </script>
 

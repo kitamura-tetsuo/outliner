@@ -1,0 +1,43 @@
+name: E2E Basic Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  e2e-basic:
+    runs-on: self-hosted
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup test environment
+        run: |
+          ./scripts/codex-setup.sh
+
+      - name: Run basic E2E tests sequentially
+        run: |
+          cd client
+          for spec in e2e/basic/*.spec.ts; do
+            echo "Running $spec"
+            npm run github:test:e2e -- "$spec"
+          done
+
+      - name: Cleanup after tests
+        if: always()
+        run: |
+          node scripts/kill-tinylicious.js || true
+          pkill -f "firebase" || true
+          pkill -f "vite" || true
+          pkill -f "node.*7090" || true
+          pkill -f "node.*7091" || true
+          pkill -f "node.*7092" || true
+          pkill -f "node.*59099" || true
+          pkill -f "node.*58080" || true
+          pkill -f "node.*57000" || true

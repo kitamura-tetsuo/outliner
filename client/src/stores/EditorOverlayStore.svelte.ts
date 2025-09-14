@@ -67,6 +67,9 @@ export class EditorOverlayStore {
     // onEdit コールバック
     onEditCallback: (() => void) | null = null;
 
+    // Lightweight pub-sub for UI (to avoid polling in components)
+    private listeners = new Set<() => void>();
+
     private timerId!: ReturnType<typeof setTimeout>;
 
     // テキストエリア参照を設定
@@ -94,6 +97,22 @@ export class EditorOverlayStore {
         if (this.onEditCallback) {
             this.onEditCallback();
         }
+    }
+
+    // Subscribe UI listeners for store-driven updates
+    subscribe(listener: () => void) {
+        this.listeners.add(listener);
+        return () => this.listeners.delete(listener);
+    }
+    private notifyChange() {
+        // Batch notifications in a microtask
+        queueMicrotask(() => {
+            for (const l of Array.from(this.listeners)) {
+                try {
+                    l();
+                } catch {}
+            }
+        });
     }
 
     private genUUID(): string {
@@ -132,6 +151,9 @@ export class EditorOverlayStore {
 
         // Reactive state を更新
         this.cursors = { ...this.cursors, [cursor.cursorId]: cursor };
+
+        // Notify listeners (e.g., overlay) for position updates
+        this.notifyChange();
 
         // アクティブアイテムを更新
         if (cursor.isActive) {
@@ -275,6 +297,9 @@ export class EditorOverlayStore {
 
         this.cursorHistory = [...this.cursorHistory, newId];
 
+        // Notify listeners
+        this.notifyChange();
+
         return newId;
     }
 
@@ -285,6 +310,7 @@ export class EditorOverlayStore {
         const newCursors = { ...this.cursors };
         delete newCursors[cursorId];
         this.cursors = newCursors;
+        this.notifyChange();
     }
 
     undoLastCursor() {
@@ -292,6 +318,7 @@ export class EditorOverlayStore {
         if (lastId) {
             this.cursorHistory = this.cursorHistory.slice(0, -1);
             this.removeCursor(lastId);
+            this.notifyChange();
         }
     }
 
@@ -305,6 +332,7 @@ export class EditorOverlayStore {
         // 選択範囲のキーを開始アイテムIDと終了アイテムIDの組み合わせにする
         const key = `${selection.startItemId}-${selection.endItemId}-${selection.userId || "local"}`;
         this.selections = { ...this.selections, [key]: selection };
+        this.notifyChange();
     }
 
     /**
@@ -359,6 +387,7 @@ export class EditorOverlayStore {
                 delete newSelections[key];
             });
             this.selections = newSelections;
+            this.notifyChange();
         }
 
         // 矩形選択を設定
@@ -375,6 +404,7 @@ export class EditorOverlayStore {
         // 選択範囲のキーを開始アイテムIDと終了アイテムIDの組み合わせにする
         const key = `box-${startItemId}-${endItemId}-${userId}`;
         this.selections = { ...this.selections, [key]: selection };
+        this.notifyChange();
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -388,6 +418,7 @@ export class EditorOverlayStore {
      */
     clearSelections() {
         this.selections = {};
+        this.notifyChange();
     }
 
     /**
@@ -414,6 +445,7 @@ export class EditorOverlayStore {
                 return !keyIncludesUserId && !objectUserIdMatches;
             }),
         );
+        this.notifyChange();
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -434,6 +466,7 @@ export class EditorOverlayStore {
 
     setActiveItem(itemId: string | null) {
         this.activeItemId = itemId;
+        this.notifyChange();
     }
 
     getActiveItem(): string | null {
@@ -442,14 +475,17 @@ export class EditorOverlayStore {
 
     setCursorVisible(visible: boolean) {
         this.cursorVisible = visible;
+        this.notifyChange();
     }
 
     setAnimationPaused(paused: boolean) {
         this.animationPaused = paused;
+        this.notifyChange();
     }
 
     setIsComposing(value: boolean) {
         this.isComposing = value;
+        this.notifyChange();
     }
 
     getIsComposing(): boolean {
@@ -558,6 +594,7 @@ export class EditorOverlayStore {
             this.selections = Object.fromEntries(
                 Object.entries(this.selections).filter(([_, s]) => s.userId !== userId),
             );
+            this.notifyChange();
         }
 
         // デバッグ情報
@@ -568,6 +605,7 @@ export class EditorOverlayStore {
 
     clearCursorInstance(cursorId: string) {
         this.removeCursor(cursorId);
+        this.notifyChange();
     }
 
     reset() {
@@ -577,6 +615,7 @@ export class EditorOverlayStore {
         this.cursorVisible = true;
         this.animationPaused = false;
         clearTimeout(this.timerId);
+        this.notifyChange();
     }
 
     /**
@@ -715,6 +754,18 @@ export class EditorOverlayStore {
 
         // カーソル履歴を更新
         this.cursorHistory = [...this.cursorHistory, id];
+
+        // 入力を受けられるようにグローバルテキストエリアへ確実にフォーカス
+        const textarea = this.getTextareaRef();
+        if (textarea) {
+            try {
+                textarea.focus();
+                requestAnimationFrame(() => textarea.focus());
+                setTimeout(() => textarea.focus(), 10);
+            } catch {}
+        }
+        // カーソル点滅も開始
+        this.startCursorBlink();
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {

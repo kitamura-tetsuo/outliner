@@ -7,7 +7,8 @@ let page: Page;
 test.beforeEach(async ({ page: initialPage, browser }, testInfo) => {
     const result = await TestHelpers.prepareTestEnvironment(initialPage, testInfo, [], browser);
     ids = { projectName: result.projectName, pageName: result.pageName };
-    page = result.page;
+    // TestHelpers.prepareTestEnvironment は Page を返さないため、既存の initialPage を使用
+    page = initialPage;
 });
 
 test("displays outline page after environment setup", async () => {
