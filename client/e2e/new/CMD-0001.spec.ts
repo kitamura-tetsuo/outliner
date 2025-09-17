@@ -35,6 +35,20 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         const paletteExists = await page.locator(".slash-command-palette").count();
         console.log(`Command palette exists: ${paletteExists}`);
 
+        // 追加のデバッグ情報
+        const paletteDebugInfo = await page.evaluate(() => {
+            const palette = document.querySelector(".slash-command-palette");
+            return {
+                isVisible: palette ? getComputedStyle(palette).display !== "none" : false,
+                dataIsVisible: palette?.getAttribute("data-is-visible"),
+                dataQuery: palette?.getAttribute("data-query"),
+                dataVisibleCount: palette?.getAttribute("data-visible-count"),
+                positionTop: palette?.style.top,
+                positionLeft: palette?.style.left,
+            };
+        });
+        console.log("Palette debug info:", paletteDebugInfo);
+
         // デバッグ: ページの状態を確認
         const debugInfo = await page.evaluate(() => {
             return {
@@ -187,6 +201,25 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         });
         console.log("After Enter info:", afterEnterInfo);
 
+        // 追加のデバッグ情報：OutlinerItemコンポーネントの状態を確認
+        const componentStateInfo = await page.evaluate(() => {
+            const items = (window as any).generalStore?.currentPage?.items;
+            if (!items) return { error: "No items found" };
+
+            const itemsArray = Array.from(items);
+            return {
+                itemsCount: itemsArray.length,
+                itemsDetails: itemsArray.map((item: any, index: number) => ({
+                    index,
+                    id: item.id,
+                    text: item.text,
+                    componentType: item.componentType,
+                    hasComponentType: "componentType" in item,
+                })),
+            };
+        });
+        console.log("Component state info:", componentStateInfo);
+
         await expect(page.locator(".inline-join-table")).toBeVisible();
     });
 
@@ -208,6 +241,27 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         await page.waitForTimeout(500);
 
         await page.keyboard.type("/ch");
+
+        // デバッグ情報を追加
+        const debugInfo = await page.evaluate(() => {
+            return {
+                commandPaletteExists: !!document.querySelector(".slash-command-palette"),
+                commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
+                commandPaletteQuery: (window as any).commandPaletteStore?.query,
+                commandPaletteFiltered: (window as any).commandPaletteStore?.filtered?.map((c: any) => c.label),
+                commandPaletteVisibleList: (window as any).commandPaletteStore?.visible?.map((c: any) => c.label),
+            };
+        });
+        console.log("Chart test debug info:", debugInfo);
+
+        // slash-command-paletteが表示されるまで少し待機
+        await page.waitForTimeout(1000);
+
+        // 追加のデバッグ情報
+        const paletteElements = await page.locator(".slash-command-palette").count();
+        const paletteVisible = await page.locator(".slash-command-palette").isVisible();
+        console.log(`Palette elements: ${paletteElements}, Visible: ${paletteVisible}`);
+
         await expect(page.locator(".slash-command-palette")).toBeVisible();
         await expect(page.locator(".slash-command-palette li")).toHaveCount(1);
         await page.keyboard.press("Enter");

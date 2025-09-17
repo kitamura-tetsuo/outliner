@@ -36,9 +36,26 @@ export class Cursor {
 
     // SharedTree 上の Item を再帰検索
     findTarget(): any {
-        const root = generalStore.currentPage;
-        if (!root) return undefined;
-        return this.searchItem(root as any, this.itemId);
+        const root = generalStore.currentPage as any;
+        if (root) {
+            const found = this.searchItem(root, this.itemId);
+            if (found) return found;
+        }
+        // Fallback: search across all pages in the current project
+        try {
+            const proj: any = (generalStore as any).project;
+            const pages: any = proj?.items;
+            if (pages && pages[Symbol.iterator]) {
+                for (const p of pages as Iterable<any>) {
+                    const f = this.searchItem(p, this.itemId);
+                    if (f) return f;
+                }
+            }
+        } catch {}
+        if (typeof window !== "undefined") {
+            console.error("findTarget: not found", { itemId: this.itemId, rootId: (root as any)?.id });
+        }
+        return undefined;
     }
 
     // 前のアイテムを探す

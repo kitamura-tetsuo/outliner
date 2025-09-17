@@ -89,6 +89,7 @@ export class Item {
             value.set("created", plain?.created ?? 0);
             value.set("lastChanged", plain?.lastChanged ?? 0);
             value.set("componentType", undefined);
+            value.set("chartQuery", undefined);
             value.set("aliasTargetId", undefined);
 
             const text = new Y.Text();
@@ -159,6 +160,15 @@ export class Item {
     }
     set componentType(v: string | undefined) {
         this.value.set("componentType", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // chart query stored in Y.Map
+    get chartQuery(): string | undefined {
+        return this.value.get("chartQuery");
+    }
+    set chartQuery(v: string | undefined) {
+        this.value.set("chartQuery", v);
         this.value.set("lastChanged", Date.now());
     }
 
@@ -298,6 +308,7 @@ export class Items implements Iterable<Item> {
         value.set("created", now);
         value.set("lastChanged", now);
         value.set("componentType", undefined);
+        value.set("chartQuery", undefined);
         value.set("aliasTargetId", undefined);
         value.set("text", new Y.Text());
         value.set("votes", new Y.Array<string>());

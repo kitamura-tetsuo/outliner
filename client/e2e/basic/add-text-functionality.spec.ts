@@ -120,7 +120,7 @@ test.describe("テキスト追加機能テスト", () => {
         });
 
         // アウトラインにアイテムを追加
-        await button.click();
+        await page.locator(".outliner .toolbar .actions button").filter({ hasText: "アイテム追加" }).first().click();
 
         // 新しいアイテムが表示されるのを待つ
         await page.waitForFunction(

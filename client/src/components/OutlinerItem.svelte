@@ -27,6 +27,7 @@ import { YjsSubscriber } from "../stores/YjsSubscriber";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 import ChartPanel from "./ChartPanel.svelte";
+import ChartQueryEditor from "./ChartQueryEditor.svelte";
 import CommentThread from "./CommentThread.svelte";
 import InlineJoinTable from "./InlineJoinTable.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
@@ -77,7 +78,15 @@ let item = model.original;
 // コメント数の購読（Yjsに直接追従）
 const commentCountSub = new YjsSubscriber<number>(
     item.ydoc,
-    () => item.comments.toPlain().length,
+    () => {
+        try {
+            const c: any = (item as any)?.comments;
+            const arr = c?.toPlain?.();
+            return Array.isArray(arr) ? arr.length : 0;
+        } catch {
+            return 0;
+        }
+    },
 );
 
 
@@ -1654,7 +1663,8 @@ onMount(() => {
                 {#if compType.current === "table"}
                     <InlineJoinTable />
                 {:else if compType.current === "chart"}
-                    <ChartPanel />
+                    <ChartQueryEditor item={model.original} />
+                    <ChartPanel item={model.original} />
                 {/if}
                 {#if (aliasTargetIdEffective || aliasTargetId || (((aliasPickerStore as any)?.lastConfirmedItemId === model.id) && (aliasPickerStore as any)?.lastConfirmedTargetId))}
                     <div class="alias-path">
@@ -1717,6 +1727,7 @@ onMount(() => {
     margin: 0;
     padding-top: 4px;
     padding-bottom: 4px;
+    min-height: 24px; /* E2E安定化: 新規挿入直後も可視境界がゼロにならないようにする */
 }
 
 .page-title {

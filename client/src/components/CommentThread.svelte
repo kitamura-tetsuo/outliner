@@ -13,7 +13,7 @@ const { comments, currentUser, doc }: Props = $props();
 let newText = $state("");
 let editingId = $state<string | null>(null);
 let editText = $state("");
-let commentsList = $state<Comment[]>(comments.toPlain());
+let commentsList = $state<Comment[]>((comments as any)?.toPlain?.() ?? []);
 let localComments = $state<Comment[]>([]);
 let renderCommentsState = $state<Comment[]>([]);
 
@@ -29,7 +29,13 @@ recompute();
 // YjsSubscriberを使用してcommentsの変更を監視（親Docに直接サブスクライブ）
 const commentsSubscriber = new YjsSubscriber<Comment[]>(
     doc,
-    () => comments.toPlain(),
+    () => {
+        try {
+            return (comments as any)?.toPlain?.() ?? [];
+        } catch {
+            return [];
+        }
+    },
 );
 
 // ここではローカル更新を優先し、Yjs側の同期は後続のトランザクションで反映される想定
