@@ -21,7 +21,8 @@ test.describe("テキスト追加機能テスト", () => {
 
     /**
      * @testcase Add Text button should add text to shared content
-     * @description アイテム追加ボタンでアイテムを作成し、テキストを入力できることを確認するテスト
+     * @description アイテムを追加した後、そのアイテムに対してテキスト入力ができ、入力したテキストが
+     * 正しく保存・表示されることと、データ構造が更新されることを確認します。
      * @check アイテム追加ボタンをクリックするとアイテムが表示される
      * @check アイテムをクリックすると編集モードになる
      * @check 編集モード時にフォーカスが正しく当たる
@@ -31,13 +32,95 @@ test.describe("テキスト追加機能テスト", () => {
      * @updated 2023-04-09 フォーカスの問題は修正済み
      */
     test("Add Text button should add text to shared content", async ({ page }, testInfo) => {
+        // __YJS_STORE__ が利用可能になるまで待機
+        await page.waitForFunction(() => {
+            return (window as any).__YJS_STORE__ !== undefined;
+        }, { timeout: 30000 });
+
+        // ボタンが存在するか確認
+        let button = page.locator('button:has-text("アイテム追加")');
+        let buttonCount = await button.count();
+        console.log(`Button count: ${buttonCount}`);
+        if (buttonCount === 0) {
+            // 代替セレクタで検索
+            button = page.getByRole("button", { name: "アイテム追加" });
+            buttonCount = await button.count();
+            console.log(`Alternative button count: ${buttonCount}`);
+            if (buttonCount === 0) {
+                // Read-only modeの表示がある場合のセレクタで検索
+                button = page.locator(".outliner .toolbar .actions button").first();
+                buttonCount = await button.count();
+                console.log(`Fallback button count: ${buttonCount}`);
+                if (buttonCount === 0) {
+                    // ページ全体のスクリーンショットを取得
+                    await page.screenshot({ path: "test-results/button-not-found.png" });
+                    // ツールバーのHTMLを取得
+                    const toolbarHTML = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar ? toolbar.outerHTML : "Toolbar not found";
+                    });
+                    console.log(`Toolbar HTML: ${toolbarHTML}`);
+                    // ツールバーが存在するか確認
+                    const toolbarExists = await page.evaluate(() => {
+                        return document.querySelector(".outliner .toolbar") !== null;
+                    });
+                    console.log(`Toolbar exists: ${toolbarExists}`);
+                    // ツールバーの子要素を確認
+                    const toolbarChildren = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar ? Array.from(toolbar.children).map(el => el.tagName) : [];
+                    });
+                    console.log(`Toolbar children: ${toolbarChildren.join(", ")}`);
+                    // ツールバーの親要素を確認
+                    const toolbarParent = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar ? toolbar.parentElement?.className : "No parent";
+                    });
+                    console.log(`Toolbar parent: ${toolbarParent}`);
+                    // ツールバーの親要素の子要素を確認
+                    const toolbarParentChildren = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar && toolbar.parentElement
+                            ? Array.from(toolbar.parentElement.children).map(el => el.className)
+                            : [];
+                    });
+                    console.log(`Toolbar parent children: ${toolbarParentChildren.join(", ")}`);
+                    // ツールバーの親要素の親要素を確認
+                    const toolbarGrandParent = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar && toolbar.parentElement && toolbar.parentElement.parentElement
+                            ? toolbar.parentElement.parentElement.className
+                            : "No grandparent";
+                    });
+                    console.log(`Toolbar grandparent: ${toolbarGrandParent}`);
+                    // ツールバーの親要素の親要素の子要素を確認
+                    const toolbarGrandParentChildren = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar && toolbar.parentElement && toolbar.parentElement.parentElement
+                            ? Array.from(toolbar.parentElement.parentElement.children).map(el => el.className)
+                            : [];
+                    });
+                    console.log(`Toolbar grandparent children: ${toolbarGrandParentChildren.join(", ")}`);
+                    // ツールバーの親要素の親要素の親要素を確認
+                    const toolbarGreatGrandParent = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar && toolbar.parentElement && toolbar.parentElement.parentElement
+                                && toolbar.parentElement.parentElement.parentElement
+                            ? toolbar.parentElement.parentElement.parentElement.className
+                            : "No great grandparent";
+                    });
+                    console.log(`Toolbar great grandparent: ${toolbarGreatGrandParent}`);
+                    throw new Error("Button not found");
+                }
+            }
+        }
         // 追加前のアイテムIDリストを取得
-        const itemIdsBefore = await page.evaluate(() => {
+        const itemIdsBeforeFirst = await page.evaluate(() => {
             return Array.from(document.querySelectorAll(".outliner-item")).map(el => el.getAttribute("data-item-id"));
         });
 
         // アウトラインにアイテムを追加
-        await page.click('button:has-text("アイテム追加")');
+        await button.click();
 
         // 新しいアイテムが表示されるのを待つ
         await page.waitForFunction(
@@ -47,7 +130,7 @@ test.describe("テキスト追加機能テスト", () => {
                 );
                 return currentIds.length > beforeIds.length;
             },
-            itemIdsBefore,
+            itemIdsBeforeFirst,
             { timeout: 30000 },
         );
 
@@ -56,8 +139,8 @@ test.describe("テキスト追加機能テスト", () => {
             return Array.from(document.querySelectorAll(".outliner-item")).map(el => el.getAttribute("data-item-id"));
         });
 
-        const newItemIds = itemIdsAfter.filter(id => !itemIdsBefore.includes(id));
-        console.log(`Items before: ${itemIdsBefore.length}, after: ${itemIdsAfter.length}`);
+        const newItemIds = itemIdsAfter.filter(id => !itemIdsBeforeFirst.includes(id));
+        console.log(`Items before: ${itemIdsBeforeFirst.length}, after: ${itemIdsAfter.length}`);
         console.log(`New item IDs: ${newItemIds.join(", ")}`);
 
         if (newItemIds.length === 0) throw new Error("No new item was added");
@@ -223,24 +306,107 @@ test.describe("テキスト追加機能テスト", () => {
      * @check ページを再読み込みしても入力したデータが保持されていることを確認する
      */
     test("Adding text updates data structure", async ({ page }) => {
-        // FluidClientが初期化されるまで待機
+        // YjsClientが初期化されるまで待機
         await page.waitForTimeout(3000);
 
-        // テキスト追加前の状態を確認（FluidStoreから直接取得）
+        // __YJS_STORE__ が利用可能になるまで待機
+        await page.waitForFunction(() => {
+            return (window as any).__YJS_STORE__ !== undefined;
+        }, { timeout: 30000 });
+
+        // ボタンが存在するか確認
+        let button = page.locator('button:has-text("アイテム追加")');
+        let buttonCount = await button.count();
+        console.log(`Button count: ${buttonCount}`);
+        if (buttonCount === 0) {
+            // 代替セレクタで検索
+            button = page.getByRole("button", { name: "アイテム追加" });
+            buttonCount = await button.count();
+            console.log(`Alternative button count: ${buttonCount}`);
+            if (buttonCount === 0) {
+                // Read-only modeの表示がある場合のセレクタで検索
+                button = page.locator(".outliner .toolbar .actions button").first();
+                buttonCount = await button.count();
+                console.log(`Fallback button count: ${buttonCount}`);
+                if (buttonCount === 0) {
+                    // ページ全体のスクリーンショットを取得
+                    await page.screenshot({ path: "test-results/button-not-found.png" });
+                    // ツールバーのHTMLを取得
+                    const toolbarHTML = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar ? toolbar.outerHTML : "Toolbar not found";
+                    });
+                    console.log(`Toolbar HTML: ${toolbarHTML}`);
+                    // ツールバーが存在するか確認
+                    const toolbarExists = await page.evaluate(() => {
+                        return document.querySelector(".outliner .toolbar") !== null;
+                    });
+                    console.log(`Toolbar exists: ${toolbarExists}`);
+                    // ツールバーの子要素を確認
+                    const toolbarChildren = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar ? Array.from(toolbar.children).map(el => el.tagName) : [];
+                    });
+                    console.log(`Toolbar children: ${toolbarChildren.join(", ")}`);
+                    // ツールバーの親要素を確認
+                    const toolbarParent = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar ? toolbar.parentElement?.className : "No parent";
+                    });
+                    console.log(`Toolbar parent: ${toolbarParent}`);
+                    // ツールバーの親要素の子要素を確認
+                    const toolbarParentChildren = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar && toolbar.parentElement
+                            ? Array.from(toolbar.parentElement.children).map(el => el.className)
+                            : [];
+                    });
+                    console.log(`Toolbar parent children: ${toolbarParentChildren.join(", ")}`);
+                    // ツールバーの親要素の親要素を確認
+                    const toolbarGrandParent = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar && toolbar.parentElement && toolbar.parentElement.parentElement
+                            ? toolbar.parentElement.parentElement.className
+                            : "No grandparent";
+                    });
+                    console.log(`Toolbar grandparent: ${toolbarGrandParent}`);
+                    // ツールバーの親要素の親要素の子要素を確認
+                    const toolbarGrandParentChildren = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar && toolbar.parentElement && toolbar.parentElement.parentElement
+                            ? Array.from(toolbar.parentElement.parentElement.children).map(el => el.className)
+                            : [];
+                    });
+                    console.log(`Toolbar grandparent children: ${toolbarGrandParentChildren.join(", ")}`);
+                    // ツールバーの親要素の親要素の親要素を確認
+                    const toolbarGreatGrandParent = await page.evaluate(() => {
+                        const toolbar = document.querySelector(".outliner .toolbar");
+                        return toolbar && toolbar.parentElement && toolbar.parentElement.parentElement
+                                && toolbar.parentElement.parentElement.parentElement
+                            ? toolbar.parentElement.parentElement.parentElement.className
+                            : "No great grandparent";
+                    });
+                    console.log(`Toolbar great grandparent: ${toolbarGreatGrandParent}`);
+                    throw new Error("Button not found");
+                }
+            }
+        }
+
+        // テキスト追加前の状態を確認（YjsStoreから直接取得）
         const initialDebugInfo = await page.evaluate(() => {
-            const fluidStore = (window as any).__FLUID_STORE__;
-            if (!fluidStore || !fluidStore.fluidClient) {
-                return { error: "FluidClient not available", items: [] };
+            const yjsStore = (window as any).__YJS_STORE__;
+            if (!yjsStore || !yjsStore.yjsClient) {
+                return { error: "YjsClient not available", items: [] };
             }
             try {
-                return fluidStore.fluidClient.getAllData();
+                return yjsStore.yjsClient.getAllData();
             } catch (error) {
                 return { error: (error as Error).message, items: [] };
             }
         });
 
         // アイテムを追加して編集
-        await page.click('button:has-text("アイテム追加")');
+        await button.click();
 
         // 少し待機してアイテムが追加されるのを待つ
         await page.waitForTimeout(1000);
@@ -303,14 +469,14 @@ test.describe("テキスト追加機能テスト", () => {
         // データが更新されるのを待つ
         await page.waitForTimeout(2000);
 
-        // 更新後のDebugInfoを取得（FluidStoreから直接取得）
+        // 更新後のDebugInfoを取得（YjsStoreから直接取得）
         const updatedDebugInfo = await page.evaluate(() => {
-            const fluidStore = (window as any).__FLUID_STORE__;
-            if (!fluidStore || !fluidStore.fluidClient) {
-                return { error: "FluidClient not available", items: [] };
+            const yjsStore = (window as any).__YJS_STORE__;
+            if (!yjsStore || !yjsStore.yjsClient) {
+                return { error: "YjsClient not available", items: [] };
             }
             try {
-                return fluidStore.fluidClient.getAllData();
+                return yjsStore.yjsClient.getAllData();
             } catch (error) {
                 return { error: (error as Error).message, items: [] };
             }

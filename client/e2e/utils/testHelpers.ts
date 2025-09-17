@@ -221,6 +221,11 @@ export class TestHelpers {
         await TestHelpers.setupTreeDebugger(page);
         await TestHelpers.setupCursorDebugger(page);
 
+        // __YJS_STORE__ が設定されるまで待機
+        await page.waitForFunction(() => {
+            return (window as any).__YJS_STORE__ !== undefined;
+        }, { timeout: 10000 });
+
         // テストページをセットアップ（ホームに留まるオプションに対応）
         if (options?.stayOnHome) {
             console.log("TestHelper: stayOnHome option set; skipping navigation to project page");
@@ -1211,6 +1216,7 @@ export class TestHelpers {
         try {
             await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 1500 });
         } catch {}
+
         TestHelpers.slog("Proceeding after minimal OutlinerBase visibility check");
 
         // 追加のUIチェックは省略して直ちにテストへ移行

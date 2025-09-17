@@ -32,9 +32,15 @@ test.describe("CMT-0001: comment threads", () => {
 
         await page.fill('[data-testid="new-comment-input"]', "hello");
         await page.click('[data-testid="add-comment-btn"]');
+
+        // Wait for comment count to appear and have the correct value
+        await expect(
+            page.locator(`[data-item-id="${firstId}"] .comment-count`),
+        ).toBeVisible();
         await expect(
             page.locator(`[data-item-id="${firstId}"] .comment-count`),
         ).toHaveText("1");
+
         const comment = page.locator('[data-testid="comment-thread"] .comment');
         await expect(comment).toHaveCount(1);
 
@@ -58,9 +64,10 @@ test.describe("CMT-0001: comment threads", () => {
         await expect(comment.locator(".text")).toHaveText("edited");
 
         await page.click('[data-testid^="comment-"] .delete');
+        // Wait for comment count to disappear
         await expect(
             page.locator(`[data-item-id="${firstId}"] .comment-count`),
-        ).toHaveCount(0);
+        ).not.toBeVisible();
     });
 });
 import "../utils/registerAfterEachSnapshot";

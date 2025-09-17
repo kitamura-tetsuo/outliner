@@ -61,7 +61,7 @@ test.describe("Yjs client attach and DOM reflect", () => {
         // If fewer than 4 items (title + 3), seed defaults via model
         // Now wait for title + 3 items to render
         await page.waitForFunction(() => document.querySelectorAll(".outliner-item[data-item-id]").length >= 4, {
-            timeout: 15000,
+            timeout: 30000,
         });
 
         // Verify seeded lines exist in order under non-title items

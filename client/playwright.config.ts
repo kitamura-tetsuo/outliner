@@ -85,7 +85,7 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     retries: (process.env.CI || !isSingleSpecRun) ? 0 : 0,
     workers: process.env.CI ? 1 : 1,
-    maxFailures: process.env.CI ? 1 : 10,
+    maxFailures: process.env.CI ? 1 : 0,
 
     reporter: [["html", { open: "never" }]],
     // テスト実行時のタイムアウトを延長（環境初期化の揺らぎに対応）

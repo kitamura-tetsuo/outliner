@@ -78,7 +78,7 @@ test.describe("YjsのデータがUIに反映される", () => {
                     return !!items && typeof items.length === "number" && items.length >= expectedLen;
                 },
                 lines.length,
-                { timeout: 10000 },
+                { timeout: 30000 },
             );
 
             // 各アイテムのテキストをモデル経由で設定

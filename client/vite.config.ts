@@ -122,6 +122,7 @@ export default defineConfig(async ({ mode }) => {
                         exclude: ["src/lib/server/**"],
                         envFile: ".env.test",
                         testTimeout: 30000, // Integration testは時間がかかる可能性があるため
+                        setupFiles: ["./vitest-setup-client.ts", "./src/tests/integration/setup.ts"],
                     },
                     server: {
                         fs: {

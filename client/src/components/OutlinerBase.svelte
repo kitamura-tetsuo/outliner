@@ -38,6 +38,15 @@ console.log("OutlinerBase props received:", {
     onEditExists: !!onEdit,
 });
 
+console.log("Store state in OutlinerBase:", {
+    projectExists: !!(generalStore.project),
+    projectTitle: generalStore.project?.title,
+    currentPageExists: !!(generalStore.currentPage),
+    currentPageId: generalStore.currentPage?.id,
+    pagesExists: !!(generalStore.pages),
+    pagesLength: generalStore.pages?.current?.length
+});
+
 console.log("OutlinerBase script completed successfully");
 
 // Fallback: if pageItem is not yet provided, ensure a minimal page from global store
@@ -47,6 +56,8 @@ let effectivePageItem: Item | undefined = $derived.by(() => {
     if (byProp) return byProp;
     return (generalStore.currentPage as Item | undefined) ?? undefined;
 });
+
+console.log("OutlinerBase effectivePageItem:", effectivePageItem);
 
 // マウント時に最低限の currentPage を補完（以後は effectivePageItem が追従）
 onMount(() => {

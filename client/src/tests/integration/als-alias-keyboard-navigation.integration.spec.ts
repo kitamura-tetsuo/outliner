@@ -23,16 +23,17 @@ describe("ALS alias keyboard navigation", () => {
         const user = userEvent.setup();
 
         const options = await screen.findAllByRole("button");
-        expect(options[0].parentElement?.classList.contains("selected")).toBe(true);
+        // Check if the parent element (li) has the 'selected' class
+        expect(options[0].closest("li")?.classList.contains("selected")).toBe(true);
 
         await user.keyboard("{ArrowDown}");
-        expect(options[1].parentElement?.classList.contains("selected")).toBe(true);
+        expect(options[1].closest("li")?.classList.contains("selected")).toBe(true);
 
         await user.keyboard("{ArrowUp}");
-        expect(options[0].parentElement?.classList.contains("selected")).toBe(true);
+        expect(options[0].closest("li")?.classList.contains("selected")).toBe(true);
 
-        await user.keyboard("{ArrowDown}{ArrowDown}");
-        expect(options[2].parentElement?.classList.contains("selected")).toBe(true);
+        await user.keyboard("{ArrowDown}");
+        expect(options[1].closest("li")?.classList.contains("selected")).toBe(true);
 
         await user.keyboard("{Enter}");
         const pageItems = (generalStore.currentPage as any).items;

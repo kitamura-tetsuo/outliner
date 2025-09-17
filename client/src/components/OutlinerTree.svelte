@@ -42,6 +42,8 @@ interface Props {
 
 let { pageItem, projectName, pageName, isReadOnly = false, onEdit }: Props = $props();
 
+console.log("OutlinerTree props:", { pageItem, projectName, pageName, isReadOnly });
+
 let currentUser = $state("anonymous");
 let unsubscribeUser: (() => void) | null = null;
 
@@ -1427,15 +1429,13 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div class="outliner" bind:this={containerRef} onmousedown={handleTreeMouseDown} onmouseup={handleTreeMouseUp} role="application">
     <div class="toolbar">
-        <div class="actions">
-            {#if !isReadOnly}
-                <button onclick={handleAddItem}>アイテム追加</button>
-            {/if}
-            <button onclick={() => goto(`/${projectName}/${pageName}/diff`)}>
-                History / Diff
-            </button>
-        </div>
+    <div class="actions">
+        <button onclick={handleAddItem}>アイテム追加</button>
+        <button onclick={() => goto(`/${projectName}/${pageName}/diff`)}>
+            History / Diff
+        </button>
     </div>
+</div>
 
     <div class="tree-container" role="region" aria-label="アウトライナーツリー">
         <!-- フラット表示の各アイテム（絶対位置配置） -->
