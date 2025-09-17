@@ -760,6 +760,128 @@ export class KeyEventHandler {
             }
         } catch {}
 
+        // IME composition中の入力は重複処理を避けるため無視する
+        if (inputEvent.isComposing || inputEvent.inputType.startsWith("insertComposition")) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Skipping input event during composition`);
+            }
+            return;
+        }
+
+        // Get cursor instances from the store
+        const cursorInstances = store.getCursorInstances();
+
+        if (inputEvent.data === "/") {
+            // カーソル位置の前の文字をチェックして、内部リンクの一部かどうか判定
+            if (cursorInstances.length > 0) {
+                const cursor = cursorInstances[0];
+                const node = cursor.findTarget();
+                const text = node?.text || "";
+                const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
+
+                // [の直後の/の場合、または既に[で始まる内部リンク内の場合はコマンドパレットを表示しない
+                if (prevChar === "[") {
+                    // 通常の入力処理を続行
+                } else {
+                    // [で始まる内部リンク内かどうかをチェック
+                    const beforeCursor = text.slice(0, cursor.offset);
+                    const lastOpenBracket = beforeCursor.lastIndexOf("[");
+                    const lastCloseBracket = beforeCursor.lastIndexOf("]");
+
+                    // 最後の[が最後の]より後にある場合は内部リンク内
+                    if (lastOpenBracket > lastCloseBracket) {
+                        // 通常の入力処理を続行
+                    } else {
+                        // コマンドパレットを表示
+                        const pos = commandPaletteStore.getCursorScreenPosition();
+                        commandPaletteStore.show(pos || { top: 0, left: 0 });
+                    }
+                }
+            } else {
+                // カーソルがない場合はコマンドパレットを表示
+                const pos = commandPaletteStore.getCursorScreenPosition();
+                commandPaletteStore.show(pos || { top: 0, left: 0 });
+            }
+        } else if (inputEvent.data === "[" && commandPaletteStore.isVisible) {
+            // [が入力されたらコマンドパレットを非表示（内部リンクの開始）
+            commandPaletteStore.hide();
+        } else if (commandPaletteStore.isVisible) {
+            // CommandPaletteが表示されている場合は、専用の入力処理を使用
+            if (inputEvent.data) {
+                commandPaletteStore.handleCommandInput(inputEvent.data);
+                // 通常の入力処理をスキップ
+                inputEvent.preventDefault?.();
+                return;
+            }
+        }
+
+        // カーソルがない場合は処理しない
+        if (cursorInstances.length === 0) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`No cursor instances found, skipping input event`);
+            }
+            return;
+        }
+
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`Applying input to ${cursorInstances.length} cursor instances`);
+            console.log(`Current cursors:`, Object.values(store.cursors));
+        }
+
+        // 各カーソルに入力を適用
+        console.log(`Applying input to ${cursorInstances.length} cursor instances`);
+        cursorInstances.forEach((cursor, index) => {
+            console.log(`Applying input to cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
+            cursor.onInput(inputEvent);
+        });
+
+        // onEdit コールバックを呼び出す
+        store.triggerOnEdit();
+
+        // グローバルテキストエリアにフォーカスを確保
+        const textareaElement = store.getTextareaRef();
+        if (textareaElement) {
+            // フォーカスを確実に設定するための複数の試行
+            textareaElement.focus();
+
+            // requestAnimationFrameを使用してフォーカスを設定
+            requestAnimationFrame(() => {
+                textareaElement.focus();
+
+                // さらに確実にするためにsetTimeoutも併用
+                setTimeout(() => {
+                    textareaElement.focus();
+
+                    // デバッグ情報
+                    if (
+                        typeof window !== "undefined"
+                        && typeof document !== "undefined"
+                        && (window as any).DEBUG_MODE
+                    ) {
+                        console.log(
+                            `Focus set after input. Active element is textarea: ${
+                                document.activeElement === textareaElement
+                            }`,
+                        );
+                    }
+                }, 10);
+            });
+        } else {
+            // テキストエリアが見つからない場合はエラーログ
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.error(`Global textarea not found in handleInput`);
+            }
+        }
+
+        // カーソル点滅を開始
+        store.startCursorBlink();
+
+        // カーソル状態をログに出力
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            store.logCursorState();
+        }
+
         // テキストエリアの現在の値を確認
         const textareaRef = store.getTextareaRef();
         if (textareaRef) {
@@ -770,9 +892,9 @@ export class KeyEventHandler {
         }
 
         // カーソルインスタンスの状態を確認
-        const cursorInstances = store.getCursorInstances();
-        console.log(`Number of cursor instances: ${cursorInstances.length}`);
-        cursorInstances.forEach((cursor, index) => {
+        const cursorInstancesAfter = store.getCursorInstances();
+        console.log(`Number of cursor instances: ${cursorInstancesAfter.length}`);
+        cursorInstancesAfter.forEach((cursor, index) => {
             console.log(`Cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
         });
     }
