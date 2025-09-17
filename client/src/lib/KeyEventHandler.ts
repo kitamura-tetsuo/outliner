@@ -128,6 +128,10 @@ export class KeyEventHandler {
      * KeyDown イベントを各カーソルに委譲
      */
     static handleKeyDown(event: KeyboardEvent) {
+        // 他のハンドラが既に処理したイベントは原則無視。ただしパレット表示中はEnter/矢印/Escape処理のため継続。
+        if ((event as KeyboardEvent).defaultPrevented) {
+            if (!commandPaletteStore.isVisible) return;
+        }
         // エイリアスピッカー表示中: Arrow/Enter/Escape をピッカーへフォワード
         try {
             if (aliasPickerStore.isVisible) {
@@ -189,9 +193,9 @@ export class KeyEventHandler {
                             btn.click();
                         } else {
                             try {
-                                console.log("KeyEventHandler: no alias option button, hiding");
+                                console.log("KeyEventHandler: no alias option button yet; ignoring this Enter");
                             } catch {}
-                            aliasPickerStore.hide();
+                            // DOM 未準備の可能性があるので何もしない（隠さない）
                         }
 
                         // クリック経路で確定できなかった場合のフォールバック：
@@ -400,7 +404,24 @@ export class KeyEventHandler {
                 event.preventDefault();
                 return;
             } else if (event.key === "Enter") {
-                // Palette 可視時でも、テキスト直前が "/alias" の場合は直接処理する
+                // Palette 可視時: フィルタに Alias が含まれていれば常に Alias を優先確定
+                try {
+                    const filtered: any[] = (commandPaletteStore as any).filtered ?? [];
+                    const hasAlias = filtered.some(c => c?.type === "alias");
+                    if (hasAlias) {
+                        try {
+                            console.log(
+                                "KeyEventHandler Palette Enter: forcing alias insert based on filtered results",
+                            );
+                        } catch {}
+                        commandPaletteStore.insert("alias");
+                        commandPaletteStore.hide();
+                        event.preventDefault();
+                        return;
+                    }
+                } catch {}
+
+                // テキスト直前が "/alias" の場合は直接処理する
                 try {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();

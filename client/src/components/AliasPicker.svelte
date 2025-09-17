@@ -106,13 +106,16 @@ onMount(() => {
     // グローバルキー監視（フォーカスに依存せずキーボード操作を受け付ける）
     const keyListener = (ev: KeyboardEvent) => {
         if (!aliasPickerStore.isVisible) return;
+        // パレット確定時の Enter など、既に他ハンドラで処理済みのイベントは無視
+        if (ev.defaultPrevented) return;
         handleKeydown(ev);
     };
-    window.addEventListener("keydown", keyListener, { capture: true });
+    // バブリングフェーズで処理し、他のハンドラの preventDefault を尊重
+    window.addEventListener("keydown", keyListener);
 
     return () => {
         window.removeEventListener("aliaspicker-options", handler as any);
-        window.removeEventListener("keydown", keyListener, { capture: true } as any);
+        window.removeEventListener("keydown", keyListener);
     };
 });
 

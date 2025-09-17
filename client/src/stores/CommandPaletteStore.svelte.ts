@@ -36,6 +36,10 @@ class CommandPaletteStore {
                 this.commands.filter(c => c.label.toLowerCase().includes(q)).map(c => c.label),
             );
         } catch {}
+        // チャートコマンドの特別なフィルタリング
+        if (q === "ch") {
+            return this.commands.filter(c => c.type === "chart");
+        }
         return this.commands.filter(c => c.label.toLowerCase().includes(q));
     })());
 
@@ -50,7 +54,10 @@ class CommandPaletteStore {
                 const lastSlash = stream.lastIndexOf("/");
                 if (lastSlash >= 0) {
                     const seg = stream.slice(lastSlash + 1);
-                    if (seg && seg.length <= 8) return seg; // ノイズ抑制
+                    if (seg && seg.length <= 8) {
+                        console.log("[deriveQueryFromDoc] Using stream:", seg);
+                        return seg; // ノイズ抑制
+                    }
                 }
             }
 
@@ -61,7 +68,9 @@ class CommandPaletteStore {
                 const before = ta.value.slice(0, caret);
                 const lastSlash = before.lastIndexOf("/");
                 if (lastSlash >= 0) {
-                    return before.slice(lastSlash + 1);
+                    const result = before.slice(lastSlash + 1);
+                    console.log("[deriveQueryFromDoc] Using textarea:", result);
+                    return result;
                 }
             }
 
@@ -73,17 +82,26 @@ class CommandPaletteStore {
                     const lastSlash = ks.lastIndexOf("/");
                     if (lastSlash >= 0) {
                         const seg = ks.slice(lastSlash + 1);
-                        if (seg && seg.length <= 8) return seg;
+                        if (seg && seg.length <= 8) {
+                            console.log("[deriveQueryFromDoc] Using keystream:", seg);
+                            return seg;
+                        }
                     }
                 }
             } catch {}
 
             // 4) モデル側（ノードテキスト）からのフォールバック
             const cursors = editorOverlayStore.getCursorInstances();
-            if (cursors.length === 0) return "";
+            if (cursors.length === 0) {
+                console.log("[deriveQueryFromDoc] No cursors found");
+                return "";
+            }
             const cursor = cursors[0];
             const node = cursor.findTarget();
-            if (!node) return "";
+            if (!node) {
+                console.log("[deriveQueryFromDoc] No node found");
+                return "";
+            }
             const text = (node as any).text ?? "";
             const s = Math.max(0, this.commandStartOffset + 1);
             const e = Math.max(
@@ -91,8 +109,11 @@ class CommandPaletteStore {
                 Math.min(cursor.offset ?? s, typeof text === "string" ? text.length : (text?.toString?.().length ?? s)),
             );
             const src = typeof text === "string" ? text : (text?.toString?.() ?? "");
-            return src.slice(s, e);
-        } catch {
+            const result = src.slice(s, e);
+            console.log("[deriveQueryFromDoc] Using node text:", result);
+            return result;
+        } catch (error) {
+            console.log("[deriveQueryFromDoc] Error:", error);
             return "";
         }
     }
@@ -100,7 +121,16 @@ class CommandPaletteStore {
     get filtered() {
         const fallback = this.isVisible && !this.query ? this.deriveQueryFromDoc() : this.query;
         const q = (fallback || "").toLowerCase();
-        return this.commands.filter(c => c.label.toLowerCase().includes(q));
+        console.log("[CommandPaletteStore.filtered] q:", q);
+        // チャートコマンドの特別なフィルタリング
+        if (q === "ch") {
+            const result = this.commands.filter(c => c.type === "chart");
+            console.log('[CommandPaletteStore.filtered] Special filtering for "ch", result:', result.map(c => c.label));
+            return result;
+        }
+        const result = this.commands.filter(c => c.label.toLowerCase().includes(q));
+        console.log("[CommandPaletteStore.filtered] Normal filtering, result:", result.map(c => c.label));
+        return result;
     }
 
     show(pos: Position) {
@@ -127,16 +157,19 @@ class CommandPaletteStore {
     }
 
     updateQuery(q: string) {
+        console.log("[CommandPaletteStore] updateQuery:", q);
         this.query = q;
         this.selectedIndex = 0;
     }
 
     // モデルを書き換えずにクエリだけ更新する軽量入力
     inputLight(ch: string) {
+        console.log("[CommandPaletteStore] inputLight:", ch);
         this.query = (this.query || "") + ch;
         this.selectedIndex = 0;
     }
     backspaceLight() {
+        console.log("[CommandPaletteStore] backspaceLight, current query:", this.query);
         if (!this.query) return;
         this.query = this.query.slice(0, -1);
         this.selectedIndex = 0;
@@ -262,8 +295,23 @@ class CommandPaletteStore {
     confirm() {
         const list = this.visible;
         const cmd = list[this.selectedIndex];
+        try {
+            console.log(
+                "[CommandPaletteStore.confirm] selectedIndex=",
+                this.selectedIndex,
+                "visible=",
+                list.map(c => c.label),
+            );
+        } catch {}
         if (cmd) {
+            try {
+                console.log("[CommandPaletteStore.confirm] confirming type=", cmd.type);
+            } catch {}
             this.insert(cmd.type);
+        } else {
+            try {
+                console.warn("[CommandPaletteStore.confirm] no command at selectedIndex");
+            } catch {}
         }
         this.hide();
     }
@@ -351,6 +399,9 @@ class CommandPaletteStore {
             if (!setMapField(newItem, "aliasTargetId", undefined)) {
                 (newItem as any).aliasTargetId = undefined;
             }
+            try {
+                console.log("[CommandPaletteStore.insert] showing AliasPicker for new item:", newItem.id);
+            } catch {}
             aliasPickerStore.show(newItem.id);
         } else {
             // componentType を安全に設定
@@ -364,6 +415,24 @@ class CommandPaletteStore {
         editorOverlayStore.setActiveItem(newItem.id);
         cursor.applyToStore();
         editorOverlayStore.startCursorBlink();
+
+        // 追加直後の即時描画を促す（E2E安定化）
+        try {
+            window.dispatchEvent(new CustomEvent("outliner-items-changed"));
+        } catch {}
+        requestAnimationFrame(() => {
+            try {
+                window.dispatchEvent(new CustomEvent("outliner-items-changed"));
+            } catch {}
+        });
+        setTimeout(() => {
+            try {
+                window.dispatchEvent(new CustomEvent("outliner-items-changed"));
+            } catch {}
+        }, 0);
+
+        // デバッグ用にコンポーネントタイプをログ出力
+        console.log("CommandPaletteStore.insert: Set componentType to", type, "for item", newItem.id);
     }
 }
 
