@@ -95,3 +95,5 @@ server/dist/
 client/e2e-snapshots/
 AGENTS.temp.md
 e2e-snapshots/
+server/e2e-backups/
+server/e2e-src/
