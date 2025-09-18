@@ -1,1 +1,1 @@
-cd client && npm run test:e2e
+cd client && npm run test:e2e -- "$@"

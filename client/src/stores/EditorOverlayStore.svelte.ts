@@ -329,10 +329,11 @@ export class EditorOverlayStore {
     }
 
     setSelection(selection: SelectionRange) {
-        // 選択範囲のキーを開始アイテムIDと終了アイテムIDの組み合わせにする
-        const key = `${selection.startItemId}-${selection.endItemId}-${selection.userId || "local"}`;
+        // 選択範囲のキーをUUIDを使用して一意に識別する
+        const key = this.genUUID();
         this.selections = { ...this.selections, [key]: selection };
         this.notifyChange();
+        return key;
     }
 
     /**
@@ -377,18 +378,7 @@ export class EditorOverlayStore {
         }
 
         // 既存の選択範囲をクリア（同じユーザーの矩形選択のみ）
-        const existingBoxSelections = Object.entries(this.selections)
-            .filter(([_, s]) => s.userId === userId && s.isBoxSelection)
-            .map(([key, _]) => key);
-
-        if (existingBoxSelections.length > 0) {
-            const newSelections = { ...this.selections };
-            existingBoxSelections.forEach(key => {
-                delete newSelections[key];
-            });
-            this.selections = newSelections;
-            this.notifyChange();
-        }
+        this.clearSelectionForUser(userId);
 
         // 矩形選択を設定
         const selection: SelectionRange = {
@@ -401,10 +391,8 @@ export class EditorOverlayStore {
             boxSelectionRanges,
         };
 
-        // 選択範囲のキーを開始アイテムIDと終了アイテムIDの組み合わせにする
-        const key = `box-${startItemId}-${endItemId}-${userId}`;
-        this.selections = { ...this.selections, [key]: selection };
-        this.notifyChange();
+        // 選択範囲を設定
+        const key = this.setSelection(selection);
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -433,16 +421,10 @@ export class EditorOverlayStore {
         }
 
         // 指定されたユーザーの選択範囲を削除（通常の選択範囲と矩形選択の両方）
-        // 選択範囲のキーに含まれるuserIdとメソッドに渡すuserIdが一致するものを削除
         this.selections = Object.fromEntries(
-            Object.entries(this.selections).filter(([key, s]) => {
-                // キーにuserIdが含まれているか確認
-                const keyIncludesUserId = key.includes(`-${userId}`);
+            Object.entries(this.selections).filter(([_, s]) => {
                 // オブジェクトのuserIdプロパティが一致するか確認
-                const objectUserIdMatches = s.userId === userId || (!s.userId && userId === "local");
-
-                // どちらかが一致する場合は削除対象
-                return !keyIncludesUserId && !objectUserIdMatches;
+                return s.userId !== userId && (s.userId || "local") !== userId;
             }),
         );
         this.notifyChange();
@@ -452,8 +434,8 @@ export class EditorOverlayStore {
             console.log(`Selections after clearing:`, this.selections);
 
             // 選択範囲が正しくクリアされたか確認
-            const remainingSelections = Object.entries(this.selections).filter(([key, s]) =>
-                key.includes(`-${userId}`) || s.userId === userId || (!s.userId && userId === "local")
+            const remainingSelections = Object.entries(this.selections).filter(([_, s]) =>
+                s.userId === userId || (s.userId || "local") === userId
             );
 
             if (remainingSelections.length > 0) {

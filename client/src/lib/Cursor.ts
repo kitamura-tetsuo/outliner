@@ -2073,15 +2073,7 @@ export class Cursor {
      */
     clearSelection() {
         // 選択範囲をクリア
-        const selections = Object.values(store.selections).filter(s => s.userId === this.userId);
-        if (selections.length > 0) {
-            // 選択範囲を削除
-            store.selections = Object.fromEntries(
-                Object.entries(store.selections).filter(([_, s]) => s.userId !== this.userId),
-            );
-            // カーソル点滅を開始
-            store.startCursorBlink();
-        }
+        store.clearSelectionForUser(this.userId);
     }
 
     // --- Extended navigation commands ---
