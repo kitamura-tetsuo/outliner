@@ -67,14 +67,23 @@ function loadLayout(nodes: any[]) {
 function update() {
     if (!chart) return;
 
-    // storeからデータを取得
-    let pages: any[] = [];
-    let project = "";
+    // storeからデータを取得（Yjs Items 互換: 配列/Iterable/Array-like を許容）
+    const toArray = (p: any) => {
+        try {
+            if (Array.isArray(p)) return p;
+            if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
+            const len = p?.length;
+            if (typeof len === "number" && len >= 0) {
+                const r: any[] = [];
+                for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
+                return r;
+            }
+        } catch {}
+        return [] as any[];
+    };
 
-    if (Array.isArray(store.pages?.current)) {
-        pages = store.pages.current;
-        project = store.project?.title || "";
-    }
+    const pages = toArray(store.pages?.current || []);
+    const project = store.project?.title || "";
 
     const { nodes, links } = buildGraph(pages, project);
 
