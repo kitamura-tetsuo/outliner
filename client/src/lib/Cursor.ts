@@ -9,6 +9,7 @@ import { CursorFormatting } from "./cursor/CursorFormatting";
 import { CursorNavigation } from "./cursor/CursorNavigation";
 import { CursorSelection } from "./cursor/CursorSelection";
 import { CursorTextOperations } from "./cursor/CursorTextOperations";
+import { getVisualLineInfo } from "./cursor/CursorTextUtils";
 
 export function isPageItem(item: Item): boolean {
     const parent = item.parent;
@@ -36,6 +37,11 @@ export class Cursor extends CursorBase {
         this.cursorNavigation = new CursorNavigation(this);
         this.cursorFormatting = new CursorFormatting(this);
         this.cursorTextOperations = new CursorTextOperations(this);
+    }
+
+    // Make getVisualLineInfo accessible for navigation
+    getVisualLineInfo(itemId: string, offset: number) {
+        return getVisualLineInfo(itemId, offset);
     }
 
     // Text operations

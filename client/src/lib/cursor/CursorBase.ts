@@ -613,42 +613,63 @@ export class CursorBase {
             const parent = target.parent;
             if (parent) {
                 // 現在のアイテムのインデックスを取得
-                const currentIndex = parent.indexOf(target);
-
-                // 現在のアイテムのテキストを更新（カーソル位置より前のテキスト）
-                target.updateText(beforeText);
-
-                // 新しいアイテムを作成（カーソル位置より後のテキスト）
-                const newItem = parent.addNode(this.userId, currentIndex + 1);
-                newItem.updateText(afterText);
-
-                // カーソルを新しいアイテムの先頭に移動
-                const oldItemId = this.itemId;
-
-                // 全てのカーソルをクリアして単一カーソルモードを維持
-                store.clearCursorAndSelection(this.userId);
-
-                // 新しいアイテムとオフセットを設定
-                this.itemId = newItem.id;
-                this.offset = 0;
-
-                // アクティブアイテムを更新
-                store.setActiveItem(this.itemId);
-
-                // カーソル点滅を開始
-                store.startCursorBlink();
-
-                // カスタムイベントを発行
-                if (typeof document !== "undefined") {
-                    const event = new CustomEvent("navigate-to-item", {
-                        bubbles: true,
-                        detail: { direction: "enter", fromItemId: target.id, toItemId: this.itemId },
-                    });
-                    document.dispatchEvent(event);
+                let currentIndex = -1;
+                if (typeof (parent as any).indexOf === "function") {
+                    currentIndex = (parent as any).indexOf(target);
+                } else {
+                    // indexOf メソッドがない場合は、イテレータからインデックスを取得
+                    try {
+                        const items = parent.items as Iterable<Item>;
+                        let index = 0;
+                        for (const item of items) {
+                            if (item === target) {
+                                currentIndex = index;
+                                break;
+                            }
+                            index++;
+                        }
+                    } catch (e) {
+                        console.error("Error getting item index:", e);
+                    }
                 }
 
-                this.applyToStore();
-                return;
+                // currentIndex が有効な値の場合のみ処理を続行
+                if (currentIndex >= 0) {
+                    // 現在のアイテムのテキストを更新（カーソル位置より前のテキスト）
+                    target.updateText(beforeText);
+
+                    // 新しいアイテムを作成（カーソル位置より後のテキスト）
+                    const newItem = parent.addNode(this.userId, currentIndex + 1);
+                    newItem.updateText(afterText);
+
+                    // カーソルを新しいアイテムの先頭に移動
+                    const oldItemId = this.itemId;
+
+                    // 全てのカーソルをクリアして単一カーソルモードを維持
+                    store.clearCursorAndSelection(this.userId);
+
+                    // 新しいアイテムとオフセットを設定
+                    this.itemId = newItem.id;
+                    this.offset = 0;
+
+                    // アクティブアイテムを更新
+                    store.setActiveItem(this.itemId);
+
+                    // カーソル点滅を開始
+                    store.startCursorBlink();
+
+                    // カスタムイベントを発行
+                    if (typeof document !== "undefined") {
+                        const event = new CustomEvent("navigate-to-item", {
+                            bubbles: true,
+                            detail: { direction: "enter", fromItemId: target.id, toItemId: this.itemId },
+                        });
+                        document.dispatchEvent(event);
+                    }
+
+                    this.applyToStore();
+                    return;
+                }
             }
         }
 

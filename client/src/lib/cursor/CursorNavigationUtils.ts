@@ -34,10 +34,10 @@ function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item
         const child = children[i];
 
         if (child.id === targetId) {
-            return i > 0 ? children[i - 1] : node;
+            return i > 0 ? children[i - 1] : undefined; // Return undefined instead of node
         }
 
-        const found = findPreviousItemRecursive(child, targetId, i > 0 ? children[i - 1] : node);
+        const found = findPreviousItemRecursive(child, targetId, i > 0 ? children[i - 1] : undefined); // Pass undefined instead of node
         if (found) return found;
     }
 
