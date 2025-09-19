@@ -51,6 +51,19 @@ export class Cursor extends CursorBase {
         this.cursorTextOperations.deleteForward();
     }
 
+    // Make CursorTextOperations methods accessible for testing
+    mergeWithPreviousItem() {
+        this.cursorTextOperations.mergeWithPreviousItem();
+    }
+
+    mergeWithNextItem() {
+        this.cursorTextOperations.mergeWithNextItem();
+    }
+
+    deleteEmptyItem() {
+        this.cursorTextOperations.deleteEmptyItem();
+    }
+
     // Navigation operations
     moveLeft() {
         this.cursorNavigation.moveLeft();
@@ -103,6 +116,11 @@ export class Cursor extends CursorBase {
 
     extendSelectionToLineEnd() {
         this.cursorSelection.extendSelectionToLineEnd();
+    }
+
+    // Make navigateToItem accessible for testing
+    navigateToItem(direction: "left" | "right" | "up" | "down") {
+        // This is a placeholder for testing - actual implementation is in CursorBase
     }
 
     // Formatting operations

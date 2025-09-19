@@ -6,7 +6,7 @@ import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { findNextItem, findPreviousItem, searchItem } from "./CursorNavigationUtils";
 import { clearSelection, getSelectionForUser, hasSelection, setSelection } from "./CursorSelectionUtils";
-import { deleteEmptyItem, mergeWithNextItem, mergeWithPreviousItem } from "./CursorTextOperations";
+import { CursorTextOperations } from "./CursorTextOperations";
 import {
     countLines,
     getCurrentColumn,
@@ -473,7 +473,8 @@ export class CursorBase {
                 this.offset = Math.max(0, this.offset - 1);
             } else {
                 // 行頭で前アイテムとの結合
-                mergeWithPreviousItem(this.findTarget());
+                const cursorTextOperations = new CursorTextOperations(this);
+                cursorTextOperations.mergeWithPreviousItem();
             }
         }
 
@@ -532,11 +533,13 @@ export class CursorBase {
                 // 行末の場合
                 // アイテムが空の場合はアイテム自体を削除
                 if (txt.length === 0) {
-                    deleteEmptyItem(this.findTarget());
+                    const cursorTextOperations = new CursorTextOperations(this);
+                    cursorTextOperations.deleteEmptyItem();
                     return;
                 }
                 // 空でない場合は次アイテムとの結合
-                mergeWithNextItem(this.findTarget());
+                const cursorTextOperations = new CursorTextOperations(this);
+                cursorTextOperations.mergeWithNextItem();
             }
         }
 
@@ -901,8 +904,8 @@ export class CursorBase {
         let pos = this.offset;
         if (pos > 0) {
             pos--;
-            while (pos > 0 && /\\s/.test(text[pos])) pos--;
-            while (pos > 0 && !/\\s/.test(text[pos - 1])) pos--;
+            while (pos > 0 && /\s/.test(text[pos])) pos--;
+            while (pos > 0 && !/\s/.test(text[pos - 1])) pos--;
         }
         this.offset = pos;
         this.applyToStore();
@@ -918,8 +921,8 @@ export class CursorBase {
         let pos = this.offset;
         const len = text.length;
         if (pos < len) {
-            while (pos < len && /\\s/.test(text[pos])) pos++;
-            while (pos < len && !/\\s/.test(text[pos])) pos++;
+            while (pos < len && /\s/.test(text[pos])) pos++;
+            while (pos < len && !/\s/.test(text[pos])) pos++;
         }
         this.offset = pos;
         this.applyToStore();
@@ -2869,5 +2872,46 @@ export class CursorBase {
     private isPageItem(item: Item): boolean {
         const parent = item.parent;
         return !!parent && parent.parentKey === "root";
+    }
+
+    // Make utility methods accessible
+    getCurrentColumn(text: string, offset: number) {
+        return getCurrentColumn(text, offset);
+    }
+
+    getCurrentLineIndex(text: string, offset: number) {
+        return getCurrentLineIndex(text, offset);
+    }
+
+    getLineStartOffset(text: string, lineIndex: number) {
+        return getLineStartOffset(text, lineIndex);
+    }
+
+    getLineEndOffset(text: string, lineIndex: number) {
+        return getLineEndOffset(text, lineIndex);
+    }
+
+    findPreviousItem() {
+        return findPreviousItem(this.itemId);
+    }
+
+    findNextItem() {
+        return findNextItem(this.itemId);
+    }
+
+    // Make these methods accessible for testing
+    mergeWithPreviousItem() {
+        const cursorTextOperations = new CursorTextOperations(this);
+        cursorTextOperations.mergeWithPreviousItem();
+    }
+
+    mergeWithNextItem() {
+        const cursorTextOperations = new CursorTextOperations(this);
+        cursorTextOperations.mergeWithNextItem();
+    }
+
+    deleteEmptyItem() {
+        const cursorTextOperations = new CursorTextOperations(this);
+        cursorTextOperations.deleteEmptyItem();
     }
 }

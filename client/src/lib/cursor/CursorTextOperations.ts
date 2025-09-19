@@ -197,7 +197,7 @@ export class CursorTextOperations {
     /**
      * 前のアイテムと結合する
      */
-    private mergeWithPreviousItem() {
+    mergeWithPreviousItem() {
         const currentItem = this.cursor.findTarget();
         if (!currentItem) return;
 
@@ -232,7 +232,7 @@ export class CursorTextOperations {
     /**
      * 次のアイテムと結合する
      */
-    private mergeWithNextItem() {
+    mergeWithNextItem() {
         const currentItem = this.cursor.findTarget();
         if (!currentItem) return;
 
@@ -255,7 +255,7 @@ export class CursorTextOperations {
     /**
      * 空のアイテムを削除する
      */
-    private deleteEmptyItem() {
+    deleteEmptyItem() {
         const currentItem = this.cursor.findTarget();
         if (!currentItem) return;
 
