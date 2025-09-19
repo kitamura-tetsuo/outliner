@@ -1,41 +1,46 @@
-// @ts-nocheck
+import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 
+function getSelections(): SelectionRange[] {
+    return Object.values(store.selections as Record<string, SelectionRange>);
+}
+
 /**
- * Clear selection for the current user
+ * Clear selection for the specified user.
  */
-export function clearSelection(userId: string) {
+export function clearSelection(userId: string): void {
     store.clearSelectionForUser(userId);
 }
 
 /**
- * Set selection in the store
+ * Persist the provided selection in the overlay store.
  */
-export function setSelection(selection: any) {
-    store.setSelection(selection);
+export function setSelection(selection: SelectionRange): string | undefined {
+    return store.setSelection(selection);
 }
 
 /**
- * Get selection for the current user
+ * Retrieve the selection associated with a user.
  */
-export function getSelectionForUser(userId: string): any | undefined {
-    return Object.values(store.selections).find(s => s.userId === userId);
+export function getSelectionForUser(userId: string): SelectionRange | undefined {
+    return getSelections().find(selection => selection.userId === userId);
 }
 
 /**
- * Check if there is a selection for the current user
+ * Determine if a user currently has an active selection.
  */
 export function hasSelection(userId: string): boolean {
     const selection = getSelectionForUser(userId);
-    return !!selection
-        && (selection.startOffset !== selection.endOffset
-            || selection.startItemId !== selection.endItemId);
+    if (!selection) return false;
+
+    return selection.startItemId !== selection.endItemId
+        || selection.startOffset !== selection.endOffset;
 }
 
 /**
- * Get selected text from a single item
+ * Slice the provided text according to the given selection.
  */
-export function getSelectedTextFromItem(itemText: string, selection: any): string {
+export function getSelectedTextFromItem(itemText: string, selection?: SelectionRange): string {
     if (!selection) return "";
 
     const startOffset = Math.min(selection.startOffset, selection.endOffset);

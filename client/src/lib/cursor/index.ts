@@ -6,3 +6,4 @@ export * from "./CursorFormatting";
 export * from "./CursorNavigation";
 export * from "./CursorSelection";
 export * from "./CursorTextOperations";
+export * from "./CursorTextUtils";
