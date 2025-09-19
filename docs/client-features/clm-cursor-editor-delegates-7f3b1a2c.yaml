@@ -1,15 +1,18 @@
 id: CLM-7f3b1a2c
 title: Cursor editing flows through CursorEditor
-description: |
-  The primary editing shortcuts are routed through the new CursorEditor class.
+description: 'The primary editing shortcuts are routed through the new CursorEditor class.
+
   Users can insert characters, delete text, and split items while staying on the
+
   same page without losing cursor state.
+
+  '
 category: cursor-management
 status: implemented
 acceptance:
-  - Typing characters updates the active item using the CursorEditor pipeline.
-  - Backspace and Delete remove characters via the delegated editor logic.
-  - Splitting an item with Enter creates a sibling item and keeps the cursor active.
+- Backspace and Delete remove characters via the delegated editor logic.
+- Splitting an item with Enter creates a sibling item and keeps the cursor active.
+- Typing characters updates the active item using the CursorEditor pipeline.
 tests:
-  - client/e2e/core/clm-cursor-editor-delegates-7f3b1a2c.spec.ts
+- client/e2e/core/clm-cursor-editor-delegates-7f3b1a2c.spec.ts
 title-ja: CursorEditor によるカーソル編集の委譲
