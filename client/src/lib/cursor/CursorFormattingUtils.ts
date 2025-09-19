@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 
 /**

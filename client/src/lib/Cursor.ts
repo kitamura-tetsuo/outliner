@@ -4,6 +4,17 @@ import { Items } from "../schema/yjs-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
+import {
+    findNextItem,
+    findPreviousItem,
+    getCurrentColumn,
+    getCurrentLineIndex,
+    getLineEndOffset,
+    getLineStartOffset,
+    getVisualLineInfo,
+    getVisualLineOffsetRange,
+    searchItem,
+} from "./cursor";
 
 export function isPageItem(item: Item): boolean {
     const parent = item.parent;
@@ -38,7 +49,7 @@ export class Cursor {
     findTarget(): any {
         const root = generalStore.currentPage as any;
         if (root) {
-            const found = this.searchItem(root, this.itemId);
+            const found = searchItem(root, this.itemId);
             if (found) return found;
         }
         // Fallback: search across all pages in the current project
@@ -47,105 +58,13 @@ export class Cursor {
             const pages: any = proj?.items;
             if (pages && pages[Symbol.iterator]) {
                 for (const p of pages as Iterable<any>) {
-                    const f = this.searchItem(p, this.itemId);
+                    const f = searchItem(p, this.itemId);
                     if (f) return f;
                 }
             }
         } catch {}
         if (typeof window !== "undefined") {
             console.error("findTarget: not found", { itemId: this.itemId, rootId: (root as any)?.id });
-        }
-        return undefined;
-    }
-
-    // 前のアイテムを探す
-    private findPreviousItem(): Item | undefined {
-        const root = generalStore.currentPage;
-        if (!root) return undefined;
-        return this.findPreviousItemRecursive(root, this.itemId);
-    }
-
-    private findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item): Item | undefined {
-        if (node.id === targetId) {
-            return prevItem;
-        }
-
-        // 子アイテムを配列として取得
-        const children: Item[] = [];
-        if (node.items && (node.items as Iterable<Item>)[Symbol.iterator]) {
-            for (const child of node.items as Iterable<Item>) {
-                children.push(child);
-            }
-        }
-
-        // 子アイテムを順番に処理
-        for (let i = 0; i < children.length; i++) {
-            const child = children[i];
-
-            // 現在の子がターゲットの場合、前の兄弟または親を返す
-            if (child.id === targetId) {
-                return i > 0 ? children[i - 1] : node;
-            }
-
-            // 子の子孫を再帰的に検索
-            const found = this.findPreviousItemRecursive(child, targetId, i > 0 ? children[i - 1] : node);
-            if (found) return found;
-        }
-
-        return undefined;
-    }
-
-    // 次のアイテムを探す
-    private findNextItem(): Item | undefined {
-        const root = generalStore.currentPage;
-        if (!root) return undefined;
-        return this.findNextItemRecursive(root, this.itemId);
-    }
-
-    private findNextItemRecursive(node: Item, targetId: string): Item | undefined {
-        if (node.id === targetId) {
-            // 子アイテムがあれば最初の子を返す
-            if (node.items && (node.items as Iterable<Item>)[Symbol.iterator]) {
-                const iterator = (node.items as Iterable<Item>)[Symbol.iterator]();
-                const first = iterator.next();
-                if (!first.done) return first.value;
-            }
-            return undefined; // 子がなければ兄弟を探す（呼び出し元で処理）
-        }
-
-        // 子アイテムを配列として取得
-        const children: Item[] = [];
-        if (node.items && (node.items as Iterable<Item>)[Symbol.iterator]) {
-            for (const child of node.items as Iterable<Item>) {
-                children.push(child);
-            }
-        }
-
-        // 子アイテムを順番に処理
-        for (let i = 0; i < children.length; i++) {
-            const child = children[i];
-
-            if (child.id === targetId) {
-                // ターゲットの次の兄弟があれば返す
-                if (i < children.length - 1) {
-                    return children[i + 1];
-                }
-                // 次の兄弟がなければ親の次の兄弟を探す（呼び出し元で処理）
-                return undefined;
-            }
-
-            const found = this.findNextItemRecursive(child, targetId);
-            if (found) return found;
-        }
-
-        return undefined;
-    }
-
-    private searchItem(node: Item, id: string): Item | undefined {
-        if (node.id === id) return node;
-        for (const child of node.items as Iterable<Item>) {
-            const found = this.searchItem(child, id);
-            if (found) return found;
         }
         return undefined;
     }
@@ -216,213 +135,6 @@ export class Cursor {
         }
     }
 
-    // テキスト内の行数を計算
-    private countLines(text: string): number {
-        return text.split("\n").length;
-    }
-
-    // 指定した行の開始オフセットを取得
-    private getLineStartOffset(text: string, lineIndex: number): number {
-        const lines = text.split("\n");
-        let offset = 0;
-        for (let i = 0; i < lineIndex; i++) {
-            if (i < lines.length) {
-                offset += lines[i].length + 1; // +1 は改行文字分
-            }
-        }
-        return offset;
-    }
-
-    // 指定した行の終了オフセットを取得
-    private getLineEndOffset(text: string, lineIndex: number): number {
-        const lines = text.split("\n");
-        if (lineIndex >= lines.length) {
-            return text.length;
-        }
-
-        let offset = 0;
-        for (let i = 0; i < lineIndex; i++) {
-            offset += lines[i].length + 1; // +1 は改行文字分
-        }
-        // 対象行の長さを加算（改行文字は含めない）
-        offset += lines[lineIndex].length;
-        return offset;
-    }
-
-    // 現在のオフセットが何行目かを取得
-    private getCurrentLineIndex(text: string, offset: number): number {
-        // テキストが空の場合は0を返す
-        if (!text) return 0;
-
-        const lines = text.split("\n");
-
-        // オフセットがテキスト長を超える場合は最後の行を返す
-        if (offset >= text.length) {
-            return lines.length - 1;
-        }
-
-        let currentOffset = 0;
-        for (let i = 0; i < lines.length; i++) {
-            const lineLength = lines[i].length;
-
-            // 現在の行内にオフセットがある場合
-            if (offset < currentOffset + lineLength) {
-                return i;
-            }
-
-            // 次の行に進む（改行文字を含む）
-            currentOffset += lineLength;
-            if (i < lines.length - 1) {
-                currentOffset += 1; // 改行文字分
-            }
-
-            // 改行文字の位置にオフセットがある場合は次の行
-            if (offset === currentOffset && i < lines.length - 1) {
-                return i + 1;
-            }
-        }
-
-        // デフォルトは最後の行
-        return lines.length - 1;
-    }
-
-    // 現在の行内での列位置を取得
-    private getCurrentColumn(text: string, offset: number): number {
-        const lineIndex = this.getCurrentLineIndex(text, offset);
-        const lineStartOffset = this.getLineStartOffset(text, lineIndex);
-        return offset - lineStartOffset;
-    }
-
-    // 視覚的な行の情報を取得する
-    private getVisualLineInfo(
-        itemId: string,
-        offset: number,
-    ): {
-        lineIndex: number;
-        lineStartOffset: number;
-        lineEndOffset: number;
-        totalLines: number;
-        lines: Array<{ startOffset: number; endOffset: number; y: number; }>;
-    } | null {
-        if (typeof window === "undefined") return null;
-
-        const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
-        if (!itemElement) return null;
-
-        const textElement = itemElement.querySelector(".item-text") as HTMLElement;
-        if (!textElement) return null;
-
-        const text = textElement.textContent || "";
-        if (text.length === 0) {
-            return {
-                lineIndex: 0,
-                lineStartOffset: 0,
-                lineEndOffset: 0,
-                totalLines: 1,
-                lines: [{ startOffset: 0, endOffset: 0, y: 0 }],
-            };
-        }
-
-        // Range API を使用して視覚的な行を判定
-        const textNode = Array.from(textElement.childNodes).find(node => node.nodeType === Node.TEXT_NODE) as Text;
-        if (!textNode) return null;
-
-        try {
-            // 各文字位置での Y 座標を取得して行を判定
-            const lines: { startOffset: number; endOffset: number; y: number; }[] = [];
-            let currentLineY: number | null = null;
-            let currentLineStart = 0;
-
-            // 1文字単位でサンプリングして正確な行境界を検出
-            const step = 1;
-
-            for (let i = 0; i <= text.length; i += step) {
-                const actualOffset = Math.min(i, text.length);
-                const range = document.createRange();
-                const safeOffset = Math.min(actualOffset, textNode.textContent?.length || 0);
-                range.setStart(textNode, safeOffset);
-                range.setEnd(textNode, safeOffset);
-
-                const rect = range.getBoundingClientRect();
-                const y = Math.round(rect.top);
-
-                if (currentLineY === null) {
-                    currentLineY = y;
-                } else if (Math.abs(y - currentLineY) > 2) { // 2px以上の差があれば新しい行（より精密に検出）
-                    // 新しい行が始まった
-                    lines.push({
-                        startOffset: currentLineStart,
-                        endOffset: Math.max(currentLineStart, actualOffset - 1), // 最低でも開始位置は含める
-                        y: currentLineY,
-                    });
-                    currentLineStart = actualOffset;
-                    currentLineY = y;
-                }
-            }
-
-            // 最後の行を追加
-            if (currentLineY !== null) {
-                lines.push({
-                    startOffset: currentLineStart,
-                    endOffset: text.length,
-                    y: currentLineY,
-                });
-            }
-
-            // 行が検出されなかった場合は単一行として扱う
-            if (lines.length === 0) {
-                lines.push({
-                    startOffset: 0,
-                    endOffset: text.length,
-                    y: textElement.getBoundingClientRect().top,
-                });
-            }
-
-            // 現在のオフセットがどの行にあるかを判定
-            let currentLineIndex = 0;
-            for (let i = 0; i < lines.length; i++) {
-                if (offset >= lines[i].startOffset && offset <= lines[i].endOffset) {
-                    currentLineIndex = i;
-                    break;
-                }
-            }
-
-            // 範囲外の場合は最後の行に設定
-            if (currentLineIndex >= lines.length) {
-                currentLineIndex = lines.length - 1;
-            }
-
-            const currentLine = lines[currentLineIndex];
-            return {
-                lineIndex: currentLineIndex,
-                lineStartOffset: currentLine.startOffset,
-                lineEndOffset: currentLine.endOffset,
-                totalLines: lines.length,
-                lines: lines,
-            };
-        } catch (error) {
-            console.error("Error getting visual line info:", error);
-            return null;
-        }
-    }
-
-    // 指定した視覚的な行のオフセット範囲を取得する
-    private getVisualLineOffsetRange(
-        itemId: string,
-        lineIndex: number,
-    ): { startOffset: number; endOffset: number; } | null {
-        const visualInfo = this.getVisualLineInfo(itemId, 0); // 任意のオフセットで行情報を取得
-        if (!visualInfo || lineIndex < 0 || lineIndex >= visualInfo.totalLines) {
-            return null;
-        }
-
-        const targetLine = visualInfo.lines[lineIndex];
-        return {
-            startOffset: targetLine.startOffset,
-            endOffset: targetLine.endOffset,
-        };
-    }
-
     // 上下キー以外の操作が行われたときに初期列位置をリセット
     private resetInitialColumn() {
         this.initialColumn = null;
@@ -477,7 +189,7 @@ export class Cursor {
         }
 
         // 視覚的な行の情報を取得
-        const visualLineInfo = this.getVisualLineInfo(this.itemId, this.offset);
+        const visualLineInfo = getVisualLineInfo(this.itemId, this.offset);
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -487,9 +199,9 @@ export class Cursor {
         if (!visualLineInfo) {
             // フォールバック: 論理的な行での処理（改行文字ベース）
             const text = target.text || "";
-            const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+            const currentLineIndex = getCurrentLineIndex(text, this.offset);
             if (currentLineIndex > 0) {
-                const prevLineStart = this.getLineStartOffset(text, currentLineIndex - 1);
+                const prevLineStart = getLineStartOffset(text, currentLineIndex - 1);
                 this.offset = prevLineStart;
                 this.applyToStore();
                 store.startCursorBlink();
@@ -521,7 +233,7 @@ export class Cursor {
 
         if (lineIndex > 0) {
             // 同じアイテム内の上の視覚的な行に移動
-            const prevLineRange = this.getVisualLineOffsetRange(this.itemId, lineIndex - 1);
+            const prevLineRange = getVisualLineOffsetRange(this.itemId, lineIndex - 1);
             if (prevLineRange) {
                 const prevLineLength = prevLineRange.endOffset - prevLineRange.startOffset;
                 // 初期列位置か行の長さの短い方に移動
@@ -540,7 +252,7 @@ export class Cursor {
             }
         } else {
             // 前のアイテムを探す
-            const prevItem = this.findPreviousItem();
+            const prevItem = findPreviousItem(this.itemId);
             if (prevItem) {
                 // 前のアイテムの最後の視覚的な行に移動
                 this.navigateToItem("up");
@@ -577,7 +289,7 @@ export class Cursor {
         }
 
         // 視覚的な行の情報を取得
-        const visualLineInfo = this.getVisualLineInfo(this.itemId, this.offset);
+        const visualLineInfo = getVisualLineInfo(this.itemId, this.offset);
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -588,9 +300,9 @@ export class Cursor {
             // フォールバック: 論理的な行での処理（改行文字ベース）
             const text = target.text || "";
             const lines = text.split("\n");
-            const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+            const currentLineIndex = getCurrentLineIndex(text, this.offset);
             if (currentLineIndex < lines.length - 1) {
-                const nextLineStart = this.getLineStartOffset(text, currentLineIndex + 1);
+                const nextLineStart = getLineStartOffset(text, currentLineIndex + 1);
                 this.offset = nextLineStart;
                 this.applyToStore();
                 store.startCursorBlink();
@@ -622,7 +334,7 @@ export class Cursor {
 
         if (lineIndex < totalLines - 1) {
             // 同じアイテム内の下の視覚的な行に移動
-            const nextLineRange = this.getVisualLineOffsetRange(this.itemId, lineIndex + 1);
+            const nextLineRange = getVisualLineOffsetRange(this.itemId, lineIndex + 1);
             if (nextLineRange) {
                 const nextLineLength = nextLineRange.endOffset - nextLineRange.startOffset;
                 // 初期列位置か行の長さの短い方に移動
@@ -641,7 +353,7 @@ export class Cursor {
             }
         } else {
             // 次のアイテムを探す
-            const nextItem = this.findNextItem();
+            const nextItem = findNextItem(this.itemId);
             if (nextItem) {
                 // 次のアイテムの最初の視覚的な行に移動
                 this.navigateToItem("down");
@@ -860,7 +572,7 @@ export class Cursor {
         const currentItem = this.findTarget();
         if (!currentItem) return;
 
-        const prevItem = this.findPreviousItem();
+        const prevItem = findPreviousItem(this.itemId);
         if (!prevItem) return;
 
         // 前のアイテムのテキストを取得
@@ -895,7 +607,7 @@ export class Cursor {
         const currentItem = this.findTarget();
         if (!currentItem) return;
 
-        const nextItem = this.findNextItem();
+        const nextItem = findNextItem(this.itemId);
         if (!nextItem) return;
 
         // 現在のアイテムと次のアイテムのテキストを取得
@@ -922,7 +634,7 @@ export class Cursor {
         if (currentItem.text && currentItem.text.length > 0) return;
 
         // 次のアイテムを探す
-        const nextItem = this.findNextItem();
+        const nextItem = findNextItem(this.itemId);
 
         // カーソルを移動する先を決定
         let targetItemId: string;
@@ -934,7 +646,7 @@ export class Cursor {
             targetOffset = 0;
         } else {
             // 次のアイテムがない場合は前のアイテムの末尾に移動
-            const prevItem = this.findPreviousItem();
+            const prevItem = findPreviousItem(this.itemId);
             if (prevItem) {
                 targetItemId = prevItem.id;
                 targetOffset = prevItem.text ? prevItem.text.length : 0;
@@ -1795,10 +1507,10 @@ export class Cursor {
         if (!target) return;
 
         const text = target.text || "";
-        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+        const currentLineIndex = getCurrentLineIndex(text, this.offset);
 
         // 現在の行の開始位置に移動
-        this.offset = this.getLineStartOffset(text, currentLineIndex);
+        this.offset = getLineStartOffset(text, currentLineIndex);
         this.applyToStore();
 
         // カーソルが正しく更新されたことを確認
@@ -1811,10 +1523,10 @@ export class Cursor {
         if (!target) return;
 
         const text = target.text || "";
-        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
+        const currentLineIndex = getCurrentLineIndex(text, this.offset);
 
         // 現在の行の終了位置に移動
-        this.offset = this.getLineEndOffset(text, currentLineIndex);
+        this.offset = getLineEndOffset(text, currentLineIndex);
         this.applyToStore();
 
         // カーソルが正しく更新されたことを確認
@@ -1839,8 +1551,8 @@ export class Cursor {
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";
-        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
-        const lineStartOffset = this.getLineStartOffset(text, currentLineIndex);
+        const currentLineIndex = getCurrentLineIndex(text, this.offset);
+        const lineStartOffset = getLineStartOffset(text, currentLineIndex);
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -1941,8 +1653,8 @@ export class Cursor {
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";
-        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
-        const lineEndOffset = this.getLineEndOffset(text, currentLineIndex);
+        const currentLineIndex = getCurrentLineIndex(text, this.offset);
+        const lineEndOffset = getLineEndOffset(text, currentLineIndex);
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -2286,9 +1998,9 @@ export class Cursor {
         if (!target) return;
 
         const text = target.text || "";
-        const currentLineIndex = this.getCurrentLineIndex(text, this.offset);
-        const startOffset = this.getLineStartOffset(text, currentLineIndex);
-        const endOffset = this.getLineEndOffset(text, currentLineIndex);
+        const currentLineIndex = getCurrentLineIndex(text, this.offset);
+        const startOffset = getLineStartOffset(text, currentLineIndex);
+        const endOffset = getLineEndOffset(text, currentLineIndex);
 
         store.setSelection({
             startItemId: this.itemId,
@@ -2395,8 +2107,8 @@ export class Cursor {
         }
 
         // 選択範囲の開始と終了アイテムを取得
-        const startItem = this.searchItem(generalStore.currentPage!, selection.startItemId);
-        const endItem = this.searchItem(generalStore.currentPage!, selection.endItemId);
+        const startItem = searchItem(generalStore.currentPage!, selection.startItemId);
+        const endItem = searchItem(generalStore.currentPage!, selection.endItemId);
 
         if (!startItem || !endItem) {
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -2634,7 +2346,7 @@ export class Cursor {
         // 現在のアイテムのテキストを取得
         const currentTarget = this.findTarget();
         const currentText = currentTarget?.text || "";
-        const currentColumn = this.getCurrentColumn(currentText, this.offset);
+        const currentColumn = getCurrentColumn(currentText, this.offset);
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -2643,7 +2355,7 @@ export class Cursor {
 
         // アイテム間移動の処理
         if (direction === "left") {
-            const prevItem = this.findPreviousItem();
+            const prevItem = findPreviousItem(this.itemId);
             if (prevItem) {
                 newItemId = prevItem.id;
                 newOffset = prevItem.text?.length || 0;
@@ -2666,7 +2378,7 @@ export class Cursor {
                 }
             }
         } else if (direction === "right") {
-            const nextItem = this.findNextItem();
+            const nextItem = findNextItem(this.itemId);
             if (nextItem) {
                 newItemId = nextItem.id;
                 newOffset = 0;
@@ -2689,14 +2401,14 @@ export class Cursor {
                 }
             }
         } else if (direction === "up") {
-            const prevItem = this.findPreviousItem();
+            const prevItem = findPreviousItem(this.itemId);
             if (prevItem) {
                 newItemId = prevItem.id;
                 const prevText = prevItem.text || "";
                 const prevLines = prevText.split("\n");
                 const lastLineIndex = prevLines.length - 1;
-                const lastLineStart = this.getLineStartOffset(prevText, lastLineIndex);
-                const lastLineEnd = this.getLineEndOffset(prevText, lastLineIndex);
+                const lastLineStart = getLineStartOffset(prevText, lastLineIndex);
+                const lastLineEnd = getLineEndOffset(prevText, lastLineIndex);
                 const lastLineLength = lastLineEnd - lastLineStart;
 
                 // x座標の変化が最も小さい位置を計算
@@ -2735,14 +2447,14 @@ export class Cursor {
                 }
             }
         } else if (direction === "down") {
-            const nextItem = this.findNextItem();
+            const nextItem = findNextItem(this.itemId);
             if (nextItem) {
                 newItemId = nextItem.id;
                 const nextText = nextItem.text || "";
                 const nextLines = nextText.split("\n");
                 const firstLineIndex = 0;
-                const firstLineStart = this.getLineStartOffset(nextText, firstLineIndex);
-                const firstLineEnd = this.getLineEndOffset(nextText, firstLineIndex);
+                const firstLineStart = getLineStartOffset(nextText, firstLineIndex);
+                const firstLineEnd = getLineEndOffset(nextText, firstLineIndex);
                 const firstLineLength = firstLineEnd - firstLineStart;
 
                 // x座標の変化が最も小さい位置を計算
@@ -3152,7 +2864,7 @@ export class Cursor {
         // 選択範囲内の各アイテムにフォーマットを適用
         for (let i = firstIdx; i <= lastIdx; i++) {
             const itemId = allItemIds[i];
-            const item = this.searchItem(generalStore.currentPage!, itemId);
+            const item = searchItem(generalStore.currentPage!, itemId);
 
             if (!item) continue;
 
@@ -3232,7 +2944,7 @@ export class Cursor {
         // 選択範囲内の各アイテムにフォーマットを適用
         for (let i = firstIdx; i <= lastIdx; i++) {
             const itemId = allItemIds[i];
-            const item = this.searchItem(generalStore.currentPage!, itemId);
+            const item = searchItem(generalStore.currentPage!, itemId);
 
             if (!item) continue;
 
