@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Item } from "../schema/app-schema";
 import { Cursor } from "./Cursor";
+import { countLines, getCurrentColumn, getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "./cursor";
 
 // Svelteストアのモック
 // AGENTS.mdの指示に基づき、ストアの挙動を制御するためにvi.mockを使用します。
@@ -62,18 +63,6 @@ describe("Cursor", () => {
     let cursor: Cursor;
     let mockCurrentPage: Item | undefined;
 
-    // Cursorクラスのプライベートメソッドにアクセスするための型ハック
-    type CursorWithPrivateHelpers = Cursor & {
-        countLines: (text: string) => number;
-        getLineStartOffset: (text: string, lineIndex: number) => number;
-        getLineEndOffset: (text: string, lineIndex: number) => number;
-        getCurrentLineIndex: (text: string, offset: number) => number;
-        getCurrentColumn: (text: string, offset: number) => number;
-        findTarget: () => Item | undefined;
-        // findPreviousItem: () => Item | undefined; // 必要なら追加
-        // findNextItem: () => Item | undefined; // 必要なら追加
-    };
-
     beforeEach(async () => {
         // モックをリセット
         vi.clearAllMocks();
@@ -90,7 +79,7 @@ describe("Cursor", () => {
             offset: 0,
             isActive: true,
             userId: "test-user",
-        }) as CursorWithPrivateHelpers;
+        });
 
         // findTargetがモックアイテムを返すように設定
         vi.spyOn(cursor as any, "findTarget").mockImplementation(() => {
@@ -126,82 +115,82 @@ describe("Cursor", () => {
     describe("Text Helper Methods", () => {
         describe("countLines", () => {
             it("should count lines correctly", () => {
-                expect((cursor as CursorWithPrivateHelpers).countLines("")).toBe(1);
-                expect((cursor as CursorWithPrivateHelpers).countLines("hello")).toBe(1);
-                expect((cursor as CursorWithPrivateHelpers).countLines("hello\nworld")).toBe(2);
-                expect((cursor as CursorWithPrivateHelpers).countLines("hello\nworld\n")).toBe(3); // 末尾の改行も1行としてカウント
-                expect((cursor as CursorWithPrivateHelpers).countLines("\nhello\nworld\n")).toBe(4);
+                expect(countLines("")).toBe(1);
+                expect(countLines("hello")).toBe(1);
+                expect(countLines("hello\nworld")).toBe(2);
+                expect(countLines("hello\nworld\n")).toBe(3); // 末尾の改行も1行としてカウント
+                expect(countLines("\nhello\nworld\n")).toBe(4);
             });
         });
 
         describe("getLineStartOffset", () => {
             const text = "line1\nline2\nline3";
             it("should return correct start offset for each line", () => {
-                expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(text, 0)).toBe(0); // line1
-                expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(text, 1)).toBe(6); // line2 (line1の長さ5 + \nの1)
-                expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(text, 2)).toBe(12); // line3 (line1の長さ5 + \nの1 + line2の長さ5 + \nの1)
+                expect(getLineStartOffset(text, 0)).toBe(0); // line1
+                expect(getLineStartOffset(text, 1)).toBe(6); // line2 (line1の長さ5 + \nの1)
+                expect(getLineStartOffset(text, 2)).toBe(12); // line3 (line1の長さ5 + \nの1 + line2の長さ5 + \nの1)
             });
             it("should handle out of bounds line index", () => {
-                expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(text, 3)).toBe(18); // text.length (改行含む) + 1 (based on current impl)
-                expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(text, -1)).toBe(0);
+                expect(getLineStartOffset(text, 3)).toBe(18); // text.length (改行含む) + 1 (based on current impl)
+                expect(getLineStartOffset(text, -1)).toBe(0);
             });
             it("should handle text with trailing newline", () => {
                 const textWithTrailingNL = "line1\nline2\n";
-                expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(textWithTrailingNL, 0)).toBe(0);
-                expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(textWithTrailingNL, 1)).toBe(6);
-                expect((cursor as CursorWithPrivateHelpers).getLineStartOffset(textWithTrailingNL, 2)).toBe(12); // The start of the empty line after the last \n
+                expect(getLineStartOffset(textWithTrailingNL, 0)).toBe(0);
+                expect(getLineStartOffset(textWithTrailingNL, 1)).toBe(6);
+                expect(getLineStartOffset(textWithTrailingNL, 2)).toBe(12); // The start of the empty line after the last \n
             });
         });
 
         describe("getLineEndOffset", () => {
             const text = "line1\nline2\nline3";
             it("should return correct end offset for each line (excluding newline char)", () => {
-                expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(text, 0)).toBe(5); // line1
-                expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(text, 1)).toBe(11); // line2
-                expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(text, 2)).toBe(17); // line3
+                expect(getLineEndOffset(text, 0)).toBe(5); // line1
+                expect(getLineEndOffset(text, 1)).toBe(11); // line2
+                expect(getLineEndOffset(text, 2)).toBe(17); // line3
             });
             it("should handle out of bounds line index returning text length", () => {
-                expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(text, 3)).toBe(17);
+                expect(getLineEndOffset(text, 3)).toBe(17);
             });
             it("should handle text with trailing newline", () => {
                 const textWithTrailingNL = "line1\nline2\n";
-                expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(textWithTrailingNL, 0)).toBe(5);
-                expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(textWithTrailingNL, 1)).toBe(11);
-                expect((cursor as CursorWithPrivateHelpers).getLineEndOffset(textWithTrailingNL, 2)).toBe(12); // End of the empty line (which is also the end of the text)
+                expect(getLineEndOffset(textWithTrailingNL, 0)).toBe(5);
+                expect(getLineEndOffset(textWithTrailingNL, 1)).toBe(11);
+                expect(getLineEndOffset(textWithTrailingNL, 2)).toBe(12); // End of the empty line (which is also the end of the text)
             });
         });
 
         describe("getCurrentLineIndex", () => {
             const text = "line1\nline2\nline3";
             it("should return correct line index for given offset", () => {
-                expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 0)).toBe(0); // l|ine1
-                expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 5)).toBe(1); // line1| (current impl returns next line index)
-                expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 6)).toBe(1); // \n|line2
-                expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 11)).toBe(2); // line2| (current impl returns next line index)
-                expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 12)).toBe(2); // \n|line3
-                expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 17)).toBe(2); // line3|
+                expect(getCurrentLineIndex(text, 0)).toBe(0); // l|ine1
+                expect(getCurrentLineIndex(text, 5)).toBe(1); // line1| (current impl returns next line index)
+                expect(getCurrentLineIndex(text, 6)).toBe(1); // \n|line2
+                expect(getCurrentLineIndex(text, 11)).toBe(2); // line2| (current impl returns next line index)
+                expect(getCurrentLineIndex(text, 12)).toBe(2); // \n|line3
+                expect(getCurrentLineIndex(text, 17)).toBe(2); // line3|
             });
             it("should handle offset exceeding text length", () => {
-                expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex(text, 20)).toBe(2); // 最後の行を指す
+                expect(getCurrentLineIndex(text, 20)).toBe(2); // 最後の行を指す
             });
             it("should handle empty text", () => {
-                expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex("", 0)).toBe(0);
+                expect(getCurrentLineIndex("", 0)).toBe(0);
             });
             it("should handle text with only newlines", () => {
-                expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex("\n\n", 0)).toBe(1); // current impl
-                expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex("\n\n", 1)).toBe(1);
-                expect((cursor as CursorWithPrivateHelpers).getCurrentLineIndex("\n\n", 2)).toBe(2);
+                expect(getCurrentLineIndex("\n\n", 0)).toBe(1); // current impl
+                expect(getCurrentLineIndex("\n\n", 1)).toBe(1);
+                expect(getCurrentLineIndex("\n\n", 2)).toBe(2);
             });
         });
 
         describe("getCurrentColumn", () => {
             const text = "line1\n  line2\nline3"; // line2 has leading spaces
             it("should return correct column for given offset", () => {
-                expect((cursor as CursorWithPrivateHelpers).getCurrentColumn(text, 0)).toBe(0); // |line1
-                expect((cursor as CursorWithPrivateHelpers).getCurrentColumn(text, 3)).toBe(3); // lin|e1
-                expect((cursor as CursorWithPrivateHelpers).getCurrentColumn(text, 6)).toBe(0); // |  line2 (start of line2)
-                expect((cursor as CursorWithPrivateHelpers).getCurrentColumn(text, 8)).toBe(2); //   |line2 (after spaces)
-                expect((cursor as CursorWithPrivateHelpers).getCurrentColumn(text, 15)).toBe(1); // li|ne3 (offset 15 is 'i')
+                expect(getCurrentColumn(text, 0)).toBe(0); // |line1
+                expect(getCurrentColumn(text, 3)).toBe(3); // lin|e1
+                expect(getCurrentColumn(text, 6)).toBe(0); // |  line2 (start of line2)
+                expect(getCurrentColumn(text, 8)).toBe(2); //   |line2 (after spaces)
+                expect(getCurrentColumn(text, 15)).toBe(1); // li|ne3 (offset 15 is 'i')
             });
         });
     });
@@ -238,7 +227,7 @@ describe("Cursor", () => {
         });
 
         it("moveRight should not increase offset if offset is at text length (and not navigate for this simple test)", () => {
-            const item = (cursor as CursorWithPrivateHelpers).findTarget();
+            const item = cursor.findTarget();
             cursor.offset = item!.text!.length;
             cursor.moveRight(); // This would normally try to navigate
             expect(cursor.offset).toBe(item!.text!.length);
