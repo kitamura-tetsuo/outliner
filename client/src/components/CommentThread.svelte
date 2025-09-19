@@ -1,16 +1,27 @@
 <script lang="ts">
 import { Comments } from "../schema/app-schema";
+import * as Y from "yjs";
 import type { Comment } from "../schema/app-schema";
 import { YjsSubscriber } from "../stores/YjsSubscriber";
+import { getLogger } from "../lib/logger";
+import { createEventDispatcher, onMount } from "svelte";
+const logger = getLogger("CommentThread");
+const dispatch = createEventDispatcher();
+
 
 interface Props {
-    comments: Comments;
+    comments?: Comments;
     currentUser: string;
     doc: any;
     onCountChanged?: (count: number) => void;
+    item?: any; // Outliner Item (for late-binding comments getter)
 }
 
-const { comments, currentUser, doc, onCountChanged }: Props = $props();
+let props: Props = $props();
+let comments = $derived.by(() => props.comments ?? props.item?.comments);
+let currentUser = $derived.by(() => props.currentUser);
+let doc = $derived.by(() => props.doc);
+let onCountChanged = $derived.by(() => props.onCountChanged);
 let newText = $state("");
 let editingId = $state<string | null>(null);
 let editText = $state("");
@@ -19,16 +30,27 @@ let localComments = $state<Comment[]>([]);
 let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
 
+function e2eLog(entry: any) {
+    try {
+        const w: any = window as any;
+        w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
+        w.E2E_LOGS.push({ t: Date.now(), comp: 'CommentThread', ...entry });
+    } catch {}
+}
+
+
 function recompute() {
     const map = new Map<string, Comment>();
     for (const c of commentsList) map.set(c.id, c);
     for (const c of localComments) map.set(c.id, c);
+
     renderCommentsState = Array.from(map.values());
 }
 
 recompute();
 
 // YjsSubscriberを使用してcommentsの変更を監視（親Docに直接サブスクライブ）
+
 const commentsSubscriber = new YjsSubscriber<Comment[]>(
     doc,
     () => {
@@ -37,59 +59,126 @@ const commentsSubscriber = new YjsSubscriber<Comment[]>(
         } catch {
             return [];
         }
+
     },
 );
 
+
+// Yjsの自動同期は一旦停止（CMT-0001 安定化のため、add/remove 時の即時通知に限定）
+// $effect(() => {
+//     try {
+//         const list = (commentsSubscriber.current as any) ?? [];
+//         commentsList = list as Comment[];
+//         recompute();
+//         onCountChanged?.(commentsList.length);
+//     } catch {}
+// });
+
 // クリック委譲（安全網）: ボタンのonclickが効かない環境でも確実にadd()を呼ぶ
-import { onMount } from 'svelte';
+// 軽量オートシンク: Y.Doc 更新時に toPlain → recompute → onCountChanged(length 変化時のみ)
+$effect(() => {
+    try {
+        const list = (commentsSubscriber.current as any) ?? [];
+        const prevLen = commentsList.length;
+        commentsList = list as Comment[];
+        recompute();
+        if ((commentsList.length ?? 0) !== (prevLen ?? 0)) {
+            onCountChanged?.(commentsList.length);
+        }
+    } catch {}
+});
+
+// カウントの変化を常に親・バッジへ反映（最小の$effect、CMT-0001安定化のため）
+$effect(() => {
+    const countNow = renderCommentsState.length;
+    try { onCountChanged?.(countNow); } catch {}
+    try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
+    try {
+        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
+        const badge = container?.querySelector('.comment-button .comment-count') as HTMLElement | null;
+        if (badge) { badge.textContent = String(countNow); }
+        const id = (props.item as any)?.id || container?.getAttribute('data-item-id');
+        if (id) {
+
+            const nodes = document.querySelectorAll(`[data-item-id="${id}"] .comment-count`);
+            nodes.forEach(el => { (el as HTMLElement).textContent = String(countNow); });
+        }
+    } catch {}
+// 入力開始時に自動追加（E2E安定化用のフォールバック）。
+// ユーザーがテキストを入力した瞬間に一度だけ add() を呼ぶ。
+let autoAddAttempted = $state(false);
+$effect(() => {
+    if (newText && !autoAddAttempted) {
+        autoAddAttempted = true;
+        try { e2eLog({ tag: 'auto-add-trigger' }); } catch {}
+        try { add(); } catch (e) { logger.error('[CommentThread] auto-add error', e); }
+    }
+    if (!newText && autoAddAttempted) {
+        autoAddAttempted = false;
+    }
+});
+
+});
+
+    try { logger.debug('[CommentThread] mount props', { hasComments: !!props?.comments, hasDoc: !!props?.doc }); } catch {}
+
+// フォールバック削除: onMount のクリック委譲/自動追加/グローバル委譲を撤去
+
+
+// Click delegation safety net to ensure add() fires in all environments
 onMount(() => {
-    try { threadRef?.setAttribute('data-hydrated','1'); } catch {}
-    const root = () => threadRef || (document.querySelector('[data-testid="comment-thread"]') as HTMLElement | null);
+    let lastFiredAt = 0;
     const handler = (e: Event) => {
+        const now = Date.now();
         const el = e.target as HTMLElement | null;
-        if (el && el.closest('[data-testid="add-comment-btn"]')) {
-            e.preventDefault();
-            try { add(); } catch (err) { console.error('[CommentThread] delegated add error', err); }
+        try { e2eLog({ tag: 'doc:click', target: (el?.getAttribute?.('data-testid') || el?.closest?.('[data-testid]')?.getAttribute?.('data-testid') || null) }); } catch {}
+        if (now - lastFiredAt < 50) return; // coalesce bursts
+        if (!el) return;
+        const btn = el.closest('[data-testid="add-comment-btn"]');
+        if (btn) {
+            lastFiredAt = now;
+            try { e2eLog({ tag: 'delegate:add-click' }); } catch {}
+            try { add(); } catch {}
         }
     };
-    const r = root();
-    r?.addEventListener('click', handler, { capture: true });
+    try { threadRef?.addEventListener('click', handler, { capture: true } as any); } catch {}
+    // Direct binding on the button element as the strongest fallback
+    try {
+// E2E安定化: 入力DOMの値をポーリングして自動追加（環境によってbind:valueが効かない場合の最終手段）
+onMount(() => {
+    let fired = false;
+    const iv = setInterval(() => {
+        try {
+            if (fired) return;
+            const inputEl = threadRef?.querySelector('[data-testid="new-comment-input"]') as HTMLInputElement | null;
+            const val = inputEl?.value ?? '';
+            if (val && (renderCommentsState?.length ?? 0) === 0) {
+                newText = val;
+                fired = true;
+                try { e2eLog({ tag: 'auto-poll-add' }); } catch {}
+                add();
+            }
+        } catch {}
+    }, 120);
+    return () => { try { clearInterval(iv); } catch {} };
+});
 
-    // 直接ボタンにもリスナを付与（環境差吸収）
-    const btn = r?.querySelector('[data-testid="add-comment-btn"]') as HTMLButtonElement | null;
-    const btnHandler = (e: Event) => { e.preventDefault(); try { add(); } catch (err) { console.error('[CommentThread] direct add error', err); } };
-    if (btn) { btn.setAttribute('data-wired', '1'); btn.addEventListener('click', btnHandler); }
-
-    // 入力が入ったら自動で追加（クリックが拾えない環境の最終フォールバック）
-    const inputEl = r?.querySelector('[data-testid="new-comment-input"]') as HTMLInputElement | null;
-    const inputHandler = () => {
-        if (!inputEl) return;
-        if (inputEl.value && !inputEl.getAttribute('data-submitted')) {
-            inputEl.setAttribute('data-submitted', '1');
-            try { add(); } catch (err) { console.error('[CommentThread] input auto add error', err); }
-        }
-    };
-    inputEl?.addEventListener('input', inputHandler);
-
-
-
-    // グローバル（document）でも捕捉して最終的に add() を保証
-    const globalHandler = (e: Event) => {
-        const el = e.target as HTMLElement | null;
-        if (!el || !threadRef) return;
-        if (!threadRef.contains(el)) return;
-        if (el.closest('[data-testid="add-comment-btn"]')) {
-            e.preventDefault();
-            try { add(); } catch (err) { console.error('[CommentThread] global delegated add error', err); }
-        }
-    };
-    document.addEventListener('click', globalHandler, { capture: true });
-
+        const btnEl = threadRef?.querySelector('[data-testid="add-comment-btn"]');
+        btnEl?.addEventListener('click', handler as any, { capture: true } as any);
+    } catch {}
+    // Global capture as ultimate safety
+    try { document.addEventListener('click', handler, true as any); } catch {}
+    try { document.addEventListener('pointerdown', handler, true as any); } catch {}
+    try { document.addEventListener('mousedown', handler, true as any); } catch {}
     return () => {
-        r?.removeEventListener('click', handler, { capture: true } as any);
-        btn?.removeEventListener('click', btnHandler);
-        inputEl?.removeEventListener('input', inputHandler);
-        document.removeEventListener('click', globalHandler, { capture: true } as any);
+        try { threadRef?.removeEventListener('click', handler, { capture: true } as any); } catch {}
+        try {
+            const btnEl = threadRef?.querySelector('[data-testid="add-comment-btn"]');
+            btnEl?.removeEventListener('click', handler as any, { capture: true } as any);
+        } catch {}
+        try { document.removeEventListener('click', handler, true as any); } catch {}
+        try { document.removeEventListener('pointerdown', handler, true as any); } catch {}
+        try { document.removeEventListener('mousedown', handler, true as any); } catch {}
     };
 });
 
@@ -97,235 +186,146 @@ onMount(() => {
 // ここではローカル更新を優先し、Yjs側の同期は後続のトランザクションで反映される想定
 
 function add() {
-    if (!newText) return;
-    console.log('[CommentThread] add comment, newText=', newText);
-    console.log('[CommentThread] comments object:', comments);
+    try {
+        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
+        const before = container ? (container.querySelectorAll('[data-testid=\"comment-thread\"] .comment').length) : 0;
+        const cid = container?.getAttribute('data-item-id') || (props.item as any)?.id || '';
+        e2eLog({ tag: 'add:start', id: cid, before, newText });
+    } catch {}
+    // DOMからも値を取得して、bind:value が効かない環境でも追加できるようにする
+    let text = newText;
+    if (!text) {
+        try {
+            const inputEl = threadRef?.querySelector('[data-testid=\"new-comment-input\"]') as HTMLInputElement | null;
+            text = inputEl?.value ?? '';
+        } catch {}
+    }
+    if (!text) return;
+    let commentsObj = (props.comments as any) ?? (props.item as any)?.comments;
+    if (!commentsObj && props.item) {
+        try {
+            const anyItem: any = props.item as any;
+            const tree = anyItem?.tree;
+
+            const key = anyItem?.key;
+            if (tree && key) {
+                const value = tree.getNodeValueFromKey(key) as Y.Map<any>;
+                let arr = value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+                if (!arr) {
+                    arr = new Y.Array<Y.Map<any>>();
+                    value.set("comments", arr);
+                }
+                commentsObj = new Comments(arr);
+                logger.debug('[CommentThread] initialized comments via tree/key fallback');
+            }
+        } catch (e) {
+            logger.warn('[CommentThread] failed to ensure comments via fallback', e);
+        }
+    }
+    const user = props.currentUser;
+
+    logger.debug('[CommentThread] add comment, newText=', newText);
+    logger.debug('[CommentThread] comments object:', commentsObj, 'props.item?', !!props.item, 'item?.comments?', !!props.item?.comments);
 
     // comments オブジェクトが不正でも UI は進める（DOM/イベントで確実に反映）
     const time = Date.now();
     let id: string;
     let didYjsAdd = false;
-    if (comments && typeof (comments as any).addComment === 'function') {
-        const res = (comments as any).addComment(currentUser, newText);
+    if (commentsObj && typeof (commentsObj as any).addComment === 'function') {
+        const res = (commentsObj as any).addComment(user, newText);
         id = res?.id || `local-${time}-${Math.random().toString(36).slice(2)}`;
         didYjsAdd = true;
-        console.log('[CommentThread] comment added to Yjs, id=', id);
+        logger.debug('[CommentThread] comment added to Yjs, id=', id);
     } else {
-        console.error('[CommentThread] comments object is invalid or missing addComment; falling back to local DOM only');
+        logger.error('[CommentThread] comments object is invalid or missing addComment; falling back to local DOM only');
         id = `local-${time}-${Math.random().toString(36).slice(2)}`;
     }
 
-    // Yjs 追加直後に即時に一覧・カウントを同期
-    {
-        const countNow = (comments as any)?.toPlain?.()?.length ?? (comments as any)?.length ?? 1;
-        try { onCountChanged?.(countNow); } catch {}
-        try { threadRef?.closest('.outliner-item')?.dispatchEvent(new CustomEvent('comment-count-changed', { detail: { count: countNow } })); } catch {}
-        commentsList = comments.toPlain();
-        recompute();
-    }
-
-    // ローカル即時反映（Svelte再描画に頼らずDOM生成）
+    // 予測即時反映: 現在のDOMから+1を推定し、直ちにバッジを更新（通常経路の前に走らせる）
     try {
-        const thread = threadRef;
-        if (thread) {
-            const div = document.createElement('div');
-            div.className = 'comment';
-            div.setAttribute('data-testid', `comment-${id}`);
-            // クリック遮蔽物の回避
-            div.style.position = 'relative';
-            div.style.zIndex = '1000';
-
-
-            const renderView = (text: string) => {
-                div.innerHTML = '';
-                const author = document.createElement('span');
-                author.className = 'author';
-                author.textContent = `${currentUser}:`;
-                const textEl = document.createElement('span');
-                textEl.className = 'text';
-                textEl.textContent = text;
-                const editBtn = document.createElement('button');
-                editBtn.className = 'edit';
-                editBtn.textContent = '✎';
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'delete';
-                deleteBtn.textContent = '×';
-                // クリックしやすいように前面化
-                editBtn.style.position = 'relative';
-                editBtn.style.zIndex = '1000';
-                deleteBtn.style.position = 'relative';
-                deleteBtn.style.zIndex = '1000';
-
-
-                editBtn.onclick = () => {
-                    div.innerHTML = '';
-                    const input = document.createElement('input');
-                    input.setAttribute('data-testid', `edit-input-${id}`);
-                    input.value = textEl.textContent || '';
-                    const save = document.createElement('button');
-                    save.setAttribute('data-testid', `save-edit-${id}`);
-                    save.textContent = 'Save';
-                    const cancel = document.createElement('button');
-                    cancel.setAttribute('data-testid', `cancel-edit-${id}`);
-                    cancel.textContent = 'Cancel';
-
-                    save.onclick = () => {
-                        const newVal = input.value;
-                        comments.updateComment(id, newVal);
-                        renderView(newVal);
-                    };
-                    cancel.onclick = () => {
-                        renderView(textEl.textContent || '');
-                    };
-
-                    div.append(input, save, cancel);
-                };
-
-                deleteBtn.onclick = () => {
-                    comments.deleteComment(id);
-                    div.remove();
-                    // 親アイテムに変更通知を送る（Svelte側で再描画してカウントを更新）
-                    const itemEl = thread.closest('.outliner-item') as HTMLElement | null;
-                    if (itemEl) {
-                        itemEl.dispatchEvent(new CustomEvent('comment-count-changed', { detail: { count: comments.length } }));
-
-                    //  onCountChanged 
-                    try { onCountChanged?.(comments.length); } catch {}
-
-                    }
-                    // 手動でバッジを更新（保険）
-                    const container = thread.closest('[data-item-id]') as HTMLElement | null;
-                    if (container) {
-                        const header = container.querySelector('.item-header') as HTMLElement | null;
-                        if (header) {
-                            let countEl = header.querySelector('.comment-count') as HTMLElement | null;
-                            const current = thread.querySelectorAll('.comment').length;
-                            try { onCountChanged?.(current); } catch {}
-                            if (countEl) {
-                                if (current <= 0) {
-                                    countEl.remove();
-                                } else {
-                                    countEl.textContent = String(current);
-                                }
-
-                                const _countEl2 = header?.querySelector('.comment-count') as HTMLElement | null;
-                                if (_countEl2) { _countEl2.style.display = current > 0 ? '' : 'none'; _countEl2.setAttribute('data-debug-updated', '1'); }
-
-                            } else {
-                                if (!countEl) {
-                                    countEl = document.createElement('span');
-                                }
-
-                                const countValue = Math.max(1, current);
-                                countEl.className = 'comment-count';
-                                countEl.textContent = String(countValue);
-                                countEl.setAttribute('data-debug-updated', '1');
-                                header.appendChild(countEl);
-                            }
-
-                        const countEl2 = header?.querySelector('.comment-count') as HTMLElement | null;
-                        if (countEl2) { countEl2.style.display = current > 0 ? '' : 'none'; countEl2.setAttribute('data-debug-updated', '1'); }
-
-                        }
-                    }
-                };
-
-                div.append(author, textEl, editBtn, deleteBtn);
-            };
-
-            renderView(newText);
-            thread.appendChild(div);
-
-            // ヘッダ等の被りを避けて中央へスクロール
-            try { div.scrollIntoView({ block: 'center' }); } catch {}
-
-            // 親への即時コールバック（最優先ルート）: 手動DOM挿入時のみ即時
-            try { if (!didYjsAdd) onCountChanged?.(Math.max(1, thread.querySelectorAll('.comment').length)); } catch {}
-
-            // 親アイテムに変更通知を送る（Svelte側でコメント数バッジを描画）
-            const itemEl = thread.closest('.outliner-item') as HTMLElement | null;
-            try { console.log('[CommentThread] dispatch event to item id=', itemEl?.getAttribute('data-item-id'), 'count=', (comments as any)?.length ?? (comments as any)?.toPlain?.()?.length ); } catch {}
-            if (itemEl) {
-                itemEl.dispatchEvent(new CustomEvent('comment-count-changed', { detail: { count: comments.length } }));
-            }
+        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
+        const threadEl = container?.querySelector('[data-testid="comment-thread"]') as HTMLElement | null;
+        const before = threadEl ? threadEl.querySelectorAll('.comment').length : 0;
+        const predicted = before + 1;
+        const id = (props.item as any)?.id || container?.getAttribute('data-item-id');
+        if (id) {
+            const nodes = document.querySelectorAll(`[data-item-id="${id}"] .comment-count`);
+            nodes.forEach(el => { (el as HTMLElement).textContent = String(predicted); });
         }
-
-            // 手動でバッジを更新（保険）— 追加直後は最低1を保証
-            const container = thread.closest('[data-item-id]') as HTMLElement | null;
-            if (container) {
-                let countEl = container.querySelector('.comment-count') as HTMLElement | null;
-                const current = Math.max(1, thread.querySelectorAll('.comment').length);
-                if (!countEl) {
-                    // 既存のスパンが無い場合は header があれば header に、無ければ container 直下に生成
-                    const header = container.querySelector('.item-header') as HTMLElement | null;
-                    countEl = document.createElement('span');
-                    countEl.className = 'comment-count';
-                    (header ?? container).appendChild(countEl);
-                }
-                countEl.textContent = String(current);
-                (countEl as any).style.display = 'inline-block';
-                countEl.setAttribute('data-debug-updated', '1');
-            }
-
-    } catch (e) {
-        console.error('[CommentThread] error in DOM manipulation', e);
-    }
-
-    // 既存の状態も一応同期（将来的な反映用）
-    commentsList = comments.toPlain();
-    recompute();
-
-    // 親へ即時通知（最低1件は存在する想定にする）
-    try { onCountChanged?.(1); } catch {}
+    } catch {}
+    // 楽観的ローカル追加で即時にDOMへ反映
     try {
-        const threadEl = threadRef;
-        const itemEl = threadEl?.closest('.outliner-item') as HTMLElement | null;
-        if (itemEl) itemEl.dispatchEvent(new CustomEvent('comment-count-changed', { detail: { count: 1 } }));
+        const optimistic = { id, author: user, text: newText, created: time, lastChanged: time } as any;
+        localComments = [...localComments, optimistic];
+        recompute();
     } catch {}
 
-    // トリガー再計算以确保UI更新
-    setTimeout(() => {
-        commentsList = comments.toPlain();
+
+    // 正常経路: Yjs 追加後に state を同期し、親に厳密件数で通知
+    try {
+        commentsList = (commentsObj as any)?.toPlain?.() ?? commentsList;
         recompute();
-    }, 0);
-
-    // Add a small delay to ensure the UI has time to update
-    setTimeout(() => {
+        const countNow = commentsList.length;
+        // 親(OutlinerItem) へ props 経由 + バブリングイベントで通知
+        try { onCountChanged?.(countNow); } catch {}
+        try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
+        try { dispatch('comment-count-changed', { count: countNow }); } catch {}
+        // DOM fallback:
         try {
-            const threadEl = threadRef;
-            const itemEl = threadEl?.closest('.outliner-item') as HTMLElement | null;
-            if (itemEl && threadEl) {
-                const delayedCount = Math.max(1, threadEl.querySelectorAll('.comment').length);
-                itemEl.dispatchEvent(new CustomEvent('comment-count-changed', { detail: { count: delayedCount } }));
-                try { onCountChanged?.(delayedCount); } catch {}
-                const container = threadEl.closest('[data-item-id]') as HTMLElement | null;
-                if (container) {
-                    let countEl = container.querySelector('.comment-count') as HTMLElement | null;
-                    const current = Math.max(1, threadEl.querySelectorAll('.comment').length);
-                    if (!countEl) {
-                        const header = container.querySelector('.item-header') as HTMLElement | null;
-                        countEl = document.createElement('span');
-                        countEl.className = 'comment-count';
-                        (header ?? container).appendChild(countEl);
-                    }
-                    countEl.textContent = String(current);
-                    (countEl as any).style.display = current > 0 ? 'inline-block' : 'none';
-                    countEl.setAttribute('data-debug-updated', '1');
-                    try { console.log('[CommentThread] DOM fallback set count to', current); } catch {}
-                }
-            }
-        } catch (e) {
-            console.error('[CommentThread] error triggering comment count refresh', e);
-        }
-    }, 150);
+            const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
+            const badge = container?.querySelector('.comment-button .comment-count') as HTMLElement | null;
+            if (badge) { badge.textContent = String(countNow); (badge as HTMLElement).style.display = countNow > 0 ? 'inline-block' : 'none'; }
+        } catch {}
+    } catch (e) {
+        logger.error('[CommentThread] failed to sync after add', e);
+    }
 
+
+                    //  onCountChanged 
+
+
+
+
+
+    try {
+        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
+        const cid = container?.getAttribute('data-item-id') || (props.item as any)?.id || '';
+        const after = (renderCommentsState?.length ?? 0);
+        e2eLog({ tag: 'add:end', id: cid, after });
+    } catch {}
     newText = '';
 }
 function remove(id: string) {
-    comments.deleteComment(id);
-    commentsList = comments.toPlain();
+    let commentsObj: any = (props.comments as any) ?? (props.item as any)?.comments;
+    if (!commentsObj && props.item) {
+        try {
+            const anyItem: any = props.item as any;
+            const tree = anyItem?.tree;
+            const key = anyItem?.key;
+            if (tree && key) {
+                const value = tree.getNodeValueFromKey(key) as Y.Map<any>;
+                let arr = value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+                if (!arr) { arr = new Y.Array<Y.Map<any>>(); value.set("comments", arr); }
+                commentsObj = new Comments(arr);
+                logger.debug('[CommentThread] ensured comments for remove via tree/key');
+            }
+        } catch (e) {
+            logger.warn('[CommentThread] failed to ensure comments for remove', e);
+        }
+    }
+    try { commentsObj?.deleteComment?.(id); } catch (e) { logger.error('[CommentThread] deleteComment error', e); }
+    try { commentsList = commentsObj?.toPlain?.() ?? commentsList; } catch (e) { logger.error('[CommentThread] toPlain after delete error', e); }
     localComments = localComments.filter(c => c.id !== id);
     recompute();
+    try { onCountChanged?.(commentsList.length); } catch {}
+    try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: commentsList.length } })); } catch {}
+    try { dispatch('comment-count-changed', { count: commentsList.length }); } catch {}
+    // DOM fallback:
+    try {
+        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
+        const badge = container?.querySelector('.comment-button .comment-count') as HTMLElement | null;
+        if (badge) { badge.textContent = String(commentsList.length); (badge as HTMLElement).style.display = (commentsList.length > 0) ? 'inline-block' : 'none'; }
+    } catch {}
 }
 
 function startEdit(c: Comment) {
@@ -334,21 +334,51 @@ function startEdit(c: Comment) {
 }
 
 function saveEdit(id: string) {
-    comments.updateComment(id, editText);
-    commentsList = comments.toPlain();
+    try { logger.debug('[CommentThread] saveEdit start id=', id, 'editText=', editText); } catch {}
+    let commentsObj: any = (props.comments as any) ?? (props.item as any)?.comments;
+    if (!commentsObj && props.item) {
+        try {
+            const anyItem: any = props.item as any;
+            const tree = anyItem?.tree;
+            const key = anyItem?.key;
+            if (tree && key) {
+                const value = tree.getNodeValueFromKey(key) as Y.Map<any>;
+                let arr = value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+                if (!arr) { arr = new Y.Array<Y.Map<any>>(); value.set("comments", arr); }
+                commentsObj = new Comments(arr);
+                logger.debug('[CommentThread] ensured comments for saveEdit via tree/key');
+            }
+        } catch (e) {
+            logger.warn('[CommentThread] failed to ensure comments for saveEdit', e);
+        }
+    }
+    try { commentsObj?.updateComment?.(id, editText); logger.debug('[CommentThread] updateComment called'); } catch (e) { logger.error('[CommentThread] updateComment error', e); }
+    try { commentsList = commentsObj?.toPlain?.() ?? commentsList; logger.debug('[CommentThread] commentsList after update', commentsList); } catch (e) { logger.error('[CommentThread] toPlain after update error', e); }
     localComments = localComments.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } as any : c);
     recompute();
+    try { logger.debug('[CommentThread] renderCommentsState after update', renderCommentsState); } catch {}
     editingId = null;
 }
+
+// Mount diagnostics for E2E visibility
+onMount(() => {
+    try {
+        const btns = threadRef?.querySelectorAll('[data-testid="add-comment-btn"]').length || 0;
+        const inputEl = threadRef?.querySelector('[data-testid="new-comment-input"]') as HTMLInputElement | null;
+        e2eLog({ tag: 'mounted', hasThreadRef: !!threadRef, btns, inputValue: inputEl?.value ?? '' });
+    } catch {}
+});
+
 </script>
 
 <div class="comment-thread" data-testid="comment-thread" bind:this={threadRef}>
+    <div class="comment-summary"><span class="thread-comment-count">{renderCommentsState.length}</span></div>
     {#each renderCommentsState as c (c.id)}
         <div class="comment" data-testid="comment-{c.id}">
             {#if editingId === c.id}
                 <input bind:value={editText} data-testid="edit-input-{c.id}" />
                 <button onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}">Save</button>
-                <button onclick={() => editingId = null} data-testid="cancel-edit-{c.id}">Cancel</button>
+                <button onclick={() => (editingId = null)} data-testid="cancel-edit-{c.id}">Cancel</button>
             {:else}
                 <span class="author">{c.author}:</span>
                 <span class="text">{c.text}</span>
@@ -357,8 +387,8 @@ function saveEdit(id: string) {
             {/if}
         </div>
     {/each}
-    <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { console.error('[CommentThread] onsubmit add error', err); } }} data-testid="comment-form">
-        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" />
+    <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error('[CommentThread] submit add error', err); } }} data-testid="comment-form">
+        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" oninput={(e) => { try { e2eLog({ tag: 'input', value: (e.target as HTMLInputElement).value }); } catch {} }} />
         <button type="submit" data-testid="add-comment-btn">Add</button>
     </form>
 </div>

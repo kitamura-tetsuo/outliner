@@ -217,7 +217,12 @@ export class Item {
     }
 
     get comments(): Comments {
-        return new Comments(this.value.get("comments"));
+        let arr = this.value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+        if (!arr) {
+            arr = new Y.Array<Y.Map<any>>();
+            this.value.set("comments", arr);
+        }
+        return new Comments(arr);
     }
 
     addComment(author: string, text: string) {

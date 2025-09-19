@@ -12,20 +12,20 @@ if (typeof window !== "undefined" && (
 )) {
     // Dynamic import to ensure test helper is available and seed default data if allowed
     import("../tests/utils/testDataHelper").then((mod) => {
-        console.log("Test data helper loaded");
+        // logger.debug("Test data helper loaded"); // noise削減のため抑制
         try {
             const skip = window.localStorage.getItem("SKIP_TEST_CONTAINER_SEED") === "true";
             if (!skip && typeof mod.setupTestEnvironment === "function") {
                 mod.setupTestEnvironment();
-                console.log("Test data helper: setupTestEnvironment called on home page");
+                // logger.debug("Test data helper: setupTestEnvironment called on home page"); // noise削減のため抑制
             } else if (skip) {
-                console.log("SKIP_TEST_CONTAINER_SEED=true; skipping default test data setup on home page");
+                // logger.debug("SKIP_TEST_CONTAINER_SEED=true; skipping default test data setup on home page"); // noise削減のため抑制
             }
         } catch (e) {
-            console.warn("Test data helper: auto-setup failed", e);
+            logger.warn("Test data helper: auto-setup failed", e);
         }
     }).catch(err => {
-        console.error("Failed to load test data helper:", err);
+        logger.error("Failed to load test data helper:", err);
     });
 }
 

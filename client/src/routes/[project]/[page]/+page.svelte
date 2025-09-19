@@ -18,12 +18,14 @@ import {
 } from "../../../lib/linkPreviewHandler";
 import { getLogger } from "../../../lib/logger";
 import { getYjsClientByProjectTitle, createNewYjsProject } from "../../../services";
+const logger = getLogger("+page");
+
 import { yjsStore } from "../../../stores/yjsStore.svelte";
 import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
 import { store } from "../../../stores/store.svelte";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 
-const logger = getLogger("ProjectPage");
+
 
 // URLパラメータを取得（SvelteKit page store に追従）
 // NOTE: `$page` の値を参照する必要がある（store オブジェクトではなく値）。
@@ -119,7 +121,7 @@ async function loadProjectAndPage() {
             const provisional = Project.createInstance(projectName);
             store.project = provisional as any;
             if (typeof window !== "undefined") {
-                console.log("DEBUG: provisional store.project set?", !!(window as any).generalStore?.project);
+                logger.debug("DEBUG: provisional store.project set?", !!(window as any).generalStore?.project);
             }
             if (pageName) {
                 try {
@@ -503,7 +505,7 @@ function toggleSearchPanel() {
     if (typeof window !== "undefined") {
         (window as any).__SEARCH_PANEL_VISIBLE__ = isSearchPanelVisible;
     }
-    console.log("toggleSearchPanel called", { before, after: isSearchPanelVisible });
+    logger.debug("toggleSearchPanel called", { before, after: isSearchPanelVisible });
 }
 
 onMount(async () => {
@@ -563,7 +565,7 @@ onMount(async () => {
                 tries++;
             }
             (window as any).__SEARCH_PANEL_VISIBLE__ = true;
-            console.log("E2E: __OPEN_SEARCH__ ensured visible (no double toggle)", { found: !!document.querySelector('[data-testid="search-panel"]'), tries });
+            logger.debug("E2E: __OPEN_SEARCH__ ensured visible (no double toggle)", { found: !!document.querySelector('[data-testid="search-panel"]'), tries });
         };
     }
 
@@ -752,9 +754,7 @@ onDestroy(() => {
             </div>
         </div>
     {:else}
-        <div class="rounded-md bg-gray-50 p-4">
-            <p class="text-gray-700">ページデータを読み込めませんでした。</p>
-        </div>
+        <!-- no-op: avoid misleading SSR/hydration fallback message -->
     {/if}
 </main>
 

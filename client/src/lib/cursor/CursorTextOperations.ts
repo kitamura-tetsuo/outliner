@@ -1,7 +1,7 @@
 // @ts-nocheck
 import type { Item } from "../../schema/yjs-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-import { generalStore } from "../../stores/store.svelte";
+import { store as generalStore } from "../../stores/store.svelte";
 
 export class CursorTextOperations {
     private cursor: any; // Cursorクラスのインスタンスを保持
@@ -306,5 +306,76 @@ export class CursorTextOperations {
 
         // カーソル点滅を開始
         store.startCursorBlink();
+    }
+}
+
+// Standalone utility exports used by CursorBase
+export function deleteEmptyItem(current?: Item) {
+    try {
+        if (!current) return;
+        const text = (current as any).text ?? "";
+        if (text.length > 0) return;
+        const parent = (current as any).parent;
+        const idx = parent ? parent.indexOf(current as any) : -1;
+        const next = parent && idx >= 0 ? parent.at(idx + 1) : undefined;
+        const prev = parent && idx > 0 ? parent.at(idx - 1) : undefined;
+
+        // Clear cursor for the current item and delete it
+        store.clearCursorForItem((current as any).id);
+        (current as any).delete();
+
+        // Move active item focus
+        const target = (next as any) ?? (prev as any) ?? undefined;
+        if (target) {
+            store.setActiveItem((target as any).id);
+            store.startCursorBlink();
+        } else {
+            store.setActiveItem(null);
+        }
+    } catch (e) {
+        console.warn("deleteEmptyItem fallback failed:", e);
+    }
+}
+
+export function mergeWithNextItem(current?: Item) {
+    try {
+        if (!current) return;
+        const parent = (current as any).parent;
+        if (!parent) return;
+        const idx = parent.indexOf(current as any);
+        const next = parent.at(idx + 1);
+        if (!next) return;
+
+        const a = (current as any).text ?? "";
+        const b = (next as any).text ?? "";
+        (current as any).updateText(String(a) + String(b));
+        (next as any).delete();
+
+        store.setActiveItem((current as any).id);
+        store.startCursorBlink();
+    } catch (e) {
+        console.warn("mergeWithNextItem fallback failed:", e);
+    }
+}
+
+export function mergeWithPreviousItem(current?: Item) {
+    try {
+        if (!current) return;
+        const parent = (current as any).parent;
+        if (!parent) return;
+        const idx = parent.indexOf(current as any);
+        const prev = idx > 0 ? parent.at(idx - 1) : undefined;
+        if (!prev) return;
+
+        const a = (prev as any).text ?? "";
+        const b = (current as any).text ?? "";
+        (prev as any).updateText(String(a) + String(b));
+        const prevId = (prev as any).id;
+        (current as any).delete();
+
+        store.setActiveItem(prevId);
+        store.startCursorBlink();
+    } catch (e) {
+        console.warn("mergeWithPreviousItem fallback failed:", e);
     }
 }

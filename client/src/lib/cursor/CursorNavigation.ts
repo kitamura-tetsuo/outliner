@@ -1,7 +1,7 @@
 // @ts-nocheck
 import type { Item } from "../../schema/yjs-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-import { generalStore } from "../../stores/store.svelte";
+import { store as generalStore } from "../../stores/store.svelte";
 
 export class CursorNavigation {
     private cursor: any; // Cursorクラスのインスタンスを保持

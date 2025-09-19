@@ -31,10 +31,36 @@ test.describe("CMT-0001: comment threads", () => {
         await expect(page.locator('[data-testid="comment-thread"]')).toBeVisible();
 
         await page.fill('[data-testid="new-comment-input"]', "hello");
-        await page.click('[data-testid="add-comment-btn"]');
+        const addBtns = page.locator('[data-testid="add-comment-btn"]');
+        const addCount = await addBtns.count();
+        // eslint-disable-next-line no-console
+        console.log("DEBUG add-btn count:", addCount);
+        // Try narrowing to the currently visible thread
+        const thread = page.locator('[data-testid="comment-thread"]');
+        const addInThread = thread.locator('[data-testid="add-comment-btn"]');
+        // eslint-disable-next-line no-console
+        console.log("DEBUG add-btn in thread visible:", await addInThread.isVisible());
+        await addInThread.click();
 
         // Wait a bit for the UI to update
         await page.waitForTimeout(500);
+
+        // DEBUG: log how many `.comment-count` elements are under the target item
+        const debugInfo = await page.evaluate((id) => {
+            const items = Array.from(document.querySelectorAll<HTMLElement>(".outliner-item[data-item-id]"));
+            return {
+                id,
+                presentIds: items.map(el => el.dataset.itemId || ""),
+                countUnderId: document.querySelectorAll(`[data-item-id="${id}"] .comment-count`).length,
+            };
+        }, firstId);
+        // eslint-disable-next-line no-console
+        console.log("DEBUG items:", debugInfo);
+
+        // DEBUG: dump E2E_LOGS from app
+        const e2eLogs = await page.evaluate(() => (window as any).E2E_LOGS || []);
+        // eslint-disable-next-line no-console
+        console.log("E2E_LOGS:", e2eLogs);
 
         // Wait for comment count to appear and have the correct value
         await expect(

@@ -8,6 +8,8 @@ class GeneralStore {
     currentPage = $state<Item>();
     // 現在開いているコメントスレッドのアイテムID（同時に1つのみ表示）
     openCommentItemId = $state<string | null>(null);
+    // Fallback: 接続切替時などIDが変わるケースに備えてインデックスも保持
+    openCommentItemIndex = $state<number | null>(null);
     private _project = $state<Project>();
 
     public get project(): Project | undefined {
