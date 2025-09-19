@@ -33,6 +33,9 @@ test.describe("CMT-0001: comment threads", () => {
         await page.fill('[data-testid="new-comment-input"]', "hello");
         await page.click('[data-testid="add-comment-btn"]');
 
+        // Wait a bit for the UI to update
+        await page.waitForTimeout(500);
+
         // Wait for comment count to appear and have the correct value
         await expect(
             page.locator(`[data-item-id="${firstId}"] .comment-count`),
