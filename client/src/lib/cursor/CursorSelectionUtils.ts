@@ -1,6 +1,12 @@
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 
+export interface SingleItemSelection {
+    selection: SelectionRange;
+    startOffset: number;
+    endOffset: number;
+}
+
 function getSelections(): SelectionRange[] {
     return Object.values(store.selections as Record<string, SelectionRange>);
 }
@@ -27,14 +33,56 @@ export function getSelectionForUser(userId: string): SelectionRange | undefined 
 }
 
 /**
- * Determine if a user currently has an active selection.
+ * Determine if the provided selection has any length.
  */
-export function hasSelection(userId: string): boolean {
-    const selection = getSelectionForUser(userId);
+export function selectionHasRange(selection: SelectionRange | undefined): boolean {
     if (!selection) return false;
 
     return selection.startItemId !== selection.endItemId
         || selection.startOffset !== selection.endOffset;
+}
+
+/**
+ * Determine if the selection spans multiple items.
+ */
+export function selectionSpansMultipleItems(selection: SelectionRange | undefined): boolean {
+    if (!selection) return false;
+    return selection.startItemId !== selection.endItemId;
+}
+
+/**
+ * Normalize offsets so startOffset <= endOffset.
+ */
+export function normalizeSelectionOffsets(selection: SelectionRange): {
+    startOffset: number;
+    endOffset: number;
+} {
+    const startOffset = Math.min(selection.startOffset, selection.endOffset);
+    const endOffset = Math.max(selection.startOffset, selection.endOffset);
+    return { startOffset, endOffset };
+}
+
+/**
+ * Return the active single-item selection for the provided user.
+ */
+export function getSingleItemSelectionForUser(
+    userId: string,
+    itemId?: string,
+): SingleItemSelection | undefined {
+    const selection = getSelectionForUser(userId);
+    if (!selection) return undefined;
+    if (selection.startItemId !== selection.endItemId) return undefined;
+    if (itemId && selection.startItemId !== itemId) return undefined;
+
+    const { startOffset, endOffset } = normalizeSelectionOffsets(selection);
+    return { selection, startOffset, endOffset };
+}
+
+/**
+ * Determine if a user currently has an active selection.
+ */
+export function hasSelection(userId: string): boolean {
+    return selectionHasRange(getSelectionForUser(userId));
 }
 
 /**

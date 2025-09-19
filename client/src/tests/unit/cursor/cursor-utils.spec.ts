@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPageItem } from "../../../lib/Cursor";
+import { isPageItem } from "../../../lib/cursor/CursorNavigationUtils";
 import type { Item } from "../../../schema/yjs-schema";
 
 describe("Cursor Utilities", () => {

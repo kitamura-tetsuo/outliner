@@ -1,9 +1,6 @@
 // @ts-nocheck
-import type { Item } from "../schema/yjs-schema";
-import { Items } from "../schema/yjs-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
-import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 import {
     findNextItem,
     findPreviousItem,
@@ -11,15 +8,14 @@ import {
     getCurrentLineIndex,
     getLineEndOffset,
     getLineStartOffset,
+    getSelectionForUser,
     getVisualLineInfo,
     getVisualLineOffsetRange,
+    hasSelection as storeHasSelection,
     searchItem,
+    selectionSpansMultipleItems,
 } from "./cursor";
-
-export function isPageItem(item: Item): boolean {
-    const parent = item.parent;
-    return !!parent && parent.parentKey === "root";
-}
+import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
 
 interface CursorOptions {
     itemId: string;
@@ -28,14 +24,32 @@ interface CursorOptions {
     userId: string;
 }
 
-export class Cursor {
+export class Cursor implements CursorEditingContext {
     cursorId: string;
     itemId: string;
     offset: number;
     isActive: boolean;
     userId: string;
     // 上下キー操作時に使用する初期列位置
+    private readonly editor: CursorEditor;
     private initialColumn: number | null = null;
+
+    private getSelection() {
+        return getSelectionForUser(this.userId);
+    }
+
+    private hasSelection() {
+        return storeHasSelection(this.userId);
+    }
+
+    private getSelectionForCurrentItem() {
+        const selection = this.getSelection();
+        if (!selection) return undefined;
+        if (selection.startItemId === this.itemId || selection.endItemId === this.itemId) {
+            return selection;
+        }
+        return undefined;
+    }
 
     constructor(cursorId: string, opts: CursorOptions) {
         this.cursorId = cursorId;
@@ -43,6 +57,7 @@ export class Cursor {
         this.offset = opts.offset;
         this.isActive = opts.isActive;
         this.userId = opts.userId;
+        this.editor = new CursorEditor(this);
     }
 
     // SharedTree 上の Item を再帰検索
@@ -386,416 +401,36 @@ export class Cursor {
      * @param ch 挿入するテキスト
      */
     insertText(ch: string) {
-        // 上下キー以外の操作なので初期列位置をリセット
         this.resetInitialColumn();
-
-        const node = this.findTarget();
-        if (!node) {
-            console.error(`insertText: Target item not found for itemId: ${this.itemId}`);
-            return;
-        }
-
-        const currentText = node.text?.toString?.() ?? "";
-        console.log(`insertText: Inserting "${ch}" at offset ${this.offset} in item ${this.itemId}`);
-        console.log(`insertText: Current text: "${currentText}"`);
-
-        // 選択範囲がある場合は、選択範囲を削除してからテキストを挿入
-        const selection = Object.values(store.selections).find(s =>
-            s.userId === this.userId
-            && s.startItemId === this.itemId
-            && s.endItemId === this.itemId
-        );
-
-        if (selection && selection.startOffset !== selection.endOffset) {
-            // 選択範囲のテキストを削除
-            const startOffset = Math.min(selection.startOffset, selection.endOffset);
-            const endOffset = Math.max(selection.startOffset, selection.endOffset);
-            const txt = currentText.slice(0, startOffset) + ch + currentText.slice(endOffset);
-            node.updateText(txt);
-
-            // カーソル位置を更新
-            this.offset = startOffset + ch.length;
-
-            // 選択範囲をクリア
-            this.clearSelection();
-
-            console.log(`insertText: Updated text with selection: "${node.text?.toString?.() ?? ""}"`);
-        } else {
-            // 通常の挿入
-            const txt = currentText.slice(0, this.offset) + ch + currentText.slice(this.offset);
-            node.updateText(txt);
-            this.offset += ch.length;
-
-            console.log(`insertText: Updated text: "${node.text?.toString?.() ?? ""}"`);
-        }
-
-        this.applyToStore();
-
-        // onEdit コールバックを呼び出す
-        store.triggerOnEdit();
-
-        // 注意: グローバルテキストエリアの値を同期してはいけない
-        // マルチカーソル環境では、複数のアイテムが同時に編集される可能性があり、
-        // 単一のテキストエリアに特定のアイテムの値を設定することは適切ではない
+        this.editor.insertText(ch);
     }
 
     /**
      * カーソル位置の前の文字を削除する
      */
     deleteBackward() {
-        // 上下キー以外の操作なので初期列位置をリセット
         this.resetInitialColumn();
-
-        const node = this.findTarget();
-        if (!node) return;
-
-        // 選択範囲がある場合は、選択範囲を削除
-        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
-
-        if (selection && selection.startOffset !== selection.endOffset) {
-            // 複数アイテムにまたがる選択範囲の場合
-            if (selection.startItemId !== selection.endItemId) {
-                this.deleteMultiItemSelection(selection);
-                return;
-            }
-
-            // 単一アイテム内の選択範囲の場合
-            if (selection.startItemId === this.itemId && selection.endItemId === this.itemId) {
-                // 選択範囲のテキストを削除
-                const startOffset = Math.min(selection.startOffset, selection.endOffset);
-                const endOffset = Math.max(selection.startOffset, selection.endOffset);
-                let txt = node.text;
-                txt = txt.slice(0, startOffset) + txt.slice(endOffset);
-                node.updateText(txt);
-
-                // カーソル位置を更新
-                this.offset = startOffset;
-
-                // 選択範囲をクリア
-                this.clearSelection();
-            }
-        } else {
-            // 通常の削除
-            if (this.offset > 0) {
-                let txt = node.text;
-                const pos = this.offset - 1;
-                txt = txt.slice(0, pos) + txt.slice(pos + 1);
-                node.updateText(txt);
-                this.offset = Math.max(0, this.offset - 1);
-            } else {
-                // 行頭で前アイテムとの結合
-                this.mergeWithPreviousItem();
-            }
-        }
-
-        this.applyToStore();
-
-        // onEdit コールバックを呼び出す
-        store.triggerOnEdit();
-
-        // 注意: グローバルテキストエリアの値を同期してはいけない
-        // マルチカーソル環境では、複数のアイテムが同時に編集される可能性があり、
-        // 単一のテキストエリアに特定のアイテムの値を設定することは適切ではない
+        this.editor.deleteBackward();
     }
 
     /**
      * カーソル位置の後の文字を削除する
      */
     deleteForward() {
-        // 上下キー以外の操作なので初期列位置をリセット
         this.resetInitialColumn();
-
-        const node = this.findTarget();
-        if (!node) return;
-
-        // 選択範囲がある場合は、選択範囲を削除
-        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
-
-        if (selection && selection.startOffset !== selection.endOffset) {
-            // 複数アイテムにまたがる選択範囲の場合
-            if (selection.startItemId !== selection.endItemId) {
-                this.deleteMultiItemSelection(selection);
-                return;
-            }
-
-            // 単一アイテム内の選択範囲の場合
-            if (selection.startItemId === this.itemId && selection.endItemId === this.itemId) {
-                // 選択範囲のテキストを削除
-                const startOffset = Math.min(selection.startOffset, selection.endOffset);
-                const endOffset = Math.max(selection.startOffset, selection.endOffset);
-                let txt = node.text;
-                txt = txt.slice(0, startOffset) + txt.slice(endOffset);
-                node.updateText(txt);
-
-                // カーソル位置を更新
-                this.offset = startOffset;
-
-                // 選択範囲をクリア
-                this.clearSelection();
-            }
-        } else {
-            // 通常の削除
-            let txt = node.text;
-            if (this.offset < txt.length) {
-                txt = txt.slice(0, this.offset) + txt.slice(this.offset + 1);
-                node.updateText(txt);
-            } else {
-                // 行末の場合
-                // アイテムが空の場合はアイテム自体を削除
-                if (txt.length === 0) {
-                    this.deleteEmptyItem();
-                    return;
-                }
-                // 空でない場合は次アイテムとの結合
-                this.mergeWithNextItem();
-            }
-        }
-
-        this.applyToStore();
-
-        // onEdit コールバックを呼び出す
-        store.triggerOnEdit();
-
-        // グローバルテキストエリアの値も同期
-        const textarea = store.getTextareaRef();
-        if (textarea) {
-            textarea.value = node.text;
-            textarea.setSelectionRange(this.offset, this.offset);
-            console.log(`deleteForward: Synced textarea value: "${textarea.value}"`);
-        }
+        this.editor.deleteForward();
     }
 
-    /**
-     * 前のアイテムと結合する
-     */
-    private mergeWithPreviousItem() {
-        const currentItem = this.findTarget();
-        if (!currentItem) return;
-
-        const prevItem = findPreviousItem(this.itemId);
-        if (!prevItem) return;
-
-        // 前のアイテムのテキストを取得
-        const prevText = prevItem.text || "";
-        const currentText = currentItem.text || "";
-
-        // 前のアイテムのテキストを更新
-        prevItem.updateText(prevText + currentText);
-
-        // 現在のアイテムを削除
-        currentItem.delete();
-
-        // カーソル位置を更新
-        const oldItemId = this.itemId;
-        this.itemId = prevItem.id;
-        this.offset = prevText.length;
-
-        // 古いアイテムのカーソルをクリア（アイテム削除後）
-        store.clearCursorForItem(oldItemId);
-
-        // アクティブアイテムを設定
-        store.setActiveItem(this.itemId);
-
-        // カーソルの点滅を開始
-        store.startCursorBlink();
-    }
-
-    /**
-     * 次のアイテムと結合する
-     */
-    private mergeWithNextItem() {
-        const currentItem = this.findTarget();
-        if (!currentItem) return;
-
-        const nextItem = findNextItem(this.itemId);
-        if (!nextItem) return;
-
-        // 現在のアイテムと次のアイテムのテキストを取得
-        const currentText = currentItem.text || "";
-        const nextText = nextItem.text || "";
-
-        // 現在のアイテムのテキストを更新
-        currentItem.updateText(currentText + nextText);
-
-        // 次のアイテムを削除
-        nextItem.delete();
-
-        // カーソル位置はそのまま（現在のアイテムの末尾）
-    }
-
-    /**
-     * 空のアイテムを削除する
-     */
-    private deleteEmptyItem() {
-        const currentItem = this.findTarget();
-        if (!currentItem) return;
-
-        // アイテムが空でない場合は何もしない
-        if (currentItem.text && currentItem.text.length > 0) return;
-
-        // 次のアイテムを探す
-        const nextItem = findNextItem(this.itemId);
-
-        // カーソルを移動する先を決定
-        let targetItemId: string;
-        let targetOffset: number;
-
-        if (nextItem) {
-            // 次のアイテムがある場合は次のアイテムの先頭に移動
-            targetItemId = nextItem.id;
-            targetOffset = 0;
-        } else {
-            // 次のアイテムがない場合は前のアイテムの末尾に移動
-            const prevItem = findPreviousItem(this.itemId);
-            if (prevItem) {
-                targetItemId = prevItem.id;
-                targetOffset = prevItem.text ? prevItem.text.length : 0;
-            } else {
-                // 前のアイテムもない場合（最後の1つのアイテム）は削除しない
-                return;
-            }
-        }
-
-        // 現在のアイテムのカーソルをクリア
-        store.clearCursorForItem(this.itemId);
-
-        // アイテムを削除
-        currentItem.delete();
-
-        // 新しい位置にカーソルを設定
-        this.itemId = targetItemId;
-        this.offset = targetOffset;
-
-        // ストアを更新
-        store.setActiveItem(this.itemId);
-        store.setCursor({
-            itemId: this.itemId,
-            offset: this.offset,
-            isActive: true,
-            userId: this.userId,
-        });
-
-        // カーソル点滅を開始
-        store.startCursorBlink();
+    deleteMultiItemSelection(selection: any) {
+        this.editor.deleteMultiItemSelection(selection);
     }
 
     insertLineBreak() {
-        const target = this.findTarget();
-        if (!target) return;
-
-        const text: string = (target.text as any)?.toString?.() ?? "";
-
-        // カーソル位置でテキストを分割
-        const beforeText = text.slice(0, this.offset);
-        const afterText = text.slice(this.offset);
-
-        // タイトルかどうかを判断
-        const isPageTitle = isPageItem(target);
-
-        if (isPageTitle) {
-            // タイトルの場合は最初の子として追加
-            if (target.items && target.items instanceof Items) {
-                // 現在のアイテムのテキストを更新（カーソル位置より前のテキスト）
-                target.updateText(beforeText);
-
-                // 新しいアイテムを作成（カーソル位置より後のテキスト）
-                const newItem = target.items.addNode(this.userId, 0);
-                newItem.updateText(afterText);
-
-                // カーソルを新しいアイテムの先頭に移動
-                const oldItemId = this.itemId;
-
-                // 全てのカーソルをクリアして単一カーソルモードを維持
-                store.clearCursorAndSelection(this.userId);
-
-                // 新しいアイテムとオフセットを設定
-                this.itemId = newItem.id;
-                this.offset = 0;
-
-                // アクティブアイテムを更新
-                store.setActiveItem(this.itemId);
-
-                // カーソル点滅を開始
-                store.startCursorBlink();
-
-                // カスタムイベントを発行
-                if (typeof document !== "undefined") {
-                    const event = new CustomEvent("navigate-to-item", {
-                        bubbles: true,
-                        detail: { direction: "enter", fromItemId: target.id, toItemId: this.itemId },
-                    });
-                    document.dispatchEvent(event);
-                }
-
-                this.applyToStore();
-                return;
-            }
-        } else {
-            // 通常のアイテムの場合は兄弟として追加
-            const parent = target.parent;
-            if (parent) {
-                // 現在のアイテムのインデックスを取得
-                const currentIndex = parent.indexOf(target);
-
-                // 現在のアイテムのテキストを更新（カーソル位置より前のテキスト）
-                target.updateText(beforeText);
-
-                // 新しいアイテムを作成（カーソル位置より後のテキスト）
-                const newItem = parent.addNode(this.userId, currentIndex + 1);
-                newItem.updateText(afterText);
-
-                // カーソルを新しいアイテムの先頭に移動
-                const oldItemId = this.itemId;
-
-                // 全てのカーソルをクリアして単一カーソルモードを維持
-                store.clearCursorAndSelection(this.userId);
-
-                // 新しいアイテムとオフセットを設定
-                this.itemId = newItem.id;
-                this.offset = 0;
-
-                // アクティブアイテムを更新
-                store.setActiveItem(this.itemId);
-
-                // カーソル点滅を開始
-                store.startCursorBlink();
-
-                // カスタムイベントを発行
-                if (typeof document !== "undefined") {
-                    const event = new CustomEvent("navigate-to-item", {
-                        bubbles: true,
-                        detail: { direction: "enter", fromItemId: target.id, toItemId: this.itemId },
-                    });
-                    document.dispatchEvent(event);
-                }
-
-                this.applyToStore();
-                return;
-            }
-        }
-
-        // 親アイテムが見つからない場合は通常の改行を挿入
-        this.insertText("\n");
+        this.editor.insertLineBreak();
     }
 
     onInput(event: InputEvent) {
-        const data = event.data;
-        console.log(`Cursor.onInput called for item ${this.itemId}, data: "${data}", inputType: ${event.inputType}`);
-        console.log(
-            `Cursor.onInput: Current cursor state - itemId: ${this.itemId}, offset: ${this.offset}, isActive: ${this.isActive}`,
-        );
-
-        // 注意: マルチカーソル環境では、グローバルテキストエリアの値を使って
-        // SharedTreeを更新してはいけない。テキストエリアは単一のアイテムの状態を
-        // 表すものではなく、複数のカーソルが同時に編集している可能性がある。
-
-        // 代わりに、InputEventのdataを使って適切にテキストを挿入する
-        if (data && data.length > 0) {
-            console.log(`Inserting text from input event: "${data}"`);
-            this.insertText(data);
-        } else {
-            console.log(`No data in input event, skipping text insertion`);
-        }
+        this.editor.onInput(event);
     }
 
     /**
@@ -810,16 +445,14 @@ export class Cursor {
         }
 
         // 選択範囲の有無を確認
-        const hasSelection = Object.values(store.selections).some(s =>
-            s.userId === this.userId
-            && (s.startOffset !== s.endOffset || s.startItemId !== s.endItemId)
-        );
+        const hasSelection = this.hasSelection();
+        const activeSelection = hasSelection ? this.getSelection() : undefined;
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Has selection: ${hasSelection}`);
-            if (hasSelection) {
-                console.log(`Selections:`, Object.values(store.selections).filter(s => s.userId === this.userId));
+            if (activeSelection) {
+                console.log(`Selections:`, [activeSelection]);
             }
         }
 
@@ -953,10 +586,10 @@ export class Cursor {
                 case "Backspace":
                     // 選択範囲がある場合は、選択範囲を削除
                     if (hasSelection) {
-                        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
+                        const selection = this.getSelection();
                         if (selection) {
                             // 複数アイテムにまたがる選択範囲の場合
-                            if (selection.startItemId !== selection.endItemId) {
+                            if (selectionSpansMultipleItems(selection)) {
                                 this.deleteMultiItemSelection(selection);
                             } else {
                                 // 単一アイテム内の選択範囲の場合
@@ -971,10 +604,10 @@ export class Cursor {
                 case "Delete":
                     // 選択範囲がある場合は、選択範囲を削除
                     if (hasSelection) {
-                        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
+                        const selection = this.getSelection();
                         if (selection) {
                             // 複数アイテムにまたがる選択範囲の場合
-                            if (selection.startItemId !== selection.endItemId) {
+                            if (selectionSpansMultipleItems(selection)) {
                                 this.deleteMultiItemSelection(selection);
                             } else {
                                 // 単一アイテム内の選択範囲の場合
@@ -989,10 +622,10 @@ export class Cursor {
                 case "Enter":
                     // 選択範囲がある場合は、選択範囲を削除してから改行を挿入
                     if (hasSelection) {
-                        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
+                        const selection = this.getSelection();
                         if (selection) {
                             // 複数アイテムにまたがる選択範囲の場合
-                            if (selection.startItemId !== selection.endItemId) {
+                            if (selectionSpansMultipleItems(selection)) {
                                 this.deleteMultiItemSelection(selection);
                             } else {
                                 // 単一アイテム内の選択範囲の場合
@@ -1021,10 +654,7 @@ export class Cursor {
         if (!target) return;
 
         // 現在の選択範囲を取得
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.itemId || s.endItemId === this.itemId)
-            && s.userId === this.userId
-        );
+        const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
@@ -1114,10 +744,7 @@ export class Cursor {
         if (!target) return;
 
         // 現在の選択範囲を取得
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.itemId || s.endItemId === this.itemId)
-            && s.userId === this.userId
-        );
+        const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
@@ -1206,10 +833,7 @@ export class Cursor {
         if (!target) return;
 
         // 現在の選択範囲を取得
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.itemId || s.endItemId === this.itemId)
-            && s.userId === this.userId
-        );
+        const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
@@ -1306,10 +930,7 @@ export class Cursor {
         }
 
         // 現在の選択範囲を取得
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.itemId || s.endItemId === this.itemId)
-            && s.userId === this.userId
-        );
+        const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
@@ -1544,10 +1165,7 @@ export class Cursor {
         }
 
         // 現在の選択範囲を取得
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.itemId || s.endItemId === this.itemId)
-            && s.userId === this.userId
-        );
+        const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";
@@ -1646,10 +1264,7 @@ export class Cursor {
         }
 
         // 現在の選択範囲を取得
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.itemId || s.endItemId === this.itemId)
-            && s.userId === this.userId
-        );
+        const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";
@@ -1959,7 +1574,7 @@ export class Cursor {
         if (!target) return;
 
         const text = target.text || "";
-        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
+        const selection = this.getSelection();
 
         const startOffset = selection ? Math.min(selection.startOffset, selection.endOffset) : this.offset;
 
@@ -1981,7 +1596,7 @@ export class Cursor {
 
     // Shift+Alt+Left で選択範囲を縮小
     shrinkSelection() {
-        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
+        const selection = this.getSelection();
         if (!selection) return;
 
         const newOffset = Math.min(selection.startOffset, selection.endOffset);
@@ -2022,307 +1637,25 @@ export class Cursor {
      * 選択されたテキストをコピーする
      */
     copySelectedText() {
-        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
-        if (!selection) return;
-
-        // 同一アイテム内の選択範囲の場合
-        if (selection.startItemId === selection.endItemId) {
-            const target = this.findTarget();
-            if (!target) return;
-
-            const text = target.text || "";
-            const startOffset = Math.min(selection.startOffset, selection.endOffset);
-            const endOffset = Math.max(selection.startOffset, selection.endOffset);
-
-            // 選択範囲のテキストを取得
-            const selectedText = text.substring(startOffset, endOffset);
-
-            // クリップボードにコピー（ブラウザのデフォルト動作に任せる）
-            // 実際のコピーはブラウザが行うので、ここでは何もしない
-            return;
-        }
-
-        // 複数アイテムにまたがる選択範囲の場合
-        // 実際のコピーはEditorOverlay.svelteのhandleCopyで処理されるため、
-        // ここでは何もしない
+        this.editor.copySelectedText();
     }
 
     /**
      * 選択されたテキストをカットする
      */
     cutSelectedText() {
-        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
-        if (!selection) return;
-
-        // 同一アイテム内の選択範囲の場合
-        if (selection.startItemId === selection.endItemId) {
-            const target = this.findTarget();
-            if (!target) return;
-
-            const text = target.text || "";
-            const startOffset = Math.min(selection.startOffset, selection.endOffset);
-            const endOffset = Math.max(selection.startOffset, selection.endOffset);
-
-            // 選択範囲のテキストを取得
-            const selectedText = text.substring(startOffset, endOffset);
-
-            // テキストを削除
-            const newText = text.substring(0, startOffset) + text.substring(endOffset);
-            target.updateText(newText);
-
-            // カーソル位置を更新
-            this.offset = startOffset;
-            this.applyToStore();
-
-            // 選択範囲をクリア
-            this.clearSelection();
-
-            // カーソル点滅を開始
-            store.startCursorBlink();
-
-            // クリップボードにコピー（ブラウザのデフォルト動作に任せる）
-            // 実際のコピーはブラウザが行うので、ここでは何もしない
-            return;
-        }
-
-        // 複数アイテムにまたがる選択範囲の場合
-        this.deleteMultiItemSelection(selection);
+        this.editor.cutSelectedText();
     }
 
     /**
      * 複数アイテムにまたがる選択範囲を削除する
      */
-    deleteMultiItemSelection(selection: any) {
-        if (!selection) return;
-
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`deleteMultiItemSelection called for selection:`, selection);
-        }
-
-        // 選択範囲の開始と終了アイテムが同じ場合は単一アイテム削除を使用
-        if (selection.startItemId === selection.endItemId) {
-            this.deleteSelection();
-            return;
-        }
-
-        // 選択範囲の開始と終了アイテムを取得
-        const startItem = searchItem(generalStore.currentPage!, selection.startItemId);
-        const endItem = searchItem(generalStore.currentPage!, selection.endItemId);
-
-        if (!startItem || !endItem) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`Start or end item not found: startItem=${startItem}, endItem=${endItem}`);
-            }
-            return;
-        }
-
-        // 選択範囲の方向を考慮して、実際の開始と終了を決定
-        const isReversed = selection.isReversed || false;
-
-        // 選択範囲の方向に基づいて、実際の開始と終了アイテムを決定
-        let firstItem, lastItem, firstOffset, lastOffset;
-
-        // DOM上の順序を取得
-        const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-        const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
-
-        const startIdx = allItemIds.indexOf(selection.startItemId);
-        const endIdx = allItemIds.indexOf(selection.endItemId);
-
-        if (startIdx === -1 || endIdx === -1) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`Start or end item not found in DOM: startIdx=${startIdx}, endIdx=${endIdx}`);
-            }
-            return;
-        }
-
-        // DOM上の順序に基づいて、最初と最後のアイテムを決定
-        if (startIdx <= endIdx) {
-            firstItem = startItem;
-            lastItem = endItem;
-            firstOffset = selection.startOffset;
-            lastOffset = selection.endOffset;
-        } else {
-            firstItem = endItem;
-            lastItem = startItem;
-            firstOffset = selection.endOffset;
-            lastOffset = selection.startOffset;
-        }
-
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`Selection direction: ${isReversed ? "reversed" : "forward"}`);
-            console.log(`First item: ${firstItem.id}, offset: ${firstOffset}`);
-            console.log(`Last item: ${lastItem.id}, offset: ${lastOffset}`);
-        }
-
-        // アイテムのリストを取得
-        const root = generalStore.currentPage;
-        if (!root) return;
-
-        // アイテムの親を取得
-        const startParent = firstItem.parent;
-        const endParent = lastItem.parent;
-
-        // 親が異なる場合は処理を中止（現在はサポート外）
-        if (startParent !== endParent || !startParent) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`Parents are different or not Items: startParent=${startParent}, endParent=${endParent}`);
-            }
-            return;
-        }
-
-        const items = startParent as Items;
-        const firstIndex = items.indexOf(firstItem);
-        const lastIndex = items.indexOf(lastItem);
-
-        if (firstIndex === -1 || lastIndex === -1) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`First or last index not found: firstIndex=${firstIndex}, lastIndex=${lastIndex}`);
-            }
-            return;
-        }
-
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`First index: ${firstIndex}, Last index: ${lastIndex}`);
-        }
-
-        try {
-            // 開始アイテムのテキストを更新（選択範囲の前半部分を保持）
-            const firstText = firstItem.text || "";
-            const newFirstText = firstText.substring(0, firstOffset);
-
-            // 終了アイテムのテキストを更新（選択範囲の後半部分を保持）
-            const lastText = lastItem.text || "";
-            const newLastText = lastText.substring(lastOffset);
-
-            // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`First text: "${firstText}", New first text: "${newFirstText}"`);
-                console.log(`Last text: "${lastText}", New last text: "${newLastText}"`);
-                console.log(`Combined text will be: "${newFirstText + newLastText}"`);
-            }
-
-            // 削除するアイテムのIDを保存
-            const itemsToRemove = [];
-            for (let i = firstIndex + 1; i <= lastIndex; i++) {
-                const item = items.at(i);
-                if (item) {
-                    itemsToRemove.push(item.id);
-                }
-            }
-
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`Items to remove: ${itemsToRemove.join(", ")}`);
-            }
-
-            // 削除前に、削除対象アイテムのカーソルをクリア
-            for (const itemId of itemsToRemove) {
-                store.clearCursorForItem(itemId);
-            }
-
-            // 開始アイテムに終了アイテムの残りのテキストを追加
-            firstItem.updateText(newFirstText + newLastText);
-
-            // 実際の削除処理（終了アイテムから開始アイテムの次まで）
-            // 削除は終了アイテムから開始アイテムの方向に行う
-            for (let i = lastIndex; i > firstIndex; i--) {
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`Removing item at index ${i}`);
-                }
-                items.removeAt(i);
-            }
-
-            // カーソル位置を更新
-            this.itemId = firstItem.id;
-            this.offset = firstOffset;
-            this.applyToStore();
-
-            // 選択範囲をクリア
-            this.clearSelection();
-
-            // アクティブアイテムを設定
-            store.setActiveItem(this.itemId);
-
-            // カーソル点滅を開始
-            store.startCursorBlink();
-
-            // カーソルが表示されていることを確認
-            if (typeof window !== "undefined") {
-                setTimeout(() => {
-                    const cursorVisible = document.querySelector(".editor-overlay .cursor") !== null;
-                    if (!cursorVisible) {
-                        // カーソルが表示されていない場合は、再度カーソルを設定
-                        this.applyToStore();
-                        store.startCursorBlink();
-                    }
-                }, 150); // タイムアウトを150msに増やして、DOMの更新を待つ時間を長くする
-            }
-
-            // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`After deletion: cursor at itemId=${this.itemId}, offset=${this.offset}`);
-                console.log(`Remaining items count: ${items.length}`);
-                console.log(`Updated first item text: "${firstItem.text}"`);
-            }
-        } catch (error) {
-            // エラーが発生した場合はログに出力
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.error(`Error in deleteMultiItemSelection:`, error);
-                // エラーの詳細情報を出力
-                if (error instanceof Error) {
-                    console.error(`Error message: ${error.message}`);
-                    console.error(`Error stack: ${error.stack}`);
-                }
-            }
-
-            // 選択範囲をクリア
-            this.clearSelection();
-
-            // カーソル点滅を開始
-            store.startCursorBlink();
-
-            // エラーが発生した場合でも、カーソルを表示する
-            this.applyToStore();
-        }
-    }
 
     /**
      * 選択範囲を削除する
      */
     deleteSelection() {
-        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
-        if (!selection) return;
-
-        // 複数アイテムにまたがる選択範囲の場合
-        if (selection.startItemId !== selection.endItemId) {
-            this.deleteMultiItemSelection(selection);
-            return;
-        }
-
-        // 単一アイテム内の選択範囲の場合
-        const target = this.findTarget();
-        if (!target) return;
-
-        const text = target.text || "";
-        const startOffset = Math.min(selection.startOffset, selection.endOffset);
-        const endOffset = Math.max(selection.startOffset, selection.endOffset);
-
-        // テキストを削除
-        const newText = text.substring(0, startOffset) + text.substring(endOffset);
-        target.updateText(newText);
-
-        // カーソル位置を更新
-        this.offset = startOffset;
-        this.applyToStore();
-
-        // 選択範囲をクリア
-        this.clearSelection();
-
-        // カーソル点滅を開始
-        store.startCursorBlink();
+        this.editor.deleteSelection();
     }
 
     /**
@@ -2356,7 +1689,10 @@ export class Cursor {
         // アイテム間移動の処理
         if (direction === "left") {
             const prevItem = findPreviousItem(this.itemId);
-            if (prevItem) {
+            const currentTarget = this.findTarget();
+            const parentOfCurrent = currentTarget?.parent;
+            const isParentItem = parentOfCurrent && prevItem && prevItem.id === parentOfCurrent.id;
+            if (prevItem && !isParentItem) {
                 newItemId = prevItem.id;
                 newOffset = prevItem.text?.length || 0;
                 itemChanged = true;
@@ -2511,7 +1847,8 @@ export class Cursor {
 
             // 同じユーザーの他のカーソルも削除（単一カーソルモードを維持）
             // 注意: 全てのカーソルをクリアするのではなく、同じユーザーのカーソルのみをクリア
-            const cursorsToRemove = Object.values(store.cursors)
+            const cursorEntries = store.cursors ? Object.values(store.cursors) : [];
+            const cursorsToRemove = cursorEntries
                 .filter(c => c.userId === this.userId && c.cursorId !== this.cursorId)
                 .map(c => c.cursorId);
 
@@ -2525,7 +1862,7 @@ export class Cursor {
 
             // 移動先アイテムの既存のカーソルも削除（重複防止）
             // 注意: 同じユーザーのカーソルのみを削除
-            const cursorsInTargetItem = Object.values(store.cursors)
+            const cursorsInTargetItem = cursorEntries
                 .filter(c => c.itemId === newItemId && c.userId === this.userId)
                 .map(c => c.cursorId);
 
@@ -2684,35 +2021,35 @@ export class Cursor {
      * 選択範囲のテキストを太字に変更する（Scrapbox構文: [[text]]）
      */
     formatBold() {
-        this.applyScrapboxFormatting("bold");
+        this.editor.formatBold();
     }
 
     /**
      * 選択範囲のテキストを斜体に変更する（Scrapbox構文: [/ text]）
      */
     formatItalic() {
-        this.applyScrapboxFormatting("italic");
+        this.editor.formatItalic();
     }
 
     /**
      * 選択範囲のテキストに下線を追加する（HTML タグを使用）
      */
     formatUnderline() {
-        this.applyScrapboxFormatting("underline");
+        this.editor.formatUnderline();
     }
 
     /**
      * 選択範囲のテキストに取り消し線を追加する（Scrapbox構文: [- text]）
      */
     formatStrikethrough() {
-        this.applyScrapboxFormatting("strikethrough");
+        this.editor.formatStrikethrough();
     }
 
     /**
      * 選択範囲のテキストをコードに変更する（Scrapbox構文: `text`）
      */
     formatCode() {
-        this.applyScrapboxFormatting("code");
+        this.editor.formatCode();
     }
 
     /**
@@ -2722,280 +2059,17 @@ export class Cursor {
      * @param scrapboxPrefix Scrapbox形式のプレフィックス
      * @param scrapboxSuffix Scrapbox形式のサフィックス
      */
-    private applyFormatting(
-        markdownPrefix: string,
-        markdownSuffix: string,
-        scrapboxPrefix: string,
-        scrapboxSuffix: string,
-    ) {
-        // Scrapbox構文を使用
-        const prefix = scrapboxPrefix;
-        const suffix = scrapboxSuffix;
-
-        // 選択範囲を取得
-        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
-
-        if (!selection || selection.startOffset === selection.endOffset) {
-            // 選択範囲がない場合は何もしない
-            return;
-        }
-
-        // 複数アイテムにまたがる選択範囲の場合
-        if (selection.startItemId !== selection.endItemId) {
-            this.applyFormattingToMultipleItems(selection, prefix, suffix);
-            return;
-        }
-
-        // 単一アイテム内の選択範囲の場合
-        const target = this.findTarget();
-        if (!target) return;
-
-        const text = target.text || "";
-        const startOffset = Math.min(selection.startOffset, selection.endOffset);
-        const endOffset = Math.max(selection.startOffset, selection.endOffset);
-        const selectedText = text.substring(startOffset, endOffset);
-
-        // フォーマット済みのテキストを作成
-        const formattedText = prefix + selectedText + suffix;
-
-        // テキストを更新
-        const newText = text.substring(0, startOffset) + formattedText + text.substring(endOffset);
-        target.updateText(newText);
-
-        // カーソル位置を更新（選択範囲の終了位置に設定）
-        this.offset = startOffset + formattedText.length;
-        this.applyToStore();
-
-        // 選択範囲をクリア
-        this.clearSelection();
-
-        // カーソル点滅を開始
-        store.startCursorBlink();
-    }
 
     /**
      * 選択範囲にScrapbox構文のフォーマットを適用する
      * @param formatType フォーマットの種類（'bold', 'italic', 'strikethrough', 'underline', 'code'）
      */
-    private applyScrapboxFormatting(formatType: "bold" | "italic" | "strikethrough" | "underline" | "code") {
-        // 選択範囲を取得
-        const selection = Object.values(store.selections).find(s => s.userId === this.userId);
-
-        if (!selection || selection.startOffset === selection.endOffset) {
-            // 選択範囲がない場合は何もしない
-            return;
-        }
-
-        // 複数アイテムにまたがる選択範囲の場合
-        if (selection.startItemId !== selection.endItemId) {
-            this.applyScrapboxFormattingToMultipleItems(selection, formatType);
-            return;
-        }
-
-        // 単一アイテム内の選択範囲の場合
-        const target = this.findTarget();
-        if (!target) return;
-
-        const text = target.text || "";
-        const startOffset = Math.min(selection.startOffset, selection.endOffset);
-        const endOffset = Math.max(selection.startOffset, selection.endOffset);
-        const selectedText = text.substring(startOffset, endOffset);
-
-        // フォーマット済みのテキストを作成
-        let formattedText = "";
-        switch (formatType) {
-            case "bold":
-                formattedText = ScrapboxFormatter.bold(selectedText);
-                break;
-            case "italic":
-                formattedText = ScrapboxFormatter.italic(selectedText);
-                break;
-            case "strikethrough":
-                formattedText = ScrapboxFormatter.strikethrough(selectedText);
-                break;
-            case "underline":
-                formattedText = ScrapboxFormatter.underline(selectedText);
-                break;
-            case "code":
-                formattedText = ScrapboxFormatter.code(selectedText);
-                break;
-        }
-
-        // テキストを更新
-        const newText = text.substring(0, startOffset) + formattedText + text.substring(endOffset);
-        target.updateText(newText);
-
-        // カーソル位置を更新（選択範囲の終了位置に設定）
-        this.offset = startOffset + formattedText.length;
-        this.applyToStore();
-
-        // 選択範囲をクリア
-        this.clearSelection();
-
-        // カーソル点滅を開始
-        store.startCursorBlink();
-    }
 
     /**
      * 複数アイテムにまたがる選択範囲にフォーマットを適用する
      */
-    private applyFormattingToMultipleItems(selection: any, prefix: string, suffix: string) {
-        // 開始アイテムと終了アイテムのIDを取得
-        const startItemId = selection.startItemId;
-        const endItemId = selection.endItemId;
-        const startOffset = selection.startOffset;
-        const endOffset = selection.endOffset;
-        const isReversed = selection.isReversed;
-
-        // 全アイテムのIDを取得
-        const allItemElements = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-        const allItemIds = allItemElements.map(el => el.getAttribute("data-item-id")!);
-
-        // 開始アイテムと終了アイテムのインデックスを取得
-        const startIdx = allItemIds.indexOf(startItemId);
-        const endIdx = allItemIds.indexOf(endItemId);
-
-        if (startIdx === -1 || endIdx === -1) return;
-
-        // 開始インデックスと終了インデックスを正規化
-        const firstIdx = Math.min(startIdx, endIdx);
-        const lastIdx = Math.max(startIdx, endIdx);
-
-        // 選択範囲内の各アイテムにフォーマットを適用
-        for (let i = firstIdx; i <= lastIdx; i++) {
-            const itemId = allItemIds[i];
-            const item = searchItem(generalStore.currentPage!, itemId);
-
-            if (!item) continue;
-
-            const text = item.text || "";
-
-            // アイテムの位置に応じてフォーマットを適用
-            if (i === firstIdx && i === lastIdx) {
-                // 単一アイテム内の選択範囲
-                const start = isReversed ? endOffset : startOffset;
-                const end = isReversed ? startOffset : endOffset;
-                const selectedText = text.substring(start, end);
-                const formattedText = prefix + selectedText + suffix;
-                const newText = text.substring(0, start) + formattedText + text.substring(end);
-                item.updateText(newText);
-            } else if (i === firstIdx) {
-                // 開始アイテム
-                const start = isReversed ? text.length : startOffset;
-                const end = text.length;
-                const selectedText = text.substring(start, end);
-                const formattedText = prefix + selectedText + (i === lastIdx - 1 ? suffix : "");
-                const newText = text.substring(0, start) + formattedText;
-                item.updateText(newText);
-            } else if (i === lastIdx) {
-                // 終了アイテム
-                const start = 0;
-                const end = isReversed ? startOffset : endOffset;
-                const selectedText = text.substring(start, end);
-                const formattedText = (i === firstIdx + 1 ? prefix : "") + selectedText + suffix;
-                const newText = formattedText + text.substring(end);
-                item.updateText(newText);
-            } else {
-                // 中間アイテム
-                item.updateText(prefix + text + suffix);
-            }
-        }
-
-        // カーソル位置を更新（選択範囲の終了位置に設定）
-        this.itemId = isReversed ? startItemId : endItemId;
-        this.offset = isReversed ? startOffset : endOffset;
-        this.applyToStore();
-
-        // 選択範囲をクリア
-        this.clearSelection();
-
-        // カーソル点滅を開始
-        store.startCursorBlink();
-    }
 
     /**
      * 複数アイテムにまたがる選択範囲にScrapbox構文のフォーマットを適用する
      */
-    private applyScrapboxFormattingToMultipleItems(
-        selection: any,
-        formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
-    ) {
-        // 開始アイテムと終了アイテムのIDを取得
-        const startItemId = selection.startItemId;
-        const endItemId = selection.endItemId;
-        const startOffset = selection.startOffset;
-        const endOffset = selection.endOffset;
-        const isReversed = selection.isReversed;
-
-        // 全アイテムのIDを取得
-        const allItemElements = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-        const allItemIds = allItemElements.map(el => el.getAttribute("data-item-id")!);
-
-        // 開始アイテムと終了アイテムのインデックスを取得
-        const startIdx = allItemIds.indexOf(startItemId);
-        const endIdx = allItemIds.indexOf(endItemId);
-
-        if (startIdx === -1 || endIdx === -1) return;
-
-        // 開始インデックスと終了インデックスを正規化
-        const firstIdx = Math.min(startIdx, endIdx);
-        const lastIdx = Math.max(startIdx, endIdx);
-
-        // 選択範囲内の各アイテムにフォーマットを適用
-        for (let i = firstIdx; i <= lastIdx; i++) {
-            const itemId = allItemIds[i];
-            const item = searchItem(generalStore.currentPage!, itemId);
-
-            if (!item) continue;
-
-            const text = item.text || "";
-
-            // アイテムの位置に応じてフォーマットを適用
-            if (i === firstIdx && i === lastIdx) {
-                // 単一アイテム内の選択範囲
-                const start = isReversed ? endOffset : startOffset;
-                const end = isReversed ? startOffset : endOffset;
-                const selectedText = text.substring(start, end);
-
-                // フォーマット済みのテキストを作成
-                let formattedText = "";
-                switch (formatType) {
-                    case "bold":
-                        formattedText = ScrapboxFormatter.bold(selectedText);
-                        break;
-                    case "italic":
-                        formattedText = ScrapboxFormatter.italic(selectedText);
-                        break;
-                    case "strikethrough":
-                        formattedText = ScrapboxFormatter.strikethrough(selectedText);
-                        break;
-                    case "underline":
-                        formattedText = ScrapboxFormatter.underline(selectedText);
-                        break;
-                    case "code":
-                        formattedText = ScrapboxFormatter.code(selectedText);
-                        break;
-                }
-
-                const newText = text.substring(0, start) + formattedText + text.substring(end);
-                item.updateText(newText);
-            } else {
-                // 複数アイテムにまたがる選択範囲の場合は、各アイテムを個別に処理
-                // 現在は単一アイテム内の選択範囲のみサポート
-                // 将来的に複数アイテムにまたがる選択範囲のフォーマットをサポートする場合は、
-                // ここに実装を追加する
-            }
-        }
-
-        // カーソル位置を更新（選択範囲の終了位置に設定）
-        this.itemId = isReversed ? startItemId : endItemId;
-        this.offset = isReversed ? startOffset : endOffset;
-        this.applyToStore();
-
-        // 選択範囲をクリア
-        this.clearSelection();
-
-        // カーソル点滅を開始
-        store.startCursorBlink();
-    }
 }
