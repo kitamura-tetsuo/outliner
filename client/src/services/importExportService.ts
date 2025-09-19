@@ -22,6 +22,7 @@ export function exportProjectToOpml(project: Project): string {
             out += "</outline>";
         }
     };
+    // Export all pages in the project
     walk(project.items as Items);
     out += "</body></opml>";
     return out;
@@ -35,6 +36,7 @@ export function exportProjectToMarkdown(project: Project): string {
             walk(item.items as Items, depth + 1);
         }
     };
+    // Export all pages in the project
     walk(project.items as Items);
     return lines.join("\n");
 }

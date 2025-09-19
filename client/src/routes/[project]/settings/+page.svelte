@@ -17,18 +17,22 @@ let importText = $state("");
 let importFormat = $state("opml");
 
 onMount(() => {
-    project = yjsStore.yjsClient?.getProject();
+    // Try to get project from yjsStore first, then from store
+    project = yjsStore.yjsClient?.getProject() || store.project;
 });
 
 function doExport(format: "opml" | "markdown") {
-    if (!project) return;
+    // Always try to get the latest project
+    const currentProject = yjsStore.yjsClient?.getProject() || store.project || project;
+    if (!currentProject) return;
     exportText = format === "opml"
-        ? exportProjectToOpml(project)
-        : exportProjectToMarkdown(project);
+        ? exportProjectToOpml(currentProject)
+        : exportProjectToMarkdown(currentProject);
 }
 
 async function doImport() {
-    if (!project) {
+    const currentProject = yjsStore.yjsClient?.getProject() || store.project || project;
+    if (!currentProject) {
         console.log("doImport: No project available");
         return;
     }
@@ -36,26 +40,26 @@ async function doImport() {
     console.log("doImport: Starting import process");
     console.log("doImport: Import format:", importFormat);
     console.log("doImport: Import text:", importText);
-    console.log("doImport: Project before import:", project);
-    console.log("doImport: Project items before import:", project.items?.length || 0);
+    console.log("doImport: Project before import:", currentProject);
+    console.log("doImport: Project items before import:", currentProject.items?.length || 0);
 
     if (importFormat === "opml") {
         console.log("doImport: Calling importOpmlIntoProject");
-        importOpmlIntoProject(importText, project);
+        importOpmlIntoProject(importText, currentProject);
     }
     else {
         console.log("doImport: Calling importMarkdownIntoProject");
-        importMarkdownIntoProject(importText, project);
+        importMarkdownIntoProject(importText, currentProject);
     }
 
-    console.log("doImport: Project items after import:", project.items?.length || 0);
-    if (project.items && project.items.length > 0) {
-        console.log("doImport: First page after import:", project.items[0].text);
+    console.log("doImport: Project items after import:", currentProject.items?.length || 0);
+    if (currentProject.items && currentProject.items.length > 0) {
+        console.log("doImport: First page after import:", currentProject.items[0].text);
     }
 
     // Reinitialize global store so new pages become accessible
     console.log("doImport: Reinitializing global store");
-    store.project = project;
+    store.project = currentProject;
 
     // Clear import text after successful import
     importText = "";
@@ -63,8 +67,8 @@ async function doImport() {
     console.log("doImport: Import completed, navigating to first imported page");
 
     // Navigate to the first imported page instead of reloading
-    if (project.items && project.items.length > 0) {
-        const firstPage = project.items[0];
+    if (currentProject.items && currentProject.items.length > 0) {
+        const firstPage = currentProject.items[0];
         const projectName = $page.params.project;
         const pageName = firstPage.text;
         console.log(`doImport: Navigating to /${projectName}/${pageName}`);
