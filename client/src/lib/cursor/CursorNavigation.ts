@@ -267,7 +267,7 @@ export class CursorNavigation {
      * アイテム間を移動する
      * @param direction 移動方向
      */
-    private navigateToItem(direction: "left" | "right" | "up" | "down") {
+    navigateToItem(direction: "left" | "right" | "up" | "down") {
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(

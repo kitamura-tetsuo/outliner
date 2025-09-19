@@ -15,10 +15,18 @@ function collectChildren(node: Item): Item[] {
 }
 
 /**
+ * Determine if the provided item represents a page title node.
+ */
+export function isPageItem(item: Item): boolean {
+    const parent = item.parent;
+    return !!parent && parent.parentKey === "root";
+}
+
+/**
  * Find the previous item in the tree relative to the provided ID.
  */
 export function findPreviousItem(currentItemId: string): Item | undefined {
-    const root = generalStore.currentPage;
+    const root = generalStore.currentPage as unknown as Item | undefined;
     if (!root) return undefined;
 
     return findPreviousItemRecursive(root, currentItemId);
@@ -34,10 +42,10 @@ function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item
         const child = children[i];
 
         if (child.id === targetId) {
-            return i > 0 ? children[i - 1] : node;
+            return i > 0 ? children[i - 1] : undefined; // Return undefined instead of node
         }
 
-        const found = findPreviousItemRecursive(child, targetId, i > 0 ? children[i - 1] : node);
+        const found = findPreviousItemRecursive(child, targetId, i > 0 ? children[i - 1] : undefined); // Pass undefined instead of node
         if (found) return found;
     }
 
@@ -48,7 +56,7 @@ function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item
  * Find the next item in the tree relative to the provided ID.
  */
 export function findNextItem(currentItemId: string): Item | undefined {
-    const root = generalStore.currentPage;
+    const root = generalStore.currentPage as unknown as Item | undefined;
     if (!root) return undefined;
 
     return findNextItemRecursive(root, currentItemId);

@@ -1,9 +1,6 @@
-// @ts-nocheck
-// This file exports all cursor utility classes
-
-export * from "./CursorBase";
-export * from "./CursorFormatting";
-export * from "./CursorNavigation";
-export * from "./CursorSelection";
+export * from "./CursorEditor";
+export * from "./CursorFormattingUtils";
+export * from "./CursorNavigationUtils";
+export * from "./CursorSelectionUtils";
 export * from "./CursorTextOperations";
 export * from "./CursorTextUtils";
