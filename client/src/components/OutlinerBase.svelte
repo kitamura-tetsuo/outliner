@@ -85,9 +85,9 @@ onMount(() => {
             const pageAny: any = gs.currentPage as any;
             const cpItems: any = pageAny?.items;
             const curLen = cpItems?.length ?? 0;
-            if (isTest && pageAny && cpItems && curLen < 2) {
+            if (isTest && pageAny && cpItems && curLen < 3) {
                 const defaults = ["一行目: テスト", "二行目: Yjs 反映", "三行目: 並び順チェック"];
-                for (let i = 0; i < 2 - curLen; i++) {
+                for (let i = curLen; i < 3; i++) {
                     const node = cpItems.addNode?.("tester");
                     node?.updateText?.(defaults[i] ?? "");
                 }
