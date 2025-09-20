@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
@@ -22,15 +22,16 @@ test.describe("YjsのデータがUIに反映される", () => {
     test("lines が正しい順番で表示される", async ({ page }) => {
         // currentPage がセットされるのを待機
         await page.waitForFunction(() => {
-            const gs = (window as any).generalStore;
+            const gs = (window as { generalStore?: { currentPage?: Record<string, unknown>; }; }).generalStore;
             return !!(gs && gs.currentPage);
         }, { timeout: 15000 });
 
         // 念のため: currentPage の子を lines に合わせて整える（不足分は生成、既存は上書き）
         await page.evaluate((lines) => {
-            const gs = (window as any).generalStore;
+            const gs =
+                (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; }).generalStore;
             const p = gs?.currentPage;
-            const items = p?.items as any;
+            const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
 
             const existing = items.length ?? 0;
@@ -73,8 +74,9 @@ test.describe("YjsのデータがUIに反映される", () => {
             // モデル側の件数が期待分になるまで待機
             await page.waitForFunction(
                 (expectedLen) => {
-                    const gs = (window as any).generalStore;
-                    const items = gs?.currentPage?.items as any;
+                    const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
+                        .generalStore;
+                    const items = gs?.currentPage?.items;
                     return !!items && typeof items.length === "number" && items.length >= expectedLen;
                 },
                 lines.length,
@@ -83,8 +85,9 @@ test.describe("YjsのデータがUIに反映される", () => {
 
             // 各アイテムのテキストをモデル経由で設定
             await page.evaluate((lines) => {
-                const gs = (window as any).generalStore;
-                const items = gs?.currentPage?.items as any;
+                const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
+                    .generalStore;
+                const items = gs?.currentPage?.items;
                 if (!items) return;
                 for (let i = 0; i < lines.length; i++) {
                     const it = items.at ? items.at(i) : items[i];

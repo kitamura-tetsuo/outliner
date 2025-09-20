@@ -11,7 +11,7 @@ class ResizeObserver {
     unobserve() {}
     disconnect() {}
 }
-(globalThis as any).ResizeObserver = ResizeObserver;
+(globalThis as Record<string, unknown>).ResizeObserver = ResizeObserver;
 
 /**
  * Integration test mirroring e2e/basic/add-text-functionality.spec.ts

@@ -13,6 +13,13 @@ export default ts.config(
     ...ts.configs.recommended,
     ...svelte.configs.recommended,
     {
+        ignores: [
+            ".svelte-kit/generated/**/*",
+            ".svelte-kit/non-ambient.d.ts",
+            ".svelte-kit/types/**/*",
+        ],
+    },
+    {
         languageOptions: {
             globals: {
                 ...globals.browser,

@@ -9,14 +9,16 @@ test.describe("Yjs client attach and DOM reflect", () => {
     test("attaches Yjs project and renders seeded lines", async ({ page }) => {
         // Verify project is backed by a Y.Doc (guid present) even if connection state is unknown
         await page.waitForFunction(() => {
-            const gs = (window as any).generalStore;
+            const gs = (window as { generalStore?: { project?: { ydoc?: { guid?: string; }; }; }; }).generalStore;
             const guid = gs?.project?.ydoc?.guid ?? null;
             return typeof guid === "string" && guid.length > 0;
         }, { timeout: 20000 });
 
         // Ensure currentPage exists in the global store, then seed default lines
         await page.evaluate(() => {
-            const gs = (window as any).generalStore;
+            const gs = (window as {
+                generalStore?: { project?: Record<string, unknown>; currentPage?: Record<string, unknown>; };
+            }).generalStore;
             if (!gs?.project) return;
             // Ensure currentPage
             if (!gs.currentPage) {
@@ -24,12 +26,16 @@ test.describe("Yjs client attach and DOM reflect", () => {
                     const url = new URL(location.href);
                     const parts = url.pathname.split("/").filter(Boolean);
                     const pageName = decodeURIComponent(parts[1] || "untitled");
-                    const created = (gs.project as any)?.addPage?.(pageName, "tester");
+                    const created =
+                        (gs.project as { addPage?: (name: string, userId: string) => Record<string, unknown>; })
+                            ?.addPage?.(pageName, "tester");
                     if (created) gs.currentPage = created;
-                } catch {}
+                } catch (e) {
+                    console.error("Error creating page:", e);
+                }
             }
             const pageItem = gs?.currentPage;
-            const items = pageItem?.items as any;
+            const items = pageItem?.items;
             if (!items) return;
             const lines = [
                 "一行目: テスト",

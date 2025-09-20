@@ -9,13 +9,9 @@ export class WebsocketProvider {
     public synced: boolean = true;
 
     constructor(
-        serverUrl: string,
-        roomname: string,
+        _serverUrl: string,
+        _roomname: string,
         doc: Y.Doc,
-        options?: {
-            connect?: boolean;
-            params?: Record<string, string>;
-        },
     ) {
         this.doc = doc;
         this.awareness = new Awareness(doc);
@@ -40,16 +36,16 @@ export class WebsocketProvider {
     }
 
     // Simple event emitter implementation for testing
-    private eventListeners: Map<string, Function[]> = new Map();
+    private eventListeners: Map<string, ((...args: unknown[]) => void)[]> = new Map();
 
-    public on(event: string, callback: Function) {
+    public on(event: string, callback: (...args: unknown[]) => void) {
         if (!this.eventListeners.has(event)) {
             this.eventListeners.set(event, []);
         }
         this.eventListeners.get(event)?.push(callback);
     }
 
-    public off(event: string, callback: Function) {
+    public off(event: string, callback: (...args: unknown[]) => void) {
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             const index = listeners.indexOf(callback);
@@ -59,7 +55,7 @@ export class WebsocketProvider {
         }
     }
 
-    public emit(event: string, args: any[] = []) {
+    public emit(event: string, args: unknown[] = []) {
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             listeners.forEach(callback => {
