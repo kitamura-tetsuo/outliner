@@ -156,6 +156,7 @@ Mocks are generally forbidden. Limited exceptions:
   2. `npm test` in the `client` directory to run unit tests
 - Fix any test failures before proceeding with further development
 - Never skip tests or simplify them to avoid merge conflicts - always solve the actual problems
+- After implementing code changes, run `npm run test:e2e:basic` to perform regression testing and ensure no existing functionality has been broken
 
 ## 5. Cursor, Selection, and Item Handling
 
