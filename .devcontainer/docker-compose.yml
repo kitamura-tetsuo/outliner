@@ -11,6 +11,7 @@ services:
 
     environment:
       - GIT_MERGE_AUTOEDIT=no
+      - TZ=Asia/Tokyo
 
     ipc: 'host'
     shm_size: '1gb'
