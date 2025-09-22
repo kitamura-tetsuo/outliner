@@ -136,6 +136,12 @@ export class TestHelpers {
             console.error("TestHelper: Failed to navigate to home page:", error);
             console.log("TestHelper: Current page URL:", page.url());
             console.log("TestHelper: Page title:", await page.title().catch(() => "Unable to get title"));
+
+            // Handle the case where the page/context has been closed
+            if (page.isClosed()) {
+                console.log("TestHelper: Page is closed, cannot continue with navigation");
+                throw new Error("Page context has been closed, cannot continue with test setup");
+            }
             throw error;
         }
 
