@@ -4,10 +4,12 @@
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import yaml
 
@@ -16,7 +18,207 @@ ASSIGNEE = "@me"
 LOG_FILE = "gemini_interactions.log"
 MAX_GEMINI_RETRIES = 5
 INITIAL_RETRY_DELAY = 10  # in seconds
+# Auto-update configuration for pipx-installed auto-coder
+AUTO_CODER_PIP_SPEC = "git+https://github.com/kitamura-tetsuo/auto-coder.git"
+DEFAULT_UPDATE_INTERVAL_HOURS = 6
+AUTO_CODER_STATE_DIRNAME = "auto_coder"
 # --- End Configuration ---
+
+
+# --- Auto-update helpers ---
+def _is_truthy(value):
+    """Return True when the provided environment value indicates truth."""
+
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _get_state_file_path(override_path=None):
+    """Compute the location for persisting the auto-update cache."""
+
+    if override_path:
+        return Path(override_path)
+
+    env_override = os.environ.get("AUTO_CODER_UPDATE_STATE_PATH")
+    if env_override:
+        return Path(env_override)
+
+    xdg_state_home = os.environ.get("XDG_STATE_HOME")
+    if xdg_state_home:
+        base_dir = Path(xdg_state_home)
+    else:
+        base_dir = Path.home() / ".local" / "state"
+    return base_dir / AUTO_CODER_STATE_DIRNAME / "update-state.json"
+
+
+def _load_update_state(path):
+    """Return the cached timestamp and status from disk if available."""
+
+    if not path.exists():
+        return (None, None)
+
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as exc:  # pragma: no cover - defensive logging
+        print(f"⚠️ Failed to read auto-coder update cache at {path}: {exc}")
+        return (None, None)
+
+    raw_ts = data.get("last_check")
+    timestamp = None
+    if raw_ts:
+        try:
+            timestamp = datetime.fromisoformat(raw_ts)
+        except ValueError:
+            print(
+                f"⚠️ Invalid timestamp '{raw_ts}' in auto-coder update cache; ignoring."
+            )
+    return (timestamp, data.get("last_result"))
+
+
+def _write_update_state(path, timestamp, result):
+    """Persist the last check timestamp and status."""
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "last_check": timestamp.isoformat(),
+                    "last_result": result,
+                },
+                f,
+            )
+    except Exception as exc:  # pragma: no cover - defensive logging
+        print(f"⚠️ Could not persist auto-coder update state: {exc}")
+
+
+def _resolve_update_command(custom_command):
+    """Determine the command to execute for updating auto-coder."""
+
+    if custom_command is not None:
+        if isinstance(custom_command, (list, tuple)):
+            return list(custom_command)
+        return shlex.split(str(custom_command))
+
+    env_command = os.environ.get("AUTO_CODER_UPDATE_COMMAND")
+    if env_command:
+        return shlex.split(env_command)
+
+    return [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "--upgrade",
+        AUTO_CODER_PIP_SPEC,
+    ]
+
+
+def _resolve_interval_hours(override_interval):
+    """Determine how often to perform the auto-update check."""
+
+    if override_interval is not None:
+        try:
+            return max(0, int(override_interval))
+        except (TypeError, ValueError):
+            print(
+                "⚠️ Invalid override interval supplied to auto-coder update; using default."
+            )
+
+    env_value = os.environ.get("AUTO_CODER_UPDATE_INTERVAL_HOURS")
+    if env_value:
+        try:
+            return max(0, int(env_value))
+        except ValueError:
+            print(
+                "⚠️ AUTO_CODER_UPDATE_INTERVAL_HOURS is invalid; using default interval."
+            )
+
+    return DEFAULT_UPDATE_INTERVAL_HOURS
+
+
+def _format_timedelta(delta):
+    total_seconds = int(delta.total_seconds())
+    if total_seconds < 60:
+        return f"{total_seconds} seconds"
+    if total_seconds < 3600:
+        minutes = total_seconds // 60
+        return f"{minutes} minutes"
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    if minutes:
+        return f"{hours}h {minutes}m"
+    return f"{hours}h"
+
+
+def maybe_auto_update(
+    *,
+    state_path=None,
+    now=None,
+    interval_hours=None,
+    update_command=None,
+    run_command_func=None,
+):
+    """Ensure the pipx-installed auto-coder package stays current."""
+
+    if _is_truthy(os.environ.get("AUTO_CODER_DISABLE_AUTO_UPDATE")):
+        print("ℹ️ auto-coder auto-update disabled via AUTO_CODER_DISABLE_AUTO_UPDATE.")
+        return False
+
+    state_file = _get_state_file_path(state_path)
+    current_time = now or datetime.now(timezone.utc)
+    interval_value = _resolve_interval_hours(interval_hours)
+    last_check, _ = _load_update_state(state_file)
+    force_update = _is_truthy(os.environ.get("AUTO_CODER_FORCE_UPDATE"))
+
+    if (
+        not force_update
+        and last_check is not None
+        and interval_value > 0
+        and current_time - last_check < timedelta(hours=interval_value)
+    ):
+        elapsed = current_time - last_check
+        print(
+            "ℹ️ auto-coder was checked for updates "
+            f"{_format_timedelta(elapsed)} ago (interval {interval_value}h). Skipping."
+        )
+        return False
+
+    command = _resolve_update_command(update_command)
+    runner = run_command_func or subprocess.run
+
+    print("🔄 Checking for auto-coder updates...")
+    try:
+        result = runner(command, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as exc:
+        stdout = exc.stdout.strip() if getattr(exc, "stdout", "") else ""
+        stderr = exc.stderr.strip() if getattr(exc, "stderr", "") else ""
+        print("⚠️ Failed to auto-update auto-coder.")
+        if stdout:
+            print(f"   stdout: {stdout}")
+        if stderr:
+            print(f"   stderr: {stderr}")
+        print("   Please run `pipx upgrade auto-coder` to install the latest version.")
+        _write_update_state(state_file, current_time, "failed")
+        return False
+    except Exception as exc:  # pragma: no cover - defensive logging
+        print(f"⚠️ Unexpected error while checking for auto-coder updates: {exc}")
+        print("   Please run `pipx upgrade auto-coder` to install the latest version.")
+        _write_update_state(state_file, current_time, "failed")
+        return False
+
+    stdout = result.stdout.strip() if getattr(result, "stdout", "") else ""
+    stderr = result.stderr.strip() if getattr(result, "stderr", "") else ""
+    if stdout:
+        print(stdout)
+    if stderr:
+        print(stderr)
+
+    print("✅ auto-coder is up to date.")
+    _write_update_state(state_file, current_time, "success")
+    return True
 
 
 # --- YAML Formatting ---
@@ -233,6 +435,7 @@ def slugify(text):
 
 def main():
     """Main workflow script."""
+    maybe_auto_update()
     check_dependencies()
     print("🚀 Starting development workflow...")
     run_command(["./scripts/codex-setup.sh"])

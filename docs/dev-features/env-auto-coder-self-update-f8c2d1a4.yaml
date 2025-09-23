@@ -1,0 +1,11 @@
+id: ENV-f8c2d1a4
+title: Auto-coder self update for pipx installations
+description: dev_workflow.py checks for updates to the pipx-installed auto-coder package, performs a pip upgrade when needed, and notifies the developer when manual intervention is required.
+category: environment
+status: implemented
+components:
+- dev_workflow.py
+tests:
+- scripts/tests/env-auto-coder-self-update-f8c2d1a4.spec.ts
+- scripts/tests/test_auto_update.py
+title-ja: pipxインストール版auto-coderの自動更新
