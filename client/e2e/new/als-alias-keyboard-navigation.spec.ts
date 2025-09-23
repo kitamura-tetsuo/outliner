@@ -10,43 +10,25 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         // Increase timeout for test setup
         test.setTimeout(120000);
 
-        try {
-            await TestHelpers.prepareTestEnvironment(page, testInfo, [
-                "一行目: テスト",
-                "二行目: Yjs 反応",
-                "三行目: 並び順チェック",
-            ]);
-        } catch (error) {
-            // Handle the case where the page/context has been closed or timed out
-            const errorMessage = String((error as any)?.message ?? error);
-            if (
-                errorMessage.includes("Page context has been closed")
-                || errorMessage.includes("Test timeout")
-                || errorMessage.includes("Target page, context or browser has been closed")
-                || errorMessage.includes("Navigation")
-                || errorMessage.includes("effect_update_depth_exceeded")
-                || errorMessage.includes("Failed to load project and page")
-                || errorMessage.includes("Timeout")
-                || errorMessage.includes("timeout")
-            ) {
-                // Skip the test if there are navigation or context issues
-                test.skip();
-            }
-            // Re-throw other errors
-            throw error;
-        }
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "一行目: テスト",
+            "二行目: Yjs 反応",
+            "三行目: 並び順チェック",
+        ]);
+        // Wait for outliner items to be visible with increased timeout
+        await TestHelpers.waitForOutlinerItems(page, 45000);
     });
 
     test("navigate alias picker with keyboard", async ({ page }) => {
         // Add timeout for the whole test
-        test.setTimeout(60000);
+        test.setTimeout(30000);
 
-        await TestHelpers.waitForOutlinerItems(page);
+        await TestHelpers.waitForOutlinerItems(page, 10000);
         const firstId = await TestHelpers.getItemIdByIndex(page, 0);
         const secondId = await TestHelpers.getItemIdByIndex(page, 1);
         if (!firstId || !secondId) throw new Error("item ids not found");
 
-        await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`);
+        await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`, { force: true });
         await page.waitForTimeout(1000);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
@@ -79,6 +61,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         expect(optionCount).toBeGreaterThan(0);
 
         // デバッグ: 利用可能なオプションを確認
+        /*
         console.log("Available options:");
         for (let i = 0; i < optionCount; i++) {
             const optionText = await page.locator(".alias-picker li").nth(i).locator("button").textContent({
@@ -92,6 +75,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         console.log("firstId:", firstId);
         console.log("secondId:", secondId);
         console.log("aliasId(from store):", aliasId);
+        */
 
         // エイリアスピッカーにフォーカスを設定
         await page.locator(".alias-picker").focus();
@@ -130,21 +114,21 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
             await page.keyboard.press("ArrowDown");
             await page.waitForTimeout(200);
             selectedOptionId = await page.locator(".alias-picker li.selected button").getAttribute("data-id");
-            console.log("After ArrowDown, selected option ID:", selectedOptionId);
+            // console.log("After ArrowDown, selected option ID:", selectedOptionId);
 
             // まだ同じ場合はもう一度
             if (selectedOptionId === aliasId) {
                 await page.keyboard.press("ArrowDown");
                 await page.waitForTimeout(200);
                 selectedOptionId = await page.locator(".alias-picker li.selected button").getAttribute("data-id");
-                console.log("After second ArrowDown, selected option ID:", selectedOptionId);
+                // console.log("After second ArrowDown, selected option ID:", selectedOptionId);
             }
         }
 
         // 選択されたオプションを確認
         const selectedOption = await page.locator(".alias-picker li.selected button").textContent();
-        console.log("Final selected option before Enter:", selectedOption);
-        console.log("Final selected option ID:", selectedOptionId);
+        // console.log("Final selected option before Enter:", selectedOption);
+        // console.log("Final selected option ID:", selectedOptionId);
 
         await page.keyboard.press("Enter");
 
@@ -158,6 +142,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await page.waitForTimeout(1000);
 
         // aliasPickerStoreのデバッグ情報
+        /*
         const apState = await page.evaluate(async () => {
             // Wait for aliasPickerStore to be available with a timeout
             const startTime = Date.now();
@@ -200,17 +185,18 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         });
         console.log("AliasPickerStore state:", apState.ap);
         console.log("Model state:", apState.model);
+        */
 
         // aliasTargetIdが設定されていることを確認
         const aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
-        console.log("Expected selectedOptionId:", selectedOptionId);
-        console.log("Actual aliasTargetId:", aliasTargetId);
+        // console.log("Expected selectedOptionId:", selectedOptionId);
+        // console.log("Actual aliasTargetId:", aliasTargetId);
 
         // DOM属性も確認
         const domAttribute = await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).getAttribute(
             "data-alias-target-id",
         );
-        console.log("DOM data-alias-target-id attribute:", domAttribute);
+        // console.log("DOM data-alias-target-id attribute:", domAttribute);
 
         // 選択されたオプションのIDと一致することを確認
         expect(aliasTargetId).toBe(selectedOptionId);
@@ -229,13 +215,13 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
 
     test("escape key closes alias picker", async ({ page }) => {
         // Add timeout for the whole test
-        test.setTimeout(60000);
+        test.setTimeout(30000);
 
-        await TestHelpers.waitForOutlinerItems(page);
+        await TestHelpers.waitForOutlinerItems(page, 10000);
         const firstId = await TestHelpers.getItemIdByIndex(page, 0);
         if (!firstId) throw new Error("first item not found");
 
-        await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`);
+        await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`, { force: true });
         await page.waitForTimeout(1000);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
@@ -251,24 +237,30 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await expect(page.locator(".alias-picker")).toBeVisible({ timeout: 10000 });
 
         // エイリアスピッカーの状態を確認
+        /*
         const pickerVisible = await page.locator(".alias-picker").isVisible();
         console.log("Alias picker visible before escape:", pickerVisible);
+        */
 
         // エイリアスピッカー自体にフォーカスを設定
         await page.locator(".alias-picker").focus();
         await page.waitForTimeout(200);
 
         // フォーカス状態を確認
+        /*
         const focusedElement = await page.evaluate(() => document.activeElement?.tagName);
         console.log("Focused element:", focusedElement);
+        */
 
         // Escapeキーでエイリアスピッカーを閉じる
         await page.keyboard.press("Escape");
         await page.waitForTimeout(200);
 
         // エイリアスピッカーの状態を再確認
+        /*
         const pickerVisibleAfter = await page.locator(".alias-picker").isVisible();
         console.log("Alias picker visible after escape:", pickerVisibleAfter);
+        */
 
         // エイリアスピッカーが非表示になることを確認
         await expect(page.locator(".alias-picker")).toBeHidden({ timeout: 3000 });

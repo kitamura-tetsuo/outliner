@@ -17,6 +17,7 @@ export default ts.config(
             ".svelte-kit/generated/**/*",
             ".svelte-kit/non-ambient.d.ts",
             ".svelte-kit/types/**/*",
+            ".svelte-kit/output/**/*",
         ],
     },
     {
@@ -59,6 +60,23 @@ export default ts.config(
                                 "Do not import .svelte.ts modules from tests. Use window-exposed instances, local stubs, or render a component to initialize stores.",
                         },
                     ],
+                },
+            ],
+            "no-restricted-syntax": [
+                "error",
+                {
+                    selector:
+                        "CallExpression[callee.type='MemberExpression'][callee.object.type='Identifier'][callee.object.name=/^(it|test|describe)$/][callee.property.name='skip']",
+                    message: "Do not skip tests; remove `.skip` calls.",
+                },
+                {
+                    selector:
+                        "CallExpression[callee.type='MemberExpression'][callee.object.type='MemberExpression'][callee.object.object.type='Identifier'][callee.object.object.name='test'][callee.object.property.name='describe'][callee.property.name='skip']",
+                    message: "Do not skip test suites; remove `.skip` calls.",
+                },
+                {
+                    selector: "CallExpression[callee.type='Identifier'][callee.name=/^x(it|describe)$/]",
+                    message: "Do not use x-prefixed helpers to skip tests.",
                 },
             ],
         },

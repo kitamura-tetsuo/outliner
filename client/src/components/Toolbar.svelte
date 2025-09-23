@@ -186,6 +186,8 @@ if (typeof window !== "undefined") {
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto;
+    /* Ensure pointer events only work within the toolbar bounds */
+    overflow: hidden;
 }
 
 .main-toolbar-content {
@@ -206,7 +208,7 @@ if (typeof window !== "undefined") {
     backface-visibility: visible !important;
     transition: none !important;
     animation: none !important;
-    pointer-events: auto !important;
+    /* Remove pointer-events: auto !important to prevent click interception */
 }
 
 }

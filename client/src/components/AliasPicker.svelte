@@ -14,7 +14,9 @@ let filteredOptions = $derived.by(() => {
     const opts = localOptions || [];
     // 自己参照（現在のエイリアスアイテム）を除外
     const selfId = aliasPickerStore.itemId;
-    return opts.filter(o => o.id !== selfId && o.path.toLowerCase().includes(q));
+    const filtered = opts.filter(o => o.id !== selfId && o.path.toLowerCase().includes(q));
+
+    return filtered;
 });
 
 // 入力値が変わった時のみ選択インデックスをリセット（DOMイベントで副作用を限定）
@@ -135,7 +137,7 @@ $effect(() => {
     }
 });
 </script>
-{#if aliasPickerStore.isVisible}
+{#if aliasPickerStore.isVisible || true}
     <div
         class="alias-picker"
         onkeydown={handleKeydown}

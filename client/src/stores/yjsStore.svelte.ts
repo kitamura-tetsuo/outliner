@@ -59,6 +59,7 @@ class YjsStore {
                 const newItems: any = (connectedProject as any)?.items as any;
                 const prevCount = prevItems?.length ?? 0;
                 const newCount = newItems?.length ?? 0;
+                /*
                 if (isTestEnv && prevCount > 0) {
                     // ケースA: 接続済みプロジェクトが空 -> 以前のページを丸ごと移植（ID維持）
                     if (newCount === 0) {
@@ -143,6 +144,7 @@ class YjsStore {
                         } catch {}
                     }
                 }
+                */
             } catch {
                 // best-effort merge only; ignore failures in non-test environments
             }

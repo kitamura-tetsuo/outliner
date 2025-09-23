@@ -17,6 +17,7 @@ import { setupGlobalDebugFunctions } from "../lib/debug";
 import "../utils/ScrapboxFormatter";
 // グローバルに公開するためにインポート
 import Toolbar from "../components/Toolbar.svelte";
+import AliasPicker from "../components/AliasPicker.svelte";
 // Defer services import; it depends on UserManager
 import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
@@ -359,6 +360,9 @@ onDestroy(async () => {
 <div data-testid="outliner-base">
     <!-- Global main toolbar with SearchBox (SEA-0001) -->
     <Toolbar />
+
+    <!-- Global AliasPicker component -->
+    <AliasPicker />
 
     <!-- Ensure content is not hidden behind fixed toolbar -->
     <div class="main-content">

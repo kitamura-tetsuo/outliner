@@ -89,21 +89,28 @@ $effect(() => {
 });
 
 // カウントの変化を常に親・バッジへ反映（最小の$effect、CMT-0001安定化のため）
+let lastNotifiedCount = -1;
 $effect(() => {
     const countNow = renderCommentsState.length;
-    try { onCountChanged?.(countNow); } catch {}
-    try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
-    try {
-        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-        const badge = container?.querySelector('.comment-button .comment-count') as HTMLElement | null;
-        if (badge) { badge.textContent = String(countNow); }
-        const id = (props.item as any)?.id || container?.getAttribute('data-item-id');
-        if (id) {
+    // Prevent infinite loop by only notifying when count actually changes
+    if (countNow !== lastNotifiedCount) {
+        lastNotifiedCount = countNow;
+        try { onCountChanged?.(countNow); } catch {}
+        try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
+        try {
+            const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
+            const badge = container?.querySelector('.comment-button .comment-count') as HTMLElement | null;
+            if (badge) { badge.textContent = String(countNow); }
+            const id = (props.item as any)?.id || container?.getAttribute('data-item-id');
+            if (id) {
 
-            const nodes = document.querySelectorAll(`[data-item-id="${id}"] .comment-count`);
-            nodes.forEach(el => { (el as HTMLElement).textContent = String(countNow); });
-        }
-    } catch {}
+                const nodes = document.querySelectorAll(`[data-item-id="${id}"] .comment-count`);
+                nodes.forEach(el => { (el as HTMLElement).textContent = String(countNow); });
+            }
+        } catch {}
+    }
+});
+
 // 入力開始時に自動追加（E2E安定化用のフォールバック）。
 // ユーザーがテキストを入力した瞬間に一度だけ add() を呼ぶ。
 let autoAddAttempted = $state(false);
@@ -116,8 +123,6 @@ $effect(() => {
     if (!newText && autoAddAttempted) {
         autoAddAttempted = false;
     }
-});
-
 });
 
     try { logger.debug('[CommentThread] mount props', { hasComments: !!props?.comments, hasDoc: !!props?.doc }); } catch {}
@@ -266,10 +271,14 @@ function add() {
         commentsList = (commentsObj as any)?.toPlain?.() ?? commentsList;
         recompute();
         const countNow = commentsList.length;
-        // 親(OutlinerItem) へ props 経由 + バブリングイベントで通知
-        try { onCountChanged?.(countNow); } catch {}
-        try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
-        try { dispatch('comment-count-changed', { count: countNow }); } catch {}
+        // Only notify if count actually changed to prevent infinite loops
+        if (countNow !== lastNotifiedCount) {
+            lastNotifiedCount = countNow;
+            // 親(OutlinerItem) へ props 経由 + バブリングイベントで通知
+            try { onCountChanged?.(countNow); } catch {}
+            try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
+            try { dispatch('comment-count-changed', { count: countNow }); } catch {}
+        }
         // DOM fallback:
         try {
             const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
@@ -317,9 +326,14 @@ function remove(id: string) {
     try { commentsList = commentsObj?.toPlain?.() ?? commentsList; } catch (e) { logger.error('[CommentThread] toPlain after delete error', e); }
     localComments = localComments.filter(c => c.id !== id);
     recompute();
-    try { onCountChanged?.(commentsList.length); } catch {}
-    try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: commentsList.length } })); } catch {}
-    try { dispatch('comment-count-changed', { count: commentsList.length }); } catch {}
+    const countNow = commentsList.length;
+    // Only notify if count actually changed to prevent infinite loops
+    if (countNow !== lastNotifiedCount) {
+        lastNotifiedCount = countNow;
+        try { onCountChanged?.(countNow); } catch {}
+        try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
+        try { dispatch('comment-count-changed', { count: countNow }); } catch {}
+    }
     // DOM fallback:
     try {
         const container = threadRef?.closest('.outliner-item') as HTMLElement | null;

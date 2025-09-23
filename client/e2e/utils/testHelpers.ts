@@ -87,7 +87,7 @@ export class TestHelpers {
             // より段階的なアプローチを試す
             console.log("TestHelper: Attempting to navigate to /");
             await page.goto("/", {
-                timeout: 120000, // 120秒のタイムアウト
+                timeout: 30000, // 30秒のタイムアウト
                 waitUntil: "domcontentloaded", // DOMコンテンツロード完了まで待機
             });
             console.log("TestHelper: Successfully navigated to home page");
@@ -117,7 +117,7 @@ export class TestHelpers {
                     const target = `/${projectName}/${pageName}`;
                     console.log("TestHelper: Navigating to project page:", target);
                     await page.goto(target, {
-                        timeout: 120000,
+                        timeout: 30000,
                         waitUntil: "domcontentloaded",
                     });
                     console.log("TestHelper: Arrived:", page.url());
@@ -733,7 +733,7 @@ export class TestHelpers {
             } else {
                 await page.goto(absoluteUrl, { waitUntil: "domcontentloaded" });
             }
-            await page.waitForURL(absoluteUrl, { timeout: 60000 });
+            await page.waitForURL(absoluteUrl, { timeout: 30000 });
             TestHelpers.slog("Navigation completed", { absoluteUrl });
         } catch (error) {
             const msg = String((error as any)?.message ?? error);
@@ -901,7 +901,7 @@ export class TestHelpers {
             await page.waitForFunction(() => {
                 const generalStore = (window as any).generalStore;
                 return !!generalStore;
-            }, { timeout: 3000 });
+            }, { timeout: 30000 });
         } catch (error) {
             TestHelpers.slog("generalStore wait failed, checking page state");
             try {
