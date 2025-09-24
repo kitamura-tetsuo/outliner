@@ -4,6 +4,7 @@ import svelte from "eslint-plugin-svelte";
 import globals from "globals";
 import { fileURLToPath } from "node:url";
 import ts from "typescript-eslint";
+import noSkippedTestsRule from "./eslint-rules/no-skipped-tests.js";
 import svelteConfig from "./svelte.config.js";
 const gitignorePath = fileURLToPath(new URL("./.gitignore", import.meta.url));
 
@@ -18,6 +19,18 @@ export default ts.config(
                 ...globals.browser,
                 ...globals.node,
             },
+        },
+    },
+    {
+        plugins: {
+            "no-skipped-tests": {
+                rules: {
+                    "no-skipped-tests": noSkippedTestsRule,
+                },
+            },
+        },
+        rules: {
+            "no-skipped-tests/no-skipped-tests": "error",
         },
     },
     {
