@@ -97,4 +97,7 @@ AGENTS.temp.md
 e2e-snapshots/
 server/e2e-backups/
 server/e2e-src/
+
 llm_task.md
+.auto-coder/
+

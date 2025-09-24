@@ -36,19 +36,24 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         });
         await page.waitForTimeout(500);
 
+        // Open alias picker
         await page.keyboard.type("/");
         await page.keyboard.type("alias");
         await page.keyboard.press("Enter");
 
         // Wait for alias picker with increased timeout
-        await expect(page.locator(".alias-picker")).toBeVisible({ timeout: 10000 });
+        await expect(page.locator(".alias-picker").first()).toBeVisible({ timeout: 10000 });
         // 正しく aliasId を取得（ストアから）
         // Wait for aliasPickerStore to be available with a timeout
         const aliasId = await page.evaluate(async () => {
-            // Wait up to 5 seconds for aliasPickerStore to be available
+            // Wait up to 5 seconds for aliasPickerStore and itemId to be available
             const startTime = Date.now();
-            while (!(window as any).aliasPickerStore && Date.now() - startTime < 5000) {
-                await new Promise(resolve => setTimeout(resolve, 50));
+            while (Date.now() - startTime < 5000) {
+                const store = (window as any).aliasPickerStore;
+                if (store && store.itemId) {
+                    return store.itemId;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
             return (window as any).aliasPickerStore?.itemId ?? null;
         });
@@ -234,7 +239,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await page.keyboard.press("Enter");
 
         // Wait for alias picker with increased timeout
-        await expect(page.locator(".alias-picker")).toBeVisible({ timeout: 10000 });
+        await expect(page.locator(".alias-picker").first()).toBeVisible({ timeout: 10000 });
 
         // エイリアスピッカーの状態を確認
         /*

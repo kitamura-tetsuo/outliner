@@ -16,22 +16,31 @@ test.describe("ALS-0001: Alias node", () => {
         const secondId = await TestHelpers.getItemIdByIndex(page, 1);
         if (!firstId || !secondId) throw new Error("item ids not found");
 
-        await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`);
-        await page.waitForTimeout(1000);
-        await page.evaluate(() => {
-            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
-            textarea?.focus();
-        });
-        await page.waitForTimeout(500);
-
+        await TestHelpers.setCursor(page, firstId);
+        await page.evaluate(({ itemId }) => {
+            const store = (window as any).editorOverlayStore;
+            const cursor = store?.getCursorInstances?.().find((c: any) => c.itemId === itemId);
+            const target = cursor?.findTarget?.();
+            if (target && typeof target.updateText === "function") {
+                target.updateText("");
+                cursor.offset = 0;
+            }
+        }, { itemId: firstId });
+        await TestHelpers.focusGlobalTextarea(page);
         await page.keyboard.type("/");
         await page.keyboard.type("alias");
         await page.keyboard.press("Enter");
 
         await expect(page.locator(".alias-picker")).toBeVisible();
-        const newIndex = await page.locator(".outliner-item").count() - 1;
-        const aliasId = await TestHelpers.getItemIdByIndex(page, newIndex);
-        if (!aliasId) throw new Error("alias item not found");
+        const aliasId = await page.evaluate(async () => {
+            const timeout = Date.now() + 5000;
+            while (!(window as any).aliasPickerStore && Date.now() < timeout) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            return (window as any).aliasPickerStore?.itemId ?? null;
+        });
+        if (!aliasId) throw new Error("alias item not found on aliasPickerStore");
+        console.log("Alias item id:", aliasId);
         const optionCount = await page.locator(".alias-picker li").count();
         expect(optionCount).toBeGreaterThan(0);
 
@@ -44,6 +53,7 @@ test.describe("ALS-0001: Alias node", () => {
 
         // aliasTargetIdが正しく設定されていることを確認（DOM属性ベース）
         const aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+        console.log("aliasTargetId:", aliasTargetId, "expected:", secondId);
         expect(aliasTargetId).toBe(secondId);
 
         // エイリアスパスが表示されていることを確認

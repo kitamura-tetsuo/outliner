@@ -118,6 +118,8 @@ $effect(() => {
         const next = new Array(len).fill(0);
         for (let i = 0; i < Math.min(len, itemHeights.length); i++) next[i] = itemHeights[i];
         itemHeights = next;
+        // 直ちに暫定位置を再計算して初期オーバーラップを防ぐ
+        updateItemPositions();
         // 実測は次フレームで反映してレイアウトの変化と分離
         requestAnimationFrame(() => {
             try {
@@ -175,6 +177,8 @@ onMount(() => {
     });
     editorOverlayStore.setOnEditCallback(handleEdit);
     itemHeights = new Array(displayItems.current.length).fill(0);
+    // 初期表示時に重なりを避けるため、暫定レイアウトで位置を先に確定
+    updateItemPositions();
     requestAnimationFrame(() => {
         const items = document.querySelectorAll('.item-container');
         items.forEach((item, index) => {
@@ -1442,7 +1446,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
         {#each displayItems.current as display, index (display.model.id)}
             <div
                 class="item-container"
-                style="--item-depth: {display.depth}; top: {itemPositions[index] ?? 0}px"
+                style="--item-depth: {display.depth}; top: {(itemPositions[index] != null ? itemPositions[index] : (8 + 28 * index))}px"
                 bind:clientHeight={itemHeights[index]}
             >
                 <OutlinerItem

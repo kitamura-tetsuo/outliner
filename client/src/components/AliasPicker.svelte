@@ -1,33 +1,76 @@
 <script lang="ts">
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 
+type Option = { id: string; path: string; };
+
 let selectedIndex = $state(0);
 let pickerElement = $state<HTMLDivElement>();
 let inputElement = $state<HTMLInputElement>();
 // Avoid two-way binding to store to prevent effect cycles
 let query = $state(aliasPickerStore.query || "");
-let localOptions = $state<{ id: string; path: string; }[]>([]);
+let localOptions: Option[] = [];
 
-// 検索クエリと候補から導出（副作用なし）
-let filteredOptions = $derived.by(() => {
+function getFilteredOptions(): Option[] {
     const q = (query || "").toLowerCase();
-    const opts = localOptions || [];
-    // 自己参照（現在のエイリアスアイテム）を除外
     const selfId = aliasPickerStore.itemId;
-    const filtered = opts.filter(o => o.id !== selfId && o.path.toLowerCase().includes(q));
+    return (localOptions || []).filter(o => o.id !== selfId && o.path.toLowerCase().includes(q));
+}
 
-    return filtered;
-});
+function clampSelectedIndex(options: Option[]) {
+    if (options.length === 0) {
+        selectedIndex = 0;
+        return;
+    }
+    if (selectedIndex >= options.length) {
+        selectedIndex = options.length - 1;
+    }
+    if (selectedIndex < 0) {
+        selectedIndex = 0;
+    }
+}
+
+function highlightSelection(container?: HTMLUListElement | null) {
+    const list = container ?? (pickerElement?.querySelector("ul") as HTMLUListElement | null);
+    if (!list) return;
+    const children = Array.from(list.children);
+    children.forEach((child, idx) => child.classList.toggle("selected", idx === selectedIndex));
+}
+
+function renderOptions() {
+    const list = pickerElement?.querySelector("ul") as HTMLUListElement | null;
+    if (!list) return;
+    const options = getFilteredOptions();
+    clampSelectedIndex(options);
+    list.innerHTML = "";
+    options.forEach((opt, index) => {
+        const li = document.createElement("li");
+        if (index === selectedIndex) li.classList.add("selected");
+        const button = document.createElement("button");
+        button.dataset.id = opt.id;
+        button.textContent = opt.path;
+        button.onclick = () => confirm(opt.id);
+        button.onmouseenter = () => {
+            selectedIndex = index;
+            try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
+            highlightSelection(list);
+        };
+        li.appendChild(button);
+        list.appendChild(li);
+    });
+    highlightSelection(list);
+}
 
 // 入力値が変わった時のみ選択インデックスをリセット（DOMイベントで副作用を限定）
 function handleInput() {
     selectedIndex = 0;
     try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
+    renderOptions();
 }
 
 function confirm(id: string) {
     console.log("AliasPicker confirm called with id:", id);
-    console.log("AliasPicker filteredOptions:", filteredOptions.map(o => ({ id: o.id, path: o.path })));
+    const filtered = getFilteredOptions();
+    console.log("AliasPicker filteredOptions:", filtered.map(o => ({ id: o.id, path: o.path })));
     console.log("AliasPicker localOptions:", localOptions.map(o => ({ id: o.id, path: o.path })));
     try {
         const beforeVisible = aliasPickerStore.isVisible;
@@ -37,7 +80,7 @@ function confirm(id: string) {
         // ストア側の options とローカル options の不整合で confirmById が見つけられない場合のフォールバック
         if (beforeVisible && aliasPickerStore.isVisible) {
             console.log("AliasPicker picker still visible, trying fallback");
-            const local = (filteredOptions.find(o => o.id === id) || localOptions.find(o => o.id === id));
+            const local = (filtered.find(o => o.id === id) || localOptions.find(o => o.id === id));
             if (local) {
                 console.log("AliasPicker fallback confirm using path:", local.path);
                 aliasPickerStore.confirm(local.path);
@@ -64,27 +107,32 @@ function handleKeydown(event: KeyboardEvent) {
     if (event.key === "ArrowDown") {
         event.preventDefault();
         event.stopPropagation();
-        selectedIndex = Math.min(selectedIndex + 1, filteredOptions.length - 1);
+        const options = getFilteredOptions();
+        selectedIndex = Math.min(selectedIndex + 1, Math.max(options.length - 1, 0));
         try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
-        console.log("AliasPicker: selectedIndex after ArrowDown:", selectedIndex, "options=", filteredOptions.length);
+        console.log("AliasPicker: selectedIndex after ArrowDown:", selectedIndex, "options=", options.length);
+        highlightSelection();
         return;
     }
 
     if (event.key === "ArrowUp") {
         event.preventDefault();
         event.stopPropagation();
+        const options = getFilteredOptions();
         selectedIndex = Math.max(selectedIndex - 1, 0);
         try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
-        console.log("AliasPicker: selectedIndex after ArrowUp:", selectedIndex, "options=", filteredOptions.length);
+        console.log("AliasPicker: selectedIndex after ArrowUp:", selectedIndex, "options=", options.length);
+        highlightSelection();
         return;
     }
 
     if (event.key === "Enter") {
         event.preventDefault();
         event.stopPropagation();
-        if (filteredOptions[selectedIndex]) {
-            console.log("AliasPicker.handleKeydown confirming id=", filteredOptions[selectedIndex].id);
-            confirm(filteredOptions[selectedIndex].id);
+        const options = getFilteredOptions();
+        if (options[selectedIndex]) {
+            console.log("AliasPicker.handleKeydown confirming id=", options[selectedIndex].id);
+            confirm(options[selectedIndex].id);
         } else {
             // No option resolved; close to avoid hanging tests
             console.log("AliasPicker.handleKeydown no option, hiding");
@@ -95,16 +143,22 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 // Initialize localOptions from store via event to avoid tight coupling
-import { onMount, onDestroy } from "svelte";
+import { onMount } from "svelte";
 onMount(() => {
     const handler = (e: any) => {
         const opts = e?.detail?.options ?? [];
         localOptions = Array.isArray(opts) ? opts : [];
         selectedIndex = 0;
+        renderOptions();
     };
     window.addEventListener("aliaspicker-options", handler as any);
     // seed once if already present
-    try { if (Array.isArray(aliasPickerStore.options)) localOptions = [...aliasPickerStore.options]; } catch {}
+    try {
+        if (Array.isArray(aliasPickerStore.options)) {
+            localOptions = [...aliasPickerStore.options];
+            renderOptions();
+        }
+    } catch {}
     // グローバルキー監視（フォーカスに依存せずキーボード操作を受け付ける）
     const keyListener = (ev: KeyboardEvent) => {
         if (!aliasPickerStore.isVisible) return;
@@ -133,11 +187,12 @@ $effect(() => {
             }, 0);
             // 外部ストアへ選択インデックスを同期
             try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
+            renderOptions();
         } catch {}
     }
 });
 </script>
-{#if aliasPickerStore.isVisible || true}
+{#if aliasPickerStore.isVisible}
     <div
         class="alias-picker"
         onkeydown={handleKeydown}
@@ -152,19 +207,7 @@ $effect(() => {
             oninput={handleInput}
             bind:this={inputElement}
         />
-        <ul>
-            {#each filteredOptions as opt, index}
-                <li class:selected={index === selectedIndex}>
-                    <button
-                        data-id={opt.id}
-                        onclick={() => confirm(opt.id)}
-                        onmouseenter={() => selectedIndex = index}
-                    >
-                        {opt.path}
-                    </button>
-                </li>
-            {/each}
-        </ul>
+        <ul></ul>
     </div>
 {/if}
 <style>

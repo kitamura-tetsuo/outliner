@@ -3,13 +3,14 @@
 console.log("OutlinerBase script executed - console.log");
 
 import type { Item } from "../schema/app-schema";
-import AliasPicker from "./AliasPicker.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { onMount } from "svelte";
 import GlobalTextArea from "./GlobalTextArea.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
 import PresenceAvatars from "./PresenceAvatars.svelte";
 import SlashCommandPalette from "./SlashCommandPalette.svelte";
+import AliasPicker from "./AliasPicker.svelte";
+
 
 console.log("OutlinerBase imports completed");
 
