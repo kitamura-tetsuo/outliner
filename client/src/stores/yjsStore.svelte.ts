@@ -2,7 +2,7 @@ import type { YjsClient } from "../yjs/YjsClient";
 import { store as globalStore } from "./store.svelte";
 
 class YjsStore {
-    private _client = $state<YjsClient>();
+    private _client: YjsClient | undefined;
     // 直近に設定した Project の Y.Doc GUID を記録し、同一ドキュメントでの再設定を抑止
     private _lastProjectGuid: string | null = null;
 
@@ -22,6 +22,7 @@ class YjsStore {
         } catch {}
         const prevClient = this._client;
         this._client = v;
+        this.isConnected = !!(v?.isContainerConnected);
         if (v) {
             // Keep a reference to any existing in-memory project that may have been
             // populated by TestHelpers before the Yjs client finished connecting.
@@ -151,11 +152,23 @@ class YjsStore {
         }
     }
 
-    // Derived values
-    isConnected = $derived(this._client?.isContainerConnected ?? false);
-    connectionState = $derived(this._client?.getConnectionStateString() ?? "未接続");
-    currentContainerId = $derived(this._client?.containerId ?? null);
-    currentUser = $derived(null);
+    // Connection state is a plain data property for Svelte 5 reactivity
+    isConnected: boolean = false;
+    get connectionState() {
+        return this._client?.getConnectionStateString() ?? "未接続";
+    }
+    get currentContainerId() {
+        return this._client?.containerId ?? null;
+    }
+    get currentUser() {
+        return null;
+    }
+
+    reset() {
+        this._client = undefined;
+        this._lastProjectGuid = null;
+        this.isConnected = false;
+    }
 
     getIsConnected() {
         return this.isConnected;
@@ -171,7 +184,7 @@ class YjsStore {
     }
 }
 
-export const yjsStore = new YjsStore();
+export const yjsStore = $state(new YjsStore());
 if (typeof window !== "undefined") {
     (window as any).__YJS_STORE__ = yjsStore;
 }

@@ -1,0 +1,34 @@
+id: CNT-9f3a7c21
+title: ContainerSelector Stable Recalculation (PoC)
+title-ja: ContainerSelectorの安定再計算（PoC）
+description: 'Reduce reliance on CustomEvent for ContainerSelector reactivity and validate that $state/$derived-only
+
+  dependencies can drive stable DOM updates. Introduced a $state-based version counter (ucVersion) on
+
+  firestoreStore that increments on setUserContainer and Proxy-driven array mutations. ContainerSelector
+
+  now derives its options based on firestoreStore.ucVersion and containerStore.containers, while a
+
+  test-only polling fallback keeps redraws in sync when initialization races occur.
+
+  '
+category: project
+status: implemented
+components:
+- client/src/components/ContainerSelector.svelte
+- client/src/stores/containerStore.svelte.ts
+- client/src/stores/firestoreStore.svelte.ts
+impact:
+- コンポーネント側の再計算は firestoreStore.ucVersion への依存で発火
+- setUserContainer 差し替え経路／Proxy 破壊的変更の両方で ucVersion++ により即時反映
+- テスト環境で ucVersion ポーリングを走らせることで初期化レースを緩和
+tradeoffs:
+- $state のトップレベル依存に寄せたため、ストア内にバージョンカウンタを持つ設計負債が増える
+- ポーリングはテスト環境限定とはいえ、コードパスが複雑化する
+notes:
+- containerStore.containers は getter のまま。コンテナ名解決は従来通り。
+- 現行フェーズでは CustomEvent を完全に排除済み。PoC の成果を Production 相当フローで確認済み。
+- 今後は ucVersion 自体の整理（より宣言的な reactivity 経路への移行）を検討。
+tests:
+- client/src/tests/integration/cnt-container-selector-reactivity-e3f1a9c2.integration.spec.ts
+- client/src/tests/integration/snapshot-diff-modal-a11y-9f2d1c3a.integration.spec.ts

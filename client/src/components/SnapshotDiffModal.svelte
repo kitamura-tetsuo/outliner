@@ -59,7 +59,7 @@ $effect(() => {
     <div class="flex">
         <ul class="w-1/3 pr-4 overflow-y-auto max-h-60 border-r">
             {#each snapshots as s}
-                <li onclick={() => showDiff(s.id)}>
+                <li>
                     <button
                         type="button"
                         class="cursor-pointer hover:bg-gray-200 p-1 text-left w-full"

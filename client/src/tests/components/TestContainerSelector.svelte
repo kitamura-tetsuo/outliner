@@ -14,9 +14,17 @@ interface Props {
 
 let { onContainerSelected = () => {} }: Props = $props();
 
-// Get reactive values for debug display
-let userContainer = $derived(firestoreStore.userContainer);
-let containers = $derived(containerStore.containers);
+// イベントレス: $state/$derived 依存で再計算
+let userContainer = $derived.by(() => {
+    (firestoreStore as any).ucVersion; // 依存関係
+    return firestoreStore.userContainer;
+});
+
+// containerStore.containers は getter なので、userContainer の変更依存で再計算
+let containers = $derived.by(() => {
+    userContainer;
+    return containerStore.containers;
+});
 </script>
 
 <!-- Debug Information Panel (Test Environment Only) -->

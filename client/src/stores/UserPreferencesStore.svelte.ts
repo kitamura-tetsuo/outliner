@@ -35,9 +35,11 @@ function savePreferencesToStorage(preferences: UserPreferences) {
 }
 
 export class UserPreferencesStore {
-    preferences = $state<UserPreferences>(loadPreferencesFromStorage());
+    preferences: UserPreferences = loadPreferencesFromStorage();
 
-    theme = $derived(this.preferences.theme);
+    get theme() {
+        return this.preferences.theme;
+    }
 
     setTheme(theme: "light" | "dark") {
         this.preferences = { ...this.preferences, theme };
@@ -59,7 +61,7 @@ export class UserPreferencesStore {
     }
 }
 
-export const userPreferencesStore = new UserPreferencesStore();
+export const userPreferencesStore = $state(new UserPreferencesStore());
 
 if (typeof window !== "undefined") {
     (window as any).userPreferencesStore = userPreferencesStore;

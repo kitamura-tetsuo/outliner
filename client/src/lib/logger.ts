@@ -195,8 +195,8 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
     // 基本のロガー
     const childLogger = logger.child({ module });
 
-    // コンソール出力が有効な場合、コンソールにも出力する拡張ロガーを作成
-    if (enableConsole && useConsoleAPI) {
+    // コンソール出力が有効な場合、コンソールにも出力する拡張ロガーを作成（テスト環境では抑止）
+    if (enableConsole && useConsoleAPI && !isTestEnvironment) {
         return new Proxy(childLogger, {
             get(target, prop) {
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {

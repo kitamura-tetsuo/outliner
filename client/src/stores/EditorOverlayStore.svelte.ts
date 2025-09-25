@@ -51,19 +51,19 @@ export interface SelectionRange {
 // Svelte 5 ランタイムの runes マクロを利用 (import は不要)
 
 export class EditorOverlayStore {
-    cursors = $state<Record<string, CursorPosition>>({});
+    cursors: Record<string, CursorPosition> = {};
     // Cursor インスタンスを保持する Map
     cursorInstances = new Map<string, Cursor>();
     // 追加されたカーソルの履歴
-    cursorHistory = $state<string[]>([]);
-    selections = $state<Record<string, SelectionRange>>({});
-    activeItemId = $state<string | null>(null);
-    cursorVisible = $state<boolean>(true);
-    animationPaused = $state<boolean>(false);
+    cursorHistory: string[] = [];
+    selections: Record<string, SelectionRange> = {};
+    activeItemId: string | null = null;
+    cursorVisible: boolean = true;
+    animationPaused: boolean = false;
     // IME composition state
-    isComposing = $state<boolean>(false);
+    isComposing: boolean = false;
     // GlobalTextArea の textarea 要素を保持
-    textareaRef = $state<HTMLTextAreaElement | null>(null);
+    textareaRef: HTMLTextAreaElement | null = null;
     // onEdit コールバック
     onEditCallback: (() => void) | null = null;
 
@@ -1147,7 +1147,7 @@ export class EditorOverlayStore {
     }
 }
 
-export const editorOverlayStore = new EditorOverlayStore();
+export const editorOverlayStore = $state(new EditorOverlayStore());
 
 // テスト用にグローバルスコープに公開
 if (typeof window !== "undefined") {

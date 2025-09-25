@@ -55,6 +55,18 @@ fix_permissions() {
 # Fix permissions before proceeding
 fix_permissions
 
+ensure_python_env() {
+  echo "Ensuring Python virtual environment..."
+  if [ ! -d "${ROOT_DIR}/.venv" ]; then
+    python3 -m venv "${ROOT_DIR}/.venv"
+  fi
+  # shellcheck disable=SC1090
+  source "${ROOT_DIR}/.venv/bin/activate"
+  if [ -f "${ROOT_DIR}/scripts/requirements.txt" ]; then
+    pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"
+  fi
+}
+
 # Bypass heavy setup steps if sentinel file exists
 if [ -f "$SETUP_SENTINEL" ]; then
   echo "Setup already completed, skipping installation steps"
@@ -103,22 +115,11 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   retry_apt_get -y install python3-venv python3-pip
 
   # Create Python virtual environment if it doesn't exist
-  if [ ! -d "${ROOT_DIR}/.venv" ]; then
-    echo "Creating Python virtual environment..."
-    python3 -m venv "${ROOT_DIR}/.venv"
-  fi
-
-  # Activate virtual environment
-  echo "Activating Python virtual environment..."
-  source "${ROOT_DIR}/.venv/bin/activate"
+  ensure_python_env
 
   # Install pre-commit via pip
   pip install --no-cache-dir pre-commit
   pre-commit install --hook-type pre-commit
-
-  if [ -f "${ROOT_DIR}/scripts/requirements.txt" ]; then
-    pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"
-  fi
   echo "Installing all dependencies..."
   install_all_dependencies
 
@@ -150,6 +151,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   touch "$SETUP_SENTINEL"
 else
   echo "Skipping dependency installation"
+  ensure_python_env
   if ! command -v xvfb-run >/dev/null 2>&1; then
     echo "xvfb-run missing; installing OS utilities..."
     install_os_utilities

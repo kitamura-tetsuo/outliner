@@ -1,0 +1,37 @@
+id: CNT-7b28a4f0
+title: Eventless ContainerSelector via ucVersion
+title-ja: イベントレスなContainerSelector（ucVersion依存）
+description: 'ContainerSelector から CustomEvent 依存（firestore-user-container-changed）を完全に排除し、
+
+  firestoreStore.ucVersion と Svelte 5 の $state/$derived だけで安定に再計算できることを証明する。
+
+  setUserContainer の差し替え経路および Proxy による配列 push/pop の両方で ucVersion++ により
+
+  即時反映される設計を維持しつつ、テスト環境では ucVersion の変化をポーリングして redraw を
+
+  バックストップするフォールバックを追加。E2E で fluidService 経由の setUserContainer 差し替えが
+
+  実 UI の option 増加に直結することを確認した。
+
+  '
+category: project
+status: implemented
+components:
+- client/src/components/ContainerSelector.svelte
+- client/src/stores/firestoreStore.svelte.ts
+- client/src/tests/components/TestContainerSelector.svelte
+- client/src/tests/fixtures/UserContainerDisplay.svelte
+impact:
+- ContainerSelector は firestoreStore.ucVersion と内部 redraw バックストップのみを依存に持つ
+- setUserContainer 差し替え／配列 push/pop の双方で ucVersion++ により即時 UI 反映
+- firestoreStore.setUserContainer から CustomEvent 発火を削除し、ログ出力で差分を可視化
+tradeoffs:
+- ucVersion バージョンカウンタという追加状態は継続して管理する必要がある
+- テスト環境専用の再描画ポーリングは本番では動作しない（不要なコストはかからないが分岐が増える）
+notes:
+- containerStore.containers は getter のまま。名前解決は従来どおり
+- Production 相当の短い E2E で fluidService.createClient → setUserContainer 差し替え → option 増加を検証
+- firestoreStore.setUserContainer の INFO ログで ucVersion・アクセス可能数・既定 ID の変化を追跡可能
+tests:
+- client/e2e/new/cnt-container-selector-setusercontainer-reflects-7b28a4f0.spec.ts
+- client/src/tests/integration/cnt-container-selector-reactivity-e3f1a9c2.integration.spec.ts

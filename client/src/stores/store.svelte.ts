@@ -4,13 +4,13 @@ import { YjsSubscriber } from "./YjsSubscriber";
 
 class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
-    pages = $state<any>({ current: [] });
-    currentPage = $state<Item>();
+    pages: any = { current: [] };
+    currentPage: Item | undefined;
     // 現在開いているコメントスレッドのアイテムID（同時に1つのみ表示）
-    openCommentItemId = $state<string | null>(null);
+    openCommentItemId: string | null = null;
     // Fallback: 接続切替時などIDが変わるケースに備えてインデックスも保持
-    openCommentItemIndex = $state<number | null>(null);
-    private _project = $state<Project>();
+    openCommentItemIndex: number | null = null;
+    private _project: Project | undefined;
 
     public get project(): Project | undefined {
         return this._project;
@@ -35,7 +35,7 @@ class GeneralStore {
     }
 }
 
-export const store = new GeneralStore();
+export const store = $state(new GeneralStore());
 
 // グローバルに参照できるようにする（ScrapboxFormatter.tsからアクセスするため）
 if (typeof window !== "undefined") {

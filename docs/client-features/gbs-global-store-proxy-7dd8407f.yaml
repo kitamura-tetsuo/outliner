@@ -1,17 +1,15 @@
 id: GBS-7dd8407f
 title: Global Store Proxy
 title-ja: グローバルストアプロキシ
-description: Provide a unified proxy class that delegates to backend specific stores.
+description: Removed. We eliminated the thin facade (GlobalStore proxy). UI imports backend stores directly (yjsStore, appStore, firestoreStore).
 category: project
-status: implemented
-components:
-- src/stores/globalStore.svelte.ts
+status: removed
+components: null
 services:
 - src/stores/store.svelte.ts
 - src/stores/fluidStore.svelte.ts
 - src/stores/firestoreStore.svelte.ts
 tests:
-- client/src/stores/globalStore.test.ts
 - client/src/tests/integration/globalStore.integration.spec.ts
 acceptance:
 - Setting project via the proxy updates the underlying store

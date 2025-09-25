@@ -42,10 +42,10 @@ test.describe("Yjs client attach and DOM reflect", () => {
                 "二行目: Yjs 反映",
                 "三行目: 並び順チェック",
             ];
-            const existing = items.length ?? 0;
+            const existing = (items as any).length ?? 0;
             for (let i = existing; i < 3; i++) {
-                const it = items.addNode?.("tester");
-                it?.updateText?.(lines[i]);
+                const it = (items as any).addNode?.("tester");
+                (it as any)?.updateText?.(lines[i]);
             }
         });
         // Debug counts to stabilize selectors across environments

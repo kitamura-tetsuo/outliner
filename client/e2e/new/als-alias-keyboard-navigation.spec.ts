@@ -62,7 +62,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await page.evaluate((id) => {
             (window as any).__aliasIdForDebug = id;
         }, aliasId);
-        const optionCount = await page.locator(".alias-picker li").count({ timeout: 5000 });
+        const optionCount = await page.locator(".alias-picker li").count();
         expect(optionCount).toBeGreaterThan(0);
 
         // デバッグ: 利用可能なオプションを確認

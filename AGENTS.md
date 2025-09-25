@@ -57,6 +57,25 @@ Mocks are generally forbidden. Limited exceptions:
   debug buttons, and test-specific functionality must be isolated to test
   environments only. Production code should not contain any test-related logic.
 
+### Svelte 5 Store Reactivity (Vitest + @testing-library/svelte)
+
+- Module-scoped singletons must not leak state across tests
+  - A module-level export like `export const someStore = $state(new SomeStore())` creates a singleton.
+  - Recommended: provide a `reset()` method on the store and call it in `beforeEach(() => someStore.reset())`.
+  - Alternative: use `vi.resetModules()` to re-import the module per test (slower; prefer the `reset()` approach).
+
+- Always await DOM updates after mutating store state
+  - Svelte updates are asynchronous. After changing store properties, `await tick()` and/or use `await waitFor(() => ...)`.
+  - This avoids timing flakiness when asserting DOM changes (e.g., visibility toggles).
+
+- If `requestAnimationFrame` is used inside show/hide or similar flows
+  - In JSDOM, `requestAnimationFrame` is not immediate. Control timers in tests: `vi.useFakeTimers()` and `vi.runOnlyPendingTimers()`.
+  - Alternatively, avoid rAF-dependent paths in tests.
+
+- Do not destructure store state from the proxy
+  - Destructuring (e.g., `const { isVisible } = someStore`) breaks reactivity by removing the proxy.
+  - Always access properties directly on the proxied instance (e.g., `someStore.isVisible`).
+
 ### Test Implementation Guidelines
 
 - **Manual workarounds in tests are not acceptable**. If a test requires manual positioning of textarea elements or other DOM manipulation to pass, the underlying implementation must be fixed instead.
@@ -224,5 +243,12 @@ Mocks are generally forbidden. Limited exceptions:
   - Avoid workaround flags (`--force`, `--legacy-peer-deps`) in favor of a correct dependency graph.
 
 ---
+
+## 10. Architectural Policy: No Thin Facades Between UI and Backends
+
+- We do NOT maintain a “thin facade” layer (e.g., a GlobalStore proxy) to shield the UI from backend-specific stores.
+- Rationale: In our Svelte 5 + Yjs architecture, the cost of widening the gap between UI and backends outweighs its benefits (reactivity pitfalls, test fragility, extra indirection).
+- UI and services may import backend stores directly (e.g., yjsStore, appStore, firestoreStore). Prefer clear, direct boundaries over proxy indirection.
+- Do not introduce new proxy/global façade layers. Remove or deprecate existing ones when feasible.
 
 Follow these guidelines to keep documentation, code, and tests consistent across the project.

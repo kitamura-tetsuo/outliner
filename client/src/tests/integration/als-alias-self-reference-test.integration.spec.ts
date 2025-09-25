@@ -1,9 +1,11 @@
 import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { beforeEach } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
+beforeEach(() => aliasPickerStore.reset());
 
 // Mirrors e2e/new/als-alias-self-reference-test.spec.ts
 

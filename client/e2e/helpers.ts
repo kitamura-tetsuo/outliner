@@ -67,6 +67,11 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
     }
 }
 
+// NOTE: e2e では Playwright/JSDOM 上の window 構造が実行時に変化するため、
+// (window as any) などの any キャストを意図的に使用しています。型安全性よりも
+// 実ブラウザ挙動の再現性・安定性を優先するテスト特有の緩和であり、
+// 本番コードには any キャストを持ち込まない方針です。
+
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
 declare global {
     interface Window {

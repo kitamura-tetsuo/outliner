@@ -31,6 +31,11 @@ export class PresenceStore {
     getUsers(): PresenceUser[] {
         return Object.values(this.users);
     }
+
+    // tests 6 re-initialization
+    reset() {
+        this.users = {};
+    }
 }
 
 export function colorForUser(id: string): string {
@@ -41,7 +46,7 @@ export function colorForUser(id: string): string {
     return `hsl(${hash}, 70%, 50%)`;
 }
 
-export const presenceStore = new PresenceStore();
+export const presenceStore = $state(new PresenceStore());
 if (typeof window !== "undefined") {
     (window as any).presenceStore = presenceStore;
 }

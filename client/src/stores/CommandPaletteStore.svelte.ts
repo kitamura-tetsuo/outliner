@@ -10,15 +10,15 @@ interface Position {
 }
 
 class CommandPaletteStore {
-    isVisible = $state(false);
-    position = $state<Position>({ top: 0, left: 0 });
-    query = $state("");
-    selectedIndex = $state(0);
+    isVisible = false;
+    position: Position = { top: 0, left: 0 };
+    query = "";
+    selectedIndex = 0;
 
     // CommandPalette専用のカーソル状態
-    private commandCursorItemId = $state<string | null>(null);
-    private commandCursorOffset = $state<number>(0);
-    private commandStartOffset = $state<number>(0); // スラッシュの位置
+    private commandCursorItemId: string | null = null;
+    private commandCursorOffset: number = 0;
+    private commandStartOffset: number = 0; // スラッシュの位置
 
     readonly commands = [
         { label: "Table", type: "table" as const },
@@ -26,8 +26,8 @@ class CommandPaletteStore {
         { label: "Alias", type: "alias" as const },
     ];
 
-    // コンポーネント側が確実に反応できるよう、$derivedで可視リストを公開
-    visible = $derived((() => {
+    // 可視リストは getter で計算
+    get visible() {
         const fallback = this.isVisible && !this.query ? this.deriveQueryFromDoc() : this.query;
         const q = (fallback || "").toLowerCase();
         try {
@@ -41,7 +41,7 @@ class CommandPaletteStore {
             return this.commands.filter(c => c.type === "chart");
         }
         return this.commands.filter(c => c.label.toLowerCase().includes(q));
-    })());
+    }
 
     private deriveQueryFromDoc(): string {
         try {
@@ -436,12 +436,9 @@ class CommandPaletteStore {
     }
 }
 
-export const commandPaletteStore = new CommandPaletteStore();
+export const commandPaletteStore = $state(new CommandPaletteStore());
 
 // expose for debugging and test access without importing .svelte.ts
-if (typeof window !== "undefined") {
-    (window as any).commandPaletteStore = commandPaletteStore;
-}
 if (typeof window !== "undefined") {
     (window as any).commandPaletteStore = commandPaletteStore;
 }

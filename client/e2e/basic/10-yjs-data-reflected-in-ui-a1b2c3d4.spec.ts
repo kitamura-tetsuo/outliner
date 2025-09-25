@@ -34,16 +34,16 @@ test.describe("YjsのデータがUIに反映される", () => {
             const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
 
-            const existing = items.length ?? 0;
+            const existing = (items as any).length ?? 0;
             // 既存分は上書き
-            for (let i = 0; i < Math.min(existing, lines.length); i++) {
-                const it = items.at ? items.at(i) : items[i];
-                it?.updateText?.(lines[i]);
+            for (let i = 0; i < Math.min(existing as number, lines.length); i++) {
+                const it = (items as any).at ? (items as any).at(i) : (items as any)[i];
+                (it as any)?.updateText?.(lines[i]);
             }
             // 不足分は追加
-            for (let i = existing; i < lines.length; i++) {
-                const node = items.addNode?.("tester");
-                node?.updateText?.(lines[i]);
+            for (let i = existing as number; i < lines.length; i++) {
+                const node = (items as any).addNode?.("tester");
+                (node as any)?.updateText?.(lines[i]);
             }
         }, lines);
 
@@ -87,11 +87,11 @@ test.describe("YjsのデータがUIに反映される", () => {
             await page.evaluate((lines) => {
                 const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
                     .generalStore;
-                const items = gs?.currentPage?.items;
+                const items = gs?.currentPage?.items as any;
                 if (!items) return;
                 for (let i = 0; i < lines.length; i++) {
                     const it = items.at ? items.at(i) : items[i];
-                    it?.updateText?.(lines[i]);
+                    (it as any)?.updateText?.(lines[i]);
                 }
             }, lines);
         }

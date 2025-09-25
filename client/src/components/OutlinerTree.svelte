@@ -109,27 +109,30 @@ const displayItems = new YjsSubscriber<DisplayItem[]>(
     },
 );
 
-// 可視アイテム数の変化に応じた再測定は、描画外で安全に行う
+// 可視アイテム数の変化に応じた再測定は、描画外で安全に行う（同期書き込みを避け、効果ループを防止）
 $effect(() => {
     const len = displayItems.current.length;
     if (__lastHeightsLen !== len) {
         __lastHeightsLen = len;
-        // 現在の配列サイズだけ先に拡張/縮小（同期書き込みは最小限）
-        const next = new Array(len).fill(0);
-        for (let i = 0; i < Math.min(len, itemHeights.length); i++) next[i] = itemHeights[i];
-        itemHeights = next;
-        // 直ちに暫定位置を再計算して初期オーバーラップを防ぐ
-        updateItemPositions();
-        // 実測は次フレームで反映してレイアウトの変化と分離
+        // すべての更新を次フレームに遅延して、依存の読み取りと書き込みを分離
         requestAnimationFrame(() => {
-            try {
-                const nodes = document.querySelectorAll('.item-container');
-                nodes.forEach((el, idx) => {
-                    const h = (el as HTMLElement).getBoundingClientRect().height;
-                    itemHeights[idx] = h || 28;
-                });
-                updateItemPositions();
-            } catch {}
+            // 現在の配列サイズだけ先に拡張/縮小
+            const next = new Array(len).fill(0);
+            for (let i = 0; i < Math.min(len, itemHeights.length); i++) next[i] = itemHeights[i];
+            itemHeights = next;
+            // 暫定位置を再計算して初期オーバーラップを防ぐ
+            updateItemPositions();
+            // 実測はさらに次フレームで反映してレイアウトの変化と分離
+            requestAnimationFrame(() => {
+                try {
+                    const nodes = document.querySelectorAll('.item-container');
+                    nodes.forEach((el, idx) => {
+                        const h = (el as HTMLElement).getBoundingClientRect().height;
+                        itemHeights[idx] = h || 28;
+                    });
+                    updateItemPositions();
+                } catch {}
+            });
         });
     }
 });
