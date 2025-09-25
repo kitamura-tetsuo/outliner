@@ -108,7 +108,8 @@ const rule = {
                 const restProperties = properties.slice(1);
                 const baseMatches = DIRECT_BASES.has(base);
                 const wrapperMatches = WRAPPER_BASES.has(base)
-                    && restProperties.some((property) => DIRECT_BASES.has(property));
+                    && (properties.length === 1
+                        || restProperties.some((property) => DIRECT_BASES.has(property)));
                 const chainParts = [...properties, base].reverse();
                 const chain = chainParts.join(".");
 
