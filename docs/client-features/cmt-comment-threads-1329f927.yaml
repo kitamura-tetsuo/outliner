@@ -16,3 +16,4 @@ components:
 tests:
 - client/e2e/new/cmt-comment-thread-basic.spec.ts
 - client/src/stores/OutlinerViewModel.test.ts
+- client/src/tests/integration/cmt-derived-renders-9ab3c1d2.integration.spec.ts

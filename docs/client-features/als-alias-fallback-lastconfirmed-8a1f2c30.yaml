@@ -1,0 +1,23 @@
+id: ALS-8a1f2c30
+title: Alias path fallback via lastConfirmedTargetId within 2s
+title-ja: 2秒以内の lastConfirmedTargetId フォールバックでエイリアスのパス表示
+description: 'OutlinerItem のエイリアス導出において、aliasPickerStore.lastConfirmedTargetId/lastConfirmedAt による
+
+  暫定フォールバックが 2 秒以内であれば UI にターゲットのパスが表示されることを保証する。
+
+  E2E では lastConfirmed* の直接設定でエイリアスパスの可視化と data-alias-target-id 反映を確認する。
+
+  '
+category: outliner
+status: implemented
+components:
+- client/src/components/OutlinerItem.svelte
+- client/src/stores/AliasPickerStore.svelte.ts
+impact:
+- エイリアス確定直後の Yjs 反映前でも、ユーザーにパスが即座に見える
+tradeoffs:
+- 2 秒という時間窓の調整が必要（短すぎると UX 低下、長すぎると誤表示リスク）
+notes:
+- aliasPath/aliasTargetIdEffective は lastConfirmed* を安全に参照
+tests:
+- client/e2e/new/als-alias-fallback-lastconfirmed-8a1f2c30.spec.ts

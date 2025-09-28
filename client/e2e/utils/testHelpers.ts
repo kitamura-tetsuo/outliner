@@ -1232,6 +1232,31 @@ export class TestHelpers {
             }, lines);
         } catch {}
 
+        // 強制整形: lines が与えられている場合は先頭から順にテキストを上書き（不足分は追加）
+        try {
+            if (Array.isArray(lines) && lines.length > 0) {
+                await page.evaluate((lines) => {
+                    try {
+                        const gs = (window as any).generalStore;
+                        const pageRef = gs?.currentPage;
+                        const items = pageRef?.items as any;
+                        if (!items) return;
+                        // 既存の先頭要素から順に上書きし、足りなければ追加
+                        for (let i = 0; i < lines.length; i++) {
+                            const want = String(lines[i] ?? "");
+                            let node = items.at ? items.at(i) : items[i];
+                            if (!node && typeof items.addNode === "function") {
+                                node = items.addNode("tester");
+                            }
+                            if (node?.updateText) node.updateText(want);
+                        }
+                    } catch (e) {
+                        console.warn("TestHelper: force overwrite lines failed", e);
+                    }
+                }, lines);
+            }
+        } catch {}
+
         // 最低限の可視性を短時間だけ確認（失敗しても継続）
         try {
             await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 1500 });

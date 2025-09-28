@@ -24,6 +24,19 @@ Object.defineProperty(window, "matchMedia", {
     })),
 });
 
+// Polyfill requestAnimationFrame for jsdom tests so fake timers can drive animations deterministically.
+if (typeof globalThis.requestAnimationFrame !== "function") {
+    globalThis.requestAnimationFrame = (cb: FrameRequestCallback): number => {
+        return setTimeout(() => cb(performance.now()), 16) as unknown as number;
+    };
+}
+
+if (typeof globalThis.cancelAnimationFrame !== "function") {
+    globalThis.cancelAnimationFrame = (id: number): void => {
+        clearTimeout(id as unknown as NodeJS.Timeout);
+    };
+}
+
 // ---- Vitest bootstrap: ensure a single firestoreStore instance shared across UI & tests ----
 try {
     // Ensure window exists

@@ -49,7 +49,7 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
         await page.waitForFunction(
             (id) =>
                 Array.from(document.querySelectorAll("select.container-select option")).some(option =>
-                    option.value === id
+                    (option as HTMLOptionElement).value === id
                 ),
             baselineId,
             { timeout: 10000 },

@@ -79,7 +79,7 @@ export class Cursor implements CursorEditingContext {
             }
         } catch {}
         if (typeof window !== "undefined") {
-            console.error("findTarget: not found", { itemId: this.itemId, rootId: (root as any)?.id });
+            console.debug("findTarget: not found", { itemId: this.itemId, rootId: (root as any)?.id });
         }
         return undefined;
     }

@@ -173,6 +173,9 @@ else
   fi
 fi
 
+echo "Ensuring node-canvas native dependencies..."
+ensure_canvas_native_deps
+
 # Ensure essential client CLI tools are available
 cd "${ROOT_DIR}/client"
 # Fix permissions before checking/installing client CLI tools

@@ -27,7 +27,13 @@ let editingId = $state<string | null>(null);
 let editText = $state("");
 let commentsList = $state<Comment[]>((comments as any)?.toPlain?.() ?? []);
 let localComments = $state<Comment[]>([]);
-let renderCommentsState = $state<Comment[]>([]);
+const renderCommentsState = $derived.by(() => {
+    const list = (commentsSubscriber.current as any) ?? [];
+    const map = new Map<string, Comment>();
+    for (const c of list) map.set(c.id, c);
+    for (const c of localComments) map.set(c.id, c);
+    return Array.from(map.values());
+});
 let threadRef: HTMLElement | null = null;
 
 function e2eLog(entry: any) {
@@ -38,16 +44,14 @@ function e2eLog(entry: any) {
     } catch {}
 }
 
+// 
+//  
+let lastNotifiedCount = $state(-1);
 
-function recompute() {
-    const map = new Map<string, Comment>();
-    for (const c of commentsList) map.set(c.id, c);
-    for (const c of localComments) map.set(c.id, c);
 
-    renderCommentsState = Array.from(map.values());
-}
 
-recompute();
+
+// initial recompute deferred until commentsSubscriber is initialized
 
 // YjsSubscriberを使用してcommentsの変更を監視（親Docに直接サブスクライブ）
 
@@ -76,54 +80,10 @@ const commentsSubscriber = new YjsSubscriber<Comment[]>(
 
 // クリック委譲（安全網）: ボタンのonclickが効かない環境でも確実にadd()を呼ぶ
 // 軽量オートシンク: Y.Doc 更新時に toPlain → recompute → onCountChanged(length 変化時のみ)
-$effect(() => {
-    try {
-        const list = (commentsSubscriber.current as any) ?? [];
-        const prevLen = commentsList.length;
-        commentsList = list as Comment[];
-        recompute();
-        if ((commentsList.length ?? 0) !== (prevLen ?? 0)) {
-            onCountChanged?.(commentsList.length);
-        }
-    } catch {}
-});
 
-// カウントの変化を常に親・バッジへ反映（最小の$effect、CMT-0001安定化のため）
-let lastNotifiedCount = -1;
-$effect(() => {
-    const countNow = renderCommentsState.length;
-    // Prevent infinite loop by only notifying when count actually changes
-    if (countNow !== lastNotifiedCount) {
-        lastNotifiedCount = countNow;
-        try { onCountChanged?.(countNow); } catch {}
-        try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
-        try {
-            const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-            const badge = container?.querySelector('.comment-button .comment-count') as HTMLElement | null;
-            if (badge) { badge.textContent = String(countNow); }
-            const id = (props.item as any)?.id || container?.getAttribute('data-item-id');
-            if (id) {
 
-                const nodes = document.querySelectorAll(`[data-item-id="${id}"] .comment-count`);
-                nodes.forEach(el => { (el as HTMLElement).textContent = String(countNow); });
-            }
-        } catch {}
-    }
-});
-
-// 入力開始時に自動追加（E2E安定化用のフォールバック）。
-// ユーザーがテキストを入力した瞬間に一度だけ add() を呼ぶ。
-let autoAddAttempted = $state(false);
-$effect(() => {
-    if (newText && !autoAddAttempted) {
-        autoAddAttempted = true;
-        try { e2eLog({ tag: 'auto-add-trigger' }); } catch {}
-        try { add(); } catch (e) { logger.error('[CommentThread] auto-add error', e); }
-    }
-    if (!newText && autoAddAttempted) {
-        autoAddAttempted = false;
-    }
-});
+// カウント通知は親（OutlinerItem）のYjs由来購読に委譲する。
+// ここではDOM直接書き換えや副作用を行わない（$effect撤去）。
 
     try { logger.debug('[CommentThread] mount props', { hasComments: !!props?.comments, hasDoc: !!props?.doc }); } catch {}
 
@@ -262,15 +222,16 @@ function add() {
     try {
         const optimistic = { id, author: user, text: newText, created: time, lastChanged: time } as any;
         localComments = [...localComments, optimistic];
-        recompute();
+
     } catch {}
 
 
     // 正常経路: Yjs 追加後に state を同期し、親に厳密件数で通知
     try {
-        commentsList = (commentsObj as any)?.toPlain?.() ?? commentsList;
-        recompute();
-        const countNow = commentsList.length;
+        // Yjs debaeadf1c8ecb7f4b7L
+        // Yjs  
+
+        const countNow = renderCommentsState.length;
         // Only notify if count actually changed to prevent infinite loops
         if (countNow !== lastNotifiedCount) {
             lastNotifiedCount = countNow;
@@ -323,10 +284,10 @@ function remove(id: string) {
         }
     }
     try { commentsObj?.deleteComment?.(id); } catch (e) { logger.error('[CommentThread] deleteComment error', e); }
-    try { commentsList = commentsObj?.toPlain?.() ?? commentsList; } catch (e) { logger.error('[CommentThread] toPlain after delete error', e); }
+    try { /* Yjs  derived updates; no direct assignment to commentsList */ } catch (e) { logger.error('[CommentThread] toPlain after delete error', e); }
     localComments = localComments.filter(c => c.id !== id);
-    recompute();
-    const countNow = commentsList.length;
+
+    const countNow = renderCommentsState.length;
     // Only notify if count actually changed to prevent infinite loops
     if (countNow !== lastNotifiedCount) {
         lastNotifiedCount = countNow;
@@ -338,7 +299,7 @@ function remove(id: string) {
     try {
         const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
         const badge = container?.querySelector('.comment-button .comment-count') as HTMLElement | null;
-        if (badge) { badge.textContent = String(commentsList.length); (badge as HTMLElement).style.display = (commentsList.length > 0) ? 'inline-block' : 'none'; }
+        if (badge) { badge.textContent = String(renderCommentsState.length); (badge as HTMLElement).style.display = (renderCommentsState.length > 0) ? 'inline-block' : 'none'; }
     } catch {}
 }
 
@@ -367,9 +328,9 @@ function saveEdit(id: string) {
         }
     }
     try { commentsObj?.updateComment?.(id, editText); logger.debug('[CommentThread] updateComment called'); } catch (e) { logger.error('[CommentThread] updateComment error', e); }
-    try { commentsList = commentsObj?.toPlain?.() ?? commentsList; logger.debug('[CommentThread] commentsList after update', commentsList); } catch (e) { logger.error('[CommentThread] toPlain after update error', e); }
+    try { /* Yjs derived updates; no direct assignment to commentsList */ logger.debug('[CommentThread] updateComment applied'); } catch (e) { logger.error('[CommentThread] toPlain after update error', e); }
     localComments = localComments.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } as any : c);
-    recompute();
+
     try { logger.debug('[CommentThread] renderCommentsState after update', renderCommentsState); } catch {}
     editingId = null;
 }

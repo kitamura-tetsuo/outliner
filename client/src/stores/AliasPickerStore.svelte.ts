@@ -17,7 +17,18 @@ class AliasPickerStore {
     // 直近の確定情報（OutlinerItem が Yjs 反映前に暫定的に参照するため）
     lastConfirmedItemId: string | null = null;
     lastConfirmedTargetId: string | null = null;
-    lastConfirmedAt: number | null = null;
+    private _lastConfirmedAt: number | null = null;
+    private _tick: number = 0;
+    get lastConfirmedAt(): number | null {
+        return this._lastConfirmedAt;
+    }
+    set lastConfirmedAt(v: number | null) {
+        this._lastConfirmedAt = v;
+        this._tick = (this._tick + 1) | 0;
+    }
+    get tick(): number {
+        return this._tick;
+    }
 
     query = "";
     show(itemId: string) {

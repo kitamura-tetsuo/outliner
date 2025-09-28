@@ -22,10 +22,24 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 // global textarea をストアに登録
 onMount(() => {
     // Initialize measurement canvas on client only
-    try {
-        measureCanvas = document.createElement("canvas");
-        measureCtx = measureCanvas.getContext("2d");
-    } catch {}
+    // Node.jsテスト環境ではCanvas APIがサポートされていない可能性があるため、
+    // 存在チェックをしてから初期化する
+    if (typeof document !== 'undefined' && typeof HTMLCanvasElement !== 'undefined') {
+        try {
+            measureCanvas = document.createElement("canvas");
+            // テスト環境ではgetContextが実装されていない場合があるため、try-catchで対応
+            measureCtx = measureCanvas.getContext("2d");
+            if (!measureCtx) {
+                console.warn('GlobalTextArea: Canvas 2D context not available, text measurement may be affected');
+            }
+        } catch (error) {
+            // テスト環境や特定のブラウザではCanvas APIが利用できない場合がある
+            console.warn('GlobalTextArea: Canvas API not available, text measurement may be affected:', error);
+            measureCtx = null;
+        }
+    } else {
+        console.warn('GlobalTextArea: Canvas API not available in this environment, text measurement may be affected');
+    }
 
     store.setTextareaRef(textareaRef);
     // generalStore にも参照を保持（コマンドパレットのフォールバックで利用）
@@ -266,7 +280,13 @@ onDestroy(() => {
 });
 
 function updateCompositionWidth(text: string) {
-    if (!textareaRef || !measureCtx) return;
+    if (!textareaRef || !measureCtx) {
+        // フォールバック：measureCtxが利用できない場合は固定幅を設定
+        if (textareaRef) {
+            textareaRef.style.width = `${(text.length * 10) + 4}px`; // テキスト長に応じた適当な幅
+        }
+        return;
+    }
     const style = getComputedStyle(textareaRef);
     measureCtx.font = `${style.fontSize} ${style.fontFamily}`;
     const metrics = measureCtx.measureText(text);

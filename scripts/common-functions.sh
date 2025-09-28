@@ -1,6 +1,20 @@
 #!/bin/bash
 # Common functions for all scripts
 
+# Native libraries required for node-canvas builds. Keep this list in sync with
+# codex-setup.sh to avoid missing system packages when tests need Canvas APIs.
+CANVAS_NATIVE_DEPS=(
+  build-essential
+  pkg-config
+  libcairo2
+  libcairo2-dev
+  libpango-1.0-0
+  libpango1.0-dev
+  libjpeg-dev
+  libgif-dev
+  librsvg2-dev
+)
+
 # Ensure nvm environment is loaded so globally installed node tools are in PATH
 load_nvm() {
   if [ -d "$HOME/.nvm" ] && [ -s "$HOME/.nvm/nvm.sh" ]; then
@@ -206,7 +220,7 @@ install_os_utilities() {
 
   # Check if any dependency is missing
   local needs_install=false
-  for dep in "${original_deps[@]}" "${playwright_deps[@]}"; do
+  for dep in "${original_deps[@]}" "${playwright_deps[@]}" "${CANVAS_NATIVE_DEPS[@]}"; do
     if ! dpkg -s "${dep}" >/dev/null 2>&1; then
       needs_install=true
       break
@@ -217,7 +231,8 @@ install_os_utilities() {
     retry_apt_get update
     DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends \
       "${original_deps[@]}" \
-      "${playwright_deps[@]}"
+      "${playwright_deps[@]}" \
+      "${CANVAS_NATIVE_DEPS[@]}"
   fi
 
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
@@ -226,6 +241,22 @@ install_os_utilities() {
   npx --yes playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
 
   cd "${ROOT_DIR}"
+}
+
+# Re-run later to enforce node-canvas system requirements even if the main
+# install step was skipped by the sentinel file.
+ensure_canvas_native_deps() {
+  local missing=()
+  for dep in "${CANVAS_NATIVE_DEPS[@]}"; do
+    if ! dpkg -s "${dep}" >/dev/null 2>&1; then
+      missing+=("${dep}")
+    fi
+  done
+
+  if [ ${#missing[@]} -gt 0 ]; then
+    retry_apt_get update
+    DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends "${missing[@]}"
+  fi
 }
 
 # Setup environment files (inline; no external script)
