@@ -19,7 +19,6 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                 "First page with [test-link] reference",
             ],
             undefined,
-            { enableYjsWs: true },
         );
         // Ensure store pages are ready
         await page.waitForFunction(() => {

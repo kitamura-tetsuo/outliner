@@ -33,7 +33,6 @@ export class TestHelpers {
         testInfo?: any,
         lines: string[] = [],
         browser?: Browser,
-        options?: { stayOnHome?: boolean; enableYjsWs?: boolean; },
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
@@ -71,177 +70,44 @@ export class TestHelpers {
                 } as typeof document.createElement;
             } catch {}
         });
-        if (options?.enableYjsWs) {
-            await page.addInitScript(() => {
-                try {
-                    localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
-                } catch {}
-            });
-        }
 
-        // ホームページにアクセスしてアプリの初期化を待つ
-        console.log("TestHelper: Starting navigation to home page");
-        console.log("TestHelper: Page URL before navigation:", page.url());
+        // 初回ナビゲーション前に addInitScript でフラグを設定しているため、直ちにプロジェクトページへ遷移する
+        // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
-        try {
-            // より段階的なアプローチを試す
-            console.log("TestHelper: Attempting to navigate to /");
-            await page.goto("/", {
-                timeout: 30000, // 30秒のタイムアウト
-                waitUntil: "domcontentloaded", // DOMコンテンツロード完了まで待機
-            });
-            console.log("TestHelper: Successfully navigated to home page");
-            console.log("TestHelper: Page URL after navigation:", page.url());
-            // E2E 安定化: ホーム滞在判定（オプション/テストメタ/ローカルストレージの総合）
-            const stayOnHomeByOption = (options?.stayOnHome === true) || (await page.evaluate(() => {
-                try {
-                    return window.localStorage?.getItem?.("E2E_STAY_ON_HOME") === "true";
-                } catch {
-                    return false;
-                }
-            }));
-            const stayOnHomeByMeta = (() => {
-                try {
-                    const title = String(testInfo?.title ?? "");
-                    const file = String(testInfo?.file ?? "");
-                    return /home\s*page|homepage|cdx-homepage/i.test(title) || /cdx-homepage/i.test(file);
-                } catch {
-                    return false;
-                }
-            })();
-            const shouldStayOnHome = !!(stayOnHomeByOption || stayOnHomeByMeta);
-            if (!shouldStayOnHome) {
-                try {
-                    const projectName = "e2e-project";
-                    const pageName = "e2e-page";
-                    const target = `/${projectName}/${pageName}`;
-                    console.log("TestHelper: Navigating to project page:", target);
-                    await page.goto(target, {
-                        timeout: 30000,
-                        waitUntil: "domcontentloaded",
-                    });
-                    console.log("TestHelper: Arrived:", page.url());
-                } catch (navErr) {
-                    console.log("TestHelper: Project-page navigation skipped/failed:", String(navErr));
-                }
-            } else {
-                try {
-                    const txt = await page.evaluate(() => document.body?.innerText?.slice(0, 400) || "");
-                    const html = await page.evaluate(() => document.body?.innerHTML?.slice(0, 400) || "");
-                    console.log("TestHelper: Home body text head:", txt);
-                    console.log("TestHelper: Home body HTML head:", html);
-                } catch {}
-            }
-        } catch (error) {
-            console.error("TestHelper: Failed to navigate to home page:", error);
-            console.log("TestHelper: Current page URL:", page.url());
-            console.log("TestHelper: Page title:", await page.title().catch(() => "Unable to get title"));
+        // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
+        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+    }
 
-            // Handle the case where the page/context has been closed
-            if (page.isClosed()) {
-                console.log("TestHelper: Page is closed, cannot continue with navigation");
-                throw new Error("Page context has been closed, cannot continue with test setup");
-            }
-            throw error;
-        }
-
-        // 初回ナビゲーション前に addInitScript でフラグを設定しているため再読み込みは不要
-
-        // UserManagerが初期化されるまで待機（短縮・寛容）
-        console.log("TestHelper: Waiting for UserManager initialization (tolerant)");
-        const userManagerReady = await page
-            .waitForFunction(() => (window as any).__USER_MANAGER__ !== undefined, { timeout: 4000 })
-            .then(() => true)
-            .catch(() => false);
-
-        // SSR シェルの短時間待機（ハイドレーション前でも検出可能）
-        try {
-            const shell = page.getByTestId("sveltekit-shell");
-            await shell.first().waitFor({ state: "attached", timeout: 1500 });
-            console.log("TestHelper: SSR shell detected");
-        } catch {
-            console.log("TestHelper: SSR shell not detected (continuing)");
-        }
-
-        if (userManagerReady) {
-            console.log("TestHelper: UserManager initialized");
-        } else {
-            console.log("TestHelper: __USER_MANAGER__ not detected in 10s; continuing without blocking");
-        }
-
-        console.log("TestHelper: UserManager found, attempting authentication");
-
-        // 手動で認証を実行
-        // 認証を開始（エラーは無視）
-        await page.evaluate(async () => {
-            const userManager = (window as any).__USER_MANAGER__;
-            if (!userManager) {
-                console.log("TestHelper: UserManager not found; skipping manual login");
-                return;
-            }
-
+    /**
+     * プロジェクト用 E2E（ホーム滞在用）: ホームに遷移して環境を初期化する
+     * - プロジェクト/ページには移動しない
+     * - シーディングは SKIP_TEST_CONTAINER_SEED ローカルストレージによりアプリ側で抑止される前提
+     */
+    public static async prepareTestEnvironmentForProject(
+        page: Page,
+        testInfo?: any,
+        lines: string[] = [],
+        browser?: Browser,
+    ): Promise<{ projectName: string; pageName: string; }> {
+        // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
+        await page.addInitScript(() => {
             try {
-                console.log("TestHelper: Calling loginWithEmailPassword");
-                await userManager.loginWithEmailPassword("test@example.com", "password");
-            } catch (error) {
-                console.log(
-                    "TestHelper: Authentication method failed, but user may still be signed in via onAuthStateChanged",
-                );
-            }
+                localStorage.setItem("VITE_IS_TEST", "true");
+                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+                (window as any).__E2E__ = true;
+                (window as any).__vite_plugin_react_preamble_installed__ = true;
+            } catch {}
         });
-
-        // Wait for login to complete via onAuthStateChanged (短縮・寛容)
-        // In some test boot orders, authentication may be optional for basic flows.
-        // Do not fail the test setup if login hasn't completed yet.
-        await page.waitForFunction(() => {
-            const mgr = (window as any).__USER_MANAGER__;
-            return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
-        }, { timeout: 4000 }).catch(() => {
-            console.log("TestHelper: Auth not ready after 4s; continuing without blocking");
-        });
-
-        console.log("TestHelper: Authentication successful, waiting for global variables");
-
-        // グローバル変数が設定されるまで待機（短縮・寛容）
-        console.log("TestHelper: Waiting for global variables (tolerant)");
-        try {
-            await page.waitForFunction(
-                () => {
-                    const hasSvelteGoto = (window as any).__SVELTE_GOTO__ !== undefined;
-                    const hasGeneralStore = (window as any).generalStore !== undefined;
-                    const hasOutliner = !!document.querySelector('[data-testid="outliner-base"]');
-                    return hasSvelteGoto || hasGeneralStore || hasOutliner;
-                },
-                { timeout: 3000 },
-            );
-            console.log("TestHelper: Global variables are ready (tolerant)");
-        } catch {
-            console.log("TestHelper: Global variables not detected in time; continuing");
-        }
-
-        console.log("TestHelper: Global variables initialized successfully");
-
-        // __SVELTE_GOTO__ はアプリ側で利用可能だが、テストのナビゲーションは安定性重視で Playwright の page.goto を使用する
 
         // デバッガーをセットアップ
         await TestHelpers.setupTreeDebugger(page);
         await TestHelpers.setupCursorDebugger(page);
 
-        // __YJS_STORE__ が設定されるまで待機（tolerant）
-        try {
-            await page.waitForFunction(() => {
-                return (window as any).__YJS_STORE__ !== undefined;
-            }, { timeout: 10000 });
-        } catch (error) {
-            console.log("TestHelper: __YJS_STORE__ not available within timeout; continuing without blocking", error);
-        }
-
-        // テストページをセットアップ（ホームに留まるオプションに対応）
-        if (options?.stayOnHome) {
-            console.log("TestHelper: stayOnHome option set; skipping navigation to project page");
-            return { projectName: "home", pageName: "" };
-        }
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+        // ホームに遷移して初期化のみ行う（プロジェクト/ページへは移動しない）
+        console.log("TestHelper: Navigate to home (ForProject)");
+        await page.goto("/", { timeout: 30000, waitUntil: "domcontentloaded" });
+        return { projectName: "home", pageName: "" };
     }
 
     /**
@@ -730,19 +596,13 @@ export class TestHelpers {
         const url = `/${encodedProject}/${encodedPage}`;
 
         TestHelpers.slog("Navigating to project page", { url });
-        const absoluteUrl = new URL(url, page.url()).toString();
-        // Prefer Svelte-managed navigation; fallback to direct navigation if unavailable
-        const hasGoto = await page.evaluate(() => !!(window as any).__SVELTE_GOTO__).catch(() => false);
+        const base = page.url() && page.url() !== "about:blank" ? page.url() : "http://localhost:7090/";
+        const absoluteUrl = new URL(url, base).toString();
         try {
-            TestHelpers.slog("Navigation method decided", { hasGoto });
-            if (hasGoto) {
-                await page.evaluate(async (targetUrl) => {
-                    const goto = (window as any).__SVELTE_GOTO__;
-                    await goto(targetUrl);
-                }, absoluteUrl);
-            } else {
-                await page.goto(absoluteUrl, { waitUntil: "domcontentloaded" });
-            }
+            TestHelpers.slog("Navigation method decided", { hasGoto: false });
+            await page.evaluate((targetUrl) => {
+                (window as any).location.href = targetUrl as any;
+            }, absoluteUrl);
             await page.waitForURL(absoluteUrl, { timeout: 30000 });
             TestHelpers.slog("Navigation completed", { absoluteUrl });
         } catch (error) {
@@ -750,9 +610,17 @@ export class TestHelpers {
             if (msg.includes("Target page, context or browser has been closed")) {
                 console.warn("TestHelper: Page/context closed during navigation; NOT reopening per policy");
                 throw error;
-            } else {
-                throw error;
             }
+            if (
+                msg.includes("ECONNREFUSED")
+                || msg.includes("ERR_CONNECTION_REFUSED")
+                || msg.includes("net::ERR_CONNECTION_REFUSED")
+            ) {
+                throw new Error(
+                    "TestHelper: SvelteKit dev server appears not running at http://localhost:7090/. Run scripts/codex-setup.sh and retry.",
+                );
+            }
+            throw error;
         }
 
         // 遷移後の状態を確認
@@ -784,13 +652,7 @@ export class TestHelpers {
                 .getByRole("textbox", { name: "Search pages" });
             await input.waitFor({ timeout: 3000 });
             console.log("TestHelper: Search box available");
-        } catch {
-            // Fallback to CSS selector for environments without testid plumbing
-            try {
-                await page.waitForSelector(".page-search-box input", { timeout: 3000 });
-                console.log("TestHelper: Search box (CSS) available");
-            } catch {}
-        }
+        } catch {}
 
         // 認証状態が検出されるまで待機（2フェーズで再試行）
         TestHelpers.slog("Waiting for authentication detection (short)");
@@ -955,55 +817,64 @@ export class TestHelpers {
 
         // Ensure the target page exists after navigation and seed lines if needed
         try {
-            await page.evaluate(({ targetPageName, lines }) => {
-                const gs = (window as any).generalStore;
-                if (!gs?.project) return;
-                const norm = (s: any) => String(s ?? "").toLowerCase();
+            const skipSeed = await page.evaluate(() => {
+                try {
+                    return window.localStorage?.getItem?.("SKIP_TEST_CONTAINER_SEED") === "true";
+                } catch {
+                    return false;
+                }
+            });
+            if (!skipSeed) {
+                await page.evaluate(({ targetPageName, lines }) => {
+                    const gs = (window as any).generalStore;
+                    if (!gs?.project) return;
+                    const norm = (s: any) => String(s ?? "").toLowerCase();
 
-                const findPageByTitle = () => {
-                    try {
-                        const arr: any = gs.pages?.current as any;
-                        const len = arr?.length ?? 0;
-                        for (let i = 0; i < len; i++) {
-                            const p = arr?.at ? arr.at(i) : arr[i];
-                            const title = p?.text?.toString?.() ?? String(p?.text ?? "");
-                            if (norm(title) === norm(targetPageName)) return p;
+                    const findPageByTitle = () => {
+                        try {
+                            const arr: any = gs.pages?.current as any;
+                            const len = arr?.length ?? 0;
+                            for (let i = 0; i < len; i++) {
+                                const p = arr?.at ? arr.at(i) : arr[i];
+                                const title = p?.text?.toString?.() ?? String(p?.text ?? "");
+                                if (norm(title) === norm(targetPageName)) return p;
+                            }
+                        } catch {}
+                        return null;
+                    };
+
+                    let pageRef = findPageByTitle();
+                    if (!pageRef) {
+                        try {
+                            pageRef = gs.project.addPage(targetPageName, "tester");
+                            console.log("TestHelper: Created missing page after navigation");
+                        } catch (e) {
+                            console.warn("TestHelper: Failed to create page after navigation", e);
+                            return;
                         }
+                    }
+
+                    // Ensure it's the current page
+                    try {
+                        if (!gs.currentPage) gs.currentPage = pageRef;
                     } catch {}
-                    return null;
-                };
 
-                let pageRef = findPageByTitle();
-                if (!pageRef) {
+                    // Seed lines only when the page has no items yet to avoid duplication
                     try {
-                        pageRef = gs.project.addPage(targetPageName, "tester");
-                        console.log("TestHelper: Created missing page after navigation");
-                    } catch (e) {
-                        console.warn("TestHelper: Failed to create page after navigation", e);
-                        return;
-                    }
-                }
-
-                // Ensure it's the current page
-                try {
-                    if (!gs.currentPage) gs.currentPage = pageRef;
-                } catch {}
-
-                // Seed lines only when the page has no items yet to avoid duplication
-                try {
-                    const items = (pageRef as any)?.items as any;
-                    const length = items?.length ?? 0;
-                    if (items && Array.isArray(lines) && length === 0) {
-                        for (const line of lines) {
-                            const it = items.addNode?.("tester");
-                            if (it?.updateText) it.updateText(line);
+                        const items = (pageRef as any)?.items as any;
+                        const length = items?.length ?? 0;
+                        if (items && Array.isArray(lines) && length === 0) {
+                            for (const line of lines) {
+                                const it = items.addNode?.("tester");
+                                if (it?.updateText) it.updateText(line);
+                            }
+                            console.log("TestHelper: Seeded lines into existing page");
                         }
-                        console.log("TestHelper: Seeded lines into existing page");
+                    } catch (e) {
+                        console.warn("TestHelper: Failed to seed lines", e);
                     }
-                } catch (e) {
-                    console.warn("TestHelper: Failed to seed lines", e);
-                }
-            }, { targetPageName: pageName, lines });
+                }, { targetPageName: pageName, lines });
+            }
         } catch (e) {
             console.log("TestHelper: Post-navigation ensure-page step skipped:", (e as any)?.message ?? e);
         }
@@ -1312,8 +1183,7 @@ export class TestHelpers {
                 try {
                     TestHelpers.slog("waitForOutlinerItems: counting items");
                     const countNow = await page.locator(".outliner-item[data-item-id]").count();
-                    const fallbackCount = await page.locator(".item-text").count().catch(() => 0);
-                    if (countNow >= 2 || fallbackCount >= 2) {
+                    if (countNow >= 2) {
                         TestHelpers.slog("waitForOutlinerItems: ensured >=2 items");
                         ensured = true;
                         break;
@@ -1359,17 +1229,12 @@ export class TestHelpers {
 
             if (!ensured) {
                 TestHelpers.slog("waitForOutlinerItems: failed to ensure items before deadline");
-                // As a last resort, accept fallback when .item-text exists
-                const fallbackCount = await page.locator(".item-text").count().catch(() => 0);
-                if (fallbackCount < 2) {
-                    throw new Error("Failed to ensure at least 2 real outliner items");
-                }
+                throw new Error("Failed to ensure at least 2 real outliner items");
             }
 
             const itemCount = await page.locator(".outliner-item[data-item-id]").count();
-            const fallbackCount = await page.locator(".item-text").count().catch(() => 0);
-            console.log(`Found ${itemCount} outliner items with data-item-id (fallback .item-text=${fallbackCount})`);
-            TestHelpers.slog("waitForOutlinerItems: success", { itemCount, fallbackCount });
+            console.log(`Found ${itemCount} outliner items with data-item-id`);
+            TestHelpers.slog("waitForOutlinerItems: success", { itemCount });
         } catch (e) {
             console.log("Timeout/Failure waiting for real outliner items, taking screenshot...");
             try {
@@ -1570,7 +1435,7 @@ export class TestHelpers {
         // Ensure picker is visible first
         await page.locator(".alias-picker").waitFor({ state: "visible", timeout: 5000 });
 
-        // Prefer calling store directly for determinism; fallback to DOM click if needed
+        // Prefer calling store directly for determinism
         let hid = false;
         try {
             await page.evaluate((id) => {
@@ -1584,21 +1449,7 @@ export class TestHelpers {
         } catch {}
 
         if (!hid) {
-            // Fallback: click the button
-            const selector = `.alias-picker button[data-id="${itemId}"]`;
-            await page.locator(selector).waitFor({ state: "visible", timeout: 3000 });
-            try {
-                await page.locator(selector).click({ timeout: 2000 });
-            } catch (error) {
-                console.log("Button click failed, trying to close picker with Escape");
-                await page.keyboard.press("Escape");
-                // Try to force hide via store
-                await page.evaluate(() => {
-                    const store: any = (window as any).aliasPickerStore;
-                    if (store && typeof store.hide === "function") store.hide();
-                });
-            }
-            await page.locator(".alias-picker").waitFor({ state: "hidden", timeout: 3000 });
+            throw new Error("Alias picker did not hide after store.confirmById");
         }
 
         // small settle time
@@ -1706,15 +1557,6 @@ export class TestHelpers {
                 const node = find(root, id);
                 const value = node?.aliasTargetId || null;
                 if (value) return value;
-                // Extra fallback: use lastConfirmed from aliasPickerStore when matching itemId and within 1.5s
-                try {
-                    const lastItemId = ap?.lastConfirmedItemId;
-                    const lastTargetId = ap?.lastConfirmedTargetId;
-                    const lastAt = ap?.lastConfirmedAt;
-                    if (lastItemId === id && lastTargetId && typeof lastAt === "number" && Date.now() - lastAt < 1500) {
-                        return lastTargetId;
-                    }
-                } catch {}
                 return null;
             } catch {
                 return null;
@@ -1801,7 +1643,7 @@ export class TestHelpers {
             } catch {}
             await page.waitForTimeout(100);
         }
-        // Final fallback: consider visible if alias target attribute is set on the item
+        // Consider visible if alias target attribute is set on the item
         try {
             const attr = await page.locator(itemSel).getAttribute("data-alias-target-id");
             if (attr && attr.trim() !== "") return true;

@@ -14,9 +14,41 @@ export class YjsSubscriber<R> {
         private setter?: (value: R) => void,
     ) {
         this.subscribe = createSubscriber(update => {
-            const observer = () => update();
-            this.doc.on("update", observer);
-            return () => this.doc.off("update", observer);
+            const emit = (src: string) => {
+                try {
+                    if (typeof window !== "undefined") {
+                        try {
+                            console.debug("[YjsSubscriber] emit", src);
+                        } catch {}
+                        const ev = new CustomEvent("yjs-doc-updated", { detail: { src } });
+                        window.dispatchEvent(ev);
+                    }
+                    update();
+                } catch {}
+            };
+            const observer = () => emit("update");
+            const observerV2 = () => emit("updateV2");
+            const afterTxn = () => emit("afterTransaction");
+            try {
+                this.doc.on("update", observer);
+            } catch {}
+            try {
+                (this.doc as any).on?.("updateV2", observerV2);
+            } catch {}
+            try {
+                (this.doc as any).on?.("afterTransaction", afterTxn);
+            } catch {}
+            return () => {
+                try {
+                    this.doc.off("update", observer);
+                } catch {}
+                try {
+                    (this.doc as any).off?.("updateV2", observerV2);
+                } catch {}
+                try {
+                    (this.doc as any).off?.("afterTransaction", afterTxn);
+                } catch {}
+            };
         });
     }
 

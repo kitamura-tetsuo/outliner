@@ -37,7 +37,7 @@ test.describe("テスト環境ポート検証", () => {
         console.log(`テスト実行時のURL: ${url}`);
 
         // ページが正しく表示されていることを確認
-        await expect(page.locator("h1")).toContainText("Outliner App");
+        await expect(page.locator("h1")).toContainText("Outliner");
 
         // スクリーンショットを撮影
         await page.screenshot({ path: "test-results/test-port-confirmation.png" });

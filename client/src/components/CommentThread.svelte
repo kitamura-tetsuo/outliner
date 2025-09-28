@@ -27,13 +27,7 @@ let editingId = $state<string | null>(null);
 let editText = $state("");
 let commentsList = $state<Comment[]>((comments as any)?.toPlain?.() ?? []);
 let localComments = $state<Comment[]>([]);
-const renderCommentsState = $derived.by(() => {
-    const list = (commentsSubscriber.current as any) ?? [];
-    const map = new Map<string, Comment>();
-    for (const c of list) map.set(c.id, c);
-    for (const c of localComments) map.set(c.id, c);
-    return Array.from(map.values());
-});
+const renderCommentsState = $derived.by(() => (commentsSubscriber.current as any) ?? []);
 let threadRef: HTMLElement | null = null;
 
 function e2eLog(entry: any) {

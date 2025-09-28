@@ -10,9 +10,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     const page1 = await context1.newPage();
     // Enable Yjs WS before any navigation initiated by TestHelpers
     await page1.addInitScript(() => localStorage.setItem("VITE_YJS_ENABLE_WS", "true"));
-    const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page1, testInfo, [], undefined, {
-        enableYjsWs: true,
-    });
+    const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page1, testInfo, [], undefined);
     await page1.goto(`/${projectName}/${pageName}`);
     // Force-enable WS connection in tests that require collaboration
     await page1.addInitScript(() => localStorage.setItem("VITE_YJS_ENABLE_WS", "true"));
@@ -31,7 +29,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     const page2 = await context2.newPage();
     // Enable Yjs WS before TestHelpers navigates
     await page2.addInitScript(() => localStorage.setItem("VITE_YJS_ENABLE_WS", "true"));
-    await TestHelpers.prepareTestEnvironment(page2, testInfo, [], undefined, { enableYjsWs: true });
+    await TestHelpers.prepareTestEnvironment(page2, testInfo, [], undefined);
     await page2.goto(`/${projectName}/${pageName}`);
     await page2.addInitScript(() => localStorage.setItem("VITE_YJS_ENABLE_WS", "true"));
     // Wait for Yjs connection with improved timeout handling

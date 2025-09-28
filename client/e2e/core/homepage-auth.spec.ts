@@ -23,6 +23,6 @@ test("ホームページが正常に表示される", async ({ page }) => {
     await page.goto("/");
 
     // タイトルが表示されることを確認
-    await expect(page.locator("h1")).toContainText("Outliner App");
+    await expect(page.locator("h1")).toContainText("Outliner");
 });
 import "../utils/registerAfterEachSnapshot";

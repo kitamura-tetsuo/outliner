@@ -22,9 +22,13 @@ class InMemoryPresenceStore implements PresenceStoreLike {
 const fallbackPresenceStore = new InMemoryPresenceStore();
 
 function resolvePresenceStore(): PresenceStoreLike {
-    const globalStore = (globalThis as any).presenceStore as PresenceStoreLike | undefined;
-    if (globalStore?.setUser && globalStore?.removeUser) {
-        return globalStore;
+    const globalStore: any = (globalThis as any).presenceStore;
+    if (
+        globalStore
+        && typeof globalStore.setUser === "function"
+        && typeof globalStore.removeUser === "function"
+    ) {
+        return globalStore as PresenceStoreLike;
     }
     return fallbackPresenceStore;
 }

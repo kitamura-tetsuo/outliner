@@ -24,13 +24,38 @@ export class Comments {
         c.set("text", text);
         c.set("created", time);
         c.set("lastChanged", time);
+        try {
+            console.info("[Comments.addComment] pushing comment to Y.Array");
+        } catch {}
         this.yArray.push([c]);
+        try {
+            console.info("[Comments.addComment] pushed. current length=", this.yArray.length);
+        } catch {}
         return { id: c.get("id") as string };
     }
 
     deleteComment(commentId: string) {
-        const idx = this.yArray.toArray().findIndex((m) => m.get("id") === commentId);
-        if (idx >= 0) this.yArray.delete(idx, 1);
+        try {
+            console.info("[Comments.deleteComment] called with id=", commentId);
+        } catch {}
+        const ids = this.yArray.toArray().map((m) => m.get("id"));
+        try {
+            console.info("[Comments.deleteComment] current ids=", ids);
+        } catch {}
+        const idx = ids.findIndex((id) => id === commentId);
+        try {
+            console.info("[Comments.deleteComment] found idx=", idx);
+        } catch {}
+        if (idx >= 0) {
+            this.yArray.delete(idx, 1);
+            try {
+                console.info("[Comments.deleteComment] deleted idx=", idx);
+            } catch {}
+        } else {
+            try {
+                console.info("[Comments.deleteComment] not found, skip");
+            } catch {}
+        }
     }
 
     updateComment(commentId: string, text: string) {
@@ -226,11 +251,45 @@ export class Item {
     }
 
     addComment(author: string, text: string) {
-        return this.comments.addComment(author, text);
+        try {
+            console.info("[Item.addComment] id=", this.id);
+        } catch {}
+        const res = this.comments.addComment(author, text);
+        try {
+            const arr = this.value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+            const len = arr?.length ?? 0;
+            // Y.Map にプリミティブ数値をキャッシュして確実に反映させる
+            (this as any).value?.set?.("commentCountCache", len);
+            (this as any).value?.set?.("lastChanged", Date.now());
+            // Window ブロードキャスト（UI への即時反映用・決定的）
+            try {
+                if (typeof window !== "undefined") {
+                    console.info("[Item.addComment] dispatch item-comment-count id=", this.id, "count=", len);
+                    window.dispatchEvent(
+                        new CustomEvent("item-comment-count", { detail: { id: this.id, count: len } }),
+                    );
+                }
+            } catch {}
+        } catch {}
+        return res;
     }
 
     deleteComment(commentId: string) {
-        return this.comments.deleteComment(commentId);
+        const res = this.comments.deleteComment(commentId);
+        try {
+            const arr = this.value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+            const len = arr?.length ?? 0;
+            (this as any).value?.set?.("commentCountCache", len);
+            (this as any).value?.set?.("lastChanged", Date.now());
+            try {
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                        new CustomEvent("item-comment-count", { detail: { id: this.id, count: len } }),
+                    );
+                }
+            } catch {}
+        } catch {}
+        return res;
     }
 
     updateComment(commentId: string, text: string) {

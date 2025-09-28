@@ -14,7 +14,7 @@ import "../utils/registerAfterEachSnapshot";
 
 test.describe("CNT-12ee98aa: Shared Container Store", () => {
     test("dropdown list updates when new container is added", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, { stayOnHome: true });
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
 
         // Ensure test data helper and auth are ready, then seed containers
         await page.waitForFunction(() => {

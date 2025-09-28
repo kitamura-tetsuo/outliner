@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test("home page is reachable", async ({ page }, testInfo) => {
-    await TestHelpers.prepareTestEnvironment(page, testInfo);
+    await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
     await expect(page.locator("text=Outliner")).toBeVisible();
 });
 import "../utils/registerAfterEachSnapshot";

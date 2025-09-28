@@ -50,6 +50,15 @@ let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 let lastLoadKey: string | null = null;
 let __loadingInProgress = false; // 再入防止
 
+
+	// E2E: シーディング抑止フラグ（prepareTestEnvironment が設定）
+	function shouldSkipTestSeed(): boolean {
+	    try {
+	        return typeof window !== "undefined" &&
+	            window.localStorage?.getItem?.("SKIP_TEST_CONTAINER_SEED") === "true";
+	    } catch { return false; }
+	}
+
 /**
  * ロード条件を評価し、必要であればロードを開始する
  * $effect を使わず、onMount とイベント購読から明示的に呼び出す
@@ -123,7 +132,7 @@ async function loadProjectAndPage() {
             if (typeof window !== "undefined") {
                 logger.debug("DEBUG: provisional store.project set?", !!(window as any).generalStore?.project);
             }
-            if (pageName) {
+            if (pageName && !shouldSkipTestSeed()) {
                 try {
                     const itemsAny: any = provisional.items as any;
                     const node = itemsAny?.addNode?.("tester");
@@ -188,7 +197,7 @@ async function loadProjectAndPage() {
                     logger.info(`loadProjectAndPage: store.project set from client (title="${proj?.title}")`);
 
                     // After Yjs client attach: ensure requested page exists and seed initial lines in test env
-                    try {
+                    if (!shouldSkipTestSeed()) try {
                         const isTestEnv = (
                             import.meta.env.MODE === "test"
                             || import.meta.env.VITE_IS_TEST === "true"
@@ -318,7 +327,7 @@ async function loadProjectAndPage() {
 
         // E2E 安定化: ページ一覧が空で、テスト環境かつ URL にページ名がある場合は
         // リクエストされたページを暫定的に作成して以降の処理を安定させる
-        try {
+        if (!shouldSkipTestSeed()) try {
             const isTestEnv = (
                 import.meta.env.MODE === "test"
                 || import.meta.env.VITE_IS_TEST === "true"
@@ -415,7 +424,7 @@ onMount(() => {
     // 初期ロードを試行
     scheduleLoadIfNeeded();
     // E2E 環境では、最小限のページを先行準備して UI テストを安定させる
-    try {
+    if (!shouldSkipTestSeed()) try {
         const isTestEnv = (
             import.meta.env.MODE === "test"
             || import.meta.env.VITE_IS_TEST === "true"

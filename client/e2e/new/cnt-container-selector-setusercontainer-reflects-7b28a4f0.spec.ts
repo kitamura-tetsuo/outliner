@@ -15,7 +15,7 @@ import "../utils/registerAfterEachSnapshot";
 
 test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
     test("option list updates after createNewProject + setUserContainer replacement", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, { stayOnHome: true });
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
 
         const select = page.locator("select.container-select");
         await expect(select).toBeVisible();
