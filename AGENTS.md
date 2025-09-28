@@ -252,3 +252,10 @@ Mocks are generally forbidden. Limited exceptions:
 - Do not introduce new proxy/global façade layers. Remove or deprecate existing ones when feasible.
 
 Follow these guidelines to keep documentation, code, and tests consistent across the project.
+
+## 11. Reactive Data Synchronization & Prompt Guidance
+
+- **Prefer reactive subscriptions over polling**: When a view model depends on shared collections (such as comment lists or other collaborative datasets), register a change subscription against the underlying data source and update the reactive state in response to those events. Do not rely on timers, manual `afterTransaction` hooks, or similar polling loops when the system already exposes change notifications.
+- **Keep synchronization triggers comprehensive**: Any bidirectional binding between collaboration data and Svelte state must subscribe to every shared field it derives from (for example, comment counts or other computed aggregates). Ensure the reactive state is refreshed whenever the source data changes so that derived values stay in sync.
+- **Document positive alternatives alongside negative prompts**: When drafting prompt guidance (e.g., discouraging an approach), pair every negative instruction with an explicit positive alternative that the LLM should follow instead.
+- **Eliminate avoidable polling**: Before introducing a polling loop, confirm that no event-driven mechanism is available. If a reactive hook exists, use it to keep UI state synchronized and avoid the performance penalties of polling.
