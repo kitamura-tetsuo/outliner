@@ -1,14 +1,41 @@
 import { describe, expect, it } from "vitest";
+import { Awareness } from "y-protocols/awareness";
+import * as Y from "yjs";
 import { yjsService } from "../../lib/yjs/service";
-import { Items } from "../../schema/yjs-schema";
 
-describe("yjsService integration", () => {
-    it("moves items between parents", () => {
-        const project = yjsService.createProject("p");
-        const parent = yjsService.addItem(project, "root", "u1");
-        const child = yjsService.addItem(project, "root", "u1");
-        yjsService.moveItem(project, child.key, parent.key);
-        const children = new Items(project.ydoc, project.tree, parent.key);
-        expect(children.length).toBe(1);
+type ParentReadableTree = {
+    getNodeParentFromKey(key: string): string | undefined;
+};
+
+describe("Yjs service basic operations", () => {
+    it("performs CRUD and presence updates", () => {
+        const project = yjsService.createProject("integration");
+
+        const first = yjsService.addItem(project, "root", "u1");
+        yjsService.updateText(project, first.key, "A");
+
+        const second = yjsService.addItem(project, "root", "u1");
+        yjsService.updateText(project, second.key, "B");
+
+        yjsService.reorderItem(project, second.key, 0);
+        expect(project.items.at(0)?.id).toBe(second.id);
+
+        yjsService.reorderItem(project, second.key, 1);
+        expect(project.items.at(1)?.id).toBe(second.id);
+
+        yjsService.indentItem(project, second.key);
+        const tree = project.tree as unknown as ParentReadableTree;
+        expect(tree.getNodeParentFromKey(second.key)).toBe(first.key);
+
+        yjsService.outdentItem(project, second.key);
+        expect(tree.getNodeParentFromKey(second.key)).toBe("root");
+        expect(project.items.length).toBe(2);
+
+        yjsService.removeItem(project, first.key);
+        expect(project.items.length).toBe(1);
+
+        const awareness = new Awareness(new Y.Doc());
+        yjsService.setPresence(awareness, { cursor: { itemId: second.key, offset: 1 } });
+        expect(yjsService.getPresence(awareness)?.cursor.itemId).toBe(second.key);
     });
 });

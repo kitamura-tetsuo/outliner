@@ -1,6 +1,33 @@
 import type { Awareness } from "y-protocols/awareness";
 import { Item, Items, Project } from "../../schema/yjs-schema";
-import { colorForUser, presenceStore } from "../../stores/PresenceStore.svelte";
+import { colorForUser } from "../../stores/colorForUser";
+
+interface PresenceStoreLike {
+    setUser(user: { userId: string; userName: string; color: string; }): void;
+    removeUser(userId: string): void;
+}
+
+class InMemoryPresenceStore implements PresenceStoreLike {
+    private users = new Map<string, { userId: string; userName: string; color: string; }>();
+
+    setUser(user: { userId: string; userName: string; color: string; }): void {
+        this.users.set(user.userId, user);
+    }
+
+    removeUser(userId: string): void {
+        this.users.delete(userId);
+    }
+}
+
+const fallbackPresenceStore = new InMemoryPresenceStore();
+
+function resolvePresenceStore(): PresenceStoreLike {
+    const globalStore = (globalThis as any).presenceStore as PresenceStoreLike | undefined;
+    if (globalStore?.setUser && globalStore?.removeUser) {
+        return globalStore;
+    }
+    return fallbackPresenceStore;
+}
 
 function childrenKeys(tree: any, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);
@@ -82,8 +109,8 @@ export const yjsService = {
 
     bindProjectPresence(awareness: Awareness) {
         const update = ({ added, updated, removed }: any) => {
-            // グローバルに登録されたストアがあればそれを使い、なければ直接importしたものを使う
-            const target = (globalThis as any).presenceStore ?? presenceStore;
+            // Prefer the globally-registered store when running in the browser.
+            const target = resolvePresenceStore();
             const states = (awareness as any).getStates();
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);
