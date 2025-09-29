@@ -331,6 +331,155 @@ onMount(async () => {
             // 定期的なログローテーションを設定
             rotationInterval = schedulePeriodicLogRotation();
         }
+        // Test-only: normalize drop events so Playwright's dispatchEvent("drop", {dataTransfer}) becomes a real DragEvent
+        try {
+            if (typeof window !== 'undefined') {
+                const origDispatchEventTarget = EventTarget.prototype.dispatchEvent;
+                const origDispatchElement = Element.prototype.dispatchEvent;
+                // Avoid double-patching
+                if (!(window as any).__E2E_DROP_PATCHED__) {
+                    (window as any).__E2E_DROP_PATCHED__ = true;
+
+                    const wrap = function(this: any, orig: any, event: Event): boolean {
+                        try { console.log('[E2E] dispatchEvent:', event?.type, 'instanceof DragEvent=', event instanceof DragEvent); } catch {}
+                        try { if (event && event.type === 'drop') { (window as any).__E2E_ATTEMPTED_DROP__ = true; } } catch {}
+                        try {
+                            if (event && event.type === 'drop' && !(event instanceof DragEvent)) {
+                                const de = new DragEvent('drop', {
+                                    bubbles: true,
+                                    cancelable: true,
+                                } as DragEventInit);
+                                try { Object.defineProperty(de, 'dataTransfer', { value: (event as any).dataTransfer, configurable: true }); } catch {}
+                                try { (window as any).__E2E_DROP_HANDLERS__?.forEach((fn: any) => { try { fn(this, de); } catch {} }); } catch {}
+                                return orig.call(this, de);
+                            }
+                        } catch {}
+                        try { if (event && event.type === 'drop') { (window as any).__E2E_DROP_HANDLERS__?.forEach((fn: any) => { try { fn(this, event); } catch {} }); } } catch {}
+                        return orig.call(this, event);
+                    };
+
+                    // Patch both EventTarget and Element to maximize coverage
+                    // @ts-ignore
+                    EventTarget.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchEventTarget, event); };
+                    Element.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchElement, event); };
+
+                    console.log('[E2E] Patched EventTarget.prototype.dispatchEvent and Element.prototype.dispatchEvent for drop events');
+                    try {
+                        window.addEventListener('drop', (e: any) => {
+                            try { console.log('[E2E] window drop listener:', { type: e?.type, isDragEvent: e instanceof DragEvent, hasDT: !!e?.dataTransfer, dtTypes: e?.dataTransfer?.types }); } catch {}
+                        }, true);
+                    } catch {}
+
+                    // Record files added into DataTransfer in E2E to recover when event.dataTransfer is unavailable in Playwright isolated world
+                    try {
+                        const anyWin: any = window as any;
+                        anyWin.__E2E_LAST_FILES__ = [] as File[];
+                        const proto = (DataTransfer.prototype as any);
+                        const itemsProto = (DataTransferItemList as any)?.prototype;
+                        if (itemsProto && !anyWin.__E2E_DT_ADD_PATCHED__) {
+                            anyWin.__E2E_DT_ADD_PATCHED__ = true;
+                            const origAdd = itemsProto.add;
+                            itemsProto.add = function(data: any, type?: string) {
+                                try {
+                                    if (data instanceof File) {
+                                        anyWin.__E2E_LAST_FILES__.push(data);
+                                        try { console.log('[E2E] DataTransfer.items.add(File): recorded', { name: data.name, type: data.type, size: data.size }); } catch {}
+                                    }
+                                } catch {}
+                                return origAdd ? origAdd.call(this, data, type) : undefined;
+                            };
+                        }
+
+                        // Getterフック: DataTransfer.prototype.items の getter をラップして add をプロキシ化
+                        try {
+                            const desc = Object.getOwnPropertyDescriptor(DataTransfer.prototype as any, 'items');
+                            if (desc && typeof desc.get === 'function' && !anyWin.__E2E_DT_ITEMS_GETTER_PATCHED__) {
+                                anyWin.__E2E_DT_ITEMS_GETTER_PATCHED__ = true;
+                                Object.defineProperty(DataTransfer.prototype as any, 'items', {
+                                    configurable: true,
+                                    enumerable: true,
+                                    get: function() {
+                                        const list = desc.get!.call(this);
+                                        try {
+                                            if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
+                                                const orig = list.add;
+                                                list.add = function(data: any, type?: string) {
+                                                    try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
+                                                    return orig.apply(this, arguments as any);
+                                                } as any;
+                                                (list as any).__e2eAddPatched = true;
+                                                try { console.log('[E2E] Patched DT.items.add via getter'); } catch {}
+                                            }
+                                        } catch {}
+                                        return list;
+                                    }
+                                });
+                            }
+                        } catch {}
+
+                        // Fallback: wrap File constructor to record created files from evaluateHandle context as well
+                        if (!anyWin.__E2E_FILE_CTOR_PATCHED__) {
+                            anyWin.__E2E_FILE_CTOR_PATCHED__ = true;
+                            const OrigFile = (window as any).File;
+                            if (OrigFile) {
+                                const Wrapped = new Proxy(OrigFile, {
+                                    construct(target: any, args: any[]) {
+                                        const f = new target(...args);
+                                        try { anyWin.__E2E_LAST_FILES__.push(f); } catch {}
+                                        try { console.log('[E2E] File constructed:', { name: f.name, type: f.type, size: f.size }); } catch {}
+                                        return f;
+                                    }
+                                });
+                                // @ts-ignore
+                                (window as any).File = Wrapped;
+                            }
+                        }
+
+                        // Stronger fallback: wrap DataTransfer constructor to ensure items.add is patched per instance
+                        if (!anyWin.__E2E_DT_CTOR_PATCHED__) {
+                            anyWin.__E2E_DT_CTOR_PATCHED__ = true;
+                            const OrigDT = (window as any).DataTransfer;
+                            if (OrigDT) {
+                                const WrappedDT = new Proxy(OrigDT, {
+                                    construct(target: any, args: any[]) {
+                                        const dt = new target(...args);
+                                        try {
+                                            const list: any = (dt as any).items;
+                                            if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
+                                                const origAdd = list.add;
+                                                list.add = function(data: any, type?: string) {
+                                                    try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
+                                                    try { console.log('[E2E] DT(instance).items.add called'); } catch {}
+                                                    return origAdd.apply(this, arguments as any);
+                                                } as any;
+                                                (list as any).__e2eAddPatched = true;
+                                            }
+                                        } catch {}
+                                        return dt;
+                                    }
+                                });
+                                // @ts-ignore
+                                (window as any).DataTransfer = WrappedDT;
+                            }
+                        }
+                    } catch {}
+                }
+            }
+        } catch {}
+
+        // DEBUG: log drop/dragover events globally to diagnose Playwright dispatchEvent
+        try {
+            window.addEventListener('drop', (ev: any) => {
+                try { console.log('[GlobalDrop] drop received target=', (ev?.target as any)?.className || (ev?.target as any)?.tagName); } catch {}
+            }, { capture: true });
+            document.addEventListener('drop', (ev: any) => {
+                try { console.log('[DocDrop] drop received target=', (ev?.target as any)?.className || (ev?.target as any)?.tagName); } catch {}
+            }, { capture: true });
+            window.addEventListener('dragover', (ev: any) => {
+                try { console.log('[GlobalDrop] dragover received target=', (ev?.target as any)?.className || (ev?.target as any)?.tagName); } catch {}
+            }, { capture: true });
+        } catch {}
+
     }
 });
 

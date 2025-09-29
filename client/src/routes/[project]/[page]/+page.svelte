@@ -243,6 +243,23 @@ async function loadProjectAndPage() {
                                                 const text = c?.text?.toString?.() ?? String(c?.text ?? "");
                                                 const node = next.items?.addNode?.("tester");
                                                 node?.updateText?.(text);
+                                                // マッピングを保存（旧ID -> 新ID）
+                                                try {
+                                                    const w:any = (typeof window !== 'undefined') ? (window as any) : null;
+                                                    if (w) {
+                                                        if (!w.__ITEM_ID_MAP__) w.__ITEM_ID_MAP__ = {};
+                                                        w.__ITEM_ID_MAP__[String((c as any)?.id)] = String((node as any)?.id);
+                                                    }
+                                                } catch {}
+                                                // 添付ファイルも移行（プロビジョナル -> 接続済み）
+                                                try {
+                                                    const srcAtt: any = (c as any)?.attachments;
+                                                    const arr: any[] = srcAtt?.toArray ? srcAtt.toArray() : (Array.isArray(srcAtt) ? srcAtt : []);
+                                                    for (const u of arr) {
+                                                        const url = Array.isArray(u) ? u[0] : u;
+                                                        node?.addAttachment?.(url);
+                                                    }
+                                                } catch {}
                                             }
                                             logger.info("E2E: Migrated provisional page children to connected page");
                                             break;

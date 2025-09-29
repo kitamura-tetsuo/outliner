@@ -226,12 +226,80 @@ export class Item {
     }
 
     get attachments(): Y.Array<string> {
-        return this.value.get("attachments");
+        let arr = this.value.get("attachments") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("attachments", arr);
+        }
+        return arr;
     }
 
     addAttachment(url: string) {
-        this.attachments.push([url]);
+        // 1) もし現在の Item が仮Doc(接続前)で、接続後のDocが存在する場合は、対応するノードにも反映する
+        try {
+            const w: any = (typeof window !== "undefined") ? (window as any) : null;
+            const currentPage: any = w?.generalStore?.currentPage;
+            const thisDoc: any = (this as any)?.ydoc;
+            const targetDoc: any = currentPage?.ydoc;
+            if (currentPage && thisDoc && targetDoc && thisDoc !== targetDoc) {
+                const items: any = currentPage?.items as any;
+                // 1) IDマップ経由で対応先を探す
+                try {
+                    const map = w?.__ITEM_ID_MAP__;
+                    const mappedId = map ? map[String((this as any)?.id)] : undefined;
+                    if (mappedId) {
+                        const len = items?.length ?? 0;
+                        for (let i = 0; i < len; i++) {
+                            const cand: any = items.at ? items.at(i) : items[i];
+                            if (String(cand?.id) === String(mappedId)) {
+                                try {
+                                    cand?.addAttachment?.(url);
+                                } catch {}
+                                throw new Error("__DONE__");
+                            }
+                        }
+                    }
+                } catch (e: any) {
+                    if (String(e?.message) !== "__DONE__") {
+                        // 2) フォールバック: テキスト一致
+                        const text = (this as any)?.text?.toString?.() ?? String((this as any)?.text ?? "");
+                        const len2 = items?.length ?? 0;
+                        for (let i = 0; i < len2; i++) {
+                            const cand: any = items.at ? items.at(i) : items[i];
+                            const ct = cand?.text?.toString?.() ?? String(cand?.text ?? "");
+                            if (ct === text) {
+                                try {
+                                    cand?.addAttachment?.(url);
+                                } catch {}
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {}
+
+        // 2) このノード自身にも通常通り追加
+        const arr = this.attachments; // ensure exists
+        try {
+            console.debug("[Item.addAttachment] pushing url=", url, "id=", (this as any)?.id);
+        } catch {}
+        try {
+            const w: any = (typeof window !== "undefined") ? (window as any) : null;
+            if (w) {
+                w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
+                w.E2E_LOGS.push({ tag: "add-attachment", id: (this as any)?.id, url, t: Date.now() });
+            }
+        } catch {}
+        arr.push([url]);
         this.value.set("lastChanged", Date.now());
+        try {
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                    new CustomEvent("item-attachments-changed", { detail: { id: this.id, count: arr.length } }),
+                );
+            }
+        } catch {}
     }
 
     removeAttachment(url: string) {

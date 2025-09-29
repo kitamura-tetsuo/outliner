@@ -117,14 +117,14 @@ export default defineConfig({
             testDir: "./e2e/basic",
         },
         {
-            // 新機能テスト
-            name: "new",
-            testDir: "./e2e/new",
-        },
-        {
             // コアテスト: 認証不要の基本機能テスト
             name: "core",
             testDir: "./e2e/core",
+        },
+        {
+            // 新機能テスト
+            name: "new",
+            testDir: "./e2e/new",
         },
         {
             // 認証テスト: 本番環境でのみ実行
