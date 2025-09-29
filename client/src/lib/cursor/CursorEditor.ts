@@ -169,7 +169,11 @@ export class CursorEditor {
                 const oldItemId = cursor.itemId;
                 const clearCursorAndSelection = (store as any).clearCursorAndSelection;
                 if (typeof clearCursorAndSelection === "function") {
-                    clearCursorAndSelection(cursor.userId);
+                    if (typeof clearCursorAndSelection.call === "function") {
+                        clearCursorAndSelection.call(store, cursor.userId);
+                    } else {
+                        clearCursorAndSelection(cursor.userId);
+                    }
                 } else {
                     store.clearSelectionForUser?.(cursor.userId);
                     store.clearCursorForItem?.(oldItemId);
@@ -214,7 +218,11 @@ export class CursorEditor {
                     const oldItemId = cursor.itemId;
                     const clearCursorAndSelection = (store as any).clearCursorAndSelection;
                     if (typeof clearCursorAndSelection === "function") {
-                        clearCursorAndSelection(cursor.userId);
+                        if (typeof clearCursorAndSelection.call === "function") {
+                            clearCursorAndSelection.call(store, cursor.userId);
+                        } else {
+                            clearCursorAndSelection(cursor.userId);
+                        }
                     } else {
                         store.clearSelectionForUser?.(cursor.userId);
                         store.clearCursorForItem?.(oldItemId);

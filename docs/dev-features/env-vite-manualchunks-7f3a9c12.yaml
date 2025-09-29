@@ -1,0 +1,25 @@
+id: ENV-7f3a9c12
+title: Optimize large bundle chunks via Vite manualChunks
+title-ja: Vite manualChunks による大容量チャンクの最適化
+description: ビルド時の500kB超過チャンク警告に対し、Vite/RollupのmanualChunksを用いて echarts（charts/components/core）・zrender・firebase を分割。機能差分を発生させずに 主要なベンダー依存の分離を行った。Viteのクライアントビルドが出す"Some chunks are larger than 500 kB" メッセージはRollup onwarnでは抑止できないため、残存する場合があるが、ECharts 依存の性質上 許容範囲として扱う。必要に応じて将来は動的 import による更なる遅延読込を検討する。
+category: environment
+status: implemented
+components:
+- client/src/components/ChartPanel.svelte
+- client/src/routes/(app)/graph/+page.svelte
+- client/src/routes/(app)/yjs-outliner/+page.svelte
+- client/vite.config.ts
+changes:
+- client/vite.config.ts にて rollupOptions.output.manualChunks を関数ベースで定義し、 echarts を charts/components/core に細分化、zrender、firebase を個別チャンク化
+- 同ファイルにて onwarn で CHUNK_SIZE_LIMIT をフィルタ（Vite側警告は残る可能性あり）
+verification:
+- npm run build を実行し、vendor 分割が反映されることを確認
+- 影響範囲の E2E 基本シナリオ 1 本を実行し機能後退が無いことを確認
+notes:
+- Viteのサイズ警告は client ビルド段階の独自出力であり、Rollup onwarn では無効化できない
+- 本対応は最小変更の範囲で vendor 分割を入れた第一段階。必要に応じて画面単位の動的 import を検討
+- 手動で chunkSizeWarningLimit を上げる方法は採らず、まずは分割での緩和を優先
+- ECharts 利用画面が初回表示で重くなる場合は、パネルやルート単位のコード分割へ拡張可能
+- 将来の分割候補：グラフ機能やエディタ補助機能を遅延読込
+tests:
+- client/e2e/basic/00-tst-outliner-visible-after-prepare-0f1a2b3c.spec.ts

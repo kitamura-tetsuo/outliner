@@ -149,8 +149,8 @@ function navigateToPage(page?: Item) {
         const title = (targetPage as any)?.text?.toString?.() ?? String((targetPage as any)?.text ?? "");
         searchHistoryStore.add(title);
         // プロジェクト名は常に最新の store.project を優先して取得
-        let projTitle = store.project?.title
-            ?? effectiveProject?.title
+        let projTitle = effectiveProject?.title
+            ?? store.project?.title
             ?? '';
         if (!projTitle && typeof window !== 'undefined') {
             const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;

@@ -194,9 +194,9 @@ onMount(() => {
     });
     editorOverlayStore.setOnEditCallback(handleEdit);
 
-    // Initialize itemHeights with a conservative guess to avoid accessing displayItems in onMount
-    // which would trigger the YjsSubscriber and potentially cause loops
-    // We'll let the reactive system update this as needed
+    // 初期化: onMount 内で displayItems を直接参照しない
+    // 理由: 直接参照は observeDeep による即時再計算を誘発し得るため、初期レイアウトは保守的に設定する
+    // 方針: Yjs の最小粒度 observeDeep による tick（__displayItemsTick）経由で再計算させる
     const initialLength = 1; // Start with just the page title
     itemHeights = new Array(initialLength).fill(0);
 
@@ -204,9 +204,9 @@ onMount(() => {
     updateItemPositions();
 });
 
-// 可視アイテム数の変化に反応して高さを再測定（$effect を使わずに実施）
-// YjsSubscriber のトランスフォーマで検出し、ここでは関数として使用
-function remeasureIfLengthChanged(_len: number) { /* legacy no-op; handled by $effect above */ }
+// 可視アイテム数の変化に反応して高さを再測定（$effect は未使用）
+// observeDeep による更新トリガ（__displayItemsTick）を前提としたレガシーフック
+function remeasureIfLengthChanged(_len: number) { /* legacy no-op; observeDeep tick により更新 */ }
 
 onDestroy(() => {
     // onEdit コールバックをクリア

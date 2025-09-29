@@ -11,7 +11,9 @@
         "jsonwebtoken": "^9.0.0",
         "pino": "^9.8.0",
         "pino-pretty": "^13.1.1",
-        "uuid": "^11.1.0"
+        "uuid": "^11.1.0",
+        "y-leveldb": "^0.2.0",
+        "yjs": "^13.6.27"
     },
     "description": "Authentication server for Fluid Outliner app",
     "devDependencies": {
@@ -21,7 +23,8 @@
         "mocha": "^11.7.1",
         "nodemon": "^3.1.10",
         "sinon": "^21.0.0",
-        "supertest": "^7.1.4"
+        "supertest": "^7.1.4",
+        "ts-node": "^10.9.2"
     },
     "jest": {
         "clearMocks": true,
@@ -32,8 +35,6 @@
     },
     "main": "log-service.js",
     "name": "fluid-outliner-server",
-    "optionalDependencies": {},
-    "peerDependencies": {},
     "scripts": {
         "create-test-user": "node utils/create-test-user.js",
         "dev": "nodemon log-service.js",
