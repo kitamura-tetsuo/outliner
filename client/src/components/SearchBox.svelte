@@ -143,15 +143,34 @@ function handleKeydown(e: KeyboardEvent) {
     }
 }
 
+function resolveProjectTitle(targetPage: Item | null): string {
+    const storeProject = store.project ?? null;
+    const derivedProject = effectiveProject ?? null;
+    const pageDoc = targetPage ? ((targetPage as any)?.ydoc ?? null) : null;
+    const projectMatches = (proj: Project | null) => {
+        if (!proj) return false;
+        const projDoc = (proj as any)?.ydoc ?? null;
+        if (pageDoc && projDoc && projDoc !== pageDoc) return false;
+        if (derivedProject && projDoc && (derivedProject as any)?.ydoc && projDoc !== (derivedProject as any)?.ydoc) {
+            return false;
+        }
+        return true;
+    };
+
+    const preferred = projectMatches(storeProject) ? storeProject : null;
+    if (preferred) return preferred.title ?? "";
+    if (derivedProject) return derivedProject.title ?? "";
+    if (storeProject) return storeProject.title ?? "";
+    return "";
+}
+
 function navigateToPage(page?: Item) {
     const targetPage = page || (selected >= 0 && results[selected] ? results[selected] : null);
     if (targetPage) {
         const title = (targetPage as any)?.text?.toString?.() ?? String((targetPage as any)?.text ?? "");
         searchHistoryStore.add(title);
-        // プロジェクト名は常に最新の store.project を優先して取得
-        let projTitle = effectiveProject?.title
-            ?? store.project?.title
-            ?? '';
+        // Prefer a project whose Y.Doc matches the active page/project before falling back to placeholders
+        let projTitle = resolveProjectTitle(targetPage);
         if (!projTitle && typeof window !== 'undefined') {
             const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
             projTitle = cur?.title ?? projTitle;

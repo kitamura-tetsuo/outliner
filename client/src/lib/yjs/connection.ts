@@ -45,18 +45,25 @@ function isWsEnabled(): boolean {
 async function getFreshIdToken(): Promise<string> {
     // Wait for auth and fetch a fresh ID token
     const auth = userManager.auth;
+    const isTestEnv = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
     if (!auth.currentUser) {
+        if (isTestEnv) {
+            return "";
+        }
         // Try short wait using a simple promise
         await new Promise(resolve => setTimeout(resolve, 200));
     }
     if (!auth.currentUser) {
+        if (isTestEnv) {
+            return "";
+        }
         // As a fallback, wait briefly to allow auth flow to start
         await new Promise(resolve => setTimeout(resolve, 200));
     }
     const token = await auth.currentUser?.getIdToken(true);
     if (!token) {
         // In test/integration environments, allow proceeding without a token
-        if (import.meta.env.MODE === "test" || process.env.NODE_ENV === "test") {
+        if (isTestEnv) {
             return "";
         }
         throw new Error("No Firebase ID token available");
