@@ -14,7 +14,7 @@ class ResizeObserver {
 /**
  * CMT-0001 派生状態のみで再描画が成立することを検証する軽量統合テスト
  * - Yjs 側（Item.comments）を更新すると、CommentThread の件数表示が反映される
- * - $effect に依存せず、YjsSubscriber + $derived 経由で UI が更新される
+ * - $effect に依存せず、最小粒度の Yjs observe + $derived 経由で UI が更新される
  */
 describe("cmt-derived-renders", () => {
     it("updates renderCommentsState length when Yjs comments change", async () => {

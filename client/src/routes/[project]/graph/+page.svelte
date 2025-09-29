@@ -1,5 +1,4 @@
 <script lang="ts">
-export const ssr = false;
 import { goto } from "$app/navigation";
 import GraphView from "../../../components/GraphView.svelte";
 

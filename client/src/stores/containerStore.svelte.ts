@@ -19,7 +19,9 @@ export function containersFromUserContainer(data: UserContainer | null): Array<C
         || (typeof window !== "undefined" && window.mockFluidClient === false)
         || (typeof window !== "undefined" && window.location.hostname === "localhost");
 
-    return data.accessibleContainerIds
+    // ID 重複を排除して安定化
+    const uniqueIds = Array.from(new Set(data.accessibleContainerIds));
+    return uniqueIds
         .map(id => {
             let name: string;
             try {
@@ -40,8 +42,8 @@ export function containersFromUserContainer(data: UserContainer | null): Array<C
         })
         .filter(container => {
             if (isTestEnv) {
-                // テスト環境では、より緩い条件でフィルタリング
-                return container.name && container.name !== "プロジェクト";
+                // テスト環境では、名前が空でないものを全て表示（"プロジェクト" も許可）
+                return !!(container.name && container.name.trim() !== "");
             } else {
                 // 本番環境では、厳密な条件でフィルタリング
                 return container.name

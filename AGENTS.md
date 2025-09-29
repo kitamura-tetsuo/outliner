@@ -259,3 +259,26 @@ Follow these guidelines to keep documentation, code, and tests consistent across
 - **Keep synchronization triggers comprehensive**: Any bidirectional binding between collaboration data and Svelte state must subscribe to every shared field it derives from (for example, comment counts or other computed aggregates). Ensure the reactive state is refreshed whenever the source data changes so that derived values stay in sync.
 - **Document positive alternatives alongside negative prompts**: When drafting prompt guidance (e.g., discouraging an approach), pair every negative instruction with an explicit positive alternative that the LLM should follow instead.
 - **Eliminate avoidable polling**: Before introducing a polling loop, confirm that no event-driven mechanism is available. If a reactive hook exists, use it to keep UI state synchronized and avoid the performance penalties of polling.
+
+### Yjs observe-based synchronization (mirror pattern)
+
+- Don’t bind Yjs types directly to the DOM—create a plain `$state` mirror and keep it in sync via Yjs observers.
+- UI → Yjs: update Yjs in explicit event handlers (e.g., on input/change).
+- Yjs → UI: on `observe`/`observeDeep`, assign into the mirror to trigger DOM updates.
+- Handle initial sync (`provider.on('synced')`) before seeding the mirror.
+- Always cleanup (`unobserve`/`unobserveDeep` and `provider.destroy()`), and use transaction `origin` to ignore local echoes.
+
+Why it works
+
+- Svelte re-renders on assignments to `$state`.
+- `$state` provides deep reactivity for plain objects/arrays, so Yjs changes become visible through the mirror.
+
+### Yjs-bound components and Svelte `key`
+
+- Components that have a 1:1 relationship with a Yjs object (e.g., a page tree bound to a specific Y.Doc) must wrap their render body in a Svelte `{#key ...}` keyed by `ydoc.guid` (fallback to model `id`). This guarantees a full remount whenever the underlying Y.Doc changes and eliminates any need to re-bind observers inside the component.
+- Do not implement "rebind on Y.Doc switch" logic inside components. The `{#key}` must make Y.Doc switching impossible within a mounted instance; remount instead.
+
+### Test-only event: `firestore-uc-changed`
+
+- `firestore-uc-changed` is a lightweight CustomEvent used only in test environments to aid deterministic redraws. In development and production, components must rely on `firestoreStore.ucVersion` and Svelte 5 `$derived` dependencies for reactivity instead of DOM events.
+- If any test or test-only fixture listens for `firestore-uc-changed`, add a comment clarifying that this dependency is "test environment only" and not part of the production signaling path.

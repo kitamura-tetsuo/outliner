@@ -2,7 +2,6 @@
 import { Comments } from "../schema/app-schema";
 import * as Y from "yjs";
 import type { Comment } from "../schema/app-schema";
-import { YjsSubscriber } from "../stores/YjsSubscriber";
 import { getLogger } from "../lib/logger";
 import { createEventDispatcher, onMount } from "svelte";
 const logger = getLogger("CommentThread");
@@ -25,9 +24,9 @@ let onCountChanged = $derived.by(() => props.onCountChanged);
 let newText = $state("");
 let editingId = $state<string | null>(null);
 let editText = $state("");
-let commentsList = $state<Comment[]>((comments as any)?.toPlain?.() ?? []);
+let commentsList = $state<Comment[]>([]);
 let localComments = $state<Comment[]>([]);
-const renderCommentsState = $derived.by(() => (commentsSubscriber.current as any) ?? []);
+let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
 
 function e2eLog(entry: any) {
@@ -47,19 +46,32 @@ let lastNotifiedCount = $state(-1);
 
 // initial recompute deferred until commentsSubscriber is initialized
 
-// YjsSubscriberを使用してcommentsの変更を監視（親Docに直接サブスクライブ）
-
-const commentsSubscriber = new YjsSubscriber<Comment[]>(
-    doc,
-    () => {
-        try {
-            return (comments as any)?.toPlain?.() ?? [];
-        } catch {
-            return [];
+// Yjs の最小粒度 observe による購読（Y.Array<Y.Map> を deep 監視）
+onMount(() => {
+    let unobserve: (() => void) | undefined;
+    try {
+        // 1) Comments ラッパがあれば内部の yArray を取得（private だが JS では参照可能）
+        let yarr: any = (comments as any)?.yArray;
+        // 2) なければ item 経由で Y.Map -> "comments" を確保
+        if (!yarr && props.item) {
+            const anyItem: any = props.item as any;
+            const tree = anyItem?.tree; const key = anyItem?.key;
+            const value = tree?.getNodeValueFromKey?.(key) as any;
+            if (value) {
+                yarr = value.get?.("comments");
+                if (!yarr) { yarr = new (Y as any).Array(); value.set?.("comments", yarr); }
+            }
         }
-
-    },
-);
+        if (yarr && typeof yarr.observeDeep === "function") {
+            const handler = () => { try { renderCommentsState = ((comments as any)?.toPlain?.() ?? []); } catch {} };
+            yarr.observeDeep(handler);
+            unobserve = () => { try { yarr.unobserveDeep(handler); } catch {} };
+            // 初期反映
+            handler();
+        }
+    } catch {}
+    return () => { try { unobserve?.(); } catch {} };
+});
 
 
 // Yjsの自動同期は一旦停止（CMT-0001 安定化のため、add/remove 時の即時通知に限定）

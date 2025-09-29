@@ -16,6 +16,6 @@ impact:
 tradeoffs:
 - DOM フォールバックによる一時的上書きの経路が残るため、将来的に整理予定
 notes:
-- スレッド未展開時でも afterTransaction 監視で件数更新
+- スレッド未展開時でも Y.Array('comments') の observe により件数が更新される（最小粒度の Yjs observe）
 tests:
 - client/e2e/new/cmt-comment-badge-max-5fd8c210.spec.ts

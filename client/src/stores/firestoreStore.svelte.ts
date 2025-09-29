@@ -36,6 +36,15 @@ class GeneralStore {
 
         // $state 依存を更新（CustomEvent に頼らない）
         self.ucVersion = prevVersion + 1;
+        // 追加通知（テスト環境限定）: UI への橋渡しとして軽量な DOM イベントを発火
+        try {
+            const __isTestEnv = import.meta.env.MODE === "test"
+                || process.env.NODE_ENV === "test"
+                || import.meta.env.VITE_IS_TEST === "true";
+            if (typeof window !== "undefined" && __isTestEnv) {
+                window.dispatchEvent(new CustomEvent("firestore-uc-changed"));
+            }
+        } catch {}
 
         const nextLength = self.userContainer?.accessibleContainerIds?.length ?? 0;
         const nextDefault = self.userContainer?.defaultContainerId;

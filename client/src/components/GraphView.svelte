@@ -143,14 +143,14 @@ onMount(() => {
     // Initial render
     update();
 
-    // React to project structure changes via Y.Doc updates (no polling)
+    // React to project structure changes via minimal-granularity Yjs observeDeep on orderedTree
     let detachDocListener: (() => void) | undefined;
     try {
-        const doc: Y.Doc | undefined = (store.project as any)?.ydoc;
-        if (doc) {
-            const onDocUpdate = () => { try { update(); } catch {} };
-            doc.on("update", onDocUpdate);
-            detachDocListener = () => doc.off("update", onDocUpdate);
+        const ymap: any = (store.project as any)?.ydoc?.getMap?.("orderedTree");
+        if (ymap && typeof ymap.observeDeep === "function") {
+            const handler = () => { try { update(); } catch {} };
+            ymap.observeDeep(handler);
+            detachDocListener = () => { try { ymap.unobserveDeep(handler); } catch {} };
         }
     } catch {}
 

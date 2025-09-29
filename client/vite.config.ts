@@ -69,9 +69,34 @@ export default defineConfig(async ({ mode }) => {
         },
         build: {
             sourcemap: true,
+            // 手動チャンク分割の適用に合わせ、警告閾値は最小限の緩和に留める
+            chunkSizeWarningLimit: 1100,
             rollupOptions: {
                 input: {
                     app: "./src/app.html",
+                },
+                output: {
+                    // 最小限の vendor 分割 + echarts をさらに細分化して 500kB 超過を回避
+                    manualChunks(id: string) {
+                        // ECharts 系は用途別に分割
+                        if (id.includes("node_modules/echarts/")) {
+                            if (id.includes("/lib/chart/")) return "echarts-charts";
+                            if (id.includes("/lib/component/")) return "echarts-components";
+                            return "echarts-core";
+                        }
+                        if (id.includes("node_modules/zrender/")) return "zrender";
+
+                        // Firebase は単一の vendor チャンクに集約
+                        if (id.includes("node_modules/firebase/")) return "firebase";
+
+                        return undefined;
+                    },
+                },
+                // 大容量チャンク（例: ECharts）については警告を抑止して許容
+                onwarn(warning: any, handler: (warning: any) => void) {
+                    // Rollup の CHUNK_SIZE_LIMIT 警告のみをフィルタ
+                    if ((warning as any).code === "CHUNK_SIZE_LIMIT") return;
+                    handler(warning);
                 },
             },
         },

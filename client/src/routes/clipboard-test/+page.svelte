@@ -1,7 +1,5 @@
 <script lang="ts">
 // SSRを無効化（クリップボードAPIはブラウザ環境でのみ動作）
-export const ssr = false;
-
 import { onMount } from "svelte";
 
 // 状態管理

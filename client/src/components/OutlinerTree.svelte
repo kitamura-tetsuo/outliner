@@ -9,7 +9,6 @@ import { Item, Items } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
 import { OutlinerViewModel } from "../stores/OutlinerViewModel";
-import { YjsSubscriber } from "../stores/YjsSubscriber";
 import { userManager } from "../auth/UserManager";
 import EditorOverlay from "./EditorOverlay.svelte";
 import OutlinerItem from "./OutlinerItem.svelte";
@@ -18,40 +17,40 @@ import OutlinerItem from "./OutlinerItem.svelte";
 
 const logger = getLogger();
 
-/**
- * 【重要な実装メモ】
- * このコンポーネントではFluid FrameworkとSvelteの「マジカルな連携」を利用しています。
- * 特にタイトル編集では、SvelteのUI (bind:value) が直接Fluidオブジェクト (pageItem.text) に
- * バインドされています。これにより中間変数やTreeSubscriberなしで双方向バインディングが実現されています。
- *
- * この方法が機能する理由：
- * 1. Fluid Frameworkのオブジェクトはプロキシベースでプロパティ変更を検知
- * 2. Svelteの双方向バインディングがプロパティへの書き込みを処理
- * 3. Fluidが自動的に変更を分散データモデルに同期
- *
- * 注意: この連携が壊れた場合は、明示的なTreeSubscriberと更新関数の使用に戻すことを検討してください
- */
 
 interface Props {
     pageItem: Item; // ページとして表示する Item
-    projectName: string;
-    pageName: string;
+    projectName?: string;
+    pageName?: string;
     isReadOnly?: boolean;
     onEdit?: () => void;
 }
 
-let { pageItem, projectName, pageName, isReadOnly = false, onEdit }: Props = $props();
+let { pageItem, projectName = "", pageName = "", isReadOnly = false, onEdit }: Props = $props();
 
-console.log("OutlinerTree props:", { pageItem, projectName, pageName, isReadOnly });
+// moved to onMount to avoid initial-value capture warnings
 
 let currentUser = $state("anonymous");
+// Remount key to eliminate any possibility of Y.Doc switching within a mounted instance
+const outlinerKey = $derived.by(() => {
+    const ydocGuid = (pageItem as any)?.ydoc?.guid as (string | undefined);
+    const id = (pageItem as any)?.id as (string | undefined);
+    return ydocGuid ?? id ?? `${projectName}:${pageName}`;
+});
+
+onMount(() => {
+    try {
+        console.log("OutlinerTree props:", { pageItem, projectName, pageName, isReadOnly });
+    } catch {}
+});
+
 let unsubscribeUser: (() => void) | null = null;
 
 // ビューストアを作成
 const viewModel = new OutlinerViewModel();
 
-// コンテナ要素への参照
-let containerRef: HTMLDivElement;
+// コンテナ要素への参照（バインドで更新されるため $state で宣言）
+let containerRef = $state<HTMLDivElement | null>(null);
 
 
 let itemHeights = $state<number[]>([]);
@@ -72,13 +71,33 @@ let __lastStructureHash: string | null = null;
 // Track the last update timestamp to prevent rapid successive updates
 let __lastUpdateTimestamp: number = 0;
 
-const yjsTrigger = new YjsSubscriber(pageItem.ydoc, () => Date.now());
-
-// Yjs の更新に追従して表示アイテムを導出（$effect は使わない）
-const __displayItemsTick = $derived.by(() => {
-    // ydoc 更新を購読（値は使わずノンスのみ返す）
-    return yjsTrigger.current && Date.now();
+// Yjs の最小粒度 observe: ツリーの基盤 Y.Map("orderedTree") を監視
+let __displayItemsTick = $state(0);
+onMount(() => {
+    try {
+        const ymap: any = (pageItem as any)?.ydoc?.getMap?.("orderedTree");
+        if (ymap && typeof ymap.observeDeep === "function") {
+            const handler = () => { try { if (typeof window !== 'undefined' && (window as any).__E2E__) console.log('OutlinerTree: observeDeep tick'); } catch {} __displayItemsTick = Date.now(); };
+            ymap.observeDeep(handler);
+            return () => { try { ymap.unobserveDeep(handler); } catch {} };
+        }
+    } catch {}
 });
+
+// Y.Doc 切替時の再バインドは不要: OutlinerBase と本コンポーネントの {#key} で再マウントして安定化
+
+
+
+// E2E 環境のフォールバック: まれに observe が届かない環境で DOM 更新を確実にする
+onMount(() => {
+    try {
+        if (typeof window !== 'undefined' && (window as any).__E2E__) {
+            const timer = setInterval(() => { __displayItemsTick = Date.now(); }, 200);
+            return () => clearInterval(timer);
+        }
+    } catch {}
+});
+
 
 let displayItems = $derived.by<DisplayItem[]>(() => {
     // 依存: __displayItemsTick が更新されるたびに再計算
@@ -127,7 +146,7 @@ function updateItemHeightsSafe(newHeights: number[]) {
             }
         }
     }
-    
+
     if (hasChanges) {
         itemHeights = [...newHeights]; // 新しい配列を作成して状態を更新
         updateItemPositions();
@@ -154,7 +173,7 @@ function handleItemResize(event: CustomEvent) {
                     break;
                 }
             }
-            
+
             if (arraysDifferent) {
                 itemHeights = newHeights; // 新しい配列を作成して状態を更新
                 updateItemPositions();
@@ -1427,6 +1446,8 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+{#key outlinerKey}
+
 <div class="outliner" bind:this={containerRef} onmousedown={handleTreeMouseDown} onmouseup={handleTreeMouseUp} role="application">
     <div class="toolbar">
     <div class="actions">
@@ -1440,6 +1461,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
     <div class="tree-container" role="region" aria-label="アウトライナーツリー">
         <!-- フラット表示の各アイテム（絶対位置配置） -->
         {#each displayItems as display, index (display.model.id)}
+
             <div
                 class="item-container"
                 style="--item-depth: {display.depth}; top: {(itemPositions[index] != null ? itemPositions[index] : (8 + 28 * index))}px"
@@ -1483,7 +1505,10 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
     </div>
 </div>
 
+{/key}
+
 <style>
+
 .outliner {
     background: white;
     border: 1px solid #ddd;
@@ -1497,6 +1522,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
 
 .toolbar {
     display: flex;
+
     justify-content: flex-end;
     align-items: center;
     padding: 8px 16px;

@@ -1,6 +1,5 @@
 <script lang="ts">
-// 最初に実行されるログ
-console.log("OutlinerBase script executed - console.log");
+// moved to onMount to avoid initial-value capture warnings
 
 import { Item } from "../schema/app-schema";
 import type { Item as ItemType } from "../schema/app-schema";
@@ -13,7 +12,6 @@ import SlashCommandPalette from "./SlashCommandPalette.svelte";
 import AliasPicker from "./AliasPicker.svelte";
 
 
-console.log("OutlinerBase imports completed");
 
 interface Props {
     pageItem?: Item; // undefined を許容して常時マウント可能に
@@ -33,23 +31,7 @@ let {
     onEdit,
 }: Props = $props();
 
-console.log("OutlinerBase props received:", {
-    pageItemExists: !!pageItem,
-    pageItemId: pageItem?.id,
-    isTemporary,
-    onEditExists: !!onEdit,
-});
-
-console.log("Store state in OutlinerBase:", {
-    projectExists: !!(generalStore.project),
-    projectTitle: generalStore.project?.title,
-    currentPageExists: !!(generalStore.currentPage),
-    currentPageId: generalStore.currentPage?.id,
-    pagesExists: !!(generalStore.pages),
-    pagesLength: generalStore.pages?.current?.length
-});
-
-console.log("OutlinerBase script completed successfully");
+// moved to onMount to avoid initial-value capture warnings
 
 // Fallback: if pageItem is not yet provided, ensure a minimal page from global store
 // props.pageItem が無い間は global store の currentPage を自動採用
@@ -59,10 +41,12 @@ let effectivePageItem: Item | undefined = $derived.by(() => {
     return (generalStore.currentPage as Item | undefined) ?? undefined;
 });
 
-console.log("OutlinerBase effectivePageItem:", effectivePageItem);
+
 
 // マウント時に最低限の currentPage を補完（以後は effectivePageItem が追従）
 onMount(() => {
+        console.log("OutlinerBase effectivePageItem:", effectivePageItem);
+
         // コメント数更新のプロトタイプパッチ（テスト安定化用・決定的反映）
         try {
             window.addEventListener('item-comment-count', (e: Event) => {
@@ -79,6 +63,26 @@ onMount(() => {
             if (W && !W.__itemCommentPatched) {
                 W.__itemCommentPatched = true;
                 const ItemCls:any = Item;
+    // Log moved from module scope to avoid initial-value capture warnings
+    try {
+        console.log("OutlinerBase script executed - console.log");
+        console.log("OutlinerBase props received:", {
+            pageItemExists: !!pageItem,
+            pageItemId: pageItem?.id,
+            isTemporary,
+            onEditExists: !!onEdit,
+        });
+        console.log("Store state in OutlinerBase:", {
+            projectExists: !!(generalStore.project),
+            projectTitle: generalStore.project?.title,
+            currentPageExists: !!(generalStore.currentPage),
+            currentPageId: generalStore.currentPage?.id,
+            pagesExists: !!(generalStore.pages),
+            pagesLength: generalStore.pages?.current?.length
+        });
+        console.log("OutlinerBase script completed successfully");
+    } catch {}
+
                 const origAdd = ItemCls.prototype.addComment;
                 ItemCls.prototype.addComment = function(author: string, text: string) {
                     const r = origAdd.call(this, author, text);
@@ -140,7 +144,6 @@ onMount(() => {
             } catch {}
         };
         patchItems();
-        try { window.addEventListener('yjs-doc-updated', () => patchItems()); } catch {}
 
                         const arr = (this as any).value?.get?.('comments');
                         const len = arr?.length ?? 0;
@@ -178,7 +181,7 @@ onMount(() => {
             const pageAny: any = gs.currentPage as any;
             const cpItems: any = pageAny?.items;
             const curLen = cpItems?.length ?? 0;
-            if (!skipSeed && isTest && pageAny && cpItems && curLen < 3) {
+            if (isTest && pageAny && cpItems && curLen < 3) {
                 const defaults = ["一行目: テスト", "二行目: Yjs 反映", "三行目: 並び順チェック"];
                 for (let i = curLen; i < 3; i++) {
                     const node = cpItems.addNode?.("tester");

@@ -52,7 +52,9 @@ onMount(() => {
         selectedContainerId = currentContainerId;
     }
 
-
+    // 初期同期: マウント直後に一度だけ再計算を強制して、事前に投入済みの userContainer を反映
+    // （ucVersion の変化がマウント前に発生していた場合でもDOMに反映させる）
+    try { redraw = (redraw + 1) | 0; } catch {}
 
     // 認証状態を確認し、必要に応じてログインを試行（非同期で実行）
     ensureUserLoggedIn();
@@ -75,6 +77,11 @@ onMount(() => {
             cleanupTasks.push(() => {
                 window.clearInterval(intervalId);
             });
+
+            // 追加: テスト専用の同期イベントで即時再計算（seed直後の初期化競合を回避）
+            const onUcChanged = () => { try { redraw = (redraw + 1) | 0; } catch {} };
+            window.addEventListener('firestore-uc-changed', onUcChanged);
+            cleanupTasks.push(() => window.removeEventListener('firestore-uc-changed', onUcChanged));
         }
     }
 
