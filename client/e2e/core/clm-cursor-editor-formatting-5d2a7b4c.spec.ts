@@ -61,10 +61,37 @@ test.describe("CLM-5d2a7b4c: Cursor formatting delegates to CursorEditor", () =>
     });
 
     test("applies Scrapbox formatting via CursorEditor", async ({ page }) => {
-        const activeItemId = await TestHelpers.getActiveItemId(page)
-            || await TestHelpers.getItemIdByIndex(page, 0);
-        expect(activeItemId, "expected an active item").toBeTruthy();
-        const itemId = activeItemId!;
+        // Create a new empty item to work with, separate from the page item which contains the page title
+        await page.evaluate(() => {
+            const gs = (window as any).generalStore;
+            if (gs?.currentPage) {
+                const items = gs.currentPage.items as any;
+                if (items && typeof items.addNode === "function") {
+                    const newItem = items.addNode("tester");
+                    if (newItem && typeof newItem.updateText === "function") {
+                        newItem.updateText(""); // Ensure the item is empty
+                    }
+                }
+            }
+        });
+
+        // Wait a bit for the new item to be reflected in the UI
+        await page.waitForTimeout(200);
+
+        // Get the ID of the newly created item (likely the last item)
+        const itemId = await page.evaluate(() => {
+            const gs = (window as any).generalStore;
+            if (gs?.currentPage) {
+                const items = gs.currentPage.items as any;
+                if (items && items.length > 0) {
+                    const lastItem = items.at ? items.at(items.length - 1) : items[items.length - 1];
+                    return lastItem?.id;
+                }
+            }
+            return null;
+        });
+
+        expect(itemId, "expected a new item to be created").toBeTruthy();
 
         await TestHelpers.setCursor(page, itemId, 0, USER_ID);
         await TestHelpers.waitForCursorVisible(page, 15000);

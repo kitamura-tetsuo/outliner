@@ -59,32 +59,62 @@ export function findNextItem(currentItemId: string): Item | undefined {
     const root = generalStore.currentPage as unknown as Item | undefined;
     if (!root) return undefined;
 
-    return findNextItemRecursive(root, currentItemId);
-}
-
-function findNextItemRecursive(node: Item, targetId: string): Item | undefined {
-    if (node.id === targetId) {
-        const iterator = node.items as Iterable<Item> | undefined;
-        if (iterator && typeof (iterator as any)[Symbol.iterator] === "function") {
-            const first = (iterator as Iterable<Item>)[Symbol.iterator]().next();
-            if (!first.done) return first.value;
-        }
-        return undefined;
+    // Special case: if the root itself is the target, return the first child
+    if (root.id === currentItemId) {
+        const children = collectChildren(root);
+        return children.length > 0 ? children[0] : undefined;
     }
 
+    // Perform the search starting from the root
+    return findNextItemRecursive(root, currentItemId, []);
+}
+
+function findNextItemRecursive(node: Item, targetId: string, path: Item[]): Item | undefined {
     const children = collectChildren(node);
+    const currentPath = [...path, node];
+
     for (let i = 0; i < children.length; i++) {
         const child = children[i];
 
         if (child.id === targetId) {
+            // If this child is the target, return the next sibling if it exists
             if (i < children.length - 1) {
                 return children[i + 1];
             }
+            // If no next sibling at this level, traverse upward to find next item
+            return findNextAtParentLevel(currentPath);
+        }
+
+        const found = findNextItemRecursive(child, targetId, currentPath);
+        if (found) return found;
+    }
+
+    return undefined;
+}
+
+// Helper function to find next item when no sibling exists at current level
+function findNextAtParentLevel(path: Item[]): Item | undefined {
+    // Go back up the tree to find a parent with a next sibling
+    for (let i = path.length - 1; i >= 0; i--) {
+        const currentAncestor = path[i];
+
+        // If i === 0, we're at the root level and can't go higher
+        if (i === 0) {
             return undefined;
         }
 
-        const found = findNextItemRecursive(child, targetId);
-        if (found) return found;
+        // Get the parent (previous item in path)
+        const parent = path[i - 1];
+
+        // Get siblings of currentAncestor (children of parent)
+        const siblings = collectChildren(parent);
+        const index = siblings.findIndex(item => item.id === currentAncestor.id);
+
+        if (index !== -1 && index < siblings.length - 1) {
+            // Return the next sibling
+            return siblings[index + 1];
+        }
+        // If no more siblings at this level, continue up the tree
     }
 
     return undefined;

@@ -477,7 +477,7 @@ export class EditorOverlayStore {
     startCursorBlink() {
         this.cursorVisible = true;
         clearInterval(this.timerId);
-        // 単純に toggle するので Node でも動作
+        // 単純に toggle する so Node でも動作
         this.timerId = setInterval(() => {
             this.cursorVisible = !this.cursorVisible;
         }, 530);

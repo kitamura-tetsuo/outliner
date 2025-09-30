@@ -106,7 +106,7 @@ export class CursorTextOperations {
         } else {
             // 通常の削除
             if (this.cursor.offset > 0) {
-                let txt = node.text;
+                let txt = node.text?.toString?.() ?? "";
                 const pos = this.cursor.offset - 1;
                 txt = txt.slice(0, pos) + txt.slice(pos + 1);
                 node.updateText(txt);
@@ -164,7 +164,7 @@ export class CursorTextOperations {
             }
         } else {
             // 通常の削除
-            let txt = node.text;
+            let txt = node.text?.toString?.() ?? "";
             if (this.cursor.offset < txt.length) {
                 txt = txt.slice(0, this.cursor.offset) + txt.slice(this.cursor.offset + 1);
                 node.updateText(txt);

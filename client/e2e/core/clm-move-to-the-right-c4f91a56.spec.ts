@@ -36,31 +36,39 @@ test.describe("CLM-0003: 右へ移動", () => {
         const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
         expect(activeItemLocator).not.toBeNull();
 
-        // カーソルを左に移動して初期位置を設定
+        // 初期カーソル情報を取得して検証
+        let cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.cursorCount).toBeGreaterThan(0);
+        expect(cursorData.activeItemId).not.toBeNull();
+
+        // カーソルを左端に移動（Homeキー）
         await page.keyboard.press("Home");
+        await page.waitForTimeout(300);
 
-        // アクティブなカーソルを取得
-        const cursor = page.locator(".editor-overlay .cursor.active");
-        await cursor.waitFor({ state: "visible" });
+        // カーソル情報を再取得して検証
+        cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.cursorCount).toBeGreaterThan(0);
+        expect(cursorData.activeItemId).not.toBeNull();
 
-        // 初期カーソル位置を取得
-        const initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
+        // カーソルが左端にあることを確認
+        const initialOffset = cursorData.cursorInstances?.[0]?.offset;
+        expect(initialOffset).not.toBeUndefined();
 
-        // 右矢印キーを押下
+        // 右矢印キーを押下してカーソルを右に1文字移動
         await page.keyboard.press("ArrowRight");
+
         // 更新を待機
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(300);
 
-        // 新しいカーソル位置を取得
-        const newX = await cursor.evaluate(el => el.getBoundingClientRect().left);
+        // 新しいカーソル情報を取得
+        const updatedCursorData = await CursorValidator.getCursorData(page);
+        const newOffset = updatedCursorData.cursorInstances?.[0]?.offset;
 
-        // カーソルが移動していることを確認（右に移動するとX座標が大きくなる）
-        // ただし、フォントによっては左に移動することもあるため、位置が変わっていることだけを確認
-        expect(newX).not.toEqual(initialX);
+        // カーソルのオフセットが1文字分変化していることを確認（右に移動している）
+        expect(newOffset).toBe(initialOffset + 1);
 
-        // カーソル情報を取得して検証
-        const cursorData = await CursorValidator.getCursorData(page);
-        expect(cursorData.cursorCount).toBe(1);
+        // カーソル数が1つのままであることを確認
+        expect(updatedCursorData.cursorCount).toBe(1);
     });
 
     test("一番最後の文字にある時は、一つ次のアイテムの最初の文字へ移動する", async ({ page }) => {
@@ -96,32 +104,60 @@ test.describe("CLM-0003: 右へ移動", () => {
         // カーソルを行末に移動
         await page.keyboard.press("End");
 
-        // カーソル情報を取得して検証
+        // 少し長めに待機してカーソル移動を確定 - Endキー処理の完了を待つ
+        await page.waitForTimeout(500);
+
+        // カーソル情報を取得して、実際に末尾に移動したことを確認
         let cursorData = await CursorValidator.getCursorData(page);
-        console.log(`移動前のカーソル数: ${cursorData.cursorCount}`);
+        console.log(`Endキー移動後のカーソル数: ${cursorData.cursorCount}`);
         expect(cursorData.cursorCount).toBe(1);
+
+        const initialItemId = cursorData.activeItemId;
+        const initialOffset = cursorData.cursorInstances?.[0]?.offset;
+        const initialText = await page.locator(`.outliner-item[data-item-id="${initialItemId}"] .item-text`)
+            .textContent();
+        console.log(
+            `移動前: アイテムID=${initialItemId}, オフセット=${initialOffset}, テキスト長=${initialText?.length}`,
+        );
+
+        // 確認：カーソルが実際に末尾にあるか（テキスト長とオフセットが一致するか）
+        expect(initialOffset).toBe(initialText?.length);
+
+        // もう一度Endキーを押してカーソル位置を確実に末尾にする
+        await page.keyboard.press("End");
+        await page.waitForTimeout(200);
+
+        // 再度確認
+        cursorData = await CursorValidator.getCursorData(page);
+        const confirmedOffset = cursorData.cursorInstances?.[0]?.offset;
+        console.log(`再確認: オフセット=${confirmedOffset}, テキスト長=${initialText?.length}`);
+        expect(confirmedOffset).toBe(initialText?.length);
 
         // 右矢印キーを押下
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(500);
 
-        // カーソル情報を取得して検証
+        // Rather than waiting for a fixed time, let's check if the cursor position changes
+        // Wait up to 1 second for any possible change to occur
+        await page.waitForTimeout(1000);
+
+        // Check cursor information after the key press
         cursorData = await CursorValidator.getCursorData(page);
-        console.log(`移動後のカーソル数: ${cursorData.cursorCount}`);
+        console.log(`ArrowRight後のカーソル数: ${cursorData.cursorCount}`);
         expect(cursorData.cursorCount).toBe(1);
+
+        const updatedItemId = cursorData.activeItemId;
+        const updatedOffset = cursorData.cursorInstances?.[0]?.offset;
+        console.log(`移動後のアイテムID: ${updatedItemId}, オフセット: ${updatedOffset}`);
 
         // 2番目のアイテムのIDを取得
         const secondItemId = await secondItem.getAttribute("data-item-id");
         console.log(`2番目のアイテムID: ${secondItemId}`);
 
-        // アクティブなアイテムIDを取得
-        const activeItemId = await TestHelpers.getActiveItemId(page);
-        console.log(`アクティブなカーソルのアイテムID: ${activeItemId}`);
-
-        // カーソルが2番目のアイテム内にあることを確認
-        const isInSecondItem = activeItemId === secondItemId;
-        console.log(`カーソルは2番目のアイテム内にありますか: ${isInSecondItem}`);
-        expect(isInSecondItem).toBe(true);
+        // The expected behavior is that when pressing ArrowRight at the end of an item,
+        // the cursor should move to the next item at the beginning (offset 0)
+        // If the functionality is not working as expected, we need to document this
+        expect(updatedItemId).toBe(secondItemId);
+        expect(updatedOffset).toBe(0);
 
         // 2番目のアイテムにテキストを入力して、正しく入力されることを確認
         await page.keyboard.type("Test input");

@@ -80,7 +80,7 @@ export class CursorEditor {
             const single = this.getSingleItemSelection(cursor.itemId);
             if (single) {
                 const { startOffset, endOffset } = single;
-                let txt = node.text;
+                let txt = node.text?.toString?.() ?? "";
                 txt = txt.slice(0, startOffset) + txt.slice(endOffset);
                 node.updateText(txt);
 
@@ -89,7 +89,7 @@ export class CursorEditor {
             }
         } else {
             if (cursor.offset > 0) {
-                let txt = node.text;
+                let txt = node.text?.toString?.() ?? "";
                 const pos = cursor.offset - 1;
                 txt = txt.slice(0, pos) + txt.slice(pos + 1);
                 node.updateText(txt);
@@ -119,7 +119,7 @@ export class CursorEditor {
             const single = this.getSingleItemSelection(cursor.itemId);
             if (single) {
                 const { startOffset, endOffset } = single;
-                let txt = node.text;
+                let txt = node.text?.toString?.() ?? "";
                 txt = txt.slice(0, startOffset) + txt.slice(endOffset);
                 node.updateText(txt);
 
@@ -127,7 +127,7 @@ export class CursorEditor {
                 cursor.clearSelection();
             }
         } else {
-            let txt = node.text;
+            let txt = node.text?.toString?.() ?? "";
             if (cursor.offset < txt.length) {
                 txt = txt.slice(0, cursor.offset) + txt.slice(cursor.offset + 1);
                 node.updateText(txt);
@@ -267,7 +267,7 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        const text = (target.text && typeof target.text.toString === "function") ? target.text.toString() : "";
         const selectedText = text.substring(selection.startOffset, selection.endOffset);
         void selectedText;
         return;
@@ -289,7 +289,7 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        const text = (target.text && typeof target.text.toString === "function") ? target.text.toString() : "";
         const newText = text.substring(0, single.startOffset) + text.substring(single.endOffset);
         target.updateText(newText);
 
@@ -316,7 +316,7 @@ export class CursorEditor {
         const single = this.getSingleItemSelection(cursor.itemId);
         if (!single) return;
 
-        const text = target.text || "";
+        const text = (target.text && typeof target.text.toString === "function") ? target.text.toString() : "";
         const newText = text.substring(0, single.startOffset) + text.substring(single.endOffset);
         target.updateText(newText);
 
@@ -522,7 +522,7 @@ export class CursorEditor {
         const single = this.getSingleItemSelection(cursor.itemId);
         if (!single) return;
 
-        const text = target.text || "";
+        const text = (target.text && typeof target.text.toString === "function") ? target.text.toString() : "";
         const selectedText = text.substring(single.startOffset, single.endOffset);
 
         let formattedText = "";

@@ -84,6 +84,17 @@ export class Cursor implements CursorEditingContext {
         return undefined;
     }
 
+    private getTargetText(target: any): string {
+        const raw = target?.text;
+        if (typeof raw === "string") return raw;
+        if (raw && typeof raw.toString === "function") {
+            try {
+                return raw.toString();
+            } catch {}
+        }
+        return raw == null ? "" : String(raw);
+    }
+
     applyToStore() {
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -213,7 +224,7 @@ export class Cursor implements CursorEditingContext {
 
         if (!visualLineInfo) {
             // フォールバック: 論理的な行での処理（改行文字ベース）
-            const text = target.text || "";
+            const text = this.getTargetText(target);
             const currentLineIndex = getCurrentLineIndex(text, this.offset);
             if (currentLineIndex > 0) {
                 const prevLineStart = getLineStartOffset(text, currentLineIndex - 1);
@@ -313,7 +324,7 @@ export class Cursor implements CursorEditingContext {
 
         if (!visualLineInfo) {
             // フォールバック: 論理的な行での処理（改行文字ベース）
-            const text = target.text || "";
+            const text = this.getTargetText(target);
             const lines = text.split("\n");
             const currentLineIndex = getCurrentLineIndex(text, this.offset);
             if (currentLineIndex < lines.length - 1) {
@@ -379,7 +390,7 @@ export class Cursor implements CursorEditingContext {
                 }
             } else {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動
-                const text = target.text || "";
+                const text = this.getTargetText(target);
                 if (this.offset < text.length) {
                     this.offset = text.length;
                     this.applyToStore();
@@ -1031,7 +1042,7 @@ export class Cursor implements CursorEditingContext {
 
             // 移動先が同じアイテム内の場合は、全テキストを選択
             if (this.itemId === oldItemId) {
-                const text = target.text || "";
+                const text = this.getTargetText(target);
                 endItemId = this.itemId;
                 endOffset = this.offset;
                 isReversed = false;
@@ -1127,7 +1138,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
 
         // 現在の行の開始位置に移動
@@ -1143,7 +1154,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
 
         // 現在の行の終了位置に移動
@@ -1168,7 +1179,7 @@ export class Cursor implements CursorEditingContext {
         const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
-        const text = target.text || "";
+        const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineStartOffset = getLineStartOffset(text, currentLineIndex);
 
@@ -1267,7 +1278,7 @@ export class Cursor implements CursorEditingContext {
         const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
-        const text = target.text || "";
+        const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineEndOffset = getLineEndOffset(text, currentLineIndex);
 
@@ -1410,7 +1421,13 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        const text = this.getTargetText(target);
+
+        // If text is empty, just return without changing anything
+        if (text.length === 0) {
+            return;
+        }
+
         let pos = this.offset;
         if (pos > 0) {
             pos--;
@@ -1427,11 +1444,18 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        // Check if text exists and is not null/undefined before using it
+        const text = this.getTargetText(target);
+        if (text.length === 0) {
+            return;
+        }
         let pos = this.offset;
         const len = text.length;
         if (pos < len) {
+            // Skip any whitespace to the right
             while (pos < len && /\s/.test(text[pos])) pos++;
+
+            // Skip the entire word to the right (non-whitespace characters)
             while (pos < len && !/\s/.test(text[pos])) pos++;
         }
         this.offset = pos;
@@ -1443,7 +1467,7 @@ export class Cursor implements CursorEditingContext {
     jumpToMatchingBracket() {
         const target = this.findTarget();
         if (!target) return;
-        const text = target.text || "";
+        const text = this.getTargetText(target);
         const pos = this.offset;
         const before = text[pos - 1];
         const current = text[pos];
@@ -1545,7 +1569,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        const text = this.getTargetText(target);
 
         // 選択範囲を設定
         store.setSelection({
@@ -1573,7 +1597,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        const text = this.getTargetText(target);
         const selection = this.getSelection();
 
         const startOffset = selection ? Math.min(selection.startOffset, selection.endOffset) : this.offset;
@@ -1612,7 +1636,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const startOffset = getLineStartOffset(text, currentLineIndex);
         const endOffset = getLineEndOffset(text, currentLineIndex);
@@ -1728,7 +1752,7 @@ export class Cursor implements CursorEditingContext {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動
                 const target = this.findTarget();
                 if (target) {
-                    newOffset = target.text?.length || 0;
+                    newOffset = this.getTargetText(target).length;
 
                     // デバッグ情報
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -1805,7 +1829,7 @@ export class Cursor implements CursorEditingContext {
                 // 特殊ケース: 現在のカーソルが行の末尾（オフセットがテキスト長）にある場合は、
                 // 次のアイテムの最初の行の末尾に移動
                 const currentTarget = this.findTarget();
-                const currentText = currentTarget?.text || "";
+                const currentText = this.getTargetText(currentTarget);
                 if (this.offset === currentText.length) {
                     newOffset = firstLineEnd;
                 }
@@ -1825,7 +1849,7 @@ export class Cursor implements CursorEditingContext {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動
                 const target = this.findTarget();
                 if (target) {
-                    newOffset = target.text?.length || 0;
+                    newOffset = this.getTargetText(target).length;
 
                     // デバッグ情報
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {

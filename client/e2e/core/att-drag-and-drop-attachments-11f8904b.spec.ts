@@ -63,7 +63,7 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
             })
         );
 
-        await expect(item.locator(".attachment-preview")).toBeVisible();
+        await expect(item.locator(".attachment-preview").first()).toBeVisible();
     });
 
     test("multiple attachments can be added to same item", async ({ page }) => {
@@ -80,7 +80,7 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
             (window as any).__E2E_ADD_ATTACHMENT__?.(el, "b");
         });
         // DOM 反映を待つ（同一アイテム内のプレビューが2つ以上表示されること）
-        await expect(page.locator(".attachment-preview")).toHaveCount(2, { timeout: 10000 });
+        await expect(item.locator(".attachment-preview")).toHaveCount(2, { timeout: 10000 });
     });
 });
 import "../utils/registerAfterEachSnapshot";
