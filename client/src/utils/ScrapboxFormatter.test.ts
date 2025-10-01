@@ -13,12 +13,12 @@ describe("ScrapboxFormatter", () => {
     });
 
     describe("italic", () => {
-        it("should format text as italic", () => {
-            expect(ScrapboxFormatter.italic("text")).toBe("[/text]");
+        it("should format text as italic with space", () => {
+            expect(ScrapboxFormatter.italic("text")).toBe("[/ text]");
         });
 
         it("should remove italic formatting if already italic", () => {
-            expect(ScrapboxFormatter.italic("[/text]")).toBe("text");
+            expect(ScrapboxFormatter.italic("[/ text]")).toBe("text");
         });
     });
 
@@ -58,7 +58,7 @@ describe("ScrapboxFormatter", () => {
         });
 
         it("should detect italic format", () => {
-            expect(ScrapboxFormatter.getFormatType("[/text]")).toBe("italic");
+            expect(ScrapboxFormatter.getFormatType("[/ text]")).toBe("italic");
         });
 
         it("should detect strikethrough format", () => {
@@ -193,12 +193,12 @@ describe("ScrapboxFormatter", () => {
             });
 
             it("should distinguish between italic and project internal links", () => {
-                const input = "[/italic] and [/project/page]";
+                const input = "[/ italic] and [/project/page]";
                 const result = ScrapboxFormatter.formatToHtml(input);
 
-                // 斜体として処理される
+                // 斜体として処理される（スペースあり）
                 expect(result).toContain("<em>italic</em>");
-                // プロジェクト内部リンクとして処理される
+                // プロジェクト内部リンクとして処理される（スペースなし）
                 expect(result).toMatch(
                     /<a href="\/project\/page"[^>]*class="[^"]*internal-link[^"]*project-link[^"]*"[^>]*>project\/page<\/a>/,
                 );
@@ -209,6 +209,24 @@ describe("ScrapboxFormatter", () => {
                 const result = ScrapboxFormatter.formatToHtml(input);
 
                 expect(result).toContain("<u>underlined text</u>");
+            });
+
+            it("should handle bold with italic combination", () => {
+                const input = "これは[[太字と[/ 斜体]の組み合わせ]]です";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                console.log("Bold with italic result:", result);
+
+                // 太字と斜体の組み合わせが正しく処理されることを確認
+                expect(result).toContain("<strong>");
+                expect(result).toContain("太字と");
+                expect(result).toContain("<em>");
+                expect(result).toContain("斜体");
+                expect(result).toContain("</em>");
+                expect(result).toContain("の組み合わせ");
+                expect(result).toContain("</strong>");
+                // 内部リンクとして認識されていないことを確認
+                expect(result).not.toContain('class="internal-link');
             });
         });
     });
@@ -233,7 +251,7 @@ describe("ScrapboxFormatter", () => {
         });
 
         it("should distinguish between italic and project internal links", () => {
-            const input = "[/italic] [/project/page]";
+            const input = "[/ italic] [/project/page]";
             const tokens = ScrapboxFormatter.tokenize(input);
 
             expect(tokens).toHaveLength(3); // italic, space, project link

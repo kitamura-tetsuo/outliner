@@ -510,9 +510,16 @@ export class TestHelpers {
         offset: number = 0,
         userId: string = "local",
     ): Promise<void> {
-        await page.evaluate(async ({ itemId, offset, userId }) => {
+        await page.waitForFunction(() => {
+            const store = (window as any).editorOverlayStore;
+            return !!store && typeof store.setCursor === "function";
+        }, { timeout: 15000 }).catch(() => {
+            throw new Error("TestHelpers.setCursor: editorOverlayStore.setCursor is not available within timeout");
+        });
+
+        const setSucceeded = await page.evaluate(({ itemId, offset, userId }) => {
             const editorOverlayStore = (window as any).editorOverlayStore;
-            if (editorOverlayStore && editorOverlayStore.setCursor) {
+            if (editorOverlayStore && typeof editorOverlayStore.setCursor === "function") {
                 console.log(
                     `TestHelpers.setCursor: Setting cursor for itemId=${itemId}, offset=${offset}, userId=${userId}`,
                 );
@@ -522,10 +529,15 @@ export class TestHelpers {
                     isActive: true,
                     userId: userId,
                 });
-            } else {
-                console.error(`TestHelpers.setCursor: editorOverlayStore or setCursor not available`);
+                return true;
             }
+            console.error(`TestHelpers.setCursor: editorOverlayStore or setCursor not available`);
+            return false;
         }, { itemId, offset, userId });
+
+        if (!setSucceeded) {
+            throw new Error(`TestHelpers.setCursor: failed to set cursor for itemId=${itemId}`);
+        }
     }
 
     /**
@@ -1168,6 +1180,7 @@ export class TestHelpers {
         // データ属性付きの実アイテムが出現するまで待つ（プレースホルダー .outliner-item は除外）
         try {
             const deadline = Date.now() + timeout;
+            const minRequiredItems = 1;
             let ensured = false;
 
             // まずは最小UIの可視性を軽く待機（非致命的）
@@ -1183,8 +1196,11 @@ export class TestHelpers {
                 try {
                     TestHelpers.slog("waitForOutlinerItems: counting items");
                     const countNow = await page.locator(".outliner-item[data-item-id]").count();
-                    if (countNow >= 2) {
-                        TestHelpers.slog("waitForOutlinerItems: ensured >=2 items");
+                    if (countNow >= minRequiredItems) {
+                        TestHelpers.slog("waitForOutlinerItems: ensured required items", {
+                            countNow,
+                            minRequiredItems,
+                        });
                         ensured = true;
                         break;
                     }
@@ -1228,13 +1244,17 @@ export class TestHelpers {
             }
 
             if (!ensured) {
-                TestHelpers.slog("waitForOutlinerItems: failed to ensure items before deadline");
-                throw new Error("Failed to ensure at least 2 real outliner items");
+                TestHelpers.slog("waitForOutlinerItems: failed to ensure items before deadline", { minRequiredItems });
+                throw new Error(
+                    `Failed to ensure at least ${minRequiredItems} real outliner item${
+                        minRequiredItems > 1 ? "s" : ""
+                    }`,
+                );
             }
 
             const itemCount = await page.locator(".outliner-item[data-item-id]").count();
             console.log(`Found ${itemCount} outliner items with data-item-id`);
-            TestHelpers.slog("waitForOutlinerItems: success", { itemCount });
+            TestHelpers.slog("waitForOutlinerItems: success", { itemCount, minRequiredItems });
         } catch (e) {
             console.log("Timeout/Failure waiting for real outliner items, taking screenshot...");
             try {

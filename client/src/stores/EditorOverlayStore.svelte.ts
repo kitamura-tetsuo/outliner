@@ -105,14 +105,17 @@ export class EditorOverlayStore {
         return () => this.listeners.delete(listener);
     }
     private notifyChange() {
-        // Batch notifications in a microtask
-        queueMicrotask(() => {
-            for (const l of Array.from(this.listeners)) {
-                try {
-                    l();
-                } catch {}
-            }
-        });
+        // Notify listeners synchronously to ensure immediate UI updates
+        for (const l of Array.from(this.listeners)) {
+            try {
+                l();
+            } catch {}
+        }
+        if (typeof window !== "undefined") {
+            try {
+                window.dispatchEvent(new CustomEvent("editor-overlay:cursors-changed"));
+            } catch {}
+        }
     }
 
     private genUUID(): string {
@@ -539,9 +542,10 @@ export class EditorOverlayStore {
                 });
 
                 // Reactive state を更新（保持するカーソルを除外）
+                // userId が undefined の場合は "local" として扱う
                 this.cursors = Object.fromEntries(
                     Object.entries(this.cursors).filter(([id, c]) =>
-                        c.userId !== userId || cursorIdsToKeep.includes(id)
+                        (c.userId || "local") !== userId || cursorIdsToKeep.includes(id)
                     ),
                 );
             }
@@ -566,8 +570,9 @@ export class EditorOverlayStore {
             }
 
             // Reactive state を更新
+            // userId が undefined の場合は "local" として扱う
             this.cursors = Object.fromEntries(
-                Object.entries(this.cursors).filter(([_, c]) => c.userId !== userId),
+                Object.entries(this.cursors).filter(([_, c]) => (c.userId || "local") !== userId),
             );
         }
 
@@ -576,8 +581,18 @@ export class EditorOverlayStore {
             this.selections = Object.fromEntries(
                 Object.entries(this.selections).filter(([_, s]) => s.userId !== userId),
             );
-            this.notifyChange();
         }
+
+        // 特定ユーザーのカーソルを削除した結果、アクティブアイテムが存在しなくなった場合はクリア
+        const activeCursorExists = Object.values(this.cursors).some(c =>
+            c.isActive && (c.userId || "local") === userId
+        );
+        if (!activeCursorExists && this.activeItemId) {
+            this.activeItemId = null;
+        }
+
+        // カーソルや選択範囲が変更されたことを通知
+        this.notifyChange();
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -707,6 +722,9 @@ export class EditorOverlayStore {
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Removed ${cursorIdsToRemove.length} existing cursors:`, cursorIdsToRemove);
             }
+
+            // Notify change after removing cursors to ensure UI updates
+            this.notifyChange();
         }
 
         // 新しいカーソルを作成
@@ -755,6 +773,7 @@ export class EditorOverlayStore {
             console.log(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
             console.log(`Updated cursor history:`, this.cursorHistory);
         }
+        this.notifyChange();
 
         return id;
     }
@@ -783,6 +802,13 @@ export class EditorOverlayStore {
                 delete newCursors[id];
             });
             this.cursors = newCursors;
+
+            // アクティブアイテムが削除対象のアイテムであればクリア
+            if (this.activeItemId === itemId) {
+                this.activeItemId = null;
+            }
+
+            this.notifyChange();
         }
     }
 

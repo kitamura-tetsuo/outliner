@@ -125,8 +125,12 @@ test.describe("CLM-0005: 下へ移動", () => {
         const newItemText = await secondItem.locator(".item-text").textContent();
 
         // 異なるアイテムに移動していることを確認
-        expect(initialItemText).not.toEqual(newItemText);
-        expect(initialItemText).toContain("Second line"); // The content that stayed in the first item after pressing Enter
+        // After the split, the first item should contain "First line"
+        expect(initialItemTextAfter).toContain("First line");
+        expect(initialItemTextAfter).not.toContain("Second line");
+
+        // The new item should contain the moved text and the newly typed text
+        expect(newItemText).toContain("Second line");
         expect(newItemText).toContain("Second item");
 
         // Instead of checking for specific cursor visibility, just verify that the UI is responsive

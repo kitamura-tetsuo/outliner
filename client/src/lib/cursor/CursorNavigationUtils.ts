@@ -14,6 +14,14 @@ function collectChildren(node: Item): Item[] {
     return children;
 }
 
+function getDeepestDescendant(node: Item): Item {
+    const children = collectChildren(node);
+    if (children.length === 0) {
+        return node;
+    }
+    return getDeepestDescendant(children[children.length - 1]);
+}
+
 /**
  * Determine if the provided item represents a page title node.
  */
@@ -40,12 +48,13 @@ function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item
     const children = collectChildren(node);
     for (let i = 0; i < children.length; i++) {
         const child = children[i];
+        const prevForChild = i > 0 ? getDeepestDescendant(children[i - 1]) : node;
 
         if (child.id === targetId) {
-            return i > 0 ? children[i - 1] : undefined; // Return undefined instead of node
+            return prevForChild;
         }
 
-        const found = findPreviousItemRecursive(child, targetId, i > 0 ? children[i - 1] : undefined); // Pass undefined instead of node
+        const found = findPreviousItemRecursive(child, targetId, prevForChild);
         if (found) return found;
     }
 
@@ -82,7 +91,8 @@ function findNextItemRecursive(node: Item, targetId: string, path: Item[]): Item
                 return children[i + 1];
             }
             // If no next sibling at this level, traverse upward to find next item
-            return findNextAtParentLevel(currentPath);
+            // Fixed: was passing currentPath instead of path
+            return findNextAtParentLevel(path);
         }
 
         const found = findNextItemRecursive(child, targetId, currentPath);

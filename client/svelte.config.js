@@ -6,7 +6,16 @@ import sveltePreprocess from "svelte-preprocess";
 const config = {
     // Consult https://svelte.dev/docs/kit/integrations
     // for more information about preprocessors
-    preprocess: [sveltePreprocess(), mdsvex()],
+    preprocess: [
+        sveltePreprocess({
+            typescript: {
+                // Skip TypeScript diagnostics during preprocessing so Vite's HMR overlay
+                // doesn't block the UI in test environments that tolerate runtime casts.
+                transpileOnly: true,
+            },
+        }),
+        mdsvex(),
+    ],
 
     // compilerOptions: { runes: true },
     compilerOptions: { runes: true },

@@ -17,23 +17,17 @@ test.describe("FMT-0008: multiple internal links", () => {
     });
 
     test("multiple internal links are displayed", async ({ page }) => {
-        // select first item
-        const firstId = await TestHelpers.getItemIdByIndex(page, 0);
-        expect(firstId).not.toBeNull();
-        await TestHelpers.clickItemToEdit(
-            page,
-            `.outliner-item[data-item-id="${firstId}"] .item-content`,
-        );
-
-        // type text with multiple internal links
-        await page.keyboard.type("This is [test-page] and [/project/other-page]");
-
-        // add second item to apply formatting
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("second item");
+        // prepareTestEnvironment の lines パラメータでデータを作成
+        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+            "This is [test-page] and [/project/other-page]",
+        ]);
 
         // wait for formatting
         await page.waitForTimeout(500);
+
+        // get first item (not page title)
+        const firstId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(firstId).not.toBeNull();
 
         // verify both links are present
         const itemLocator = page.locator(

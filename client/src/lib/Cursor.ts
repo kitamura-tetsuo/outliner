@@ -190,17 +190,49 @@ export class Cursor implements CursorEditingContext {
         this.resetInitialColumn();
 
         const target = this.findTarget();
-        const text = target?.text ?? "";
+        const text = this.getTargetText(target);
 
-        // テキストが空でない場合のみオフセットを増加
-        if (text.length > 0 && this.offset < text.length) {
+        // If at or beyond the end of the current item, find next item directly in DOM
+        if (text.length > 0 && this.offset >= text.length) {
+            // Try to find the next item directly in the DOM first
+            if (typeof document !== "undefined") {
+                const currentItemElement = document.querySelector(`[data-item-id="${this.itemId}"]`);
+                if (currentItemElement) {
+                    const allItems = Array.from(document.querySelectorAll("[data-item-id]"));
+                    const currentIndex = allItems.indexOf(currentItemElement);
+                    if (currentIndex !== -1 && currentIndex < allItems.length - 1) {
+                        const nextElement = allItems[currentIndex + 1] as HTMLElement;
+                        const nextItemId = nextElement.getAttribute("data-item-id");
+
+                        if (nextItemId && nextItemId !== this.itemId) {
+                            // Set the new item and offset
+                            this.itemId = nextItemId;
+                            this.offset = 0;
+
+                            // Update the store to reflect the changes
+                            this.applyToStore();
+
+                            // カーソル点滅を開始
+                            store.startCursorBlink();
+
+                            // Exit early since we've manually handled the navigation
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Fallback to navigateToItem if DOM approach didn't work
+            this.navigateToItem("right");
+        } else if (text.length > 0 && this.offset < text.length) {
+            // Within the current item, just move the cursor right by one position
             this.offset = this.offset + 1;
             this.applyToStore();
 
             // カーソルが正しく更新されたことを確認
             store.startCursorBlink();
         } else {
-            // 行末または空のテキストの場合は次アイテムへ移動
+            // Empty text case - try to move to next item
             this.navigateToItem("right");
         }
     }
@@ -1702,7 +1734,7 @@ export class Cursor implements CursorEditingContext {
 
         // 現在のアイテムのテキストを取得
         const currentTarget = this.findTarget();
-        const currentText = currentTarget?.text || "";
+        const currentText = this.getTargetText(currentTarget);
         const currentColumn = getCurrentColumn(currentText, this.offset);
 
         // デバッグ情報
@@ -1738,7 +1770,50 @@ export class Cursor implements CursorEditingContext {
                 }
             }
         } else if (direction === "right") {
-            const nextItem = findNextItem(this.itemId);
+            // Check if we're at the end of the current item
+            const target = this.findTarget();
+            const text = target ? this.getTargetText(target) : "";
+            const atEndOfCurrentItem = this.offset >= text.length;
+
+            let nextItem = findNextItem(this.itemId);
+
+            // If findNextItem failed, try to find the next item via DOM traversal as a fallback
+            if (!nextItem) {
+                nextItem = this.findNextItemViaDOM(this.itemId);
+            }
+
+            // If we're at the end of the current item and still don't have a next item,
+            // try additional DOM-based approaches with broader selectors
+            if (atEndOfCurrentItem && !nextItem) {
+                // Try to get all potential item elements, with a broader selector
+                const allItemElements = Array.from(
+                    document.querySelectorAll(
+                        ".outliner-item[data-item-id], [data-item-id].outliner-item, [data-item-id]",
+                    ),
+                ) as HTMLElement[];
+
+                let currentIndex = -1;
+                for (let i = 0; i < allItemElements.length; i++) {
+                    if (allItemElements[i].getAttribute("data-item-id") === this.itemId) {
+                        currentIndex = i;
+                        break;
+                    }
+                }
+
+                if (currentIndex !== -1 && currentIndex < allItemElements.length - 1) {
+                    const nextItemElement = allItemElements[currentIndex + 1];
+                    const nextItemId = nextItemElement.getAttribute("data-item-id");
+
+                    if (nextItemId) {
+                        // Try to find this item in the Yjs tree
+                        const root = generalStore.currentPage as any;
+                        if (root) {
+                            nextItem = searchItem(root, nextItemId);
+                        }
+                    }
+                }
+            }
+
             if (nextItem) {
                 newItemId = nextItem.id;
                 newOffset = 0;
@@ -1748,8 +1823,166 @@ export class Cursor implements CursorEditingContext {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
                 }
+            } else if (atEndOfCurrentItem) {
+                // DOM-based approach to find the next item by looking for visually adjacent elements
+                try {
+                    // Most direct approach: Find the element with the current item ID and get its next sibling
+                    const currentItemElement = document.querySelector(`[data-item-id="${this.itemId}"]`);
+
+                    if (currentItemElement) {
+                        // First try to get the immediate next sibling
+                        let nextItemElement: Element | null = currentItemElement.nextElementSibling;
+
+                        // If no immediate sibling, traverse up and try again
+                        let parentElement: Element | null = currentItemElement.parentElement;
+                        while (!nextItemElement && parentElement) {
+                            nextItemElement = parentElement.nextElementSibling;
+                            if (!nextItemElement) {
+                                parentElement = parentElement.parentElement;
+                            }
+                        }
+
+                        // If still no next element found, use querySelector to get elements after current one
+                        if (!nextItemElement) {
+                            const allItems = Array.from(document.querySelectorAll("[data-item-id]"));
+                            const currentIndex = allItems.indexOf(currentItemElement);
+                            if (currentIndex !== -1 && currentIndex < allItems.length - 1) {
+                                nextItemElement = allItems[currentIndex + 1];
+                            }
+                        }
+
+                        // Try to get the ID from the found element
+                        if (nextItemElement) {
+                            let nextItemId = nextItemElement.getAttribute("data-item-id");
+
+                            // If not found directly, try to find a child element that has the ID
+                            if (!nextItemId) {
+                                const childWithId = nextItemElement.querySelector("[data-item-id]");
+                                if (childWithId) {
+                                    nextItemId = childWithId.getAttribute("data-item-id");
+                                }
+                            }
+
+                            if (nextItemId && nextItemId !== this.itemId) {
+                                // Directly use the found next item ID
+                                newItemId = nextItemId;
+                                newOffset = 0; // Start at the beginning of the next item
+                                itemChanged = true;
+
+                                // デバッグ情報
+                                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                    console.log(
+                                        `Moving right to next item (DOM direct lookup): id=${nextItemId}, offset=${newOffset}`,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error in DOM-based next item lookup:", e);
+                }
+
+                // If still not found, try a different approach by using a depth-first traversal of the tree
+                if (!itemChanged) {
+                    const root = generalStore.currentPage as any;
+                    if (root) {
+                        const allItemIds = this.collectAllItemIds(root, []);
+                        const currentIndex = allItemIds.indexOf(this.itemId);
+                        if (currentIndex !== -1 && currentIndex < allItemIds.length - 1) {
+                            const nextItemId = allItemIds[currentIndex + 1];
+                            const nextItemFromTree = searchItem(root, nextItemId);
+                            if (nextItemFromTree) {
+                                newItemId = nextItemId;
+                                newOffset = 0;
+                                itemChanged = true;
+
+                                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                    console.log(
+                                        `Moving right to next item (tree fallback): id=${nextItemId}, offset=${newOffset}`,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // FINAL ULTIMATE FALLBACK: If we still haven't found the next item,
+                // let's try to get all items from the current page and find the next one in sequence
+                if (!itemChanged) {
+                    try {
+                        const root = generalStore.currentPage as any;
+                        if (root) {
+                            // Try a depth-first search to collect all items in proper order
+                            const allItemsList: string[] = this.collectAllItemIds(root, []);
+
+                            // Find current index and get the next item
+                            const currentIndex = allItemsList.indexOf(this.itemId);
+                            if (currentIndex !== -1 && currentIndex < allItemIds.length - 1) {
+                                const nextItemId = allItemsList[currentIndex + 1];
+                                newItemId = nextItemId;
+                                newOffset = 0;
+                                itemChanged = true;
+
+                                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                    console.log(
+                                        `Moving right to next item (breadth-first fallback): id=${nextItemId}, offset=${newOffset}`,
+                                    );
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Error in ultimate fallback:", e);
+                    }
+                }
+
+                // ABSOLUTE LAST RESORT: If itemChanged is still false after all attempts,
+                // try to get all items from the DOM directly and move to the visually next one
+                if (!itemChanged) {
+                    try {
+                        // Get all elements with data-item-id attributes
+                        const allElements = Array.from(document.querySelectorAll("[data-item-id]"));
+
+                        // Find the current item's index
+                        const currentElement = document.querySelector(`[data-item-id="${this.itemId}"]`);
+                        if (currentElement) {
+                            const currentIndex = allElements.indexOf(currentElement);
+                            if (currentIndex !== -1 && currentIndex < allElements.length - 1) {
+                                // Get the next element in the DOM
+                                const nextElement = allElements[currentIndex + 1] as HTMLElement;
+                                const nextItemId = nextElement.getAttribute("data-item-id");
+
+                                if (nextItemId && nextItemId !== this.itemId) {
+                                    newItemId = nextItemId;
+                                    newOffset = 0;
+                                    itemChanged = true;
+
+                                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                        console.log(
+                                            `Moving right to next item (last resort DOM): id=${nextItemId}, offset=${newOffset}`,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Error in last resort DOM approach:", e);
+                    }
+                }
+
+                // If itemChanged is still false after ALL attempts, we're at the end but couldn't find a next item
+                // In this case, we should remain at the end of the current item, but still trigger the update
+                if (!itemChanged) {
+                    // Stay at the end of the current item but ensure we update the cursor state
+                    // This case occurs when there is no next item available
+                    newOffset = text.length;
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        console.log(
+                            `No next item found after all attempts. Staying at end of current item: offset=${newOffset}`,
+                        );
+                    }
+                }
             } else {
-                // 次のアイテムがない場合は、同じアイテムの末尾に移動
+                // If we're not at the end of an item, just stay in the same item at end position
                 const target = this.findTarget();
                 if (target) {
                     newOffset = this.getTargetText(target).length;
@@ -1764,37 +1997,39 @@ export class Cursor implements CursorEditingContext {
             const prevItem = findPreviousItem(this.itemId);
             if (prevItem) {
                 newItemId = prevItem.id;
-                const prevText = prevItem.text || "";
-                const prevLines = prevText.split("\n");
-                const lastLineIndex = prevLines.length - 1;
-                const lastLineStart = getLineStartOffset(prevText, lastLineIndex);
-                const lastLineEnd = getLineEndOffset(prevText, lastLineIndex);
-                const lastLineLength = lastLineEnd - lastLineStart;
+                const prevText = this.getTargetText(prevItem);
+                const visualLineInfo = getVisualLineInfo(prevItem.id, prevText.length > 0 ? prevText.length - 1 : 0);
+                let lastLineIndex: number | undefined;
+                let lastLineStart: number | undefined;
+                let lastLineLength: number | undefined;
+                let targetColumn: number | undefined;
 
-                // x座標の変化が最も小さい位置を計算
-                // 初期列位置または現在の列位置に最も近い位置を選択
-                // 前のアイテムの最後の行の長さを超えないようにする
-                const targetColumn = Math.min(
-                    this.initialColumn !== null ? this.initialColumn : currentColumn,
-                    lastLineLength,
-                );
-                newOffset = lastLineStart + targetColumn;
+                if (visualLineInfo && visualLineInfo.totalLines > 0) {
+                    lastLineIndex = visualLineInfo.totalLines - 1;
+                    const lastLineRange = getVisualLineOffsetRange(prevItem.id, lastLineIndex);
+                    if (lastLineRange) {
+                        lastLineStart = lastLineRange.startOffset;
+                        lastLineLength = lastLineRange.endOffset - lastLineRange.startOffset;
 
-                // 特殊ケース: 現在のカーソルが行の先頭（オフセット0）にある場合は、
-                // 前のアイテムの最後の行の先頭に移動
-                if (this.offset === 0) {
-                    newOffset = lastLineStart;
+                        let desiredColumn = this.initialColumn !== null ? this.initialColumn : currentColumn;
+                        if (this.offset === 0) {
+                            desiredColumn = 0;
+                        }
+
+                        targetColumn = Math.min(desiredColumn, lastLineLength);
+                        newOffset = lastLineStart + targetColumn;
+                    } else {
+                        newOffset = prevText.length;
+                    }
+                } else {
+                    newOffset = prevText.length;
                 }
 
                 itemChanged = true;
 
-                // デバッグ情報
-                console.log(
-                    `navigateToItem up - Moving to previous item's last line: itemId=${prevItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}`,
-                );
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
-                        `Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
+                        `Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
                     );
                 }
             } else {
@@ -1807,10 +2042,16 @@ export class Cursor implements CursorEditingContext {
                 }
             }
         } else if (direction === "down") {
-            const nextItem = findNextItem(this.itemId);
+            let nextItem = findNextItem(this.itemId);
+
+            // If findNextItem failed, try to find the next item via DOM traversal as a fallback
+            if (!nextItem) {
+                nextItem = this.findNextItemViaDOM(this.itemId);
+            }
+
             if (nextItem) {
                 newItemId = nextItem.id;
-                const nextText = nextItem.text || "";
+                const nextText = this.getTargetText(nextItem);
                 const nextLines = nextText.split("\n");
                 const firstLineIndex = 0;
                 const firstLineStart = getLineStartOffset(nextText, firstLineIndex);
@@ -2096,4 +2337,83 @@ export class Cursor implements CursorEditingContext {
     /**
      * 複数アイテムにまたがる選択範囲にScrapbox構文のフォーマットを適用する
      */
+
+    /**
+     * Find the next item using DOM traversal as a fallback mechanism
+     * @param currentItemId The ID of the current item
+     * @returns The next item if found, otherwise undefined
+     */
+    private findNextItemViaDOM(currentItemId: string): any | undefined {
+        if (typeof document === "undefined") return undefined;
+
+        // Find the current element in the DOM
+        const currentEl = document.querySelector(`[data-item-id="${currentItemId}"]`) as HTMLElement;
+        if (!currentEl) return undefined;
+
+        // Try to find the next element with data-item-id attribute
+        // Look for the next sibling first
+        let nextEl: HTMLElement | null = currentEl.nextElementSibling as HTMLElement;
+
+        // If no direct sibling, try to find next item in the DOM tree
+        while (!nextEl && currentEl.parentElement) {
+            nextEl = currentEl.parentElement.nextElementSibling as HTMLElement;
+            if (!nextEl) {
+                currentEl = currentEl.parentElement;
+            }
+        }
+
+        // If no sibling at current level, try to find next item among descendants
+        if (!nextEl) {
+            // Look for next item in the subtree
+            const allItems = document.querySelectorAll("[data-item-id]") as NodeListOf<HTMLElement>;
+            let foundCurrent = false;
+
+            for (let i = 0; i < allItems.length; i++) {
+                if (foundCurrent) {
+                    nextEl = allItems[i];
+                    break;
+                }
+                if (allItems[i].getAttribute("data-item-id") === currentItemId) {
+                    foundCurrent = true;
+                }
+            }
+        }
+
+        if (nextEl) {
+            const nextItemId = nextEl.getAttribute("data-item-id");
+
+            // Since we can't directly access the Item objects from the DOM,
+            // we need to find it in the Yjs tree
+            if (nextItemId) {
+                const root = generalStore.currentPage as any;
+                if (root) {
+                    const found = searchItem(root, nextItemId);
+                    if (found) return found;
+                }
+            }
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Collect all item IDs from the tree in traversal order
+     * @param node The starting node to collect from
+     * @param ids Array to collect IDs into
+     * @returns Array of item IDs in tree traversal order
+     */
+    private collectAllItemIds(node: any, ids: string[]): string[] {
+        if (node.id) {
+            ids.push(node.id);
+        }
+
+        // Check if node has items that are iterable
+        if (node.items && typeof (node.items as any)[Symbol.iterator] === "function") {
+            for (const child of node.items as Iterable<any>) {
+                this.collectAllItemIds(child, ids);
+            }
+        }
+
+        return ids;
+    }
 }

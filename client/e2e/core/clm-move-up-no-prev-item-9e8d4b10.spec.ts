@@ -14,20 +14,24 @@ test.describe("CLM-0004: Move up", () => {
     test("一番上の行にある時で、一つ前のアイテムがない時は、同じアイテムの先頭へ移動する", async ({ page }) => {
         await page.keyboard.press("Escape");
 
-        // 最初のアイテム（ページタイトルまたは最初のアイテム）をクリック
-        const item = page.locator(".outliner-item.page-title");
-        if (await item.count() === 0) {
+        // 最初のアイテム（ページタイトルまたは最初のアイテム）を特定
+        const itemLocator = page.locator(".outliner-item.page-title");
+        let firstItem;
+        if ((await itemLocator.count()) === 0) {
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-            await visibleItems.first().locator(".item-content").click({ force: true });
+            firstItem = visibleItems.first();
         } else {
-            await item.locator(".item-content").click({ force: true });
+            firstItem = itemLocator;
         }
+        const itemId = await firstItem.getAttribute("data-item-id");
+        expect(itemId).toBeTruthy();
 
-        await TestHelpers.waitForCursorVisible(page);
+        // カーソルをアイテムの途中に設定
+        const initialItemText = (await firstItem.locator(".item-text").textContent()) || "";
+        await TestHelpers.setCursor(page, itemId!, Math.floor(initialItemText.length / 2));
 
         // カーソルが表示されるまで待機
-        const cursor = page.locator(".editor-overlay .cursor.active").first();
-        await cursor.waitFor({ state: "visible" });
+        await TestHelpers.waitForCursorVisible(page);
 
         // 現在のカーソルデータを取得
         const beforeKeyPressCursorData = await CursorValidator.getCursorData(page);

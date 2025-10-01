@@ -33,11 +33,11 @@ export class ScrapboxFormatter {
      * @returns 斜体にフォーマットされたテキスト
      */
     static italic(text: string): string {
-        // 既に斜体の場合は解除
-        if (text.startsWith("[/") && text.endsWith("]")) {
-            return text.substring(2, text.length - 1);
+        // 既に斜体の場合は解除（スペース必須）
+        if (text.startsWith("[/ ") && text.endsWith("]")) {
+            return text.substring(3, text.length - 1);
         }
-        return `[/${text}]`;
+        return `[/ ${text}]`;
     }
 
     /**
@@ -87,7 +87,7 @@ export class ScrapboxFormatter {
     static getFormatType(text: string): "bold" | "italic" | "strikethrough" | "underline" | "code" | null {
         if (text.startsWith("[[") && text.endsWith("]]")) {
             return "bold";
-        } else if (text.startsWith("[/") && text.endsWith("]")) {
+        } else if (text.startsWith("[/ ") && text.endsWith("]")) {
             return "italic";
         } else if (text.startsWith("[-") && text.endsWith("]")) {
             return "strikethrough";
@@ -110,11 +110,10 @@ export class ScrapboxFormatter {
         // フォーマットパターン
         const patterns = [
             { type: "bold", start: "[[", end: "]]", regex: /\[\[(.*?)\]\]/g },
-            // プロジェクト内部リンク（/project-name/page-name形式）- 斜体よりも先に処理
-            // スラッシュを含む場合のみマッチ（プロジェクト内部リンク）
-            { type: "internalLink", start: "[/", end: "]", regex: /\[\/([\w\-]+\/[\w\-\/]*)\]/g },
-            // 斜体 - スラッシュを含まない場合のみマッチ
-            { type: "italic", start: "[/", end: "]", regex: /\[\/([^\/\]]*)\]/g },
+            // 斜体 - スペース必須: [/ テキスト]
+            { type: "italic", start: "[/ ", end: "]", regex: /\[\/\s+([^\]]*)\]/g },
+            // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
+            { type: "internalLink", start: "[/", end: "]", regex: /\[\/([^\s\]]+)\]/g },
             { type: "strikethrough", start: "[-", end: "]", regex: /\[\-(.*?)\]/g },
             { type: "underline", start: "<u>", end: "</u>", regex: /<u>(.*?)<\/u>/g },
             { type: "code", start: "`", end: "`", regex: /`(.*?)`/g },
@@ -352,30 +351,14 @@ export class ScrapboxFormatter {
     static formatToHtmlAdvanced(text: string): string {
         if (!text) return "";
 
-        // HTMLエスケープ（プレースホルダーは除外）
+        // HTMLエスケープ
         const escapeHtml = (str: string): string => {
-            // プレースホルダーを一時的に保護
-            const placeholderMap: Record<string, string> = {};
-            let protectedStr = str.replace(/__UNDERLINE_\d+__/g, match => {
-                const tempKey = `__TEMP_${Object.keys(placeholderMap).length}__`;
-                placeholderMap[tempKey] = match;
-                return tempKey;
-            });
-
-            // HTMLエスケープを適用
-            protectedStr = protectedStr
+            return str
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
-
-            // プレースホルダーを復元
-            Object.keys(placeholderMap).forEach(tempKey => {
-                protectedStr = protectedStr.replace(tempKey, placeholderMap[tempKey]);
-            });
-
-            return protectedStr;
         };
 
         // 下線タグを一時的にプレースホルダーに置換
@@ -386,21 +369,166 @@ export class ScrapboxFormatter {
             return placeholder;
         });
 
+        // 括弧のバランスを考慮して太字をマッチする関数
+        const matchBalancedBold = (text: string): Array<{ start: number; end: number; content: string; }> => {
+            const matches: Array<{ start: number; end: number; content: string; }> = [];
+            let i = 0;
+            while (i < text.length - 1) {
+                if (text[i] === "[" && text[i + 1] === "[") {
+                    // 太字の開始を見つけた
+                    let boldDepth = 1; // [[...]] のネストレベル
+                    let j = i + 2;
+                    let content = "";
+
+                    while (j < text.length && boldDepth > 0) {
+                        if (j < text.length - 1 && text[j] === "[" && text[j + 1] === "[") {
+                            // 入れ子の太字開始
+                            boldDepth++;
+                            content += "[[";
+                            j += 2;
+                        } else if (j < text.length - 1 && text[j] === "]" && text[j + 1] === "]") {
+                            // 太字の終了候補
+                            boldDepth--;
+                            if (boldDepth === 0) {
+                                // マッチ完了
+                                matches.push({ start: i, end: j + 2, content });
+                                i = j + 2;
+                                break;
+                            } else {
+                                content += "]]";
+                                j += 2;
+                            }
+                        } else if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
+                            // 単一の [ を見つけた（内部リンクなどの開始）
+                            // 対応する ] を探す
+                            content += "[";
+                            j++;
+                            let bracketDepth = 1;
+                            while (j < text.length && bracketDepth > 0) {
+                                if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
+                                    // 単一の [ (ネストされた内部リンクなど)
+                                    bracketDepth++;
+                                    content += "[";
+                                    j++;
+                                } else if (text[j] === "]") {
+                                    // ] を見つけた
+                                    bracketDepth--;
+                                    content += "]";
+                                    j++;
+                                    if (bracketDepth === 0) {
+                                        break;
+                                    }
+                                } else {
+                                    content += text[j];
+                                    j++;
+                                }
+                            }
+                        } else {
+                            content += text[j];
+                            j++;
+                        }
+                    }
+
+                    if (boldDepth > 0) {
+                        // マッチしなかった場合は次の文字へ
+                        i++;
+                    }
+                } else {
+                    i++;
+                }
+            }
+            return matches;
+        };
+
+        // グローバルなプレースホルダーマップ（再帰呼び出し間で共有）
+        const globalPlaceholders: Map<string, string> = new Map();
+        let globalPlaceholderIndex = 0;
+
+        // プレースホルダーを生成する関数（制御文字を使用して内部リンクとして認識されないようにする）
+        const createPlaceholder = (html: string): string => {
+            const placeholder = `\x00HTML_${globalPlaceholderIndex++}\x00`;
+            globalPlaceholders.set(placeholder, html);
+            return placeholder;
+        };
+
+        // 括弧のバランスを考慮して斜体をマッチする関数
+        const matchBalancedItalic = (text: string): Array<{ start: number; end: number; content: string; }> => {
+            const matches: Array<{ start: number; end: number; content: string; }> = [];
+            let i = 0;
+            while (i < text.length - 2) {
+                if (text[i] === "[" && text[i + 1] === "/" && text[i + 2] === " ") {
+                    // 斜体の開始を見つけた: [/ (スペース必須)
+                    let j = i + 3;
+                    let content = "";
+                    let bracketDepth = 1;
+
+                    while (j < text.length && bracketDepth > 0) {
+                        if (text[j] === "[" && j + 1 < text.length && text[j + 1] !== "[" && text[j + 1] !== "/") {
+                            // 単一の [ (内部リンクなど)
+                            bracketDepth++;
+                            content += "[";
+                            j++;
+                        } else if (text[j] === "]") {
+                            bracketDepth--;
+                            if (bracketDepth === 0) {
+                                // マッチ完了
+                                matches.push({ start: i, end: j + 1, content });
+                                i = j + 1;
+                                break;
+                            } else {
+                                content += "]";
+                                j++;
+                            }
+                        } else {
+                            content += text[j];
+                            j++;
+                        }
+                    }
+
+                    if (bracketDepth > 0) {
+                        // マッチしなかった場合は次の文字へ
+                        i++;
+                    }
+                } else {
+                    i++;
+                }
+            }
+            return matches;
+        };
+
         // 再帰的にフォーマットを処理する関数
         const processFormat = (input: string): string => {
-            // 太字
-            const boldRegex = /\[\[(.*?)\]\]/g;
-            input = input.replace(boldRegex, (match, content) => {
+            // 太字 - 最初に処理して、中身を再帰的に処理する
+            // これにより、太字の中のネストされたフォーマットが正しく処理される
+            const boldMatches = matchBalancedBold(input);
+            // 後ろから置換して、インデックスがずれないようにする
+            for (let i = boldMatches.length - 1; i >= 0; i--) {
+                const match = boldMatches[i];
                 // 内部のコンテンツも再帰的に処理
-                return `<strong>${processFormat(content)}</strong>`;
-            });
+                const html = `<strong>${processFormat(match.content)}</strong>`;
+                const placeholder = createPlaceholder(html);
+                input = input.substring(0, match.start) + placeholder + input.substring(match.end);
+            }
 
-            // プロジェクト内部リンク - 斜体よりも先に処理する必要がある
-            // スラッシュを含む場合のみマッチ（プロジェクト内部リンク）
-            const projectLinkRegex = /\[\/([\w\-]+\/[\w\-\/]*)\]/g;
+            // 斜体 - スペース必須: [/ テキスト]
+            // バランスを考慮してマッチ
+            const italicMatches = matchBalancedItalic(input);
+            // 後ろから置換して、インデックスがずれないようにする
+            for (let i = italicMatches.length - 1; i >= 0; i--) {
+                const match = italicMatches[i];
+                // 内部のコンテンツも再帰的に処理
+                const html = `<em>${processFormat(match.content)}</em>`;
+                const placeholder = createPlaceholder(html);
+                input = input.substring(0, match.start) + placeholder + input.substring(match.end);
+            }
+
+            // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
+            // スラッシュの後にスペースがない場合のみマッチ
+            const projectLinkRegex = /\[\/([^\s\]]+)\]/g;
             input = input.replace(projectLinkRegex, (match, path) => {
                 // パスを分解してプロジェクト名とページ名を取得
                 const parts = path.split("/").filter((p: string) => p);
+                let html: string;
                 if (parts.length >= 2) {
                     const projectName = parts[0];
                     const pageName = parts.slice(1).join("/");
@@ -409,54 +537,75 @@ export class ScrapboxFormatter {
                     const existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
 
                     // LinkPreviewコンポーネントを使用
-                    return `<span class="link-preview-wrapper">
-                        <a href="/${path}" class="internal-link project-link ${existsClass}" data-project="${projectName}" data-page="${pageName}">${path}</a>
+                    html = `<span class="link-preview-wrapper">
+                        <a href="/${
+                        escapeHtml(path)
+                    }" class="internal-link project-link ${existsClass}" data-project="${
+                        escapeHtml(projectName)
+                    }" data-page="${escapeHtml(pageName)}">${escapeHtml(path)}</a>
                     </span>`;
                 } else {
-                    // 不正なパス形式の場合は通常のリンクとして表示
-                    return `<a href="/${path}" class="internal-link project-link">${path}</a>`;
+                    // 単一のページ名の場合（プロジェクト内部リンク）
+                    const existsClass = this.checkPageExists(path) ? "page-exists" : "page-not-exists";
+                    html = `<span class="link-preview-wrapper">
+                        <a href="/${escapeHtml(path)}" class="internal-link ${existsClass}" data-page="${
+                        escapeHtml(path)
+                    }">${escapeHtml(path)}</a>
+                    </span>`;
                 }
-            });
-
-            // 斜体 - プロジェクト内部リンクの後に処理
-            // スラッシュを含まない場合のみマッチ
-            const italicRegex = /\[\/([^\/\]]*)\]/g;
-            input = input.replace(italicRegex, (match, content) => {
-                return `<em>${processFormat(content)}</em>`;
+                return createPlaceholder(html);
             });
 
             // 取り消し線
             const strikethroughRegex = /\[\-(.*?)\]/g;
             input = input.replace(strikethroughRegex, (match, content) => {
-                return `<s>${processFormat(content)}</s>`;
+                const html = `<s>${processFormat(content)}</s>`;
+                return createPlaceholder(html);
             });
 
             // コード (コード内部は再帰処理しない)
             const codeRegex = /`(.*?)`/g;
             input = input.replace(codeRegex, (match, content) => {
-                return `<code>${escapeHtml(content)}</code>`;
+                const html = `<code>${escapeHtml(content)}</code>`;
+                return createPlaceholder(html);
             });
 
             // 外部リンク（ラベルが空白のみの場合も許可）
             const linkRegex = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
             input = input.replace(linkRegex, (match, url, label) => {
                 const trimmedLabel = label?.trim();
-                const text = trimmedLabel ? processFormat(trimmedLabel) : url;
-                return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                const text = trimmedLabel ? processFormat(trimmedLabel) : escapeHtml(url);
+                const html = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                return createPlaceholder(html);
             });
 
             // プロジェクト内部リンクは上で処理済み
 
             // 通常の内部リンク - 外部リンクの後に処理する必要がある
+            // [text] 形式で、text が / や - で始まらず、[ ] を含まないもの
             const internalLinkRegex = /\[([^\[\]\/][^\[\]]*?)\]/g;
             input = input.replace(internalLinkRegex, (match, text) => {
                 // ページの存在確認用のクラスを追加
                 const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
 
                 // LinkPreviewコンポーネントを使用
-                return `<span class="link-preview-wrapper">
-                    <a href="/${text}" class="internal-link ${existsClass}" data-page="${text}">${text}</a>
+                const html = `<span class="link-preview-wrapper">
+                    <a href="/${escapeHtml(text)}" class="internal-link ${existsClass}" data-page="${
+                    escapeHtml(text)
+                }">${escapeHtml(text)}</a>
                 </span>`;
+                return createPlaceholder(html);
+            });
+
+            // プレーンテキスト部分をエスケープ
+            input = escapeHtml(input);
+
+            // プレースホルダーをHTMLタグに復元
+            globalPlaceholders.forEach((html, placeholder) => {
+                // 制御文字がエスケープされている可能性があるため、両方を試す
+                const escapedPlaceholder = escapeHtml(placeholder);
+                input = input.replaceAll(escapedPlaceholder, html);
+                input = input.replaceAll(placeholder, html);
             });
 
             return input;
@@ -472,12 +621,12 @@ export class ScrapboxFormatter {
                 // 引用
                 const quoteMatch = line.match(/^>\s(.*?)$/);
                 if (quoteMatch) {
-                    result += `<blockquote>${processFormat(escapeHtml(quoteMatch[1]))}</blockquote>`;
+                    result += `<blockquote>${processFormat(quoteMatch[1])}</blockquote>`;
                     continue;
                 }
 
-                // 通常のテキスト
-                result += processFormat(escapeHtml(line));
+                // 通常のテキスト - フォーマット構文を処理
+                result += processFormat(line);
 
                 // 最後の行でなければ改行を追加
                 if (i < lines.length - 1) {
@@ -495,7 +644,7 @@ export class ScrapboxFormatter {
         // プレースホルダーを実際の下線タグに復元
         underlinePlaceholders.forEach((content, index) => {
             const placeholder = `__UNDERLINE_${index}__`;
-            result = result.replace(placeholder, `<u>${processFormat(escapeHtml(content))}</u>`);
+            result = result.replace(placeholder, `<u>${escapeHtml(processFormat(content))}</u>`);
         });
 
         return result;
@@ -521,40 +670,44 @@ export class ScrapboxFormatter {
 
         let html = escapeHtml(text);
 
-        // 太字
-        html = html.replace(
-            /(\[\[)(.*?)(\]\])/g,
-            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
-        );
+        // 太字 - バランスを考慮してマッチ
+        const boldMatches = this.matchBalancedBold(html);
+        // 後ろから置換して、インデックスがずれないようにする
+        for (let i = boldMatches.length - 1; i >= 0; i--) {
+            const match = boldMatches[i];
+            const replacement = '<span class="control-char">[</span><span class="control-char">[</span>'
+                + `<strong>${match.content}</strong>`
+                + '<span class="control-char">]</span><span class="control-char">]</span>';
+            html = html.substring(0, match.start) + replacement + html.substring(match.end);
+        }
 
         // コード
         html = html.replace(
             /(`)(.*?)(`)/g,
-            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
+            '<span class="control-char">$1</span><code>$2</code><span class="control-char">$3</span>',
         );
 
         // 取り消し線
         html = html.replace(
-            /(\[\-)(.*?)(\])/g,
-            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
+            /(\[)(\-)(.*?)(\])/g,
+            '<span class="control-char">$1</span><span class="control-char">$2</span><s>$3</s><span class="control-char">$4</span>',
         );
 
         // 下線
         html = html.replace(
             /(<u>)(.*?)(<\/u>)/g,
-            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
+            '<span class="control-char">$1</span><u>$2</u><span class="control-char">$3</span>',
         );
 
-        // プロジェクト内部リンク - カーソルがある時は制御文字のみ表示
-        // スラッシュを含む場合のみマッチ（プロジェクト内部リンク）
+        // 斜体 - スペース必須: [/ テキスト]
         html = html.replace(
-            /(\[\/)([a-zA-Z0-9\-]+\/[a-zA-Z0-9\-\/]*)(\])/g,
-            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
+            /(\[)(\/)(\s+)([^\]]*)(\])/g,
+            '<span class="control-char">$1</span><span class="control-char">$2</span>$3<em>$4</em><span class="control-char">$5</span>',
         );
 
-        // 斜体 - プロジェクト内部リンクの後に処理
+        // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
         html = html.replace(
-            /(\[\/)(.*?)(\])/g,
+            /(\[\/)([^\s\]]+)(\])/g,
             '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
 
@@ -577,6 +730,76 @@ export class ScrapboxFormatter {
         html = html.replace(/(^>\s)(.*?)$/gm, '<span class="control-char">$1</span><blockquote>$2</blockquote>');
 
         return html;
+    }
+
+    /**
+     * 括弧のバランスを考慮して太字をマッチする関数（formatWithControlChars用）
+     */
+    private static matchBalancedBold(text: string): Array<{ start: number; end: number; content: string; }> {
+        const matches: Array<{ start: number; end: number; content: string; }> = [];
+        let i = 0;
+        while (i < text.length - 1) {
+            if (text[i] === "[" && text[i + 1] === "[") {
+                // 太字の開始を見つけた
+                let j = i + 2;
+                let content = "";
+                let boldDepth = 1;
+
+                while (j < text.length && boldDepth > 0) {
+                    if (j < text.length - 1 && text[j] === "[" && text[j + 1] === "[") {
+                        // ネストされた太字の開始
+                        boldDepth++;
+                        content += "[[";
+                        j += 2;
+                    } else if (j < text.length - 1 && text[j] === "]" && text[j + 1] === "]") {
+                        // 太字の終了
+                        boldDepth--;
+                        if (boldDepth === 0) {
+                            // マッチ完了
+                            matches.push({ start: i, end: j + 2, content });
+                            i = j + 2;
+                            break;
+                        } else {
+                            content += "]]";
+                            j += 2;
+                        }
+                    } else if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
+                        // 単一の [ を見つけた（内部リンクなどの開始）
+                        content += "[";
+                        j++;
+                        let bracketDepth = 1;
+                        while (j < text.length && bracketDepth > 0) {
+                            if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
+                                bracketDepth++;
+                                content += "[";
+                                j++;
+                            } else if (text[j] === "]") {
+                                bracketDepth--;
+                                content += "]";
+                                j++;
+                                if (bracketDepth === 0) {
+                                    break;
+                                }
+                            } else {
+                                content += text[j];
+                                j++;
+                            }
+                        }
+                    } else {
+                        content += text[j];
+                        j++;
+                    }
+                }
+
+                if (boldDepth > 0) {
+                    // マッチしなかった場合は次の文字へ
+                    i++;
+                }
+            } else {
+                i++;
+            }
+        }
+        return matches;
     }
 
     /**
@@ -619,28 +842,35 @@ export class ScrapboxFormatter {
         // 実装注意: このメソッドはクライアントサイドでのみ動作します
         if (typeof window === "undefined") return true;
 
-        // グローバルストアからページ情報を取得
-        const store = (window as any).appStore;
-        if (!store || !store.pages) return false;
+        try {
+            // グローバルストアからページ情報を取得
+            const store = (window as any).appStore;
+            if (!store || !store.pages) return false;
 
-        // 現在のプロジェクトを取得
-        const currentProject = store.project;
-        if (!currentProject) return false;
+            // 現在のプロジェクトを取得
+            const currentProject = store.project;
+            if (!currentProject) return false;
 
-        // プロジェクト名が指定されている場合、現在のプロジェクトと一致するか確認
-        if (projectName && currentProject.title !== projectName) {
-            // 別プロジェクトのページは確認できないため、存在しないと仮定
+            // プロジェクト名が指定されている場合、現在のプロジェクトと一致するか確認
+            if (projectName && currentProject.title !== projectName) {
+                // 別プロジェクトのページは確認できないため、存在しないと仮定
+                return false;
+            }
+
+            // ページ名が一致するページを検索
+            for (const page of store.pages.current) {
+                // Ensure page.text is a string before calling toLowerCase
+                const pageText = String(page?.text ?? "");
+                if (pageText.toLowerCase() === pageName.toLowerCase()) {
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (e) {
+            // If there's an error, assume the page doesn't exist
             return false;
         }
-
-        // ページ名が一致するページを検索
-        for (const page of store.pages.current) {
-            if (page.text.toLowerCase() === pageName.toLowerCase()) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }
 

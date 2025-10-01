@@ -119,9 +119,9 @@ test.describe("CLM-5d2a7b4c: Cursor formatting delegates to CursorEditor", () =>
         await setSelectionRange(page, itemId, 0, "FormatMe".length);
         await callFormatting(page, itemId, "formatItalic");
         await page.waitForTimeout(300);
-        await expect(itemLocator).toHaveText("[/FormatMe]");
+        await expect(itemLocator).toHaveText("[/ FormatMe]");
 
-        await setSelectionRange(page, itemId, 0, "[/FormatMe]".length);
+        await setSelectionRange(page, itemId, 0, "[/ FormatMe]".length);
         await callFormatting(page, itemId, "deleteSelection");
         await page.waitForTimeout(200);
         await expect(itemLocator).toHaveText("");
