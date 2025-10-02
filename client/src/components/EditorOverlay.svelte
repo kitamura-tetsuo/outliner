@@ -31,7 +31,8 @@ interface CursorPositionMap {
 // カーソル位置・選択範囲などの状態をリアクティブに管理
 let positionMap = $state<CursorPositionMap>({});
 // store の内容に追従する導出値
-let allCursors = $derived.by(() => Object.values(store.cursors));
+let cursorList = $state<CursorPosition[]>([]);
+let selectionList = $state<SelectionRange[]>([]);
 let allSelections = $derived.by(() => Object.values(store.selections));
 let clipboardRef: HTMLTextAreaElement;
 let localActiveItemId = $state<string | null>(null);
@@ -73,6 +74,21 @@ function measureTextWidthFallback(itemId: string, text: string): number {
     return width;
 }
 
+function resolveTreeContainer(): HTMLElement | null {
+    if (overlayRef) {
+        const fromOverlay = overlayRef.closest('.tree-container');
+        if (fromOverlay instanceof HTMLElement) return fromOverlay;
+    }
+
+    const fallback = document.querySelector('.tree-container');
+    if (fallback instanceof HTMLElement) return fallback;
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.warn('EditorOverlay: tree container element not found');
+    }
+    return null;
+}
+
 function updateTextareaPosition() {
     try {
         if (aliasPickerStore.isVisible) return; // avoid churn while alias picker open
@@ -81,18 +97,48 @@ function updateTextareaPosition() {
         if (!textareaRef || !overlayRef || isComposing) return;
         const lastCursor = store.getLastActiveCursor();
         if (!lastCursor) return;
+
+        // Always update position map to ensure it's current before calculations
+        // This is especially important in test environments and after DOM changes
+        updatePositionMap();
+        
         const itemInfo = positionMap[lastCursor.itemId];
-        if (!itemInfo) { debouncedUpdatePositionMap(); return; }
+        if (!itemInfo) {
+            debouncedUpdatePositionMap();
+            return;
+        }
+
         const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
-        if (!pos) { debouncedUpdatePositionMap(); return; }
-        const treeContainer = overlayRef.closest('.tree-container');
+        if (!pos) {
+            debouncedUpdatePositionMap();
+            return;
+        }
+
+        // Get the EditorOverlay's and tree container's positions relative to the viewport
+        const overlayRect = overlayRef.getBoundingClientRect();
+        const treeContainer = resolveTreeContainer();
         if (!treeContainer) return;
-        const rect = treeContainer.getBoundingClientRect();
-        textareaRef.style.left = `${rect.left + pos.left}px`;
-        textareaRef.style.top = `${rect.top + pos.top}px`;
-        const height = positionMap[lastCursor.itemId]?.lineHeight || 16;
-        textareaRef.style.height = `${height}px`;
-    } catch {}
+        const treeContainerRect = treeContainer.getBoundingClientRect();
+        
+        // Convert position from tree-container-relative to overlay-relative
+        // This is needed because calculateCursorPixelPosition returns coordinates relative to tree container
+        const posRelativeToOverlay = {
+            left: pos.left + (treeContainerRect.left - overlayRect.left),
+            top: pos.top + (treeContainerRect.top - overlayRect.top)
+        };
+        
+        // Position the textarea at the same viewport coordinates as the cursor
+        // would be if it were positioned within the overlay
+        const finalLeft = overlayRect.left + posRelativeToOverlay.left;
+        const finalTop = overlayRect.top + posRelativeToOverlay.top;
+
+        // Simplified: finalLeft = treeContainerRect.left + pos.left (same as before but clearer logic)
+        // Position the textarea using viewport coordinates
+        textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left}px`, 'important');
+        textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top}px`, 'important');
+    } catch (e) {
+        console.error("Error in updateTextareaPosition:", e);
+    }
 }
 
 // 変更通知に忨て位置更新（ポーリング排除）
@@ -137,21 +183,30 @@ onMount(() => {
     let unsubscribe = () => {};
     
     // Subscribe to store changes in all environments to ensure proper updates
+    const syncCursors = () => {
+        cursorList = Object.values(store.cursors);
+        selectionList = Object.values(store.selections);
+    };
+
     try {
         unsubscribe = store.subscribe(() => {
             if (updateTimeout) {
                 clearTimeout(updateTimeout);
             }
             updateTimeout = setTimeout(() => {
-                updateTextareaPosition();
                 // Force update of positionMap to ensure it's current
                 updatePositionMap(); // Direct call instead of debounced to ensure immediate update in tests
+                syncCursors();
+                if (typeof window !== 'undefined') {
+                    (window as any).__selectionList = selectionList;
+                }
+                updateTextareaPosition();
                 
                 // Update localCursorVisible in all environments to ensure proper reactivity
                 // In test environments, ensure it's always true if there are active cursors
                 const isTestEnvironment = typeof window !== 'undefined' && (window as any).navigator?.webdriver;
                 if (isTestEnvironment) {
-                    localCursorVisible = store.cursorVisible || allCursors.some(cursor => cursor.isActive);
+                    localCursorVisible = store.cursorVisible || cursorList.some(cursor => cursor.isActive);
                 } else {
                     localCursorVisible = store.cursorVisible;
                 }
@@ -160,16 +215,20 @@ onMount(() => {
     } catch (error) {
         console.warn('Failed to subscribe to store changes:', error);
     }
-    
+
     // 初期化
     try {
+        syncCursors();
+        if (typeof window !== 'undefined') {
+            (window as any).__selectionList = selectionList;
+        }
         updateTextareaPosition();
         // In test environments, trigger an immediate update to ensure DOM is ready
         if (typeof window !== 'undefined' && (window as any).navigator?.webdriver) {
             updatePositionMap();
             // Also make sure cursor blink is working in test environments
             setTimeout(() => {
-                if (allCursors.some(cursor => cursor.isActive)) {
+                if (cursorList.some(cursor => cursor.isActive)) {
                     store.startCursorBlink();
                 } else {
                     // If no active cursors exist, ensure we at least set cursorVisible to true for test environments
@@ -227,50 +286,95 @@ function measureTextWidthCanvas(itemId: string, text: string): number {
 function calculateCursorPixelPosition(itemId: string, offset: number): { left: number; top: number } | null {
     const itemInfo = positionMap[itemId];
     if (!itemInfo) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`calculateCursorPixelPosition: no itemInfo for ${itemId}`, Object.keys(positionMap));
+        }
         // アイテム情報がない場合は描画をスキップ
         return null;
     }
     const { textElement } = itemInfo;
     // ツリーコンテナを取得
-    const treeContainer = overlayRef.closest('.tree-container');
-    if (!treeContainer) return null;
+    const treeContainer = resolveTreeContainer();
+    if (!treeContainer) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`calculateCursorPixelPosition: tree container not found for ${itemId}`);
+        }
+        return null;
+    }
     try {
         // 最新の位置情報を取得するため、常に新たに計測
+        // ツリーコンテナの絶対位置 (reference point)
+        const treeContainerRect = treeContainer.getBoundingClientRect();
         // テキスト要素の絶対位置
         const textRect = textElement.getBoundingClientRect();
-        // ツリーコンテナの絶対位置
-        const treeContainerRect = treeContainer.getBoundingClientRect();
+        
         // テキストの内容を取得
         const text = textElement.textContent || '';
         // 空テキストの場合は必ず左端
         if (!text || text.length === 0) {
             const contentContainer = textElement.closest('.item-content-container');
             const contentRect = contentContainer?.getBoundingClientRect() || textRect;
-            const contentLeft = contentRect.left - treeContainerRect.left;
-            const relativeTop = textRect.top - treeContainerRect.top + 3;
-            return { left: contentLeft, top: relativeTop };
+            // Calculate position relative to the tree container
+            const relativeLeft = contentRect.left - treeContainerRect.left;
+            const relativeTop = contentRect.top - treeContainerRect.top + 3;
+            return { left: relativeLeft, top: relativeTop };
         }
+        
+        // Find the correct text node and offset for the given character position
+        const findTextPosition = (element: Node, targetOffset: number): { node: Text, offset: number } | null => {
+            let currentOffset = 0;
+            
+            const walker = document.createTreeWalker(
+                element,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode: function(node) {
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                }
+            );
+            
+            while (walker.nextNode()) {
+                const textNode = walker.currentNode as Text;
+                const textLength = textNode.textContent?.length || 0;
+                
+                if (targetOffset < currentOffset + textLength) {
+                    return {
+                        node: textNode,
+                        offset: targetOffset - currentOffset
+                    };
+                }
+                
+                currentOffset += textLength;
+            }
+            
+            return null;
+        };
+        
         // 折り返し対応: Range API を優先
-        const textNode = Array.from(textElement.childNodes).find(node => node.nodeType === Node.TEXT_NODE) as Text | undefined;
-        if (textNode) {
+        const textPosition = findTextPosition(textElement, offset);
+        if (textPosition) {
             const range = document.createRange();
-            const safeOffset = Math.min(offset, textNode.textContent?.length || 0);
-            range.setStart(textNode, safeOffset);
-            range.setEnd(textNode, safeOffset);
+            const safeOffset = Math.min(textPosition.offset, textPosition.node.textContent?.length || 0);
+            range.setStart(textPosition.node, safeOffset);
+            range.setEnd(textPosition.node, safeOffset);
             const rects = range.getClientRects();
+            // Use the first rect or fallback to getBoundingClientRect
             const caretRect = rects.length > 0 ? rects[0] : range.getBoundingClientRect();
+            // Calculate position relative to the tree container (not viewport)
             const relativeLeft = caretRect.left - treeContainerRect.left;
             const relativeTop = caretRect.top - treeContainerRect.top;
             return { left: relativeLeft, top: relativeTop };
         }
+        
         // フォールバック: Canvas で幅を測定（DOMを変更しない）
         const textBeforeCursor = text.substring(0, offset);
         const cursorWidth = measureTextWidthCanvas(itemId, textBeforeCursor);
         const contentContainer = textElement.closest('.item-content-container');
         const contentRect = contentContainer?.getBoundingClientRect() || textRect;
-        const contentLeft = contentRect.left - treeContainerRect.left;
-        const relativeLeft = contentLeft + cursorWidth;
-        const relativeTop = textRect.top - treeContainerRect.top + 3;
+        // Calculate position relative to the tree container
+        const relativeLeft = (contentRect.left - treeContainerRect.left) + cursorWidth;
+        const relativeTop = contentRect.top - treeContainerRect.top + 3;
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Cursor for ${itemId} at offset ${offset}:`, { relativeLeft, relativeTop });
         }
@@ -289,16 +393,31 @@ function calculateSelectionPixelRange(
     isReversed?: boolean
 ): { left: number; top: number; width: number; height: number } | null {
     // 開始位置と終了位置が同じ場合は表示しない
-    if (startOffset === endOffset) return null;
+    if (startOffset === endOffset) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`calculateSelectionPixelRange: zero-width selection for ${itemId}`);
+        }
+        return null;
+    }
 
     const itemInfo = positionMap[itemId];
-    if (!itemInfo) return null;
+    if (!itemInfo) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`calculateSelectionPixelRange: no itemInfo for ${itemId}`, Object.keys(positionMap));
+        }
+        return null;
+    }
 
     const { textElement, lineHeight } = itemInfo;
 
     // ツリーコンテナを取得
-    const treeContainer = overlayRef.closest('.tree-container');
-    if (!treeContainer) return null;
+    const treeContainer = resolveTreeContainer();
+    if (!treeContainer) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`calculateSelectionPixelRange: tree container not found for ${itemId}`);
+        }
+        return null;
+    }
 
     try {
         // 最新の位置情報を取得するため、常に新たに計測
@@ -459,7 +578,7 @@ onMount(() => {
 
     // 初期状態でアクティブカーソルがある場合は、少し遅延してから点滅を開始
     setTimeout(() => {
-        if (allCursors.some(cursor => cursor.isActive)) {
+        if (cursorList.some(cursor => cursor.isActive)) {
             store.startCursorBlink();
         }
     }, 200);
@@ -920,12 +1039,15 @@ function handlePaste(event: ClipboardEvent) {
     <!-- 選択範囲とカーソルは AliasPicker 表示中は抑制してループを避ける -->
     {#if !aliasPickerStore.isVisible || typeof window === 'undefined' || (window as any).navigator?.webdriver} 
     <!-- 選択範囲のレンダリング -->
-    {#each Object.values(store.selections) as sel}
+    {#each selectionList as sel}
+        {@const _debugRenderSel = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: render selection', sel, sel.boxSelectionRanges, Array.isArray(sel.boxSelectionRanges)) : null}
         {#if sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId}
             {#if sel.isBoxSelection && sel.boxSelectionRanges}
                 <!-- 矩形選択（ボックス選択）の場合 -->
                 {#each sel.boxSelectionRanges as range, index}
+                    {@const _debugRange = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: range', range) : null}
                     {@const rect = calculateSelectionPixelRange(range.itemId, range.startOffset, range.endOffset, sel.isReversed)}
+                    {@const _debugRect = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: rect', rect) : null}
                     {#if rect}
                         {@const isPageTitle = range.itemId === "page-title"}
                         {@const isFirstRange = index === 0}
@@ -1027,7 +1149,7 @@ function handlePaste(event: ClipboardEvent) {
     {/if}
 
     <!-- カーソルのレンダリング (always render in all environments including test) -->
-    {#each allCursors as cursor}
+    {#each cursorList as cursor}
         {@const isTestEnvironment = typeof window !== 'undefined' && (window as any).navigator && (window as any).navigator.webdriver}
         {@const cursorPos = (function() {
             try {
@@ -1066,7 +1188,7 @@ function handlePaste(event: ClipboardEvent) {
     {/each}
     
     <!-- In test environments, ensure at least one cursor element is rendered to ensure the CSS classes work correctly -->
-    {#if typeof window !== 'undefined' && (window as any).navigator?.webdriver && Object.keys(allCursors).length === 0}
+    {#if typeof window !== 'undefined' && (window as any).navigator?.webdriver && cursorList.length === 0}
         <div
             class="cursor"
             class:test-env-visible={true}
@@ -1088,8 +1210,8 @@ function handlePaste(event: ClipboardEvent) {
     {#if DEBUG_MODE && localActiveItemId}
         <div class="debug-info">
             カーソル位置: アイテム {localActiveItemId}
-            {#if allCursors.length > 0}
-                <br>オフセット: {allCursors[0].offset}
+            {#if cursorList.length > 0}
+                <br>オフセット: {cursorList[0].offset}
             {/if}
         </div>
     {/if}

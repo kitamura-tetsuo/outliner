@@ -101,3 +101,8 @@ server/e2e-src/
 llm_task.md
 .auto-coder/
 
+*.log
+*.md
+*.backup
+*.bak
+*.temp

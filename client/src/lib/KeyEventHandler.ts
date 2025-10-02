@@ -1200,23 +1200,6 @@ export class KeyEventHandler {
             && KeyEventHandler.boxSelectionState.endItemId
         ) {
             try {
-                // 矩形選択範囲の更新前に視覚的フィードバックを追加
-                if (typeof window !== "undefined") {
-                    // 選択範囲の変更を視覚的に強調するためのクラスを追加
-                    document.querySelectorAll(".selection-box").forEach(el => {
-                        el.classList.add("selection-box-updating");
-                    });
-
-                    // 一定時間後にクラスを削除
-                    setTimeout(() => {
-                        if (typeof document !== "undefined") {
-                            document.querySelectorAll(".selection-box-updating").forEach(el => {
-                                el.classList.remove("selection-box-updating");
-                            });
-                        }
-                    }, 300);
-                }
-
                 store.setBoxSelection(
                     KeyEventHandler.boxSelectionState.startItemId,
                     KeyEventHandler.boxSelectionState.startOffset,
@@ -1226,6 +1209,35 @@ export class KeyEventHandler {
                     "local",
                 );
 
+                // 矩形選択範囲の更新前に視覚的フィードバックを追加
+                // Use setTimeout to run after DOM has been updated by Svelte
+                setTimeout(() => {
+                    const attemptToAddClass = () => {
+                        if (typeof window !== "undefined") {
+                            const elements = document.querySelectorAll(".selection-box");
+                            if (elements.length > 0) {
+                                // 選択範囲の変更を視覚的に強調するためのクラスを追加
+                                elements.forEach(el => {
+                                    el.classList.add("selection-box-updating");
+                                });
+
+                                // 一定時間後にクラスを削除
+                                setTimeout(() => {
+                                    if (typeof document !== "undefined") {
+                                        document.querySelectorAll(".selection-box-updating").forEach(el => {
+                                            el.classList.remove("selection-box-updating");
+                                        });
+                                    }
+                                }, 300);
+                            } else {
+                                // If elements don't exist yet, try again after a short delay
+                                setTimeout(attemptToAddClass, 50);
+                            }
+                        }
+                    };
+
+                    attemptToAddClass();
+                }, 0); // 0 delay to run in next event loop, after DOM update
                 // カーソル位置を更新
                 store.setCursor({
                     itemId: KeyEventHandler.boxSelectionState.endItemId,

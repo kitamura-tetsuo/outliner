@@ -21,7 +21,6 @@ import AliasPicker from "../components/AliasPicker.svelte";
 // Defer services import; it depends on UserManager
 import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
-
 // Load test data helper globally in test environments so E2E can seed data on any route
 if (browser && (
     import.meta.env.MODE === "test" ||
@@ -242,6 +241,8 @@ onMount(async () => {
             const unsub = page.subscribe(($p) => ensureCurrentPageByRoute($p.params.project ?? "", $p.params.page ?? ""));
             onDestroy(unsub);
         } catch {}
+
+
 
         // Service WorkerはE2Eテストでは無効化して、ナビゲーションやページクローズ干渉を防ぐ
         const isE2e = (
@@ -493,6 +494,7 @@ onDestroy(async () => {
             "visibilitychange",
             handleVisibilityChange,
         );
+
         try {
             const { cleanupYjsClient } = await import("../services");
             cleanupYjsClient();
@@ -506,7 +508,7 @@ onDestroy(async () => {
 });
 </script>
 
-<div data-testid="outliner-base">
+<div data-testid="app-layout">
     <!-- Global main toolbar with SearchBox (SEA-0001) -->
     <Toolbar />
 
@@ -525,9 +527,14 @@ onDestroy(async () => {
     >
         {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
     </button>
+
+
 </div>
 
 <style>
+/* Keep content clear of the fixed Toolbar (height ~4rem) */
+.main-content { padding-top: 5rem; }
+
 /* Keep content clear of the fixed Toolbar (height ~4rem) */
 .main-content { padding-top: 5rem; }
 </style>

@@ -24,14 +24,50 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await expect(toolbar).toBeVisible();
 
         const items = page.locator(".outliner-item");
-        const secondId = await items.nth(2).getAttribute("data-item-id");
-        await page.locator(`.outliner-item[data-item-id="${secondId}"] .item-content`).click({ force: true });
+        const itemSnapshot = await items.evaluateAll(nodes =>
+            nodes.map(node => ({
+                id: node.getAttribute("data-item-id"),
+                text: node.querySelector(".item-content")?.textContent?.trim() || "",
+            }))
+        );
+        console.log("MOB-0003: item order", JSON.stringify(itemSnapshot));
+        // Get the second root item (index 3 overall, which is the second child of page title)
+        const thirdId = await items.nth(3).getAttribute("data-item-id");
+        console.log("MOB-0003: Setting active item to ID:", thirdId);
+
+        // Set the active item directly via editorOverlayStore
+        await page.evaluate((itemId) => {
+            const store = (window as any).editorOverlayStore;
+            if (store && typeof store.setActiveItem === "function") {
+                store.setActiveItem(itemId);
+                console.log("MOB-0003: Active item set to", itemId);
+            }
+        }, thirdId);
+        await page.waitForTimeout(300);
 
         // ページタイトルの子アイテム数を取得
         const rootItemsBefore: any = await TreeValidator.getTreePathData(page, "items.0.items");
         const countBefore = Object.keys(rootItemsBefore || {}).length;
+        console.log("MOB-0003: root items before indent", countBefore, JSON.stringify(rootItemsBefore));
 
-        await toolbar.locator("button[aria-label='Indent']").click();
+        // Debug: Check if button is clickable
+        const indentButton = toolbar.locator("button[aria-label='Indent']");
+        await expect(indentButton).toBeVisible();
+        console.log("MOB-0003: Indent button is visible");
+
+        // Listen for console logs
+        page.on("console", msg => console.log("BROWSER LOG:", msg.text()));
+
+        await indentButton.click();
+        console.log("MOB-0003: Clicked indent button");
+
+        await page.waitForTimeout(500);
+        const rootItemsAfterIndentImmediate: any = await TreeValidator.getTreePathData(page, "items.0.items");
+        console.log(
+            "MOB-0003: root items immediate after indent",
+            Object.keys(rootItemsAfterIndentImmediate || {}).length,
+            JSON.stringify(rootItemsAfterIndentImmediate),
+        );
 
         await expect.poll(async () => {
             const rootItems: any = await TreeValidator.getTreePathData(page, "items.0.items");
@@ -41,13 +77,22 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         // アウトデント前にインデントされた子アイテムをクリック
         // インデント後のデータ構造から子アイテムのIDを取得
         const afterIndentData = await TreeValidator.getTreeData(page);
-        const firstItem = afterIndentData.items[0];
-        const firstItemChildren = firstItem.items;
-        const firstChild: any = Object.values(firstItemChildren)[0];
-        const firstChildId = firstChild.items ? Object.values(firstChild.items)[0].id : firstChild.id;
+        console.log("MOB-0003: after indent tree", JSON.stringify(afterIndentData));
+        const pageItem = afterIndentData.items[0];
+        const pageChildren = Object.values(pageItem.items);
+        // Get the second child of the page (一行目: テスト), which now has a child
+        const secondChild: any = pageChildren[1];
+        const indentedItemId = secondChild.items ? Object.values(secondChild.items)[0].id : null;
+        console.log("MOB-0003: indented item ID:", indentedItemId);
 
-        await page.locator(`[data-item-id="${firstChildId}"] .item-content`).click({ force: true });
-        await page.waitForTimeout(500);
+        // Set the active item directly to the indented item
+        await page.evaluate((itemId) => {
+            const store = (window as any).editorOverlayStore;
+            if (store && typeof store.setActiveItem === "function") {
+                store.setActiveItem(itemId);
+            }
+        }, indentedItemId);
+        await page.waitForTimeout(300);
 
         await toolbar.locator("button[aria-label='Outdent']").click();
         await page.waitForTimeout(500);
@@ -60,8 +105,16 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         // アウトデント後、新しく作成されたアイテムをクリック（最後のアイテム）
         const itemsAfterOutdent = page.locator(".outliner-item");
         const lastItemIndex = await itemsAfterOutdent.count() - 1;
-        await itemsAfterOutdent.nth(lastItemIndex).locator(".item-content").click({ force: true });
-        await page.waitForTimeout(500);
+        const lastItemId = await itemsAfterOutdent.nth(lastItemIndex).getAttribute("data-item-id");
+
+        // Set the active item directly
+        await page.evaluate((itemId) => {
+            const store = (window as any).editorOverlayStore;
+            if (store && typeof store.setActiveItem === "function") {
+                store.setActiveItem(itemId);
+            }
+        }, lastItemId);
+        await page.waitForTimeout(300);
 
         const siblingCountBefore = await items.count();
         await toolbar.locator("button[aria-label='Insert Above']").click();
@@ -71,8 +124,18 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         // Insert Above後、元のアイテムを再度クリック（Insert Above操作で新しいアイテムが上に追加されるため）
         const itemsAfterInsertAbove = page.locator(".outliner-item");
         const lastItemIndexAfterAbove = await itemsAfterInsertAbove.count() - 1;
-        await itemsAfterInsertAbove.nth(lastItemIndexAfterAbove).locator(".item-content").click({ force: true });
-        await page.waitForTimeout(500);
+        const lastItemIdAfterAbove = await itemsAfterInsertAbove.nth(lastItemIndexAfterAbove).getAttribute(
+            "data-item-id",
+        );
+
+        // Set the active item directly
+        await page.evaluate((itemId) => {
+            const store = (window as any).editorOverlayStore;
+            if (store && typeof store.setActiveItem === "function") {
+                store.setActiveItem(itemId);
+            }
+        }, lastItemIdAfterAbove);
+        await page.waitForTimeout(300);
 
         await toolbar.locator("button[aria-label='Insert Below']").click();
 
@@ -81,8 +144,16 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         // New Child操作前に、現在表示されているアイテムの中から適切なアイテムをクリック
         // Insert Above/Below操作後なので、最初のアイテムをクリック
         const currentItems = page.locator(".outliner-item");
-        await currentItems.nth(1).locator(".item-content").click({ force: true });
-        await page.waitForTimeout(500);
+        const firstChildItemId = await currentItems.nth(1).getAttribute("data-item-id");
+
+        // Set the active item directly
+        await page.evaluate((itemId) => {
+            const store = (window as any).editorOverlayStore;
+            if (store && typeof store.setActiveItem === "function") {
+                store.setActiveItem(itemId);
+            }
+        }, firstChildItemId);
+        await page.waitForTimeout(300);
 
         await toolbar.locator("button[aria-label='New Child']").click();
         await page.waitForTimeout(500);

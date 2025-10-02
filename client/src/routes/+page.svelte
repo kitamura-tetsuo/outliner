@@ -77,7 +77,7 @@ async function handleContainerSelected(
     <title>Outliner</title>
 </svelte:head>
 
-<main class="main-content" data-testid="outliner-base">
+<main class="main-content" data-testid="home-page">
     <h1>Outliner</h1>
 
     <div class="welcome-message">

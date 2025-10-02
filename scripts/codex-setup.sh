@@ -205,6 +205,8 @@ else
   start_yjs_server
   echo "Starting SvelteKit server..."
   start_sveltekit_server
+  echo "Starting API server..."
+  start_api_server
 fi
 
 # Wait for all services to be ready

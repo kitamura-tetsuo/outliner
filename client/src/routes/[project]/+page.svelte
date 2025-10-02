@@ -13,8 +13,11 @@ import { store } from "../../stores/store.svelte";
 
 const logger = getLogger("ProjectIndex");
 
-// URLパラメータを取得
-let projectName = page.params.project;
+// URLパラメータを取得（リアクティブに）
+let projectName = $state("");
+$effect(() => {
+    projectName = $page.params.project || "";
+});
 
 // ページの状態
 let error: string | undefined = $state(undefined);

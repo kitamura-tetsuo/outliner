@@ -8,6 +8,7 @@ interface FormatToken {
     start: number;
     end: number;
     url?: string; // リンク用
+    isProjectLink?: boolean;
 }
 
 /**
@@ -130,7 +131,14 @@ export class ScrapboxFormatter {
         ];
 
         // すべてのフォーマットマッチを見つける
-        const matches: { type: string; start: number; end: number; content: string; url?: string; }[] = [];
+        const matches: {
+            type: string;
+            start: number;
+            end: number;
+            content: string;
+            url?: string;
+            isProjectLink?: boolean;
+        }[] = [];
 
         // フォーマットのマッチを処理
         patterns.forEach(pattern => {
@@ -139,6 +147,7 @@ export class ScrapboxFormatter {
                 const startIndex = match.index;
                 const endIndex = startIndex + match[0].length;
                 const content = match[1];
+                const isProjectLink = pattern.type === "internalLink" && pattern.start === "[/";
 
                 // リンクの場合はURLとラベルを保存
                 if (pattern.type === "link") {
@@ -158,6 +167,7 @@ export class ScrapboxFormatter {
                         start: startIndex,
                         end: endIndex,
                         content: content,
+                        isProjectLink,
                     });
                 }
             }
@@ -225,6 +235,7 @@ export class ScrapboxFormatter {
                 start: match.start,
                 end: match.end,
                 url: (match as any).url,
+                isProjectLink: match.isProjectLink,
             });
 
             lastIndex = match.end;
@@ -262,7 +273,8 @@ export class ScrapboxFormatter {
         let html = "";
 
         for (const token of tokens) {
-            const content = escapeHtml(token.content);
+            const rawContent = token.content ?? "";
+            const content = escapeHtml(rawContent);
 
             switch (token.type) {
                 case "bold":
@@ -283,41 +295,43 @@ export class ScrapboxFormatter {
                 case "link":
                     html += `<a href="${token.url}" target="_blank" rel="noopener noreferrer">${content}</a>`;
                     break;
-                case "internalLink":
-                    // 内部リンクは別ページへのリンクとして処理
-                    // /project-name/page-name 形式かどうかを判断
-                    if (content.startsWith("/")) {
-                        // プロジェクト内部リンク
-                        // パスを分解してプロジェクト名とページ名を取得
-                        const parts = content.split("/").filter(p => p);
+                case "internalLink": {
+                    const isProjectLink = token.isProjectLink === true || rawContent.startsWith("/");
+                    if (isProjectLink) {
+                        const normalizedRaw = rawContent.startsWith("/") ? rawContent.slice(1) : rawContent;
+                        const escapedNormalized = escapeHtml(normalizedRaw);
+                        const parts = normalizedRaw.split("/").filter(p => p);
+
                         if (parts.length >= 2) {
                             const projectName = parts[0];
                             const pageName = parts.slice(1).join("/");
 
-                            // ページの存在確認用のクラスを追加
-                            const existsClass = this.checkPageExists(pageName, projectName)
-                                ? "page-exists"
-                                : "page-not-exists";
+                            let existsClassTokens = "page-not-exists"; // default for safety
+                            try {
+                                existsClassTokens = this.checkPageExists(pageName, projectName)
+                                    ? "page-exists"
+                                    : "page-not-exists";
+                            } catch (e) {
+                                existsClassTokens = "page-not-exists";
+                            }
 
-                            // LinkPreviewコンポーネントを使用
+                            const escapedProjectName = escapeHtml(projectName);
+                            const escapedPageName = escapeHtml(pageName);
                             html += `<span class="link-preview-wrapper">
-                                <a href="/${content}" class="internal-link project-link ${existsClass}" data-project="${projectName}" data-page="${pageName}">${content}</a>
+                                <a href="/${escapedNormalized}" class="internal-link project-link ${existsClassTokens}" data-project="${escapedProjectName}" data-page="${escapedPageName}">${escapedNormalized}</a>
                             </span>`;
                         } else {
-                            // 不正なパス形式の場合は通常のリンクとして表示
-                            html += `<a href="/${content}" class="internal-link project-link">${content}</a>`;
+                            html +=
+                                `<a href="/${escapedNormalized}" class="internal-link project-link">${escapedNormalized}</a>`;
                         }
                     } else {
-                        // 通常の内部リンク
-                        // ページの存在確認用のクラスを追加
-                        const existsClass = this.checkPageExists(content) ? "page-exists" : "page-not-exists";
-
-                        // LinkPreviewコンポーネントを使用
+                        const existsClass = this.checkPageExists(rawContent) ? "page-exists" : "page-not-exists";
                         html += `<span class="link-preview-wrapper">
                             <a href="/${content}" class="internal-link ${existsClass}" data-page="${content}">${content}</a>
                         </span>`;
                     }
                     break;
+                }
                 case "quote":
                     html += `<blockquote>${content}</blockquote>`;
                     break;
@@ -534,7 +548,13 @@ export class ScrapboxFormatter {
                     const pageName = parts.slice(1).join("/");
 
                     // ページの存在確認用のクラスを追加
-                    const existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
+                    let existsClass = "page-not-exists"; // default for safety
+                    try {
+                        existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
+                    } catch (e) {
+                        // In case of any error in checkPageExists, default to page-not-exists
+                        existsClass = "page-not-exists";
+                    }
 
                     // LinkPreviewコンポーネントを使用
                     html = `<span class="link-preview-wrapper">

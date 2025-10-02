@@ -5,6 +5,60 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(realpath "${SCRIPT_DIR}/..")"
 CLIENT_DIR="${PROJECT_ROOT}/client"
 
+# Ensure shared configuration (ports, environment) is available for auxiliary helpers.
+# The scripts/common-config.sh file expects ROOT_DIR to be defined.
+ROOT_DIR="${PROJECT_ROOT}"
+if [ -f "${SCRIPT_DIR}/common-config.sh" ]; then
+  # shellcheck disable=SC1090
+  source "${SCRIPT_DIR}/common-config.sh"
+fi
+
+port_is_ready() {
+  local port="$1"
+  node -e 'const net=require("net");
+const port=Number(process.argv[1]);
+const socket=net.createConnection({ port, host: "127.0.0.1" }, () => {
+  socket.end();
+  process.exit(0);
+});
+socket.once("error", () => process.exit(1));
+setTimeout(() => {
+  socket.destroy();
+  process.exit(1);
+}, 500).unref();' "$port" >/dev/null 2>&1
+}
+
+ensure_codex_services() {
+  if [ "${SKIP_AUTO_SETUP:-0}" = "1" ]; then
+    return
+  fi
+
+  # Ports that codex-setup.sh is responsible for. If any are missing we trigger setup.
+  local required_ports=(
+    "${TEST_API_PORT:-7091}"
+    "${VITE_PORT:-7090}"
+    "${TEST_YJS_PORT:-7093}"
+    "${FIREBASE_FUNCTIONS_PORT:-57070}"
+    "${FIREBASE_AUTH_PORT:-59099}"
+    "${FIREBASE_FIRESTORE_PORT:-58080}"
+    "${FIREBASE_HOSTING_PORT:-57000}"
+    "${FIREBASE_STORAGE_PORT:-59200}"
+  )
+
+  local need_setup=0
+  local port
+  for port in "${required_ports[@]}"; do
+    if ! port_is_ready "$port"; then
+      need_setup=1
+      break
+    fi
+  done
+
+  if [ "$need_setup" -eq 1 ]; then
+    "${SCRIPT_DIR}/codex-setup.sh"
+  fi
+}
+
 cd "$PROJECT_ROOT"
 
 if [ $# -eq 0 ]; then
@@ -147,6 +201,7 @@ case "$detected_type" in
     npm run test:production -- "${normalized_paths[@]}" "${pass_through[@]}"
     ;;
   e2e)
+    ensure_codex_services
     for spec in "${normalized_paths[@]}"; do
       npm run test:e2e -- "$spec" "${pass_through[@]}"
     done

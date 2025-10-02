@@ -82,8 +82,8 @@ test.describe("ITM-multi-line-input-6dcdbeef: 複数行テキスト入力", () =
         await page.waitForTimeout(500);
 
         const newId = await TestHelpers.getItemIdByIndex(page, 2);
-        const newItem = page.locator(`.outliner-item[data-item-id="${newId}"] .item-content`);
-        await newItem.click({ force: true });
+        expect(newId).not.toBeNull();
+        await TestHelpers.setCursor(page, newId!, 0);
         await TestHelpers.waitForCursorVisible(page);
 
         await page.keyboard.type("abc");

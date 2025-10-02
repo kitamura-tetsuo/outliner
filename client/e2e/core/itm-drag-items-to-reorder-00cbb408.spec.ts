@@ -74,17 +74,81 @@ test.describe("ITM-00cbb408: ドラッグでアイテムを移動", () => {
 
         const secondText = await page.locator(`.outliner-item[data-item-id="${secondId}"] .item-text`).textContent();
 
-        // ドラッグ操作: 2番目のアイテムを3番目の位置に移動（HTML5 Drag & Drop APIを使用）
-        const secondLocator = page.locator(`.outliner-item[data-item-id="${secondId}"] .item-content`);
-        const thirdLocator = page.locator(`.outliner-item[data-item-id="${thirdId}"] .item-content`);
+        // 実際のDragEvent/DataTransferフローを使用してドラッグ操作を実行
+        await page.evaluate(({ secondId, thirdId }) => {
+            const sourceContent = document.querySelector<HTMLElement>(`[data-item-id="${secondId}"] .item-content`)
+                ?? document.querySelector<HTMLElement>(`[data-item-id="${secondId}"]`);
+            const targetContent = document.querySelector<HTMLElement>(`[data-item-id="${thirdId}"] .item-content`)
+                ?? document.querySelector<HTMLElement>(`[data-item-id="${thirdId}"]`);
 
-        // ドラッグ&ドロップを実行
-        await secondLocator.dragTo(thirdLocator);
-        await page.waitForTimeout(500);
+            if (!sourceContent || !targetContent) {
+                throw new Error(`Source or target content element not found`);
+            }
 
-        // 移動後のテキストを確認
-        const movedText = await page.locator(".outliner-item").nth(2).locator(".item-text").textContent();
+            const dataTransfer = new DataTransfer();
+            dataTransfer.setData("text/plain", sourceContent.textContent ?? "");
+            dataTransfer.setData("application/x-outliner-item", secondId);
+
+            const sourceRect = sourceContent.getBoundingClientRect();
+            const targetRect = targetContent.getBoundingClientRect();
+            const centerX = Math.floor(targetRect.left + targetRect.width / 2);
+            const bottomY = Math.floor(targetRect.bottom - 1);
+            const sourceX = Math.floor(sourceRect.left + sourceRect.width / 2);
+            const sourceY = Math.floor(sourceRect.top + sourceRect.height / 2);
+
+            const dragStartEvent = new DragEvent("dragstart", {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer,
+                clientX: sourceX,
+                clientY: sourceY,
+            });
+
+            const dragOverEvent = new DragEvent("dragover", {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer,
+                clientX: centerX,
+                clientY: bottomY,
+            });
+
+            const dropEvent = new DragEvent("drop", {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer,
+                clientX: centerX,
+                clientY: bottomY,
+            });
+
+            const dragEndEvent = new DragEvent("dragend", {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer,
+                clientX: centerX,
+                clientY: bottomY,
+            });
+
+            sourceContent.dispatchEvent(dragStartEvent);
+            targetContent.dispatchEvent(dragOverEvent);
+            targetContent.dispatchEvent(dropEvent);
+            sourceContent.dispatchEvent(dragEndEvent);
+        }, { secondId, thirdId });
+
+        // ドラッグによる再配置が完了するのを待つ
+        await page.waitForTimeout(2000);
+
+        // 移動後の順序を確認 - Item 2がItem 3の後ろ（index 2）に移動しているはず
+        await expect(page.locator(`.outliner-item[data-item-id="${secondId}"]`)).toBeVisible();
+
+        // Item 2のテキストが正しいことを確認
+        const movedText = await page.locator(`.outliner-item[data-item-id="${secondId}"] .item-text`).textContent();
         expect(movedText).toBe(secondText);
+
+        // 順序を確認: Item 1, Item 3, Item 2 の順になっているはず
+        const items = await page.locator(".outliner-item .item-text").allTextContents();
+        expect(items[0]).toBe("Item 1");
+        expect(items[1]).toBe("Item 3");
+        expect(items[2]).toBe("Item 2");
     });
 });
 import "../utils/registerAfterEachSnapshot";

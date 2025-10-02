@@ -35,7 +35,7 @@ onMount(async () => {
 });
 </script>
 
-<div class="outliner-page" data-testid="outliner-base">
+<div class="outliner-page" data-testid="yjs-outliner-page">
   <!-- Ensure an early anchor exists for tests -->
   <OutlinerBase pageItem={pageItem} projectName="test" pageName="page" />
 </div>

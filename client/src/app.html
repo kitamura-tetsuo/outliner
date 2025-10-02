@@ -22,6 +22,86 @@
             </div>
         </div>
         <div style="display: contents" data-testid="sveltekit-shell">%sveltekit.body%</div>
+        <script type="module">
+            (() => {
+                if (typeof window === "undefined") {
+                    return;
+                }
+                const w = window;
+                const g = globalThis;
+                if (typeof w.__FIRESTORE_STORE__ !== "undefined") {
+                    return;
+                }
+
+                const isDev = typeof (w).__sveltekit_dev !== "undefined";
+                if (!isDev) {
+                    return;
+                }
+
+                let realStore = null;
+                let loadPromise = null;
+
+                const ensureStore = () => {
+                    if (realStore) {
+                        return Promise.resolve(realStore);
+                    }
+                    if (!loadPromise) {
+                        loadPromise = import("/src/stores/firestoreStore.svelte.ts").then(mod => {
+                            realStore = mod.firestoreStore;
+                            if (realStore) {
+                                realStore.__isRealFirestoreStore = true;
+                                w.__FIRESTORE_STORE__ = realStore;
+                                g.__FIRESTORE_STORE__ = realStore;
+                            }
+                            return realStore;
+                        }).catch(error => {
+                            console.error("[bootstrap] Failed to load firestoreStore", error);
+                            loadPromise = null;
+                            throw error;
+                        });
+                    }
+                    return loadPromise;
+                };
+
+                const placeholder = {
+                    __isRealFirestoreStore: false,
+                    setUserContainer: (...args) => ensureStore().then(store => store && store.setUserContainer?.(...args)),
+                    reset: (...args) => ensureStore().then(store => store && store.reset?.(...args)),
+                    saveContainerId: (...args) => ensureStore().then(store => store && store.saveContainerId?.(...args)),
+                    saveContainerIdToServer: (...args) => ensureStore().then(store => store && store.saveContainerIdToServer?.(...args)),
+                    getDefaultContainerId: (...args) => ensureStore().then(store => store && store.getDefaultContainerId?.(...args)),
+                };
+
+                Object.defineProperty(placeholder, "userContainer", {
+                    get() {
+                        return realStore ? realStore.userContainer : null;
+                    },
+                    set(value) {
+                        ensureStore().then(store => {
+                            if (store) {
+                                store.userContainer = value;
+                            }
+                        });
+                    },
+                    configurable: true,
+                    enumerable: true,
+                });
+
+                Object.defineProperty(placeholder, "ucVersion", {
+                    get() {
+                        return realStore ? realStore.ucVersion : 0;
+                    },
+                    configurable: true,
+                    enumerable: true,
+                });
+
+                w.__FIRESTORE_STORE__ = placeholder;
+                g.__FIRESTORE_STORE__ = placeholder;
+                ensureStore().catch(() => {
+                    // errors already logged in ensureStore
+                });
+            })();
+        </script>
         <script>
             // Hydration後に本物のToolbarが生成されたら、プレースホルダーを削除
             (function cleanupPlaceholder(){

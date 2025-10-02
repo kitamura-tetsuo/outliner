@@ -434,6 +434,7 @@ export class Items implements Iterable<Item> {
     addNode(author: string, index?: number): Item {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
+        const existingKeys = this.childrenKeys();
         const value = new Y.Map<any>();
         value.set("id", nodeKey);
         value.set("author", author);
@@ -452,12 +453,17 @@ export class Items implements Iterable<Item> {
         if (index === undefined) {
             this.tree.setNodeOrderToEnd(nodeKey);
         } else {
-            const keys = this.childrenKeys();
-            const clamped = Math.max(0, Math.min(index, keys.length - 1));
-            const target = keys[clamped];
-            if (!target) this.tree.setNodeOrderToEnd(nodeKey);
-            else if (clamped === 0) this.tree.setNodeBefore(nodeKey, target);
-            else this.tree.setNodeAfter(nodeKey, keys[clamped - 1]!);
+            const normalized = Math.max(0, index);
+
+            if (existingKeys.length === 0) {
+                this.tree.setNodeOrderToEnd(nodeKey);
+            } else if (normalized <= 0) {
+                this.tree.setNodeBefore(nodeKey, existingKeys[0]!);
+            } else if (normalized >= existingKeys.length) {
+                this.tree.setNodeOrderToEnd(nodeKey);
+            } else {
+                this.tree.setNodeAfter(nodeKey, existingKeys[normalized - 1]!);
+            }
         }
 
         return new Item(this.ydoc, this.tree, nodeKey);

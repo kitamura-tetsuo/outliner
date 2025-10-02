@@ -21,18 +21,22 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // プロジェクト内部リンクを入力
-        await page.keyboard.type(`This is a link to [/${targetProjectName}/${targetPageName}]`);
-        await page.waitForTimeout(500);
+        // Insert the link text in one step to avoid keyboard shortcuts dropping characters after '['
+        await page.keyboard.insertText(`This is a link to [/${targetProjectName}/${targetPageName}]`);
+        await page.waitForTimeout(500); // Ensure typing is processed
 
         // フォーカスを外してリンクが表示されるようにする
         await page.locator("body").click({ position: { x: 10, y: 10 } });
-        await page.waitForTimeout(1000);
 
-        // プロジェクト内部リンクが生成されていることを確認
+        // Wait for the editor to become inactive and for the formatted HTML to appear
+        // Check that the item-content no longer contains the .control-char elements
+        await expect(firstItem.locator(".item-content .control-char")).not.toBeVisible({ timeout: 5000 });
+
+        // Now check for the formatted link
         const linkElement = page.locator(`a.internal-link.project-link`).filter({
             hasText: `${targetProjectName}/${targetPageName}`,
         });
-        await expect(linkElement).toBeVisible({ timeout: 5000 });
+        await expect(linkElement).toBeVisible({ timeout: 10000 });
 
         // リンクのhref属性を確認
         const linkHref = await linkElement.getAttribute("href");

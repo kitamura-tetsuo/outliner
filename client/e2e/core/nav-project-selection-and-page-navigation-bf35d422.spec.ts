@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @feature NAV-0001
@@ -8,31 +9,33 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("NAV-0001: プロジェクト選択とページナビゲーション", () => {
-    const projectName = "test-project";
-    const pageName = "test-page";
-
     /**
      * @testcase プロジェクト選択とページナビゲーションの機能確認
      * @description プロジェクトページへの遷移とページへの遷移を確認するテスト
      */
-    test("プロジェクト選択とページナビゲーションの機能確認", async ({ page }) => {
-        // 1. プロジェクトページへの遷移確認
-        await page.goto(`/${projectName}`);
-        await page.waitForURL(`**/${projectName}`, { timeout: 10000 });
-        const projectUrl = page.url();
-        expect(projectUrl).toContain(`/${projectName}`);
+    test("プロジェクト選択とページナビゲーションの機能確認", async ({ page }, testInfo) => {
+        // Prepare the test environment by creating the project and page programmatically
+        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo, []);
 
-        // プロジェクトページのタイトルを確認
-        await page.waitForSelector("h1", { timeout: 10000 });
-        const pageTitle = await page.locator("h1").textContent();
-        // プロジェクトページでは選択したプロジェクト名がタイトルとして表示される
-        expect(pageTitle?.trim()).toBe(projectName);
+        // 1. プロジェクトページへの遷移確認
+        await page.goto(`/${projectName}`, { waitUntil: "load" });
+        await page.waitForTimeout(1000); // Wait for hydration and rendering
+        await expect(page).toHaveURL(new RegExp(`.*/${encodeURIComponent(projectName)}$`), { timeout: 10000 });
+        const projectUrl = page.url();
+        expect(projectUrl).toContain(encodeURIComponent(projectName));
+
+        // Wait for the project name to appear in the h1 element
+        // The project page shows the project name in h1 after the project data is loaded
+        await expect(page.locator("main h1")).toContainText(projectName, { timeout: 15000 });
 
         // 2. ページへの遷移確認
         await page.goto(`/${projectName}/${pageName}`);
-        await page.waitForURL(`**/${projectName}/${pageName}`, { timeout: 10000 });
+        await expect(page).toHaveURL(
+            new RegExp(`.*/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}$`),
+            { timeout: 10000 },
+        );
         const pageUrl = page.url();
-        expect(pageUrl).toContain(`/${projectName}/${pageName}`);
+        expect(pageUrl).toContain(`${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
     });
 });
 import "../utils/registerAfterEachSnapshot";

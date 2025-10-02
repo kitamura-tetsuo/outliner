@@ -15,30 +15,56 @@ test.describe("Box selection feedback", () => {
     });
 
     test("selection-box-updating class removed after timeout", async ({ page }) => {
+        // Create content first like other working tests do
+        await page.locator(".outliner-item").first().click();
+        await page.keyboard.type("First line of text");
+
+        // Enterキーを押して新しいアイテムを作成
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Second line of text");
+
+        // Enterキーを押して新しいアイテムを作成
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Third line of text");
+
+        // Get the first item to make sure we have a cursor position
         const firstItemId = await page.evaluate(() => {
             const el = document.querySelector(".outliner-item");
             return el?.getAttribute("data-item-id") || "";
         });
         expect(firstItemId).not.toBe("");
 
-        await page.evaluate((itemId) => {
-            const store = (window as any).editorOverlayStore;
-            if (store) {
-                store.clearCursorAndSelection("local");
-                store.setCursor({ itemId, offset: 0, isActive: true, userId: "local" });
-            }
-        }, firstItemId);
+        // Focus the global textarea and position cursor in the first item
+        await page.locator(".outliner-item").first().click();
+        await page.keyboard.press("Home"); // Go to start of line
+        await page.locator(".global-textarea").focus();
+        await page.waitForTimeout(200);
 
+        // Enable debug mode to help troubleshoot
         await page.evaluate(() => {
-            const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
-            const event = new KeyboardEvent("keydown", {
-                key: "ArrowRight",
-                altKey: true,
-                shiftKey: true,
-            });
-            KeyEventHandler.handleBoxSelection(event);
+            (window as any).DEBUG_MODE = true;
         });
 
+        // Trigger box selection using keyboard shortcut - this should initiate box selection properly
+        await page.keyboard.press("Alt+Shift+ArrowRight");
+        await page.waitForTimeout(200); // Allow time for DOM update before checking
+
+        // Wait for the .selection-box elements to appear first
+        await expect.poll(async () => {
+            const count = await page.locator(".selection-box").count();
+            console.log(`Selection box count: ${count}`);
+            return count;
+        }, { timeout: 10000 }).toBeGreaterThan(0);
+
+        // Wait for the .selection-box-updating class to appear, which should happen
+        // after the selection boxes are rendered and the class is added by KeyEventHandler
+        await expect.poll(async () => {
+            const count = await page.locator(".selection-box-updating").count();
+            console.log(`Selection box updating count: ${count}`);
+            return count;
+        }, { timeout: 10000 }).toBeGreaterThan(0);
+
+        // Check that the .selection-box-updating class appears (the main assertion of this test)
         const updatingInitial = await page.locator(".selection-box-updating").count();
         expect(updatingInitial).toBeGreaterThan(0);
 

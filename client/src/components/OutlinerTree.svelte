@@ -261,106 +261,161 @@ function handleToggleCollapse(event: CustomEvent) {
 }
 
 function handleIndent(event: CustomEvent) {
-    // ページタイトルの場合は無視
-    if (event.detail.itemId === "page-title") return;
+    const itemId: string | undefined = event?.detail?.itemId;
+    if (!itemId || itemId === "page-title") return;
 
-    // インデントを増やす処理
-    const { itemId } = event.detail;
-
-    // 元のアイテムを取得
     const itemViewModel = viewModel.getViewModel(itemId);
     if (!itemViewModel) return;
 
-    const item = itemViewModel.original;
-
-    logger.info("Indent event received for item:", item);
-
-    // 1. アイテムの親を取得
-    const parent = Tree.parent(item);
-    if (!Tree.is(parent, Items)) return;
-
-    // 2. 親内でのアイテムのインデックスを取得
-    const index = parent.indexOf(item);
-    if (index <= 0) return; // 最初のアイテムはインデントできない
-
-    // 3. 前のアイテムを取得
-    const previousItem = parent[index - 1];
+    const item = itemViewModel.original as any;
+    const tree = item?.tree as any;
+    const doc = item?.ydoc as any;
+    const key = item?.key as string | undefined;
 
     try {
-        // 4. 前のアイテムの子リストへアイテムを移動
-        // itemIndexが確実に取得できるようにインデックスを再計算
-        const itemIndex = parent.indexOf(item);
+        console.log("handleIndent debug", {
+            itemId,
+            hasTree: Boolean(tree),
+            hasDoc: Boolean(doc),
+            key,
+            treeType: tree?.constructor?.name,
+        });
+    } catch {}
 
-        // 移動操作の前にログを追加
-        logger.info(
-            `Moving item from parent (${parent.length} items) at index ${itemIndex} to previous item's children`,
-        );
-
-        // 厳密なトランザクション処理を行う
-        const prevItems = previousItem.items;
-        if (prevItems && Tree.is(prevItems, Items)) {
-            Tree.runTransaction(parent, () => {
-                // 型キャストを使用してTypeScriptエラーを回避
-                (prevItems as any).moveRangeToEnd(itemIndex, itemIndex + 1, parent);
-            });
-
-            logger.info(`Indented item under previous item`);
+    if (!tree || !doc || !key || typeof tree.getNodeParentFromKey !== "function") {
+        if (typeof logger.warn === "function") {
+            logger.warn({ itemId }, "Indent skipped: missing tree context");
         }
+        return;
     }
-    catch (error) {
-        console.error("Failed to indent item:", error);
+
+    const parentKey = tree.getNodeParentFromKey(key);
+    if (!parentKey) return;
+
+    const siblingKeys: string[] = tree.sortChildrenByOrder(
+        tree.getNodeChildrenFromKey(parentKey),
+        parentKey,
+    );
+
+    const siblingOrder = [...siblingKeys];
+    const currentIndex = siblingOrder.indexOf(key);
+    try {
+        console.log(
+            "handleIndent parent info",
+            JSON.stringify({ itemId, parentKey, siblingOrder, currentIndex }),
+        );
+    } catch {}
+
+    if (currentIndex <= 0) return; // 先頭はインデント不可
+
+    const targetParentKey = siblingOrder[currentIndex - 1];
+    try {
+        console.log(
+            "handleIndent moving",
+            JSON.stringify({ itemId, targetParentKey, currentIndex }),
+        );
+    } catch {}
+    if (!targetParentKey) return;
+
+    const run = () => {
+        tree.moveChildToParent(key, targetParentKey);
+        tree.setNodeOrderToEnd(key);
+    };
+
+    if (typeof doc.transact === "function") {
+        doc.transact(run, "mobile-indent");
+    } else {
+        run();
     }
+
+    try {
+        console.log(
+            "handleIndent new parent",
+            JSON.stringify({ itemId, newParent: tree.getNodeParentFromKey(key) }),
+        );
+    } catch {}
+
+    logger.info({ itemId, targetParentKey }, "Indented item under previous sibling");
+    editorOverlayStore.setActiveItem(itemId);
 }
 
 function handleUnindent(event: CustomEvent) {
-    // ページタイトルの場合は無視
-    if (event.detail.itemId === "page-title") return;
+    const itemId: string | undefined = event?.detail?.itemId;
+    if (!itemId || itemId === "page-title") return;
 
-    // インデントを減らす処理
-    const { itemId } = event.detail;
-
-    // 元のアイテムを取得
     const itemViewModel = viewModel.getViewModel(itemId);
     if (!itemViewModel) return;
 
-    const item = itemViewModel.original;
+    const item = itemViewModel.original as any;
+    const tree = item?.tree as any;
+    const doc = item?.ydoc as any;
+    const key = item?.key as string | undefined;
 
-    logger.info("Unindent event received for item:", item);
+    if (!tree || !doc || !key || typeof tree.getNodeParentFromKey !== "function") {
+        if (typeof logger.warn === "function") {
+            logger.warn({ itemId }, "Unindent skipped: missing tree context");
+        }
+        return;
+    }
 
-    // 1. アイテムの親を取得
-    const parentList = Tree.parent(item);
-    if (!Tree.is(parentList, Items)) return;
+    const parentKey = tree.getNodeParentFromKey(key);
+    if (!parentKey || parentKey === "root") return;
 
-    // 2. 親の親を取得（親グループを取得）
-    const parentItem = Tree.parent(parentList);
-    if (!parentItem || !Tree.is(parentItem, Item)) return; // ルートアイテムの直下は既に最上位
+    const grandParentKey = tree.getNodeParentFromKey(parentKey);
+    if (!grandParentKey) return;
 
-    const grandParentList = Tree.parent(parentItem);
-    if (!grandParentList || !Tree.is(grandParentList, Items)) return; // ルートアイテムの直下は既に最上位
+    const run = () => {
+        tree.moveChildToParent(key, grandParentKey);
+        tree.setNodeAfter(key, parentKey);
+    };
 
-    try {
-        // 3. 親アイテムのindex取得
-        const parentIndex = grandParentList.indexOf(parentItem);
+    if (typeof doc.transact === "function") {
+        doc.transact(run, "mobile-unindent");
+    } else {
+        run();
+    }
 
-        // 4. 親の親の、親の次の位置にアイテムを移動
-        const itemIndex = parentList.indexOf(item);
+    logger.info({ itemId, parentKey, grandParentKey }, "Unindented item to parent level");
+    editorOverlayStore.setActiveItem(itemId);
+}
 
-        // parentListの要素をgrandParentListに移動
-        const sourceItem = parentList[itemIndex];
-        if (sourceItem) {
-            // readonly array型に適合するようコピー
-            const targetArray = grandParentList as any;
+let lastToolbarItemId: string | null = null;
 
-            Tree.runTransaction(grandParentList, () => {
-                targetArray.moveRangeToIndex(parentIndex + 1, itemIndex, itemIndex + 1, parentList);
-            });
+function resolveActiveItemId(): string | null {
+    const fromStore = editorOverlayStore.getActiveItem();
+    if (fromStore) {
+        lastToolbarItemId = fromStore;
+        return fromStore;
+    }
 
-            logger.info("Unindented item to parent level");
+    const cursorCandidates = Object.values(editorOverlayStore.cursors ?? {});
+    const activeCursor = cursorCandidates.find(cursor => cursor?.isActive && cursor.itemId);
+    if (activeCursor?.itemId) {
+        lastToolbarItemId = activeCursor.itemId;
+        return activeCursor.itemId;
+    }
+
+    if (typeof document !== "undefined") {
+        const focused = document.activeElement as HTMLElement | null;
+        const itemContainer = focused?.closest?.("[data-item-id]") as HTMLElement | null;
+        const fallbackId = itemContainer?.getAttribute("data-item-id");
+        if (fallbackId) {
+            lastToolbarItemId = fallbackId;
+            return fallbackId;
         }
     }
-    catch (error) {
-        console.error("Failed to unindent item:", error);
+
+    if (lastToolbarItemId) {
+        try {
+            console.log("resolveActiveItemId: using last known id", lastToolbarItemId);
+        } catch {}
+        return lastToolbarItemId;
     }
+
+    try {
+        console.log("resolveActiveItemId: no active item");
+    } catch {}
+    return null;
 }
 
 // デバッグモードはローカルストレージのフラグで手動有効化（スパム防止のためデフォルトOFF）
@@ -1026,6 +1081,13 @@ function updateDragSelection() {
 function handleItemDrop(event: CustomEvent) {
     const { targetItemId, position, text, selection, sourceItemId } = event.detail;
 
+    try {
+        const w: any = typeof window !== 'undefined' ? (window as any) : null;
+        if (w && Array.isArray(w.E2E_LOGS)) {
+            w.E2E_LOGS.push({ tag: 'handleItemDrop', targetItemId, position, sourceItemId, selection: selection ? 'yes' : 'no', t: Date.now() });
+        }
+    } catch {}
+
     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
         console.log(`Drop event: targetItemId=${targetItemId}, position=${position}, sourceItemId=${sourceItemId}`);
         console.log(`Text: "${text}"`);
@@ -1305,50 +1367,39 @@ function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position
     }
 
     const items = pageItem.items as Items;
-
-    // ソースアイテムを取得
     const sourceItem = displayItems[sourceIndex].model.original;
-    const sourceText = sourceItem.text || '';
+    const targetItem = displayItems[targetIndex].model.original;
 
-    // ターゲットの位置を計算
-    let targetPosition = targetIndex;
-    if (position === 'bottom') {
-        targetPosition = targetIndex + 1;
-    }
+    const sourceKey = sourceItem.key!;
+    const targetKey = targetItem.key!;
 
-    // ソースアイテムがターゲットより前にある場合、ターゲット位置を調整
-    if (sourceIndex < targetPosition) {
-        targetPosition--;
-    }
-
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-        console.log(`Moving item from index ${sourceIndex} to index ${targetPosition}`);
-    }
-
-    // アイテムを移動
     try {
-        // ソースアイテムを削除
-        items.removeAt(sourceIndex);
+        const w: any = typeof window !== 'undefined' ? (window as any) : null;
+        if (w && Array.isArray(w.E2E_LOGS)) {
+            w.E2E_LOGS.push({ tag: 'handleItemMoveDrop', source: sourceItemId, target: targetItemId, position, t: Date.now() });
+        }
+    } catch {}
 
-        // 新しい位置にアイテムを追加
-        items.addNode(currentUser, targetPosition);
-        const newItem = items[targetPosition];
-        if (newItem) {
-            newItem.text = sourceText;
+    try {
+        if (position === 'top') {
+            items.tree.setNodeBefore(sourceKey, targetKey);
+        } else if (position === 'bottom') {
+            items.tree.setNodeAfter(sourceKey, targetKey);
+        } else {
+            items.tree.setNodeAfter(sourceKey, targetKey);
         }
 
-        // カーソル位置を更新
+        // Ensure derived display list re-renders after order-only updates (Y.Tree order changes don't emit observeDeep events reliably)
+        __displayItemsTick = Date.now();
+
         editorOverlayStore.setCursor({
-            itemId: newItem.id,
+            itemId: sourceItemId,
             offset: 0,
             isActive: true,
             userId: 'local'
         });
 
-        // アクティブアイテムを設定
-        editorOverlayStore.setActiveItem(newItem.id);
-
-        // 選択範囲をクリア
+        editorOverlayStore.setActiveItem(sourceItemId);
         editorOverlayStore.clearSelections();
     } catch (error) {
         console.error('Failed to move item:', error);
@@ -1507,7 +1558,121 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
 
 {/key}
 
+<!-- Mobile Action Toolbar (appears on mobile devices when needed) -->
+<div class="mobile-action-toolbar" data-testid="mobile-action-toolbar" role="toolbar" aria-label="Mobile Action Toolbar">
+        <button
+            class="mobile-toolbar-btn"
+            aria-label="Indent"
+            title="Indent"
+            onclick={() => {
+                const activeItemId = resolveActiveItemId();
+                if (!activeItemId) return;
+                editorOverlayStore.setActiveItem(activeItemId);
+                const mockEvent = { detail: { itemId: activeItemId } } as CustomEvent;
+                handleIndent(mockEvent);
+            }}
+        >
+            ➤
+        </button>
+        <button
+            class="mobile-toolbar-btn"
+            aria-label="Outdent"
+            title="Outdent"
+            onclick={() => {
+                const activeItemId = resolveActiveItemId();
+                if (!activeItemId) return;
+                editorOverlayStore.setActiveItem(activeItemId);
+                const mockEvent = { detail: { itemId: activeItemId } } as CustomEvent;
+                handleUnindent(mockEvent);
+            }}
+        >
+            ←
+        </button>
+        <button
+            class="mobile-toolbar-btn"
+            aria-label="Insert Above"
+            title="Insert Above"
+            onclick={() => {
+                const activeItemId = resolveActiveItemId();
+                if (!activeItemId) return;
+                editorOverlayStore.setActiveItem(activeItemId);
+                const mockEvent = { detail: { itemId: activeItemId, position: "above" } } as CustomEvent;
+                handleAddSibling(mockEvent);
+            }}
+        >
+            ↑
+        </button>
+        <button
+            class="mobile-toolbar-btn"
+            aria-label="Insert Below"
+            title="Insert Below"
+            onclick={() => {
+                const activeItemId = resolveActiveItemId();
+                if (!activeItemId) return;
+                editorOverlayStore.setActiveItem(activeItemId);
+                const mockEvent = { detail: { itemId: activeItemId, position: "below" } } as CustomEvent;
+                handleAddSibling(mockEvent);
+            }}
+        >
+            ↓
+        </button>
+        <button
+            class="mobile-toolbar-btn"
+            aria-label="New Child"
+            title="New Child"
+            onclick={() => {
+                const activeItemId = resolveActiveItemId();
+                if (!activeItemId) return;
+                editorOverlayStore.setActiveItem(activeItemId);
+                const mockEvent = { detail: { itemId: activeItemId, position: "child" } } as CustomEvent;
+                handleAddSibling(mockEvent);
+            }}
+        >
+            +
+        </button>
+</div>
+
 <style>
+    /* Mobile Action Toolbar */
+    .mobile-action-toolbar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: none; /* Hidden by default */
+        background: white;
+        border-top: 1px solid #ddd;
+        padding: 8px;
+        z-index: 1000;
+        justify-content: space-around;
+        align-items: center;
+        height: 50px;
+    }
+
+    .mobile-toolbar-btn {
+        background: #f0f0f0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+    }
+
+    .mobile-toolbar-btn:hover {
+        background: #e0e0e0;
+    }
+
+    /* Show mobile toolbar only on small screens */
+    @media (max-width: 768px) {
+        .mobile-action-toolbar {
+            display: flex;
+        }
+    }
 
 .outliner {
     background: white;

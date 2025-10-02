@@ -115,10 +115,14 @@ class GeneralStore {
 }
 // 2重ロード対策: 既存のグローバルがあればそれを使う
 const __tmpStore = $state(new GeneralStore());
-const __existingStore = typeof window !== "undefined"
+const existingCandidate = typeof window !== "undefined"
     ? (window as any).__FIRESTORE_STORE__
     : (globalThis as any).__FIRESTORE_STORE__;
-export const firestoreStore = (__existingStore ?? __tmpStore) as typeof __tmpStore;
+const shouldReuseExisting = typeof existingCandidate === "object"
+    && existingCandidate !== null
+    && existingCandidate.__isRealFirestoreStore === true;
+export const firestoreStore = (shouldReuseExisting ? existingCandidate : __tmpStore) as typeof __tmpStore;
+(firestoreStore as any).__isRealFirestoreStore = true;
 
 // テスト環境ではグローバルに公開してE2Eから制御できるようにする
 if (typeof window !== "undefined") {

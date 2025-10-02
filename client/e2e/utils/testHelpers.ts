@@ -419,6 +419,17 @@ export class TestHelpers {
                         const gs = (window as any).generalStore || (window as any).appStore;
                         const proj = gs?.project;
                         if (!proj) return { error: "project not initialized" };
+
+                        // For tree validation, if there's a current page, return its items
+                        // Otherwise return the project root items (pages)
+                        const currentPage = gs?.currentPage;
+                        let root;
+                        if (currentPage && currentPage.items) {
+                            root = currentPage.items;
+                        } else {
+                            root = proj.items as any;
+                        }
+
                         const toPlain = (item: any): any => {
                             const children = item.items as any;
                             const asArray: any[] = [];
@@ -430,7 +441,7 @@ export class TestHelpers {
                             const textVal = item.text?.toString?.() ?? String(item.text ?? "");
                             return { id: String(item.id), text: textVal, items: asArray };
                         };
-                        const root = proj.items as any;
+
                         const result: any[] = [];
                         const len = root?.length ?? 0;
                         for (let i = 0; i < len; i++) {

@@ -62,6 +62,13 @@ export class CursorEditor {
 
         cursor.applyToStore();
         store.triggerOnEdit();
+
+        // Ensure the global textarea is in sync with the Yjs document state
+        const textarea = store.getTextareaRef();
+        if (textarea) {
+            textarea.value = node.text?.toString?.() ?? "";
+            textarea.setSelectionRange(cursor.offset, cursor.offset);
+        }
     }
 
     deleteBackward() {
@@ -96,10 +103,21 @@ export class CursorEditor {
                 cursor.offset = Math.max(0, cursor.offset - 1);
             } else {
                 this.mergeWithPreviousItem();
+                return; // Early return after merge since it handles its own state updates
             }
         }
 
+        // Ensure the global textarea is in sync with the Yjs document state
+        // before applying the cursor position and triggering edit
+        const textarea = store.getTextareaRef();
+        if (textarea) {
+            textarea.value = node.text?.toString?.() ?? "";
+            textarea.setSelectionRange(cursor.offset, cursor.offset);
+        }
+
         cursor.applyToStore();
+
+        // Trigger edit to ensure UI updates properly
         store.triggerOnEdit();
     }
 
@@ -145,7 +163,7 @@ export class CursorEditor {
 
         const textarea = store.getTextareaRef();
         if (textarea) {
-            textarea.value = node.text;
+            textarea.value = node.text?.toString?.() ?? "";
             textarea.setSelectionRange(cursor.offset, cursor.offset);
         }
     }
@@ -355,19 +373,111 @@ export class CursorEditor {
         const prevItem = findPreviousItem(cursor.itemId);
         if (!prevItem) return;
 
-        const prevText = prevItem.text || "";
-        const currentText = currentItem.text || "";
-        prevItem.updateText(prevText + currentText);
-
-        currentItem.delete();
+        const prevText = this.getPlainText(prevItem);
+        const currentText = this.getPlainText(currentItem);
+        const combinedText = `${prevText}${currentText}`;
 
         const oldItemId = cursor.itemId;
-        cursor.itemId = prevItem.id;
-        cursor.offset = prevText.length;
+        const prevId = (prevItem as any)?.id ?? cursor.itemId;
+        const newOffset = prevText.length;
 
+        this.runInTransaction([prevItem, currentItem], () => {
+            this.updateItemText(prevItem, combinedText);
+            this.deleteItemNode(currentItem);
+        });
+
+        cursor.itemId = prevId;
+        cursor.offset = newOffset;
+
+        cursor.applyToStore();
         store.clearCursorForItem(oldItemId);
         store.setActiveItem(cursor.itemId);
         store.startCursorBlink();
+    }
+
+    private getPlainText(item: any): string {
+        if (!item) return "";
+        const textValue = (item as any).text;
+        if (typeof textValue === "string") return textValue;
+        if (textValue && typeof textValue.toString === "function") {
+            try {
+                return textValue.toString();
+            } catch {}
+        }
+        if (typeof (item as any).getText === "function") {
+            try {
+                const result = (item as any).getText();
+                if (typeof result === "string") return result;
+            } catch {}
+        }
+        return "";
+    }
+
+    private updateItemText(item: any, text: string) {
+        if (!item) return;
+        if (typeof item.updateText === "function") {
+            item.updateText(text);
+            return;
+        }
+
+        const tree = (item as any)?.tree;
+        const key = (item as any)?.key ?? (item as any)?.id;
+        if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
+
+        const value = tree.getNodeValueFromKey(key);
+        const yText = value?.get?.("text");
+        try {
+            if (yText && typeof yText.delete === "function" && typeof yText.insert === "function") {
+                yText.delete(0, yText.length);
+                if (text) yText.insert(0, text);
+            } else if (value && typeof value.set === "function") {
+                value.set("text", text);
+            }
+            if (value && typeof value.set === "function") {
+                value.set("lastChanged", Date.now());
+            }
+        } catch {}
+    }
+
+    private deleteItemNode(item: any) {
+        if (!item) return;
+        if (typeof item.delete === "function") {
+            item.delete();
+            return;
+        }
+
+        const key = (item as any)?.key ?? (item as any)?.id;
+        if (!key) return;
+
+        const treeCandidates = [
+            (item as any)?.tree,
+            (item as any)?.parent?.tree,
+            (generalStore as any)?.project?.tree,
+        ];
+
+        for (const tree of treeCandidates) {
+            if (tree && typeof tree.deleteNodeAndDescendants === "function") {
+                try {
+                    tree.deleteNodeAndDescendants(key);
+                    return;
+                } catch {}
+            }
+        }
+    }
+
+    private runInTransaction(participants: any[], action: () => void) {
+        const doc = participants
+            .map(item => (item as any)?.ydoc)
+            .find(candidate => candidate && typeof candidate.transact === "function");
+
+        if (doc) {
+            try {
+                doc.transact(action);
+                return;
+            } catch {}
+        }
+
+        action();
     }
 
     private mergeWithNextItem() {

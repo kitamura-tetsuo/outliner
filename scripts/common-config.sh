@@ -19,6 +19,16 @@ if [ -n "${ROOT_DIR:-}" ] && [ -f "${ROOT_DIR}/firebase.emulator.json" ]; then
   ST_FROM_CFG=$(node -e 'try{const c=require(process.argv[1]);console.log(c.emulators.storage.port)}catch{process.exit(1)}' "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || true)
 fi
 
+# Check if we're running in a test context before setting defaults
+# If VITE_IS_TEST is already set, we're in test environment
+if [ "${VITE_IS_TEST:-}" = "true" ] || [ "${NODE_ENV:-}" = "test" ]; then
+    # For test environment, use test-project-id as default if not already set by .env files
+    : "${FIREBASE_PROJECT_ID:=test-project-id}"
+else
+    # For non-test environments, use the default production project ID
+    : "${FIREBASE_PROJECT_ID:=outliner-d57b0}"
+fi
+
 # Firebase emulator ports (defaults fall back to config when present)
 : "${FIREBASE_AUTH_PORT:=${AUTH_FROM_CFG:-59099}}"
 : "${FIREBASE_FIRESTORE_PORT:=${FS_FROM_CFG:-58080}}"
