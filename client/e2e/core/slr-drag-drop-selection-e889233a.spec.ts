@@ -6,9 +6,22 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        await page.evaluate(() => {
+    test.beforeEach(async ({ page, context }, testInfo) => {
+        // クリップボードの権限を付与
+        await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+        await page.evaluate(async () => {
             (window as any).DEBUG_MODE = true;
+            // 他のテストの影響を受けないようにグローバル変数をクリア
+            delete (window as any).lastCopiedText;
+            delete (window as any).lastPastedText;
+
+            // navigator.clipboard もクリア
+            try {
+                await navigator.clipboard.writeText("");
+            } catch (e) {
+                console.log("Failed to clear clipboard:", e);
+            }
         });
         await TestHelpers.prepareTestEnvironment(page, testInfo);
         await page.evaluate(() => {

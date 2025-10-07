@@ -760,6 +760,15 @@ function handleCopy(event: ClipboardEvent) {
       clipboardRef.value = selectedText;
     }
 
+    // navigator.clipboard API にも書き込む（テスト環境での互換性のため）
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(selectedText).catch((err) => {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+          console.log(`Failed to write to navigator.clipboard: ${err}`);
+        }
+      });
+    }
+
     // デバッグ情報
     if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
       console.log(`Clipboard updated with: "${selectedText}"`);
