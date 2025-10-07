@@ -713,10 +713,10 @@ export class ScrapboxFormatter {
             '<span class="control-char">$1</span><span class="control-char">$2</span><s>$3</s><span class="control-char">$4</span>',
         );
 
-        // 下線
+        // 下線 (HTML escaped version)
         html = html.replace(
-            /(<u>)(.*?)(<\/u>)/g,
-            '<span class="control-char">$1</span><u>$2</u><span class="control-char">$3</span>',
+            /(&lt;u&gt;)(.*?)(&lt;\/u&gt;)/g,
+            '<span class="control-char">&lt;u&gt;</span><u>$2</u><span class="control-char">&lt;/u&gt;</span>',
         );
 
         // 斜体 - スペース必須: [/ テキスト]

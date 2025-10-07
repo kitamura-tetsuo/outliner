@@ -871,7 +871,7 @@ export class Cursor implements CursorEditingContext {
     }
 
     // 選択範囲を上に拡張
-    extendSelectionUp() {
+    extendSelectionUp(): void {
         const target = this.findTarget();
         if (!target) return;
 

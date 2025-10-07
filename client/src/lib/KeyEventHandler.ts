@@ -1945,6 +1945,128 @@ export class KeyEventHandler {
             }
         }
     }
+
+    /**
+     * カットイベントを処理する
+     * @param event ClipboardEvent
+     */
+    static handleCut(event: ClipboardEvent) {
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`KeyEventHandler.handleCut called`);
+        }
+
+        // 選択範囲がない場合は何もしない
+        const selections = Object.values(store.selections);
+        if (selections.length === 0) return;
+
+        // ブラウザのデフォルトカット動作を防止
+        event.preventDefault();
+
+        // 矩形選択かどうかを確認
+        const boxSelection = selections.find(sel => sel.isBoxSelection);
+
+        // 選択範囲のテキストを取得
+        let selectedText = "";
+        let isBoxSelectionCut = false;
+
+        if (boxSelection) {
+            // 矩形選択の場合
+            selectedText = store.getBoxSelectionText("local");
+            isBoxSelectionCut = true;
+
+            // デバッグ情報
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Box selection text: "${selectedText}"`);
+            }
+        } else {
+            // 通常の選択範囲の場合
+            selectedText = store.getSelectedText("local");
+
+            // デバッグ情報
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Selected text from store: "${selectedText}"`);
+            }
+        }
+
+        // 選択範囲のテキストが取得できた場合
+        if (selectedText) {
+            try {
+                // クリップボードに書き込み
+                if (event.clipboardData) {
+                    // プレーンテキストを設定
+                    event.clipboardData.setData("text/plain", selectedText);
+
+                    // VS Code互換のメタデータを追加
+                    if (isBoxSelectionCut) {
+                        try {
+                            // VS Codeの矩形選択メタデータ形式
+                            const vscodeMetadata = {
+                                isFromEmptySelection: false,
+                                mode: "plaintext",
+                                multicursorText: selectedText.split(/\r?\n/),
+                                pasteMode: "spread",
+                            };
+
+                            // メタデータをJSON文字列に変換
+                            const metadataJson = JSON.stringify(vscodeMetadata);
+
+                            // VS Code互換のメタデータを設定
+                            event.clipboardData.setData("application/vscode-editor", metadataJson);
+
+                            // デバッグ情報
+                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                console.log(`VS Code metadata added:`, vscodeMetadata);
+                            }
+                        } catch (error) {
+                            // メタデータの設定に失敗した場合はログに出力
+                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                console.error(`Failed to set VS Code metadata:`, error);
+                            }
+                        }
+                    }
+                }
+
+                // グローバル変数に保存（テスト用）
+                if (typeof window !== "undefined") {
+                    (window as any).lastCopiedText = selectedText;
+                    (window as any).lastCopiedIsBoxSelection = isBoxSelectionCut;
+                }
+
+                // フォールバック: execCommandを使用してコピー
+                const textarea = document.createElement("textarea");
+                textarea.value = selectedText;
+                textarea.style.position = "absolute";
+                textarea.style.left = "-9999px";
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textarea);
+
+                // デバッグ情報
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(`Clipboard updated with: "${selectedText}" (using execCommand fallback)`);
+                }
+            } catch (error) {
+                // エラーが発生した場合はログに出力
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.error(`Error in handleCut:`, error);
+                }
+            }
+        }
+
+        // 選択範囲のテキストを削除（カット操作の本質）
+        if (selectedText) {
+            const cursorInstances = store.getCursorInstances();
+            cursorInstances.forEach(cursor => {
+                // 選択範囲を削除（カット操作）
+                cursor.cutSelectedText();
+            });
+
+            // 選択範囲をクリア
+            store.clearSelections();
+        }
+    }
 }
 
 // テスト用にKeyEventHandlerをグローバルに公開

@@ -629,11 +629,10 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const single = this.getSingleItemSelection(cursor.itemId);
-        if (!single) return;
+        const { startOffset, endOffset } = normalizeSelectionOffsets(selection);
 
         const text = (target.text && typeof target.text.toString === "function") ? target.text.toString() : "";
-        const selectedText = text.substring(single.startOffset, single.endOffset);
+        const selectedText = text.substring(startOffset, endOffset);
 
         let formattedText = "";
         switch (formatType) {
@@ -654,10 +653,13 @@ export class CursorEditor {
                 break;
         }
 
-        const newText = text.substring(0, single.startOffset) + formattedText + text.substring(single.endOffset);
+        const newText = text.substring(0, startOffset) + formattedText + text.substring(endOffset);
         target.updateText(newText);
 
-        cursor.offset = single.startOffset + formattedText.length;
+        // For underline, ensure the cursor position is correctly set
+        // This addresses a potential issue where the cursor position calculation
+        // might not work correctly with underline tags
+        cursor.offset = startOffset + formattedText.length;
         cursor.applyToStore();
 
         cursor.clearSelection();

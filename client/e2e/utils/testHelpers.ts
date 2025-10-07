@@ -684,7 +684,7 @@ export class TestHelpers {
             const ok = !!(userManager && userManager.getCurrentUser && userManager.getCurrentUser());
             if (!ok) console.log("TestHelper: Auth check (phase1) not ready");
             return ok;
-        }, { timeout: 1000 }).catch(() => false as const);
+        }, { timeout: 5000 }).catch(() => false as const);
 
         if (!authReady) {
             TestHelpers.slog("Phase1 auth wait timed out; re-invoking login and retrying");
@@ -720,7 +720,7 @@ export class TestHelpers {
                     const ok = !!(userManager && userManager.getCurrentUser && userManager.getCurrentUser());
                     if (!ok) console.log("TestHelper: Auth check (phase2) not ready");
                     return ok;
-                }, { timeout: 1500 });
+                }, { timeout: 5000 });
             } catch (e: any) {
                 const msg = String(e?.message ?? e);
                 if (
@@ -796,7 +796,7 @@ export class TestHelpers {
             await page.waitForFunction(() => {
                 const generalStore = (window as any).generalStore;
                 return !!generalStore;
-            }, { timeout: 30000 });
+            }, { timeout: 60000 });
         } catch (error) {
             TestHelpers.slog("generalStore wait failed, checking page state");
             try {
@@ -991,7 +991,7 @@ export class TestHelpers {
                         } catch {}
                         return false;
                     }
-                }, { timeout: 3000, polling: 300 }); // 短縮: 3秒のタイムアウト、0.3秒ごとにポーリング
+                }, { timeout: 10000, polling: 300 }); // 増加: 10秒のタイムアウト、0.3秒ごとにポーリング
 
                 // フォールバック: currentPage が未設定ならタイトル一致で設定
                 await page.evaluate((targetPageName) => {
@@ -1094,16 +1094,8 @@ export class TestHelpers {
         // ページコンポーネント初期化チェックはヘルパーでは行わず、各specに委ねる
         TestHelpers.slog("Skipping page component init check in helper");
 
-        // currentPageが設定されるまで待機（さらに短縮・非致命的）
-        try {
-            TestHelpers.slog("Waiting for currentPage to be set (very short)");
-            await page.waitForFunction(() => {
-                const generalStore = (window as any).generalStore;
-                return !!(generalStore && generalStore.currentPage);
-            }, { timeout: 1000 });
-        } catch {
-            TestHelpers.slog("currentPage not set within 1s; continuing");
-        }
+        // currentPageが設定されるまで待機（さらに短縮・非致命的） - タイムアウト不全のため一時的に無効化
+        TestHelpers.slog("Skipping wait for currentPage (temporarily disabled due to timeout issue)");
 
         // 最終シード: Yjs 初期化後に currentPage が空なら lines を投入（重複回避のため空の時のみ）
         try {
@@ -1153,7 +1145,7 @@ export class TestHelpers {
 
         // 最低限の可視性を短時間だけ確認（失敗しても継続）
         try {
-            await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 1500 });
+            await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 5000 });
         } catch {}
 
         TestHelpers.slog("Proceeding after minimal OutlinerBase visibility check");

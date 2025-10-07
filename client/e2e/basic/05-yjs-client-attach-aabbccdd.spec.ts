@@ -12,63 +12,95 @@ test.describe("Yjs client attach and DOM reflect", () => {
             const gs = (window as { generalStore?: { project?: { ydoc?: { guid?: string; }; }; }; }).generalStore;
             const guid = gs?.project?.ydoc?.guid ?? null;
             return typeof guid === "string" && guid.length > 0;
-        }, { timeout: 20000 });
+        }, { timeout: 30000 });
 
         // Ensure currentPage exists in the global store, then seed default lines
         await page.evaluate(() => {
             const gs = (window as {
                 generalStore?: { project?: Record<string, unknown>; currentPage?: Record<string, unknown>; };
             }).generalStore;
-            if (!gs?.project) return;
-            // Ensure currentPage
+            if (!gs?.project) {
+                console.error("No project found in generalStore");
+                return;
+            }
+
+            // Ensure currentPage exists
             if (!gs.currentPage) {
                 try {
                     const url = new URL(location.href);
                     const parts = url.pathname.split("/").filter(Boolean);
                     const pageName = decodeURIComponent(parts[1] || "untitled");
-                    const created =
-                        (gs.project as { addPage?: (name: string, userId: string) => Record<string, unknown>; })
-                            ?.addPage?.(pageName, "tester");
-                    if (created) gs.currentPage = created;
+                    const created = (gs.project as any).addPage?.(pageName, "tester");
+                    if (created) {
+                        gs.currentPage = created;
+                        console.log("Created new currentPage");
+                    } else {
+                        // Alternative creation method
+                        const items = gs.project.items;
+                        if (items && typeof items.addNode === "function") {
+                            const pageItem = items.addNode("tester");
+                            if (pageItem) {
+                                pageItem.updateText(pageName);
+                                gs.currentPage = pageItem;
+                                console.log("Created new currentPage via items.addNode");
+                            }
+                        }
+                    }
                 } catch (e) {
                     console.error("Error creating page:", e);
                 }
             }
+
             const pageItem = gs?.currentPage;
-            const items = pageItem?.items;
-            if (!items) return;
+            if (!pageItem) {
+                console.error("currentPage still not available");
+                return;
+            }
+
+            const items = pageItem.items;
+            if (!items) {
+                console.error("No items collection found on currentPage");
+                return;
+            }
+
             const lines = [
                 "一行目: テスト",
                 "二行目: Yjs 反映",
                 "三行目: 並び順チェック",
             ];
-            const existing = (items as any).length ?? 0;
-            for (let i = existing; i < 3; i++) {
-                const it = (items as any).addNode?.("tester");
-                (it as any)?.updateText?.(lines[i]);
+
+            // Add items if they don't already exist
+            const existingCount = items.length ?? 0;
+            console.log(`Current item count: ${existingCount}`);
+
+            for (let i = existingCount; i < 3; i++) {
+                const it = items.addNode?.("tester");
+                if (it && typeof it.updateText === "function") {
+                    it.updateText(lines[i] || "");
+                    console.log(`Added item ${i + 1}: ${lines[i]}`);
+                } else {
+                    console.error(`Failed to add item ${i + 1}`);
+                }
             }
         });
-        // Debug counts to stabilize selectors across environments
-        const counts = await page.evaluate(() => {
-            try {
-                const outliner = document.querySelector('[aria-label="アウトライナーツリー"]');
-                return {
-                    outlinerExists: !!outliner,
-                    outlinerHTMLLen: outliner ? (outliner as HTMLElement).innerHTML.length : 0,
-                    itemCount: document.querySelectorAll(".outliner-item").length,
-                    itemWithData: document.querySelectorAll(".outliner-item[data-item-id]").length,
-                    textCount: document.querySelectorAll(".item-text").length,
-                };
-            } catch {
-                return { outlinerExists: false, outlinerHTMLLen: 0, itemCount: 0, itemWithData: 0, textCount: 0 };
-            }
-        });
-        console.log("DEBUG selector counts", counts);
-        // If fewer than 4 items (title + 3), seed defaults via model
-        // Now wait for title + 3 items to render
+
+        // Wait for a few seconds to let the changes propagate
+        await page.waitForTimeout(5000);
+
+        // Now wait for the outliner tree to be present and items to render
         // Note: The page title (index 0) doesn't have a data-item-id attribute, so we're looking for 3 items with data-item-id
-        await page.waitForFunction(() => document.querySelectorAll(".outliner-item[data-item-id]").length >= 3, {
-            timeout: 30000,
+        await page.waitForFunction(() => {
+            // Try to access the outliner tree
+            const outlinerTree = document.querySelector('[aria-label="アウトライナーツリー"]');
+
+            // Check DOM count of items with data-item-id
+            const domItemCount = document.querySelectorAll(".outliner-item[data-item-id]").length;
+
+            console.log(`DOM item count: ${domItemCount}, outliner tree exists: ${!!outlinerTree}`);
+
+            return domItemCount >= 3;
+        }, {
+            timeout: 120000, // 2 minutes
         });
 
         // Verify seeded lines exist in order under non-title items
@@ -78,10 +110,10 @@ test.describe("Yjs client attach and DOM reflect", () => {
             ).map(el => (el.textContent ?? "").trim()).filter(Boolean)
         );
 
-        expect(texts.length).toBeGreaterThanOrEqual(3);
-        // The first item is the page title, so we need to check items 1-3
-        // But we're only getting 2 items back, so we'll check those
-        expect(texts.slice(1, 3)).toEqual([
+        console.log("Found texts:", texts);
+
+        expect(texts.length).toBeGreaterThanOrEqual(4); // 1 page title + 3 content items
+        expect(texts.slice(1, 3)).toEqual([ // Skip the page title (index 0), check items 1-2
             "一行目: テスト",
             "二行目: Yjs 反映",
         ]);

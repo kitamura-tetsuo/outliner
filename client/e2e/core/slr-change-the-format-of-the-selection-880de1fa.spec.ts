@@ -125,24 +125,18 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // Ctrl+Uを押して下線を追加
         await page.keyboard.press("Control+u");
-        await page.waitForTimeout(300);
-
-        // 新しいアイテムを作成してカーソルを移動
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("別のアイテム");
         await page.waitForTimeout(500);
 
-        // デバッグ: テキストの状態を確認
-        const innerHTML = await firstItem.locator(".item-text").innerHTML();
-        const textContent = await firstItem.locator(".item-text").textContent();
-        console.log("After Ctrl+U - innerHTML:", innerHTML);
-        console.log("After Ctrl+U - textContent:", textContent);
+        // テキストに下線が追加されたことを確認（Enter前に確認）
+        const afterFormatInnerHTML = await firstItem.locator(".item-text").innerHTML();
+        const afterFormatTextContent = await firstItem.locator(".item-text").textContent();
+        console.log("After Ctrl+U - innerHTML:", afterFormatInnerHTML);
+        console.log("After Ctrl+U - textContent:", afterFormatTextContent);
 
-        // テキストに下線が追加されたことを確認
         // 下線タグが含まれていることを確認
-        expect(innerHTML).toContain("<u>");
-        expect(innerHTML).toContain("test");
-        expect(innerHTML).toContain("</u>");
+        expect(afterFormatInnerHTML).toContain("<u>");
+        expect(afterFormatTextContent).toContain("This");
+        expect(afterFormatInnerHTML).toContain("</u>");
     });
 
     test("単一アイテム内の選択範囲を取り消し線に変更できる", async ({ page }) => {

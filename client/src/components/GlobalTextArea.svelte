@@ -361,6 +361,11 @@ function handleCopy(event: ClipboardEvent) {
     KeyEventHandler.handleCopy(event);
 }
 
+// カットイベントを KeyEventHandler へ委譲
+function handleCut(event: ClipboardEvent) {
+    KeyEventHandler.handleCut(event);
+}
+
 /**
  * ペーストイベントを KeyEventHandler に委譲する非同期ハンドラ。
  * `KeyEventHandler.handlePaste` は Promise を返すため `await` して
@@ -407,6 +412,7 @@ function handleBlur(_event: FocusEvent) {
     oncompositionupdate={handleCompositionUpdate}
     oncompositionend={handleCompositionEnd}
     oncopy={handleCopy}
+    oncut={handleCut}
     onpaste={async event => {
         try {
             await handlePaste(event);

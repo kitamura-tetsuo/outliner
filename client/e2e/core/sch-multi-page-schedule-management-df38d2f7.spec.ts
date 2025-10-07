@@ -74,7 +74,16 @@ test.describe("Multi-Page Schedule Management", () => {
 
         const encodedPage = encodeURIComponent(pageName);
         await page.goto(`/${encodedProject}/${encodedPage}`);
+
+        // Wait for page to load completely
+        await page.waitForSelector(`text=${pageName}`, { timeout: 10000 });
+
         await page.locator("text=予約管理").click();
+        await expect(page.locator("text=Schedule Management")).toBeVisible();
+
+        // Wait for schedules to load
+        await page.waitForTimeout(2000);
+
         const finalItems = page.locator('[data-testid="schedule-item"]');
         await expect(finalItems).toHaveCount(1);
         await finalItems.first().locator('button:has-text("Cancel")').click();

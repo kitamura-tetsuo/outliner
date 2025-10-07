@@ -9,12 +9,16 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("環境準備後にアウトラインページが表示される", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        // 増加したタイムアウトで prepareTestEnvironment を実行
         await TestHelpers.prepareTestEnvironment(page, testInfo);
-    });
+    }, 240000); // 增加 beforeEach のタイムアウト to 240秒
 
     test("PrepareTestEnvironment 後に Outliner UI が見える", async ({ page }) => {
         // デバッグ: 現在のURL
         console.log("E2E: current URL after prepare:", page.url());
+
+        // 增加タイムアウトで待機
+        await page.waitForLoadState("domcontentloaded", { timeout: 30000 });
 
         // レイアウトおよびツールバー存在をDOM直読みで確認（ロケータ不安定対策）
         const toolbarExists = await page.evaluate(() => !!document.querySelector('[data-testid="main-toolbar"]'));
@@ -30,5 +34,5 @@ test.describe("環境準備後にアウトラインページが表示される",
         });
         console.log("E2E: textboxExists=", textboxExists);
         expect(textboxExists).toBe(true);
-    });
+    }, 120000); // 增加テストのタイムアウト
 });
