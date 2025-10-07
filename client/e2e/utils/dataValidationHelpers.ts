@@ -31,6 +31,12 @@ export class DataValidationHelpers {
         }
     }
     static async saveSnapshotsAndCompare(page: Page, label: string = "default"): Promise<void> {
+        // Wait for the project to be available in the store
+        await page.waitForFunction(() => {
+            const store = (window as any).generalStore || (window as any).appStore;
+            return !!(store && store.project);
+        }, { timeout: 15000 });
+
         // Build a minimal snapshot directly from the app store on the page
         const result = await page.evaluate(async () => {
             function yTextToString(t: any): string {
@@ -75,8 +81,8 @@ export class DataValidationHelpers {
 
         const path = await import("path");
         const fsPromises = await import("fs/promises");
-        // Write snapshots outside the Vite root to avoid dev server reloads
-        const outDir = path.resolve(process.cwd(), "..", "e2e-snapshots");
+        // Write snapshots in the client directory to match test expectations
+        const outDir = path.resolve(process.cwd(), "e2e-snapshots");
         await fsPromises.mkdir(outDir, { recursive: true }).catch(() => {});
         const yjsPath = path.join(outDir, `${label}-yjs.json`);
         if (!result.yjsJson) throw new Error("Yjs snapshot missing");
