@@ -93,9 +93,14 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         console.log(`First item text after cut: "${firstItemTextAfterCut}"`);
 
         const thirdItem = page.locator(".outliner-item").nth(2);
+        const thirdId = await thirdItem.getAttribute("data-item-id");
         await thirdItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
+
+        // カーソルを第三項目に設定
+        await TestHelpers.setCursor(page, thirdId!);
         await page.keyboard.press("End");
+
         // ペースト前にグローバル変数を確認
         const globalText = await page.evaluate(() => {
             return (window as any).lastCopiedText || "not found";
