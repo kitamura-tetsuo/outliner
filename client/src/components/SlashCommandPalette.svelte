@@ -6,13 +6,25 @@ function handleClick(type: "table" | "chart" | "alias") {
     commandPaletteStore.hide();
 }
 
-// デバッグ用にコンポーネントの状態をログ出力
+// Create reactive variables that update when the store values change
+let currentVisible = $state(commandPaletteStore.visible);
+let currentQuery = $state(commandPaletteStore.query);
+
+// Watch for changes in the store and update our reactive state
 $effect(() => {
+    // This effect runs when commandPaletteStore.visible changes
+    const visible = commandPaletteStore.visible;
+    const query = commandPaletteStore.query;
+    
+    currentVisible = [...visible]; // Create a new array to ensure reactivity
+    currentQuery = query;
+    
+    // デバッグ用にコンポーネントの状態をログ出力
     try {
         console.log('[SlashCommandPalette] isVisible:', commandPaletteStore.isVisible);
-        console.log('[SlashCommandPalette] visible length:', commandPaletteStore.visible.length);
-        console.log('[SlashCommandPalette] visible items:', commandPaletteStore.visible.map(c => c.label));
-        console.log('[SlashCommandPalette] query:', commandPaletteStore.query);
+        console.log('[SlashCommandPalette] visible length:', visible.length);
+        console.log('[SlashCommandPalette] visible items:', visible.map(c => c.label));
+        console.log('[SlashCommandPalette] query:', query);
         console.log('[SlashCommandPalette] filtered:', commandPaletteStore.filtered.map(c => c.label));
     } catch {}
 });
@@ -22,12 +34,12 @@ $effect(() => {
     class="slash-command-palette"
     class:debug-show={!commandPaletteStore.isVisible}
     data-is-visible={commandPaletteStore.isVisible}
-    data-query={commandPaletteStore.query}
-    data-visible-count={commandPaletteStore.visible.length}
-    style="position:absolute;top:{commandPaletteStore.position.top}px;left:{commandPaletteStore.position.left}px;z-index:1000;display:{commandPaletteStore.isVisible ? 'block' : 'none'};"
+    data-query={currentQuery}
+    data-visible-count={currentVisible.length}
+    style={`position:absolute;top:${commandPaletteStore.position.top}px;left:${commandPaletteStore.position.left}px;z-index:1000;display:${commandPaletteStore.isVisible ? 'block' : 'none'};`}
 >
     <ul>
-        {#each commandPaletteStore.visible as cmd, i}
+        {#each currentVisible as cmd, i (cmd.type)}
             <li class:selected={i === commandPaletteStore.selectedIndex} data-testid="command-item-{cmd.type}">
                 <button type="button" onclick={() => handleClick(cmd.type)}>{cmd.label}</button>
             </li>
