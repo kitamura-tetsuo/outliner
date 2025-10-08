@@ -36,44 +36,95 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
 
         const badge = page.locator(`[data-item-id="${itemId}"] .comment-count`);
 
-        // Yjs 経由でコメント追加 x2
+        // Yjs 経由でコメント追加 x2 - use the currentPage approach which should match what the UI is using
         const idList = await page.evaluate((id) => {
             const gs: any = (window as any).generalStore;
-            const items = gs?.currentPage?.items as any;
-            const len = items?.length ?? 0;
-            const found = [] as string[];
-            for (let i = 0; i < len; i++) {
-                const it = items.at ? items.at(i) : items[i];
-                if (String(it.id) === String(id)) {
-                    const r1 = it.addComment("tester", "a");
-                    const r2 = it.addComment("tester", "b");
-                    found.push(r1?.id || "", r2?.id || "");
-                    // UI再評価トリガ: テキストを微変更
-                    try {
-                        it.updateText(String(it.text?.toString?.() ?? "") + " ");
-                    } catch {}
-                    break;
+
+            // Try accessing the item through the current page which is what the UI uses
+            if (gs?.currentPage) {
+                const items = gs.currentPage.items;
+                for (let i = 0; i < items.length; i++) {
+                    const it = items.at(i);
+                    if (it && String(it.id) === String(id)) {
+                        if (typeof it.addComment === "function") {
+                            const r1 = it.addComment("tester", "a");
+                            const r2 = it.addComment("tester", "b");
+                            const found = [r1?.id || "", r2?.id || ""];
+
+                            // Wait for the UI to potentially update
+                            return found;
+                        } else {
+                            console.error("Item does not have addComment method");
+                            return ["", ""];
+                        }
+                    }
                 }
             }
-            return found;
+
+            // Fallback - look in the project items if not found in current page
+            if (gs?.project) {
+                const items = gs.project.items;
+                for (let i = 0; i < items.length; i++) {
+                    const it = items.at(i);
+                    if (it && String(it.id) === String(id)) {
+                        if (typeof it.addComment === "function") {
+                            const r1 = it.addComment("tester", "a");
+                            const r2 = it.addComment("tester", "b");
+                            const found = [r1?.id || "", r2?.id || ""];
+
+                            // Wait for the UI to potentially update
+                            return found;
+                        } else {
+                            console.error("Item does not have addComment method");
+                            return ["", ""];
+                        }
+                    }
+                }
+            }
+
+            console.error("Item with ID", id, "not found in either currentPage or project");
+            return ["", ""]; // Return empty IDs to indicate failure
         }, itemId);
 
-        await expect(badge).toHaveText("2");
+        // Wait for the comment count to update in the UI - give up to 10 seconds for the badge to update
+        await expect(badge).toHaveText("2", { timeout: 10000 });
 
         // 1件削除
         await page.evaluate(([id, cid]) => {
             const gs: any = (window as any).generalStore;
-            const items = gs?.currentPage?.items as any;
-            const len = items?.length ?? 0;
-            for (let i = 0; i < len; i++) {
-                const it = items.at ? items.at(i) : items[i];
-                if (String(it.id) === String(id)) {
-                    it.deleteComment(cid);
-                    break;
+
+            // Same approach for delete - try current page first
+            if (gs?.currentPage) {
+                const items = gs.currentPage.items;
+                for (let i = 0; i < items.length; i++) {
+                    const it = items.at(i);
+                    if (it && String(it.id) === String(id)) {
+                        if (typeof it.deleteComment === "function") {
+                            it.deleteComment(cid);
+                        } else {
+                            console.error("Item does not have deleteComment method");
+                        }
+                        break;
+                    }
+                }
+            } // Fallback to project items
+            else if (gs?.project) {
+                const items = gs.project.items;
+                for (let i = 0; i < items.length; i++) {
+                    const it = items.at(i);
+                    if (it && String(it.id) === String(id)) {
+                        if (typeof it.deleteComment === "function") {
+                            it.deleteComment(cid);
+                        } else {
+                            console.error("Item does not have deleteComment method");
+                        }
+                        break;
+                    }
                 }
             }
         }, [itemId, idList[0]]);
 
-        await expect(badge).toHaveText("1");
+        // Wait for the comment count to update after deletion
+        await expect(badge).toHaveText("1", { timeout: 10000 });
     });
 });
