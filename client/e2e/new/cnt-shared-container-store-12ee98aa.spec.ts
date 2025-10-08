@@ -52,7 +52,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
             window.localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
         });
 
-        // 直接削除ページへ移動（ページ遷移で状態が消えないよう、この後にストアをセットする）
+        // Navigate to deletion page
         await page.goto("/projects/delete");
 
         // Hydration完了とグローバルの公開を待つ
@@ -72,15 +72,36 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
             }
         }, { timeout: 20000 });
 
-        // 削除ページに到着してからストアを直接更新
+        // Update the store and wait for update
         await page.evaluate(() => (window as any).__TEST_DATA_HELPER__?.setupTestEnvironment?.());
 
-        // テーブル反映を待つ
-        await page.waitForFunction(() => document.querySelectorAll("tbody tr").length >= 2);
-        const rows = page.locator("tbody tr");
-        await expect(rows).toHaveCount(2);
-        await expect(rows.nth(0).locator("td").nth(1)).toContainText("テストプロジェクト");
-        await expect(rows.nth(1).locator("td").nth(1)).toContainText("テストプロジェクト");
+        // Wait for the update to propagate to the container store
+        await page.waitForFunction(() => {
+            const containerStore = (window as any).__CONTAINER_STORE__;
+            return containerStore && containerStore.containers && containerStore.containers.length >= 2;
+        }, { timeout: 10000 });
+
+        // Force a small delay to ensure all reactive updates are processed
+        await page.waitForTimeout(3000);
+
+        // Check if the table exists now
+        const tableExists = await page.locator("table").count();
+        console.log(`Table elements found: ${tableExists}`);
+
+        if (tableExists > 0) {
+            // Wait for table rows to appear using Playwright's auto-waiting
+            const rows = page.locator("tbody tr");
+            await expect(rows).toHaveCount(2, { timeout: 30000 });
+            await expect(rows.nth(0).locator("td").nth(1)).toContainText("テストプロジェクト");
+            await expect(rows.nth(1).locator("td").nth(1)).toContainText("テストプロジェクト");
+        } else {
+            // If table doesn't exist, the projects list might be empty
+            const noProjectsText = page.locator('text="No projects found."');
+            await expect(noProjectsText).toBeVisible();
+            throw new Error(
+                "Projects were not displayed in the table. Component may not be reactive to store changes.",
+            );
+        }
     });
 
     test("dropdown list shows containers after initialization", async ({ page }) => {
