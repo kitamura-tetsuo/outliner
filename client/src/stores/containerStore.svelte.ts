@@ -7,7 +7,11 @@ export interface ContainerInfo {
     isDefault: boolean;
 }
 
-export function containersFromUserContainer(data: UserContainer | null): Array<ContainerInfo> {
+export function containersFromUserContainer(
+    data: UserContainer | null,
+    _ucVersion?: number,
+): Array<ContainerInfo> {
+    void _ucVersion; // reactivity anchor: ensures callers can pass ucVersion without unused warnings
     if (!data || !data.accessibleContainerIds) {
         return [];
     }
@@ -54,22 +58,53 @@ export function containersFromUserContainer(data: UserContainer | null): Array<C
 }
 
 export class ContainerStore {
-    #containers = $derived.by(() => {
-        // Access ucVersion to ensure reactivity to changes in firestore store
-        const _ = firestoreStore.ucVersion;
-        return containersFromUserContainer(firestoreStore.userContainer);
-    });
+    containers: Array<ContainerInfo> = [];
 
-    get containers(): Array<ContainerInfo> {
-        return this.#containers;
+    constructor() {
+        this.syncFromFirestore();
+    }
+
+    syncFromFirestore(): void {
+        const version = firestoreStore.ucVersion;
+        this.containers = containersFromUserContainer(firestoreStore.userContainer, version);
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("container-store-updated"));
+        }
     }
 
     // tests & isolation
-    reset() {}
+    reset() {
+        this.containers = [];
+    }
 }
 
 export const containerStore = $state(new ContainerStore());
 
-if (process.env.NODE_ENV === "test" && typeof window !== "undefined") {
-    (window as any).__CONTAINER_STORE__ = containerStore;
+if (typeof window !== "undefined") {
+    const isTestEnv = import.meta.env.MODE === "test"
+        || process.env.NODE_ENV === "test"
+        || import.meta.env.VITE_IS_TEST === "true"
+        || window.location.hostname === "localhost";
+    if (isTestEnv) {
+        (window as any).__CONTAINER_STORE__ = containerStore;
+    }
+}
+
+// Hook into firestoreStore updates to keep containers mirrored without polling
+const originalSetUserContainer = (firestoreStore as any).setUserContainer?.bind(firestoreStore);
+if (typeof originalSetUserContainer === "function") {
+    (firestoreStore as any).setUserContainer = (value: UserContainer | null) => {
+        originalSetUserContainer(value);
+        try {
+            containerStore.syncFromFirestore();
+        } catch (error) {
+            console.warn("containerStore.syncFromFirestore failed", error);
+        }
+    };
+    // Ensure the initial mirror uses the latest data when this module loads after setUserContainer was patched
+    queueMicrotask(() => {
+        try {
+            containerStore.syncFromFirestore();
+        } catch {}
+    });
 }
