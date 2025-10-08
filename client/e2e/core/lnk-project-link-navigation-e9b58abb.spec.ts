@@ -25,8 +25,20 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         await page.keyboard.insertText(`This is a link to [/${targetProjectName}/${targetPageName}]`);
         await page.waitForTimeout(500); // Ensure typing is processed
 
-        // フォーカスを外してリンクが表示されるようにする
-        await page.locator("body").click({ position: { x: 10, y: 10 } });
+        // Press Enter to create a new item and potentially process the previous item
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Second item");
+
+        // Move focus away from the first item to ensure it's no longer in editing mode
+        // First click on the second item to shift focus
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId).not.toBeNull();
+
+        // Click the second item to shift focus from first item
+        await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").click();
+
+        // Wait for the update to propagate and for the first item to be rendered in non-editing mode
+        await page.waitForTimeout(500);
 
         // Wait for the editor to become inactive - wait for the data-active attribute to change to "false"
         // or for the element to no longer have the data-active="true" attribute
@@ -34,6 +46,9 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         // Check that the item-content no longer contains the .control-char elements
         await expect(firstItem.locator(".item-content .control-char")).not.toBeVisible({ timeout: 5000 });
+
+        // Select the link element that was created
+        const linkElement = firstItem.locator("a[href]").first();
 
         // リンクのhref属性を確認
         const linkHref = await linkElement.getAttribute("href");
