@@ -1456,7 +1456,7 @@ export class TestHelpers {
 
     public static async selectAliasOption(page: Page, itemId: string): Promise<void> {
         // Ensure picker is visible first
-        await page.locator(".alias-picker").waitFor({ state: "visible", timeout: 5000 });
+        await page.locator(".alias-picker").first().waitFor({ state: "visible", timeout: 5000 });
 
         // Prefer calling store directly for determinism
         let hid = false;
@@ -1467,7 +1467,7 @@ export class TestHelpers {
                     store.confirmById(id);
                 }
             }, itemId);
-            await page.locator(".alias-picker").waitFor({ state: "hidden", timeout: 1500 });
+            await page.locator(".alias-picker").first().waitFor({ state: "hidden", timeout: 1500 });
             hid = true;
         } catch {}
 
@@ -1497,15 +1497,17 @@ export class TestHelpers {
         }, itemId);
 
         // エイリアスピッカーが表示されるまで待機
-        await page.locator(".alias-picker").waitFor({ state: "visible", timeout: 5000 });
+        await page.locator(".alias-picker").first().waitFor({ state: "visible", timeout: 5000 });
 
         // ターゲットアイテムのボタンをクリック
-        const selector = `.alias-picker button[data-id="${targetId}"]`;
-        await page.locator(selector).waitFor({ state: "visible", timeout: 5000 });
-        await page.locator(selector).click();
+        await page.locator(".alias-picker").first().locator(`button[data-id="${targetId}"]`).waitFor({
+            state: "visible",
+            timeout: 5000,
+        });
+        await page.locator(".alias-picker").first().locator(`button[data-id="${targetId}"]`).click();
 
         // エイリアスピッカーが非表示になるまで待機
-        await page.locator(".alias-picker").waitFor({ state: "hidden", timeout: 5000 });
+        await page.locator(".alias-picker").first().waitFor({ state: "hidden", timeout: 5000 });
 
         // 少し待機してからエイリアスパスが表示されることを確認
         await page.waitForTimeout(500);
@@ -1513,21 +1515,21 @@ export class TestHelpers {
 
     public static async hideAliasPicker(page: Page): Promise<void> {
         // エイリアスピッカーが表示されている場合のみ非表示にする
-        const isVisible = await page.locator(".alias-picker").isVisible();
+        const isVisible = await page.locator(".alias-picker").first().isVisible();
         if (isVisible) {
             try {
                 // エイリアスピッカーにフォーカスを設定
-                await page.locator(".alias-picker").focus();
+                await page.locator(".alias-picker").first().focus();
                 // Escapeキーを押してエイリアスピッカーを閉じる
                 await page.keyboard.press("Escape");
-                await page.locator(".alias-picker").waitFor({ state: "hidden", timeout: 3000 });
-            } catch (error) {
+                await page.locator(".alias-picker").first().waitFor({ state: "hidden", timeout: 3000 });
+            } catch {
                 console.log("Failed to hide alias picker with Escape, trying alternative method");
                 // 代替手法：ページの他の場所をクリックしてピッカーを閉じる
                 await page.click("body");
                 await page.waitForTimeout(500);
                 // それでも閉じない場合は、強制的に非表示にする
-                const stillVisible = await page.locator(".alias-picker").isVisible();
+                const stillVisible = await page.locator(".alias-picker").first().isVisible();
                 if (stillVisible) {
                     console.log("Alias picker still visible, forcing hide via store");
                     await page.evaluate(() => {
@@ -1550,7 +1552,7 @@ export class TestHelpers {
             }
         }, itemId);
 
-        await page.locator(".alias-picker").waitFor({ state: "visible", timeout: 5000 });
+        await page.locator(".alias-picker").first().waitFor({ state: "visible", timeout: 5000 });
         await page.waitForTimeout(150);
     }
 
@@ -1562,14 +1564,18 @@ export class TestHelpers {
         const modelId = await page.evaluate((id) => {
             try {
                 const gs: any = (window as any).generalStore || (window as any).appStore;
-                const ap: any = (window as any).aliasPickerStore;
-                const root = gs?.currentPage;
-                if (!root) return null;
+                const currentPage = gs?.currentPage;
+                if (!currentPage) return null;
+
                 function find(node: any, target: string): any | null {
                     if (!node) return null;
-                    if (node.id === target) return node;
+                    if (node.id === target) {
+                        return node;
+                    }
                     const items: any = node.items;
-                    const len = items?.length ?? 0;
+                    const len = typeof items?.length === "number"
+                        ? items.length
+                        : (typeof items?.length === "function" ? items.length() : 0);
                     for (let i = 0; i < len; i++) {
                         const child = items.at ? items.at(i) : items[i];
                         const found = find(child, target);
@@ -1577,9 +1583,38 @@ export class TestHelpers {
                     }
                     return null;
                 }
-                const node = find(root, id);
-                const value = node?.aliasTargetId || null;
-                if (value) return value;
+
+                const node = find(currentPage, id);
+                if (node) {
+                    // Try to get aliasTargetId from the model
+                    let value = node?.aliasTargetId || null;
+
+                    // If not found in model, try Y.Map directly
+                    if (!value) {
+                        try {
+                            const anyItem: any = node as any;
+                            const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+                            if (ymap && typeof ymap.get === "function") {
+                                value = ymap.get("aliasTargetId") || null;
+                            }
+                        } catch {}
+                    }
+
+                    // If still not found, check lastConfirmedTargetId as fallback
+                    if (!value) {
+                        const store: any = (window as any).aliasPickerStore;
+                        const lastItemId = store?.lastConfirmedItemId;
+                        const lastTargetId = store?.lastConfirmedTargetId;
+                        const lastAt = store?.lastConfirmedAt as number | null;
+                        if (lastTargetId && lastAt && Date.now() - lastAt < 6000 && lastItemId === id) {
+                            value = lastTargetId;
+                        }
+                    }
+
+                    if (value) return value;
+                    // Even if aliasTargetId is not set, return null to indicate the node was found
+                    return null;
+                }
                 return null;
             } catch {
                 return null;

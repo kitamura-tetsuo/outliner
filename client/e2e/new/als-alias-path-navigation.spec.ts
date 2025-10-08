@@ -24,19 +24,32 @@ test.describe("ALS-0001: Alias path navigation", () => {
         await page.keyboard.type("alias");
         await page.keyboard.press("Enter");
 
-        await expect(page.locator(".alias-picker")).toBeVisible();
+        await expect(page.locator(".alias-picker").first()).toBeVisible();
         const newIndex = await page.locator(".outliner-item").count() - 1;
         const aliasId = await TestHelpers.getItemIdByIndex(page, newIndex);
         if (!aliasId) throw new Error("alias item not found");
-        const optionCount = await page.locator(".alias-picker li").count();
+        const optionCount = await page.locator(".alias-picker").first().locator("li").count();
         expect(optionCount).toBeGreaterThan(0);
 
         // エイリアスターゲットを設定
         await TestHelpers.selectAliasOption(page, secondId);
-        await expect(page.locator(".alias-picker")).toBeHidden();
+        await expect(page.locator(".alias-picker").first()).toBeHidden();
 
         // エイリアスアイテムが作成されたことを確認
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
+
+        // Yjsモデルへの反映を待機（ポーリングで確認）
+        await page.waitForTimeout(500);
+
+        // aliasTargetIdが設定されるまで待機
+        const deadline = Date.now() + 5000;
+        let aliasTargetId: string | null = null;
+        while (Date.now() < deadline) {
+            aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+            if (aliasTargetId === secondId) break;
+            await page.waitForTimeout(100);
+        }
+        expect(aliasTargetId).toBe(secondId);
 
         // エイリアスパスが表示されていることを確認
         const isAliasPathVisible = await TestHelpers.isAliasPathVisible(page, aliasId);

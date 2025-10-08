@@ -205,7 +205,19 @@ class AliasPickerStore {
             let item = this.findItemSafe(generalStore.currentPage, this.itemId);
             if (!item) item = this.findItemDFS(generalStore.currentPage, this.itemId);
             if (item) {
+                // Yjsモデルに確実に書き込む
                 (item as Item).aliasTargetId = id;
+
+                // Yjsモデルへの書き込みを確実にするため、Y.Mapに直接アクセス
+                try {
+                    const anyItem: any = item as any;
+                    const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+                    if (ymap && typeof ymap.set === "function") {
+                        ymap.set("aliasTargetId", id);
+                    }
+                } catch (e) {
+                    console.warn("AliasPickerStore.confirmById: failed to set via Y.Map", e);
+                }
 
                 this.lastConfirmedItemId = this.itemId;
                 this.lastConfirmedTargetId = id;
@@ -226,10 +238,23 @@ class AliasPickerStore {
             try {
                 const children = (root as any).items as Items;
                 if (children && typeof children.length === "number") {
+                    const rawRootText: any = (root as any).text;
+                    const rootText: string = typeof rawRootText === "string"
+                        ? rawRootText
+                        : (rawRootText?.toString?.() ?? "");
                     for (let i = 0; i < children.length; i++) {
-                        const child = children[i] as Item;
-                        // パスはページタイトルを先頭に含める
-                        this.traverse(child, [root.text], list);
+                        let child: Item | undefined;
+                        try {
+                            child = (children as any).at
+                                ? (children as any).at(i) as Item
+                                : (children as any)[i] as Item;
+                        } catch {
+                            child = undefined;
+                        }
+                        if (child && child.id) {
+                            // パスはページタイトルを先頭に含める
+                            this.traverse(child, [rootText], list);
+                        }
                     }
                 }
             } catch (e) {
@@ -260,7 +285,9 @@ class AliasPickerStore {
         }
 
         visited.add(node.id);
-        const current = [...path, node.text || ""];
+        const rawText: any = (node as any).text;
+        const nodeText: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
+        const current = [...path, nodeText || ""];
         out.push({ id: node.id, path: current.join("/") });
 
         try {

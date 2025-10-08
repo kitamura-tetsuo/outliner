@@ -28,16 +28,17 @@ test.describe("ALS-0001: Alias self-reference prevention", () => {
         await page.keyboard.type("alias");
         await page.keyboard.press("Enter");
 
-        await expect(page.locator(".alias-picker")).toBeVisible({ timeout: 10000 });
+        await expect(page.locator(".alias-picker").first()).toBeVisible({ timeout: 10000 });
         const newIndex = await page.locator(".outliner-item").count() - 1;
         const aliasId = await TestHelpers.getItemIdByIndex(page, newIndex);
         if (!aliasId) throw new Error("alias item not found");
-        const optionCount = await page.locator(".alias-picker li").count();
+        const optionCount = await page.locator(".alias-picker").first().locator("li").count();
         expect(optionCount).toBeGreaterThan(0);
 
         // 自己参照エイリアスを試行（自分自身を選択）
         const selfSelector = `.alias-picker button[data-id="${aliasId}"]`;
-        const selfButtonCount = await page.locator(selfSelector).count();
+        const selfButtonCount = await page.locator(".alias-picker").first().locator(`button[data-id="${aliasId}"]`)
+            .count();
         expect(selfButtonCount).toBe(0);
         await TestHelpers.hideAliasPicker(page);
 

@@ -31,7 +31,7 @@ test.describe("ALS-0001: Alias node", () => {
         await page.keyboard.type("alias");
         await page.keyboard.press("Enter");
 
-        await expect(page.locator(".alias-picker")).toBeVisible();
+        await expect(page.locator(".alias-picker").first()).toBeVisible();
         const aliasId = await page.evaluate(async () => {
             const timeout = Date.now() + 5000;
             while (!(window as any).aliasPickerStore && Date.now() < timeout) {
@@ -41,19 +41,27 @@ test.describe("ALS-0001: Alias node", () => {
         });
         if (!aliasId) throw new Error("alias item not found on aliasPickerStore");
         console.log("Alias item id:", aliasId);
-        const optionCount = await page.locator(".alias-picker li").count();
+        const optionCount = await page.locator(".alias-picker").first().locator("li").count();
         expect(optionCount).toBeGreaterThan(0);
 
         // エイリアスターゲットを設定する（DOM操作ベース）
         await TestHelpers.selectAliasOption(page, secondId);
-        await expect(page.locator(".alias-picker")).toBeHidden();
+        await expect(page.locator(".alias-picker").first()).toBeHidden();
 
         // エイリアスアイテムが作成されたことを確認
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
-        // aliasTargetIdが正しく設定されていることを確認（DOM属性ベース）
-        const aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
-        console.log("aliasTargetId:", aliasTargetId, "expected:", secondId);
+        // Yjsモデルへの反映を待機（ポーリングで確認）
+        await page.waitForTimeout(500);
+
+        // aliasTargetIdが正しく設定されていることを確認（Yjsモデルから取得）
+        const deadline = Date.now() + 5000;
+        let aliasTargetId: string | null = null;
+        while (Date.now() < deadline) {
+            aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+            if (aliasTargetId === secondId) break;
+            await page.waitForTimeout(100);
+        }
         expect(aliasTargetId).toBe(secondId);
 
         // エイリアスパスが表示されていることを確認

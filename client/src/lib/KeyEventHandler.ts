@@ -776,7 +776,8 @@ export class KeyEventHandler {
             if (cursorInstances.length > 0) {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
-                const text = node?.text || "";
+                const rawText: any = node?.text;
+                const text: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
                 const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
 
                 // [の直後の/の場合、または既に[で始まる内部リンク内の場合はコマンドパレットを表示しない

@@ -36,13 +36,22 @@ test.describe("ALS-0001: Alias change target", () => {
                 store.confirmById(secondId);
             }
         }, { aliasId, secondId });
-        await expect(page.locator(".alias-picker")).toBeHidden();
+        await expect(page.locator(".alias-picker").first()).toBeHidden();
 
         // エイリアスアイテムが作成されたことを確認
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
+        // Yjsモデルへの反映を待機（ポーリングで確認）
+        await page.waitForTimeout(500);
+
         // 最初のaliasTargetIdが正しく設定されていることを確認
-        let aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+        let deadline = Date.now() + 5000;
+        let aliasTargetId: string | null = null;
+        while (Date.now() < deadline) {
+            aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+            if (aliasTargetId === secondId) break;
+            await page.waitForTimeout(100);
+        }
         expect(aliasTargetId).toBe(secondId);
 
         // エイリアスパスが表示されていることを確認
@@ -58,8 +67,17 @@ test.describe("ALS-0001: Alias change target", () => {
             }
         }, { aliasId, thirdId });
 
+        // Yjsモデルへの反映を待機（ポーリングで確認）
+        await page.waitForTimeout(500);
+
         // 変更後のaliasTargetIdが正しく設定されていることを確認
-        aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+        deadline = Date.now() + 5000;
+        aliasTargetId = null;
+        while (Date.now() < deadline) {
+            aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+            if (aliasTargetId === thirdId) break;
+            await page.waitForTimeout(100);
+        }
         expect(aliasTargetId).toBe(thirdId);
 
         // エイリアスパスが更新されていることを確認

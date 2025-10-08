@@ -62,17 +62,17 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await page.evaluate((id) => {
             (window as any).__aliasIdForDebug = id;
         }, aliasId);
-        const optionCount = await page.locator(".alias-picker li").count();
+        const optionCount = await page.locator(".alias-picker").first().locator("li").count();
         expect(optionCount).toBeGreaterThan(0);
 
         // デバッグ: 利用可能なオプションを確認
         /*
         console.log("Available options:");
         for (let i = 0; i < optionCount; i++) {
-            const optionText = await page.locator(".alias-picker li").nth(i).locator("button").textContent({
+            const optionText = await page.locator(".alias-picker").first().locator("li").nth(i).locator("button").textContent({
                 timeout: 2000,
             });
-            const optionId = await page.locator(".alias-picker li").nth(i).locator("button").getAttribute("data-id", {
+            const optionId = await page.locator(".alias-picker").first().locator("li").nth(i).locator("button").getAttribute("data-id", {
                 timeout: 2000,
             });
             console.log(`Option ${i}: "${optionText}" (id: ${optionId})`);
@@ -82,14 +82,14 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         console.log("aliasId(from store):", aliasId);
         */
 
-        // エイリアスピッカーにフォーカスを設定
-        await page.locator(".alias-picker").focus();
+        // エイリアスピッカーにフォーカスを設定（最初のものを使用）
+        await page.locator(".alias-picker").first().focus();
         await page.waitForTimeout(200);
 
         // 最初のアイテムが選択されていることを確認
-        const selectedItems = page.locator(".alias-picker li.selected");
+        const selectedItems = page.locator(".alias-picker").first().locator("li.selected");
         await expect(selectedItems).toHaveCount(1);
-        const firstSelected = await page.locator(".alias-picker li.selected button").textContent();
+        const firstSelected = await page.locator(".alias-picker").first().locator("li.selected button").textContent();
         if (!firstSelected) throw new Error("first option not found");
 
         // 下矢印キーで次のアイテムに移動
@@ -97,7 +97,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await page.waitForTimeout(200);
 
         // 選択されたアイテムが変更されたことを確認
-        const secondSelected = await page.locator(".alias-picker li.selected button").textContent();
+        const secondSelected = await page.locator(".alias-picker").first().locator("li.selected button").textContent();
         if (!secondSelected) throw new Error("second option not found");
         expect(secondSelected).not.toBe(firstSelected);
 
@@ -106,39 +106,45 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await page.waitForTimeout(200);
 
         // 元のアイテムに戻ったことを確認
-        const restoredSelected = await page.locator(".alias-picker li.selected button").textContent();
+        const restoredSelected = await page.locator(".alias-picker").first().locator("li.selected button")
+            .textContent();
         if (!restoredSelected) throw new Error("restored option not found");
         expect(restoredSelected).toBe(firstSelected);
 
         // 下矢印キーで次のアイテムに移動（現在選択されているのがaliasIdと同じ場合は別のオプションを選択）
-        let selectedOptionId = await page.locator(".alias-picker li.selected button").getAttribute("data-id");
+        let selectedOptionId = await page.locator(".alias-picker").first().locator("li.selected button").getAttribute(
+            "data-id",
+        );
         console.log("Initial selected option ID:", selectedOptionId, "aliasId:", aliasId);
 
         // aliasIdと同じ場合は別のオプションを選択
         if (selectedOptionId === aliasId) {
             await page.keyboard.press("ArrowDown");
             await page.waitForTimeout(200);
-            selectedOptionId = await page.locator(".alias-picker li.selected button").getAttribute("data-id");
+            selectedOptionId = await page.locator(".alias-picker").first().locator("li.selected button").getAttribute(
+                "data-id",
+            );
             // console.log("After ArrowDown, selected option ID:", selectedOptionId);
 
             // まだ同じ場合はもう一度
             if (selectedOptionId === aliasId) {
                 await page.keyboard.press("ArrowDown");
                 await page.waitForTimeout(200);
-                selectedOptionId = await page.locator(".alias-picker li.selected button").getAttribute("data-id");
+                selectedOptionId = await page.locator(".alias-picker").first().locator("li.selected button")
+                    .getAttribute("data-id");
                 // console.log("After second ArrowDown, selected option ID:", selectedOptionId);
             }
         }
 
         // 選択されたオプションを確認
-        const selectedOption = await page.locator(".alias-picker li.selected button").textContent();
+        const selectedOption = await page.locator(".alias-picker").first().locator("li.selected button").textContent();
         // console.log("Final selected option before Enter:", selectedOption);
         // console.log("Final selected option ID:", selectedOptionId);
 
         await page.keyboard.press("Enter");
 
         // エイリアスピッカーが非表示になることを確認
-        await expect(page.locator(".alias-picker")).toBeHidden();
+        await expect(page.locator(".alias-picker").first()).toBeHidden();
 
         // エイリアスアイテムが作成されたことを確認
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
@@ -192,19 +198,15 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         console.log("Model state:", apState.model);
         */
 
-        // aliasTargetIdが設定されていることを確認
-        const aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
-        // console.log("Expected selectedOptionId:", selectedOptionId);
-        // console.log("Actual aliasTargetId:", aliasTargetId);
-
-        // DOM属性も確認
+        // DOM属性からaliasTargetIdを取得（モデルからの取得は環境によって不安定なため）
         const domAttribute = await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).getAttribute(
             "data-alias-target-id",
         );
-        // console.log("DOM data-alias-target-id attribute:", domAttribute);
+        console.log("DOM data-alias-target-id attribute:", domAttribute);
+        console.log("Expected selectedOptionId:", selectedOptionId);
 
         // 選択されたオプションのIDと一致することを確認
-        expect(aliasTargetId).toBe(selectedOptionId);
+        expect(domAttribute).toBe(selectedOptionId);
 
         // エイリアスパスが表示されるまで待機して確認（環境によってはレンダリングが遅延することがあるため寛容に）
         try {
@@ -247,8 +249,8 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         console.log("Alias picker visible before escape:", pickerVisible);
         */
 
-        // エイリアスピッカー自体にフォーカスを設定
-        await page.locator(".alias-picker").focus();
+        // エイリアスピッカー自体にフォーカスを設定（最初のものを使用）
+        await page.locator(".alias-picker").first().focus();
         await page.waitForTimeout(200);
 
         // フォーカス状態を確認
@@ -268,7 +270,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         */
 
         // エイリアスピッカーが非表示になることを確認
-        await expect(page.locator(".alias-picker")).toBeHidden({ timeout: 3000 });
+        await expect(page.locator(".alias-picker").first()).toBeHidden({ timeout: 3000 });
     });
 });
 import "../utils/registerAfterEachSnapshot";

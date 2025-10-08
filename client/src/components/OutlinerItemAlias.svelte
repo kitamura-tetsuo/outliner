@@ -28,7 +28,11 @@ onMount(() => {
             const obs = (e?: any) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
-                        aliasTargetId = ymap.get?.('aliasTargetId');
+                        const newValue = ymap.get?.('aliasTargetId');
+                        if (newValue !== aliasTargetId) {
+                            aliasTargetId = newValue;
+                            logger.debug("OutlinerItemAlias: aliasTargetId updated via observe", { itemId: modelId, newValue });
+                        }
                     }
                 } catch {}
             };
@@ -62,19 +66,19 @@ const aliasTargetIdEffective = $derived.by(() => {
     void aliasLastConfirmedPulse;
     const base = aliasTargetId;
     if (base) return base;
-    
+
     const lastItemId = (aliasPickerStore as any)?.lastConfirmedItemId;
     const lastTargetId = (aliasPickerStore as any)?.lastConfirmedTargetId;
     const lastAt = (aliasPickerStore as any)?.lastConfirmedAt as number | null;
-    
+
     if (lastTargetId && lastAt && Date.now() - lastAt < 6000 && lastItemId === modelId) {
         return lastTargetId;
     }
-    
+
     if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 6000) && aliasLastConfirmedPulse.itemId === modelId) {
         return aliasLastConfirmedPulse.targetId;
     }
-    
+
     return undefined;
 });
 
