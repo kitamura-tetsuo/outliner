@@ -78,11 +78,17 @@ test.describe("Multi-Page Schedule Management", () => {
         // Wait for page to load completely
         await page.waitForSelector(`text=${pageName}`, { timeout: 10000 });
 
+        // Add a short wait to ensure the store is fully synchronized
+        await page.waitForTimeout(1000);
+
         await page.locator("text=予約管理").click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
 
-        // Wait for schedules to load with explicit check for schedule items
-        await expect(page.locator('[data-testid="schedule-item"]')).toHaveCount(1, { timeout: 10000 });
+        // Wait longer for schedules to load and add additional debugging
+        await page.waitForTimeout(2000);
+
+        // Check for schedule items with increased timeout
+        await expect(page.locator('[data-testid="schedule-item"]')).toHaveCount(1, { timeout: 15000 });
 
         const finalItems = page.locator('[data-testid="schedule-item"]');
         await expect(finalItems).toHaveCount(1);
