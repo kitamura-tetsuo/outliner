@@ -77,5 +77,11 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
 
     const allTexts = await page2.locator(".outliner-item .item-text").allTextContents();
     expect(allTexts.join("\n")).toContain("hello");
+
+    // Cleanup: Close pages and contexts to prevent resource leaks
+    await page1.close();
+    await page2.close();
+    await context1.close();
+    await context2.close();
 });
 import "../utils/registerAfterEachSnapshot";

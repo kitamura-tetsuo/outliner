@@ -72,6 +72,8 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
             }
         }, { timeout: 20000 });
 
+        await page.evaluate(() => (window as any).__INIT_FIRESTORE_SYNC__?.());
+
         // Set up test environment with data (after navigating to the page)
         await page.evaluate(() => (window as any).__TEST_DATA_HELPER__?.setupTestEnvironment?.());
 
