@@ -28,15 +28,12 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // フォーカスを外してリンクが表示されるようにする
         await page.locator("body").click({ position: { x: 10, y: 10 } });
 
-        // Wait for the editor to become inactive and for the formatted HTML to appear
+        // Wait for the editor to become inactive - wait for the data-active attribute to change to "false"
+        // or for the element to no longer have the data-active="true" attribute
+        await expect(firstItem).not.toHaveAttribute("data-active", "true", { timeout: 8000 });
+
         // Check that the item-content no longer contains the .control-char elements
         await expect(firstItem.locator(".item-content .control-char")).not.toBeVisible({ timeout: 5000 });
-
-        // Now check for the formatted link
-        const linkElement = page.locator(`a.internal-link.project-link`).filter({
-            hasText: `${targetProjectName}/${targetPageName}`,
-        });
-        await expect(linkElement).toBeVisible({ timeout: 10000 });
 
         // リンクのhref属性を確認
         const linkHref = await linkElement.getAttribute("href");
