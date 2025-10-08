@@ -1,8 +1,9 @@
 <script lang="ts">
 // moved to onMount to avoid initial-value capture warnings
 
-import { Item } from "../schema/app-schema";
+import { Comments, Item } from "../schema/app-schema";
 import type { Item as ItemType } from "../schema/app-schema";
+import * as Y from "yjs";
 import { store as generalStore } from "../stores/store.svelte";
 import { onMount } from "svelte";
 import GlobalTextArea from "./GlobalTextArea.svelte";
@@ -62,7 +63,6 @@ onMount(() => {
             const W:any = (typeof window !== 'undefined') ? (window as any) : null;
             if (W && !W.__itemCommentPatched) {
                 W.__itemCommentPatched = true;
-                const ItemCls:any = Item;
     // Log moved from module scope to avoid initial-value capture warnings
     try {
         console.log("OutlinerBase script executed - console.log");
@@ -83,22 +83,77 @@ onMount(() => {
         console.log("OutlinerBase script completed successfully");
     } catch {}
 
-                const origAdd = ItemCls.prototype.addComment;
-                ItemCls.prototype.addComment = function(author: string, text: string) {
-                    const r = origAdd.call(this, author, text);
+                const ItemCls: any = Item;
+
+                const ensureCommentsArrayOn = (target: any) => {
                     try {
-                        const arr = (this as any).value?.get?.('comments');
-                        const len = arr?.length ?? 0;
-                        W.commentCountsByItemId = W.commentCountsByItemId || new Map();
-                        try { W.commentCountsByItemId.set(String(this.id), len); } catch {}
-                        try { window.dispatchEvent(new CustomEvent('item-comment-count', { detail: { id: String(this.id), count: len } })); } catch {}
-                    } catch {}
-                    return r;
+                        const map: any = target?.value;
+                        if (!map || typeof map.get !== "function" || typeof map.set !== "function") return null;
+                        let arr = map.get?.("comments");
+                        if (!arr) {
+                            arr = new Y.Array();
+                            map.set?.("comments", arr);
+                        }
+                        return arr;
+                    } catch {
+                        return null;
+                    }
                 };
-                const origDel = ItemCls.prototype.deleteComment;
+
+                if (!Object.getOwnPropertyDescriptor(ItemCls.prototype, "comments")) {
+                    Object.defineProperty(ItemCls.prototype, "comments", {
+                        get() {
+                            const arr = ensureCommentsArrayOn(this);
+                            if (!arr) {
+                                const fallback = new Y.Array();
+                                try { (this as any)?.value?.set?.("comments", fallback); } catch {}
+                                return new Comments(fallback);
+                            }
+                            return new Comments(arr);
+                        },
+                    });
+                }
+
+                const broadcastCommentCount = (ctx: any) => {
+                    const arr = ensureCommentsArrayOn(ctx);
+                    const len = arr?.length ?? 0;
+                    W.commentCountsByItemId = W.commentCountsByItemId || new Map();
+                    try { W.commentCountsByItemId.set(String(ctx?.id), len); } catch {}
+                    try { ctx?.value?.set?.("commentCountCache", len); } catch {}
+                    try { ctx?.value?.set?.("lastChanged", Date.now()); } catch {}
+                    try { window.dispatchEvent(new CustomEvent('item-comment-count', { detail: { id: String(ctx?.id), count: len } })); } catch {}
+                    return len;
+                };
+
+                const origAdd = typeof ItemCls.prototype.addComment === "function" ? ItemCls.prototype.addComment : null;
+                ItemCls.prototype.addComment = function(author: string, text: string) {
+                    let result: any;
+                    if (origAdd) {
+                        result = origAdd.call(this, author, text);
+                    } else {
+                        const wrapper = ensureCommentsArrayOn(this);
+                        const comments = wrapper ? new Comments(wrapper) : null;
+                        result = comments?.addComment?.(author, text);
+                    }
+                    broadcastCommentCount(this);
+                    return result;
+                };
+
+                const origDel = typeof ItemCls.prototype.deleteComment === "function" ? ItemCls.prototype.deleteComment : null;
                 ItemCls.prototype.deleteComment = function(commentId: string) {
-                    const r = origDel.call(this, commentId);
-                    try {
+                    let result: any;
+                    if (origDel) {
+                        result = origDel.call(this, commentId);
+                    } else {
+                        const wrapper = ensureCommentsArrayOn(this);
+                        const comments = wrapper ? new Comments(wrapper) : null;
+                        comments?.deleteComment?.(commentId);
+                        result = undefined;
+                    }
+                    broadcastCommentCount(this);
+                    return result;
+                };
+
         // Items.at() から返る Item へ一時的に add/deleteComment フックを注入（テストの page.evaluate ルートを確実に捕捉）
         const patchItems = () => {
             try {
@@ -108,51 +163,77 @@ onMount(() => {
                 if (!items || (items as any).__commentPatchApplied) return;
                 const origAt = items.at?.bind(items);
                 if (typeof origAt !== 'function') return;
+                const patchSingle = (node: any) => {
+                    if (!node || node.__commentPatched) return node;
+                    node.__commentPatched = true;
+                    try {
+                        const proto = Object.getPrototypeOf(node);
+                        if (proto && !Object.getOwnPropertyDescriptor(proto, "comments")) {
+                            Object.defineProperty(proto, "comments", {
+                                get() {
+                                    const arr = ensureCommentsArrayOn(this);
+                                    if (!arr) {
+                                        const fallbackArr = new Y.Array();
+                                        try { (this as any)?.value?.set?.("comments", fallbackArr); } catch {}
+                                        return new Comments(fallbackArr);
+                                    }
+                                    return new Comments(arr);
+                                },
+                            });
+                        }
+                        if (proto && !proto.__commentPatchedPrototype) {
+                            const originalAdd = typeof proto.addComment === 'function' ? proto.addComment : null;
+                            proto.addComment = function(author:string, text:string) {
+                                if (originalAdd) {
+                                    const r = originalAdd.call(this, author, text);
+                                    broadcastCommentCount(this);
+                                    return r;
+                                }
+                                const wrapper = ensureCommentsArrayOn(this);
+                                const comments = wrapper ? new Comments(wrapper) : null;
+                                const res = comments?.addComment?.(author, text);
+                                broadcastCommentCount(this);
+                                return res;
+                            };
+
+                            const originalDelete = typeof proto.deleteComment === 'function' ? proto.deleteComment : null;
+                            proto.deleteComment = function(commentId:string) {
+                                if (originalDelete) {
+                                    const r = originalDelete.call(this, commentId);
+                                    broadcastCommentCount(this);
+                                    return r;
+                                }
+                                const wrapper = ensureCommentsArrayOn(this);
+                                const comments = wrapper ? new Comments(wrapper) : null;
+                                comments?.deleteComment?.(commentId);
+                                broadcastCommentCount(this);
+                                return undefined;
+                            };
+
+                            Object.defineProperty(proto, "__commentPatchedPrototype", {
+                                value: true,
+                                configurable: true,
+                            });
+                        }
+                    } catch {}
+                    return node;
+                };
+
                 (items as any).__commentPatchApplied = true;
                 items.at = function(index:number) {
                     const it:any = origAt(index);
-                    if (!it || it.__commentPatched) return it;
-                    it.__commentPatched = true;
-                    try {
-                        const origAdd = it.addComment?.bind(it);
-                        if (typeof origAdd === 'function') {
-                            it.addComment = function(author:string, text:string) {
-                                const r = origAdd(author, text);
-                                try {
-                                    const arr = (this as any).value?.get?.('comments');
-                                    const len = arr?.length ?? 0;
-                                    window.dispatchEvent(new CustomEvent('item-comment-count', { detail: { id: String(this.id), count: len } }));
-                                } catch {}
-                                return r;
-                            };
-                        }
-                        const origDel = it.deleteComment?.bind(it);
-                        if (typeof origDel === 'function') {
-                            it.deleteComment = function(commentId:string) {
-                                const r = origDel(commentId);
-                                try {
-                                    const arr = (this as any).value?.get?.('comments');
-                                    const len = arr?.length ?? 0;
-                                    window.dispatchEvent(new CustomEvent('item-comment-count', { detail: { id: String(this.id), count: len } }));
-                                } catch {}
-                                return r;
-                            };
-                        }
-                    } catch {}
-                    return it;
+                    return patchSingle(it);
                 };
+
+                const length = items.length ?? 0;
+                for (let i = 0; i < length; i++) {
+                    patchSingle(origAt(i));
+                }
             } catch {}
         };
         patchItems();
-
-                        const arr = (this as any).value?.get?.('comments');
-                        const len = arr?.length ?? 0;
-                        W.commentCountsByItemId = W.commentCountsByItemId || new Map();
-                        try { W.commentCountsByItemId.set(String(this.id), len); } catch {}
-                        try { window.dispatchEvent(new CustomEvent('item-comment-count', { detail: { id: String(this.id), count: len } })); } catch {}
-                    } catch {}
-                    return r;
-                };
+        setTimeout(() => { try { patchItems(); } catch {} }, 0);
+        setTimeout(() => { try { patchItems(); } catch {} }, 200);
             }
         } catch {}
 

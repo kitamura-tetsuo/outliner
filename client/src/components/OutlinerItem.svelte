@@ -182,6 +182,76 @@ let openCommentItemIndex = $derived.by(() => (generalStore as any).openCommentIt
 // コメント数のローカル状態（確実にUIへ反映するため）
 let commentCountLocal = $state(0);
 
+// コメント数の最終値を整形
+function normalizeCommentCount(value: unknown): number | null {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return null;
+    const fixed = Math.trunc(num);
+    return fixed < 0 ? 0 : fixed;
+}
+
+function ensureCommentsArray(): any {
+    try {
+        const anyItem: any = item as any;
+        if (!anyItem) return null;
+        const tree = anyItem?.tree;
+        const key = anyItem?.key;
+        if (!tree || !key) return null;
+        const nodeMap = tree.getNodeValueFromKey?.(key) as any;
+        if (!nodeMap) return null;
+        try { void anyItem.comments; } catch {}
+        const arr = nodeMap.get?.("comments");
+        return arr ?? null;
+    } catch {
+        return null;
+    }
+}
+
+function syncCommentCountFromItem() {
+    try {
+        const arr: any = ensureCommentsArray();
+        if (arr && typeof arr.length === "number") {
+            const normalized = normalizeCommentCount(arr.length);
+            if (normalized != null) {
+                commentCountLocal = normalized;
+                return;
+            }
+        }
+    } catch {}
+    try {
+        const wrapper: any = (item as any)?.comments;
+        const normalized = normalizeCommentCount(wrapper?.length);
+        if (normalized != null) {
+            commentCountLocal = normalized;
+            return;
+        }
+    } catch {}
+    commentCountLocal = 0;
+}
+
+function applyCommentCount(value: unknown) {
+    const normalized = normalizeCommentCount(value);
+    if (normalized != null) {
+        commentCountLocal = normalized;
+    } else {
+        syncCommentCountFromItem();
+    }
+}
+
+function attachCommentObserver(): () => void {
+    const arr: any = ensureCommentsArray();
+    if (!arr || typeof arr.observe !== "function" || typeof arr.unobserve !== "function") {
+        return () => {};
+    }
+    const observer = () => { syncCommentCountFromItem(); };
+    try { arr.observe(observer); } catch {}
+    return () => { try { arr.unobserve(observer); } catch {} };
+}
+
+function handleCommentCountChanged(event: CustomEvent<any>) {
+    applyCommentCount(event?.detail?.count);
+}
+
 
 
 // Yjs 由来のコメント数のみを採用（単一路線）
@@ -190,29 +260,43 @@ const commentCount = $derived.by(() => Number(commentCountLocal ?? 0));
 // 表示用カウントはYjs由来の単一路線に統一
 const commentCountVisual = $derived.by(() => Number(commentCountLocal ?? 0));
 
+onMount(() => {
+    syncCommentCountFromItem();
+    const cleanup: Array<() => void> = [];
+
+    const detachObserver = attachCommentObserver();
+    if (typeof detachObserver === "function") {
+        cleanup.push(detachObserver);
+    }
+
+    const handleWindowEvent = (event: Event) => {
+        try {
+            const detail = (event as CustomEvent<any>)?.detail;
+            if (!detail) return;
+            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
+            if (targetId == null) return;
+            if (String(targetId) !== String(model?.id)) return;
+            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
+            applyCommentCount(possibleCount);
+        } catch {}
+    };
+
+    try {
+        window.addEventListener("item-comment-count", handleWindowEvent as EventListener);
+        cleanup.push(() => { try { window.removeEventListener("item-comment-count", handleWindowEvent as EventListener); } catch {} });
+    } catch {}
+
+    return () => {
+        for (const fn of cleanup) {
+            try { fn(); } catch {}
+        }
+    };
+});
 
 
-	// コメント配列への直接購読で確実に反映（doc 全体イベントに加え、配列自身の変更も監視）
-	onMount(() => {
-	    try {
-	        const anyItem: any = item as any;
-	        const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
-	        const yarr = ymap?.get?.("comments") as any;
-	        if (yarr && typeof yarr.observe === 'function') {
-	            const obs = () => {
-	                try {
-	                    const arr = (anyItem?.comments?.toPlain?.() ?? []) as any[];
-	                    commentCountLocal = Array.isArray(arr) ? arr.length : 0;
-	                    try { const w:any = (window as any); if (Array.isArray(w.E2E_LOGS)) w.E2E_LOGS.push({ tag: 'y-comments-observe', id: model.id, count: commentCountLocal, t: Date.now() }); } catch {}
-	                } catch { commentCountLocal = 0; }
-	            };
-	            yarr.observe(obs);
-	            onDestroy(() => { try { yarr.unobserve(obs); } catch {} });
-	        }
-	    } catch {}
 
 
-	});
+
 
 
 
@@ -749,19 +833,7 @@ function updateSelectionAndCursor() {
 }
 
 // アイテム全体のキーダウンイベントハンドラ
-function onCommentCountChanged(c?: number) {
-    commentCountLocal = (c ?? 0);
-    try { logger.debug('[OutlinerItem] onCountChanged ->', commentCountLocal, 'for id=', model.id); } catch {}
-    try {
-        const w: any = window as any;
-        if (Array.isArray(w.E2E_LOGS)) w.E2E_LOGS.push({ tag: 'comment-count-changed', id: model.id, count: commentCountLocal, t: Date.now() });
-    } catch {}
-    // DOMフォールバック: バッジのテキストを直接更新
-    try {
-        const badge = itemRef?.querySelector('.comment-button .comment-count') as HTMLElement | null;
-        if (badge) badge.textContent = String(commentCountLocal);
-    } catch {}
-}
+
 
 
 function finishEditing() {
@@ -1813,381 +1885,7 @@ function handleDragEnd() {
 // 内部リンクのクリックイベントハンドラは削除
 // SvelteKitのルーティングを使用して内部リンクを処理
 
-onMount(() => {
-    // テキストエリアがレンダリングされているか確認
-    if (!hiddenTextareaRef) {
-        logger.warn("Hidden textarea reference is not available at mount");
-        // Do not return; other listeners (e.g., comment count) must be registered
-    }
 
-    // Listen for comment count changes
-    const handleCommentCountChange = (ev: Event) => {
-        const ce = ev as CustomEvent<any>;
-        try { logger.debug('[OutlinerItem] comment-count-changed received id=', model.id, 'detail=', ce?.detail); } catch {}
-        if (ce?.detail && typeof ce.detail.count === 'number') {
-            commentCountLocal = ce.detail.count;
-            try { logger.debug('[OutlinerItem] set commentCountLocal via event to', commentCountLocal); } catch {}
-            return;
-        }
-        // フォールバック: コメントの実数を読み取りローカル状態に反映
-        try {
-            const c: any = (item as any)?.comments;
-            const arr = c?.toPlain?.();
-            commentCountLocal = Array.isArray(arr) ? arr.length : 0;
-            try { logger.debug('[OutlinerItem] fallback set commentCountLocal via comments.toPlain length=', commentCountLocal); } catch {}
-        } catch {
-            commentCountLocal = 0;
-        }
-    };
-
-    // Add event listener after mount to ensure itemRef is set
-    onMount(() => {
-        if (itemRef) {
-            try { logger.debug('[OutlinerItem] (onMount) addEventListener comment-count-changed for id=', model.id); } catch {}
-            itemRef.addEventListener('comment-count-changed', handleCommentCountChange);
-        }
-        // Window ブロードキャストも購読（Item.addComment/deleteComment から発火）
-        const winHandler = (e: Event) => {
-            const ce = e as CustomEvent<any>;
-            if (!ce?.detail) return;
-            if (String(ce.detail.id) !== String(model.id)) return;
-            try { logger.debug('[OutlinerItem] window:item-comment-count received id=', model.id, 'detail=', ce.detail); } catch {}
-            commentCountLocal = Number(ce.detail.count ?? 0);
-            try {
-                const badge = itemRef?.querySelector('.comment-button .comment-count') as HTMLElement | null;
-                if (badge) badge.textContent = String(commentCountLocal);
-            } catch {}
-        };
-        try { window.addEventListener('item-comment-count', winHandler as EventListener); } catch {}
-        return () => {
-            if (itemRef) {
-                try { itemRef.removeEventListener('comment-count-changed', handleCommentCountChange); } catch {}
-            }
-            try { window.removeEventListener('item-comment-count', winHandler as EventListener); } catch {}
-        };
-    });
-
-
-    /* CMT-0001 cleanup: 親フォールバック（クリックデリゲートとDOM直書き）を一時的に無効化。
-       通常経路（CommentThread.add → Yjs → toPlain → each）の安定化検証のため。
-       TODO: 通常経路が安定グリーンになったら、このフォールバックは段階的に削除する。 */
-    // onMount(() => {
-    //     const handler = (e: Event) => {
-    //         const t = e.target as HTMLElement | null;
-    //         if (!t) return;
-    //         const btn = t.closest('[data-testid="add-comment-btn"]') as HTMLElement | null;
-    //         if (!btn) return;
-    //         if (!itemRef || !(itemRef as HTMLElement).contains(btn)) return;
-    //         e.preventDefault();
-    //         try {
-    //             const container = itemRef as HTMLElement;
-    //             const input = container.querySelector('[data-testid="new-comment-input"]') as HTMLInputElement | null;
-    //             const thread = container.querySelector('[data-testid="comment-thread"]') as HTMLElement | null;
-    //             const val = (input?.value || "").trim();
-    //             if (!val) return;
-    //             // Yjsへ追加
-    //             try { (item as any)?.comments?.addComment?.(currentUser, val); } catch {}
-    //             try {
-    //                 const arr = (item as any)?.comments?.toPlain?.() ?? [];
-    //                 commentCountLocal = Array.isArray(arr) ? arr.length : (commentCountLocal ?? 0) + 1;
-    //             } catch {}
-    //             // DOMへ最低限の表示を挿入（テスト安定化）
-    //             if (thread) {
-    //                 const form = thread.querySelector('[data-testid="comment-form"]');
-    //                 const id = `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    //                 const div = document.createElement('div');
-    //                 div.className = 'comment';
-    //                 div.setAttribute('data-testid', `comment-${id}`);
-    //
-    //                 const author = document.createElement('span');
-    //                 author.className = 'author';
-    //                 author.textContent = `${currentUser}:`;
-    //
-    //                 const txt = document.createElement('span');
-    //                 txt.className = 'text';
-    //                 txt.textContent = val;
-    //
-    //                 const editBtn = document.createElement('button');
-    //                 editBtn.className = 'edit';
-    //                 editBtn.textContent = '✎';
-    //
-    //                 const deleteBtn = document.createElement('button');
-    //                 deleteBtn.className = 'delete';
-    //                 deleteBtn.textContent = '×';
-    //
-    //                 const renderView = (text: string) => {
-    //                     div.innerHTML = '';
-    //                     txt.textContent = text;
-    //                     div.append(author, txt, editBtn, deleteBtn);
-    //                 };
-    //
-    //                 editBtn.onclick = () => {
-    //                     div.innerHTML = '';
-    //                     const input2 = document.createElement('input');
-    //                     input2.setAttribute('data-testid', `edit-input-${id}`);
-    //                     input2.value = txt.textContent || '';
-    //                     const save = document.createElement('button');
-    //                     save.setAttribute('data-testid', `save-edit-${id}`);
-    //                     save.textContent = 'Save';
-    //                     const cancel = document.createElement('button');
-    //                     cancel.setAttribute('data-testid', `cancel-edit-${id}`);
-    //                     cancel.textContent = 'Cancel';
-    //                     save.onclick = () => {
-    //                         const newVal = input2.value;
-    //                         try { (item as any)?.comments?.updateComment?.(id, newVal); } catch {}
-    //                         renderView(newVal);
-    //                     };
-    //                     cancel.onclick = () => renderView(txt.textContent || '');
-    //                     div.append(input2, save, cancel);
-    //                 };
-    //
-    //                 deleteBtn.onclick = () => {
-    //                     try { (item as any)?.comments?.deleteComment?.(id); } catch {}
-    //                     div.remove();
-    //                     commentCountLocal = Math.max(0, (commentCountLocal ?? 1) - 1);
-    //                     try { (itemRef as HTMLElement).dispatchEvent(new CustomEvent('comment-count-changed', { detail: { count: commentCountLocal ?? 0 } })); } catch {}
-    //                 };
-    //
-    //                 renderView(val);
-    //                 if (form && form.parentElement === thread) thread.insertBefore(div, form);
-    //                 else thread.appendChild(div);
-    //             }
-    //             if (input) input.value = '';
-    //             // バッジ更新イベントを発火
-    //             try { (itemRef as HTMLElement).dispatchEvent(new CustomEvent('comment-count-changed', { detail: { count: commentCountLocal ?? 1 } })); } catch {}
-    //         } catch {}
-    //     };
-    //     itemRef?.addEventListener('click', handler, { capture: true } as any);
-    //     return () => { try { itemRef?.removeEventListener('click', handler, { capture: true } as any); } catch {} };
-    // });
-
-
-    // Ensure MutationObserver starts after mount
-    onMount(() => {
-        try {
-            if (itemRef) {
-                try { logger.debug('[OutlinerItem] (onMount) MO observe start for id=', model.id); } catch {}
-                mo.observe(itemRef, { childList: true, subtree: true });
-            }
-        } catch {}
-    });
-
-    // 初期表示用にコメント数を反映
-    try {
-        const cInit: any = (item as any)?.comments;
-        const arrInit = cInit?.toPlain?.();
-        commentCountLocal = Array.isArray(arrInit) ? arrInit.length : 0;
-    } catch {
-        commentCountLocal = 0;
-    }
-
-    // コメントDOMの変化を監視して、確実にバッジを更新
-    const mo = new MutationObserver(() => {
-        try {
-            if (!itemRef) return;
-            const threadEl = itemRef.querySelector('[data-testid="comment-thread"]') as HTMLElement | null;
-            if (!threadEl) return;
-            const count = threadEl.querySelectorAll('.comment').length;
-            if (count !== (commentCountLocal ?? 0)) commentCountLocal = count;
-            try { logger.debug('[OutlinerItem] MO detected count=', count, 'for id=', model.id); } catch {}
-
-    // 短時間ポーリング: コメント配列の実数を直接読み取り、バッジを同期（Yjs伝播遅延の保険）
-    try {
-        const start = Date.now();
-        const pollId2 = setInterval(() => {
-            try {
-                const c: any = (item as any)?.comments;
-                const arr = c?.toPlain?.();
-                const cnt = Array.isArray(arr) ? arr.length : 0;
-                if (cnt !== (commentCountLocal ?? 0)) {
-                    commentCountLocal = cnt;
-                    try { const w:any = (typeof window!=='undefined') ? (window as any) : null; if (w && Array.isArray(w.E2E_LOGS)) w.E2E_LOGS.push({ tag: 'poll-comment-count', id: model.id, count: cnt, t: Date.now() }); } catch {}
-                }
-            } catch {}
-            if (Date.now() - start > 10000) {
-                try { clearInterval(pollId2); } catch {}
-            }
-        }, 100);
-    } catch {}
-
-        } catch {}
-    });
-    if (itemRef) {
-        try { logger.debug('[OutlinerItem] MO observe start for id=', model.id); } catch {}
-        mo.observe(itemRef, { childList: true, subtree: true });
-    }
-
-    /* CMT-0001 cleanup: フォールバック用の短期ポーリングを一時無効化（通常経路の検証用）
-    const pollId = setInterval(() => {
-        try {
-            if (!itemRef) return;
-            const threadEl = itemRef.querySelector('[data-testid="comment-thread"]') as HTMLElement | null;
-            if (!threadEl) return;
-            const cnt = threadEl.querySelectorAll('.comment').length;
-            if (cnt > (commentCountLocal ?? 0)) commentCountLocal = cnt;
-        } catch {}
-    }, 100);
-    setTimeout(() => { try { clearInterval(pollId); } catch {} }, 3000);
-    */
-
-    // 内部リンクのクリックイベントリスナーは削除
-    // SvelteKitのルーティングを使用して内部リンクを処理
-
-    // クリック外のイベントリスナー
-    const handleOutsideClick = (e: MouseEvent) => {
-        if (hasCursorBasedOnState() && displayRef && !displayRef.contains(e.target as Node)) {
-            finishEditing();
-        }
-    };
-    document.addEventListener("click", handleOutsideClick);
-
-    // カーソル位置を保持してアイテム間をナビゲートするためのイベントリスナー
-    const handleFocusItem = (event: CustomEvent) => {
-        // shiftKeyと方向も取得
-        const { cursorScreenX, shiftKey, direction } = event.detail;
-
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-        }
-
-        // アイテムがすでに編集中の場合は処理を省略
-        if (hasCursorBasedOnState()) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            }
-            return;
-        }
-
-        // テキストエリアの内容を同期
-        hiddenTextareaRef.value = textString;
-
-        // カーソル位置を決定
-        let textPosition = 0;
-
-        // 方向に基づいてカーソル位置を設定
-        if (direction === "up") {
-            // 上方向の移動の場合、末尾に配置
-            textPosition = textString.length;
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            }
-        }
-        else if (direction === "down") {
-            // 下方向の移動の場合、先頭に配置
-            textPosition = 0;
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            }
-        }
-        else {
-            // 特殊な値の処理
-            if (cursorScreenX === Number.MAX_SAFE_INTEGER) {
-                // 末尾位置
-                textPosition = textString.length;
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                }
-            }
-            else if (cursorScreenX === 0) {
-                // 先頭位置
-                textPosition = 0;
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                }
-            }
-            else if (cursorScreenX !== undefined) {
-                // ピクセル座標からテキスト位置を計算
-                textPosition = pixelPositionToTextPosition(cursorScreenX);
-
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                }
-            }
-            else {
-                // デフォルトは末尾
-                textPosition = textString.length;
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                }
-            }
-        }
-
-        // 一連の処理をリクエストアニメーションフレームで最適化
-        requestAnimationFrame(() => {
-            try {
-                // まずフォーカスを設定（最優先）
-                hiddenTextareaRef.focus();
-
-                // ローカル変数を更新 (shiftKey時はクロスアイテム選択拡張)
-                if (!shiftKey) {
-                    lastSelectionStart = lastSelectionEnd = textPosition;
-                    lastCursorPosition = textPosition;
-                }
-                else if (direction === "down" || direction === "right") {
-                    // 次アイテム: 行頭からカーソル位置まで選択
-                    lastSelectionStart = 0;
-                    lastSelectionEnd = textPosition;
-                    lastCursorPosition = textPosition;
-                }
-                else if (direction === "up" || direction === "left") {
-                    // 前アイテム: カーソル位置から行末まで選択
-                    lastSelectionStart = textPosition;
-                    lastSelectionEnd = hiddenTextareaRef.value.length;
-                    lastCursorPosition = textPosition;
-                }
-
-                // 再度カーソルが表示されていることを確認
-                editorOverlayStore.startCursorBlink();
-
-                // editorOverlayStoreにアクティブアイテムとカーソル位置を設定（選択範囲はOutlinerTree側で管理）
-                editorOverlayStore.setCursor({
-                    itemId: model.id,
-                    offset: textPosition,
-                    isActive: true,
-                    userId: "local",
-                });
-
-                // カーソル位置設定を実行
-                setCaretPosition(textPosition);
-
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                }
-            }
-            catch (error) {
-                logger.error("Error setting focus and cursor position:", error);
-            }
-        });
-    };
-
-    // 編集完了イベントハンドラ
-    const handleFinishEdit = () => {
-        if (hasCursorBasedOnState()) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            }
-            finishEditing();
-        }
-    };
-
-    // コンポーネント要素にイベントリスナーを追加
-    if (itemRef) {
-        itemRef.addEventListener("focus-item", handleFocusItem as EventListener);
-        itemRef.addEventListener("finish-edit", handleFinishEdit as EventListener);
-
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-        }
-    }
-    else {
-        logger.error(`itemRef is not available for ${model.id}`);
-    }
-
-    // クリーンアップ関数
-    return () => {
-        if (itemRef) {
-            itemRef.removeEventListener("focus-item", handleFocusItem as EventListener);
-            itemRef.removeEventListener("finish-edit", handleFinishEdit as EventListener);
-            itemRef.removeEventListener('comment-count-changed', handleCommentCountChange);
-        }
-        try { mo.disconnect(); } catch {}
-        document.removeEventListener("click", handleOutsideClick);
-        if (typeof editorOverlayStore.clearCursorForItem === "function") {
-            editorOverlayStore.clearCursorForItem(model.id);
-        } else {
-            editorOverlayStore.clearCursorAndSelection();
-        }
-    };
-});
 
 // ピクセル座標からテキスト位置を計算する関数
 function pixelPositionToTextPosition(screenX: number): number {
@@ -2390,6 +2088,7 @@ onMount(() => {
     onmousedown={handleMouseDown}
     onmousemove={handleMouseMove}
     onmouseup={handleMouseUp}
+    oncomment-count-changed={handleCommentCountChanged}
     bind:this={itemRef}
     data-item-id={model.id}
     data-active={isItemActive}
@@ -2542,8 +2241,6 @@ onMount(() => {
             item={item}
             currentUser={currentUser}
             doc={item.ydoc}
-            onCountChanged={onCommentCountChanged}
-            on:comment-count-changed={(e) => onCommentCountChanged((e as CustomEvent<any>).detail?.count)}
         />
     {/if}
 </div>
