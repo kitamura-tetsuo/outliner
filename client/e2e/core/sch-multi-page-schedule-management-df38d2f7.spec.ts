@@ -15,6 +15,35 @@ test.describe("Multi-Page Schedule Management", () => {
         page.on("console", msg => console.log("PAGE LOG:", msg.text()));
     });
 
+    test.afterEach(async ({ page }) => {
+        // Clean up any schedules created during the test to ensure test isolation
+        try {
+            // Navigate back to the original page to cancel any created schedules
+            const { projectName, pageName } = testProject;
+            const encodedProject = encodeURIComponent(projectName);
+            const encodedPage = encodeURIComponent(pageName);
+            await page.goto(`/${encodedProject}/${encodedPage}`);
+
+            // Wait for page to load
+            await page.waitForSelector(`text=${pageName}`, { timeout: 10000 });
+
+            // Check for schedule items and cancel them
+            const scheduleItems = page.locator('[data-testid="schedule-item"]');
+            const count = await scheduleItems.count();
+
+            for (let i = 0; i < count; i++) {
+                // Click cancel button to remove the schedule
+                await scheduleItems.first().locator('button:has-text("Cancel")').click();
+                await page.waitForTimeout(200); // Small delay between cancellations
+            }
+
+            // Wait for all items to be removed
+            await expect(scheduleItems).toHaveCount(0, { timeout: 5000 });
+        } catch (error) {
+            console.log("Error during test cleanup:", error);
+        }
+    });
+
     test("schedule operations across pages", async ({ page }, testInfo) => {
         const { projectName, pageName } = testProject;
 
@@ -28,72 +57,88 @@ test.describe("Multi-Page Schedule Management", () => {
             }
         });
 
-        // Wait for the page to be created
-        await page.waitForTimeout(500);
+        // Wait for the page to be created and allow time for synchronization
+        await page.waitForTimeout(1000);
 
-        // open schedule for first page
+        // Open schedule for first page
         const firstPageId = await page.evaluate(() => {
             return window.generalStore?.currentPage?.id;
         });
         console.log("First page ID:", firstPageId);
 
+        // Navigate to schedule management for the first page
         await page.locator("text=予約管理").click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
+
+        // Add a new schedule
         const input = page.locator('input[type="datetime-local"]');
         const firstTime = new Date(Date.now() + 60000).toISOString().slice(0, 16);
         await input.fill(firstTime);
         await page.locator('button:has-text("Add")').click();
-        await page.waitForTimeout(1000);
-        const items = page.locator('[data-testid="schedule-item"]');
-        await expect(items).toHaveCount(1);
 
-        // edit schedule
+        // Wait for the schedule to be added
+        const items = page.locator('[data-testid="schedule-item"]');
+        await expect(items).toHaveCount(1, { timeout: 10000 });
+
+        // Verify the schedule was added correctly
+        await page.waitForTimeout(500);
+
+        // Edit schedule
         await items.first().locator('button:has-text("Edit")').click();
         const newTime = new Date(Date.now() + 120000).toISOString().slice(0, 16);
         await items.first().locator('input[type="datetime-local"]').fill(newTime);
         await page.locator('button:has-text("Save")').click();
-        await page.waitForTimeout(1000);
-        await expect(items).toHaveCount(1);
 
+        // Wait for the schedule to be updated
+        await expect(items).toHaveCount(1, { timeout: 5000 });
+        await page.waitForTimeout(500);
+
+        // Navigate back to page list
         await page.locator('button:has-text("Back")').click();
 
+        // Navigate to the other page
         const encodedProject = encodeURIComponent(projectName);
         await page.goto(`/${encodedProject}/other-page`);
 
         // Wait for page to load and get current page ID
-        await page.waitForTimeout(2000);
+        await page.waitForSelector("text=other-page", { timeout: 10000 });
+        await page.waitForTimeout(1000);
+
         const currentPageId = await page.evaluate(() => {
             return window.generalStore?.currentPage?.id;
         });
         console.log("Current page ID for other-page:", currentPageId);
 
+        // Navigate to schedule management for the other page
         await page.locator("text=予約管理").click();
-        await expect(page.locator('[data-testid="schedule-item"]')).toHaveCount(0);
-        // Use force click to avoid interception issues
+        await expect(page.locator("text=Schedule Management")).toBeVisible();
+
+        // Verify that the schedule from the first page is NOT present in the other page
+        await expect(page.locator('[data-testid="schedule-item"]')).toHaveCount(0, { timeout: 5000 });
+
+        // Navigate back to the first page
         await page.locator('button:has-text("Back")').click({ force: true });
 
+        // Return to the first page to verify the schedule is still there
         const encodedPage = encodeURIComponent(pageName);
         await page.goto(`/${encodedProject}/${encodedPage}`);
 
         // Wait for page to load completely
         await page.waitForSelector(`text=${pageName}`, { timeout: 10000 });
-
-        // Add a short wait to ensure the store is fully synchronized
         await page.waitForTimeout(1000);
 
+        // Navigate to schedule management again
         await page.locator("text=予約管理").click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
 
-        // Wait longer for schedules to load and add additional debugging
-        await page.waitForTimeout(2000);
+        // Wait for schedules to load and verify the schedule is still present
+        await expect(page.locator('[data-testid="schedule-item"]')).toHaveCount(1, { timeout: 10000 });
 
-        // Check for schedule items with increased timeout
-        await expect(page.locator('[data-testid="schedule-item"]')).toHaveCount(1, { timeout: 15000 });
-
+        // Cancel the schedule to clean up
         const finalItems = page.locator('[data-testid="schedule-item"]');
         await expect(finalItems).toHaveCount(1);
         await finalItems.first().locator('button:has-text("Cancel")').click();
-        await expect(finalItems).toHaveCount(0);
+        await expect(finalItems).toHaveCount(0, { timeout: 5000 });
     });
 });
 import "../utils/registerAfterEachSnapshot";
