@@ -126,7 +126,7 @@ export class ScrapboxFormatter {
                 regex: /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g,
             },
             // 通常の内部リンク（page-name形式）- ハイフンを含むページ名も許可
-            { type: "internalLink", start: "[", end: "]", regex: /\[([^\[\]\/][^\[\]]*?)\]/g },
+            { type: "internalLink", start: "[", end: "]", regex: /\[([^\[\]]+?)\]/g },
             { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm },
         ];
 
@@ -602,8 +602,8 @@ export class ScrapboxFormatter {
             // プロジェクト内部リンクは上で処理済み
 
             // 通常の内部リンク - 外部リンクの後に処理する必要がある
-            // [text] 形式で、text が / や - で始まらず、[ ] を含まないもの
-            const internalLinkRegex = /\[([^\[\]\/][^\[\]]*?)\]/g;
+            // [text] 形式で、text が [ または ] を含まないもの
+            const internalLinkRegex = /\[([^\[\]]+?)\]/g;
             input = input.replace(internalLinkRegex, (match, text) => {
                 // ページの存在確認用のクラスを追加
                 const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
