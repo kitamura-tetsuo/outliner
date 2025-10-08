@@ -42,7 +42,7 @@ export function containersFromUserContainer(data: UserContainer | null): Array<C
         })
         .filter(container => {
             if (isTestEnv) {
-                // テスト環境では、名前が空でないものを全て表示（"プロジェクト" も許可）
+                // テスト環境では、名前が空でないものを全て表示（\"プロジェクト\" も許可）
                 return !!(container.name && container.name.trim() !== "");
             } else {
                 // 本番環境では、厳密な条件でフィルタリング
@@ -54,8 +54,14 @@ export function containersFromUserContainer(data: UserContainer | null): Array<C
 }
 
 export class ContainerStore {
-    get containers(): Array<ContainerInfo> {
+    #containers = $derived.by(() => {
+        // Access ucVersion to ensure reactivity to changes in firestore store
+        const _ = firestoreStore.ucVersion;
         return containersFromUserContainer(firestoreStore.userContainer);
+    });
+
+    get containers(): Array<ContainerInfo> {
+        return this.#containers;
     }
 
     // tests & isolation
