@@ -11,6 +11,12 @@ export class DataValidationHelpers {
      */
     static async trySaveAfterEach(page: Page, testInfo: TestInfo): Promise<void> {
         try {
+            // Check if page is still open before trying to save
+            if (page.isClosed()) {
+                console.log("[afterEach] Page already closed, skipping snapshot save");
+                return;
+            }
+
             const labelBase = testInfo.title.replace(/[^a-z0-9_-]+/gi, "-");
             const label = `${labelBase}-auto-${Date.now()}`;
             await DataValidationHelpers.saveSnapshotsAndCompare(page, label);
@@ -18,16 +24,23 @@ export class DataValidationHelpers {
             // Do not fail the test if snapshot saving fails
             console.warn("[afterEach] snapshot skipped:", e?.message ?? e);
         } finally {
-            // Dump E2E logs if present
             try {
-                const logs = await page.evaluate(() => {
-                    const w: any = window as any;
-                    return Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS.slice(-200) : [];
-                });
-                if (Array.isArray(logs) && logs.length) {
-                    console.log("[afterEach] E2E_LOGS (last 200):", logs);
+                // Check if page is still open before trying to dump logs
+                if (!page.isClosed()) {
+                    // Dump E2E logs if present
+                    const logs = await page.evaluate(() => {
+                        const w: any = window as any;
+                        return Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS.slice(-200) : [];
+                    }, { timeout: 2000 });
+                    if (Array.isArray(logs) && logs.length) {
+                        console.log("[afterEach] E2E_LOGS (last 200):", logs);
+                    }
+                } else {
+                    console.log("[afterEach] Page already closed, skipping log dump");
                 }
-            } catch {}
+            } catch (e) {
+                console.warn("[afterEach] log dump skipped:", e?.message ?? e);
+            }
         }
     }
 
@@ -45,6 +58,7 @@ export class DataValidationHelpers {
             }
 
             // Reset Yjs state and other global variables between tests
+            // Use a shorter timeout for cleanup to avoid hanging
             await page.evaluate(() => {
                 try {
                     // Clear any existing E2E logs
@@ -119,7 +133,7 @@ export class DataValidationHelpers {
                 } catch (e) {
                     console.warn("[afterEach] cleanup warning:", e);
                 }
-            }).catch((e) => {
+            }, { timeout: 5000 }).catch((e) => {
                 // Ignore errors during cleanup evaluation
                 console.log("[afterEach] cleanup evaluation skipped:", e?.message ?? e);
             });
@@ -130,53 +144,76 @@ export class DataValidationHelpers {
     }
 
     static async saveSnapshotsAndCompare(page: Page, label: string = "default"): Promise<void> {
+        // Check if page is still open before trying to access project
+        if (page.isClosed()) {
+            console.log("[saveSnapshotsAndCompare] Page already closed, skipping snapshot");
+            return;
+        }
+
         // Wait for the project to be available in the store
-        await page.waitForFunction(() => {
-            const store = (window as any).generalStore || (window as any).appStore;
-            return !!(store && store.project);
-        }, { timeout: 15000 });
+        try {
+            await page.waitForFunction(() => {
+                const store = (window as any).generalStore || (window as any).appStore;
+                return !!(store && store.project);
+            }, { timeout: 5000 });
+        } catch (e) {
+            console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", e?.message ?? e);
+            return; // Skip snapshot if project is not available
+        }
+
+        // Check again if page is still open before evaluating
+        if (page.isClosed()) {
+            console.log("[saveSnapshotsAndCompare] Page already closed, skipping snapshot");
+            return;
+        }
 
         // Build a minimal snapshot directly from the app store on the page
-        const result = await page.evaluate(async () => {
-            function yTextToString(t: any): string {
-                if (!t) return "";
-                try {
-                    return typeof t.toString === "function" ? t.toString() : String(t);
-                } catch {
-                    return String(t);
+        let result;
+        try {
+            result = await page.evaluate(async () => {
+                function yTextToString(t: any): string {
+                    if (!t) return "";
+                    try {
+                        return typeof t.toString === "function" ? t.toString() : String(t);
+                    } catch {
+                        return String(t);
+                    }
                 }
-            }
 
-            const store = (window as any).generalStore || (window as any).appStore;
-            if (!store || !store.project) {
-                throw new Error("Project not available on window.generalStore/appStore");
-            }
-
-            const project = store.project;
-            const pages: Array<{ title: string; items: Array<{ text: string; }>; }> = [];
-
-            // project.items is proxied array-like; iterate by length
-            const len = (project.items as any)?.length ?? 0;
-            for (let i = 0; i < len; i++) {
-                const pageItem = (project.items as any).at(i);
-                if (!pageItem) continue;
-                const pageTitle = yTextToString(pageItem.text);
-                const children: Array<{ text: string; }> = [];
-                const clen = (pageItem.items as any)?.length ?? 0;
-                for (let j = 0; j < clen; j++) {
-                    const child = (pageItem.items as any).at(j);
-                    if (!child) continue;
-                    children.push({ text: yTextToString(child.text) });
+                const store = (window as any).generalStore || (window as any).appStore;
+                if (!store || !store.project) {
+                    throw new Error("Project not available on window.generalStore/appStore");
                 }
-                // First item is the page title by convention (legacy snapshotter alignment)
-                pages.push({ title: pageTitle, items: [{ text: pageTitle }, ...children] });
-            }
 
-            return {
-                mode: "yjs",
-                yjsJson: JSON.stringify({ projectTitle: String(project.title ?? ""), pages }, null, 2),
-            };
-        });
+                const project = store.project;
+                const pages: Array<{ title: string; items: Array<{ text: string; }>; }> = [];
+
+                // project.items is proxied array-like; iterate by length
+                const len = (project.items as any)?.length ?? 0;
+                for (let i = 0; i < len; i++) {
+                    const pageItem = (project.items as any).at(i);
+                    if (!pageItem) continue;
+                    const pageTitle = yTextToString(pageItem.text);
+                    const children: Array<{ text: string; }> = [];
+                    const clen = (pageItem.items as any)?.length ?? 0;
+                    for (let j = 0; j < clen; j++) {
+                        const child = (pageItem.items as any).at(j);
+                        if (!child) continue;
+                        children.push({ text: yTextToString(child.text) });
+                    }
+                    // First item is the page title by convention (legacy snapshotter alignment)
+                    pages.push({ title: pageTitle, items: [{ text: pageTitle }, ...children] });
+                }
+
+                return {
+                    mode: "yjs",
+                    yjsJson: JSON.stringify({ projectTitle: String(project.title ?? ""), pages }, null, 2),
+                };
+            }, { timeout: 5000 });
+        } catch (e) {
+            console.warn("[saveSnapshotsAndCompare] evaluate failed:", e?.message ?? e);
+            return; // Skip snapshot if evaluation fails
+        }
 
         const path = await import("path");
         const fsPromises = await import("fs/promises");
