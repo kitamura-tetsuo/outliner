@@ -7,6 +7,6 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test("home page is reachable", async ({ page }, testInfo) => {
     await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
-    await expect(page.locator("text=Outliner")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Outliner" })).toBeVisible();
 });
 import "../utils/registerAfterEachSnapshot";
