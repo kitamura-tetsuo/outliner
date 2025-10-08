@@ -74,7 +74,18 @@ onMount(() => {
                         created: yMap.get("created"),
                         lastChanged: yMap.get("lastChanged"),
                     }));
-                    renderCommentsState = plainComments;
+                    // Only update renderCommentsState if it's different from the Yjs state
+                    // This prevents the observer from overwriting UI changes when they're more recent
+                    const currentRenderState = renderCommentsState;
+                    const needsUpdate = plainComments.length !== currentRenderState.length || 
+                        plainComments.some((yjsComment, index) => {
+                            const currentComment = currentRenderState[index];
+                            return !currentComment || currentComment.id !== yjsComment.id || currentComment.text !== yjsComment.text;
+                        });
+                    
+                    if (needsUpdate) {
+                        renderCommentsState = plainComments;
+                    }
                 } catch (e) { 
                     logger.error("Error in observe handler", e);
                 } 
@@ -364,9 +375,22 @@ function saveEdit(id: string) {
             logger.warn('[CommentThread] failed to ensure comments for saveEdit', e);
         }
     }
-    try { commentsObj?.updateComment?.(id, editText); logger.debug('[CommentThread] updateComment called'); } catch (e) { logger.error('[CommentThread] updateComment error', e); }
+    
+    // Update the Yjs document
+    try { 
+        commentsObj?.updateComment?.(id, editText); 
+        logger.debug('[CommentThread] updateComment called'); 
+    } catch (e) { 
+        logger.error('[CommentThread] updateComment error', e); 
+    }
+    
     try { /* Yjs derived updates; no direct assignment to commentsList */ logger.debug('[CommentThread] updateComment applied'); } catch (e) { logger.error('[CommentThread] toPlain after update error', e); }
+    
+    // Update local state to immediately reflect the change while we wait for Yjs observer
     localComments = localComments.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } as any : c);
+    
+    // Update renderCommentsState to immediately show the change in UI, but only update the specific field
+    renderCommentsState = renderCommentsState.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } as any : c);
 
     try { logger.debug('[CommentThread] renderCommentsState after update', renderCommentsState); } catch {}
     editingId = null;
