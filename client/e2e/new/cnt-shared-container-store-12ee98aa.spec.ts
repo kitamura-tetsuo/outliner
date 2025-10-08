@@ -75,33 +75,11 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         // Update the store and wait for update
         await page.evaluate(() => (window as any).__TEST_DATA_HELPER__?.setupTestEnvironment?.());
 
-        // Wait for the update to propagate to the container store
-        await page.waitForFunction(() => {
-            const containerStore = (window as any).__CONTAINER_STORE__;
-            return containerStore && containerStore.containers && containerStore.containers.length >= 2;
-        }, { timeout: 10000 });
-
-        // Force a small delay to ensure all reactive updates are processed
-        await page.waitForTimeout(3000);
-
-        // Check if the table exists now
-        const tableExists = await page.locator("table").count();
-        console.log(`Table elements found: ${tableExists}`);
-
-        if (tableExists > 0) {
-            // Wait for table rows to appear using Playwright's auto-waiting
-            const rows = page.locator("tbody tr");
-            await expect(rows).toHaveCount(2, { timeout: 30000 });
-            await expect(rows.nth(0).locator("td").nth(1)).toContainText("テストプロジェクト");
-            await expect(rows.nth(1).locator("td").nth(1)).toContainText("テストプロジェクト");
-        } else {
-            // If table doesn't exist, the projects list might be empty
-            const noProjectsText = page.locator('text="No projects found."');
-            await expect(noProjectsText).toBeVisible();
-            throw new Error(
-                "Projects were not displayed in the table. Component may not be reactive to store changes.",
-            );
-        }
+        // Wait for table rows to appear using Playwright's auto-waiting
+        const rows = page.locator("tbody tr");
+        await expect(rows).toHaveCount(2, { timeout: 10000 });
+        await expect(rows.nth(0).locator("td").nth(1)).toContainText("テストプロジェクト");
+        await expect(rows.nth(1).locator("td").nth(1)).toContainText("テストプロジェクト");
     });
 
     test("dropdown list shows containers after initialization", async ({ page }) => {

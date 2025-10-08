@@ -2,7 +2,6 @@
 import * as yjsService from "../../../lib/yjsService.svelte";
 import { containerStore } from "../../../stores/containerStore.svelte";
 
-let projects = $derived(containerStore.containers);
 let selectedProjects = $state(new Set<string>());
 
 let loading = $state(false);
@@ -12,7 +11,7 @@ let success: string | undefined = $state(undefined);
 
 
 async function deleteSelected() {
-    const targets = projects.filter(p => selectedProjects.has(p.id));
+    const targets = containerStore.containers.filter(p => selectedProjects.has(p.id));
     if (targets.length === 0) return;
     loading = true;
     error = undefined;
@@ -67,7 +66,7 @@ async function deleteSelected() {
     {#if loading}
         <p>Loading...</p>
     {/if}
-    {#if projects.length > 0}
+    {#if containerStore.containers.length > 0}
         <table class="min-w-full border mb-4">
             <thead>
                 <tr>
@@ -77,7 +76,7 @@ async function deleteSelected() {
                 </tr>
             </thead>
             <tbody>
-                {#each projects as project}
+                {#each containerStore.containers as project}
                     <tr>
                         <td class="px-2 text-center">
                             <input type="checkbox" checked={selectedProjects.has(project.id)} onchange={(e) => {
