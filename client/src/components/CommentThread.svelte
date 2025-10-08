@@ -237,7 +237,21 @@ function add() {
         // Yjs debaeadf1c8ecb7f4b7L
         // Yjs  
 
-        const countNow = renderCommentsState.length;
+        // Calculate the count directly from the Yjs array which should be updated immediately after add
+        let countNow = 0;
+        if (commentsObj && typeof (commentsObj as any).length === 'number') {
+            countNow = (commentsObj as any).length;
+        } else {
+            // Fallback: try to get the length from the item's comments
+            try {
+                if (props.item && typeof props.item.comments !== 'undefined') {
+                    const itemComments = props.item.comments;
+                    if (typeof (itemComments as any).length === 'number') {
+                        countNow = (itemComments as any).length;
+                    }
+                }
+            } catch {}
+        }
         // Only notify if count actually changed to prevent infinite loops
         if (countNow !== lastNotifiedCount) {
             lastNotifiedCount = countNow;
@@ -246,11 +260,13 @@ function add() {
             try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
             try { dispatch('comment-count-changed', { count: countNow }); } catch {}
         }
-        // DOM fallback:
+        // DOM fallback - only update text content, visibility is handled by parent OutlinerItem
         try {
             const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
             const badge = container?.querySelector('.comment-button .comment-count') as HTMLElement | null;
-            if (badge) { badge.textContent = String(countNow); (badge as HTMLElement).style.display = countNow > 0 ? 'inline-block' : 'none'; }
+            if (badge) { 
+                badge.textContent = String(countNow); 
+            }
         } catch {}
     } catch (e) {
         logger.error('[CommentThread] failed to sync after add', e);
