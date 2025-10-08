@@ -23,12 +23,15 @@ test.describe("CMT-0001: comment threads", () => {
         // インデックス1を使用（インデックス0はページタイトルでコメントボタンが表示されない）
         const firstId = await TestHelpers.getItemIdByIndex(page, 1);
         if (!firstId) throw new Error("item id not found");
-        await page.click(
-            `[data-item-id="${firstId}"] [data-testid="comment-button-${firstId}"]`,
-        );
+        // First, wait for the comment button to be visible and ready
+        const commentButton = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-button-${firstId}"]`);
+        await expect(commentButton).toBeVisible();
 
-        // コメントスレッドが表示されるまで待機
-        await expect(page.locator('[data-testid="comment-thread"]')).toBeVisible();
+        // Click the comment button
+        await commentButton.click();
+
+        // Wait for the comment thread to appear with increased timeout
+        await expect(page.locator('[data-testid="comment-thread"]')).toBeVisible({ timeout: 10000 });
 
         await page.fill('[data-testid="new-comment-input"]', "hello");
         const addBtns = page.locator('[data-testid="add-comment-btn"]');
@@ -42,26 +45,6 @@ test.describe("CMT-0001: comment threads", () => {
         console.log("DEBUG add-btn in thread visible:", await addInThread.isVisible());
         await addInThread.click();
 
-        // Wait a bit for the UI to update
-        await page.waitForTimeout(500);
-
-        // DEBUG: log how many `.comment-count` elements are under the target item
-        const debugInfo = await page.evaluate((id) => {
-            const items = Array.from(document.querySelectorAll<HTMLElement>(".outliner-item[data-item-id]"));
-            return {
-                id,
-                presentIds: items.map(el => el.dataset.itemId || ""),
-                countUnderId: document.querySelectorAll(`[data-item-id="${id}"] .comment-count`).length,
-            };
-        }, firstId);
-        // eslint-disable-next-line no-console
-        console.log("DEBUG items:", debugInfo);
-
-        // DEBUG: dump E2E_LOGS from app
-        const e2eLogs = await page.evaluate(() => (window as any).E2E_LOGS || []);
-        // eslint-disable-next-line no-console
-        console.log("E2E_LOGS:", e2eLogs);
-
         // Wait for comment count to appear and have the correct value
         await expect(
             page.locator(`[data-item-id="${firstId}"] .comment-count`),
@@ -70,6 +53,10 @@ test.describe("CMT-0001: comment threads", () => {
             page.locator(`[data-item-id="${firstId}"] .comment-count`),
         ).toHaveText("1");
 
+        // Wait for the comment element to appear with specific text, which indicates successful sync
+        await expect(page.locator('[data-testid="comment-thread"] .text')).toContainText("hello", { timeout: 15000 });
+
+        // Now verify the comment exists
         const comment = page.locator('[data-testid="comment-thread"] .comment');
         await expect(comment).toHaveCount(1);
 

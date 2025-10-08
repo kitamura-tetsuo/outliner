@@ -63,7 +63,22 @@ onMount(() => {
             }
         }
         if (yarr && typeof yarr.observeDeep === "function") {
-            const handler = () => { try { renderCommentsState = ((comments as any)?.toPlain?.() ?? []); } catch {} };
+            // Use the Y.Array directly to get the plain array, rather than going through the comment object which might be outdated
+            const handler = () => { 
+                try { 
+                    // Convert the Y.Array directly to plain objects
+                    const plainComments = yarr.toArray().map((yMap: Y.Map<any>) => ({
+                        id: yMap.get("id"),
+                        author: yMap.get("author"),
+                        text: yMap.get("text"),
+                        created: yMap.get("created"),
+                        lastChanged: yMap.get("lastChanged"),
+                    }));
+                    renderCommentsState = plainComments;
+                } catch (e) { 
+                    logger.error("Error in observe handler", e);
+                } 
+            };
             yarr.observeDeep(handler);
             unobserve = () => { try { yarr.unobserveDeep(handler); } catch {} };
             // 初期反映
