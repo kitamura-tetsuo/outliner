@@ -130,6 +130,15 @@ export class DataValidationHelpers {
                             }
                         } catch {}
                     }
+
+                    // Clear search history
+                    if (w.searchHistoryStore) {
+                        try {
+                            if (w.searchHistoryStore.reset) {
+                                w.searchHistoryStore.reset();
+                            }
+                        } catch {}
+                    }
                 } catch (e) {
                     console.warn("[afterEach] cleanup warning:", e);
                 }
