@@ -8,10 +8,36 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("GRV-0002: Graph view layout persistence", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        // Clear any existing graph layout data to ensure test isolation
+        try {
+            await page.evaluate(() => {
+                if (typeof localStorage !== "undefined") {
+                    localStorage.removeItem("graph-layout");
+                }
+            });
+        } catch (e) {
+            // Ignore localStorage access errors during test setup
+            console.log("Could not clear localStorage in beforeEach:", e.message);
+        }
+
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "Root node with [child] link",
             "child",
         ]);
+    });
+
+    test.afterEach(async ({ page }) => {
+        // Clean up graph layout data after test to ensure isolation
+        try {
+            await page.evaluate(() => {
+                if (typeof localStorage !== "undefined") {
+                    localStorage.removeItem("graph-layout");
+                }
+            });
+        } catch (e) {
+            // Ignore localStorage access errors during test cleanup
+            console.log("Could not clear localStorage in afterEach:", e.message);
+        }
     });
 
     test("layout persists after page reload", async ({ page }) => {
