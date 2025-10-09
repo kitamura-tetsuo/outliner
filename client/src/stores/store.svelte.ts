@@ -1,5 +1,6 @@
 import { createSubscriber } from "svelte/reactivity";
 import * as Y from "yjs";
+import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Item } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
 
@@ -53,12 +54,43 @@ class GeneralStore {
                     const nextItems: any = next?.items as any;
                     const prevLen = prevItems?.length ?? 0;
                     const nextLen = nextItems?.length ?? 0;
-                    if (prevLen > 0 && nextLen === 0) {
-                        for (let i = 0; i < prevLen; i++) {
-                            const c = prevItems.at ? prevItems.at(i) : prevItems[i];
-                            const text = c?.text?.toString?.() ?? String(c?.text ?? "");
-                            const n = nextItems?.addNode?.("tester");
-                            n?.updateText?.(text);
+                    if (prevLen > 0) {
+                        const isPlaceholderChild = (node: any) => {
+                            const text = node?.text?.toString?.() ?? String(node?.text ?? "");
+                            if (!text) return true;
+                            return text === "一行目: テスト" || text === "二行目: Yjs 反映"
+                                || text === "三行目: 並び順チェック";
+                        };
+                        const shouldReplaceChildren = nextLen === 0
+                            || (nextLen <= 3 && (() => {
+                                for (let idx = 0; idx < nextLen; idx++) {
+                                    const candidate = nextItems.at ? nextItems.at(idx) : nextItems[idx];
+                                    if (!isPlaceholderChild(candidate)) {
+                                        return false;
+                                    }
+                                }
+                                return true;
+                            })());
+
+                        if (shouldReplaceChildren) {
+                            while ((nextItems?.length ?? 0) > 0) {
+                                nextItems.removeAt(nextItems.length - 1);
+                            }
+
+                            const cloneBranch = (source: any, target: any) => {
+                                if (!source || !target) return;
+                                const length = source?.length ?? 0;
+                                for (let index = 0; index < length; index++) {
+                                    const from = source.at ? source.at(index) : source[index];
+                                    if (!from) continue;
+                                    const text = from?.text?.toString?.() ?? String(from?.text ?? "");
+                                    const created = target?.addNode?.("tester");
+                                    if (!created) continue;
+                                    created.updateText?.(text);
+                                    cloneBranch(from?.items as any, created?.items as any);
+                                }
+                            };
+                            cloneBranch(prevItems, nextItems);
                         }
                     }
                 } catch {}
@@ -95,11 +127,16 @@ class GeneralStore {
         this._project = v;
         console.log(`store: Setting up Yjs observe for pages`);
 
+        saveProjectSnapshot(v);
+
         // Yjs observeDeep でルートツリーを監視し、Svelteの購読にブリッジ
         const project = v;
         const ymap: any = (project as any)?.ydoc?.getMap?.("orderedTree");
         const subscribe = createSubscriber((update) => {
             const handler = (_events: Array<Y.YEvent<any>>, _tr?: Y.Transaction) => {
+                try {
+                    saveProjectSnapshot(project);
+                } catch {}
                 update();
             };
             try {

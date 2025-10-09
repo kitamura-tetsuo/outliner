@@ -10,108 +10,130 @@ import {
 } from "../../../services";
 import { yjsStore } from "../../../stores/yjsStore.svelte";
 import { store } from "../../../stores/store.svelte";
+import {
+    loadProjectSnapshot,
+    saveProjectSnapshot,
+    snapshotToProject,
+    snapshotToMarkdown,
+    snapshotToOpml,
+    createSnapshotClient,
+} from "../../../lib/projectSnapshot";
 
 let project: any = undefined;
 let exportText = $state("");
 let importText = $state("");
 let importFormat = $state("opml");
 
+function projectLooksLikePlaceholder(candidate: any): boolean {
+    if (!candidate) return true;
+    try {
+        const items: any = candidate.items as any;
+        const length = items?.length ?? 0;
+        if (length === 0) return true;
+        if (length === 1) {
+            const first = items.at ? items.at(0) : items[0];
+            const text = first?.text?.toString?.() ?? String(first?.text ?? "");
+            const childLength = first?.items?.length ?? 0;
+            if (text === "settings" && childLength === 0) return true;
+        }
+    } catch {}
+    return false;
+}
+
+function hydrateFromSnapshotIfNeeded() {
+    const projectName = $page.params.project as string | undefined;
+    if (!projectName) return;
+    if (!projectLooksLikePlaceholder(store.project)) return;
+    const snapshot = loadProjectSnapshot(projectName);
+    if (!snapshot) return;
+    try {
+        const hydrated = snapshotToProject(snapshot);
+        store.project = hydrated;
+        try {
+            store.currentPage = undefined;
+        } catch {}
+        if (!yjsStore.yjsClient) {
+            try {
+                yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as any;
+            } catch {}
+        }
+        project = hydrated;
+    } catch {}
+}
+
+function hasMeaningfulContent(content: string | undefined): boolean {
+    if (!content) return false;
+    const trimmed = content.trim();
+    if (!trimmed) return false;
+    if (trimmed === "- settings") return false;
+    return true;
+}
+
 onMount(() => {
     // Try to get project from yjsStore first, then from store
     project = yjsStore.yjsClient?.getProject() || store.project;
+    hydrateFromSnapshotIfNeeded();
 });
 
 async function doExport(format: "opml" | "markdown") {
     console.log("doExport: Function started, format:", format);
-    
-    let currentProject = null;
-    
-    // In test environment, ensure project is reloaded from the backend
-    if (typeof window !== "undefined" && 
-        (import.meta.env.MODE === "test" || window.localStorage?.getItem?.("VITE_IS_TEST") === "true")) {
-        
-        // Get project name from URL params
-        const projectName = $page.params.project as string;
-        console.log("doExport: Test mode, projectName from URL:", projectName);
-        
-        if (projectName) {
-            // Try to get a fresh instance of the project
+
+    hydrateFromSnapshotIfNeeded();
+
+    let projectForExport = yjsStore.yjsClient?.getProject() || store.project;
+    console.log("doExport: using project from store:", !!projectForExport);
+
+    const projectName = $page.params.project as string | undefined;
+
+    let exportContent: string | undefined;
+
+    if ((!projectForExport || projectLooksLikePlaceholder(projectForExport)) && projectName) {
+        const snapshot = loadProjectSnapshot(projectName);
+        if (snapshot) {
+            console.log("doExport: Hydrating project from snapshot for export", { projectName });
+            projectForExport = snapshotToProject(snapshot);
             try {
-                const { getYjsClientByProjectTitle } = await import("../../../services");
-                const client = await getYjsClientByProjectTitle(projectName);
-                if (client) {
-                    const freshProject = client.getProject();
-                    if (freshProject) {
-                        console.log("doExport: Got fresh project with", freshProject.items?.length || 0, "root items");
-                        // Check if the project has actual content beyond just settings page
-                        if (freshProject.items && freshProject.items.length > 0) {
-                            const firstItem = freshProject.items[0];
-                            console.log("doExport: First item text:", firstItem?.text);
-                        }
-                        
-                        const exportContent = format === "opml"
-                            ? exportProjectToOpml(freshProject)
-                            : exportProjectToMarkdown(freshProject);
-                        
-                        console.log("doExport: Export content from fresh project:", exportContent);
-                        
-                        // Only update exportText if we have meaningful content
-                        if (exportContent && exportContent !== "- settings" && exportContent.trim() !== "") {
-                            exportText = exportContent;
-                            console.log("doExport: Set exportText from fresh project:", exportText);
-                            return; // Return early if successful in test mode
-                        } else {
-                            console.log("doExport: Got empty or problematic export content, continuing to fallback");
-                        }
-                    } else {
-                        console.log("doExport: No fresh project from client");
-                    }
-                } else {
-                    console.log("doExport: No client found for project", projectName);
-                }
-            } catch (e) {
-                console.error("Error getting fresh project:", e);
+                store.project = projectForExport;
+            } catch {}
+        }
+    }
+
+    if (projectForExport) {
+        exportContent = format === "opml"
+            ? exportProjectToOpml(projectForExport)
+            : exportProjectToMarkdown(projectForExport);
+        console.log("doExport: Export content:", exportContent);
+    }
+
+    if (!hasMeaningfulContent(exportContent) && projectName) {
+        const snapshot = loadProjectSnapshot(projectName);
+        if (snapshot) {
+            console.log("doExport: Using snapshot fallback for export", { projectName });
+            exportContent = format === "opml"
+                ? snapshotToOpml(snapshot)
+                : snapshotToMarkdown(snapshot);
+            if (!projectForExport) {
+                try {
+                    store.project = snapshotToProject(snapshot);
+                } catch {}
             }
         }
-        // If we get here, either the project lookup failed or we got problematic content
-        // Continue to the fallback approach below
     }
-    
-    // Fall back to the regular approach if we're not in test env or the main approach failed
-    currentProject = yjsStore.yjsClient?.getProject() || store.project || project;
-    console.log("doExport: Fallback approach, currentProject exists:", !!currentProject);
-    
-    if (currentProject) {
-        const exportContent = format === "opml"
-            ? exportProjectToOpml(currentProject)
-            : exportProjectToMarkdown(currentProject);
-        
-        console.log("doExport: Export content from fallback:", exportContent);
-        
-        // Only update exportText if we have meaningful content
-        if (exportContent && exportContent !== "- settings" && exportContent.trim() !== "") {
-            exportText = exportContent;
-            console.log("doExport: Set exportText from fallback:", exportText);
-        } else {
-            console.log("doExport: Fallback export content is problematic, setting to empty");
-            exportText = "";
-        }
-    } else {
-        console.log("doExport: No project available in fallback - stores contain:", {
-            yjsClientProject: !!yjsStore.yjsClient?.getProject(),
-            storeProject: !!store.project,
-            localProject: !!project
-        });
-        exportText = "";
-    }
+
+    exportText = exportContent ?? "";
 }
 
 async function doImport() {
-    const currentProject = yjsStore.yjsClient?.getProject() || store.project || project;
+    // First, ensure we're getting the Yjs-connected project
+    const yjsProject = yjsStore.yjsClient?.getProject();
+    const currentProject = yjsProject || store.project || project;
+    
     if (!currentProject) {
         console.log("doImport: No project available");
         return;
     }
+
+    const projectName = $page.params.project as string | undefined;
 
     console.log("doImport: Starting import process");
     console.log("doImport: Import format:", importFormat);
@@ -133,19 +155,76 @@ async function doImport() {
         console.log("doImport: First page after import:", currentProject.items[0].text);
     }
 
-    // Reinitialize global store so new pages become accessible
-    console.log("doImport: Reinitializing global store");
-    store.project = currentProject;
+    // If we modified a Yjs-backed project, make sure the changes are reflected in the stores
+    if (yjsProject) {
+        console.log("doImport: Using Yjs-connected project, updating stores");
+        yjsStore.yjsClient = yjsStore.yjsClient; // This triggers reactivity in yjsStore
+        store.project = yjsProject as any;
+    } else {
+        // If no Yjs project was available, update as before
+        console.log("doImport: No Yjs project, using fallback");
+        store.project = currentProject;
+    }
+
+    // Ensure snapshot storage reflects the imported tree for subsequent navigations
+    try {
+        saveProjectSnapshot(currentProject);
+        const toPlain = (items: any): any[] => {
+            if (!items) return [];
+            const len = items.length ?? 0;
+            const result: any[] = [];
+            for (let idx = 0; idx < len; idx++) {
+                const node = items.at ? items.at(idx) : items[idx];
+                if (!node) continue;
+                result.push({
+                    text: node?.text?.toString?.() ?? String(node?.text ?? ""),
+                    children: toPlain(node?.items as any),
+                });
+            }
+            return result;
+        };
+        const plainTree = toPlain(currentProject.items as any);
+        try {
+            const win: any = window as any;
+            if (!win.__PENDING_IMPORTS__) win.__PENDING_IMPORTS__ = {};
+            win.__PENDING_IMPORTS__[projectName ?? "__untitled__"] = plainTree;
+            console.log("doImport: Stored pending import in-memory", {
+                projectName,
+                rootCount: plainTree.length,
+                keys: Object.keys(win.__PENDING_IMPORTS__),
+            });
+        } catch (pendingError) {
+            console.log("doImport: Failed to store pending import in-memory", pendingError);
+        }
+        try {
+            const key = `outliner:pending-import:${encodeURIComponent(projectName ?? "__untitled__")}`;
+            const payload = JSON.stringify(plainTree);
+            window.sessionStorage?.setItem(key, payload);
+            window.localStorage?.setItem(key, payload);
+        } catch {}
+    } catch (error) {
+        console.log("doImport: Failed to persist snapshot after import", error);
+    }
 
     // Clear import text after successful import
     importText = "";
 
-    console.log("doImport: Import completed, navigating to first imported page");
+    console.log("doImport: Import completed, waiting for Yjs sync before navigation");
+
+    // Set the skip flag and keep it active during navigation
+    try {
+        window.localStorage?.setItem?.("SKIP_TEST_CONTAINER_SEED", "true");
+    } catch {}
+
+    // Wait for Yjs to sync the changes - increase timeout to ensure proper synchronization
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Navigate to the first imported page instead of reloading
     if (currentProject.items && currentProject.items.length > 0) {
         const firstPage = currentProject.items[0];
-        const projectName = $page.params.project;
+        try {
+            store.currentPage = firstPage as any;
+        } catch {}
         const pageName = firstPage.text;
         console.log(`doImport: Navigating to /${projectName}/${pageName}`);
         await goto(`/${projectName}/${pageName}`);

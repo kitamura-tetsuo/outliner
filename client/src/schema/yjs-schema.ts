@@ -190,6 +190,10 @@ export class Project {
     addPage(title: string, author: string): Item {
         const page = this.items.addNode(author ?? "user");
         page.updateText(title ?? "");
+        const pages = this.ydoc.getMap<Y.Doc>("pages");
+        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as any);
+        pages.set(page.id, subdoc);
+        subdoc.load();
         return page;
     }
 }

@@ -17,6 +17,7 @@ import {
     setupLinkPreviewHandlers,
 } from "../../../lib/linkPreviewHandler";
 import { getLogger } from "../../../lib/logger";
+import { createSnapshotClient, loadProjectSnapshot, snapshotToProject } from "../../../lib/projectSnapshot";
 import { getYjsClientByProjectTitle, createNewYjsProject } from "../../../services";
 const logger = getLogger("+page");
 
@@ -49,6 +50,22 @@ let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 // 注意: $state を使うと $effect が自分で読んで書く依存を持ちループになるため、通常変数で保持する
 let lastLoadKey: string | null = null;
 let __loadingInProgress = false; // 再入防止
+
+function projectLooksLikePlaceholder(candidate: any): boolean {
+    if (!candidate) return true;
+    try {
+        const items: any = candidate.items as any;
+        const length = items?.length ?? 0;
+        if (length === 0) return true;
+        if (length === 1) {
+            const first = items.at ? items.at(0) : items[0];
+            const text = first?.text?.toString?.() ?? String(first?.text ?? "");
+            const childLength = first?.items?.length ?? 0;
+            if (text === "settings" && childLength === 0) return true;
+        }
+    } catch {}
+    return false;
+}
 
 
 	// E2E: シーディング抑止フラグ（prepareTestEnvironment が設定）
@@ -196,6 +213,141 @@ async function loadProjectAndPage() {
                 // Ensure global store has the project set for tests that rely on window.generalStore.project
                 const proj = client.getProject?.();
                 if (proj) {
+                    let appliedPendingImport = false;
+                    try {
+                        let pendingImport: any[] | null = null;
+                        try {
+                            const win: any = window as any;
+                            const byTitle = win?.__PENDING_IMPORTS__;
+                            if (byTitle) {
+                                const keys = Object.keys(byTitle);
+                                logger.info("loadProjectAndPage: Pending import keys", { keys: JSON.stringify(keys) });
+                                logger.info("loadProjectAndPage: Pending import key comparison", {
+                                    projectName,
+                                    firstKey: keys[0],
+                                    matches: keys.includes(projectName),
+                                });
+                            } else {
+                                logger.info("loadProjectAndPage: No pending import map present");
+                            }
+                            if (byTitle && byTitle[projectName]) {
+                                pendingImport = byTitle[projectName];
+                                delete byTitle[projectName];
+                            }
+                        } catch {}
+                        const key = `outliner:pending-import:${encodeURIComponent(projectName)}`;
+                        try {
+                            const raw = window.sessionStorage?.getItem(key) ?? window.localStorage?.getItem(key);
+                            if (raw) {
+                                pendingImport = JSON.parse(raw);
+                                window.sessionStorage?.removeItem(key);
+                                window.localStorage?.removeItem(key);
+                            }
+                        } catch {}
+
+                        if (Array.isArray(pendingImport) && pendingImport.length > 0) {
+                            const projectItems: any = proj.items as any;
+                            const findPage = (title: string) => {
+                                const len = projectItems?.length ?? 0;
+                                for (let index = 0; index < len; index++) {
+                                    const page = projectItems.at ? projectItems.at(index) : projectItems[index];
+                                    const text = page?.text?.toString?.() ?? String(page?.text ?? "");
+                                    if (text === title) return page;
+                                }
+                                return null;
+                            };
+                            const populate = (nodes: any[], targetItems: any) => {
+                                if (!targetItems) return;
+                                while ((targetItems.length ?? 0) > 0) {
+                                    targetItems.removeAt(targetItems.length - 1);
+                                }
+                                for (const nodeData of nodes) {
+                                    const text = nodeData?.text ?? "";
+                                    const children = Array.isArray(nodeData?.children) ? nodeData.children : [];
+                                    const node = targetItems.addNode?.("snapshot");
+                                    if (!node) continue;
+                                    node.updateText?.(text);
+                                    populate(children, node?.items as any);
+                                }
+                            };
+                            for (const root of pendingImport) {
+                                const title = root?.text ?? "";
+                                if (!title) continue;
+                                let pageNode = findPage(title);
+                                if (!pageNode) {
+                                    pageNode = proj.addPage(title, "snapshot");
+                                }
+                                populate(root?.children ?? [], pageNode?.items as any);
+                            }
+                            appliedPendingImport = true;
+                            logger.info("loadProjectAndPage: Applied pending import tree to connected project", { projectName });
+                        } else {
+                            logger.info("loadProjectAndPage: No pending import data", { projectName });
+                        }
+                    } catch (pendingError) {
+                        logger.warn("loadProjectAndPage: Failed to apply pending import", pendingError);
+                    }
+
+                    try {
+                        logger.info("loadProjectAndPage: Pending import candidate", {
+                            hasData: typeof pendingImport !== 'undefined' && Array.isArray(pendingImport),
+                            length: (typeof pendingImport !== 'undefined' && Array.isArray(pendingImport)) ? pendingImport.length : null,
+                            sample: (typeof pendingImport !== 'undefined' && Array.isArray(pendingImport)) ? JSON.stringify(pendingImport) : null,
+                        });
+                        const snapshot = loadProjectSnapshot(projectName);
+                        if (!appliedPendingImport && snapshot && Array.isArray(snapshot.items) && snapshot.items.length > 0) {
+                            const projectItems: any = proj.items as any;
+                            const snapshotTitles = new Set(snapshot.items.map(root => root?.text ?? ""));
+                            const getTitle = (page: any) => page?.text?.toString?.() ?? String(page?.text ?? "");
+
+                            // Remove pages not present in snapshot to avoid stale placeholders
+                            for (let index = (projectItems?.length ?? 0) - 1; index >= 0; index--) {
+                                const existing = projectItems.at ? projectItems.at(index) : projectItems[index];
+                                if (!existing) continue;
+                                const title = getTitle(existing);
+                                if (!snapshotTitles.has(title)) {
+                                    projectItems.removeAt?.(index);
+                                }
+                            }
+
+                            const populateChildren = (children: any[], targetItems: any) => {
+                                if (!targetItems) return;
+                                while ((targetItems.length ?? 0) > 0) {
+                                    targetItems.removeAt(targetItems.length - 1);
+                                }
+                                for (const child of children ?? []) {
+                                    const node = targetItems.addNode?.("snapshot");
+                                    if (!node) continue;
+                                    node.updateText?.(child?.text ?? "");
+                                    populateChildren(child?.children ?? [], node?.items as any);
+                                }
+                            };
+
+                            for (const root of snapshot.items) {
+                                const title = root?.text ?? "";
+                                if (!title) continue;
+                                let pageNode: any = null;
+                                const existingCount = projectItems?.length ?? 0;
+                                for (let idx = 0; idx < existingCount; idx++) {
+                                    const candidate = projectItems.at ? projectItems.at(idx) : projectItems[idx];
+                                    if (!candidate) continue;
+                                    if (getTitle(candidate) === title) {
+                                        pageNode = candidate;
+                                        break;
+                                    }
+                                }
+                                if (!pageNode) {
+                                    pageNode = proj.addPage(title, "snapshot");
+                                } else {
+                                    pageNode.updateText?.(title);
+                                }
+                                populateChildren(root?.children ?? [], pageNode?.items as any);
+                            }
+                        }
+                    } catch (snapshotError) {
+                        logger.warn("loadProjectAndPage: Failed to hydrate project from snapshot", snapshotError);
+                    }
+
                     store.project = proj as any;
                     logger.info(`loadProjectAndPage: store.project set from client (title="${proj?.title}")`);
 
@@ -237,30 +389,78 @@ async function loadProjectAndPage() {
                                     for (let attempt = 0; attempt < 20; attempt++) {
                                         const prevLen = prev?.items?.length ?? 0;
                                         const nextLen = next?.items?.length ?? 0;
-                                        if (prevLen > 0 && nextLen === 0) {
-                                            for (let i = 0; i < prevLen; i++) {
-                                                const c = prev.items.at(i);
-                                                const text = c?.text?.toString?.() ?? String(c?.text ?? "");
-                                                const node = next.items?.addNode?.("tester");
-                                                node?.updateText?.(text);
-                                                // マッピングを保存（旧ID -> 新ID）
-                                                try {
-                                                    const w:any = (typeof window !== 'undefined') ? (window as any) : null;
-                                                    if (w) {
-                                                        if (!w.__ITEM_ID_MAP__) w.__ITEM_ID_MAP__ = {};
-                                                        w.__ITEM_ID_MAP__[String((c as any)?.id)] = String((node as any)?.id);
-                                                    }
-                                                } catch {}
-                                                // 添付ファイルも移行（プロビジョナル -> 接続済み）
-                                                try {
-                                                    const srcAtt: any = (c as any)?.attachments;
-                                                    const arr: any[] = srcAtt?.toArray ? srcAtt.toArray() : (Array.isArray(srcAtt) ? srcAtt : []);
-                                                    for (const u of arr) {
-                                                        const url = Array.isArray(u) ? u[0] : u;
-                                                        node?.addAttachment?.(url);
-                                                    }
-                                                } catch {}
+                                        const isPlaceholderChild = (node: any) => {
+                                            const text = node?.text?.toString?.() ?? String(node?.text ?? "");
+                                            if (!text) return true;
+                                            return text === "一行目: テスト" || text === "二行目: Yjs 反映" || text === "三行目: 並び順チェック";
+                                        };
+                                        // Check if the connected page has real content (non-placeholder items)
+                                        const hasRealContent = () => {
+                                            const len = next?.items?.length ?? 0;
+                                            for (let idx = 0; idx < len; idx++) {
+                                                const candidate = next.items?.at ? next.items.at(idx) : next.items[idx];
+                                                const text = candidate?.text?.toString?.() ?? String(candidate?.text ?? "");
+                                                // If the item is not a placeholder, then we consider it has real content
+                                                if (text && 
+                                                    text !== "一行目: テスト" && 
+                                                    text !== "二行目: Yjs 反映" && 
+                                                    text !== "三行目: 並び順チェック") {
+                                                    return true;
+                                                }
                                             }
+                                            return false;
+                                        };
+                                        
+                                        const shouldReplaceChildren = prevLen > 0 && !hasRealContent() && 
+                                            (nextLen === 0 || (nextLen <= 3 && (() => {
+                                                for (let idx = 0; idx < nextLen; idx++) {
+                                                    const candidate = next.items?.at ? next.items.at(idx) : next.items[idx];
+                                                    if (!isPlaceholderChild(candidate)) {
+                                                        return false;
+                                                    }
+                                                }
+                                                return true;
+                                            })()));
+                                        if (shouldReplaceChildren) {
+                                            const mapId = (fromId: string | undefined, toId: string | undefined) => {
+                                                if (!fromId || !toId) return;
+                                                try {
+                                                    const w:any = (typeof window !== "undefined") ? (window as any) : null;
+                                                    if (!w) return;
+                                                    if (!w.__ITEM_ID_MAP__) w.__ITEM_ID_MAP__ = {};
+                                                    w.__ITEM_ID_MAP__[String(fromId)] = String(toId);
+                                                } catch {}
+                                            };
+                                            const copyAttachments = (sourceNode: any, targetNode: any) => {
+                                                try {
+                                                    const srcAtt: any = sourceNode?.attachments;
+                                                    const arr: any[] = srcAtt?.toArray ? srcAtt.toArray() : (Array.isArray(srcAtt) ? srcAtt : []);
+                                                    for (const entry of arr) {
+                                                        const url = Array.isArray(entry) ? entry[0] : entry;
+                                                        targetNode?.addAttachment?.(url);
+                                                    }
+                                                } catch {}
+                                            };
+                                            const cloneBranch = (sourceItems: any, targetItems: any) => {
+                                                if (!sourceItems || !targetItems) return;
+                                                const length = sourceItems?.length ?? 0;
+                                                for (let index = 0; index < length; index++) {
+                                                    const srcNode = sourceItems.at ? sourceItems.at(index) : sourceItems[index];
+                                                    if (!srcNode) continue;
+                                                    const text = srcNode?.text?.toString?.() ?? String(srcNode?.text ?? "");
+                                                    const destNode = targetItems?.addNode?.("tester");
+                                                    if (!destNode) continue;
+                                                    destNode.updateText?.(text);
+                                                    mapId((srcNode as any)?.id, (destNode as any)?.id);
+                                                    copyAttachments(srcNode, destNode);
+                                                    cloneBranch(srcNode?.items as any, destNode?.items as any);
+                                                }
+                                            };
+
+                                            while ((next?.items?.length ?? 0) > 0) {
+                                                next.items.removeAt(next.items.length - 1);
+                                            }
+                                            cloneBranch(prev.items as any, next.items as any);
                                             logger.info("E2E: Migrated provisional page children to connected page");
                                             break;
                                         }
@@ -269,23 +469,45 @@ async function loadProjectAndPage() {
                                     }
                                 }
                             } catch {}
-                            // Ensure minimum lines exist in connected page for E2E stability
+
                             try {
-                                const cpItems: any = (pageRef as any).items as any;
-                                const len = cpItems?.length ?? 0;
-                                const defaults = [
-                                    "一行目: テスト",
-                                    "二行目: Yjs 反映",
-                                    "三行目: 並び順チェック",
-                                ];
-                                for (let i = len; i < 3; i++) {
-                                    const node = cpItems?.addNode?.("tester");
-                                    node?.updateText?.(defaults[i] ?? "");
+                                const win: any = window as any;
+                                const pendingMap = win?.__PENDING_IMPORTS__;
+                                let pendingPage: any = null;
+                                if (Array.isArray(pendingImport)) {
+                                    pendingPage = pendingImport.find((root: any) => root?.text === pageName);
                                 }
-                                if (len < 3) {
-                                    logger.info("E2E: Ensured minimum 3 lines on connected page");
+                                if (!pendingPage && pendingMap && pendingMap[projectName]) {
+                                    const entry = pendingMap[projectName];
+                                    if (Array.isArray(entry)) {
+                                        pendingPage = entry.find((root: any) => root?.text === pageName);
+                                    }
+                                }
+                                if (pendingPage) {
+                                    const applyChildren = (nodes: any[], targetItems: any) => {
+                                        if (!targetItems) return;
+                                        while ((targetItems.length ?? 0) > 0) {
+                                            targetItems.removeAt(targetItems.length - 1);
+                                        }
+                                        for (const nodeData of nodes ?? []) {
+                                            const text = nodeData?.text ?? "";
+                                            const child = targetItems.addNode?.("pending-import");
+                                            if (!child) continue;
+                                            child.updateText?.(text);
+                                            applyChildren(nodeData?.children ?? [], child?.items as any);
+                                        }
+                                    };
+                                    applyChildren(pendingPage?.children ?? [], pageRef?.items as any);
+                                    if (pendingMap && pendingMap[projectName]) {
+                                        delete pendingMap[projectName];
+                                    }
+                                    logger.info("loadProjectAndPage: Applied pending import to pageRef", { projectName, pageName });
                                 }
                             } catch {}
+
+                            // Ensure minimum lines exist in connected page for E2E stability
+                            // Skip if SKIP_TEST_CONTAINER_SEED is set (e.g., during import tests)
+                            // This block is intentionally removed - seeding is now only done in the second block below
                         }
                         // In test environment (unless SKIP_TEST_CONTAINER_SEED is set), ensure default lines exist
                         if (!shouldSkipTestSeed()) {
@@ -352,7 +574,8 @@ async function loadProjectAndPage() {
                                 || import.meta.env.VITE_IS_TEST === "true"
                                 || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
                             );
-                            if (isTestEnv) {
+                            // Skip seeding if SKIP_TEST_CONTAINER_SEED is set (e.g., during import tests)
+                            if (isTestEnv && !shouldSkipTestSeed()) {
                                 const defaults = [
                                     "一行目: テスト",
                                     "二行目: Yjs 反映",
@@ -408,6 +631,38 @@ async function loadProjectAndPage() {
             logger.info(`Project title: "${store.project.title}"`);
             const items = store.project.items as any;
             logger.info(`Project items count: ${items?.length || 0}`);
+            if (projectLooksLikePlaceholder(store.project)) {
+                const snapshot = loadProjectSnapshot(projectName);
+                if (snapshot) {
+                    const hydrated = snapshotToProject(snapshot);
+                    store.project = hydrated as any;
+                    project = hydrated as any;
+                    if (!yjsStore.yjsClient) {
+                        try {
+                            yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as any;
+                        } catch {}
+                    }
+                    try {
+                        const pages: any = hydrated.items as any;
+                        const len = pages?.length ?? 0;
+                        let target: any = null;
+                        for (let i = 0; i < len; i++) {
+                            const p = pages.at ? pages.at(i) : pages[i];
+                            const title = p?.text?.toString?.() ?? String(p?.text ?? "");
+                            if (title === pageName) {
+                                target = p;
+                                break;
+                            }
+                        }
+                        if (!target && len > 0) {
+                            target = pages.at ? pages.at(0) : pages[0];
+                        }
+                        if (target) {
+                            store.currentPage = target as any;
+                        }
+                    } catch {}
+                }
+            }
         }
 
         // ページの読み込み完了をログ出力
