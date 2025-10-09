@@ -7,54 +7,106 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CMT-0001: comment threads", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // Clean up any existing comments before starting the test
-        await page.evaluate(() => {
-            // Clear comment data from the current page items if possible
-            const gs: any = (window as any).generalStore;
-            if (gs?.currentPage?.items) {
-                const items = gs.currentPage.items;
-                const len = items?.length ?? 0;
-                for (let i = 0; i < len; i++) {
-                    const item = items.at(i);
-                    if (item && typeof item.getComments === "function") {
-                        // Try to clear comments if there's a method available
-                        try {
-                            const comments = item.getComments();
-                            if (comments && Array.isArray(comments) && comments.length > 0) {
-                                for (const comment of comments) {
-                                    if (comment.id && typeof item.deleteComment === "function") {
-                                        item.deleteComment(comment.id);
-                                    }
-                                }
-                            }
-                        } catch (e) {
-                            console.warn("Could not clear comments for item:", e);
-                        }
-                    }
-                }
-            }
-
-            // Also clear any existing Yjs comment data
-            try {
-                const yjsStore: any = (window as any).__YJS_STORE__;
-                if (yjsStore?.yjsClient) {
-                    const client = yjsStore.yjsClient;
-                    // Clear any pending comment operations
-                    if (client.comments) {
-                        client.comments.clear();
-                    }
-                }
-            } catch (e) {
-                console.warn("Could not clear Yjs comment data:", e);
-            }
-        }).catch((e) => {
-            // If page is closed or evaluation fails, just log and continue
-            console.warn("Could not perform comment cleanup:", e?.message ?? e);
-        });
-
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "first line",
         ]);
+
+        // Clean up any existing comments after environment preparation
+        try {
+            // Only attempt cleanup if the page is still open
+            if (page.isClosed()) {
+                console.log("[beforeEach] Page already closed, skipping comment cleanup");
+                return;
+            }
+
+            await page.evaluate(() => {
+                try {
+                    // Clear comment data from the current page items if possible
+                    const gs: any = (window as any).generalStore;
+                    if (gs?.currentPage?.items) {
+                        const items = gs.currentPage.items;
+                        const len = items?.length ?? 0;
+                        for (let i = 0; i < len; i++) {
+                            const item = items.at(i);
+                            if (item && typeof item.getComments === "function") {
+                                // Try to clear comments if there's a method available
+                                try {
+                                    const comments = item.getComments();
+                                    if (comments && Array.isArray(comments) && comments.length > 0) {
+                                        for (const comment of comments) {
+                                            if (comment.id && typeof item.deleteComment === "function") {
+                                                item.deleteComment(comment.id);
+                                            }
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.warn("Could not clear comments for item:", e);
+                                }
+                            }
+                        }
+                    }
+
+                    // Also clear any existing Yjs comment data
+                    try {
+                        const yjsStore: any = (window as any).__YJS_STORE__;
+                        if (yjsStore?.yjsClient) {
+                            const client = yjsStore.yjsClient;
+                            // Clear any pending comment operations
+                            if (client.comments) {
+                                client.comments.clear();
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Could not clear Yjs comment data:", e);
+                    }
+
+                    // Clear any global state that might interfere with this test
+                    try {
+                        const win: any = window as any;
+                        // Clear any comment-related global variables
+                        if (win.__COMMENT_THREAD_STATE__) {
+                            win.__COMMENT_THREAD_STATE__ = {};
+                        }
+
+                        // Clear any editor overlay state that might affect cursor/comment positioning
+                        if (win.editorOverlayStore) {
+                            const editorStore = win.editorOverlayStore;
+                            if (typeof editorStore.reset === "function") {
+                                editorStore.reset();
+                            } else {
+                                // Manual reset if no reset method
+                                editorStore.cursors = {};
+                                editorStore.activeItemId = null;
+                                editorStore.cursorVisible = false;
+                                if (editorStore.cursorInstances) {
+                                    editorStore.cursorInstances.clear();
+                                }
+                            }
+                        }
+
+                        // Clear any comment-related state in generalStore
+                        if (gs?.commentThreads) {
+                            gs.commentThreads.clear();
+                        }
+
+                        // Clear any pending timeouts or intervals that might affect state
+                        if (win.__CLEANUP_TIMEOUTS__) {
+                            for (const tid of win.__CLEANUP_TIMEOUTS__) {
+                                clearTimeout(tid);
+                            }
+                            win.__CLEANUP_TIMEOUTS__ = [];
+                        }
+                    } catch (e) {
+                        console.warn("Could not clear global state:", e);
+                    }
+                } catch (e) {
+                    console.warn("Error during comment cleanup:", e);
+                }
+            });
+        } catch (e) {
+            // If page is closed or evaluation fails, just log and continue
+            console.warn("Could not perform comment cleanup:", e?.message ?? e);
+        }
     });
 
     test("add, edit and remove comment", async ({ page }, testInfo) => {
@@ -142,62 +194,106 @@ test.describe("CMT-0001: comment threads", () => {
 
     test.afterEach(async ({ page }) => {
         // Explicitly clean up any comment data to ensure test isolation
-        await page.evaluate(() => {
-            // Clear comment data from the current page items if possible
-            const gs: any = (window as any).generalStore;
-            if (gs?.currentPage?.items) {
-                const items = gs.currentPage.items;
-                const len = items?.length ?? 0;
-                for (let i = 0; i < len; i++) {
-                    const item = items.at(i);
-                    if (item && typeof item.getComments === "function") {
-                        // Try to clear comments if there's a method available
-                        try {
-                            const comments = item.getComments();
-                            if (comments && Array.isArray(comments) && comments.length > 0) {
-                                for (const comment of comments) {
-                                    if (comment.id && typeof item.deleteComment === "function") {
-                                        item.deleteComment(comment.id);
+        try {
+            // Only attempt cleanup if the page is still open
+            if (page.isClosed()) {
+                console.log("[afterEach] Page already closed, skipping comment cleanup");
+                return;
+            }
+
+            await page.evaluate(() => {
+                try {
+                    // Clear comment data from the current page items if possible
+                    const gs: any = (window as any).generalStore;
+                    if (gs?.currentPage?.items) {
+                        const items = gs.currentPage.items;
+                        const len = items?.length ?? 0;
+                        for (let i = 0; i < len; i++) {
+                            const item = items.at(i);
+                            if (item && typeof item.getComments === "function") {
+                                // Try to clear comments if there's a method available
+                                try {
+                                    const comments = item.getComments();
+                                    if (comments && Array.isArray(comments) && comments.length > 0) {
+                                        for (const comment of comments) {
+                                            if (comment.id && typeof item.deleteComment === "function") {
+                                                item.deleteComment(comment.id);
+                                            }
+                                        }
                                     }
+                                } catch (e) {
+                                    console.warn("Could not clear comments for item:", e);
                                 }
                             }
-                        } catch (e) {
-                            console.warn("Could not clear comments for item:", e);
                         }
                     }
-                }
-            }
 
-            // Also clear any existing Yjs comment data
-            try {
-                const yjsStore: any = (window as any).__YJS_STORE__;
-                if (yjsStore?.yjsClient) {
-                    const client = yjsStore.yjsClient;
-                    // Clear any pending comment operations
-                    if (client.comments) {
-                        client.comments.clear();
+                    // Also clear any existing Yjs comment data
+                    try {
+                        const yjsStore: any = (window as any).__YJS_STORE__;
+                        if (yjsStore?.yjsClient) {
+                            const client = yjsStore.yjsClient;
+                            // Clear any pending comment operations
+                            if (client.comments) {
+                                client.comments.clear();
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Could not clear Yjs comment data:", e);
                     }
-                }
-            } catch (e) {
-                console.warn("Could not clear Yjs comment data:", e);
-            }
 
-            // Clear any pending timeouts or intervals that might affect state
-            try {
-                const win: any = window as any;
-                if (win.__CLEANUP_TIMEOUTS__) {
-                    for (const tid of win.__CLEANUP_TIMEOUTS__) {
-                        clearTimeout(tid);
+                    // Clear any pending timeouts or intervals that might affect state
+                    try {
+                        const win: any = window as any;
+                        if (win.__CLEANUP_TIMEOUTS__) {
+                            for (const tid of win.__CLEANUP_TIMEOUTS__) {
+                                clearTimeout(tid);
+                            }
+                            win.__CLEANUP_TIMEOUTS__ = [];
+                        }
+                    } catch (e) {
+                        console.warn("Could not clear timeouts:", e);
                     }
-                    win.__CLEANUP_TIMEOUTS__ = [];
+
+                    // Clear any global state that might interfere with other tests
+                    try {
+                        const win: any = window as any;
+                        // Clear any comment-related global variables
+                        if (win.__COMMENT_THREAD_STATE__) {
+                            win.__COMMENT_THREAD_STATE__ = {};
+                        }
+
+                        // Clear any editor overlay state that might affect cursor/comment positioning
+                        if (win.editorOverlayStore) {
+                            const editorStore = win.editorOverlayStore;
+                            if (typeof editorStore.reset === "function") {
+                                editorStore.reset();
+                            } else {
+                                // Manual reset if no reset method
+                                editorStore.cursors = {};
+                                editorStore.activeItemId = null;
+                                editorStore.cursorVisible = false;
+                                if (editorStore.cursorInstances) {
+                                    editorStore.cursorInstances.clear();
+                                }
+                            }
+                        }
+
+                        // Clear any comment-related state in generalStore
+                        if (gs?.commentThreads) {
+                            gs.commentThreads.clear();
+                        }
+                    } catch (e) {
+                        console.warn("Could not clear global comment state:", e);
+                    }
+                } catch (e) {
+                    console.warn("Error during comment cleanup:", e);
                 }
-            } catch (e) {
-                console.warn("Could not clear timeouts:", e);
-            }
-        }).catch((e) => {
+            });
+        } catch (e) {
             // If page is closed or evaluation fails, just log and continue
             console.warn("Could not perform comment cleanup:", e?.message ?? e);
-        });
+        }
     });
 });
 import "../utils/registerAfterEachSnapshot";

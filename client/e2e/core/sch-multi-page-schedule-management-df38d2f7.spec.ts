@@ -13,11 +13,58 @@ test.describe("Multi-Page Schedule Management", () => {
 
         // Enable console logging
         page.on("console", msg => console.log("PAGE LOG:", msg.text()));
+
+        // Clear any global state that might interfere with this test
+        try {
+            await page.evaluate(() => {
+                try {
+                    const win: any = window as any;
+                    // Clear any schedule-related global variables
+                    if (win.__SCHEDULE_STATE__) {
+                        win.__SCHEDULE_STATE__ = {};
+                    }
+
+                    // Clear any editor overlay state that might affect scheduling
+                    if (win.editorOverlayStore) {
+                        const editorStore = win.editorOverlayStore;
+                        if (typeof editorStore.reset === "function") {
+                            editorStore.reset();
+                        } else {
+                            // Manual reset if no reset method
+                            editorStore.cursors = {};
+                            editorStore.activeItemId = null;
+                            editorStore.cursorVisible = false;
+                            if (editorStore.cursorInstances) {
+                                editorStore.cursorInstances.clear();
+                            }
+                        }
+                    }
+
+                    // Clear any pending timeouts or intervals that might affect state
+                    if (win.__CLEANUP_TIMEOUTS__) {
+                        for (const tid of win.__CLEANUP_TIMEOUTS__) {
+                            clearTimeout(tid);
+                        }
+                        win.__CLEANUP_TIMEOUTS__ = [];
+                    }
+                } catch (e) {
+                    console.warn("Could not clear global state:", e);
+                }
+            });
+        } catch (e) {
+            console.warn("Could not perform global state cleanup:", e?.message ?? e);
+        }
     });
 
     test.afterEach(async ({ page }) => {
         // Clean up any schedules created during the test to ensure test isolation
         try {
+            // Check if page is still open before attempting cleanup
+            if (page.isClosed()) {
+                console.log("[afterEach] Page already closed, skipping schedule cleanup");
+                return;
+            }
+
             // Navigate back to the original page to cancel any created schedules
             const { projectName, pageName } = testProject;
             const encodedProject = encodeURIComponent(projectName);
@@ -39,6 +86,43 @@ test.describe("Multi-Page Schedule Management", () => {
 
             // Wait for all items to be removed
             await expect(scheduleItems).toHaveCount(0, { timeout: 5000 });
+
+            // Clear any global state that might interfere with other tests
+            await page.evaluate(() => {
+                try {
+                    const win: any = window as any;
+                    // Clear any schedule-related global variables
+                    if (win.__SCHEDULE_STATE__) {
+                        win.__SCHEDULE_STATE__ = {};
+                    }
+
+                    // Clear any editor overlay state that might affect scheduling
+                    if (win.editorOverlayStore) {
+                        const editorStore = win.editorOverlayStore;
+                        if (typeof editorStore.reset === "function") {
+                            editorStore.reset();
+                        } else {
+                            // Manual reset if no reset method
+                            editorStore.cursors = {};
+                            editorStore.activeItemId = null;
+                            editorStore.cursorVisible = false;
+                            if (editorStore.cursorInstances) {
+                                editorStore.cursorInstances.clear();
+                            }
+                        }
+                    }
+
+                    // Clear any pending timeouts or intervals that might affect state
+                    if (win.__CLEANUP_TIMEOUTS__) {
+                        for (const tid of win.__CLEANUP_TIMEOUTS__) {
+                            clearTimeout(tid);
+                        }
+                        win.__CLEANUP_TIMEOUTS__ = [];
+                    }
+                } catch (e) {
+                    console.warn("Could not clear global schedule state:", e);
+                }
+            });
         } catch (error) {
             console.log("Error during test cleanup:", error);
         }
