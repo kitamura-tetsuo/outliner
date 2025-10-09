@@ -23,15 +23,22 @@ test.describe("CMT-0001: comment threads", () => {
         // インデックス1を使用（インデックス0はページタイトルでコメントボタンが表示されない）
         const firstId = await TestHelpers.getItemIdByIndex(page, 1);
         if (!firstId) throw new Error("item id not found");
+
         // First, wait for the comment button to be visible and ready
         const commentButton = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-button-${firstId}"]`);
         await expect(commentButton).toBeVisible();
+
+        // Add extra wait to ensure the page is fully loaded and stable
+        await page.waitForTimeout(500);
 
         // Click the comment button
         await commentButton.click();
 
         // Wait for the comment thread to appear with increased timeout
-        await expect(page.locator('[data-testid="comment-thread"]')).toBeVisible({ timeout: 10000 });
+        // Use a more specific locator to ensure we're waiting for the right thread
+        await expect(page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`)).toBeVisible({
+            timeout: 15000,
+        });
 
         await page.fill('[data-testid="new-comment-input"]', "hello");
         const addBtns = page.locator('[data-testid="add-comment-btn"]');
@@ -39,7 +46,7 @@ test.describe("CMT-0001: comment threads", () => {
         // eslint-disable-next-line no-console
         console.log("DEBUG add-btn count:", addCount);
         // Try narrowing to the currently visible thread
-        const thread = page.locator('[data-testid="comment-thread"]');
+        const thread = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`);
         const addInThread = thread.locator('[data-testid="add-comment-btn"]');
         // eslint-disable-next-line no-console
         console.log("DEBUG add-btn in thread visible:", await addInThread.isVisible());
