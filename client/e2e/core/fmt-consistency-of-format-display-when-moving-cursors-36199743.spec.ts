@@ -307,9 +307,14 @@ test.afterEach(async ({ page }) => {
                 // Manually clear the store properties if no reset method exists
                 editorStore.cursors = {};
                 editorStore.selections = {};
-                editorStore.cursorInstances?.clear?.();
+                if (editorStore.cursorInstances?.clear) {
+                    editorStore.cursorInstances.clear();
+                } else {
+                    editorStore.cursorInstances = new Map();
+                }
                 editorStore.activeItemId = null;
                 editorStore.cursorVisible = false;
+                editorStore.activeItem = null;
             }
         }
 
@@ -322,6 +327,7 @@ test.afterEach(async ({ page }) => {
                 aliasPickerStore.isVisible = false;
                 aliasPickerStore.selectedOptionId = null;
                 aliasPickerStore.query = "";
+                aliasPickerStore.itemId = null;
             }
         }
 
@@ -333,6 +339,33 @@ test.afterEach(async ({ page }) => {
             } else {
                 commandPaletteStore.isVisible = false;
                 commandPaletteStore.query = "";
+                commandPaletteStore.selectedIndex = 0;
+            }
+        }
+
+        // Clear any potential global state that could affect other tests
+        if ((window as any).userPreferencesStore) {
+            const userPreferencesStore = (window as any).userPreferencesStore;
+            if (userPreferencesStore.reset) {
+                userPreferencesStore.reset();
+            } else {
+                // Reset dark mode and other preferences to default
+                if (userPreferencesStore.setDarkMode) {
+                    userPreferencesStore.setDarkMode(false);
+                }
+            }
+        }
+
+        // Clear any potential shared tree state
+        if ((window as any).generalStore) {
+            const generalStore = (window as any).generalStore;
+            // Reset cursor-related state in general store if it exists
+            if (generalStore.setCursor) {
+                try {
+                    generalStore.setCursor(null);
+                } catch (e) {
+                    console.warn("Could not reset cursor in generalStore:", e);
+                }
             }
         }
     }).catch((error) => {
@@ -340,6 +373,6 @@ test.afterEach(async ({ page }) => {
     });
 
     // Additional wait to ensure cleanup is processed
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(200);
 });
 import "../utils/registerAfterEachSnapshot";
