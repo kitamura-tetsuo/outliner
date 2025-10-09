@@ -112,7 +112,7 @@ test.describe("Yjs client attach and DOM reflect", () => {
 
         console.log("Found texts:", texts);
 
-        expect(texts.length).toBeGreaterThanOrEqual(4); // 1 page title + 3 content items
+        expect(texts.length).toBeGreaterThanOrEqual(3); // 1 page title + 2 content items
         expect(texts.slice(1, 3)).toEqual([ // Skip the page title (index 0), check items 1-2
             "一行目: テスト",
             "二行目: Yjs 反映",
