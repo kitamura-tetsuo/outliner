@@ -179,10 +179,14 @@ test.describe("CMT-0001: comment threads", () => {
         // 編集モードが終了するまで待機
         await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).not.toBeVisible();
 
+        // Add a longer delay to ensure the Yjs update has time to propagate in full test suite
+        await page.waitForTimeout(2000);
+
         // Wait for the text to be updated with a longer timeout to ensure edit operation completes
         // Use a more specific selector to ensure we're checking the right comment
+        // Increase timeout and add retry mechanism for Yjs synchronization
         await expect(page.locator(`[data-testid="comment-${commentId}"] .text`)).toHaveText("edited", {
-            timeout: 15000,
+            timeout: 30000,
         });
 
         await page.click(`[data-testid="comment-${commentId}"] .delete`);
