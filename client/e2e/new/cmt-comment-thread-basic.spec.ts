@@ -33,6 +33,20 @@ test.describe("CMT-0001: comment threads", () => {
                     }
                 }
             }
+
+            // Also clear any existing Yjs comment data
+            try {
+                const yjsStore: any = (window as any).__YJS_STORE__;
+                if (yjsStore?.yjsClient) {
+                    const client = yjsStore.yjsClient;
+                    // Clear any pending comment operations
+                    if (client.comments) {
+                        client.comments.clear();
+                    }
+                }
+            } catch (e) {
+                console.warn("Could not clear Yjs comment data:", e);
+            }
         }).catch((e) => {
             // If page is closed or evaluation fails, just log and continue
             console.warn("Could not perform comment cleanup:", e?.message ?? e);
@@ -44,11 +58,7 @@ test.describe("CMT-0001: comment threads", () => {
     });
 
     test("add, edit and remove comment", async ({ page }, testInfo) => {
-        // Using TestHelpers.prepareTestEnvironment ensures we have a fresh page for this test
-        const ids = await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "first line",
-        ]);
-        await page.goto(`/${ids.projectName}/${ids.pageName}`);
+        // Using TestHelpers.prepareTestEnvironment from beforeEach ensures we have a fresh page for this test
         await TestHelpers.waitForOutlinerItems(page);
         // インデックス1を使用（インデックス0はページタイトルでコメントボタンが表示されない）
         const firstId = await TestHelpers.getItemIdByIndex(page, 1);
@@ -118,9 +128,12 @@ test.describe("CMT-0001: comment threads", () => {
         await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).not.toBeVisible();
 
         // Wait for the text to be updated with a longer timeout to ensure edit operation completes
-        await expect(comment.locator(".text")).toHaveText("edited", { timeout: 15000 });
+        // Use a more specific selector to ensure we're checking the right comment
+        await expect(page.locator(`[data-testid="comment-${commentId}"] .text`)).toHaveText("edited", {
+            timeout: 15000,
+        });
 
-        await page.click('[data-testid^="comment-"] .delete');
+        await page.click(`[data-testid="comment-${commentId}"] .delete`);
         // Wait for comment count to disappear
         await expect(
             page.locator(`[data-item-id="${firstId}"] .comment-count`),
@@ -153,6 +166,33 @@ test.describe("CMT-0001: comment threads", () => {
                         }
                     }
                 }
+            }
+
+            // Also clear any existing Yjs comment data
+            try {
+                const yjsStore: any = (window as any).__YJS_STORE__;
+                if (yjsStore?.yjsClient) {
+                    const client = yjsStore.yjsClient;
+                    // Clear any pending comment operations
+                    if (client.comments) {
+                        client.comments.clear();
+                    }
+                }
+            } catch (e) {
+                console.warn("Could not clear Yjs comment data:", e);
+            }
+
+            // Clear any pending timeouts or intervals that might affect state
+            try {
+                const win: any = window as any;
+                if (win.__CLEANUP_TIMEOUTS__) {
+                    for (const tid of win.__CLEANUP_TIMEOUTS__) {
+                        clearTimeout(tid);
+                    }
+                    win.__CLEANUP_TIMEOUTS__ = [];
+                }
+            } catch (e) {
+                console.warn("Could not clear timeouts:", e);
             }
         }).catch((e) => {
             // If page is closed or evaluation fails, just log and continue
