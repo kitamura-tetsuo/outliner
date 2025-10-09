@@ -293,4 +293,53 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         expect(hasFormattedText).toBe(true);
     });
 });
+
+// Add afterEach cleanup to ensure test isolation
+test.afterEach(async ({ page }) => {
+    // Reset editor state to prevent test interference
+    await page.evaluate(() => {
+        // Clear any remaining editor state
+        if ((window as any).editorOverlayStore) {
+            const editorStore = (window as any).editorOverlayStore;
+            if (editorStore.reset) {
+                editorStore.reset();
+            } else {
+                // Manually clear the store properties if no reset method exists
+                editorStore.cursors = {};
+                editorStore.selections = {};
+                editorStore.cursorInstances?.clear?.();
+                editorStore.activeItemId = null;
+                editorStore.cursorVisible = false;
+            }
+        }
+
+        // Clear any other potential shared state
+        if ((window as any).aliasPickerStore) {
+            const aliasPickerStore = (window as any).aliasPickerStore;
+            if (aliasPickerStore.reset) {
+                aliasPickerStore.reset();
+            } else {
+                aliasPickerStore.isVisible = false;
+                aliasPickerStore.selectedOptionId = null;
+                aliasPickerStore.query = "";
+            }
+        }
+
+        // Clear command palette state if it exists
+        if ((window as any).commandPaletteStore) {
+            const commandPaletteStore = (window as any).commandPaletteStore;
+            if (commandPaletteStore.reset) {
+                commandPaletteStore.reset();
+            } else {
+                commandPaletteStore.isVisible = false;
+                commandPaletteStore.query = "";
+            }
+        }
+    }).catch((error) => {
+        console.warn("Warning: Failed to reset editor store in afterEach:", error);
+    });
+
+    // Additional wait to ensure cleanup is processed
+    await page.waitForTimeout(100);
+});
 import "../utils/registerAfterEachSnapshot";
