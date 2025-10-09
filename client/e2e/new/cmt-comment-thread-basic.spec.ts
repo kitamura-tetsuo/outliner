@@ -123,6 +123,19 @@ test.describe("CMT-0001: comment threads", () => {
         // Add extra wait to ensure the page is fully loaded and stable
         await page.waitForTimeout(500);
 
+        // Ensure any existing comment thread is closed before starting
+        try {
+            const existingThread = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`);
+            if (await existingThread.count() > 0) {
+                // Click outside to close any existing thread
+                await page.locator(".outliner-base").click({ position: { x: 10, y: 10 } });
+                await expect(existingThread).not.toBeVisible({ timeout: 2000 });
+            }
+        } catch (e) {
+            // If there's no existing thread or error in closing, continue
+            console.log("No existing thread to close or error during close attempt:", e);
+        }
+
         // Click the comment button
         await commentButton.click();
 
@@ -246,20 +259,7 @@ test.describe("CMT-0001: comment threads", () => {
                         console.warn("Could not clear Yjs comment data:", e);
                     }
 
-                    // Clear any pending timeouts or intervals that might affect state
-                    try {
-                        const win: any = window as any;
-                        if (win.__CLEANUP_TIMEOUTS__) {
-                            for (const tid of win.__CLEANUP_TIMEOUTS__) {
-                                clearTimeout(tid);
-                            }
-                            win.__CLEANUP_TIMEOUTS__ = [];
-                        }
-                    } catch (e) {
-                        console.warn("Could not clear timeouts:", e);
-                    }
-
-                    // Clear any global state that might interfere with other tests
+                    // Clear any global state that might interfere with this test
                     try {
                         const win: any = window as any;
                         // Clear any comment-related global variables
@@ -287,8 +287,16 @@ test.describe("CMT-0001: comment threads", () => {
                         if (gs?.commentThreads) {
                             gs.commentThreads.clear();
                         }
+
+                        // Clear any pending timeouts or intervals that might affect state
+                        if (win.__CLEANUP_TIMEOUTS__) {
+                            for (const tid of win.__CLEANUP_TIMEOUTS__) {
+                                clearTimeout(tid);
+                            }
+                            win.__CLEANUP_TIMEOUTS__ = [];
+                        }
                     } catch (e) {
-                        console.warn("Could not clear global comment state:", e);
+                        console.warn("Could not clear global state:", e);
                     }
                 } catch (e) {
                     console.warn("Error during comment cleanup:", e);
