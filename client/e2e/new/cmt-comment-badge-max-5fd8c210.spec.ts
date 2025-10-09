@@ -11,6 +11,39 @@ import "../utils/registerAfterEachSnapshot";
  */
 
 test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
+    test.afterEach(async ({ page }) => {
+        // Explicitly clean up any comment data to ensure test isolation
+        await page.evaluate(() => {
+            // Clear comment data from the current page items if possible
+            const gs: any = (window as any).generalStore;
+            if (gs?.currentPage?.items) {
+                const items = gs.currentPage.items;
+                const len = items?.length ?? 0;
+                for (let i = 0; i < len; i++) {
+                    const item = items.at(i);
+                    if (item && typeof item.getComments === "function") {
+                        // Try to clear comments if there's a method available
+                        try {
+                            const comments = item.getComments();
+                            if (comments && Array.isArray(comments) && comments.length > 0) {
+                                for (const comment of comments) {
+                                    if (comment.id && typeof item.deleteComment === "function") {
+                                        item.deleteComment(comment.id);
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.warn("Could not clear comments for item:", e);
+                        }
+                    }
+                }
+            }
+        }).catch((e) => {
+            // If page is closed or evaluation fails, just log and continue
+            console.warn("Could not perform comment cleanup:", e?.message ?? e);
+        });
+    });
+
     test("Yjs add/remove updates badge count", async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "PAGE TITLE",
