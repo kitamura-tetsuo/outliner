@@ -77,8 +77,19 @@ test.describe("snapshot diff viewer", () => {
             { projectName, pageName },
         );
         await expect(page.locator("li")).toHaveCount(count);
-        await page.locator("li").first().click();
-        await expect(page.locator("ins")).toBeVisible();
+
+        // Click the button inside the first list item to show the diff
+        await page.locator("li button").first().click();
+
+        // Wait for the diff to be calculated and rendered
+        await page.waitForFunction(() => {
+            const diffElement = document.querySelector(".diff");
+            return diffElement && diffElement.innerHTML.trim().length > 0
+                && (diffElement.innerHTML.includes("<ins") || diffElement.innerHTML.includes("<del"));
+        }, { timeout: 10000 });
+
+        // Verify that at least one diff element is visible
+        await expect(page.locator("ins, del").first()).toBeVisible();
         await page.getByText("Revert").click();
         const current = await page.evaluate(
             ({ projectName, pageName }) => {
