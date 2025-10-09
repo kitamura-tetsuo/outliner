@@ -190,14 +190,28 @@ export class TestHelpers {
                     throw new Error("TestHelper: generalStore.project not available");
                 }
                 try {
-                    const page = gs.project.addPage(pageName, "tester");
-                    const items = page.items as any;
-                    for (const line of lines) {
-                        const it = items.addNode("tester");
-                        it.updateText(line);
+                    // Check if page already exists to avoid duplication
+                    const existingPage = gs.pages && gs.pages.current
+                        ? Array.from(gs.pages.current).find((
+                            p: any,
+                        ) => (p.text && p.text.toString && p.text.toString().toLowerCase() === pageName.toLowerCase()))
+                        : null;
+
+                    let page;
+                    if (existingPage) {
+                        page = existingPage;
+                        console.log("TestHelper: Using existing page via Yjs (generalStore)");
+                    } else {
+                        page = gs.project.addPage(pageName, "tester");
+                        const items = page.items as any;
+                        for (const line of lines) {
+                            const it = items.addNode("tester");
+                            it.updateText(line);
+                        }
+                        console.log("TestHelper: Created new page via Yjs (generalStore)");
                     }
+
                     if (!gs.currentPage) gs.currentPage = page as any;
-                    console.log("TestHelper: Created via Yjs (generalStore)");
                 } catch (e) {
                     console.error("TestHelper: Yjs page creation failed", e);
                 }
@@ -1894,6 +1908,45 @@ export class TestHelpers {
     }
 
     // 注: 422行目に同名のメソッドが既に定義されているため、このメソッドは削除します
+
+    /**
+     * テスト後のクリーンアップ処理
+     * @param page Playwrightのページオブジェクト
+     */
+    public static async cleanup(page: Page): Promise<void> {
+        try {
+            // グローバルなストアをリセット
+            await page.evaluate(() => {
+                // generalStoreのプロジェクトとページ情報をリセット
+                if ((window as any).generalStore) {
+                    (window as any).generalStore.project = null;
+                    (window as any).generalStore.pages = null;
+                    (window as any).generalStore.currentPage = null;
+                }
+
+                // appStoreのプロジェクトとページ情報をリセット
+                if ((window as any).appStore) {
+                    (window as any).appStore.project = null;
+                    (window as any).appStore.pages = null;
+                    (window as any).appStore.currentPage = null;
+                }
+
+                // editorOverlayStoreのカーソル情報をリセット
+                if ((window as any).editorOverlayStore) {
+                    (window as any).editorOverlayStore.cursors = {};
+                    (window as any).editorOverlayStore.cursorInstances = new Map();
+                    (window as any).editorOverlayStore.activeItemId = null;
+                    (window as any).editorOverlayStore.cursorVisible = false;
+                }
+            });
+
+            // 一時的な待機でDOMの安定を待つ
+            await page.waitForTimeout(100);
+        } catch (error) {
+            console.warn("TestHelper cleanup warning:", error);
+            // クリーンアップはオプショナルな操作なのでエラーはスローしない
+        }
+    }
 }
 
 /**

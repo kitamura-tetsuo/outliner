@@ -13,6 +13,11 @@ test.describe("環境準備後にアウトラインページが表示される",
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     }, 240000); // 增加 beforeEach のタイムアウト to 240秒
 
+    test.afterEach(async ({ page }) => {
+        // Ensure proper cleanup after each test to maintain isolation
+        await TestHelpers.cleanup(page);
+    });
+
     test("PrepareTestEnvironment 後に Outliner UI が見える", async ({ page }) => {
         // デバッグ: 現在のURL
         console.log("E2E: current URL after prepare:", page.url());
