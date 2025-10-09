@@ -24,6 +24,8 @@ onMount(() => {
 async function doExport(format: "opml" | "markdown") {
     console.log("doExport: Function started, format:", format);
     
+    let currentProject = null;
+    
     // In test environment, ensure project is reloaded from the backend
     if (typeof window !== "undefined" && 
         (import.meta.env.MODE === "test" || window.localStorage?.getItem?.("VITE_IS_TEST") === "true")) {
@@ -40,20 +42,26 @@ async function doExport(format: "opml" | "markdown") {
                 if (client) {
                     const freshProject = client.getProject();
                     if (freshProject) {
-                        console.log("doExport: Got fresh project with", freshProject.items.length, "root items");
+                        console.log("doExport: Got fresh project with", freshProject.items?.length || 0, "root items");
+                        // Check if the project has actual content beyond just settings page
+                        if (freshProject.items && freshProject.items.length > 0) {
+                            const firstItem = freshProject.items[0];
+                            console.log("doExport: First item text:", firstItem?.text);
+                        }
+                        
                         const exportContent = format === "opml"
                             ? exportProjectToOpml(freshProject)
                             : exportProjectToMarkdown(freshProject);
                         
                         console.log("doExport: Export content from fresh project:", exportContent);
                         
-                        // Only update exportText if we don't have the problematic "- settings" case
-                        if (exportContent !== "- settings") {
+                        // Only update exportText if we have meaningful content
+                        if (exportContent && exportContent !== "- settings" && exportContent.trim() !== "") {
                             exportText = exportContent;
                             console.log("doExport: Set exportText from fresh project:", exportText);
                             return; // Return early if successful in test mode
                         } else {
-                            console.log("doExport: Got problematic '- settings' case, continuing to fallback");
+                            console.log("doExport: Got empty or problematic export content, continuing to fallback");
                         }
                     } else {
                         console.log("doExport: No fresh project from client");
@@ -65,25 +73,36 @@ async function doExport(format: "opml" | "markdown") {
                 console.error("Error getting fresh project:", e);
             }
         }
-        // If we get here, either the project lookup failed or we got the problematic "- settings" case
+        // If we get here, either the project lookup failed or we got problematic content
         // Continue to the fallback approach below
     }
     
     // Fall back to the regular approach if we're not in test env or the main approach failed
-    const currentProject = yjsStore.yjsClient?.getProject() || store.project || project;
+    currentProject = yjsStore.yjsClient?.getProject() || store.project || project;
     console.log("doExport: Fallback approach, currentProject exists:", !!currentProject);
     
     if (currentProject) {
-        exportText = format === "opml"
+        const exportContent = format === "opml"
             ? exportProjectToOpml(currentProject)
             : exportProjectToMarkdown(currentProject);
-        console.log("doExport: Set exportText from fallback:", exportText);
+        
+        console.log("doExport: Export content from fallback:", exportContent);
+        
+        // Only update exportText if we have meaningful content
+        if (exportContent && exportContent !== "- settings" && exportContent.trim() !== "") {
+            exportText = exportContent;
+            console.log("doExport: Set exportText from fallback:", exportText);
+        } else {
+            console.log("doExport: Fallback export content is problematic, setting to empty");
+            exportText = "";
+        }
     } else {
         console.log("doExport: No project available in fallback - stores contain:", {
             yjsClientProject: !!yjsStore.yjsClient?.getProject(),
             storeProject: !!store.project,
             localProject: !!project
         });
+        exportText = "";
     }
 }
 

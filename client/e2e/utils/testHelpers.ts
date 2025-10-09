@@ -1915,6 +1915,12 @@ export class TestHelpers {
      */
     public static async cleanup(page: Page): Promise<void> {
         try {
+            // ページがまだ利用可能か確認
+            if (page.isClosed()) {
+                console.log("TestHelper cleanup: page already closed, skipping");
+                return;
+            }
+
             // グローバルなストアをリセット
             await page.evaluate(() => {
                 // generalStoreのプロジェクトとページ情報をリセット
@@ -1943,7 +1949,19 @@ export class TestHelpers {
             // 一時的な待機でDOMの安定を待つ
             await page.waitForTimeout(100);
         } catch (error) {
-            console.warn("TestHelper cleanup warning:", error);
+            const errorMsg = String(error?.message ?? error);
+
+            // 特定のエラーは警告として記録するだけで処理を継続
+            if (
+                errorMsg.includes("Target page, context or browser has been closed")
+                || errorMsg.includes("Execution context was destroyed")
+                || errorMsg.includes("Navigation")
+            ) {
+                console.log("TestHelper cleanup: page context no longer available, skipping");
+            } else {
+                console.warn("TestHelper cleanup warning:", error);
+            }
+
             // クリーンアップはオプショナルな操作なのでエラーはスローしない
         }
     }
