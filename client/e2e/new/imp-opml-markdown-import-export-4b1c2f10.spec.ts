@@ -18,6 +18,20 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         const encoded = encodeURIComponent(projectName);
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
+
+        // Setup debugger functions on the new page
+        await TestHelpers.setupTreeDebugger(page);
+
+        // Wait for the project data to be loaded via Yjs after navigation
+        await page.waitForFunction(() => {
+            const data = (window as any).getYjsTreeDebugData();
+            if (!data || !data.items || data.items.length === 0) {
+                return false;
+            }
+            const page = data.items[0]; // The first page
+            return page && page.items && page.items.length > 0;
+        });
+
         await page.click("text=Export Markdown");
         const md = await page.locator("textarea[data-testid='export-output']").inputValue();
         expect(md).toContain("Child item");
