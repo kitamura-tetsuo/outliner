@@ -394,6 +394,13 @@ function saveEdit(id: string) {
 
     try { logger.debug('[CommentThread] renderCommentsState after update', renderCommentsState); } catch {}
     editingId = null;
+    
+    // Dispatch an event to notify that a comment was edited
+    try { 
+        threadRef?.dispatchEvent(new CustomEvent('comment-edited', { bubbles: true, detail: { id, text: editText } })); 
+    } catch (e) { 
+        logger.error('[CommentThread] failed to dispatch comment-edited event', e); 
+    }
 }
 
 // Mount diagnostics for E2E visibility

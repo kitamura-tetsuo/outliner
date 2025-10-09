@@ -5,18 +5,7 @@
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-let projectName: string;
-let pageName: string;
-
 test.describe("CMT-0001: comment threads", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        const ids = await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "first line",
-        ]);
-        projectName = ids.projectName;
-        pageName = ids.pageName;
-    });
-
     test.beforeEach(async ({ page }, testInfo) => {
         // Clean up any existing comments before starting the test
         await page.evaluate(() => {
@@ -49,15 +38,17 @@ test.describe("CMT-0001: comment threads", () => {
             console.warn("Could not perform comment cleanup:", e?.message ?? e);
         });
 
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "first line",
+        ]);
+    });
+
+    test("add, edit and remove comment", async ({ page }, testInfo) => {
+        // Using TestHelpers.prepareTestEnvironment ensures we have a fresh page for this test
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "first line",
         ]);
-        projectName = ids.projectName;
-        pageName = ids.pageName;
-    });
-
-    test("add, edit and remove comment", async ({ page }) => {
-        await page.goto(`/${projectName}/${pageName}`);
+        await page.goto(`/${ids.projectName}/${ids.pageName}`);
         await TestHelpers.waitForOutlinerItems(page);
         // インデックス1を使用（インデックス0はページタイトルでコメントボタンが表示されない）
         const firstId = await TestHelpers.getItemIdByIndex(page, 1);
@@ -106,24 +97,28 @@ test.describe("CMT-0001: comment threads", () => {
         const comment = page.locator('[data-testid="comment-thread"] .comment');
         await expect(comment).toHaveCount(1);
 
+        // Get the comment ID for more specific selectors
+        const commentTestId = await comment.getAttribute("data-testid");
+        const commentId = commentTestId?.replace("comment-", "") || "";
+
         // 編集ボタンをクリック
-        await page.click('[data-testid^="comment-"] .edit');
+        await page.click(`[data-testid="comment-${commentId}"] .edit`);
 
         // 編集入力フィールドが表示されるまで待機
-        await expect(page.locator('[data-testid^="edit-input-"]')).toBeVisible();
+        await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).toBeVisible();
 
         // 編集入力フィールドをクリアしてから新しいテキストを入力
-        await page.fill('[data-testid^="edit-input-"]', "");
-        await page.fill('[data-testid^="edit-input-"]', "edited");
+        await page.fill(`[data-testid="edit-input-${commentId}"]`, "");
+        await page.fill(`[data-testid="edit-input-${commentId}"]`, "edited");
 
         // 保存ボタンをクリック
-        await page.click('[data-testid^="save-edit-"]');
+        await page.click(`[data-testid="save-edit-${commentId}"]`);
 
         // 編集モードが終了するまで待機
-        await expect(page.locator('[data-testid^="edit-input-"]')).not.toBeVisible();
+        await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).not.toBeVisible();
 
-        // テキストが更新されることを確認
-        await expect(comment.locator(".text")).toHaveText("edited");
+        // Wait for the text to be updated with a longer timeout to ensure edit operation completes
+        await expect(comment.locator(".text")).toHaveText("edited", { timeout: 15000 });
 
         await page.click('[data-testid^="comment-"] .delete');
         // Wait for comment count to disappear

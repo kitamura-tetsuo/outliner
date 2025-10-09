@@ -258,8 +258,14 @@ async function loadProjectAndPage() {
                             };
                             const populate = (nodes: any[], targetItems: any) => {
                                 if (!targetItems) return;
-                                while ((targetItems.length ?? 0) > 0) {
-                                    targetItems.removeAt(targetItems.length - 1);
+                                // Check if targetItems is a Yjs Array before calling removeAt
+                                if (typeof targetItems.removeAt === "function") {
+                                    while ((targetItems.length ?? 0) > 0) {
+                                        targetItems.removeAt(targetItems.length - 1);
+                                    }
+                                } else if (Array.isArray(targetItems) && typeof targetItems.splice === "function") {
+                                    // If it's a regular array, use splice to clear it
+                                    targetItems.splice(0, targetItems.length);
                                 }
                                 for (const nodeData of nodes) {
                                     const text = nodeData?.text ?? "";
@@ -312,8 +318,14 @@ async function loadProjectAndPage() {
 
                             const populateChildren = (children: any[], targetItems: any) => {
                                 if (!targetItems) return;
-                                while ((targetItems.length ?? 0) > 0) {
-                                    targetItems.removeAt(targetItems.length - 1);
+                                // Check if targetItems is a Yjs Array before calling removeAt
+                                if (typeof targetItems.removeAt === "function") {
+                                    while ((targetItems.length ?? 0) > 0) {
+                                        targetItems.removeAt(targetItems.length - 1);
+                                    }
+                                } else if (Array.isArray(targetItems) && typeof targetItems.splice === "function") {
+                                    // If it's a regular array, use splice to clear it
+                                    targetItems.splice(0, targetItems.length);
                                 }
                                 for (const child of children ?? []) {
                                     const node = targetItems.addNode?.("snapshot");
