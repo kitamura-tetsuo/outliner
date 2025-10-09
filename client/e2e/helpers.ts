@@ -5,7 +5,7 @@ import type { Page } from "@playwright/test";
  */
 export async function waitForOutlinerItems(page: Page, count: number, timeout = 10000): Promise<void> {
     await page.waitForFunction(
-        (expected) => document.querySelectorAll(".outliner-item").length >= expected,
+        (expected) => document.querySelectorAll(".outliner-item[data-item-id]").length >= expected,
         count,
         { timeout },
     );
@@ -15,7 +15,7 @@ export async function waitForOutlinerItems(page: Page, count: number, timeout = 
  * アウトライナーアイテム数が不足していれば追加描画を待機
  */
 export async function ensureOutlinerItemCount(page: Page, count: number, timeout = 10000): Promise<void> {
-    const current = await page.locator(".outliner-item").count();
+    const current = await page.locator(".outliner-item[data-item-id]").count();
     if (current < count) {
         await waitForOutlinerItems(page, count, timeout);
     }
