@@ -22,6 +22,8 @@ describe("ContainerStore", () => {
             createdAt: new Date(),
             updatedAt: new Date(),
         } as UserContainer;
+        // Trigger sync to update containerStore
+        containerStore.syncFromFirestore();
     });
 
     it("maps firestore containers to info objects", () => {

@@ -207,6 +207,8 @@ describe("Cursor", () => {
             // Prevent actual navigation/merge for these simple tests
             vi.spyOn((cursor as any).editor, "mergeWithPreviousItem").mockImplementation(() => {});
             vi.spyOn((cursor as any).editor, "mergeWithNextItem").mockImplementation(() => {});
+            // Mock navigateToItem to prevent actual navigation in simple tests
+            vi.spyOn(cursor as any, "navigateToItem").mockImplementation(() => {});
         });
 
         it("moveLeft should decrease offset if offset > 0", () => {
