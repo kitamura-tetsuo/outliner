@@ -106,3 +106,4 @@ llm_task.md
 *.backup
 *.bak
 *.temp
+client/ydb/
