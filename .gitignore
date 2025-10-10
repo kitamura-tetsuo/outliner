@@ -105,3 +105,4 @@ llm_task.md
 *.bak
 *.temp
 client/ydb/
+coverage-backups/
