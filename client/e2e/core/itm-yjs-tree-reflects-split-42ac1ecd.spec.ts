@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ITM-0001
  *  Title   : Enterで新規アイテム追加
  *  Source  : docs/client-features.yaml
@@ -31,5 +34,3 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         expect(treeData.items[1].text.trimStart()).toBe("Second part of text.");
     });
 });
-
-import "../utils/registerAfterEachSnapshot";

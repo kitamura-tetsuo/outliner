@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CNT-12ee98aa
  *  Title   : Shared Container Store
  *  Source  : docs/client-features/cnt-shared-container-store-12ee98aa.yaml
@@ -182,4 +185,3 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         expect(optionCount).toBeGreaterThanOrEqual(2);
     });
 });
-import "../utils/registerAfterEachSnapshot";

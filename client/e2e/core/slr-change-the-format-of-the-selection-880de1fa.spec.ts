@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0010
  *  Title   : 選択範囲のフォーマット変更
  *  Source  : docs/client-features.yaml
@@ -237,4 +240,3 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(secondItemText).toBeTruthy();
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ITM-00cbb408
  *  Title   : ドラッグでアイテムを移動
  *  Source  : docs/client-features.yaml
@@ -151,4 +154,3 @@ test.describe("ITM-00cbb408: ドラッグでアイテムを移動", () => {
         expect(items[2]).toBe("Item 2");
     });
 });
-import "../utils/registerAfterEachSnapshot";

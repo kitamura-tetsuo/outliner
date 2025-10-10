@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SEC-0001
  *  Title   : Dotenvx encrypted env files
  *  Source  : docs/client-features.yaml
@@ -28,4 +31,3 @@ test.describe("SEC-0001: Dotenvx encrypted env files", () => {
         expect(hasEnvVars).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature IND-yjs-tab-shifttab-indent-7ac4b2d9
  *  Title   : Yjs Outliner - Tab / Shift+Tab for indent and outdent (single and multi selection)
  */
@@ -164,4 +167,3 @@ test.describe("IND: Yjs Tab/Shift+Tab indent/outdent", () => {
         expect(d3).toBeLessThanOrEqual(d2);
     });
 });
-import "../utils/registerAfterEachSnapshot";

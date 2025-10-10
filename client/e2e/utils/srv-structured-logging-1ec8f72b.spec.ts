@@ -1,9 +1,12 @@
+import "./registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import { execSync } from "child_process";
 import { existsSync } from "fs";
 import path from "path";
 import { Writable } from "stream";
 import { fileURLToPath } from "url";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 test("srv-structured-logging redacts sensitive data", async () => {
     const serverDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../server");
     const distPath = path.join(serverDir, "dist/logger.js");
@@ -25,4 +28,3 @@ test("srv-structured-logging redacts sensitive data", async () => {
     expect(log.authorization).toBe("[REDACTED]");
     expect(log.email).toBe("[REDACTED]");
 });
-import "./registerAfterEachSnapshot";

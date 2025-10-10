@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 import { test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 

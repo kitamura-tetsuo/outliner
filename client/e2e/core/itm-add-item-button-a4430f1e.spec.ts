@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ITM-0002
  *  Title   : ボタンでアイテム追加
  *  Source  : docs/client-features.yaml
@@ -31,4 +34,3 @@ test.describe("ITM-0002: Add item via button", () => {
         expect(itemCountAfter).toBeGreaterThan(itemCountBefore);
     });
 });
-import "../utils/registerAfterEachSnapshot";

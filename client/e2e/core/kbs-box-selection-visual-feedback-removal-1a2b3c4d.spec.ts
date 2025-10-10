@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature KBS-1a2b3c4d
  *  Title   : Box selection visual feedback removal
  *  Source  : docs/client-features.yaml

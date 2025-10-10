@@ -1,5 +1,8 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 /**
  * Verify that Yjs store exposes connection state.

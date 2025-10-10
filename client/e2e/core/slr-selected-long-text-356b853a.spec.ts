@@ -1,5 +1,8 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test.describe("SLR-356b853a: 長いテキストの選択範囲", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -69,4 +72,3 @@ test.describe("SLR-356b853a: 長いテキストの選択範囲", () => {
         // expect(secondItemText).toContain("This is a very long text");
     });
 });
-import "../utils/registerAfterEachSnapshot";

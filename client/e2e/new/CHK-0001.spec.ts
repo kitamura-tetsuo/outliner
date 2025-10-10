@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CHK-0001
  *  Title   : Universal Checklist Component
  *  Source  : docs/client-features/chk-universal-checklist-*.yaml
@@ -49,4 +52,3 @@ test.describe("CHK-0001: Universal Checklist", () => {
         await expect(checkbox).not.toBeChecked();
     });
 });
-import "../utils/registerAfterEachSnapshot";

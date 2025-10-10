@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0002
  *  Title   : 行頭まで選択
  *  Source  : docs/client-features.yaml
@@ -148,4 +151,3 @@ test.describe("SLR-0002: 行頭まで選択", () => {
         expect(updatedCursorData.selectionCount).toBeGreaterThan(0);
     });
 });
-import "../utils/registerAfterEachSnapshot";

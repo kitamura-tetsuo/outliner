@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 // @ts-nocheck
 /** @feature GRV-0002
  *  Title   : Graph view layout persistence
@@ -328,4 +331,3 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         expect(layoutRestoreResult.layoutRestored).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

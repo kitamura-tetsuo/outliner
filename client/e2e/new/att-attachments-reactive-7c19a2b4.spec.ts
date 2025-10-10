@@ -1,10 +1,12 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ATT-7c19a2b4
  *  Title   : Attachments react to Yjs add/remove immediately
  *  Source  : docs/client-features/att-attachments-reactive-7c19a2b4.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
-import "../utils/registerAfterEachSnapshot";
 
 /**
  * ケース: Yjs で attachments を追加・削除した際に UI が即時に反映される

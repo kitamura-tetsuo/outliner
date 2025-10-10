@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SCH-BA83FD47
  *  Title   : Scheduled Page Publishing
  *  Source  : docs/client-features.yaml
@@ -18,4 +21,3 @@ test.describe("Scheduled Page Publishing", () => {
         expect(response.status()).toBeGreaterThanOrEqual(400);
     });
 });
-import "../utils/registerAfterEachSnapshot";

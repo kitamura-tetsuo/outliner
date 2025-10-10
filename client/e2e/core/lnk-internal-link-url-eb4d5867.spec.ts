@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LNK-0002
  *  Title   : 内部リンクの機能検証
  *  Source  : docs/client-features.yaml
@@ -27,4 +30,3 @@ test.describe("LNK-0002: 内部リンクURL生成", () => {
         expect(hrefs).toContain("/multi/level/path/page");
     });
 });
-import "../utils/registerAfterEachSnapshot";

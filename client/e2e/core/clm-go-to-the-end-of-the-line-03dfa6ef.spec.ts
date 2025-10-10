@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0008
  *  Title   : 行末へ移動
  *  Source  : docs/client-features.yaml
@@ -125,4 +128,3 @@ test.describe("CLM-0008: 行末へ移動", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

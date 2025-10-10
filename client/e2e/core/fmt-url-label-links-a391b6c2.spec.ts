@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-a391b6c2
  *  Title   : URL label links
  *  Source  : docs/client-features.yaml
@@ -29,4 +32,3 @@ test.describe("URL label links", () => {
         expect(firstItemHtml).not.toContain(">https://example.com</a>");
     });
 });
-import "../utils/registerAfterEachSnapshot";

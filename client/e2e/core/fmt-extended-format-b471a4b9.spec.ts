@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-0003
  *  Title   : 拡張フォーマット
  *  Source  : docs/client-features.yaml
@@ -162,4 +165,3 @@ test.describe("拡張フォーマット", () => {
         expect(itemHtml).toContain('class="control-char"'); // 制御文字が特別なクラスで表示されていることを確認
     });
 });
-import "../utils/registerAfterEachSnapshot";

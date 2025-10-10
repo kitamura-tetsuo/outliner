@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 // @ts-nocheck
 /** @feature HDV-0001
  *  Title   : Page snapshot diff viewer
@@ -101,4 +104,3 @@ test.describe("snapshot diff viewer", () => {
         expect(current).toBe("first");
     });
 });
-import "../utils/registerAfterEachSnapshot";

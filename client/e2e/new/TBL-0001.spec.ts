@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature TBL-0001
  *  Title   : Editable JOIN Table
  *  Source  : docs/client-features.yaml
@@ -99,4 +102,3 @@ test.describe("TBL-0001: Editable JOIN Table", () => {
         await expect(page.locator(".chart-panel .no-data")).toBeHidden();
     });
 });
-import "../utils/registerAfterEachSnapshot";

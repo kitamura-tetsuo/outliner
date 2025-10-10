@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-5d2a7b4c
  *  Title   : Cursor formatting delegates to CursorEditor
  *  Source  : docs/client-features.yaml
@@ -133,5 +136,3 @@ test.describe("CLM-5d2a7b4c: Cursor formatting delegates to CursorEditor", () =>
         await expect(itemLocator).toHaveText("`FormatMe`");
     });
 });
-
-import "../utils/registerAfterEachSnapshot";

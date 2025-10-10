@@ -1,4 +1,7 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 test.describe("Basic Navigation Debug", () => {
     test("can navigate to home page", async ({ page }) => {
@@ -45,4 +48,3 @@ test.describe("Basic Navigation Debug", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

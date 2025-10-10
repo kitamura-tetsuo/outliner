@@ -1,3 +1,6 @@
+import "./registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature TST-0001
  *  Title   : SharedTreeデータ検証ユーティリティのテスト
  *  Source  : docs/client-features.yaml
@@ -133,4 +136,3 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
         }
     });
 });
-import "./registerAfterEachSnapshot";

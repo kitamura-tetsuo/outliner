@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CHART-COMP
  *  Title   : Chart Component
  *  Source  : docs/client-features.yaml
@@ -47,4 +50,3 @@ test.describe("Chart Component E2E", () => {
         await expect(page.locator(".chart-query-editor")).toBeVisible({ timeout: 15000 });
     });
 });
-import "../utils/registerAfterEachSnapshot";

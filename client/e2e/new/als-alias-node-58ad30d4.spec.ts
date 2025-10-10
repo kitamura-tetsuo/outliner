@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ALS-0001
  *  Title   : Alias node referencing existing items
  *  Source  : docs/client-features.yaml
@@ -73,4 +76,3 @@ test.describe("ALS-0001: Alias node", () => {
         expect(isAliasSubtreeVisible).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

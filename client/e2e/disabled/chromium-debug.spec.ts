@@ -1,4 +1,7 @@
+import "../utils/registerAfterEachSnapshot";
 import { chromium, expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 test.describe("Chromium Debug Test", () => {
     test("can launch browser and create context", async () => {
@@ -94,4 +97,3 @@ test.describe("Chromium Debug Test", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

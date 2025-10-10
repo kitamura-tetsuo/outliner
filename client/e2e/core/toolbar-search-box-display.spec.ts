@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature TOO-0001
  *  Title   : ツールバーのSearchBox表示機能
  *  Source  : manual test
@@ -83,4 +86,3 @@ test.describe("TOO-0001: ツールバーのSearchBox表示機能", () => {
         await expect(searchInput).toHaveValue("test");
     });
 });
-import "../utils/registerAfterEachSnapshot";

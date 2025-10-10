@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature IME-0002
  *  Title   : IME candidate window follows active cursor
  *  Source  : docs/client-features.yaml
@@ -183,4 +186,3 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
         expect(Math.abs(cursorTop - taTop)).toBeLessThanOrEqual(2);
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 // @ts-nocheck
 /** @feature SLR-0005
  *  Title   : 複数アイテムにまたがる選択
@@ -272,4 +275,3 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         expect(backgroundColor).toMatch(/rgba\(.*\)/);
     });
 });
-import "../utils/registerAfterEachSnapshot";

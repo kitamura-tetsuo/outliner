@@ -1,5 +1,8 @@
+import "../utils/registerAfterEachSnapshot";
 import { type Browser, expect, type Page, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 let ids: { projectName: string; pageName: string; };
 let page: Page;

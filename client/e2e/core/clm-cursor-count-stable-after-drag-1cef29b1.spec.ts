@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-1cef29b1
  *  Title   : ドラッグ後もカーソル数は変化しない
  *  Source  : docs/client-features.yaml
@@ -50,4 +53,3 @@ test.describe("CLM-1cef29b1: ドラッグ後もカーソル数は変化しない
         expect(cursorCountAfter).toBe(cursorCountBefore);
     });
 });
-import "../utils/registerAfterEachSnapshot";

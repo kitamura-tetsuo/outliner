@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ALS-0001
  *  Title   : Alias self-reference prevention
  *  Source  : docs/client-features.yaml
@@ -51,4 +54,3 @@ test.describe("ALS-0001: Alias self-reference prevention", () => {
         expect(isAliasPathVisible).toBe(false);
     });
 });
-import "../utils/registerAfterEachSnapshot";

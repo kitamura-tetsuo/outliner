@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0002
  *  Title   : 左へ移動
  *  Source  : docs/client-features.yaml
@@ -93,4 +96,3 @@ test.describe("CLM-0002: 左へ移動", () => {
         expect(newActiveItemId).toBe(itemId1);
     });
 });
-import "../utils/registerAfterEachSnapshot";

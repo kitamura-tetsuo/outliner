@@ -1,6 +1,9 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 type CursorInstance = {
     isActive?: boolean;
@@ -100,4 +103,3 @@ test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
         expect(activeCursorInstance?.offset).toBe(0);
     });
 });
-import "../utils/registerAfterEachSnapshot";

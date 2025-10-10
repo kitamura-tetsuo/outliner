@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SCH-DF38D2F7
  *  Title   : Multi-Page Schedule Management
  *  Source  : docs/client-features.yaml
@@ -225,4 +228,3 @@ test.describe("Multi-Page Schedule Management", () => {
         await expect(finalItems).toHaveCount(0, { timeout: 5000 });
     });
 });
-import "../utils/registerAfterEachSnapshot";

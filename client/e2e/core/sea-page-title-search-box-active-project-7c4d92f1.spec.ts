@@ -1,8 +1,10 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SEA-0001
  *  Title   : Add page title search box
  *  Source  : docs/client-features.yaml
  */
-import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "../fixtures/console-forward";
 import { TestHelpers } from "../utils/testHelpers";
 

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ITM-ea76cd92
  *  Title   : Backspaceで前のアイテムと結合
  *  Source  : docs/client-features.yaml
@@ -65,4 +68,3 @@ test.describe("ITM-ea76cd92: Backspace merge previous item", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

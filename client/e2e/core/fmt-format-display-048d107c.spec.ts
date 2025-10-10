@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-0001
  *  Title   : フォーマット表示
  *  Source  : docs/client-features.yaml
@@ -200,4 +203,3 @@ test.describe("フォーマット表示", () => {
         expect(itemText).toContain("のテキストです");
     });
 });
-import "../utils/registerAfterEachSnapshot";

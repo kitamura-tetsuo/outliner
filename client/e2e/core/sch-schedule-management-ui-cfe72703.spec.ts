@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SCH-CFE72703
  *  Title   : Scheduled Posting Management UI
  *  Source  : docs/client-features.yaml
@@ -53,4 +56,3 @@ test.describe("Schedule Management UI", () => {
         await expect(scheduleItems).toHaveCount(0);
     });
 });
-import "../utils/registerAfterEachSnapshot";

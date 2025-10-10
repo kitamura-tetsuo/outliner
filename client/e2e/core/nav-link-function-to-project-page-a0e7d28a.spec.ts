@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature NAV-0002
  *  Title   : プロジェクトページへのリンク機能
  *  Source  : docs/client-features.yaml
@@ -81,4 +84,3 @@ test.describe("NAV-0002: プロジェクトページへのリンク機能", () =
         await expect(separators.first()).toHaveClass(/mx-2/);
     });
 });
-import "../utils/registerAfterEachSnapshot";

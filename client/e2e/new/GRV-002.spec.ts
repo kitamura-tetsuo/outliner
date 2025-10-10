@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature GRV-0001
  *  Title   : Graph View visualization
  *  Source  : docs/client-features.yaml
@@ -325,4 +328,3 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
         expect(data.links).toBeGreaterThanOrEqual(1);
     });
 });
-import "../utils/registerAfterEachSnapshot";

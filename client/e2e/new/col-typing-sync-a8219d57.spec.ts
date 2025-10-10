@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature COL-a8219d57
  *  Title   : Yjs collaboration typing sync
  */
@@ -111,4 +114,3 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     await context1.close();
     await context2.close();
 });
-import "../utils/registerAfterEachSnapshot";

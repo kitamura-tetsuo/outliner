@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-0007
  *  Title   : 内部リンク機能の表示
  *  Source  : docs/client-features.yaml
@@ -357,4 +360,3 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         expect(linkItem!.text).toContain("[/project-name/page-name]");
     });
 });
-import "../utils/registerAfterEachSnapshot";

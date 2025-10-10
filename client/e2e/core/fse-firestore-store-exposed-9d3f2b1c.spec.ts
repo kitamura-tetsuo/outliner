@@ -1,5 +1,8 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test.describe("FSE-9d3f2b1c: Firestore store exposes itself to window", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -11,4 +14,3 @@ test.describe("FSE-9d3f2b1c: Firestore store exposes itself to window", () => {
         expect(exists).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

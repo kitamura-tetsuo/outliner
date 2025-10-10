@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature USR-baaa8b62
  *  Title   : User deletion function
  *  Source  : docs/client-features/usr-user-deletion-function-baaa8b62.yaml
@@ -10,4 +13,3 @@ test("delete-user returns 405 with invalid token", async ({ request }) => {
     });
     expect(res.status()).toBe(405);
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ITM-yjs-keyboard-reorder-boundary-b2c4d8e1
  *  Title   : Yjs Outliner - Alt+矢印 並べ替えの境界ケース
  */
@@ -220,4 +223,3 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         expect(info2.activeCount).toBe(1);
     });
 });
-import "../utils/registerAfterEachSnapshot";

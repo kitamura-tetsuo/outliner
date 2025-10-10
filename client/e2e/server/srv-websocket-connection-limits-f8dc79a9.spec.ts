@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SRV-f8dc79a9
  *  Title   : WebSocket connection limits
  *  Source  : docs/client-features/srv-websocket-connection-limits-f8dc79a9.yaml
@@ -50,4 +53,3 @@ test.describe("WebSocket connection limits", () => {
         sinon.restore();
     });
 });
-import "../utils/registerAfterEachSnapshot";

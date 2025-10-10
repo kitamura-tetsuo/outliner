@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0100
  *  Title   : ボックス選択（矩形選択）機能 - キーボード
  *  Source  : docs/client-features.yaml
@@ -157,4 +160,3 @@ test.describe("選択範囲管理テスト", () => {
         expect(totalSelectionsAfterCancel).toBe(0);
     });
 });
-import "../utils/registerAfterEachSnapshot";

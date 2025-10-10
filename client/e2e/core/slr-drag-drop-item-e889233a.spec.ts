@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0009
  *  Title   : ドラッグ＆ドロップによるテキスト移動
  *  Source  : docs/client-features.yaml
@@ -82,4 +85,3 @@ test.describe("SLR-0009: アイテムドラッグ＆ドロップ", () => {
         expect(firstItemAfter).toBe(firstItemText);
     });
 });
-import "../utils/registerAfterEachSnapshot";

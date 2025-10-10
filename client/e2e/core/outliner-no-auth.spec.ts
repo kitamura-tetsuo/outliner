@@ -1,5 +1,8 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpersNoAuth } from "../utils/testHelpersNoAuth.js";
+registerCoverageHooks();
 
 test.describe("Outliner No Auth Test", () => {
     test("can load and interact with outliner without authentication", async ({ page }, testInfo) => {
@@ -136,4 +139,3 @@ test.describe("Outliner No Auth Test", () => {
         expect(finalUrl).toMatch(/localhost:7090/);
     });
 });
-import "../utils/registerAfterEachSnapshot";

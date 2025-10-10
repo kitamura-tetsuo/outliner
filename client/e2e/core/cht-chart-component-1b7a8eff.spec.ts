@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CHT-001
  *  Title   : Chart Component
  *  Source  : docs/client-features.yaml
@@ -78,4 +81,3 @@ test.describe("CHT-001: Chart auto-refresh", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
@@ -11,7 +14,7 @@ test.describe("環境準備後にアウトラインページが表示される",
     test.beforeEach(async ({ page }, testInfo) => {
         // 増加したタイムアウトで prepareTestEnvironment を実行
         await TestHelpers.prepareTestEnvironment(page, testInfo);
-    }, 240000); // 增加 beforeEach のタイムアウト to 240秒
+    });
 
     test.afterEach(async ({ page }) => {
         // Ensure proper cleanup after each test to maintain isolation
@@ -19,6 +22,7 @@ test.describe("環境準備後にアウトラインページが表示される",
     });
 
     test("PrepareTestEnvironment 後に Outliner UI が見える", async ({ page }) => {
+        test.setTimeout(120000);
         // デバッグ: 現在のURL
         console.log("E2E: current URL after prepare:", page.url());
 
@@ -39,5 +43,5 @@ test.describe("環境準備後にアウトラインページが表示される",
         });
         console.log("E2E: textboxExists=", textboxExists);
         expect(textboxExists).toBe(true);
-    }, 120000); // 增加テストのタイムアウト
+    });
 });

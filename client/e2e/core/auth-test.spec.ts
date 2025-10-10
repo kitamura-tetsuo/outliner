@@ -1,4 +1,7 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 test.describe("Authentication Test", () => {
     test("can perform manual authentication", async ({ page }) => {
@@ -95,4 +98,3 @@ test.describe("Authentication Test", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

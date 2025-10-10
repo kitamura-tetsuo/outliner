@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ATT-0001 */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
@@ -83,5 +86,3 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
         await expect(item.locator(".attachment-preview")).toHaveCount(2, { timeout: 10000 });
     });
 });
-import "../utils/registerAfterEachSnapshot";
-import "../utils/registerAfterEachSnapshot";

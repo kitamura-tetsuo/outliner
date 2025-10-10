@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature API-0004
  *  Title   : Admin user list
  *  Source  : docs/client-features.yaml
@@ -26,5 +29,3 @@ test.describe("API-0004: admin user list", () => {
         expect(res.status()).toBe(204);
     });
 });
-import "../utils/registerAfterEachSnapshot";
-import "../utils/registerAfterEachSnapshot";

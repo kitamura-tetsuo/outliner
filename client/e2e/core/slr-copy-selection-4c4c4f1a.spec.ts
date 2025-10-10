@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0006
  *  Title   : 複数アイテム選択範囲のコピー＆ペースト
  *  Source  : docs/client-features.yaml
@@ -203,4 +206,3 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

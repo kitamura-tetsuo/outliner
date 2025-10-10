@@ -1,6 +1,9 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -151,4 +154,3 @@ test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => 
         expect(finalCursorData.cursors[0].offset).toBe(actualTextContent?.length || 0);
     });
 });
-import "../utils/registerAfterEachSnapshot";

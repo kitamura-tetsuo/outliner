@@ -481,7 +481,7 @@ jobs:
           path: |
             client/test-results/
             client/playwright-report/
-            client/coverage/
+            coverage/
             server/logs/
             client/logs/
           retention-days: 2

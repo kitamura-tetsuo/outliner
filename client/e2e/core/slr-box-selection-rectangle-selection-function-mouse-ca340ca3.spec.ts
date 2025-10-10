@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0101
  *  Title   : ボックス選択（矩形選択）機能 - マウス
  *  Source  : docs/client-features.yaml
@@ -206,4 +209,3 @@ test.describe("マウスによる矩形選択テスト", () => {
         });
     });
 });
-import "../utils/registerAfterEachSnapshot";

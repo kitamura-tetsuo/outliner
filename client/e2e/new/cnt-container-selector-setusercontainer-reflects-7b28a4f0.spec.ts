@@ -1,10 +1,12 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CNT-7b28a4f0
  *  Title   : Eventless ContainerSelector via ucVersion
  *  Source  : docs/client-features/cnt-eventless-container-selector-7b28a4f0.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
-import "../utils/registerAfterEachSnapshot";
 
 /**
  * @playwright

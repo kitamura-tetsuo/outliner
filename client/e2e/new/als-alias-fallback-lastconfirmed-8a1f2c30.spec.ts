@@ -1,10 +1,12 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ALS-8a1f2c30
  *  Title   : Alias path fallback via lastConfirmedTargetId within 2s
  *  Source  : docs/client-features/als-alias-fallback-lastconfirmed-8a1f2c30.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
-import "../utils/registerAfterEachSnapshot";
 
 /**
  * ケース: aliasPickerStore.lastConfirmedTargetId によるフォールバックが 2 秒以内に有効で、UI にパスが表示される

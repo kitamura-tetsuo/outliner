@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SBD-ebaa03c1
  *  Title   : Show search dropdown only on focus
  *  Source  : docs/client-features.yaml
@@ -30,4 +33,3 @@ test.describe("SBD-ebaa03c1: search dropdown visibility", () => {
         await expect(dropdown).not.toBeVisible();
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SCH-C10DEA72
  *  Title   : Schedule List Refresh
  *  Source  : docs/client-features.yaml
@@ -12,4 +15,3 @@ test.describe("Schedule List Refresh", () => {
         expect(response.status()).toBeGreaterThanOrEqual(400);
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FTR-b6ebf516
  *  Title   : Paste text from the system clipboard
  *  Source  : docs/client-features.yaml
@@ -29,4 +32,3 @@ test.describe("System clipboard paste", () => {
         expect(text).toContain("pasted text");
     });
 });
-import "../utils/registerAfterEachSnapshot";

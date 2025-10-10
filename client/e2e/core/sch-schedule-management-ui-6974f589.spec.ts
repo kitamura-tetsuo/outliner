@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SCH-6974F589
  *  Title   : Schedule Management Page
  *  Source  : docs/client-features.yaml
@@ -15,4 +18,3 @@ test.describe("SCH-6974F589: Schedule Management Page", () => {
         await expect(page).toHaveTitle(/Outliner/);
     });
 });
-import "../utils/registerAfterEachSnapshot";

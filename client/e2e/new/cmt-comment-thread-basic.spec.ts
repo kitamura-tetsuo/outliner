@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CMT-0001
  *  Title   : Comment threads per item
  *  Source  : docs/client-features.yaml
@@ -308,4 +311,3 @@ test.describe("CMT-0001: comment threads", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

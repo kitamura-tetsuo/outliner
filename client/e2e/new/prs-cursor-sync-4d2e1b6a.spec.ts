@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature PRS-4d2e1b6a
  *  Title   : Yjs cursor presence sync
  *  Source  : docs/client-features/prs-yjs-presence-cursors-4d2e1b6a.yaml
@@ -78,4 +81,3 @@ test.describe("PRS-4d2e1b6a: cursor presence", () => {
         expect(received).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

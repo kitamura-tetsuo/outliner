@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { type Browser, expect, type Page } from "@playwright/test";
+import { startCoverage, stopCoverage } from "../helpers/coverage.js";
 import { CursorValidator } from "./cursorValidation.js";
 
 /**
@@ -20,6 +21,23 @@ export class TestHelpers {
         } else {
             console.log(`[TH ${ts} +${delta}ms] ${msg}`);
         }
+    }
+
+    /**
+     * カバレッジ収集を開始する
+     * @param page Playwrightのページオブジェクト
+     */
+    public static async startCoverage(page: Page): Promise<void> {
+        await startCoverage(page);
+    }
+
+    /**
+     * カバレッジ収集を停止し、結果を保存する
+     * @param page Playwrightのページオブジェクト
+     * @param testName テスト名
+     */
+    public static async stopCoverage(page: Page, testName: string): Promise<void> {
+        await stopCoverage(page, testName);
     }
 
     /**

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LOG-0002
  *  Title   : Log rotation endpoint
  *  Source  : docs/client-features/log-rotate-log-files-endpoint-6f1a5793.yaml
@@ -23,4 +26,3 @@ test.describe("LOG-0002: /api/rotate-logs", () => {
         expect(exists).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-0004
  *  Title   : フォーマット文字列の入力と表示
  *  Source  : docs/client-features.yaml
@@ -328,4 +331,3 @@ test.describe("フォーマット文字列の入力と表示", () => {
         expect(itemText).toContain(testText);
     });
 });
-import "../utils/registerAfterEachSnapshot";

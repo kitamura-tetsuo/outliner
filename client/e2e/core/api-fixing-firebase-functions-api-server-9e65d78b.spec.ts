@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature API-0001
  *  Title   : Firebase Functions APIサーバーの修正
  *  Source  : docs/client-features.yaml
@@ -23,5 +26,3 @@ test.describe("API-0001: Firebase Functions CORS and token validation", () => {
         expect(body.error).toBe("Failed to save container ID");
     });
 });
-import "../utils/registerAfterEachSnapshot";
-import "../utils/registerAfterEachSnapshot";

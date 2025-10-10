@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 // @ts-nocheck
 /** @feature CMD-0001
  *  Title   : Inline Command Palette
@@ -260,4 +263,3 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         await expect(page.locator(".chart-panel")).toBeVisible();
     });
 });
-import "../utils/registerAfterEachSnapshot";

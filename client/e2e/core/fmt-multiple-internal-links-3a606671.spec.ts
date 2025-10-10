@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-0008
  *  Title   : Support multiple internal links in one item
  *  Source  : docs/client-features.yaml
@@ -55,4 +58,3 @@ test.describe("FMT-0008: multiple internal links", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

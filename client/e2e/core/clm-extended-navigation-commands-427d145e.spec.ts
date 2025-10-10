@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0104
  *  Title   : Extended navigation commands
  *  Source  : docs/client-features.yaml
@@ -51,4 +54,3 @@ test.describe("CLM-0104: Extended navigation commands", () => {
         expect(data.cursorInstances[0].offset).toBe(12);
     });
 });
-import "../utils/registerAfterEachSnapshot";

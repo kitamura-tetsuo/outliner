@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LNK-0001
  *  Title   : 内部リンクのURL生成機能
  *  Source  : docs/client-features.yaml
@@ -314,4 +317,3 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         expect(projectLinkDataset.page).toBe("page-name");
     });
 });
-import "../utils/registerAfterEachSnapshot";

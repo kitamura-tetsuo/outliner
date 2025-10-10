@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0004
  *  Title   : 上へ移動
  *  Source  : docs/client-features.yaml
@@ -195,4 +198,3 @@ test.describe("CLM-0004: 上へ移動", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

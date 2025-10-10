@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-0002
  *  Title   : フォーマット組み合わせ
  *  Source  : docs/client-features.yaml
@@ -138,4 +141,3 @@ test.describe("フォーマット組み合わせ", () => {
         expect(itemText).toContain("これは[[太字と[/ 斜体と[-取り消し線]と`コード`]]]です");
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0012
  *  Title   : 選択範囲の縮小
  *  Source  : docs/client-features.yaml
@@ -35,4 +38,3 @@ test.describe("SLR-0012: 選択範囲の縮小", () => {
         expect(count).toBe(0);
     });
 });
-import "../utils/registerAfterEachSnapshot";

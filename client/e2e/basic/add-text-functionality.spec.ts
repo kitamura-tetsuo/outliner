@@ -1,8 +1,10 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature TST-0005
  *  Title   : テスト環境の初期化と準備
  *  Source  : docs/client-features.yaml
  */
-import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 

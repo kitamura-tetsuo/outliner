@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-0006
  *  Title   : カーソル移動時のフォーマット表示の一貫性
  *  Source  : docs/client-features.yaml
@@ -375,4 +378,3 @@ test.afterEach(async ({ page }) => {
     // Additional wait to ensure cleanup is processed
     await page.waitForTimeout(200);
 });
-import "../utils/registerAfterEachSnapshot";

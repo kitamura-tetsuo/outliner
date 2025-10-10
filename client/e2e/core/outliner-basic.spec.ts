@@ -1,4 +1,7 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 test.describe("Outliner Basic Test (No Auth)", () => {
     test("can access outliner interface elements", async ({ page }) => {
@@ -122,4 +125,3 @@ test.describe("Outliner Basic Test (No Auth)", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

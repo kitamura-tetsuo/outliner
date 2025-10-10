@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ALS-0001
  *  Title   : Alias picker keyboard navigation
  *  Source  : docs/client-features.yaml
@@ -273,4 +276,3 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await expect(page.locator(".alias-picker").first()).toBeHidden({ timeout: 3000 });
     });
 });
-import "../utils/registerAfterEachSnapshot";

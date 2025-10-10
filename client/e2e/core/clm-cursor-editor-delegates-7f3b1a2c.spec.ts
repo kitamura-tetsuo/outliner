@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-7f3b1a2c
  *  Title   : Cursor editing flows through CursorEditor
  *  Source  : docs/client-features.yaml
@@ -97,5 +100,3 @@ test.describe("CLM-7f3b1a2c: Cursor editing flows through CursorEditor", () => {
         await expect(splitItemLocator).toContainText("Flow");
     });
 });
-
-import "../utils/registerAfterEachSnapshot";

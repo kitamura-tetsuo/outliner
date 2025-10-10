@@ -1,10 +1,12 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CNT-12ee98aa
  *  Title   : Shared Container Store
  *  Source  : docs/client-features/cnt-shared-container-store-12ee98aa.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
-import "../utils/registerAfterEachSnapshot";
 
 /**
  * @playwright

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0003
  *  Title   : 右へ移動
  *  Source  : docs/client-features.yaml
@@ -168,4 +171,3 @@ test.describe("CLM-0003: 右へ移動", () => {
         expect(updatedSecondItemText).toContain("Test input");
     });
 });
-import "../utils/registerAfterEachSnapshot";

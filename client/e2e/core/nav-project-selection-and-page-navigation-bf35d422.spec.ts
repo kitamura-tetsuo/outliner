@@ -1,5 +1,8 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 /**
  * @feature NAV-0001
@@ -38,4 +41,3 @@ test.describe("NAV-0001: プロジェクト選択とページナビゲーショ�
         expect(pageUrl).toContain(`${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
     });
 });
-import "../utils/registerAfterEachSnapshot";

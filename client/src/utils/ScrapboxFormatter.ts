@@ -177,7 +177,14 @@ export class ScrapboxFormatter {
         matches.sort((a, b) => a.start - b.start);
 
         // 重複や入れ子のマッチを処理
-        const validMatches: { type: string; start: number; end: number; content: string; }[] = [];
+        const validMatches: {
+            type: string;
+            start: number;
+            end: number;
+            content: string;
+            url?: string;
+            isProjectLink?: boolean;
+        }[] = [];
 
         for (const match of matches) {
             // 既存の有効なマッチと重複していないか確認

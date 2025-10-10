@@ -87,7 +87,10 @@ export default defineConfig({
     workers: process.env.CI ? 1 : 1,
     maxFailures: process.env.CI ? 1 : 1,
 
-    reporter: [["html", { open: "never" }]],
+    reporter: [
+        ["html", { open: "never" }],
+        // E2Eカバレッジレポートは scripts/generate-e2e-coverage.js で生成されます
+    ],
     // テスト実行時のタイムアウトを延長（環境初期化の揺らぎに対応）
     timeout: 240 * 1000, // 240秒
     expect: {

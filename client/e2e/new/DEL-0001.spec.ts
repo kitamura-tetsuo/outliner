@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature DEL-0001
  *  Title   : Project Deletion Page
  *  Source  : docs/client-features/del-project-deletion-page-c8da7a47.yaml
@@ -51,4 +54,3 @@ test.describe("DEL-0001: Project Deletion Page", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

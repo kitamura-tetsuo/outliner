@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0103
  *  Title   : フォーマット文字列でのカーソル操作
  *  Source  : docs/client-features.yaml
@@ -282,4 +285,3 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         await TestHelpers.waitForCursorVisible(page);
     });
 });
-import "../utils/registerAfterEachSnapshot";

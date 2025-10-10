@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature USR-0661ecad
  *  Title   : Container removal function
  *  Source  : docs/client-features/usr-container-removal-function-0661ecad.yaml
@@ -10,4 +13,3 @@ test("delete-container returns 405 with invalid token", async ({ request }) => {
     });
     expect(res.status()).toBe(405);
 });
-import "../utils/registerAfterEachSnapshot";

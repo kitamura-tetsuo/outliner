@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0007
  *  Title   : 行頭へ移動
  *  Source  : docs/client-features.yaml
@@ -188,4 +191,3 @@ test.describe("CLM-0007: 行頭へ移動", () => {
         expect(finalCursorData.activeItemId).not.toBeNull();
     });
 });
-import "../utils/registerAfterEachSnapshot";

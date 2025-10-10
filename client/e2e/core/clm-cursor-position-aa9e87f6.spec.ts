@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0001
  *  Title   : Click to enter edit mode
  *  Source  : docs/client-features.yaml
@@ -23,4 +26,3 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
         expect(cursorData.activeItemId).not.toBeNull();
     });
 });
-import "../utils/registerAfterEachSnapshot";

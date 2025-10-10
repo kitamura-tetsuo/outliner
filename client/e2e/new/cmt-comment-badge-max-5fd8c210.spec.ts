@@ -1,10 +1,12 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CMT-5fd8c210
  *  Title   : OutlinerItem comment badge reflects Yjs count (max logic)
  *  Source  : docs/client-features/cmt-comment-badge-max-5fd8c210.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
-import "../utils/registerAfterEachSnapshot";
 
 /**
  * ケース: Yjs 側でコメント追加/削除し、commentCountVisual が正しい最大値を表示

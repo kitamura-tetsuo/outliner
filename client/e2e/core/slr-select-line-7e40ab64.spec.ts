@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 // @ts-nocheck
 /** @feature SLR-0013
  *  Title   : 現在行を選択
@@ -81,4 +84,3 @@ test.describe("SLR-0013: 現在行を選択", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

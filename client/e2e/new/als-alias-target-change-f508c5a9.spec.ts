@@ -1,5 +1,8 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test.describe("ALS-0001: Alias change target", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -85,4 +88,3 @@ test.describe("ALS-0001: Alias change target", () => {
         expect(isAliasPathVisible).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

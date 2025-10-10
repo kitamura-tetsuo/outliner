@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature TST-0005
  *  Title   : テスト環境の初期化と準備
  *  Source  : docs/client-features.yaml
@@ -25,4 +28,3 @@ test("ホームページが正常に表示される", async ({ page }) => {
     // タイトルが表示されることを確認
     await expect(page.locator("h1")).toContainText("Outliner");
 });
-import "../utils/registerAfterEachSnapshot";

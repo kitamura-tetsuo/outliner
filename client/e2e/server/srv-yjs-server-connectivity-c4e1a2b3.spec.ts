@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SRV-c4e1a2b3
  *  Title   : Yjs server accepts WebSocket connection
  *  Source  : docs/client-features/srv-yjs-server-connectivity-c4e1a2b3.yaml
@@ -93,19 +96,19 @@ test.describe("Yjs server", () => {
 
         // The server should be accessible and at least acknowledge connection attempts
         // A 1006 error indicates the server is not accessible at the network level
-        if (wsServerResponse.connected === false && wsServerResponse.code === 1006) {
-            expect.fail(`WebSocket connection failed with error code 1006. Server may not be running on port ${port}`);
+        if ((wsServerResponse as any).connected === false && (wsServerResponse as any).code === 1006) {
+            expect((wsServerResponse as any).connected).toBe(true);
         }
 
         // For this test, we consider the server to be accepting connections if:
         // 1. Connection was established (onopen called) OR
         // 2. Connection was acknowledged by server (close code != 1006)
         // The key is that the server is running and responding, even if it subsequently closes the connection
-        if (wsServerResponse.connected === false) {
+        if ((wsServerResponse as any).connected === false) {
             // Check if we at least got a response from the server (even if it was a rejection)
-            if (wsServerResponse.code && wsServerResponse.code !== 1006) {
+            if ((wsServerResponse as any).code && (wsServerResponse as any).code !== 1006) {
                 // Server responded with a rejection code, which means it's running
-                console.log(`Server responded with code ${wsServerResponse.code}, indicating it's running`);
+                console.log(`Server responded with code ${(wsServerResponse as any).code}, indicating it's running`);
             } else {
                 console.error(`Server did not respond properly. Response:`, wsServerResponse);
             }
@@ -116,4 +119,3 @@ test.describe("Yjs server", () => {
         expect(wsServerResponse).toBeDefined(); // Basic check that we get a response object
     });
 });
-import "../utils/registerAfterEachSnapshot";

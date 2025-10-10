@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
@@ -36,11 +39,11 @@ test.describe("Yjs client attach and DOM reflect", () => {
                         console.log("Created new currentPage");
                     } else {
                         // Alternative creation method
-                        const items = gs.project.items;
-                        if (items && typeof items.addNode === "function") {
-                            const pageItem = items.addNode("tester");
+                        const items = (gs.project as any).items;
+                        if (items && typeof (items as any).addNode === "function") {
+                            const pageItem = (items as any).addNode("tester");
                             if (pageItem) {
-                                pageItem.updateText(pageName);
+                                (pageItem as any).updateText(pageName);
                                 gs.currentPage = pageItem;
                                 console.log("Created new currentPage via items.addNode");
                             }
@@ -70,13 +73,13 @@ test.describe("Yjs client attach and DOM reflect", () => {
             ];
 
             // Add items if they don't already exist
-            const existingCount = items.length ?? 0;
+            const existingCount = (items as any).length ?? 0;
             console.log(`Current item count: ${existingCount}`);
 
             for (let i = existingCount; i < 3; i++) {
-                const it = items.addNode?.("tester");
-                if (it && typeof it.updateText === "function") {
-                    it.updateText(lines[i] || "");
+                const it = (items as any).addNode?.("tester");
+                if (it && typeof (it as any).updateText === "function") {
+                    (it as any).updateText(lines[i] || "");
                     console.log(`Added item ${i + 1}: ${lines[i]}`);
                 } else {
                     console.error(`Failed to add item ${i + 1}`);

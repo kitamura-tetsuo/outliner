@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature GRV-0001
  *  Title   : Graph View visualization
  *  Source  : docs/client-features/grv-graph-view-34a26488.yaml
@@ -114,4 +117,3 @@ test.describe("GRV-0001: Graph View navigation", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

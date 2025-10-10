@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature IMP-0001
  *  Title   : OPML/Markdown import and export
  *  Source  : docs/client-features/imp-opml-markdown-import-export-4b1c2f10.yaml
@@ -200,4 +203,3 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         expect(grandCount).toBeGreaterThan(0);
     });
 });
-import "../utils/registerAfterEachSnapshot";

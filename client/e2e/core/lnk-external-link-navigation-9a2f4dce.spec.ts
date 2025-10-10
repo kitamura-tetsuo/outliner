@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LNK-9a2f4dce
  *  Title   : External link navigation
  *  Source  : docs/client-features.yaml
@@ -46,4 +49,3 @@ import { TestHelpers } from "../utils/testHelpers";
         await popup.close();
     });
 });
-import "../utils/registerAfterEachSnapshot";

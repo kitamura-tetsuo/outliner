@@ -1,10 +1,12 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature PRS-b13f9c1a
  * Title   : Cursor sync between tabs
  * Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
-import "../utils/registerAfterEachSnapshot";
 
 test.describe("Cursor sync between tabs", () => {
     test("typing in one tab shows in another", async ({ browser }, testInfo) => {

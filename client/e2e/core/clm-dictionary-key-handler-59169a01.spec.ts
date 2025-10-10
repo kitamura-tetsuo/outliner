@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0105
  *  Title   : Dictionary-based key handler
  *  Source  : docs/client-features.yaml
@@ -46,4 +49,3 @@ test.describe("CLM-0105: Dictionary-based key handler", () => {
         expect(after.cursorInstances.length).toBe(before.cursorInstances.length - 1);
     });
 });
-import "../utils/registerAfterEachSnapshot";
