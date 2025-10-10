@@ -157,6 +157,8 @@ function resolveProjectTitle(targetPage: Item | null): string {
         return true;
     };
 
+    // Prefer derivedProject (effectiveProject) first, as it includes the most recent project state
+    if (derivedProject && projectMatches(derivedProject)) return derivedProject.title ?? "";
     const preferred = projectMatches(storeProject) ? storeProject : null;
     if (preferred) return preferred.title ?? "";
     if (derivedProject) return derivedProject.title ?? "";
