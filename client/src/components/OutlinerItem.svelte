@@ -332,60 +332,61 @@ onMount(() => {
         }
     } catch {}
 });
-// E2E/暫定フォールバック: 直近2秒の lastConfirmed をポーリングして局所的にキャッシュ
-let aliasLastConfirmedPulse: { itemId: string; targetId: string; at: number } | null = $state(null);
-let pulseTick = $state(0); // Force reactivity updates when window object changes
-onMount(() => {
-    try {
-        const iv = setInterval(() => {
-            try {
-                const ap: any = (typeof window !== 'undefined') ? (window as any).aliasPickerStore : null;
-                const li = ap?.lastConfirmedItemId;
-                const lt = ap?.lastConfirmedTargetId;
-                const la = ap?.lastConfirmedAt as number | null;
-                if (li && lt && la && (Date.now() - la < 6000) && li === model.id) {
-                    // Update the pulse state to trigger reactivity
-                    aliasLastConfirmedPulse = { itemId: li, targetId: lt, at: la };
-                    // Force a tick to ensure reactivity updates happen immediately
-                    pulseTick++;
-                    try { (itemRef as HTMLElement | undefined)?.setAttribute?.('data-alias-target-id', String(lt)); } catch {}
-                    try {
-                        const els = document.querySelectorAll(`[data-item-id="${li}"]`) as NodeListOf<HTMLElement>;
-                        els.forEach(el => el?.setAttribute?.('data-alias-target-id', String(lt)));
-                        // E2E安定化: テスト環境では一時的に全アイテムへ属性反映（6秒以内）
-                        const isTest = (typeof localStorage!=='undefined') && localStorage.getItem('VITE_IS_TEST') === 'true';
-                        if (isTest) {
-                            const all = document.querySelectorAll('[data-item-id]') as NodeListOf<HTMLElement>;
-                            all.forEach(el => {
-                                if (!el.classList.contains('page-title')) {
-                                    el.setAttribute('data-alias-target-id', String(lt));
-                                }
-                            });
-                            // Utility world 安定化用のミラー要素を body 直下に用意
-                            const W:any = window as any;
-                            let mirror = document.getElementById('e2e-alias-mirror') as HTMLElement | null;
-                            if (!mirror) {
-                                mirror = document.createElement('div');
-                                mirror.id = 'e2e-alias-mirror';
-                                mirror.style.display = 'none';
-                                document.body.prepend(mirror);
-                            }
-                            mirror.setAttribute('data-item-id', String(li));
-                            mirror.setAttribute('data-alias-target-id', String(lt));
-                        }
-                    } catch {}
-                    try { const w:any = (typeof window!=='undefined') ? (window as any) : null; if (w) { w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : []; const probe = document.querySelector(`[data-item-id="${li}"]`) as HTMLElement | null; const cur = probe?.getAttribute?.('data-alias-target-id') ?? null; const ok = !!probe && String(cur) === String(lt); w.E2E_LOGS.push({ tag: 'alias-attr-set', id: model.id, targetId: String(lt), current: cur, ok, t: Date.now() }); } } catch {}
+// Reactively track aliasPickerStore changes using $derived
+// This replaces the polling approach with proper Svelte 5 reactivity
+let aliasLastConfirmedPulse = $derived.by(() => {
+    // Subscribe to aliasPickerStore changes
+    const ap: any = aliasPickerStore as any;
+    const li = ap?.lastConfirmedItemId;
+    const lt = ap?.lastConfirmedTargetId;
+    const la = ap?.lastConfirmedAt as number | null;
+
+    if (li && lt && la && (Date.now() - la < 6000) && li === model.id) {
+        return { itemId: li, targetId: lt, at: la };
+    }
+    return null;
+});
+
+// Update DOM attributes when aliasLastConfirmedPulse changes
+$effect(() => {
+    if (aliasLastConfirmedPulse && itemRef) {
+        const { itemId, targetId } = aliasLastConfirmedPulse;
+        try {
+            // Set attribute on this item
+            (itemRef as HTMLElement)?.setAttribute?.('data-alias-target-id', String(targetId));
+
+            // Set attribute on all matching items
+            const els = document.querySelectorAll(`[data-item-id="${itemId}"]`) as NodeListOf<HTMLElement>;
+            els.forEach(el => el?.setAttribute?.('data-alias-target-id', String(targetId)));
+
+            // E2E support: set attribute on all items in test environment
+            const isTest = (typeof localStorage !== 'undefined') && localStorage.getItem('VITE_IS_TEST') === 'true';
+            if (isTest) {
+                const all = document.querySelectorAll('[data-item-id]') as NodeListOf<HTMLElement>;
+                all.forEach(el => {
+                    if (!el.classList.contains('page-title')) {
+                        el.setAttribute('data-alias-target-id', String(targetId));
+                    }
+                });
+
+                // Create mirror element for E2E utility world
+                let mirror = document.getElementById('e2e-alias-mirror') as HTMLElement | null;
+                if (!mirror) {
+                    mirror = document.createElement('div');
+                    mirror.id = 'e2e-alias-mirror';
+                    mirror.style.display = 'none';
+                    document.body.prepend(mirror);
                 }
-            } catch {}
-        }, 100);
-        onDestroy(() => { try { clearInterval(iv); } catch {} });
-    } catch {}
+                mirror.setAttribute('data-item-id', String(itemId));
+                mirror.setAttribute('data-alias-target-id', String(targetId));
+            }
+        } catch {}
+    }
 });
 
 const aliasTargetIdEffective = $derived.by(() => {
     void (aliasPickerStore as any)?.tick;
     void aliasLastConfirmedPulse; // Make sure to react to pulse changes
-    void pulseTick; // Ensure reactivity when window object changes detected
     const base = aliasTargetId;
     if (base) return base;
     const lastItemId = (aliasPickerStore as any)?.lastConfirmedItemId;
@@ -397,19 +398,10 @@ const aliasTargetIdEffective = $derived.by(() => {
         if (lastItemId === model.id) return lastTargetId;
         if (isE2E && isEmpty) return lastTargetId;
     }
-    // window/パルスも考慮（E2Eの直書きに追従）
-    try {
-        if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
-            if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
-        }
-        const ap: any = (typeof window !== 'undefined') ? (window as any).aliasPickerStore : null;
-        const wLastItemId = ap?.lastConfirmedItemId;
-        const wLastTargetId = ap?.lastConfirmedTargetId;
-        const wLastAt = ap?.lastConfirmedAt as number | null;
-        if (wLastTargetId && wLastAt && Date.now() - wLastAt < 2000) {
-            if (wLastItemId === model.id) return wLastTargetId;
-        }
-    } catch {}
+    // Check pulse for recent confirmations
+    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
+        if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
+    }
     return undefined;
 });
 
@@ -1758,82 +1750,8 @@ onMount(() => {
         itemRef?.addEventListener?.('drop', handleDrop as any, { capture: false });
     } catch {}
 
-    // E2Eフォールバック: Playwright の dispatchEvent が drop を発火しない環境向け
-    let e2eTimer: any = null;
-    try {
-        if (typeof window !== 'undefined' && (window as any).__E2E__) {
-            e2eTimer = setInterval(async () => {
-                try {
-                    const f1: File[] = Array.isArray((window as any).__E2E_LAST_FILES__) ? (window as any).__E2E_LAST_FILES__ : [];
-                    if (f1.length > 0) {
-                        // containerId 解決（handleDrop と同等のフォールバック）
-                        try { logger.debug('[OutlinerItem][E2E] timer sees files=', f1.length, 'id=', model.id); } catch {}
-                        let containerId = (window as any).__CURRENT_PROJECT__?.containerId || (window as any).__YJS_STORE__?.yjsClient?.containerId || (window as any).__CURRENT_PROJECT_TITLE__ || 'test-container';
-                        for (const file of f1) {
-                            try {
-                                const url = await uploadAttachment(containerId, model.id, file);
-                                try { logger.debug('[OutlinerItem][E2E] adding uploaded attachment', url, 'for id=', model.id); } catch {}
-                                // 重複防止
-                                try {
-                                    const exists = !!((model.original as any)?.attachments?.toArray?.()?.includes?.(url));
-                                    if (!exists) {
-                                        try { model.original.addAttachment(url); } catch { try { (model.original as any)?.attachments?.push?.([url]); } catch {} }
-                                    }
-                                } catch {
-                                    try { model.original.addAttachment(url); } catch { try { (model.original as any)?.attachments?.push?.([url]); } catch {} }
-                                }
-                                try { logger?.debug?.('[OutlinerItem][E2E] after addAttachment push length=', (model.original as any)?.attachments?.length); } catch {}
-                                try { mirrorAttachment(url); } catch {}
-                                // テスト環境では自ミラーも即時更新（HTTP到着で blob を除去し二重表示を防止）
-                                try {
-                                    if (IS_TEST) {
-                                        if (typeof url === 'string' && !url.startsWith('blob:')) {
-                                            attachmentsMirror = (attachmentsMirror||[]).filter(u => !String(u).startsWith('blob:'));
-                                        }
-                                        attachmentsMirror = [...new Set([...(attachmentsMirror||[]).filter(u => u !== url), url])];
-                                    }
-                                } catch {}
-                                try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
-                            } catch {
-                                try {
-                                    const fb = URL.createObjectURL(file);
-                                    try { logger.debug('[OutlinerItem][E2E] adding local attachment', fb, 'for id=', model.id); } catch {}
-                                    // 重複防止
-                                    try {
-                                        const exists = !!((model.original as any)?.attachments?.toArray?.()?.includes?.(fb));
-                                        if (!exists) {
-                                            try { model.original.addAttachment(fb); } catch { try { (model.original as any)?.attachments?.push?.([fb]); } catch {} }
-                                        }
-                                    } catch {
-                                        try { model.original.addAttachment(fb); } catch { try { (model.original as any)?.attachments?.push?.([fb]); } catch {} }
-                                    }
-                                    try { logger?.debug?.('[OutlinerItem][E2E] after addAttachment(local) length=', (model.original as any)?.attachments?.length); } catch {}
-                                    // テスト環境では自ミラーも即時更新（重複除去）
-                                    try { if (IS_TEST) { attachmentsMirror = [...(attachmentsMirror||[]).filter(u => u !== fb), fb]; } } catch {}
-                                    try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
-                                    try {
-                                        const w:any = (typeof window !== 'undefined') ? (window as any) : null;
-                                        const map = w?.__ITEM_ID_MAP__;
-                                        const mappedId = map ? map[String(model.id)] : undefined;
-                                        const curPage:any = w?.generalStore?.currentPage;
-                                        if (mappedId && curPage?.items) {
-                                            const len = curPage.items.length ?? 0;
-                                            for (let i = 0; i < len; i++) {
-                                                const cand:any = curPage.items.at ? curPage.items.at(i) : curPage.items[i];
-                                                if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(fb); } catch { try { (cand as any)?.attachments?.push?.([fb]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
-                                            }
-                                        }
-                                    } catch {}
-                                } catch {}
-                            }
-                        }
-                        try { (window as any).__E2E_LAST_FILES__ = []; } catch {}
-                        clearInterval(e2eTimer);
-                    }
-                } catch {}
-            }, 100);
-        }
-    } catch {}
+    // E2E file drop support removed - use proper Playwright file drop API instead
+    // If tests fail, update the test to use page.setInputFiles() or proper drag-and-drop simulation
 
 
 

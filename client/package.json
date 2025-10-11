@@ -117,7 +117,9 @@
         "test:integration": "vitest run --project integration --coverage",
         "test:production": "vitest run --project production",
         "test:production:watch": "vitest --project production",
-        "test:unit": "vitest run --project unit --coverage"
+        "test:unit": "vitest run --project unit --coverage",
+        "analyze:polling": "node ../scripts/analyze-polling.mjs",
+        "test:polling": "NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npx playwright test ./e2e/env/env-polling-analysis-test-removability-a1b2c3d4.spec.ts --reporter=list' --"
     },
     "type": "module",
     "version": "0.0.1"
