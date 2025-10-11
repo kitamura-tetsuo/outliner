@@ -50,14 +50,26 @@ const coverageReport = new CoverageReport({
     outputDir: e2eCoverageDir,
     // メモリを抑えるため JSON(Istanbul map) と console-summary のみを出力
     reports: ["json", "console-summary"],
+    // sourceFilter: ソースマップから抽出されたソースファイルをフィルタリング
+    // NOTE: entryFilterは使用しない。V8カバレッジエントリのフィルタリングは
+    //       add()前に手動で行う。これにより、monocart-coverage-reportsの
+    //       内部処理でJavaScriptファイルが除外される問題を回避する。
     sourceFilter: (sourcePath) => {
-        // src/配下のファイルのみをカバレッジ対象とする
-        return sourcePath.includes("/src/") && !sourcePath.includes("/node_modules/");
+        // node_modules/を除外
+        // NOTE: sourcePathはファイル名のみの場合とフルパスの場合がある
+        //       ファイル名のみの場合は、全て含める（entryFilterで既にフィルタリング済み）
+        if (sourcePath.includes("/node_modules/") || sourcePath.includes("node_modules/")) {
+            return false;
+        }
+        // 全て含める（entryFilterで既にsrc/配下のみに絞り込み済み）
+        return true;
     },
 });
 
 // 大量メモリ消費を避けるため、ファイルごとに逐次 add して解放する
 let totalEntries = 0;
+let jsEntries = 0;
+let cssEntries = 0;
 for (const file of coverageFiles) {
     const filePath = path.join(rawCoverageDir, file);
     const text = fs.readFileSync(filePath, "utf8");
@@ -72,12 +84,31 @@ for (const file of coverageFiles) {
 
     // 期待フォーマット: V8(Array) または Istanbul(Object)。それ以外はスキップ
     if (Array.isArray(data)) {
-        // 事前に URL で /src/ のみ残す（/node_modules/ や他の匿名スクリプトは破棄）
-        const filtered = data.filter((e) => {
-            const u = e?.url || "";
-            return typeof u === "string" && u.includes("/src/") && !u.includes("/node_modules/");
+        // V8カバレッジデータを手動でフィルタリング
+        // NOTE: monocart-coverage-reportsのentryFilterを使用すると、
+        //       JavaScriptファイルが除外される問題があるため、
+        //       add()前に手動でフィルタリングを行う
+        const filtered = data.filter((entry) => {
+            const url = entry?.url || "";
+            // src/配下のファイルのみを対象とする（node_modules/を除外）
+            // 空のURLは除外（匿名スクリプト）
+            if (!url) return false;
+            if (url.includes("/node_modules/")) return false;
+            // src/配下のファイルまたはCSSファイルを含める
+            return url.includes("/src/");
         });
-        totalEntries += filtered.length;
+
+        totalEntries += data.length;
+        // JavaScriptとCSSのエントリ数をカウント
+        for (const entry of filtered) {
+            const url = entry?.url || "";
+            if (url.includes(".css")) {
+                cssEntries++;
+            } else {
+                jsEntries++;
+            }
+        }
+
         if (filtered.length > 0) {
             await coverageReport.add(filtered);
         }
@@ -91,6 +122,8 @@ for (const file of coverageFiles) {
 }
 
 console.log(`  ✓ ${totalEntries} 個のカバレッジエントリを読み込みました`);
+console.log(`    - JavaScript: ${jsEntries} 個`);
+console.log(`    - CSS: ${cssEntries} 個`);
 
 try {
     await coverageReport.generate();
@@ -98,6 +131,37 @@ try {
     const istanbulJson = path.join(e2eCoverageDir, "coverage-final.json");
     if (fs.existsSync(istanbulJson)) {
         console.log(`\nIstanbul JSON: ${istanbulJson}`);
+
+        // カバレッジ変換の検証: JavaScriptファイルが含まれているか確認
+        console.log("\nカバレッジ変換の検証を実行しています...");
+        const coverageData = JSON.parse(fs.readFileSync(istanbulJson, "utf8"));
+        const files = Object.keys(coverageData);
+        const jsFiles = files.filter((f) => !f.includes(".css"));
+        const cssFiles = files.filter((f) => f.includes(".css"));
+
+        console.log(`  - 総ファイル数: ${files.length}`);
+        console.log(`  - JavaScriptファイル: ${jsFiles.length}`);
+        console.log(`  - CSSファイル: ${cssFiles.length}`);
+
+        // JavaScriptエントリが存在したのにJavaScriptファイルが0の場合はエラー
+        if (jsEntries > 0 && jsFiles.length === 0) {
+            console.error("\n❌ エラー: JavaScriptファイルのカバレッジが変換時に失われました");
+            console.error(`   rawカバレッジには ${jsEntries} 個のJavaScriptエントリが存在しましたが、`);
+            console.error("   変換後のカバレッジにはJavaScriptファイルが含まれていません。");
+            console.error("\n   これは monocart-coverage-reports の設定に問題がある可能性があります。");
+            console.error("   entryFilter と sourceFilter の設定を確認してください。");
+            process.exit(1);
+        }
+
+        // 警告: JavaScriptファイルが少ない場合
+        if (jsEntries > 0 && jsFiles.length < jsEntries * 0.1) {
+            console.warn("\n⚠️  警告: JavaScriptファイルの数が予想より少ないです");
+            console.warn(`   rawカバレッジ: ${jsEntries} 個のJavaScriptエントリ`);
+            console.warn(`   変換後: ${jsFiles.length} 個のJavaScriptファイル`);
+            console.warn("   一部のファイルが除外されている可能性があります。");
+        }
+
+        console.log("\n✓ カバレッジ変換の検証が完了しました");
     } else {
         // MCR の json 出力ファイル名が異なる場合に備えて、トップレベルの .json を探索して coverage-final.json として保存
         const candidates = fs
