@@ -174,4 +174,3 @@ if (totalFixed > 0) {
         }
     }
 }
-
