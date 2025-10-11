@@ -125,10 +125,66 @@ console.log(`  ✓ ${totalEntries} 個のカバレッジエントリを読み込
 console.log(`    - JavaScript: ${jsEntries} 個`);
 console.log(`    - CSS: ${cssEntries} 個`);
 
+// V8カバレッジデータを保持するため、generate()の前に関数実行回数の修正準備を行う
+// 注意: generate()後にrawディレクトリが削除される可能性があるため、
+//       V8カバレッジデータから関数実行回数を抽出しておく
+console.log("\nV8カバレッジから関数実行回数を抽出しています...");
+const functionCounts = new Map(); // Map<fileName, Map<functionName, count>>
+
+function normalizeUrl(url) {
+    const match = url.match(/\/src\/[^?]+/);
+    if (!match) return null;
+    const filePath = match[0].substring(5);
+    return path.basename(filePath);
+}
+
+for (const file of coverageFiles) {
+    const filePath = path.join(rawCoverageDir, file);
+    const text = fs.readFileSync(filePath, "utf8");
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (e) {
+        continue;
+    }
+
+    if (!Array.isArray(data)) continue;
+
+    for (const entry of data) {
+        const url = entry?.url || "";
+        if (!url.includes("/src/")) continue;
+
+        const fileName = normalizeUrl(url);
+        if (!fileName) continue;
+
+        if (!functionCounts.has(fileName)) {
+            functionCounts.set(fileName, new Map());
+        }
+        const fileFunctionCounts = functionCounts.get(fileName);
+
+        for (const func of entry.functions || []) {
+            const functionName = func.functionName;
+            if (!functionName) continue;
+
+            const ranges = func.ranges || [];
+            if (ranges.length === 0) continue;
+
+            const count = ranges[0].count || 0;
+            const existingCount = fileFunctionCounts.get(functionName) || 0;
+            if (count > existingCount) {
+                fileFunctionCounts.set(functionName, count);
+            }
+        }
+    }
+}
+
+console.log(`  ✓ ${functionCounts.size} 個のファイルから関数実行回数を抽出しました`);
+
+const istanbulJson = path.join(e2eCoverageDir, "coverage-final.json");
+
 try {
     await coverageReport.generate();
     console.log("\n✓ E2Eカバレッジレポートの生成が完了しました");
-    const istanbulJson = path.join(e2eCoverageDir, "coverage-final.json");
     if (fs.existsSync(istanbulJson)) {
         console.log(`\nIstanbul JSON: ${istanbulJson}`);
 
@@ -180,4 +236,49 @@ try {
 } catch (error) {
     console.error("エラー: カバレッジレポートの生成に失敗しました:", error);
     process.exit(1);
+}
+
+// V8カバレッジからIstanbul形式への変換時に失われた関数実行回数を修正
+console.log("\nV8カバレッジから関数実行回数を修正しています...");
+try {
+    const istanbulCoverage = JSON.parse(fs.readFileSync(istanbulJson, "utf8"));
+    let totalFixed = 0;
+    let totalFunctions = 0;
+
+    for (const [filePath, coverage] of Object.entries(istanbulCoverage)) {
+        const fileName = path.basename(filePath);
+        const fileFunctionCounts = functionCounts.get(fileName);
+        if (!fileFunctionCounts) continue;
+
+        const fnMap = coverage.fnMap || {};
+        const f = coverage.f || {};
+
+        for (const [fnId, fnInfo] of Object.entries(fnMap)) {
+            totalFunctions++;
+            const functionName = fnInfo.name;
+            const v8Count = fileFunctionCounts.get(functionName);
+
+            if (v8Count !== undefined && v8Count !== f[fnId]) {
+                const oldCount = f[fnId];
+                f[fnId] = v8Count;
+                totalFixed++;
+
+                if (oldCount === 0 && v8Count > 0) {
+                    console.log(
+                        `  修正: ${fileName} - ${functionName}: ${oldCount} -> ${v8Count}`,
+                    );
+                }
+            }
+        }
+    }
+
+    console.log(`  ✓ ${totalFunctions} 個の関数のうち ${totalFixed} 個の実行回数を修正しました`);
+
+    // 修正したカバレッジデータを保存
+    fs.writeFileSync(istanbulJson, JSON.stringify(istanbulCoverage, null, 2));
+    console.log(`  ✓ ${istanbulJson} に保存しました`);
+    console.log("\n✓ 関数実行回数の修正が完了しました");
+} catch (error) {
+    console.error("⚠ 関数実行回数の修正に失敗しました:", error.message);
+    console.error("  カバレッジデータは生成されていますが、一部の関数実行回数が不正確な可能性があります");
 }

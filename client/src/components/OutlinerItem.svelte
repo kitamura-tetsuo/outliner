@@ -165,9 +165,6 @@ let isDragSelectionMode = $state(false);
 let isDropTarget = $state(false);
 let dropTargetPosition = $state<"top" | "middle" | "bottom" | null>(null);
 
-// コメント関連の状態
-let showComments = $state(false);
-
 let item = $derived.by(() => model.original);
 // CommentThread 用に comments を必ず評価してから渡す（getter 副作用で Y.Array を初期化）
 let ensuredComments = $derived.by(() => item.comments);
@@ -182,83 +179,92 @@ let openCommentItemIndex = $derived.by(() => (generalStore as any).openCommentIt
 // コメント数のローカル状態（確実にUIへ反映するため）
 let commentCountLocal = $state(0);
 
-// コメント数の最終値を整形
-function normalizeCommentCount(value: unknown): number | null {
-    const num = Number(value);
-    if (!Number.isFinite(num)) return null;
-    const fixed = Math.trunc(num);
-    return fixed < 0 ? 0 : fixed;
+/**
+ * Yjs comments 配列から正規化されたコメント数を取得
+ */
+function normalizeCommentCount(arr: any): number {
+    if (!arr || typeof arr.length !== "number") return 0;
+    return Number(arr.length);
 }
 
+/**
+ * item.comments が Y.Array であることを確認し、なければ初期化
+ */
 function ensureCommentsArray(): any {
     try {
-        const anyItem: any = item as any;
-        if (!anyItem) return null;
-        const tree = anyItem?.tree;
-        const key = anyItem?.key;
-        if (!tree || !key) return null;
-        const nodeMap = tree.getNodeValueFromKey?.(key) as any;
-        if (!nodeMap) return null;
-        try { void anyItem.comments; } catch {}
-        const arr = nodeMap.get?.("comments");
-        return arr ?? null;
+        const it = item as any;
+        if (!it) return null;
+        let arr = it.comments;
+        if (!arr) {
+            // comments プロパティが存在しない場合は初期化
+            if (typeof it.setComments === "function") {
+                it.setComments([]);
+                arr = it.comments;
+            }
+        }
+        return arr;
     } catch {
         return null;
     }
 }
 
+/**
+ * Yjs の comments 配列から最新のコメント数を取得してローカル状態に反映
+ */
 function syncCommentCountFromItem() {
     try {
-        const arr: any = ensureCommentsArray();
+        const arr = ensureCommentsArray();
         if (arr && typeof arr.length === "number") {
-            const normalized = normalizeCommentCount(arr.length);
-            if (normalized != null) {
-                commentCountLocal = normalized;
-                return;
+            const newCount = normalizeCommentCount(arr);
+            if (commentCountLocal !== newCount) {
+                commentCountLocal = newCount;
+                logger.debug(
+                    `[OutlinerItem][syncCommentCountFromItem] Updated commentCountLocal to ${newCount}`,
+                );
+            }
+        } else {
+            if (commentCountLocal !== 0) {
+                commentCountLocal = 0;
             }
         }
-    } catch {}
+    } catch (err) {
+        logger.error("[OutlinerItem][syncCommentCountFromItem] Error:", err);
+    }
+}
+
+/**
+ * コメント数をローカル状態に適用（observe コールバック用）
+ */
+function applyCommentCount(arrOrCount: any) {
+    let newCount: number;
+    if (typeof arrOrCount === "number") {
+        newCount = arrOrCount;
+    } else {
+        newCount = normalizeCommentCount(arrOrCount);
+    }
+    if (commentCountLocal !== newCount) {
+        commentCountLocal = newCount;
+    }
+}
+
+/**
+ * Yjs comments 配列の observe を設定
+ */
+function attachCommentObserver(): (() => void) | null {
     try {
-        const wrapper: any = (item as any)?.comments;
-        const normalized = normalizeCommentCount(wrapper?.length);
-        if (normalized != null) {
-            commentCountLocal = normalized;
-            return;
+        const arr = ensureCommentsArray();
+        if (arr && typeof arr.observe === "function") {
+            const observer = () => applyCommentCount(arr);
+            arr.observe(observer);
+            return () => arr.unobserve(observer);
         }
     } catch {}
-    commentCountLocal = 0;
+    return null;
 }
 
-function applyCommentCount(value: unknown) {
-    const normalized = normalizeCommentCount(value);
-    if (normalized != null) {
-        commentCountLocal = normalized;
-    } else {
-        syncCommentCountFromItem();
-    }
+function handleCommentCountChanged() {
+    syncCommentCountFromItem();
 }
-
-function attachCommentObserver(): () => void {
-    const arr: any = ensureCommentsArray();
-    if (!arr || typeof arr.observe !== "function" || typeof arr.unobserve !== "function") {
-        return () => {};
-    }
-    const observer = () => { syncCommentCountFromItem(); };
-    try { arr.observe(observer); } catch {}
-    return () => { try { arr.unobserve(observer); } catch {} };
-}
-
-function handleCommentCountChanged(event: CustomEvent<any>) {
-    applyCommentCount(event?.detail?.count);
-}
-
-
-
-// Yjs 由来のコメント数のみを採用（単一路線）
-const commentCount = $derived.by(() => Number(commentCountLocal ?? 0));
-
-// 表示用カウントはYjs由来の単一路線に統一
-const commentCountVisual = $derived.by(() => Number(commentCountLocal ?? 0));
 
 onMount(() => {
     syncCommentCountFromItem();
@@ -292,6 +298,9 @@ onMount(() => {
         }
     };
 });
+
+// 表示用カウントはYjs由来の単一路線に統一
+const commentCountVisual = $derived.by(() => Number(commentCountLocal ?? 0));
 
 
 
@@ -843,16 +852,10 @@ function finishEditing() {
     // カーソルのみクリアし、跨いだ選択は残す
     editorOverlayStore.clearCursorForItem(model.id);
     editorOverlayStore.setActiveItem(null);
-    
+
     // Hide mobile toolbar when editing finishes
     if (typeof window !== 'undefined' && window.innerWidth <= 768) {
         document.dispatchEvent(new CustomEvent('mobile-toolbar-hide'));
-    }
-}
-
-function addNewItem() {
-    if (!isReadOnly && model.original.items && model.original.items instanceof Items) {
-        model.original.items.addNode(currentUser, 0);
     }
 }
 

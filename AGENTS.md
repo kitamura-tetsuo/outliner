@@ -21,6 +21,7 @@ This document consolidates the key development policies for this repository. Fol
 - Keep expected values strict even if tests take longer to run.
 - Run tests in headless mode.
 - Run `dprint fmt` before running tests.
+- **Code Coverage and Event Handlers**: カバレッジレポートで実行回数が0と表示されているコードを削除する前に、必ず`docs/coverage-event-handlers.md`を参照してください。イベントハンドラやコールバックはカバレッジツールで正しく検出されない場合があります。
 - Before finishing your work, run the following TypeScript checks and fix any errors:
   ```
   cd client/e2e && npx tsc --noEmit --project tsconfig.json
