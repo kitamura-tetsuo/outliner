@@ -164,6 +164,7 @@ Mocks are generally forbidden. Limited exceptions:
 - Avoid duplicate functions and do not use `page.waitForLoadState('networkidle')`.
 - Process synchronously when possible.
 - Write all branch names and commit messages in English.
+- Follow error message when git commit fails by pre-commit hooks.
 
 ## 4. Development Workflow
 
