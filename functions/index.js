@@ -310,7 +310,7 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
 
     try {
       // Firestoreトランザクションを使用して両方のコレクションを更新
-      await db.runTransaction(async transaction => {
+      await db.runTransaction(async (transaction) => {
         const userDocRef = userContainersCollection.doc(userId);
         const containerDocRef = db.collection("containerUsers").doc(
           containerId,
@@ -497,7 +497,7 @@ exports.deleteUser = onRequest({ cors: true }, async (req, res) => {
 
     try {
       // Firestoreトランザクションを使用してユーザー関連データを削除
-      await db.runTransaction(async transaction => {
+      await db.runTransaction(async (transaction) => {
         // ユーザーのコンテナ情報を取得
         const userDocRef = userContainersCollection.doc(userId);
         const userDoc = await transaction.get(userDocRef);
@@ -518,7 +518,7 @@ exports.deleteUser = onRequest({ cors: true }, async (req, res) => {
               const accessibleUserIds = containerData.accessibleUserIds || [];
 
               // ユーザーIDを削除
-              const updatedUserIds = accessibleUserIds.filter(id =>
+              const updatedUserIds = accessibleUserIds.filter((id) =>
                 id !== userId
               );
 
@@ -592,7 +592,7 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
 
     try {
       // Firestoreトランザクションを使用してコンテナ関連データを削除
-      await db.runTransaction(async transaction => {
+      await db.runTransaction(async (transaction) => {
         // コンテナ情報を取得
         const containerDocRef = db.collection("containerUsers").doc(
           containerId,
@@ -622,7 +622,7 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
               [];
 
             // コンテナIDを削除
-            const updatedContainerIds = accessibleContainerIds.filter(id =>
+            const updatedContainerIds = accessibleContainerIds.filter((id) =>
               id !== containerId
             );
 
@@ -864,7 +864,7 @@ exports.listUsers = onRequest({ cors: true }, async (req, res) => {
     }
 
     const result = await admin.auth().listUsers();
-    const users = result.users.map(u => ({
+    const users = result.users.map((u) => ({
       uid: u.uid,
       email: u.email,
       displayName: u.displayName,
@@ -1305,7 +1305,7 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
       .get();
 
     const schedules = [];
-    snapshot.forEach(doc => schedules.push({ id: doc.id, ...doc.data() }));
+    snapshot.forEach((doc) => schedules.push({ id: doc.id, ...doc.data() }));
     logger.info(
       `listSchedules: found ${schedules.length} schedules for pageId=${pageId}`,
     );
@@ -1541,7 +1541,7 @@ exports.listAttachments = onRequest({ cors: true }, async (req, res) => {
       // Emulator環境では直接URLを生成
       const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
         "localhost:59200";
-      urls = files.map(file => {
+      urls = files.map((file) => {
         const filePath = file.name;
         return `http://${storageHost}/v0/b/${bucket.name}/o/${
           encodeURIComponent(filePath)
@@ -1550,11 +1550,11 @@ exports.listAttachments = onRequest({ cors: true }, async (req, res) => {
     } else {
       // 本番環境では署名付きURLを生成
       urls = await Promise.all(
-        files.map(f =>
+        files.map((f) =>
           f.getSignedUrl({
             action: "read",
             expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
-          }).then(r => r[0])
+          }).then((r) => r[0])
         ),
       );
     }
@@ -1727,7 +1727,7 @@ exports.adminUserList = onRequest(
 
       // ユーザーリストを取得
       const listUsersResult = await admin.auth().listUsers();
-      const users = listUsersResult.users.map(user => ({
+      const users = listUsersResult.users.map((user) => ({
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
@@ -1791,7 +1791,7 @@ exports.debugUserContainers = onRequest(
         .get();
 
       const containerUsersData = [];
-      containerUsersQuery.forEach(doc => {
+      containerUsersQuery.forEach((doc) => {
         containerUsersData.push({
           id: doc.id,
           data: doc.data(),
@@ -1949,7 +1949,7 @@ exports.deleteAllProductionData = onRequest(
             nextPageToken,
           );
 
-          const uids = listUsersResult.users.map(user => user.uid);
+          const uids = listUsersResult.users.map((user) => user.uid);
 
           if (uids.length > 0) {
             await admin.auth().deleteUsers(uids);

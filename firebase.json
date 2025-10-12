@@ -124,6 +124,10 @@
                 "function": "azureHealthCheck"
             },
             {
+                "source": "/api/debug-user-containers",
+                "function": "debugUserContainers"
+            },
+            {
                 "source": "**",
                 "destination": "/index.html"
             }
