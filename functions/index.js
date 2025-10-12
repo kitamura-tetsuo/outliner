@@ -38,32 +38,7 @@ if (!process.env.FUNCTIONS_EMULATOR) {
 }
 
 const { onRequest } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
-
-// Firebase シークレットを定義
-// GitHub Actions で自動更新されるため、本番環境では常に利用可能
-let azureActiveKeySecret;
-let azurePrimaryKeySecret;
-let azureSecondaryKeySecret;
-let azureTenantIdSecret;
-let azureEndpointSecret;
-
-// エミュレーター環境以外ではシークレットを使用
-if (!process.env.FUNCTIONS_EMULATOR) {
-  try {
-    azureActiveKeySecret = defineSecret("AZURE_ACTIVE_KEY");
-    azurePrimaryKeySecret = defineSecret("AZURE_PRIMARY_KEY");
-    azureSecondaryKeySecret = defineSecret("AZURE_SECONDARY_KEY");
-    azureTenantIdSecret = defineSecret("AZURE_TENANT_ID");
-    azureEndpointSecret = defineSecret("AZURE_ENDPOINT");
-    logger.info("Firebase secrets defined successfully");
-  } catch {
-    logger.warn("Azure secrets not available, will use environment variables");
-  }
-} else {
-  logger.info("Using environment variables in emulator mode");
-}
 
 const admin = require("firebase-admin");
 const { generateToken } = require("@fluidframework/azure-service-utils");
@@ -92,58 +67,12 @@ function setCorsHeaders(req, res) {
 
 // Azure Fluid Relay設定を取得する関数
 function getAzureConfig() {
-  // シークレットから値を取得、フォールバックとして環境変数を使用
-  let activeKey = "primary"; // デフォルト値をprimaryに変更
-  let primaryKey = process.env.AZURE_PRIMARY_KEY;
-  let secondaryKey = process.env.AZURE_SECONDARY_KEY;
-  let tenantId = process.env.AZURE_TENANT_ID;
-  let endpoint = process.env.AZURE_ENDPOINT;
-
-  // エミュレーター環境以外でシークレットを使用
-  if (!process.env.FUNCTIONS_EMULATOR) {
-    try {
-      activeKey =
-        (azureActiveKeySecret && azureActiveKeySecret.value()?.trim()) ||
-        process.env.AZURE_ACTIVE_KEY?.trim() || "primary";
-    } catch (error) {
-      logger.warn(`Failed to get AZURE_ACTIVE_KEY secret: ${error.message}`);
-      activeKey = process.env.AZURE_ACTIVE_KEY?.trim() || "primary";
-    }
-
-    try {
-      primaryKey =
-        (azurePrimaryKeySecret && azurePrimaryKeySecret.value()?.trim()) ||
-        process.env.AZURE_PRIMARY_KEY?.trim();
-    } catch (error) {
-      logger.warn(`Failed to get AZURE_PRIMARY_KEY secret: ${error.message}`);
-      primaryKey = process.env.AZURE_PRIMARY_KEY?.trim();
-    }
-
-    try {
-      secondaryKey =
-        (azureSecondaryKeySecret && azureSecondaryKeySecret.value()?.trim()) ||
-        process.env.AZURE_SECONDARY_KEY?.trim();
-    } catch (error) {
-      logger.warn(`Failed to get AZURE_SECONDARY_KEY secret: ${error.message}`);
-      secondaryKey = process.env.AZURE_SECONDARY_KEY?.trim();
-    }
-
-    try {
-      tenantId = (azureTenantIdSecret && azureTenantIdSecret.value()?.trim()) ||
-        process.env.AZURE_TENANT_ID?.trim();
-    } catch (error) {
-      logger.warn(`Failed to get AZURE_TENANT_ID secret: ${error.message}`);
-      tenantId = process.env.AZURE_TENANT_ID?.trim();
-    }
-
-    try {
-      endpoint = (azureEndpointSecret && azureEndpointSecret.value()?.trim()) ||
-        process.env.AZURE_ENDPOINT?.trim();
-    } catch (error) {
-      logger.warn(`Failed to get AZURE_ENDPOINT secret: ${error.message}`);
-      endpoint = process.env.AZURE_ENDPOINT?.trim();
-    }
-  }
+  // 環境変数から値を取得
+  const activeKey = process.env.AZURE_ACTIVE_KEY?.trim() || "primary";
+  const primaryKey = process.env.AZURE_PRIMARY_KEY?.trim();
+  const secondaryKey = process.env.AZURE_SECONDARY_KEY?.trim();
+  const tenantId = process.env.AZURE_TENANT_ID?.trim();
+  const endpoint = process.env.AZURE_ENDPOINT?.trim();
 
   return {
     tenantId: tenantId,
@@ -978,26 +907,8 @@ exports.health = onRequest({ cors: true }, async (req, res) => {
 });
 
 // Azure Fluid Relayキーの動作確認エンドポイント
-const azureHealthCheckOptions = {
-  cors: true,
-};
-
-// シークレットが定義されている場合のみ追加（エミュレーター環境以外）
-if (
-  azureActiveKeySecret && azurePrimaryKeySecret && azureSecondaryKeySecret &&
-  azureTenantIdSecret && azureEndpointSecret
-) {
-  azureHealthCheckOptions.secrets = [
-    azureActiveKeySecret,
-    azurePrimaryKeySecret,
-    azureSecondaryKeySecret,
-    azureTenantIdSecret,
-    azureEndpointSecret,
-  ];
-}
-
 exports.azureHealthCheck = onRequest(
-  azureHealthCheckOptions,
+  { cors: true },
   async (req, res) => {
     // CORS設定
     setCorsHeaders(req, res);
@@ -1846,26 +1757,8 @@ exports.adminUserList = onRequest(
 );
 
 // デバッグ用: ユーザーのコンテナアクセス権限を確認するAPI
-const debugUserContainersOptions = {
-  cors: true,
-};
-
-// シークレットが定義されている場合のみ追加（エミュレーター環境以外）
-if (
-  azureActiveKeySecret && azurePrimaryKeySecret && azureSecondaryKeySecret &&
-  azureTenantIdSecret && azureEndpointSecret
-) {
-  debugUserContainersOptions.secrets = [
-    azureActiveKeySecret,
-    azurePrimaryKeySecret,
-    azureSecondaryKeySecret,
-    azureTenantIdSecret,
-    azureEndpointSecret,
-  ];
-}
-
 exports.debugUserContainers = onRequest(
-  debugUserContainersOptions,
+  { cors: true },
   async (req, res) => {
     setCorsHeaders(req, res);
 
