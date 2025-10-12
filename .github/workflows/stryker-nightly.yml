@@ -1,0 +1,68 @@
+name: Stryker Nightly Mutation
+
+on:
+  schedule:
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check recent changes
+        id: changes
+        run: |
+          git fetch origin main --depth=100
+          if git rev-list --since="24 hours ago" origin/main | grep -q .; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.changes.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: steps.changes.outputs.run == 'true'
+        run: npm ci
+
+      - name: Run Stryker nightly suite
+        if: steps.changes.outputs.run == 'true'
+        id: stryker
+        continue-on-error: true
+        run: npx stryker run --incremental
+
+      - name: Generate mutation summary
+        if: always() && steps.changes.outputs.run == 'true'
+        run: |
+          if [ -f reports/mutation/mutation-report.json ]; then
+            node ./scripts/create-stryker-summary.mjs reports/mutation/mutation-report.json reports/mutation/mutation-report
+          fi
+
+      - name: Upload HTML report
+        if: always() && steps.changes.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-nightly-html-report
+          path: |
+            reports/**/mutation/html/**/*
+            **/StrykerOutput/**/**/*.html
+          if-no-files-found: ignore
+
+      - name: Skip notice
+        if: steps.changes.outputs.run != 'true'
+        run: echo "No commits on main in the past 24 hours. Skipping nightly Stryker run."
