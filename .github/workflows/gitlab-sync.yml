@@ -28,11 +28,14 @@ jobs:
           # GitLab 側の main を取り込み
           git fetch gitlab main
 
-          # GitHub→GitLab で fast-forward 可能かチェック
+          # GitLabの変更をローカルmainに統合
           if git merge-base --is-ancestor gitlab/main HEAD; then
-            echo "✅ Fast-forward可能なので通常push"
+            echo "✅ Fast-forward possible, pushing normally"
             git push gitlab HEAD:main
           else
-            echo "⚠️ 履歴が分岐しているので --force-with-lease で上書き"
-            git push --force-with-lease gitlab HEAD:main
+            echo "🔄 History has diverged, merging GitLab changes first"
+            # ローカルでGitLabの変更をマージ
+            git merge gitlab/main --no-edit
+            # その後プッシュ
+            git push gitlab HEAD:main
           fi
