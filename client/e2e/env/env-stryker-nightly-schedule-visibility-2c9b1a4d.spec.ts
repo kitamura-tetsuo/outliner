@@ -43,7 +43,11 @@ test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
 
         const row = page.locator('[data-schedule-id="stryker-nightly"]');
         await expect(row).toBeVisible();
-        await expect(row.locator("td").first()).toHaveText("Stryker nightly mutation suite");
+
+        const cells = row.locator("td");
+        await expect(cells.nth(0)).toHaveText("Stryker nightly mutation suite");
+        await expect(cells.nth(1)).toHaveText("0 18 * * *");
+        await expect(cells.nth(2)).toHaveText("2024-01-01 00:00:00Z");
     });
 
     test("空のレスポンスでは行が描画されない", async ({ page }) => {
@@ -58,5 +62,29 @@ test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
         await page.goto("/schedule?pageId=mutation-jobs");
 
         await expect(page.locator("tbody tr")).toHaveCount(0);
+    });
+
+    test("lastRunAt が存在しない場合はダッシュを表示する", async ({ page }) => {
+        await page.route("**/api/list-schedules**", async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: "application/json",
+                body: JSON.stringify({
+                    schedules: [
+                        {
+                            id: "stryker-nightly",
+                            strategy: "Stryker nightly mutation suite",
+                            cadence: "0 18 * * *",
+                        },
+                    ],
+                }),
+            });
+        });
+
+        await page.goto("/schedule?pageId=mutation-jobs");
+
+        const row = page.locator('[data-schedule-id="stryker-nightly"]');
+        await expect(row).toBeVisible();
+        await expect(row.locator("td").nth(2)).toHaveText("—");
     });
 });

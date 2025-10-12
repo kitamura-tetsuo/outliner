@@ -4,8 +4,9 @@ title-ja: Strykerによるミューテーションテストの導入
 description: |
   Add Stryker configuration, dependencies, and npm scripts so developers can run mutation testing with Vitest.
   GitHub Actions execute incremental mutation testing on pull requests (limited to changed lines) and
-  a nightly full-suite run whenever commits land on main. Each run uploads HTML artifacts and publishes
-  a markdown summary generated from the JSON report.
+  a nightly full-suite run whenever commits land on main, both pinned to self-hosted Linux runners.
+  Each run uploads HTML artifacts and publishes a markdown summary generated from the JSON report, while
+  the internal schedule dashboard surfaces cadence and last-run timestamps for verification.
 category: environment
 status: implemented
 components:
