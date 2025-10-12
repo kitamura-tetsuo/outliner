@@ -55,45 +55,56 @@ let results = $derived.by(() => {
     // fall back to project.items. Reading from `store` ensures reactivity when
     // pages load after the user begins typing.
     const collectPages = (): any[] => {
-        try {
-            const pages = store.pages?.current;
-            const arr: any[] = [];
-            if (pages) {
-                if (typeof pages[Symbol.iterator] === 'function') {
-                    for (const p of pages as any) arr.push(p);
-                } else if (typeof (pages as any).length === 'number') {
-                    const len = (pages as any).length;
-                    for (let i = 0; i < len; i++) {
-                        const v = (pages as any).at ? (pages as any).at(i) : (pages as any)[i];
-                        if (typeof v !== 'undefined') arr.push(v);
-                    }
-                }
-            }
-            if (arr.length) return arr;
-        } catch {}
+        const sources = [
+            // Primary: store.pages.current (reactive to Yjs changes)
+            () => store.pages?.current,
+            // Fallback 1: effectiveProject.items
+            () => effectiveProject?.items,
+            // Fallback 2: projectToUse.items
+            () => projectToUse?.items,
+            // Fallback 3: window.generalStore.project.items
+            () => typeof window !== 'undefined' ? (window as any).generalStore?.project?.items : undefined,
+            // Fallback 4: window.appStore.project.items
+            () => typeof window !== 'undefined' ? (window as any).appStore?.project?.items : undefined,
+        ];
 
-        // Fallback: use project items from the effective project or window
-        try {
-            const items =
-                effectiveProject?.items
-                || projectToUse?.items
-                || (typeof window !== 'undefined' ? (window as any).generalStore?.project?.items : undefined);
-            const arr: any[] = [];
-            if (items) {
+        for (const getSource of sources) {
+            try {
+                const items = getSource();
+                if (!items) continue;
+
+                const arr: any[] = [];
+
+                // Try iterator first
                 if (typeof items[Symbol.iterator] === 'function') {
-                    for (const p of items as any) arr.push(p);
-                } else if (typeof (items as any).length === 'number') {
+                    for (const p of items as any) {
+                        if (p) arr.push(p);
+                    }
+                    if (arr.length) return arr;
+                }
+
+                // Try array-like access
+                if (typeof (items as any).length === 'number') {
                     const len = (items as any).length;
                     for (let i = 0; i < len; i++) {
                         const v = (items as any).at ? (items as any).at(i) : (items as any)[i];
-                        if (typeof v !== 'undefined') arr.push(v);
+                        if (typeof v !== 'undefined' && v !== null) arr.push(v);
                     }
+                    if (arr.length) return arr;
                 }
+
+                // Try toArray method if available
+                if (typeof (items as any).toArray === 'function') {
+                    const arr = (items as any).toArray();
+                    if (arr && arr.length) return arr;
+                }
+            } catch (e) {
+                // Continue to next source
+                continue;
             }
-            return arr;
-        } catch {
-            return [];
         }
+
+        return [];
     };
 
     const pagesArr = collectPages();
