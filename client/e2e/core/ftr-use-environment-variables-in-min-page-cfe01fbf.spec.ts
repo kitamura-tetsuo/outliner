@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FTR-0013
  *  Title   : Use environment variables in min page
  *  Source  : docs/client-features.yaml
@@ -75,4 +78,3 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
         await expect(page.locator("body")).toBeVisible();
     });
 });
-import "../utils/registerAfterEachSnapshot";

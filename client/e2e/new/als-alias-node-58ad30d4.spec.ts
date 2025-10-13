@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ALS-0001
  *  Title   : Alias node referencing existing items
  *  Source  : docs/client-features.yaml
@@ -16,34 +19,52 @@ test.describe("ALS-0001: Alias node", () => {
         const secondId = await TestHelpers.getItemIdByIndex(page, 1);
         if (!firstId || !secondId) throw new Error("item ids not found");
 
-        await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`);
-        await page.waitForTimeout(1000);
-        await page.evaluate(() => {
-            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
-            textarea?.focus();
-        });
-        await page.waitForTimeout(500);
-
+        await TestHelpers.setCursor(page, firstId);
+        await page.evaluate(({ itemId }) => {
+            const store = (window as any).editorOverlayStore;
+            const cursor = store?.getCursorInstances?.().find((c: any) => c.itemId === itemId);
+            const target = cursor?.findTarget?.();
+            if (target && typeof target.updateText === "function") {
+                target.updateText("");
+                cursor.offset = 0;
+            }
+        }, { itemId: firstId });
+        await TestHelpers.focusGlobalTextarea(page);
         await page.keyboard.type("/");
         await page.keyboard.type("alias");
         await page.keyboard.press("Enter");
 
-        await expect(page.locator(".alias-picker")).toBeVisible();
-        const newIndex = await page.locator(".outliner-item").count() - 1;
-        const aliasId = await TestHelpers.getItemIdByIndex(page, newIndex);
-        if (!aliasId) throw new Error("alias item not found");
-        const optionCount = await page.locator(".alias-picker li").count();
+        await expect(page.locator(".alias-picker").first()).toBeVisible();
+        const aliasId = await page.evaluate(async () => {
+            const timeout = Date.now() + 5000;
+            while (!(window as any).aliasPickerStore && Date.now() < timeout) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            return (window as any).aliasPickerStore?.itemId ?? null;
+        });
+        if (!aliasId) throw new Error("alias item not found on aliasPickerStore");
+        console.log("Alias item id:", aliasId);
+        const optionCount = await page.locator(".alias-picker").first().locator("li").count();
         expect(optionCount).toBeGreaterThan(0);
 
         // エイリアスターゲットを設定する（DOM操作ベース）
         await TestHelpers.selectAliasOption(page, secondId);
-        await expect(page.locator(".alias-picker")).toBeHidden();
+        await expect(page.locator(".alias-picker").first()).toBeHidden();
 
         // エイリアスアイテムが作成されたことを確認
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
-        // aliasTargetIdが正しく設定されていることを確認（DOM属性ベース）
-        const aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+        // Yjsモデルへの反映を待機（ポーリングで確認）
+        await page.waitForTimeout(500);
+
+        // aliasTargetIdが正しく設定されていることを確認（Yjsモデルから取得）
+        const deadline = Date.now() + 5000;
+        let aliasTargetId: string | null = null;
+        while (Date.now() < deadline) {
+            aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+            if (aliasTargetId === secondId) break;
+            await page.waitForTimeout(100);
+        }
         expect(aliasTargetId).toBe(secondId);
 
         // エイリアスパスが表示されていることを確認
@@ -55,4 +76,3 @@ test.describe("ALS-0001: Alias node", () => {
         expect(isAliasSubtreeVisible).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

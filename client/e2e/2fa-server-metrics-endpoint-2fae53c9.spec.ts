@@ -1,7 +1,10 @@
+import "./utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import { spawn } from "child_process";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 function startServer() {
     const __filename = fileURLToPath(import.meta.url);
@@ -25,5 +28,3 @@ test("server metrics endpoint", async ({ request }) => {
     expect(body).toHaveProperty("totalMessages");
     proc.kill();
 });
-import "./utils/registerAfterEachSnapshot";
-import "./utils/registerAfterEachSnapshot";

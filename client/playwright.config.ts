@@ -87,12 +87,15 @@ export default defineConfig({
     workers: process.env.CI ? 1 : 1,
     maxFailures: process.env.CI ? 1 : 1,
 
-    reporter: [["html", { open: "never" }]],
+    reporter: [
+        ["html", { open: "never" }],
+        // E2Eカバレッジレポートは scripts/generate-e2e-coverage.js で生成されます
+    ],
     // テスト実行時のタイムアウトを延長（環境初期化の揺らぎに対応）
-    timeout: 120 * 1000, // 120秒
+    timeout: 240 * 1000, // 240秒
     expect: {
         // 要素の検出待機のタイムアウト設定を延長
-        timeout: 15 * 1000, // 15秒
+        timeout: 30 * 1000, // 30秒
     },
 
     use: {
@@ -117,14 +120,14 @@ export default defineConfig({
             testDir: "./e2e/basic",
         },
         {
-            // 新機能テスト
-            name: "new",
-            testDir: "./e2e/new",
-        },
-        {
             // コアテスト: 認証不要の基本機能テスト
             name: "core",
             testDir: "./e2e/core",
+        },
+        {
+            // 新機能テスト
+            name: "new",
+            testDir: "./e2e/new",
         },
         {
             // 認証テスト: 本番環境でのみ実行

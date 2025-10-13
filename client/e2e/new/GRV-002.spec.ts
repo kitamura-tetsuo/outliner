@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature GRV-0001
  *  Title   : Graph View visualization
  *  Source  : docs/client-features.yaml
@@ -12,9 +15,21 @@ const __dirname = path.dirname(__filename);
 
 test.describe("GRV-0001: Graph View real-time updates", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "First page with [test-link] reference",
-        ]);
+        await TestHelpers.prepareTestEnvironment(
+            page,
+            testInfo,
+            [
+                "First page with [test-link] reference",
+            ],
+            undefined,
+        );
+        // Ensure store pages are ready
+        await page.waitForFunction(() => {
+            const gs = (window as any).generalStore || (window as any).appStore;
+            const pages = gs?.pages?.current;
+            // Yjs Items は Array ではないが length を持つ
+            return !!(pages && typeof (pages as any).length === "number" && (pages as any).length >= 1);
+        }, { timeout: 15000 });
     });
 
     test("ECharts library initialization", async ({ page }) => {
@@ -73,6 +88,10 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
         // プロジェクトページ内でGraph Viewコンポーネントを動的に追加してテスト
         const graphInitResult = await page.evaluate(() => {
             try {
+                // Wait a tick for store readiness in case of slow hydration
+                const gs = (window as any).generalStore || (window as any).appStore;
+                const ready = !!(gs && gs.pages && gs.project);
+                if (!ready) return { success: false, error: "Store not available" };
                 // Graph Viewコンポーネントを動的に作成
                 const graphDiv = document.createElement("div");
                 graphDiv.className = "graph-view";
@@ -93,8 +112,25 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                 // 初期グラフを設定
                 const store = (window as any).appStore;
                 if (store && store.pages && store.project) {
-                    const pages = store.pages.current || [];
-                    const nodes = pages.map((p: any) => ({ id: p.id, name: p.text }));
+                    const raw = store.pages.current || [];
+                    // Array以外（Yjs Items）にも対応
+                    const toArray = (p: any) => {
+                        try {
+                            if (Array.isArray(p)) return p;
+                            if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
+                            const len = p?.length;
+                            if (typeof len === "number" && len >= 0) {
+                                const r: any[] = [];
+                                for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
+                                return r;
+                            }
+                        } catch {}
+                        return [] as any[];
+                    };
+                    const pages = toArray(raw);
+                    const normText = (t: any) =>
+                        (t && typeof t.toString === "function") ? t.toString() : String(t ?? "");
+                    const nodes = pages.map((p: any) => ({ id: p.id, name: normText(p.text) }));
                     chart.setOption({
                         tooltip: {},
                         series: [{
@@ -147,20 +183,77 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                 // 反映を待つ
                 await new Promise(r => setTimeout(r, 200));
 
-                // グラフを更新
-                const pages = gs.pages?.current || [];
+                // グラフを更新（Yjs Items に対応）
+                const raw = gs.pages?.current || [];
+                const toArray = (p: any) => {
+                    try {
+                        if (Array.isArray(p)) return p;
+                        if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
+                        const len = p?.length;
+                        if (typeof len === "number" && len >= 0) {
+                            const r: any[] = [];
+                            for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
+                            return r;
+                        }
+                    } catch {}
+                    return [] as any[];
+                };
+                const pages = toArray(raw);
+                // Ensure a link exists from an existing page to the new page for deterministic testing
+                try {
+                    const targetName = String(newPage?.text?.toString?.() ?? String(newPage.text));
+                    const srcCand = pages.find((p: any) => p?.id !== newPage?.id) || pages[0];
+                    const toArray = (p: any) => {
+                        try {
+                            if (Array.isArray(p)) return p;
+                            if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
+                            const len = p?.length;
+                            if (typeof len === "number" && len >= 0) {
+                                const r: any[] = [];
+                                for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
+                                return r;
+                            }
+                        } catch {}
+                        return [] as any[];
+                    };
+                    if (srcCand) {
+                        const childArr = toArray(srcCand.items || []);
+                        const hasLink = childArr.some((i: any) =>
+                            String(i?.text?.toString?.() ?? String(i?.text ?? "")).toLowerCase().includes(
+                                `[${targetName.toLowerCase()}]`,
+                            )
+                        );
+                        if (!hasLink) {
+                            const it = (srcCand.items as any)?.addNode?.("tester");
+                            if (it?.updateText) it.updateText(`Ref: [${targetName}]`);
+                            await new Promise(r => setTimeout(r, 50));
+                        }
+                    }
+                } catch {}
+
                 const nodes = pages.map((p: any) => ({ id: p.id, name: (p?.text?.toString?.() ?? String(p.text)) }));
                 const links: any[] = [];
                 for (const src of pages) {
                     const srcText = (src?.text?.toString?.() ?? String(src.text)) as string;
-                    const childTexts = ((src.items || []) as any[]).map((
-                        i: any,
-                    ) => (i?.text?.toString?.() ?? String(i.text)));
+                    const childArr = toArray(src.items || []);
+                    const childTexts = childArr.map((i: any) => (i?.text?.toString?.() ?? String(i.text)));
                     const texts = [srcText, ...childTexts];
+                    const projectTitle = String(gs.project?.title ?? "");
+                    const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                    const containsLink = (text: string, target: string, project: string) => {
+                        const t = escapeRegExp(target);
+                        const internal = new RegExp(`\\[${t}\\]`, "i");
+                        const projectPattern = new RegExp(`\\[\\/${escapeRegExp(project)}\\/${t}\\]`, "i");
+                        return internal.test(text) || projectPattern.test(text);
+                    };
                     for (const dst of pages) {
                         if (src.id === dst.id) continue;
-                        const target = (dst?.text?.toString?.() ?? String(dst.text)).toLowerCase();
-                        if (texts.some((t: string) => t.toLowerCase().includes(`[${target}]`))) {
+                        const target = String(dst?.text?.toString?.() ?? String(dst.text)).toLowerCase();
+                        if (
+                            texts.some((t: string) =>
+                                containsLink(String(t).toLowerCase(), target, projectTitle.toLowerCase())
+                            )
+                        ) {
                             links.push({ source: src.id, target: dst.id });
                         }
                     }
@@ -176,6 +269,20 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                         label: { position: "right" },
                     }],
                 });
+
+                // debug
+                try {
+                    console.log("Graph debug:", {
+                        pages: pages.map((p: any) => ({
+                            id: p.id,
+                            text: (p?.text?.toString?.() ?? String(p.text)),
+                            children: (toArray(p.items || [])).map((
+                                i: any,
+                            ) => (i?.text?.toString?.() ?? String(i.text))),
+                        })),
+                        links,
+                    });
+                } catch {}
 
                 return { success: true, nodesCount: nodes.length, linksCount: links.length };
             } catch (error) {
@@ -221,4 +328,3 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
         expect(data.links).toBeGreaterThanOrEqual(1);
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-0004
  *  Title   : フォーマット文字列の入力と表示
  *  Source  : docs/client-features.yaml
@@ -27,13 +30,19 @@ test.describe("フォーマット文字列の入力と表示", () => {
     });
 
     test("フォーマット構文を含むテキストの入力が正しく機能する", async ({ page }) => {
-        // 最初のアイテムを選択
-        const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click();
+        // prepareTestEnvironment の lines パラメータでデータを作成
+        const formattedText = "[[太字]]と[/ 斜体]と[-取り消し線]と`コード`と[https://example.com]";
+        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+            formattedText,
+        ]);
 
-        // フォーマット構文を含むテキストを直接入力
-        const formattedText = "[[太字]]と[/斜体]と[-取り消し線]と`コード`と[https://example.com]";
-        await page.keyboard.type(formattedText);
+        // 少し待機してフォーマットが適用されるのを待つ
+        await page.waitForTimeout(500);
+
+        // 最初のアイテム（ページタイトルではない）を取得
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(firstItemId).not.toBeNull();
+        const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
 
         // 入力されたテキストが表示されていることを確認
         const itemText = await item.locator(".item-text").textContent();
@@ -45,16 +54,9 @@ test.describe("フォーマット文字列の入力と表示", () => {
         expect(itemText).toContain("コード");
         expect(itemText).toContain("https://example.com");
 
-        // フォーカスを外してフォーマットが適用されることを確認
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("別のアイテム");
-        await page.locator(".outliner-item").nth(1).locator(".item-content").click();
-
-        // フォーマットが適用されるのを待つ
-        await page.waitForTimeout(500);
-
-        // 最初のアイテムのHTMLを確認
-        const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
+        // 最初のアイテムのHTMLを確認（フォーマットが適用されていることを確認）
+        const firstItemHtml = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
+            .innerHTML();
 
         // フォーマットが正しく適用されていることを確認
         expect(firstItemHtml).toContain("<strong>");
@@ -329,4 +331,3 @@ test.describe("フォーマット文字列の入力と表示", () => {
         expect(itemText).toContain(testText);
     });
 });
-import "../utils/registerAfterEachSnapshot";

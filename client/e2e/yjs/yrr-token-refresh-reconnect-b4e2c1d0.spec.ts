@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature YRR-b4e2c1d0
  *  Title   : YJS token refresh reconnect
  *  Source  : docs/client-features/yrr-room-token-refresh-reconnect-b4e2c1d0.yaml
@@ -52,4 +55,3 @@ test.describe("YJS token refresh reconnect", () => {
         expect(newAuth).not.toEqual(initialAuth);
     });
 });
-import "../utils/registerAfterEachSnapshot";

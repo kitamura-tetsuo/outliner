@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature IME-0002
  *  Title   : IME candidate window follows active cursor
  *  Source  : docs/client-features.yaml
@@ -166,20 +169,6 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
             const cursorRect = cursor.getBoundingClientRect();
             const taRect = ta.getBoundingClientRect();
 
-            // デバッグ情報を追加
-            console.log("Cursor position:", {
-                left: cursorRect.left,
-                top: cursorRect.top,
-                width: cursorRect.width,
-                height: cursorRect.height,
-            });
-            console.log("Textarea position:", {
-                left: taRect.left,
-                top: taRect.top,
-                width: taRect.width,
-                height: taRect.height,
-            });
-
             return {
                 cursorLeft: cursorRect.left,
                 cursorTop: cursorRect.top,
@@ -191,11 +180,9 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
         expect(positions).not.toBeNull();
         const { cursorLeft, cursorTop, taLeft, taTop } = positions!;
 
-        // デバッグ情報をログ出力
         console.log(`Position difference: left=${Math.abs(cursorLeft - taLeft)}, top=${Math.abs(cursorTop - taTop)}`);
 
         expect(Math.abs(cursorLeft - taLeft)).toBeLessThanOrEqual(2);
         expect(Math.abs(cursorTop - taTop)).toBeLessThanOrEqual(2);
     });
 });
-import "../utils/registerAfterEachSnapshot";

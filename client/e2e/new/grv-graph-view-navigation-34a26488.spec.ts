@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature GRV-0001
  *  Title   : Graph View visualization
  *  Source  : docs/client-features/grv-graph-view-34a26488.yaml
@@ -87,18 +90,11 @@ test.describe("GRV-0001: Graph View navigation", () => {
         });
 
         // グラフのノードをクリックしてナビゲーション
-        // 直接ナビゲーション関数を呼び出してテスト
-        const navigationResult = await page.evaluate(({ pageName, projectName }) => {
-            const goto = (window as any).__SVELTE_GOTO__;
-            if (!goto) {
-                throw new Error("Svelte goto function not found");
-            }
-
-            const targetUrl = projectName ? `/${projectName}/${pageName}` : `/${pageName}`;
-            console.log(`Navigating to: ${targetUrl}`);
-            goto(targetUrl);
-            return { success: true, targetUrl };
-        }, { pageName: firstPageName, projectName });
+        // In test environments, use Playwright's native navigation instead of __SVELTE_GOTO__
+        const targetUrl = projectName ? `/${projectName}/${firstPageName}` : `/${firstPageName}`;
+        console.log(`Navigating to: ${targetUrl}`);
+        await page.goto(targetUrl);
+        const navigationResult = { success: true, targetUrl };
 
         console.log("Navigation result:", navigationResult);
 
@@ -121,4 +117,3 @@ test.describe("GRV-0001: Graph View navigation", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

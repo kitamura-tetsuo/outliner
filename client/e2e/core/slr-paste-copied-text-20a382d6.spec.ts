@@ -1,5 +1,8 @@
+import "../utils/registerAfterEachSnapshot";
+registerCoverageHooks();
 // @ts-nocheck
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => {
@@ -197,4 +200,3 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
         expect(fourthItemText).toBeTruthy();
     });
 });
-import "../utils/registerAfterEachSnapshot";

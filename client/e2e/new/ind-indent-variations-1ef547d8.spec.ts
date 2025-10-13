@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature IND-0001
  *  Title   : Tab and Shift+Tab indentation variations
  *  Source  : docs/client-features.yaml
@@ -89,4 +92,3 @@ test.describe("IND-0001: Indentation variations", () => {
         expect(depth3After).toBeLessThanOrEqual(depth3);
     });
 });
-import "../utils/registerAfterEachSnapshot";

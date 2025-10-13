@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LNK-0003
  *  Title   : 内部リンクのナビゲーション機能
  *  Source  : docs/client-features.yaml
@@ -33,4 +36,3 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         expect(focusState.focused).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

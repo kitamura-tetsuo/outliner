@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature TST-0005
  *  Title   : テスト環境の初期化と準備
  *  Source  : docs/client-features.yaml
@@ -37,10 +40,9 @@ test.describe("テスト環境ポート検証", () => {
         console.log(`テスト実行時のURL: ${url}`);
 
         // ページが正しく表示されていることを確認
-        await expect(page.locator("h1")).toContainText("Outliner App");
+        await expect(page.locator("h1")).toContainText("Outliner");
 
         // スクリーンショットを撮影
         await page.screenshot({ path: "test-results/test-port-confirmation.png" });
     });
 });
-import "../utils/registerAfterEachSnapshot";

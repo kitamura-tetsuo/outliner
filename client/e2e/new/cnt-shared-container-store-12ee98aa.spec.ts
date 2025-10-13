@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CNT-12ee98aa
  *  Title   : Shared Container Store
  *  Source  : docs/client-features/cnt-shared-container-store-12ee98aa.yaml
@@ -52,17 +55,17 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
             window.localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
         });
 
-        // 直接削除ページへ移動（ページ遷移で状態が消えないよう、この後にストアをセットする）
+        // Navigate to deletion page
         await page.goto("/projects/delete");
 
-        // Hydration完了とグローバルの公開を待つ
+        // Wait for hydration and global objects to be available
         await page.waitForFunction(() => {
             return typeof (window as any).__FIRESTORE_STORE__ !== "undefined"
                 && typeof (window as any).__TEST_DATA_HELPER__ !== "undefined"
                 && typeof (window as any).__USER_MANAGER__ !== "undefined";
         }, { timeout: 10000 });
 
-        // Firebaseのテストユーザーでログイン完了を待つ
+        // Wait for Firebase test user login
         await page.waitForFunction(() => {
             try {
                 const um = (window as any).__USER_MANAGER__;
@@ -72,13 +75,29 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
             }
         }, { timeout: 20000 });
 
-        // 削除ページに到着してからストアを直接更新
+        await page.evaluate(() => (window as any).__INIT_FIRESTORE_SYNC__?.());
+
+        // Set up test environment with data (after navigating to the page)
         await page.evaluate(() => (window as any).__TEST_DATA_HELPER__?.setupTestEnvironment?.());
 
-        // テーブル反映を待つ
-        await page.waitForFunction(() => document.querySelectorAll("tbody tr").length >= 2);
+        // Wait for the firestore store to have the expected data
+        await page.waitForFunction(() => {
+            const fs = (window as any).__FIRESTORE_STORE__;
+            return fs
+                && fs.userContainer
+                && fs.userContainer.accessibleContainerIds
+                && fs.userContainer.accessibleContainerIds.length >= 2;
+        }, { timeout: 10000 });
+
+        // Now wait for the container store to reflect the changes
+        await page.waitForFunction(() => {
+            const cs = (window as any).__CONTAINER_STORE__;
+            return cs && cs.containers && cs.containers.length >= 2;
+        }, { timeout: 10000 });
+
+        // Wait for table rows to appear using Playwright's auto-waiting
         const rows = page.locator("tbody tr");
-        await expect(rows).toHaveCount(2);
+        await expect(rows).toHaveCount(2, { timeout: 15000 });
         await expect(rows.nth(0).locator("td").nth(1)).toContainText("テストプロジェクト");
         await expect(rows.nth(1).locator("td").nth(1)).toContainText("テストプロジェクト");
     });
@@ -166,4 +185,3 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         expect(optionCount).toBeGreaterThanOrEqual(2);
     });
 });
-import "../utils/registerAfterEachSnapshot";

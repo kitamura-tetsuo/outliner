@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature API-0003
  *  Title   : Admin check for container user listing
  *  Source  : docs/client-features.yaml
@@ -109,5 +112,3 @@ test.describe("管理者チェック (API-0003)", () => {
         expect(responseBody.error).toBe("ID token required");
     });
 });
-import "../utils/registerAfterEachSnapshot";
-import "../utils/registerAfterEachSnapshot";

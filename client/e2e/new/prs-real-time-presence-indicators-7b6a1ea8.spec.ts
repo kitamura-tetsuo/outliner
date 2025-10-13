@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature PRS-0001
  *  Title   : Show real-time presence indicators
  *  Source  : docs/client-features.yaml
@@ -70,4 +73,3 @@ test.describe("PRS-0001: presence indicators", () => {
         await expect(avatars).toHaveCount(1, { timeout: 10000 });
     });
 });
-import "../utils/registerAfterEachSnapshot";

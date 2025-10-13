@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature MCE-37b78b62
  *  Title   : Multi-Cursor Editing
  *  Source  : docs/client-features/mce-multi-cursor-editing-37b78b62.yaml
@@ -22,4 +25,3 @@ test.describe("MCE-37b78b62: multi-cursor editing", () => {
         expect(count).toBe(2);
     });
 });
-import "../utils/registerAfterEachSnapshot";

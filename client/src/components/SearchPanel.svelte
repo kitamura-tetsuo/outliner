@@ -362,6 +362,7 @@ $effect(() => {
 /* E2E限定: 常時マウント時に不可視化（サイズは維持しクリック可能） */
 .e2e-hidden {
     opacity: 0;
+    pointer-events: none;
 }
 
 .search-panel-header {

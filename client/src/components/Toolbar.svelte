@@ -164,6 +164,7 @@ if (typeof window !== "undefined") {
 
 <div class="main-toolbar" data-testid="main-toolbar" bind:this={toolbarEl} aria-hidden="false">
     <div class="main-toolbar-content" aria-hidden="false">
+        <div class="brand" aria-label="brand">Outliner</div>
         <div role="search">
             <SearchBox project={effectiveProject ?? undefined} />
         </div>
@@ -185,6 +186,8 @@ if (typeof window !== "undefined") {
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto;
+    /* Ensure pointer events only work within the toolbar bounds */
+    overflow: hidden;
 }
 
 .main-toolbar-content {
@@ -196,7 +199,7 @@ if (typeof window !== "undefined") {
     transform: none !important;
 
 /* Force visibility for all descendants to avoid ancestor-origin visibility issues in tests */
-.main-toolbar, .main-toolbar *, .main-toolbar-content, .main-toolbar-content * {
+:global(.main-toolbar), :global(.main-toolbar *), :global(.main-toolbar-content), :global(.main-toolbar-content *) {
     visibility: visible !important;
     opacity: 1 !important;
     transform: none !important;
@@ -205,7 +208,7 @@ if (typeof window !== "undefined") {
     backface-visibility: visible !important;
     transition: none !important;
     animation: none !important;
-    pointer-events: auto !important;
+    /* Remove pointer-events: auto !important to prevent click interception */
 }
 
 }

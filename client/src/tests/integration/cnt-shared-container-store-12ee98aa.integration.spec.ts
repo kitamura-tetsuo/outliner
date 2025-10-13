@@ -9,24 +9,30 @@ import UserContainerDisplay from "../fixtures/UserContainerDisplay.svelte";
 describe("CNT shared container store", () => {
     it("reflects user container updates", async () => {
         render(UserContainerDisplay);
-        firestoreStore.userContainer = {
+        const storeGlobal: any = (globalThis as any).window?.__FIRESTORE_STORE__ ?? firestoreStore;
+        storeGlobal.setUserContainer({
             userId: "u",
             accessibleContainerIds: ["a"],
             defaultContainerId: "a",
             createdAt: new Date(),
             updatedAt: new Date(),
-        } as any;
+        } as any);
         await tick();
-        expect(screen.getByTestId("default").textContent).toBe("a");
+        await tick();
+        // store 自体は更新されているか（デバッグ用アサーション）
+        expect(storeGlobal.userContainer?.defaultContainerId).toBe("a");
+        // まずリスト表示を確認（リアクティブ更新の完了を待つ）
         expect(screen.getAllByRole("listitem").map(li => li.textContent)).toEqual(["a"]);
+        // その後、defaultContainerId の可視化を検証
+        expect(screen.getByTestId("default").textContent).toBe("a");
 
-        firestoreStore.userContainer = {
+        storeGlobal.setUserContainer({
             userId: "u",
             accessibleContainerIds: ["a", "b"],
             defaultContainerId: "b",
             createdAt: new Date(),
             updatedAt: new Date(),
-        } as any;
+        } as any);
         await tick();
         expect(screen.getByTestId("default").textContent).toBe("b");
         expect(screen.getAllByRole("listitem").map(li => li.textContent)).toEqual(["a", "b"]);

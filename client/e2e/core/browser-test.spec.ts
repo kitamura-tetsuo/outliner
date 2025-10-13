@@ -1,4 +1,7 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 test.describe("Browser Basic Test", () => {
     test("can create a page", async ({ page }) => {
@@ -38,4 +41,3 @@ test.describe("Browser Basic Test", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

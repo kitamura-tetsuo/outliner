@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ITM-0001
  *  Title   : Enterで新規アイテム追加
  *  Source  : docs/client-features.yaml
@@ -8,17 +11,13 @@ import { TreeValidator } from "../utils/treeValidation";
 
 test.describe("ITM-0001: Enterで新規アイテム追加", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, ["First part of text. Second part of text."]);
+        await TestHelpers.setupTreeDebugger(page);
 
-        const item = page.locator(".outliner-item.page-title");
-        if (await item.count() === 0) {
-            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-            await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
-            await item.locator(".item-content").click({ force: true });
-        }
+        // Click on the first non-page-title item containing the test text
+        const contentItem = page.locator(".outliner-item:not(.page-title)");
+        await contentItem.first().locator(".item-content").click({ force: true });
         await page.waitForSelector("textarea.global-textarea:focus");
-        await page.keyboard.type("First part of text. Second part of text.");
     });
 
     test("Yjs tree reflects split after Enter", async ({ page }) => {
@@ -35,5 +34,3 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         expect(treeData.items[1].text.trimStart()).toBe("Second part of text.");
     });
 });
-
-import "../utils/registerAfterEachSnapshot";

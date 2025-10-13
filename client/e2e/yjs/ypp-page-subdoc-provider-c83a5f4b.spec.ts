@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature YPP-c83a5f4b
  *  Title   : Page subdoc per-page provider
  *  Source  : docs/client-features/ypp-page-subdoc-provider-c83a5f4b.yaml
@@ -51,4 +54,3 @@ test.describe("Page subdoc provider", () => {
         expect(presence.p2).toBeUndefined();
     });
 });
-import "../utils/registerAfterEachSnapshot";

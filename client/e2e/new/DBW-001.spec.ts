@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature DBW-001
  *  Title   : Client-Side SQL Database
  *  Source  : docs/client-features.yaml
@@ -24,4 +27,3 @@ test.describe("DBW-001: Client-Side SQL Database", () => {
         await expect(page.locator(".editable-query-grid")).toContainText("1");
     });
 });
-import "../utils/registerAfterEachSnapshot";

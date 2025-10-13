@@ -1,0 +1,34 @@
+services:
+  app:
+    volumes:
+      - type: bind
+        source: /home/ubuntu/src
+        target: /home/node/src
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/.ssh
+        target: /home/node/.ssh
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/.augment
+        target: /home/node/.augment
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/.auto-coder
+        target: /home/node/.auto-coder
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/.codex
+        target: /home/node/.codex
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/.gemini
+        target: /home/node/.gemini
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/.qwen
+        target: /home/node/.qwen
+        consistency: cached
+    command: rm -rf /workspace/.codex-setup-installed || sleep infinity
+
+

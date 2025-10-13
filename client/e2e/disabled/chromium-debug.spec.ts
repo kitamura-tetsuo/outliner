@@ -1,4 +1,7 @@
+import "../utils/registerAfterEachSnapshot";
 import { chromium, expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 test.describe("Chromium Debug Test", () => {
     test("can launch browser and create context", async () => {
@@ -58,18 +61,35 @@ test.describe("Chromium Debug Test", () => {
         console.log("Debug: Testing application navigation");
 
         try {
+            // Use the test helper to prepare the environment similar to other tests
             await page.goto("/");
             console.log("Debug: Successfully navigated to application");
 
-            // ページが読み込まれるまで待機
+            // Wait for the page to load
             await page.waitForLoadState("domcontentloaded");
             console.log("Debug: DOM content loaded");
 
-            // タイトルを確認
+            // Use the test helper to set up the necessary flags for the test environment
+            await page.addInitScript(() => {
+                try {
+                    localStorage.setItem("VITE_IS_TEST", "true");
+                    localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                    localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+                    (window as any).__E2E__ = true;
+                    (window as any).__vite_plugin_react_preamble_installed__ = true;
+                } catch {}
+            });
+
+            // Wait for the application to initialize
+            await page.waitForFunction(() => {
+                return (window as any).generalStore || (window as any).appStore;
+            }, { timeout: 10000 });
+
+            // タイトルを確認 (expect any non-empty title rather than just truthy)
             const title = await page.title();
             console.log("Debug: Page title:", title);
 
-            // ページが正常に読み込まれたことを確認
+            // The application should have a title once loaded
             expect(title).toBeTruthy();
         } catch (error) {
             console.log("Debug: Navigation error:", error);
@@ -77,4 +97,3 @@ test.describe("Chromium Debug Test", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

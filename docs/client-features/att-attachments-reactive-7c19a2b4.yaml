@@ -1,0 +1,23 @@
+id: ATT-7c19a2b4
+title: Attachments react to Yjs add/remove immediately
+title-ja: 添付ファイルの追加・削除が即時に UI に反映される
+description: 'Item.attachments（Y.Array<string>）に対する add/remove が OutlinerItem の添付プレビューに
+
+  即時反映されることを検証する。最小粒度の Yjs observe（Y.Array/Y.Map）による反映で動作し、外部イベントや人工的な遅延に依存しない。
+
+  '
+category: outliner
+status: implemented
+components:
+- client/src/components/OutlinerItem.svelte
+- client/src/schema/app-schema.ts
+impact:
+- 添付操作の操作感向上（即時性）
+tradeoffs:
+- なし（最小粒度の Yjs observe に依存）
+notes:
+- attachments は iterable/配列両対応のため、UI 側で配列化して描画
+- 観測ミラー方式（Yjs observe -> $state ミラー）へ移行し、UI はミラー配列のみを描画
+- E2E フォールバックを縮小（1px 画像や遅延タイマーを撤去）。テスト中は drop → model.addAttachment → observe で即時反映し、必要最小限の test-only CustomEvent のみ残す - injectAttachmentPreviewDom 撤去完了（DOM直挿しプレビューは廃止し、純Yjs表示に統一）
+tests:
+- client/e2e/new/att-attachments-reactive-7c19a2b4.spec.ts

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ITM-0003
  *  Title   : Delete empty items with Delete key
  *  Source  : docs/client-features.yaml
@@ -29,4 +32,3 @@ test.describe("ITM-0003: Delete empty item", () => {
         expect(countAfter).toBe(countBefore - 1);
     });
 });
-import "../utils/registerAfterEachSnapshot";

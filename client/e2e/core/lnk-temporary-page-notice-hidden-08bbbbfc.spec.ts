@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LNK-0004
  *  Title   : 仮ページ機能
  *  Source  : docs/client-features.yaml
@@ -34,4 +37,3 @@ test.describe("LNK-0004: 仮ページ通知非表示", () => {
         await expect(noticeElement).not.toBeVisible();
     });
 });
-import "../utils/registerAfterEachSnapshot";

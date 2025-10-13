@@ -1,8 +1,11 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import { DataValidationHelpers } from "../utils/dataValidationHelpers";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { compareTestCaseSnapshots } from "../utils/snapshotComparison.js";
+registerCoverageHooks();
 
 test.describe("snapshot comparison", () => {
     test("generate yjs snapshot for current mode", async ({ page }, testInfo) => {
@@ -50,4 +53,3 @@ test.describe("snapshot comparison", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

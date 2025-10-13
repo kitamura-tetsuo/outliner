@@ -32,6 +32,41 @@ trap 'handle_error ${LINENO} $?' ERR
 source "${SCRIPT_DIR}/common-config.sh"
 source "${SCRIPT_DIR}/common-functions.sh"
 
+# Fix permissions before proceeding
+fix_permissions() {
+  echo "Fixing directory permissions..."
+  # Fix ownership of client directory and its contents
+  if [ -d "${ROOT_DIR}/client" ]; then
+    # Fix ownership of node_modules if it exists and is owned by root
+    if [ -d "${ROOT_DIR}/client/node_modules" ] && [ "$(stat -c %U ${ROOT_DIR}/client/node_modules)" = "root" ]; then
+      echo "Fixing node_modules ownership..."
+      sudo chown -R node:node "${ROOT_DIR}/client/node_modules" || true
+    fi
+  fi
+  
+  # Fix ownership of other key directories
+  for dir in "${ROOT_DIR}/client" "${ROOT_DIR}/server" "${ROOT_DIR}/functions" "${ROOT_DIR}/scripts/tests"; do
+    if [ -d "$dir" ]; then
+      sudo chown -R node:node "$dir" || true
+    fi
+  done
+}
+
+# Fix permissions before proceeding
+fix_permissions
+
+ensure_python_env() {
+  echo "Ensuring Python virtual environment..."
+  if [ ! -d "${ROOT_DIR}/.venv" ]; then
+    python3 -m venv "${ROOT_DIR}/.venv"
+  fi
+  # shellcheck disable=SC1090
+  source "${ROOT_DIR}/.venv/bin/activate"
+  if [ -f "${ROOT_DIR}/scripts/requirements.txt" ]; then
+    pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"
+  fi
+}
+
 # Bypass heavy setup steps if sentinel file exists
 if [ -f "$SETUP_SENTINEL" ]; then
   echo "Setup already completed, skipping installation steps"
@@ -80,22 +115,11 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   retry_apt_get -y install python3-venv python3-pip
 
   # Create Python virtual environment if it doesn't exist
-  if [ ! -d "${ROOT_DIR}/.venv" ]; then
-    echo "Creating Python virtual environment..."
-    python3 -m venv "${ROOT_DIR}/.venv"
-  fi
-
-  # Activate virtual environment
-  echo "Activating Python virtual environment..."
-  source "${ROOT_DIR}/.venv/bin/activate"
+  ensure_python_env
 
   # Install pre-commit via pip
   pip install --no-cache-dir pre-commit
   pre-commit install --hook-type pre-commit
-
-  if [ -f "${ROOT_DIR}/scripts/requirements.txt" ]; then
-    pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"
-  fi
   echo "Installing all dependencies..."
   install_all_dependencies
 
@@ -108,6 +132,11 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   if [ ! -f "${ROOT_DIR}/client/node_modules/.bin/vitest" ] || [ ! -f "${ROOT_DIR}/client/node_modules/.bin/playwright" ]; then
     echo "Installing vitest playwright for testing..."
     cd "${ROOT_DIR}/client"
+    # Fix permissions before installing
+    if [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
+      echo "Fixing node_modules ownership before installing vitest/playwright..."
+      sudo chown -R node:node "node_modules" || true
+    fi
     npm --proxy='' --https-proxy='' install --no-save vitest playwright
     cd "${ROOT_DIR}"
   fi
@@ -122,6 +151,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   touch "$SETUP_SENTINEL"
 else
   echo "Skipping dependency installation"
+  ensure_python_env
   if ! command -v xvfb-run >/dev/null 2>&1; then
     echo "xvfb-run missing; installing OS utilities..."
     install_os_utilities
@@ -143,8 +173,16 @@ else
   fi
 fi
 
+echo "Ensuring node-canvas native dependencies..."
+ensure_canvas_native_deps
+
 # Ensure essential client CLI tools are available
 cd "${ROOT_DIR}/client"
+# Fix permissions before checking/installing client CLI tools
+if [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
+  echo "Fixing node_modules ownership before checking client CLI tools..."
+  sudo chown -R node:node "node_modules" || true
+fi
 if [ ! -f node_modules/.bin/paraglide-js ] || [ ! -f node_modules/.bin/dotenvx ]; then
   echo "Missing client CLI tools; reinstalling client dependencies..."
   npm --proxy='' --https-proxy='' ci
@@ -167,6 +205,8 @@ else
   start_yjs_server
   echo "Starting SvelteKit server..."
   start_sveltekit_server
+  echo "Starting API server..."
+  start_api_server
 fi
 
 # Wait for all services to be ready

@@ -5,7 +5,7 @@ import type { Page } from "@playwright/test";
  */
 export async function waitForOutlinerItems(page: Page, count: number, timeout = 10000): Promise<void> {
     await page.waitForFunction(
-        (expected) => document.querySelectorAll(".outliner-item").length >= expected,
+        (expected) => document.querySelectorAll(".outliner-item[data-item-id]").length >= expected,
         count,
         { timeout },
     );
@@ -15,7 +15,7 @@ export async function waitForOutlinerItems(page: Page, count: number, timeout = 
  * アウトライナーアイテム数が不足していれば追加描画を待機
  */
 export async function ensureOutlinerItemCount(page: Page, count: number, timeout = 10000): Promise<void> {
-    const current = await page.locator(".outliner-item").count();
+    const current = await page.locator(".outliner-item[data-item-id]").count();
     if (current < count) {
         await waitForOutlinerItems(page, count, timeout);
     }
@@ -66,6 +66,11 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
         return false;
     }
 }
+
+// NOTE: e2e では Playwright/JSDOM 上の window 構造が実行時に変化するため、
+// (window as any) などの any キャストを意図的に使用しています。型安全性よりも
+// 実ブラウザ挙動の再現性・安定性を優先するテスト特有の緩和であり、
+// 本番コードには any キャストを持ち込まない方針です。
 
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
 declare global {

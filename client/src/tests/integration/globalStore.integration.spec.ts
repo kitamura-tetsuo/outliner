@@ -1,17 +1,11 @@
-import { render, screen } from "@testing-library/svelte";
-import { tick } from "svelte";
 import { describe, expect, it } from "vitest";
 import { yjsStore } from "../../stores/yjsStore.svelte";
-import ConnectionStatus from "../fixtures/ConnectionStatus.svelte";
 
-// Integration test verifying global store proxies Yjs connection state
+// Integration test verifying Yjs connection state can be controlled and read without facade
 
-describe("GlobalStore integration", () => {
-    it("mirrors Yjs connection state", async () => {
-        render(ConnectionStatus);
+describe("Yjs connection state (no facade)", () => {
+    it("allows direct set/get on yjsStore", async () => {
         yjsStore.isConnected = true as any;
-        await tick();
-        expect(screen.getByTestId("global").textContent).toBe("true");
-        expect(screen.getByTestId("yjs").textContent).toBe("true");
+        expect(yjsStore.getIsConnected()).toBe(true);
     });
 });

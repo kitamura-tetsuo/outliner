@@ -3,6 +3,7 @@ import { goto } from "$app/navigation";
 import * as echarts from "echarts";
 import { onMount } from "svelte";
 import { store } from "../stores/store.svelte";
+import type * as Y from "yjs";
 import { buildGraph } from "../utils/graphUtils";
 
 let graphDiv: HTMLDivElement;
@@ -66,14 +67,23 @@ function loadLayout(nodes: any[]) {
 function update() {
     if (!chart) return;
 
-    // storeからデータを取得
-    let pages: any[] = [];
-    let project = "";
+    // storeからデータを取得（Yjs Items 互換: 配列/Iterable/Array-like を許容）
+    const toArray = (p: any) => {
+        try {
+            if (Array.isArray(p)) return p;
+            if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
+            const len = p?.length;
+            if (typeof len === "number" && len >= 0) {
+                const r: any[] = [];
+                for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
+                return r;
+            }
+        } catch {}
+        return [] as any[];
+    };
 
-    if (Array.isArray(store.pages?.current)) {
-        pages = store.pages.current;
-        project = store.project?.title || "";
-    }
+    const pages = toArray(store.pages?.current || []);
+    const project = store.project?.title || "";
 
     const { nodes, links } = buildGraph(pages, project);
 
@@ -130,17 +140,29 @@ onMount(() => {
         saveLayout();
     });
 
+    // Initial render
     update();
+
+    // React to project structure changes via minimal-granularity Yjs observeDeep on orderedTree
+    let detachDocListener: (() => void) | undefined;
+    try {
+        const ymap: any = (store.project as any)?.ydoc?.getMap?.("orderedTree");
+        if (ymap && typeof ymap.observeDeep === "function") {
+            const handler = () => { try { update(); } catch {} };
+            ymap.observeDeep(handler);
+            detachDocListener = () => { try { ymap.unobserveDeep(handler); } catch {} };
+        }
+    } catch {}
+
+    // Keep chart sized correctly on container resizes
+    const onResize = () => { try { chart?.resize(); } catch {} };
+    window.addEventListener("resize", onResize);
+
     return () => {
+        detachDocListener?.();
+        window.removeEventListener("resize", onResize);
         chart?.dispose();
     };
-});
-
-$effect(() => {
-    // Trigger update when project or pages change
-    store.project;
-    store.pages?.current;
-    update();
 });
 </script>
 

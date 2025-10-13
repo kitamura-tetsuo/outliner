@@ -24,4 +24,34 @@ Object.defineProperty(window, "matchMedia", {
     })),
 });
 
+// Polyfill requestAnimationFrame for jsdom tests so fake timers can drive animations deterministically.
+if (typeof globalThis.requestAnimationFrame !== "function") {
+    globalThis.requestAnimationFrame = (cb: FrameRequestCallback): number => {
+        return setTimeout(() => cb(performance.now()), 16) as unknown as number;
+    };
+}
+
+if (typeof globalThis.cancelAnimationFrame !== "function") {
+    globalThis.cancelAnimationFrame = (id: number): void => {
+        clearTimeout(id as unknown as NodeJS.Timeout);
+    };
+}
+
+// ---- Vitest bootstrap: ensure a single firestoreStore instance shared across UI & tests ----
+try {
+    // Ensure window exists
+    (globalThis as any).window ||= globalThis as any;
+    // Import the real store early so it can publish itself to window.__FIRESTORE_STORE__
+    // and so subsequent imports (including Svelte-compiled graph) pick up the same instance.
+    // Note: this path is relative to project root (vite config uses the same resolver in tests)
+    const mod = await import("./src/stores/firestoreStore.svelte");
+    const fsStore = (mod as any).firestoreStore;
+    if (fsStore) {
+        (globalThis as any).window.__FIRESTORE_STORE__ ||= fsStore;
+        (globalThis as any).__FIRESTORE_STORE__ ||= fsStore;
+    }
+} catch {
+    // no-op: if import fails here, module will still set __FIRESTORE_STORE__ on first import
+}
+
 // add more mocks here if you need them

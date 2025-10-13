@@ -49,6 +49,7 @@ logs/
 
 # Coverage reports
 client/coverage/
+coverage/
 
 # GitLab CI
 .gitlab-ci-local
@@ -71,9 +72,6 @@ server/firebase-adminsdk.json
 functions/.env.production
 *.swp
 
-# Coverage reports
-client/coverage/
-
 .codex-setup-installed
 .e2e-progress
 
@@ -95,3 +93,16 @@ server/dist/
 client/e2e-snapshots/
 AGENTS.temp.md
 e2e-snapshots/
+server/e2e-backups/
+server/e2e-src/
+
+llm_task.md
+.auto-coder/
+
+*.log
+*.md
+*.backup
+*.bak
+*.temp
+client/ydb/
+coverage-backups/

@@ -1,18 +1,45 @@
 <script lang="ts">
+import { onMount } from "svelte";
 import * as yjsService from "../../../lib/yjsService.svelte";
-import { containerStore } from "../../../stores/containerStore.svelte";
+import { containerStore, type ContainerInfo } from "../../../stores/containerStore.svelte";
 
-let projects = $derived(containerStore.containers);
 let selectedProjects = $state(new Set<string>());
 
 let loading = $state(false);
 let error: string | undefined = $state(undefined);
 let success: string | undefined = $state(undefined);
 
+// Mirror container store data locally so the table reacts to store updates
+let containers = $state<Array<ContainerInfo>>([]);
+
+function syncContainers(): void {
+    const next = containerStore.containers;
+    containers = next.length > 0 ? [...next] : [];
+}
+
+onMount(() => {
+    syncContainers();
+
+    if (typeof window === "undefined") {
+        return () => {};
+    }
+
+    const onContainerStoreUpdated = () => syncContainers();
+    const onFirestoreUcChanged = () => syncContainers(); // test-only fallback event
+
+    window.addEventListener("container-store-updated", onContainerStoreUpdated);
+    window.addEventListener("firestore-uc-changed", onFirestoreUcChanged);
+
+    return () => {
+        window.removeEventListener("container-store-updated", onContainerStoreUpdated);
+        window.removeEventListener("firestore-uc-changed", onFirestoreUcChanged);
+    };
+});
+
 
 
 async function deleteSelected() {
-    const targets = projects.filter(p => selectedProjects.has(p.id));
+    const targets = containers.filter(p => selectedProjects.has(p.id));
     if (targets.length === 0) return;
     loading = true;
     error = undefined;
@@ -67,7 +94,7 @@ async function deleteSelected() {
     {#if loading}
         <p>Loading...</p>
     {/if}
-    {#if projects.length > 0}
+    {#if containers.length > 0}
         <table class="min-w-full border mb-4">
             <thead>
                 <tr>
@@ -77,7 +104,7 @@ async function deleteSelected() {
                 </tr>
             </thead>
             <tbody>
-                {#each projects as project}
+                {#each containers as project}
                     <tr>
                         <td class="px-2 text-center">
                             <input type="checkbox" checked={selectedProjects.has(project.id)} onchange={(e) => {

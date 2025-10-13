@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0008
  *  Title   : Selected Edge Case
  *  Source  : docs/client-features.yaml
@@ -21,4 +24,3 @@ test.describe("SLR-0008: Selected Edge Case", () => {
         expect(itemCount).toBeGreaterThan(0);
     });
 });
-import "../utils/registerAfterEachSnapshot";

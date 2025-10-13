@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 // @ts-nocheck
 
 /** @feature SRP-0001
@@ -393,4 +396,3 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         expect(updatedPages.length).toBeGreaterThanOrEqual(2);
     });
 });
-import "../utils/registerAfterEachSnapshot";

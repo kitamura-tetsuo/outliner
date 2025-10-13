@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LNK-0007
  *  Title   : バックリンク機能
  *  Source  : docs/client-features.yaml
@@ -370,4 +373,3 @@ test.describe("LNK-0007: バックリンク機能", () => {
         console.log("バックリンクをクリックするとリンク元ページに移動できるテストが成功しました。");
     });
 });
-import "../utils/registerAfterEachSnapshot";

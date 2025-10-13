@@ -26,8 +26,8 @@ export function createTestUserData(): TestUserContainer {
         updatedAt: new Date(),
     };
 
-    // Set test data in firestoreStore
-    firestoreStore.userContainer = testUserContainer;
+    // Set test data in firestoreStore using public API to ensure reactivity wrapping
+    (firestoreStore as any).setUserContainer(testUserContainer as any);
 
     return testUserContainer;
 }

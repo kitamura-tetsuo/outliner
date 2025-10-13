@@ -13,7 +13,7 @@ This document outlines the mapping between Azure Fluid Relay data structures and
 
 ## Recent changes
 
-- Removed remaining `TreeSubscriber` and related Fluid classes. `YjsSubscriber` now provides reactive access to Yjs documents.
+- Removed remaining `TreeSubscriber` and related Fluid classes. Adopted minimal-granularity Yjs observe (Y.Text/Y.Array/Y.Map) for reactive access to Yjs documents.
 - Uninstalled Fluid dependencies and deleted Fluid-specific components.
 - Added an end-to-end test verifying Yjs store connectivity.
 

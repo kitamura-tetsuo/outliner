@@ -1,5 +1,8 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test.describe("Page Route Debug", () => {
     test("debug page route loading process", async ({ page }, testInfo) => {
@@ -111,4 +114,3 @@ test.describe("Page Route Debug", () => {
         expect(true).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,4 +1,7 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 test.describe("Authentication Test", () => {
     test("can perform manual authentication", async ({ page }) => {
@@ -86,23 +89,12 @@ test.describe("Authentication Test", () => {
         console.log("Debug: After authentication:", afterAuth);
 
         // 認証が成功した場合の追加チェック
+        // Note: In test environments, __SVELTE_GOTO__ is intentionally not set (see debug.ts)
+        // So we skip waiting for it to avoid test timeout
         if (authResult.success) {
-            // SvelteGotoが設定されるまで待機（最大30秒）
-            try {
-                await page.waitForFunction(
-                    () => {
-                        const win = window as any;
-                        const hasSvelteGoto = typeof win.__SVELTE_GOTO__ !== "undefined";
-                        console.log("Waiting for globals - SvelteGoto:", hasSvelteGoto);
-                        return hasSvelteGoto;
-                    },
-                    { timeout: 30000 },
-                );
-                console.log("Debug: All global variables are now available");
-            } catch (error) {
-                console.log("Debug: Timeout waiting for global variables:", error);
-            }
+            console.log(
+                "Debug: Authentication completed successfully, skipping __SVELTE_GOTO__ check in test environment",
+            );
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

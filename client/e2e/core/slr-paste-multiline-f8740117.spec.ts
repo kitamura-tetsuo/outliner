@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0006
  *  Title   : Copy and paste multiple item selection ranges
  *  Source  : docs/client-features.yaml
@@ -21,4 +24,3 @@ test.describe("SLR-0006: Copy and paste multiple item selection ranges", () => {
         expect(await items.count()).toBeGreaterThan(1);
     });
 });
-import "../utils/registerAfterEachSnapshot";

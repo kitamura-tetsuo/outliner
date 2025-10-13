@@ -24,13 +24,38 @@ export class Comments {
         c.set("text", text);
         c.set("created", time);
         c.set("lastChanged", time);
+        try {
+            console.info("[Comments.addComment] pushing comment to Y.Array");
+        } catch {}
         this.yArray.push([c]);
+        try {
+            console.info("[Comments.addComment] pushed. current length=", this.yArray.length);
+        } catch {}
         return { id: c.get("id") as string };
     }
 
     deleteComment(commentId: string) {
-        const idx = this.yArray.toArray().findIndex((m) => m.get("id") === commentId);
-        if (idx >= 0) this.yArray.delete(idx, 1);
+        try {
+            console.info("[Comments.deleteComment] called with id=", commentId);
+        } catch {}
+        const ids = this.yArray.toArray().map((m) => m.get("id"));
+        try {
+            console.info("[Comments.deleteComment] current ids=", ids);
+        } catch {}
+        const idx = ids.findIndex((id) => id === commentId);
+        try {
+            console.info("[Comments.deleteComment] found idx=", idx);
+        } catch {}
+        if (idx >= 0) {
+            this.yArray.delete(idx, 1);
+            try {
+                console.info("[Comments.deleteComment] deleted idx=", idx);
+            } catch {}
+        } else {
+            try {
+                console.info("[Comments.deleteComment] not found, skip");
+            } catch {}
+        }
     }
 
     updateComment(commentId: string, text: string) {
@@ -89,6 +114,7 @@ export class Item {
             value.set("created", plain?.created ?? 0);
             value.set("lastChanged", plain?.lastChanged ?? 0);
             value.set("componentType", undefined);
+            value.set("chartQuery", undefined);
             value.set("aliasTargetId", undefined);
 
             const text = new Y.Text();
@@ -153,6 +179,24 @@ export class Item {
         this.updateText(v ?? "");
     }
 
+    // componentType stored in Y.Map ("table" | "chart" | undefined)
+    get componentType(): string | undefined {
+        return this.value.get("componentType");
+    }
+    set componentType(v: string | undefined) {
+        this.value.set("componentType", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // chart query stored in Y.Map
+    get chartQuery(): string | undefined {
+        return this.value.get("chartQuery");
+    }
+    set chartQuery(v: string | undefined) {
+        this.value.set("chartQuery", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
     // alias target id stored in Y.Map
     get aliasTargetId(): string | undefined {
         return this.value.get("aliasTargetId");
@@ -182,12 +226,80 @@ export class Item {
     }
 
     get attachments(): Y.Array<string> {
-        return this.value.get("attachments");
+        let arr = this.value.get("attachments") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("attachments", arr);
+        }
+        return arr;
     }
 
     addAttachment(url: string) {
-        this.attachments.push([url]);
+        // 1) もし現在の Item が仮Doc(接続前)で、接続後のDocが存在する場合は、対応するノードにも反映する
+        try {
+            const w: any = (typeof window !== "undefined") ? (window as any) : null;
+            const currentPage: any = w?.generalStore?.currentPage;
+            const thisDoc: any = (this as any)?.ydoc;
+            const targetDoc: any = currentPage?.ydoc;
+            if (currentPage && thisDoc && targetDoc && thisDoc !== targetDoc) {
+                const items: any = currentPage?.items as any;
+                // 1) IDマップ経由で対応先を探す
+                try {
+                    const map = w?.__ITEM_ID_MAP__;
+                    const mappedId = map ? map[String((this as any)?.id)] : undefined;
+                    if (mappedId) {
+                        const len = items?.length ?? 0;
+                        for (let i = 0; i < len; i++) {
+                            const cand: any = items.at ? items.at(i) : items[i];
+                            if (String(cand?.id) === String(mappedId)) {
+                                try {
+                                    cand?.addAttachment?.(url);
+                                } catch {}
+                                throw new Error("__DONE__");
+                            }
+                        }
+                    }
+                } catch (e: any) {
+                    if (String(e?.message) !== "__DONE__") {
+                        // 2) フォールバック: テキスト一致
+                        const text = (this as any)?.text?.toString?.() ?? String((this as any)?.text ?? "");
+                        const len2 = items?.length ?? 0;
+                        for (let i = 0; i < len2; i++) {
+                            const cand: any = items.at ? items.at(i) : items[i];
+                            const ct = cand?.text?.toString?.() ?? String(cand?.text ?? "");
+                            if (ct === text) {
+                                try {
+                                    cand?.addAttachment?.(url);
+                                } catch {}
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {}
+
+        // 2) このノード自身にも通常通り追加
+        const arr = this.attachments; // ensure exists
+        try {
+            console.debug("[Item.addAttachment] pushing url=", url, "id=", (this as any)?.id);
+        } catch {}
+        try {
+            const w: any = (typeof window !== "undefined") ? (window as any) : null;
+            if (w) {
+                w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
+                w.E2E_LOGS.push({ tag: "add-attachment", id: (this as any)?.id, url, t: Date.now() });
+            }
+        } catch {}
+        arr.push([url]);
         this.value.set("lastChanged", Date.now());
+        try {
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                    new CustomEvent("item-attachments-changed", { detail: { id: this.id, count: arr.length } }),
+                );
+            }
+        } catch {}
     }
 
     removeAttachment(url: string) {
@@ -198,15 +310,54 @@ export class Item {
     }
 
     get comments(): Comments {
-        return new Comments(this.value.get("comments"));
+        let arr = this.value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+        if (!arr) {
+            arr = new Y.Array<Y.Map<any>>();
+            this.value.set("comments", arr);
+        }
+        return new Comments(arr);
     }
 
     addComment(author: string, text: string) {
-        return this.comments.addComment(author, text);
+        try {
+            console.info("[Item.addComment] id=", this.id);
+        } catch {}
+        const res = this.comments.addComment(author, text);
+        try {
+            const arr = this.value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+            const len = arr?.length ?? 0;
+            // Y.Map にプリミティブ数値をキャッシュして確実に反映させる
+            (this as any).value?.set?.("commentCountCache", len);
+            (this as any).value?.set?.("lastChanged", Date.now());
+            // Window ブロードキャスト（UI への即時反映用・決定的）
+            try {
+                if (typeof window !== "undefined") {
+                    console.info("[Item.addComment] dispatch item-comment-count id=", this.id, "count=", len);
+                    window.dispatchEvent(
+                        new CustomEvent("item-comment-count", { detail: { id: this.id, count: len } }),
+                    );
+                }
+            } catch {}
+        } catch {}
+        return res;
     }
 
     deleteComment(commentId: string) {
-        return this.comments.deleteComment(commentId);
+        const res = this.comments.deleteComment(commentId);
+        try {
+            const arr = this.value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+            const len = arr?.length ?? 0;
+            (this as any).value?.set?.("commentCountCache", len);
+            (this as any).value?.set?.("lastChanged", Date.now());
+            try {
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                        new CustomEvent("item-comment-count", { detail: { id: this.id, count: len } }),
+                    );
+                }
+            } catch {}
+        } catch {}
+        return res;
     }
 
     updateComment(commentId: string, text: string) {
@@ -283,12 +434,14 @@ export class Items implements Iterable<Item> {
     addNode(author: string, index?: number): Item {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
+        const existingKeys = this.childrenKeys();
         const value = new Y.Map<any>();
         value.set("id", nodeKey);
         value.set("author", author);
         value.set("created", now);
         value.set("lastChanged", now);
         value.set("componentType", undefined);
+        value.set("chartQuery", undefined);
         value.set("aliasTargetId", undefined);
         value.set("text", new Y.Text());
         value.set("votes", new Y.Array<string>());
@@ -300,12 +453,17 @@ export class Items implements Iterable<Item> {
         if (index === undefined) {
             this.tree.setNodeOrderToEnd(nodeKey);
         } else {
-            const keys = this.childrenKeys();
-            const clamped = Math.max(0, Math.min(index, keys.length - 1));
-            const target = keys[clamped];
-            if (!target) this.tree.setNodeOrderToEnd(nodeKey);
-            else if (clamped === 0) this.tree.setNodeBefore(nodeKey, target);
-            else this.tree.setNodeAfter(nodeKey, keys[clamped - 1]!);
+            const normalized = Math.max(0, index);
+
+            if (existingKeys.length === 0) {
+                this.tree.setNodeOrderToEnd(nodeKey);
+            } else if (normalized <= 0) {
+                this.tree.setNodeBefore(nodeKey, existingKeys[0]!);
+            } else if (normalized >= existingKeys.length) {
+                this.tree.setNodeOrderToEnd(nodeKey);
+            } else {
+                this.tree.setNodeAfter(nodeKey, existingKeys[normalized - 1]!);
+            }
         }
 
         return new Item(this.ydoc, this.tree, nodeKey);

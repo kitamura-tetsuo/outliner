@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature THM-0002
  *  Title   : Dark mode preference persists
  *  Source  : docs/client-features/thm-dark-mode-persistence-0f7c39db.yaml
@@ -49,4 +52,3 @@ test.describe("THM-0002: Dark mode preference persists", () => {
         await expect(page.evaluate(() => document.documentElement.classList.contains("dark"))).resolves.toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

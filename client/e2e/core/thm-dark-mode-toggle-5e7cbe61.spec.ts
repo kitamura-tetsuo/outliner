@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature THM-0001
  *  Title   : Dark mode theme toggle
  *  Source  : docs/client-features/thm-dark-mode-toggle-5e7cbe61.yaml
@@ -16,4 +19,3 @@ test.describe("THM-0001: Dark mode theme toggle", () => {
         await expect(page.evaluate(() => document.documentElement.classList.contains("dark"))).resolves.toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -4,6 +4,9 @@ import AliasPicker from "../../components/AliasPicker.svelte";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 
+import { beforeEach } from "vitest";
+beforeEach(() => aliasPickerStore.reset());
+
 // Mirrors e2e/new/als-alias-path-navigation.spec.ts
 
 describe("ALS alias path navigation", () => {

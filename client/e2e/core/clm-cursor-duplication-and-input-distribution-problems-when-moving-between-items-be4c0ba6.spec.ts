@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0101
  *  Title   : アイテム間移動時のカーソル重複と入力分散問題
  *  Source  : docs/client-features.yaml
@@ -74,4 +77,3 @@ test.describe("カーソル重複問題の検証", () => {
         await CursorValidator.validateCursorState(page, 1, "テスト終了時");
     });
 });
-import "../utils/registerAfterEachSnapshot";

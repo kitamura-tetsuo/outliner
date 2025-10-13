@@ -19,7 +19,19 @@ export async function addRoomSizeListener(
     if (!info) {
         const doc = await persistence.getYDoc(docName);
         const warn = () => warnIfRoomTooLarge(persistence, docName, limitBytes, logger);
-        doc.on("update", warn);
+        // Prefer minimal-granularity observeDeep on the root orderedTree map when available
+        try {
+            const ymap: any = (doc as any)?.getMap?.("orderedTree");
+            if (ymap && typeof ymap.observeDeep === "function") {
+                ymap.observeDeep(warn);
+            } else {
+                // Fallback: doc-level update listener
+                (doc as any).on?.("update", warn);
+            }
+        } catch {
+            // Last resort fallback
+            (doc as any).on?.("update", warn);
+        }
         info = { warn, count: 0 };
         listeners.set(docName, info);
     }
@@ -35,7 +47,13 @@ export async function removeRoomSizeListener(
     info.count--;
     if (info.count <= 0) {
         const doc = await persistence.getYDoc(docName);
-        doc.off("update", info.warn);
+        // Detach both possible listeners safely
+        try {
+            (doc as any)?.getMap?.("orderedTree")?.unobserveDeep?.(info.warn);
+        } catch {}
+        try {
+            (doc as any).off?.("update", info.warn);
+        } catch {}
         listeners.delete(docName);
     }
 }

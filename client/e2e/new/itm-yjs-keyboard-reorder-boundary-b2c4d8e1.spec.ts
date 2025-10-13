@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ITM-yjs-keyboard-reorder-boundary-b2c4d8e1
  *  Title   : Yjs Outliner - Alt+矢印 並べ替えの境界ケース
  */
@@ -40,11 +43,32 @@ async function getActiveCursorInfo(page) {
 test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boundary", () => {
     test.beforeEach(async ({ page }) => {
         await page.goto("/yjs-outliner");
-        await ensureOutlinerItemCount(page, 5, 12);
+
+        // Wait for the general store to be available
+        await page.waitForFunction(() => {
+            const gs: any = (window as any).generalStore;
+            return !!(gs && gs.project && gs.currentPage);
+        }, { timeout: 10000 });
+
+        // Create initial items using the general store API
+        await page.evaluate(() => {
+            const gs: any = (window as any).generalStore;
+            // Make sure we have a current page with items
+            if (!gs.currentPage) {
+                gs.currentPage = gs.project.addPage("test-page", "tester");
+            }
+
+            // Add 5 items
+            for (let i = 0; i < 5; i++) {
+                gs.currentPage.items.addNode("tester").updateText(`Initial Item ${i + 1}`);
+            }
+        });
+
+        await ensureOutlinerItemCount(page, 5, 10000);
     });
 
     test("先頭/末尾では移動しない（並び不変・カーソルは1つ）", async ({ page }) => {
-        await waitForOutlinerItems(page, 5, 5000);
+        await waitForOutlinerItems(page, 5, 10000);
         await setItemTextByIndex(page, 0, "Item 1");
         await setItemTextByIndex(page, 1, "A");
         await setItemTextByIndex(page, 2, "B");
@@ -85,7 +109,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
     });
 
     test("タイトル(index 0) は移動対象外（押下しても並び不変・カーソル1）", async ({ page }) => {
-        await waitForOutlinerItems(page, 5, 5000);
+        await waitForOutlinerItems(page, 5, 10000);
         await setItemTextByIndex(page, 0, "Item 1");
         await setItemTextByIndex(page, 1, "A");
         await setItemTextByIndex(page, 2, "B");
@@ -107,7 +131,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
     });
 
     test("複数カーソルがある境界押下でもアクティブは1に収束", async ({ page }) => {
-        await waitForOutlinerItems(page, 5, 5000);
+        await waitForOutlinerItems(page, 5, 10000);
         await setItemTextByIndex(page, 0, "Item 1");
         await setItemTextByIndex(page, 1, "A");
         await setItemTextByIndex(page, 2, "B");
@@ -138,7 +162,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
     });
 
     test("末尾直前→末尾→末尾直前の往復で cursorHistory が破綻しない（active=1, lastHistory=active）", async ({ page }) => {
-        await waitForOutlinerItems(page, 5, 5000);
+        await waitForOutlinerItems(page, 5, 10000);
         await setItemTextByIndex(page, 0, "Item 1");
         await setItemTextByIndex(page, 1, "A");
         await setItemTextByIndex(page, 2, "B");
@@ -176,7 +200,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
     });
 
     test("先頭直下→先頭直下→二重境界押下後も activeCount=1", async ({ page }) => {
-        await waitForOutlinerItems(page, 5, 5000);
+        await waitForOutlinerItems(page, 5, 10000);
         await setItemTextByIndex(page, 0, "Item 1");
         await setItemTextByIndex(page, 1, "A");
         await setItemTextByIndex(page, 2, "B");
@@ -199,4 +223,3 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         expect(info2.activeCount).toBe(1);
     });
 });
-import "../utils/registerAfterEachSnapshot";

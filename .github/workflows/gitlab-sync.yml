@@ -19,7 +19,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       # 3. GitLab と同期
-      - name: Merge-and-push to GitLab
+      - name: Force-push to GitLab
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }} # api 権限 PAT
         run: |
@@ -28,11 +28,6 @@ jobs:
           # GitLab 側の main を取り込み
           git fetch gitlab main
 
-          # GitHub→GitLab で fast-forward 可能かチェック
-          if git merge-base --is-ancestor gitlab/main HEAD; then
-            echo "✅ Fast-forward可能なので通常push"
-            git push gitlab HEAD:main
-          else
-            echo "⚠️ 履歴が分岐しているので --force-with-lease で上書き"
-            git push --force-with-lease gitlab HEAD:main
-          fi
+          # GitLabの履歴が分岐している場合も強制的に上書き
+          echo "🔄 Force pushing to GitLab main branch"
+          git push --force-with-lease gitlab HEAD:main

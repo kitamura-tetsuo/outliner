@@ -1,22 +1,21 @@
 <script lang="ts">
 import { mapEdit } from "../services/editMapper";
-import {
-    applyEdit,
-    queryStore,
-} from "../services/sqlService";
+import { applyEdit, queryStore } from "../services/sqlService";
+import { onDestroy, onMount } from "svelte";
 
 let data = $state({ rows: [], columnsMeta: [] } as any);
 let editingCell = $state<{ rowIndex: number; columnKey: string; } | null>(null);
 let draggedColumnIndex = $state<number | null>(null);
 let draggedRowIndex = $state<number | null>(null);
 
-// Svelte 5のリアクティブな購読
-$effect(() => {
-    const unsubscribe = queryStore.subscribe(v => {
-        data = v;
-    });
-    return unsubscribe;
+// Svelte 5 の購読は明示的に onMount/onDestroy で管理
+let __unsubscribe: (() => void) | null = null;
+onMount(() => {
+    try {
+        __unsubscribe = queryStore.subscribe(v => { data = v; });
+    } catch {}
 });
+onDestroy(() => { try { __unsubscribe?.(); } catch {} });
 
 function handleCellEdit(rowIndex: number, columnKey: string, newValue: any) {
     const row = data.rows[rowIndex];

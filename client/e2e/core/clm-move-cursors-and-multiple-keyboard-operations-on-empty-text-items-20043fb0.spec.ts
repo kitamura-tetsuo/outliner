@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0102
  *  Title   : 空のテキストアイテムでのカーソル移動と複数回のキーボード操作
  *  Source  : docs/client-features.yaml
@@ -131,4 +134,3 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
         expect(true).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

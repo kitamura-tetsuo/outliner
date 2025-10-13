@@ -21,6 +21,7 @@ This document consolidates the key development policies for this repository. Fol
 - Keep expected values strict even if tests take longer to run.
 - Run tests in headless mode.
 - Run `dprint fmt` before running tests.
+- **Code Coverage and Event Handlers**: カバレッジレポートで実行回数が0と表示されているコードを削除する前に、必ず`docs/coverage-event-handlers.md`を参照してください。イベントハンドラやコールバックはカバレッジツールで正しく検出されない場合があります。
 - Before finishing your work, run the following TypeScript checks and fix any errors:
   ```
   cd client/e2e && npx tsc --noEmit --project tsconfig.json
@@ -57,6 +58,25 @@ Mocks are generally forbidden. Limited exceptions:
   debug buttons, and test-specific functionality must be isolated to test
   environments only. Production code should not contain any test-related logic.
 
+### Svelte 5 Store Reactivity (Vitest + @testing-library/svelte)
+
+- Module-scoped singletons must not leak state across tests
+  - A module-level export like `export const someStore = $state(new SomeStore())` creates a singleton.
+  - Recommended: provide a `reset()` method on the store and call it in `beforeEach(() => someStore.reset())`.
+  - Alternative: use `vi.resetModules()` to re-import the module per test (slower; prefer the `reset()` approach).
+
+- Always await DOM updates after mutating store state
+  - Svelte updates are asynchronous. After changing store properties, `await tick()` and/or use `await waitFor(() => ...)`.
+  - This avoids timing flakiness when asserting DOM changes (e.g., visibility toggles).
+
+- If `requestAnimationFrame` is used inside show/hide or similar flows
+  - In JSDOM, `requestAnimationFrame` is not immediate. Control timers in tests: `vi.useFakeTimers()` and `vi.runOnlyPendingTimers()`.
+  - Alternatively, avoid rAF-dependent paths in tests.
+
+- Do not destructure store state from the proxy
+  - Destructuring (e.g., `const { isVisible } = someStore`) breaks reactivity by removing the proxy.
+  - Always access properties directly on the proxied instance (e.g., `someStore.isVisible`).
+
 ### Test Implementation Guidelines
 
 - **Manual workarounds in tests are not acceptable**. If a test requires manual positioning of textarea elements or other DOM manipulation to pass, the underlying implementation must be fixed instead.
@@ -68,6 +88,9 @@ Mocks are generally forbidden. Limited exceptions:
 - Execute E2E tests one file at a time with `scripts/run-e2e-progress-for-codex.sh 1`.
 - The Codex environment is prone to timeouts. Keep each Playwright spec short and split larger flows across multiple files. Document any timeouts; tests will be rerun elsewhere.
 - Use `TestHelpers.prepareTestEnvironment(page)` in `test.beforeEach` and Playwright's `expect(locator).toBeVisible()` assertions.
+- **Test Data Creation**: For display/rendering tests, create test data using `TestHelpers.prepareTestEnvironment(page, test.info(), lines)` where `lines` is an array of strings representing item text. This ensures proper Yjs synchronization and avoids keyboard input issues with special characters like `[/` that may trigger command palettes or shortcuts.
+  - Example: `await TestHelpers.prepareTestEnvironment(page, test.info(), ["これは[[太字と[/斜体]の組み合わせ]]です"]);`
+  - Do NOT manually type text with `page.keyboard.type()` for display tests, as it may conflict with keyboard shortcuts.
 - Create projects and pages programmatically via `fluidClient` rather than via the UI.
 - Simulate user input with `page.keyboard.type()` and manage cursors with `editorStore.setCursor()` and `cursor.insertText()` followed by a 500 ms wait and `waitForCursorVisible()`.
 - Use `data-item-id` selectors instead of `nth()`.
@@ -141,6 +164,7 @@ Mocks are generally forbidden. Limited exceptions:
 - Avoid duplicate functions and do not use `page.waitForLoadState('networkidle')`.
 - Process synchronously when possible.
 - Write all branch names and commit messages in English.
+- Follow error message when git commit fails by pre-commit hooks.
 
 ## 4. Development Workflow
 
@@ -156,6 +180,7 @@ Mocks are generally forbidden. Limited exceptions:
   2. `npm test` in the `client` directory to run unit tests
 - Fix any test failures before proceeding with further development
 - Never skip tests or simplify them to avoid merge conflicts - always solve the actual problems
+- After implementing code changes, run `npm run test:e2e:basic` to perform regression testing and ensure no existing functionality has been broken
 
 ## 5. Cursor, Selection, and Item Handling
 
@@ -224,4 +249,41 @@ Mocks are generally forbidden. Limited exceptions:
 
 ---
 
+## 10. Architectural Policy: No Thin Facades Between UI and Backends
+
+- We do NOT maintain a “thin facade” layer (e.g., a GlobalStore proxy) to shield the UI from backend-specific stores.
+- Rationale: In our Svelte 5 + Yjs architecture, the cost of widening the gap between UI and backends outweighs its benefits (reactivity pitfalls, test fragility, extra indirection).
+- UI and services may import backend stores directly (e.g., yjsStore, appStore, firestoreStore). Prefer clear, direct boundaries over proxy indirection.
+- Do not introduce new proxy/global façade layers. Remove or deprecate existing ones when feasible.
+
 Follow these guidelines to keep documentation, code, and tests consistent across the project.
+
+## 11. Reactive Data Synchronization & Prompt Guidance
+
+- **Prefer reactive subscriptions over polling**: When a view model depends on shared collections (such as comment lists or other collaborative datasets), register a change subscription against the underlying data source and update the reactive state in response to those events. Do not rely on timers, manual `afterTransaction` hooks, or similar polling loops when the system already exposes change notifications.
+- **Keep synchronization triggers comprehensive**: Any bidirectional binding between collaboration data and Svelte state must subscribe to every shared field it derives from (for example, comment counts or other computed aggregates). Ensure the reactive state is refreshed whenever the source data changes so that derived values stay in sync.
+- **Document positive alternatives alongside negative prompts**: When drafting prompt guidance (e.g., discouraging an approach), pair every negative instruction with an explicit positive alternative that the LLM should follow instead.
+- **Eliminate avoidable polling**: Before introducing a polling loop, confirm that no event-driven mechanism is available. If a reactive hook exists, use it to keep UI state synchronized and avoid the performance penalties of polling.
+
+### Yjs observe-based synchronization (mirror pattern)
+
+- Don’t bind Yjs types directly to the DOM—create a plain `$state` mirror and keep it in sync via Yjs observers.
+- UI → Yjs: update Yjs in explicit event handlers (e.g., on input/change).
+- Yjs → UI: on `observe`/`observeDeep`, assign into the mirror to trigger DOM updates.
+- Handle initial sync (`provider.on('synced')`) before seeding the mirror.
+- Always cleanup (`unobserve`/`unobserveDeep` and `provider.destroy()`), and use transaction `origin` to ignore local echoes.
+
+Why it works
+
+- Svelte re-renders on assignments to `$state`.
+- `$state` provides deep reactivity for plain objects/arrays, so Yjs changes become visible through the mirror.
+
+### Yjs-bound components and Svelte `key`
+
+- Components that have a 1:1 relationship with a Yjs object (e.g., a page tree bound to a specific Y.Doc) must wrap their render body in a Svelte `{#key ...}` keyed by `ydoc.guid` (fallback to model `id`). This guarantees a full remount whenever the underlying Y.Doc changes and eliminates any need to re-bind observers inside the component.
+- Do not implement "rebind on Y.Doc switch" logic inside components. The `{#key}` must make Y.Doc switching impossible within a mounted instance; remount instead.
+
+### Test-only event: `firestore-uc-changed`
+
+- `firestore-uc-changed` is a lightweight CustomEvent used only in test environments to aid deterministic redraws. In development and production, components must rely on `firestoreStore.ucVersion` and Svelte 5 `$derived` dependencies for reactivity instead of DOM events.
+- If any test or test-only fixture listens for `firestore-uc-changed`, add a comment clarifying that this dependency is "test environment only" and not part of the production signaling path.

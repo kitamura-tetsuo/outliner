@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature TBL-4f0d2b9a
  *  Title   : Table column and row manipulation
  *  Source  : docs/client-features.yaml
@@ -47,4 +50,3 @@ test.describe("TBL-4f0d2b9a: Table column and row manipulation", () => {
         await expect(firstCell).toHaveText("2");
     });
 });
-import "../utils/registerAfterEachSnapshot";

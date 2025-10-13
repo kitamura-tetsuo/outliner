@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature IME-0001
  *  Title   : IMEを使用した日本語入力
  *  Source  : docs/client-features.yaml
@@ -136,4 +139,3 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         expect(finalText).toContain("日本");
     });
 });
-import "../utils/registerAfterEachSnapshot";

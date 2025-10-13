@@ -1,6 +1,9 @@
+import "../utils/registerAfterEachSnapshot";
+registerCoverageHooks();
 // @ts-nocheck
 
 import { test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 
 test.describe("Debug Page Load", () => {
     test("debug page loading process", async ({ page }) => {
@@ -87,4 +90,3 @@ test.describe("Debug Page Load", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

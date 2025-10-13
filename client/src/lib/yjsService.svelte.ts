@@ -60,16 +60,28 @@ function keyFor(userId?: string, containerId?: string): ClientKey {
 export async function createNewProject(containerName: string): Promise<YjsClient> {
     const user = userManager.getCurrentUser();
     let userId = user?.id;
-    if (!userId) {
-        const isTest = import.meta.env.MODE === "test"
-            || (import.meta.env as any).VITE_IS_TEST === "true"
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            || process.env.NODE_ENV === "test";
-        if (isTest) userId = "test-user-id";
-    }
+    const isTest = import.meta.env.MODE === "test"
+        || (import.meta.env as any).VITE_IS_TEST === "true"
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        || process.env.NODE_ENV === "test";
+    if (!userId && isTest) userId = "test-user-id";
     if (!userId) throw new Error("ユーザーがログインしていないため、新規プロジェクトを作成できません");
 
-    const projectId = uuid();
+    // In test environment, derive a stable projectId from the title so separate browsers join the same room
+    function stableIdFromTitle(title: string): string {
+        try {
+            let h = 2166136261 >>> 0; // FNV-1a basis
+            for (let i = 0; i < title.length; i++) {
+                h ^= title.charCodeAt(i);
+                h = (h * 16777619) >>> 0;
+            }
+            const hex = h.toString(16);
+            return `p${hex}`; // ensure starts with a letter; matches [A-Za-z0-9_-]+
+        } catch {
+            return `p${Math.random().toString(16).slice(2)}`;
+        }
+    }
+    const projectId = isTest ? stableIdFromTitle(containerName) : uuid();
     const project = Project.createInstance(containerName);
     const client = await YjsClient.connect(projectId, project);
     const k = keyFor(userId, projectId);

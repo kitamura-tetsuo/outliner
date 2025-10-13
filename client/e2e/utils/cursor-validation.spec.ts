@@ -1,3 +1,6 @@
+import "./registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature TST-0002
  *  Title   : カーソル情報検証ユーティリティのテスト
  *  Source  : docs/client-features.yaml
@@ -137,4 +140,3 @@ test.describe("CursorValidator: カーソル情報検証ユーティリティ", 
         }
     });
 });
-import "./registerAfterEachSnapshot";

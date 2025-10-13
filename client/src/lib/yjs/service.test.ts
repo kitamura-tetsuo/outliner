@@ -1,9 +1,8 @@
+// @ts-nocheck
 import { describe, expect, it } from "vitest";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { Items } from "../../schema/yjs-schema";
-import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
-import { presenceStore } from "../../stores/PresenceStore.svelte";
 import { yjsService } from "./service";
 
 describe("yjsService", () => {
@@ -38,7 +37,18 @@ describe("yjsService", () => {
 
     it("binds project presence to store", () => {
         const awareness = new Awareness(new Y.Doc());
-        presenceStore.users = {} as any;
+        // Provide a minimal global presence store to avoid importing .svelte.ts
+        const presenceStore = {
+            users: {} as any,
+            setUser(u: any) {
+                this.users = { ...this.users, [u.userId]: u };
+            },
+            removeUser(id: string) {
+                const { [id]: _r, ...rest } = this.users;
+                this.users = rest;
+            },
+        };
+        (globalThis as any).presenceStore = presenceStore;
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
         expect(presenceStore.users["u1"].userName).toBe("Alice");
@@ -48,11 +58,22 @@ describe("yjsService", () => {
 
     it("binds page presence to overlay", () => {
         const awareness = new Awareness(new Y.Doc());
-        editorOverlayStore.cursors = {} as any;
+        // Provide a minimal global overlay store
+        const editorOverlayStore = {
+            cursors: {} as any,
+            setCursor({ itemId, offset, userId }: any) {
+                this.cursors[userId] = { itemId, offset, userId };
+            },
+            clearCursorAndSelection(userId: string) {
+                const { [userId]: _r, ...rest } = this.cursors;
+                this.cursors = rest;
+            },
+        };
+        (globalThis as any).editorOverlayStore = editorOverlayStore;
         const unbind = yjsService.bindPagePresence(awareness);
         awareness.setLocalStateField("user", { userId: "u2", name: "Bob" });
         awareness.setLocalStateField("presence", { cursor: { itemId: "i1", offset: 0 } });
-        const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
+        const cursor = Object.values(editorOverlayStore.cursors).find((c: any) => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
         awareness.setLocalStateField("user", null as any);
         awareness.setLocalStateField("presence", null as any);

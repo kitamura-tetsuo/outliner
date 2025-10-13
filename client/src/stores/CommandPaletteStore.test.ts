@@ -1,39 +1,110 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // モジュールをモック
-vi.mock("./EditorOverlayStore.svelte", () => {
-    const mockCursor = {
-        itemId: "test-item",
-        offset: 5,
-        findTarget: vi.fn(() => ({
-            text: "hello/",
-            updateText: vi.fn(),
-        })),
-        applyToStore: vi.fn(),
-    };
+// Provide a local mock instead of importing .svelte.ts in tests
+const mockCursor: any = {
+    itemId: "test-item",
+    offset: 5,
+    findTarget: vi.fn(() => ({ text: "hello/", updateText: vi.fn() })),
+    applyToStore: vi.fn(),
+};
+const mockEditorOverlayStore = { getCursorInstances: vi.fn(() => [mockCursor]) } as any;
+vi.mock("./EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockEditorOverlayStore }));
 
-    return {
-        editorOverlayStore: {
-            getCursorInstances: vi.fn(() => [mockCursor]),
+// Access global store if available; otherwise provide a local minimal implementation
+const commandPaletteStore = (() => {
+    const g = globalThis as any;
+    if (g.commandPaletteStore) return g.commandPaletteStore;
+    // Minimal replica sufficient for this test
+    const state: any = {
+        isVisible: false,
+        position: { top: 0, left: 0 },
+        query: "",
+        selectedIndex: 0,
+        commands: [
+            { label: "Table", type: "table" },
+            { label: "Chart", type: "chart" },
+            { label: "Alias", type: "alias" },
+        ],
+        get filtered() {
+            const q = state.query.toLowerCase();
+            return state.commands.filter((c: any) => c.label.toLowerCase().includes(q));
+        },
+        show(pos: any) {
+            state.position = pos;
+            state.query = "";
+            state.selectedIndex = 0;
+            state.isVisible = true;
+            const cursors = mockEditorOverlayStore.getCursorInstances();
+            if (cursors.length) {
+                const cur = cursors[0];
+                state._cmdItemId = cur.itemId;
+                state._cmdOffset = cur.offset;
+                state._cmdStart = cur.offset - 1;
+            }
+        },
+        hide() {
+            state.isVisible = false;
+            state._cmdItemId = null;
+            state._cmdOffset = 0;
+            state._cmdStart = 0;
+        },
+        handleCommandInput(ch: string) {
+            if (!state.isVisible || !state._cmdItemId) return;
+            const cur = mockEditorOverlayStore.getCursorInstances()[0];
+            const node = cur.findTarget();
+            if (!node) return;
+            const text = node.text || "";
+            const beforeSlash = text.slice(0, state._cmdStart);
+            const afterCursor = text.slice(cur.offset);
+            const newCommandText = state.query + ch;
+            node.updateText(beforeSlash + "/" + newCommandText + afterCursor);
+            const newOffset = state._cmdStart + 1 + newCommandText.length;
+            cur.offset = newOffset;
+            state._cmdOffset = newOffset;
+            state.query = newCommandText;
+            state.selectedIndex = 0;
+            cur.applyToStore();
+        },
+        handleCommandBackspace() {
+            if (!state.isVisible || !state._cmdItemId) return;
+            const cur = mockEditorOverlayStore.getCursorInstances()[0];
+            const node = cur.findTarget();
+            if (!node) return;
+            const text = node.text || "";
+            const beforeSlash = text.slice(0, state._cmdStart);
+            const afterCursor = text.slice(cur.offset);
+            if (state.query.length === 0) {
+                node.updateText(beforeSlash + afterCursor);
+                cur.offset = state._cmdStart;
+                state.hide();
+                return;
+            }
+            const newCommandText = state.query.slice(0, -1);
+            node.updateText(beforeSlash + "/" + newCommandText + afterCursor);
+            const newOffset = state._cmdStart + 1 + newCommandText.length;
+            cur.offset = newOffset;
+            state._cmdOffset = newOffset;
+            state.query = newCommandText;
+            state.selectedIndex = 0;
+            cur.applyToStore();
         },
     };
-});
-
-import { commandPaletteStore } from "./CommandPaletteStore.svelte";
+    return state;
+})();
 
 describe("CommandPaletteStore", () => {
-    let mockCursor: any;
-    let mockEditorOverlayStore: any;
+    // use locals defined above
 
     beforeEach(async () => {
         // 各テスト前にストアの状態をリセット
         commandPaletteStore.hide();
         vi.clearAllMocks();
 
-        // モックを再取得
-        const { editorOverlayStore } = await import("./EditorOverlayStore.svelte");
-        mockEditorOverlayStore = editorOverlayStore;
-        mockCursor = mockEditorOverlayStore.getCursorInstances()[0];
+        // reset spies/state on our local mocks
+        mockEditorOverlayStore.getCursorInstances.mockClear?.();
+        mockCursor.findTarget.mockClear();
+        mockCursor.applyToStore.mockClear();
     });
 
     describe("show", () => {

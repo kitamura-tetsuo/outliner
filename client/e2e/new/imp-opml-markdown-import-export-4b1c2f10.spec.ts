@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature IMP-0001
  *  Title   : OPML/Markdown import and export
  *  Source  : docs/client-features/imp-opml-markdown-import-export-4b1c2f10.yaml
@@ -18,6 +21,20 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         const encoded = encodeURIComponent(projectName);
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
+
+        // Setup debugger functions on the new page
+        await TestHelpers.setupTreeDebugger(page);
+
+        // Wait for the project data to be loaded via Yjs after navigation
+        await page.waitForFunction(() => {
+            const data = (window as any).getYjsTreeDebugData();
+            if (!data || !data.items || data.items.length === 0) {
+                return false;
+            }
+            const page = data.items[0]; // The first page
+            return page && page.items && page.items.length > 0;
+        });
+
         await page.click("text=Export Markdown");
         const md = await page.locator("textarea[data-testid='export-output']").inputValue();
         expect(md).toContain("Child item");
@@ -53,9 +70,6 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         console.log("Import button clicked");
         await page.waitForTimeout(2000);
 
-        // インポート後のプロジェクト状態を確認
-        const projectTreeData = await TreeValidator.getTreeData(page);
-        console.log("Project tree data after import:", JSON.stringify(projectTreeData, null, 2));
         console.log("Browser console logs:", consoleLogs);
 
         await page.goto(`/${encoded}/ImportedPage`);
@@ -64,6 +78,9 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         // ページ表示後のツリーデータを確認
         const pageTreeData = await TreeValidator.getTreeData(page);
         console.log("Page tree data after navigation:", JSON.stringify(pageTreeData, null, 2));
+
+        const textContents = await page.locator(".outliner-item .item-content").allTextContents();
+        console.log("Outliner item texts:", textContents);
 
         const firstItemText = await page.locator(".outliner-item .item-content").first().innerText();
         expect(firstItemText).toBe("ImportedPage");
@@ -97,9 +114,6 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         console.log("Import button clicked");
         await page.waitForTimeout(2000);
 
-        // インポート後のプロジェクト状態を確認
-        const projectTreeData = await TreeValidator.getTreeData(page);
-        console.log("Project tree data after import:", JSON.stringify(projectTreeData, null, 2));
         console.log("Browser console logs:", consoleLogs);
 
         await page.goto(`/${encoded}/Imported`);
@@ -140,10 +154,6 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         console.log("Import button clicked");
         await page.waitForTimeout(2000);
 
-        // インポート後のプロジェクト状態を確認
-        const projectTreeData = await TreeValidator.getTreeData(page);
-        console.log("Project tree data after import:", JSON.stringify(projectTreeData, null, 2));
-
         // プロジェクトページに戻って、ページリストを確認
         await page.goto(`/${encoded}`);
         await page.waitForTimeout(1000);
@@ -162,8 +172,34 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         // コンソールログを確認
         console.log("Browser console logs:", consoleLogs);
 
+        // Wait for items to be visible and check what's actually on the page
+        const allItems = await page.locator(".outliner-item").allTextContents();
+        console.log("All outliner items on page:", allItems);
+
+        // Check if Child item exists and try to expand it if collapsed
+        const childItem = page.locator(".outliner-item", { hasText: "Child" });
+        const childCount = await childItem.count();
+        console.log("Child item count:", childCount);
+
+        if (childCount > 0) {
+            // Check if there's a collapse button and click it to expand
+            const collapseBtn = childItem.locator(".collapse-btn").first();
+            const collapseBtnCount = await collapseBtn.count();
+            console.log("Collapse button count:", collapseBtnCount);
+
+            if (collapseBtnCount > 0) {
+                const btnText = await collapseBtn.textContent();
+                console.log("Collapse button text:", btnText);
+                if (btnText === "▶") {
+                    console.log("Expanding Child item");
+                    await collapseBtn.click();
+                    await page.waitForTimeout(500);
+                }
+            }
+        }
+
         const grandCount = await page.locator(".outliner-item", { hasText: "Grand" }).count();
+        console.log("Grand item count:", grandCount);
         expect(grandCount).toBeGreaterThan(0);
     });
 });
-import "../utils/registerAfterEachSnapshot";

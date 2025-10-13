@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature IME-0003
  *  Title   : IME composition underline follows active cursor
  *  Source  : docs/client-features.yaml
@@ -42,4 +45,3 @@ test.describe("IME-0003: IME composition underline follows cursor", () => {
         await expect(textarea).not.toHaveClass(/ime-input/);
     });
 });
-import "../utils/registerAfterEachSnapshot";

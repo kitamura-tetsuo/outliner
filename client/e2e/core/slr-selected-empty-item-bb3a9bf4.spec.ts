@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0008
  *  Title   : 選択範囲のエッジケース
  *  Source  : docs/client-features.yaml
@@ -124,4 +127,3 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         expect(itemCount).toBeGreaterThan(0);
     });
 });
-import "../utils/registerAfterEachSnapshot";

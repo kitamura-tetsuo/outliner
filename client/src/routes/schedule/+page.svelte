@@ -21,6 +21,8 @@ onMount(async () => {
 });
 </script>
 
+<title>Schedules | Outliner</title>
+
 <h1>Schedules</h1>
 <table>
     <tbody>

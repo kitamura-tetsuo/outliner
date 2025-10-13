@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0009
  *  Title   : ドラッグ＆ドロップによるテキスト移動
  *  Source  : docs/client-features.yaml
@@ -6,9 +9,22 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        await page.evaluate(() => {
+    test.beforeEach(async ({ page, context }, testInfo) => {
+        // クリップボードの権限を付与
+        await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+        await page.evaluate(async () => {
             (window as any).DEBUG_MODE = true;
+            // 他のテストの影響を受けないようにグローバル変数をクリア
+            delete (window as any).lastCopiedText;
+            delete (window as any).lastPastedText;
+
+            // navigator.clipboard もクリア
+            try {
+                await navigator.clipboard.writeText("");
+            } catch (e) {
+                console.log("Failed to clear clipboard:", e);
+            }
         });
         await TestHelpers.prepareTestEnvironment(page, testInfo);
         await page.evaluate(() => {
@@ -93,9 +109,14 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         console.log(`First item text after cut: "${firstItemTextAfterCut}"`);
 
         const thirdItem = page.locator(".outliner-item").nth(2);
+        const thirdId = await thirdItem.getAttribute("data-item-id");
         await thirdItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
+
+        // カーソルを第三項目に設定
+        await TestHelpers.setCursor(page, thirdId!);
         await page.keyboard.press("End");
+
         // ペースト前にグローバル変数を確認
         const globalText = await page.evaluate(() => {
             return (window as any).lastCopiedText || "not found";
@@ -122,4 +143,3 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         expect(thirdItemTextAfter).toContain("First");
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -241,9 +241,22 @@ npm run test:unit
 # E2E テスト (dotenvxで復号化して実行)
 dotenvx run -- npm run test:e2e
 
+# E2E テスト (Precise Coverage モード)
+# イベントハンドラやコールバックの実行回数を正確に取得
+PRECISE_COVERAGE=true dotenvx run -- npm run test:e2e
+
 # 環境維持テスト (Vitest)
 dotenvx run -- npm run test:env
 ```
+
+#### カバレッジモード
+
+E2Eテストでは2つのカバレッジモードを選択できます:
+
+- **Best-effort Coverage** (デフォルト): パフォーマンスへの影響が少ない。ほとんどのケースで十分。
+- **Precise Coverage** (`PRECISE_COVERAGE=true`): イベントハンドラやコールバックの実行回数を正確に取得。パフォーマンスへの影響が大きい。
+
+詳細は `docs/coverage-event-handlers.md` を参照してください。
 
 テストの前には `scripts/codex-setup.sh` を実行してローカルのエミュレータ群を起動してください。
 スクリプトは初回実行後にインストール結果をキャッシュするため、二回目以降は依存関係のインストールをスキップして短時間で完了します。

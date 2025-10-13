@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature API-0002
  *  Title   : Firebase emulator起動待機機能
  *  Source  : docs/client-features.yaml
@@ -30,5 +33,3 @@ test.describe("API-0002: emulator wait-and-retry", () => {
         expect(json.status).toBe("OK");
     });
 });
-import "../utils/registerAfterEachSnapshot";
-import "../utils/registerAfterEachSnapshot";

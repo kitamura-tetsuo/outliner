@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature IND-0001
  *  Title   : Advanced indentation and selection operations
  *  Source  : docs/client-features.yaml
@@ -99,4 +102,3 @@ test.describe("IND-0001: Advanced indentation and selection", () => {
         expect(finalCount).toBeGreaterThanOrEqual(initialCount);
     });
 });
-import "../utils/registerAfterEachSnapshot";

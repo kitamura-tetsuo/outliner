@@ -6,7 +6,7 @@ module.exports = [
   googleConfig,
   {
     languageOptions: {
-      ecmaVersion: 2020,
+      ecmaVersion: 2021,
       sourceType: "commonjs",
       globals: {
         console: "readonly",

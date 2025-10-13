@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ITM-auto-add-sibling-item-on-edit-84442697
  *  Title   : Auto-add sibling on editing last item
  *  Source  : docs/client-features.yaml
@@ -26,4 +29,3 @@ test.describe("ITM-auto-add-sibling-item-on-edit-84442697: auto add sibling item
         expect(countAfter).toBe(countBefore + 1);
     });
 });
-import "../utils/registerAfterEachSnapshot";

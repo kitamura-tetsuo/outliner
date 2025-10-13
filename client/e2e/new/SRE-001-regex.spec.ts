@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SRE-001
  *  Title   : Advanced Search & Replace (regex)
  *  Source  : docs/client-features.yaml
@@ -32,4 +35,3 @@ test.describe("SRE-001: Advanced Search & Replace regex", () => {
         expect(hits).toBe(2);
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -10,11 +10,22 @@ if (typeof window !== "undefined" && (
     import.meta.env.VITE_IS_TEST === "true" ||
     process.env.NODE_ENV === "test"
 )) {
-    // Dynamic import to ensure test helper is available
-    import("../tests/utils/testDataHelper").then(() => {
-        console.log("Test data helper loaded");
+    // Dynamic import to ensure test helper is available and seed default data if allowed
+    import("../tests/utils/testDataHelper").then((mod) => {
+        // logger.debug("Test data helper loaded"); // noise削減のため抑制
+        try {
+            const skip = window.localStorage.getItem("SKIP_TEST_CONTAINER_SEED") === "true";
+            if (!skip && typeof mod.setupTestEnvironment === "function") {
+                mod.setupTestEnvironment();
+                // logger.debug("Test data helper: setupTestEnvironment called on home page"); // noise削減のため抑制
+            } else if (skip) {
+                // logger.debug("SKIP_TEST_CONTAINER_SEED=true; skipping default test data setup on home page"); // noise削減のため抑制
+            }
+        } catch (e) {
+            logger.warn("Test data helper: auto-setup failed", e);
+        }
     }).catch(err => {
-        console.error("Failed to load test data helper:", err);
+        logger.error("Failed to load test data helper:", err);
     });
 }
 
@@ -63,11 +74,11 @@ async function handleContainerSelected(
 </script>
 
 <svelte:head>
-    <title>Outliner App</title>
+    <title>Outliner</title>
 </svelte:head>
 
-<main class="main-content" data-testid="outliner-base">
-    <h1>Outliner App</h1>
+<main class="main-content" data-testid="home-page">
+    <h1>Outliner</h1>
 
     <div class="welcome-message">
         <p>Outlinerへようこそ！</p>
@@ -155,3 +166,4 @@ h2 {
     margin-right: 0.5rem;
 }
 </style>
+// test 1760075075

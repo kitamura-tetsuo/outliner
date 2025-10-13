@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature SLR-0001
  *  Title   : Shift + 上下左右
  *  Source  : docs/client-features.yaml
@@ -226,4 +229,3 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         expect(cursorData.selectionCount).toBeGreaterThan(0);
     });
 });
-import "../utils/registerAfterEachSnapshot";

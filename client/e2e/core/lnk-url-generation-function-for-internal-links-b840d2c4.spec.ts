@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LNK-0001
  *  Title   : 内部リンクのURL生成機能
  *  Source  : docs/client-features.yaml
@@ -95,18 +98,29 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
             throw new Error(`Text input failed - [${actualPageName}] not found in any item`);
         }
 
-        // 新しいアイテムを作成
-        await page.keyboard.press("Enter");
-        await TestHelpers.waitForCursorVisible(page);
+        // プロジェクト内部リンクを含むテストデータをAPI経由で作成
+        // 実際のページ名を取得
+        const currentPageName = await page.evaluate(() => {
+            const store = (window as any).store;
+            if (store && store.currentPage && store.currentPage.text) {
+                return store.currentPage.text;
+            }
 
-        // 2番目のアイテムにプロジェクト内部リンクを入力
-        await page.keyboard.type("[/project-name/page-name]");
-        await page.waitForTimeout(500);
+            const pageTitle = document.querySelector(".page-title-content .item-text");
+            return pageTitle ? pageTitle.textContent?.trim() : "test-page";
+        });
 
-        // 3番目のアイテムを作成してフォーカスを移動
-        await page.keyboard.press("Enter");
-        await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.type("3つ目のアイテム");
+        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+            "一行目: テスト",
+            `[${currentPageName}]`, // This will be formatted as an internal link to the current page
+            "[/project-name/page-name]", // This will be formatted as a project internal link
+            "3つ目のアイテム",
+            "二行目: Yjs 反映",
+            "三行目: 並び順チェック",
+        ]);
+
+        // We need to ensure the page is loaded and formatted, so wait a bit
+        await page.waitForTimeout(1000);
 
         // フォーカスを外して内部リンクが正しく表示されるようにする
         await page.evaluate(() => {
@@ -231,19 +245,25 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         }
 
         // 2番目のアイテムで内部リンクが正しく生成されているかを確認
-        const secondItemResult = linkCheckResult.find(r => r.hasProjectPageText);
-        if (secondItemResult) {
-            console.log("Found item with project-page text:", secondItemResult);
-            if (secondItemResult.hasItemText) {
-                expect(secondItemResult.itemTextHTML).toContain("project-name/page-name");
-                expect(secondItemResult.itemTextHTML).toContain('href="/project-name/page-name"');
-            } else {
-                console.log("Warning: .item-text element not found for project link, but text content exists");
-                // .item-text要素がない場合でも、テキストが存在すれば成功とみなす
-                expect(secondItemResult.textContent).toContain("project-name/page-name");
+        // プロジェクト内部リンクが正しく生成されているか、HTML要素を確認
+        const projectLinkExists = await page.evaluate(() => {
+            // ページ全体を検索して、href="/project-name/page-name" というリンクが存在するか確認
+            const links = document.querySelectorAll("a.internal-link");
+            for (let link of links) {
+                if (
+                    link.getAttribute("href") === "/project-name/page-name"
+                    && link.textContent?.includes("project-name/page-name")
+                ) {
+                    return true;
+                }
             }
+            return false;
+        });
+
+        if (projectLinkExists) {
+            console.log("Found project internal link with href='/project-name/page-name'");
         } else {
-            throw new Error("No item found with [/project-name/page-name] text");
+            throw new Error("No project internal link found with href='/project-name/page-name'");
         }
     });
 
@@ -251,137 +271,49 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
      * @testcase 内部リンクのHTMLが正しく生成される
      * @description 内部リンクのHTMLが正しく生成されることを確認するテスト
      */
-    test("内部リンクのHTMLが正しく生成される", async ({ page }) => {
-        // アウトライナーアイテムが表示されるのを待つ
+    test("内部リンクのHTMLが正しく生成される", async ({ page }, testInfo) => {
+        const { pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "[placeholder]",
+            "[/project-name/page-name]",
+            "3つ目のアイテム",
+        ]);
+
         await page.waitForSelector(".outliner-item", { timeout: 30000 });
 
-        // 最初のアイテムのIDを取得
-        const firstItemId = await page.evaluate(() => {
-            const items = document.querySelectorAll(".outliner-item");
-            return items[1]?.getAttribute("data-item-id") || "item-1";
-        });
-
-        // 実際のページ名を取得（タイムスタンプ付きの完全な名前）
-        const actualPageName = await page.evaluate(() => {
-            // まずストアから取得を試す
-            const store = (window as any).store;
-            if (store && store.currentPage && store.currentPage.text) {
-                return store.currentPage.text;
+        await page.evaluate(dynamicPageName => {
+            const store = (window as any).generalStore || (window as any).appStore;
+            const items = store?.currentPage?.items;
+            if (!items) return;
+            const firstItem = items.at ? items.at(0) : (items as any)[0];
+            if (firstItem && typeof firstItem.updateText === "function") {
+                firstItem.updateText(`[${dynamicPageName}]`);
             }
+        }, pageName);
 
-            // フォールバックとしてDOMから取得
-            const pageTitle = document.querySelector(".page-title-content .item-text");
-            return pageTitle ? pageTitle.textContent?.trim() : "test-page";
-        });
-        console.log("Actual page name:", actualPageName);
+        await page.waitForTimeout(300);
+        await page.locator("body").click({ position: { x: 5, y: 5 } });
+        await page.waitForTimeout(300);
 
-        // ページタイトル要素から実際のページ名を取得
-        const pageTitle = await page.locator(".page-title-content .item-text").textContent();
-        console.log("Page title from DOM:", pageTitle);
+        const internalLink = page.locator(".item-text a.internal-link").filter({ hasText: pageName }).first();
+        await expect(internalLink).toBeVisible({ timeout: 5000 });
+        await expect(internalLink).toHaveAttribute("href", `/${pageName}`);
 
-        // より確実なページ名を使用
-        let fullPageName = actualPageName || pageTitle || "test-page";
-        console.log("Full page name to use:", fullPageName);
+        const internalLinkParentClass = await internalLink.evaluate(node => node.parentElement?.className ?? "");
+        expect(internalLinkParentClass).toContain("link-preview-wrapper");
 
-        // 最初のアイテムをクリックしてフォーカスを設定
-        await page.locator(`[data-item-id="${firstItemId}"]`).click();
-        await page.waitForTimeout(500);
+        const projectLink = page.locator('a.internal-link.project-link[href="/project-name/page-name"]');
+        await expect(projectLink).toBeVisible({ timeout: 5000 });
+        await expect(projectLink).toHaveText("project-name/page-name");
 
-        // 全選択してから内部リンクを入力
-        await page.keyboard.press("Control+a");
-        await page.waitForTimeout(200);
+        const projectLinkClass = await projectLink.getAttribute("class");
+        expect(projectLinkClass).toContain("internal-link");
+        expect(projectLinkClass).toContain("project-link");
 
-        console.log(`Typing internal link: [${fullPageName}]`);
-        await page.keyboard.type(`[${fullPageName}]`);
-        await page.waitForTimeout(1000);
-
-        // 新しいアイテムを作成
-        await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
-
-        console.log(`Typing project link: [/project-name/page-name]`);
-        // 2番目のアイテムにプロジェクト内部リンクを入力
-        await page.keyboard.type("[/project-name/page-name]");
-        await page.waitForTimeout(1000);
-
-        await page.waitForTimeout(500);
-
-        // 3番目のアイテムを作成してフォーカスを移動
-        await page.keyboard.press("Enter");
-        await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.type("3つ目のアイテム");
-
-        // フォーカスを外して内部リンクが正しく表示されるようにする
-        await page.evaluate(() => {
-            const activeElement = document.activeElement;
-            if (activeElement && activeElement.tagName === "TEXTAREA") {
-                (activeElement as HTMLElement).blur();
-            }
-        });
-        await page.waitForTimeout(1000);
-
-        // アイテムが表示されていることを確認
-        await page.waitForSelector(".outliner-item", { timeout: 5000 });
-
-        // アイテム数を確認
-        const itemCount = await page.locator(".outliner-item").count();
-        console.log("Total items after input:", itemCount);
-
-        // 内部リンクを含むアイテムを探す
-        console.log("Looking for item with internal links...");
-        const allItems = await page.locator(".outliner-item").all();
-        console.log("Total items found:", allItems.length);
-
-        let linkItem = null;
-        let firstItemHTML = "";
-
-        // 各アイテムをチェックして内部リンクを含むものを探す
-        // 実際に入力されたページ名を含むアイテムを探す
-        for (let i = 0; i < allItems.length; i++) {
-            const item = allItems[i];
-            const itemHTML = await item.innerHTML();
-
-            console.log(`Item ${i} HTML check:`);
-            console.log(`  Has internal-link: ${itemHTML.includes("internal-link")}`);
-            console.log(`  Has test-page-: ${itemHTML.includes("test-page-")}`);
-            console.log(`  Has project-name: ${itemHTML.includes("project-name")}`);
-            console.log(`  HTML snippet: ${itemHTML.substring(0, 200)}...`);
-
-            // 内部リンクを含み、かつプロジェクト内部リンクを含むアイテムを探す
-            if (itemHTML.includes("internal-link") && itemHTML.includes("project-name/page-name")) {
-                console.log(`Found internal link with project-name in item ${i}`);
-                linkItem = item;
-                firstItemHTML = itemHTML;
-                break;
-            }
-        }
-
-        if (!linkItem) {
-            throw new Error("No item with internal links found");
-        }
-
-        // フォーカスを外してリンクが表示されるようにする
-        await page.locator("body").click({ position: { x: 10, y: 10 } });
-        await page.waitForTimeout(1000);
-
-        // プロジェクト内部リンクのHTMLが正しく生成されていることを確認
-        const projectLinkPattern = new RegExp(
-            `<a href="\\/project-name\\/page-name"[^>]*class="[^"]*internal-link[^"]*"[^>]*>project-name\\/page-name<\\/a>`,
-        );
-        expect(firstItemHTML).toMatch(projectLinkPattern);
-
-        // 実際に見つかった内部リンクアイテムを使用
-        console.log("Using found link item for verification");
-        const linkItemHTML = firstItemHTML; // 既に取得済みのHTML
-        console.log("Link item HTML:", linkItemHTML);
-
-        // プロジェクト内部リンクが正しく生成されていることを確認
-        expect(linkItemHTML).toContain("internal-link");
-        expect(linkItemHTML).toContain("project-name/page-name");
-
-        // プロジェクト内部リンクも含まれていることを確認
-        expect(linkItemHTML).toContain("project-name/page-name");
-        expect(linkItemHTML).toMatch(projectLinkPattern);
+        const projectLinkDataset = await projectLink.evaluate(node => ({
+            project: node.getAttribute("data-project"),
+            page: node.getAttribute("data-page"),
+        }));
+        expect(projectLinkDataset.project).toBe("project-name");
+        expect(projectLinkDataset.page).toBe("page-name");
     });
 });
-import "../utils/registerAfterEachSnapshot";

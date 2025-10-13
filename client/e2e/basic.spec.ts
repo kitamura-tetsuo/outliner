@@ -1,3 +1,6 @@
+import "./utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature TST-0005
  *  Title   : テスト環境の初期化と準備
  *  Source  : docs/client-features.yaml
@@ -15,14 +18,14 @@ import { expect, test } from "@playwright/test";
 /**
  * @testcase ホームページが正常に表示される
  * @description アプリのホームページが正しく表示されることを確認するテスト
- * @check ホームページにアクセスするとタイトル「Outliner App」が表示される
+ * @check ホームページにアクセスするとタイトル「Outliner」が表示される
  * @check 認証コンポーネントが画面に表示される
  */
 test("ホームページが正常に表示される", async ({ page }) => {
     await page.goto("/");
 
     // タイトルが表示されることを確認
-    await expect(page.locator("h1")).toContainText("Outliner App");
+    await expect(page.locator("h1")).toContainText("Outliner");
 
     // 認証コンポーネントが表示されることを確認
     await expect(page.locator(".auth-section")).toBeVisible();
@@ -58,5 +61,3 @@ test("ログアウト後にGoogleログインボタンが表示される", async
     }
     await expect(page.locator(".google-btn")).toBeVisible();
 });
-import "./utils/registerAfterEachSnapshot";
-import "./utils/registerAfterEachSnapshot";

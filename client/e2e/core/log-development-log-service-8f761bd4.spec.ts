@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LOG-0001
  *  Title   : Development log service
  *  Source  : docs/client-features/log-development-log-service-8f761bd4.yaml
@@ -18,4 +21,3 @@ test.describe("LOG-0001: log service health", () => {
         expect(res.status()).toBe(405);
     });
 });
-import "../utils/registerAfterEachSnapshot";

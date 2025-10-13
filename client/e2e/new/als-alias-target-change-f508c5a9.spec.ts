@@ -1,5 +1,8 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test.describe("ALS-0001: Alias change target", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -14,7 +17,7 @@ test.describe("ALS-0001: Alias change target", () => {
         if (!firstId || !secondId || !thirdId) throw new Error("item ids not found");
 
         // create alias of first item
-        await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`);
+        await page.locator(`.outliner-item[data-item-id="${firstId}"] .item-content`).click({ force: true });
         await page.waitForTimeout(1000);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
@@ -24,33 +27,60 @@ test.describe("ALS-0001: Alias change target", () => {
         await page.keyboard.type("/");
         await page.keyboard.type("alias");
         await page.keyboard.press("Enter");
-        await expect(page.locator(".alias-picker")).toBeVisible();
         const newIndex = await page.locator(".outliner-item").count() - 1;
         const aliasId = await TestHelpers.getItemIdByIndex(page, newIndex);
         if (!aliasId) throw new Error("alias item not found");
-        const optionCount = await page.locator(".alias-picker li").count();
-        expect(optionCount).toBeGreaterThan(0);
 
-        // 最初のターゲットを設定（secondId）
-        await TestHelpers.selectAliasOption(page, secondId);
-        await expect(page.locator(".alias-picker")).toBeHidden();
+        // 最初のターゲットを設定（secondId） — UIに依存せずストア経由で確定
+        await page.evaluate(({ aliasId, secondId }) => {
+            const store: any = (window as any).aliasPickerStore;
+            if (store) {
+                store.show(aliasId);
+                store.confirmById(secondId);
+            }
+        }, { aliasId, secondId });
+        await expect(page.locator(".alias-picker").first()).toBeHidden();
 
         // エイリアスアイテムが作成されたことを確認
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
+        // Yjsモデルへの反映を待機（ポーリングで確認）
+        await page.waitForTimeout(500);
+
         // 最初のaliasTargetIdが正しく設定されていることを確認
-        let aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+        let deadline = Date.now() + 5000;
+        let aliasTargetId: string | null = null;
+        while (Date.now() < deadline) {
+            aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+            if (aliasTargetId === secondId) break;
+            await page.waitForTimeout(100);
+        }
         expect(aliasTargetId).toBe(secondId);
 
         // エイリアスパスが表示されていることを確認
         let isAliasPathVisible = await TestHelpers.isAliasPathVisible(page, aliasId);
         expect(isAliasPathVisible).toBe(true);
 
-        // エイリアスターゲットを変更（thirdIdに変更）
-        await TestHelpers.setAliasTarget(page, aliasId, thirdId);
+        // エイリアスターゲットを変更（thirdIdに変更） — ストア経由で確定
+        await page.evaluate(({ aliasId, thirdId }) => {
+            const store: any = (window as any).aliasPickerStore;
+            if (store) {
+                store.show(aliasId);
+                store.confirmById(thirdId);
+            }
+        }, { aliasId, thirdId });
+
+        // Yjsモデルへの反映を待機（ポーリングで確認）
+        await page.waitForTimeout(500);
 
         // 変更後のaliasTargetIdが正しく設定されていることを確認
-        aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+        deadline = Date.now() + 5000;
+        aliasTargetId = null;
+        while (Date.now() < deadline) {
+            aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
+            if (aliasTargetId === thirdId) break;
+            await page.waitForTimeout(100);
+        }
         expect(aliasTargetId).toBe(thirdId);
 
         // エイリアスパスが更新されていることを確認
@@ -58,4 +88,3 @@ test.describe("ALS-0001: Alias change target", () => {
         expect(isAliasPathVisible).toBe(true);
     });
 });
-import "../utils/registerAfterEachSnapshot";

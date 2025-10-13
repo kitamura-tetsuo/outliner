@@ -29,6 +29,49 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
+    // 添付ファイル: Y.Array<string> を保証して返す
+    get attachments(): Y.Array<string> {
+        let arr = this.value.get("attachments") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("attachments", arr);
+        }
+        return arr;
+    }
+
+    // 添付を追加（重複は無視）。テスト同期用に CustomEvent も発火
+    addAttachment(url: string) {
+        const arr = this.attachments;
+        if (!arr.toArray().includes(url)) {
+            arr.push([url]);
+            this.value.set("lastChanged", Date.now());
+            try {
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                        new CustomEvent("item-attachments-changed", { detail: { id: this.id, count: arr.length } }),
+                    );
+                }
+            } catch {}
+        }
+    }
+
+    // 添付を削除
+    removeAttachment(url: string) {
+        const arr = this.attachments;
+        const idx = arr.toArray().indexOf(url);
+        if (idx >= 0) {
+            arr.delete(idx, 1);
+            this.value.set("lastChanged", Date.now());
+            try {
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                        new CustomEvent("item-attachments-changed", { detail: { id: this.id, count: arr.length } }),
+                    );
+                }
+            } catch {}
+        }
+    }
+
     get items(): Items {
         return new Items(this.ydoc, this.tree, this.key);
     }
@@ -147,6 +190,10 @@ export class Project {
     addPage(title: string, author: string): Item {
         const page = this.items.addNode(author ?? "user");
         page.updateText(title ?? "");
+        const pages = this.ydoc.getMap<Y.Doc>("pages");
+        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as any);
+        pages.set(page.id, subdoc);
+        subdoc.load();
         return page;
     }
 }

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-0003
  *  Title   : 拡張フォーマット
  *  Source  : docs/client-features.yaml
@@ -12,12 +15,21 @@ test.describe("拡張フォーマット", () => {
     });
 
     test("リンクが正しく表示される", async ({ page }) => {
-        // 最初のアイテムを選択
-        const item = page.locator(".outliner-item").first();
+        // 最初のアイテムを選択（ページタイトルではない最初のアイテム）
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
+        expect(firstItemId).not.toBeNull();
+
+        const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await item.locator(".item-content").click();
 
-        // リンクを含むテキストを入力
-        await page.keyboard.type("これは[https://example.com]リンクです");
+        // 既存のテキストを削除
+        await page.keyboard.press("Control+A");
+        await page.keyboard.press("Delete");
+        await page.waitForTimeout(100);
+
+        // リンクを含むテキストを入力（insertTextを使用して特殊文字を正しく入力）
+        await page.keyboard.insertText("これは[https://example.com]リンクです");
+        await page.waitForTimeout(200);
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
@@ -31,20 +43,31 @@ test.describe("拡張フォーマット", () => {
         // フォーマットが適用されるのを待つ
         await page.waitForTimeout(500);
 
-        // 最初のアイテムのHTMLを確認
-        const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
+        // 最初のアイテムのHTMLを確認（直接の子要素の.item-textのみを取得）
+        const firstItemHtml = await page.locator(
+            `.outliner-item[data-item-id="${firstItemId}"] .item-content > .item-text`,
+        ).first().innerHTML();
 
         // リンクが正しく表示されていることを確認
         expect(firstItemHtml).toContain('<a href="https://example.com"');
     });
 
     test("引用が正しく表示される", async ({ page }) => {
-        // 最初のアイテムを選択
-        const item = page.locator(".outliner-item").first();
+        // 最初のアイテムを選択（ページタイトルではない最初のアイテム）
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
+        expect(firstItemId).not.toBeNull();
+
+        const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await item.locator(".item-content").click();
 
+        // 既存のテキストを削除
+        await page.keyboard.press("Control+A");
+        await page.keyboard.press("Delete");
+        await page.waitForTimeout(100);
+
         // 引用を含むテキストを入力
-        await page.keyboard.type("> これは引用文です");
+        await page.keyboard.insertText("> これは引用文です");
+        await page.waitForTimeout(200);
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
@@ -59,7 +82,9 @@ test.describe("拡張フォーマット", () => {
         await page.waitForTimeout(500);
 
         // 最初のアイテムのHTMLを確認
-        const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
+        const firstItemHtml = await page.locator(
+            `.outliner-item[data-item-id="${firstItemId}"] .item-content > .item-text`,
+        ).first().innerHTML();
 
         // 引用が正しく表示されていることを確認
         // テスト環境では引用が正しく変換されない場合があるため、元のテキストが含まれているかを確認
@@ -67,12 +92,21 @@ test.describe("拡張フォーマット", () => {
     });
 
     test("複合フォーマットが正しく表示される", async ({ page }) => {
-        // 最初のアイテムを選択
-        const item = page.locator(".outliner-item").first();
+        // 最初のアイテムを選択（ページタイトルではない最初のアイテム）
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
+        expect(firstItemId).not.toBeNull();
+
+        const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await item.locator(".item-content").click();
 
+        // 既存のテキストを削除
+        await page.keyboard.press("Control+A");
+        await page.keyboard.press("Delete");
+        await page.waitForTimeout(100);
+
         // 複合フォーマットを含むテキストを入力（リストと引用を別々に）
-        await page.keyboard.type("- [[太字]]と[/斜体]の[https://example.com]リンク");
+        await page.keyboard.insertText("- [[太字]]と[/ 斜体]の[https://example.com]リンク");
+        await page.waitForTimeout(200);
 
         // 別のアイテムを作成してカーソルを移動
         await page.keyboard.press("Enter");
@@ -87,7 +121,9 @@ test.describe("拡張フォーマット", () => {
         await page.waitForTimeout(500);
 
         // 最初のアイテムのHTMLを確認
-        const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
+        const firstItemHtml = await page.locator(
+            `.outliner-item[data-item-id="${firstItemId}"] .item-content > .item-text`,
+        ).first().innerHTML();
 
         // 複合フォーマットが正しく表示されていることを確認
         expect(firstItemHtml).toContain("<strong>");
@@ -96,16 +132,26 @@ test.describe("拡張フォーマット", () => {
     });
 
     test("カーソルがあるアイテムでは拡張フォーマットもプレーンテキストで表示される", async ({ page }) => {
-        // 最初のアイテムを選択
-        const item = page.locator(".outliner-item").first();
+        // 最初のアイテムを選択（ページタイトルではない最初のアイテム）
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
+        expect(firstItemId).not.toBeNull();
+
+        const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await item.locator(".item-content").click();
+
+        // 既存のテキストを削除
+        await page.keyboard.press("Control+A");
+        await page.keyboard.press("Delete");
+        await page.waitForTimeout(100);
 
         // 複合フォーマットを含むテキストを入力
         const complexText = "- [[太字]]と[/斜体]の[https://example.com]リンク";
-        await page.keyboard.type(complexText);
+        await page.keyboard.insertText(complexText);
+        await page.waitForTimeout(200);
 
         // カーソルがあるアイテムのテキストを確認
-        const itemText = await page.locator(".outliner-item").first().locator(".item-text").textContent();
+        const itemText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"] .item-content > .item-text`)
+            .first().textContent();
 
         // テキストに制御文字が含まれていることを確認（完全一致ではなく、含まれているかを確認）
         expect(itemText).toContain("太字");
@@ -114,8 +160,8 @@ test.describe("拡張フォーマット", () => {
         expect(itemText).toContain("リンク");
 
         // 入力したテキストがHTMLとして表示されていないことを確認
-        const itemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
+        const itemHtml = await page.locator(`.outliner-item[data-item-id="${firstItemId}"] .item-content > .item-text`)
+            .first().innerHTML();
         expect(itemHtml).toContain('class="control-char"'); // 制御文字が特別なクラスで表示されていることを確認
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,0 +1,20 @@
+id: CLM-5d2a7b4c
+title: Cursor formatting delegates to CursorEditor
+description: 'Formatting shortcuts such as bold, italic, and code blocks are processed
+
+  through the CursorEditor class. Selecting a range and triggering a
+
+  formatting command updates the text without losing cursor position or the
+
+  active item.
+
+  '
+category: cursor-management
+status: implemented
+acceptance:
+- Bold formatting wraps the selected text with Scrapbox [[...]] markers via CursorEditor.
+- Code formatting delegates to CursorEditor and wraps the selection in backticks.
+- Italic formatting uses CursorEditor to apply [/...]-style Scrapbox markup.
+tests:
+- client/e2e/core/clm-cursor-editor-formatting-5d2a7b4c.spec.ts
+title-ja: CursorEditor によるフォーマット操作の委譲

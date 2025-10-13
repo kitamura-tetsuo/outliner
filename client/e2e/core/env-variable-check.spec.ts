@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature TST-0006
  *  Title   : Environment variable is loaded in browser
  */
@@ -11,4 +14,3 @@ test.skip("VITE_IS_TEST is true in client runtime", async ({ page }, testInfo) =
     });
     expect(value).toBe("true");
 });
-import "../utils/registerAfterEachSnapshot";

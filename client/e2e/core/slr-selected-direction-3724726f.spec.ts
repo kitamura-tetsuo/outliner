@@ -1,5 +1,8 @@
+import "../utils/registerAfterEachSnapshot";
+registerCoverageHooks();
 // @ts-nocheck
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-3724726f: 選択範囲の方向切り替え", () => {
@@ -94,4 +97,3 @@ test.describe("SLR-3724726f: 選択範囲の方向切り替え", () => {
         expect(reverseSelectionDirection).toBe(false);
     });
 });
-import "../utils/registerAfterEachSnapshot";

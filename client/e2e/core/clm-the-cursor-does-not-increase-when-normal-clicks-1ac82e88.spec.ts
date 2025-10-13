@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature CLM-0100
  *  Title   : カーソル管理の基本機能
  *  Source  : docs/client-features.yaml
@@ -87,4 +90,3 @@ test.describe("カーソル管理テスト", () => {
         expect(cursorCountAfterThirdClick).toBeLessThanOrEqual(initialCursorCount);
     });
 });
-import "../utils/registerAfterEachSnapshot";

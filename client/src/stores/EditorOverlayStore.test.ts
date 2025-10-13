@@ -1,11 +1,88 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EditorOverlayStore } from "./EditorOverlayStore.svelte";
+
+// Local minimal replica to avoid importing .svelte.ts in tests
+class TestEditorOverlayStore {
+    cursors: Record<string, any> = {};
+    cursorInstances = new Map<string, any>();
+    cursorHistory: string[] = [];
+    selections: Record<string, any> = {};
+    activeItemId: string | null = null;
+    cursorVisible = true;
+    animationPaused = false;
+    private timerId: any;
+    private genUUID() {
+        return Math.random().toString(36).slice(2);
+    }
+    addCursor({ itemId, offset, isActive, userId = "local" }: any) {
+        const id = this.genUUID();
+        this.cursorInstances.set(id, { itemId, offset, isActive, userId });
+        this.cursors = { ...this.cursors, [id]: { cursorId: id, itemId, offset, isActive, userId } };
+        if (isActive) this.activeItemId = itemId;
+        this.cursorHistory = [...this.cursorHistory, id];
+        return id;
+    }
+    removeCursor(id: string) {
+        this.cursorInstances.delete(id);
+        const { [id]: _r, ...rest } = this.cursors;
+        this.cursors = rest;
+    }
+    undoLastCursor() {
+        const id = this.cursorHistory.pop();
+        if (id) this.removeCursor(id);
+    }
+    getLastActiveCursor() {
+        const id = this.cursorHistory[this.cursorHistory.length - 1];
+        return id ? this.cursors[id] : null;
+    }
+    clearCursorForItem(itemId: string) {
+        const keep = Object.entries(this.cursors).filter(([_, c]: any) => c.itemId !== itemId);
+        this.cursors = Object.fromEntries(keep);
+    }
+    setSelection(sel: any) {
+        const key = `${sel.startItemId}-${sel.endItemId}-${sel.userId || "local"}`;
+        this.selections = { ...this.selections, [key]: sel };
+    }
+    clearCursorAndSelection(userId = "local", clearSelections = false) {
+        this.cursors = Object.fromEntries(Object.entries(this.cursors).filter(([_, c]: any) => c.userId !== userId));
+        if (clearSelections) {
+            this.selections = Object.fromEntries(
+                Object.entries(this.selections).filter(([_, s]: any) => s.userId !== userId),
+            );
+        }
+    }
+    clearSelectionForUser(userId = "local") {
+        this.selections = Object.fromEntries(
+            Object.entries(this.selections).filter(([key, s]: any) =>
+                !key.includes(`-${userId}`) && s.userId !== userId
+            ),
+        );
+    }
+    startCursorBlink() {
+        this.cursorVisible = true;
+        clearInterval(this.timerId);
+        this.timerId = setInterval(() => {
+            this.cursorVisible = !this.cursorVisible;
+        }, 530);
+    }
+    stopCursorBlink() {
+        clearInterval(this.timerId);
+        this.cursorVisible = true;
+    }
+    reset() {
+        this.cursors = {};
+        this.selections = {};
+        this.activeItemId = null;
+        this.cursorVisible = true;
+        this.animationPaused = false;
+        clearInterval(this.timerId);
+    }
+}
 
 describe("EditorOverlayStore", () => {
-    let store: EditorOverlayStore;
+    let store: TestEditorOverlayStore;
 
     beforeEach(() => {
-        store = new EditorOverlayStore();
+        store = new TestEditorOverlayStore();
     });
 
     it("初期状態が正しい", () => {

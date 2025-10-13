@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature MCE-0002
  *  Title   : VS Code style multi-cursor commands
  *  Source  : docs/client-features.yaml
@@ -33,4 +36,3 @@ test.describe("MCE-0002: multi-cursor commands", () => {
         expect(countUndo).toBe(1);
     });
 });
-import "../utils/registerAfterEachSnapshot";

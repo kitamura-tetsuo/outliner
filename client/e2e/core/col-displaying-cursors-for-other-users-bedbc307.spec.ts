@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature COL-bedbc307
  *  Title   : Displaying cursors for other users
  *  Source  : docs/client-features/col-displaying-cursors-for-other-users-bedbc307.yaml
@@ -19,4 +22,3 @@ test.describe("COL-bedbc307: remote cursor display", () => {
         expect(count).toBe(2);
     });
 });
-import "../utils/registerAfterEachSnapshot";

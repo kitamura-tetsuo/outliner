@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LNK-0003
  *  Title   : 内部リンクのナビゲーション機能
  *  Source  : docs/client-features.yaml
@@ -21,15 +24,17 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         // 存在しないページへの内部リンクを入力
         await page.keyboard.type(`This is a link to [${nonExistentPageName}]`);
+
+        // Enterキーを押してアイテムを終了（フォーマットが適用されるように）
+        await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
-        // フォーカスを外してリンクが表示されるようにする
-        await page.locator("body").click({ position: { x: 10, y: 10 } });
+        // ページがリロードされるまで待機 (Yjs同期を待つ)
         await page.waitForTimeout(1000);
 
         // 内部リンクが生成されていることを確認
         const linkElement = page.locator(`a.internal-link`).filter({ hasText: nonExistentPageName });
-        await expect(linkElement).toBeVisible({ timeout: 5000 });
+        await expect(linkElement).toBeVisible({ timeout: 10000 });
 
         // リンクのhref属性を確認
         const linkHref = await linkElement.getAttribute("href");
@@ -52,4 +57,3 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // await expect(pageTitle).toContainText(nonExistentPageName);
     });
 });
-import "../utils/registerAfterEachSnapshot";

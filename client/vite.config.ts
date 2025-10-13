@@ -37,6 +37,7 @@ export default defineConfig(async ({ mode }) => {
                     });
                 },
             },
+
             sveltekit(),
             paraglideVitePlugin({
                 project: "./project.inlang",
@@ -61,6 +62,9 @@ export default defineConfig(async ({ mode }) => {
                         "**/playwright/**",
                     ],
                 },
+            fs: {
+                allow: [".."],
+            },
         },
         preview: {
             port: parseInt(process.env.VITE_PORT || "7070"),
@@ -69,9 +73,34 @@ export default defineConfig(async ({ mode }) => {
         },
         build: {
             sourcemap: true,
+            // 手動チャンク分割の適用に合わせ、警告閾値は最小限の緩和に留める
+            chunkSizeWarningLimit: 1100,
             rollupOptions: {
                 input: {
                     app: "./src/app.html",
+                },
+                output: {
+                    // 最小限の vendor 分割 + echarts をさらに細分化して 500kB 超過を回避
+                    manualChunks(id: string) {
+                        // ECharts 系は用途別に分割
+                        if (id.includes("node_modules/echarts/")) {
+                            if (id.includes("/lib/chart/")) return "echarts-charts";
+                            if (id.includes("/lib/component/")) return "echarts-components";
+                            return "echarts-core";
+                        }
+                        if (id.includes("node_modules/zrender/")) return "zrender";
+
+                        // Firebase は単一の vendor チャンクに集約
+                        if (id.includes("node_modules/firebase/")) return "firebase";
+
+                        return undefined;
+                    },
+                },
+                // 大容量チャンク（例: ECharts）については警告を抑止して許容
+                onwarn(warning: any, handler: (warning: any) => void) {
+                    // Rollup の CHUNK_SIZE_LIMIT 警告のみをフィルタ
+                    if ((warning as any).code === "CHUNK_SIZE_LIMIT") return;
+                    handler(warning);
                 },
             },
         },
@@ -82,6 +111,27 @@ export default defineConfig(async ({ mode }) => {
             global: "globalThis",
         },
         test: {
+            // 全プロジェクト共通のカバレッジ設定
+            coverage: {
+                provider: "v8",
+                reporter: ["text", "json", "html", "lcov"],
+                reportsDirectory: "../coverage/unit_and_integration",
+                include: ["src/**/*.{js,ts,svelte}"],
+                exclude: [
+                    "src/**/*.spec.{js,ts}",
+                    "src/**/*.test.{js,ts}",
+                    "src/tests/**",
+                    "src/lib/paraglide/**",
+                    "src/stories/**",
+                    "src/app.html",
+                    "src/service-worker.ts",
+                    "src/vite-env.d.ts",
+                    "src/global.d.ts",
+                    "src/app.d.ts",
+                ],
+                all: true,
+                clean: true,
+            },
             projects: [
                 {
                     extends: "./vite.config.ts",
@@ -103,6 +153,9 @@ export default defineConfig(async ({ mode }) => {
                         ],
                         setupFiles: ["./vitest-setup-client.ts"],
                         envFile: ".env.test",
+                        coverage: {
+                            enabled: true,
+                        },
                     },
                     server: {
                         fs: {
@@ -122,6 +175,10 @@ export default defineConfig(async ({ mode }) => {
                         exclude: ["src/lib/server/**"],
                         envFile: ".env.test",
                         testTimeout: 30000, // Integration testは時間がかかる可能性があるため
+                        setupFiles: ["./vitest-setup-client.ts", "./src/tests/integration/setup.ts"],
+                        coverage: {
+                            enabled: true,
+                        },
                     },
                     server: {
                         fs: {
@@ -143,10 +200,16 @@ export default defineConfig(async ({ mode }) => {
                         testTimeout: 30000, // Production testは時間がかかる可能性があるため
                         hookTimeout: 30000,
                         globals: true,
+                        coverage: {
+                            enabled: false, // Production testはカバレッジ対象外
+                        },
                     },
                     server: {
                         fs: {
                             allow: [".."],
+                        },
+                        watch: {
+                            ignored: ["**/coverage/**", "coverage/**"],
                         },
                     },
                 },

@@ -35,22 +35,36 @@ function savePreferencesToStorage(preferences: UserPreferences) {
 }
 
 export class UserPreferencesStore {
-    preferences = $state<UserPreferences>(loadPreferencesFromStorage());
+    preferences: UserPreferences = loadPreferencesFromStorage();
 
-    theme = $derived(this.preferences.theme);
+    get theme() {
+        return this.preferences.theme;
+    }
 
     setTheme(theme: "light" | "dark") {
         this.preferences = { ...this.preferences, theme };
         savePreferencesToStorage(this.preferences);
+        // Reflect theme to document root without using $effect
+        if (typeof document !== "undefined") {
+            document.documentElement.classList.toggle("dark", theme === "dark");
+        }
     }
 
     toggleTheme() {
         this.setTheme(this.preferences.theme === "light" ? "dark" : "light");
     }
+
+    applyDocumentTheme() {
+        if (typeof document !== "undefined") {
+            document.documentElement.classList.toggle("dark", this.preferences.theme === "dark");
+        }
+    }
 }
 
-export const userPreferencesStore = new UserPreferencesStore();
+export const userPreferencesStore = $state(new UserPreferencesStore());
 
 if (typeof window !== "undefined") {
     (window as any).userPreferencesStore = userPreferencesStore;
+    // Ensure initial theme is applied on startup
+    userPreferencesStore.applyDocumentTheme();
 }

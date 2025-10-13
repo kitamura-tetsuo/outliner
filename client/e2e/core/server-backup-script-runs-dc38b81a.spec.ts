@@ -1,9 +1,12 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import { execFile } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { promisify } from "util";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
@@ -24,4 +27,3 @@ test("backup script creates archive", async () => {
     const files = await fs.promises.readdir(backupDir);
     expect(files.length).toBe(1);
 });
-import "../utils/registerAfterEachSnapshot";

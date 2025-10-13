@@ -18,10 +18,12 @@ describe("SEA-0001 page title search box late load", () => {
         const project = Project.createInstance("my project");
         project.addPage("second page", "me");
 
-        render(SearchBox);
+        const { rerender } = render(SearchBox);
         await user.type(screen.getByPlaceholderText("Search pages"), "second");
         // Simulate late project resolution after user input
         generalStore.project = project;
+        // Re-render with the project prop to ensure effectiveProject updates
+        rerender({ project });
         const result = await screen.findByRole("button", { name: "second page" });
         await user.click(result);
         expect(goto).toHaveBeenCalledWith("/my%20project/second%20page");

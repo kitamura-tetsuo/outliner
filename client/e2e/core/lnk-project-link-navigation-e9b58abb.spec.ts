@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LNK-0003
  *  Title   : 内部リンクのナビゲーション機能
  *  Source  : docs/client-features.yaml
@@ -21,18 +24,34 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // プロジェクト内部リンクを入力
-        await page.keyboard.type(`This is a link to [/${targetProjectName}/${targetPageName}]`);
+        // Insert the link text in one step to avoid keyboard shortcuts dropping characters after '['
+        await page.keyboard.insertText(`This is a link to [/${targetProjectName}/${targetPageName}]`);
+        await page.waitForTimeout(500); // Ensure typing is processed
+
+        // Press Enter to create a new item and potentially process the previous item
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Second item");
+
+        // Move focus away from the first item to ensure it's no longer in editing mode
+        // First click on the second item to shift focus
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId).not.toBeNull();
+
+        // Click the second item to shift focus from first item
+        await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").click();
+
+        // Wait for the update to propagate and for the first item to be rendered in non-editing mode
         await page.waitForTimeout(500);
 
-        // フォーカスを外してリンクが表示されるようにする
-        await page.locator("body").click({ position: { x: 10, y: 10 } });
-        await page.waitForTimeout(1000);
+        // Wait for the editor to become inactive - wait for the data-active attribute to change to "false"
+        // or for the element to no longer have the data-active="true" attribute
+        await expect(firstItem).not.toHaveAttribute("data-active", "true", { timeout: 8000 });
 
-        // プロジェクト内部リンクが生成されていることを確認
-        const linkElement = page.locator(`a.internal-link.project-link`).filter({
-            hasText: `${targetProjectName}/${targetPageName}`,
-        });
-        await expect(linkElement).toBeVisible({ timeout: 5000 });
+        // Check that the item-content no longer contains the .control-char elements
+        await expect(firstItem.locator(".item-content .control-char")).not.toBeVisible({ timeout: 5000 });
+
+        // Select the link element that was created
+        const linkElement = firstItem.locator("a[href]").first();
 
         // リンクのhref属性を確認
         const linkHref = await linkElement.getAttribute("href");
@@ -54,4 +73,3 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // await expect(pageTitle).toContainText(targetPageName);
     });
 });
-import "../utils/registerAfterEachSnapshot";

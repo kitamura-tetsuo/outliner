@@ -1,4 +1,7 @@
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 test.describe("Network Connectivity Test", () => {
     test("can access Firebase emulator endpoints", async ({ page }) => {
@@ -143,4 +146,3 @@ test.describe("Network Connectivity Test", () => {
         }
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LNK-9bddc693
  *  Title   : Link preview feature
  *  Source  : docs/client-features/lnk-link-preview-feature-9bddc693.yaml
@@ -14,4 +17,3 @@ test.describe("LNK-9bddc693: link preview", () => {
         await expect(page).toHaveURL(/Test\%20Project/);
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-0001
  *  Title   : フォーマット表示
  *  Source  : docs/client-features.yaml
@@ -89,25 +92,19 @@ test.describe("フォーマット表示", () => {
     });
 
     test("斜体フォーマット（[/ text]）が視覚的に斜体で表示される", async ({ page }) => {
-        // 最初のアイテムを選択
-        const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click();
-
-        // カーソルが表示されるまで待機
-        await TestHelpers.waitForCursorVisible(page);
-
-        // テキストを入力
-        await page.keyboard.type("これは[/斜体]のテキストです");
-
-        // 別のアイテムを作成してカーソルを移動
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("別のアイテム");
+        // prepareTestEnvironment の lines パラメータでデータを作成
+        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+            "これは[/ 斜体]のテキストです",
+        ]);
 
         // 少し待機してフォーマットが適用されるのを待つ
         await page.waitForTimeout(500);
 
-        // 最初のアイテムのHTMLを確認
-        const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
+        // 最初のアイテム（ページタイトルではない）のHTMLを確認
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(firstItemId).not.toBeNull();
+        const firstItemHtml = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
+            .innerHTML();
 
         // 斜体フォーマットが適用されていることを確認
         expect(firstItemHtml).toContain("<em>斜体</em>");
@@ -206,4 +203,3 @@ test.describe("フォーマット表示", () => {
         expect(itemText).toContain("のテキストです");
     });
 });
-import "../utils/registerAfterEachSnapshot";

@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature ITM-ff843c45
  *  Title   : タイトルと子アイテムの水平位置を揃える
  *  Source  : docs/client-features.yaml
@@ -26,4 +29,3 @@ test.describe("ITM-ff843c45: タイトルと子アイテムの位置", () => {
         expect(Math.abs((titleBox?.x || 0) - (childBox?.x || 0))).toBeLessThan(1);
     });
 });
-import "../utils/registerAfterEachSnapshot";

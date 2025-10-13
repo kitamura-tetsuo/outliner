@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature FMT-0005
  *  Title   : VS Code style clipboard behavior
  *  Source  : docs/client-features.yaml
@@ -62,4 +65,3 @@ test.describe("VS Code clipboard behavior", () => {
         expect(last).toBe("111\n222");
     });
 });
-import "../utils/registerAfterEachSnapshot";

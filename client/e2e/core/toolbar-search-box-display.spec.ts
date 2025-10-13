@@ -1,3 +1,6 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature TOO-0001
  *  Title   : ツールバーのSearchBox表示機能
  *  Source  : manual test
@@ -17,7 +20,9 @@ test.describe("TOO-0001: ツールバーのSearchBox表示機能", () => {
 
     test("ツールバーが上部に固定表示される", async ({ page }) => {
         // ツールバーが表示されることを確認
-        const toolbar = page.getByTestId("main-toolbar");
+        // SSRシェルのtoolbarではなく、クライアント側でマウントされたtoolbarを選択
+        // 2番目の要素がクライアント側のtoolbar
+        const toolbar = page.getByTestId("main-toolbar").last();
         await expect(toolbar).toBeVisible();
 
         // ツールバーが固定位置にあることを確認
@@ -41,14 +46,18 @@ test.describe("TOO-0001: ツールバーのSearchBox表示機能", () => {
         await expect(searchBox).toBeVisible();
 
         // SearchBoxがツールバー内にあることを確認
-        const toolbar = page.getByTestId("main-toolbar");
+        // SSRシェルのtoolbarではなく、クライアント側でマウントされたtoolbarを選択
+        // 2番目の要素がクライアント側のtoolbar
+        const toolbar = page.getByTestId("main-toolbar").last();
         const searchBoxInToolbar = toolbar.locator(".page-search-box");
         await expect(searchBoxInToolbar).toBeVisible();
     });
 
     test("メインコンテンツがツールバーの下に表示される", async ({ page }) => {
         // メインコンテンツが表示されることを確認
-        const mainContent = page.locator(".main-content");
+        // SSRシェルのmain-contentではなく、クライアント側でマウントされたmain-contentを選択
+        // 2番目の要素がクライアント側のmain-content
+        const mainContent = page.locator(".main-content").last();
         await expect(mainContent).toBeVisible();
 
         // メインコンテンツにパディングが適用されていることを確認
@@ -65,7 +74,9 @@ test.describe("TOO-0001: ツールバーのSearchBox表示機能", () => {
 
     test("SearchBoxの入力フィールドが機能する", async ({ page }) => {
         // SearchBoxの入力フィールドを取得
-        const searchInput = page.locator(".page-search-box input");
+        // SSRシェルのinputではなく、クライアント側でマウントされたinputを選択
+        // 2番目の要素がクライアント側のinput
+        const searchInput = page.locator(".page-search-box input").last();
         await expect(searchInput).toBeVisible();
 
         // 入力フィールドにテキストを入力
@@ -75,4 +86,3 @@ test.describe("TOO-0001: ツールバーのSearchBox表示機能", () => {
         await expect(searchInput).toHaveValue("test");
     });
 });
-import "../utils/registerAfterEachSnapshot";
