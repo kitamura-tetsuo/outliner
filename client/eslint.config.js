@@ -5,6 +5,7 @@ import globals from "globals";
 import { fileURLToPath } from "node:url";
 import ts from "typescript-eslint";
 import svelteConfig from "./svelte.config.js";
+
 const gitignorePath = fileURLToPath(new URL("./.gitignore", import.meta.url));
 
 export default ts.config(
@@ -31,7 +32,6 @@ export default ts.config(
     {
         files: ["**/*.svelte", "**/*.svelte.ts", "**/*.svelte.js"],
         ignores: ["eslint.config.js", "svelte.config.js"],
-
         languageOptions: {
             parserOptions: {
                 projectService: true,
@@ -41,7 +41,22 @@ export default ts.config(
             },
         },
     },
-    // Tests: disallow importing .svelte.ts directly
+    {
+        files: ["e2e/utils/testHelpers.ts"],
+        rules: {
+            "no-restricted-syntax": [
+                "error",
+                {
+                    selector: "ReturnStatement[argument.name='page']",
+                    message: "Forbidden: do not return the global 'page' object.",
+                },
+                {
+                    selector: "ArrowFunctionExpression[body.name='page']",
+                    message: "Forbidden: arrow function should not implicitly return 'page'.",
+                },
+            ],
+        },
+    },
     {
         files: [
             "**/*.{test,spec}.{js,ts,tsx}",
@@ -81,7 +96,11 @@ export default ts.config(
         },
     },
     {
-        files: ["e2e/**/*.{js,ts,tsx}", "e2e/**/*.{test,spec}.{js,ts,tsx}", "**/*.e2e-spec.{js,ts,tsx}"],
+        files: [
+            "e2e/**/*.{js,ts,tsx}",
+            "e2e/**/*.{test,spec}.{js,ts,tsx}",
+            "**/*.e2e-spec.{js,ts,tsx}",
+        ],
         rules: {
             "no-restricted-imports": [
                 "error",
