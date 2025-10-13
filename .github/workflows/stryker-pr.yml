@@ -1,0 +1,153 @@
+name: Stryker PR Mutation
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  mutation:
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout (full history for diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compute changed files (vs PR base)
+        id: changed_files
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch origin "$BASE" --depth=1
+          git diff --name-only "$BASE" "$HEAD" \
+            | grep -E '^client/src/.*\.(ts|tsx|js|jsx|svelte)$' \
+            | sed 's|^client/||' \
+            > changed_files.txt || true
+          echo "Changed files:"
+          cat changed_files.txt || true
+          COUNT=$(wc -l < changed_files.txt | tr -d ' ')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Build --mutate file list
+        id: mutate_files
+        run: |
+          if [ "${{ steps.changed_files.outputs.count }}" = "0" ]; then
+            echo "args=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          MUTATE=$(paste -sd, changed_files.txt)
+          echo "args=--mutate $MUTATE" >> "$GITHUB_OUTPUT"
+
+      - name: Build --mutate with line ranges
+        id: mutate_ranges
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff -U0 "$BASE" "$HEAD" | \
+          awk '
+            /^diff --git a\//{file=""}
+            /^diff --git a\/.+ b\/(.+)$/ {
+              file=$4
+              sub(/^b\//, "", file)
+              next
+            }
+            /^@@/ {
+              if (file ~ /^client\/src\/.*\.(ts|tsx|js|jsx|svelte)$/) {
+                sub(/^client\//, "", file)
+                if (match($0, /\+([0-9]+),?([0-9]*)/, m)) {
+                  start=m[1]; count=m[2]; if (count=="") count=1;
+                  end=start+count-1;
+                  print file ":" start "-" end
+                }
+              }
+            }
+          ' > mutate_ranges.txt || true
+          if [ -s mutate_ranges.txt ]; then
+            MUTATE=$(paste -sd, mutate_ranges.txt)
+            echo "args=--mutate $MUTATE" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine mutate arguments
+        id: mutate_args
+        run: |
+          if [ -n "${{ steps.mutate_ranges.outputs.args }}" ]; then
+            echo "value=${{ steps.mutate_ranges.outputs.args }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ steps.mutate_files.outputs.args }}" ]; then
+            echo "value=${{ steps.mutate_files.outputs.args }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Stryker (incremental + changed lines)
+        id: stryker
+        continue-on-error: true
+        run: |
+          if [ -n "${{ steps.mutate_args.outputs.value }}" ]; then
+            npx stryker run --incremental ${{ steps.mutate_args.outputs.value }}
+          else
+            npx stryker run --incremental
+          fi
+
+      - name: Generate mutation summary
+        if: always()
+        run: |
+          if [ -f reports/mutation/mutation-report.json ]; then
+            node ./scripts/create-stryker-summary.mjs reports/mutation/mutation-report.json reports/mutation/mutation-report
+          fi
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-html-report
+          path: |
+            reports/**/mutation/html/**/*
+            **/StrykerOutput/**/**/*.html
+          if-no-files-found: ignore
+
+      - name: Comment summary on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const candidates = [
+              'reports/mutation/mutation-report.md',
+              'reports/mutation/mutation-report.txt',
+              'reports/mutation/mutation-report.json'
+            ].filter(p => fs.existsSync(p));
+            let body = '### 🧪 Stryker Mutation Test (PR scope)\n';
+            if (candidates.length) {
+              body += '\n```\n' + fs.readFileSync(candidates[0], 'utf8').slice(0, 60000) + '\n```\n';
+            } else {
+              body += '\n(Report summary file not found. Please download the **stryker-html-report** artifact.)\n';
+            }
+            body += '\n> Detailed HTML report is available as build artifact: **stryker-html-report**.';
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

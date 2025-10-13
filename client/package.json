@@ -39,6 +39,9 @@
         "@modelcontextprotocol/sdk": "^1.18.0",
         "@playwright/mcp": "^0.0.36",
         "@playwright/test": "^1.53.0-alpha-2025-05-30",
+        "@stryker-mutator/core": "^9.2.0",
+        "@stryker-mutator/typescript-checker": "^9.2.0",
+        "@stryker-mutator/vitest-runner": "^9.2.0",
         "@sveltejs/adapter-auto": "^6.0.1",
         "@sveltejs/adapter-static": "^3.0.8",
         "@sveltejs/kit": "^2.27.0",
@@ -118,6 +121,7 @@
         "test:production": "vitest run --project production",
         "test:production:watch": "vitest --project production",
         "test:unit": "vitest run --project unit --coverage",
+        "test:mutation": "NODE_ENV=test dotenvx run --overload --env-file=.env.test -- stryker run --incremental",
         "analyze:polling": "node ../scripts/analyze-polling.mjs",
         "test:polling": "NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npx playwright test ./e2e/env/env-polling-analysis-test-removability-a1b2c3d4.spec.ts --reporter=list' --"
     },
