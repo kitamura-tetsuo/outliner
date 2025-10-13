@@ -1,4 +1,5 @@
 import { Cursor } from "../lib/Cursor"; // Cursor クラスを import
+import { yjsStore } from "./yjsStore.svelte";
 
 // Exported types
 export interface CursorPosition {
@@ -66,6 +67,7 @@ export class EditorOverlayStore {
     textareaRef: HTMLTextAreaElement | null = null;
     // onEdit コールバック
     onEditCallback: (() => void) | null = null;
+    private presenceSyncScheduled = false;
 
     // Lightweight pub-sub for UI (to avoid polling in components)
     private listeners = new Set<() => void>();
@@ -161,6 +163,10 @@ export class EditorOverlayStore {
         // アクティブアイテムを更新
         if (cursor.isActive) {
             this.setActiveItem(cursor.itemId);
+        }
+
+        if ((cursor.userId ?? "local") === "local") {
+            this.schedulePresenceSync();
         }
     }
 
@@ -307,6 +313,7 @@ export class EditorOverlayStore {
     }
 
     removeCursor(cursorId: string) {
+        const removed = this.cursors[cursorId];
         // Map からインスタンスを削除
         this.cursorInstances.delete(cursorId);
         // Reactive state からも削除
@@ -314,6 +321,10 @@ export class EditorOverlayStore {
         delete newCursors[cursorId];
         this.cursors = newCursors;
         this.notifyChange();
+
+        if ((removed?.userId ?? "local") === "local") {
+            this.schedulePresenceSync();
+        }
     }
 
     undoLastCursor() {
@@ -336,6 +347,10 @@ export class EditorOverlayStore {
         const key = this.genUUID();
         this.selections = { ...this.selections, [key]: selection };
         this.notifyChange();
+
+        if ((selection.userId ?? "local") === "local") {
+            this.schedulePresenceSync();
+        }
         return key;
     }
 
@@ -402,6 +417,10 @@ export class EditorOverlayStore {
             console.log(`Box selection set with key: ${key}`);
             console.log(`Current selections:`, this.selections);
         }
+
+        if (userId === "local") {
+            this.schedulePresenceSync();
+        }
     }
 
     /**
@@ -410,6 +429,7 @@ export class EditorOverlayStore {
     clearSelections() {
         this.selections = {};
         this.notifyChange();
+        this.schedulePresenceSync();
     }
 
     /**
@@ -446,6 +466,10 @@ export class EditorOverlayStore {
             } else {
                 console.log(`All selections for userId=${userId} were successfully cleared`);
             }
+        }
+
+        if (userId === "local") {
+            this.schedulePresenceSync();
         }
     }
 
@@ -597,6 +621,10 @@ export class EditorOverlayStore {
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Cursors after clearing:`, this.cursors);
+        }
+
+        if ((userId ?? "local") === "local") {
+            this.schedulePresenceSync();
         }
     }
 
@@ -774,6 +802,10 @@ export class EditorOverlayStore {
             console.log(`Updated cursor history:`, this.cursorHistory);
         }
         this.notifyChange();
+
+        if (userId === "local") {
+            this.schedulePresenceSync();
+        }
 
         return id;
     }
@@ -1292,6 +1324,55 @@ export class EditorOverlayStore {
         const textEl = el.querySelector(".item-text");
         const text = textEl ? textEl.textContent || "" : "";
         return { id, text };
+    }
+
+    private schedulePresenceSync() {
+        if (this.presenceSyncScheduled) return;
+        this.presenceSyncScheduled = true;
+        queueMicrotask(() => {
+            this.presenceSyncScheduled = false;
+            this.pushPresenceState();
+        });
+    }
+
+    private pushPresenceState() {
+        try {
+            const client = yjsStore.yjsClient as any;
+            if (!client || typeof client.updatePresence !== "function") return;
+            const cursor = this.getLocalPrimaryCursor();
+            const selection = this.getLocalPrimarySelection();
+            if (!cursor && !selection) {
+                client.updatePresence(null);
+                return;
+            }
+            client.updatePresence({
+                cursor: cursor ? { itemId: cursor.itemId, offset: cursor.offset } : undefined,
+                selection: selection
+                    ? {
+                        startItemId: selection.startItemId,
+                        startOffset: selection.startOffset,
+                        endItemId: selection.endItemId,
+                        endOffset: selection.endOffset,
+                        isReversed: selection.isReversed ?? false,
+                        isBoxSelection: selection.isBoxSelection ?? false,
+                        boxSelectionRanges: selection.isBoxSelection ? selection.boxSelectionRanges ?? [] : undefined,
+                    }
+                    : undefined,
+            });
+        } catch {
+            // Awareness が利用できない環境では presence 同期をスキップ
+        }
+    }
+
+    private getLocalPrimaryCursor(): CursorPosition | undefined {
+        const cursors = Object.values(this.cursors).filter(c => (c.userId ?? "local") === "local");
+        if (cursors.length === 0) return undefined;
+        const active = cursors.find(c => c.isActive);
+        return active ?? cursors[0];
+    }
+
+    private getLocalPrimarySelection(): SelectionRange | undefined {
+        return Object.values(this.selections).find(sel => (sel.userId ?? "local") === "local");
     }
 }
 

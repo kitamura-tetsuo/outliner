@@ -54,7 +54,7 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 function measureTextWidthFallback(itemId: string, text: string): number {
     const itemInfo = positionMap[itemId];
     if (!itemInfo) return 0;
-    
+
     const { fontProperties } = itemInfo;
     // フォントの特性に基づいてテキストの推定幅を計算
     // 標準的な文字幅（スペース、英数字、日本語など）を使用
@@ -73,6 +73,64 @@ function measureTextWidthFallback(itemId: string, text: string): number {
     }
     return width;
 }
+
+function colorWithAlpha(baseColor: string | undefined, alpha: number, fallback: string): string {
+    if (!baseColor) return fallback;
+    const color = baseColor.trim();
+
+    const hslMatch = color.match(/^hsla?\(([^)]+)\)$/i);
+    if (hslMatch) {
+        const parts = hslMatch[1].split(",").map(part => part.trim());
+        if (parts.length >= 3) {
+            const [h, s, l] = parts;
+            return `hsla(${h}, ${s}, ${l}, ${alpha})`;
+        }
+    }
+
+    const rgbMatch = color.match(/^rgba?\(([^)]+)\)$/i);
+    if (rgbMatch) {
+        const parts = rgbMatch[1].split(",").map(part => part.trim());
+        if (parts.length >= 3) {
+            const [r, g, b] = parts;
+            return `rgba(${parseFloat(r)}, ${parseFloat(g)}, ${parseFloat(b)}, ${alpha})`;
+        }
+    }
+
+    if (color.startsWith("#")) {
+        let hex = color.slice(1);
+        if (hex.length === 3) {
+            hex = hex.split("").map(ch => ch + ch).join("");
+        }
+        if (hex.length === 6) {
+            const r = parseInt(hex.slice(0, 2), 16);
+            const g = parseInt(hex.slice(2, 4), 16);
+            const b = parseInt(hex.slice(4, 6), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+    }
+
+    return fallback;
+}
+
+function getSelectionStyle(sel: SelectionRange) {
+    const baseColor = sel.color || presenceStore.users[sel.userId || ""]?.color;
+    return {
+        fill: colorWithAlpha(baseColor, 0.25, "rgba(0, 120, 215, 0.25)"),
+        outline: colorWithAlpha(baseColor, 0.18, "rgba(0, 120, 215, 0.1)"),
+        edge: colorWithAlpha(baseColor, 0.7, "rgba(0, 120, 215, 0.7)"),
+        markerStart: colorWithAlpha(baseColor, 0.85, "#0078d7"),
+        markerEnd: colorWithAlpha(baseColor, 0.7, "#ff4081"),
+    };
+}
+
+// テキストエリアの位置を更新する$effect
+$effect(() => {
+    // 依存関係を明示的に追跡
+    const cursors = store.cursors; // カーソルの変更を追跡
+    const activeItemId = store.activeItemId; // アクティブアイテムの変更を追跡
+    const currentPositionMap = positionMap; // positionMapの変更を追跡
+    const textareaRef = store.getTextareaRef();
+    const isComposing = store.isComposing;
 
 function resolveTreeContainer(): HTMLElement | null {
     if (overlayRef) {
@@ -1048,8 +1106,9 @@ function handlePaste(event: ClipboardEvent) {
     <!-- 選択範囲とカーソルは AliasPicker 表示中は抑制してループを避ける -->
     {#if !aliasPickerStore.isVisible || typeof window === 'undefined' || (window as any).navigator?.webdriver} 
     <!-- 選択範囲のレンダリング -->
-    {#each selectionList as sel}
+    {#each Object.values(store.selections) as sel}
         {@const _debugRenderSel = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: render selection', sel, sel.boxSelectionRanges, Array.isArray(sel.boxSelectionRanges)) : null}
+        {@const selectionStyle = getSelectionStyle(sel)}
         {#if sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId}
             {#if sel.isBoxSelection && sel.boxSelectionRanges}
                 <!-- 矩形選択（ボックス選択）の場合 -->
@@ -1072,14 +1131,14 @@ function handlePaste(event: ClipboardEvent) {
                             class:selection-box-last={isLastRange}
                             class:selection-box-start={isStartItem}
                             class:selection-box-end={isEndItem}
-                            style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none;"
+                            style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
                         ></div>
 
                         <!-- 開始位置と終了位置のマーカー -->
                         {#if isStartItem}
                             <div
                                 class="selection-box-marker selection-box-start-marker"
-                                style="position:absolute; left:{rect.left - 2}px; top:{rect.top - 2}px; pointer-events:none;"
+                                style="position:absolute; left:{rect.left - 2}px; top:{rect.top - 2}px; pointer-events:none; background-color:{selectionStyle.markerStart};"
                                 title="選択開始位置"
                             ></div>
                         {/if}
@@ -1087,7 +1146,7 @@ function handlePaste(event: ClipboardEvent) {
                         {#if isEndItem}
                             <div
                                 class="selection-box-marker selection-box-end-marker"
-                                style="position:absolute; left:{rect.left + rect.width - 4}px; top:{rect.top + rect.height - 4}px; pointer-events:none;"
+                                style="position:absolute; left:{rect.left + rect.width - 4}px; top:{rect.top + rect.height - 4}px; pointer-events:none; background-color:{selectionStyle.markerEnd};"
                                 title="選択終了位置"
                             ></div>
                         {/if}
@@ -1098,13 +1157,13 @@ function handlePaste(event: ClipboardEvent) {
                 {@const rect = calculateSelectionPixelRange(sel.startItemId, sel.startOffset, sel.endOffset, sel.isReversed)}
                 {#if rect}
                     {@const isPageTitle = sel.startItemId === "page-title"}
-                    <div
-                        class="selection"
-                        class:page-title-selection={isPageTitle}
-                        class:selection-reversed={sel.isReversed}
-                        class:selection-forward={!sel.isReversed}
-                        style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none;"
-                    ></div>
+                        <div
+                            class="selection"
+                            class:page-title-selection={isPageTitle}
+                            class:selection-reversed={sel.isReversed}
+                            class:selection-forward={!sel.isReversed}
+                            style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
+                        ></div>
                 {/if}
             {:else}
                 <!-- マルチアイテム選択 -->
@@ -1146,7 +1205,7 @@ function handlePaste(event: ClipboardEvent) {
                                     class:page-title-selection={isPageTitle}
                                     class:selection-reversed={sel.isReversed && itemId === sel.startItemId}
                                     class:selection-forward={!sel.isReversed && itemId === sel.endItemId}
-                                    style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none;"
+                                    style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
                                 ></div>
                             {/if}
                         {/if}
@@ -1291,24 +1350,24 @@ function handlePaste(event: ClipboardEvent) {
 
 .selection {
     position: absolute;
-    background-color: rgba(0, 120, 215, 0.25); /* コントラスト向上 */
+    background-color: var(--selection-fill, rgba(0, 120, 215, 0.25));
     pointer-events: none !important;
     will-change: transform;
-    border-radius: 2px; /* 角を少し丸くして視認性向上 */
-    box-shadow: 0 0 0 1px rgba(0, 120, 215, 0.1); /* 微妙な影を追加 */
-    transition: background-color 0.1s ease; /* スムーズな色変更 */
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px var(--selection-outline, rgba(0, 120, 215, 0.1));
+    transition: background-color 0.1s ease;
 }
 
 .selection-reversed {
-    border-left: 2px solid rgba(0, 120, 215, 0.7); /* 太く、より目立つ境界線 */
+    border-left: 2px solid var(--selection-edge, rgba(0, 120, 215, 0.7));
 }
 
 .selection-forward {
-    border-right: 2px solid rgba(0, 120, 215, 0.7); /* 正方向選択の視覚的区別 */
+    border-right: 2px solid var(--selection-edge, rgba(0, 120, 215, 0.7));
 }
 
 .page-title-selection {
-    background-color: rgba(0, 120, 215, 0.2);
+    background-color: var(--selection-fill, rgba(0, 120, 215, 0.2));
 }
 
 /* 複数アイテム選択時の連続性を強調 */
@@ -1318,11 +1377,11 @@ function handlePaste(event: ClipboardEvent) {
 }
 
 /* 矩形選択（ボックス選択）のスタイル */
+
 .selection-box {
-    background-color: rgba(0, 120, 215, 0.2);
-    border: 1px dashed rgba(0, 120, 215, 0.7); /* 境界線の色を濃くして視認性向上 */
-    box-shadow: 0 0 3px rgba(0, 120, 215, 0.3); /* 微妙な影を追加 */
-    animation: box-selection-pulse 2s infinite ease-in-out; /* パルスアニメーション */
+    background-color: var(--selection-fill, rgba(0, 120, 215, 0.2));
+    border: 1px dashed var(--selection-edge, rgba(0, 120, 215, 0.7));
+    box-shadow: 0 0 3px var(--selection-outline, rgba(0, 120, 215, 0.3));
 }
 
 /* 矩形選択のパルスアニメーション */

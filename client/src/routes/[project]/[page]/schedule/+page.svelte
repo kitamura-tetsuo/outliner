@@ -5,6 +5,7 @@ import { onMount } from "svelte";
 import {
     cancelSchedule,
     createSchedule,
+    exportSchedulesIcal,
     listSchedules,
     type Schedule,
     updateSchedule,
@@ -18,6 +19,7 @@ let schedules = $state<Schedule[]>([]);
 let publishTime = $state("");
 let editingId = $state("");
 let editingTime = $state("");
+let isDownloading = $state(false);
 
 onMount(async () => {
     const params = $page.params as { project: string; page: string; };
@@ -133,6 +135,32 @@ async function saveEdit() {
 function back() {
     goto(`/${project}/${pageTitle}`);
 }
+
+async function downloadIcs() {
+    if (!pageId) {
+        console.error("Schedule page: Cannot export schedules, pageId is empty");
+        return;
+    }
+    try {
+        isDownloading = true;
+        const { blob, filename } = await exportSchedulesIcal(pageId);
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+        console.log("Schedule page: Exported schedules to iCal", filename);
+    }
+    catch (err) {
+        console.error("Schedule page: Error exporting schedules:", err);
+    }
+    finally {
+        isDownloading = false;
+    }
+}
 </script>
 
 <div class="p-4">
@@ -142,6 +170,14 @@ function back() {
         <input id="publish-time" type="datetime-local" bind:value={publishTime} class="border p-1" />
         <button onclick={addSchedule} class="ml-2 px-2 py-1 bg-blue-600 text-white rounded">Add</button>
         <button onclick={back} class="ml-2 px-2 py-1 bg-gray-300 rounded">Back</button>
+        <button
+            onclick={downloadIcs}
+            class="ml-2 px-2 py-1 bg-green-700 text-white rounded disabled:opacity-60"
+            disabled={isDownloading}
+            data-testid="download-ics"
+        >
+            {isDownloading ? "Preparing…" : "Download iCal"}
+        </button>
     </div>
     <ul data-testid="schedule-list">
         {#each schedules as sch}

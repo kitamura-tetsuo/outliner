@@ -23,6 +23,7 @@ export interface IUser {
     name: string;
     email?: string;
     photoURL?: string;
+    providerIds?: string[];
 }
 
 // 認証結果の型定義
@@ -245,11 +246,19 @@ export class UserManager {
             logger.debug("handleUserSignedIn started", { uid: firebaseUser.uid });
 
             // ユーザーオブジェクトを作成
+            const providerIds = firebaseUser.providerData
+                .map(info => info?.providerId)
+                .filter((id): id is string => !!id);
+            if (providerIds.length === 0 && firebaseUser.providerId) {
+                providerIds.push(firebaseUser.providerId);
+            }
+
             const user: IUser = {
                 id: firebaseUser.uid,
                 name: firebaseUser.displayName || "Anonymous User",
                 email: firebaseUser.email || undefined,
                 photoURL: firebaseUser.photoURL || undefined,
+                providerIds: providerIds.length > 0 ? providerIds : undefined,
             };
 
             logger.info("Notifying listeners of successful authentication", {
@@ -281,11 +290,19 @@ export class UserManager {
         const firebaseUser = this.auth.currentUser;
         if (!firebaseUser) return null;
 
+        const providerIds = firebaseUser.providerData
+            .map(info => info?.providerId)
+            .filter((id): id is string => !!id);
+        if (providerIds.length === 0 && firebaseUser.providerId) {
+            providerIds.push(firebaseUser.providerId);
+        }
+
         return {
             id: firebaseUser.uid,
             name: firebaseUser.displayName || "Anonymous User",
             email: firebaseUser.email || undefined,
             photoURL: firebaseUser.photoURL || undefined,
+            providerIds: providerIds.length > 0 ? providerIds : undefined,
         };
     }
 
