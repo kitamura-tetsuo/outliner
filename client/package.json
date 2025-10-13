@@ -81,7 +81,7 @@
         "ts-prune": "^0.10.3",
         "typescript": "^5.9.2",
         "typescript-eslint": "^8.39.1",
-        "vite": "^7.0.6",
+        "vite": "^7.1.9",
         "vitest": "^3.2.4"
     },
     "name": "outliner",
