@@ -20,7 +20,7 @@
   "main": "index.js",
   "dependencies": {
     "@dotenvx/dotenvx": "^1.48.4",
-    "@fluidframework/azure-client": "^2.52.0",
+    "@fluidframework/azure-client": "^2.62.0",
     "@fluidframework/azure-service-utils": "^2.52.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
