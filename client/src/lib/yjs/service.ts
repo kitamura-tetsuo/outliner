@@ -1,7 +1,8 @@
 import type { Awareness } from "y-protocols/awareness";
 import { Item, Items, Project } from "../../schema/yjs-schema";
+import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
-import { colorForUser } from "../../stores/PresenceStore.svelte";
+import { presenceStore } from "../../stores/PresenceStore.svelte";
 
 function childrenKeys(tree: any, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);
@@ -10,6 +11,10 @@ function childrenKeys(tree: any, parentKey: string): string[] {
 
 function resolveOverlayStore(): typeof editorOverlayStore | undefined {
     return (globalThis as any).editorOverlayStore ?? editorOverlayStore;
+}
+
+function resolvePresenceStore(): typeof presenceStore | undefined {
+    return (globalThis as any).presenceStore ?? presenceStore;
 }
 
 function resolveUserColor(userId: string, provided?: string): string {
@@ -138,6 +143,7 @@ export const yjsService = {
         const update = ({ added, updated, removed }: any) => {
             // Prefer the globally-registered store when running in the browser.
             const target = resolvePresenceStore();
+            if (!target) return;
             const states = (awareness as any).getStates();
             const clientId = (awareness as any).clientID;
             const overlay = resolveOverlayStore();

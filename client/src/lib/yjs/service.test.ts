@@ -61,12 +61,20 @@ describe("yjsService", () => {
         // Provide a minimal global overlay store
         const editorOverlayStore = {
             cursors: {} as any,
+            selections: {} as any,
             setCursor({ itemId, offset, userId }: any) {
                 this.cursors[userId] = { itemId, offset, userId };
+            },
+            setSelection({ userId }: any) {
+                this.selections[userId] = { userId };
             },
             clearCursorAndSelection(userId: string) {
                 const { [userId]: _r, ...rest } = this.cursors;
                 this.cursors = rest;
+            },
+            clearSelectionForUser(userId: string) {
+                const { [userId]: _r, ...rest } = this.selections;
+                this.selections = rest;
             },
         };
         (globalThis as any).editorOverlayStore = editorOverlayStore;
