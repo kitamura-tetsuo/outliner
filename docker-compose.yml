@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  yjs-server:
+    build:
+      context: ./server
+    container_name: yjs-server
+    networks:
+      - yjs-net
+    ports:
+      - "1234:1234"
+    volumes:
+      - ./server/data:/usr/src/app/data
+    env_file:
+      - ./server/.env.docker
+    restart: unless-stopped
+
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.yjs-tcp.address=:2222/tcp"
+      - "--log.level=DEBUG"
+    ports:
+      - "2222:2222"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+    networks:
+      - yjs-net
+    restart: unless-stopped
+
+networks:
+  yjs-net:
+    enable_ipv6: true
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: fd00:c0de::/64
+          gateway: fd00:c0de::1
