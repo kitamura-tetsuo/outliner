@@ -1,0 +1,13 @@
+tcp:
+  routers:
+    yjs-tcp-router:
+      rule: "HostSNI(`*`)"
+      entryPoints:
+        - yjs-tcp
+      service: yjs-tcp-service
+
+  services:
+    yjs-tcp-service:
+      loadBalancer:
+        servers:
+          - address: "yjs-server:1234"
