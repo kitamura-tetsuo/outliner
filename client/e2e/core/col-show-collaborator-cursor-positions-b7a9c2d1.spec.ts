@@ -50,7 +50,7 @@ test.describe("COL-b7a9c2d1: collaborator cursor presence", () => {
 
         const remoteCursorColor = await page2.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            const cursor = Object.values(store.cursors).find((c: any) => c.userId && c.userId !== "local");
+            const cursor = Object.values(store.cursors).find((c: any) => c.userId && c.userId !== "local") as any;
             return cursor?.color || null;
         });
         expect(remoteCursorColor).not.toBeNull();
