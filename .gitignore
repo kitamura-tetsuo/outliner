@@ -106,3 +106,5 @@ llm_task.md
 *.temp
 client/ydb/
 coverage-backups/
+NEXT_SESSION_PROMPT.txt
+.gemini/settings.json
