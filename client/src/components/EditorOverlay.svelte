@@ -123,6 +123,75 @@ function getSelectionStyle(sel: SelectionRange) {
     };
 }
 
+// Helper function to resolve tree container
+function resolveTreeContainer(): HTMLElement | null {
+    if (overlayRef) {
+        const fromOverlay = overlayRef.closest('.tree-container');
+        if (fromOverlay instanceof HTMLElement) return fromOverlay;
+    }
+
+    const fallback = document.querySelector('.tree-container');
+    if (fallback instanceof HTMLElement) return fallback;
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.warn('EditorOverlay: tree container element not found');
+    }
+    return null;
+}
+
+// Helper function to update textarea position
+function updateTextareaPosition() {
+    try {
+        if (aliasPickerStore.isVisible) return; // avoid churn while alias picker open
+        const textareaRef = store.getTextareaRef();
+        const isComposing = store.isComposing;
+        if (!textareaRef || !overlayRef || isComposing) return;
+        const lastCursor = store.getLastActiveCursor();
+        if (!lastCursor) return;
+
+        // Always update position map to ensure it's current before calculations
+        // This is especially important in test environments and after DOM changes
+        updatePositionMap();
+
+        const itemInfo = positionMap[lastCursor.itemId];
+        if (!itemInfo) {
+            debouncedUpdatePositionMap();
+            return;
+        }
+
+        const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
+        if (!pos) {
+            debouncedUpdatePositionMap();
+            return;
+        }
+
+        // Get the EditorOverlay's and tree container's positions relative to the viewport
+        const overlayRect = overlayRef.getBoundingClientRect();
+        const treeContainer = resolveTreeContainer();
+        if (!treeContainer) return;
+        const treeContainerRect = treeContainer.getBoundingClientRect();
+
+        // Convert position from tree-container-relative to overlay-relative
+        // This is needed because calculateCursorPixelPosition returns coordinates relative to tree container
+        const posRelativeToOverlay = {
+            left: pos.left + (treeContainerRect.left - overlayRect.left),
+            top: pos.top + (treeContainerRect.top - overlayRect.top)
+        };
+
+        // Position the textarea at the same viewport coordinates as the cursor
+        // would be if it were positioned within the overlay
+        const finalLeft = overlayRect.left + posRelativeToOverlay.left;
+        const finalTop = overlayRect.top + posRelativeToOverlay.top;
+
+        // Simplified: finalLeft = treeContainerRect.left + pos.left (same as before but clearer logic)
+        // Position the textarea using viewport coordinates
+        textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left}px`, 'important');
+        textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top}px`, 'important');
+    } catch (e) {
+        console.error("Error in updateTextareaPosition:", e);
+    }
+}
+
 // テキストエリアの位置を更新する$effect
 $effect(() => {
     // 依存関係を明示的に追跡
@@ -131,73 +200,6 @@ $effect(() => {
     const currentPositionMap = positionMap; // positionMapの変更を追跡
     const textareaRef = store.getTextareaRef();
     const isComposing = store.isComposing;
-
-    function resolveTreeContainer(): HTMLElement | null {
-        if (overlayRef) {
-            const fromOverlay = overlayRef.closest('.tree-container');
-            if (fromOverlay instanceof HTMLElement) return fromOverlay;
-        }
-
-        const fallback = document.querySelector('.tree-container');
-        if (fallback instanceof HTMLElement) return fallback;
-
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
-            console.warn('EditorOverlay: tree container element not found');
-        }
-        return null;
-    }
-
-    function updateTextareaPosition() {
-        try {
-            if (aliasPickerStore.isVisible) return; // avoid churn while alias picker open
-            const textareaRef = store.getTextareaRef();
-            const isComposing = store.isComposing;
-            if (!textareaRef || !overlayRef || isComposing) return;
-            const lastCursor = store.getLastActiveCursor();
-            if (!lastCursor) return;
-
-            // Always update position map to ensure it's current before calculations
-            // This is especially important in test environments and after DOM changes
-            updatePositionMap();
-
-            const itemInfo = positionMap[lastCursor.itemId];
-            if (!itemInfo) {
-                debouncedUpdatePositionMap();
-                return;
-            }
-
-            const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
-            if (!pos) {
-                debouncedUpdatePositionMap();
-                return;
-            }
-
-            // Get the EditorOverlay's and tree container's positions relative to the viewport
-            const overlayRect = overlayRef.getBoundingClientRect();
-            const treeContainer = resolveTreeContainer();
-            if (!treeContainer) return;
-            const treeContainerRect = treeContainer.getBoundingClientRect();
-
-            // Convert position from tree-container-relative to overlay-relative
-            // This is needed because calculateCursorPixelPosition returns coordinates relative to tree container
-            const posRelativeToOverlay = {
-                left: pos.left + (treeContainerRect.left - overlayRect.left),
-                top: pos.top + (treeContainerRect.top - overlayRect.top)
-            };
-
-            // Position the textarea at the same viewport coordinates as the cursor
-            // would be if it were positioned within the overlay
-            const finalLeft = overlayRect.left + posRelativeToOverlay.left;
-            const finalTop = overlayRect.top + posRelativeToOverlay.top;
-
-            // Simplified: finalLeft = treeContainerRect.left + pos.left (same as before but clearer logic)
-            // Position the textarea using viewport coordinates
-            textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left}px`, 'important');
-            textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top}px`, 'important');
-        } catch (e) {
-            console.error("Error in updateTextareaPosition:", e);
-        }
-    }
 
     updateTextareaPosition();
 });
