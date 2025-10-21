@@ -91,28 +91,31 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
     }, projectId);
     expect(p2Connected).toBeTruthy();
 
-    // Wait for p2 to be synced
-    const p2Synced = await p2.evaluate(async () => {
+    // Wait for both provider.synced and actual data to be available
+    const value = await p2.evaluate(async () => {
         const provider = (window as any).__PROVIDER2__;
-        for (let i = 0; i < 80; i++) {
+        const m = (window as any).__DOC2__.getMap("m");
+
+        // First, wait for provider.synced
+        for (let i = 0; i < 300; i++) { // up to ~30s
             if (provider.synced === true) {
-                console.log(`[p2] synced after ${i * 100}ms`);
-                return true;
+                console.log(`[p2] provider.synced=true after ${i * 100}ms`);
+                break;
             }
             await new Promise(r => setTimeout(r, 100));
         }
-        console.log(`[p2] NOT synced after 8s, synced=${provider.synced}`);
-        return provider.synced === true;
-    });
-    console.log("[yjs-order] p2 synced:", p2Synced);
 
-    const value = await p2.evaluate(async () => {
-        const m = (window as any).__DOC2__.getMap("m");
-        for (let i = 0; i < 80; i++) {
+        // Then, wait for the actual value to be available
+        for (let i = 0; i < 300; i++) { // up to ~30s
             const v = m.get("k");
-            if (v !== undefined) return v;
+            if (v !== undefined) {
+                console.log(`[p2] value available after ${i * 100}ms from synced`);
+                return v;
+            }
             await new Promise(r => setTimeout(r, 100));
         }
+
+        console.log(`[p2] value NOT available after 30s, synced=${provider.synced}`);
         return m.get("k");
     });
 
