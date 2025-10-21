@@ -53,6 +53,8 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
     // p2: join after the update
     const ctx2 = await browser.newContext();
     const p2 = await ctx2.newPage();
+    p2.on("console", m => console.log("[p2 console]", m.text().slice(0, 100)));
+
     await p2.addInitScript(() => {
         localStorage.setItem("VITE_IS_TEST", "true");
         localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
@@ -82,6 +84,13 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
             (window as any).__UPDATES2_V2__++;
             console.log("[p2] doc updateV2");
         });
+
+        // Log provider.synced transitions
+        conn.provider.on("sync", (s: boolean) => {
+            console.log(`[p2] provider.synced=${s}`);
+        });
+        console.log(`[p2] initial provider.synced=${conn.provider.synced}`);
+
         for (let i = 0; i < 80; i++) {
             if ((conn.provider as any).wsconnected === true) break;
             await new Promise(r => setTimeout(r, 100));

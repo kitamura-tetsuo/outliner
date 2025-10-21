@@ -50,6 +50,8 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
     // Now connect p2 and verify it receives the initial value (no broadcast needed)
     const ctx2 = await browser.newContext();
     const p2 = await ctx2.newPage();
+    p2.on("console", m => console.log("[p2 console]", m.text().slice(0, 100)));
+
     await p2.addInitScript(() => {
         localStorage.setItem("VITE_IS_TEST", "true");
         localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
@@ -74,6 +76,13 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
         conn.doc.on("update", () => (window as any).__UPDATES2__++);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         conn.doc.on("updateV2", (_u: Uint8Array, _o: unknown) => (window as any).__UPDATES2_V2__++);
+
+        // Log provider.synced transitions
+        conn.provider.on("sync", (s: boolean) => {
+            console.log(`[p2] provider.synced=${s}`);
+        });
+        console.log(`[p2] initial provider.synced=${conn.provider.synced}`);
+
         for (let i = 0; i < 80; i++) {
             if ((conn.provider as any).wsconnected === true) break;
             await new Promise(r => setTimeout(r, 100));
@@ -81,6 +90,21 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
         return (conn.provider as any).wsconnected === true;
     }, projectId);
     expect(p2Connected).toBeTruthy();
+
+    // Wait for p2 to be synced
+    const p2Synced = await p2.evaluate(async () => {
+        const provider = (window as any).__PROVIDER2__;
+        for (let i = 0; i < 80; i++) {
+            if (provider.synced === true) {
+                console.log(`[p2] synced after ${i * 100}ms`);
+                return true;
+            }
+            await new Promise(r => setTimeout(r, 100));
+        }
+        console.log(`[p2] NOT synced after 8s, synced=${provider.synced}`);
+        return provider.synced === true;
+    });
+    console.log("[yjs-order] p2 synced:", p2Synced);
 
     const value = await p2.evaluate(async () => {
         const m = (window as any).__DOC2__.getMap("m");

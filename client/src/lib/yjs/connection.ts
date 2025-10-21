@@ -7,6 +7,49 @@ import { pageRoomPath, projectRoomPath } from "./roomPath";
 import { yjsService } from "./service";
 import { attachTokenRefresh } from "./tokenRefresh";
 
+// Minimal guarded debug logging for initial sync progress (disabled in production by default)
+function isConnDebugEnabled(): boolean {
+    try {
+        const mode = import.meta.env.MODE as string | undefined;
+        const envFlag = String((import.meta.env as any)?.VITE_YJS_CONN_DEBUG || "") === "true";
+        const lsFlag = typeof window !== "undefined"
+            && window.localStorage?.getItem?.("VITE_YJS_CONN_DEBUG") === "true";
+        // Only enable when explicitly opted-in and not on production builds
+        const notProd = mode !== "production";
+        return notProd && (envFlag || lsFlag);
+    } catch {
+        return false;
+    }
+}
+
+function attachConnDebug(label: string, provider: WebsocketProvider, awareness: Awareness, doc: Y.Doc) {
+    if (!isConnDebugEnabled()) return;
+    try {
+        // provider.synced transitions
+        provider.on("sync", (s: boolean) => {
+            console.log(`[yjs-conn] ${label} sync=${s}`);
+        });
+        // awareness states count
+        const logAwareness = () => {
+            try {
+                const count = (awareness as any)?.getStates?.().size ?? 0;
+                console.log(`[yjs-conn] ${label} awareness.states=${count}`);
+            } catch {}
+        };
+        awareness.on("change", logAwareness as any);
+        logAwareness();
+        // doc update count and last payload size
+        let updCount = 0;
+        doc.on("update", (u: Uint8Array) => {
+            updCount++;
+            const bytes = u?.length ?? 0;
+            console.log(`[yjs-conn] ${label} update#${updCount} bytes=${bytes}`);
+        });
+    } catch {
+        // ignore debug wiring errors
+    }
+}
+
 function isIndexedDBEnabled(): boolean {
     try {
         const lsDisabled = typeof window !== "undefined"
@@ -122,6 +165,8 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         connect: isWsEnabled(),
     });
     const awareness = provider.awareness;
+    // Debug hook (guarded)
+    attachConnDebug(room, provider, awareness, doc);
     const current = userManager.getCurrentUser();
     if (current) {
         awareness.setLocalStateField("user", {
@@ -172,6 +217,8 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
     // Awareness (presence)
     const awareness = provider.awareness;
+    // Debug hook (guarded)
+    attachConnDebug(room, provider, awareness, doc);
     const current = userManager.getCurrentUser();
     if (current) {
         awareness.setLocalStateField("user", {
@@ -264,6 +311,8 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         connect: isWsEnabled(),
     });
     const awareness = provider.awareness;
+    // Debug hook (guarded)
+    attachConnDebug(room, provider, awareness, doc);
     const current = userManager.getCurrentUser();
     if (current) {
         awareness.setLocalStateField("user", {
@@ -295,6 +344,8 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         params: token ? { auth: token } : undefined,
         connect: isWsEnabled(),
     });
+    // Debug hook (guarded)
+    attachConnDebug(room, provider, provider.awareness as unknown as Awareness, doc);
     const dispose = () => {
         try {
             provider.destroy();
