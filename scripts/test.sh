@@ -33,7 +33,7 @@ ensure_codex_services() {
     return
   fi
 
-  # Ports that codex-setup.sh is responsible for. If any are missing we trigger setup.
+  # Ports that setup.sh is responsible for. If any are missing we trigger setup.
   local required_ports=(
     "${TEST_API_PORT:-7091}"
     "${VITE_PORT:-7090}"
@@ -55,7 +55,7 @@ ensure_codex_services() {
   done
 
   if [ "$need_setup" -eq 1 ]; then
-    "${SCRIPT_DIR}/codex-setup.sh"
+    "${SCRIPT_DIR}/setup.sh"
   fi
 }
 

@@ -72,9 +72,9 @@ start_server(){
   local name=$1; local dir=$2
   section "Starting $name server"
   cd "$dir"
-  if [ -f scripts/codex-setup.sh ]; then
+  if [ -f scripts/setup.sh ]; then
     info "Running codex-setup for $name..."
-    bash scripts/codex-setup.sh >/dev/null 2>&1 || true
+    bash scripts/setup.sh >/dev/null 2>&1 || true
   fi
   cd "$dir/client"
   if [ ! -d node_modules ]; then

@@ -1,7 +1,7 @@
 git config --global user.name "Tetsuo Kitamura"
 git config --global user.email kitamura.tetsuo@gmail.com
 
-/workspace/scripts/codex-setup.sh
+/workspace/scripts/setup.sh
 
 sudo apt update && sudo apt install -y pipx
 pipx ensurepath   # 必要に応じてシェルを再起動/再ログイン

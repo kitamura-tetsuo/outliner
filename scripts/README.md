@@ -1,13 +1,13 @@
 # Test Environment Scripts
 
-ローカルのテスト用サーバーは `scripts/codex-setup.sh` が一括で起動・準備します。個別のローカル起動スクリプトは廃止しました。
+ローカルのテスト用サーバーは `scripts/setup.sh` が一括で起動・準備します。個別のローカル起動スクリプトは廃止しました。
 
 ## 使い方
 
 1. テスト環境のセットアップとサーバー起動
 
 ```bash
-scripts/codex-setup.sh
+scripts/setup.sh
 ```
 
 - Firebase エミュレーター (Auth/Firestore/Functions/Hosting)

@@ -19,7 +19,7 @@ This document outlines the mapping between Azure Fluid Relay data structures and
 
 ## CI setup
 
-`scripts/codex-setup.sh` starts the Yjs WebSocket server for tests. Tinylicious is never started on Yjs branches.
+`scripts/setup.sh` starts the Yjs WebSocket server for tests. Tinylicious is never started on Yjs branches.
 
 ## Troubleshooting
 

@@ -19,7 +19,7 @@ jobs:
 
       - name: Setup test environment
         run: |
-          ./scripts/codex-setup.sh
+          ./scripts/setup.sh
 
       - name: Run basic E2E tests sequentially
         run: |

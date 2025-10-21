@@ -1,7 +1,7 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SETUP_SENTINEL="${ROOT_DIR}/.codex-setup-installed"
+SETUP_SENTINEL="${ROOT_DIR}/.setup-installed"
 set -euo pipefail
 
 export GIT_MERGE_AUTOEDIT=no
@@ -17,11 +17,11 @@ handle_error() {
   echo "Error occurred at line ${line}. Exit code: ${exit_code}" >&2
   if [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; then
     local next=$((RETRY_COUNT + 1))
-    echo "codex-setup.sh did not complete. Re-running (attempt ${next}/${MAX_RETRIES})..."
+    echo "setup.sh did not complete. Re-running (attempt ${next}/${MAX_RETRIES})..."
     export CODEX_SETUP_RETRY=$next
     exec "$0" "${SCRIPT_ARGS[@]}"
   else
-    echo "codex-setup.sh failed after ${MAX_RETRIES} attempts. Exiting." >&2
+    echo "setup.sh failed after ${MAX_RETRIES} attempts. Exiting." >&2
     exit "${exit_code}"
   fi
 }

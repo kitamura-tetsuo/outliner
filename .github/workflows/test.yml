@@ -359,7 +359,7 @@ jobs:
           CI: true
 
       - name: Run codex setup script
-        run: bash scripts/codex-setup.sh
+        run: bash scripts/setup.sh
         env:
           CI: true
           NODE_ENV: test

@@ -11,8 +11,8 @@ import { expect, test } from "vitest";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "../..");
-const setupScript = path.join(repoRoot, "scripts", "codex-setup.sh");
-const sentinel = path.join(repoRoot, ".codex-setup-installed");
+const setupScript = path.join(repoRoot, "scripts", "setup.sh");
+const sentinel = path.join(repoRoot, ".setup-installed");
 
 test("setup script creates sentinel file", async () => {
     if (fs.existsSync(sentinel)) fs.unlinkSync(sentinel);

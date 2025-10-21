@@ -78,7 +78,7 @@ jobs:
 
       - name: Run codex setup script (start emulators and servers)
         run: |
-          bash scripts/codex-setup.sh
+          bash scripts/setup.sh
         env:
           CI: true
           NODE_ENV: test
