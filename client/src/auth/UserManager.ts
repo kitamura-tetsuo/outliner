@@ -428,6 +428,26 @@ export class UserManager {
         }
         this.listeners = [];
     }
+
+    // テストおよび開発用: 明示的にIDトークンを更新し、リスナーへ通知
+    public async refreshToken(): Promise<void> {
+        try {
+            const current = this.auth.currentUser;
+            if (!current) {
+                logger.warn("[UserManager] refreshToken called without currentUser");
+                return;
+            }
+            // force refresh
+            await current.getIdToken(true);
+            const user = this.getCurrentUser();
+            if (user) {
+                // 通知により attachTokenRefresh 経由でプロバイダの auth パラメータが更新される
+                this.notifyListeners({ user });
+            }
+        } catch (err) {
+            logger.error("[UserManager] refreshToken failed", err);
+        }
+    }
 }
 
 export const userManager = new UserManager();

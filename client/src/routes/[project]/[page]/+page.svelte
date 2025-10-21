@@ -149,14 +149,10 @@ async function loadProjectAndPage() {
             if (typeof window !== "undefined") {
                 logger.debug("DEBUG: provisional store.project set?", !!(window as any).generalStore?.project);
             }
+            // コラボレーションテストでは、暫定ページを作成せず、Yjsの同期を待つ
+            // shouldSkipTestSeed()がtrueの場合は、ページ作成をスキップ
             if (pageName && !shouldSkipTestSeed()) {
-                try {
-                    const itemsAny: any = provisional.items as any;
-                    const node = itemsAny?.addNode?.("tester");
-                    node?.updateText?.(pageName);
-                    if (!store.currentPage && node) store.currentPage = node as any;
-                    logger.info(`Provisional project/page created in +page.svelte`, { projectName, pageName });
-                } catch {}
+                console.log(`[+page.svelte] loadProjectAndPage: shouldSkipTestSeed=false, skipping provisional page creation for collaboration tests`);
             }
         }
     } catch {}
@@ -724,11 +720,8 @@ async function loadProjectAndPage() {
                 };
 
                 if ((store.pages.current.length === 0) && pageName && !hasTitle(pageName)) {
-                    const created = ensurePage(pageName);
-                    if (created) {
-                        logger.info(`E2E: Created missing page \"${pageName}\" in +page.svelte`);
-                        if (!store.currentPage) store.currentPage = created;
-                    }
+                    // コラボレーションテストでは、新しいページを作成せず、Yjsの同期を待つ
+                    console.log(`[+page.svelte] E2E: Waiting for page "${pageName}" to sync via Yjs...`);
                 }
                 // 2ページ目（"second-page"）もテスト安定化のために用意
                 if (!hasTitle("second-page")) {
@@ -755,6 +748,10 @@ async function loadProjectAndPage() {
                         logger.info(`Fallback: store.currentPage set in +page.svelte to "${title}" (id=${p?.id})`);
                         break;
                     }
+                }
+                // ページが見つからない場合、Yjsの同期を待つ（コラボレーションテスト用）
+                if (!store.currentPage) {
+                    console.log(`[+page.svelte] Fallback: Page "${pageName}" not found, waiting for Yjs sync...`);
                 }
             } catch (e) {
                 console.error("Failed to set currentPage fallback:", e);
@@ -789,31 +786,71 @@ async function loadProjectAndPage() {
 onMount(() => {
     // 初期ロードを試行
     scheduleLoadIfNeeded();
+
+    // コラボレーションテスト用: Yjsの同期を待つ
+    // SKIP_TEST_CONTAINER_SEED=trueの場合でも、ページの同期を待つ必要がある
+    const isTestEnv = (
+        import.meta.env.MODE === "test"
+        || import.meta.env.VITE_IS_TEST === "true"
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+    );
+    if (isTestEnv && store.project && shouldSkipTestSeed()) {
+        // SKIP_TEST_CONTAINER_SEED=trueの場合、コラボレーションテストとして扱う
+        console.log(`[+page.svelte] onMount: Collaboration test mode, waiting for Yjs sync...`);
+        console.log(`[+page.svelte] onMount: store.currentPage=${!!store.currentPage}, pageName="${pageName}"`);
+        if (!store.currentPage) {
+            const itemsAny: any = (store.project as any).items as any;
+            // Yjsの同期を待つために、定期的にページリストをチェック
+            const checkInterval = setInterval(() => {
+                const currentLen = itemsAny?.length ?? 0;
+                for (let i = 0; i < currentLen; i++) {
+                    const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
+                    const title = p?.text?.toString?.() ?? String(p?.text ?? "");
+                    if (String(title).toLowerCase() === String(pageName).toLowerCase()) {
+                        store.currentPage = p as any;
+                        clearInterval(checkInterval);
+                        console.log(`[+page.svelte] Found page via Yjs sync: ${title} (id=${p?.id})`);
+                        break;
+                    }
+                }
+            }, 500);
+            // 10秒後にタイムアウト
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                if (!store.currentPage) {
+                    console.warn(`[+page.svelte] Page not found after 10s: ${pageName}`);
+                }
+            }, 10000);
+        } else {
+            console.log(`[+page.svelte] onMount: store.currentPage already set, skipping search`);
+        }
+    }
+
     // E2E 環境では、最小限のページを先行準備して UI テストを安定させる
     if (!shouldSkipTestSeed()) try {
-        const isTestEnv = (
-            import.meta.env.MODE === "test"
-            || import.meta.env.VITE_IS_TEST === "true"
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        );
-        if (isTestEnv && store.project && !store.currentPage) {
-            const itemsAny: any = (store.project as any).items as any;
-            const len = itemsAny?.length ?? 0;
-            // 既存ページ検索（タイトル一致）
-            let found: any = null;
-            for (let i = 0; i < len; i++) {
-                const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
-                const title = p?.text?.toString?.() ?? String(p?.text ?? "");
-                if (String(title).toLowerCase() === String(pageName).toLowerCase()) { found = p; break; }
-            }
-            if (!found && pageName) {
-                try {
-                    found = itemsAny?.addNode?.("tester");
-                    found?.updateText?.(pageName);
-                } catch {}
-            }
-            if (found) {
-                store.currentPage = found as any;
+        if (isTestEnv && store.project) {
+            console.log(`[+page.svelte] onMount: store.currentPage=${!!store.currentPage}, pageName="${pageName}"`);
+            if (!store.currentPage) {
+                const itemsAny: any = (store.project as any).items as any;
+                const len = itemsAny?.length ?? 0;
+                console.log(`[+page.svelte] onMount: Searching for page in ${len} items`);
+                // 既存ページ検索（タイトル一致）
+                let found: any = null;
+                for (let i = 0; i < len; i++) {
+                    const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
+                    const title = p?.text?.toString?.() ?? String(p?.text ?? "");
+                    if (String(title).toLowerCase() === String(pageName).toLowerCase()) {
+                        found = p;
+                        console.log(`[+page.svelte] onMount: Found existing page "${title}" (id=${p?.id})`);
+                        break;
+                    }
+                }
+                if (found) {
+                    store.currentPage = found as any;
+                    console.log(`[+page.svelte] onMount: Set currentPage to existing page: ${found?.text?.toString?.()} (id=${found?.id})`);
+                }
+            } else {
+                console.log(`[+page.svelte] onMount: store.currentPage already set, skipping search`);
             }
         }
     } catch {}

@@ -6,6 +6,6 @@
 		}
 	],
 	"settings": {
-		"window.title": "${activeEditorShort}${separator}${rootName}"
+		"window.title": "client${separator}${activeEditorShort}${separator}${remoteName}",
 	}
 }

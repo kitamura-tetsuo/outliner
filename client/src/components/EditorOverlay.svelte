@@ -192,19 +192,7 @@ function updateTextareaPosition() {
     }
 }
 
-// テキストエリアの位置を更新する$effect
-$effect(() => {
-    // 依存関係を明示的に追跡
-    const cursors = store.cursors; // カーソルの変更を追跡
-    const activeItemId = store.activeItemId; // アクティブアイテムの変更を追跡
-    const currentPositionMap = positionMap; // positionMapの変更を追跡
-    const textareaRef = store.getTextareaRef();
-    const isComposing = store.isComposing;
-
-    updateTextareaPosition();
-});
-
-// 変更通知に忨て位置更新（ポーリング排除）
+// 変更通知に応じて位置更新（ポーリング排除）
 onMount(() => {
     // setup text measurement without DOM mutations
     // jsdom環境ではCanvas APIがサポートされていないため、

@@ -1,0 +1,33 @@
+[Coverage] Using Best-effort Coverage mode (default)
+
+Running 1 test using 1 worker
+
+[Coverage] Using Best-effort Coverage mode (default)
+[Coverage] beforeEach start for: basic map value sync via y-websocket
+[afterEach] Save operation timeout
+[Coverage] afterEach for: basic map value sync via y-websocket, closed=false
+[Coverage] collected entries: 9
+[Coverage] wrote: /workspace/coverage/e2e/raw/coverage-yjs-basic-sync-7f2c1d3e-basic_map_value_sync_via_y-websocket-1761036812997.json
+[saveSnapshotsAndCompare] waitForFunction failed: page.waitForFunction: Test ended.
+[afterEach] Page already closed, skipping log dump
+[afterEach] Cleanup operation timeout
+  ✘  1 [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket (20.2s)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket ───
+
+    TimeoutError: page.waitForFunction: Timeout 10000ms exceeded.
+
+      25 |     await p1.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
+      26 |
+    > 27 |     await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 10000 });
+         |              ^
+      28 |     await p1.evaluate(async () => {
+      29 |         const mgr = (window as any).__USER_MANAGER__;
+      30 |         await mgr?.loginWithEmailPassword?.("test@example.com", "password");
+        at /workspace/client/e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:27:14
+
+  1 failed
+    [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket ────
+  1 error was not a part of any test, see above for details

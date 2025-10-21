@@ -144,5 +144,10 @@ export default defineConfig({
             name: "server",
             testDir: "./e2e/server",
         },
+        {
+            // Yjsテスト: Yjs同期機能のテスト
+            name: "yjs",
+            testDir: "./e2e/yjs",
+        },
     ],
 });

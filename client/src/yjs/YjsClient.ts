@@ -97,6 +97,15 @@ export class YjsClient {
         return this._awareness;
     }
 
+    public get wsProvider(): WebsocketProvider | undefined {
+        return this._provider;
+    }
+
+    public getPageAwareness(pageId: string): Awareness | undefined {
+        const pageConn = this.getPageConnection(pageId);
+        return pageConn?.awareness;
+    }
+
     public get isContainerConnected(): boolean {
         try {
             // WebsocketProvider has a private flag; infer from wsconnected when available

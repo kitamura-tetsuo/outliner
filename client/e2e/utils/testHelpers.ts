@@ -76,6 +76,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+                localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
                 (window as any).__E2E__ = true;
                 // Vite エラーオーバーレイ抑止
                 (window as any).__vite_plugin_react_preamble_installed__ = true;
@@ -113,6 +114,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+                localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
                 (window as any).__E2E__ = true;
                 (window as any).__vite_plugin_react_preamble_installed__ = true;
             } catch {}

@@ -7,6 +7,16 @@ import { pageRoomPath, projectRoomPath } from "./roomPath";
 import { yjsService } from "./service";
 import { attachTokenRefresh } from "./tokenRefresh";
 
+function isIndexedDBEnabled(): boolean {
+    try {
+        const lsDisabled = typeof window !== "undefined"
+            && window.localStorage?.getItem?.("VITE_DISABLE_YJS_INDEXEDDB") === "true";
+        return !lsDisabled;
+    } catch {
+        return true;
+    }
+}
+
 export type PageConnection = {
     doc: Y.Doc;
     provider: WebsocketProvider;
@@ -36,9 +46,25 @@ function isWsEnabled(): boolean {
         const envDisabled = String(import.meta.env.VITE_YJS_DISABLE_WS || "") === "true";
         const lsDisabled = typeof window !== "undefined"
             && window.localStorage?.getItem?.("VITE_YJS_DISABLE_WS") === "true";
+        // テスト環境ではデフォルトでWebSocketを有効にする
+        const isTestEnv = import.meta.env.MODE === "test"
+            || (import.meta.env as any).VITE_IS_TEST === "true"
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
+        if (isTestEnv && !envDisabled && !lsDisabled) return true;
         return !(envDisabled || lsDisabled);
     } catch {
         return true;
+    }
+}
+
+function isAuthRequired(): boolean {
+    try {
+        const envReq = String((import.meta.env as any).VITE_YJS_REQUIRE_AUTH || "") === "true";
+        const lsReq = typeof window !== "undefined"
+            && window.localStorage?.getItem?.("VITE_YJS_REQUIRE_AUTH") === "true";
+        return envReq || lsReq;
+    } catch {
+        return false;
     }
 }
 
@@ -46,24 +72,28 @@ async function getFreshIdToken(): Promise<string> {
     // Wait for auth and fetch a fresh ID token
     const auth = userManager.auth;
     const isTestEnv = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
+    const mustAuth = isAuthRequired();
+
+    // If auth is required (e.g., E2E talking to secured WS), wait until user is available
+    if (!auth.currentUser && mustAuth) {
+        for (let i = 0; i < 50; i++) { // up to ~5s
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (auth.currentUser) break;
+        }
+    }
+
     if (!auth.currentUser) {
-        if (isTestEnv) {
+        if (isTestEnv && !mustAuth) {
+            // Allow offline WS-less flows in unit/integration tests
             return "";
         }
-        // Try short wait using a simple promise
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // If we reach here, auth is required but not available
+        throw new Error("No Firebase user available for Yjs auth");
     }
-    if (!auth.currentUser) {
-        if (isTestEnv) {
-            return "";
-        }
-        // As a fallback, wait briefly to allow auth flow to start
-        await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    const token = await auth.currentUser?.getIdToken(true);
+
+    const token = await auth.currentUser.getIdToken(true);
     if (!token) {
-        // In test/integration environments, allow proceeding without a token
-        if (isTestEnv) {
+        if (isTestEnv && !mustAuth) {
             return "";
         }
         throw new Error("No Firebase ID token available");
@@ -74,7 +104,7 @@ async function getFreshIdToken(): Promise<string> {
 export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: string): Promise<PageConnection> {
     const wsBase = getWsBase();
     const room = pageRoomPath(projectId, pageId);
-    if (typeof indexedDB !== "undefined") {
+    if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
         try {
             new IndexeddbPersistence(room, doc);
         } catch { /* no-op in Node */ }
@@ -122,7 +152,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     const room = projectRoomPath(projectId);
 
     // Local persistence keyed by room path
-    if (typeof indexedDB !== "undefined") {
+    if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
         try {
             new IndexeddbPersistence(room, doc);
         } catch { /* no-op in Node */ }
@@ -216,7 +246,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
 }> {
     const wsBase = getWsBase();
     const room = projectRoomPath(projectId);
-    if (typeof indexedDB !== "undefined") {
+    if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
         try {
             new IndexeddbPersistence(room, doc);
         } catch { /* no-op in Node */ }
@@ -245,4 +275,33 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     // Refresh auth param on token refresh
     attachTokenRefresh(provider);
     return { provider, awareness };
+}
+
+export async function createMinimalProjectConnection(projectId: string): Promise<{
+    doc: Y.Doc;
+    provider: WebsocketProvider;
+    dispose: () => void;
+}> {
+    const doc = new Y.Doc({ guid: projectId });
+    const wsBase = getWsBase();
+    const room = projectRoomPath(projectId);
+    let token = "";
+    try {
+        token = await getFreshIdToken();
+    } catch {
+        token = "";
+    }
+    const provider = new WebsocketProvider(wsBase, room, doc, {
+        params: token ? { auth: token } : undefined,
+        connect: isWsEnabled(),
+    });
+    const dispose = () => {
+        try {
+            provider.destroy();
+        } catch {}
+        try {
+            doc.destroy();
+        } catch {}
+    };
+    return { doc, provider, dispose };
 }

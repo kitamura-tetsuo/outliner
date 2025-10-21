@@ -1,0 +1,12 @@
+id: YJS-e1f2a3b4
+title: Yjs WebSocket sync basic
+title-ja: Yjs WebSocket同期の基本
+description: Verify that two browser contexts can connect to the same project and sync via WebSocket.
+category: data
+status: experimental
+acceptance:
+- Both contexts establish WebSocket connections
+- Two browser contexts connect to the same project ID
+- WebSocket sync completes successfully
+tests:
+- client/e2e/yjs/yjs-websocket-sync-basic-e1f2a3b4.spec.ts

@@ -1,0 +1,92 @@
+[Coverage] Using Best-effort Coverage mode (default)
+
+Running 1 test using 1 worker
+
+[Coverage] Using Best-effort Coverage mode (default)
+[Coverage] beforeEach start for: basic map value sync via y-websocket
+[p1 console] [vite] connecting...
+[p1 console] %c[env]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d; font-weight: bold Using value f
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d Initializing...
+[p1 console] %c[firebase-app.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Fi
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d Firebase Auth initial
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Con
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Con
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Suc
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Suc
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold [Us
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold [Us
+[p1 console] %c[firebase-app.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d Firebase app: Using 
+[p1 console] %c[firestoreStore.svelte.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] %c[firestoreStore.svelte.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] %c[firestoreStore.svelte.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] [vite] connected.
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold [Us
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d [UserManager] Current
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d [UserManager] Calling
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d onAuthStateChanged tr
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Use
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d User signed out
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d onAuthStateChanged tr
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Use
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d handleUserSignedIn st
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Not
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d handleUserSignedIn co
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold [Us
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold [Us
+[p1 console] store: Setting project {projectExists: true, projectTitle: Untitled Project}
+[p1 console] store: Setting up Yjs observe for pages
+[p1 console] INIT: Provisional Project set in store.svelte.ts {title: Untitled Project}
+[p1 console] %c[debug.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d Global debug functions init
+[p1 console] %c[env]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d; font-weight: bold Using value f
+[p1 console] [SEA-0001][SearchBox] mount {inputReady: true, inputRect: Object, at20x20: Object, atCenter: Object,
+[p1 console] [SEA-0001][SearchBox] ancestor-styles [Object, Object, Object, Object, Object, Object, Object, Objec
+[p1 console] [SEA-0001][SearchBox] main-toolbar styles {display: block, visibility: visible, opacity: 0, transfor
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d addEventListener: Use
+[p1 console] [Toolbar][dedupe] toolbar nodes present: 2
+[p1 console] [SEA-0001][Toolbar][%s] toolbar count= mount 2 [Object, Object]
+[p1 console] [SEA-0001][Toolbar][%s] root styles mount {display: block, visibility: visible, opacity: 1, transfor
+[p1 console] [SEA-0001][Toolbar][%s] textboxes in main-toolbar: mount [Object]
+[p1 console] [SEA-0001][Toolbar][%s] has target textbox? mount true
+[p1 console] %c[ContainerSelector.svelte]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] %c[ContainerSelector.svelte]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] %c[ContainerSelector.svelte]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d addEventListener: Use
+[p1 console] %c[ContainerSelector.svelte]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] %c[ContainerSelector.svelte]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] [Toolbar][dedupe] toolbar nodes present: 2
+[p1 console] [SEA-0001][Toolbar][%s] toolbar count= mount-setTimeout-0ms 2 [Object, Object]
+[p1 console] [SEA-0001][Toolbar][%s] root styles mount-setTimeout-0ms {display: block, visibility: visible, opaci
+[p1 console] [SEA-0001][Toolbar][%s] textboxes in main-toolbar: mount-setTimeout-0ms [Object]
+[p1 console] [SEA-0001][Toolbar][%s] has target textbox? mount-setTimeout-0ms true
+[p1 console] Test data helper registered globally
+[p1 console] Test data helper loaded (layout)
+[p1 console] [firestoreStore.setUserContainer] prev.ucVersion=0 prev.len=0 prev.default=undefined -> next.ucVersi
+[p1 console] %c[ContainerSelector.svelte]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] [p1] status connected
+[p1 console] %c[+layout.svelte]%c [AppLayout]%c [INFO]: color: #6699cc; font-weight: bold color: #5cb85c; font-we
+[p1 console] %c[debug.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d Global debug functions init
+[p1 console] [E2E] Patched EventTarget.prototype.dispatchEvent and Element.prototype.dispatchEvent for drop event
+[afterEach] Page already closed, skipping snapshot save
+[afterEach] Page already closed, skipping log dump
+[afterEach] Page already closed, skipping cleanup
+[Coverage] afterEach for: basic map value sync via y-websocket, closed=true
+  ✘  1 [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket (752ms)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket ───
+
+    Error: browserContext.newPage: Target page, context or browser has been closed
+
+      48 |
+      49 |     const ctx2 = await browser.newContext();
+    > 50 |     const p2 = await ctx2.newPage();
+         |                           ^
+      51 |     await p2.addInitScript(() => {
+      52 |         localStorage.setItem("VITE_IS_TEST", "true");
+      53 |         localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+        at /workspace/client/e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:50:27
+
+  1 failed
+    [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket ────
+  1 error was not a part of any test, see above for details

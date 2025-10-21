@@ -1,4 +1,5 @@
 import { Cursor } from "../lib/Cursor"; // Cursor クラスを import
+import { yjsService } from "../lib/yjs/service";
 import { yjsStore } from "./yjsStore.svelte";
 
 // Exported types
@@ -1338,14 +1339,33 @@ export class EditorOverlayStore {
     private pushPresenceState() {
         try {
             const client = yjsStore.yjsClient as any;
-            if (!client || typeof client.updatePresence !== "function") return;
-            const cursor = this.getLocalPrimaryCursor();
-            const selection = this.getLocalPrimarySelection();
-            if (!cursor && !selection) {
-                client.updatePresence(null);
+            if (!client) {
+                console.log("[pushPresenceState] No client");
                 return;
             }
-            client.updatePresence({
+
+            // ページレベルのawarenessを使用（カーソル/選択はページ固有）
+            const currentPage = (window as any).appStore?.currentPage;
+            const pageId = currentPage?.id;
+            if (!pageId) {
+                console.log("[pushPresenceState] No pageId", { currentPage });
+                return;
+            }
+
+            const pageAwareness = client.getPageAwareness?.(pageId);
+            if (!pageAwareness) {
+                console.log("[pushPresenceState] No pageAwareness", {
+                    pageId,
+                    hasGetPageAwareness: !!client.getPageAwareness,
+                });
+                return;
+            }
+            console.log("[pushPresenceState] Got pageAwareness", { pageId });
+
+            const cursor = this.getLocalPrimaryCursor();
+            const selection = this.getLocalPrimarySelection();
+
+            const presenceState = {
                 cursor: cursor ? { itemId: cursor.itemId, offset: cursor.offset } : undefined,
                 selection: selection
                     ? {
@@ -1358,7 +1378,10 @@ export class EditorOverlayStore {
                         boxSelectionRanges: selection.isBoxSelection ? selection.boxSelectionRanges ?? [] : undefined,
                     }
                     : undefined,
-            });
+            };
+
+            // ページレベルのawarenessに直接設定
+            yjsService.setPresence(pageAwareness, (!cursor && !selection) ? null : presenceState);
         } catch {
             // Awareness が利用できない環境では presence 同期をスキップ
         }

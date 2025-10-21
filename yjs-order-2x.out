@@ -1,0 +1,56 @@
+
+Running 1 test using 1 worker
+
+[p1 console] %c[env]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d; font-weight: bold Using value f
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d Initializing...
+[p1 console] %c[firebase-app.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Fi
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d Firebase Auth initial
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Con
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Con
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Suc
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Suc
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold [Us
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold [Us
+[p1 console] %c[firebase-app.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d Firebase app: Using 
+[p1 console] %c[firestoreStore.svelte.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] %c[firestoreStore.svelte.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] %c[firestoreStore.svelte.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight
+[p1 console] [vite] connecting...
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold [Us
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d [UserManager] Current
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d [UserManager] Calling
+[p1 console] [vite] connected.
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d onAuthStateChanged tr
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Use
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d User signed out
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d onAuthStateChanged tr
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Use
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d handleUserSignedIn st
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold Not
+[p1 console] %c[UserManager.ts]%c [DEBUG]: color: #6699cc; font-weight: bold color: #6c757d handleUserSignedIn co
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold [Us
+[p1 console] %c[UserManager.ts]%c [INFO]: color: #6699cc; font-weight: bold color: #0275d8; font-weight: bold [Us
+  ✘  1 [yjs] › e2e/yjs/yjs-order-sync-7f2c1d3e.spec.ts:6:1 › order: p1 connect->set then p2 connect for initial sync (4.0m)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [yjs] › e2e/yjs/yjs-order-sync-7f2c1d3e.spec.ts:6:1 › order: p1 connect->set then p2 connect for initial sync 
+
+    Test timeout of 240000ms exceeded.
+
+    Error: page.evaluate: Test ended.
+
+      26 |   await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 10000 });
+      27 |
+    > 28 |   const p1Connected = await p1.evaluate(async (pid) => {
+         |                                ^
+      29 |     const { createMinimalProjectConnection } = await import("/src/lib/yjs/connection.ts");
+      30 |     const conn = await createMinimalProjectConnection(pid);
+      31 |     (window as any).__DOC__ = conn.doc;
+        at /workspace/client/e2e/yjs/yjs-order-sync-7f2c1d3e.spec.ts:28:32
+
+    Error Context: test-results/yjs-order-sync-7f2c1d3e-or-d6cd2-p2-connect-for-initial-sync-yjs/error-context.md
+
+  1 failed
+    [yjs] › e2e/yjs/yjs-order-sync-7f2c1d3e.spec.ts:6:1 › order: p1 connect->set then p2 connect for initial sync 
+  1 error was not a part of any test, see above for details
