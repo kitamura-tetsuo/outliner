@@ -99,31 +99,19 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
     }, projectId);
     expect(p2Connected).toBeTruthy();
 
-    // Wait for both provider.synced and actual data to be available
+    // Wait for both provider.synced and actual data to be available using the utility function
     const v = await p2.evaluate(async () => {
+        const { waitForSyncedAndData } = await import("/src/lib/yjs/connection.ts");
         const prov = (window as any).__PROVIDER2__;
         const m = (window as any).__DOC2__.getMap("m");
 
-        // First, wait for provider.synced
-        for (let i = 0; i < 300; i++) { // up to ~30s
-            if (prov?.synced === true) {
-                console.log(`[p2] provider.synced=true after ${i * 100}ms`);
-                break;
-            }
-            await new Promise(r => setTimeout(r, 100));
-        }
+        // Use the encapsulated best practice pattern
+        await waitForSyncedAndData(
+            prov,
+            () => m.get("k") !== undefined,
+            { label: "p2-initial-sync-variant" },
+        );
 
-        // Then, wait for the actual value to be available
-        for (let i = 0; i < 300; i++) { // up to ~30s
-            const val = m.get("k");
-            if (val !== undefined) {
-                console.log(`[p2] value available after ${i * 100}ms from synced`);
-                return val;
-            }
-            await new Promise(r => setTimeout(r, 100));
-        }
-
-        console.log(`[p2] value NOT available after 30s, synced=${prov?.synced}`);
         return m.get("k");
     });
     const updates2 = await p2.evaluate(() => (window as any).__UPDATES2__);

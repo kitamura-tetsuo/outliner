@@ -60,6 +60,91 @@ function isIndexedDBEnabled(): boolean {
     }
 }
 
+/**
+ * Wait for both provider.synced and actual data availability in Y.Doc.
+ *
+ * This function addresses a race condition in y-websocket 2.x where provider.synced
+ * can become true before the actual data is available in the Y.Doc structure.
+ *
+ * Best practice pattern identified from E2E test stabilization:
+ * 1. First wait for provider.synced to become true
+ * 2. Then wait for the actual data to be present in the Y.Doc
+ *
+ * @param provider - The WebSocket provider to wait for
+ * @param checkDataAvailable - Function that returns true when the expected data is available in Y.Doc
+ * @param options - Configuration options
+ * @param options.timeoutMs - Maximum time to wait in milliseconds (default: 30000)
+ * @param options.pollIntervalMs - Polling interval in milliseconds (default: 100)
+ * @param options.label - Label for debug logging (default: "yjs-sync")
+ * @returns Promise that resolves to true if both synced and data are available, false on timeout
+ *
+ * @example
+ * ```typescript
+ * const provider = new WebsocketProvider(...);
+ * const doc = provider.doc;
+ * const map = doc.getMap("myMap");
+ *
+ * // Wait for provider to sync AND for specific data to be available
+ * const success = await waitForSyncedAndData(
+ *   provider,
+ *   () => map.get("myKey") !== undefined,
+ *   { label: "myMap-sync" }
+ * );
+ *
+ * if (success) {
+ *   const value = map.get("myKey");
+ *   // Use the value safely
+ * }
+ * ```
+ */
+export async function waitForSyncedAndData(
+    provider: WebsocketProvider,
+    checkDataAvailable: () => boolean,
+    options: {
+        timeoutMs?: number;
+        pollIntervalMs?: number;
+        label?: string;
+    } = {},
+): Promise<boolean> {
+    const {
+        timeoutMs = 30000,
+        pollIntervalMs = 100,
+        label = "yjs-sync",
+    } = options;
+
+    const maxIterations = Math.floor(timeoutMs / pollIntervalMs);
+    const debugEnabled = isConnDebugEnabled();
+
+    // Step 1: Wait for provider.synced
+    for (let i = 0; i < maxIterations; i++) {
+        if (provider.synced === true) {
+            if (debugEnabled) {
+                console.log(`[${label}] provider.synced=true after ${i * pollIntervalMs}ms`);
+            }
+            break;
+        }
+        await new Promise(r => setTimeout(r, pollIntervalMs));
+    }
+
+    // Step 2: Wait for actual data to be available
+    for (let i = 0; i < maxIterations; i++) {
+        if (checkDataAvailable()) {
+            if (debugEnabled) {
+                console.log(`[${label}] data available after ${i * pollIntervalMs}ms from synced`);
+            }
+            return true;
+        }
+        await new Promise(r => setTimeout(r, pollIntervalMs));
+    }
+
+    if (debugEnabled) {
+        console.log(
+            `[${label}] timeout after ${timeoutMs}ms, synced=${provider.synced}, dataAvailable=${checkDataAvailable()}`,
+        );
+    }
+    return false;
+}
+
 export type PageConnection = {
     doc: Y.Doc;
     provider: WebsocketProvider;
