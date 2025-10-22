@@ -7,5 +7,12 @@
 	],
 	"settings": {
 		"window.title": "client${separator}${activeEditorShort}${separator}${remoteName}",
+		"[typescript]": {
+			"editor.defaultFormatter": "vscode.typescript-language-features",
+			"editor.formatOnSave": true,
+			"editor.codeActionsOnSave": {
+				"source.organizeImports": "never"
+			}
+		},
 	}
 }

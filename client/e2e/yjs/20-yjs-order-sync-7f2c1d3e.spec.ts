@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createMinimalYjsConnection, initializeBrowserPage, setupUpdateTracking } from "../../src/lib/yjs/testHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
@@ -8,37 +9,18 @@ registerCoverageHooks();
 test("order: p1 connect->set then p2 connect for initial sync", async ({ browser }) => {
     const projectId = `p${Date.now().toString(16)}`;
 
-    const ctx1 = await browser.newContext();
-    const p1 = await ctx1.newPage();
-    p1.on("console", m => console.log("[p1 console]", m.text().slice(0, 100)));
-
-    await p1.addInitScript(() => {
-        localStorage.setItem("VITE_IS_TEST", "true");
-        localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
-        localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
-        localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
+    // Initialize first page
+    const { context: ctx1, page: p1 } = await initializeBrowserPage(browser, {
+        enableWebSocket: true,
+        requireAuth: true,
+        consolePrefix: "p1",
     });
-    await p1.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
 
-    await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 10000 });
-    await p1.evaluate(async () => {
-        const mgr = (window as any).__USER_MANAGER__;
-        await mgr?.loginWithEmailPassword?.("test@example.com", "password");
+    // Create minimal Yjs connection for p1
+    const p1Connected = await createMinimalYjsConnection(p1, projectId, {
+        docVar: "__DOC__",
+        providerVar: "__PROVIDER__",
     });
-    await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 10000 });
-
-    const p1Connected = await p1.evaluate(async (pid) => {
-        const { createMinimalProjectConnection } = await import("/src/lib/yjs/connection.ts");
-        const conn = await createMinimalProjectConnection(pid);
-        (window as any).__DOC__ = conn.doc;
-        (window as any).__PROVIDER__ = conn.provider;
-        conn.provider.on("status", (e: any) => console.log("[p1] status", e.status));
-        for (let i = 0; i < 80; i++) {
-            if ((conn.provider as any).wsconnected === true) break;
-            await new Promise(r => setTimeout(r, 100));
-        }
-        return (conn.provider as any).wsconnected === true;
-    }, projectId);
     expect(p1Connected).toBeTruthy();
 
     // p1 sets value before p2 connects
@@ -47,52 +29,39 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
         d.getMap("m").set("k", "v1");
     });
 
-    // Now connect p2 and verify it receives the initial value (no broadcast needed)
-    const ctx2 = await browser.newContext();
-    const p2 = await ctx2.newPage();
-    p2.on("console", m => console.log("[p2 console]", m.text().slice(0, 100)));
-
-    await p2.addInitScript(() => {
-        localStorage.setItem("VITE_IS_TEST", "true");
-        localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
-        localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
-        localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
+    // Initialize second page
+    const { context: ctx2, page: p2 } = await initializeBrowserPage(browser, {
+        enableWebSocket: true,
+        requireAuth: true,
+        consolePrefix: "p2",
     });
-    await p2.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
-    await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 10000 });
-    await p2.evaluate(async () => {
-        const mgr = (window as any).__USER_MANAGER__;
-        await mgr?.loginWithEmailPassword?.("test@example.com", "password");
+
+    // Create minimal Yjs connection for p2
+    const p2Connected = await createMinimalYjsConnection(p2, projectId, {
+        docVar: "__DOC2__",
+        providerVar: "__PROVIDER2__",
     });
-    await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 10000 });
+    expect(p2Connected).toBeTruthy();
 
-    const p2Connected = await p2.evaluate(async (pid) => {
-        const { createMinimalProjectConnection } = await import("/src/lib/yjs/connection.ts");
-        const conn = await createMinimalProjectConnection(pid);
-        (window as any).__DOC2__ = conn.doc;
-        (window as any).__PROVIDER2__ = conn.provider;
-        (window as any).__UPDATES2__ = 0;
-        (window as any).__UPDATES2_V2__ = 0;
-        conn.doc.on("update", () => (window as any).__UPDATES2__++);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        conn.doc.on("updateV2", (_u: Uint8Array, _o: unknown) => (window as any).__UPDATES2_V2__++);
+    // Set up update tracking for p2
+    await setupUpdateTracking(p2, {
+        docVar: "__DOC2__",
+        counterVar: "__UPDATES2__",
+        counterV2Var: "__UPDATES2_V2__",
+    });
 
-        // Log provider.synced transitions
-        conn.provider.on("sync", (s: boolean) => {
+    // Log provider.synced transitions
+    await p2.evaluate(() => {
+        const provider = (window as any).__PROVIDER2__;
+        provider.on("sync", (s: boolean) => {
             console.log(`[p2] provider.synced=${s}`);
         });
-        console.log(`[p2] initial provider.synced=${conn.provider.synced}`);
-
-        for (let i = 0; i < 80; i++) {
-            if ((conn.provider as any).wsconnected === true) break;
-            await new Promise(r => setTimeout(r, 100));
-        }
-        return (conn.provider as any).wsconnected === true;
-    }, projectId);
-    expect(p2Connected).toBeTruthy();
+        console.log(`[p2] initial provider.synced=${provider.synced}`);
+    });
 
     // Wait for both provider.synced and actual data to be available using the test utility function
     const value = await p2.evaluate(async () => {
+        // @ts-ignore - Browser context import resolved by Vite
         const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/testHelpers.ts");
         const provider = (window as any).__PROVIDER2__;
         const m = (window as any).__DOC2__.getMap("m");
