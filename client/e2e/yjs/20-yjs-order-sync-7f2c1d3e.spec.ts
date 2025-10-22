@@ -91,14 +91,14 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
     }, projectId);
     expect(p2Connected).toBeTruthy();
 
-    // Wait for both provider.synced and actual data to be available using the utility function
+    // Wait for both provider.synced and actual data to be available using the test utility function
     const value = await p2.evaluate(async () => {
-        const { waitForSyncedAndData } = await import("/src/lib/yjs/connection.ts");
+        const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/testHelpers.ts");
         const provider = (window as any).__PROVIDER2__;
         const m = (window as any).__DOC2__.getMap("m");
 
-        // Use the encapsulated best practice pattern
-        await waitForSyncedAndData(
+        // Use the test-specific utility to wait for sync and data
+        await waitForSyncedAndDataForTest(
             provider,
             () => m.get("k") !== undefined,
             { label: "p2-order-sync" },
