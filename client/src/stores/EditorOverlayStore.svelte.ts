@@ -48,22 +48,24 @@ export interface SelectionRange {
         startOffset: number;
         endOffset: number;
     }>;
+    // 選択範囲が更新中かどうか（視覚フィードバック用）
+    isUpdating?: boolean;
 }
 
 // Svelte 5 ランタイムの runes マクロを利用 (import は不要)
 
 export class EditorOverlayStore {
-    cursors: Record<string, CursorPosition> = {};
+    cursors = $state<Record<string, CursorPosition>>({});
     // Cursor インスタンスを保持する Map
     cursorInstances = new Map<string, Cursor>();
     // 追加されたカーソルの履歴
-    cursorHistory: string[] = [];
-    selections: Record<string, SelectionRange> = {};
-    activeItemId: string | null = null;
-    cursorVisible: boolean = true;
-    animationPaused: boolean = false;
+    cursorHistory = $state<string[]>([]);
+    selections = $state<Record<string, SelectionRange>>({});
+    activeItemId = $state<string | null>(null);
+    cursorVisible = $state<boolean>(true);
+    animationPaused = $state<boolean>(false);
     // IME composition state
-    isComposing: boolean = false;
+    isComposing = $state<boolean>(false);
     // GlobalTextArea の textarea 要素を保持
     textareaRef: HTMLTextAreaElement | null = null;
     // onEdit コールバック
@@ -408,6 +410,7 @@ export class EditorOverlayStore {
             userId,
             isBoxSelection: true,
             boxSelectionRanges,
+            isUpdating: true, // 初期状態は更新中
         };
 
         // 選択範囲を設定
@@ -418,6 +421,26 @@ export class EditorOverlayStore {
             console.log(`Box selection set with key: ${key}`);
             console.log(`Current selections:`, this.selections);
         }
+
+        // 300ms後にisUpdatingをfalseに設定
+        setTimeout(() => {
+            const currentSelection = this.selections[key];
+            if (currentSelection && currentSelection.isUpdating) {
+                // 新しいオブジェクトを作成して置き換えることで、Svelteが変更を検出できるようにする
+                this.selections = {
+                    ...this.selections,
+                    [key]: {
+                        ...currentSelection,
+                        isUpdating: false,
+                    },
+                };
+                this.notifyChange();
+
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(`Box selection isUpdating set to false for key: ${key}`);
+                }
+            }
+        }, 300);
 
         if (userId === "local") {
             this.schedulePresenceSync();
