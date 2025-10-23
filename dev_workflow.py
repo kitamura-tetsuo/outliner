@@ -235,7 +235,7 @@ def main():
     """Main workflow script."""
     check_dependencies()
     print("🚀 Starting development workflow...")
-    run_command(["./scripts/codex-setup.sh"])
+    run_command(["./scripts/setup.sh"])
 
     while True:
         issue = get_oldest_unassigned_issue()

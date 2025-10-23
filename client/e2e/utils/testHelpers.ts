@@ -672,7 +672,7 @@ export class TestHelpers {
                 || msg.includes("net::ERR_CONNECTION_REFUSED")
             ) {
                 throw new Error(
-                    "TestHelper: SvelteKit dev server appears not running at http://localhost:7090/. Run scripts/codex-setup.sh and retry.",
+                    "TestHelper: SvelteKit dev server appears not running at http://localhost:7090/. Run scripts/setup.sh and retry.",
                 );
             }
             throw error;

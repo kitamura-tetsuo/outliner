@@ -11,7 +11,7 @@ import { expect, test } from "vitest";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "../..");
-const setupScript = path.join(repoRoot, "scripts", "codex-setup.sh");
+const setupScript = path.join(repoRoot, "scripts", "setup.sh");
 
 function removeNodeModules(dir: string) {
     if (fs.existsSync(dir)) {

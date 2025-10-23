@@ -258,18 +258,18 @@ E2Eテストでは2つのカバレッジモードを選択できます:
 
 詳細は `docs/coverage-event-handlers.md` を参照してください。
 
-テストの前には `scripts/codex-setup.sh` を実行してローカルのエミュレータ群を起動してください。
+テストの前には `scripts/setup.sh` を実行してローカルのエミュレータ群を起動してください。
 スクリプトは初回実行後にインストール結果をキャッシュするため、二回目以降は依存関係のインストールをスキップして短時間で完了します。
 
 自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
 
 ### Playwrightテストを順番に実行する
 
-Codex環境では複数のE2Eテストを一度に実行するとタイムアウト (timeout) することがあります。`scripts/run-e2e-progress-for-codex.sh 1` を使うと、テストファイルを1件ずつ実行できます。
+Codex環境では複数のE2Eテストを一度に実行するとタイムアウト (timeout) することがあります。`scripts/run-e2e-progress.sh 1` を使うと、テストファイルを1件ずつ実行できます。
 This prevents timeout errors during cording agent's env runs.
 
 ```bash
-scripts/run-e2e-progress-for-codex.sh 1
+scripts/run-e2e-progress.sh 1
 ```
 
 このスクリプトは進捗を `.e2e-progress` ファイルに記録し、途中でタイムアウト (timeout) した場合でも続きから再開できます。タイムアウト (timeout) したテストはログに記録してください。
@@ -277,7 +277,7 @@ scripts/run-e2e-progress-for-codex.sh 1
 
 ### ローカルサーバーをまとめて起動する
 
-手元で手動テストを行うときは `scripts/codex-setup.sh` を実行します。SvelteKit、Yjs WebSocket、Firebase エミュレータが起動し、以降のテストが実行可能になります。
+手元で手動テストを行うときは `scripts/setup.sh` を実行します。SvelteKit、Yjs WebSocket、Firebase エミュレータが起動し、以降のテストが実行可能になります。
 
 ## 機能ドキュメントの集約
 

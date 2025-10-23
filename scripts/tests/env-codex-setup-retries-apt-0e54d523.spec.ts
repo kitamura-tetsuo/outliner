@@ -10,7 +10,7 @@ import { expect, test } from "vitest";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "../..");
-const setupScript = path.join(repoRoot, "scripts", "codex-setup.sh");
+const setupScript = path.join(repoRoot, "scripts", "setup.sh");
 const commonFunctions = path.join(repoRoot, "scripts", "common-functions.sh");
 
 test("codex-setup uses retry_apt_get", () => {

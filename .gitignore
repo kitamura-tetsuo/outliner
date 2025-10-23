@@ -72,7 +72,7 @@ server/firebase-adminsdk.json
 functions/.env.production
 *.swp
 
-.codex-setup-installed
+.setup-installed
 .e2e-progress
 
 docs/feature-map.md

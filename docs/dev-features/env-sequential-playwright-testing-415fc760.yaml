@@ -1,7 +1,7 @@
 id: ENV-415fc760
 title: Sequential Playwright testing documented
 title-ja: Playwrightテストを順番に実行する手順をREADMEに追加
-description: README includes instructions to run E2E tests sequentially with scripts/run-e2e-progress-for-codex.sh 1 and notes about possible timeouts.
+description: README includes instructions to run E2E tests sequentially with scripts/run-e2e-progress.sh 1 and notes about possible timeouts.
 category: environment
 status: implemented
 components: []

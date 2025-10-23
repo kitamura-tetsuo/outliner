@@ -2,7 +2,7 @@
 # Common functions for all scripts
 
 # Native libraries required for node-canvas builds. Keep this list in sync with
-# codex-setup.sh to avoid missing system packages when tests need Canvas APIs.
+# setup.sh to avoid missing system packages when tests need Canvas APIs.
 CANVAS_NATIVE_DEPS=(
   build-essential
   pkg-config

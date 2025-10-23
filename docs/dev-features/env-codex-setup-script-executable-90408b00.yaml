@@ -1,11 +1,11 @@
 id: ENV-0001
 title: Codex setup script is executable
-description: Ensure scripts/codex-setup.sh has execute permission and is referenced consistently.
+description: Ensure scripts/setup.sh has execute permission and is referenced consistently.
 category: environment
 status: implemented
 components:
 - .github/workflows/test.yml
-- scripts/codex-setup.sh
+- scripts/setup.sh
 tests:
 - scripts/tests/env-codex-setup-script-executable-90408b00.spec.ts
 title-ja: Codex setup script is executable

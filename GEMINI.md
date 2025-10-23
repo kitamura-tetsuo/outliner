@@ -122,7 +122,7 @@ Prioritize performance.
 - For E2E tests, use page.keyboard.type() for user input simulation; only use internal methods or event dispatching for data preparation and verification, never for simulating user actions.
 - For E2E tests, use editorStore.setCursor({itemId, offset, isActive, userId}) for cursor creation, cursor.insertText() for text input, 500ms wait after text input, and waitForCursorVisible() for focus management - this pattern was successful for LNK-0003 and should be applied to other failing tests.
 - For E2E tests, work sequentially through test phases.
-- CI runs E2E tests in parallel. When running tests in the Codex environment, execute one file at a time using `scripts/run-e2e-progress-for-codex.sh 1`. Re-run the script until every entry in `.e2e-progress` shows DONE.
+- CI runs E2E tests in parallel. When running tests in the Codex environment, execute one file at a time using `scripts/run-e2e-progress.sh 1`. Re-run the script until every entry in `.e2e-progress` shows DONE.
 - For E2E tests with internal links and cursor management, use editorStore.setCursor() for cursor creation, cursor.insertText() for text input with 500ms wait, waitForCursorVisible() for focus management, and apply these patterns sequentially to LNK-0002, LNK-0004, LNK-0006, and SLR-0009 tests.
 
 # Test Environment Configuration
@@ -135,7 +135,7 @@ Prioritize performance.
 - User has set up test users in server/log-service.js and wants to clear all Firestore emulator data during development.
 - Always use environment variables for emulator host configuration instead of hardcoding IP addresses like 192.168.50.13, as CI environments will have different host values.
 - User prefers fixing import.meta environment variable loading issues at the root cause rather than using error handling workarounds.
-- Always run `scripts/codex-setup.sh` when the container starts to set up local test services. The script creates `.codex-setup-installed` to cache dependency installation, so subsequent runs skip installation and finish faster.
+- Always run `scripts/setup.sh` when the container starts to set up local test services. The script creates `.setup-installed` to cache dependency installation, so subsequent runs skip installation and finish faster.
 
 # Authentication in Test Environment
 
