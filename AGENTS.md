@@ -165,6 +165,7 @@ Mocks are generally forbidden. Limited exceptions:
 - Process synchronously when possible.
 - Write all branch names and commit messages in English.
 - Follow error message when git commit fails by pre-commit hooks.
+- Avoid direct DOM manipulation; use Svelte for all UI operations. Direct DOM manipulation can interfere with Svelte's reactivity system and cause unexpected behavior. Instead, use Svelte's reactive declarations and state management to update the UI.
 
 ## 4. Development Workflow
 
