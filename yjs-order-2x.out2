@@ -1,0 +1,29 @@
+
+> outliner@0.0.1 test:e2e
+> NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH="./node_modules/.bin:$PATH" bash -lc 'xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npx playwright test --reporter=list "$@"' -- ./e2e/yjs/yjs-order-sync-7f2c1d3e.spec.ts
+
+[dotenvx@1.49.0] injecting env (34) from .env.test
+
+Running 1 test using 1 worker
+
+  ✘  1 [yjs] › e2e/yjs/yjs-order-sync-7f2c1d3e.spec.ts:6:1 › order: p1 connect->set then p2 connect for initial sync (239ms)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [yjs] › e2e/yjs/yjs-order-sync-7f2c1d3e.spec.ts:6:1 › order: p1 connect->set then p2 connect for initial sync 
+
+    Error: browserContext.newPage: Target page, context or browser has been closed
+
+       8 |
+       9 |   const ctx1 = await browser.newContext();
+    > 10 |   const p1 = await ctx1.newPage();
+         |                         ^
+      11 |   p1.on("console", m => console.log("[p1 console]", m.text().slice(0, 100)));
+      12 |
+      13 |   await p1.addInitScript(() => {
+        at /workspace/client/e2e/yjs/yjs-order-sync-7f2c1d3e.spec.ts:10:25
+
+  1 failed
+    [yjs] › e2e/yjs/yjs-order-sync-7f2c1d3e.spec.ts:6:1 › order: p1 connect->set then p2 connect for initial sync 
+  1 error was not a part of any test, see above for details
+Command failed with exit code 1: /usr/bin/env PATH=./node_modules/.bin:/workspace/client/node_modules/.bin:/workspace/node_modules/.bin:/node_modules/.bin:/usr/local/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/home/node/.local/bin:/usr/local/share/nvm/current/bin:/usr/local/share/npm-global/bin:/workspace/.venv/bin:/home/node/.vscode-server/bin/7d842fb85a0275a4a8e4d7e040d2625abbf7f084/bin/remote-cli:/home/node/.local/bin:/usr/local/share/nvm/current/bin:/usr/local/share/npm-global/bin:/usr/local/share/nvm/current/bin:/usr/local/share/npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/node/.local/bin bash -lc xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npx playwright test --reporter=list "$@" -- ./e2e/yjs/yjs-order-sync-7f2c1d3e.spec.ts

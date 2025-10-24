@@ -82,6 +82,9 @@ export async function createNewProject(containerName: string): Promise<YjsClient
         }
     }
     const projectId = isTest ? stableIdFromTitle(containerName) : uuid();
+    console.log(
+        `[yjsService] createNewProject: isTest=${isTest}, containerName="${containerName}", projectId="${projectId}"`,
+    );
     const project = Project.createInstance(containerName);
     const client = await YjsClient.connect(projectId, project);
     const k = keyFor(userId, projectId);

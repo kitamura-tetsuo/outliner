@@ -192,15 +192,15 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                     });
                 }
                 return { success: false, error: "No nodes found" };
-            } catch (error) {
+            } catch (error: any) {
                 return { success: false, error: error.message };
             }
         });
 
         console.log("Layout set result:", layoutSetResult);
 
-        expect(layoutSetResult.success).toBe(true);
-        expect(layoutSetResult.firstNodePosition).toEqual({ x: 200, y: 200 });
+        expect((layoutSetResult as any).success).toBe(true);
+        expect((layoutSetResult as any).firstNodePosition).toEqual({ x: 200, y: 200 });
 
         // ページをリロード（グラフページのまま）
         await page.reload();
@@ -217,7 +217,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         await page.evaluate(() => {
             const chart = (window as any).__GRAPH_CHART__;
             if (chart) {
-                const mockNodes = [
+                const mockNodes: any[] = [
                     { id: "page1", name: "Root node with [child] link" },
                     { id: "page2", name: "child" },
                 ];

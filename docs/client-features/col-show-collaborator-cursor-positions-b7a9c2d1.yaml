@@ -1,0 +1,12 @@
+id: COL-b7a9c2d1
+title: Show collaborator cursor positions
+title-ja: コラボレーターのカーソル位置を表示する
+description: Display remote collaborators' cursors and text selections in real time so teamwork stays coordinated.
+category: collaboration
+status: implemented
+acceptance:
+- Cursor indicators disappear promptly when the collaborator disconnects or closes the session
+- Remote collaborator cursor positions update live when another session moves the caret
+- Remote text selections reuse the collaborator's assigned color across items and box selections
+tests:
+- client/e2e/core/col-show-collaborator-cursor-positions-b7a9c2d1.spec.ts

@@ -32,9 +32,21 @@ test.describe("WebSocket connection limits", () => {
             test.skip(true, "Server TS runtime not available; skipping server limit test");
             return;
         }
+        // Disable LevelDB persistence for this test to avoid flakiness
+        process.env.DISABLE_Y_LEVELDB = "true";
+
         const port = 16000 + Math.floor(Math.random() * 1000);
         sinon.stub(admin.auth(), "verifyIdToken").resolves({ uid: "user", exp: Math.floor(Date.now() / 1000) + 60 });
-        const cfg = loadConfig({ PORT: String(port), LOG_LEVEL: "silent", MAX_SOCKETS_PER_ROOM: "1" });
+        const fs = require("node:fs");
+        const os = require("node:os");
+        const path = require("node:path");
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ydb-"));
+        const cfg = loadConfig({
+            PORT: String(port),
+            LOG_LEVEL: "silent",
+            MAX_SOCKETS_PER_ROOM: "1",
+            LEVELDB_PATH: dir,
+        });
         const { server } = startServer(cfg);
         await new Promise(resolve => server.on("listening", resolve));
 

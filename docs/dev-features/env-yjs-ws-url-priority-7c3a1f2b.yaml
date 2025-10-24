@@ -26,3 +26,13 @@ examples:
   e2e:
   - '"VITE_YJS_DISABLE_WS=true" を .env.test または localStorage に設定して Yjs WS を抑止'
   - Playwright では page.on('websocket', ...) で WS を収集し、Yjs 系 (port 7093, /yjs, /projects/) の接続本数が 0 であることを確認
+ws-enabled-priority:
+- '1) 強制有効: localStorage.VITE_YJS_FORCE_WS === ''true'' → 常に有効（テスト/E2E用。無効化より優先）'
+- '2) 無効化: VITE_YJS_DISABLE_WS（env または localStorage のいずれかが ''true''）→ 無効'
+- '3) 明示有効: localStorage.VITE_YJS_ENABLE_WS === ''true'' → 有効（2) が無い場合のみ）'
+- '4) テスト既定: MODE===''test'' または VITE_IS_TEST===''true'' → 既定で有効（2) があればそちらを優先）'
+- '5) 既定: 上記に該当しなければ有効'
+usage:
+- .env.test では VITE_YJS_DISABLE_WS=true を推奨（Yjs WS ハンドシェイクのノイズ抑止）
+- WS を必要とする E2E は page.addInitScript 等で localStorage に VITE_YJS_FORCE_WS=true を設定して強制接続
+- 本番では localStorage オーバーライド（ENABLE/ FORCE）は原則使用しない。必要時は環境変数での制御を優先

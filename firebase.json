@@ -88,6 +88,10 @@
                 "function": "cancelSchedule"
             },
             {
+                "source": "/api/export-schedules-ical",
+                "function": "exportSchedulesIcal"
+            },
+            {
                 "source": "/api/upload-attachment",
                 "function": "uploadAttachment"
             },

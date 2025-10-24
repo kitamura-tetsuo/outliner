@@ -3,6 +3,7 @@ import type { Project } from "../schema/app-schema";
 import SearchBox from "./SearchBox.svelte";
 import { store } from "../stores/store.svelte";
 import { onMount } from "svelte";
+import LoginStatusIndicator from "./LoginStatusIndicator.svelte";
 
 interface Props {
     project?: Project | null;
@@ -164,9 +165,13 @@ if (typeof window !== "undefined") {
 
 <div class="main-toolbar" data-testid="main-toolbar" bind:this={toolbarEl} aria-hidden="false">
     <div class="main-toolbar-content" aria-hidden="false">
-        <div class="brand" aria-label="brand">Outliner</div>
-        <div role="search">
-            <SearchBox project={effectiveProject ?? undefined} />
+        <div class="toolbar-left">
+            <div role="search">
+                <SearchBox project={effectiveProject ?? undefined} />
+            </div>
+        </div>
+        <div class="toolbar-right">
+            <LoginStatusIndicator />
         </div>
     </div>
 </div>
@@ -193,13 +198,22 @@ if (typeof window !== "undefined") {
 .main-toolbar-content {
     max-width: 1200px;
     margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
     /* Ensure full visibility for nested controls (Playwright visibility heuristics) */
     visibility: visible !important;
     opacity: 1 !important;
     transform: none !important;
+    flex-wrap: wrap;
+}
 
 /* Force visibility for all descendants to avoid ancestor-origin visibility issues in tests */
-:global(.main-toolbar), :global(.main-toolbar *), :global(.main-toolbar-content), :global(.main-toolbar-content *) {
+.main-toolbar,
+.main-toolbar *,
+.main-toolbar-content,
+.main-toolbar-content * {
     visibility: visible !important;
     opacity: 1 !important;
     transform: none !important;
@@ -211,6 +225,38 @@ if (typeof window !== "undefined") {
     /* Remove pointer-events: auto !important to prevent click interception */
 }
 
+.toolbar-left {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+
+.toolbar-left > div {
+    flex: 1 1 auto;
+}
+
+.toolbar-right {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+    .main-toolbar-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .toolbar-right {
+        justify-content: stretch;
+    }
+
+    .toolbar-right :global(.login-status-indicator) {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }
 
 /* .main-toolbar-placeholder は未使用のため削除 */

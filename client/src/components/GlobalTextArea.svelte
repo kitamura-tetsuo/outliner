@@ -46,6 +46,11 @@ onMount(() => {
     try { (generalStore as any).textareaRef = textareaRef; } catch {}
     console.log("GlobalTextArea: Textarea reference set in store");
 
+    // KeyEventHandler をグローバルに公開（テスト用）
+    if (typeof window !== "undefined") {
+        (window as any).KeyEventHandler = KeyEventHandler;
+    }
+
     // 初期フォーカスを設定
     if (textareaRef) {
         textareaRef.focus();
@@ -131,8 +136,10 @@ onMount(() => {
     try {
         const typingFallback = (ev: KeyboardEvent) => {
             try { console.log("typingFallback fired:", ev.key, "active=", !!store.getActiveItem()); } catch {}
-            // IME 合成中や修飾キー付きは無視
-            if (ev.isComposing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+            // IME 合成中や修飾キー付きは無視（ただし Alt+Shift+Arrow は矩形選択のため許可）
+            const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
+                (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
+            if (ev.isComposing || (!isBoxSelectionKey && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
             // エイリアスピッカー/コマンドパレット表示中は既存のフォワーダーに任せる
             if (aliasPickerStore.isVisible || (window as any).commandPaletteStore?.isVisible) return;
 
@@ -256,8 +263,10 @@ onMount(() => {
         const globalKeyForwarder = (ev: KeyboardEvent) => {
             // 既に他で処理済みは尊重
             if (ev.defaultPrevented) return;
-            // IME/修飾キーは無視
-            if (ev.isComposing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+            // IME/修飾キーは無視（ただし Alt+Shift+Arrow は矩形選択のため許可）
+            const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
+                (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
+            if (ev.isComposing || (!isBoxSelectionKey && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
             // 常に KeyEventHandler へ委譲（内部で必要時のみ処理される）
             KeyEventHandler.handleKeyDown(ev);
         };

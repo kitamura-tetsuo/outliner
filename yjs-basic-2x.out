@@ -1,0 +1,53 @@
+
+> outliner@0.0.1 test:e2e
+> NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH="./node_modules/.bin:$PATH" bash -lc 'xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npx playwright test --reporter=list "$@"' -- ./e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts
+
+[dotenvx@1.49.0] injecting env (34) from .env.test
+[Coverage] Using Best-effort Coverage mode (default)
+
+Running 1 test using 1 worker
+
+[Coverage] Using Best-effort Coverage mode (default)
+[afterEach] snapshot skipped: Cannot read properties of null (reading 'isClosed')
+[afterEach] log dump skipped: Cannot read properties of null (reading 'isClosed')
+[afterEach] cleanup skipped: Cannot read properties of null (reading 'isClosed')
+[Coverage] カバレッジ収集の停止に失敗しました (basic map value sync via y-websocket): TypeError: Cannot read properties of null (reading 'isClosed')
+    at file:///workspace/client/e2e/utils/registerCoverageHooks.ts:55:85
+    at /workspace/client/node_modules/playwright/lib/worker/fixtureRunner.js:220:52
+    at /workspace/client/node_modules/playwright/lib/worker/testInfo.js:326:17
+    at TimeoutManager.withRunnable (/workspace/client/node_modules/playwright/lib/worker/timeoutManager.js:68:9)
+    at TestInfoImpl._runWithTimeout (/workspace/client/node_modules/playwright/lib/worker/testInfo.js:324:34)
+    at FixtureRunner.resolveParametersAndRunFunction (/workspace/client/node_modules/playwright/lib/worker/fixtureRunner.js:220:20)
+    at /workspace/client/node_modules/playwright/lib/worker/workerMain.js:465:11
+    at TestInfoImpl._runAsStep (/workspace/client/node_modules/playwright/lib/worker/testInfo.js:315:7)
+    at WorkerMain._runEachHooksForSuites (/workspace/client/node_modules/playwright/lib/worker/workerMain.js:464:9)
+    at /workspace/client/node_modules/playwright/lib/worker/workerMain.js:326:11
+    at TestInfoImpl._runAsStep (/workspace/client/node_modules/playwright/lib/worker/testInfo.js:315:7)
+    at WorkerMain._runTest (/workspace/client/node_modules/playwright/lib/worker/workerMain.js:317:5)
+    at WorkerMain.runTestGroup (/workspace/client/node_modules/playwright/lib/worker/workerMain.js:194:11)
+    at process.<anonymous> (/workspace/client/node_modules/playwright/lib/common/process.js:65:22)
+  ✘  1 [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket (4.0m)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket ───
+
+    Test timeout of 240000ms exceeded while running "beforeEach" hook.
+
+       at utils/registerCoverageHooks.ts:36
+
+      34 | function registerBestEffortCoverageHooks(): void {
+      35 |     // 各テストの開始前にカバレッジ収集を開始
+    > 36 |     test.beforeEach(async ({ page }, testInfo) => {
+         |          ^
+      37 |         try {
+      38 |             console.log(`[Coverage] beforeEach start for: ${testInfo.title}`);
+      39 |             await page.coverage.startJSCoverage({
+        at /workspace/client/e2e/utils/registerCoverageHooks.ts:36:10
+
+    Error: browserContext.newPage: Test timeout of 240000ms exceeded.
+
+  1 failed
+    [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket ────
+  1 error was not a part of any test, see above for details
+Command failed with exit code 1: /usr/bin/env PATH=./node_modules/.bin:/workspace/client/node_modules/.bin:/workspace/node_modules/.bin:/node_modules/.bin:/usr/local/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/home/node/.local/bin:/usr/local/share/nvm/current/bin:/usr/local/share/npm-global/bin:/workspace/.venv/bin:/home/node/.vscode-server/bin/7d842fb85a0275a4a8e4d7e040d2625abbf7f084/bin/remote-cli:/home/node/.local/bin:/usr/local/share/nvm/current/bin:/usr/local/share/npm-global/bin:/usr/local/share/nvm/current/bin:/usr/local/share/npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/node/.local/bin bash -lc xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npx playwright test --reporter=list "$@" -- ./e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts

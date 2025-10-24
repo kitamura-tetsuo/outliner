@@ -18,7 +18,7 @@ export const mockUserContainer: Writable<UserContainer | null> = writable(null);
 let mockUnsubscribe: (() => void) | null = null;
 
 // Mock user containers data for testing
-let mockContainers: Map<string, UserContainer> = new Map();
+const mockContainers: Map<string, UserContainer> = new Map();
 
 // Setup initial mock data
 export function setupMockFirestore(initialData?: {

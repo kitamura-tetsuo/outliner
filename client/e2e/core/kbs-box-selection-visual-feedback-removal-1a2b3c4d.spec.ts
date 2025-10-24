@@ -14,6 +14,17 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Box selection feedback", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        // Listen to console messages
+        page.on("console", msg => {
+            const text = msg.text();
+            if (
+                text.includes("EditorOverlay:") || text.includes("DEBUG_MODE") || text.includes("attemptToAddClass")
+                || text.includes("Step")
+            ) {
+                console.log("Browser console:", text);
+            }
+        });
+
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
@@ -46,11 +57,122 @@ test.describe("Box selection feedback", () => {
         // Enable debug mode to help troubleshoot
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
+            console.log("DEBUG_MODE enabled:", (window as any).DEBUG_MODE);
         });
 
-        // Trigger box selection using keyboard shortcut - this should initiate box selection properly
-        await page.keyboard.press("Alt+Shift+ArrowRight");
+        await page.waitForTimeout(100); // Wait for DEBUG_MODE to be set
+
+        // Check if KeyEventHandler is available and get cursor info
+        const debugInfo = await page.evaluate(() => {
+            const KeyEventHandler = (window as any).KeyEventHandler;
+            const store = (window as any).editorOverlayStore;
+
+            if (!KeyEventHandler) {
+                return { error: "KeyEventHandler not found" };
+            }
+
+            if (!store) {
+                return { error: "editorOverlayStore not found" };
+            }
+
+            const cursorInstances = store.getCursorInstances();
+            return {
+                hasKeyEventHandler: !!KeyEventHandler,
+                hasStore: !!store,
+                cursorCount: cursorInstances.length,
+                cursors: cursorInstances.map((c: any) => ({
+                    itemId: c.itemId,
+                    offset: c.offset,
+                    isActive: c.isActive,
+                })),
+            };
+        });
+
+        console.log("Debug info:", debugInfo);
+
+        // Ensure we have a cursor
+        if (debugInfo.cursorCount === 0) {
+            // Set cursor programmatically
+            await page.evaluate(() => {
+                const store = (window as any).editorOverlayStore;
+                const firstItem = document.querySelector(".outliner-item");
+                const itemId = firstItem?.getAttribute("data-item-id");
+
+                if (itemId) {
+                    store.setCursor({
+                        itemId,
+                        offset: 0,
+                        isActive: true,
+                        userId: "local",
+                    });
+                }
+            });
+
+            await page.waitForTimeout(100);
+        }
+
+        // Trigger box selection programmatically
+        const result = await page.evaluate(() => {
+            const KeyEventHandler = (window as any).KeyEventHandler;
+            const store = (window as any).editorOverlayStore;
+            const event = new KeyboardEvent("keydown", {
+                key: "ArrowRight",
+                altKey: true,
+                shiftKey: true,
+                bubbles: true,
+                cancelable: true,
+            });
+
+            try {
+                KeyEventHandler.handleBoxSelection(event);
+
+                // Check the state after calling handleBoxSelection
+                const selections = store.selections;
+                const boxSelectionState = KeyEventHandler.boxSelectionState;
+
+                return {
+                    success: true,
+                    selections: Object.keys(selections).length,
+                    boxSelectionActive: boxSelectionState?.active,
+                    boxSelectionRanges: boxSelectionState?.ranges?.length,
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                };
+            }
+        });
+
+        console.log("Box selection result:", result);
         await page.waitForTimeout(200); // Allow time for DOM update before checking
+
+        // Get detailed selection info
+        const selectionInfo = await page.evaluate(() => {
+            const store = (window as any).editorOverlayStore;
+            const aliasPickerStore = (window as any).aliasPickerStore;
+            const selections = store.selections;
+
+            return {
+                aliasPickerVisible: aliasPickerStore?.isVisible,
+                navigatorWebdriver: (window as any).navigator?.webdriver,
+                selections: Object.entries(selections).map(([key, sel]: [string, any]) => ({
+                    key,
+                    startItemId: sel.startItemId,
+                    startOffset: sel.startOffset,
+                    endItemId: sel.endItemId,
+                    endOffset: sel.endOffset,
+                    isBoxSelection: sel.isBoxSelection,
+                    boxSelectionRanges: sel.boxSelectionRanges,
+                    isUpdating: sel.isUpdating,
+                })),
+            };
+        });
+
+        console.log("Selection info:", JSON.stringify(selectionInfo, null, 2));
+
+        // Wait a bit for Svelte to render
+        await page.waitForTimeout(500);
 
         // Wait for the .selection-box elements to appear first
         await expect.poll(async () => {
@@ -58,6 +180,22 @@ test.describe("Box selection feedback", () => {
             console.log(`Selection box count: ${count}`);
             return count;
         }, { timeout: 10000 }).toBeGreaterThan(0);
+
+        // Check immediately after class should be added
+        await page.waitForTimeout(100); // Wait for attemptToAddClass to complete
+
+        // Check in browser
+        const classCheck = await page.evaluate(() => {
+            const elements = document.querySelectorAll(".selection-box");
+            return Array.from(elements).map(el => ({
+                className: el.className,
+                hasUpdatingClass: el.classList.contains("selection-box-updating"),
+            }));
+        });
+        console.log("Class check:", JSON.stringify(classCheck, null, 2));
+
+        const immediateCount = await page.locator(".selection-box-updating").count();
+        console.log(`Immediate selection-box-updating count: ${immediateCount}`);
 
         // Wait for the .selection-box-updating class to appear, which should happen
         // after the selection boxes are rendered and the class is added by KeyEventHandler

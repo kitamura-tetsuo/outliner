@@ -1,0 +1,48 @@
+
+> outliner@0.0.1 test:e2e
+> NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH="./node_modules/.bin:$PATH" bash -lc 'xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npx playwright test --reporter=list "$@"' -- ./e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts
+
+[dotenvx@1.49.0] injecting env (34) from .env.test
+[Coverage] Using Best-effort Coverage mode (default)
+
+Running 1 test using 1 worker
+
+[Coverage] Using Best-effort Coverage mode (default)
+  ✘  1 [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket (4ms)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket ───
+
+    TimeoutError: browserType.launch: Timeout 180000ms exceeded.
+    Call log:
+      - <launching> /home/node/.cache/ms-playwright/chromium_headless_shell-1187/chrome-linux/headless_shell --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-extensions --disable-features=AcceptCHFrame,AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --enable-automation --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu --disable-web-security --disable-features=VizDisplayCompositor --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --memory-pressure-off --max_old_space_size=4096 --disable-extensions --disable-plugins --run-all-compositor-stages-before-draw --disable-ipc-flooding-protection --shm-size=1gb --allow-file-access-from-files --enable-clipboard-read --enable-clipboard-write --remote-debugging-port=9222 --user-data-dir=/tmp/playwright_chromiumdev_profile-5IZqlT --remote-debugging-pipe --no-startup-window
+      - <launched> pid=941132
+      - [pid=941132][err] [1021/175847.017613:ERROR:dbus/bus.cc:408] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+      - [pid=941132][err] [1021/175847.018994:ERROR:dbus/bus.cc:408] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+      - [pid=941132][err] [1021/175847.019113:ERROR:dbus/bus.cc:408] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+      - [pid=941132][err] [1021/175847.032640:ERROR:base/threading/platform_thread_posix.cc:158] pthread_create: Resource temporarily unavailable (11)
+      - [pid=941132][err] [1021/175847.033002:WARNING:device/bluetooth/dbus/bluez_dbus_manager.cc:228] Floss manager service not available, cannot set Floss enable/disable.
+      - [pid=941132][err] [1021/175847.047590:ERROR:base/threading/platform_thread_posix.cc:158] pthread_create: Resource temporarily unavailable (11)
+      - [pid=941132][err] [1021/175847.244362:ERROR:content/browser/gpu/gpu_process_host.cc:964] GPU process exited unexpectedly: exit_code=134
+      - [pid=941132][err] [1021/175847.244415:WARNING:content/browser/gpu/gpu_process_host.cc:1405] The GPU process has crashed 1 time(s)
+      - [pid=941132][err] [1021/175847.285293:ERROR:content/browser/network_service_instance_impl.cc:595] Network service crashed, restarting service.
+      - [pid=941132][err] [1021/175847.308473:ERROR:base/threading/platform_thread_posix.cc:158] pthread_create: Resource temporarily unavailable (11)
+      - [pid=941132][err] [1021/175847.470898:ERROR:content/browser/network_service_instance_impl.cc:595] Network service crashed, restarting service.
+      - [pid=941132][err] [1021/175847.488713:ERROR:base/threading/platform_thread_posix.cc:158] pthread_create: Resource temporarily unavailable (11)
+      - [pid=941132][err] [1021/175847.497861:ERROR:content/browser/gpu/gpu_process_host.cc:964] GPU process exited unexpectedly: exit_code=134
+      - [pid=941132][err] [1021/175847.497902:WARNING:content/browser/gpu/gpu_process_host.cc:1405] The GPU process has crashed 2 time(s)
+      - [pid=941132][err] [1021/175847.675130:ERROR:content/browser/gpu/gpu_process_host.cc:964] GPU process exited unexpectedly: exit_code=134
+      - [pid=941132][err] [1021/175847.675167:WARNING:content/browser/gpu/gpu_process_host.cc:1405] The GPU process has crashed 3 time(s)
+      - [pid=941132][err] [1021/175847.692738:WARNING:content/browser/gpu/gpu_process_host.cc:986] Reinitialized the GPU process after a crash. The reported initialization time was 0 ms
+      - [pid=941132][err] [1021/175847.705527:ERROR:content/browser/network_service_instance_impl.cc:595] Network service crashed, restarting service.
+      - [pid=941132][err] [1021/175847.723187:ERROR:base/threading/platform_thread_posix.cc:158] pthread_create: Resource temporarily unavailable (11)
+      - [pid=941132][err] [1021/175847.723535:ERROR:base/threading/platform_thread_posix.cc:158] pthread_create: Resource temporarily unavailable (11)
+      - [pid=941132][err] [1021/175847.723593:ERROR:base/threading/platform_thread_posix.cc:158] pthread_create: Resource temporarily unavailable (11)
+      - [pid=941132][err] [1021/175847.723644:ERROR:base/threading/platform_thread_posix.cc:158] pthread_create: Resource temporarily unavailable (11)
+
+
+  1 failed
+    [yjs] › e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts:12:1 › basic map value sync via y-websocket ────
+  1 error was not a part of any test, see above for details
+Command failed with exit code 1: /usr/bin/env PATH=./node_modules/.bin:/workspace/client/node_modules/.bin:/workspace/node_modules/.bin:/node_modules/.bin:/usr/local/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/home/node/.local/bin:/usr/local/share/nvm/current/bin:/usr/local/share/npm-global/bin:/workspace/.venv/bin:/home/node/.vscode-server/bin/7d842fb85a0275a4a8e4d7e040d2625abbf7f084/bin/remote-cli:/home/node/.local/bin:/usr/local/share/nvm/current/bin:/usr/local/share/npm-global/bin:/usr/local/share/nvm/current/bin:/usr/local/share/npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/node/.local/bin bash -lc xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npx playwright test --reporter=list "$@" -- ./e2e/yjs/yjs-basic-sync-7f2c1d3e.spec.ts

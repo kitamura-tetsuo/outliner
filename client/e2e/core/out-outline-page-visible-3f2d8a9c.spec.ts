@@ -1,5 +1,5 @@
+import { expect, type Page, test } from "@playwright/test";
 import "../utils/registerAfterEachSnapshot";
-import { type Browser, expect, type Page, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
@@ -10,7 +10,6 @@ let page: Page;
 test.beforeEach(async ({ page: initialPage, browser }, testInfo) => {
     const result = await TestHelpers.prepareTestEnvironment(initialPage, testInfo, [], browser);
     ids = { projectName: result.projectName, pageName: result.pageName };
-    // TestHelpers.prepareTestEnvironment は Page を返さないため、既存の initialPage を使用
     page = initialPage;
 });
 

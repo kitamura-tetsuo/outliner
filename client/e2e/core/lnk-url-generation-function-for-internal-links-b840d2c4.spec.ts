@@ -249,7 +249,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         const projectLinkExists = await page.evaluate(() => {
             // ページ全体を検索して、href="/project-name/page-name" というリンクが存在するか確認
             const links = document.querySelectorAll("a.internal-link");
-            for (let link of links) {
+            for (const link of links) {
                 if (
                     link.getAttribute("href") === "/project-name/page-name"
                     && link.textContent?.includes("project-name/page-name")

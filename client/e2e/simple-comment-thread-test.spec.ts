@@ -1,9 +1,9 @@
-import "../utils/registerAfterEachSnapshot";
-registerCoverageHooks();
+import "./utils/registerAfterEachSnapshot";
 // Simple test to verify CommentThread.svelte renders and adds comments
 // This test isolates CommentThread from complex E2E environment to pinpoint issues
 import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 test("Simple CommentThread test", async ({ page }) => {
     // Navigate to a blank page to avoid E2E complexities

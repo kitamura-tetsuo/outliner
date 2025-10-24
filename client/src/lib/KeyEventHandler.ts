@@ -590,12 +590,20 @@ export class KeyEventHandler {
         }
 
         KeyEventHandler.initKeyHandlers();
-        const handler = KeyEventHandler.keyHandlers.get({
+        const keyCombo = {
             key: event.key,
             ctrl: event.ctrlKey,
             alt: event.altKey,
             shift: event.shiftKey,
-        });
+        };
+        const handler = KeyEventHandler.keyHandlers.get(keyCombo);
+
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`Looking for handler with key combo:`, keyCombo);
+            console.log(`Handler found: ${handler !== undefined}`);
+        }
+
         if (handler) {
             handler(event, cursorInstances);
 
@@ -1145,6 +1153,23 @@ export class KeyEventHandler {
                 }, 500);
             }
 
+            // 矩形選択の初期状態を設定（開始時にも selection-box を表示）
+            store.setBoxSelection(
+                activeItemId,
+                activeOffset,
+                activeItemId,
+                activeOffset,
+                [{
+                    itemId: activeItemId,
+                    startOffset: activeOffset,
+                    endOffset: activeOffset,
+                }],
+                "local",
+            );
+
+            // isUpdating フラグは EditorOverlayStore.setBoxSelection で管理されるため、
+            // ここでは DOM 操作は不要
+
             // デバッグ情報
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Box selection started at item=${activeItemId}, offset=${activeOffset}`);
@@ -1210,35 +1235,8 @@ export class KeyEventHandler {
                     "local",
                 );
 
-                // 矩形選択範囲の更新前に視覚的フィードバックを追加
-                // Use setTimeout to run after DOM has been updated by Svelte
-                setTimeout(() => {
-                    const attemptToAddClass = () => {
-                        if (typeof window !== "undefined") {
-                            const elements = document.querySelectorAll(".selection-box");
-                            if (elements.length > 0) {
-                                // 選択範囲の変更を視覚的に強調するためのクラスを追加
-                                elements.forEach(el => {
-                                    el.classList.add("selection-box-updating");
-                                });
-
-                                // 一定時間後にクラスを削除
-                                setTimeout(() => {
-                                    if (typeof document !== "undefined") {
-                                        document.querySelectorAll(".selection-box-updating").forEach(el => {
-                                            el.classList.remove("selection-box-updating");
-                                        });
-                                    }
-                                }, 300);
-                            } else {
-                                // If elements don't exist yet, try again after a short delay
-                                setTimeout(attemptToAddClass, 50);
-                            }
-                        }
-                    };
-
-                    attemptToAddClass();
-                }, 0); // 0 delay to run in next event loop, after DOM update
+                // isUpdating フラグは EditorOverlayStore.setBoxSelection で管理されるため、
+                // ここでは DOM 操作は不要
                 // カーソル位置を更新
                 store.setCursor({
                     itemId: KeyEventHandler.boxSelectionState.endItemId,
