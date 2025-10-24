@@ -109,3 +109,6 @@ coverage-backups/
 NEXT_SESSION_PROMPT.txt
 
 .gemini/settings.json
+
+.codex-setup-installed
+server/ydb
