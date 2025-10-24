@@ -809,7 +809,8 @@ function handleCopy(event: ClipboardEvent) {
       // プレーンテキスト形式
       event.clipboardData.setData('text/plain', selectedText);
 
-      // グローバル（テスト用）にも保存
+      // グローバル変数に保存（E2E テスト環境専用）
+      // 本番環境では使用されないが、E2E テストでコピー内容を検証するために必要
       if (typeof window !== 'undefined') {
         (window as any).lastCopiedText = selectedText;
       }
@@ -862,7 +863,8 @@ function handleCopy(event: ClipboardEvent) {
         }
       }
 
-    // クリップボードデータ提供が無い環境でも、少なくともグローバルへは保存
+    // グローバル変数に保存（E2E テスト環境専用）
+    // 本番環境では使用されないが、E2E テストでコピー内容を検証するために必要
     if (typeof window !== 'undefined' && selectedText) {
       (window as any).lastCopiedText = selectedText;
     }
@@ -1061,7 +1063,8 @@ function handleCopy(event: ClipboardEvent) {
     if (typeof navigator !== 'undefined' && (navigator as any).clipboard?.writeText) {
       (navigator as any).clipboard.writeText(combinedText).catch(() => {});
     }
-    // グローバル（テスト用）にも保存
+    // グローバル変数に保存（E2E テスト環境専用）
+    // 本番環境では使用されないが、E2E テストでコピー内容を検証するために必要
     if (typeof window !== 'undefined') {
       (window as any).lastCopiedText = combinedText;
     }
@@ -1093,7 +1096,8 @@ function handleCut(event: ClipboardEvent) {
   // 選択されたテキストを取得
   const selectedText = store.getSelectedText('local');
 
-  // グローバル変数にテキストを保存（テスト用）
+  // グローバル変数にテキストを保存（E2E テスト環境専用）
+  // 本番環境では使用されないが、E2E テストでカット内容を検証するために必要
   if (typeof window !== 'undefined' && selectedText) {
     (window as any).lastCopiedText = selectedText;
     console.log(`Cut: Saved text to global variable: "${selectedText}"`);
@@ -1118,6 +1122,7 @@ function handleCut(event: ClipboardEvent) {
 // マルチラインペーストを上位に通知
 function handlePaste(event: ClipboardEvent) {
   // E2Eテスト用の一時テキストエリア(#clipboard-test)へのペーストはフォールバックを提供
+  // このパスは E2E テスト環境専用で、本番環境では実行されない
   const target = event.target as HTMLTextAreaElement | null;
   if (target && (target.id === 'clipboard-test' || target.closest?.('#clipboard-test'))) {
     const dataText = event.clipboardData?.getData('text/plain') || '';
