@@ -38,7 +38,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         expect(activeItemLocator).not.toBeNull();
 
         // 初期状態では選択範囲がないことを確認
-        let selections = await page.locator(".editor-overlay .selection").count();
+        const selections = await page.locator(".editor-overlay .selection").count();
         expect(selections).toBe(0);
 
         // 選択前のテキスト内容を取得
@@ -95,7 +95,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.keyboard.press("ArrowRight");
 
         // 初期状態では選択範囲がないことを確認
-        let selections = await page.locator(".editor-overlay .selection").count();
+        const selections = await page.locator(".editor-overlay .selection").count();
         expect(selections).toBe(0);
 
         // Shift + 左矢印キーを押下
@@ -154,7 +154,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         expect(activeItemLocator).not.toBeNull();
 
         // 初期状態では選択範囲がないことを確認
-        let selections = await page.locator(".editor-overlay .selection").count();
+        const selections = await page.locator(".editor-overlay .selection").count();
         expect(selections).toBe(0);
 
         // Shift + 下矢印キーを押下
@@ -194,7 +194,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         await page.keyboard.press("ArrowDown");
 
         // 初期状態では選択範囲がないことを確認
-        let selections = await page.locator(".editor-overlay .selection").count();
+        const selections = await page.locator(".editor-overlay .selection").count();
         expect(selections).toBe(0);
 
         // Shift + 上矢印キーを押下

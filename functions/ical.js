@@ -23,7 +23,6 @@ function foldLine(line) {
   const segments = [];
   let current = "";
   for (const char of line) {
-    const charCode = char.charCodeAt(0);
     const length = Buffer.byteLength(char, "utf8");
     if (Buffer.byteLength(current, "utf8") + length > 73) {
       segments.push(current);

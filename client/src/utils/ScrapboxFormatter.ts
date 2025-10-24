@@ -384,7 +384,7 @@ export class ScrapboxFormatter {
 
         // 下線タグを一時的にプレースホルダーに置換
         const underlinePlaceholders: string[] = [];
-        let tempText = text.replace(/<u>(.*?)<\/u>/g, (match, content) => {
+        const tempText = text.replace(/<u>(.*?)<\/u>/g, (match, content) => {
             const placeholder = `__UNDERLINE_${underlinePlaceholders.length}__`;
             underlinePlaceholders.push(content);
             return placeholder;

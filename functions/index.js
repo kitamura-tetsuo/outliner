@@ -1098,7 +1098,9 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
       logger.info(
         `createSchedule: pageId=${pageId}, nextRunAt=${schedule?.nextRunAt}`,
       );
-    } catch {}
+    } catch (e) {
+      logger.warn("createSchedule: logging failed", e);
+    }
 
     const scheduleRef = db
       .collection("pages")

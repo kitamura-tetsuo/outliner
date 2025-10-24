@@ -5,7 +5,7 @@
 export function getProjectTitle(containerId: string): string {
     try {
         // Defer to existing implementation without exposing it in test code.
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+
         const mod = require("./yjsService.svelte");
         return typeof mod.getProjectTitle === "function" ? mod.getProjectTitle(containerId) : "";
     } catch (_e) {

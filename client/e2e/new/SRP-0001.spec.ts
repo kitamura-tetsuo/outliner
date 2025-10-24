@@ -348,7 +348,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         await page.getByTestId("search-button").click();
         await page.waitForTimeout(1000);
 
-        let newSearchResults = await page.evaluate(() => {
+        const newSearchResults = await page.evaluate(() => {
             const resultItems = document.querySelectorAll(
                 '[data-testid="search-result-item"], .search-results .result-item',
             );
