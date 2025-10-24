@@ -1,9 +1,11 @@
 const js = require("@eslint/js");
 const googleConfig = require("eslint-config-google");
+const eslintConfigPrettier = require("eslint-config-prettier");
 
 module.exports = [
   js.configs.recommended,
   googleConfig,
+  eslintConfigPrettier,
   {
     languageOptions: {
       ecmaVersion: 2021,
@@ -29,20 +31,15 @@ module.exports = [
     rules: {
       "no-restricted-globals": ["error", "name", "length"],
       "prefer-arrow-callback": "error",
-      quotes: ["error", "double", { allowTemplateLiterals: true }],
-      "max-len": ["warn", {
-        code: 100,
-        ignoreUrls: true,
-        ignoreStrings: true,
-        ignoreTemplateLiterals: true,
-      }],
+      quotes: "off",
+      "max-len": "off",
       indent: ["off", 2],
-      "object-curly-spacing": ["error", "always"],
+      "object-curly-spacing": "off",
       "require-jsdoc": "off",
       "valid-jsdoc": "off",
       camelcase: "off",
       "no-unused-vars": "warn",
-      "comma-dangle": ["error", "only-multiline"],
+      "comma-dangle": "off",
 
       // 🚫 禁止: svelte/store の直接利用
       "no-restricted-imports": ["error", {
