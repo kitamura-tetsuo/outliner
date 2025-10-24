@@ -9,7 +9,11 @@ export function refreshAuthAndReconnect(provider: WebsocketProvider): () => Prom
                 const p = provider as any;
                 const newAuth = process.env.NODE_ENV === "test" ? `${t}:${Date.now()}` : t;
                 p.params = { ...(p.params || {}), auth: newAuth };
-                // disconnect 後でも確実に再接続を試みる
+                // WS が無効化されている場合は再接続を行わない（テスト環境抑止）
+                if (p?.__wsDisabled === true) {
+                    return;
+                }
+                // disconnect 後でも確実に再接続を試みる（有効時のみ）
                 if (p.wsconnected !== true) p.connect();
             }
         } catch {}

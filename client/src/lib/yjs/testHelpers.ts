@@ -166,6 +166,8 @@ export async function initializeBrowserPage(
             localStorage.setItem("VITE_IS_TEST", "true");
             if (enableWS) {
                 localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+                // Force-enable WS in tests even if env disables it
+                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
             }
             if (disableIDB) {
                 localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
@@ -259,12 +261,25 @@ export async function createMinimalYjsConnection(
             );
             const conn = await createMinimalProjectConnection(pid);
             (window as any)[docVar] = conn.doc;
-            (window as any)[providerVar] = conn.provider;
+            const provider = conn.provider as any;
+            (window as any)[providerVar] = provider;
 
             if (enableLogging) {
-                conn.provider.on("status", (e: any) => console.log(`[${providerVar}] status`, e.status));
-                conn.provider.on("sync", (isSynced: boolean) => console.log(`[${providerVar}] sync`, isSynced));
+                provider.on("status", (e: any) => console.log(`[${providerVar}] status`, e.status));
+                provider.on("sync", (isSynced: boolean) => console.log(`[${providerVar}] sync`, isSynced));
+                console.log(
+                    `[${providerVar}] init wsconnected=`,
+                    provider.wsconnected,
+                    "synced=",
+                    provider.synced,
+                    "url=",
+                    provider.url,
+                );
             }
+            try {
+                // Explicitly attempt connection to avoid lazy state
+                provider.connect?.();
+            } catch {}
 
             return true;
         },
@@ -498,6 +513,13 @@ export async function prepareTwoFullBrowserPages(
         console.log(`[page1 console.${msg.type()}]`, msg.text().slice(0, 100));
     });
 
+    // Ensure WS is forced for Yjs E2E on page1 (TestHelpers defaults to WS disabled)
+    await page1.addInitScript(() => {
+        try {
+            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+        } catch {}
+    });
+
     // Prepare test environment for page1
     const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(
         page1,
@@ -548,6 +570,7 @@ export async function prepareTwoFullBrowserPages(
         localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
         localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
         localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
         (window as any).__E2E__ = true;
         (window as any).__vite_plugin_react_preamble_installed__ = true;
         const originalCreateElement = document.createElement.bind(document);

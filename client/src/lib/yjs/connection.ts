@@ -80,21 +80,46 @@ function getWsBase(): string {
     return url as string;
 }
 
+/**
+ * WS 有効/無効の決定優先順位（本番/開発/テスト共通）
+ * 1) 強制有効: localStorage.VITE_YJS_FORCE_WS === "true" → 常に true（テスト/E2E 用の例外。無効化より強い）
+ * 2) 無効化: VITE_YJS_DISABLE_WS → false（env または localStorage のどちらか一方でも "true" なら無効）
+ * 3) 明示有効: localStorage.VITE_YJS_ENABLE_WS === "true" → true（2) で無効化されていない場合のみ有効）
+ * 4) テスト既定: MODE==="test" または VITE_IS_TEST==="true"（env/localStorage いずれか）→ true（2) があればそちらを優先）
+ * 5) 既定: 上記に当てはまらない場合は true
+ *
+ * 運用指針:
+ * - 本番/開発のロジックは同一。プロダクションでの localStorage オーバーライド使用は原則避ける。
+ * - .env.test では既定で VITE_YJS_DISABLE_WS=true とし、WS ハンドシェイクのノイズを抑止。
+ *   WS が必要な E2E は addInitScript 等で localStorage に VITE_YJS_FORCE_WS=true を付与して接続を強制。
+ * - 本関数は判定の単一点（single source of truth）。呼び出し側はこの戻り値のみを信頼する。
+ */
+
 function isWsEnabled(): boolean {
     try {
-        // Test override to forcibly enable WS even if env disables it
-        const override = typeof window !== "undefined"
-            && window.localStorage?.getItem?.("VITE_YJS_ENABLE_WS") === "true";
-        if (override) return true;
+        // Test override: allow forcing WS via localStorage even if env disables it
+        const forceLS = typeof window !== "undefined"
+            && window.localStorage?.getItem?.("VITE_YJS_FORCE_WS") === "true";
+        if (forceLS) return true;
+
+        // Disable takes precedence over any enabling override (unless forced above)
         const envDisabled = String(import.meta.env.VITE_YJS_DISABLE_WS || "") === "true";
         const lsDisabled = typeof window !== "undefined"
             && window.localStorage?.getItem?.("VITE_YJS_DISABLE_WS") === "true";
-        // テスト環境ではデフォルトでWebSocketを有効にする
+        if (envDisabled || lsDisabled) return false;
+
+        // Optional override to enable WS when not explicitly disabled
+        const override = typeof window !== "undefined"
+            && window.localStorage?.getItem?.("VITE_YJS_ENABLE_WS") === "true";
+        if (override) return true;
+
+        // テスト環境ではデフォルトでWebSocketを有効にする（明示的な無効化がない場合）
         const isTestEnv = import.meta.env.MODE === "test"
             || (import.meta.env as any).VITE_IS_TEST === "true"
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
-        if (isTestEnv && !envDisabled && !lsDisabled) return true;
-        return !(envDisabled || lsDisabled);
+        if (isTestEnv) return true;
+
+        return true; // default: enabled when not disabled
     } catch {
         return true;
     }
@@ -160,10 +185,18 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         // but local-only mode may still function for offline scenarios.
         token = "";
     }
+    const wsEnabled = isWsEnabled();
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: isWsEnabled(),
+        connect: wsEnabled,
     });
+    // Mark disabled state for downstream logic (e.g., token refresh) and hard-stop connect()
+    (provider as any).__wsDisabled = !wsEnabled;
+    if (!wsEnabled) {
+        try {
+            (provider as any).connect = () => {};
+        } catch {}
+    }
     const awareness = provider.awareness;
     // Debug hook (guarded)
     attachConnDebug(room, provider, awareness, doc);
@@ -210,10 +243,19 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         // Tolerate missing token; provider will attempt reconnect later
         token = "";
     }
+    const wsEnabled = isWsEnabled();
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: isWsEnabled(),
+        connect: wsEnabled,
     });
+
+    // Mark disabled state and prevent accidental connects
+    (provider as any).__wsDisabled = !wsEnabled;
+    if (!wsEnabled) {
+        try {
+            (provider as any).connect = () => {};
+        } catch {}
+    }
 
     // Awareness (presence)
     const awareness = provider.awareness;
@@ -306,10 +348,17 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
             // Stay offline if auth is not ready; provider will attempt reconnect later.
         }
     }
+    const wsEnabled = isWsEnabled();
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: isWsEnabled(),
+        connect: wsEnabled,
     });
+    (provider as any).__wsDisabled = !wsEnabled;
+    if (!wsEnabled) {
+        try {
+            (provider as any).connect = () => {};
+        } catch {}
+    }
     const awareness = provider.awareness;
     // Debug hook (guarded)
     attachConnDebug(room, provider, awareness, doc);
@@ -340,10 +389,22 @@ export async function createMinimalProjectConnection(projectId: string): Promise
     } catch {
         token = "";
     }
+    const wsEnabled = isWsEnabled();
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: isWsEnabled(),
+        connect: wsEnabled,
     });
+    (provider as any).__wsDisabled = !wsEnabled;
+    if (!wsEnabled) {
+        try {
+            (provider as any).connect = () => {};
+        } catch {}
+    } else {
+        // 明示接続: 稀に connect: true が反映されないケースがあるため冪等に connect() を呼ぶ
+        try {
+            (provider as any).connect?.();
+        } catch {}
+    }
     // Debug hook (guarded)
     attachConnDebug(room, provider, provider.awareness as unknown as Awareness, doc);
     const dispose = () => {

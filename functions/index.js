@@ -1092,6 +1092,14 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
         throw new Error(`Authentication failed: ${tokenError.message}`);
       }
     }
+
+    // 重要なデバッグ情報: 受信したページIDとスケジュール
+    try {
+      logger.info(
+        `createSchedule: pageId=${pageId}, nextRunAt=${schedule?.nextRunAt}`,
+      );
+    } catch {}
+
     const scheduleRef = db
       .collection("pages")
       .doc(pageId)

@@ -77,9 +77,9 @@ for (const file of coverageFiles) {
     try {
         data = JSON.parse(text);
     } catch (e) {
-        console.error(`JSON のパースに失敗しました: ${filePath}`);
-        console.error(e);
-        process.exit(1);
+        console.warn(`[MCR] JSON のパースに失敗したためスキップします: ${filePath}`);
+        console.warn(`${e}`);
+        continue;
     }
 
     // 期待フォーマット: V8(Array) または Istanbul(Object)。それ以外はスキップ

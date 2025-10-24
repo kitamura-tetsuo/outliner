@@ -26,6 +26,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
             localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
             localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
             (window as any).__E2E__ = true;
         });
 
@@ -142,6 +143,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
             localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
             localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
             (window as any).__E2E__ = true;
         });
 

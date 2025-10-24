@@ -336,7 +336,8 @@ export function startServer(config: Config, logger = defaultLogger) {
         }
     });
 
-    server.listen(config.PORT, "::", () => {
+    // Bind to IPv4 to ensure Chromium (Playwright) can reach the server even if IPv6-only sockets are not routed
+    server.listen(config.PORT, "0.0.0.0", () => {
         logger.info({ port: config.PORT }, "y-websocket server listening");
     });
 

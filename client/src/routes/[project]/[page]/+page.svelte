@@ -780,12 +780,32 @@ async function loadProjectAndPage() {
     finally {
         isLoading = false;
         __loadingInProgress = false;
+        // b schedule page d: 5B URL 5B /schedule 5D 5b5D 5b5D
+        try { capturePageIdForSchedule(); } catch {}
     }
 }
 
 onMount(() => {
     // 初期ロードを試行
     scheduleLoadIfNeeded();
+
+    // E2E安定化: currentPage.items の初期生成を追跡して pageId を随時キャプチャ
+    try {
+        let tries = 0;
+        const iv = setInterval(() => {
+            try {
+                capturePageIdForSchedule();
+                const pg: any = store.currentPage as any;
+                const len = pg?.items?.length ?? 0;
+                if (len > 0 || ++tries > 50) {
+                    clearInterval(iv);
+                }
+            } catch {
+                if (++tries > 50) clearInterval(iv);
+            }
+        }, 100);
+        onDestroy(() => { try { clearInterval(iv); } catch {} });
+    } catch {}
 
     // コラボレーションテスト用: Yjsの同期を待つ
     // SKIP_TEST_CONTAINER_SEED=trueの場合でも、ページの同期を待つ必要がある
@@ -862,6 +882,27 @@ onMount(() => {
     });
     onDestroy(unsub);
 });
+// スケジュール連携用: 現在のページから pageId 候補をセッションに保存
+function capturePageIdForSchedule() {
+    try {
+        if (typeof window === "undefined") return;
+        const pg: any = store.currentPage as any;
+        if (!pg) return;
+        const children: any = pg?.items as any;
+        const len = children?.length ?? 0;
+        let id = pg?.id || "";
+        if (len > 0) {
+            const first = children?.at ? children.at(0) : children?.[0];
+            id = first?.id || id;
+        }
+        if (id) {
+            const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
+            window.sessionStorage?.setItem(key, String(id));
+            console.log("[+page.svelte] capturePageIdForSchedule saved:", key, id);
+        }
+    } catch {}
+}
+
 // ホームに戻る
 function goHome() {
     goto("/");
