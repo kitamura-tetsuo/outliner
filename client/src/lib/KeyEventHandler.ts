@@ -1040,7 +1040,8 @@ export class KeyEventHandler {
                     }
                 }
 
-                // グローバル変数に保存（テスト用）
+                // グローバル変数に保存（E2E テスト環境専用）
+                // 本番環境では使用されないが、E2E テストでクリップボード内容を検証するために必要
                 if (typeof window !== "undefined") {
                     (window as any).lastCopiedText = selectedText;
                     (window as any).lastCopiedIsBoxSelection = isBoxSelectionCopy;
@@ -1680,7 +1681,9 @@ export class KeyEventHandler {
                 }
             }
 
-            // テキストが取得できない場合はグローバル変数から取得（テスト用）
+            // テキストが取得できない場合はグローバル変数から取得（テスト環境専用フォールバック）
+            // 本番環境では event.clipboardData が常に利用可能なため、このパスは実行されない
+            // E2E テスト環境では Clipboard API が制限されることがあるため、このフォールバックが必要
             if (!text && typeof window !== "undefined" && (window as any).lastCopiedText) {
                 text = (window as any).lastCopiedText;
                 console.log(`Using text from global variable: "${text}"`);
@@ -1715,7 +1718,8 @@ export class KeyEventHandler {
             // ブラウザのデフォルトペースト動作を防止
             event.preventDefault();
 
-            // グローバル変数に保存（テスト用）
+            // グローバル変数に保存（E2E テスト環境専用）
+            // 本番環境では使用されないが、E2E テストでペースト内容を検証するために必要
             if (typeof window !== "undefined") {
                 (window as any).lastPastedText = text;
                 if (vscodeMetadata) {
@@ -2026,7 +2030,8 @@ export class KeyEventHandler {
                     }
                 }
 
-                // グローバル変数に保存（テスト用）
+                // グローバル変数に保存（E2E テスト環境専用）
+                // 本番環境では使用されないが、E2E テストでカット内容を検証するために必要
                 if (typeof window !== "undefined") {
                     (window as any).lastCopiedText = selectedText;
                     (window as any).lastCopiedIsBoxSelection = isBoxSelectionCut;

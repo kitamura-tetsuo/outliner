@@ -7,6 +7,9 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
+// Shorten per-spec timeout (default 240s is too long for this scenario)
+test.setTimeout(120_000);
+
 test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
     test("two browser contexts connect to same page and see same page data", async ({ browser }, testInfo) => {
         // Create first browser context

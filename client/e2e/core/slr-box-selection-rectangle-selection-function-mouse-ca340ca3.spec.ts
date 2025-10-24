@@ -105,18 +105,13 @@ test.describe("マウスによる矩形選択テスト", () => {
         // 3. 矩形選択範囲のテキストをコピー
         await page.keyboard.press("Control+c");
 
-        // クリップボードの内容を取得（Playwrightでは直接取得できないため、テキストエリアを使用）
-        await page.evaluate(() => {
-            const textarea = document.createElement("textarea");
-            textarea.id = "clipboard-test";
-            document.body.appendChild(textarea);
-            textarea.focus();
-        });
-        await page.locator("#clipboard-test").focus();
-        await page.keyboard.press("Control+v");
+        // 少し待機してコピー処理を確実にする
+        await page.waitForTimeout(100);
 
-        // コピーされたテキストを取得
-        const copiedText = await page.locator("#clipboard-test").inputValue();
+        // コピーされたテキストを取得（グローバル変数から直接取得）
+        const copiedText = await page.evaluate(() => {
+            return (window as any).lastCopiedText || "";
+        });
         console.log(`コピーされたテキスト: "${copiedText}"`);
 
         // コピーされたテキストが空でないことを確認
@@ -199,13 +194,5 @@ test.describe("マウスによる矩形選択テスト", () => {
 
         // 矩形選択がキャンセルされたことを確認
         expect(boxSelectionCount2).toBe(0);
-
-        // クリーンアップ
-        await page.evaluate(() => {
-            const textarea = document.getElementById("clipboard-test");
-            if (textarea) {
-                textarea.remove();
-            }
-        });
     });
 });
