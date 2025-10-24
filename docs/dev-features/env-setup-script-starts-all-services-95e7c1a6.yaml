@@ -1,6 +1,6 @@
 id: ENV-0002
 title: Setup script starts all services
-description: Verify scripts/codex-setup.sh contains commands to start Firebase emulator, Yjs server, and SvelteKit server.
+description: Verify scripts/setup.sh contains commands to start Firebase emulator, Yjs server, and SvelteKit server.
 category: environment
 status: implemented
 components: []

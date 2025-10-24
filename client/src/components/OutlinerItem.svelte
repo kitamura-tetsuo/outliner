@@ -1253,6 +1253,15 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         if (itemStartOffset < 0) itemStartOffset = 0;
         if (itemEndOffset > textContent.length) itemEndOffset = textContent.length;
 
+        // 最低1文字は選択されるように調整（極端に狭いドラッグ対策）
+        if (itemStartOffset === itemEndOffset) {
+            if (itemEndOffset < textContent.length) {
+                itemEndOffset += 1;
+            } else if (itemStartOffset > 0) {
+                itemStartOffset -= 1;
+            }
+        }
+
         // 選択範囲が有効な場合のみ追加
         if (itemStartOffset < itemEndOffset) {
             boxSelectionRanges.push({
@@ -1278,6 +1287,31 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
             boxSelectionRanges,
             "local",
         );
+
+        // 選択確定のたびに矩形選択テキストを計算して lastCopiedText に保持（paste フォールバックのため）
+        try {
+            if (typeof window !== 'undefined') {
+                const lines: string[] = [];
+                for (const r of boxSelectionRanges) {
+                    const el = document.querySelector(`[data-item-id="${r.itemId}"] .item-text`) as HTMLElement | null;
+                    let full = el?.textContent || '';
+                    if (!full) {
+                        // generalStore からのフォールバック
+                        const w: any = (window as any);
+                        const items: any = w?.generalStore?.currentPage?.items;
+                        const len = items?.length ?? 0;
+                        for (let i = 0; i < len; i++) {
+                            const it = items.at ? items.at(i) : items[i];
+                            if (it?.id === r.itemId) { full = String(it?.text ?? ''); break; }
+                        }
+                    }
+                    const s = Math.max(0, Math.min(full.length, Math.min(r.startOffset, r.endOffset)));
+                    const e = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
+                    lines.push(full.substring(s, e));
+                }
+                (window as any).lastCopiedText = lines.join('\n');
+            }
+        } catch {}
 
         // カーソル位置を更新
         editorOverlayStore.setCursor({

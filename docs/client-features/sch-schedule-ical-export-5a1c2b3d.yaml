@@ -1,0 +1,18 @@
+id: SCH-5A1C2B3D
+title: Schedule iCal Export
+title-ja: スケジュールのiCalエクスポート
+description: 'Users can download upcoming publishing schedules as an iCal (.ics) calendar containing strategy metadata and run times for external calendar tracking.
+
+  '
+category: publishing
+status: implemented
+components:
+- client/src/routes/[project]/[page]/schedule/+page.svelte
+- client/src/services/scheduleService.ts
+- firebase.json
+- functions/ical.js
+- functions/index.js
+tests:
+- client/e2e/core/sch-export-ics-5a1c2b3d.spec.ts
+- functions/test/ical.test.js
+- functions/test/scheduled-publishing.test.js

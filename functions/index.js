@@ -45,6 +45,7 @@ const { generateToken } = require("@fluidframework/azure-service-utils");
 
 const jwt = require("jsonwebtoken");
 const { FieldValue } = require("firebase-admin/firestore");
+const { generateSchedulesIcs } = require("./ical");
 
 // CORS設定を共通化する関数
 function setCorsHeaders(req, res) {
@@ -1091,6 +1092,16 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
         throw new Error(`Authentication failed: ${tokenError.message}`);
       }
     }
+
+    // 重要なデバッグ情報: 受信したページIDとスケジュール
+    try {
+      logger.info(
+        `createSchedule: pageId=${pageId}, nextRunAt=${schedule?.nextRunAt}`,
+      );
+    } catch (e) {
+      logger.warn("createSchedule: logging failed", e);
+    }
+
     const scheduleRef = db
       .collection("pages")
       .doc(pageId)
@@ -1320,6 +1331,108 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
       return res.status(401).json({ error: "Authentication failed" });
     }
     return res.status(500).json({ error: "Failed to list schedules" });
+  }
+});
+
+// Export schedules as iCal
+exports.exportSchedulesIcal = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  const { idToken, pageId } = req.body || {};
+  if (!idToken || !pageId) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+
+  try {
+    const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FUNCTIONS_EMULATOR === "true");
+
+    if (isEmulatorEnv) {
+      logger.info(
+        "exportSchedulesIcal: Using emulator environment token verification",
+      );
+    }
+
+    let decoded;
+    try {
+      decoded = await admin.auth().verifyIdToken(idToken, !isEmulatorEnv);
+      logger.info(
+        `exportSchedulesIcal: Token verified for user: ${decoded.uid} (emulator: ${isEmulatorEnv})`,
+      );
+    } catch (tokenError) {
+      logger.error(
+        `exportSchedulesIcal: Token verification failed: ${tokenError.message}`,
+      );
+      if (
+        isEmulatorEnv && idToken && typeof idToken === "string" &&
+        idToken.length > 0
+      ) {
+        logger.warn(
+          "exportSchedulesIcal: Proceeding with emulator token fallback",
+        );
+      } else {
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
+    }
+
+    const pageRef = db.collection("pages").doc(pageId);
+    const pageDoc = await pageRef.get();
+    const pageData = pageDoc.exists ? pageDoc.data() : undefined;
+    const pageTitle = pageData?.title || pageData?.text || undefined;
+
+    const snapshot = await pageRef.collection("schedules")
+      .where("executedAt", "==", null)
+      .orderBy("nextRunAt")
+      .get();
+
+    const schedules = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (typeof data.nextRunAt !== "number") {
+        logger.warn(
+          `exportSchedulesIcal: Skipping schedule ${doc.id} with invalid nextRunAt`,
+        );
+        return;
+      }
+      schedules.push({
+        id: doc.id,
+        strategy: data.strategy || "unknown",
+        nextRunAt: data.nextRunAt,
+      });
+    });
+
+    if (schedules.length === 0) {
+      logger.info(
+        `exportSchedulesIcal: No pending schedules for pageId=${pageId}`,
+      );
+    }
+
+    const ics = generateSchedulesIcs({
+      pageId,
+      pageTitle,
+      schedules,
+    });
+
+    const filename = `outliner-schedules-${pageId}.ics`;
+    res.set("Content-Type", "text/calendar; charset=utf-8");
+    res.set("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.status(200).send(ics);
+  } catch (err) {
+    logger.error(`exportSchedulesIcal error: ${err.message}`);
+    if (
+      err.code === "auth/id-token-expired" ||
+      err.code === "auth/invalid-id-token" ||
+      err.code === "auth/argument-error"
+    ) {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
+    return res.status(500).json({ error: "Failed to export schedules" });
   }
 });
 

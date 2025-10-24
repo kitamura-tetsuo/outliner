@@ -135,7 +135,7 @@ Prioritize performance.
 - User has set up test users in server/log-service.js and wants to clear all Firestore emulator data during development.
 - Always use environment variables for emulator host configuration instead of hardcoding IP addresses like 192.168.50.13, as CI environments will have different host values.
 - User prefers fixing import.meta environment variable loading issues at the root cause rather than using error handling workarounds.
-- Always run `scripts/codex-setup.sh` when the container starts to set up local test services. The script creates `.codex-setup-installed` to cache dependency installation, so subsequent runs skip installation and finish faster.
+- Always run `scripts/setup.sh` when the container starts to set up local test services. The script creates `.setup-installed` to cache dependency installation, so subsequent runs skip installation and finish faster.
 
 # Authentication in Test Environment
 

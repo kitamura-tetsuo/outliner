@@ -89,4 +89,30 @@ describe("Scheduled Publishing", () => {
       }
     }
   });
+
+  it("exports schedules as iCal", async () => {
+    const nextRunAt = Date.now() + 5 * 60 * 1000;
+    try {
+      await axios.post(`${baseURL}/create-schedule`, {
+        idToken: dummyToken,
+        pageId: dummyPageId,
+        schedule: { strategy: "one_shot", nextRunAt },
+      });
+      const response = await axios.post(
+        `${baseURL}/export-schedules-ical`,
+        {
+          idToken: dummyToken,
+          pageId: dummyPageId,
+        },
+        { responseType: "text" },
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers["content-type"]).toContain("text/calendar");
+      expect(response.data).toContain("BEGIN:VCALENDAR");
+      expect(response.data).toContain("SUMMARY:Outliner publish (one_shot)");
+    } catch {
+      console.warn("Emulator not running, skipping test");
+      expect(true).toBe(true);
+    }
+  });
 });

@@ -29,7 +29,7 @@ services:
         source: /home/ubuntu/.qwen
         target: /home/node/.qwen
         consistency: cached
-    command: bash -c "rm -rf /workspace/.codex-setup-installed; /workspace/.devcontainer/setup.override.sh; sleep infinity"
+    command: bash -c "rm -rf /workspace/.setup-installed; /workspace/.devcontainer/setup.override.sh; sleep infinity"
 
 
 

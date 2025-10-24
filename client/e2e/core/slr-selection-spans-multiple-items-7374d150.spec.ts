@@ -67,7 +67,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         const initialCursorInfo = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return null;
-            const cursor = Object.values(store.cursors)[0];
+            const cursor = Object.values(store.cursors)[0] as any;
             return cursor ? { itemId: cursor.itemId, offset: cursor.offset } : null;
         });
         console.log("Initial cursor position:", initialCursorInfo);
@@ -111,7 +111,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
             );
 
             // 選択範囲の詳細情報を表示
-            const sel = Object.values((window as any).editorOverlayStore.selections)[0];
+            const sel = Object.values((window as any).editorOverlayStore.selections)[0] as any;
             if (sel) {
                 const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
                 const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
@@ -191,7 +191,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
             );
 
             // 選択範囲の詳細情報を表示
-            const sel = Object.values((window as any).editorOverlayStore.selections)[0];
+            const sel = Object.values((window as any).editorOverlayStore.selections)[0] as any;
             if (sel) {
                 const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
                 const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);

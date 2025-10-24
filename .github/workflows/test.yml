@@ -269,6 +269,7 @@ jobs:
           pkill -f "port 7090" || true
           pkill -f "port 7091" || true
           pkill -f "port 7092" || true
+          pkill -f "port 7093" || true
           pkill -f "port 59099" || true
           pkill -f "port 58080" || true
           pkill -f "port 57000" || true
@@ -359,7 +360,7 @@ jobs:
           CI: true
 
       - name: Run codex setup script
-        run: bash scripts/codex-setup.sh
+        run: bash scripts/setup.sh
         env:
           CI: true
           NODE_ENV: test
@@ -503,6 +504,7 @@ jobs:
           pkill -f "node.*7090" || true
           pkill -f "node.*7091" || true
           pkill -f "node.*7092" || true
+          pkill -f "node.*7093" || true
           pkill -f "node.*59099" || true
           pkill -f "node.*58080" || true
           pkill -f "node.*57000" || true

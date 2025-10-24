@@ -1,0 +1,19 @@
+stages:
+  - build
+
+variables:
+  DOCKERFILE_PATH: ./server/
+  IMAGE_NAME: yjs-ws-server
+
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHA -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:latest $DOCKERFILE_PATH
+    - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:latest
+  only:
+    - main

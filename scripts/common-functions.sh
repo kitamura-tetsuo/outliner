@@ -2,7 +2,7 @@
 # Common functions for all scripts
 
 # Native libraries required for node-canvas builds. Keep this list in sync with
-# codex-setup.sh to avoid missing system packages when tests need Canvas APIs.
+# setup.sh to avoid missing system packages when tests need Canvas APIs.
 CANVAS_NATIVE_DEPS=(
   build-essential
   pkg-config
@@ -504,7 +504,7 @@ start_yjs_server() {
     npm run build --silent || npm run build
   fi
   echo "Launching compiled server..."
-  npx dotenvx run --env-file=.env.test -- bash -lc "PORT=${TEST_YJS_PORT} LEVELDB_PATH='${ROOT_DIR}/yjs-data' npm start --silent" \
+  npx dotenvx run --env-file=.env.test -- bash -lc "DISABLE_Y_LEVELDB=true PORT=${TEST_YJS_PORT} npm start --silent" \
     </dev/null > "${ROOT_DIR}/server/logs/yjs-websocket.log" 2>&1 &
   local yjs_pid=$!
   echo "Yjs WebSocket server started with PID: ${yjs_pid}"

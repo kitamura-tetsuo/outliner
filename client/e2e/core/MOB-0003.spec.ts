@@ -85,7 +85,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         const pageChildren = Object.values(pageItem.items);
         // Get the second child of the page (一行目: テスト), which now has a child
         const secondChild: any = pageChildren[1];
-        const indentedItemId = secondChild.items ? Object.values(secondChild.items)[0].id : null;
+        const indentedItemId = secondChild.items ? (Object.values(secondChild.items)[0] as any).id : null;
         console.log("MOB-0003: indented item ID:", indentedItemId);
 
         // Set the active item directly to the indented item

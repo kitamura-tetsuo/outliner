@@ -1,41 +1,69 @@
 import type { Awareness } from "y-protocols/awareness";
 import { Item, Items, Project } from "../../schema/yjs-schema";
 import { colorForUser } from "../../stores/colorForUser";
-
-interface PresenceStoreLike {
-    setUser(user: { userId: string; userName: string; color: string; }): void;
-    removeUser(userId: string): void;
-}
-
-class InMemoryPresenceStore implements PresenceStoreLike {
-    private users = new Map<string, { userId: string; userName: string; color: string; }>();
-
-    setUser(user: { userId: string; userName: string; color: string; }): void {
-        this.users.set(user.userId, user);
-    }
-
-    removeUser(userId: string): void {
-        this.users.delete(userId);
-    }
-}
-
-const fallbackPresenceStore = new InMemoryPresenceStore();
-
-function resolvePresenceStore(): PresenceStoreLike {
-    const globalStore: any = (globalThis as any).presenceStore;
-    if (
-        globalStore
-        && typeof globalStore.setUser === "function"
-        && typeof globalStore.removeUser === "function"
-    ) {
-        return globalStore as PresenceStoreLike;
-    }
-    return fallbackPresenceStore;
-}
+import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
+import { presenceStore } from "../../stores/PresenceStore.svelte";
 
 function childrenKeys(tree: any, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);
     return tree.sortChildrenByOrder(children, parentKey);
+}
+
+function resolveOverlayStore(): typeof editorOverlayStore | undefined {
+    return (globalThis as any).editorOverlayStore ?? editorOverlayStore;
+}
+
+function resolvePresenceStore(): typeof presenceStore | undefined {
+    return (globalThis as any).presenceStore ?? presenceStore;
+}
+
+function resolveUserColor(userId: string, provided?: string): string {
+    if (provided) return provided;
+    const globalColorForUser = (globalThis as any).colorForUser as ((id: string) => string) | undefined;
+    if (typeof globalColorForUser === "function") {
+        try {
+            return globalColorForUser(userId);
+        } catch {}
+    }
+    return colorForUser(userId);
+}
+
+function applyPresenceToOverlay(
+    overlay: typeof editorOverlayStore | undefined,
+    user: { userId: string; name?: string; color?: string; },
+    presence: { cursor?: { itemId: string; offset: number; }; selection?: any; } | null | undefined,
+) {
+    if (!overlay || !user) return;
+    const color = resolveUserColor(user.userId, user.color);
+    if (presence?.cursor) {
+        overlay.setCursor({
+            itemId: presence.cursor.itemId,
+            offset: presence.cursor.offset,
+            isActive: false,
+            userId: user.userId,
+            userName: user.name,
+            color,
+        });
+    } else {
+        overlay.clearCursorAndSelection(user.userId, false);
+    }
+
+    if (presence?.selection) {
+        overlay.setSelection({
+            startItemId: presence.selection.startItemId,
+            startOffset: presence.selection.startOffset,
+            endItemId: presence.selection.endItemId,
+            endOffset: presence.selection.endOffset,
+            isReversed: presence.selection.isReversed,
+            isBoxSelection: presence.selection.isBoxSelection,
+            boxSelectionRanges: presence.selection.boxSelectionRanges,
+            userId: user.userId,
+            userName: user.name,
+            color,
+        });
+    } else {
+        overlay.clearSelectionForUser(user.userId);
+    }
 }
 
 export const yjsService = {
@@ -103,8 +131,8 @@ export const yjsService = {
         item.updateText(text);
     },
 
-    setPresence(awareness: Awareness, state: { cursor?: any; selection?: any; }) {
-        awareness.setLocalStateField("presence", state);
+    setPresence(awareness: Awareness, state: { cursor?: any; selection?: any; } | null) {
+        awareness.setLocalStateField("presence", state ?? null);
     },
 
     getPresence(awareness: Awareness) {
@@ -115,20 +143,33 @@ export const yjsService = {
         const update = ({ added, updated, removed }: any) => {
             // Prefer the globally-registered store when running in the browser.
             const target = resolvePresenceStore();
+            if (!target) return;
             const states = (awareness as any).getStates();
+            const clientId = (awareness as any).clientID;
+            const overlay = resolveOverlayStore();
+
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);
                 const user = s?.user;
                 if (!user) return;
-                const color = user.color
-                    || ((globalThis as any).colorForUser?.(user.userId) ?? colorForUser(user.userId));
+                const color = resolveUserColor(user.userId, user.color);
                 // テストが即時反映を期待しているため同期更新する
                 target.setUser({ userId: user.userId, userName: user.name, color });
+
+                if (overlay && id !== clientId) {
+                    applyPresenceToOverlay(overlay, { ...user, color }, s?.presence);
+                }
             });
+
             removed.forEach((id: number) => {
                 const s = states.get(id);
                 const user = s?.user;
-                if (user) target.removeUser(user.userId);
+                if (!user) return;
+                target.removeUser(user.userId);
+
+                if (overlay && id !== clientId) {
+                    applyPresenceToOverlay(overlay, { ...user }, null);
+                }
             });
         };
         (awareness as any).on("change", update);
@@ -138,27 +179,25 @@ export const yjsService = {
 
     bindPagePresence(awareness: Awareness) {
         const update = ({ added, updated, removed }: any) => {
-            const overlay = (globalThis as any).editorOverlayStore;
+            const overlay = resolveOverlayStore();
             if (!overlay) return; // no-op when overlay store not present
             const states = (awareness as any).getStates();
+            const clientId = (awareness as any).clientID;
+
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);
                 const user = s?.user;
-                const p = s?.presence;
-                if (!user || !p?.cursor) return;
-                overlay.setCursor({
-                    itemId: p.cursor.itemId,
-                    offset: p.cursor.offset,
-                    isActive: false,
-                    userId: user.userId,
-                    userName: user.name,
-                    color: user.color || ((globalThis as any).colorForUser?.(user.userId) ?? "#888"),
-                });
+                if (!user) return;
+                if (id === clientId) return;
+                applyPresenceToOverlay(overlay, user, s?.presence);
             });
+
             removed.forEach((id: number) => {
                 const s = states.get(id);
                 const user = s?.user;
-                if (user) overlay.clearCursorAndSelection(user.userId, true);
+                if (!user) return;
+                if (id === clientId) return;
+                applyPresenceToOverlay(overlay, user, null);
             });
         };
         (awareness as any).on("change", update);

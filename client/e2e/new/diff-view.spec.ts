@@ -18,12 +18,12 @@ test.describe("snapshot diff viewer", () => {
         const { projectName, pageName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
         await page.evaluate(
             ({ projectName, pageName }) => {
-                window.__SNAPSHOT_SERVICE__.setCurrentContent(
+                (window as any).__SNAPSHOT_SERVICE__.setCurrentContent(
                     projectName,
                     pageName,
                     "second",
                 );
-                window.__SNAPSHOT_SERVICE__.addSnapshot(
+                (window as any).__SNAPSHOT_SERVICE__.addSnapshot(
                     projectName,
                     pageName,
                     "first",
@@ -74,7 +74,7 @@ test.describe("snapshot diff viewer", () => {
         await page.waitForSelector("li");
         const count = await page.evaluate(
             ({ projectName, pageName }) => {
-                const { listSnapshots } = window.__SNAPSHOT_SERVICE__;
+                const { listSnapshots } = (window as any).__SNAPSHOT_SERVICE__;
                 return listSnapshots(projectName, pageName).length;
             },
             { projectName, pageName },
@@ -96,7 +96,7 @@ test.describe("snapshot diff viewer", () => {
         await page.getByText("Revert").click();
         const current = await page.evaluate(
             ({ projectName, pageName }) => {
-                const { getCurrentContent } = window.__SNAPSHOT_SERVICE__;
+                const { getCurrentContent } = (window as any).__SNAPSHOT_SERVICE__;
                 return getCurrentContent(projectName, pageName);
             },
             { projectName, pageName },

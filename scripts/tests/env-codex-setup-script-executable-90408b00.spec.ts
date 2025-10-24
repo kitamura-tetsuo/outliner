@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "../..");
 
-const setupScript = path.join(repoRoot, "scripts", "codex-setup.sh");
+const setupScript = path.join(repoRoot, "scripts", "setup.sh");
 const filesReferencingSetup = [
     path.join(repoRoot, ".devcontainer", "devcontainer.json"),
     path.join(repoRoot, ".github", "workflows", "test.yml"),
@@ -25,11 +25,11 @@ test("codex setup script has execute permission", async () => {
     expect(mode).toBeGreaterThan(0);
 });
 
-test("all configuration references use codex-setup.sh", async () => {
+test("all configuration references use setup.sh", async () => {
     for (const file of filesReferencingSetup) {
         expect(fs.existsSync(file)).toBe(true);
         const content = fs.readFileSync(file, "utf-8");
         expect(content.includes("codex-setp.sh")).toBe(false);
-        expect(content.includes("codex-setup.sh")).toBe(true);
+        expect(content.includes("setup.sh")).toBe(true);
     }
 });

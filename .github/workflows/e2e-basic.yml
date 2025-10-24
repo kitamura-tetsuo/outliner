@@ -19,7 +19,7 @@ jobs:
 
       - name: Setup test environment
         run: |
-          ./scripts/codex-setup.sh
+          ./scripts/setup.sh
 
       - name: Run basic E2E tests sequentially
         run: |
@@ -38,6 +38,7 @@ jobs:
           pkill -f "node.*7090" || true
           pkill -f "node.*7091" || true
           pkill -f "node.*7092" || true
+          pkill -f "node.*7093" || true
           pkill -f "node.*59099" || true
           pkill -f "node.*58080" || true
           pkill -f "node.*57000" || true

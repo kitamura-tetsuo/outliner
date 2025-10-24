@@ -26,7 +26,7 @@ test.describe("SLR-0013: 現在行を選択", () => {
         // 初期状態の確認
         const initialState = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            const textarea = document.querySelector("textarea.global-textarea");
+            const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
             return {
                 storeExists: !!store,
                 textareaValue: textarea ? textarea.value : "",
@@ -45,7 +45,7 @@ test.describe("SLR-0013: 現在行を選択", () => {
         // 選択後の状態を確認
         const afterSelectionState = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
-            const textarea = document.querySelector("textarea.global-textarea");
+            const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
             return {
                 storeExists: !!store,
                 textareaValue: textarea ? textarea.value : "",

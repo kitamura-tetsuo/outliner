@@ -1,0 +1,12 @@
+id: YJS-f2g3h4i5
+title: Yjs project data sync
+title-ja: Yjsプロジェクトデータ同期
+description: Verify that two browser contexts can connect to the same project and see the same project data.
+category: data
+status: experimental
+acceptance:
+- Both contexts see the same project title
+- Project data is synchronized between contexts
+- Two browser contexts connect to the same project ID
+tests:
+- client/e2e/yjs/yjs-project-sync-f2g3h4i5.spec.ts

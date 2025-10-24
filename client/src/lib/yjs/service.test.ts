@@ -61,22 +61,41 @@ describe("yjsService", () => {
         // Provide a minimal global overlay store
         const editorOverlayStore = {
             cursors: {} as any,
+            selections: {} as any,
             setCursor({ itemId, offset, userId }: any) {
                 this.cursors[userId] = { itemId, offset, userId };
+            },
+            setSelection({ userId }: any) {
+                this.selections[userId] = { userId };
             },
             clearCursorAndSelection(userId: string) {
                 const { [userId]: _r, ...rest } = this.cursors;
                 this.cursors = rest;
             },
+            clearSelectionForUser(userId: string) {
+                const { [userId]: _r, ...rest } = this.selections;
+                this.selections = rest;
+            },
         };
         (globalThis as any).editorOverlayStore = editorOverlayStore;
         const unbind = yjsService.bindPagePresence(awareness);
-        awareness.setLocalStateField("user", { userId: "u2", name: "Bob" });
-        awareness.setLocalStateField("presence", { cursor: { itemId: "i1", offset: 0 } });
-        const cursor = Object.values(editorOverlayStore.cursors).find((c: any) => c.userId === "u2");
+
+        // seed local state (ignored by overlay sync)
+        awareness.setLocalStateField("user", { userId: "self", name: "Self" });
+        awareness.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } });
+
+        // simulate remote collaborator
+        const states = (awareness as any).getStates();
+        states.set(42, {
+            user: { userId: "u2", name: "Bob" },
+            presence: { cursor: { itemId: "i1", offset: 0 } },
+        });
+        (awareness as any).emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
+
+        const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
-        awareness.setLocalStateField("user", null as any);
-        awareness.setLocalStateField("presence", null as any);
+
+        (awareness as any).emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
         unbind();
     });
 });

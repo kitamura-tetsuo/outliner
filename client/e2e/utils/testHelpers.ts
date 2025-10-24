@@ -76,6 +76,8 @@ export class TestHelpers {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+                // 既定は WS 無効（必要なテストのみ個別に FORCE を設定）
+                localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
                 (window as any).__E2E__ = true;
                 // Vite エラーオーバーレイ抑止
                 (window as any).__vite_plugin_react_preamble_installed__ = true;
@@ -113,6 +115,8 @@ export class TestHelpers {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+                // 既定は WS 無効（必要なテストのみ個別に FORCE を設定）
+                localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
                 (window as any).__E2E__ = true;
                 (window as any).__vite_plugin_react_preamble_installed__ = true;
             } catch {}
@@ -672,7 +676,7 @@ export class TestHelpers {
                 || msg.includes("net::ERR_CONNECTION_REFUSED")
             ) {
                 throw new Error(
-                    "TestHelper: SvelteKit dev server appears not running at http://localhost:7090/. Run scripts/codex-setup.sh and retry.",
+                    "TestHelper: SvelteKit dev server appears not running at http://localhost:7090/. Run scripts/setup.sh and retry.",
                 );
             }
             throw error;
@@ -1337,12 +1341,32 @@ export class TestHelpers {
             try {
                 const ap: any = (window as any).aliasPickerStore;
                 if (ap && ap.isVisible && typeof ap.itemId === "string" && ap.itemId) {
-                    return ap.itemId as string;
+                    const chosen = ap.itemId as string;
+                    try {
+                        const gs: any = (window as any).generalStore;
+                        const proj = encodeURIComponent(gs?.project?.title ?? "");
+                        const parts = (window.location.pathname || "/").split("/").filter(Boolean);
+                        const pageTitle = decodeURIComponent(parts[1] || "");
+                        const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
+                        window.sessionStorage?.setItem(key, chosen);
+                    } catch {}
+                    return chosen;
                 }
             } catch {}
             const items = Array.from(document.querySelectorAll<HTMLElement>(".outliner-item[data-item-id]"));
             const target = items[i];
-            return target?.dataset.itemId ?? null;
+            const chosen = target?.dataset.itemId ?? null;
+            try {
+                if (chosen) {
+                    const gs: any = (window as any).generalStore;
+                    const proj = encodeURIComponent(gs?.project?.title ?? "");
+                    const parts = (window.location.pathname || "/").split("/").filter(Boolean);
+                    const pageTitle = decodeURIComponent(parts[1] || "");
+                    const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
+                    window.sessionStorage?.setItem(key, chosen);
+                }
+            } catch {}
+            return chosen;
         }, index);
     }
 

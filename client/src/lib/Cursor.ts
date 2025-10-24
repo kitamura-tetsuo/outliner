@@ -2355,10 +2355,11 @@ export class Cursor implements CursorEditingContext {
         let nextEl: HTMLElement | null = currentEl.nextElementSibling as HTMLElement;
 
         // If no direct sibling, try to find next item in the DOM tree
-        while (!nextEl && currentEl.parentElement) {
-            nextEl = currentEl.parentElement.nextElementSibling as HTMLElement;
+        let searchEl = currentEl;
+        while (!nextEl && searchEl.parentElement) {
+            nextEl = searchEl.parentElement.nextElementSibling as HTMLElement;
             if (!nextEl) {
-                currentEl = currentEl.parentElement;
+                searchEl = searchEl.parentElement;
             }
         }
 

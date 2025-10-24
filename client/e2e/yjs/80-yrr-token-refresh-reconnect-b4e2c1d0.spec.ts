@@ -8,6 +8,20 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
+// Shorten per-spec timeout (default 240s is too long for this scenario)
+import { test as base } from "@playwright/test";
+base.setTimeout(120_000);
+
+// Force Yjs WS for this spec (TestHelpers defaults to WS disabled)
+test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+        try {
+            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+            localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+        } catch {}
+    });
+});
+
 test.describe("YJS token refresh reconnect", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);

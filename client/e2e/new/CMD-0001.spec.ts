@@ -46,8 +46,8 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                 dataIsVisible: palette?.getAttribute("data-is-visible"),
                 dataQuery: palette?.getAttribute("data-query"),
                 dataVisibleCount: palette?.getAttribute("data-visible-count"),
-                positionTop: palette?.style.top,
-                positionLeft: palette?.style.left,
+                positionTop: (palette as HTMLElement)?.style.top,
+                positionLeft: (palette as HTMLElement)?.style.left,
             };
         });
         console.log("Palette debug info:", paletteDebugInfo);
@@ -55,15 +55,15 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // デバッグ: ページの状態を確認
         const debugInfo = await page.evaluate(() => {
             return {
-                commandPaletteVisible: window.commandPaletteStore?.isVisible,
-                editorOverlayStore: !!window.editorOverlayStore,
-                keyEventHandler: !!window.__KEY_EVENT_HANDLER__,
+                commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
+                editorOverlayStore: !!(window as any).editorOverlayStore,
+                keyEventHandler: !!(window as any).__KEY_EVENT_HANDLER__,
                 activeElement: document.activeElement?.tagName,
                 globalTextarea: !!document.querySelector(".global-textarea"),
-                cursorCount: window.editorOverlayStore?.getCursorInstances()?.length || 0,
-                activeItemId: window.editorOverlayStore?.activeItemId || null,
-                treeAvailable: !!window.Tree,
-                itemsAvailable: !!window.Items,
+                cursorCount: (window as any).editorOverlayStore?.getCursorInstances()?.length || 0,
+                activeItemId: (window as any).editorOverlayStore?.activeItemId || null,
+                treeAvailable: !!(window as any).Tree,
+                itemsAvailable: !!(window as any).Items,
             };
         });
         console.log("Debug info:", debugInfo);
@@ -77,9 +77,10 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // デバッグ: Enterキー前の選択状態を確認
         const beforeEnterInfo = await page.evaluate(() => {
             return {
-                selectedIndex: window.commandPaletteStore?.selectedIndex,
-                filteredCommands: window.commandPaletteStore?.filtered?.map(c => c.type),
-                selectedCommand: window.commandPaletteStore?.filtered?.[window.commandPaletteStore?.selectedIndex]
+                selectedIndex: (window as any).commandPaletteStore?.selectedIndex,
+                filteredCommands: (window as any).commandPaletteStore?.filtered?.map((c: any) => c.type),
+                selectedCommand: (window as any).commandPaletteStore?.filtered
+                    ?.[(window as any).commandPaletteStore?.selectedIndex]
                     ?.type,
             };
         });
@@ -88,7 +89,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // Enterキーを押す前の状態を記録
         const beforeEnterInfo2 = await page.evaluate(() => {
             return {
-                commandPaletteVisible: window.commandPaletteStore?.isVisible,
+                commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
                 itemCount: document.querySelectorAll("[data-item-id]").length,
             };
         });
@@ -96,8 +97,8 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         // confirmとinsertメソッドにログを追加
         await page.evaluate(() => {
-            const originalConfirm = window.commandPaletteStore.confirm;
-            window.commandPaletteStore.confirm = function() {
+            const originalConfirm = (window as any).commandPaletteStore.confirm;
+            (window as any).commandPaletteStore.confirm = function(this: any) {
                 console.log("CommandPaletteStore.confirm called");
                 console.log("selectedIndex:", this.selectedIndex);
                 console.log("filtered:", this.filtered);
@@ -111,8 +112,8 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                 }
             };
 
-            const originalInsert = window.commandPaletteStore.insert;
-            window.commandPaletteStore.insert = function(type) {
+            const originalInsert = (window as any).commandPaletteStore.insert;
+            (window as any).commandPaletteStore.insert = function(this: any, type: any) {
                 console.log("CommandPaletteStore.insert called with type:", type);
                 try {
                     const result = originalInsert.call(this, type);

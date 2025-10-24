@@ -83,7 +83,7 @@ class PollingMonitor {
             }
 
             // ラップされたコールバック
-            const wrappedCallback = function(...callbackArgs: any[]) {
+            const wrappedCallback = function(this: any, ...callbackArgs: any[]) {
                 call.executionCount++;
                 call.lastExecutedAt = Date.now();
                 return callback.apply(this, callbackArgs);
@@ -119,7 +119,7 @@ class PollingMonitor {
                 return id;
             }
 
-            const wrappedCallback = function(...callbackArgs: any[]) {
+            const wrappedCallback = function(this: any, ...callbackArgs: any[]) {
                 call.executionCount++;
                 call.lastExecutedAt = Date.now();
                 self.calls.delete(id); // setTimeoutは一度だけ実行
