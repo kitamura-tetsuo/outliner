@@ -3,6 +3,7 @@
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
+import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types";
 
 export type Comment = {
     id: string;
@@ -14,11 +15,11 @@ export type Comment = {
 
 // コメントコレクション（Y.Array<Y.Map>）用ラッパ
 export class Comments {
-    constructor(private readonly yArray: Y.Array<Y.Map<any>>) {}
+    constructor(private readonly yArray: Y.Array<Y.Map<CommentValueType>>) {}
 
     addComment(author: string, text: string) {
         const time = Date.now();
-        const c = new Y.Map<any>();
+        const c = new Y.Map<CommentValueType>();
         c.set("id", uuid());
         c.set("author", author);
         c.set("text", text);
@@ -70,17 +71,17 @@ export class Comments {
         return this.yArray.length;
     }
 
-    toArray(): Y.Map<any>[] {
+    toArray(): Y.Map<CommentValueType>[] {
         return this.yArray.toArray();
     }
 
     toPlain(): Comment[] {
         return this.yArray.toArray().map((m) => ({
-            id: m.get("id"),
-            author: m.get("author"),
-            text: m.get("text"),
-            created: m.get("created"),
-            lastChanged: m.get("lastChanged"),
+            id: m.get("id") as string,
+            author: m.get("author") as string,
+            text: m.get("text") as string,
+            created: m.get("created") as number,
+            lastChanged: m.get("lastChanged") as number,
         }));
     }
 
@@ -93,20 +94,20 @@ export class Comments {
 // 1ノード（アイテム）ラッパ
 export class Item {
     constructor(
-        public readonly ydoc: Y.Doc | any,
+        public readonly ydoc: Y.Doc | PlainItemData,
         public readonly tree?: YTree,
         public readonly key?: string,
     ) {
         // Backward-compatible constructor: allow `new Item({ id, text, ... })` in tests
         if (arguments.length === 1 && this.tree === undefined && this.key === undefined) {
-            const plain = this.ydoc as any;
+            const plain = this.ydoc as PlainItemData;
             // Initialize a fresh Y.Doc + YTree
             const doc = new Y.Doc();
             const ymap = doc.getMap("orderedTree");
             const tree = new YTree(ymap);
 
             const nodeKey = tree.generateNodeKey();
-            const value = new Y.Map<any>();
+            const value = new Y.Map<ItemValueType>();
 
             // Map basic fields; prefer provided values with safe defaults
             value.set("id", plain?.id ?? nodeKey);
@@ -130,15 +131,15 @@ export class Item {
             value.set("votes", votes);
 
             value.set("attachments", new Y.Array<string>());
-            value.set("comments", new Y.Array<Y.Map<any>>());
+            value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
 
             // Create the node under root and finalize fields on `this`
             tree.createNode("root", nodeKey, value);
 
             // Reassign instance fields to the initialized structures
-            (this as any).ydoc = doc;
-            (this as any).tree = tree;
-            (this as any).key = nodeKey;
+            (this as { ydoc: Y.Doc; }).ydoc = doc;
+            (this as { tree: YTree; }).tree = tree;
+            (this as { key: string; }).key = nodeKey;
         } else {
             // Ensure required fields exist in normal constructor usage
             if (!(this.ydoc instanceof Y.Doc) || !(this.tree instanceof YTree) || typeof this.key !== "string") {
@@ -147,8 +148,8 @@ export class Item {
         }
     }
 
-    private get value(): Y.Map<any> {
-        return this.tree!.getNodeValueFromKey(this.key!) as Y.Map<any>;
+    private get value(): Y.Map<ItemValueType> {
+        return this.tree!.getNodeValueFromKey(this.key!) as Y.Map<ItemValueType>;
     }
 
     get id(): string {
@@ -237,41 +238,50 @@ export class Item {
     addAttachment(url: string) {
         // 1) もし現在の Item が仮Doc(接続前)で、接続後のDocが存在する場合は、対応するノードにも反映する
         try {
-            const w: any = (typeof window !== "undefined") ? (window as any) : null;
-            const currentPage: any = w?.generalStore?.currentPage;
-            const thisDoc: any = (this as any)?.ydoc;
-            const targetDoc: any = currentPage?.ydoc;
+            interface WindowWithStore extends Window {
+                generalStore?: {
+                    currentPage?: Item;
+                };
+                __ITEM_ID_MAP__?: Record<string, string>;
+                E2E_LOGS?: Array<{ tag: string; id: string; url: string; t: number; }>;
+            }
+            const w = (typeof window !== "undefined") ? (window as unknown as WindowWithStore) : null;
+            const currentPage = w?.generalStore?.currentPage;
+            const thisDoc = this.ydoc;
+            const targetDoc = currentPage?.ydoc;
             if (currentPage && thisDoc && targetDoc && thisDoc !== targetDoc) {
-                const items: any = currentPage?.items as any;
+                const items = currentPage.items;
                 // 1) IDマップ経由で対応先を探す
                 try {
                     const map = w?.__ITEM_ID_MAP__;
-                    const mappedId = map ? map[String((this as any)?.id)] : undefined;
+                    const mappedId = map ? map[String(this.id)] : undefined;
                     if (mappedId) {
                         const len = items?.length ?? 0;
                         for (let i = 0; i < len; i++) {
-                            const cand: any = items.at ? items.at(i) : items[i];
-                            if (String(cand?.id) === String(mappedId)) {
+                            const cand = items.at(i);
+                            if (cand && String(cand.id) === String(mappedId)) {
                                 try {
-                                    cand?.addAttachment?.(url);
+                                    cand.addAttachment(url);
                                 } catch {}
                                 throw new Error("__DONE__");
                             }
                         }
                     }
-                } catch (e: any) {
-                    if (String(e?.message) !== "__DONE__") {
+                } catch (e) {
+                    if (e instanceof Error && String(e.message) !== "__DONE__") {
                         // 2) フォールバック: テキスト一致
-                        const text = (this as any)?.text?.toString?.() ?? String((this as any)?.text ?? "");
+                        const text = this.text;
                         const len2 = items?.length ?? 0;
                         for (let i = 0; i < len2; i++) {
-                            const cand: any = items.at ? items.at(i) : items[i];
-                            const ct = cand?.text?.toString?.() ?? String(cand?.text ?? "");
-                            if (ct === text) {
-                                try {
-                                    cand?.addAttachment?.(url);
-                                } catch {}
-                                break;
+                            const cand = items.at(i);
+                            if (cand) {
+                                const ct = cand.text;
+                                if (ct === text) {
+                                    try {
+                                        cand.addAttachment(url);
+                                    } catch {}
+                                    break;
+                                }
                             }
                         }
                     }
@@ -282,13 +292,16 @@ export class Item {
         // 2) このノード自身にも通常通り追加
         const arr = this.attachments; // ensure exists
         try {
-            console.debug("[Item.addAttachment] pushing url=", url, "id=", (this as any)?.id);
+            console.debug("[Item.addAttachment] pushing url=", url, "id=", this.id);
         } catch {}
         try {
-            const w: any = (typeof window !== "undefined") ? (window as any) : null;
+            interface WindowWithLogs extends Window {
+                E2E_LOGS?: Array<{ tag: string; id: string; url: string; t: number; }>;
+            }
+            const w = (typeof window !== "undefined") ? (window as unknown as WindowWithLogs) : null;
             if (w) {
                 w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
-                w.E2E_LOGS.push({ tag: "add-attachment", id: (this as any)?.id, url, t: Date.now() });
+                w.E2E_LOGS.push({ tag: "add-attachment", id: this.id, url, t: Date.now() });
             }
         } catch {}
         arr.push([url]);
@@ -310,9 +323,9 @@ export class Item {
     }
 
     get comments(): Comments {
-        let arr = this.value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+        let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
         if (!arr) {
-            arr = new Y.Array<Y.Map<any>>();
+            arr = new Y.Array<Y.Map<CommentValueType>>();
             this.value.set("comments", arr);
         }
         return new Comments(arr);
@@ -324,11 +337,11 @@ export class Item {
         } catch {}
         const res = this.comments.addComment(author, text);
         try {
-            const arr = this.value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+            const arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
             const len = arr?.length ?? 0;
             // Y.Map にプリミティブ数値をキャッシュして確実に反映させる
-            (this as any).value?.set?.("commentCountCache", len);
-            (this as any).value?.set?.("lastChanged", Date.now());
+            this.value.set("commentCountCache", len);
+            this.value.set("lastChanged", Date.now());
             // Window ブロードキャスト（UI への即時反映用・決定的）
             try {
                 if (typeof window !== "undefined") {
@@ -345,10 +358,10 @@ export class Item {
     deleteComment(commentId: string) {
         const res = this.comments.deleteComment(commentId);
         try {
-            const arr = this.value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+            const arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
             const len = arr?.length ?? 0;
-            (this as any).value?.set?.("commentCountCache", len);
-            (this as any).value?.set?.("lastChanged", Date.now());
+            this.value.set("commentCountCache", len);
+            this.value.set("lastChanged", Date.now());
             try {
                 if (typeof window !== "undefined") {
                     window.dispatchEvent(
@@ -370,7 +383,7 @@ export class Item {
 
     // 親の子集合（Items）。ルート直下は null
     get parent(): Items | null {
-        const parentKey = (this.tree as any).getNodeParentFromKey(this.key!);
+        const parentKey = this.tree!.getNodeParentFromKey(this.key!);
         if (!parentKey) return null;
         return new Items(this.ydoc, this.tree!, parentKey);
     }
@@ -416,7 +429,7 @@ export class Items implements Iterable<Item> {
             next(): IteratorResult<Item> {
                 const it = self.at(index++);
                 if (it) return { value: it, done: false };
-                return { value: undefined as any, done: true };
+                return { value: undefined!, done: true };
             },
         };
     }
@@ -435,7 +448,7 @@ export class Items implements Iterable<Item> {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
         const existingKeys = this.childrenKeys();
-        const value = new Y.Map<any>();
+        const value = new Y.Map<ItemValueType>();
         value.set("id", nodeKey);
         value.set("author", author);
         value.set("created", now);
@@ -446,7 +459,7 @@ export class Items implements Iterable<Item> {
         value.set("text", new Y.Text());
         value.set("votes", new Y.Array<string>());
         value.set("attachments", new Y.Array<string>());
-        value.set("comments", new Y.Array<Y.Map<any>>());
+        value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 
@@ -471,8 +484,8 @@ export class Items implements Iterable<Item> {
 
     addAlias(targetId: string, author: string, index?: number): Item {
         const it = this.addNode(author, index);
-        const v = (it as any).value as Y.Map<any>;
-        v.set("aliasTargetId", targetId);
+        // Access the private value property through the Item instance
+        it.aliasTargetId = targetId;
         return it;
     }
 }
@@ -514,7 +527,7 @@ export class Project {
         const page = (this.items as Items).addNode(author);
         page.updateText(title);
         const pages = this.ydoc.getMap<Y.Doc>("pages");
-        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as any);
+        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as YDocOptions);
         pages.set(page.id, subdoc);
         subdoc.load();
         return page;
@@ -522,35 +535,33 @@ export class Project {
 }
 
 // Fluid 実装は削除済み。互換のためのスタブのみ残す。
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const appTreeConfiguration: any = undefined;
+export const appTreeConfiguration: undefined = undefined;
 
 // 内部: Items を配列風アクセス可能にする Proxy でラップ
 function wrapArrayLike(items: Items): Items {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new Proxy(items as any, {
+    type PropertyKey = string | number | symbol;
+    const isIndex = (p: PropertyKey): boolean => (typeof p === "number") || (typeof p === "string" && /^\d+$/.test(p));
+
+    return new Proxy(items, {
         get(target, prop, receiver) {
-            const isIndex = (p: any) => (typeof p === "number") || (typeof p === "string" && /^\d+$/.test(p));
             if (isIndex(prop)) {
-                const idx = Number(prop as any);
+                const idx = Number(prop);
                 return target.at(idx);
             }
             if (prop === "length") return target.length;
-            if (prop === (Symbol as any).iterator) return target[Symbol.iterator].bind(target);
+            if (prop === Symbol.iterator) return target[Symbol.iterator].bind(target);
             return Reflect.get(target, prop, receiver);
         },
         has(target, prop) {
-            const isIndex = (p: any) => (typeof p === "number") || (typeof p === "string" && /^\d+$/.test(p));
             if (isIndex(prop)) {
-                const idx = Number(prop as any);
+                const idx = Number(prop);
                 return idx >= 0 && idx < target.length;
             }
             return Reflect.has(target, prop);
         },
         getOwnPropertyDescriptor(target, prop) {
-            const isIndex = (p: any) => (typeof p === "number") || (typeof p === "string" && /^\d+$/.test(p));
             if (isIndex(prop)) {
-                const idx = Number(prop as any);
+                const idx = Number(prop);
                 return {
                     configurable: true,
                     enumerable: true,
@@ -564,9 +575,9 @@ function wrapArrayLike(items: Items): Items {
                     enumerable: false,
                     value: target.length,
                     writable: false,
-                } as any;
+                };
             }
-            return Object.getOwnPropertyDescriptor(target, prop as any);
+            return Object.getOwnPropertyDescriptor(target, prop as keyof Items);
         },
     });
 }
