@@ -98,7 +98,7 @@ function handleRowDragOver(e: DragEvent) {
         <table class="table">
             <thead>
                 <tr>
-                    {#each data.columnsMeta as column, colIndex}
+                    {#each data.columnsMeta as column, colIndex (column.name)}
                         <th
                             draggable="true"
                             oncontextmenu={(e) => {
@@ -113,14 +113,14 @@ function handleRowDragOver(e: DragEvent) {
                 </tr>
             </thead>
             <tbody>
-                {#each data.rows as row, rowIndex}
+                {#each data.rows as row, rowIndex (rowIndex)}
                     <tr
                         draggable="true"
                         ondragstart={e => handleRowDragStart(e, rowIndex)}
                         ondragover={handleRowDragOver}
                         ondrop={e => handleRowDrop(e, rowIndex)}
                     >
-                        {#each data.columnsMeta as column}
+                        {#each data.columnsMeta as column (column.name)}
                             <td ondblclick={() => startEdit(rowIndex, column.name)}>
                                 {#if isEditing(rowIndex, column.name)}
                                     <input

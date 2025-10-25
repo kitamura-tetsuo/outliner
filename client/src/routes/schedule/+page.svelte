@@ -60,7 +60,7 @@ onMount(async () => {
         </tr>
     </thead>
     <tbody>
-        {#each schedules as sch}
+        {#each schedules as sch (sch.id)}
             <tr data-schedule-id={sch.id}>
                 <td>{sch.strategy}</td>
                 <td>{sch.cadence ?? "—"}</td>

@@ -2099,6 +2099,7 @@ onMount(() => {
                             oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
                             onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
                         >
+                            <!-- XSS-safe: ScrapboxFormatter.formatWithControlChars() escapes HTML before applying formatting -->
                             {@html ScrapboxFormatter.formatWithControlChars(textString)}
                         </span>
                     {:else}
@@ -2110,6 +2111,7 @@ onMount(() => {
                             oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
                             onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
                         >
+                            <!-- XSS-safe: ScrapboxFormatter.formatToHtml() escapes HTML before applying formatting -->
                             {@html ScrapboxFormatter.formatToHtml(textString)}
                         </span>
                     {/if}
@@ -2190,6 +2192,7 @@ onMount(() => {
             || ((openCommentItemId == null) && (openCommentItemIndex === index))
             || ((openCommentItemId == null) && (openCommentItemIndex == null) && index === 1)
         )}
+        <!-- XSS-safe: This only returns an empty string, used to trigger reactivity on item.comments -->
         {@html (() => { try { void item.comments; } catch {} return ''; })() }
         <CommentThread
             comments={ensuredComments}

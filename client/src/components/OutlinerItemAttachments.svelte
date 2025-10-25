@@ -72,7 +72,7 @@ const attachments = $derived.by(() => {
 
 {#if attachments.length > 0}
     <div class="attachments">
-        {#each attachments as url}
+        {#each attachments as url (url)}
             <img src={url} class="attachment-preview" alt="添付ファイル" />
         {/each}
     </div>

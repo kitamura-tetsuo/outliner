@@ -30,7 +30,8 @@ let effectiveProject: Project | null = $derived.by(() => {
 });
 
 let query = $state('');
-let selected = $state(-1);
+// eslint-disable-next-line svelte/prefer-writable-derived -- selected is mutated in handleKeydown, cannot use $derived
+let selected = $state(results.length ? 0 : -1);
 let isFocused = $state(false);
 let inputEl: HTMLInputElement | null = null;
 // Preserve focus across reactive project changes to keep dropdown stable in tests
@@ -308,7 +309,7 @@ onMount(() => {
     />
         {#if results.length && (query.length > 0)}
             <ul>
-                {#each results as page, i}
+                {#each results as page, i (page.id)}
                     <li class:selected={i === selected}>
                         <button type="button" onclick={() => handlePageClick(page)}>{page.text}</button>
                     </li>

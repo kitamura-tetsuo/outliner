@@ -20,7 +20,7 @@ function switchToLanguage(newLanguage: string) {
     <p>{m.hello_world({ name: "World" })}</p>
 
     <h2>Switch Language</h2>
-    {#each locales as lang}
+    {#each locales as lang (lang)}
         <button
             onclick={() => switchToLanguage(lang)}
             disabled={lang === getLocale()}

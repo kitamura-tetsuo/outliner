@@ -241,7 +241,7 @@ async function downloadIcs() {
         ScheduleDebug:{pageId}:{schedules.length}
     </div>
     <ul data-testid="schedule-list">
-        {#each schedules as sch}
+        {#each schedules as sch (sch.id)}
             <li class="mb-2" data-testid="schedule-item">
                 {#if editingId === sch.id}
                     <input type="datetime-local" bind:value={editingTime} class="border p-1" />

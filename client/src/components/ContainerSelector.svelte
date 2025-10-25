@@ -227,7 +227,7 @@ async function reloadCurrentContainer() {
                 {#if containers.length === 0}
                     <option value="">利用可能なコンテナがありません</option>
                 {:else}
-                    {#each containers as container}
+                    {#each containers as container (container.id)}
                         <option value={container.id}>
                             {container.name}
                             {container.isDefault ? "(デフォルト)" : ""}

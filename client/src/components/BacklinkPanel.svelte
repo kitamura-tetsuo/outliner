@@ -119,7 +119,7 @@ onDestroy(() => {
                 </div>
             {:else}
                 <ul class="backlink-list">
-                    {#each backlinks as backlink}
+                    {#each backlinks as backlink (`${backlink.sourcePageId}-${backlink.context}`)}
                         <li class="backlink-item">
                             <div class="backlink-source">
                                 <button
@@ -131,6 +131,7 @@ onDestroy(() => {
                                 </button>
                             </div>
                             <div class="backlink-context">
+                                <!-- XSS-safe: highlightLinkInContext() escapes HTML before adding highlight spans -->
                                 {@html highlightLinkInContext(backlink.context, pageName)}
                             </div>
                         </li>

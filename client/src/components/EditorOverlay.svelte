@@ -1283,13 +1283,13 @@ function handlePaste(event: ClipboardEvent) {
             <div class="selection-box-updating" data-test-helper="updating-marker-global" style="display:none"></div>
         {/if}
 
-    {#each Object.entries(store.selections) as [selKey, sel]}
+    {#each Object.entries(store.selections) as [selKey, sel] (selKey)}
         {@const _debugRenderSel = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: render selection', sel, sel.boxSelectionRanges, Array.isArray(sel.boxSelectionRanges)) : null}
         {@const selectionStyle = getSelectionStyle(sel)}
         {#if sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId}
             {#if sel.isBoxSelection && sel.boxSelectionRanges}
                 <!-- 矩形選択（ボックス選択）の場合 -->
-                {#each sel.boxSelectionRanges as range, index}
+                {#each sel.boxSelectionRanges as range, index (`${selKey}-${range.itemId}-${index}`)}
                     {@const _debugRange = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: range', range) : null}
                     {@const rect = calculateSelectionPixelRange(range.itemId, range.startOffset, range.endOffset, sel.isReversed)}
                     {@const _debugRect = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: rect', rect) : null}
@@ -1365,7 +1365,7 @@ function handlePaste(event: ClipboardEvent) {
                     {@const endIdx   = forward ? eIdx : sIdx}
 
                     <!-- 範囲内の各アイテムに選択範囲を描画 -->
-                    {#each ids.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1) as itemId}
+                    {#each ids.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1) as itemId (itemId)}
                         {@const textEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement}
                         {@const len = textEl?.textContent?.length || 0}
 
@@ -1403,7 +1403,7 @@ function handlePaste(event: ClipboardEvent) {
     {/if}
 
     <!-- カーソルのレンダリング (always render in all environments including test) -->
-    {#each cursorList as cursor}
+    {#each cursorList as cursor (cursor.cursorId)}
         {@const isTestEnvironment = typeof window !== 'undefined' && (window as any).navigator && (window as any).navigator.webdriver}
         {@const cursorPos = (function() {
             try {
