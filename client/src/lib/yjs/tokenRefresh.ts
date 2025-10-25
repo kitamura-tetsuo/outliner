@@ -7,7 +7,8 @@ export function refreshAuthAndReconnect(provider: WebsocketProvider): () => Prom
             const t = await userManager.auth.currentUser?.getIdToken(true);
             if (t) {
                 const p = provider as any;
-                const newAuth = process.env.NODE_ENV === "test" ? `${t}:${Date.now()}` : t;
+                // In test environment, append timestamp to ensure unique token values
+                const newAuth = import.meta.env.MODE === "test" ? `${t}:${Date.now()}` : t;
                 p.params = { ...(p.params || {}), auth: newAuth };
                 // WS が無効化されている場合は再接続を行わない（テスト環境抑止）
                 if (p?.__wsDisabled === true) {
