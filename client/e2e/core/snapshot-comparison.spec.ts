@@ -25,7 +25,7 @@ test.describe("snapshot comparison", () => {
         expect(fs.existsSync(yjsPath)).toBeTruthy();
     });
 
-    test("compare fluid and yjs snapshots", async ({ page }) => {
+    test("compare fluid and yjs snapshots", async ({ _page }) => {
         const dir = path.resolve(process.cwd(), "e2e-snapshots");
         if (!fs.existsSync(dir)) {
             test.skip(true, "snapshots dir missing");

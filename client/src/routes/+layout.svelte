@@ -39,7 +39,7 @@ const logger = getLogger("AppLayout");
 
 // 認証関連の状態
 let isAuthenticated = $state(false);
-let error: string | undefined = $state(undefined);
+let _error: string | undefined = $state(undefined);
 
 // グローバルへのフォールバック公開（早期に window.generalStore を満たす）
 if (browser) {
@@ -138,7 +138,7 @@ async function rotateLogFiles() {
                 return;
             }
         }
-        catch (fetchError) {
+        catch (_) {
             // fetch失敗時はsendBeaconを試す - エラーは記録しない
             if (import.meta.env.DEV) {
                 logger.debug(
@@ -169,7 +169,7 @@ async function rotateLogFiles() {
                 const img = new Image();
                 img.src = `${API_URL}/api/rotate-logs?t=${Date.now()}`;
             }
-            catch (imgError) {
+            catch (_) {
                 // 最後の試行なのでエラーは無視
             }
         }
@@ -375,7 +375,7 @@ onMount(async () => {
                     try {
                         const anyWin: any = window as any;
                         anyWin.__E2E_LAST_FILES__ = [] as File[];
-                        const proto = (DataTransfer.prototype as any);
+// const proto = (DataTransfer.prototype as any);
                         const itemsProto = (DataTransferItemList as any)?.prototype;
                         if (itemsProto && !anyWin.__E2E_DT_ADD_PATCHED__) {
                             anyWin.__E2E_DT_ADD_PATCHED__ = true;

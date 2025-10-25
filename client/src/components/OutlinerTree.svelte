@@ -55,7 +55,7 @@ let containerRef = $state<HTMLDivElement | null>(null);
 
 let itemHeights = $state<number[]>([]);
 // 非リアクティブな前回長さの記録（$effect内での自己参照ループを防ぐ）
-let __lastHeightsLen = 0;
+// let __lastHeightsLen = 0;
 let itemPositions = $state<number[]>([]);
 
 // ドラッグ選択関連の状態
@@ -154,7 +154,7 @@ function updateItemHeightsSafe(newHeights: number[]) {
 }
 
 // Prevent infinite loops by tracking recent updates
-let lastUpdateTimestamp = $state(0);
+// let lastUpdateTimestamp = $state(0);
 
 // アイテムの高さが変更されたときのハンドラ
 function handleItemResize(event: CustomEvent) {
@@ -1240,7 +1240,7 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
     }
 
     // 選択範囲の方向を考慮
-    const _isReversed = selection.isReversed || false;
+// const _isReversed = selection.isReversed || false;
     const actualStartIndex = Math.min(startIndex, endIndex);
     const actualEndIndex = Math.max(startIndex, endIndex);
 

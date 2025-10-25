@@ -5,9 +5,8 @@
  * このモジュールは、ページへのバックリンク（他のページからのリンク）を収集するための機能を提供します。
  */
 
-import type { Item } from "../schema/app-schema";
+import type { _Item } from "../schema/app-schema";
 import { store } from "../stores/store.svelte";
-import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 import { getLogger } from "./logger";
 
 const logger = getLogger("BacklinkCollector");

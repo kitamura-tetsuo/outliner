@@ -90,7 +90,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch (e) {
+        } catch (_) {
             console.log("Selection not created, skipping test");
             return;
         }

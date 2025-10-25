@@ -102,9 +102,9 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
-        const selectionExists = await page.evaluate(() => {
-            return document.querySelector(".editor-overlay .selection") !== null;
-        });
+        // const selectionExists = await page.evaluate(() => {
+        //     return document.querySelector(".editor-overlay .selection") !== null;
+        // });
 
         // 削除前のアイテム数を取得
         const beforeCount = await page.locator(".outliner-item").count();
@@ -178,7 +178,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch (e) {
+        } catch (_) {
             console.log("Selection not created, skipping test");
             return;
         }
@@ -259,7 +259,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch (e) {
+        } catch (_) {
             console.log("Selection not created, skipping test");
             return;
         }
@@ -334,7 +334,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch (e) {
+        } catch (_) {
             console.log("Selection not created, skipping test");
             return;
         }
@@ -346,9 +346,9 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.waitForTimeout(500);
 
         // カーソルが表示されていることを確認
-        const cursorVisible = await page.evaluate(() => {
-            return document.querySelector(".editor-overlay .cursor") !== null;
-        });
+        // const cursorVisible = await page.evaluate(() => {
+        //     return document.querySelector(".editor-overlay .cursor") !== null;
+        // });
 
         // テキストを入力してカーソル位置を確認
         await page.keyboard.type("INSERTED");

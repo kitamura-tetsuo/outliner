@@ -7,7 +7,6 @@ import {
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getFunctions } from "firebase/functions";
 // Firebase product SDKs
 import { onMount } from "svelte";
 
@@ -28,7 +27,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 // Initialize Firestore without storing the instance
 getFirestore(app);
-const functions = getFunctions(app);
+// const functions = getFunctions(app);
 
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();

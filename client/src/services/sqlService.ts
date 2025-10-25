@@ -17,7 +17,7 @@ interface QueryResult {
 
 let SQL: any;
 let db: Database | null = null;
-let currentQuery = "";
+// let currentQuery = "";
 let currentSelect = "";
 let worker: SyncWorker | null = null;
 

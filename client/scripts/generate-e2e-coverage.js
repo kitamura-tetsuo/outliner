@@ -144,7 +144,7 @@ for (const file of coverageFiles) {
     let data;
     try {
         data = JSON.parse(text);
-    } catch (e) {
+    } catch (_) {
         continue;
     }
 

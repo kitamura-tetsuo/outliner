@@ -1,5 +1,5 @@
 // sql.js lacks type definitions in this project context. Use any.
-import type { Database } from "sql.js";
+import type { _Database } from "sql.js";
 
 export interface Op {
     table: string;

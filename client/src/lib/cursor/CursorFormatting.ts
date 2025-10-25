@@ -1,7 +1,6 @@
 // @ts-nocheck
-import type { Item } from "../../schema/yjs-schema";
+import type { _Item } from "../../schema/yjs-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 
 export class CursorFormatting {

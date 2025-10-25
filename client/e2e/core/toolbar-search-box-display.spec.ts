@@ -9,8 +9,8 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("TOO-0001: ツールバーのSearchBox表示機能", () => {
-    let projectName: string;
-    let pageName: string;
+    let _projectName: string;
+    let _pageName: string;
 
     test.beforeEach(async ({ page }, testInfo) => {
         const result = await TestHelpers.prepareTestEnvironment(page, testInfo);

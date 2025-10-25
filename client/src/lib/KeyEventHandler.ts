@@ -112,7 +112,7 @@ export class KeyEventHandler {
         });
 
         // Ctrl+X cut
-        add("x", true, false, false, event => {
+        add("x", true, false, false, _event => {
             // カットイベントを手動で発生させる
             const clipboardEvent = new ClipboardEvent("cut", {
                 clipboardData: new DataTransfer(),
@@ -448,7 +448,7 @@ export class KeyEventHandler {
                             const prevLen = typeof items.length === "number" ? items.length : 0;
                             try {
                                 items.addNode(userId);
-                            } catch (e) {
+                            } catch (_) {
                                 try {
                                     items.addNode(userId, prevLen);
                                 } catch {}
@@ -551,7 +551,7 @@ export class KeyEventHandler {
                         const prevLen = typeof items.length === "number" ? items.length : 0;
                         try {
                             items.addNode(userId);
-                        } catch (e) {
+                        } catch (_) {
                             try {
                                 items.addNode(userId, prevLen);
                             } catch {}
@@ -1733,9 +1733,9 @@ export class KeyEventHandler {
             );
 
             // 選択範囲がある場合は、選択範囲を削除してからペースト
-            const selections = Object.values(store.selections).filter(sel =>
-                sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
-            );
+            // const selections = Object.values(store.selections).filter(sel =>
+            //     sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
+            // );
 
             // VS Codeのマルチカーソルテキストが含まれている場合
             if (

@@ -36,7 +36,7 @@ export class TestHelpersNoAuth {
                     { timeout: 10000 },
                 );
                 console.log("TestHelper: UserManager found");
-            } catch (error) {
+            } catch (_) {
                 console.log("TestHelper: UserManager not found, continuing without auth");
             }
 

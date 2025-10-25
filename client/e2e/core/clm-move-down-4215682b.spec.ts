@@ -6,7 +6,6 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
-import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 // テストのタイムアウトを設定（長めに設定）
@@ -83,7 +82,7 @@ test.describe("CLM-0005: 下へ移動", () => {
         // Get the expected text content of the first item before splitting
         // When Enter is pressed on the second line, "First line" remains in first item and "Second line" goes to the new item
         const initialItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
-        const initialItemText = await initialItem.locator(".item-text").textContent();
+        // const initialItemText = await initialItem.locator(".item-text").textContent();
 
         // 2つ目のアイテムを追加
         await page.keyboard.press("Enter");
@@ -122,7 +121,7 @@ test.describe("CLM-0005: 下へ移動", () => {
         await secondItem.waitFor({ state: "visible" });
 
         // 2つ目のアイテムのIDを取得
-        const secondItemId = await secondItem.evaluate(el => el.getAttribute("data-item-id"));
+        // const secondItemId = await secondItem.evaluate(el => el.getAttribute("data-item-id"));
 
         // 新しいアイテムのテキストを取得
         const newItemText = await secondItem.locator(".item-text").textContent();

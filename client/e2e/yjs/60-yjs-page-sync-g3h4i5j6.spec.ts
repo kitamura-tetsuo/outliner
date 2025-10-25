@@ -11,7 +11,7 @@ registerCoverageHooks();
 test.setTimeout(120_000);
 
 test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
-    test("two browser contexts connect to same page and see same page data", async ({ browser }, testInfo) => {
+    test("two browser contexts connect to same page and see same page data", async ({ browser }, _testInfo) => {
         // Create first browser context
         const context1 = await browser.newContext();
         const page1 = await context1.newPage();

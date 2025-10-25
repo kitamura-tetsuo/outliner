@@ -6,9 +6,9 @@ import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
-import { getLogger, log } from "./logger";
+import { log } from "./logger";
 
-const logger = getLogger();
+// const logger = getLogger();
 
 interface ClientKey {
     type: "container" | "user";

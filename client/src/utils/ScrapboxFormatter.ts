@@ -318,7 +318,7 @@ export class ScrapboxFormatter {
                                 existsClassTokens = this.checkPageExists(pageName, projectName)
                                     ? "page-exists"
                                     : "page-not-exists";
-                            } catch (e) {
+                            } catch (_) {
                                 existsClassTokens = "page-not-exists";
                             }
 
@@ -558,7 +558,7 @@ export class ScrapboxFormatter {
                     let existsClass = "page-not-exists"; // default for safety
                     try {
                         existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
-                    } catch (e) {
+                    } catch (_) {
                         // In case of any error in checkPageExists, default to page-not-exists
                         existsClass = "page-not-exists";
                     }
@@ -894,7 +894,7 @@ export class ScrapboxFormatter {
             }
 
             return false;
-        } catch (e) {
+        } catch (_) {
             // If there's an error, assume the page doesn't exist
             return false;
         }

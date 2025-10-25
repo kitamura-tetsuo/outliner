@@ -1,5 +1,5 @@
 import "../utils/registerAfterEachSnapshot";
-import { expect, test } from "@playwright/test";
+import { test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 

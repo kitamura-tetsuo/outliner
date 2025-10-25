@@ -148,7 +148,7 @@ export function snapshotToOpml(snapshot: ProjectSnapshot): string {
 
 export function snapshotToProject(snapshot: ProjectSnapshot): Project {
     const project = Project.createInstance(snapshot.title || "Untitled Project");
-    const rootItems: any = project.items as any;
+    const _rootItems: any = project.items as any;
 
     for (const root of snapshot.items) {
         const page = project.addPage(root.text, "snapshot");

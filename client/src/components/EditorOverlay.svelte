@@ -37,7 +37,7 @@ let allSelections = $derived.by(() => Object.values(store.selections));
 let clipboardRef: HTMLTextAreaElement;
 let localActiveItemId = $state<string | null>(null);
 let localCursorVisible = $state<boolean>(false);
-let localAnimationPaused = $state<boolean>(false);
+// let localAnimationPaused = $state<boolean>(false);
 // derive a stable visibility that does not blink while alias picker is open
 // in test environments, always show the cursor
 let overlayCursorVisible = $derived.by(() => {
@@ -173,15 +173,15 @@ function updateTextareaPosition() {
 
         // Convert position from tree-container-relative to overlay-relative
         // This is needed because calculateCursorPixelPosition returns coordinates relative to tree container
-        const posRelativeToOverlay = {
+// const posRelativeToOverlay = {
             left: pos.left + (treeContainerRect.left - overlayRect.left),
             top: pos.top + (treeContainerRect.top - overlayRect.top)
         };
 
         // Position the textarea at the same viewport coordinates as the cursor
         // would be if it were positioned within the overlay
-        const finalLeft = overlayRect.left + posRelativeToOverlay.left;
-        const finalTop = overlayRect.top + posRelativeToOverlay.top;
+// const finalLeft = overlayRect.left + posRelativeToOverlay.left;
+// const finalTop = overlayRect.top + posRelativeToOverlay.top;
 
         // Simplified: finalLeft = treeContainerRect.left + pos.left (same as before but clearer logic)
         // Position the textarea using viewport coordinates

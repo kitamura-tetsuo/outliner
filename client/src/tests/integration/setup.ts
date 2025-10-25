@@ -61,7 +61,7 @@ class MockWebsocketProvider {
                         this.emit("subdocs", [subdocsEvent]);
                     }
                 });
-            } catch (e) {
+            } catch (_) {
                 // Ignore errors in test environment
             }
         };

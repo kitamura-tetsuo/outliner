@@ -4,7 +4,6 @@ import {
     onMount,
     onDestroy,
 } from "svelte";
-import { Item, Items } from "../schema/app-schema";
 import { getLogger } from "../lib/logger";
 const logger = getLogger("OutlinerItem");
 
@@ -123,7 +122,6 @@ import ChartPanel from "./ChartPanel.svelte";
 import ChartQueryEditor from "./ChartQueryEditor.svelte";
 import CommentThread from "./CommentThread.svelte";
 import InlineJoinTable from "./InlineJoinTable.svelte";
-import OutlinerTree from "./OutlinerTree.svelte";
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 interface Props {
@@ -151,8 +149,8 @@ let {
 const dispatch = createEventDispatcher();
 
 // Stateの管理
-let lastSelectionStart = $state(0);
-let lastSelectionEnd = $state(0);
+// let lastSelectionStart = $state(0);
+// let lastSelectionEnd = $state(0);
 let lastCursorPosition = $state(0);
 
 // 注: 編集モードフラグはカーソル状態から導出されるため、独立した変数は不要
@@ -161,7 +159,7 @@ let lastCursorPosition = $state(0);
 // ドラッグ関連の状態
 let isDragging = $state(false);
 let dragStartPosition = $state(0);
-let isDragSelectionMode = $state(false);
+// let isDragSelectionMode = $state(false);
 let isDropTarget = $state(false);
 let dropTargetPosition = $state<"top" | "middle" | "bottom" | null>(null);
 
@@ -549,7 +547,7 @@ function hasActiveCursor(): boolean {
 // カーソル状態に基づいて判定する関数
 function hasCursorBasedOnState(): boolean {
     // Depend on overlayPulse so we recompute when editorOverlayStore notifies changes
-    const _pulse = overlayPulse;
+// const _pulse = overlayPulse;
     const { cursors, isActive } = editorOverlayStore.getItemCursorsAndSelections(model.id);
     if (isActive) return true;
     return cursors.some(cursor => cursor.isActive && (!cursor.userId || cursor.userId === "local"));
@@ -678,7 +676,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
 
         setTimeout(() => {
             textareaEl.focus();
-            const isFocused = document.activeElement === textareaEl;
+// const isFocused = document.activeElement === textareaEl;
         }, 10);
     });
     // テキスト内容を同期
@@ -738,7 +736,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     editorOverlayStore.setActiveItem(model.id);
 
     // 新しいカーソルを設定
-    const cursorId = editorOverlayStore.setCursor({
+// const cursorId = editorOverlayStore.setCursor({
         itemId: model.id,
         offset: cursorPosition !== undefined ? cursorPosition : 0,
         isActive: true,
@@ -911,12 +909,12 @@ function handleClick(event: MouseEvent) {
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             // 現在のカーソル状態をログ
-            const cursorInstances = editorOverlayStore.getCursorInstances();
-            const cursors = Object.values(editorOverlayStore.cursors);
+// const cursorInstances = editorOverlayStore.getCursorInstances();
+// const cursors = Object.values(editorOverlayStore.cursors);
         }
 
         // 新しいカーソルを追加（既存のカーソルチェックはaddCursor内で行う）
-        const cursorId = editorOverlayStore.addCursor({
+// const cursorId = editorOverlayStore.addCursor({
             itemId: model.id,
             offset: pos,
             isActive: true,
@@ -1195,7 +1193,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         else {
             // 他のアイテムの場合は、テキスト内容に基づいて位置を計算
             // 仮想的なクリックイベントを作成して位置を計算
-            const virtualEvent = new MouseEvent("click", {
+// const virtualEvent = new MouseEvent("click", {
                 clientX: event.clientX,
                 clientY: item.rect.top + (item.rect.height / 2), // アイテムの中央
             });

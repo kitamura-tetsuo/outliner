@@ -547,7 +547,7 @@ export class TestHelpers {
                 return activeCursors.length > 0;
             }, { timeout });
             return true;
-        } catch (error) {
+        } catch (_) {
             console.log("Timeout waiting for cursor to be visible, continuing anyway");
             // ページが閉じられていないかチェックしてからスクリーンショットを撮影
             try {

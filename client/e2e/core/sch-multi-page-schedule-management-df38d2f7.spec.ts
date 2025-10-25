@@ -131,7 +131,7 @@ test.describe("Multi-Page Schedule Management", () => {
         }
     });
 
-    test("schedule operations across pages", async ({ page }, testInfo) => {
+    test("schedule operations across pages", async ({ page }, _testInfo) => {
         const { projectName, pageName } = testProject;
 
         // Create another page in the same project using the correct method
@@ -139,7 +139,7 @@ test.describe("Multi-Page Schedule Management", () => {
             const store = window.generalStore;
             if (store && store.project) {
                 // Use the addPage method to create a new page
-                const newPage = store.project.addPage("other-page", "test-user");
+                // const newPage = store.project.addPage("other-page", "test-user");
                 console.log("Created other-page in same project");
             }
         });

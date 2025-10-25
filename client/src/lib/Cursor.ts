@@ -1067,14 +1067,14 @@ export class Cursor implements CursorEditingContext {
 
             // 現在位置を保存
             const oldItemId = this.itemId;
-            const oldOffset = this.offset;
+            // const oldOffset = this.offset;
 
             // カーソルを下に移動
             this.moveDown();
 
             // 移動先が同じアイテム内の場合は、全テキストを選択
             if (this.itemId === oldItemId) {
-                const text = this.getTargetText(target);
+                // const text = this.getTargetText(target);
                 endItemId = this.itemId;
                 endOffset = this.offset;
                 isReversed = false;
@@ -2052,7 +2052,7 @@ export class Cursor implements CursorEditingContext {
             if (nextItem) {
                 newItemId = nextItem.id;
                 const nextText = this.getTargetText(nextItem);
-                const nextLines = nextText.split("\n");
+                // const nextLines = nextText.split("\n");
                 const firstLineIndex = 0;
                 const firstLineStart = getLineStartOffset(nextText, firstLineIndex);
                 const firstLineEnd = getLineEndOffset(nextText, firstLineIndex);
@@ -2202,7 +2202,7 @@ export class Cursor implements CursorEditingContext {
         if (!startItemEl || !endItemEl) return;
 
         const startItemText = startItemEl.textContent || "";
-        const endItemText = endItemEl.textContent || "";
+        // const endItemText = endItemEl.textContent || "";
 
         // 単一アイテム内の選択範囲の場合
         if (startItemId === endItemId) {

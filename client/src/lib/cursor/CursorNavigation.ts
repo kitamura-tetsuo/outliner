@@ -1,7 +1,6 @@
 // @ts-nocheck
-import type { Item } from "../../schema/yjs-schema";
+import type { _Item } from "../../schema/yjs-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-import { store as generalStore } from "../../stores/store.svelte";
 
 export class CursorNavigation {
     private cursor: any; // Cursorクラスのインスタンスを保持
@@ -389,7 +388,7 @@ export class CursorNavigation {
             if (nextItem) {
                 newItemId = nextItem.id;
                 const nextText = nextItem.text || "";
-                const nextLines = nextText.split("\n");
+                // const nextLines = nextText.split("\n");
                 const firstLineIndex = 0;
                 const firstLineStart = this.cursor.getLineStartOffset(nextText, firstLineIndex);
                 const firstLineEnd = this.cursor.getLineEndOffset(nextText, firstLineIndex);

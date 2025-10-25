@@ -1,5 +1,4 @@
 import { render, screen, waitFor, within } from "@testing-library/svelte";
-import { tick } from "svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ContainerSelector from "../../components/ContainerSelector.svelte";
 import { firestoreStore } from "../../stores/firestoreStore.svelte";

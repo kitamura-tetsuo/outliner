@@ -53,8 +53,8 @@ test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
                 expect(items.length).toBeGreaterThan(0);
 
                 // エイリアス属性が設定されているか確認
-                const firstItem = items[0];
-                const hasAliasAttr = await firstItem.evaluate(el => el.hasAttribute("data-alias-target-id"));
+                // const firstItem = items[0];
+                // const hasAliasAttr = await firstItem.evaluate(el => el.hasAttribute("data-alias-target-id"));
 
                 // ポーリングなしでも属性が設定されるべき
                 // （Yjs observeで十分なはず）
@@ -74,7 +74,7 @@ test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
                 await page.waitForSelector("[data-item-id]", { timeout: 5000 });
 
                 // エイリアスコンポーネントが正しく表示されるか
-                const aliasComponents = await page.locator(".alias-content").all();
+                // const aliasComponents = await page.locator(".alias-content").all();
 
                 // ポーリングなしでもエイリアスが表示されるべき
             },

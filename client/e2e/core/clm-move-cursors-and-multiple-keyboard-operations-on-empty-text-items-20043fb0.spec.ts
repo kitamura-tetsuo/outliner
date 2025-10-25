@@ -121,7 +121,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
                 const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
                 console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
                 expect(secondItemText).toContain("Test text 2"); // 2番目のアイテムに入力したテキストが含まれていることを確認
-            } catch (error) {
+            } catch (_) {
                 console.log("2番目のアイテムが見つかりませんでした。テストを続行します。");
                 // エラーが発生しても、テストは失敗とせずに続行
             }

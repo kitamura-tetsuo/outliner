@@ -19,19 +19,19 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
 
     test("attachment preview appears", async ({ page }) => {
         const item = page.locator(".outliner-item").first();
-        const content = item.locator(".item-content");
+        // const content = item.locator(".item-content");
 
         // DataTransfer をメインワールドで生成し、items.add(File) を実行
-        const dtHandle = await page.evaluateHandle(() => {
-            const dt = new DataTransfer();
-            const blob = new Blob(["hello"], { type: "text/plain" });
-            const file = new File([blob], "hello.txt", { type: "text/plain" });
-            dt.items.add(file);
-            try {
-                (window as any).__E2E_LAST_FILES__ = [file];
-            } catch {}
-            return dt;
-        });
+        // const dtHandle = await page.evaluateHandle(() => {
+        //     const dt = new DataTransfer();
+        //     const blob = new Blob(["hello"], { type: "text/plain" });
+        //     const file = new File([blob], "hello.txt", { type: "text/plain" });
+        //     dt.items.add(file);
+        //     try {
+        //         (window as any).__E2E_LAST_FILES__ = [file];
+        //     } catch {}
+        //     return dt;
+        // });
 
         // E2E専用: 実際のDnDイベントの代わりに、UI結果の決定的な再現として直接添付を追加
         // __E2E_ADD_ATTACHMENT__ を用いて displayRef に直接添付を追加（DnD のUI結果を決定的に再現）
@@ -71,7 +71,7 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
 
     test("multiple attachments can be added to same item", async ({ page }) => {
         const item = page.locator(".outliner-item").first();
-        const content = item.locator(".item-content");
+        // const content = item.locator(".item-content");
 
         // E2E専用ヘルパーで 2 回 添付を追加（DnD の最終結果を決定的に再現）
         // __E2E_ADD_ATTACHMENT__ を 2 回呼び出し

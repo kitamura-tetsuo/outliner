@@ -12,7 +12,7 @@ import { Project } from "../../schema/yjs-schema";
 let { data, children } = $props();
 
 let project: any = $state(null);
-let isAuthenticated = $state(false);
+// let isAuthenticated = $state(false);
 
 // ストアからプロジェクトを取得
 $effect(() => {

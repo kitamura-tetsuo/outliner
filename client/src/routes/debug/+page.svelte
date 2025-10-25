@@ -4,7 +4,6 @@ import {
     onDestroy,
     onMount,
 } from "svelte";
-import { UserManager } from "../../auth/UserManager";
 import AuthComponent from "../../components/AuthComponent.svelte";
 import EnvDebugger from "../../components/EnvDebugger.svelte";
 import NetworkErrorAlert from "../../components/NetworkErrorAlert.svelte";

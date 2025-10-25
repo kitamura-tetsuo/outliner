@@ -21,7 +21,7 @@ test.describe("SEA-0001: page title search box", () => {
             let count = 0;
             try {
                 if (typeof items[Symbol.iterator] === "function") {
-                    for (const item of items) {
+                    for (const _item of items) {
                         count++;
                     }
                 } else if (typeof items.length === "number") {

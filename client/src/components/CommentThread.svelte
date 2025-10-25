@@ -18,13 +18,13 @@ interface Props {
 
 let props: Props = $props();
 let comments = $derived.by(() => props.comments ?? props.item?.comments);
-let currentUser = $derived.by(() => props.currentUser);
-let doc = $derived.by(() => props.doc);
+// let currentUser = $derived.by(() => props.currentUser);
+// let doc = $derived.by(() => props.doc);
 let onCountChanged = $derived.by(() => props.onCountChanged);
 let newText = $state("");
 let editingId = $state<string | null>(null);
 let editText = $state("");
-let commentsList = $state<Comment[]>([]);
+// let commentsList = $state<Comment[]>([]);
 let localComments = $state<Comment[]>([]);
 let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
