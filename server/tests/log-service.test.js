@@ -34,6 +34,7 @@ if (typeof global.jest === "undefined") {
             const resolved = require.resolve(moduleName);
             require.cache[resolved] = { exports: factory() };
         },
+        clearAllMocks: () => sinon.restore(),
         resetAllMocks: () => sinon.restore(),
     };
 }
@@ -95,12 +96,6 @@ jest.mock("firebase-admin", () => {
     };
 });
 
-// Fluid Service Utils モック
-jest.mock("@fluidframework/azure-service-utils", () => ({
-    generateToken: (tenantId, key, scopes, containerId, user) =>
-        `mock-token-for-${user.id}-container-${containerId || "default"}`,
-}));
-
 // テスト前に.envファイルを読み込む
 require("dotenv").config({ path: path.join(__dirname, "..", ".env.test") });
 
@@ -112,9 +107,6 @@ describe("認証サービスのテスト", () => {
     // テスト前の準備
     beforeAll(() => {
         // 環境変数の設定
-        process.env.AZURE_TENANT_ID = "test-tenant-id";
-        process.env.AZURE_FLUID_RELAY_ENDPOINT = "https://test-endpoint.fluidrelay.azure.com";
-        process.env.AZURE_PRIMARY_KEY = "test-primary-key";
     });
 
     beforeEach(() => {
