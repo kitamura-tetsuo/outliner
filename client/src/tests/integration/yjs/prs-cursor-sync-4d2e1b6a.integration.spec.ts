@@ -4,7 +4,7 @@ import { Project } from "../../../schema/app-schema";
 
 // TODO: Re-enable this test once YJS mocking is properly implemented
 describe("yjs presence", () => {
-    it.skip("propagates cursor between clients", async () => {
+    it("propagates cursor between clients", async () => {
         const projectId = `p-${Date.now()}`;
         const c1 = await createProjectConnection(projectId);
         const c2 = await createProjectConnection(projectId);

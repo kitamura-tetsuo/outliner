@@ -5,8 +5,7 @@ registerCoverageHooks();
  *  Title   : Click to enter edit mode
  *  Source  : docs/client-features.yaml
  */
-import { expect, test } from "@playwright/test";
-import { CursorValidator } from "../utils/cursorValidation";
+import { test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0001: Click to enter edit mode", () => {

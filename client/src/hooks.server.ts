@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { paraglideMiddleware } from "$lib/paraglide/server";
 import type { Handle } from "@sveltejs/kit";
 
