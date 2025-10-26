@@ -736,12 +736,12 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     editorOverlayStore.setActiveItem(model.id);
 
     // 新しいカーソルを設定
-    // const cursorId = editorOverlayStore.setCursor({
-    //     itemId: model.id,
-    //     offset: cursorPosition !== undefined ? cursorPosition : 0,
-    //     isActive: true,
-    //     userId: "local",
-    // });
+    editorOverlayStore.setCursor({
+        itemId: model.id,
+        offset: cursorPosition !== undefined ? cursorPosition : 0,
+        isActive: true,
+        userId: "local",
+    });
 
     // カーソル点滅を開始
     editorOverlayStore.startCursorBlink();
@@ -914,12 +914,12 @@ function handleClick(event: MouseEvent) {
         }
 
         // 新しいカーソルを追加（既存のカーソルチェックはaddCursor内で行う）
-        // const cursorId = editorOverlayStore.addCursor({
-        //     itemId: model.id,
-        //     offset: pos,
-        //     isActive: true,
-        //     userId: "local",
-        // });
+        editorOverlayStore.addCursor({
+            itemId: model.id,
+            offset: pos,
+            isActive: true,
+            userId: "local",
+        });
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -1193,10 +1193,10 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         else {
             // 他のアイテムの場合は、テキスト内容に基づいて位置を計算
             // 仮想的なクリックイベントを作成して位置を計算
-            // const virtualEvent = new MouseEvent("click", {
-            //     clientX: event.clientX,
-            //     clientY: item.rect.top + (item.rect.height / 2), // アイテムの中央
-            // });
+            const _virtualEvent = new MouseEvent("click", {
+                clientX: event.clientX,
+                clientY: item.rect.top + (item.rect.height / 2), // アイテムの中央
+            });
 
             // 水平方向の位置を計算
             const rect = textElement.getBoundingClientRect();

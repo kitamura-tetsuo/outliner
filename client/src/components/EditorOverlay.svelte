@@ -173,15 +173,15 @@ function updateTextareaPosition() {
 
         // Convert position from tree-container-relative to overlay-relative
         // This is needed because calculateCursorPixelPosition returns coordinates relative to tree container
-        // const posRelativeToOverlay = {
-        //     left: pos.left + (treeContainerRect.left - overlayRect.left),
-        //     top: pos.top + (treeContainerRect.top - overlayRect.top)
-        // };
+        const _posRelativeToOverlay = {
+            left: pos.left + (treeContainerRect.left - overlayRect.left),
+            top: pos.top + (treeContainerRect.top - overlayRect.top)
+        };
 
         // Position the textarea at the same viewport coordinates as the cursor
         // would be if it were positioned within the overlay
-// const finalLeft = overlayRect.left + posRelativeToOverlay.left;
-// const finalTop = overlayRect.top + posRelativeToOverlay.top;
+        const _finalLeft = overlayRect.left + _posRelativeToOverlay.left;
+        const _finalTop = overlayRect.top + _posRelativeToOverlay.top;
 
         // Simplified: finalLeft = treeContainerRect.left + pos.left (same as before but clearer logic)
         // Position the textarea using viewport coordinates
