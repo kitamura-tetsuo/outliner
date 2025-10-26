@@ -394,15 +394,19 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
                     ...firestoreStore.userContainer,
                     defaultContainerId: containerId,
                     accessibleContainerIds: firestoreStore.userContainer.accessibleContainerIds
+                        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
                         ? [...new Set([...firestoreStore.userContainer.accessibleContainerIds, containerId])]
                         : [containerId],
+                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
                     updatedAt: new Date(),
                 }
                 : {
                     userId: "test-user-id",
                     defaultContainerId: containerId,
                     accessibleContainerIds: [containerId],
+                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
                     createdAt: new Date(),
+                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
                     updatedAt: new Date(),
                 };
 

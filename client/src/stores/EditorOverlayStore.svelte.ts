@@ -57,6 +57,7 @@ export interface SelectionRange {
 export class EditorOverlayStore {
     cursors = $state<Record<string, CursorPosition>>({});
     // Cursor インスタンスを保持する Map
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Internal instance cache, not reactive state
     cursorInstances = new Map<string, Cursor>();
     // 追加されたカーソルの履歴
     cursorHistory = $state<string[]>([]);
@@ -73,6 +74,7 @@ export class EditorOverlayStore {
     private presenceSyncScheduled = false;
 
     // Lightweight pub-sub for UI (to avoid polling in components)
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Internal listener set, not reactive state
     private listeners = new Set<() => void>();
 
     private timerId!: ReturnType<typeof setTimeout>;
@@ -1310,6 +1312,7 @@ export class EditorOverlayStore {
         const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
 
         // アイテムIDとインデックスのマッピングを作成
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary local map for calculation, not reactive state
         const itemIdToIndex = new Map<string, number>();
         allItems.forEach((el, index) => {
             const id = el.getAttribute("data-item-id");

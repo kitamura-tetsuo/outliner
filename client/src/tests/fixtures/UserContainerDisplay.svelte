@@ -35,7 +35,7 @@ onMount(() => {
 <div>
     <div data-testid="default">{defaultIdLocal}</div>
     <ul>
-        {#each computeDisplayed(idsLocal, defaultIdLocal) as id}
+        {#each computeDisplayed(idsLocal, defaultIdLocal) as id (id)}
             <li>{id}</li>
         {/each}
     </ul>

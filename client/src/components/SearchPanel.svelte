@@ -332,7 +332,7 @@ $effect(() => {
             <div class="search-results" data-testid="search-results">
                 <p data-testid="search-results-hits">Hits: {matchCount}</p>
                 <ul data-testid="search-results-list">
-                    {#each matches as m}
+                    {#each matches as m (`${m.page.id}-${m.item.id}`)}
                         <li class="result-item" data-testid="search-result-item">
                             <button class="result-button" data-testid="search-result-button" onclick={() => jumpTo(m)}>
                                 <span class="result-page" data-testid="search-result-page">{(m.page as any).text?.toString?.() ?? String((m.page as any).text ?? "")}</span> -

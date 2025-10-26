@@ -267,6 +267,7 @@ class AliasPickerStore {
 
         return filteredModel;
     }
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- visited is a local Set for cycle detection, not reactive state
     private traverse(node: Item, path: string[], out: Option[], visited = new Set<string>(), depth = 0) {
         // 入力検証
         if (!node || !node.id) {
@@ -314,6 +315,7 @@ class AliasPickerStore {
     private findItemSafe(node: Item, id: string): Item | undefined {
         // 非再帰的な幅優先探索を使用して無限ループを回避
         const queue: Item[] = [node];
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- visited is a local Set for cycle detection, not reactive state
         const visited = new Set<string>();
         let iterations = 0;
         const maxIterations = 1000; // 安全のための上限
