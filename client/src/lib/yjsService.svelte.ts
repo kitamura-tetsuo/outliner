@@ -40,15 +40,17 @@ class Registry {
 let registry: Registry;
 if (
     typeof window !== "undefined"
-    && ((window as any).__YJS_CLIENT_REGISTRY__ || (window as any).__FLUID_CLIENT_REGISTRY__)
+        && (window as Window & Record<string, unknown>).__YJS_CLIENT_REGISTRY__
+    || (window as Window & Record<string, unknown>).__FLUID_CLIENT_REGISTRY__
 ) {
-    registry = ((window as any).__YJS_CLIENT_REGISTRY__ || (window as any).__FLUID_CLIENT_REGISTRY__) as Registry;
+    registry = ((window as Window & Record<string, unknown>).__YJS_CLIENT_REGISTRY__
+        || (window as Window & Record<string, unknown>).__FLUID_CLIENT_REGISTRY__) as Registry;
 } else {
     registry = new Registry();
     if (typeof window !== "undefined") {
-        (window as any).__YJS_CLIENT_REGISTRY__ = registry;
+        (window as Window & Record<string, unknown>).__YJS_CLIENT_REGISTRY__ = registry;
         // Legacy alias for components still reading FLUID registry
-        (window as any).__FLUID_CLIENT_REGISTRY__ = registry;
+        (window as Window & Record<string, unknown>).__FLUID_CLIENT_REGISTRY__ = registry;
     }
 }
 
@@ -90,8 +92,8 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     // update store
     yjsStore.yjsClient = client;
     if (typeof window !== "undefined") {
-        (window as any).__CURRENT_PROJECT__ = project;
-        (window as any).__CURRENT_PROJECT_TITLE__ = containerName;
+        (window as Window & Record<string, unknown>).__CURRENT_PROJECT__ = project;
+        (window as Window & Record<string, string>).__CURRENT_PROJECT_TITLE__ = containerName;
     }
     return client;
 }
@@ -124,7 +126,7 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     }
     const resolvedId = containerId || uuid();
     const title = typeof window !== "undefined"
-        ? ((window as any).__CURRENT_PROJECT_TITLE__ ?? "Test Project")
+        ? ((window as Window & Record<string, string | undefined>).__CURRENT_PROJECT_TITLE__ ?? "Test Project")
         : "Test Project";
     const project = Project.createInstance(title);
     const client = await YjsClient.connect(resolvedId, project);
@@ -154,7 +156,7 @@ export async function getUserContainers(): Promise<{ containers: string[]; defau
 
 // Testing hooks
 if (process.env.NODE_ENV === "test" && typeof window !== "undefined") {
-    (window as any).__YJS_SERVICE__ = {
+    (window as Window & Record<string, unknown>).__YJS_SERVICE__ = {
         createNewProject,
         getClientByProjectTitle,
         createClient,
