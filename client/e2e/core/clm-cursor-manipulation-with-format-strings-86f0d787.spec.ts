@@ -66,7 +66,9 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
         // カーソルの状態を確認し、必要に応じて作成
         const cursorState = await page.evaluate(() => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore =
+                (window as { editorOverlayStore?: { getActiveItem: () => any; getCursorInstances: () => any[]; }; })
+                    .editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
@@ -81,7 +83,14 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         // カーソルインスタンスが存在しない場合、作成する
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
-                const editorStore = (window as any).editorOverlayStore;
+                const editorStore = (window as {
+                    editorOverlayStore?: {
+                        getActiveItem: () => string | null;
+                        setCursor: (
+                            cursor: { itemId: string; offset: number; isActive: boolean; userId: string; },
+                        ) => void;
+                    };
+                }).editorOverlayStore;
                 if (editorStore) {
                     const activeItemId = editorStore.getActiveItem();
                     if (activeItemId) {
@@ -98,7 +107,15 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
         // cursor.insertText()を使用してテキストを挿入
         await page.evaluate(() => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore = (window as {
+                editorOverlayStore?: {
+                    getCursorInstances: () => {
+                        findTarget: () => { updateText: (text: string) => void; } | null;
+                        offset: number;
+                        insertText: (text: string) => void;
+                    }[];
+                };
+            }).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
@@ -188,7 +205,14 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         // カーソルインスタンスが存在しない場合、作成する
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
-                const editorStore = (window as any).editorOverlayStore;
+                const editorStore = (window as {
+                    editorOverlayStore?: {
+                        getActiveItem: () => string | null;
+                        setCursor: (
+                            cursor: { itemId: string; offset: number; isActive: boolean; userId: string; },
+                        ) => void;
+                    };
+                }).editorOverlayStore;
                 if (editorStore) {
                     const activeItemId = editorStore.getActiveItem();
                     if (activeItemId) {
@@ -205,7 +229,15 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
         // cursor.insertText()を使用してテキストを挿入
         await page.evaluate(() => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore = (window as {
+                editorOverlayStore?: {
+                    getCursorInstances: () => {
+                        findTarget: () => { updateText: (text: string) => void; } | null;
+                        offset: number;
+                        insertText: (text: string) => void;
+                    }[];
+                };
+            }).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {

@@ -31,7 +31,8 @@ test.describe("CLM-1cef29b1: ドラッグ後もカーソル数は変化しない
         await page.waitForTimeout(300);
 
         const cursorCountBefore = await page.evaluate(() => {
-            return (window as any).editorOverlayStore.getCursorInstances().length;
+            return (window as { editorOverlayStore?: { getCursorInstances: () => any[]; }; }).editorOverlayStore!
+                .getCursorInstances().length;
         });
 
         const secondLocator = page.locator(`.outliner-item[data-item-id="${secondId}"] .item-content`);
@@ -47,7 +48,8 @@ test.describe("CLM-1cef29b1: ドラッグ後もカーソル数は変化しない
         await page.waitForTimeout(500);
 
         const cursorCountAfter = await page.evaluate(() => {
-            return (window as any).editorOverlayStore.getCursorInstances().length;
+            return (window as { editorOverlayStore?: { getCursorInstances: () => any[]; }; }).editorOverlayStore!
+                .getCursorInstances().length;
         });
 
         expect(cursorCountAfter).toBe(cursorCountBefore);

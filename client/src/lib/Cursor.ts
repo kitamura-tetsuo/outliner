@@ -62,30 +62,30 @@ export class Cursor implements CursorEditingContext {
     }
 
     // SharedTree 上の Item を再帰検索
-    findTarget(): any {
-        const root = generalStore.currentPage as any;
+    findTarget(): Item | undefined {
+        const root = generalStore.currentPage as Item | undefined;
         if (root) {
             const found = searchItem(root, this.itemId);
             if (found) return found;
         }
         // Fallback: search across all pages in the current project
         try {
-            const proj: any = (generalStore as any).project;
-            const pages: any = proj?.items;
+            const proj: { items?: Iterable<Item>; } | undefined = (generalStore as any).project;
+            const pages: Iterable<Item> | undefined = proj?.items;
             if (pages && pages[Symbol.iterator]) {
-                for (const p of pages as Iterable<any>) {
+                for (const p of pages) {
                     const f = searchItem(p, this.itemId);
                     if (f) return f;
                 }
             }
         } catch {}
         if (typeof window !== "undefined") {
-            console.debug("findTarget: not found", { itemId: this.itemId, rootId: (root as any)?.id });
+            console.debug("findTarget: not found", { itemId: this.itemId, rootId: root?.id });
         }
         return undefined;
     }
 
-    private getTargetText(target: any): string {
+    private getTargetText(target: Item | undefined): string {
         const raw = target?.text;
         if (typeof raw === "string") return raw;
         if (raw && typeof raw.toString === "function") {
@@ -465,7 +465,7 @@ export class Cursor implements CursorEditingContext {
         this.editor.deleteForward();
     }
 
-    deleteMultiItemSelection(selection: any) {
+    deleteMultiItemSelection(selection: import("./cursor/CursorEditor").SelectionRange) {
         this.editor.deleteMultiItemSelection(selection);
     }
 
