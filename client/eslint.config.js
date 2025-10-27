@@ -38,18 +38,18 @@ export default ts.config(
             "@typescript-eslint/no-explicit-any": "warn",
             "@typescript-eslint/no-unused-vars": "warn",
             "@typescript-eslint/ban-ts-comment": "warn",
-            "@typescript-eslint/no-unsafe-function-type": "warn",
-            "@typescript-eslint/no-require-imports": "warn",
-            "@typescript-eslint/no-this-alias": "warn",
-            "@typescript-eslint/no-unused-expressions": "warn",
+            "@typescript-eslint/no-unsafe-function-type": "error", // Gradually converting back to error - has few violations
+            "@typescript-eslint/no-require-imports": "error", // Gradually converting back to error - has few violations
+            "@typescript-eslint/no-this-alias": "error", // Gradually converting back to error - has few violations
+            "@typescript-eslint/no-unused-expressions": "error", // Gradually converting back to error - has few violations
             "no-useless-escape": "warn",
-            "no-empty": "warn",
-            "no-irregular-whitespace": "warn",
+            "no-empty": ["warn", { "allowEmptyCatch": true }],
+            "no-irregular-whitespace": "error", // Gradually converting back to error - has only 1 violation
             "no-undef": "warn",
-            "no-case-declarations": "warn",
+            "no-case-declarations": "error", // Gradually converting back to error - can be easily fixed
             "svelte/prefer-writable-derived": "warn",
             "svelte/require-each-key": "warn",
-            "svelte/no-at-html-tags": "warn",
+            "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
             "svelte/no-unused-svelte-ignore": "warn",
             "svelte/no-unused-props": "warn",
             "svelte/prefer-svelte-reactivity": "warn",
@@ -103,7 +103,7 @@ export default ts.config(
                 },
             ],
             "no-restricted-syntax": [
-                "warn",
+                "error",
                 {
                     selector:
                         "CallExpression[callee.type='MemberExpression'][callee.object.type='Identifier'][callee.object.name=/^(it|test|describe)$/][callee.property.name='skip']",
@@ -146,7 +146,7 @@ export default ts.config(
                 },
             ],
             "no-restricted-syntax": [
-                "warn",
+                "error",
                 {
                     selector:
                         "CallExpression[callee.type='MemberExpression'][callee.object.type='Identifier'][callee.object.name=/^(it|test|describe)$/][callee.property.name='skip']",
