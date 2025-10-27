@@ -61,7 +61,12 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
 
         // カーソルの状態を確認し、必要に応じて作成
         const cursorState = await page.evaluate(() => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore = (window as {
+                editorOverlayStore?: {
+                    getActiveItem: () => string | null;
+                    getCursorInstances: () => { id: string; }[];
+                };
+            }).editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
@@ -78,7 +83,14 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         if (cursorState.cursorInstancesCount === 0) {
             console.log("No cursor instances found, creating cursor");
             await page.evaluate(() => {
-                const editorStore = (window as any).editorOverlayStore;
+                const editorStore = (window as {
+                    editorOverlayStore?: {
+                        getActiveItem: () => string | null;
+                        setCursor: (
+                            cursor: { itemId: string; offset: number; isActive: boolean; userId: string; },
+                        ) => void;
+                    };
+                }).editorOverlayStore;
                 if (editorStore) {
                     const activeItemId = editorStore.getActiveItem();
                     if (activeItemId) {
@@ -97,7 +109,15 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         // テキスト入力が可能であることを確認（cursor.insertText()を使用）
         const testText = "テスト用テキスト";
         await page.evaluate(text => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore = (window as {
+                editorOverlayStore?: {
+                    getCursorInstances: () => {
+                        findTarget: () => { updateText: (text: string) => void; } | null;
+                        offset: number;
+                        insertText: (text: string) => void;
+                    }[];
+                };
+            }).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {

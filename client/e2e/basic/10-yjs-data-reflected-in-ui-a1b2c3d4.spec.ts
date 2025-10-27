@@ -37,16 +37,25 @@ test.describe("YjsのデータがUIに反映される", () => {
             const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
 
-            const existing = (items as any).length ?? 0;
+            const existing = (items as { length?: number; }).length ?? 0;
             // 既存分は上書き
             for (let i = 0; i < Math.min(existing as number, lines.length); i++) {
-                const it = (items as any).at ? (items as any).at(i) : (items as any)[i];
-                (it as any)?.updateText?.(lines[i]);
+                const it = (items as {
+                        at?: (index: number) => { updateText?: (text: string) => void; };
+                        [index: number]: { updateText?: (text: string) => void; };
+                    }).at
+                    ? (items as {
+                        at?: (index: number) => { updateText?: (text: string) => void; };
+                        [index: number]: { updateText?: (text: string) => void; };
+                    }).at(i)
+                    : (items as { [index: number]: { updateText?: (text: string) => void; }; })[i];
+                it?.updateText?.(lines[i]);
             }
             // 不足分は追加
             for (let i = existing as number; i < lines.length; i++) {
-                const node = (items as any).addNode?.("tester");
-                (node as any)?.updateText?.(lines[i]);
+                const node = (items as { addNode?: (text: string) => { updateText?: (text: string) => void; }; })
+                    .addNode?.("tester");
+                node?.updateText?.(lines[i]);
             }
         }, lines);
 
@@ -90,11 +99,14 @@ test.describe("YjsのデータがUIに反映される", () => {
             await page.evaluate((lines) => {
                 const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
                     .generalStore;
-                const items = gs?.currentPage?.items as any;
+                const items = gs?.currentPage?.items as {
+                    at?: (index: number) => { updateText?: (text: string) => void; };
+                    [index: number]: { updateText?: (text: string) => void; };
+                } | undefined;
                 if (!items) return;
                 for (let i = 0; i < lines.length; i++) {
                     const it = items.at ? items.at(i) : items[i];
-                    (it as any)?.updateText?.(lines[i]);
+                    it?.updateText?.(lines[i]);
                 }
             }, lines);
         }
