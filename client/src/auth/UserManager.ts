@@ -90,7 +90,7 @@ export class UserManager {
 
         // テスト環境でのアクセスのためにグローバルに設定
         if (typeof window !== "undefined") {
-            (window as any).__USER_MANAGER__ = this;
+            (window as unknown as { __USER_MANAGER__: UserManager; }).__USER_MANAGER__ = this;
         }
 
         // 認証リスナーを非同期で初期化
@@ -336,7 +336,7 @@ export class UserManager {
                         userId: userCredential.user.uid,
                     });
                     return;
-                } catch (firebaseError: any) {
+                } catch (firebaseError) {
                     logger.warn("[UserManager] Firebase Auth login failed:", firebaseError?.message);
 
                     // ユーザーが存在しない場合は作成を試みる
@@ -454,6 +454,6 @@ export const userManager = new UserManager();
 
 if (process.env.NODE_ENV === "test") {
     if (typeof window !== "undefined") {
-        (window as any).__USER_MANAGER__ = userManager;
+        (window as unknown as { __USER_MANAGER__: UserManager; }).__USER_MANAGER__ = userManager;
     }
 }

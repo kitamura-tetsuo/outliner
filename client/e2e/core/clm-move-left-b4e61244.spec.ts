@@ -59,7 +59,7 @@ test.describe("CLM-0002: 左へ移動", () => {
         expect(updatedOffset).toBe(initialOffset - 1);
     });
 
-    test.skip("一番最初の文字にある時は、一つ前のアイテムの最後の文字へ移動する", async ({ page }) => {
+    test("一番最初の文字にある時は、一つ前のアイテムの最後の文字へ移動する", async ({ page }) => {
         // This test is skipped temporarily until the cross-item cursor movement logic is fixed
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);

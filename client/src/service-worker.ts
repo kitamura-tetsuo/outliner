@@ -1,4 +1,5 @@
 /// <reference types="@sveltejs/kit" />
+/// <reference lib="webworker" />
 import { version } from "$service-worker";
 
 const CACHE_NAME = `outliner-cache-${version}`;
@@ -12,7 +13,7 @@ const ASSETS = [
 declare const self: ServiceWorkerGlobalScope;
 
 // IndexedDBの初期化（Service Worker環境用）
-let dbPromise: Promise<any> | undefined;
+let dbPromise: Promise<IDBDatabase> | undefined;
 
 async function initDB() {
     if (dbPromise) return dbPromise;
@@ -65,7 +66,7 @@ self.addEventListener("activate", event => {
     );
 });
 
-async function queueOp(url: string, body: any) {
+async function queueOp(url: string, body: Record<string, unknown> | null) {
     try {
         const db = await initDB();
         const tx = db.transaction("ops", "readwrite");
@@ -92,7 +93,7 @@ async function sendQueuedOps() {
             request.onerror = () => reject(request.error);
         });
 
-        for (const op of ops as any[]) {
+        for (const op of ops as { id: number; url: string; body: Record<string, unknown>; }[]) {
             try {
                 await fetch(op.url, {
                     method: "POST",
