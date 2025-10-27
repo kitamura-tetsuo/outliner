@@ -35,7 +35,6 @@ const logger = require("firebase-functions/logger");
 
 const admin = require("firebase-admin");
 
-const jwt = require("jsonwebtoken");
 const { FieldValue } = require("firebase-admin/firestore");
 const { generateSchedulesIcs } = require("./ical");
 
@@ -218,6 +217,17 @@ async function checkContainerAccess(userId, containerId) {
 }
 
 // Azure Fluid Relay設定（上記で定義済み）
+
+// Azure設定を取得する関数
+function getAzureConfig() {
+  return {
+    tenantId: process.env.AZURE_TENANT_ID,
+    endpoint: process.env.AZURE_ENDPOINT,
+    primaryKey: process.env.AZURE_PRIMARY_KEY,
+    secondaryKey: process.env.AZURE_SECONDARY_KEY,
+    activeKey: process.env.AZURE_ACTIVE_KEY || "primary",
+  };
+}
 
 // Azure設定の初期化確認
 try {

@@ -33,17 +33,20 @@ test.describe("Yjs client attach and DOM reflect", () => {
                     const url = new URL(location.href);
                     const parts = url.pathname.split("/").filter(Boolean);
                     const pageName = decodeURIComponent(parts[1] || "untitled");
-                    const created = (gs.project as any).addPage?.(pageName, "tester");
+                    const created = (gs.project as { addPage?: (name: string, author: string) => unknown; }).addPage?.(
+                        pageName,
+                        "tester",
+                    );
                     if (created) {
                         gs.currentPage = created;
                         console.log("Created new currentPage");
                     } else {
                         // Alternative creation method
-                        const items = (gs.project as any).items;
-                        if (items && typeof (items as any).addNode === "function") {
-                            const pageItem = (items as any).addNode("tester");
+                        const items = (gs.project as { items?: unknown; }).items;
+                        if (items && typeof (items as { addNode?: unknown; }).addNode === "function") {
+                            const pageItem = (items as { addNode: (author: string) => unknown; }).addNode("tester");
                             if (pageItem) {
-                                (pageItem as any).updateText(pageName);
+                                (pageItem as { updateText: (text: string) => void; }).updateText(pageName);
                                 gs.currentPage = pageItem;
                                 console.log("Created new currentPage via items.addNode");
                             }
@@ -73,13 +76,13 @@ test.describe("Yjs client attach and DOM reflect", () => {
             ];
 
             // Add items if they don't already exist
-            const existingCount = (items as any).length ?? 0;
+            const existingCount = (items as { length?: number; }).length ?? 0;
             console.log(`Current item count: ${existingCount}`);
 
             for (let i = existingCount; i < 3; i++) {
-                const it = (items as any).addNode?.("tester");
-                if (it && typeof (it as any).updateText === "function") {
-                    (it as any).updateText(lines[i] || "");
+                const it = (items as { addNode?: (author: string) => unknown; }).addNode?.("tester");
+                if (it && typeof (it as { updateText?: unknown; }).updateText === "function") {
+                    (it as { updateText: (text: string) => void; }).updateText(lines[i] || "");
                     console.log(`Added item ${i + 1}: ${lines[i]}`);
                 } else {
                     console.error(`Failed to add item ${i + 1}`);

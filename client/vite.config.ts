@@ -76,9 +76,6 @@ export default defineConfig(async ({ mode }) => {
             // 手動チャンク分割の適用に合わせ、警告閾値は最小限の緩和に留める
             chunkSizeWarningLimit: 1100,
             rollupOptions: {
-                input: {
-                    app: "./src/app.html",
-                },
                 output: {
                     // 最小限の vendor 分割 + echarts をさらに細分化して 500kB 超過を回避
                     manualChunks(id: string) {
