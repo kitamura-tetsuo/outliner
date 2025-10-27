@@ -16,24 +16,17 @@ if (
   process.env.CI === "true" || process.env.NODE_ENV === "test" ||
   process.env.FUNCTIONS_EMULATOR === "true"
 ) {
-  process.env.AZURE_PRIMARY_KEY ||= "test-primary-key";
-  process.env.AZURE_SECONDARY_KEY ||= "test-secondary-key";
-  process.env.AZURE_ACTIVE_KEY ||= "primary";
   process.env.GCLOUD_PROJECT ||= "outliner-d57b0";
   process.env.NODE_ENV = "test";
   process.env.FUNCTIONS_EMULATOR = "true";
   process.env.FIREBASE_AUTH_EMULATOR_HOST ||= "localhost:59099";
   process.env.FIRESTORE_EMULATOR_HOST ||= "localhost:58080";
   process.env.FIREBASE_STORAGE_EMULATOR_HOST ||= "localhost:59200";
-  process.env.AZURE_TENANT_ID ||= "test-tenant-id";
-  process.env.AZURE_ENDPOINT ||= "https://test.fluidrelay.azure.com";
   process.env.FIREBASE_PROJECT_ID ||= "outliner-d57b0";
 }
 
 // 本番向けのフォールバック（Secrets未設定時）
 if (!process.env.FUNCTIONS_EMULATOR) {
-  process.env.AZURE_TENANT_ID ||= "89b298bd-9aa3-4a6b-8ef0-2dc3019b0996";
-  process.env.AZURE_ENDPOINT ||= "https://us.fluidrelay.azure.com";
   process.env.FIREBASE_PROJECT_ID ||= "outliner-d57b0";
 }
 
@@ -41,7 +34,6 @@ const { onRequest } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 
 const admin = require("firebase-admin");
-const { generateToken } = require("@fluidframework/azure-service-utils");
 
 const jwt = require("jsonwebtoken");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -64,24 +56,6 @@ function setCorsHeaders(req, res) {
 
   res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-}
-
-// Azure Fluid Relay設定を取得する関数
-function getAzureConfig() {
-  // 環境変数から値を取得
-  const activeKey = process.env.AZURE_ACTIVE_KEY?.trim() || "primary";
-  const primaryKey = process.env.AZURE_PRIMARY_KEY?.trim();
-  const secondaryKey = process.env.AZURE_SECONDARY_KEY?.trim();
-  const tenantId = process.env.AZURE_TENANT_ID?.trim();
-  const endpoint = process.env.AZURE_ENDPOINT?.trim();
-
-  return {
-    tenantId: tenantId,
-    endpoint: endpoint,
-    primaryKey: primaryKey,
-    secondaryKey: secondaryKey,
-    activeKey: activeKey,
-  };
 }
 
 // Firebase Admin SDKの初期化
@@ -907,127 +881,6 @@ exports.health = onRequest({ cors: true }, async (req, res) => {
   });
 });
 
-// Azure Fluid Relayキーの動作確認エンドポイント
-exports.azureHealthCheck = onRequest(
-  { cors: true },
-  async (req, res) => {
-    // CORS設定
-    setCorsHeaders(req, res);
-
-    // プリフライト OPTIONS リクエストの処理
-    if (req.method === "OPTIONS") {
-      return res.status(204).end();
-    }
-
-    // GETメソッドのみ許可
-    if (req.method !== "GET") {
-      return res.status(405).json({ error: "Method Not Allowed" });
-    }
-
-    try {
-      const timestamp = new Date().toISOString();
-      const azureConfig = getAzureConfig();
-
-      // 設定情報の確認
-      const configStatus = {
-        tenantId: azureConfig.tenantId ? "設定済み" : "未設定",
-        endpoint: azureConfig.endpoint ? "設定済み" : "未設定",
-        primaryKey: azureConfig.primaryKey ? "設定済み" : "未設定",
-        secondaryKey: azureConfig.secondaryKey ? "設定済み" : "未設定",
-        activeKey: azureConfig.activeKey,
-      };
-
-      // 使用するキーを決定
-      const keyToUse =
-        azureConfig.activeKey === "secondary" && azureConfig.secondaryKey ?
-          azureConfig.secondaryKey : azureConfig.primaryKey;
-
-      // テスト用のトークン生成
-      const tokenTest = {
-        status: "failed",
-        error: null,
-        tokenGenerated: false,
-        tokenValid: false,
-      };
-
-      try {
-        // テスト用ユーザー情報
-        const testUser = {
-          id: "azure-health-check-test-user",
-          name: "Azure Health Check Test User",
-        };
-
-        // テスト用コンテナID
-        const testContainerId = "azure-health-check-test-container";
-
-        // Azure Fluid Relay のスコープ
-        const scopes = ["doc:read", "doc:write", "summary:write"];
-
-        // トークン生成テスト
-        const testToken = generateToken(
-          azureConfig.tenantId,
-          keyToUse,
-          scopes,
-          testContainerId,
-          testUser,
-        );
-
-        tokenTest.tokenGenerated = true;
-
-        // 生成されたトークンの検証
-        const decoded = jwt.decode(testToken);
-        if (decoded && decoded.tenantId === azureConfig.tenantId) {
-          tokenTest.tokenValid = true;
-          tokenTest.status = "success";
-        } else {
-          tokenTest.error = "Generated token validation failed";
-        }
-      } catch (error) {
-        tokenTest.error = error.message;
-        logger.error(`Azure token generation test failed: ${error.message}`);
-      }
-
-      // Azure Fluid Relayサービスへの接続テスト
-      const connectionTest = {
-        status: "skipped",
-        note:
-          "Connection test requires actual container creation which is not performed in health check",
-      };
-
-      // 全体的なステータス判定
-      const overallStatus = tokenTest.status === "success" &&
-          configStatus.tenantId === "設定済み" &&
-          configStatus.primaryKey === "設定済み" ? "healthy" : "unhealthy";
-
-      const response = {
-        status: overallStatus,
-        timestamp,
-        azure: {
-          config: configStatus,
-          tokenTest,
-          connectionTest,
-        },
-        environment: {
-          isEmulator: !!process.env.FUNCTIONS_EMULATOR,
-          projectId: admin.app().options.projectId,
-        },
-      };
-
-      // ステータスに応じてHTTPステータスコードを設定
-      const httpStatus = overallStatus === "healthy" ? 200 : 503;
-
-      logger.info(`Azure health check completed: ${overallStatus}`);
-      return res.status(httpStatus).json(response);
-    } catch (error) {
-      logger.error(`Azure health check error: ${error.message}`, { error });
-      return res.status(500).json({
-        status: "error",
-        timestamp: new Date().toISOString(),
-        error: error.message,
-      });
-    }
-  },
-);
 // Schedule a page for publishing
 exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
   setCorsHeaders(req, res);
