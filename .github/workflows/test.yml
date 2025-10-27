@@ -383,9 +383,10 @@ jobs:
       - name: Run unit and integration tests for github reporting
         run: |
           set -o pipefail
+          mkdir -p job_logs/${{ github.job }}
           cd client
-          npm run github:test:unit 2>&1 | tee -a /tmp/unit-test.log
-          npm run github:test:integration 2>&1 | tee -a /tmp/integration-test.log
+          npm run github:test:unit 2>&1 | tee -a ../job_logs/${{ github.job }}/unit-test.log
+          npm run github:test:integration 2>&1 | tee -a ../job_logs/${{ github.job }}/integration-test.log
         env:
           CI: true
           NODE_ENV: test
@@ -397,8 +398,9 @@ jobs:
       - name: Run e2e tests for github reporting
         run: |
           set -o pipefail
+          mkdir -p job_logs/${{ github.job }}
           cd client
-          npm run github:test:e2e 2>&1 | tee -a /tmp/e2e-test.log
+          npm run github:test:e2e 2>&1 | tee -a ../job_logs/${{ github.job }}/e2e-test.log
         env:
           CI: true
           NODE_ENV: test
@@ -413,34 +415,24 @@ jobs:
           echo "## ❌ Test suite failed" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
-          # Check for test failures
-          if [ -f /tmp/test.log ]; then
-            echo "### Test Failures:" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
-            grep -E -A1 -B0 "FAIL|FAILED" /tmp/test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
-            echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
-          fi
+          # Check for test failures in job-specific logs
+          JOB_LOG_DIR="job_logs/${{ github.job }}"
 
-          if [ -f /tmp/env-test.log ]; then
-            echo "### Environment Test Failures:" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
-            grep -E -A1 -B0 "FAIL|FAILED" /tmp/env-test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
-            echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
-          fi
-
-          if [ -f /tmp/unit-test.log ]; then
+          if [ -f "$JOB_LOG_DIR/unit-test.log" ]; then
             echo "### Unit Test Failures:" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
-            grep -E -A1 -B0 "FAIL|FAILED" /tmp/unit-test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+            grep -E -A1 -B0 "FAIL|FAILED" "$JOB_LOG_DIR/unit-test.log" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
             echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           fi
 
-          if [ -f /tmp/integration-test.log ]; then
+          if [ -f "$JOB_LOG_DIR/integration-test.log" ]; then
             echo "### Integration Test Failures:" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
-            grep -E -A1 -B0 "FAIL|FAILED" /tmp/integration-test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+            grep -E -A1 -B0 "FAIL|FAILED" "$JOB_LOG_DIR/integration-test.log" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
             echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           fi
 
-          if [ -f /tmp/e2e-test.log ]; then
+          if [ -f "$JOB_LOG_DIR/e2e-test.log" ]; then
             echo "### E2E Test Failures:" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
-            grep -E -A1 -B0 "FAIL|FAILED" /tmp/e2e-test.log 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+            grep -E -A1 -B0 "FAIL|FAILED" "$JOB_LOG_DIR/e2e-test.log" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
             echo 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           fi
 
@@ -515,6 +507,10 @@ jobs:
           # Show any remaining processes
           echo "Remaining processes:"
           ps aux | grep -E "(tinylicious|firebase|vite|node.*70|node.*59|node.*58|node.*57)" || echo "No relevant processes found"
+
+          # Clean up job-specific log directories
+          echo "Cleaning up job-specific log directories..."
+          rm -rf job_logs/ || echo "No job_logs directory to clean up"
 
       - name: Comment PR with test results
         uses: actions/github-script@v7
