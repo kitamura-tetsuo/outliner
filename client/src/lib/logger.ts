@@ -67,7 +67,7 @@ interface CallSite {
     getLineNumber(): number | null;
     getColumnNumber(): number | null;
     getFunctionName(): string | null;
-    getThis(): any;
+    getThis(): unknown;
     getTypeName(): string | null;
     getMethodName(): string | null;
     getEvalOrigin(): string | undefined;
@@ -85,7 +85,7 @@ function getCallerFile(): string {
     try {
         const err = new Error();
         // prepareStackTrace を上書きして、stack を CallSite の配列として取得
-        Error.prepareStackTrace = ((error: Error, stack: CallSite[]) => stack) as unknown as any;
+        Error.prepareStackTrace = (error: Error, stack: CallSite[]): CallSite[] => stack;
         const stack = err.stack as unknown as CallSite[];
 
         // ロガーに関連するファイルパスとメソッド名
@@ -135,13 +135,13 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
     // 各ログレベルメソッドをラップ
     levels.forEach(level => {
         const originalMethod = logger[level].bind(logger);
-        enhancedLogger[level] = (...args: any[]) => {
+        enhancedLogger[level] = (...args: unknown[]) => {
             // ログ呼び出し時に位置情報を取得
             const file = getCallerFile();
 
             // 引数の処理: 最初の引数がオブジェクトなら位置情報を追加
             if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
-                args[0] = { file, ...args[0] };
+                args[0] = { file, ...args[0] as object };
             } else {
                 // オブジェクトでない場合は先頭に位置情報を追加
                 args.unshift({ file });
@@ -190,7 +190,7 @@ const consoleStyles = {
  * 呼び出し元のファイル名と行番号を child logger のコンテキストに付加して返す
  * コンソールにも同時に出力したい場合は enableConsole を true に設定
  */
-export function getLogger(componentName?: string, enableConsole: boolean = true): any {
+export function getLogger(componentName?: string, enableConsole: boolean = true): pino.Logger {
     const file = getCallerFile();
     const module = componentName || file;
     const isCustomModule = componentName !== undefined && componentName !== file;
@@ -203,9 +203,9 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
         return new Proxy(childLogger, {
             get(target, prop) {
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
-                    return function(...args: any[]) {
+                    return function(...args: unknown[]) {
                         // オリジナルのロガーメソッドを呼び出し
-                        (target as any)[prop](...args);
+                        (target as Record<string, unknown>)[prop as string](...args);
 
                         // コンソールにも出力（同じレベルで）
                         const consoleMethod = prop === "trace" || prop === "debug"
@@ -222,7 +222,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                             // 最初の引数がオブジェクトの場合とそうでない場合で処理を分ける
                             if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
                                 // オブジェクトデータ
-                                const objData = { ...args[0] };
+                                const objData = { ...args[0] as object };
                                 delete objData.file; // すでに別途表示するので削除
                                 delete objData.module; // すでに別途表示するので削除
 
@@ -278,7 +278,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                         }
                     };
                 }
-                return (target as any)[prop];
+                return (target as Record<string, unknown>)[prop as string];
             },
         }) as pino.Logger;
     }
@@ -293,7 +293,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
 export function log(
     componentName: string,
     level: "trace" | "debug" | "info" | "warn" | "error" | "fatal",
-    ...args: any[]
+    ...args: unknown[]
 ): void {
     // 1. 通常のコンソール出力（ソースマップ情報が付加されるが、直接的でシンプル）
     const consoleMethod = level === "trace" || level === "debug"
@@ -343,24 +343,24 @@ export function log(
  */
 function extractErrorDetails(
     error: Error | unknown,
-): { message: string; stack?: string; name?: string; [key: string]: any; } {
+): { message: string; stack?: string; name?: string; [key: string]: unknown; } {
     if (error instanceof Error) {
         return {
             message: error.message,
             name: error.name,
             stack: error.stack,
-            ...(error as any), // その他のカスタムプロパティも含める
+            ...error, // その他のカスタムプロパティも含める
         };
     } else if (typeof error === "string") {
         return { message: error };
     } else if (error && typeof error === "object") {
         // 任意のオブジェクトをスプレッドすると Playwright のコンソール転送で
         // [unserializable] が多発することがあるため、必要最小限のみ返す
-        const anyErr = error as any;
-        const name = typeof anyErr.name === "string" ? anyErr.name : undefined;
-        const message = typeof anyErr.message === "string" ? anyErr.message : String(anyErr);
-        const stack = typeof anyErr.stack === "string" ? anyErr.stack : undefined;
-        const type = typeof anyErr.type === "string" ? anyErr.type : undefined;
+        const errorObj = error as Record<string, unknown>;
+        const name = typeof errorObj.name === "string" ? errorObj.name : undefined;
+        const message = typeof errorObj.message === "string" ? errorObj.message : String(error);
+        const stack = typeof errorObj.stack === "string" ? errorObj.stack : undefined;
+        const type = typeof errorObj.type === "string" ? errorObj.type : undefined;
 
         return { name, message, stack, type };
     }
@@ -390,7 +390,7 @@ function setupGlobalErrorHandlers(): void {
         uncaughtLogger.error(errorInfo);
         const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
         const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
-        const marker = (window as any).__LAST_EFFECT__ || "<unknown>";
+        const marker = (window as Record<string, unknown>).__LAST_EFFECT__ as string || "<unknown>";
         console.error(`%c${errMsg}`, consoleStyles.fileInfo, stackTop);
         console.error("[EFFECT-MARKER]", marker);
         console.error("[STACK]", stackTop);
@@ -411,7 +411,7 @@ function setupGlobalErrorHandlers(): void {
         uncaughtLogger.error(errorInfo);
         const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
         const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
-        const marker = (window as any).__LAST_EFFECT__ || "<unknown>";
+        const marker = (window as Record<string, unknown>).__LAST_EFFECT__ as string || "<unknown>";
         console.error(`%c${errMsg}`, consoleStyles.fileInfo, stackTop);
         console.error("[EFFECT-MARKER]", marker);
         console.error("[STACK]", stackTop);
@@ -421,7 +421,7 @@ function setupGlobalErrorHandlers(): void {
 // Playwright での [unserializable] スパム抑制のため、console.error/warn の引数を安全に文字列化
 function setupConsoleSanitizer(): void {
     if (typeof window === "undefined") return;
-    const safe = (arg: any): string => {
+    const safe = (arg: unknown): string => {
         try {
             if (typeof arg === "string") return arg;
             if (arg instanceof Error) {
@@ -429,8 +429,12 @@ function setupConsoleSanitizer(): void {
                 return `${arg.name}: ${arg.message}\n${top}`;
             }
             if (arg && typeof arg === "object") {
-                const name = typeof (arg as any).name === "string" ? (arg as any).name : undefined;
-                const msg = typeof (arg as any).message === "string" ? (arg as any).message : undefined;
+                const name = typeof (arg as Record<string, unknown>).name === "string"
+                    ? (arg as Record<string, unknown>).name as string
+                    : undefined;
+                const msg = typeof (arg as Record<string, unknown>).message === "string"
+                    ? (arg as Record<string, unknown>).message as string
+                    : undefined;
                 if (name || msg) return `${name || "Object"}: ${msg || ""}`;
                 // 最低限の JSON 文字列化（循環参照は避ける）
                 return JSON.stringify(arg, (_k, v) => (typeof v === "object" ? undefined : v)) || "[object]";
@@ -442,8 +446,8 @@ function setupConsoleSanitizer(): void {
     };
     const origError = console.error.bind(console);
     const origWarn = console.warn.bind(console);
-    console.error = (...args: any[]) => origError(...args.map(safe));
-    console.warn = (...args: any[]) => origWarn(...args.map(safe));
+    console.error = (...args: unknown[]) => origError(...args.map(safe));
+    console.warn = (...args: unknown[]) => origWarn(...args.map(safe));
 }
 
 // ブラウザ環境ならグローバルエラーハンドラーを初期化
