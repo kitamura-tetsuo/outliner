@@ -2100,6 +2100,7 @@ onMount(() => {
                             onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
                         >
                             <!-- XSS-safe: ScrapboxFormatter.formatWithControlChars() escapes HTML before applying formatting -->
+                            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                             {@html ScrapboxFormatter.formatWithControlChars(textString)}
                         </span>
                     {:else}
@@ -2112,6 +2113,7 @@ onMount(() => {
                             onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
                         >
                             <!-- XSS-safe: ScrapboxFormatter.formatToHtml() escapes HTML before applying formatting -->
+                            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                             {@html ScrapboxFormatter.formatToHtml(textString)}
                         </span>
                     {/if}
@@ -2193,6 +2195,7 @@ onMount(() => {
             || ((openCommentItemId == null) && (openCommentItemIndex == null) && index === 1)
         )}
         <!-- XSS-safe: This only returns an empty string, used to trigger reactivity on item.comments -->
+        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {@html (() => { try { void item.comments; } catch {} return ''; })() }
         <CommentThread
             comments={ensuredComments}

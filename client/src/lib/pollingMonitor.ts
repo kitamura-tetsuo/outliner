@@ -57,12 +57,10 @@ class PollingMonitor {
         if (this.enabled) return;
         this.enabled = true;
 
-        const self = this;
-
         // setIntervalをインターセプト
-        window.setInterval = function(callback: any, delay?: number, ...args: any[]): any {
+        window.setInterval = (callback: any, delay?: number, ...args: any[]): any => {
             const stack = new Error().stack || "";
-            const id = self.nextId++;
+            const id = this.nextId++;
 
             const call: PollingCall = {
                 id,
@@ -71,10 +69,10 @@ class PollingMonitor {
                 stack,
                 createdAt: Date.now(),
                 executionCount: 0,
-                disabled: self.shouldDisable(stack),
+                disabled: this.shouldDisable(stack),
             };
 
-            self.calls.set(id, call);
+            this.calls.set(id, call);
 
             if (call.disabled) {
                 console.log(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);
@@ -83,24 +81,24 @@ class PollingMonitor {
             }
 
             // ラップされたコールバック
-            const wrappedCallback = function(this: any, ...callbackArgs: any[]) {
+            const wrappedCallback = (...callbackArgs: any[]) => {
                 call.executionCount++;
                 call.lastExecutedAt = Date.now();
-                return callback.apply(this, callbackArgs);
+                return callback(...callbackArgs);
             };
 
-            const timerId = self.originalSetInterval(wrappedCallback, delay, ...args);
+            const timerId = this.originalSetInterval(wrappedCallback, delay, ...args);
 
             // タイマーIDをマッピング
             (call as any).timerId = timerId;
 
             return timerId;
-        } as any;
+        };
 
         // setTimeoutをインターセプト
-        window.setTimeout = function(callback: any, delay?: number, ...args: any[]): any {
+        window.setTimeout = (callback: any, delay?: number, ...args: any[]): any => {
             const stack = new Error().stack || "";
-            const id = self.nextId++;
+            const id = this.nextId++;
 
             const call: PollingCall = {
                 id,
@@ -109,33 +107,33 @@ class PollingMonitor {
                 stack,
                 createdAt: Date.now(),
                 executionCount: 0,
-                disabled: self.shouldDisable(stack),
+                disabled: this.shouldDisable(stack),
             };
 
-            self.calls.set(id, call);
+            this.calls.set(id, call);
 
             if (call.disabled) {
                 console.log(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);
                 return id;
             }
 
-            const wrappedCallback = function(this: any, ...callbackArgs: any[]) {
+            const wrappedCallback = (...callbackArgs: any[]) => {
                 call.executionCount++;
                 call.lastExecutedAt = Date.now();
-                self.calls.delete(id); // setTimeoutは一度だけ実行
-                return callback.apply(this, callbackArgs);
+                this.calls.delete(id); // setTimeoutは一度だけ実行
+                return callback(...callbackArgs);
             };
 
-            const timerId = self.originalSetTimeout(wrappedCallback, delay, ...args);
+            const timerId = this.originalSetTimeout(wrappedCallback, delay, ...args);
             (call as any).timerId = timerId;
 
             return timerId;
-        } as any;
+        };
 
         // requestAnimationFrameをインターセプト
-        window.requestAnimationFrame = function(callback: FrameRequestCallback): number {
+        window.requestAnimationFrame = (callback: FrameRequestCallback): number => {
             const stack = new Error().stack || "";
-            const id = self.nextId++;
+            const id = this.nextId++;
 
             const call: PollingCall = {
                 id,
@@ -143,24 +141,24 @@ class PollingMonitor {
                 stack,
                 createdAt: Date.now(),
                 executionCount: 0,
-                disabled: self.shouldDisable(stack),
+                disabled: this.shouldDisable(stack),
             };
 
-            self.calls.set(id, call);
+            this.calls.set(id, call);
 
             if (call.disabled) {
                 console.log(`[PollingMonitor] Disabled requestAnimationFrame (id=${id})`);
                 return id;
             }
 
-            const wrappedCallback = function(time: number) {
+            const wrappedCallback = (time: number) => {
                 call.executionCount++;
                 call.lastExecutedAt = Date.now();
-                self.calls.delete(id);
+                this.calls.delete(id);
                 return callback(time);
             };
 
-            const frameId = self.originalRequestAnimationFrame(wrappedCallback);
+            const frameId = this.originalRequestAnimationFrame(wrappedCallback);
             (call as any).frameId = frameId;
 
             return frameId;

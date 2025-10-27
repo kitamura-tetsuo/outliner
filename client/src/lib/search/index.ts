@@ -96,7 +96,11 @@ export function replaceFirst<T extends { text: any; updateText?: (t: string) => 
         const text = toStringSafe((item as any).text);
         const newText = text.replace(regex, replacement);
         if (newText !== text) {
-            (item as any).updateText ? (item as any).updateText(newText) : ((item as any).text = newText);
+            if ((item as any).updateText) {
+                (item as any).updateText(newText);
+            } else {
+                (item as any).text = newText;
+            }
             return true;
         }
         const children = (item as any).items;
@@ -123,7 +127,11 @@ export function replaceAll<T extends { text: any; updateText?: (t: string) => vo
             return replacement;
         });
         if (replaced > 0) {
-            (item as any).updateText ? (item as any).updateText(newText) : ((item as any).text = newText);
+            if ((item as any).updateText) {
+                (item as any).updateText(newText);
+            } else {
+                (item as any).text = newText;
+            }
             count += replaced;
         }
         const children = (item as any).items;

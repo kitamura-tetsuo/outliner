@@ -424,10 +424,9 @@ export class Items implements Iterable<Item> {
 
     [Symbol.iterator](): Iterator<Item> {
         let index = 0;
-        const self = this;
         return {
-            next(): IteratorResult<Item> {
-                const it = self.at(index++);
+            next: (): IteratorResult<Item> => {
+                const it = this.at(index++);
                 if (it) return { value: it, done: false };
                 return { value: undefined!, done: true };
             },
