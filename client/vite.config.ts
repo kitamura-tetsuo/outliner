@@ -97,9 +97,9 @@ export default defineConfig(async ({ mode }) => {
                     },
                 },
                 // 大容量チャンク（例: ECharts）については警告を抑止して許容
-                onwarn(warning: any, handler: (warning: any) => void) {
+                onwarn(warning: { code?: string; }, handler: (warning: { code?: string; }) => void) {
                     // Rollup の CHUNK_SIZE_LIMIT 警告のみをフィルタ
-                    if ((warning as any).code === "CHUNK_SIZE_LIMIT") return;
+                    if (warning.code === "CHUNK_SIZE_LIMIT") return;
                     handler(warning);
                 },
             },

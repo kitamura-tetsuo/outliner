@@ -15,6 +15,6 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
 
     test("カーソルが表示される", async ({ page }) => {
         await page.waitForTimeout(100);
-        await page.screenshot({ path: "client/test-results/CLM-0001-cursor-visible.png" });
+        // Screenshot removed to prevent ENOSPC errors in test environment
     });
 });

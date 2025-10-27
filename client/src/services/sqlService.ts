@@ -33,21 +33,45 @@ export async function initDb() {
 
     console.log("Initializing SQL.js database...");
 
-    // テスト環境では直接ファイルシステムからWASMを読み込み
-    if (typeof process !== "undefined" && process.env.NODE_ENV === "test") {
+    // テスト環境または本番環境では適切なパスでWASMを読み込み
+    if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production")) {
         const fs = await import("fs");
         const path = await import("path");
-        const wasmPath = path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm");
-        const wasmBinary = fs.readFileSync(wasmPath);
+        // Try multiple possible paths for the WASM file
+        const possiblePaths = [
+            path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm"),
+            path.resolve(__dirname, "../node_modules/sql.js/dist/sql-wasm.wasm"),
+            "./node_modules/sql.js/dist/sql-wasm.wasm",
+        ];
+
+        let wasmBinary;
+        let wasmPath = "";
+        for (const possiblePath of possiblePaths) {
+            try {
+                wasmBinary = fs.readFileSync(possiblePath);
+                wasmPath = possiblePath;
+                break;
+            } catch (e) {
+                // Continue to next path
+            }
+        }
+
+        if (!wasmBinary) {
+            throw new Error("Could not find sql-wasm.wasm file in any expected location");
+        }
+
+        console.log(`Loading WASM from: ${wasmPath}`);
 
         SQL = await initSqlJs({
             wasmBinary: wasmBinary,
         });
     } else {
+        // 開発環境ではViteのpublicディレクトリからWASMを読み込み
         SQL = await initSqlJs({
             locateFile: (file: string) => {
                 if (file.endsWith(".wasm")) {
-                    return `/sql-wasm.wasm`;
+                    // 開発環境ではpublicディレクトリにあるWASMファイルを使用
+                    return `/node_modules/sql.js/dist/sql-wasm.wasm`;
                 }
                 return file;
             },

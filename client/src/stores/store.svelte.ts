@@ -6,7 +6,7 @@ import { Project } from "../schema/app-schema";
 
 class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
-    pages: any = { current: [] };
+    pages: { current: unknown[]; } = { current: [] };
     private _currentPage: Item | undefined;
     private readonly _currentPageSubscribers = new Set<() => void>();
     // 現在開いているコメントスレッドのアイテムID（同時に1つのみ表示）
@@ -29,11 +29,11 @@ class GeneralStore {
         // E2E 安定化: テストが暫定プロジェクトのページを設定した場合でも、
         // 接続済みプロジェクトへ同名ページを見つける/作成して置き換える
         try {
-            const proj: any = this._project as any;
-            const page: any = v as any;
+            const proj = this._project;
+            const page = v;
             if (proj?.ydoc && page?.ydoc && proj.ydoc !== page.ydoc) {
                 const title = page?.text?.toString?.() ?? String(page?.text ?? "");
-                const items: any = proj.items as any;
+                const items = proj.items;
                 let next: any = null;
                 const len = items?.length ?? 0;
                 for (let i = 0; i < len; i++) {
@@ -50,8 +50,8 @@ class GeneralStore {
                 }
                 // 子行の移植（先行シードを反映）
                 try {
-                    const prevItems: any = page?.items as any;
-                    const nextItems: any = next?.items as any;
+                    const prevItems = page?.items;
+                    const nextItems = next?.items;
                     const prevLen = prevItems?.length ?? 0;
                     const nextLen = nextItems?.length ?? 0;
                     if (prevLen > 0) {
@@ -93,7 +93,9 @@ class GeneralStore {
                             cloneBranch(prevItems, nextItems);
                         }
                     }
-                } catch {}
+                } catch (_e) {
+                    // Ignore errors during child item migration
+                }
                 this._currentPage = next as any;
                 // 通知
                 this._currentPageSubscribers.forEach(fn => {
@@ -131,29 +133,35 @@ class GeneralStore {
 
         // Yjs observeDeep でルートツリーを監視し、Svelteの購読にブリッジ
         const project = v;
-        const ymap: any = (project as any)?.ydoc?.getMap?.("orderedTree");
-        const subscribe = createSubscriber((update) => {
-            const handler = (_events: Array<Y.YEvent<any>>, _tr?: Y.Transaction) => {
+        const ymap = (project as any)?.ydoc?.getMap?.("orderedTree");
+        const subscribe = createSubscriber((_update) => {
+            const handler = (_events: Array<Y.YEvent<unknown>>, _tr?: Y.Transaction) => {
                 try {
                     saveProjectSnapshot(project);
-                } catch {}
-                update();
+                } catch (_e) {
+                    // Ignore errors during snapshot saving
+                }
+                _update();
             };
             try {
                 ymap?.observeDeep?.(handler);
-            } catch {}
+            } catch (_e) {
+                // Ignore errors during observation setup
+            }
             return () => {
                 try {
                     ymap?.unobserveDeep?.(handler);
-                } catch {}
+                } catch (_e) {
+                    // Ignore errors during observation teardown
+                }
             };
         });
         this.pages = {
             get current() {
                 subscribe();
-                return project.items as any;
+                return project.items as unknown[];
             },
-        } as any;
+        } as { current: unknown[]; };
     }
 }
 
@@ -161,16 +169,18 @@ export const store = $state(new GeneralStore());
 
 // グローバルに参照できるようにする（ScrapboxFormatter.tsからアクセスするため）
 if (typeof window !== "undefined") {
-    (window as any).appStore = store;
-    (window as any).generalStore = store; // TestHelpersとの互換性のため
+    (window as unknown as { appStore: GeneralStore; }).appStore = store;
+    (window as unknown as { generalStore: GeneralStore; }).generalStore = store; // TestHelpersとの互換性のため
 
     // 起動直後に仮プロジェクトを用意（本接続が来れば yjsStore が置換）
     try {
         if (!store.project) {
             const parts = window.location.pathname.split("/").filter(Boolean);
             const title = decodeURIComponent(parts[0] || "Untitled Project");
-            (store as any).project = (Project as any).createInstance(title);
+            (store as { project: Project; }).project = Project.createInstance(title);
             console.log("INIT: Provisional Project set in store.svelte.ts", { title });
         }
-    } catch {}
+    } catch (_e) {
+        // Ignore errors during initial project setup
+    }
 }

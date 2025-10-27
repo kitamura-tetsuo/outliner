@@ -60,8 +60,6 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     const user = userManager.getCurrentUser();
     let userId = user?.id;
     const isTest = import.meta.env.MODE === "test"
-        || (import.meta.env as any).VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
         || process.env.NODE_ENV === "test";
     if (!userId && isTest) userId = "test-user-id";
     if (!userId) throw new Error("ユーザーがログインしていないため、新規プロジェクトを作成できません");
@@ -112,8 +110,6 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     let userId = user?.id;
     if (!userId) {
         const isTest = import.meta.env.MODE === "test"
-            || (import.meta.env as any).VITE_IS_TEST === "true"
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
             || process.env.NODE_ENV === "test";
         if (isTest) userId = "test-user-id";
     }
