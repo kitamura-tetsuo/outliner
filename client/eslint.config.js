@@ -69,7 +69,7 @@ export default ts.config(
             "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
             "svelte/no-unused-svelte-ignore": "error",
             "svelte/no-unused-props": "error",
-            "svelte/prefer-svelte-reactivity": "warn",
+            "svelte/prefer-svelte-reactivity": "error",
         },
     },
     // Disable no-undef for .d.ts files as they contain type declarations
