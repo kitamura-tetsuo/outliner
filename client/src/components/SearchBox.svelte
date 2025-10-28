@@ -135,7 +135,11 @@ let results = $derived.by(() => {
     return searchResults;
 });
 
-// 結果が変更されたときにselectedを更新
+// Reset selected when results change
+// Note: This $effect is necessary because selected needs to be both:
+// 1. Reactive to results changes (reset when results change)
+// 2. Mutable by user interaction (arrow key navigation)
+// This is a valid use case for $effect in Svelte 5
 $effect(() => {
     selected = results.length ? 0 : -1;
 });
