@@ -26,6 +26,11 @@ export default ts.config(
             globals: {
                 ...globals.browser,
                 ...globals.node,
+                // Additional global types to avoid no-undef errors
+                NodeListOf: "readonly",
+                FrameRequestCallback: "readonly",
+                Console: "readonly",
+                NodeJS: "readonly",
             },
         },
     },
@@ -45,7 +50,7 @@ export default ts.config(
             "no-useless-escape": "warn",
             "no-empty": ["warn", { "allowEmptyCatch": true }],
             "no-irregular-whitespace": "error", // Gradually converting back to error - has only 1 violation
-            "no-undef": "warn",
+            "no-undef": "error", // Converted to error - all violations fixed
             "no-case-declarations": "error", // Gradually converting back to error - can be easily fixed
             "svelte/prefer-writable-derived": "warn",
             "svelte/require-each-key": "warn",

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { Item } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import {
@@ -1917,7 +1918,7 @@ export class Cursor implements CursorEditingContext {
 
                             // Find current index and get the next item
                             const currentIndex = allItemsList.indexOf(this.itemId);
-                            if (currentIndex !== -1 && currentIndex < allItemIds.length - 1) {
+                            if (currentIndex !== -1 && currentIndex < allItemsList.length - 1) {
                                 const nextItemId = allItemsList[currentIndex + 1];
                                 newItemId = nextItemId;
                                 newOffset = 0;

@@ -7,6 +7,9 @@
  * テスト環境で使用して、不要なポーリングを特定できます。
  */
 
+// Type definition for FrameRequestCallback to avoid no-undef errors
+type FrameRequestCallback = (time: number) => void;
+
 export interface PollingCall {
     id: number;
     type: "setInterval" | "setTimeout" | "requestAnimationFrame";
