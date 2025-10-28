@@ -38,7 +38,7 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
         await activeItem.waitFor({ state: "visible" });
 
         // テキスト要素を取得
-        const textElement = activeItem.locator(".item-text");
+        activeItem.locator(".item-text");
 
         // キーボードで選択範囲を作成（マウスドラッグの代わりに）
         await page.keyboard.press("Home");
@@ -76,7 +76,7 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
         await activeItem.waitFor({ state: "visible" });
 
         // テキスト要素を取得
-        const textElement = activeItem.locator(".item-text");
+        activeItem.locator(".item-text");
 
         // キーボードで選択範囲を作成（マウスドラッグの代わりに）
         await page.keyboard.press("Home");
@@ -113,7 +113,7 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
         await activeItem.waitFor({ state: "visible" });
 
         // テキスト要素を取得
-        const textElement = activeItem.locator(".item-text");
+        activeItem.locator(".item-text");
 
         // キーボードで選択範囲を作成（マウスドラッグの代わりに）
         await page.keyboard.press("Home");

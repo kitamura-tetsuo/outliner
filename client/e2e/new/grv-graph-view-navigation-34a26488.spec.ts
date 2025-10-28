@@ -63,6 +63,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
                 return option && option.series && option.series[0]
                     && option.series[0].data && option.series[0].data.length > 0;
             } catch (error) {
+                console.log("Chart getOption error:", (error as Error).message);
                 return false;
             }
         }, { timeout: 5000 });

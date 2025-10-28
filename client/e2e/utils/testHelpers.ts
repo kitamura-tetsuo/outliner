@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { type Browser, expect, type Page } from "@playwright/test";
 import { startCoverage, stopCoverage } from "../helpers/coverage.js";
 import { CursorValidator } from "./cursorValidation.js";
@@ -112,7 +111,7 @@ export class TestHelpers {
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
         // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines);
     }
 
     /**
@@ -122,9 +121,6 @@ export class TestHelpers {
      */
     public static async prepareTestEnvironmentForProject(
         page: Page,
-        testInfo?: any,
-        lines: string[] = [],
-        browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
         await page.addInitScript(() => {
@@ -547,15 +543,15 @@ export class TestHelpers {
                 return activeCursors.length > 0;
             }, { timeout });
             return true;
-        } catch (error) {
+        } catch {
             console.log("Timeout waiting for cursor to be visible, continuing anyway");
             // ページが閉じられていないかチェックしてからスクリーンショットを撮影
             try {
                 if (!page.isClosed()) {
                     await page.screenshot({ path: "client/test-results/cursor-visible-timeout.png" });
                 }
-            } catch (screenshotError) {
-                console.log("Failed to take screenshot:", screenshotError);
+            } catch (screenshotError: any) {
+                console.log("Failed to take screenshot:", screenshotError.message || screenshotError);
             }
             return false;
         }
@@ -658,7 +654,6 @@ export class TestHelpers {
         page: Page,
         testInfo?: any,
         lines: string[],
-        browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
         TestHelpers.slog("navigateToTestProjectPage start");

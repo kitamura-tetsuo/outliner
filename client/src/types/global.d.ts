@@ -11,8 +11,6 @@ type FrameRequestCallback = (time: number) => void;
 type Console = typeof console;
 
 // NodeJS namespace for compatibility
-// eslint-disable-next-line @typescript-eslint/no-namespace
 declare namespace NodeJS {
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface Timeout {}
 }

@@ -20,7 +20,7 @@ test.describe("YJS token refresh reconnect", () => {
     test("reconnects after token refresh", async ({ page }) => {
         const projectId = `p-${Date.now()}`;
         await page.evaluate(async pid => {
-            // @ts-ignore - resolved by Vite in browser
+            // @ts-expect-error Importing internal modules for testing
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
             (window as any).__CONN__ = conn;
@@ -42,7 +42,7 @@ test.describe("YJS token refresh reconnect", () => {
     test("updates auth param when token changes", async ({ page }) => {
         const projectId = `p-${Date.now()}-upd`;
         await page.evaluate(async pid => {
-            // @ts-ignore - resolved by Vite in browser
+            // @ts-expect-error Importing internal modules for testing
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
             (window as any).__CONN__ = conn;

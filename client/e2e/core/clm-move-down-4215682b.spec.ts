@@ -82,7 +82,7 @@ test.describe("CLM-0005: 下へ移動", () => {
         // Get the expected text content of the first item before splitting
         // When Enter is pressed on the second line, "First line" remains in first item and "Second line" goes to the new item
         const initialItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
-        const initialItemText = await initialItem.locator(".item-text").textContent();
+        await initialItem.locator(".item-text").textContent();
 
         // 2つ目のアイテムを追加
         await page.keyboard.press("Enter");
@@ -119,9 +119,6 @@ test.describe("CLM-0005: 下へ移動", () => {
         // 2つ目のアイテムを特定（テキスト内容で）
         const secondItem = page.locator(".outliner-item").filter({ hasText: "Second item" });
         await secondItem.waitFor({ state: "visible" });
-
-        // 2つ目のアイテムのIDを取得
-        const secondItemId = await secondItem.evaluate(el => el.getAttribute("data-item-id"));
 
         // 新しいアイテムのテキストを取得
         const newItemText = await secondItem.locator(".item-text").textContent();
