@@ -64,7 +64,7 @@ export default ts.config(
             "no-irregular-whitespace": "error", // Gradually converting back to error - has only 1 violation
             "no-undef": "error",
             "no-case-declarations": "error", // Gradually converting back to error - can be easily fixed
-            "svelte/prefer-writable-derived": "warn",
+            "svelte/prefer-writable-derived": "off", // Disabled: Svelte 4 rule not applicable to Svelte 5 patterns
             "svelte/require-each-key": "warn",
             "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
             "svelte/no-unused-svelte-ignore": "warn",
