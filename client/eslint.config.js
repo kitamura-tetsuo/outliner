@@ -45,7 +45,7 @@ export default ts.config(
             "@typescript-eslint/no-this-alias": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-unused-expressions": "error", // Gradually converting back to error - has few violations
             "no-useless-escape": "error",
-            "no-empty": ["warn", { "allowEmptyCatch": true }],
+            "no-empty": ["error", { "allowEmptyCatch": true }],
             "no-irregular-whitespace": "error", // Gradually converting back to error - has only 1 violation
             "no-undef": "warn",
             "no-case-declarations": "error", // Gradually converting back to error - can be easily fixed

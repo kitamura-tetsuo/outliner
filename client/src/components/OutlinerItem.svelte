@@ -717,6 +717,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
 
     // デバッグ情報
     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        // Intentionally empty: placeholder for debug logging
     }
 
     // 全てのカーソルをクリアしてから新しいカーソルを設定
@@ -891,7 +892,7 @@ function handleClick(event: MouseEvent) {
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-
+            // Intentionally empty: placeholder for debug logging
         }
 
         // 新しいカーソルを追加（既存のカーソルチェックはaddCursor内で行う）
@@ -904,6 +905,7 @@ function handleClick(event: MouseEvent) {
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            // Intentionally empty: placeholder for debug logging
         }
 
         // アクティブアイテムを設定
@@ -925,6 +927,7 @@ function handleClick(event: MouseEvent) {
 
                     // フォーカスが設定されたかチェック
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        // Intentionally empty: placeholder for debug logging
                     }
                 }, 10);
             });
@@ -1097,6 +1100,7 @@ function handleMouseMove(event: MouseEvent) {
 function handleBoxSelection(event: MouseEvent, currentPosition: number) {
     // デバッグ情報
     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        // Intentionally empty: placeholder for debug logging
     }
 
     // 矩形選択の開始位置と終了位置
