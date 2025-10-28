@@ -50,7 +50,7 @@ export default ts.config(
     // See issue #733 for tracking
     {
         rules: {
-            "@typescript-eslint/no-explicit-any": "off", // Temporarily disabled to match PR requirements
+            "@typescript-eslint/no-explicit-any": "error", // Already configured as error to address issue #750
             "@typescript-eslint/no-unused-vars": "error",
             "@typescript-eslint/ban-ts-comment": ["error", {
                 "ts-expect-error": "allow-with-description",
