@@ -67,7 +67,7 @@ export default ts.config(
             "svelte/prefer-writable-derived": "off", // Disabled: Svelte 4 rule not applicable to Svelte 5 patterns
             "svelte/require-each-key": "error",
             "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
-            "svelte/no-unused-svelte-ignore": "warn",
+            "svelte/no-unused-svelte-ignore": "error",
             "svelte/no-unused-props": "warn",
             "svelte/prefer-svelte-reactivity": "warn",
         },
