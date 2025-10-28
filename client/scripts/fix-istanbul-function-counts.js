@@ -72,7 +72,7 @@ for (const file of coverageFiles) {
     try {
         data = JSON.parse(text);
     } catch (e) {
-        console.error(`JSON のパースに失敗しました: ${filePath}`);
+        console.error(`JSON のパースに失敗しました: ${filePath}`, e.message);
         continue;
     }
 

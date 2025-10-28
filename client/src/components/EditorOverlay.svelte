@@ -360,7 +360,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
                 element,
                 NodeFilter.SHOW_TEXT,
                 {
-                    acceptNode: function(_node) {
+                    acceptNode: function() {
                         return NodeFilter.FILTER_ACCEPT;
                     }
                 }

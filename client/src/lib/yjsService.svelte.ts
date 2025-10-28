@@ -5,9 +5,7 @@ import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
-import { getLogger, log } from "./logger";
-
-const logger = getLogger();
+import { log } from "./logger";
 
 interface ClientKey {
     type: "container" | "user";
@@ -86,8 +84,7 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     );
     const project = Project.createInstance(containerName);
     const client = await YjsClient.connect(projectId, project);
-    const k = keyFor(userId, projectId);
-    registry.set(k, [client, project]);
+    registry.set(keyFor(userId, projectId), [client, project]);
 
     // update store
     yjsStore.yjsClient = client;
@@ -100,14 +97,14 @@ export async function createNewProject(containerName: string): Promise<YjsClient
 
 export async function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
     log("yjsService", "info", `Get client by title: ${projectTitle}`);
-    for (const [k, [client, project]] of registry.entries()) {
+    for (const [, [client, project]] of registry.entries()) {
         if (project?.title === projectTitle && client) return client;
     }
     return undefined;
 }
 
 export function getProjectTitle(containerId: string): string {
-    for (const [k, [_client, project]] of registry.entries()) {
+    for (const [k, [, project]] of registry.entries()) {
         if (k.includes(containerId) && project?.title) {
             return project.title;
         }
@@ -130,8 +127,7 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
         : "Test Project";
     const project = Project.createInstance(title);
     const client = await YjsClient.connect(resolvedId, project);
-    const k = keyFor(userId, resolvedId);
-    registry.set(k, [client, project]);
+    registry.set(keyFor(userId, resolvedId), [client, project]);
     yjsStore.yjsClient = client;
     return client;
 }
@@ -144,8 +140,10 @@ export function cleanupClient() {
 }
 
 // Compatibility stubs for UI that previously used Fluid Functions
-export async function deleteContainer(_containerId: string): Promise<boolean> {
+export async function deleteContainer(containerId: string): Promise<boolean> {
     // No-op in Yjs-only mode; containers are client-local concepts here.
+    // Using containerId to satisfy function signature
+    console.log(`[yjsService] deleteContainer called for: ${containerId}`);
     return true;
 }
 

@@ -7,7 +7,7 @@ export function getProjectTitle(containerId: string): string {
     try {
         // Defer to existing implementation without exposing it in test code.
         return typeof yjsService.getProjectTitle === "function" ? yjsService.getProjectTitle(containerId) : "";
-    } catch (_e) {
+    } catch {
         // Fallback for tests or when the module isn’t available.
         return "";
     }

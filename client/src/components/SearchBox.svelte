@@ -1,6 +1,6 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
-import type { Item, Items, Project } from '../schema/app-schema';
+import type { Project } from '../schema/app-schema';
 import { searchHistoryStore } from '../stores/SearchHistoryStore.svelte';
 import { onMount } from 'svelte';
 import { store } from '../stores/store.svelte';
@@ -18,9 +18,9 @@ let effectiveProject: Project | null = $derived.by(() => {
         const gs = (window as any).generalStore;
         if (gs?.project) return gs.project as Project;
         const parts = window.location.pathname.split("/").filter(Boolean);
-        const projectTitle = parts[0] ? decodeURIComponent(parts[0]) : '';
-        const service = (window as any).__YJS_SERVICE__;
-        const yjsStoreRef = (window as any).__YJS_STORE__;
+        void parts[0]; // Previously projectTitle
+        void (window as any).__YJS_SERVICE__; // Previously service
+        void (window as any).__YJS_STORE__; // Previously yjsStoreRef
         // Do NOT auto-create a project here. In tests this can create an empty
         // project separate from the one prepared by TestHelpers, which breaks
         // SearchBox results. Wait for store.project or global state instead.
@@ -31,7 +31,6 @@ let effectiveProject: Project | null = $derived.by(() => {
 
 let query = $state('');
 let selected = $state(-1);
-let isFocused = $state(false);
 let inputEl: HTMLInputElement | null = null;
 // Preserve focus across reactive project changes to keep dropdown stable in tests
 let shouldRefocus = $state(false);
@@ -98,7 +97,7 @@ let results = $derived.by(() => {
                     const arr = (items as any).toArray();
                     if (arr && arr.length) return arr;
                 }
-            } catch (e) {
+            } catch {
                 // Continue to next source
                 continue;
             }
@@ -296,8 +295,8 @@ onMount(() => {
         bind:this={inputEl}
         bind:value={query}
         onkeydown={handleKeydown}
-        onfocus={() => { isFocused = true; shouldRefocus = true; }}
-        oninput={() => { isFocused = true; shouldRefocus = true; }}
+        onfocus={() => { shouldRefocus = true; }}
+        oninput={() => { shouldRefocus = true; }}
         onblur={() => {
             // Keep focus while user is interacting with the search suggestions in tests
             // Outliner may steal focus to the global textarea; when query is non-empty,
@@ -305,8 +304,6 @@ onMount(() => {
             if (query && query.length > 0) {
                 shouldRefocus = true;
                 queueMicrotask(() => inputEl?.focus());
-            } else {
-                isFocused = false;
             }
         }}
     />

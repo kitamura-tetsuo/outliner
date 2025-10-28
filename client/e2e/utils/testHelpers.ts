@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { type Browser, expect, type Page } from "@playwright/test";
 import { startCoverage, stopCoverage } from "../helpers/coverage.js";
 import { CursorValidator } from "./cursorValidation.js";
@@ -123,10 +122,14 @@ export class TestHelpers {
     public static async prepareTestEnvironmentForProject(
         page: Page,
         testInfo?: { workerIndex?: number; } | null,
-        lines: string[] = [],
-        browser?: Browser,
+        _lines: string[] = [],
+        _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
+        // Use the parameters to avoid lint errors about unused vars
+        void testInfo;
+        void _lines;
+        void _browser;
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
@@ -552,8 +555,9 @@ export class TestHelpers {
                 return activeCursors.length > 0;
             }, { timeout });
             return true;
-        } catch (error) {
+        } catch (_error) {
             console.log("Timeout waiting for cursor to be visible, continuing anyway");
+            void _error;
             // ページが閉じられていないかチェックしてからスクリーンショットを撮影
             try {
                 if (!page.isClosed()) {
@@ -663,9 +667,11 @@ export class TestHelpers {
         page: Page,
         testInfo?: any,
         lines: string[],
-        browser?: Browser,
+        _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
+        void testInfo;
+        void _browser;
         TestHelpers.slog("navigateToTestProjectPage start");
 
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;

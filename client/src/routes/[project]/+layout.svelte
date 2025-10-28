@@ -12,7 +12,6 @@ import { Project } from "../../schema/yjs-schema";
 let { data, children } = $props();
 
 let project: any = $state(null);
-let isAuthenticated = $state(false);
 
 // ストアからプロジェクトを取得
 $effect(() => {
@@ -78,11 +77,9 @@ async function loadProject(projectNameFromParam?: string) {
 }
 
 onMount(() => {
-    isAuthenticated = userManager.getCurrentUser() !== null;
-    // Keep it in sync when auth state changes
+    // Keep auth state in sync
     try {
-        userManager.addEventListener((authResult: any) => {
-            isAuthenticated = authResult !== null;
+        userManager.addEventListener(() => {
             // If project not yet loaded but param exists, try again when auth flips
             const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
             if (projectParam && !yjsStore.yjsClient) {

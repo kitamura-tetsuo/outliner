@@ -11,7 +11,7 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 let textareaRef: HTMLTextAreaElement;
-let isComposing = false;
+let isComposing = false; // eslint-disable-line @typescript-eslint/no-unused-vars
 let measureCanvas: HTMLCanvasElement | null = null;
 let measureCtx: CanvasRenderingContext2D | null = null;
 
@@ -386,7 +386,7 @@ async function handlePaste(event: ClipboardEvent) {
 }
 
 // フォーカス喪失時の処理を追加
-function handleBlur(_event: FocusEvent) {
+function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-eslint/no-unused-vars
     const activeItemId = store.getActiveItem();
     // エイリアスピッカー表示中はフォーカス復元しない
     if (aliasPickerStore.isVisible) {

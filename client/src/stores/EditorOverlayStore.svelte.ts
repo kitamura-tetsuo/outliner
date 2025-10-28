@@ -919,7 +919,7 @@ export class EditorOverlayStore {
                     // 複数アイテムにまたがる選択範囲
                     selectionText = this.getTextFromMultiItemSelection(sel);
                 }
-            } catch (_error) {
+            } catch {
                 // エラーが発生しても処理を続行
                 continue;
             }
@@ -1000,7 +1000,7 @@ export class EditorOverlayStore {
 
                 return result;
             }
-        } catch (_e) {
+        } catch {
             // If Yjs store access fails, continue to fallback
         }
 

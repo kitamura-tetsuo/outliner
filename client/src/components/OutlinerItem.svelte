@@ -1527,8 +1527,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                             const localUrl = URL.createObjectURL(file);
                             try { model.original.addAttachment(localUrl); } catch { try { (model.original as any)?.attachments?.push?.([localUrl]); } catch {} }
                             try { mirrorAttachment(localUrl); } catch {}
-                            // テスト環境では自ミラーも即時更新
-                            try { if (IS_TEST) { attachmentsMirror = [...(attachmentsMirror||[]), localUrl]; } } catch {}
+                            // テスト環境では自ミラーも即時更新 - attachmentsMirror is handled in OutlinerItemAttachments component
                             try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
                             // 接続後Doc への補助反映（IDマップ経由）
                             try {
@@ -1723,12 +1722,13 @@ onMount(() => {
                         try { mirrorAttachment(localUrl); } catch {}
                         // テスト環境では即時にミラーへ反映して可視性を担保
                         try {
-                            if (IS_TEST) {
-                                const arr: any[] = ((model?.original as any)?.attachments?.toArray?.() ?? []);
-                                if (arr.length > 0) {
-                                    attachmentsMirror = arr.map((u: any) => Array.isArray(u) ? u[0] : u);
-                                }
-                            }
+                            // Test environment immediate mirror update - attachmentsMirror is handled in OutlinerItemAttachments component
+                            // if (IS_TEST) {
+                            //     const arr: any[] = ((model?.original as any)?.attachments?.toArray?.() ?? []);
+                            //     if (arr.length > 0) {
+                            //         attachmentsMirror = arr.map((u: any) => Array.isArray(u) ? u[0] : u);
+                            //     }
+                            // }
                         } catch {}
                         try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
                     }

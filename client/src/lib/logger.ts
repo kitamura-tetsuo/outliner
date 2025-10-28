@@ -1,7 +1,7 @@
 import pino from "pino";
 
 // 環境変数からAPIサーバーURLを取得（デフォルトはlocalhostの認証サーバー）
-const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";
+// const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071"; // Not used
 
 // ブラウザのコンソールAPIを使用するかどうか
 // テスト環境では常にtrueを返すようにする
@@ -112,7 +112,7 @@ function getCallerFile(): string {
         }
 
         return "unknown";
-    } catch (error) {
+    } catch {
         return "unknown";
     } finally {
         // 元の prepareStackTrace を復元
@@ -138,7 +138,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
 
             // 引数の処理: 最初の引数がオブジェクトなら位置情報を追加
             if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
-                args[0] = { file, ...args[0] as object };
+                args[0] = { file, ...(args[0] as Record<string, unknown>) };
             } else {
                 // オブジェクトでない場合は先頭に位置情報を追加
                 args.unshift({ file });
@@ -219,7 +219,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                             // 最初の引数がオブジェクトの場合とそうでない場合で処理を分ける
                             if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
                                 // オブジェクトデータ
-                                const objData = { ...args[0] as object };
+                                const objData = { ...(args[0] as Record<string, unknown>) };
                                 delete objData.file; // すでに別途表示するので削除
                                 delete objData.module; // すでに別途表示するので削除
 
@@ -266,7 +266,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                     );
                                 }
                             }
-                        } catch (e) {
+                        } catch {
                             // スタイル適用に失敗した場合は通常のフォーマットで表示
                             (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                 `[${file}] [${prop.toUpperCase()}]:`,
