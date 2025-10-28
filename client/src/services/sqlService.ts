@@ -149,7 +149,7 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
     const selectClause = selectMatch[1];
     console.log("selectClause:", selectClause);
     const additions = aliases
-        .filter(a => !new RegExp(`${a}\.id`, "i").test(selectClause))
+        .filter(a => !new RegExp(`${a}.id`, "i").test(selectClause))
         .map(a => `${a}.id AS ${a}_pk`);
     console.log("additions:", additions);
     if (additions.length === 0) {

@@ -49,7 +49,7 @@ export default ts.config(
             "@typescript-eslint/no-require-imports": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-this-alias": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-unused-expressions": "error", // Gradually converting back to error - has few violations
-            "no-useless-escape": "warn",
+            "no-useless-escape": "error",
             "no-empty": ["warn", { "allowEmptyCatch": true }],
             "no-irregular-whitespace": "error", // Gradually converting back to error - has only 1 violation
             "no-undef": "error", // Converted to error - all violations fixed

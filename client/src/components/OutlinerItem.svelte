@@ -39,7 +39,7 @@ onMount(() => {
                 const origQS = document.querySelector.bind(document);
                 document.querySelector = ((sel: string) => {
                     try {
-                        if (/^\[data-item-id=\"/.test(sel)) {
+                        if (/^\[data-item-id="/.test(sel)) {
                             const ap: any = W.aliasPickerStore;
                             const li = ap?.lastConfirmedItemId;
                             if (li) {

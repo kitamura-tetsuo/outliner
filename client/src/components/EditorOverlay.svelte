@@ -59,7 +59,7 @@ function measureTextWidthFallback(itemId: string, text: string): number {
     // 標準的な文字幅（スペース、英数字、日本語など）を使用
     let width = 0;
     for (const char of text) {
-        if (char.match(/[a-zA-Z0-9\.,;:\[\](){}]/)) {
+        if (char.match(/[a-zA-Z0-9.,;:[\](){}]/)) {
             // 半角文字はフォントサイズの半分程度
             width += parseFloat(fontProperties.fontSize) * 0.5;
         } else if (char.match(/[一-龯]/)) {
