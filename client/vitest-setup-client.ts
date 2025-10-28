@@ -62,4 +62,17 @@ try {
     // no-op: if import fails here, module will still set __FIRESTORE_STORE__ on first import
 }
 
+// ---- Vitest bootstrap: ensure yjsStore is available on globalThis for integration tests ----
+try {
+    // Import the real yjsStore early so it can publish itself to window.__YJS_STORE__
+    const yjsMod = await import("./src/stores/yjsStore.svelte");
+    const yjsStoreInstance = (yjsMod as any).yjsStore;
+    if (yjsStoreInstance) {
+        (globalThis as any).window.__YJS_STORE__ ||= yjsStoreInstance;
+        (globalThis as any).__YJS_STORE__ ||= yjsStoreInstance;
+    }
+} catch {
+    // no-op: if import fails here, module will still set __YJS_STORE__ on first import
+}
+
 // add more mocks here if you need them

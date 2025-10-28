@@ -39,7 +39,6 @@ const logger = getLogger("AppLayout");
 
 // 認証関連の状態
 let isAuthenticated = $state(false);
-let error: string | undefined = $state(undefined);
 
 // グローバルへのフォールバック公開（早期に window.generalStore を満たす）
 if (browser) {
@@ -138,7 +137,7 @@ async function rotateLogFiles() {
                 return;
             }
         }
-        catch (fetchError) {
+        catch {
             // fetch失敗時はsendBeaconを試す - エラーは記録しない
             if (import.meta.env.DEV) {
                 logger.debug(
@@ -169,7 +168,7 @@ async function rotateLogFiles() {
                 const img = new Image();
                 img.src = `${API_URL}/api/rotate-logs?t=${Date.now()}`;
             }
-            catch (imgError) {
+            catch {
                 // 最後の試行なのでエラーは無視
             }
         }
@@ -224,11 +223,10 @@ onMount(async () => {
         // Dynamically import browser-only modules
         let userManager: any;
         let yjsService: any;
-        let services: any;
         try {
             ({ userManager } = await import("../auth/UserManager"));
             yjsService = await import("../lib/yjsService.svelte");
-            services = await import("../services");
+            await import("../services");
         } catch (e) {
             logger.error("Failed to load client-only modules", e);
         }
@@ -375,7 +373,6 @@ onMount(async () => {
                     try {
                         const anyWin: any = window as any;
                         anyWin.__E2E_LAST_FILES__ = [] as File[];
-                        const proto = (DataTransfer.prototype as any);
                         const itemsProto = (DataTransferItemList as any)?.prototype;
                         if (itemsProto && !anyWin.__E2E_DT_ADD_PATCHED__) {
                             anyWin.__E2E_DT_ADD_PATCHED__ = true;
@@ -404,9 +401,9 @@ onMount(async () => {
                                         try {
                                             if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
                                                 const orig = list.add;
-                                                list.add = function(data: any, type?: string) {
+                                                list.add = function(data: any, _type?: string) {
                                                     try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
-                                                    return orig.apply(this, arguments as any);
+                                                    return orig.apply(this, [data, _type]);
                                                 } as any;
                                                 (list as any).__e2eAddPatched = true;
                                                 try { console.log('[E2E] Patched DT.items.add via getter'); } catch {}
@@ -448,10 +445,10 @@ onMount(async () => {
                                             const list: any = (dt as any).items;
                                             if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
                                                 const origAdd = list.add;
-                                                list.add = function(data: any, type?: string) {
+                                                list.add = function(data: any, _type?: string) {
                                                     try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
                                                     try { console.log('[E2E] DT(instance).items.add called'); } catch {}
-                                                    return origAdd.apply(this, arguments as any);
+                                                    return origAdd.apply(this, [data, _type]);
                                                 } as any;
                                                 (list as any).__e2eAddPatched = true;
                                             }

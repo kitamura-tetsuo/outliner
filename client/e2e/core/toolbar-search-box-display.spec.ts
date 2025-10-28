@@ -9,13 +9,8 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("TOO-0001: ツールバーのSearchBox表示機能", () => {
-    let projectName: string;
-    let pageName: string;
-
     test.beforeEach(async ({ page }, testInfo) => {
-        const result = await TestHelpers.prepareTestEnvironment(page, testInfo);
-        projectName = result.projectName;
-        pageName = result.pageName;
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test("ツールバーが上部に固定表示される", async ({ page }) => {

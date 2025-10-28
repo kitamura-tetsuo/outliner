@@ -18,13 +18,10 @@ interface Props {
 
 let props: Props = $props();
 let comments = $derived.by(() => props.comments ?? props.item?.comments);
-let currentUser = $derived.by(() => props.currentUser);
-let doc = $derived.by(() => props.doc);
 let onCountChanged = $derived.by(() => props.onCountChanged);
 let newText = $state("");
 let editingId = $state<string | null>(null);
 let editText = $state("");
-let commentsList = $state<Comment[]>([]);
 let localComments = $state<Comment[]>([]);
 let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
@@ -227,11 +224,9 @@ function add() {
     // comments オブジェクトが不正でも UI は進める（DOM/イベントで確実に反映）
     const time = Date.now();
     let id: string;
-    let didYjsAdd = false;
     if (commentsObj && typeof (commentsObj as any).addComment === 'function') {
         const res = (commentsObj as any).addComment(user, newText);
         id = res?.id || `local-${time}-${Math.random().toString(36).slice(2)}`;
-        didYjsAdd = true;
         logger.debug('[CommentThread] comment added to Yjs, id=', id);
     } else {
         logger.error('[CommentThread] comments object is invalid or missing addComment; falling back to local DOM only');

@@ -1,6 +1,6 @@
 import type { Item } from "../../schema/yjs-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-import { store as generalStore } from "../../stores/store.svelte";
+// import { store as generalStore } from "../../stores/store.svelte"; // Not used
 
 // Define a generic cursor interface that we expect
 interface Cursor {
@@ -413,7 +413,7 @@ export class CursorNavigation {
             if (nextItem) {
                 newItemId = nextItem.id;
                 const nextText = nextItem.text || "";
-                const nextLines = nextText.split("\n");
+                // const nextLines = nextText.split("\n"); // Not used
                 const firstLineIndex = 0;
                 const firstLineStart = this.cursor.getLineStartOffset(nextText, firstLineIndex);
                 const firstLineEnd = this.cursor.getLineEndOffset(nextText, firstLineIndex);

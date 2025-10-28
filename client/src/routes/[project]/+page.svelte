@@ -39,7 +39,6 @@ function handleAuthLogout() {
 
 // ページを選択したときの処理
 function handlePageSelected(event: CustomEvent) {
-    const pageId = event.detail.pageId;
     const pageName = event.detail.pageName;
 
     if (pageName) {
