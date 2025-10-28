@@ -1,3 +1,5 @@
+import type * as Y from "yjs";
+
 declare module "y-protocols/awareness" {
     export class Awareness {
         constructor(doc: Y.Doc);

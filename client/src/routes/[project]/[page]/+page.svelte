@@ -210,8 +210,8 @@ async function loadProjectAndPage() {
                 const proj = client.getProject?.();
                 if (proj) {
                     let appliedPendingImport = false;
+                    let pendingImport: any[] | null = null;
                     try {
-                        let pendingImport: any[] | null = null;
                         try {
                             const win: any = window as any;
                             const byTitle = win?.__PENDING_IMPORTS__;
@@ -644,7 +644,6 @@ async function loadProjectAndPage() {
                 if (snapshot) {
                     const hydrated = snapshotToProject(snapshot);
                     store.project = hydrated as any;
-                    project = hydrated as any;
                     if (!yjsStore.yjsClient) {
                         try {
                             yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as any;
