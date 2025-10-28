@@ -55,7 +55,7 @@ export default ts.config(
             "svelte/prefer-writable-derived": "error", // Converted to error - all violations fixed
             "svelte/require-each-key": "warn",
             "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
-            "svelte/no-unused-svelte-ignore": "warn",
+            "svelte/no-unused-svelte-ignore": "error",
             "svelte/no-unused-props": "warn",
             "svelte/prefer-svelte-reactivity": "warn",
         },
