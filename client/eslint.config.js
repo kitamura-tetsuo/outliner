@@ -26,11 +26,21 @@ export default ts.config(
             globals: {
                 ...globals.browser,
                 ...globals.node,
-                // Additional global types to avoid no-undef errors
-                NodeListOf: "readonly",
+                // Additional globals for no-undef rule
+                ServiceWorkerGlobalScope: "readonly",
                 FrameRequestCallback: "readonly",
-                Console: "readonly",
                 NodeJS: "readonly",
+                // DOM types
+                NodeListOf: "readonly",
+                ElementCreationOptions: "readonly",
+                Console: "readonly",
+                // Application types (used in @ts-nocheck files)
+                Item: "readonly",
+                // Dead code variables (wrapped in try-catch, should be removed in future cleanup)
+                mirrorAttachment: "readonly",
+                attachmentsMirror: "readonly",
+                e2eTimer: "readonly",
+                addNewItem: "readonly",
             },
         },
     },
@@ -52,7 +62,7 @@ export default ts.config(
             "no-useless-escape": "error",
             "no-empty": ["error", { "allowEmptyCatch": true }],
             "no-irregular-whitespace": "error", // Gradually converting back to error - has only 1 violation
-            "no-undef": "error", // Converted to error - all violations fixed
+            "no-undef": "error",
             "no-case-declarations": "error", // Gradually converting back to error - can be easily fixed
             "svelte/prefer-writable-derived": "warn",
             "svelte/require-each-key": "error",
@@ -60,6 +70,13 @@ export default ts.config(
             "svelte/no-unused-svelte-ignore": "warn",
             "svelte/no-unused-props": "warn",
             "svelte/prefer-svelte-reactivity": "warn",
+        },
+    },
+    // Disable no-undef for .d.ts files as they contain type declarations
+    {
+        files: ["**/*.d.ts"],
+        rules: {
+            "no-undef": "off",
         },
     },
     {

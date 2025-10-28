@@ -26,8 +26,7 @@ import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 
 onMount(() => {
     try {
-        // compType is not defined - debug code commented out
-        // logger.debug("[OutlinerItem] compType on mount:", (compType as any)?.current, "id=", model?.id);
+        logger.debug("[OutlinerItem] compTypeValue on mount:", (compTypeValue as any)?.current, "id=", model?.id);
     } catch {}
 });
 onMount(() => {
