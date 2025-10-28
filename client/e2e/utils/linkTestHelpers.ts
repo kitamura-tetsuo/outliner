@@ -409,9 +409,9 @@ export class LinkTestHelpers {
                     const text = textElement.textContent || "";
 
                     // 内部リンクのパターンを検出（通常の内部リンク）
-                    const linkPattern = /\[([^\[\]\/\-][^\[\]]*?)\]/g;
+                    const linkPattern = /\[([^[\]/-][^[\]]*?)\]/g;
                     // プロジェクト内部リンクのパターン
-                    const projectLinkPattern = /\[\/([\w\-\/]+)\]/g;
+                    const projectLinkPattern = /\[\/([\w\-/]+)\]/g;
 
                     const hasNormalLinks = linkPattern.test(text);
                     // テストを実行した後にテキストを元に戻す

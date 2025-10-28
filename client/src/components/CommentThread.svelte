@@ -185,7 +185,7 @@ onMount(() => {
 function add() {
     try {
         const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-        const before = container ? (container.querySelectorAll('[data-testid=\"comment-thread\"] .comment').length) : 0;
+        const before = container ? (container.querySelectorAll('[data-testid="comment-thread"] .comment').length) : 0;
         const cid = container?.getAttribute('data-item-id') || (props.item as any)?.id || '';
         e2eLog({ tag: 'add:start', id: cid, before, newText });
     } catch {}
@@ -193,7 +193,7 @@ function add() {
     let text = newText;
     if (!text) {
         try {
-            const inputEl = threadRef?.querySelector('[data-testid=\"new-comment-input\"]') as HTMLInputElement | null;
+            const inputEl = threadRef?.querySelector('[data-testid="new-comment-input"]') as HTMLInputElement | null;
             text = inputEl?.value ?? '';
         } catch {}
     }
