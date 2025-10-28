@@ -11,11 +11,12 @@ interface ColumnMeta {
 }
 
 interface QueryResult {
-    rows: any[];
+    rows: Record<string, unknown>[];
     columnsMeta: ColumnMeta[];
 }
 
-let SQL: any;
+type SqlJsModule = typeof import("sql.js");
+let SQL: SqlJsModule | null = null;
 let db: Database | null = null;
 let currentQuery = "";
 let currentSelect = "";
@@ -24,8 +25,14 @@ let worker: SyncWorker | null = null;
 export const queryStore = writable<QueryResult>({ rows: [], columnsMeta: [] });
 
 // テスト環境でqueryStoreをwindowオブジェクトに公開
+declare global {
+    interface Window {
+        queryStore?: typeof queryStore;
+    }
+}
+
 if (typeof window !== "undefined") {
-    (window as any).queryStore = queryStore;
+    window.queryStore = queryStore;
 }
 
 export async function initDb() {
@@ -191,7 +198,7 @@ export function runQuery(sql: string) {
         columnsMeta.push({ name: col, table, pkAlias: table ? pkAliases[aliasMatch?.[1] || ""] : undefined, column });
     });
     const rows = res.values.map(v => {
-        const obj: any = {};
+        const obj: Record<string, unknown> = {};
         res.columns.forEach((c, i) => {
             obj[c] = v[i];
         });
@@ -209,7 +216,7 @@ export function rawExec(sql: string) {
     db.exec(sql);
 }
 
-export function applyEdit(info: EditInfo, value: any) {
+export function applyEdit(info: EditInfo, value: unknown) {
     console.log("Applying edit:", info, "value:", value);
     if (!worker) {
         console.log("No worker available");

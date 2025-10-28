@@ -32,13 +32,13 @@ describe("importExportService", () => {
     it("imports markdown", () => {
         const project = Project.createInstance("Test");
         importMarkdownIntoProject("- A\n  - B", project);
-        expect((project.items as any).length).toBe(1);
+        expect(project.items.length).toBe(1);
     });
 
     it("imports opml", () => {
         const project = Project.createInstance("Test");
         const xml = '<opml><body><outline text="A"><outline text="B"/></outline></body></opml>';
         importOpmlIntoProject(xml, project);
-        expect((project.items as any).length).toBe(1);
+        expect(project.items.length).toBe(1);
     });
 });
