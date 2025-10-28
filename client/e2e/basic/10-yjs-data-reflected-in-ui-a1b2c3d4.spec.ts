@@ -37,24 +37,24 @@ test.describe("YjsのデータがUIに反映される", () => {
             const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
 
-            const existing = (items as { length?: number; }).length ?? 0;
+            // Define proper types for Yjs items structure
+            interface YjsItemContainer {
+                length?: number;
+                at?: (index: number) => { updateText?: (text: string) => void; };
+                [index: number]: { updateText?: (text: string) => void; };
+                addNode?: (text: string) => { updateText?: (text: string) => void; };
+            }
+
+            const typedItems = items as YjsItemContainer;
+            const existing = typedItems.length ?? 0;
             // 既存分は上書き
             for (let i = 0; i < Math.min(existing as number, lines.length); i++) {
-                const it = (items as {
-                        at?: (index: number) => { updateText?: (text: string) => void; };
-                        [index: number]: { updateText?: (text: string) => void; };
-                    }).at
-                    ? (items as {
-                        at?: (index: number) => { updateText?: (text: string) => void; };
-                        [index: number]: { updateText?: (text: string) => void; };
-                    }).at(i)
-                    : (items as { [index: number]: { updateText?: (text: string) => void; }; })[i];
+                const it = typedItems.at ? typedItems.at(i) : typedItems[i];
                 it?.updateText?.(lines[i]);
             }
             // 不足分は追加
             for (let i = existing as number; i < lines.length; i++) {
-                const node = (items as { addNode?: (text: string) => { updateText?: (text: string) => void; }; })
-                    .addNode?.("tester");
+                const node = typedItems.addNode?.("tester");
                 node?.updateText?.(lines[i]);
             }
         }, lines);
