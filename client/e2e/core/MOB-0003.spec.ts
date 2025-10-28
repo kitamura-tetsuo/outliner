@@ -27,11 +27,14 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await expect(toolbar).toBeVisible();
 
         const items = page.locator(".outliner-item");
-        const itemSnapshot = await items.evaluateAll(nodes =>
-            nodes.map(node => ({
-                id: node.getAttribute("data-item-id"),
-                text: node.querySelector(".item-content")?.textContent?.trim() || "",
-            }))
+        const itemSnapshot = await items.evaluateAll((nodes: Element[]) =>
+            nodes.map(node => {
+                const element = node as HTMLElement;
+                return {
+                    id: element.getAttribute("data-item-id"),
+                    text: element.querySelector(".item-content")?.textContent?.trim() || "",
+                };
+            })
         );
         console.log("MOB-0003: item order", JSON.stringify(itemSnapshot));
         // Get the second root item (index 3 overall, which is the second child of page title)
@@ -40,7 +43,9 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly via editorOverlayStore
         await page.evaluate((itemId) => {
-            const store = (window as any).editorOverlayStore;
+            const store = (window as Window & Record<string, unknown>).editorOverlayStore as {
+                setActiveItem?: (id: string) => void;
+            } | undefined;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
                 console.log("MOB-0003: Active item set to", itemId);
@@ -49,7 +54,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await page.waitForTimeout(300);
 
         // ページタイトルの子アイテム数を取得
-        const rootItemsBefore: any = await TreeValidator.getTreePathData(page, "items.0.items");
+        const rootItemsBefore = await TreeValidator.getTreePathData(page, "items.0.items");
         const countBefore = Object.keys(rootItemsBefore || {}).length;
         console.log("MOB-0003: root items before indent", countBefore, JSON.stringify(rootItemsBefore));
 
@@ -65,7 +70,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         console.log("MOB-0003: Clicked indent button");
 
         await page.waitForTimeout(500);
-        const rootItemsAfterIndentImmediate: any = await TreeValidator.getTreePathData(page, "items.0.items");
+        const rootItemsAfterIndentImmediate = await TreeValidator.getTreePathData(page, "items.0.items");
         console.log(
             "MOB-0003: root items immediate after indent",
             Object.keys(rootItemsAfterIndentImmediate || {}).length,
@@ -73,7 +78,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         );
 
         await expect.poll(async () => {
-            const rootItems: any = await TreeValidator.getTreePathData(page, "items.0.items");
+            const rootItems = await TreeValidator.getTreePathData(page, "items.0.items");
             return Object.keys(rootItems || {}).length;
         }).toBe(countBefore - 1);
 
@@ -84,13 +89,15 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         const pageItem = afterIndentData.items[0];
         const pageChildren = Object.values(pageItem.items);
         // Get the second child of the page (一行目: テスト), which now has a child
-        const secondChild: any = pageChildren[1];
-        const indentedItemId = secondChild.items ? (Object.values(secondChild.items)[0] as any).id : null;
+        const secondChild = pageChildren[1] as { items?: Record<string, { id: string; }>; };
+        const indentedItemId = secondChild.items ? Object.values(secondChild.items)[0].id : null;
         console.log("MOB-0003: indented item ID:", indentedItemId);
 
         // Set the active item directly to the indented item
         await page.evaluate((itemId) => {
-            const store = (window as any).editorOverlayStore;
+            const store = (window as Window & Record<string, unknown>).editorOverlayStore as {
+                setActiveItem?: (id: string) => void;
+            } | undefined;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
@@ -101,7 +108,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await page.waitForTimeout(500);
 
         await expect.poll(async () => {
-            const rootItems: any = await TreeValidator.getTreePathData(page, "items.0.items");
+            const rootItems = await TreeValidator.getTreePathData(page, "items.0.items");
             return Object.keys(rootItems || {}).length;
         }).toBe(countBefore);
 
@@ -112,7 +119,9 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            const store = (window as any).editorOverlayStore;
+            const store = (window as Window & Record<string, unknown>).editorOverlayStore as {
+                setActiveItem?: (id: string) => void;
+            } | undefined;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
@@ -133,7 +142,9 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            const store = (window as any).editorOverlayStore;
+            const store = (window as Window & Record<string, unknown>).editorOverlayStore as {
+                setActiveItem?: (id: string) => void;
+            } | undefined;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
@@ -151,7 +162,9 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            const store = (window as any).editorOverlayStore;
+            const store = (window as Window & Record<string, unknown>).editorOverlayStore as {
+                setActiveItem?: (id: string) => void;
+            } | undefined;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
@@ -163,8 +176,9 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // データ構造から子要素があることを確認
         const afterNewChildData = await TreeValidator.getTreeData(page);
-        const hasChildItems = Object.values(afterNewChildData.items).some((item: any) =>
-            item.items && Object.keys(item.items).length > 0
+        const hasChildItems = Object.values(afterNewChildData.items).some((item) =>
+            (item as { items?: Record<string, unknown>; }).items
+            && Object.keys((item as { items?: Record<string, unknown>; }).items || {}).length > 0
         );
         expect(hasChildItems).toBe(true);
 

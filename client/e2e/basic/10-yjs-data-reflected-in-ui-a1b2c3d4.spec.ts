@@ -30,23 +30,41 @@ test.describe("YjsのデータがUIに反映される", () => {
         }, { timeout: 15000 });
 
         // 念のため: currentPage の子を lines に合わせて整える（不足分は生成、既存は上書き）
+        interface OutlinerItem {
+            updateText?: (text: string) => void;
+        }
+
+        interface OutlinerItems {
+            length: number;
+            at?: (index: number) => OutlinerItem;
+            [index: number]: OutlinerItem;
+            addNode?: (creatorId: string) => OutlinerItem;
+        }
+
+        interface CurrentPage {
+            items?: OutlinerItems;
+        }
+
+        interface GeneralStore {
+            currentPage?: CurrentPage;
+        }
+
         await page.evaluate((lines) => {
-            const gs =
-                (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; }).generalStore;
+            const gs = (window as { generalStore?: GeneralStore; }).generalStore;
             const p = gs?.currentPage;
             const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
 
-            const existing = (items as any).length ?? 0;
+            const existing = items.length ?? 0;
             // 既存分は上書き
-            for (let i = 0; i < Math.min(existing as number, lines.length); i++) {
-                const it = (items as any).at ? (items as any).at(i) : (items as any)[i];
-                (it as any)?.updateText?.(lines[i]);
+            for (let i = 0; i < Math.min(existing, lines.length); i++) {
+                const it = items.at ? items.at(i) : items[i];
+                it?.updateText?.(lines[i]);
             }
             // 不足分は追加
-            for (let i = existing as number; i < lines.length; i++) {
-                const node = (items as any).addNode?.("tester");
-                (node as any)?.updateText?.(lines[i]);
+            for (let i = existing; i < lines.length; i++) {
+                const node = items.addNode?.("tester");
+                node?.updateText?.(lines[i]);
             }
         }, lines);
 
@@ -88,13 +106,30 @@ test.describe("YjsのデータがUIに反映される", () => {
 
             // 各アイテムのテキストをモデル経由で設定
             await page.evaluate((lines) => {
-                const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
+                interface OutlinerItem {
+                    updateText?: (text: string) => void;
+                }
+
+                interface OutlinerItems {
+                    at?: (index: number) => OutlinerItem;
+                    [index: number]: OutlinerItem;
+                }
+
+                interface CurrentPage {
+                    items?: OutlinerItems;
+                }
+
+                interface GeneralStore {
+                    currentPage?: CurrentPage;
+                }
+
+                const gs = (window as { generalStore?: GeneralStore; })
                     .generalStore;
-                const items = gs?.currentPage?.items as any;
+                const items = gs?.currentPage?.items;
                 if (!items) return;
                 for (let i = 0; i < lines.length; i++) {
                     const it = items.at ? items.at(i) : items[i];
-                    (it as any)?.updateText?.(lines[i]);
+                    it?.updateText?.(lines[i]);
                 }
             }, lines);
         }
