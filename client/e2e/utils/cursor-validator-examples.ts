@@ -6,7 +6,7 @@
  * テストでのカーソル情報の検証方法を示しています。
  */
 
-import { Page } from "@playwright/test";
+import { expect, Page } from "@playwright/test";
 import { setupCursorDebugger, waitForCursorVisible } from "../helpers";
 import { CursorValidator } from "./cursorValidation";
 
