@@ -164,8 +164,7 @@ function updateTextareaPosition() {
             return;
         }
 
-        // Get the EditorOverlay's and tree container's positions relative to the viewport
-        const overlayRect = overlayRef.getBoundingClientRect();
+        // Get the tree container's position relative to the viewport
         const treeContainer = resolveTreeContainer();
         if (!treeContainer) return;
         const treeContainerRect = treeContainer.getBoundingClientRect();
@@ -361,7 +360,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
                 element,
                 NodeFilter.SHOW_TEXT,
                 {
-                    acceptNode: function(node) {
+                    acceptNode: function(_node) {
                         return NodeFilter.FILTER_ACCEPT;
                     }
                 }
@@ -1282,24 +1281,24 @@ function handlePaste(event: ClipboardEvent) {
         {/if}
 
     {#each Object.entries(store.selections) as [selKey, sel] (selKey)}
-        {@const _debugRenderSel = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: render selection', sel, sel.boxSelectionRanges, Array.isArray(sel.boxSelectionRanges)) : null}
+
         {@const selectionStyle = getSelectionStyle(sel)}
         {#if sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId}
             {#if sel.isBoxSelection && sel.boxSelectionRanges}
                 <!-- 矩形選択（ボックス選択）の場合 -->
                 {#each sel.boxSelectionRanges as range, index (`${selKey}-${range.itemId}-${index}`)}
-                    {@const _debugRange = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: range', range) : null}
+
                     {@const rect = calculateSelectionPixelRange(range.itemId, range.startOffset, range.endOffset, sel.isReversed)}
-                    {@const _debugRect = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: rect', rect) : null}
+
                     {#if rect}
                         {@const isPageTitle = range.itemId === "page-title"}
                         {@const isFirstRange = index === 0}
                         {@const isLastRange = index === sel.boxSelectionRanges.length - 1}
                         {@const isStartItem = range.itemId === sel.startItemId}
                         {@const isEndItem = range.itemId === sel.endItemId}
-                        {@const _dbgUp = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: isUpdating seen in template =', sel.isUpdating) : null}
+
                         {@const boxKey = `${selKey}:${index}`}
-                        {@const _dbgFlag = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: updatingFlags[boxKey]=', boxKey, !!updatingFlags[boxKey]) : null}
+
 
                         <!-- 一時的なマーカー（テスト検出用）。isUpdating=trueの間だけ存在 -->
                         {#if sel.isUpdating}

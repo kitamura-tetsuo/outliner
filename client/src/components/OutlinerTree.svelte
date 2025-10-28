@@ -55,7 +55,7 @@ let containerRef = $state<HTMLDivElement | null>(null);
 
 let itemHeights = $state<number[]>([]);
 // 非リアクティブな前回長さの記録（$effect内での自己参照ループを防ぐ）
-let __lastHeightsLen = 0;
+
 let itemPositions = $state<number[]>([]);
 
 // ドラッグ選択関連の状態
@@ -66,10 +66,10 @@ let dragCurrentItemId = $state<string | null>(null);
 let dragCurrentOffset = $state(0);
 
 // To prevent infinite loops, we'll cache the last known structure and only update when it changes
-let __lastStructureHash: string | null = null;
+
 
 // Track the last update timestamp to prevent rapid successive updates
-let __lastUpdateTimestamp: number = 0;
+
 
 // Yjs の最小粒度 observe: ツリーの基盤 Y.Map("orderedTree") を監視
 let __displayItemsTick = $state(0);
@@ -132,29 +132,9 @@ function updateItemPositions() {
 }
 
 // 安全に高さを更新する関数：変更がある場合のみ状態を更新
-function updateItemHeightsSafe(newHeights: number[]) {
-    let hasChanges = false;
-    // 配列長が異なる場合
-    if (itemHeights.length !== newHeights.length) {
-        hasChanges = true;
-    } else {
-        // 各要素を比較
-        for (let i = 0; i < itemHeights.length; i++) {
-            if (itemHeights[i] !== newHeights[i]) {
-                hasChanges = true;
-                break;
-            }
-        }
-    }
 
-    if (hasChanges) {
-        itemHeights = [...newHeights]; // 新しい配列を作成して状態を更新
-        updateItemPositions();
-    }
-}
 
-// Prevent infinite loops by tracking recent updates
-let lastUpdateTimestamp = $state(0);
+
 
 // アイテムの高さが変更されたときのハンドラ
 function handleItemResize(event: CustomEvent) {
@@ -206,7 +186,7 @@ onMount(() => {
 
 // 可視アイテム数の変化に反応して高さを再測定（$effect は未使用）
 // observeDeep による更新トリガ（__displayItemsTick）を前提としたレガシーフック
-function remeasureIfLengthChanged(_len: number) { /* legacy no-op; observeDeep tick により更新 */ }
+
 
 onDestroy(() => {
     // onEdit コールバックをクリア
@@ -1240,7 +1220,6 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
     }
 
     // 選択範囲の方向を考慮
-    const _isReversed = selection.isReversed || false;
     const actualStartIndex = Math.min(startIndex, endIndex);
     const actualEndIndex = Math.max(startIndex, endIndex);
 
