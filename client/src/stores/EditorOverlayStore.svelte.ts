@@ -470,12 +470,14 @@ export class EditorOverlayStore {
         }
 
         // 指定されたユーザーの選択範囲を削除（通常の選択範囲と矩形選択の両方）
-        this.selections = Object.fromEntries(
-            Object.entries(this.selections).filter(([_, s]) => {
-                // オブジェクトのuserIdプロパティが一致するか確認
-                return s.userId !== userId && (s.userId || "local") !== userId;
-            }),
-        );
+        const filteredSelectionEntries = [];
+        for (const [key, s] of Object.entries(this.selections)) {
+            // オブジェクトのuserIdプロパティが一致するか確認
+            if (s.userId !== userId && (s.userId || "local") !== userId) {
+                filteredSelectionEntries.push([key, s]);
+            }
+        }
+        this.selections = Object.fromEntries(filteredSelectionEntries);
         this.notifyChange();
 
         // デバッグ情報
@@ -483,9 +485,12 @@ export class EditorOverlayStore {
             console.log(`Selections after clearing:`, this.selections);
 
             // 選択範囲が正しくクリアされたか確認
-            const remainingSelections = Object.entries(this.selections).filter(([_, s]) =>
-                s.userId === userId || (s.userId || "local") === userId
-            );
+            const remainingSelections = [];
+            for (const [key, s] of Object.entries(this.selections)) {
+                if (s.userId === userId || (s.userId || "local") === userId) {
+                    remainingSelections.push([key, s]);
+                }
+            }
 
             if (remainingSelections.length > 0) {
                 console.warn(`Warning: Some selections for userId=${userId} were not cleared:`, remainingSelections);
@@ -621,16 +626,24 @@ export class EditorOverlayStore {
 
             // Reactive state を更新
             // userId が undefined の場合は "local" として扱う
-            this.cursors = Object.fromEntries(
-                Object.entries(this.cursors).filter(([_, c]) => (c.userId || "local") !== userId),
-            );
+            const filteredCursorEntries = [];
+            for (const [key, c] of Object.entries(this.cursors)) {
+                if ((c.userId || "local") !== userId) {
+                    filteredCursorEntries.push([key, c]);
+                }
+            }
+            this.cursors = Object.fromEntries(filteredCursorEntries);
         }
 
         // 選択範囲も削除する場合
         if (clearSelections) {
-            this.selections = Object.fromEntries(
-                Object.entries(this.selections).filter(([_, s]) => s.userId !== userId),
-            );
+            const filteredSelectionEntries = [];
+            for (const [key, s] of Object.entries(this.selections)) {
+                if (s.userId !== userId) {
+                    filteredSelectionEntries.push([key, s]);
+                }
+            }
+            this.selections = Object.fromEntries(filteredSelectionEntries);
         }
 
         // 特定ユーザーのカーソルを削除した結果、アクティブアイテムが存在しなくなった場合はクリア
@@ -906,7 +919,7 @@ export class EditorOverlayStore {
                     // 複数アイテムにまたがる選択範囲
                     selectionText = this.getTextFromMultiItemSelection(sel);
                 }
-            } catch (error) {
+            } catch (_error) {
                 // エラーが発生しても処理を続行
                 continue;
             }
@@ -987,7 +1000,7 @@ export class EditorOverlayStore {
 
                 return result;
             }
-        } catch (e) {
+        } catch (_e) {
             // If Yjs store access fails, continue to fallback
         }
 
