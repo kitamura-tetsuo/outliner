@@ -195,7 +195,7 @@ export class OutlinerViewModel {
     private recalculateOrderAndDepthItem(
         item: Item,
         depth: number = 0,
-        parentId: string | null = null,
+        _parentId: string | null = null,
     ): void {
         if (!isItemLike(item)) return;
 

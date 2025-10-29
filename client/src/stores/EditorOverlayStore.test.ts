@@ -35,7 +35,7 @@ class TestEditorOverlayStore {
         return id ? this.cursors[id] : null;
     }
     clearCursorForItem(itemId: string) {
-        const keep = Object.entries(this.cursors).filter(([_, c]: any) => c.itemId !== itemId);
+        const keep = Object.entries(this.cursors).filter(([_key, c]: any) => c.itemId !== itemId);
         this.cursors = Object.fromEntries(keep);
     }
     setSelection(sel: any) {
@@ -43,10 +43,10 @@ class TestEditorOverlayStore {
         this.selections = { ...this.selections, [key]: sel };
     }
     clearCursorAndSelection(userId = "local", clearSelections = false) {
-        this.cursors = Object.fromEntries(Object.entries(this.cursors).filter(([_, c]: any) => c.userId !== userId));
+        this.cursors = Object.fromEntries(Object.entries(this.cursors).filter(([_key, c]: any) => c.userId !== userId));
         if (clearSelections) {
             this.selections = Object.fromEntries(
-                Object.entries(this.selections).filter(([_, s]: any) => s.userId !== userId),
+                Object.entries(this.selections).filter(([_key, s]: any) => s.userId !== userId),
             );
         }
     }

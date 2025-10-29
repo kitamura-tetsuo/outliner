@@ -20,7 +20,6 @@ class YjsStore {
         try {
             (globalStore as any).openCommentItemId = null;
         } catch {}
-        const prevClient = this._client;
         this._client = v;
         this.isConnected = !!(v?.isContainerConnected);
         if (v) {
@@ -53,13 +52,13 @@ class YjsStore {
             // appear empty. To keep test flows stable, merge page titles from the
             // previous project into the newly connected one if the latter has none.
             try {
-                const isTestEnv = import.meta.env.MODE === "test"
+                const _isTestEnv = import.meta.env.MODE === "test"
                     || import.meta.env.VITE_IS_TEST === "true"
                     || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
                 const prevItems: any = previousProject?.items as any;
                 const newItems: any = (connectedProject as any)?.items as any;
-                const prevCount = prevItems?.length ?? 0;
-                const newCount = newItems?.length ?? 0;
+                const _prevCount = prevItems?.length ?? 0;
+                const _newCount = newItems?.length ?? 0;
                 /*
                 if (isTestEnv && prevCount > 0) {
                     // ケースA: 接続済みプロジェクトが空 -> 以前のページを丸ごと移植（ID維持）

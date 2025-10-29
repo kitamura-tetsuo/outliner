@@ -135,7 +135,7 @@ class GeneralStore {
         const project = v;
         const ymap = (project as any)?.ydoc?.getMap?.("orderedTree");
         const subscribe = createSubscriber((_update) => {
-            const handler = (_events: Array<Y.YEvent<unknown>>, _tr?: Y.Transaction) => {
+            const handler = (_events: Array<Y.YEvent<unknown>>, _transaction?: Y.Transaction) => {
                 try {
                     saveProjectSnapshot(project);
                 } catch (_e) {
