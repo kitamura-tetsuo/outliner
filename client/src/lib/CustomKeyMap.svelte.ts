@@ -6,6 +6,7 @@ export class CustomKeySvelteMap<T, V> {
     // オリジナルのキーを保持する配列
     private keys: T[] = [];
     // シリアライズされたキーとオリジナルキーのマッピング
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Internal bookkeeping map, not reactive state
     private keyMap = new Map<string, T>();
 
     // キーを JSON.stringify して文字列に変換するヘルパー関数

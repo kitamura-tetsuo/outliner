@@ -151,12 +151,12 @@ test.describe("CMT-0001: comment threads", () => {
         await page.fill('[data-testid="new-comment-input"]', "hello");
         const addBtns = page.locator('[data-testid="add-comment-btn"]');
         const addCount = await addBtns.count();
-        // eslint-disable-next-line no-console
+
         console.log("DEBUG add-btn count:", addCount);
         // Try narrowing to the currently visible thread
         const thread = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`);
         const addInThread = thread.locator('[data-testid="add-comment-btn"]');
-        // eslint-disable-next-line no-console
+
         console.log("DEBUG add-btn in thread visible:", await addInThread.isVisible());
         await addInThread.click();
 

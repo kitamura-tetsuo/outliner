@@ -10,20 +10,10 @@ require("dotenv").config({ path: ".env.test" });
 const express = require("express");
 const cors = require("cors");
 const admin = require("firebase-admin");
-const { generateToken } = require("@fluidframework/azure-service-utils");
-const { ScopeType } = require("@fluidframework/azure-client");
 
 // サービスアカウントの設定
 // テスト用なのでJSONファイルのパスチェックはスキップ
 const serviceAccount = {}; // テスト用の空オブジェクト
-
-// Azure Fluid Relay設定
-const azureConfig = {
-    tenantId: process.env.AZURE_TENANT_ID || "test-tenant",
-    endpoint: process.env.AZURE_FLUID_RELAY_ENDPOINT || "https://test.fluidrelay.azure.com",
-    primaryKey: process.env.AZURE_PRIMARY_KEY || "test-key",
-    activeKey: "primary",
-};
 
 // Firebaseの初期化（テスト用に最小構成）
 // テスト環境でFirestoreエミュレーターを使用
@@ -271,28 +261,6 @@ app.post("/api/rotate-logs", async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
-
-// Azure Fluid Relay用トークン生成関数
-function generateAzureFluidToken(user, containerId = undefined) {
-    return {
-        token: generateToken(
-            azureConfig.tenantId,
-            azureConfig.primaryKey,
-            [ScopeType.DocRead, ScopeType.DocWrite, ScopeType.SummaryWrite],
-            containerId,
-            {
-                id: user.uid,
-                name: user.displayName || "Anonymous",
-            },
-        ),
-        user: {
-            id: user.uid,
-            name: user.displayName || "Anonymous",
-        },
-        tenantId: azureConfig.tenantId,
-        containerId: containerId || null,
-    };
-}
 
 // テスト用にExpressアプリをエクスポート（サーバーは起動しない）
 module.exports = app;

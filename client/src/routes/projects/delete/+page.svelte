@@ -70,6 +70,7 @@ async function deleteSelected() {
         }, 1000);
     }
 
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Reassignment to trigger Svelte reactivity, not creating new reactive state
     selectedProjects = new Set(selectedProjects);
     loading = false;
 }
@@ -104,7 +105,7 @@ async function deleteSelected() {
                 </tr>
             </thead>
             <tbody>
-                {#each containers as project}
+                {#each containers as project (project.id)}
                     <tr>
                         <td class="px-2 text-center">
                             <input type="checkbox" checked={selectedProjects.has(project.id)} onchange={(e) => {

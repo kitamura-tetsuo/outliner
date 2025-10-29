@@ -15,6 +15,7 @@ services:
 
     ipc: 'host'
     shm_size: '1gb'
+    init: true
 
     volumes:
       # 1️⃣  Project source as a bind-mount

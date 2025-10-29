@@ -1,0 +1,13 @@
+id: TLB-5f79ac12
+title: Toolbar login status indicator
+title-ja: ツールバートップのログイン状態インジケーター
+description: Shows current authentication status on the global toolbar and highlights Google sign-ins with the official icon.
+category: auth
+status: implemented
+components:
+- client/src/components/LoginStatusIndicator.svelte
+- client/src/components/Toolbar.svelte
+services:
+- client/src/auth/UserManager.ts
+tests:
+- client/src/tests/integration/tlb-login-status-indicator-5f79ac12.integration.spec.ts

@@ -112,7 +112,7 @@ export class KeyEventHandler {
         });
 
         // Ctrl+X cut
-        add("x", true, false, false, event => {
+        add("x", true, false, false, _event => {
             // カットイベントを手動で発生させる
             const clipboardEvent = new ClipboardEvent("cut", {
                 clipboardData: new DataTransfer(),
@@ -448,7 +448,7 @@ export class KeyEventHandler {
                             const prevLen = typeof items.length === "number" ? items.length : 0;
                             try {
                                 items.addNode(userId);
-                            } catch (e) {
+                            } catch (_e) {
                                 try {
                                     items.addNode(userId, prevLen);
                                 } catch {}
@@ -551,7 +551,7 @@ export class KeyEventHandler {
                         const prevLen = typeof items.length === "number" ? items.length : 0;
                         try {
                             items.addNode(userId);
-                        } catch (e) {
+                        } catch (_e) {
                             try {
                                 items.addNode(userId, prevLen);
                             } catch {}
@@ -590,12 +590,20 @@ export class KeyEventHandler {
         }
 
         KeyEventHandler.initKeyHandlers();
-        const handler = KeyEventHandler.keyHandlers.get({
+        const keyCombo = {
             key: event.key,
             ctrl: event.ctrlKey,
             alt: event.altKey,
             shift: event.shiftKey,
-        });
+        };
+        const handler = KeyEventHandler.keyHandlers.get(keyCombo);
+
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`Looking for handler with key combo:`, keyCombo);
+            console.log(`Handler found: ${handler !== undefined}`);
+        }
+
         if (handler) {
             handler(event, cursorInstances);
 
@@ -1032,7 +1040,8 @@ export class KeyEventHandler {
                     }
                 }
 
-                // グローバル変数に保存（テスト用）
+                // グローバル変数に保存（E2E テスト環境専用）
+                // 本番環境では使用されないが、E2E テストでクリップボード内容を検証するために必要
                 if (typeof window !== "undefined") {
                     (window as any).lastCopiedText = selectedText;
                     (window as any).lastCopiedIsBoxSelection = isBoxSelectionCopy;
@@ -1145,6 +1154,23 @@ export class KeyEventHandler {
                 }, 500);
             }
 
+            // 矩形選択の初期状態を設定（開始時にも selection-box を表示）
+            store.setBoxSelection(
+                activeItemId,
+                activeOffset,
+                activeItemId,
+                activeOffset,
+                [{
+                    itemId: activeItemId,
+                    startOffset: activeOffset,
+                    endOffset: activeOffset,
+                }],
+                "local",
+            );
+
+            // isUpdating フラグは EditorOverlayStore.setBoxSelection で管理されるため、
+            // ここでは DOM 操作は不要
+
             // デバッグ情報
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Box selection started at item=${activeItemId}, offset=${activeOffset}`);
@@ -1210,35 +1236,8 @@ export class KeyEventHandler {
                     "local",
                 );
 
-                // 矩形選択範囲の更新前に視覚的フィードバックを追加
-                // Use setTimeout to run after DOM has been updated by Svelte
-                setTimeout(() => {
-                    const attemptToAddClass = () => {
-                        if (typeof window !== "undefined") {
-                            const elements = document.querySelectorAll(".selection-box");
-                            if (elements.length > 0) {
-                                // 選択範囲の変更を視覚的に強調するためのクラスを追加
-                                elements.forEach(el => {
-                                    el.classList.add("selection-box-updating");
-                                });
-
-                                // 一定時間後にクラスを削除
-                                setTimeout(() => {
-                                    if (typeof document !== "undefined") {
-                                        document.querySelectorAll(".selection-box-updating").forEach(el => {
-                                            el.classList.remove("selection-box-updating");
-                                        });
-                                    }
-                                }, 300);
-                            } else {
-                                // If elements don't exist yet, try again after a short delay
-                                setTimeout(attemptToAddClass, 50);
-                            }
-                        }
-                    };
-
-                    attemptToAddClass();
-                }, 0); // 0 delay to run in next event loop, after DOM update
+                // isUpdating フラグは EditorOverlayStore.setBoxSelection で管理されるため、
+                // ここでは DOM 操作は不要
                 // カーソル位置を更新
                 store.setCursor({
                     itemId: KeyEventHandler.boxSelectionState.endItemId,
@@ -1682,7 +1681,9 @@ export class KeyEventHandler {
                 }
             }
 
-            // テキストが取得できない場合はグローバル変数から取得（テスト用）
+            // テキストが取得できない場合はグローバル変数から取得（テスト環境専用フォールバック）
+            // 本番環境では event.clipboardData が常に利用可能なため、このパスは実行されない
+            // E2E テスト環境では Clipboard API が制限されることがあるため、このフォールバックが必要
             if (!text && typeof window !== "undefined" && (window as any).lastCopiedText) {
                 text = (window as any).lastCopiedText;
                 console.log(`Using text from global variable: "${text}"`);
@@ -1717,7 +1718,8 @@ export class KeyEventHandler {
             // ブラウザのデフォルトペースト動作を防止
             event.preventDefault();
 
-            // グローバル変数に保存（テスト用）
+            // グローバル変数に保存（E2E テスト環境専用）
+            // 本番環境では使用されないが、E2E テストでペースト内容を検証するために必要
             if (typeof window !== "undefined") {
                 (window as any).lastPastedText = text;
                 if (vscodeMetadata) {
@@ -1731,7 +1733,7 @@ export class KeyEventHandler {
             );
 
             // 選択範囲がある場合は、選択範囲を削除してからペースト
-            const selections = Object.values(store.selections).filter(sel =>
+            Object.values(store.selections).filter(sel =>
                 sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
             );
 
@@ -2028,7 +2030,8 @@ export class KeyEventHandler {
                     }
                 }
 
-                // グローバル変数に保存（テスト用）
+                // グローバル変数に保存（E2E テスト環境専用）
+                // 本番環境では使用されないが、E2E テストでカット内容を検証するために必要
                 if (typeof window !== "undefined") {
                     (window as any).lastCopiedText = selectedText;
                     (window as any).lastCopiedIsBoxSelection = isBoxSelectionCut;

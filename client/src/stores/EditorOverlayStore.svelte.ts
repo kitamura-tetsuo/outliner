@@ -1,4 +1,6 @@
 import { Cursor } from "../lib/Cursor"; // Cursor クラスを import
+import { yjsService } from "../lib/yjs/service";
+import { yjsStore } from "./yjsStore.svelte";
 
 // Exported types
 export interface CursorPosition {
@@ -46,28 +48,33 @@ export interface SelectionRange {
         startOffset: number;
         endOffset: number;
     }>;
+    // 選択範囲が更新中かどうか（視覚フィードバック用）
+    isUpdating?: boolean;
 }
 
 // Svelte 5 ランタイムの runes マクロを利用 (import は不要)
 
 export class EditorOverlayStore {
-    cursors: Record<string, CursorPosition> = {};
+    cursors = $state<Record<string, CursorPosition>>({});
     // Cursor インスタンスを保持する Map
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Internal instance cache, not reactive state
     cursorInstances = new Map<string, Cursor>();
     // 追加されたカーソルの履歴
-    cursorHistory: string[] = [];
-    selections: Record<string, SelectionRange> = {};
-    activeItemId: string | null = null;
-    cursorVisible: boolean = true;
-    animationPaused: boolean = false;
+    cursorHistory = $state<string[]>([]);
+    selections = $state<Record<string, SelectionRange>>({});
+    activeItemId = $state<string | null>(null);
+    cursorVisible = $state<boolean>(true);
+    animationPaused = $state<boolean>(false);
     // IME composition state
-    isComposing: boolean = false;
+    isComposing = $state<boolean>(false);
     // GlobalTextArea の textarea 要素を保持
     textareaRef: HTMLTextAreaElement | null = null;
     // onEdit コールバック
     onEditCallback: (() => void) | null = null;
+    private presenceSyncScheduled = false;
 
     // Lightweight pub-sub for UI (to avoid polling in components)
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Internal listener set, not reactive state
     private listeners = new Set<() => void>();
 
     private timerId!: ReturnType<typeof setTimeout>;
@@ -161,6 +168,10 @@ export class EditorOverlayStore {
         // アクティブアイテムを更新
         if (cursor.isActive) {
             this.setActiveItem(cursor.itemId);
+        }
+
+        if ((cursor.userId ?? "local") === "local") {
+            this.schedulePresenceSync();
         }
     }
 
@@ -307,6 +318,7 @@ export class EditorOverlayStore {
     }
 
     removeCursor(cursorId: string) {
+        const removed = this.cursors[cursorId];
         // Map からインスタンスを削除
         this.cursorInstances.delete(cursorId);
         // Reactive state からも削除
@@ -314,6 +326,10 @@ export class EditorOverlayStore {
         delete newCursors[cursorId];
         this.cursors = newCursors;
         this.notifyChange();
+
+        if ((removed?.userId ?? "local") === "local") {
+            this.schedulePresenceSync();
+        }
     }
 
     undoLastCursor() {
@@ -336,6 +352,10 @@ export class EditorOverlayStore {
         const key = this.genUUID();
         this.selections = { ...this.selections, [key]: selection };
         this.notifyChange();
+
+        if ((selection.userId ?? "local") === "local") {
+            this.schedulePresenceSync();
+        }
         return key;
     }
 
@@ -392,6 +412,7 @@ export class EditorOverlayStore {
             userId,
             isBoxSelection: true,
             boxSelectionRanges,
+            isUpdating: true, // 初期状態は更新中
         };
 
         // 選択範囲を設定
@@ -402,6 +423,30 @@ export class EditorOverlayStore {
             console.log(`Box selection set with key: ${key}`);
             console.log(`Current selections:`, this.selections);
         }
+
+        // 300ms後にisUpdatingをfalseに設定
+        setTimeout(() => {
+            const currentSelection = this.selections[key];
+            if (currentSelection && currentSelection.isUpdating) {
+                // 新しいオブジェクトを作成して置き換えることで、Svelteが変更を検出できるようにする
+                this.selections = {
+                    ...this.selections,
+                    [key]: {
+                        ...currentSelection,
+                        isUpdating: false,
+                    },
+                };
+                this.notifyChange();
+
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(`Box selection isUpdating set to false for key: ${key}`);
+                }
+            }
+        }, 300);
+
+        if (userId === "local") {
+            this.schedulePresenceSync();
+        }
     }
 
     /**
@@ -410,6 +455,7 @@ export class EditorOverlayStore {
     clearSelections() {
         this.selections = {};
         this.notifyChange();
+        this.schedulePresenceSync();
     }
 
     /**
@@ -446,6 +492,10 @@ export class EditorOverlayStore {
             } else {
                 console.log(`All selections for userId=${userId} were successfully cleared`);
             }
+        }
+
+        if (userId === "local") {
+            this.schedulePresenceSync();
         }
     }
 
@@ -597,6 +647,10 @@ export class EditorOverlayStore {
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Cursors after clearing:`, this.cursors);
+        }
+
+        if ((userId ?? "local") === "local") {
+            this.schedulePresenceSync();
         }
     }
 
@@ -774,6 +828,10 @@ export class EditorOverlayStore {
             console.log(`Updated cursor history:`, this.cursorHistory);
         }
         this.notifyChange();
+
+        if (userId === "local") {
+            this.schedulePresenceSync();
+        }
 
         return id;
     }
@@ -1254,6 +1312,7 @@ export class EditorOverlayStore {
         const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
 
         // アイテムIDとインデックスのマッピングを作成
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary local map for calculation, not reactive state
         const itemIdToIndex = new Map<string, number>();
         allItems.forEach((el, index) => {
             const id = el.getAttribute("data-item-id");
@@ -1292,6 +1351,77 @@ export class EditorOverlayStore {
         const textEl = el.querySelector(".item-text");
         const text = textEl ? textEl.textContent || "" : "";
         return { id, text };
+    }
+
+    private schedulePresenceSync() {
+        if (this.presenceSyncScheduled) return;
+        this.presenceSyncScheduled = true;
+        queueMicrotask(() => {
+            this.presenceSyncScheduled = false;
+            this.pushPresenceState();
+        });
+    }
+
+    private pushPresenceState() {
+        try {
+            const client = yjsStore.yjsClient as any;
+            if (!client) {
+                console.log("[pushPresenceState] No client");
+                return;
+            }
+
+            // ページレベルのawarenessを使用（カーソル/選択はページ固有）
+            const currentPage = (window as any).appStore?.currentPage;
+            const pageId = currentPage?.id;
+            if (!pageId) {
+                console.log("[pushPresenceState] No pageId", { currentPage });
+                return;
+            }
+
+            const pageAwareness = client.getPageAwareness?.(pageId);
+            if (!pageAwareness) {
+                console.log("[pushPresenceState] No pageAwareness", {
+                    pageId,
+                    hasGetPageAwareness: !!client.getPageAwareness,
+                });
+                return;
+            }
+            console.log("[pushPresenceState] Got pageAwareness", { pageId });
+
+            const cursor = this.getLocalPrimaryCursor();
+            const selection = this.getLocalPrimarySelection();
+
+            const presenceState = {
+                cursor: cursor ? { itemId: cursor.itemId, offset: cursor.offset } : undefined,
+                selection: selection
+                    ? {
+                        startItemId: selection.startItemId,
+                        startOffset: selection.startOffset,
+                        endItemId: selection.endItemId,
+                        endOffset: selection.endOffset,
+                        isReversed: selection.isReversed ?? false,
+                        isBoxSelection: selection.isBoxSelection ?? false,
+                        boxSelectionRanges: selection.isBoxSelection ? selection.boxSelectionRanges ?? [] : undefined,
+                    }
+                    : undefined,
+            };
+
+            // ページレベルのawarenessに直接設定
+            yjsService.setPresence(pageAwareness, (!cursor && !selection) ? null : presenceState);
+        } catch {
+            // Awareness が利用できない環境では presence 同期をスキップ
+        }
+    }
+
+    private getLocalPrimaryCursor(): CursorPosition | undefined {
+        const cursors = Object.values(this.cursors).filter(c => (c.userId ?? "local") === "local");
+        if (cursors.length === 0) return undefined;
+        const active = cursors.find(c => c.isActive);
+        return active ?? cursors[0];
+    }
+
+    private getLocalPrimarySelection(): SelectionRange | undefined {
+        return Object.values(this.selections).find(sel => (sel.userId ?? "local") === "local");
     }
 }
 

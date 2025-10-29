@@ -8,10 +8,9 @@ import { log } from "./logger"; // ロガーをインポート
  * @returns 環境変数の値、または未定義の場合はデフォルト値
  */
 export function getEnv(key: string, defaultValue: string = ""): string {
-    // 実行環境の検出
+    // 実行環境の検出 - VITE_IS_TEST is not available in client runtime for security
     const isTestEnv = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test"
-        || import.meta.env.VITE_IS_TEST === "true";
+        || process.env.NODE_ENV === "test";
 
     // テスト環境専用の処理
     if (isTestEnv) {

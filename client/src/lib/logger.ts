@@ -228,7 +228,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
 
                                 // スタイル付きのログを出力 - カスタムモジュール名がある場合のみそれを表示
                                 if (isCustomModule) {
-                                    (console[consoleMethod as keyof Console] as Function)(
+                                    (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                         `%c[${sourceInfo}]%c [${module}]%c [${levelUpperCase}]:`,
                                         consoleStyles.fileInfo,
                                         consoleStyles.moduleName,
@@ -238,7 +238,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                     );
                                 } else {
                                     // モジュール名がファイル名と同じ場合は一つだけ表示
-                                    (console[consoleMethod as keyof Console] as Function)(
+                                    (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                         `%c[${sourceInfo}]%c [${levelUpperCase}]:`,
                                         consoleStyles.fileInfo,
                                         consoleStyles.levels[prop as keyof typeof consoleStyles.levels],
@@ -249,7 +249,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                             } else {
                                 // 通常のメッセージ（オブジェクトなし）
                                 if (isCustomModule) {
-                                    (console[consoleMethod as keyof Console] as Function)(
+                                    (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                         `%c[${sourceInfo}]%c [${module}]%c [${levelUpperCase}]:`,
                                         consoleStyles.fileInfo,
                                         consoleStyles.moduleName,
@@ -258,7 +258,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                     );
                                 } else {
                                     // モジュール名がファイル名と同じ場合は一つだけ表示
-                                    (console[consoleMethod as keyof Console] as Function)(
+                                    (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                         `%c[${sourceInfo}]%c [${levelUpperCase}]:`,
                                         consoleStyles.fileInfo,
                                         consoleStyles.levels[prop as keyof typeof consoleStyles.levels],
@@ -268,7 +268,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                             }
                         } catch (e) {
                             // スタイル適用に失敗した場合は通常のフォーマットで表示
-                            (console[consoleMethod as keyof Console] as Function)(
+                            (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                 `[${file}] [${prop.toUpperCase()}]:`,
                                 ...args,
                             );
@@ -315,14 +315,14 @@ export function log(
     // コンソールへ直接出力
     // componentName がファイル名と同じで重複している場合は、ファイル名の情報は含めない
     if (componentName === file.replace(/\.[jt]s$/, "")) {
-        (console[consoleMethod as keyof Console] as Function)(
+        (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
             `%c[${componentName}]%c [${level.toUpperCase()}]:`,
             `color: #6699cc; font-weight: bold`,
             `color: ${levelColors[level]}; font-weight: bold`,
             ...args,
         );
     } else {
-        (console[consoleMethod as keyof Console] as Function)(
+        (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
             `%c[${componentName}]%c [${level.toUpperCase()}]:`,
             `color: #5cb85c; font-weight: bold`,
             `color: ${levelColors[level]}; font-weight: bold`,

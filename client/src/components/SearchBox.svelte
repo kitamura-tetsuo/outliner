@@ -308,7 +308,7 @@ onMount(() => {
     />
         {#if results.length && (query.length > 0)}
             <ul>
-                {#each results as page, i}
+                {#each results as page, i (page.id)}
                     <li class:selected={i === selected}>
                         <button type="button" onclick={() => handlePageClick(page)}>{page.text}</button>
                     </li>

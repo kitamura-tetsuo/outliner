@@ -50,3 +50,28 @@ export async function updateSchedule(
 ) {
     return fetchApi("update-schedule", { pageId, scheduleId, schedule });
 }
+
+export async function exportSchedulesIcal(
+    pageId: string,
+): Promise<{ blob: Blob; filename: string; }> {
+    const idToken = await userManager.auth.currentUser?.getIdToken();
+    if (!idToken) throw new Error("No auth token");
+
+    const url = getFirebaseFunctionUrl("export-schedules-ical");
+    const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, pageId }),
+    });
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API error ${response.status}: ${errorText}`);
+    }
+
+    const contentDisposition = response.headers.get("Content-Disposition") || "";
+    const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+    const filename = filenameMatch ? filenameMatch[1] : `outliner-schedules-${pageId}.ics`;
+    const text = await response.text();
+    const blob = new Blob([text], { type: "text/calendar" });
+    return { blob, filename };
+}

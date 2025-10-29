@@ -44,6 +44,11 @@ export class TestHelpers {
      * テスト環境を準備する
      * 各テストの前に呼び出すことで、テスト環境を一貫した状態にする
      * @param page Playwrightのページオブジェクト
+     * @param testInfo テスト情報
+     * @param lines 初期データ行
+     * @param browser ブラウザインスタンス
+     * @param options オプション設定
+     * @param options.ws WebSocket設定 ("force" | "disable" | "default")
      * @returns 作成したプロジェクト名とページ名
      */
     public static async prepareTestEnvironment(
@@ -51,6 +56,7 @@ export class TestHelpers {
         testInfo?: any,
         lines: string[] = [],
         browser?: Browser,
+        options?: { ws?: "force" | "disable" | "default"; },
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
@@ -71,11 +77,24 @@ export class TestHelpers {
             }
         } catch {}
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
-        await page.addInitScript(() => {
+        const wsMode = options?.ws ?? "default";
+        await page.addInitScript((wsMode) => {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+
+                // WebSocket設定を適用
+                if (wsMode === "force") {
+                    localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                    localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+                } else if (wsMode === "disable") {
+                    localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
+                } else {
+                    // default: 既定は WS 無効（必要なテストのみ個別に FORCE を設定）
+                    localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
+                }
+
                 (window as any).__E2E__ = true;
                 // Vite エラーオーバーレイ抑止
                 (window as any).__vite_plugin_react_preamble_installed__ = true;
@@ -87,7 +106,7 @@ export class TestHelpers {
                     return originalCreateElement.call(this, tagName, ...args);
                 } as typeof document.createElement;
             } catch {}
-        });
+        }, wsMode);
 
         // 初回ナビゲーション前に addInitScript でフラグを設定しているため、直ちにプロジェクトページへ遷移する
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
@@ -113,6 +132,8 @@ export class TestHelpers {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+                // 既定は WS 無効（必要なテストのみ個別に FORCE を設定）
+                localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
                 (window as any).__E2E__ = true;
                 (window as any).__vite_plugin_react_preamble_installed__ = true;
             } catch {}
@@ -1337,12 +1358,32 @@ export class TestHelpers {
             try {
                 const ap: any = (window as any).aliasPickerStore;
                 if (ap && ap.isVisible && typeof ap.itemId === "string" && ap.itemId) {
-                    return ap.itemId as string;
+                    const chosen = ap.itemId as string;
+                    try {
+                        const gs: any = (window as any).generalStore;
+                        const proj = encodeURIComponent(gs?.project?.title ?? "");
+                        const parts = (window.location.pathname || "/").split("/").filter(Boolean);
+                        const pageTitle = decodeURIComponent(parts[1] || "");
+                        const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
+                        window.sessionStorage?.setItem(key, chosen);
+                    } catch {}
+                    return chosen;
                 }
             } catch {}
             const items = Array.from(document.querySelectorAll<HTMLElement>(".outliner-item[data-item-id]"));
             const target = items[i];
-            return target?.dataset.itemId ?? null;
+            const chosen = target?.dataset.itemId ?? null;
+            try {
+                if (chosen) {
+                    const gs: any = (window as any).generalStore;
+                    const proj = encodeURIComponent(gs?.project?.title ?? "");
+                    const parts = (window.location.pathname || "/").split("/").filter(Boolean);
+                    const pageTitle = decodeURIComponent(parts[1] || "");
+                    const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
+                    window.sessionStorage?.setItem(key, chosen);
+                }
+            } catch {}
+            return chosen;
         }, index);
     }
 
@@ -1771,6 +1812,66 @@ export class TestHelpers {
         const element = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
         const aliasTargetId = await element.getAttribute("data-alias-target-id");
         return aliasTargetId && aliasTargetId.trim() !== "" ? aliasTargetId : null;
+    }
+
+    /**
+     * アイテムIDから現在のテキストを安全に取得する
+     * EditorOverlay.svelte の getTextByItemId と同じロジックを使用
+     * @param page Playwright のページオブジェクト
+     * @param itemId 取得対象アイテムの ID
+     * @returns アイテムのテキスト
+     */
+    public static async getTextByItemId(page: Page, itemId: string): Promise<string> {
+        return await page.evaluate((id) => {
+            // 1) DOM の .item-text
+            const el = document.querySelector(`[data-item-id="${id}"] .item-text`) as HTMLElement | null;
+            if (el && el.textContent) return el.textContent;
+
+            // 2) アクティブ textarea
+            try {
+                const store = (window as any).editorOverlayStore;
+                const ta = store?.getTextareaRef?.();
+                const activeId = store?.getActiveItem?.();
+                if (ta && activeId === id) {
+                    return ta.value || "";
+                }
+            } catch {}
+
+            // 3) generalStore から探索
+            try {
+                const gs = (window as any).generalStore;
+                const page = gs?.currentPage;
+                const items = page?.items;
+                const len = items?.length ?? 0;
+                for (let i = 0; i < len; i++) {
+                    const it = items.at ? items.at(i) : items[i];
+                    if (it?.id === id) {
+                        return String(it?.text ?? "");
+                    }
+                }
+            } catch {}
+            return "";
+        }, itemId);
+    }
+
+    /**
+     * ボックス選択範囲のテキストを取得する
+     * @param page Playwright のページオブジェクト
+     * @param boxSelectionRanges ボックス選択範囲の配列
+     * @returns 各行のテキストを改行で結合した文字列
+     */
+    public static async getBoxSelectionText(
+        page: Page,
+        boxSelectionRanges: Array<{ itemId: string; startOffset: number; endOffset: number; }>,
+    ): Promise<string> {
+        const lines: string[] = [];
+        for (const range of boxSelectionRanges) {
+            const fullText = await this.getTextByItemId(page, range.itemId);
+            const startOffset = Math.max(0, Math.min(fullText.length, Math.min(range.startOffset, range.endOffset)));
+            const endOffset = Math.max(0, Math.min(fullText.length, Math.max(range.startOffset, range.endOffset)));
+            lines.push(fullText.substring(startOffset, endOffset));
+        }
+        return lines.join("\n");
     }
 
     /**

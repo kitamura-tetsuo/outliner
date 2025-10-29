@@ -63,8 +63,17 @@ cd "$PROJECT_ROOT"
 
 if [ $# -eq 0 ]; then
   cd "$CLIENT_DIR"
-  # npm run test:unit
-  # npm run test:integration
+
+  # Run ESLint check
+  echo "Running ESLint check..."
+  if ! npm run lint; then
+    echo "❌ ESLint check failed!"
+    exit 1
+  fi
+  echo "✅ ESLint check passed!"
+
+  npm run test:unit
+  npm run test:integration
   npm run test:e2e --
   exit 0
 fi

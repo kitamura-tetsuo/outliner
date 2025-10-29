@@ -152,7 +152,7 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
 {#if aliasTargetIdEffective}
     <div class="alias-path" data-alias-owner-id={modelId}>
         {#if aliasPath.length > 0}
-            {#each aliasPath as p, i}
+            {#each aliasPath as p, i (p.id)}
                 <button type="button" onclick={() => { /* dispatch navigate-to-item */ }}>
                     {p.text || "Loading..."}
                 </button>{i < aliasPath.length - 1 ? "/" : ""}

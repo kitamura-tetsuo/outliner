@@ -45,7 +45,7 @@ function add() {
     <h2>{title}</h2>
     <ul>
         {#if list}
-            {#each list.items as item}
+            {#each list.items as item (item.id)}
                 <li>
                     <label>
                         <input

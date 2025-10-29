@@ -24,6 +24,7 @@ export function containersFromUserContainer(
         || (typeof window !== "undefined" && window.location.hostname === "localhost");
 
     // ID 重複を排除して安定化
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
     const uniqueIds = Array.from(new Set(data.accessibleContainerIds));
     return uniqueIds
         .map(id => {

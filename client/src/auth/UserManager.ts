@@ -23,6 +23,7 @@ export interface IUser {
     name: string;
     email?: string;
     photoURL?: string;
+    providerIds?: string[];
 }
 
 // 認証結果の型定義
@@ -89,7 +90,7 @@ export class UserManager {
 
         // テスト環境でのアクセスのためにグローバルに設定
         if (typeof window !== "undefined") {
-            (window as any).__USER_MANAGER__ = this;
+            (window as unknown as { __USER_MANAGER__: UserManager; }).__USER_MANAGER__ = this;
         }
 
         // 認証リスナーを非同期で初期化
@@ -245,11 +246,19 @@ export class UserManager {
             logger.debug("handleUserSignedIn started", { uid: firebaseUser.uid });
 
             // ユーザーオブジェクトを作成
+            const providerIds = firebaseUser.providerData
+                .map(info => info?.providerId)
+                .filter((id): id is string => !!id);
+            if (providerIds.length === 0 && firebaseUser.providerId) {
+                providerIds.push(firebaseUser.providerId);
+            }
+
             const user: IUser = {
                 id: firebaseUser.uid,
                 name: firebaseUser.displayName || "Anonymous User",
                 email: firebaseUser.email || undefined,
                 photoURL: firebaseUser.photoURL || undefined,
+                providerIds: providerIds.length > 0 ? providerIds : undefined,
             };
 
             logger.info("Notifying listeners of successful authentication", {
@@ -281,11 +290,19 @@ export class UserManager {
         const firebaseUser = this.auth.currentUser;
         if (!firebaseUser) return null;
 
+        const providerIds = firebaseUser.providerData
+            .map(info => info?.providerId)
+            .filter((id): id is string => !!id);
+        if (providerIds.length === 0 && firebaseUser.providerId) {
+            providerIds.push(firebaseUser.providerId);
+        }
+
         return {
             id: firebaseUser.uid,
             name: firebaseUser.displayName || "Anonymous User",
             email: firebaseUser.email || undefined,
             photoURL: firebaseUser.photoURL || undefined,
+            providerIds: providerIds.length > 0 ? providerIds : undefined,
         };
     }
 
@@ -319,7 +336,7 @@ export class UserManager {
                         userId: userCredential.user.uid,
                     });
                     return;
-                } catch (firebaseError: any) {
+                } catch (firebaseError) {
                     logger.warn("[UserManager] Firebase Auth login failed:", firebaseError?.message);
 
                     // ユーザーが存在しない場合は作成を試みる
@@ -411,12 +428,32 @@ export class UserManager {
         }
         this.listeners = [];
     }
+
+    // テストおよび開発用: 明示的にIDトークンを更新し、リスナーへ通知
+    public async refreshToken(): Promise<void> {
+        try {
+            const current = this.auth.currentUser;
+            if (!current) {
+                logger.warn("[UserManager] refreshToken called without currentUser");
+                return;
+            }
+            // force refresh
+            await current.getIdToken(true);
+            const user = this.getCurrentUser();
+            if (user) {
+                // 通知により attachTokenRefresh 経由でプロバイダの auth パラメータが更新される
+                this.notifyListeners({ user });
+            }
+        } catch (err) {
+            logger.error("[UserManager] refreshToken failed", err);
+        }
+    }
 }
 
 export const userManager = new UserManager();
 
 if (process.env.NODE_ENV === "test") {
     if (typeof window !== "undefined") {
-        (window as any).__USER_MANAGER__ = userManager;
+        (window as unknown as { __USER_MANAGER__: UserManager; }).__USER_MANAGER__ = userManager;
     }
 }

@@ -8,9 +8,13 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
+// Shorten per-spec timeout (default 240s is too long for this scenario)
+test.setTimeout(120_000);
+
 test.describe("Page subdoc provider", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // Force Yjs WS for this spec (TestHelpers defaults to WS disabled)
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, { ws: "force" });
     });
 
     test("uses separate rooms and awareness for each page", async ({ page }) => {

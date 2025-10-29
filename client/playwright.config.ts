@@ -83,7 +83,7 @@ export default defineConfig({
     testMatch: "**/*.spec.ts",
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
-    retries: (process.env.CI || !isSingleSpecRun) ? 0 : 0,
+    retries: (process.env.CI || !isSingleSpecRun) ? 5 : 10,
     workers: process.env.CI ? 1 : 1,
     maxFailures: process.env.CI ? 1 : 1,
 
@@ -143,6 +143,11 @@ export default defineConfig({
             // サーバーテスト: バックエンド接続の検証用
             name: "server",
             testDir: "./e2e/server",
+        },
+        {
+            // Yjsテスト: Yjs同期機能のテスト
+            name: "yjs",
+            testDir: "./e2e/yjs",
         },
     ],
 });

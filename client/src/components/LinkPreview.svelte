@@ -132,7 +132,6 @@ onDestroy(() => {
 });
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
     class="link-preview-trigger"
     role="tooltip"
@@ -161,7 +160,7 @@ onDestroy(() => {
                     <div class="preview-items">
                         {#if previewContent && previewContent.items && (previewContent.items as any).length > 0}
                             <ul>
-                                {#each Array.from({ length: Math.min(5, (previewContent.items as any).length) }, (_, i) => (previewContent.items as any)[i]) as item}
+                                {#each Array.from({ length: Math.min(5, (previewContent.items as any).length) }, (_, i) => (previewContent.items as any)[i]) as item (item.id)}
                                     <li>{item.text}</li>
                                 {/each}
 

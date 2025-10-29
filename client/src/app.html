@@ -22,6 +22,53 @@
             </div>
         </div>
         <div style="display: contents" data-testid="sveltekit-shell">%sveltekit.body%</div>
+        <script>
+            // Environment variable fallback: if import.meta.env variables were replaced with undefined during build,
+            // try to get them from localStorage where TestHelpers sets them
+            (function() {
+                if (typeof window === "undefined") {
+                    return;
+                }
+                
+                // Ensure import.meta.env structure exists
+                if (!window.import) window.import = {};
+                if (!window.import.meta) window.import.meta = {};
+                if (!window.import.meta.env) window.import.meta.env = {};
+                
+                // Fallback for VITE_IS_TEST if it's undefined in the built code
+                if (typeof window.import.meta.env.VITE_IS_TEST === 'undefined') {
+                    const localStorageValue = window.localStorage.getItem('VITE_IS_TEST');
+                    if (localStorageValue !== null) {
+                        window.import.meta.env.VITE_IS_TEST = localStorageValue;
+                        // Also set it directly on the window for backward compatibility
+                        window.VITE_IS_TEST = localStorageValue;
+                    } else {
+                        // If not in localStorage either, try to set it to a default value
+                        // This is for cases where the app might be running outside of tests
+                        window.import.meta.env.VITE_IS_TEST = 'false';
+                    }
+                }
+                
+                // Make sure window.VITE_IS_TEST is also set if it doesn't exist
+                if (typeof window.VITE_IS_TEST === 'undefined') {
+                    window.VITE_IS_TEST = window.import.meta.env.VITE_IS_TEST;
+                }
+            })();
+        </script>
+        <script>
+            // Security: Remove VITE_IS_TEST from window and environment to prevent it from leaking to client
+            (function() {
+                if (typeof window !== "undefined") {
+                    // Remove VITE_IS_TEST from window object
+                    delete window.VITE_IS_TEST;
+                    
+                    // Remove VITE_IS_TEST from import.meta.env if it exists
+                    if (window.import && window.import.meta && window.import.meta.env) {
+                        delete window.import.meta.env.VITE_IS_TEST;
+                    }
+                }
+            })();
+        </script>
         <script type="module">
             (() => {
                 if (typeof window === "undefined") {

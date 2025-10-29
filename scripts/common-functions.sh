@@ -504,7 +504,7 @@ start_yjs_server() {
     npm run build --silent || npm run build
   fi
   echo "Launching compiled server..."
-  npx dotenvx run --env-file=.env.test -- bash -lc "PORT=${TEST_YJS_PORT} LEVELDB_PATH='${ROOT_DIR}/yjs-data' npm start --silent" \
+  npx dotenvx run --env-file=.env.test -- bash -lc "DISABLE_Y_LEVELDB=true PORT=${TEST_YJS_PORT} npm start --silent" \
     </dev/null > "${ROOT_DIR}/server/logs/yjs-websocket.log" 2>&1 &
   local yjs_pid=$!
   echo "Yjs WebSocket server started with PID: ${yjs_pid}"

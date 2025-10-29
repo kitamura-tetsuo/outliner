@@ -10,7 +10,6 @@ import {
 interface Props {
     project: Project;
     rootItems: Items; // 最上位のアイテムリスト（ページリスト）
-    currentPage?: Item | null; // 直接ページオブジェクトを受け取るように追加
     currentUser?: string;
     onPageSelected?: (event: CustomEvent<{ pageId: string; pageName: string; }>) => void;
 }
@@ -90,7 +89,7 @@ onMount(() => {
     </div>
 
     <ul>
-        {#each rootItems as page}
+        {#each rootItems as page (page.id)}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
             <li onclick={() => selectPage(page)}>

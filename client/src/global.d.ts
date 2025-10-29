@@ -14,8 +14,8 @@ interface Window {
     };
     mockContainerConnected?: boolean;
     _alertMessage?: string;
-    __FLUID_CLIENT__?: any;
-    getFluidTreeDebugData?: () => any;
-    getYjsTreeDebugData?: () => any;
-    getYjsTreePathData?: (path?: string) => any;
+    __FLUID_CLIENT__?: object;
+    getFluidTreeDebugData?: () => Record<string, unknown>;
+    getYjsTreeDebugData?: () => Record<string, unknown>;
+    getYjsTreePathData?: (path?: string) => Record<string, unknown>;
 }

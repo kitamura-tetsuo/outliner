@@ -356,7 +356,7 @@ onMount(() => {
     <div class="log-container">
         <h3>ログ</h3>
         <div id="log">
-            {#each logs as logEntry}
+            {#each logs as logEntry, index (index)}
                 <div>{logEntry}</div>
             {/each}
         </div>

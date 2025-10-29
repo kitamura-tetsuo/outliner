@@ -6,6 +6,6 @@
 		}
 	],
 	"settings": {
-	    "window.title": "codex web - ${activeEditorMedium} - ${remoteName}",	
+		"window.title": "codex web${separator}${activeEditorShort}${separator}${remoteName}",
 	}
 }

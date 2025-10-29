@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { deLocalizeUrl } from "$lib/paraglide/runtime";
 import type { Reroute } from "@sveltejs/kit";
 

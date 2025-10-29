@@ -29,7 +29,14 @@ export {
 } from "./snapshotService";
 
 // ScheduleService
-export { cancelSchedule, createSchedule, listSchedules, type Schedule, updateSchedule } from "./scheduleService";
+export {
+    cancelSchedule,
+    createSchedule,
+    exportSchedulesIcal,
+    listSchedules,
+    type Schedule,
+    updateSchedule,
+} from "./scheduleService";
 
 // Import/Export Service
 export {
