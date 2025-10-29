@@ -135,11 +135,6 @@ let results = $derived.by(() => {
     return searchResults;
 });
 
-// 結果が変更されたときにselectedを更新
-$effect(() => {
-    selected = results.length ? 0 : -1;
-});
-
 function handleKeydown(e: KeyboardEvent) {
     if (e.isComposing) return;
     if (e.key === 'ArrowDown') {
@@ -293,7 +288,12 @@ onMount(() => {
         bind:value={query}
         onkeydown={handleKeydown}
         onfocus={() => { isFocused = true; shouldRefocus = true; }}
-        oninput={() => { isFocused = true; shouldRefocus = true; }}
+        oninput={() => {
+            isFocused = true;
+            shouldRefocus = true;
+            // Reset selection when query changes
+            selected = results.length ? 0 : -1;
+        }}
         onblur={() => {
             // Keep focus while user is interacting with the search suggestions in tests
             // Outliner may steal focus to the global textarea; when query is non-empty,
