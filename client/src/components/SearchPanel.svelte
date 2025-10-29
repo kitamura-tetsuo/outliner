@@ -248,13 +248,7 @@ function handleReplaceAll() {
     }
 }
 
-function toggleRegex() {
-    isRegexMode = !isRegexMode;
-}
 
-function toggleCaseSensitive() {
-    isCaseSensitive = !isCaseSensitive;
-}
 
 function jumpTo(match: PageItemMatch<Item>) {
     if (!project) return;

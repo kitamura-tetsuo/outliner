@@ -1,5 +1,7 @@
 services:
   app:
+    environment:
+      - OPENAI_OPEN_ROUTER_API_KEY=${OPENAI_OPEN_ROUTER_API_KEY}
     volumes:
       - type: bind
         source: /home/ubuntu/src
@@ -16,6 +18,10 @@ services:
       - type: bind
         source: /home/ubuntu/.auto-coder
         target: /home/node/.auto-coder
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/.codex
+        target: /home/node/.codex
         consistency: cached
       - type: bind
         source: /home/ubuntu/.codex
