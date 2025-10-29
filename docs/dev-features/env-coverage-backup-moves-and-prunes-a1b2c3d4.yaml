@@ -1,0 +1,64 @@
+id: ENV-a1b2c3d4
+title: Coverage backup and move-to-backup scripts
+title-ja: カバレッジバックアップと移動スクリプト
+description: 'Two scripts manage coverage backups to prevent disk space bloat:
+
+  - backup-coverage.js: Copies coverage to coverage-backups (keeps 10 most recent)
+
+  - move-coverage-to-backup.js: Moves coverage to coverage-backups (keeps 10 most recent)
+
+
+  The test script runs move-to-backup at the start to archive old coverage,
+
+  then runs backup multiple times during the test process to preserve intermediate results.
+
+  '
+category: environment
+status: implemented
+components:
+- client/package.json
+- client/scripts/backup-coverage.js
+- client/scripts/move-coverage-to-backup.js
+tests:
+- scripts/tests/env-coverage-backup-moves-and-prunes-a1b2c3d4.spec.ts
+changes:
+- Modified backup-coverage.js to copy (not move) coverage directory and keep 10 backups
+- Created move-coverage-to-backup.js to move coverage directory and keep 10 backups
+- Added coverage:move-to-backup script to package.json
+- Updated test script to run coverage:move-to-backup at the start
+verification:
+- Run npm run coverage:backup to verify coverage directory is copied
+- Run npm run coverage:move-to-backup to verify coverage directory is moved
+- Create 11 backups with backup script and verify only 10 most recent are kept
+- Create 11 backups with move-to-backup script and verify only 10 most recent are kept
+- Verify both scripts skip when coverage directory does not exist
+notes:
+- backup-coverage.js is called multiple times during test execution to preserve intermediate results
+- move-coverage-to-backup.js is called once at test start to archive old coverage and free disk space
+- Both scripts keep 10 most recent backups
+- Backups are sorted by modification time (newest first)
+- Old backups are deleted after new backup is created
+- Backup naming format is YYYY-MM-DD-HH-MM-SS
+rationale: 'The test script runs coverage:backup 4 times during execution:
+
+  1. After unit/integration tests
+
+  2. After e2e tests
+
+  3. After e2e coverage generation
+
+  4. After coverage merge
+
+
+  Using move instead of copy would cause subsequent steps to fail because
+
+  the coverage directory would not exist. Therefore:
+
+  - backup-coverage.js copies (keeps 10 to preserve test history)
+
+  - move-coverage-to-backup.js moves (keeps 10 to save disk space)
+
+
+  Both scripts keep 10 backups to maintain sufficient history while preventing bloat.
+
+  '
