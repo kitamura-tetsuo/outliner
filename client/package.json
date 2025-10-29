@@ -67,7 +67,7 @@
         "mdsvex": "^0.12.3",
         "monocart-coverage-reports": "^2.12.9",
         "patch-package": "^6.5.1",
-        "playwright": "^1.54.1",
+        "playwright": "^1.56.1",
         "svelte": "^5.37.3",
         "svelte-check": "^4.3.0",
         "svelte-preprocess": "^6.0.3",
