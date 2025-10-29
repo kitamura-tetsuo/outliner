@@ -57,7 +57,7 @@ export default ts.config(
             "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
             "svelte/no-unused-svelte-ignore": "warn",
             "svelte/no-unused-props": "warn",
-            "svelte/prefer-svelte-reactivity": "warn",
+            "svelte/prefer-svelte-reactivity": "error",
         },
     },
     {
