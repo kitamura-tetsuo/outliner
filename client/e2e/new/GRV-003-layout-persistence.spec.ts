@@ -10,7 +10,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("GRV-0002: Graph view layout persistence", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }, _testInfo) => {
         // Clear any existing graph layout data to ensure test isolation
         try {
             await page.evaluate(() => {

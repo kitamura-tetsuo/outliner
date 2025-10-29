@@ -477,7 +477,7 @@ export class LinkTestHelpers {
 
                     if (!hasListeners) {
                         // マウスオーバーイベントリスナーを追加
-                        link.addEventListener("mouseenter", event => {
+                        link.addEventListener("mouseenter", _event => {
                             console.log("Link mouseenter event triggered");
                             // データ属性からページ名を取得
                             const pageName = link.getAttribute("data-page");

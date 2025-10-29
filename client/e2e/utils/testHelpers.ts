@@ -55,7 +55,7 @@ export class TestHelpers {
         page: Page,
         testInfo?: any,
         lines: string[] = [],
-        browser?: Browser,
+        _browser?: Browser,
         options?: { ws?: "force" | "disable" | "default"; },
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
@@ -124,7 +124,7 @@ export class TestHelpers {
         page: Page,
         testInfo?: any,
         lines: string[] = [],
-        browser?: Browser,
+        _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
         await page.addInitScript(() => {
@@ -658,7 +658,7 @@ export class TestHelpers {
         page: Page,
         testInfo?: any,
         lines: string[],
-        browser?: Browser,
+        _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
         TestHelpers.slog("navigateToTestProjectPage start");

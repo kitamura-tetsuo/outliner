@@ -11,7 +11,7 @@ export class TestHelpersNoAuth {
      */
     public static async prepareTestEnvironmentNoAuth(
         page: Page,
-        testInfo: any,
+        _testInfo: any,
     ): Promise<{ success: boolean; message: string; }> {
         console.log("TestHelper: Starting navigation to home page (No Auth)");
         console.log("TestHelper: Page URL before navigation:", page.url());
@@ -36,7 +36,7 @@ export class TestHelpersNoAuth {
                     { timeout: 10000 },
                 );
                 console.log("TestHelper: UserManager found");
-            } catch (error) {
+            } catch (_error) {
                 console.log("TestHelper: UserManager not found, continuing without auth");
             }
 

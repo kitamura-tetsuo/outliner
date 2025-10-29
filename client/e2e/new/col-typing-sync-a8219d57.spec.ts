@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 import { ensureOutlinerItemCount } from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 
-test("typing sync between two browsers", async ({ browser }, testInfo) => {
+test("typing sync between two browsers", async ({ browser }, _testInfo) => {
     const projectName = `Test Project Sync ${Date.now()}`;
     const pageName = `sync-test-page-${Date.now()}`;
 
@@ -32,7 +32,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         await page1.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
             timeout: 20000,
         });
-    } catch (error) {
+    } catch (_error) {
         console.log("YJS connection not established, continuing with test");
         // Continue even if connection fails - test might still work with local sync
     }
@@ -56,7 +56,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         await page2.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
             timeout: 20000,
         });
-    } catch (error) {
+    } catch (_error) {
         console.log("YJS connection not established on page2, continuing with test");
         // Continue even if connection fails - test might still work with local sync
     }

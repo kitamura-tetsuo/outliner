@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ATT-0001: Drag and drop attachments", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }, _testInfo) => {
         // コンソールログを取得
         page.on("console", msg => console.log("PAGE LOG:", msg.text()));
         page.on("pageerror", error => console.log("PAGE ERROR:", error.message));
@@ -19,7 +19,6 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
 
     test("attachment preview appears", async ({ page }) => {
         const item = page.locator(".outliner-item").first();
-        const content = item.locator(".item-content");
 
         // DataTransfer をメインワールドで生成し、items.add(File) を実行
         const dtHandle = await page.evaluateHandle(() => {
@@ -71,7 +70,6 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
 
     test("multiple attachments can be added to same item", async ({ page }) => {
         const item = page.locator(".outliner-item").first();
-        const content = item.locator(".item-content");
 
         // E2E専用ヘルパーで 2 回 添付を追加（DnD の最終結果を決定的に再現）
         // __E2E_ADD_ATTACHMENT__ を 2 回呼び出し

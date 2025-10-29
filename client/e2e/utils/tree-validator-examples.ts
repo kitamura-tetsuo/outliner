@@ -100,7 +100,7 @@ export async function snapshotComparisonExample(page: Page): Promise<void> {
     try {
         await TreeValidator.compareWithSnapshot(page, snapshot);
         throw new Error("スナップショットが一致してしまいました");
-    } catch (error) {
+    } catch (_error) {
         console.log("スナップショットが一致しないことを確認しました");
     }
 }
@@ -125,7 +125,7 @@ export async function ignorePathsExample(page: Page): Promise<void> {
         // 新しく追加されたアイテムのパスを無視
         await TreeValidator.compareWithSnapshot(page, snapshot, ["items.0.items.2"]);
         console.log("無視したパス以外は一致しました");
-    } catch (error) {
+    } catch (_error) {
         console.error("無視したパス以外も変更されています");
     }
 }
@@ -171,7 +171,7 @@ export async function comprehensiveExample(page: Page): Promise<void> {
 
     // 7. 変更を検証
     const hasNewItem = updatedData.items[0].items.some(
-        (item: any) => item.text === "New item",
+        (item: any) => (item as any).text === "New item",
     );
 
     if (!hasNewItem) {

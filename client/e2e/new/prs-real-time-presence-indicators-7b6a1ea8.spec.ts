@@ -12,13 +12,13 @@ let projectName: string;
 let pageName: string;
 
 test.describe("PRS-0001: presence indicators", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }, _testInfo) => {
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo, ["first line"]);
         projectName = ids.projectName;
         pageName = ids.pageName;
     });
 
-    test("shows multiple user avatars", async ({ page, browser }, testInfo) => {
+    test("shows multiple user avatars", async ({ page, browser: _browser }, _testInfo) => {
         await page.goto(`/${projectName}/${pageName}`);
 
         // プレゼンス要素が表示されるまで待つ
