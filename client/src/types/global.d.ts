@@ -12,5 +12,6 @@ type Console = typeof console;
 
 // NodeJS namespace for compatibility
 declare namespace NodeJS {
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface Timeout {}
 }

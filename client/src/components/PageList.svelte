@@ -90,8 +90,6 @@ onMount(() => {
 
     <ul>
         {#each rootItems as page (page.id)}
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
             <li onclick={() => selectPage(page)}>
                 <span class="page-title">{page.text || "無題のページ"}</span>
                 <span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
