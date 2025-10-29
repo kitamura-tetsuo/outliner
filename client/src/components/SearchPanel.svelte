@@ -12,9 +12,6 @@ import {
 } from "../lib/search";
 import {
     type PageItemMatch,
-    replaceAllInProject,
-    replaceFirstInProject,
-    searchProject,
 } from "../lib/search/projectSearch";
 import type {
     Item,

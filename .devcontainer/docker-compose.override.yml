@@ -29,6 +29,10 @@ services:
         source: /home/ubuntu/.qwen
         target: /home/node/.qwen
         consistency: cached
+      - type: bind
+        source: /home/ubuntu/.config
+        target: /home/node/.config
+        consistency: cached
     command: bash -c "rm -rf /workspace/.setup-installed; /workspace/.devcontainer/setup.override.sh; sleep infinity"
 
 

@@ -28,8 +28,6 @@ let redraw = $state(0);
 // containers を安定再計算（イベントレス: ucVersion、テストフォールバック: redraw）
 let containers = $derived.by(() => {
     const _ucv = firestoreStore.ucVersion; // 依存のみ
-    const idsLen = firestoreStore.userContainer?.accessibleContainerIds?.length || 0;
-    const defId = firestoreStore.userContainer?.defaultContainerId || "";
     const _rd = redraw; // 暫定依存（イベント駆動の互換）
     return containersFromUserContainer(firestoreStore.userContainer);
 });
