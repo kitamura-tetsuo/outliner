@@ -1,5 +1,4 @@
 // Yjs-based client class providing a FluidClient-like surface
-// @ts-nocheck
 import type { Awareness } from "y-protocols/awareness";
 import type { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
