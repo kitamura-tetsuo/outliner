@@ -74,6 +74,7 @@ if [ $# -eq 0 ]; then
 
   npm run test:unit
   npm run test:integration
+  ensure_codex_services
   npm run test:e2e --
   exit 0
 fi

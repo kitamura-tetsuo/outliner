@@ -97,9 +97,8 @@ let results = $derived.by(() => {
                 if (typeof (items as any).toArray === 'function') {
                     const toArrayResult = (items as any).toArray();
                     if (toArrayResult && toArrayResult.length) {
-                        arr.push(...toArrayResult);
+                        return toArrayResult;
                     }
-                    if (arr.length) return arr;
                 }
             } catch (e) {
                 // Continue to next source

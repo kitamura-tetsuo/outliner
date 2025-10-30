@@ -42,10 +42,19 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
     });
 
     test("Environment variables are available in test environment", async ({ page }) => {
-        // Node.js環境での環境変数テスト
-        expect(process.env.VITE_FIREBASE_API_KEY).toBeTruthy();
-        expect(process.env.VITE_FIREBASE_PROJECT_ID).toBeTruthy();
-        expect(process.env.VITE_TOKEN_VERIFY_URL).toBeTruthy();
+        // Navigate to page first to ensure environment is loaded
+        await page.goto("/min");
+        // Wait for environment variables to be available
+        await page.waitForFunction(() => (window as any).testEnvVars !== undefined);
+
+        // 環境変数がブラウザコンテキストで使用可能であることを確認
+        const envVars = await page.evaluate(() => {
+            return (window as any).testEnvVars;
+        });
+
+        expect(envVars.VITE_FIREBASE_API_KEY).toBeTruthy();
+        expect(envVars.VITE_FIREBASE_PROJECT_ID).toBeTruthy();
+        expect(envVars.VITE_TOKEN_VERIFY_URL).toBeTruthy();
 
         // ページアクセスのテスト
         await page.goto("/");
@@ -64,14 +73,19 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
     });
 
     test("Environment variables configuration is correct", async ({ page }) => {
-        // 環境変数の値をテスト
-        const apiKey = process.env.VITE_FIREBASE_API_KEY;
-        const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
-        const tokenVerifyUrl = process.env.VITE_TOKEN_VERIFY_URL;
+        // Navigate to page first to ensure environment is loaded
+        await page.goto("/min");
+        // Wait for environment variables to be available
+        await page.waitForFunction(() => (window as any).testEnvVars !== undefined);
 
-        expect(apiKey).toBe("test-api-key");
-        expect(projectId).toBe("test-project-id");
-        expect(tokenVerifyUrl).toBe("http://localhost:7091/verify");
+        // 環境変数の値をテスト（ブラウザコンテキストから取得）
+        const envVars = await page.evaluate(() => {
+            return (window as any).testEnvVars;
+        });
+
+        expect(envVars.VITE_FIREBASE_API_KEY).toBe("test-api-key");
+        expect(envVars.VITE_FIREBASE_PROJECT_ID).toBe("test-project-id");
+        expect(envVars.VITE_TOKEN_VERIFY_URL).toBe("http://localhost:7091/verify");
 
         // 基本的なページアクセス確認
         await page.goto("/");

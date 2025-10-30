@@ -102,7 +102,7 @@ setup_environment_files
 
 # Generate emulator-specific Firebase configuration (AFTER environment is loaded)
 echo "Generating emulator-specific Firebase configuration..."
-node "${SCRIPT_DIR}/setup-emulator-config.js"
+node "${SCRIPT_DIR}/setup-emulator-config.cjs"
 
 # Install required tools and dependencies on first run
 if [ "$SKIP_INSTALL" -eq 0 ]; then

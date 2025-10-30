@@ -13,7 +13,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         // Increase timeout for test setup
         test.setTimeout(120000);
 
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.prepareTestEnvironment(page, _testInfo, [
             "一行目: テスト",
             "二行目: Yjs 反応",
             "三行目: 並び順チェック",
