@@ -1,7 +1,8 @@
 import pino from "pino";
 
 // 環境変数からAPIサーバーURLを取得（デフォルトはlocalhostの認証サーバー）
-const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";
 
 // ブラウザのコンソールAPIを使用するかどうか
 // テスト環境では常にtrueを返すようにする
@@ -112,7 +113,7 @@ function getCallerFile(): string {
         }
 
         return "unknown";
-    } catch (error) {
+    } catch {
         return "unknown";
     } finally {
         // 元の prepareStackTrace を復元
@@ -266,7 +267,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                     );
                                 }
                             }
-                        } catch (e) {
+                        } catch {
                             // スタイル適用に失敗した場合は通常のフォーマットで表示
                             (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                 `[${file}] [${prop.toUpperCase()}]:`,

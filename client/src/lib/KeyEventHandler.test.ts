@@ -60,7 +60,7 @@ describe("KeyEventHandler.handlePaste", () => {
 
     const createEvent = (text: string): ClipboardEvent => {
         const clipboardData = {
-            getData: vi.fn((_format: string) => text),
+            getData: vi.fn((_: string) => text),
         } as unknown as DataTransfer;
         return {
             clipboardData,

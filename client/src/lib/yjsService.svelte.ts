@@ -98,7 +98,7 @@ export async function createNewProject(containerName: string): Promise<YjsClient
 
 export async function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
     log("yjsService", "info", `Get client by title: ${projectTitle}`);
-    for (const [k, [client, project]] of registry.entries()) {
+    for (const [_k, [client, project]] of registry.entries()) {
         if (project?.title === projectTitle && client) return client;
     }
     return undefined;

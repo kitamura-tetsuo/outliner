@@ -112,7 +112,10 @@ export class KeyEventHandler {
         });
 
         // Ctrl+X cut
-        add("x", true, false, false, _event => {
+        add("x", true, false, false, (
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            _event: KeyboardEvent,
+        ) => {
             // カットイベントを手動で発生させる
             const clipboardEvent = new ClipboardEvent("cut", {
                 clipboardData: new DataTransfer(),
@@ -448,7 +451,7 @@ export class KeyEventHandler {
                             const prevLen = typeof items.length === "number" ? items.length : 0;
                             try {
                                 items.addNode(userId);
-                            } catch (_e) {
+                            } catch {
                                 try {
                                     items.addNode(userId, prevLen);
                                 } catch {}
@@ -551,7 +554,7 @@ export class KeyEventHandler {
                         const prevLen = typeof items.length === "number" ? items.length : 0;
                         try {
                             items.addNode(userId);
-                        } catch (_e) {
+                        } catch {
                             try {
                                 items.addNode(userId, prevLen);
                             } catch {}
@@ -914,7 +917,10 @@ export class KeyEventHandler {
     /**
      * IMEのcompositionstartイベントを処理する
      */
-    static handleCompositionStart(_event: CompositionEvent) {
+    static handleCompositionStart(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        _event: CompositionEvent,
+    ) {
         KeyEventHandler.lastCompositionLength = 0;
     }
     /**

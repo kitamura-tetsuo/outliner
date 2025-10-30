@@ -8,8 +8,8 @@ export function getProjectTitle(containerId: string): string {
 
         const mod = require("./yjsService.svelte");
         return typeof mod.getProjectTitle === "function" ? mod.getProjectTitle(containerId) : "";
-    } catch (_e) {
-        // Fallback for tests or when the module isn’t available.
+    } catch {
+        // Fallback for tests or when the module isn't available.
         return "";
     }
 }

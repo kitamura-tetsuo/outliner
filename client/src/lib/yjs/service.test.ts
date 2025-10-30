@@ -44,7 +44,7 @@ describe("yjsService", () => {
                 this.users = { ...this.users, [u.userId]: u };
             },
             removeUser(id: string) {
-                const { [id]: _r, ...rest } = this.users;
+                const { [id]: _, ...rest } = this.users;
                 this.users = rest;
             },
         };
@@ -69,11 +69,11 @@ describe("yjsService", () => {
                 this.selections[userId] = { userId };
             },
             clearCursorAndSelection(userId: string) {
-                const { [userId]: _r, ...rest } = this.cursors;
+                const { [userId]: _, ...rest } = this.cursors;
                 this.cursors = rest;
             },
             clearSelectionForUser(userId: string) {
-                const { [userId]: _r, ...rest } = this.selections;
+                const { [userId]: _, ...rest } = this.selections;
                 this.selections = rest;
             },
         };
