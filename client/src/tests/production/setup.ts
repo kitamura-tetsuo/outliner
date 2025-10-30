@@ -23,7 +23,7 @@ beforeAll(async () => {
         } else {
             console.log("✓ SvelteKit server (Production) is running");
         }
-    } catch (error) {
+    } catch (_error) {
         console.warn("⚠️ SvelteKit server (Production) is not running - skipping proxy tests");
     }
 });

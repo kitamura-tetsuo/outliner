@@ -157,7 +157,7 @@ describe("yjs presence", () => {
         const states2 = p1c2.awareness.getStates();
         if (states2.size <= 1 && Array.from(states2.values()).every(s => !s.presence?.cursor?.itemId)) {
             // Find the presence state from first awareness and copy it to second if not synchronized
-            for (const [clientId, state] of states1.entries()) {
+            for (const [_clientId, state] of states1.entries()) {
                 if (state.presence?.cursor?.itemId === "root") {
                     // Manually set the presence state on the second client
                     p1c2.awareness.setLocalState(state);
