@@ -37,7 +37,7 @@ class GeneralStore {
                 let next: any = null;
                 const len = items?.length ?? 0;
                 for (let i = 0; i < len; i++) {
-                    const p = items.at ? items.at(i) : items[i];
+                    const p = items.at ? items.at(i) : ((items as unknown) as any[])[i];
                     const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                     if (String(t).toLowerCase() === String(title).toLowerCase()) {
                         next = p;
@@ -135,7 +135,7 @@ class GeneralStore {
         const project = v;
         const ymap = (project as any)?.ydoc?.getMap?.("orderedTree");
         const subscribe = createSubscriber((_update) => {
-            const handler = (_events: Array<Y.YEvent<unknown>>, _tr?: Y.Transaction) => {
+            const handler = (_events: Array<Y.YEvent<Y.AbstractType<any>>>, _tr?: Y.Transaction) => {
                 try {
                     saveProjectSnapshot(project);
                 } catch (_e) {
@@ -159,7 +159,7 @@ class GeneralStore {
         this.pages = {
             get current() {
                 subscribe();
-                return project.items as unknown[];
+                return project.items as unknown;
             },
         } as { current: unknown[]; };
     }

@@ -26,7 +26,7 @@ function saveLayout() {
                     y: n.y !== undefined ? n.y : (actualPosition ? actualPosition[1] : undefined),
                     fixed: n.fixed || false,
                 };
-            }).filter(n => n.x !== undefined && n.y !== undefined), // 位置が定義されているノードのみ保存
+            }).filter((n: any) => n.x !== undefined && n.y !== undefined), // 位置が定義されているノードのみ保存
         };
 
         console.log("Saving layout data:", layoutData);

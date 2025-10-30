@@ -336,11 +336,12 @@ export class UserManager {
                         userId: userCredential.user.uid,
                     });
                     return;
-                } catch (firebaseError) {
-                    logger.warn("[UserManager] Firebase Auth login failed:", firebaseError?.message);
+                } catch (firebaseError: unknown) {
+                    const error = firebaseError as { message?: string; code?: string; };
+                    logger.warn("[UserManager] Firebase Auth login failed:", error?.message);
 
                     // ユーザーが存在しない場合は作成を試みる
-                    if (firebaseError?.code === "auth/user-not-found") {
+                    if (error?.code === "auth/user-not-found") {
                         try {
                             logger.info("[UserManager] User not found, attempting to create user");
                             const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);

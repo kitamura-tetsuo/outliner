@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createProjectConnection } from "../../../lib/yjs/connection";
+import { createProjectConnection, type PageConnection } from "../../../lib/yjs/connection";
 import { Project } from "../../../schema/app-schema";
 
 // TODO: Re-enable this test once YJS mocking is properly implemented
@@ -88,7 +88,7 @@ describe("yjs presence", () => {
 
         // Wait for page connections to be established on both clients
         // Since adding a page creates subdocs asynchronously, we need to wait for the connection to be established
-        const p1c1 = await new Promise(resolve => {
+        const p1c1 = await new Promise<PageConnection | null>(resolve => {
             let resolved = false;
             const check = () => {
                 const conn = c1.getPageConnection(page.id);
@@ -109,7 +109,7 @@ describe("yjs presence", () => {
             }, 10000);
         });
 
-        const p1c2 = await new Promise(resolve => {
+        const p1c2 = await new Promise<PageConnection | null>(resolve => {
             let resolved = false;
             const check = () => {
                 const conn = c2.getPageConnection(page.id);
@@ -155,10 +155,16 @@ describe("yjs presence", () => {
         // In a real environment, this would happen through WebSockets
         const states1 = p1c1.awareness.getStates();
         const states2 = p1c2.awareness.getStates();
-        if (states2.size <= 1 && Array.from(states2.values()).every(s => !s.presence?.cursor?.itemId)) {
+        if (
+            states2.size <= 1 && Array.from(states2.values()).every((s: unknown) => {
+                const state = s as { presence?: { cursor?: { itemId?: string; }; }; };
+                return !state.presence?.cursor?.itemId;
+            })
+        ) {
             // Find the presence state from first awareness and copy it to second if not synchronized
             for (const [clientId, state] of states1.entries()) {
-                if (state.presence?.cursor?.itemId === "root") {
+                const typedState = state as { presence?: { cursor?: { itemId?: string; }; }; };
+                if (typedState.presence?.cursor?.itemId === "root") {
                     // Manually set the presence state on the second client
                     p1c2.awareness.setLocalState(state);
                     break;
@@ -172,7 +178,10 @@ describe("yjs presence", () => {
         const states = p1c2.awareness.getStates();
         console.log("States size:", states.size);
         console.log("States values:", Array.from(states.values()));
-        const received = Array.from(states.values()).some(s => s.presence?.cursor?.itemId === "root");
+        const received = Array.from(states.values()).some((s: unknown) => {
+            const state = s as { presence?: { cursor?: { itemId?: string; }; }; };
+            return state.presence?.cursor?.itemId === "root";
+        });
         console.log("Received:", received);
         expect(received).toBe(true);
         p1c1.dispose();

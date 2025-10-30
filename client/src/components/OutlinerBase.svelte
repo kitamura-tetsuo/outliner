@@ -105,11 +105,11 @@ onMount(() => {
                         get() {
                             const arr = ensureCommentsArrayOn(this);
                             if (!arr) {
-                                const fallback = new Y.Array();
+                                const fallback = new Y.Array<Y.Map<CommentValueType>>();
                                 try { (this as any)?.value?.set?.("comments", fallback); } catch {}
                                 return new Comments(fallback);
                             }
-                            return new Comments(arr);
+                            return new Comments(arr as Y.Array<Y.Map<CommentValueType>>);
                         },
                     });
                 }
@@ -173,11 +173,11 @@ onMount(() => {
                                 get() {
                                     const arr = ensureCommentsArrayOn(this);
                                     if (!arr) {
-                                        const fallbackArr = new Y.Array();
+                                        const fallbackArr = new Y.Array<Y.Map<CommentValueType>>();
                                         try { (this as any)?.value?.set?.("comments", fallbackArr); } catch {}
                                         return new Comments(fallbackArr);
                                     }
-                                    return new Comments(arr);
+                                    return new Comments(arr as Y.Array<Y.Map<CommentValueType>>);
                                 },
                             });
                         }

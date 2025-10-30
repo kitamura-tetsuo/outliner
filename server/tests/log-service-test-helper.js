@@ -22,9 +22,12 @@ if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
     process.env.GCLOUD_PROJECT = "test-project";
 }
 
-admin.initializeApp({
-    projectId: "test-project",
-});
+// Check if Firebase is already initialized to avoid duplicate app error
+if (admin.apps.length === 0) {
+    admin.initializeApp({
+        projectId: "test-project",
+    });
+}
 
 // データベース接続設定（テスト用）
 const db = admin.firestore();

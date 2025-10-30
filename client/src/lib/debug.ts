@@ -32,10 +32,10 @@ export function setupGlobalDebugFunctions() {
 
 declare global {
     interface Window {
-        getFluidTreeDebugData?: () => any;
-        getFluidTreePathData?: (path?: string) => any;
-        getYjsTreeDebugData?: () => any;
-        getYjsTreePathData?: (path?: string) => any;
+        getFluidTreeDebugData?: () => Record<string, unknown>;
+        getFluidTreePathData?: (path?: string) => unknown;
+        getYjsTreeDebugData?: () => Record<string, unknown>;
+        getYjsTreePathData?: (path?: string) => Record<string, unknown>;
         __FLUID_SERVICE__?: typeof yjsHighService;
         __FLUID_STORE__?: typeof yjsStore;
         __USER_MANAGER__?: typeof userManager;
@@ -98,8 +98,8 @@ if (process.env.NODE_ENV === "test") {
 
         window.getYjsTreePathData = function(path?: string) {
             const data = window.getYjsTreeDebugData?.();
-            if (!path) return data;
-            return path.split(".").reduce((prev: any, curr: string) => prev?.[curr], data);
+            if (!path) return data as Record<string, unknown>;
+            return path.split(".").reduce((prev: any, curr: string) => prev?.[curr], data) as Record<string, unknown>;
         };
 
         logger.debug("Global debug functions initialized");

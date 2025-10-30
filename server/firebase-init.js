@@ -92,7 +92,7 @@ if (!serviceAccount.project_id && !isEmulatorEnvironment) {
     process.exit(1);
 }
 
-async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
+async function waitForFirebaseEmulator(maxRetries = 60, initialDelay = 2000, maxDelay = 15000) {
     const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST
         || process.env.FIRESTORE_EMULATOR_HOST
         || process.env.FIREBASE_EMULATOR_HOST;
@@ -194,9 +194,8 @@ async function initializeFirebase() {
             const apps = admin.apps;
             if (apps.length) {
                 logger.info("Firebase Admin SDK instance already exists, deleting...");
-                admin.app().delete().then(() => {
-                    logger.info("Previous Firebase Admin SDK instance deleted");
-                });
+                await admin.app().delete();
+                logger.info("Previous Firebase Admin SDK instance deleted");
             }
         } catch (deleteError) {
             logger.warn(`Previous Firebase Admin SDK instance deletion failed: ${deleteError.message}`);
