@@ -11,7 +11,8 @@ export class TestHelpersNoAuth {
      */
     public static async prepareTestEnvironmentNoAuth(
         page: Page,
-        _testInfo: any,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        _testInfo: import("@playwright/test").TestInfo,
     ): Promise<{ success: boolean; message: string; }> {
         console.log("TestHelper: Starting navigation to home page (No Auth)");
         console.log("TestHelper: Page URL before navigation:", page.url());
