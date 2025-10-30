@@ -14,7 +14,7 @@ test.describe("Schedule Management", () => {
     });
 
     test("shows newly created schedule", async ({ page }, testInfo) => {
-        await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+        await TestHelpers.navigateToTestProjectPage(page, [], testInfo);
         const pageId = await TestHelpers.getItemIdByIndex(page, 0);
         const idToken = await page.evaluate(async () => {
             const userManager = (window as any).__USER_MANAGER__;

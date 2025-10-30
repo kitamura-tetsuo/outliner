@@ -1,7 +1,6 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-// @ts-nocheck
 /** @feature MOB-0003
  *  Title   : Mobile Bottom Action Toolbar
  *  Source  : docs/client-features.yaml
