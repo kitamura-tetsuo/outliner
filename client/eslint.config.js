@@ -152,6 +152,7 @@ export default ts.config(
             "**/*.e2e-spec.{js,ts,tsx}",
         ],
         rules: {
+            "@typescript-eslint/no-explicit-any": "off", // E2E tests often use dynamic browser APIs that require 'any'
             "no-restricted-imports": [
                 "error",
                 {

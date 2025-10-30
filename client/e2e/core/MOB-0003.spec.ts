@@ -40,8 +40,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly via editorOverlayStore
         await page.evaluate((itemId) => {
-            const store =
-                (window as { editorOverlayStore?: { setActiveItem?: (id: string) => void; }; }).editorOverlayStore;
+            const store = (window as any).editorOverlayStore;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
                 console.log("MOB-0003: Active item set to", itemId);
@@ -91,8 +90,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly to the indented item
         await page.evaluate((itemId) => {
-            const store =
-                (window as { editorOverlayStore?: { setActiveItem?: (id: string) => void; }; }).editorOverlayStore;
+            const store = (window as any).editorOverlayStore;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
@@ -114,8 +112,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            const store =
-                (window as { editorOverlayStore?: { setActiveItem?: (id: string) => void; }; }).editorOverlayStore;
+            const store = (window as any).editorOverlayStore;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
@@ -136,8 +133,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            const store =
-                (window as { editorOverlayStore?: { setActiveItem?: (id: string) => void; }; }).editorOverlayStore;
+            const store = (window as any).editorOverlayStore;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
@@ -155,8 +151,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            const store =
-                (window as { editorOverlayStore?: { setActiveItem?: (id: string) => void; }; }).editorOverlayStore;
+            const store = (window as any).editorOverlayStore;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
