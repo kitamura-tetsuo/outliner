@@ -41,15 +41,37 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         // 最初のアイテムが表示されるまで待機
         await page.waitForSelector(".outliner-item", { timeout: 5000 });
 
+        // プロジェクトとページが準備完了するまで待機
+        await page.waitForFunction(() => {
+            try {
+                const w: any = window as any;
+                const generalStore = w.generalStore;
+                const hasProject = !!(generalStore?.project);
+                const hasPages = !!(generalStore?.pages);
+                return hasProject && hasPages;
+            } catch {
+                return false;
+            }
+        }, { timeout: 10000 });
+
         // 1. テストデータを作成
         await page.locator(".outliner-item").first().click();
         await page.keyboard.type("First line of text");
 
+        // Yjs同期を待つ
+        await page.waitForTimeout(200);
+
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second line of text");
 
+        // Yjs同期を待つ
+        await page.waitForTimeout(200);
+
         await page.keyboard.press("Enter");
         await page.keyboard.type("Third line of text");
+
+        // Yjs同期を待つ
+        await page.waitForTimeout(200);
 
         // 最初のアイテムをクリック
         await page.locator(".outliner-item").first().click();
@@ -87,6 +109,9 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
 
         // 3. テキストをコピー
         await page.keyboard.press("Control+c");
+
+        // コピー操作完了を待つ
+        await page.waitForTimeout(300);
 
         // コピーされたテキストを確認
         const copiedText = await page.evaluate(() => {
@@ -153,8 +178,8 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         // 6. ペースト
         await page.keyboard.press("Control+v");
 
-        // 少し待機してペースト処理を確実にする
-        await page.waitForTimeout(300);
+        // ペースト操作完了を待つ
+        await page.waitForTimeout(500);
 
         // ペーストが成功したことを確認（グローバル変数をチェック）
         const pastedText = await page.evaluate(() => {
