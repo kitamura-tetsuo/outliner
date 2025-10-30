@@ -1,5 +1,8 @@
 import pino from "pino";
 
+// Type definition for Console to avoid no-undef errors
+type Console = typeof console;
+
 // 環境変数からAPIサーバーURLを取得（デフォルトはlocalhostの認証サーバー）
 const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";
 

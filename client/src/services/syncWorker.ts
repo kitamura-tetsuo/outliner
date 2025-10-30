@@ -1,5 +1,4 @@
 // sql.js lacks type definitions in this project context. Use any.
-import type { Database } from "sql.js";
 
 export interface Op {
     table: string;
@@ -8,8 +7,10 @@ export interface Op {
     value: any;
 }
 
+type EventListener = (...args: any[]) => void;
+
 export class SyncWorker {
-    private listeners: Map<string, Function[]> = new Map();
+    private listeners: Map<string, EventListener[]> = new Map();
 
     // 'sql.js' does not ship proper TypeScript types. Treat the database
     // instance as `any` so compilation succeeds.
@@ -22,7 +23,7 @@ export class SyncWorker {
         this.emit("applied", op);
     }
 
-    on(event: string, listener: Function) {
+    on(event: string, listener: EventListener) {
         if (!this.listeners.has(event)) {
             this.listeners.set(event, []);
         }
