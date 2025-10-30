@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias self-reference prevention", () => {
     test.beforeEach(async ({ page }, _testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.prepareTestEnvironment(page, _testInfo);
     });
 
     test("prevent self-reference alias creation", async ({ page }) => {
