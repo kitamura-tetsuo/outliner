@@ -42,7 +42,7 @@ onMount(async () => {
     // 0) セッションに固定されたpageIdがあれば最優先で使用（E2E安定化のため）
     try {
         if (typeof window !== "undefined") {
-            const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
+            const key = `schedule:lastPageId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
             const saved = window.sessionStorage?.getItem(key) || "";
             if (saved) {
                 pageId = String(saved);
@@ -89,7 +89,7 @@ onMount(async () => {
     if (!pageId) {
         try {
             if (typeof window !== "undefined") {
-                const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
+                const key = `schedule:lastPageId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
                 const saved = window.sessionStorage?.getItem(key) || "";
                 if (saved) {
                     pageId = String(saved);
@@ -107,7 +107,7 @@ onMount(async () => {
     // 安定化: 解決したpageIdをセッションに保存し、リロード時に同一IDを再利用
     try {
         if (typeof window !== "undefined") {
-            const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
+            const key = `schedule:lastPageId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
             window.sessionStorage?.setItem(key, String(pageId));
             console.log("Schedule page: Saved session pageId=", pageId);
         }

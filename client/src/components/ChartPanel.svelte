@@ -14,27 +14,34 @@ let chartDiv: HTMLDivElement;
 let chart: echarts.ECharts | undefined;
 let hasData = $state(false);
 let isInitialized = $state(false);
+let cleanup: (() => void) | undefined;
 
-onMount(async () => {
-    try {
-        await initDb();
-        isInitialized = true;
-        
-        chart = echarts.init(chartDiv);
-        
-        // If an item is provided and has a chartQuery, run it
-        if (item && item.chartQuery) {
-            runQuery(item.chartQuery);
+onMount(() => {
+    (async () => {
+        try {
+            await initDb();
+            isInitialized = true;
+
+            chart = echarts.init(chartDiv);
+
+            // If an item is provided and has a chartQuery, run it
+            if (item && item.chartQuery) {
+                runQuery(item.chartQuery);
+            }
+
+            const unsub = queryStore.subscribe(update);
+            cleanup = () => {
+                unsub();
+                chart?.dispose();
+            };
+        } catch (error) {
+            console.error("Error initializing chart:", error);
         }
-        
-        const unsub = queryStore.subscribe(update);
-        return () => {
-            unsub();
-            chart?.dispose();
-        };
-    } catch (error) {
-        console.error("Error initializing chart:", error);
-    }
+    })();
+
+    return () => {
+        cleanup?.();
+    };
 });
 
 // Function to run the item's query when needed
@@ -67,7 +74,7 @@ function update(data: any) {
     const option = {
         xAxis: { type: "category", data: data.rows.map((_: any, i: number) => i.toString()) },
         yAxis: { type: "value" },
-        series: columns.map(col => ({ type: "bar", data: data.rows.map((r: any) => r[col]) })),
+        series: columns.map((col: string) => ({ type: "bar", data: data.rows.map((r: any) => r[col]) })),
     };
     chart.setOption(option, { notMerge: true });
 }

@@ -194,9 +194,8 @@ async function initializeFirebase() {
             const apps = admin.apps;
             if (apps.length) {
                 logger.info("Firebase Admin SDK instance already exists, deleting...");
-                admin.app().delete().then(() => {
-                    logger.info("Previous Firebase Admin SDK instance deleted");
-                });
+                await admin.app().delete();
+                logger.info("Previous Firebase Admin SDK instance deleted");
             }
         } catch (deleteError) {
             logger.warn(`Previous Firebase Admin SDK instance deletion failed: ${deleteError.message}`);

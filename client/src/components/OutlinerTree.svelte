@@ -1441,7 +1441,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
             items.addNode(currentUser, targetIndex + i);
-            const newItem = items[targetIndex + i];
+            const newItem = items.at(targetIndex + i);
             if (newItem) {
                 newItem.text = lines[i];
             }
@@ -1453,7 +1453,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
             items.addNode(currentUser, targetIndex + i);
-            const newItem = items[targetIndex + i];
+            const newItem = items.at(targetIndex + i);
             if (newItem) {
                 newItem.text = lines[i];
             }
@@ -1466,7 +1466,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
             items.addNode(currentUser, targetIndex + i);
-            const newItem = items[targetIndex + i];
+            const newItem = items.at(targetIndex + i);
             if (newItem) {
                 newItem.text = lines[i];
             }

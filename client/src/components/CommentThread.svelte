@@ -77,8 +77,8 @@ onMount(() => {
                     // Only update renderCommentsState if it's different from the Yjs state
                     // This prevents the observer from overwriting UI changes when they're more recent
                     const currentRenderState = renderCommentsState;
-                    const needsUpdate = plainComments.length !== currentRenderState.length || 
-                        plainComments.some((yjsComment, index) => {
+                    const needsUpdate = plainComments.length !== currentRenderState.length ||
+                        plainComments.some((yjsComment: any, index: number) => {
                             const currentComment = currentRenderState[index];
                             return !currentComment || currentComment.id !== yjsComment.id || currentComment.text !== yjsComment.text;
                         });

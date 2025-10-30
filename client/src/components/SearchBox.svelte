@@ -273,8 +273,9 @@ onMount(() => {
         const toolbar = document.querySelector('[data-testid="main-toolbar"]') as HTMLElement | null;
         console.info(logPrefix, "main-toolbar styles", styles(toolbar));
     } catch {}
-    // schedule a few ticks to help early reactivity with global generalStore
-    for (let i = 0; i < 8; i++) setTimeout(() => (refreshTick += 1), i * 50);
+    // schedule refresh ticks to help early reactivity with global generalStore
+    // Increase ticks and interval to ensure pages are loaded before search
+    for (let i = 0; i < 20; i++) setTimeout(() => (refreshTick += 1), i * 100);
 });
 </script>
 

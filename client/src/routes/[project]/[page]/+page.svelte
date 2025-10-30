@@ -888,15 +888,9 @@ function capturePageIdForSchedule() {
         if (typeof window === "undefined") return;
         const pg: any = store.currentPage as any;
         if (!pg) return;
-        const children: any = pg?.items as any;
-        const len = children?.length ?? 0;
-        let id = pg?.id || "";
-        if (len > 0) {
-            const first = children?.at ? children.at(0) : children?.[0];
-            id = first?.id || id;
-        }
+        const id = pg?.id || "";
         if (id) {
-            const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
+            const key = `schedule:lastPageId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
             window.sessionStorage?.setItem(key, String(id));
             console.log("[+page.svelte] capturePageIdForSchedule saved:", key, id);
         }

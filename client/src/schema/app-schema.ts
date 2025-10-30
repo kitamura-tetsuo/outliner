@@ -4,6 +4,7 @@ import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types";
+import { getYMapNumber, getYMapString } from "../types/yjs-types";
 
 export type Comment = {
     id: string;
@@ -153,22 +154,22 @@ export class Item {
     }
 
     get id(): string {
-        return this.value.get("id");
+        return getYMapString(this.value as unknown as Y.Map<unknown>, "id", "");
     }
     set id(v: string) {
         this.value.set("id", v ?? "");
     }
 
     get author(): string {
-        return this.value.get("author") ?? "";
+        return getYMapString(this.value as unknown as Y.Map<unknown>, "author", "");
     }
 
     get created(): number {
-        return this.value.get("created") ?? 0;
+        return getYMapNumber(this.value as unknown as Y.Map<unknown>, "created", 0);
     }
 
     get lastChanged(): number {
-        return this.value.get("lastChanged") ?? 0;
+        return getYMapNumber(this.value as unknown as Y.Map<unknown>, "lastChanged", 0);
     }
 
     get text(): string {
@@ -182,7 +183,8 @@ export class Item {
 
     // componentType stored in Y.Map ("table" | "chart" | undefined)
     get componentType(): string | undefined {
-        return this.value.get("componentType");
+        const val = this.value.get("componentType");
+        return typeof val === "string" ? val : undefined;
     }
     set componentType(v: string | undefined) {
         this.value.set("componentType", v);
@@ -191,7 +193,8 @@ export class Item {
 
     // chart query stored in Y.Map
     get chartQuery(): string | undefined {
-        return this.value.get("chartQuery");
+        const val = this.value.get("chartQuery");
+        return typeof val === "string" ? val : undefined;
     }
     set chartQuery(v: string | undefined) {
         this.value.set("chartQuery", v);
@@ -200,7 +203,8 @@ export class Item {
 
     // alias target id stored in Y.Map
     get aliasTargetId(): string | undefined {
-        return this.value.get("aliasTargetId");
+        const val = this.value.get("aliasTargetId");
+        return typeof val === "string" ? val : undefined;
     }
     set aliasTargetId(v: string | undefined) {
         this.value.set("aliasTargetId", v);
@@ -215,7 +219,8 @@ export class Item {
     }
 
     get votes(): Y.Array<string> {
-        return this.value.get("votes");
+        const val = this.value.get("votes");
+        return val as Y.Array<string>;
     }
 
     toggleVote(user: string) {
@@ -378,14 +383,14 @@ export class Item {
     }
 
     get items(): Items {
-        return wrapArrayLike(new Items(this.ydoc, this.tree!, this.key!));
+        return wrapArrayLike(new Items(this.ydoc as Y.Doc, this.tree!, this.key!));
     }
 
     // 親の子集合（Items）。ルート直下は null
     get parent(): Items | null {
         const parentKey = this.tree!.getNodeParentFromKey(this.key!);
         if (!parentKey) return null;
-        return new Items(this.ydoc, this.tree!, parentKey);
+        return new Items(this.ydoc as Y.Doc, this.tree!, parentKey);
     }
 
     // 親内でのインデックス（親がない場合は -1）
@@ -419,15 +424,14 @@ export class Items implements Iterable<Item> {
 
     at(index: number): Item | undefined {
         const key = this.childrenKeys()[index];
-        return key ? new Item(this.ydoc, this.tree, key) : undefined;
+        return key ? new Item(this.ydoc as Y.Doc, this.tree, key) : undefined;
     }
 
     [Symbol.iterator](): Iterator<Item> {
         let index = 0;
-        const self = this;
         return {
-            next(): IteratorResult<Item> {
-                const it = self.at(index++);
+            next: (): IteratorResult<Item> => {
+                const it = this.at(index++);
                 if (it) return { value: it, done: false };
                 return { value: undefined!, done: true };
             },
@@ -479,7 +483,7 @@ export class Items implements Iterable<Item> {
             }
         }
 
-        return new Item(this.ydoc, this.tree, nodeKey);
+        return new Item(this.ydoc as Y.Doc, this.tree, nodeKey);
     }
 
     addAlias(targetId: string, author: string, index?: number): Item {

@@ -1366,7 +1366,7 @@ export class TestHelpers {
                         const proj = encodeURIComponent(gs?.project?.title ?? "");
                         const parts = (window.location.pathname || "/").split("/").filter(Boolean);
                         const pageTitle = decodeURIComponent(parts[1] || "");
-                        const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
+                        const key = `schedule:lastPageId:${proj}:${encodeURIComponent(pageTitle)}`;
                         window.sessionStorage?.setItem(key, chosen);
                     } catch {}
                     return chosen;
@@ -1381,7 +1381,7 @@ export class TestHelpers {
                     const proj = encodeURIComponent(gs?.project?.title ?? "");
                     const parts = (window.location.pathname || "/").split("/").filter(Boolean);
                     const pageTitle = decodeURIComponent(parts[1] || "");
-                    const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
+                    const key = `schedule:lastPageId:${proj}:${encodeURIComponent(pageTitle)}`;
                     window.sessionStorage?.setItem(key, chosen);
                 }
             } catch {}

@@ -190,7 +190,7 @@ export async function initializeBrowserPage(
 
     // Wait for UserManager to be available
     await page.waitForFunction(
-        () => !!(window as any).__USER_MANAGER__,
+        () => !!(window as unknown as { __USER_MANAGER__?: unknown; }).__USER_MANAGER__,
         null,
         { timeout: 10000 },
     );
@@ -198,7 +198,10 @@ export async function initializeBrowserPage(
     // Authenticate if required
     if (requireAuth) {
         await page.evaluate(async () => {
-            const mgr = (window as any).__USER_MANAGER__;
+            const w = window as unknown as {
+                __USER_MANAGER__?: { loginWithEmailPassword?: (email: string, password: string) => Promise<void>; };
+            };
+            const mgr = w.__USER_MANAGER__;
             await mgr?.loginWithEmailPassword?.(
                 "test@example.com",
                 "password",
@@ -207,7 +210,10 @@ export async function initializeBrowserPage(
 
         // Wait for authentication to complete
         await page.waitForFunction(
-            () => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(),
+            () => {
+                const w = window as unknown as { __USER_MANAGER__?: { getCurrentUser?: () => unknown; }; };
+                return !!w.__USER_MANAGER__?.getCurrentUser?.();
+            },
             null,
             { timeout: 10000 },
         );

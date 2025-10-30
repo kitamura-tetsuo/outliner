@@ -271,7 +271,7 @@ onMount(async () => {
 
         if (isAuthenticated) {
             // デバッグ関数を初期化
-            setupGlobalDebugFunctions(yjsService?.yjsHighService);
+            setupGlobalDebugFunctions();
         }
         else {
             // 認証状態の変更を監視
