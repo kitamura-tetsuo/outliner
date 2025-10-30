@@ -20,16 +20,16 @@ export class DataValidationHelpers {
             const labelBase = testInfo.title.replace(/[^a-z0-9_-]+/gi, "-");
             const label = `${labelBase}-auto-${Date.now()}`;
             await DataValidationHelpers.saveSnapshotsAndCompare(page, label);
-        } catch (e: unknown) {
+        } catch (e: any) {
             // Do not fail the test if snapshot saving fails
-            console.warn("[afterEach] snapshot skipped:", (e as Error)?.message ?? e);
+            console.warn("[afterEach] snapshot skipped:", e?.message ?? e);
         } finally {
             try {
                 // Check if page is still open before trying to dump logs
                 if (!page.isClosed()) {
                     // Dump E2E logs if present
                     const logs = await page.evaluate(() => {
-                        const w = window as unknown as { E2E_LOGS?: unknown; };
+                        const w: any = window as any;
                         return Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS.slice(-200) : [];
                     }, { timeout: 2000 });
                     if (Array.isArray(logs) && logs.length) {
@@ -62,7 +62,7 @@ export class DataValidationHelpers {
             await page.evaluate(() => {
                 try {
                     // Clear any existing E2E logs
-                    const w = window as unknown as { E2E_LOGS?: unknown[]; };
+                    const w: any = window as any;
                     if (Array.isArray(w.E2E_LOGS)) {
                         w.E2E_LOGS.length = 0;
                     }
@@ -165,15 +165,7 @@ export class DataValidationHelpers {
                 const store = (window as any).generalStore || (window as any).appStore;
                 return !!(store && store.project);
             }, { timeout: 5000 });
-        } catch (e: any) {
-            const errorMsg = String(e?.message ?? e);
-            // Handle specific error cases gracefully
-            if (
-                errorMsg.includes("Test ended") || errorMsg.includes("Target page, context or browser has been closed")
-            ) {
-                console.log("[saveSnapshotsAndCompare] Test ended or page closed, skipping snapshot");
-                return;
-            }
+        } catch (e) {
             console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", e?.message ?? e);
             return; // Skip snapshot if project is not available
         }
@@ -228,12 +220,7 @@ export class DataValidationHelpers {
                 };
             }, { timeout: 5000 });
         } catch (e) {
-            const msg = String(e?.message ?? e);
-            // Silently skip if page context is being destroyed
-            if (msg.includes("Test ended") || msg.includes("Execution context was destroyed")) {
-                return;
-            }
-            console.warn("[saveSnapshotsAndCompare] evaluate failed:", msg);
+            console.warn("[saveSnapshotsAndCompare] evaluate failed:", e?.message ?? e);
             return; // Skip snapshot if evaluation fails
         }
 

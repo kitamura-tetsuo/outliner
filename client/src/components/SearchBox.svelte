@@ -97,7 +97,7 @@ let results = $derived.by(() => {
                     if (toArrayResult) {
                         // Handle both arrays and array-like results from toArray()
                         if (Array.isArray(toArrayResult)) {
-                            arr.push(...toArrayResult);
+                            return toArrayResult;
                         } else if (toArrayResult.length !== undefined) {
                             // Handle array-like objects that aren't arrays
                             for (let i = 0; i < toArrayResult.length; i++) {

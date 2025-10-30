@@ -31,6 +31,10 @@ export default ts.config(
                 FrameRequestCallback: "readonly",
                 Console: "readonly",
                 NodeJS: "readonly",
+                // Playwright test globals
+                testInfo: "readonly",
+                // Type definitions for test files
+                CommentValueType: "readonly",
             },
         },
     },

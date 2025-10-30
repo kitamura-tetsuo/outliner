@@ -10,7 +10,7 @@ export class TestHelpers {
     // Structured logger: timestamp and delta from previous log (disabled by default; enable with E2E_VERBOSE_SLOG=1)
     private static __lastLogTs: number | null = null;
     private static readonly LOG_ENABLED: boolean = process.env.E2E_VERBOSE_SLOG === "1";
-    private static slog(msg: string, data?: unknown) {
+    private static slog(msg: string, data?: any) {
         if (!TestHelpers.LOG_ENABLED) return;
         const now = Date.now();
         const delta = TestHelpers.__lastLogTs == null ? 0 : (now - TestHelpers.__lastLogTs);
@@ -53,9 +53,9 @@ export class TestHelpers {
      */
     public static async prepareTestEnvironment(
         page: Page,
-        testInfo?: import("@playwright/test").TestInfo,
+        testInfo?: any,
         lines: string[] = [],
-        browser?: Browser,
+        _browser?: Browser,
         options?: { ws?: "force" | "disable" | "default"; },
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
@@ -75,9 +75,7 @@ export class TestHelpers {
                     console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
                 });
             }
-        } catch {
-            // Swallow errors to avoid failing test setup
-        }
+        } catch {}
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
         const wsMode = options?.ws ?? "default";
         await page.addInitScript((wsMode) => {
@@ -114,7 +112,7 @@ export class TestHelpers {
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
         // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, _browser);
     }
 
     /**
@@ -124,9 +122,9 @@ export class TestHelpers {
      */
     public static async prepareTestEnvironmentForProject(
         page: Page,
-        testInfo?: import("@playwright/test").TestInfo,
+        testInfo?: any,
         lines: string[] = [],
-        browser?: Browser,
+        _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
         await page.addInitScript(() => {
@@ -658,9 +656,9 @@ export class TestHelpers {
      */
     public static async navigateToTestProjectPage(
         page: Page,
-        testInfo?: import("@playwright/test").TestInfo,
+        testInfo?: any,
         lines: string[],
-        browser?: Browser,
+        _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
         TestHelpers.slog("navigateToTestProjectPage start");
@@ -1366,7 +1364,7 @@ export class TestHelpers {
                         const proj = encodeURIComponent(gs?.project?.title ?? "");
                         const parts = (window.location.pathname || "/").split("/").filter(Boolean);
                         const pageTitle = decodeURIComponent(parts[1] || "");
-                        const key = `schedule:lastPageId:${proj}:${encodeURIComponent(pageTitle)}`;
+                        const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
                         window.sessionStorage?.setItem(key, chosen);
                     } catch {}
                     return chosen;
@@ -1381,7 +1379,7 @@ export class TestHelpers {
                     const proj = encodeURIComponent(gs?.project?.title ?? "");
                     const parts = (window.location.pathname || "/").split("/").filter(Boolean);
                     const pageTitle = decodeURIComponent(parts[1] || "");
-                    const key = `schedule:lastPageId:${proj}:${encodeURIComponent(pageTitle)}`;
+                    const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
                     window.sessionStorage?.setItem(key, chosen);
                 }
             } catch {}
