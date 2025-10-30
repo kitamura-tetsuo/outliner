@@ -1229,43 +1229,54 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                 clientY: item.rect.top + (item.rect.height / 2), // アイテムの中央
             });
 
-            // 水平方向の位置を計算
-            const rect = textElement.getBoundingClientRect();
-            const absRelX = event.clientX - rect.left;
+            // Calculate absolute pixel positions for start and end of selection
+            const currentTextEl = document.querySelector(`[data-item-id="${model.id}"] .item-text`) as HTMLElement;
+            if (!currentTextEl) {
+                return;
+            }
+            const currentRect = currentTextEl.getBoundingClientRect();
 
-            // 文字単位での位置を計算
+            // Get average character width for the current item
             const span = document.createElement("span");
-            const style = window.getComputedStyle(textElement);
-            span.style.fontFamily = style.fontFamily;
-            span.style.fontSize = style.fontSize;
-            span.style.fontWeight = style.fontWeight;
-            span.style.letterSpacing = style.letterSpacing;
+            span.style.fontFamily = window.getComputedStyle(currentTextEl).fontFamily;
+            span.style.fontSize = window.getComputedStyle(currentTextEl).fontSize;
+            span.style.fontWeight = window.getComputedStyle(currentTextEl).fontWeight;
+            span.style.letterSpacing = window.getComputedStyle(currentTextEl).letterSpacing;
             span.style.whiteSpace = "pre";
             span.style.visibility = "hidden";
             span.style.position = "absolute";
             document.body.appendChild(span);
 
-            // Calculate average character width by measuring the first character
             span.textContent = "M";
             const avgCharWidth = span.getBoundingClientRect().width || 8;
-
             document.body.removeChild(span);
 
-            // Calculate start and end positions based on the drag range
-            // Convert the character-based startX and endX to pixel offsets
-            const startPixelOffset = startX * avgCharWidth;
-            const endPixelOffset = endX * avgCharWidth;
+            // Calculate absolute pixel positions for start and end
+            const startPixelPos = currentRect.left + (startX * avgCharWidth);
+            const endPixelPos = currentRect.left + (endX * avgCharWidth);
 
-            // Calculate positions relative to the selection start
-            const relStartX = absRelX - startPixelOffset;
-            const relEndX = absRelX - endPixelOffset;
+            // Calculate positions relative to this item's text element
+            const rect = textElement.getBoundingClientRect();
+            const relStartX = startPixelPos - rect.left;
+            const relEndX = endPixelPos - rect.left;
 
             // Find the closest character positions
+            const span2 = document.createElement("span");
+            const style = window.getComputedStyle(textElement);
+            span2.style.fontFamily = style.fontFamily;
+            span2.style.fontSize = style.fontSize;
+            span2.style.fontWeight = style.fontWeight;
+            span2.style.letterSpacing = style.letterSpacing;
+            span2.style.whiteSpace = "pre";
+            span2.style.visibility = "hidden";
+            span2.style.position = "absolute";
+            document.body.appendChild(span2);
+
             let startPos = 0;
             let minStartDist = Infinity;
             for (let i = 0; i <= textContent.length; i++) {
-                span.textContent = textContent.slice(0, i);
-                const w = span.getBoundingClientRect().width;
+                span2.textContent = textContent.slice(0, i);
+                const w = span2.getBoundingClientRect().width;
                 const d = Math.abs(w - relStartX);
                 if (d < minStartDist) {
                     minStartDist = d;
@@ -1276,8 +1287,8 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
             let endPos = 0;
             let minEndDist = Infinity;
             for (let i = 0; i <= textContent.length; i++) {
-                span.textContent = textContent.slice(0, i);
-                const w = span.getBoundingClientRect().width;
+                span2.textContent = textContent.slice(0, i);
+                const w = span2.getBoundingClientRect().width;
                 const d = Math.abs(w - relEndX);
                 if (d < minEndDist) {
                     minEndDist = d;
@@ -1285,7 +1296,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                 }
             }
 
-            document.body.removeChild(span);
+            document.body.removeChild(span2);
 
             // 計算した位置を使用
             itemStartOffset = Math.min(startPos, endPos);
