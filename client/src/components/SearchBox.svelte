@@ -17,10 +17,6 @@ let effectiveProject: Project | null = $derived.by(() => {
         if (cur) return cur;
         const gs = (window as any).generalStore;
         if (gs?.project) return gs.project as Project;
-        // Do NOT auto-create a project here. In tests this can create an empty
-        // project separate from the one prepared by TestHelpers, which breaks
-        // SearchBox results. Wait for store.project or global state instead.
-        // Keeping this block as a no-op fallback only.
     }
     return null;
 });
