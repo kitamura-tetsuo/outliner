@@ -95,8 +95,11 @@ let results = $derived.by(() => {
 
                 // Try toArray method if available
                 if (typeof (items as any).toArray === 'function') {
-                    const arr = (items as any).toArray();
-                    if (arr && arr.length) return arr;
+                    const toArrayResult = (items as any).toArray();
+                    if (toArrayResult && toArrayResult.length) {
+                        arr.push(...toArrayResult);
+                    }
+                    if (arr.length) return arr;
                 }
             } catch (e) {
                 // Continue to next source

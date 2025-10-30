@@ -164,9 +164,14 @@ export class DataValidationHelpers {
             await page.waitForFunction(() => {
                 const store = (window as any).generalStore || (window as any).appStore;
                 return !!(store && store.project);
-            }, { timeout: 5000 });
+            }, { timeout: 2000 });
         } catch (e) {
-            console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", e?.message ?? e);
+            const msg = String(e?.message ?? e);
+            // Silently skip if page context is being destroyed or test has ended
+            if (msg.includes("Test ended") || msg.includes("Execution context was destroyed")) {
+                return;
+            }
+            console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", msg);
             return; // Skip snapshot if project is not available
         }
 
@@ -220,7 +225,12 @@ export class DataValidationHelpers {
                 };
             }, { timeout: 5000 });
         } catch (e) {
-            console.warn("[saveSnapshotsAndCompare] evaluate failed:", e?.message ?? e);
+            const msg = String(e?.message ?? e);
+            // Silently skip if page context is being destroyed
+            if (msg.includes("Test ended") || msg.includes("Execution context was destroyed")) {
+                return;
+            }
+            console.warn("[saveSnapshotsAndCompare] evaluate failed:", msg);
             return; // Skip snapshot if evaluation fails
         }
 

@@ -112,7 +112,7 @@ export class TestHelpers {
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
         // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, _browser);
     }
 
     /**
@@ -122,7 +122,7 @@ export class TestHelpers {
      */
     public static async prepareTestEnvironmentForProject(
         page: Page,
-        testInfo?: any,
+        _testInfo?: any,
         lines: string[] = [],
         _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {

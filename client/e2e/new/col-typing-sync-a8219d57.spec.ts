@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 import { ensureOutlinerItemCount } from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 
-test("typing sync between two browsers", async ({ browser }, _testInfo) => {
+test("typing sync between two browsers", async ({ browser }, testInfo) => {
     const projectName = `Test Project Sync ${Date.now()}`;
     const pageName = `sync-test-page-${Date.now()}`;
 
