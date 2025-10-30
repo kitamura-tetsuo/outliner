@@ -104,6 +104,15 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
     return undefined;
 }
 
+export function getProjectTitle(containerId: string): string {
+    for (const [k, [_client, project]] of registry.entries()) {
+        if (k.includes(containerId) && project?.title) {
+            return project.title;
+        }
+    }
+    return "";
+}
+
 export async function createClient(containerId?: string): Promise<YjsClient> {
     // In Yjs-only mode, containerId is optional. We create if missing.
     const user = userManager.getCurrentUser();

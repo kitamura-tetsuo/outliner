@@ -58,7 +58,6 @@ test.describe("SBD-ebaa03c1: search dropdown visibility", () => {
         // Clear the input and click outside the search input to hide the dropdown
         await searchInput.clear();
         await page.locator("body").click(); // Click on body to ensure we're outside the search box
-        const dropdown = page.locator(".page-search-box ul");
         await expect(dropdown).not.toBeVisible();
     });
 });

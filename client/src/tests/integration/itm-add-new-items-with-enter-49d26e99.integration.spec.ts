@@ -6,6 +6,9 @@ import { Cursor } from "../../lib/Cursor";
 import { Project } from "../../schema/app-schema";
 import { store as generalStore } from "../../stores/store.svelte";
 
+// Type definition to avoid no-undef errors
+type FrameRequestCallback = (time: number) => void;
+
 class ResizeObserver {
     observe() {}
     unobserve() {}

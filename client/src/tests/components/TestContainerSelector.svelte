@@ -16,13 +16,13 @@ let { onContainerSelected = () => {} }: Props = $props();
 
 // イベントレス: $state/$derived 依存で再計算
 let userContainer = $derived.by(() => {
-    (firestoreStore as any).ucVersion; // 依存関係
+    void (firestoreStore as any).ucVersion; // 依存関係
     return firestoreStore.userContainer;
 });
 
 // containerStore.containers は getter なので、userContainer の変更依存で再計算
 let containers = $derived.by(() => {
-    userContainer;
+    void userContainer;
     return containerStore.containers;
 });
 </script>

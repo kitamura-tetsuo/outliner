@@ -72,9 +72,8 @@ class GeneralStore {
 
     // Array 変更（push/spliceなど）でも UI を更新させるための Proxy ラッパー
     public wrapUserContainer(value: UserContainer): UserContainer {
-        const store = this;
         const arrayHandler: ProxyHandler<string[]> = {
-            get(target, prop, receiver) {
+            get: (target, prop, receiver) => {
                 const v = Reflect.get(target, prop, receiver);
                 // 破壊的メソッドをフック
                 if (

@@ -2,6 +2,14 @@ import "@testing-library/jest-dom/vitest";
 import "fake-indexeddb/auto";
 import { vi } from "vitest";
 
+// Type definitions to avoid no-undef errors
+type FrameRequestCallback = (time: number) => void;
+// eslint-disable-next-line @typescript-eslint/no-namespace
+declare namespace NodeJS {
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    interface Timeout {}
+}
+
 // Define self for Firebase compatibility
 Object.defineProperty(globalThis, "self", {
     value: globalThis,
