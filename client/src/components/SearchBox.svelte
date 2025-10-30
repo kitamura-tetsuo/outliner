@@ -80,26 +80,38 @@ let results = $derived.by(() => {
                     for (const p of items as any) {
                         if (p) arr.push(p);
                     }
-                    if (arr.length) return arr;
                 }
 
-                // Try array-like access
-                if (typeof (items as any).length === 'number') {
+                // Try array-like access if iterator didn't yield results
+                if (!arr.length && typeof (items as any).length === 'number') {
                     const len = (items as any).length;
                     for (let i = 0; i < len; i++) {
                         const v = (items as any).at ? (items as any).at(i) : (items as any)[i];
                         if (typeof v !== 'undefined' && v !== null) arr.push(v);
                     }
-                    if (arr.length) return arr;
                 }
 
-                // Try toArray method if available
-                if (typeof (items as any).toArray === 'function') {
+                // Try toArray method if other methods didn't yield results
+                if (!arr.length && typeof (items as any).toArray === 'function') {
                     const toArrayResult = (items as any).toArray();
-                    if (toArrayResult && toArrayResult.length) {
-                        return toArrayResult;
+                    if (toArrayResult) {
+                        // Handle both arrays and array-like results from toArray()
+                        if (Array.isArray(toArrayResult)) {
+                            arr.push(...toArrayResult);
+                        } else if (toArrayResult.length !== undefined) {
+                            // Handle array-like objects that aren't arrays
+                            for (let i = 0; i < toArrayResult.length; i++) {
+                                const v = toArrayResult.at ? toArrayResult.at(i) : toArrayResult[i];
+                                if (typeof v !== 'undefined' && v !== null) {
+                                    arr.push(v);
+                                }
+                            }
+                        }
                     }
                 }
+
+                // Only return if we found items from this source
+                if (arr.length) return arr;
             } catch (e) {
                 // Continue to next source
                 continue;

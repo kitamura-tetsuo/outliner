@@ -96,6 +96,16 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         await page.keyboard.up("Shift");
         await page.keyboard.up("Alt");
 
+        // 矩形選択が安定するまで待機
+        await page.waitForFunction(() => {
+            if (!(window as any).editorOverlayStore) {
+                return false;
+            }
+            const selections = Object.values((window as any).editorOverlayStore.selections);
+            const boxSelections = selections.filter((s: any) => s.isBoxSelection);
+            return boxSelections.length === 1;
+        }, { timeout: 2000 });
+
         // 矩形選択が作成されたことを確認
         const boxSelectionCount1 = await page.evaluate(() => {
             if (!(window as any).editorOverlayStore) {
@@ -110,8 +120,11 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         // 3. テキストをコピー
         await page.keyboard.press("Control+c");
 
-        // コピー操作完了を待つ
-        await page.waitForTimeout(300);
+        // コピー操作完了を待つ（テキストが設定されるまで待機）
+        await page.waitForFunction(() => {
+            const copiedText = (window as any).lastCopiedText;
+            return copiedText && copiedText.length > 0;
+        }, { timeout: 3000 });
 
         // コピーされたテキストを確認
         const copiedText = await page.evaluate(() => {
@@ -164,6 +177,16 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         await page.keyboard.up("Shift");
         await page.keyboard.up("Alt");
 
+        // 矩形選択が安定するまで待機
+        await page.waitForFunction(() => {
+            if (!(window as any).editorOverlayStore) {
+                return false;
+            }
+            const selections = Object.values((window as any).editorOverlayStore.selections);
+            const boxSelections = selections.filter((s: any) => s.isBoxSelection);
+            return boxSelections.length === 1;
+        }, { timeout: 2000 });
+
         // 矩形選択が再度作成されたことを確認
         const boxSelectionCount3 = await page.evaluate(() => {
             if (!(window as any).editorOverlayStore) {
@@ -178,8 +201,11 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         // 6. ペースト
         await page.keyboard.press("Control+v");
 
-        // ペースト操作完了を待つ
-        await page.waitForTimeout(500);
+        // ペースト操作完了を待つ（テキストが設定されるまで待機）
+        await page.waitForFunction(() => {
+            const pastedText = (window as any).lastPastedText;
+            return pastedText && pastedText.length > 0;
+        }, { timeout: 3000 });
 
         // ペーストが成功したことを確認（グローバル変数をチェック）
         const pastedText = await page.evaluate(() => {
