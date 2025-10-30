@@ -19,7 +19,7 @@ scripts/setup.sh
 2. Playwright の逐次実行（Codex 環境向け）
 
 ```bash
-scripts/run-e2e-progress-for-codex.sh 1
+scripts/run-e2e-progress.sh 1
 ```
 
 Codex 環境ではタイムアウト回避のため、E2E を 1 ファイルずつ実行します。
