@@ -5,7 +5,7 @@ import { store as generalStore } from "../../stores/store.svelte";
 import * as Y from "yjs";
 import { onMount } from "svelte";
 
-let proj = $state<Project | undefined>(undefined);
+let _proj = $state<Project | undefined>(undefined);
 let pageItem = $state<any>(undefined);
 
 const PROJECT_ID = "yjs-outliner-test";
@@ -18,7 +18,7 @@ onMount(async () => {
     const pg = p.addPage("Untitled", "tester");
     while ((pg.items as any)?.length < 3) pg.items.addNode("tester");
   }
-  proj = p;
+  const _proj = p;
   pageItem = (p.items as any).at(0);
   generalStore.project = p as any;
   generalStore.currentPage = pageItem;

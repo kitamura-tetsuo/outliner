@@ -21,19 +21,6 @@ let editingId = $state("");
 let editingTime = $state("");
 let isDownloading = $state(false);
 
-function collectAllItemIds(node: any, out: string[]) {
-    if (!node) return;
-    const id = node?.id || "";
-    if (id) out.push(String(id));
-    const children: any = node?.items as any;
-    const len = children?.length ?? 0;
-    for (let i = 0; i < len; i++) {
-        const child = children?.at ? children.at(i) : children?.[i];
-        if (child) collectAllItemIds(child, out);
-    }
-}
-
-
 onMount(async () => {
     const params = $page.params as { project: string; page: string; };
     project = decodeURIComponent(params.project || "");

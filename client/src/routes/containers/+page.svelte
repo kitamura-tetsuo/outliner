@@ -5,7 +5,6 @@ import {
     onMount,
 } from "svelte";
 import {
-    UserManager,
     userManager,
 } from "../../auth/UserManager";
 import AuthComponent from "../../components/AuthComponent.svelte";
