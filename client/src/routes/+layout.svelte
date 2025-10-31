@@ -360,7 +360,7 @@ onMount(async () => {
                     };
 
                     // Patch both EventTarget and Element to maximize coverage
-                    // @ts-expect-error
+                    // @ts-expect-error - Patching prototype methods for E2E tests
                     EventTarget.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchEventTarget, event); };
                     Element.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchElement, event); };
 
@@ -431,7 +431,7 @@ onMount(async () => {
                                         return f;
                                     }
                                 });
-                                // @ts-expect-error
+                                // @ts-expect-error - E2E test needs to patch File constructor
                                 (window as any).File = Wrapped;
                             }
                         }
@@ -459,7 +459,7 @@ onMount(async () => {
                                         return dt;
                                     }
                                 });
-                                // @ts-expect-error
+                                // @ts-expect-error - E2E test needs to patch DataTransfer constructor
                                 (window as any).DataTransfer = WrappedDT;
                             }
                         }
