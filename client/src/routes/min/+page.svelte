@@ -28,7 +28,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 // Initialize Firestore without storing the instance
 getFirestore(app);
-const functions = getFunctions(app);
+const _functions = getFunctions(app);
 
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();

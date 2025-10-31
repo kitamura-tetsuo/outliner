@@ -158,7 +158,7 @@ async function loadProjectAndPage() {
     } catch {}
 
             // 既存の暫定ページ内容（同一ドキュメント外）を保持（E2Eでの事前シードの引き継ぎ）
-            const preAttachPage: any = store.currentPage as any;
+            const _preAttachPage: any = store.currentPage as any;
 
         logger.info(`loadProjectAndPage: Set isLoading=true, calling getYjsClientByProjectTitle`);
 
@@ -210,8 +210,8 @@ async function loadProjectAndPage() {
                 const proj = client.getProject?.();
                 if (proj) {
                     let appliedPendingImport = false;
+                    let pendingImport: any[] | null = null;
                     try {
-                        let pendingImport: any[] | null = null;
                         try {
                             const win: any = window as any;
                             const byTitle = win?.__PENDING_IMPORTS__;
@@ -576,7 +576,7 @@ async function loadProjectAndPage() {
                         // Final safety: even if SKIP_TEST_CONTAINER_SEED is true, ensure at least some children exist for E2E stability
                         try {
                             const ref: any = (store.currentPage as any);
-                            const cpItems: any = ref?.items as any;
+                            const _cpItems: any = ref?.items as any;
                             const isTestEnv = (
                                 import.meta.env.MODE === "test"
                                 || import.meta.env.VITE_IS_TEST === "true"
@@ -644,7 +644,6 @@ async function loadProjectAndPage() {
                 if (snapshot) {
                     const hydrated = snapshotToProject(snapshot);
                     store.project = hydrated as any;
-                    project = hydrated as any;
                     if (!yjsStore.yjsClient) {
                         try {
                             yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as any;
