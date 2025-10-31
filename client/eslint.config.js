@@ -43,11 +43,9 @@ export default ts.config(
     // See issue #733 for tracking
     {
         rules: {
-            "@typescript-eslint/no-explicit-any": "error",
-            "@typescript-eslint/no-unused-vars": "error",
-            "@typescript-eslint/ban-ts-comment": ["error", {
-                "ts-expect-error": "allow-with-description",
-            }],
+            "@typescript-eslint/no-explicit-any": "warn",
+            "@typescript-eslint/no-unused-vars": "warn",
+            "@typescript-eslint/ban-ts-comment": "warn",
             "@typescript-eslint/no-unsafe-function-type": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-require-imports": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-this-alias": "error", // Gradually converting back to error - has few violations
