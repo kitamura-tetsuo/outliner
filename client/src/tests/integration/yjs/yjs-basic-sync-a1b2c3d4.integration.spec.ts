@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { yjsStore } from "../../../stores/yjsStore.svelte";
+import "../../../stores/yjsStore.svelte";
 
 /**
  * Integration test mirroring e2e/new/yjs-basic-sync-a1b2c3d4.spec.ts

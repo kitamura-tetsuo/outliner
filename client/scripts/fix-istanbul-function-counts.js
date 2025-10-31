@@ -71,7 +71,7 @@ for (const file of coverageFiles) {
     let data;
     try {
         data = JSON.parse(text);
-    } catch (e) {
+    } catch (_e) {
         console.error(`JSON のパースに失敗しました: ${filePath}`);
         continue;
     }

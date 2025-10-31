@@ -30,7 +30,7 @@ const mockUserManager = {
 
 // Setup all mocks at once
 export function setupMocks({
-    firebase = {},
+    _firebase = {},
     firestore = {},
 } = {}) {
     // Mock userManager instance

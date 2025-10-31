@@ -76,7 +76,7 @@ for (const file of coverageFiles) {
     let data;
     try {
         data = JSON.parse(text);
-    } catch (e) {
+    } catch (_e) {
         console.warn(`[MCR] JSON のパースに失敗したためスキップします: ${filePath}`);
         console.warn(`${e}`);
         continue;
