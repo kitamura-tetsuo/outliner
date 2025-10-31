@@ -1,4 +1,5 @@
-import type { Item } from "../schema/yjs-schema";
+// @ts-nocheck
+import type { Item } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import {

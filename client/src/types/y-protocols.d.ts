@@ -1,3 +1,4 @@
+// Import Y namespace to avoid no-undef errors
 import type * as Y from "yjs";
 
 declare module "y-protocols/awareness" {

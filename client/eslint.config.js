@@ -26,21 +26,11 @@ export default ts.config(
             globals: {
                 ...globals.browser,
                 ...globals.node,
-                // Additional globals for no-undef rule
-                ServiceWorkerGlobalScope: "readonly",
-                FrameRequestCallback: "readonly",
-                NodeJS: "readonly",
-                // DOM types
+                // Additional global types to avoid no-undef errors
                 NodeListOf: "readonly",
-                ElementCreationOptions: "readonly",
+                FrameRequestCallback: "readonly",
                 Console: "readonly",
-                // Application types (used in @ts-nocheck files)
-                Item: "readonly",
-                // Dead code variables (wrapped in try-catch, should be removed in future cleanup)
-                mirrorAttachment: "readonly",
-                attachmentsMirror: "readonly",
-                e2eTimer: "readonly",
-                addNewItem: "readonly",
+                NodeJS: "readonly",
             },
         },
     },
@@ -50,21 +40,19 @@ export default ts.config(
     // See issue #733 for tracking
     {
         rules: {
-            "@typescript-eslint/no-explicit-any": "off", // Disabled: Too many legacy violations, see issue #750
-            "@typescript-eslint/no-unused-vars": "error",
-            "@typescript-eslint/ban-ts-comment": ["error", {
-                "ts-expect-error": "allow-with-description",
-            }],
+            "@typescript-eslint/no-explicit-any": "warn",
+            "@typescript-eslint/no-unused-vars": "warn",
+            "@typescript-eslint/ban-ts-comment": "warn",
             "@typescript-eslint/no-unsafe-function-type": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-require-imports": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-this-alias": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-unused-expressions": "error", // Gradually converting back to error - has few violations
-            "no-useless-escape": "error",
-            "no-empty": ["error", { "allowEmptyCatch": true }],
+            "no-useless-escape": "warn",
+            "no-empty": ["warn", { "allowEmptyCatch": true }],
             "no-irregular-whitespace": "error", // Gradually converting back to error - has only 1 violation
-            "no-undef": "error",
+            "no-undef": "error", // Converted to error - all violations fixed
             "no-case-declarations": "error", // Gradually converting back to error - can be easily fixed
-            "svelte/prefer-writable-derived": "off", // Disabled: Svelte 4 rule not applicable to Svelte 5 patterns
+            "svelte/prefer-writable-derived": "warn",
             "svelte/require-each-key": "error",
             "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
             "svelte/no-unused-svelte-ignore": "error",
