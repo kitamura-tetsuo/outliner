@@ -53,7 +53,7 @@ export default ts.config(
             "no-undef": "error", // Converted to error - all violations fixed
             "no-case-declarations": "error", // Gradually converting back to error - can be easily fixed
             "svelte/prefer-writable-derived": "error", // Converted to error - all violations fixed
-            "svelte/require-each-key": "warn",
+            "svelte/require-each-key": "error",
             "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
             "svelte/no-unused-svelte-ignore": "warn",
             "svelte/no-unused-props": "warn",
