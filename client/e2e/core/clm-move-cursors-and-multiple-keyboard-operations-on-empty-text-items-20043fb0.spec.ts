@@ -110,17 +110,17 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 19. 2番目のアイテムのテキスト内容を確認
         // アイテムの数を確認
-        const itemCount = await page.locator(".outliner-item").count();
-        console.log(`アイテムの数: ${itemCount}`);
+        const _itemCount = await page.locator(".outliner-item").count();
+        console.log(`アイテムの数: ${_itemCount}`);
 
         // 2番目のアイテムが存在するかどうかを確認
-        if (itemCount >= 2) {
+        if (_itemCount >= 2) {
             // 2番目のアイテムが表示されるまで待機（タイムアウトを短くする）
             try {
                 await page.waitForSelector(".outliner-item:nth-child(2)", { timeout: 5000 });
-                const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
-                console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
-                expect(secondItemText).toContain("Test text 2"); // 2番目のアイテムに入力したテキストが含まれていることを確認
+                const _secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+                console.log(`2番目のアイテムのテキスト: ${_secondItemText}`);
+                expect(_secondItemText).toContain("Test text 2"); // 2番目のアイテムに入力したテキストが含まれていることを確認
             } catch {
                 console.log("2番目のアイテムが見つかりませんでした。テストを続行します。");
                 // エラーが発生しても、テストは失敗とせずに続行

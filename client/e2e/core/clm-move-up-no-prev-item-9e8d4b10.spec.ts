@@ -30,8 +30,8 @@ test.describe("CLM-0004: Move up", () => {
         expect(itemId).toBeTruthy();
 
         // カーソルをアイテムの途中に設定
-        const initialItemText = (await firstItem.locator(".item-text").textContent()) || "";
-        await TestHelpers.setCursor(page, itemId!, Math.floor(initialItemText.length / 2));
+        const _initialItemText = (await firstItem.locator(".item-text").textContent()) || "";
+        await TestHelpers.setCursor(page, itemId!, Math.floor(_initialItemText.length / 2));
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);

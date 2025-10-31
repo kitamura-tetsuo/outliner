@@ -16,7 +16,10 @@ async function waitForHealth(request: any, attempts = 10) {
                 return response;
             }
         } catch (error) {
-            console.log(`Attempt ${i + 1}/${attempts} failed:`, error instanceof Error ? error.message : String(error));
+            console.log(
+                `Attempt ${i + 1}/${attempts} failed:`,
+                error instanceof Error ? error.message : String(error),
+            );
         }
         await new Promise(res => setTimeout(res, 1000));
     }

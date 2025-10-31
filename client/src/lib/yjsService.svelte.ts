@@ -7,7 +7,7 @@ import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
 import { getLogger, log } from "./logger";
 
-const logger = getLogger();
+const _logger = getLogger();
 
 interface ClientKey {
     type: "container" | "user";

@@ -145,7 +145,8 @@ test.describe("Multi-Page Schedule Management", () => {
         });
 
         // Wait for the page to be created and allow time for synchronization
-        await page.waitForTimeout(1000);
+        // Increased timeout from 1000ms to 5000ms to ensure Yjs has time to synchronize the new page
+        await page.waitForTimeout(5000);
 
         // Open schedule for first page
         const firstPageId = await page.evaluate(() => {

@@ -66,7 +66,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
                 return { success: true, chartCreated: true };
             } catch (error) {
-                return { success: false, error: error.message };
+                return { success: false, _error: error.message };
             }
         });
 
@@ -147,7 +147,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                     return { success: false, error: "Store not available" };
                 }
             } catch (error) {
-                return { success: false, error: error.message };
+                return { success: false, _error: error.message };
             }
         });
 
@@ -163,7 +163,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                 return option && option.series && option.series[0] && option.series[0].data
                     && option.series[0].data.length >= 1;
             } catch (error) {
-                console.error("Error checking graph option:", error);
+                console.error("Authentication error:", error);
                 return false;
             }
         }, { timeout: 10000 });
@@ -286,7 +286,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
                 return { success: true, nodesCount: nodes.length, linksCount: links.length };
             } catch (error) {
-                return { success: false, error: error.message };
+                return { success: false, _error: error.message };
             }
         });
 
@@ -303,7 +303,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                     && option.series[0].data && option.series[0].data.length >= 2
                     && option.series[0].links && option.series[0].links.length >= 1;
             } catch (error) {
-                console.error("Error checking updated graph:", error);
+                console.error("Authentication error:", error);
                 return false;
             }
         }, { timeout: 15000 });
@@ -319,7 +319,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                     links: opt.series[0].links.length,
                 };
             } catch (error) {
-                return { error: error.message };
+                return { _error: error.message };
             }
         });
 

@@ -82,7 +82,6 @@ test.describe("CLM-0005: 下へ移動", () => {
         // Get the expected text content of the first item before splitting
         // When Enter is pressed on the second line, "First line" remains in first item and "Second line" goes to the new item
         const initialItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
-        const initialItemText = await initialItem.locator(".item-text").textContent();
 
         // 2つ目のアイテムを追加
         await page.keyboard.press("Enter");
@@ -92,7 +91,7 @@ test.describe("CLM-0005: 下へ移動", () => {
         await page.waitForTimeout(500);
 
         // Get the text content again after creating the second item
-        const initialItemTextAfter = await initialItem.locator(".item-text").textContent();
+        const _initialItemTextAfter = await initialItem.locator(".item-text").textContent();
 
         // 1つ目のアイテムの最後の行に戻る
         await page.keyboard.press("Escape"); // 編集モードを一旦終了
@@ -120,16 +119,13 @@ test.describe("CLM-0005: 下へ移動", () => {
         const secondItem = page.locator(".outliner-item").filter({ hasText: "Second item" });
         await secondItem.waitFor({ state: "visible" });
 
-        // 2つ目のアイテムのIDを取得
-        const secondItemId = await secondItem.evaluate(el => el.getAttribute("data-item-id"));
-
         // 新しいアイテムのテキストを取得
         const newItemText = await secondItem.locator(".item-text").textContent();
 
         // 異なるアイテムに移動していることを確認
         // After the split, the first item should contain "First line"
-        expect(initialItemTextAfter).toContain("First line");
-        expect(initialItemTextAfter).not.toContain("Second line");
+        expect(_initialItemTextAfter).toContain("First line");
+        expect(_initialItemTextAfter).not.toContain("Second line");
 
         // The new item should contain the moved text and the newly typed text
         expect(newItemText).toContain("Second line");
@@ -182,7 +178,7 @@ test.describe("CLM-0005: 下へ移動", () => {
         // 初期カーソル位置を取得
         // Instead of relying on data-offset which might not be updated correctly in all cases,
         // we'll get the text content of the item and compare before/after states
-        const initialItemText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text")
+        const _initialItemText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text")
             .textContent();
 
         // 下矢印キーを押下（次のアイテムがないので同じアイテムの末尾に移動するはず）
@@ -195,7 +191,7 @@ test.describe("CLM-0005: 下へ移動", () => {
             .textContent();
 
         // Text should remain unchanged since we're just moving the cursor, not modifying content
-        expect(currentItemText).toEqual(initialItemText);
+        expect(currentItemText).toEqual(_initialItemText);
 
         // カーソルが同じアイテム内にあることを確認
         const itemText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text")

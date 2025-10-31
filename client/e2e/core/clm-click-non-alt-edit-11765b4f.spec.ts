@@ -55,9 +55,9 @@ test.describe("CLM-0001: クリックで編集モードに入る", () => {
         expect(isFocused).toBe(true);
 
         // カーソルが表示されるまで待機
-        const cursorVisible = await TestHelpers.waitForCursorVisible(page, 30000);
-        console.log("Cursor visible:", cursorVisible);
-        expect(cursorVisible).toBe(true);
+        const _cursorVisible = await TestHelpers.waitForCursorVisible(page, 30000);
+        console.log("Cursor visible:", _cursorVisible);
+        expect(_cursorVisible).toBe(true);
 
         // カーソル情報を取得して検証
         const cursorData = await CursorValidator.getCursorData(page);

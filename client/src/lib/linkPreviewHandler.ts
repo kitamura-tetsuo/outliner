@@ -49,7 +49,8 @@ export function pageExists(pageName: string, projectName?: string): boolean {
 
     // ページ名が一致するページを検索
     for (const page of store.pages.current) {
-        if (page.text.toLowerCase() === pageName.toLowerCase()) {
+        const pageData = page as any;
+        if (pageData.text.toLowerCase() === pageName.toLowerCase()) {
             return true;
         }
     }
@@ -67,8 +68,9 @@ function findPageByName(name: string): Item | null {
 
     // ページ名が一致するページを検索
     for (const page of store.pages.current) {
-        if (page.text.toLowerCase() === name.toLowerCase()) {
-            return page;
+        const pageData = page as any;
+        if (pageData.text.toLowerCase() === name.toLowerCase()) {
+            return pageData;
         }
     }
 
@@ -310,8 +312,9 @@ function addLinkEventListeners(element: Element): void {
     const hasListeners = element.getAttribute("data-link-listeners") === "true";
 
     if (!hasListeners) {
-        element.addEventListener("mouseenter", handleLinkMouseEnter);
-        element.addEventListener("mouseleave", handleLinkMouseLeave);
+        const htmlElement = element as HTMLElement;
+        htmlElement.addEventListener("mouseenter", handleLinkMouseEnter);
+        htmlElement.addEventListener("mouseleave", handleLinkMouseLeave);
 
         // リスナーが設定されたことを示すフラグを設定
         element.setAttribute("data-link-listeners", "true");

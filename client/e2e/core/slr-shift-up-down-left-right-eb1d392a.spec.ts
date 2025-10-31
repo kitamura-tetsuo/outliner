@@ -44,7 +44,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         // 選択前のテキスト内容を取得
         const activeItemId = await TestHelpers.getActiveItemId(page);
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
-        const initialText = await activeItem.locator(".item-text").textContent();
+        const _initialText = await activeItem.locator(".item-text").textContent();
 
         // Shift + 右矢印キーを押下
         await page.keyboard.press("Shift+ArrowRight");

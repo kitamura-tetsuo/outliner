@@ -33,14 +33,14 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 3) return;
 
-            const secondItemId = items[1].getAttribute("data-item-id");
+            const _secondItemId = items[1].getAttribute("data-item-id");
             const thirdItemId = items[2].getAttribute("data-item-id");
 
-            if (!secondItemId || !thirdItemId) return;
+            if (!_secondItemId || !thirdItemId) return;
 
             // 選択範囲を設定
             store.setSelection({
-                startItemId: secondItemId,
+                startItemId: _secondItemId,
                 startOffset: 0,
                 endItemId: thirdItemId,
                 endOffset: "Third item text".length,

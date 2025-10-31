@@ -29,9 +29,9 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
         }
 
         // カーソルが表示されるまで待機
-        const cursorVisible = await TestHelpers.waitForCursorVisible(page, 30000);
-        console.log("Cursor visible for input test:", cursorVisible);
-        expect(cursorVisible).toBe(true);
+        const _cursorVisible = await TestHelpers.waitForCursorVisible(page, 30000);
+        console.log("Cursor visible for input test:", _cursorVisible);
+        expect(_cursorVisible).toBe(true);
 
         // スクリーンショットを撮影（クリック後）
         await page.screenshot({ path: "client/test-results/CLM-0001-input-after-click.png" });

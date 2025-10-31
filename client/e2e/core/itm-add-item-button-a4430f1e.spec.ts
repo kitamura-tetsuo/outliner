@@ -19,7 +19,7 @@ test.describe("ITM-0002: Add item via button", () => {
 
     test("clicking add item button appends new item", async ({ page }) => {
         // アイテム追加前のアイテム数を取得
-        const itemCountBefore = await page.locator(".outliner-item").count();
+        const _itemCountBefore = await page.locator(".outliner-item").count();
 
         // アイテム追加ボタンをクリック
         await page.click('button:has-text("アイテム追加")');
@@ -28,9 +28,9 @@ test.describe("ITM-0002: Add item via button", () => {
         await page.waitForTimeout(1000);
 
         // アイテム追加後のアイテム数を取得
-        const itemCountAfter = await page.locator(".outliner-item").count();
+        const _itemCountAfter = await page.locator(".outliner-item").count();
 
         // アイテムが追加されたことを確認
-        expect(itemCountAfter).toBeGreaterThan(itemCountBefore);
+        expect(_itemCountAfter).toBeGreaterThan(_itemCountBefore);
     });
 });

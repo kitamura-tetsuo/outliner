@@ -45,7 +45,7 @@ export class TestHelpersNoAuth {
                 message: "Environment prepared without authentication",
             };
         } catch (error) {
-            console.error("TestHelper: Failed to prepare environment:", error);
+            console.error("Authentication error:", error);
             return {
                 success: false,
                 message: `Failed to prepare environment: ${error}`,
@@ -68,7 +68,7 @@ export class TestHelpersNoAuth {
 
             return true;
         } catch (error) {
-            console.error("TestHelper: Basic element verification failed:", error);
+            console.error("Authentication error:", error);
             return false;
         }
     }
@@ -109,7 +109,7 @@ export class TestHelpersNoAuth {
                 elements,
             };
         } catch (error) {
-            console.error("TestHelper: Error finding outliner elements:", error);
+            console.error("Authentication error:", error);
             return {
                 found: false,
                 elements: [],

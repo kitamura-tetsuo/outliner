@@ -66,8 +66,8 @@ test.describe("テキスト追加機能テスト", () => {
     test("既存アイテムにUI経由でテキストを追加できる", async ({ page }) => {
         // 既存のアイテムを取得（ページタイトル以外の最初のアイテム）
         const items = page.locator(".outliner-item[data-item-id]");
-        const itemCount = await items.count();
-        expect(itemCount).toBeGreaterThan(0);
+        const _itemCount = await items.count();
+        expect(_itemCount).toBeGreaterThan(0);
 
         // 最初のアイテムをクリックして編集モードに入る
         const firstItem = items.first();

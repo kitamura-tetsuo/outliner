@@ -23,9 +23,9 @@ test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => 
         console.log("Clicked item content for last line test");
 
         // カーソルが表示されるまで待機
-        const cursorVisible = await TestHelpers.waitForCursorVisible(page, 30000);
-        console.log("Cursor visible for last line test:", cursorVisible);
-        expect(cursorVisible).toBe(true);
+        const _cursorVisible = await TestHelpers.waitForCursorVisible(page, 30000);
+        console.log("Cursor visible for last line test:", _cursorVisible);
+        expect(_cursorVisible).toBe(true);
 
         // アクティブなアイテムIDを取得
         const itemId = await TestHelpers.getActiveItemId(page);

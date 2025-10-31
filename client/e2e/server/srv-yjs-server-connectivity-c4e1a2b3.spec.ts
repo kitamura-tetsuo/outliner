@@ -38,7 +38,7 @@ test.describe("Yjs server", () => {
                     };
 
                     ws.onerror = (error) => {
-                        console.error("WebSocket error event:", error);
+                        console.error("Authentication error:", error);
                         // In some cases, we might not get detailed error info from browser security
                         resolve({
                             connected: false,

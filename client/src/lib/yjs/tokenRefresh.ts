@@ -14,9 +14,17 @@ export function refreshAuthAndReconnect(provider: WebsocketProvider): () => Prom
                     return;
                 }
                 // disconnect 後でも確実に再接続を試みる（有効時のみ）
-                if (p.wsconnected !== true) p.connect();
+                if (p.wsconnected !== true) {
+                    try {
+                        p.connect();
+                    } catch (e) {
+                        console.warn("[tokenRefresh] Failed to reconnect:", e);
+                    }
+                }
             }
-        } catch {}
+        } catch (e) {
+            console.warn("[tokenRefresh] Error during auth refresh:", e);
+        }
     };
 }
 

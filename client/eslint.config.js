@@ -36,7 +36,7 @@ export default ts.config(
     {
         rules: {
             "@typescript-eslint/no-explicit-any": "warn",
-            "@typescript-eslint/no-unused-vars": "warn",
+            "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
             "@typescript-eslint/ban-ts-comment": "warn",
             "@typescript-eslint/no-unsafe-function-type": "warn",
             "@typescript-eslint/no-require-imports": "warn",

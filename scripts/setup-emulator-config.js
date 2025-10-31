@@ -3,8 +3,11 @@
  * 本番環境では静的ファイル配信、エミュレータ環境ではlocalhost:7090にリダイレクト
  */
 
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const configPath = path.join(__dirname, "..", "firebase.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));

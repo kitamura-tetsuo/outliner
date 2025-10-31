@@ -420,7 +420,7 @@ export class TestHelpers {
                         };
                     } catch (error) {
                         console.error("Error getting cursor data:", error);
-                        return { error: error instanceof Error ? error.message : "Unknown error" };
+                        return { error: error.message || "Unknown error" };
                     }
                 };
 
@@ -447,7 +447,7 @@ export class TestHelpers {
                         }
                         return result;
                     } catch (error) {
-                        return { error: error instanceof Error ? error.message : "Unknown error" };
+                        return { error: error.message || "Unknown error" };
                     }
                 };
             });

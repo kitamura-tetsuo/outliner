@@ -10,5 +10,6 @@ export default defineConfig({
         clearMocks: true,
         envFile: "../../client/.env.test",
         testTimeout: 60000, // 60秒
+        threads: 1,
     },
 });

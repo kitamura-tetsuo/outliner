@@ -14,9 +14,9 @@ test.describe("LNK-0004: 仮ページ編集保存", () => {
     });
 
     test("仮ページを編集した場合に実際のページとして保存される", async ({ page }) => {
-        const sourceUrl = page.url();
+        const _sourceUrl = page.url();
         const nonExistentPage = "edit-temp-page-" + Date.now().toString().slice(-6);
-        await page.goto(`${sourceUrl}${nonExistentPage}`);
+        await page.goto(`${_sourceUrl}${nonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
         const loginButton = page.locator("button:has-text('開発者ログイン')");

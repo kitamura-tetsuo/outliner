@@ -2,7 +2,7 @@ import pino from "pino";
 
 // 環境変数からAPIサーバーURLを取得（デフォルトはlocalhostの認証サーバー）
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";
+const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071";
 
 // ブラウザのコンソールAPIを使用するかどうか
 // テスト環境では常にtrueを返すようにする

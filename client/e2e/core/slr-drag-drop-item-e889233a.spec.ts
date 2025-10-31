@@ -51,11 +51,11 @@ test.describe("SLR-0009: アイテムドラッグ＆ドロップ", () => {
     });
 
     test("アイテム全体をドラッグ＆ドロップで移動できる", async ({ page }) => {
-        const itemCount = await page.locator(".outliner-item").count();
-        expect(itemCount).toBeGreaterThanOrEqual(3);
+        const _itemCount = await page.locator(".outliner-item").count();
+        expect(_itemCount).toBeGreaterThanOrEqual(3);
         const firstItemText = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
-        const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
-        const thirdItemText = await page.locator(".outliner-item").nth(2).locator(".item-text").textContent();
+        const _secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+        const _thirdItemText = await page.locator(".outliner-item").nth(2).locator(".item-text").textContent();
         const secondItem = page.locator(".outliner-item").nth(1);
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);

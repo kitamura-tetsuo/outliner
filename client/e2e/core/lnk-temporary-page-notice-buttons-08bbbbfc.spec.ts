@@ -14,9 +14,9 @@ test.describe("LNK-0004: 仮ページ通知ボタン", () => {
     });
 
     test("仮ページの通知UIのアクションボタンが機能する", async ({ page }) => {
-        const sourceUrl = page.url();
+        const _sourceUrl = page.url();
         const nonExistentPage = "temp-page-buttons-" + Date.now().toString().slice(-6);
-        await page.goto(`${sourceUrl}${nonExistentPage}`);
+        await page.goto(`${_sourceUrl}${nonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
         const loginButton = page.locator("button:has-text('開発者ログイン')");
@@ -46,7 +46,7 @@ test.describe("LNK-0004: 仮ページ通知ボタン", () => {
         await expect(noticeElement).not.toBeVisible();
 
         const anotherNonExistentPage = "temp-page-cancel-" + Date.now().toString().slice(-6);
-        await page.goto(`${sourceUrl}${anotherNonExistentPage}`);
+        await page.goto(`${_sourceUrl}${anotherNonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
         const loginButton3 = page.locator("button:has-text('開発者ログイン')");

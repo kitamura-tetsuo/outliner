@@ -193,7 +193,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                 }
                 return { success: false, error: "No nodes found" };
             } catch (error: any) {
-                return { success: false, error: error.message };
+                return { success: false, _error: error.message };
             }
         });
 
@@ -320,7 +320,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                 }
                 return { success: false, error: "Node not found", savedFirstNode, currentFirstNode };
             } catch (error) {
-                return { success: false, error: error.message };
+                return { success: false, _error: _error.message };
             }
         });
 

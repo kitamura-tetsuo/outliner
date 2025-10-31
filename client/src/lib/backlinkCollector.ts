@@ -41,31 +41,32 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
     try {
         // すべてのページを検索
         for (const page of store.pages.current) {
+            const pageData = page as any;
             // 対象ページ自身は除外
-            if (page.text.toLowerCase() === normalizedTargetName) {
+            if (pageData.text.toLowerCase() === normalizedTargetName) {
                 continue;
             }
 
             // ページ自身のテキストをチェック
-            if (containsLink(page.text, normalizedTargetName)) {
+            if (containsLink(pageData.text, normalizedTargetName)) {
                 backlinks.push({
-                    sourcePageId: page.id,
-                    sourcePageName: page.text,
-                    sourceItemId: page.id,
-                    sourceItemText: page.text,
-                    context: extractContext(page.text, normalizedTargetName),
+                    sourcePageId: pageData.id,
+                    sourcePageName: pageData.text,
+                    sourceItemId: pageData.id,
+                    sourceItemText: pageData.text,
+                    context: extractContext(pageData.text, normalizedTargetName),
                 });
             }
 
             // 子アイテムをチェック
-            const items = page.items as any;
+            const items = pageData.items as any;
             if (items && items.length > 0) {
                 for (let i = 0; i < items.length; i++) {
                     const item = items[i];
                     if (item && containsLink(item.text, normalizedTargetName)) {
                         backlinks.push({
-                            sourcePageId: page.id,
-                            sourcePageName: page.text,
+                            sourcePageId: pageData.id,
+                            sourcePageName: pageData.text,
                             sourceItemId: item.id,
                             sourceItemText: item.text,
                             context: extractContext(item.text, normalizedTargetName),

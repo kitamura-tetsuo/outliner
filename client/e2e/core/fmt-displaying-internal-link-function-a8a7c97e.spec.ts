@@ -112,8 +112,8 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         await page.keyboard.type("[test-page]");
 
         // 2つ目のアイテムをプログラムで作成してフォーカス
-        const secondItemId = await createBlankItem(page);
-        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
+        const _secondItemId = await createBlankItem(page);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${_secondItemId}"]`);
         await secondItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.type("別のアイテム");
@@ -160,8 +160,8 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await setItemText(page, firstItemId, "[/project-name/page-name]");
 
-        const secondItemId = await createBlankItem(page);
-        await setItemText(page, secondItemId, "別のアイテム");
+        const _secondItemId = await createBlankItem(page);
+        await setItemText(page, _secondItemId, "別のアイテム");
 
         const thirdItemId = await createBlankItem(page);
         await setItemText(page, thirdItemId, "3つ目のアイテム");
@@ -210,9 +210,9 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         expect(firstItemTextWithCursor).toContain('class="control-char">]');
         expect(firstItemTextWithCursor).not.toContain('href="/test-page"');
 
-        const secondItemId = await createBlankItem(page);
-        await setItemText(page, secondItemId, "別のアイテム");
-        await TestHelpers.setCursor(page, secondItemId, 0, "local");
+        const _secondItemId = await createBlankItem(page);
+        await setItemText(page, _secondItemId, "別のアイテム");
+        await TestHelpers.setCursor(page, _secondItemId, 0, "local");
         await TestHelpers.waitForCursorVisible(page);
 
         await page.waitForFunction(

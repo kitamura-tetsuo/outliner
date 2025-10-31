@@ -19,9 +19,9 @@ test.describe("LNK-0004: 仮ページ通知非表示", () => {
             consoleMessages.push(`${msg.type()}: ${msg.text()}`);
         });
 
-        const sourceUrl = page.url();
+        const _sourceUrl = page.url();
         const nonExistentPage = "temp-page-ui-" + Date.now().toString().slice(-6);
-        await page.goto(`${sourceUrl}${nonExistentPage}`);
+        await page.goto(`${_sourceUrl}${nonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
         const loginButton = page.locator("button:has-text('開発者ログイン')");

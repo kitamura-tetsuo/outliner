@@ -52,22 +52,22 @@ test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
         expect(secondItemCursorData.cursorCount).toBeGreaterThan(0);
 
         // 2つ目のアイテムのIDを取得
-        const secondItemId = secondItemCursorData.activeItemId;
-        expect(secondItemId).not.toBeNull();
-        expect(secondItemId).not.toBe(firstItemId);
+        const _secondItemId = secondItemCursorData.activeItemId;
+        expect(_secondItemId).not.toBeNull();
+        expect(_secondItemId).not.toBe(firstItemId);
 
         const secondCursorInstances: CursorInstance[] = (secondItemCursorData.cursorInstances as CursorInstance[])
             || [];
         const secondItemCursorInstance: any =
             (secondCursorInstances.find((c) => c?.isActive) ?? secondCursorInstances[0]) as CursorInstance | undefined;
-        expect(secondItemCursorInstance?.itemId).toBe(secondItemId);
+        expect(secondItemCursorInstance?.itemId).toBe(_secondItemId);
         expect(secondItemCursorInstance?.offset).toBe(0);
 
         // 2つ目のアイテムのテキストを確認
-        const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(
+        const _secondItemText = await page.locator(`.outliner-item[data-item-id="${_secondItemId}"]`).locator(
             ".item-text",
         ).textContent();
-        console.log(`2つ目のアイテムのテキスト: "${secondItemText}"`);
+        console.log(`2つ目のアイテムのテキスト: "${_secondItemText}"`);
 
         // 上矢印キーを押下（2つ目のアイテムの先頭から1つ目のアイテムの最後の行へ移動するはず）
         await page.keyboard.press("ArrowUp");
