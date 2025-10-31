@@ -1,4 +1,5 @@
-import { type Browser, expect, type Page } from "@playwright/test";
+/// <reference lib="dom" />
+import { type Browser, expect, type Page, type TestInfo } from "@playwright/test";
 import { startCoverage, stopCoverage } from "../helpers/coverage.js";
 import { CursorValidator } from "./cursorValidation.js";
 
@@ -98,11 +99,11 @@ export class TestHelpers {
                 // Vite エラーオーバーレイ抑止
                 (window as Window & Record<string, any>).__vite_plugin_react_preamble_installed__ = true;
                 const originalCreateElement = document.createElement;
-                document.createElement = function(tagName: string, ...args: [ElementCreationOptions?]) {
+                document.createElement = function(tagName: string, options?: any) {
                     if (tagName === "vite-error-overlay") {
-                        return originalCreateElement.call(this, "div", ...args);
+                        return originalCreateElement.call(this, "div", options);
                     }
-                    return originalCreateElement.call(this, tagName, ...args);
+                    return originalCreateElement.call(this, tagName, options);
                 } as typeof document.createElement;
             } catch {}
         }, wsMode);
@@ -111,7 +112,7 @@ export class TestHelpers {
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
         // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
-        return await TestHelpers.navigateToTestProjectPage(page, lines, testInfo, browser);
+        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
     }
 
     /**
@@ -665,12 +666,12 @@ export class TestHelpers {
      */
     public static async navigateToTestProjectPage(
         page: Page,
+        testInfo?: TestInfo,
         lines: string[],
-        _browser?: Browser,
+        browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
-        void testInfo;
-        void _browser;
+        void browser;
         TestHelpers.slog("navigateToTestProjectPage start");
 
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;

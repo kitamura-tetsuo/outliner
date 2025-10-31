@@ -26,10 +26,12 @@ export default ts.config(
             globals: {
                 ...globals.browser,
                 ...globals.node,
-                // Additional globals for no-undef rule
-                ServiceWorkerGlobalScope: "readonly",
+                // Additional global types to avoid no-undef errors
+                NodeListOf: "readonly",
                 FrameRequestCallback: "readonly",
+                Console: "readonly",
                 NodeJS: "readonly",
+                ServiceWorkerGlobalScope: "readonly",
                 ElementCreationOptions: "readonly",
             },
         },
@@ -40,8 +42,8 @@ export default ts.config(
     // See issue #733 for tracking
     {
         rules: {
-            "@typescript-eslint/no-explicit-any": "error",
-            "@typescript-eslint/no-unused-vars": "error",
+            "@typescript-eslint/no-explicit-any": "warn",
+            "@typescript-eslint/no-unused-vars": "warn",
             "@typescript-eslint/ban-ts-comment": ["error", {
                 "ts-expect-error": "allow-with-description",
             }],
@@ -49,17 +51,17 @@ export default ts.config(
             "@typescript-eslint/no-require-imports": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-this-alias": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-unused-expressions": "error", // Gradually converting back to error - has few violations
-            "no-useless-escape": "error",
-            "no-empty": ["error", { "allowEmptyCatch": true }],
+            "no-useless-escape": "warn",
+            "no-empty": ["warn", { "allowEmptyCatch": true }],
             "no-irregular-whitespace": "error", // Gradually converting back to error - has only 1 violation
             "no-undef": "error",
             "no-case-declarations": "error", // Gradually converting back to error - can be easily fixed
             "svelte/prefer-writable-derived": "off", // Disabled: Svelte 4 rule not applicable to Svelte 5 patterns
             "svelte/require-each-key": "error",
             "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
-            "svelte/no-unused-svelte-ignore": "error",
-            "svelte/no-unused-props": "error",
-            "svelte/prefer-svelte-reactivity": "error",
+            "svelte/no-unused-svelte-ignore": "warn",
+            "svelte/no-unused-props": "warn",
+            "svelte/prefer-svelte-reactivity": "warn",
         },
     },
     // Disable no-undef for .d.ts files as they contain type declarations

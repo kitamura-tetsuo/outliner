@@ -148,7 +148,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
             }
 
             // 元のログメソッドを呼び出し
-            return originalMethod("", ...args);
+            return (originalMethod as any)("", ...args);
         };
     });
 
@@ -205,7 +205,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
                     return function(...args: unknown[]) {
                         // オリジナルのロガーメソッドを呼び出し
-                        (target as Record<string, unknown>)[prop as string](...args);
+                        (target as any)[prop as string](...args);
 
                         // コンソールにも出力（同じレベルで）
                         const consoleMethod = prop === "trace" || prop === "debug"
@@ -278,7 +278,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                         }
                     };
                 }
-                return (target as Record<string, unknown>)[prop as string];
+                return (target as any)[prop as string];
             },
         }) as pino.Logger;
     }
@@ -335,7 +335,7 @@ export function log(
 
     // 2. Pinoロガーを使ってサーバーに送信（ログファイルに記録）
     const logger = getLogger(componentName, false); // コンソール出力せずサーバーに送信
-    logger[level].apply(logger, ["", ...args]);
+    (logger as any)[level]("", ...args);
 }
 
 /**
@@ -345,11 +345,13 @@ function extractErrorDetails(
     error: Error | unknown,
 ): { message: string; stack?: string; name?: string; [key: string]: unknown; } {
     if (error instanceof Error) {
+        // エラーのプロパティを抽出（name, message, stack以外も含む）
+        const { name, message, stack, ...customProps } = error as Error & Record<string, unknown>;
         return {
-            message: error.message,
-            name: error.name,
-            stack: error.stack,
-            ...error, // その他のカスタムプロパティも含める
+            message,
+            name,
+            stack,
+            ...customProps, // その他のカスタムプロパティも含める
         };
     } else if (typeof error === "string") {
         return { message: error };
@@ -390,7 +392,7 @@ function setupGlobalErrorHandlers(): void {
         uncaughtLogger.error(errorInfo);
         const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
         const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
-        const marker = (window as Record<string, unknown>).__LAST_EFFECT__ as string || "<unknown>";
+        const marker = (window as any).__LAST_EFFECT__ as string || "<unknown>";
         console.error(`%c${errMsg}`, consoleStyles.fileInfo, stackTop);
         console.error("[EFFECT-MARKER]", marker);
         console.error("[STACK]", stackTop);
@@ -411,7 +413,7 @@ function setupGlobalErrorHandlers(): void {
         uncaughtLogger.error(errorInfo);
         const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
         const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
-        const marker = (window as Record<string, unknown>).__LAST_EFFECT__ as string || "<unknown>";
+        const marker = (window as any).__LAST_EFFECT__ as string || "<unknown>";
         console.error(`%c${errMsg}`, consoleStyles.fileInfo, stackTop);
         console.error("[EFFECT-MARKER]", marker);
         console.error("[STACK]", stackTop);

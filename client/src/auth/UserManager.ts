@@ -11,11 +11,12 @@ import {
     signOut,
     type User as FirebaseUser,
 } from "firebase/auth";
+import pino from "pino";
 import { getEnv } from "../lib/env";
 import { getFirebaseApp } from "../lib/firebase-app";
 import { getLogger } from "../lib/logger"; // log関数をインポート
 
-const logger = getLogger();
+const logger: pino.Logger = getLogger();
 
 // ユーザー情報の型定義
 export interface IUser {
@@ -126,7 +127,7 @@ export class UserManager {
                 } else {
                     // エミュレーター接続に失敗した場合
                     const error = new Error("Failed to connect to Firebase Auth emulator");
-                    logger.error({ error }, "Failed to connect to Auth emulator, authentication may not work");
+                    logger.error("Failed to connect to Auth emulator, authentication may not work", error);
 
                     // SSR環境ではエラーをスローしない（クライアント側でリトライできるように）
                     if (!isSSR) {
@@ -137,7 +138,7 @@ export class UserManager {
                 }
             } catch (err) {
                 // エミュレーターに接続できない場合
-                logger.error({ error: err }, "Failed to connect to Auth emulator");
+                logger.error("Failed to connect to Auth emulator:", err);
 
                 // SSR環境ではエラーをスローしない
                 if (!isSSR) {
@@ -161,7 +162,7 @@ export class UserManager {
             logger.info(`Successfully connected to Firebase Auth emulator at ${host}:${port}`);
             return true;
         } catch (err) {
-            logger.error({ error: err }, "Error connecting to Firebase Auth emulator");
+            logger.error("Error connecting to Firebase Auth emulator:", err);
             return false;
         }
     }
@@ -178,7 +179,9 @@ export class UserManager {
 
         // E2Eテスト用にFirebaseメール/パスワード認証を使う
         if (isTestEnvironment) {
-            logger.info("[UserManager] E2E test environment detected, using Firebase auth emulator with test account");
+            logger.info(
+                "[UserManager] E2E test environment detected, using Firebase auth emulator with test account",
+            );
             logger.info("[UserManager] Attempting E2E test login with test@example.com");
 
             // テストユーザーでログイン
@@ -186,7 +189,7 @@ export class UserManager {
                 await signInWithEmailAndPassword(this.auth, "test@example.com", "password");
                 logger.info("[UserManager] Test user login successful");
             } catch (error) {
-                logger.error({ error }, "[UserManager] Test user login failed");
+                logger.error("[UserManager] Test user login failed:", error);
 
                 // ユーザーが存在しない場合は作成を試みる
                 try {
@@ -194,7 +197,7 @@ export class UserManager {
                     await createUserWithEmailAndPassword(this.auth, "test@example.com", "password");
                     logger.info("[UserManager] Test user created and logged in successfully");
                 } catch (createError) {
-                    logger.error({ error: createError }, "[UserManager] Failed to create test user");
+                    logger.error("[UserManager] Failed to create test user:", createError);
                 }
             }
             return;
@@ -227,7 +230,7 @@ export class UserManager {
                 }
             });
         } catch (error) {
-            logger.error({ error }, "Failed to initialize auth listener");
+            logger.error("Failed to initialize auth listener:", error);
             // エラーが発生した場合は少し待ってからリトライ
             setTimeout(() => {
                 this.initAuthListenerAsync();
@@ -273,7 +276,7 @@ export class UserManager {
 
             logger.debug("handleUserSignedIn completed successfully");
         } catch (error) {
-            logger.error({ error }, "Error handling user sign in");
+            logger.error("Error handling user sign in:", error);
             // エラーが発生した場合は認証失敗として扱う
             this.notifyListeners(null);
         }
@@ -313,7 +316,7 @@ export class UserManager {
             await signInWithPopup(this.auth, provider);
             // 認証状態の変更はonAuthStateChangedで検知される
         } catch (error) {
-            logger.error({ error }, "[UserManager] Google login error");
+            logger.error("[UserManager] Google login error:", error);
             throw error;
         }
     }
@@ -337,11 +340,10 @@ export class UserManager {
                     });
                     return;
                 } catch (firebaseError) {
-                    const errorObj = firebaseError as { message?: string; code?: string; };
-                    logger.warn("[UserManager] Firebase Auth login failed:", errorObj.message);
+                    logger.warn("[UserManager] Firebase Auth login failed:", firebaseError?.message);
 
                     // ユーザーが存在しない場合は作成を試みる
-                    if (errorObj.code === "auth/user-not-found") {
+                    if (firebaseError?.code === "auth/user-not-found") {
                         try {
                             logger.info("[UserManager] User not found, attempting to create user");
                             const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
@@ -350,7 +352,7 @@ export class UserManager {
                             });
                             return;
                         } catch (createError) {
-                            logger.error({ error: createError }, "[UserManager] Failed to create new user");
+                            logger.error("[UserManager] Failed to create new user:", createError);
                         }
                     }
                     // すべての方法が失敗した場合は元のエラーをスロー
@@ -362,7 +364,7 @@ export class UserManager {
                 await signInWithEmailAndPassword(this.auth, email, password);
             }
         } catch (error) {
-            logger.error({ error }, "[UserManager] Email/password login error");
+            logger.error("[UserManager] Email/password login error:", error);
             throw error;
         }
     }
@@ -373,7 +375,7 @@ export class UserManager {
             await signOut(this.auth);
             // ログアウト処理はonAuthStateChangedで検知される
         } catch (error) {
-            logger.error({ error }, "[UserManager] Logout error");
+            logger.error("[UserManager] Logout error:", error);
             throw error;
         }
     }
@@ -446,7 +448,7 @@ export class UserManager {
                 this.notifyListeners({ user });
             }
         } catch (err) {
-            logger.error({ error: err }, "[UserManager] refreshToken failed");
+            logger.error("[UserManager] refreshToken failed", err);
         }
     }
 }

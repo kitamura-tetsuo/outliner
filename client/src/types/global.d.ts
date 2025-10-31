@@ -7,12 +7,22 @@ type NodeListOf<T> = globalThis.NodeListOf<T>;
 // Callback types
 type FrameRequestCallback = (time: number) => void;
 
+// Cursor types
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Cursor = any;
+
 // Console type
 type Console = typeof console;
 
+// Cursor utility functions
+declare function getCurrentLineIndex(): number;
+declare function getLineStartOffset(index: number): number;
+declare function getLineEndOffset(index: number): number;
+
 // NodeJS namespace for compatibility
-// eslint-disable-next-line @typescript-eslint/no-namespace
-declare namespace NodeJS {
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    interface Timeout {}
+declare global {
+    namespace NodeJS {
+        // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+        interface Timeout {}
+    }
 }

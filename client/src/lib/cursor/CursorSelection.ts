@@ -1,11 +1,13 @@
 // import type { Item } from "../../schema/yjs-schema"; // Not used
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
+import type { CursorEditingContext } from "./CursorEditor";
+import { getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "./CursorTextUtils";
 
 export class CursorSelection {
-    private cursor: Cursor;
+    private cursor: CursorEditingContext;
 
-    constructor(cursor: Cursor) {
+    constructor(cursor: CursorEditingContext) {
         this.cursor = cursor;
     }
 
