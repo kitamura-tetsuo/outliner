@@ -1,6 +1,8 @@
 // Do not add webServer.
 
 import { defineConfig } from "@playwright/test";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 // ESモジュールで__dirnameを使うための設定
 const __filename = fileURLToPath(import.meta.url);

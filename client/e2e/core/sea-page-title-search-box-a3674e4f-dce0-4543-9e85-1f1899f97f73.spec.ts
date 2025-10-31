@@ -20,10 +20,10 @@ test.describe("SEA-0001: page title search box", () => {
             const pages = gs.pages?.current;
             let count = 0;
             try {
-                if (typeof items[Symbol.iterator] === "function") {
-                    count = Array.from(items).length;
-                } else if (typeof items.length === "number") {
-                    count = items.length;
+                if (typeof pages[Symbol.iterator] === "function") {
+                    count = Array.from(pages).length;
+                } else if (typeof pages.length === "number") {
+                    count = pages.length;
                 }
             } catch {}
             // We expect at least 2 pages: the initial page and "second-page"

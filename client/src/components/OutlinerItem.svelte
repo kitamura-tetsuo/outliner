@@ -129,7 +129,9 @@ import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const mirrorAttachment = (_url: string) => {};
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let attachmentsMirror: string[] = [];
 let e2eTimer: ReturnType<typeof setInterval> | undefined;
 const addNewItem = () => {};
