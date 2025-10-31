@@ -141,16 +141,16 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
             await page.keyboard.press("ArrowRight");
         }
 
-        // 初期テキストを取得
-        const initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
+        // 初期テキストを取得（後で使用予定）
+        const _initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
             .textContent();
 
         // Enterキーを押下
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
-        // アイテム数を確認
-        const itemCount = await page.locator(".outliner-item").count();
+        // アイテム数を確認（後で使用予定）
+        const _itemCount = await page.locator(".outliner-item").count();
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
@@ -195,8 +195,8 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
-        // アイテム数を確認
-        const itemCount = await page.locator(".outliner-item").count();
+        // アイテム数を確認（後で使用予定）
+        const _itemCount = await page.locator(".outliner-item").count();
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);

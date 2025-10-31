@@ -6,7 +6,6 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
-import { waitForCursorVisible } from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("LNK-0002: 内部リンクの基本機能", () => {

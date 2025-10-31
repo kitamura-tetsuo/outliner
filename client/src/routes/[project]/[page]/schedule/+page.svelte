@@ -21,19 +21,6 @@ let editingId = $state("");
 let editingTime = $state("");
 let isDownloading = $state(false);
 
-function collectAllItemIds(node: any, out: string[]) {
-    if (!node) return;
-    const id = node?.id || "";
-    if (id) out.push(String(id));
-    const children: any = node?.items as any;
-    const len = children?.length ?? 0;
-    for (let i = 0; i < len; i++) {
-        const child = children?.at ? children.at(i) : children?.[i];
-        if (child) collectAllItemIds(child, out);
-    }
-}
-
-
 onMount(async () => {
     const params = $page.params as { project: string; page: string; };
     project = decodeURIComponent(params.project || "");
@@ -112,6 +99,9 @@ onMount(async () => {
             console.log("Schedule page: Saved session pageId=", pageId);
         }
     } catch {}
+
+    // Wait for store to be fully stable before loading schedules (fixes flaky test)
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     await refresh();
 });
@@ -226,7 +216,7 @@ async function downloadIcs() {
     <div class="mb-4">
         <label for="publish-time" class="mr-2">Publish Time:</label>
         <input id="publish-time" type="datetime-local" bind:value={publishTime} class="border p-1" />
-        <button onclick={addSchedule} class="ml-2 px-2 py-1 bg-blue-600 text-white rounded">Add</button>
+        <button onclick={addSchedule} class="ml-2 px-2 py-1 bg-blue-600 text-white rounded" data-testid="add-schedule-btn">Add</button>
         <button onclick={back} class="ml-2 px-2 py-1 bg-gray-300 rounded">Back</button>
         <button
             onclick={downloadIcs}
