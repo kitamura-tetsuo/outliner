@@ -12,8 +12,11 @@ test("functions env variables load with dotenvx", () => {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const repoRoot = path.resolve(__dirname, "..", "..");
-    const command = "node -e \"require('./functions/index.js'); console.log(process.env.AZURE_TENANT_ID)\"";
-    const output = execSync(command, { cwd: repoRoot }).toString().trim();
+    const command = "node -e \"require('./index.js'); console.log(process.env.AZURE_TENANT_ID)\"";
+    const output = execSync(command, {
+        cwd: path.join(repoRoot, "functions"),
+        env: { ...process.env, NODE_ENV: "test" },
+    }).toString().trim();
     const lines = output.split(/\r?\n/);
     expect(lines.at(-1)).toBe("test-tenant-id");
 });

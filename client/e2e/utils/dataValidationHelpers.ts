@@ -165,8 +165,14 @@ export class DataValidationHelpers {
                 const store = (window as any).generalStore || (window as any).appStore;
                 return !!(store && store.project);
             }, { timeout: 5000 });
-        } catch (e) {
-            console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", e?.message ?? e);
+        } catch (e: any) {
+            // Handle test shutdown gracefully - when test ends, waitForFunction throws "Test ended"
+            const msg = String(e?.message ?? e);
+            if (msg.includes("Test ended")) {
+                console.log("[saveSnapshotsAndCompare] Test ended, skipping snapshot");
+                return;
+            }
+            console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", msg);
             return; // Skip snapshot if project is not available
         }
 
