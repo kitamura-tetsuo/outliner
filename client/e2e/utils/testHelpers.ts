@@ -111,7 +111,7 @@ export class TestHelpers {
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
         // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines);
     }
 
     /**
@@ -563,8 +563,8 @@ export class TestHelpers {
                 if (!page.isClosed()) {
                     await page.screenshot({ path: "client/test-results/cursor-visible-timeout.png" });
                 }
-            } catch (screenshotError) {
-                console.log("Failed to take screenshot:", screenshotError);
+            } catch (screenshotError: any) {
+                console.log("Failed to take screenshot:", screenshotError.message || screenshotError);
             }
             return false;
         }

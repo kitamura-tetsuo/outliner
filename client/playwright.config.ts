@@ -1,8 +1,6 @@
 // Do not add webServer.
 
-import { defineConfig, devices } from "@playwright/test";
-import path from "path";
-import { fileURLToPath } from "url";
+import { defineConfig } from "@playwright/test";
 
 // ESモジュールで__dirnameを使うための設定
 const __filename = fileURLToPath(import.meta.url);
@@ -101,7 +99,6 @@ export default defineConfig({
 
     use: {
         headless: true,
-        ...devices["Desktop Chrome"],
         // Chromium用のタイムアウト設定を延長
         launchOptions: {
             // 共有メモリの問題を回避するためのオプション

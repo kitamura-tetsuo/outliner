@@ -16,8 +16,8 @@ test.describe("SEA-0001: page title search box", () => {
         // Wait for the page to be created and available in the project
         await page.waitForFunction(() => {
             const gs = (window as any).generalStore || (window as any).appStore;
-            if (!gs?.project?.items) return false;
-            const items = gs.project.items;
+            if (!gs?.project) return false;
+            const pages = gs.pages?.current;
             let count = 0;
             try {
                 if (typeof items[Symbol.iterator] === "function") {
@@ -57,15 +57,15 @@ test.describe("SEA-0001: page title search box", () => {
 
             // Check if results are being computed
             const gs = (window as any).generalStore || (window as any).appStore;
-            if (!gs?.project?.items) return false;
+            if (!gs?.project) return false;
 
             // Verify that we have pages to search
-            const items = gs.project.items;
+            const pages = gs.pages?.current;
             let hasSecondPage = false;
             try {
-                if (typeof items[Symbol.iterator] === "function") {
-                    for (const item of items) {
-                        const title = item?.text?.toString?.() ?? "";
+                if (pages && typeof pages[Symbol.iterator] === "function") {
+                    for (const page of pages) {
+                        const title = page?.text?.toString?.() ?? "";
                         if (title.toLowerCase().includes("second")) {
                             hasSecondPage = true;
                             break;
