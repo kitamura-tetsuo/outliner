@@ -111,7 +111,7 @@ export class TestHelpers {
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
         // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+        return await TestHelpers.navigateToTestProjectPage(page, lines, testInfo, browser);
     }
 
     /**
@@ -655,8 +655,8 @@ export class TestHelpers {
      */
     public static async navigateToTestProjectPage(
         page: Page,
-        testInfo?: any,
         lines: string[],
+        testInfo?: any,
         browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
@@ -1639,7 +1639,7 @@ export class TestHelpers {
                 const currentPage = gs?.currentPage;
                 if (!currentPage) return null;
 
-                function find(node: any, target: string): any | null {
+                const find = function(node: any, target: string): any | null {
                     if (!node) return null;
                     if (node.id === target) {
                         return node;
@@ -1654,7 +1654,7 @@ export class TestHelpers {
                         if (found) return found;
                     }
                     return null;
-                }
+                };
 
                 const node = find(currentPage, id);
                 if (node) {

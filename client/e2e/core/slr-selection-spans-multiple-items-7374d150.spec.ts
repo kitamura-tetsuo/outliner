@@ -1,7 +1,6 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-// @ts-nocheck
 /** @feature SLR-0005
  *  Title   : 複数アイテムにまたがる選択
  *  Source  : docs/client-features.yaml

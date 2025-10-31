@@ -1,7 +1,6 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-// @ts-nocheck
 /** @feature HDV-0001
  *  Title   : Page snapshot diff viewer
  *  Source  : docs/client-features.yaml
@@ -15,7 +14,7 @@ test.describe("snapshot diff viewer", () => {
     });
 
     test("display diff and revert", async ({ page }, testInfo) => {
-        const { projectName, pageName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+        const { projectName, pageName } = await TestHelpers.navigateToTestProjectPage(page, [], testInfo);
         await page.evaluate(
             ({ projectName, pageName }) => {
                 (window as any).__SNAPSHOT_SERVICE__.setCurrentContent(
