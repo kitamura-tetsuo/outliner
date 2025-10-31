@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Item } from "../../schema/yjs-schema";
 import { Items } from "../../schema/yjs-schema";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";

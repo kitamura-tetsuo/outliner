@@ -31,8 +31,8 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         await page1.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
             timeout: 20000,
         });
-    } catch (error) {
-        console.log("YJS connection not established, continuing with test:", (error as Error).message);
+    } catch {
+        console.log("YJS connection not established, continuing with test");
         // Continue even if connection fails - test might still work with local sync
     }
     await expect(page1.locator(".outliner-item")).toHaveCount(4, { timeout: 10000 }); // Expect 4 items (title + 3 initial)
@@ -55,8 +55,8 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         await page2.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
             timeout: 20000,
         });
-    } catch (error) {
-        console.log("YJS connection not established on page2, continuing with test:", (error as Error).message);
+    } catch {
+        console.log("YJS connection not established on page2, continuing with test");
         // Continue even if connection fails - test might still work with local sync
     }
 

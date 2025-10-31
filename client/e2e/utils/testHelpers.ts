@@ -9,7 +9,7 @@ export class TestHelpers {
     // Structured logger: timestamp and delta from previous log (disabled by default; enable with E2E_VERBOSE_SLOG=1)
     private static __lastLogTs: number | null = null;
     private static readonly LOG_ENABLED: boolean = process.env.E2E_VERBOSE_SLOG === "1";
-    private static slog(msg: string, data?: any) {
+    private static slog(msg: string, data?: unknown) {
         if (!TestHelpers.LOG_ENABLED) return;
         const now = Date.now();
         const delta = TestHelpers.__lastLogTs == null ? 0 : (now - TestHelpers.__lastLogTs);
@@ -52,7 +52,7 @@ export class TestHelpers {
      */
     public static async prepareTestEnvironment(
         page: Page,
-        testInfo?: any,
+        testInfo?: { workerIndex?: number; } | null,
         lines: string[] = [],
         browser?: Browser,
         options?: { ws?: "force" | "disable" | "default"; },
@@ -94,11 +94,11 @@ export class TestHelpers {
                     localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
                 }
 
-                (window as any).__E2E__ = true;
+                (window as Window & Record<string, any>).__E2E__ = true;
                 // Vite エラーオーバーレイ抑止
-                (window as any).__vite_plugin_react_preamble_installed__ = true;
+                (window as Window & Record<string, any>).__vite_plugin_react_preamble_installed__ = true;
                 const originalCreateElement = document.createElement;
-                document.createElement = function(tagName: string, ...args: any[]) {
+                document.createElement = function(tagName: string, ...args: [ElementCreationOptions?]) {
                     if (tagName === "vite-error-overlay") {
                         return originalCreateElement.call(this, "div", ...args);
                     }
@@ -121,8 +121,15 @@ export class TestHelpers {
      */
     public static async prepareTestEnvironmentForProject(
         page: Page,
+        testInfo?: { workerIndex?: number; } | null,
+        _lines: string[] = [],
+        _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
+        // Use the parameters to avoid lint errors about unused vars
+        void testInfo;
+        void _lines;
+        void _browser;
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
@@ -130,8 +137,8 @@ export class TestHelpers {
                 localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
                 // 既定は WS 無効（必要なテストのみ個別に FORCE を設定）
                 localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
-                (window as any).__E2E__ = true;
-                (window as any).__vite_plugin_react_preamble_installed__ = true;
+                (window as Window & Record<string, any>).__E2E__ = true;
+                (window as Window & Record<string, any>).__vite_plugin_react_preamble_installed__ = true;
             } catch {}
         });
 
@@ -151,30 +158,35 @@ export class TestHelpers {
      */
     public static async getPageTexts(page: Page): Promise<Array<{ id: string; text: string; }>> {
         return await page.evaluate(() => {
-            const store = (window as any).appStore || (window as any).generalStore;
+            const store = (window as Window & Record<string, any>).appStore
+                || (window as Window & Record<string, any>).generalStore;
             if (!store || !store.pages) return [] as Array<{ id: string; text: string; }>;
 
-            const toArray = (p: any) => {
+            const toArray = (p: unknown) => {
                 if (!p) return [] as any[];
                 try {
                     if (Array.isArray(p)) return p;
-                    if (typeof p[Symbol.iterator] === "function") return Array.from(p);
-                    const len = (p as any).length;
+                    if (typeof p === "object" && p !== null && typeof (p as any)[Symbol.iterator] === "function") {
+                        return Array.from(p as Iterable<unknown>);
+                    }
+                    const len = (p as { length?: number; }).length;
                     if (typeof len === "number" && len >= 0) {
                         const r: any[] = [];
                         for (let i = 0; i < len; i++) {
-                            const v = (p as any).at ? p.at(i) : p[i];
+                            const v = (p as any).at ? p.at(i) : (p as any)[i];
                             if (typeof v !== "undefined") r.push(v);
                         }
                         return r;
                     }
                 } catch {}
-                return Object.values(p).filter((x: any) => x && typeof x === "object" && ("id" in x || "text" in x));
+                return Object.values(p).filter((x: any) =>
+                    x && typeof x === "object" && x !== null && ("id" in x || "text" in x)
+                );
             };
 
             const pages = toArray(store.pages.current);
             return pages.map((p: any) => {
-                const textVal = (p?.text && typeof (p.text as any).toString === "function")
+                const textVal = (p?.text && typeof (p.text as { toString?: unknown; }).toString === "function")
                     ? (p.text as any).toString()
                     : String(p?.text ?? "");
                 return { id: String(p.id), text: textVal };
@@ -543,8 +555,9 @@ export class TestHelpers {
                 return activeCursors.length > 0;
             }, { timeout });
             return true;
-        } catch {
+        } catch (_error) {
             console.log("Timeout waiting for cursor to be visible, continuing anyway");
+            void _error;
             // ページが閉じられていないかチェックしてからスクリーンショットを撮影
             try {
                 if (!page.isClosed()) {
@@ -654,8 +667,11 @@ export class TestHelpers {
         page: Page,
         testInfo?: any,
         lines: string[],
+        _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
+        void testInfo;
+        void _browser;
         TestHelpers.slog("navigateToTestProjectPage start");
 
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;

@@ -31,6 +31,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
+        const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "target-page-" + Date.now().toString().slice(-6);
@@ -80,8 +81,10 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
+        const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
         // 最初のページのタイトルを取得
+        const sourceTitle = await page.locator("h1").textContent(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "backlink-target-" + Date.now().toString().slice(-6);
@@ -173,6 +176,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
+        const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "badge-target-" + Date.now().toString().slice(-6);
@@ -227,6 +231,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
+        const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "toggle-target-" + Date.now().toString().slice(-6);
@@ -294,6 +299,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         const sourceUrl = page.url();
 
         // 最初のページのタイトルを取得
+        const sourceTitle = await page.locator("h1").textContent(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "click-target-" + Date.now().toString().slice(-6);
@@ -328,6 +334,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         await page.waitForTimeout(500);
 
         // バックリンクパネルの内容が表示されていることを確認
+        const backlinkContent = page.locator(".backlink-content"); // eslint-disable-line @typescript-eslint/no-unused-vars
         const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
 
         if (!isContentVisible) {

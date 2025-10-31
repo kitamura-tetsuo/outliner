@@ -123,8 +123,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                 const option = chart.getOption();
                 return option && option.series && option.series[0]
                     && option.series[0].data && option.series[0].data.length > 0;
-            } catch (error) {
-                console.log("Chart getOption error:", (error as Error).message);
+            } catch {
                 return false;
             }
         }, { timeout: 5000 });
@@ -276,8 +275,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                 const option = chart.getOption();
                 return option && option.series && option.series[0]
                     && option.series[0].data && option.series[0].data.length > 0;
-            } catch (error) {
-                console.log("Chart getOption error:", (error as Error).message);
+            } catch {
                 return false;
             }
         }, { timeout: 5000 });

@@ -178,7 +178,8 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch {
+        } catch (e) {
+            void e; // explicitly mark as intentionally unused
             console.log("Selection not created, skipping test");
             return;
         }
@@ -259,7 +260,8 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch {
+        } catch (e) {
+            void e; // explicitly mark as intentionally unused
             console.log("Selection not created, skipping test");
             return;
         }
@@ -334,7 +336,8 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch {
+        } catch (e) {
+            void e; // explicitly mark as intentionally unused
             console.log("Selection not created, skipping test");
             return;
         }

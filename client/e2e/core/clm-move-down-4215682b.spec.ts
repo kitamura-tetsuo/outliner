@@ -120,6 +120,9 @@ test.describe("CLM-0005: 下へ移動", () => {
         const secondItem = page.locator(".outliner-item").filter({ hasText: "Second item" });
         await secondItem.waitFor({ state: "visible" });
 
+        // 2つ目のアイテムのIDを取得
+        await secondItem.evaluate(el => el.getAttribute("data-item-id"));
+
         // 新しいアイテムのテキストを取得
         const newItemText = await secondItem.locator(".item-text").textContent();
 

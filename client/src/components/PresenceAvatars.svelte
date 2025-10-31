@@ -1,5 +1,5 @@
 <script lang="ts">
-import { onMount, onDestroy } from "svelte";
+import { onMount } from "svelte";
 // Ensure presence store side-effects (window.presenceStore) are initialized
 import "../stores/PresenceStore.svelte";
 

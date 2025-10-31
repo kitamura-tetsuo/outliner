@@ -18,9 +18,9 @@ test.describe("PRS-4d2e1b6a: cursor presence", () => {
         // due to missing websocket server infrastructure, but we can at least verify that
         // the basic components are available and can be used for presence functionality.
         const received = await page.evaluate(async pid => {
-            // @ts-expect-error dynamic import may not resolve at compile time
+            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
-            // @ts-expect-error dynamic import may not resolve at compile time
+            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
             const { Project } = await import("/src/schema/app-schema.ts");
 
             console.log("Starting test setup");

@@ -170,7 +170,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
                     `[${pageName}]`, // 自己参照リンクを追加
                 ];
 
-                additionalLines.forEach(line => {
+                additionalLines.forEach((line) => {
                     const newItem = firstItem.cloneNode(true) as HTMLElement;
                     const newTextElement = newItem.querySelector(".item-text");
                     if (newTextElement) {

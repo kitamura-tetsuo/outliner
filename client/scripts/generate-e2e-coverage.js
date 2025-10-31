@@ -144,7 +144,8 @@ for (const file of coverageFiles) {
     let data;
     try {
         data = JSON.parse(text);
-    } catch {
+    } catch (_e) {
+        console.warn(`[MCR] JSON parse failed, skipping:`, _e.message);
         continue;
     }
 

@@ -20,9 +20,9 @@ test.describe("SEA-0001: page title search box", () => {
             const pages = gs.pages?.current;
             let count = 0;
             try {
-                if (pages && typeof pages[Symbol.iterator] === "function") {
+                if (typeof pages[Symbol.iterator] === "function") {
                     count = Array.from(pages).length;
-                } else if (pages && typeof pages.length === "number") {
+                } else if (typeof pages.length === "number") {
                     count = pages.length;
                 }
             } catch {}

@@ -11,8 +11,8 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("Multi-Page Schedule Management", () => {
     let testProject: { projectName: string; pageName: string; };
 
-    test.beforeEach(async ({ page }, testInfo) => {
-        testProject = await TestHelpers.prepareTestEnvironment(page, testInfo);
+    test.beforeEach(async ({ page }) => {
+        testProject = await TestHelpers.prepareTestEnvironment(page);
 
         // Enable console logging
         page.on("console", msg => console.log("PAGE LOG:", msg.text()));

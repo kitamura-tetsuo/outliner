@@ -86,9 +86,9 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
             (window as any).__UPDATES2__++;
             console.log("[p2] doc update");
         });
-        conn.doc.on("updateV2", (_u: Uint8Array) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+        conn.doc.on("updateV2", (_update: Uint8Array) => {
             (window as any).__UPDATES2_V2__++;
-            console.log("[p2] doc updateV2");
+            console.log("[p2] doc updateV2", _update.length);
         });
 
         // Log provider.synced transitions

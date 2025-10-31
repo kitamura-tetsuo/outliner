@@ -11,7 +11,8 @@ import { attachTokenRefresh } from "./tokenRefresh";
 function isConnDebugEnabled(): boolean {
     try {
         const mode = import.meta.env.MODE as string | undefined;
-        const envFlag = String((import.meta.env as any)?.VITE_YJS_CONN_DEBUG || "") === "true";
+        const envDebugFlag = import.meta.env.VITE_YJS_CONN_DEBUG;
+        const envFlag = String(envDebugFlag || "") === "true";
         const lsFlag = typeof window !== "undefined"
             && window.localStorage?.getItem?.("VITE_YJS_CONN_DEBUG") === "true";
         // Only enable when explicitly opted-in and not on production builds
@@ -32,11 +33,15 @@ function attachConnDebug(label: string, provider: WebsocketProvider, awareness: 
         // awareness states count
         const logAwareness = () => {
             try {
-                const count = (awareness as any)?.getStates?.().size ?? 0;
+                const states = (awareness as { getStates?: () => Map<number, unknown>; })?.getStates?.();
+                const count = states?.size ?? 0;
                 console.log(`[yjs-conn] ${label} awareness.states=${count}`);
             } catch {}
         };
-        awareness.on("change", logAwareness as any);
+        awareness.on(
+            "change",
+            logAwareness as (event: { added: number[]; removed: number[]; updated: number[]; }) => void,
+        );
         logAwareness();
         // doc update count and last payload size
         let updCount = 0;
@@ -115,7 +120,7 @@ function isWsEnabled(): boolean {
 
         // テスト環境ではデフォルトでWebSocketを有効にする（明示的な無効化がない場合）
         const isTestEnv = import.meta.env.MODE === "test"
-            || (import.meta.env as any).VITE_IS_TEST === "true"
+            || import.meta.env.VITE_IS_TEST === "true"
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
         if (isTestEnv) return true;
 
@@ -127,7 +132,7 @@ function isWsEnabled(): boolean {
 
 function isAuthRequired(): boolean {
     try {
-        const envReq = String((import.meta.env as any).VITE_YJS_REQUIRE_AUTH || "") === "true";
+        const envReq = String(import.meta.env.VITE_YJS_REQUIRE_AUTH || "") === "true";
         const lsReq = typeof window !== "undefined"
             && window.localStorage?.getItem?.("VITE_YJS_REQUIRE_AUTH") === "true";
         return envReq || lsReq;
@@ -191,10 +196,10 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         connect: wsEnabled,
     });
     // Mark disabled state for downstream logic (e.g., token refresh) and hard-stop connect()
-    (provider as any).__wsDisabled = !wsEnabled;
+    (provider as WebsocketProvider & { __wsDisabled?: boolean; }).__wsDisabled = !wsEnabled;
     if (!wsEnabled) {
         try {
-            (provider as any).connect = () => {};
+            (provider as WebsocketProvider & { connect: () => void; }).connect = () => {};
         } catch {}
     }
     const awareness = provider.awareness;
@@ -250,10 +255,10 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     });
 
     // Mark disabled state and prevent accidental connects
-    (provider as any).__wsDisabled = !wsEnabled;
+    (provider as WebsocketProvider & { __wsDisabled?: boolean; }).__wsDisabled = !wsEnabled;
     if (!wsEnabled) {
         try {
-            (provider as any).connect = () => {};
+            (provider as WebsocketProvider & { connect: () => void; }).connect = () => {};
         } catch {}
     }
 
@@ -276,7 +281,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
     const pages = new Map<string, PageConnection>();
 
-    doc.on("subdocs", (evt: any) => {
+    doc.on("subdocs", (evt: { added: Set<Y.Doc>; removed: Set<Y.Doc>; }) => {
         evt.added.forEach((s: Y.Doc) => {
             void connectPageDoc(s, projectId, s.guid).then(c => pages.set(s.guid, c));
         });
@@ -290,12 +295,13 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // Fallback: also observe direct changes to the pages map (helps in test env)
     try {
         const pagesMap = doc.getMap<Y.Doc>("pages");
-        pagesMap.observe((e: any) => {
-            for (const key of e.keysChanged as Set<string>) {
+        pagesMap.observe((e: Y.YEvent<Y.AbstractType<unknown>>) => {
+            const keysChanged = e.changes.keys;
+            for (const key of keysChanged.keys()) {
                 const sub = pagesMap.get(key);
                 if (sub && !pages.has(key)) {
                     // Best-effort, non-blocking connection setup
-                    void connectPageDoc(sub as unknown as Y.Doc, projectId, key).then(c => pages.set(key, c));
+                    void connectPageDoc(sub, projectId, key).then(c => pages.set(key, c));
                 }
                 if (!sub && pages.has(key)) {
                     const c = pages.get(key);

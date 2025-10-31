@@ -2,10 +2,12 @@
 
 /**
  * coverage ディレクトリをタイムスタンプ付きでバックアップします。
- * - coverageディレクトリをcoverage-backupsにコピー（移動ではない）
+ * - coverageディレクトリをcoverage-backupsに移動（コピーではない）
  * - 10個より古いバックアップを自動削除
  * 出力先: coverage-backups/<YYYYMMDD-HHMMSS>
  * 例: coverage-backups/2025-10-29-14-23-05
+ *
+ * このスクリプトはテスト開始時に実行され、前回のcoverageを移動してディスク容量を節約します。
  */
 
 import fs from "fs";
@@ -49,43 +51,43 @@ function pruneOldBackups() {
         // 10個より古いバックアップを削除
         const toDelete = backupDirs.slice(10);
         if (toDelete.length > 0) {
-            console.log(`[coverage:backup] pruning ${toDelete.length} old backup(s)...`);
+            console.log(`[coverage:move-to-backup] pruning ${toDelete.length} old backup(s)...`);
             for (const backup of toDelete) {
-                console.log(`[coverage:backup] deleting: ${backup.name}`);
+                console.log(`[coverage:move-to-backup] deleting: ${backup.name}`);
                 fs.rmSync(backup.path, { recursive: true, force: true });
             }
         }
     } catch (e) {
-        console.error("[coverage:backup] failed to prune old backups:", e);
+        console.error("[coverage:move-to-backup] failed to prune old backups:", e);
         // エラーが発生してもバックアップ処理は続行
     }
 }
 
 function main() {
     if (!fs.existsSync(coverageDir)) {
-        console.log(`[coverage:backup] skip: no coverage directory: ${coverageDir}`);
+        console.log(`[coverage:move-to-backup] skip: no coverage directory: ${coverageDir}`);
         process.exit(0);
     }
 
     fs.mkdirSync(backupsRoot, { recursive: true });
     const dest = path.join(backupsRoot, timestamp());
 
-    console.log(`[coverage:backup] copying: ${coverageDir} -> ${dest}`);
+    console.log(`[coverage:move-to-backup] moving: ${coverageDir} -> ${dest}`);
 
     try {
-        // coverageディレクトリをコピー（移動ではない）
-        fs.cpSync(coverageDir, dest, { recursive: true });
+        // coverageディレクトリを移動（コピーではなく移動）
+        fs.renameSync(coverageDir, dest);
     } catch (e) {
-        console.error("[coverage:backup] backup failed:", e);
+        console.error("[coverage:move-to-backup] move failed:", e);
         process.exit(1);
     }
 
-    console.log("[coverage:backup] backup completed");
+    console.log("[coverage:move-to-backup] move completed");
 
     // 古いバックアップを削除
     pruneOldBackups();
 
-    console.log("[coverage:backup] done");
+    console.log("[coverage:move-to-backup] done");
 }
 
 main();

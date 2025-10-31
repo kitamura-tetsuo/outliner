@@ -139,6 +139,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
             }
         }
 
+        // 選択されたオプションを確認
         // console.log("Final selected option before Enter:", selectedOption);
         // console.log("Final selected option ID:", selectedOptionId);
 

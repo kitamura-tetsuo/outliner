@@ -54,7 +54,7 @@ test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
 
                 // エイリアス属性が設定されているか確認
                 const firstItem = items[0];
-                const hasAliasAttr = await firstItem.evaluate(el => el.hasAttribute("data-alias-target-id"));
+                await firstItem.evaluate(el => el.hasAttribute("data-alias-target-id"));
 
                 // ポーリングなしでも属性が設定されるべき
                 // （Yjs observeで十分なはず）
