@@ -360,7 +360,7 @@ onMount(async () => {
                     };
 
                     // Patch both EventTarget and Element to maximize coverage
-                    // @ts-ignore
+                    // @ts-expect-error
                     EventTarget.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchEventTarget, event); };
                     Element.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchElement, event); };
 
@@ -431,7 +431,7 @@ onMount(async () => {
                                         return f;
                                     }
                                 });
-                                // @ts-ignore
+                                // @ts-expect-error
                                 (window as any).File = Wrapped;
                             }
                         }
@@ -459,7 +459,7 @@ onMount(async () => {
                                         return dt;
                                     }
                                 });
-                                // @ts-ignore
+                                // @ts-expect-error
                                 (window as any).DataTransfer = WrappedDT;
                             }
                         }

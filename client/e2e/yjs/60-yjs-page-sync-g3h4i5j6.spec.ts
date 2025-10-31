@@ -55,9 +55,9 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Create project and page programmatically
         const projectId = `p${Date.now().toString(16)}`;
         const pageInfo = await page1.evaluate(async (pid) => {
-            // @ts-ignore
+            // @ts-expect-error
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
-            // @ts-ignore
+            // @ts-expect-error
             const { Project } = await import("/src/schema/app-schema.ts");
 
             const conn = await createProjectConnection(pid);
@@ -107,7 +107,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Verify page1 still has the page after WebSocket connection
         const page1VerifyInfo = await page1.evaluate(async ({ pageId }) => {
             const conn = (window as any).__TEST_CONN__;
-            // @ts-ignore
+            // @ts-expect-error
             const { Project } = await import("/src/schema/app-schema.ts");
             const project = Project.fromDoc(conn.doc);
             const items = project.items as any;
@@ -172,9 +172,9 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Connect to the same project programmatically
         console.log(`page2: Connecting to project ${pageInfo.projectId}`);
         await page2.evaluate(async (pid) => {
-            // @ts-ignore
+            // @ts-expect-error
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
-            // @ts-ignore
+            // @ts-expect-error
             const { Project } = await import("/src/schema/app-schema.ts");
 
             const conn = await createProjectConnection(pid);
@@ -211,7 +211,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         console.log("Triggering a change in page1 to force sync...");
         await page1.evaluate(async ({ pageId }) => {
             const conn = (window as any).__TEST_CONN__;
-            // @ts-ignore
+            // @ts-expect-error
             const { Project } = await import("/src/schema/app-schema.ts");
             const project = Project.fromDoc(conn.doc);
             const items = project.items as any;
@@ -246,7 +246,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
                 }
 
                 try {
-                    // @ts-ignore
+                    // @ts-expect-error
                     const { Project } = await import("/src/schema/app-schema.ts");
                     const project = Project.fromDoc(conn.doc);
 
