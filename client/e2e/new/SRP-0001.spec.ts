@@ -1,7 +1,6 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-// @ts-nocheck
 
 /** @feature SRP-0001
  *  Title   : Project-Wide Search & Replace

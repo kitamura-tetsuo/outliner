@@ -15,7 +15,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
     });
 
     test("export markdown and opml", async ({ page }, testInfo) => {
-        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, [
+        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, [
             "Child item",
         ]);
         const encoded = encodeURIComponent(projectName);
@@ -44,7 +44,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
     });
 
     test("import markdown", async ({ page }, testInfo) => {
-        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, []);
         const encoded = encodeURIComponent(projectName);
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
@@ -89,7 +89,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
     });
 
     test("import opml", async ({ page }, testInfo) => {
-        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, []);
         const encoded = encodeURIComponent(projectName);
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
@@ -130,7 +130,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
     });
 
     test("import nested markdown", async ({ page }, testInfo) => {
-        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, []);
         const encoded = encodeURIComponent(projectName);
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
