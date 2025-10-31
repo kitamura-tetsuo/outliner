@@ -30,17 +30,7 @@ export default ts.config(
                 ServiceWorkerGlobalScope: "readonly",
                 FrameRequestCallback: "readonly",
                 NodeJS: "readonly",
-                // DOM types
-                NodeListOf: "readonly",
                 ElementCreationOptions: "readonly",
-                Console: "readonly",
-                // Application types (used in @ts-nocheck files)
-                Item: "readonly",
-                // Dead code variables (wrapped in try-catch, should be removed in future cleanup)
-                mirrorAttachment: "readonly",
-                attachmentsMirror: "readonly",
-                e2eTimer: "readonly",
-                addNewItem: "readonly",
             },
         },
     },
@@ -50,7 +40,7 @@ export default ts.config(
     // See issue #733 for tracking
     {
         rules: {
-            "@typescript-eslint/no-explicit-any": "off", // Disabled: Too many legacy violations, see issue #750
+            "@typescript-eslint/no-explicit-any": "error",
             "@typescript-eslint/no-unused-vars": "error",
             "@typescript-eslint/ban-ts-comment": ["error", {
                 "ts-expect-error": "allow-with-description",

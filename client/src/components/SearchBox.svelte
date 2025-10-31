@@ -1,9 +1,13 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
 import type { Project } from '../schema/app-schema';
+import type { ItemLike } from '../types/yjs-types';
 import { searchHistoryStore } from '../stores/SearchHistoryStore.svelte';
 import { onMount } from 'svelte';
 import { store } from '../stores/store.svelte';
+
+// Type alias for backward compatibility
+type Item = ItemLike;
 
 interface Props { project?: Project }
 let { project }: Props = $props();
