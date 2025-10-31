@@ -43,11 +43,42 @@ describe("Cursor Integration", () => {
         // Reset mocks
         vi.clearAllMocks();
 
+        // Create mock text objects
+        const mockItemText = {
+            value: "First line\nSecond line\nThird line",
+            toString() {
+                return this.value;
+            },
+            get length() {
+                return this.value.length;
+            },
+            delete(start: number, count: number) {
+                this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+            },
+            insert(pos: number, text: string) {
+                this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+            },
+        };
+
+        const mockParentItemText = {
+            value: "Parent item",
+            toString() {
+                return this.value;
+            },
+            get length() {
+                return this.value.length;
+            },
+            delete(start: number, count: number) {
+                this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+            },
+            insert(pos: number, text: string) {
+                this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+            },
+        };
+
         // Create mock items with more realistic structure
         mockItem = {
             id: "test-item-1",
-            text: "First line\nSecond line\nThird line",
-            parent: null,
             items: {
                 [Symbol.iterator]: function*() {
                     // Empty iterator
@@ -55,31 +86,36 @@ describe("Cursor Integration", () => {
             },
             updateText: vi.fn(),
             delete: vi.fn(),
+            get text() {
+                return mockItemText as any;
+            },
+            get parent() {
+                return mockParentItem;
+            },
         } as unknown as Item;
+
+        const mockParentItems = {
+            [Symbol.iterator]: function*() {
+                yield mockItem;
+            },
+            addNode: vi.fn().mockReturnValue(mockItem),
+            indexOf: vi.fn().mockReturnValue(0),
+        };
 
         mockParentItem = {
             id: "parent-item-1",
-            text: "Parent item",
-            parent: null,
-            items: {
-                [Symbol.iterator]: function*() {
-                    yield mockItem;
-                },
-                addNode: vi.fn().mockReturnValue(mockItem),
-                indexOf: vi.fn().mockReturnValue(0),
-            },
             updateText: vi.fn(),
             delete: vi.fn(),
+            get text() {
+                return mockParentItemText as any;
+            },
+            get items() {
+                return mockParentItems;
+            },
         } as unknown as Item;
-
-        // Set up parent relationship
-        mockItem.parent = mockParentItem;
 
         // Mock the general store
         (generalStore as any).currentPage = mockParentItem;
-
-        // Setup editor overlay store mocks
-        editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
     });
 
     afterEach(() => {
@@ -107,9 +143,20 @@ describe("Cursor Integration", () => {
 
         it("should navigate between items when reaching boundaries", () => {
             // Create a second item
+            const secondItemText = {
+                value: "Another item",
+                toString() {
+                    return this.value;
+                },
+                get length() {
+                    return this.value.length;
+                },
+                delete: vi.fn(),
+                insert: vi.fn(),
+            };
+
             const secondItem = {
                 id: "test-item-2",
-                text: "Another item",
                 parent: mockParentItem,
                 items: {
                     [Symbol.iterator]: function*() {
@@ -118,10 +165,13 @@ describe("Cursor Integration", () => {
                 },
                 updateText: vi.fn(),
                 delete: vi.fn(),
+                get text() {
+                    return secondItemText as any;
+                },
             } as unknown as Item;
 
             // Update parent to include second item
-            mockParentItem.items = {
+            const updatedMockParentItems = {
                 [Symbol.iterator]: function*() {
                     yield mockItem;
                     yield secondItem;
@@ -133,6 +183,13 @@ describe("Cursor Integration", () => {
                     return -1;
                 },
             } as any;
+
+            // Replace the items getter's return value
+            Object.defineProperty(mockParentItem, "items", {
+                get() {
+                    return updatedMockParentItems;
+                },
+            });
 
             const cursor = new Cursor("cursor-1", {
                 itemId: "test-item-1",
@@ -154,7 +211,6 @@ describe("Cursor Integration", () => {
 
     describe("Text Operations", () => {
         it("should handle text insertion with selection", () => {
-            mockItem.text = "Hello World";
             mockItem.updateText = vi.fn();
 
             // Mock a selection
@@ -183,7 +239,6 @@ describe("Cursor Integration", () => {
         });
 
         it("should handle line breaks correctly", () => {
-            mockItem.text = "Hello World";
             mockItem.updateText = vi.fn();
 
             // Ensure parent has indexOf and addNode methods
