@@ -12,9 +12,6 @@ import {
 } from "../lib/search";
 import {
     type PageItemMatch,
-    replaceAllInProject,
-    replaceFirstInProject,
-    searchProject,
 } from "../lib/search/projectSearch";
 import type {
     Item,
@@ -249,14 +246,6 @@ function handleReplaceAll() {
         replaceAll(pageItem, searchQuery, replaceText, options);
         handleSearch();
     }
-}
-
-function toggleRegex() {
-    isRegexMode = !isRegexMode;
-}
-
-function toggleCaseSensitive() {
-    isCaseSensitive = !isCaseSensitive;
 }
 
 function jumpTo(match: PageItemMatch<Item>) {

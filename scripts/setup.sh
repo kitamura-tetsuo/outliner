@@ -7,9 +7,9 @@ set -euo pipefail
 export GIT_MERGE_AUTOEDIT=no
 
 SCRIPT_ARGS=("$@")
-RETRY_COUNT=${CODEX_SETUP_RETRY:-0}
-MAX_RETRIES=${CODEX_SETUP_MAX_RETRIES:-3}
-unset CODEX_SETUP_RETRY
+RETRY_COUNT=${SETUP_RETRY:-0}
+MAX_RETRIES=${SETUP_MAX_RETRIES:-3}
+unset SETUP_RETRY
 
 handle_error() {
   local line=$1
@@ -18,7 +18,7 @@ handle_error() {
   if [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; then
     local next=$((RETRY_COUNT + 1))
     echo "setup.sh did not complete. Re-running (attempt ${next}/${MAX_RETRIES})..."
-    export CODEX_SETUP_RETRY=$next
+    export SETUP_RETRY=$next
     exec "$0" "${SCRIPT_ARGS[@]}"
   else
     echo "setup.sh failed after ${MAX_RETRIES} attempts. Exiting." >&2

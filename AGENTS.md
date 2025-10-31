@@ -85,7 +85,7 @@ Mocks are generally forbidden. Limited exceptions:
 ### Running E2E Tests
 
 - Always run `scripts/setup.sh` before tests to start emulators.
-- Execute E2E tests one file at a time with `scripts/run-e2e-progress-for-codex.sh 1`.
+- Execute E2E tests one file at a time with `scripts/run-e2e-progress.sh 1`.
 - The Codex environment is prone to timeouts. Keep each Playwright spec short and split larger flows across multiple files. Document any timeouts; tests will be rerun elsewhere.
 - Use `TestHelpers.prepareTestEnvironment(page)` in `test.beforeEach` and Playwright's `expect(locator).toBeVisible()` assertions.
 - **Test Data Creation**: For display/rendering tests, create test data using `TestHelpers.prepareTestEnvironment(page, test.info(), lines)` where `lines` is an array of strings representing item text. This ensures proper Yjs synchronization and avoids keyboard input issues with special characters like `[/` that may trigger command palettes or shortcuts.

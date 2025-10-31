@@ -31,6 +31,7 @@ export default ts.config(
                 FrameRequestCallback: "readonly",
                 Console: "readonly",
                 NodeJS: "readonly",
+                ElementCreationOptions: "readonly",
             },
         },
     },
@@ -55,9 +56,16 @@ export default ts.config(
             "svelte/prefer-writable-derived": "warn",
             "svelte/require-each-key": "error",
             "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
-            "svelte/no-unused-svelte-ignore": "warn",
-            "svelte/no-unused-props": "warn",
-            "svelte/prefer-svelte-reactivity": "warn",
+            "svelte/no-unused-svelte-ignore": "error",
+            "svelte/no-unused-props": "error",
+            "svelte/prefer-svelte-reactivity": "error",
+        },
+    },
+    // Disable no-undef for .d.ts files as they contain type declarations
+    {
+        files: ["**/*.d.ts"],
+        rules: {
+            "no-undef": "off",
         },
     },
     {
@@ -133,6 +141,7 @@ export default ts.config(
             "**/*.e2e-spec.{js,ts,tsx}",
         ],
         rules: {
+            "@typescript-eslint/no-explicit-any": "off", // E2E tests often use dynamic browser APIs that require 'any'
             "no-restricted-imports": [
                 "error",
                 {
