@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 // Do not add webServer.
 
 import { defineConfig, devices } from "@playwright/test";

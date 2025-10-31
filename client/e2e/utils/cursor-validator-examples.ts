@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * CursorValidator の使用例
  *

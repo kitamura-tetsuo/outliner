@@ -1,5 +1,4 @@
 // Minimal Yjs-based schema wrappers for yjsService and tests
-// @ts-nocheck
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 

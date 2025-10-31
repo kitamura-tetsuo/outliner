@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { type Browser, expect, type Page } from "@playwright/test";
 import { startCoverage, stopCoverage } from "../helpers/coverage.js";
 import { CursorValidator } from "./cursorValidation.js";
