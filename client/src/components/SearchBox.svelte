@@ -1,6 +1,6 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
-import type { Item, Items, Project } from '../schema/app-schema';
+import type { Item, Project } from '../schema/app-schema';
 import { searchHistoryStore } from '../stores/SearchHistoryStore.svelte';
 import { onMount } from 'svelte';
 import { store } from '../stores/store.svelte';
@@ -18,9 +18,9 @@ let effectiveProject: Project | null = $derived.by(() => {
         const gs = (window as any).generalStore;
         if (gs?.project) return gs.project as Project;
         const parts = window.location.pathname.split("/").filter(Boolean);
-        const projectTitle = parts[0] ? decodeURIComponent(parts[0]) : '';
-        const service = (window as any).__YJS_SERVICE__;
-        const yjsStoreRef = (window as any).__YJS_STORE__;
+        // const projectTitlePlaceholder = parts[0] ? decodeURIComponent(parts[0]) : '';
+        // const servicePlaceholder = (window as any).__YJS_SERVICE__;
+        // const yjsStoreRefPlaceholder = (window as any).__YJS_STORE__;
         // Do NOT auto-create a project here. In tests this can create an empty
         // project separate from the one prepared by TestHelpers, which breaks
         // SearchBox results. Wait for store.project or global state instead.
@@ -98,7 +98,7 @@ let results = $derived.by(() => {
                     const arr = (items as any).toArray();
                     if (arr && arr.length) return arr;
                 }
-            } catch (e) {
+            } catch {
                 // Continue to next source
                 continue;
             }

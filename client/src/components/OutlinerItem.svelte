@@ -130,10 +130,10 @@ import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
-const mirrorAttachment = (_url: string) => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
-let attachmentsMirror: string[] = []; // eslint-disable-line @typescript-eslint/no-unused-vars
-let e2eTimer: ReturnType<typeof setInterval> | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-const addNewItem = () => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
+const mirrorAttachment = (_url: string) => {};
+let attachmentsMirror: string[] = [];
+let e2eTimer: ReturnType<typeof setInterval> | undefined;
+const addNewItem = () => {};
 
 interface Props {
     model: OutlinerItemViewModel;
@@ -2042,8 +2042,6 @@ onMount(() => {
 });
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
     class="outliner-item"
     class:page-title={isPageTitle}

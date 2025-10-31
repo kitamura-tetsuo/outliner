@@ -30,7 +30,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
     await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 10000 });
 
     const p1Connected = await p1.evaluate(async (pid) => {
-        // @ts-ignore - Browser context import resolved by Vite
+        // @ts-expect-error - Browser context import resolved by Vite
         const { createMinimalProjectConnection } = await import("/src/lib/yjs/connection.ts");
         const conn = await createMinimalProjectConnection(pid);
         (window as any).__DOC__ = conn.doc;
@@ -75,7 +75,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
     await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 10000 });
 
     const p2Connected = await p2.evaluate(async (pid) => {
-        // @ts-ignore - Browser context import resolved by Vite
+        // @ts-expect-error - Browser context import resolved by Vite
         const { createMinimalProjectConnection } = await import("/src/lib/yjs/connection.ts");
         const conn = await createMinimalProjectConnection(pid);
         (window as any).__DOC2__ = conn.doc;
@@ -86,7 +86,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
             (window as any).__UPDATES2__++;
             console.log("[p2] doc update");
         });
-        conn.doc.on("updateV2", (_u: Uint8Array) => {
+        conn.doc.on("updateV2", (_u: Uint8Array) => { // eslint-disable-line @typescript-eslint/no-unused-vars
             (window as any).__UPDATES2_V2__++;
             console.log("[p2] doc updateV2");
         });
@@ -107,7 +107,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
 
     // Wait for both provider.synced and actual data to be available using the test utility function
     const v = await p2.evaluate(async () => {
-        // @ts-ignore - Browser context import resolved by Vite
+        // @ts-expect-error - Browser context import resolved by Vite
         const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/testHelpers.ts");
         const prov = (window as any).__PROVIDER2__;
         const m = (window as any).__DOC2__.getMap("m");

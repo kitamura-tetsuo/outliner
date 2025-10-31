@@ -11,9 +11,9 @@ function createSimpleTree() {
         votes: [],
         created: 0,
         lastChanged: 0,
-        // @ts-ignore - Known upstream typing quirk
+        // @ts-expect-error - Known upstream typing quirk
         items: new Items([]),
-        // @ts-ignore - Known upstream typing quirk
+        // @ts-expect-error - Known upstream typing quirk
         comments: new Comments([]),
     });
     const child1 = root.items.addNode("u");

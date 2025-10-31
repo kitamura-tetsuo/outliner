@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * CursorValidator の使用例
  *
@@ -117,7 +116,7 @@ export async function snapshotComparisonExample(page: Page): Promise<void> {
     try {
         await CursorValidator.compareWithSnapshot(page, snapshot);
         throw new Error("スナップショットが一致してしまいました");
-    } catch (error) {
+    } catch {
         console.log("スナップショットが一致しないことを確認しました");
     }
 }

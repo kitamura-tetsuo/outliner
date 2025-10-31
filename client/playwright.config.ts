@@ -1,14 +1,8 @@
-// @ts-nocheck
-
 // Do not add webServer.
 
-import { defineConfig, devices } from "@playwright/test";
-import path from "path";
-import { fileURLToPath } from "url";
+import { defineConfig } from "@playwright/test";
 
 // ESモジュールで__dirnameを使うための設定
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // -- 単一 spec 実行かどうかを推定 -------------------------
 function detectSingleSpec() {
@@ -37,12 +31,8 @@ const isLocalhostEnv = process.env.TEST_ENV === "localhost" || true; // デフ�
 
 // テスト用ポートを定義 - これを明示的に指定
 const TEST_PORT = isLocalhostEnv ? "7090" : "7080";
-// Tinylicious サーバーのポートを定義
-const TINYLICIOUS_PORT = isLocalhostEnv ? "7092" : "7082";
 // ホストを定義
 const VITE_HOST = process.env.VITE_HOST || "localhost";
-// 環境設定ファイルを定義
-const ENV_FILE = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
 
 const commonArgs = [
     "--no-sandbox",
@@ -100,7 +90,6 @@ export default defineConfig({
 
     use: {
         headless: true,
-        ...devices["Desktop Chrome"],
         // Chromium用のタイムアウト設定を延長
         launchOptions: {
             // 共有メモリの問題を回避するためのオプション

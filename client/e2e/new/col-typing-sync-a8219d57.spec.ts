@@ -5,7 +5,6 @@ registerCoverageHooks();
  *  Title   : Yjs collaboration typing sync
  */
 import { expect, test } from "@playwright/test";
-import { ensureOutlinerItemCount } from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test("typing sync between two browsers", async ({ browser }, testInfo) => {
@@ -33,7 +32,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
             timeout: 20000,
         });
     } catch (error) {
-        console.log("YJS connection not established, continuing with test");
+        console.log("YJS connection not established, continuing with test:", (error as Error).message);
         // Continue even if connection fails - test might still work with local sync
     }
     await expect(page1.locator(".outliner-item")).toHaveCount(4, { timeout: 10000 }); // Expect 4 items (title + 3 initial)
@@ -57,7 +56,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
             timeout: 20000,
         });
     } catch (error) {
-        console.log("YJS connection not established on page2, continuing with test");
+        console.log("YJS connection not established on page2, continuing with test:", (error as Error).message);
         // Continue even if connection fails - test might still work with local sync
     }
 

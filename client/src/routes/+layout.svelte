@@ -360,7 +360,7 @@ onMount(async () => {
                     };
 
                     // Patch both EventTarget and Element to maximize coverage
-                    // @ts-ignore
+                    // @ts-expect-error Type checking these prototype modifications is not needed in tests
                     EventTarget.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchEventTarget, event); };
                     Element.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchElement, event); };
 
@@ -431,7 +431,7 @@ onMount(async () => {
                                         return f;
                                     }
                                 });
-                                // @ts-ignore
+                                // @ts-expect-error Wrapping File constructor for testing purposes
                                 (window as any).File = Wrapped;
                             }
                         }
@@ -459,7 +459,7 @@ onMount(async () => {
                                         return dt;
                                     }
                                 });
-                                // @ts-ignore
+                                // @ts-expect-error Wrapping DataTransfer constructor for testing purposes
                                 (window as any).DataTransfer = WrappedDT;
                             }
                         }
