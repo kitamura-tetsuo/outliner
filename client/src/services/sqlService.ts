@@ -11,21 +11,27 @@ interface ColumnMeta {
 }
 
 interface QueryResult {
-    rows: any[];
+    rows: Record<string, unknown>[];
     columnsMeta: ColumnMeta[];
 }
 
-let SQL: any;
+type SqlJsModule = typeof import("sql.js");
+let SQL: SqlJsModule | null = null;
 let db: Database | null = null;
-let currentQuery = "";
 let currentSelect = "";
 let worker: SyncWorker | null = null;
 
 export const queryStore = writable<QueryResult>({ rows: [], columnsMeta: [] });
 
 // テスト環境でqueryStoreをwindowオブジェクトに公開
+declare global {
+    interface Window {
+        queryStore?: typeof queryStore;
+    }
+}
+
 if (typeof window !== "undefined") {
-    (window as any).queryStore = queryStore;
+    window.queryStore = queryStore;
 }
 
 export async function initDb() {
@@ -51,7 +57,7 @@ export async function initDb() {
                 wasmBinary = fs.readFileSync(possiblePath);
                 wasmPath = possiblePath;
                 break;
-            } catch (e) {
+            } catch {
                 // Continue to next path
             }
         }
@@ -103,7 +109,6 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
         /\bfrom\s+([a-zA-Z0-9_]+)(?:\s+(?:as\s+)?([a-zA-Z0-9_]+))?(?=\s+(?:join|where|group|order|limit|on|;|$)|\s*;|\s*$)/gi;
     const joinRegex =
         /\bjoin\s+([a-zA-Z0-9_]+)(?:\s+(?:as\s+)?([a-zA-Z0-9_]+))?(?=\s+(?:on|join|where|group|order|limit|;|$)|\s*;|\s*$)/gi;
-    const aliases: string[] = [];
     const tableMap: Record<string, string> = {};
     let match;
     console.log("Testing regex against:", selectPart);
@@ -113,7 +118,6 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
         const table = match[1];
         const alias = match[2] || table;
         console.log("FROM Table:", table, "Alias:", alias);
-        if (!aliases.includes(alias)) aliases.push(alias);
         tableMap[alias] = table;
     }
 
@@ -123,13 +127,11 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
         const table = match[1];
         const alias = match[2] || table;
         console.log("JOIN Table:", table, "Alias:", alias);
-        if (!aliases.includes(alias)) aliases.push(alias);
         tableMap[alias] = table;
     }
-    console.log("Found aliases:", aliases);
-    if (aliases.length === 0) {
+    if (Object.keys(tableMap).length === 0) {
         console.log("No aliases found, returning original");
-        return { sql, aliases, tableMap };
+        return { sql, aliases: [], tableMap };
     }
 
     const selectMatch = selectPart.match(/select\s+([\s\S]+?)\s+from/i);
@@ -141,14 +143,18 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
 
     const selectClause = selectMatch[1];
     console.log("selectClause:", selectClause);
-    const additions = aliases
-        .filter(a => !new RegExp(`${a}\.id`, "i").test(selectClause))
+    const aliasesInSelect = Object.keys(tableMap);
+    const additions = aliasesInSelect
+        .filter(a => !new RegExp(`${a}.id`, "i").test(selectClause))
         .map(a => `${a}.id AS ${a}_pk`);
     console.log("additions:", additions);
     if (additions.length === 0) {
         console.log("No additions needed, returning original");
-        return { sql, aliases, tableMap };
+        return { sql, aliases: aliasesInSelect, tableMap };
     }
+
+    // Extract aliases from the tableMap keys
+    const aliases = Object.keys(tableMap);
 
     const newSelect = `${selectClause}, ${additions.join(", ")}`;
     const modifiedSelectPart = selectPart.replace(selectMatch[0], `SELECT ${newSelect} FROM`);
@@ -161,9 +167,8 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
 export function runQuery(sql: string) {
     console.log("Running query:", sql);
     if (!db) throw new Error("DB not initialized");
-    const { sql: extended, aliases, tableMap } = extendQuery(sql);
+    const { sql: extended, tableMap } = extendQuery(sql);
     console.log("Extended query:", extended);
-    currentQuery = extended;
     const idx = extended.toUpperCase().lastIndexOf("SELECT");
     currentSelect = idx >= 0 ? extended.slice(idx) : extended;
     const results = db.exec(extended);
@@ -191,7 +196,7 @@ export function runQuery(sql: string) {
         columnsMeta.push({ name: col, table, pkAlias: table ? pkAliases[aliasMatch?.[1] || ""] : undefined, column });
     });
     const rows = res.values.map(v => {
-        const obj: any = {};
+        const obj: Record<string, unknown> = {};
         res.columns.forEach((c, i) => {
             obj[c] = v[i];
         });
@@ -209,7 +214,7 @@ export function rawExec(sql: string) {
     db.exec(sql);
 }
 
-export function applyEdit(info: EditInfo, value: any) {
+export function applyEdit(info: EditInfo, value: unknown) {
     console.log("Applying edit:", info, "value:", value);
     if (!worker) {
         console.log("No worker available");

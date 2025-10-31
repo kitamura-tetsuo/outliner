@@ -140,7 +140,6 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         }
 
         // 選択されたオプションを確認
-        const selectedOption = await page.locator(".alias-picker").first().locator("li.selected button").textContent();
         // console.log("Final selected option before Enter:", selectedOption);
         // console.log("Final selected option ID:", selectedOptionId);
 
@@ -218,7 +217,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
                 timeout: 5000,
             });
             await expect(page.locator(`.outliner-item[data-item-id="${aliasId}"] .alias-path`)).toBeVisible();
-        } catch (e) {
+        } catch {
             console.warn("Alias path not visible within timeout; aliasTargetId is set, continuing.");
         }
     });

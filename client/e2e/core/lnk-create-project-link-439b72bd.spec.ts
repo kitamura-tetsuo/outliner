@@ -8,7 +8,6 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { waitForCursorVisible } from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
-import { TreeValidator } from "../utils/treeValidation";
 
 test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
     test.beforeEach(async ({ page }, testInfo) => {

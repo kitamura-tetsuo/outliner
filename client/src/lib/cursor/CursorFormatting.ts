@@ -1,4 +1,4 @@
-import type { Item } from "../../schema/yjs-schema";
+// import type { Item } from "../../schema/yjs-schema"; // Not used
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";

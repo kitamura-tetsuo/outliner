@@ -43,8 +43,9 @@ describe("yjsService", () => {
                 this.users = { ...this.users, [u.userId]: u };
             },
             removeUser(id: string) {
-                const { [id]: _r, ...rest } = this.users;
-                this.users = rest;
+                const updatedUsers = { ...this.users };
+                delete updatedUsers[id];
+                this.users = updatedUsers;
             },
         };
         (globalThis as any).presenceStore = presenceStore;
@@ -68,12 +69,14 @@ describe("yjsService", () => {
                 this.selections[userId] = { userId };
             },
             clearCursorAndSelection(userId: string) {
-                const { [userId]: _r, ...rest } = this.cursors;
-                this.cursors = rest;
+                const updatedCursors = { ...this.cursors };
+                delete updatedCursors[userId];
+                this.cursors = updatedCursors;
             },
             clearSelectionForUser(userId: string) {
-                const { [userId]: _r, ...rest } = this.selections;
-                this.selections = rest;
+                const updatedSelections = { ...this.selections };
+                delete updatedSelections[userId];
+                this.selections = updatedSelections;
             },
         };
         (globalThis as any).editorOverlayStore = editorOverlayStore;

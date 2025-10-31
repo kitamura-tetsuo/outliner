@@ -409,9 +409,9 @@ export class LinkTestHelpers {
                     const text = textElement.textContent || "";
 
                     // 内部リンクのパターンを検出（通常の内部リンク）
-                    const linkPattern = /\[([^\[\]\/\-][^\[\]]*?)\]/g;
+                    const linkPattern = /\[([^[\]/-][^[\]]*?)\]/g;
                     // プロジェクト内部リンクのパターン
-                    const projectLinkPattern = /\[\/([\w\-\/]+)\]/g;
+                    const projectLinkPattern = /\[\/([\w\-/]+)\]/g;
 
                     const hasNormalLinks = linkPattern.test(text);
                     // テストを実行した後にテキストを元に戻す
@@ -476,7 +476,7 @@ export class LinkTestHelpers {
 
                     if (!hasListeners) {
                         // マウスオーバーイベントリスナーを追加
-                        link.addEventListener("mouseenter", event => {
+                        link.addEventListener("mouseenter", () => {
                             console.log("Link mouseenter event triggered");
                             // データ属性からページ名を取得
                             const pageName = link.getAttribute("data-page");

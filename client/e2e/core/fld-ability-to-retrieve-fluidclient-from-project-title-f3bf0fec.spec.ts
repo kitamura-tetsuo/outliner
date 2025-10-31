@@ -6,7 +6,6 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * YJS-0001: プロジェクトとページの取得・検証（Yjs）

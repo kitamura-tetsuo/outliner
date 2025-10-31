@@ -17,7 +17,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
 
     return {
         ...actual,
-        getLogger: (componentName = "TestComponent", enableConsole = true) => {
+        getLogger: (componentName = "TestComponent") => {
             // シンプルなロガーモックを作成
             const logger: LoggerMock = {
                 trace: vi.fn(),

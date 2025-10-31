@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 import type { Item } from "../schema/app-schema";
 import { Cursor } from "./Cursor";
 import { countLines, getCurrentColumn, getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "./cursor";
@@ -45,16 +46,23 @@ vi.mock("../stores/store.svelte", () => ({
 // Itemのテストダブル
 // AGENTS.mdの指示に基づき、Itemのインターフェースを満たす単純なテストダブルを使用します。
 const createMockItem = (id: string, text: string, children: Item[] = []): Item => {
-    const item: Item = {
+    const mockYDoc = {} as Y.Doc;
+    const mockTree = {} as import("yjs-orderedtree").YTree;
+    const mockKey = id;
+
+    const item = {
+        ydoc: mockYDoc,
+        tree: mockTree,
+        key: mockKey,
         id,
         text,
-        items: children as any, // 型キャストで対応
+        items: children as unknown as import("../schema/yjs-schema").Items,
         updateText: vi.fn((newText: string) => {
-            item.text = newText;
+            (item as { text: string; }).text = newText;
         }),
         delete: vi.fn(),
-        // 必要に応じて他のプロパティやメソッドをモック
-    };
+        parent: null,
+    } as unknown as Item;
     return item;
 };
 
@@ -81,18 +89,19 @@ describe("Cursor", () => {
         });
 
         // findTargetがモックアイテムを返すように設定
-        vi.spyOn(cursor as any, "findTarget").mockImplementation(() => {
-            if (generalStore.currentPage && cursor.itemId === generalStore.currentPage.id) {
-                return generalStore.currentPage;
+        vi.spyOn(cursor as unknown as { findTarget: () => Item | undefined; }, "findTarget").mockImplementation(() => {
+            if (generalStore.currentPage && cursor.itemId === (generalStore.currentPage as Item).id) {
+                return generalStore.currentPage as Item;
             }
             // 簡単な実装：ここでは深くネストしたアイテムの検索はモックしない
             // 必要に応じてテストケースごとに個別のモックアイテムを返すようにする
             const item = createMockItem(cursor.itemId, "Default text for " + cursor.itemId);
-            if (
-                generalStore.currentPage
-                && !generalStore.currentPage.items.find((child: Item) => child.id === cursor.itemId)
-            ) {
-                generalStore.currentPage.items.push(item);
+            if (generalStore.currentPage) {
+                const items = (generalStore.currentPage as Item).items as unknown as Item[];
+                const found = items.find((child: Item) => child.id === cursor.itemId);
+                if (!found) {
+                    items.push(item);
+                }
             }
             return item;
         });
@@ -202,7 +211,12 @@ describe("Cursor", () => {
             cursor.itemId = "item1"; // Ensure cursor is on a valid item
             cursor.offset = 5; // Initial offset
             // findTargetがmockCurrentPage.items[0]を返すように
-            vi.spyOn(cursor as any, "findTarget").mockImplementation(() => mockCurrentPage!.items[0]);
+            vi.spyOn(cursor as unknown as { findTarget: () => Item | undefined; }, "findTarget").mockImplementation(
+                () => {
+                    const items = mockCurrentPage!.items as unknown as Item[];
+                    return items.at ? items.at(0) : items[0];
+                },
+            );
             // Prevent actual navigation/merge for these simple tests
             vi.spyOn((cursor as any).editor, "mergeWithPreviousItem").mockImplementation(() => {});
             vi.spyOn((cursor as any).editor, "mergeWithNextItem").mockImplementation(() => {});

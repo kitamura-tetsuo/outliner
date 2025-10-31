@@ -1,4 +1,4 @@
-// @ts-expect-error - jsdom に型定義がありません
+// @ts-expect-error: jsdom に型定義がありません
 import { JSDOM } from "jsdom";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getClickPosition, pixelPositionToTextPosition } from "./textUtils";

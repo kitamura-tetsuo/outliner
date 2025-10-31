@@ -111,7 +111,7 @@ export class KeyEventHandler {
         });
 
         // Ctrl+X cut
-        add("x", true, false, false, _event => {
+        add("x", true, false, false, () => {
             // カットイベントを手動で発生させる
             const clipboardEvent = new ClipboardEvent("cut", {
                 clipboardData: new DataTransfer(),
@@ -447,7 +447,7 @@ export class KeyEventHandler {
                             const prevLen = typeof items.length === "number" ? items.length : 0;
                             try {
                                 items.addNode(userId);
-                            } catch (_e) {
+                            } catch {
                                 try {
                                     items.addNode(userId, prevLen);
                                 } catch {}
@@ -550,7 +550,7 @@ export class KeyEventHandler {
                         const prevLen = typeof items.length === "number" ? items.length : 0;
                         try {
                             items.addNode(userId);
-                        } catch (_e) {
+                        } catch {
                             try {
                                 items.addNode(userId, prevLen);
                             } catch {}
@@ -913,7 +913,7 @@ export class KeyEventHandler {
     /**
      * IMEのcompositionstartイベントを処理する
      */
-    static handleCompositionStart(_event: CompositionEvent) {
+    static handleCompositionStart(_event: CompositionEvent) { // eslint-disable-line @typescript-eslint/no-unused-vars
         KeyEventHandler.lastCompositionLength = 0;
     }
     /**
@@ -984,7 +984,7 @@ export class KeyEventHandler {
 
         if (boxSelection) {
             // 矩形選択の場合
-            selectedText = store.getBoxSelectionText("local");
+            selectedText = store.getSelectedText("local");
             isBoxSelectionCopy = true;
 
             // デバッグ情報
@@ -1978,7 +1978,7 @@ export class KeyEventHandler {
 
         if (boxSelection) {
             // 矩形選択の場合
-            selectedText = store.getBoxSelectionText("local");
+            selectedText = store.getSelectedText("local");
             isBoxSelectionCut = true;
 
             // デバッグ情報
