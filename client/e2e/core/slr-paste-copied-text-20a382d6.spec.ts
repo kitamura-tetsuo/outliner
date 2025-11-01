@@ -1,6 +1,6 @@
 import "../utils/registerAfterEachSnapshot";
 registerCoverageHooks();
-// @ts-nocheck
+
 import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";

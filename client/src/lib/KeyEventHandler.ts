@@ -3,6 +3,9 @@ import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";
 
+// DOM type definition
+type NodeListOf<T> = globalThis.NodeListOf<T>;
+
 /**
  * キーおよび入力イベントを各カーソルインスタンスに振り分けるハンドラ
  */

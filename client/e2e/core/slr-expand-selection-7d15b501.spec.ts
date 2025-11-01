@@ -1,7 +1,6 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-// @ts-nocheck
 /** @feature SLR-0011
  *  Title   : 選択範囲の拡張
  *  Source  : docs/client-features.yaml

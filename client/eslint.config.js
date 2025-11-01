@@ -31,7 +31,6 @@ export default ts.config(
                 FrameRequestCallback: "readonly",
                 NodeJS: "readonly",
                 ElementCreationOptions: "readonly",
-                // DOM types
                 NodeListOf: "readonly",
                 Console: "readonly",
             },
@@ -45,7 +44,9 @@ export default ts.config(
         rules: {
             "@typescript-eslint/no-explicit-any": "warn",
             "@typescript-eslint/no-unused-vars": "warn",
-            "@typescript-eslint/ban-ts-comment": "warn",
+            "@typescript-eslint/ban-ts-comment": ["error", {
+                "ts-expect-error": "allow-with-description",
+            }],
             "@typescript-eslint/no-unsafe-function-type": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-require-imports": "error", // Gradually converting back to error - has few violations
             "@typescript-eslint/no-this-alias": "error", // Gradually converting back to error - has few violations
@@ -61,6 +62,13 @@ export default ts.config(
             "svelte/no-unused-svelte-ignore": "error",
             "svelte/no-unused-props": "error",
             "svelte/prefer-svelte-reactivity": "error",
+        },
+    },
+    // Disable no-undef for .d.ts files as they contain type declarations
+    {
+        files: ["**/*.d.ts"],
+        rules: {
+            "no-undef": "off",
         },
     },
     // Disable no-undef for .d.ts files as they contain type declarations
