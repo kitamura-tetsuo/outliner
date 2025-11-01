@@ -12,39 +12,30 @@ export function setupGlobalDebugFunctions() {
     if (typeof window !== "undefined") {
         // In Playwright tests, avoid exposing goto to prevent navigation loops.
         if (process.env.NODE_ENV !== "test") {
-            (window as Window & Record<string, unknown>).__SVELTE_GOTO__ = async (
-                url: string,
-                opts?: {
-                    replaceState?: boolean;
-                    noScroll?: boolean;
-                    keepFocus?: boolean;
-                    invalidateAll?: boolean;
-                    state?: Record<string, unknown>;
-                },
-            ) => {
+            (window as any).__SVELTE_GOTO__ = async (url: string, opts?: any) => {
                 await Promise.resolve();
                 return goto(url, opts);
             };
         } else {
             try {
-                delete (window as Window & Record<string, unknown>).__SVELTE_GOTO__;
+                delete (window as any).__SVELTE_GOTO__;
             } catch {}
         }
         // サービス / ストア / ユーザーマネージャ
-        (window as Window & Record<string, unknown>).__FLUID_SERVICE__ = yjsHighService;
-        (window as Window & Record<string, unknown>).__FLUID_STORE__ = yjsStore; // keep legacy name for helpers
-        (window as Window & Record<string, unknown>).__USER_MANAGER__ = userManager;
-        (window as Window & Record<string, unknown>).__SNAPSHOT_SERVICE__ = snapshotService;
+        (window as any).__FLUID_SERVICE__ = yjsHighService;
+        (window as any).__FLUID_STORE__ = yjsStore as any; // keep legacy name for helpers
+        (window as any).__USER_MANAGER__ = userManager;
+        (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
         logger.debug("Global debug functions initialized");
     }
 }
 
 declare global {
     interface Window {
-        getFluidTreeDebugData?: () => unknown;
-        getFluidTreePathData?: (path?: string) => unknown;
-        getYjsTreeDebugData?: () => unknown;
-        getYjsTreePathData?: (path?: string) => unknown;
+        getFluidTreeDebugData?: () => any;
+        getFluidTreePathData?: (path?: string) => any;
+        getYjsTreeDebugData?: () => any;
+        getYjsTreePathData?: (path?: string) => any;
         __FLUID_SERVICE__?: typeof yjsHighService;
         __FLUID_STORE__?: typeof yjsStore;
         __USER_MANAGER__?: typeof userManager;
@@ -56,12 +47,12 @@ if (process.env.NODE_ENV === "test") {
     if (typeof window !== "undefined") {
         // Do not expose __SVELTE_GOTO__ in tests to force page.goto in helpers
         try {
-            delete (window as Window & Record<string, unknown>).__SVELTE_GOTO__;
+            delete (window as any).__SVELTE_GOTO__;
         } catch {}
-        (window as Window & Record<string, unknown>).__FLUID_SERVICE__ = yjsHighService;
-        (window as Window & Record<string, unknown>).__FLUID_STORE__ = yjsStore;
-        (window as Window & Record<string, unknown>).__USER_MANAGER__ = userManager;
-        (window as Window & Record<string, unknown>).__SNAPSHOT_SERVICE__ = snapshotService;
+        (window as any).__FLUID_SERVICE__ = yjsHighService;
+        (window as any).__FLUID_STORE__ = yjsStore as any;
+        (window as any).__USER_MANAGER__ = userManager;
+        (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
 
         // SharedTreeのデータ構造を取得するデバッグ関数
         window.getFluidTreeDebugData = function() {
@@ -70,7 +61,7 @@ if (process.env.NODE_ENV === "test") {
                     "YjsClient is not initialized. Please wait for the client to be ready.",
                 );
             }
-            return (yjsStore.yjsClient as { getAllData: () => unknown; }).getAllData();
+            return (yjsStore.yjsClient as any).getAllData();
         };
 
         // 特定のパスのデータを取得するデバッグ関数
@@ -80,37 +71,35 @@ if (process.env.NODE_ENV === "test") {
                     "YjsClient is not initialized. Please wait for the client to be ready.",
                 );
             }
-            return (yjsStore.yjsClient as { getTreeAsJson: (path?: string) => unknown; }).getTreeAsJson(path);
+            return (yjsStore.yjsClient as any).getTreeAsJson(path);
         };
 
         // Yjs tree structure debug helpers
         window.getYjsTreeDebugData = function() {
-            const fc = yjsStore.yjsClient as { project?: { ydoc: unknown; tree: unknown; items: unknown; }; };
+            const fc = yjsStore.yjsClient as any;
             if (!fc?.project) {
                 throw new Error("FluidClient project not initialized");
             }
             const project = fc.project;
-            const toPlain = (
-                item: { id: string; text?: { toString: () => string; }; key: string; },
-            ): { id: string; text: string; items: unknown[]; } => {
-                const children = new Items(project.ydoc as any, project.tree as any, item.key);
+            const toPlain = (item: any): any => {
+                const children = new Items(project.ydoc, project.tree, item.key);
                 return {
                     id: item.id,
                     text: item.text?.toString() ?? "",
-                    items: [...children].map(child => toPlain(child as any)),
+                    items: [...children].map(child => toPlain(child)),
                 };
             };
             const rootItems = project.items as Items;
             return {
                 itemCount: rootItems.length,
-                items: [...rootItems].map(item => toPlain(item as any)),
+                items: [...rootItems].map(item => toPlain(item)),
             };
         };
 
         window.getYjsTreePathData = function(path?: string) {
             const data = window.getYjsTreeDebugData?.();
             if (!path) return data;
-            return path.split(".").reduce((prev: unknown, curr: string) => prev?.[curr as keyof typeof prev], data);
+            return path.split(".").reduce((prev: any, curr: string) => prev?.[curr], data);
         };
 
         logger.debug("Global debug functions initialized");

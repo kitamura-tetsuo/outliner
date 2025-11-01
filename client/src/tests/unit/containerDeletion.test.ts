@@ -77,7 +77,7 @@ class ContainerDeletionService {
         }
     }
 
-    async checkContainerExists(): Promise<MockContainerData> {
+    async checkContainerExists(containerId: string): Promise<MockContainerData> {
         const containerDoc = await mockDocRef.get();
 
         if (!containerDoc.exists) {

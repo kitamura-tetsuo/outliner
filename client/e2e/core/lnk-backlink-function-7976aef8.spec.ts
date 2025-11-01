@@ -6,7 +6,9 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
+import { TreeValidator } from "../utils/treeValidation";
 
 /**
  * @file LNK-0007.spec.ts
@@ -31,7 +33,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
-        const _sourceUrl = page.url();
+        const sourceUrl = page.url();
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "target-page-" + Date.now().toString().slice(-6);
@@ -81,10 +83,10 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
-        const _sourceUrl = page.url();
+        const sourceUrl = page.url();
 
         // 最初のページのタイトルを取得
-        const _sourceTitle = await page.locator("h1").textContent();
+        const sourceTitle = await page.locator("h1").textContent();
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "backlink-target-" + Date.now().toString().slice(-6);
@@ -119,7 +121,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         await page.waitForTimeout(500);
 
         // バックリンクパネルの内容が表示されていることを確認
-        const _backlinkContent = page.locator(".backlink-content");
+        const backlinkContent = page.locator(".backlink-content");
         const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
 
         if (!isContentVisible) {
@@ -131,7 +133,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         }
 
         // バックリンクパネルの内容が表示されていることを確認
-        await expect(_backlinkContent).toBeVisible();
+        await expect(backlinkContent).toBeVisible();
 
         // バックリンクリストが表示されていることを確認
         const backlinkList = page.locator(".backlink-list");
@@ -176,7 +178,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
-        const _sourceUrl = page.url();
+        const sourceUrl = page.url();
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "badge-target-" + Date.now().toString().slice(-6);
@@ -231,7 +233,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
-        const _sourceUrl = page.url();
+        const sourceUrl = page.url();
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "toggle-target-" + Date.now().toString().slice(-6);
@@ -262,8 +264,8 @@ test.describe("LNK-0007: バックリンク機能", () => {
         await page.waitForTimeout(500);
 
         // 初期状態ではバックリンクパネルの内容が非表示であることを確認
-        const _backlinkContent = page.locator(".backlink-content");
-        await expect(_backlinkContent).not.toBeVisible();
+        const backlinkContent = page.locator(".backlink-content");
+        await expect(backlinkContent).not.toBeVisible();
 
         // バックリンクパネルのトグルボタンをクリック
         const toggleButton = page.locator(".backlink-toggle-button");
@@ -271,14 +273,14 @@ test.describe("LNK-0007: バックリンク機能", () => {
         await page.waitForTimeout(500);
 
         // バックリンクパネルの内容が表示されていることを確認
-        await expect(_backlinkContent).toBeVisible();
+        await expect(backlinkContent).toBeVisible();
 
         // もう一度トグルボタンをクリック
         await toggleButton.click();
         await page.waitForTimeout(500);
 
         // バックリンクパネルの内容が非表示になっていることを確認
-        await expect(_backlinkContent).not.toBeVisible();
+        await expect(backlinkContent).not.toBeVisible();
 
         // テスト成功
         console.log("バックリンクパネルを開閉できるテストが成功しました。");
@@ -296,10 +298,10 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
-        const _sourceUrl = page.url();
+        const sourceUrl = page.url();
 
         // 最初のページのタイトルを取得
-        const _sourceTitle = await page.locator("h1").textContent();
+        const sourceTitle = await page.locator("h1").textContent();
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "click-target-" + Date.now().toString().slice(-6);
@@ -334,7 +336,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         await page.waitForTimeout(500);
 
         // バックリンクパネルの内容が表示されていることを確認
-        const _backlinkContent = page.locator(".backlink-content");
+        const backlinkContent = page.locator(".backlink-content");
         const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
 
         if (!isContentVisible) {
@@ -360,10 +362,10 @@ test.describe("LNK-0007: バックリンク機能", () => {
         expect(currentUrl).not.toContain(targetPageName);
 
         // 可能であれば元のURLと一致することを確認
-        if (_sourceUrl) {
+        if (sourceUrl) {
             // URLのパス部分だけを比較（クエリパラメータなどは無視）
             const currentPath = new URL(currentUrl).pathname;
-            const sourcePath = new URL(_sourceUrl).pathname;
+            const sourcePath = new URL(sourceUrl).pathname;
             expect(currentPath).toBe(sourcePath);
         }
 

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/svelte";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { beforeEach } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
@@ -13,6 +14,7 @@ describe("ALS alias self reference", () => {
         const items = [{ id: "alias", text: "alias", items: [] }];
         generalStore.currentPage = { id: "root", text: "root", items } as any;
         render(AliasPicker);
+        const user = userEvent.setup();
 
         aliasPickerStore.show("alias");
         const option = screen.queryByRole("button", { name: "root/alias" });

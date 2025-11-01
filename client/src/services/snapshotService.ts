@@ -90,23 +90,9 @@ export function replaceWithSnapshot(
     return snapshot;
 }
 
-// Extend the Window interface to include our test service
-declare global {
-    interface Window {
-        __SNAPSHOT_SERVICE__?: {
-            addSnapshot: typeof addSnapshot;
-            getCurrentContent: typeof getCurrentContent;
-            getSnapshot: typeof getSnapshot;
-            listSnapshots: typeof listSnapshots;
-            replaceWithSnapshot: typeof replaceWithSnapshot;
-            setCurrentContent: typeof setCurrentContent;
-        };
-    }
-}
-
 if (process.env.NODE_ENV === "test") {
     if (typeof window !== "undefined") {
-        window.__SNAPSHOT_SERVICE__ = {
+        (window as any).__SNAPSHOT_SERVICE__ = {
             addSnapshot,
             getCurrentContent,
             getSnapshot,

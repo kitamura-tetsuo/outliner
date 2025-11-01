@@ -10,11 +10,8 @@
  * データ削除前に必ず実行してください。
  */
 
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const fs = require("fs").promises;
+const path = require("path");
 
 // 色付きログ出力
 const colors = {
@@ -33,14 +30,13 @@ function log(message, color = "reset") {
 let admin, db, auth, storage;
 
 try {
-    admin = (await import("firebase-admin")).default;
+    admin = require("firebase-admin");
 
     // サービスアカウントファイルの存在確認
     const serviceAccountPath = path.join(__dirname, "..", "server", "firebase-adminsdk.json");
 
     try {
-        const serviceAccountModule = await import(`file://${serviceAccountPath}`);
-        const serviceAccount = serviceAccountModule.default || serviceAccountModule;
+        const serviceAccount = require(serviceAccountPath);
 
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
@@ -296,11 +292,11 @@ async function main() {
 }
 
 // スクリプト実行
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
     main().catch(error => {
         log(`❌ 予期しないエラー: ${error.message}`, "red");
         process.exit(1);
     });
 }
 
-export { main };
+module.exports = { main };

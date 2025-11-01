@@ -100,9 +100,8 @@ export async function snapshotComparisonExample(page: Page): Promise<void> {
     try {
         await TreeValidator.compareWithSnapshot(page, snapshot);
         throw new Error("スナップショットが一致してしまいました");
-    } catch (_error) {
+    } catch (error) {
         console.log("スナップショットが一致しないことを確認しました");
-        void _error;
     }
 }
 
@@ -126,9 +125,8 @@ export async function ignorePathsExample(page: Page): Promise<void> {
         // 新しく追加されたアイテムのパスを無視
         await TreeValidator.compareWithSnapshot(page, snapshot, ["items.0.items.2"]);
         console.log("無視したパス以外は一致しました");
-    } catch (_error) {
+    } catch (error) {
         console.error("無視したパス以外も変更されています");
-        void _error;
     }
 }
 
@@ -138,7 +136,7 @@ export async function ignorePathsExample(page: Page): Promise<void> {
  */
 export async function comprehensiveExample(page: Page): Promise<void> {
     // 1. データ構造を取得
-    await TreeValidator.getTreeData(page);
+    const treeData = await TreeValidator.getTreeData(page);
 
     // 2. 部分比較で基本構造を検証
     const expectedStructure = {
@@ -159,7 +157,7 @@ export async function comprehensiveExample(page: Page): Promise<void> {
     await TreeValidator.assertTreePath(page, "items.0.text", "First item");
 
     // 4. スナップショットを取得
-    await TreeValidator.takeTreeSnapshot(page);
+    const snapshot = await TreeValidator.takeTreeSnapshot(page);
 
     // 5. 変更を加える
     await page.locator(".outliner-item").first().click();

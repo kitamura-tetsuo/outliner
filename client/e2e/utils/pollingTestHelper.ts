@@ -6,6 +6,7 @@
  */
 
 import type { Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 export interface PollingTestResult {
     testName: string;
@@ -45,13 +46,14 @@ export async function initPollingMonitor(page: Page) {
             start() {
                 if (this.enabled) return;
                 this.enabled = true;
+                const self = this;
 
-                window.setInterval = (callback: any, delay?: number, ...args: any[]): any => {
+                window.setInterval = function(callback: any, delay?: number, ...args: any[]): any {
                     const stack = new Error().stack || "";
-                    const id = this.nextId++;
-                    const disabled = this.disablePatterns.some(p => p.test(stack));
+                    const id = self.nextId++;
+                    const disabled = self.disablePatterns.some(p => p.test(stack));
 
-                    this.calls.set(id, {
+                    self.calls.set(id, {
                         id,
                         type: "setInterval",
                         delay,
@@ -66,24 +68,24 @@ export async function initPollingMonitor(page: Page) {
                         return id;
                     }
 
-                    const wrappedCallback = (...callbackArgs: any[]) => {
-                        const call = this.calls.get(id);
+                    const wrappedCallback = function(...callbackArgs: any[]) {
+                        const call = self.calls.get(id);
                         if (call) {
                             call.executionCount++;
                             call.lastExecutedAt = Date.now();
                         }
-                        return callback(...callbackArgs);
+                        return callback.apply(this, callbackArgs);
                     };
 
-                    return this.originalSetInterval(wrappedCallback, delay, ...args);
-                };
+                    return self.originalSetInterval(wrappedCallback, delay, ...args);
+                } as any;
 
-                window.setTimeout = (callback: any, delay?: number, ...args: any[]): any => {
+                window.setTimeout = function(callback: any, delay?: number, ...args: any[]): any {
                     const stack = new Error().stack || "";
-                    const id = this.nextId++;
-                    const disabled = this.disablePatterns.some(p => p.test(stack));
+                    const id = self.nextId++;
+                    const disabled = self.disablePatterns.some(p => p.test(stack));
 
-                    this.calls.set(id, {
+                    self.calls.set(id, {
                         id,
                         type: "setTimeout",
                         delay,
@@ -98,18 +100,18 @@ export async function initPollingMonitor(page: Page) {
                         return id;
                     }
 
-                    const wrappedCallback = (...callbackArgs: any[]) => {
-                        const call = this.calls.get(id);
+                    const wrappedCallback = function(...callbackArgs: any[]) {
+                        const call = self.calls.get(id);
                         if (call) {
                             call.executionCount++;
                             call.lastExecutedAt = Date.now();
                         }
-                        this.calls.delete(id);
-                        return callback(...callbackArgs);
+                        self.calls.delete(id);
+                        return callback.apply(this, callbackArgs);
                     };
 
-                    return this.originalSetTimeout(wrappedCallback, delay, ...args);
-                };
+                    return self.originalSetTimeout(wrappedCallback, delay, ...args);
+                } as any;
             }
 
             addDisablePattern(pattern: RegExp) {

@@ -3,6 +3,7 @@ import { goto } from "$app/navigation";
 import * as echarts from "echarts";
 import { onMount } from "svelte";
 import { store } from "../stores/store.svelte";
+import type * as Y from "yjs";
 import { buildGraph } from "../utils/graphUtils";
 
 let graphDiv: HTMLDivElement;
@@ -11,8 +12,8 @@ let chart: echarts.ECharts | undefined;
 function saveLayout() {
     if (!chart) return;
     try {
-        const option = chart.getOption();
-        const nodes = (option as any).series[0].data;
+        const option = chart.getOption() as any;
+        const nodes = option.series[0].data;
 
         // EChartsの内部状態から実際の位置を取得
         const layoutData = {
@@ -36,7 +37,7 @@ function saveLayout() {
     }
 }
 
-function loadLayout(nodes: Array<{ id: string; x?: number; y?: number; fixed?: boolean }>) {
+function loadLayout(nodes: any[]) {
     try {
         const savedLayout = localStorage.getItem("graph-layout");
         if (!savedLayout) return nodes;
@@ -67,18 +68,18 @@ function update() {
     if (!chart) return;
 
     // storeからデータを取得（Yjs Items 互換: 配列/Iterable/Array-like を許容）
-    const toArray = <T,>(p: any): T[] => {
+    const toArray = (p: any) => {
         try {
             if (Array.isArray(p)) return p;
             if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
             const len = p?.length;
             if (typeof len === "number" && len >= 0) {
-                const r: T[] = [];
-                for (let i = 0; i < len; i++) r.push((p as any).at ? (p as any).at(i) : p[i]);
+                const r: any[] = [];
+                for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
                 return r;
             }
         } catch {}
-        return [];
+        return [] as any[];
     };
 
     const pages = toArray(store.pages?.current || []);
@@ -112,7 +113,7 @@ function update() {
 
 onMount(() => {
     chart = echarts.init(graphDiv);
-    (window as typeof window & { __GRAPH_CHART__?: typeof chart }).__GRAPH_CHART__ = chart;
+    (window as any).__GRAPH_CHART__ = chart;
     chart.on("click", (params: any) => {
         if (params.dataType === "node") {
             const pageName = params.data.name;
@@ -145,7 +146,7 @@ onMount(() => {
     // React to project structure changes via minimal-granularity Yjs observeDeep on orderedTree
     let detachDocListener: (() => void) | undefined;
     try {
-        const ymap = (store.project as any)?.ydoc?.getMap?.("orderedTree");
+        const ymap: any = (store.project as any)?.ydoc?.getMap?.("orderedTree");
         if (ymap && typeof ymap.observeDeep === "function") {
             const handler = () => { try { update(); } catch {} };
             ymap.observeDeep(handler);

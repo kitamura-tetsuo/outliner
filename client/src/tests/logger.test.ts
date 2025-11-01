@@ -17,7 +17,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
 
     return {
         ...actual,
-        getLogger: (componentName = "TestComponent") => {
+        getLogger: (componentName = "TestComponent", enableConsole = true) => {
             // シンプルなロガーモックを作成
             const logger: LoggerMock = {
                 trace: vi.fn(),
@@ -128,7 +128,7 @@ describe("Logger", () => {
         vi.clearAllMocks();
 
         // テスト環境で必要な環境変数を設定
-        // @ts-expect-error - テスト用にimport.meta.envを直接設定
+        // @ts-ignore - テスト用にimport.meta.envを直接設定
         import.meta.env = {
             DEV: true,
             NODE_ENV: "test",

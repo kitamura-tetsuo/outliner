@@ -14,9 +14,9 @@ test.describe("LNK-0004: 仮ページ未編集確認", () => {
     });
 
     test("仮ページにアクセスしただけではページが作成されないことを確認", async ({ page }) => {
-        const _sourceUrl = page.url();
+        const sourceUrl = page.url();
         const nonExistentPage = "no-edit-temp-page-" + Date.now().toString().slice(-6);
-        await page.goto(`${_sourceUrl}${nonExistentPage}`);
+        await page.goto(`${sourceUrl}${nonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
         const loginButton = page.locator("button:has-text('開発者ログイン')");
@@ -25,10 +25,10 @@ test.describe("LNK-0004: 仮ページ未編集確認", () => {
             await page.waitForTimeout(1000);
         }
 
-        await page.goto(_sourceUrl);
+        await page.goto(sourceUrl);
         await page.waitForSelector("body", { timeout: 10000 });
 
-        await page.goto(`${_sourceUrl}${nonExistentPage}`);
+        await page.goto(`${sourceUrl}${nonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
         const loginButton2 = page.locator("button:has-text('開発者ログイン')");

@@ -67,17 +67,15 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // アクティブなアイテムIDを取得
-        const _firstItemId = await TestHelpers.getActiveItemId(page);
-        expect(_firstItemId).not.toBeNull();
+        const firstItemId = await TestHelpers.getActiveItemId(page);
+        expect(firstItemId).not.toBeNull();
 
         // アクティブなアイテムを取得
-        const activeItem = page.locator(`.outliner-item[data-item-id="${_firstItemId}"]`);
+        const activeItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await activeItem.waitFor({ state: "visible" });
 
         // 初期テキストを取得してカーソル位置を計算
-        const preInitialText = await page.locator(`.outliner-item[data-item-id="${_firstItemId}"]`).locator(
-            ".item-text",
-        )
+        const preInitialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
             .textContent();
 
         // "First part of text."の位置を見つける
@@ -96,7 +94,7 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         }
 
         // 初期テキストを取得
-        const _initialText = await page.locator(`.outliner-item[data-item-id="${_firstItemId}"]`).locator(".item-text")
+        const initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
             .textContent();
 
         // Enterキーを押下
@@ -104,20 +102,20 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         await page.waitForTimeout(500);
 
         // 1つ目のアイテムのテキストを取得
-        const firstItemText = await page.locator(`.outliner-item[data-item-id="${_firstItemId}"]`).locator(".item-text")
+        const firstItemText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
             .textContent();
 
         // 1つ目のアイテムにカーソル位置より前のテキストが残っていることを確認
         // 実際の動作に合わせてテストを修正
-        console.log(`Initial text: "${_initialText}"`);
+        console.log(`Initial text: "${initialText}"`);
         console.log(`First item text after split: "${firstItemText}"`);
 
         expect(firstItemText).not.toBe("");
-        expect(firstItemText!.length).toBeLessThan(_initialText!.length);
+        expect(firstItemText!.length).toBeLessThan(initialText!.length);
 
         // ページ名が含まれている場合でも、"First part of text"が含まれていることを確認
         // または、実際のテキスト内容に基づいて期待値を調整
-        if (_initialText?.includes("First part of text")) {
+        if (initialText?.includes("First part of text")) {
             expect(firstItemText).toContain("First part of text");
         } else {
             // ページ名のみの場合は、テキストが短くなっていることを確認
@@ -130,11 +128,11 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // アクティブなアイテムIDを取得
-        const _firstItemId = await TestHelpers.getActiveItemId(page);
-        expect(_firstItemId).not.toBeNull();
+        const firstItemId = await TestHelpers.getActiveItemId(page);
+        expect(firstItemId).not.toBeNull();
 
         // アクティブなアイテムを取得
-        const activeItem = page.locator(`.outliner-item[data-item-id="${_firstItemId}"]`);
+        const activeItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await activeItem.waitFor({ state: "visible" });
 
         // カーソルを文の途中に移動
@@ -143,28 +141,34 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
             await page.keyboard.press("ArrowRight");
         }
 
+        // 初期テキストを取得
+        const initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
+            .textContent();
+
         // Enterキーを押下
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
+        // アイテム数を確認
+        const itemCount = await page.locator(".outliner-item").count();
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
         // アクティブなアイテムIDを取得（2つ目のアイテム）
-        const _secondItemId = await TestHelpers.getActiveItemId(page);
-        expect(_secondItemId).not.toBeNull();
+        const secondItemId = await TestHelpers.getActiveItemId(page);
+        expect(secondItemId).not.toBeNull();
 
         // アクティブなアイテムを取得
-        const newActiveItem = page.locator(`.outliner-item[data-item-id="${_secondItemId}"]`);
+        const newActiveItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await newActiveItem.waitFor({ state: "visible" });
 
         // 2つ目のアイテムのテキストを取得
-        const _secondItemText = await page.locator(`.outliner-item[data-item-id="${_secondItemId}"]`).locator(
+        const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(
             ".item-text",
         ).textContent();
 
         // 2つ目のアイテムにテキストが含まれていることを確認
-        expect(_secondItemText).not.toBe("");
+        expect(secondItemText).not.toBe("");
         // テキストの内容は実装によって異なる可能性があるため、空でないことだけを確認
         // expect(secondItemText).toContain("Second part of text");
     });
@@ -191,15 +195,18 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
+        // アイテム数を確認
+        const itemCount = await page.locator(".outliner-item").count();
+
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
         // アクティブなアイテムIDを取得（2つ目のアイテム）
-        const _secondItemId = await TestHelpers.getActiveItemId(page);
-        expect(_secondItemId).not.toBeNull();
+        const secondItemId = await TestHelpers.getActiveItemId(page);
+        expect(secondItemId).not.toBeNull();
 
         // アクティブなアイテムを取得
-        const newActiveItem = page.locator(`.outliner-item[data-item-id="${_secondItemId}"]`);
+        const newActiveItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await newActiveItem.waitFor({ state: "visible" });
 
         // カーソルの位置を確認
@@ -242,7 +249,7 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         // 具体的な値のチェックは行わない
 
         // カーソルが表示されていることを確認
-        const _cursorVisible = await cursor.isVisible();
-        expect(_cursorVisible).toBe(true);
+        const cursorVisible = await cursor.isVisible();
+        expect(cursorVisible).toBe(true);
     });
 });

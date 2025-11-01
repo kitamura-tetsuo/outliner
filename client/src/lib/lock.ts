@@ -24,7 +24,7 @@ class AsyncLock {
         }
     }
 
-    async runExclusive<T>(callback: () => Promise<T> | T) {
+    async runExclusive(callback: () => any) {
         await this.acquire();
         try {
             return await callback();
@@ -35,23 +35,20 @@ class AsyncLock {
 }
 
 export class AsyncLockManager {
-    locks: Map<unknown, AsyncLock>;
+    locks: Map<any, any>;
     constructor() {
-        this.locks = new Map<unknown, AsyncLock>();
+        this.locks = new Map();
     }
 
-    getLock<T = unknown>(key: T) {
-        if (!this.locks.has(key as unknown)) {
-            this.locks.set(key as unknown, new AsyncLock());
+    getLock(key: any) {
+        if (!this.locks.has(key)) {
+            this.locks.set(key, new AsyncLock());
         }
-        return this.locks.get(key as unknown);
+        return this.locks.get(key);
     }
 
-    async runExclusive<T, R>(key: T, callback: () => Promise<R> | R) {
+    async runExclusive(key: any, callback: any) {
         const lock = this.getLock(key);
-        if (!lock) {
-            throw new Error(`Lock not initialized for key: ${String(key)}`);
-        }
         return lock.runExclusive(callback);
     }
 }

@@ -14,14 +14,14 @@ test.describe("Authentication Test", () => {
 
         // UserManagerが初期化されるまで待機
         await page.waitForFunction(
-            () => (window as { __USER_MANAGER__?: any; }).__USER_MANAGER__ !== undefined,
+            () => (window as any).__USER_MANAGER__ !== undefined,
             { timeout: 30000 },
         );
         console.log("Debug: UserManager found");
 
         // 認証前の状態を確認
         const beforeAuth = await page.evaluate(() => {
-            const win = window as { __USER_MANAGER__?: { currentUser?: any; }; __SVELTE_GOTO__?: any; };
+            const win = window as any;
             return {
                 userManager: typeof win.__USER_MANAGER__,
                 svelteGoto: typeof win.__SVELTE_GOTO__,
@@ -31,14 +31,8 @@ test.describe("Authentication Test", () => {
         console.log("Debug: Before authentication:", beforeAuth);
 
         // 認証を実行
-        const authResult = await page.evaluate(async () => {
-            const win = window as {
-                __USER_MANAGER__?: {
-                    addEventListener: (callback: (result: { user?: any; }) => void) => () => void;
-                    loginWithEmailPassword: (email: string, password: string) => Promise<void>;
-                };
-            };
-            const userManager = win.__USER_MANAGER__;
+        const authResult: any = await page.evaluate(async () => {
+            const userManager = (window as any).__USER_MANAGER__;
             if (!userManager) {
                 return { success: false, error: "UserManager not found" };
             }
@@ -49,7 +43,7 @@ test.describe("Authentication Test", () => {
                 // 認証状態の変更を監視
                 let authCompleted = false;
                 const authPromise = new Promise(resolve => {
-                    const cleanup = userManager.addEventListener((authResult: { user?: any; }) => {
+                    const cleanup = userManager.addEventListener((authResult: any) => {
                         console.log("Auth state changed:", authResult);
                         if (authResult && authResult.user) {
                             authCompleted = true;
@@ -84,7 +78,7 @@ test.describe("Authentication Test", () => {
         await page.waitForTimeout(2000); // 少し待機
 
         const afterAuth = await page.evaluate(() => {
-            const win = window as { __USER_MANAGER__?: { currentUser?: any; }; __SVELTE_GOTO__?: any; };
+            const win = window as any;
             return {
                 userManager: typeof win.__USER_MANAGER__,
                 svelteGoto: typeof win.__SVELTE_GOTO__,

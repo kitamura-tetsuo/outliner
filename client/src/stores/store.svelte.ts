@@ -93,7 +93,7 @@ class GeneralStore {
                             cloneBranch(prevItems, nextItems);
                         }
                     }
-                } catch {
+                } catch (_e) {
                     // Ignore errors during child item migration
                 }
                 this._currentPage = next as any;
@@ -135,23 +135,23 @@ class GeneralStore {
         const project = v;
         const ymap = (project as any)?.ydoc?.getMap?.("orderedTree");
         const subscribe = createSubscriber((_update) => {
-            const handler = (_events: Array<Y.YEvent<unknown>>, _transaction?: Y.Transaction) => {
+            const handler = (_events: Array<Y.YEvent<unknown>>, _tr?: Y.Transaction) => {
                 try {
                     saveProjectSnapshot(project);
-                } catch {
+                } catch (_e) {
                     // Ignore errors during snapshot saving
                 }
                 _update();
             };
             try {
                 ymap?.observeDeep?.(handler);
-            } catch {
+            } catch (_e) {
                 // Ignore errors during observation setup
             }
             return () => {
                 try {
                     ymap?.unobserveDeep?.(handler);
-                } catch {
+                } catch (_e) {
                     // Ignore errors during observation teardown
                 }
             };
@@ -180,7 +180,7 @@ if (typeof window !== "undefined") {
             (store as { project: Project; }).project = Project.createInstance(title);
             console.log("INIT: Provisional Project set in store.svelte.ts", { title });
         }
-    } catch {
+    } catch (_e) {
         // Ignore errors during initial project setup
     }
 }

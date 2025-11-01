@@ -18,9 +18,9 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
     test("太字文字列内でのカーソル移動が正しく機能する", async ({ page }) => {
         // ページタイトル以外のアイテムを選択（2番目のアイテム）
-        const _secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
-        expect(_secondItemId).not.toBeNull();
-        const item = page.locator(`.outliner-item[data-item-id="${_secondItemId}"] .item-content`);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId).not.toBeNull();
+        const item = page.locator(`.outliner-item[data-item-id="${secondItemId}"] .item-content`);
         await item.click();
         await TestHelpers.waitForCursorVisible(page);
 
@@ -58,17 +58,15 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
     test("複数のフォーマットが混在する文字列でのカーソル移動", async ({ page }) => {
         // ページタイトル以外のアイテムを選択（2番目のアイテム）
-        const _secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
-        expect(_secondItemId).not.toBeNull();
-        const item = page.locator(`.outliner-item[data-item-id="${_secondItemId}"]`);
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId).not.toBeNull();
+        const item = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
         // カーソルの状態を確認し、必要に応じて作成
         const cursorState = await page.evaluate(() => {
-            const editorStore =
-                (window as { editorOverlayStore?: { getActiveItem: () => any; getCursorInstances: () => any[]; }; })
-                    .editorOverlayStore;
+            const editorStore = (window as any).editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
@@ -83,14 +81,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         // カーソルインスタンスが存在しない場合、作成する
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
-                const editorStore = (window as {
-                    editorOverlayStore?: {
-                        getActiveItem: () => string | null;
-                        setCursor: (
-                            cursor: { itemId: string; offset: number; isActive: boolean; userId: string; },
-                        ) => void;
-                    };
-                }).editorOverlayStore;
+                const editorStore = (window as any).editorOverlayStore;
                 if (editorStore) {
                     const activeItemId = editorStore.getActiveItem();
                     if (activeItemId) {
@@ -107,15 +98,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
         // cursor.insertText()を使用してテキストを挿入
         await page.evaluate(() => {
-            const editorStore = (window as {
-                editorOverlayStore?: {
-                    getCursorInstances: () => {
-                        findTarget: () => { updateText: (text: string) => void; } | null;
-                        offset: number;
-                        insertText: (text: string) => void;
-                    }[];
-                };
-            }).editorOverlayStore;
+            const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
@@ -151,9 +134,9 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
     test("Home/Endキーがフォーマット文字列で正しく機能する", async ({ page }) => {
         // ページタイトル以外のアイテムを選択（2番目のアイテム）
-        const _secondItemId2 = await TestHelpers.getItemIdByIndex(page, 1);
-        expect(_secondItemId2).not.toBeNull();
-        const item = page.locator(`.outliner-item[data-item-id="${_secondItemId2}"]`);
+        const secondItemId2 = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId2).not.toBeNull();
+        const item = page.locator(`.outliner-item[data-item-id="${secondItemId2}"]`);
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
@@ -182,9 +165,9 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
     test("Shift+矢印キーによる選択がフォーマット文字列で正しく機能する", async ({ page }) => {
         // 既存のアイテム（2番目のアイテム）を使用
-        const _secondItemId3 = await TestHelpers.getItemIdByIndex(page, 1);
-        expect(_secondItemId3).not.toBeNull();
-        const item = page.locator(`.outliner-item[data-item-id="${_secondItemId3}"]`);
+        const secondItemId3 = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId3).not.toBeNull();
+        const item = page.locator(`.outliner-item[data-item-id="${secondItemId3}"]`);
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
@@ -205,14 +188,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         // カーソルインスタンスが存在しない場合、作成する
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
-                const editorStore = (window as {
-                    editorOverlayStore?: {
-                        getActiveItem: () => string | null;
-                        setCursor: (
-                            cursor: { itemId: string; offset: number; isActive: boolean; userId: string; },
-                        ) => void;
-                    };
-                }).editorOverlayStore;
+                const editorStore = (window as any).editorOverlayStore;
                 if (editorStore) {
                     const activeItemId = editorStore.getActiveItem();
                     if (activeItemId) {
@@ -229,15 +205,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
         // cursor.insertText()を使用してテキストを挿入
         await page.evaluate(() => {
-            const editorStore = (window as {
-                editorOverlayStore?: {
-                    getCursorInstances: () => {
-                        findTarget: () => { updateText: (text: string) => void; } | null;
-                        offset: number;
-                        insertText: (text: string) => void;
-                    }[];
-                };
-            }).editorOverlayStore;
+            const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
@@ -271,9 +239,9 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
 
     test("フォーマット文字列内での単語単位の移動（Ctrl+矢印）", async ({ page }) => {
         // ページタイトル以外のアイテムを選択（2番目のアイテム）
-        const _secondItemId4 = await TestHelpers.getItemIdByIndex(page, 1);
-        expect(_secondItemId4).not.toBeNull();
-        const item = page.locator(`.outliner-item[data-item-id="${_secondItemId4}"]`);
+        const secondItemId4 = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId4).not.toBeNull();
+        const item = page.locator(`.outliner-item[data-item-id="${secondItemId4}"]`);
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 

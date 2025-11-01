@@ -36,11 +36,11 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         await page.waitForSelector(".outliner-item", { timeout: 30000 });
 
         // デバッグ: アイテム数を確認
-        const _itemCount = await page.locator(".outliner-item").count();
-        console.log("Total outliner items:", _itemCount);
+        const itemCount = await page.locator(".outliner-item").count();
+        console.log("Total outliner items:", itemCount);
 
         // デバッグ: 各アイテムの存在を確認
-        for (let i = 0; i < _itemCount; i++) {
+        for (let i = 0; i < itemCount; i++) {
             const item = page.locator(".outliner-item").nth(i);
             const exists = await item.count();
             console.log(`Item ${i} exists:`, exists);

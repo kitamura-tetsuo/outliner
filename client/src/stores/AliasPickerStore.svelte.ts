@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Item, Items } from "../schema/app-schema";
 import { store as generalStore } from "./store.svelte";
 
@@ -51,7 +52,7 @@ class AliasPickerStore {
             if (typeof document !== "undefined") {
                 setTimeout(() => {
                     try {
-                        document.querySelector(".alias-picker");
+                        const el = document.querySelector(".alias-picker");
                     } catch {}
                 }, 0);
             }

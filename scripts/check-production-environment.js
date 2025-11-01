@@ -9,7 +9,7 @@
  * このスクリプトは現在の環境が本番環境かどうかをチェックします。
  */
 
-import https from "https";
+const https = require("https");
 
 // 色付きログ出力
 const colors = {
@@ -227,11 +227,11 @@ async function main() {
 }
 
 // スクリプト実行
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
     main().catch(error => {
         log(`❌ 予期しないエラー: ${error.message}`, "red");
         process.exit(1);
     });
 }
 
-export { checkProductionHealth, detectEmulatorEnvironment, main };
+module.exports = { main, checkProductionHealth, detectEmulatorEnvironment };

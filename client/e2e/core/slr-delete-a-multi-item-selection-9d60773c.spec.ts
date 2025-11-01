@@ -80,14 +80,14 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 3) return;
 
-            const _secondItemId = items[1].getAttribute("data-item-id");
+            const secondItemId = items[1].getAttribute("data-item-id");
             const thirdItemId = items[2].getAttribute("data-item-id");
 
-            if (!_secondItemId || !thirdItemId) return;
+            if (!secondItemId || !thirdItemId) return;
 
             // 選択範囲を設定
             store.setSelection({
-                startItemId: _secondItemId,
+                startItemId: secondItemId,
                 startOffset: 0,
                 endItemId: thirdItemId,
                 endOffset: 0,
@@ -102,7 +102,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
-        await page.evaluate(() => {
+        const selectionExists = await page.evaluate(() => {
             return document.querySelector(".editor-overlay .selection") !== null;
         });
 
@@ -124,11 +124,11 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
 
         // 残りのアイテムのテキストを確認
         const firstItemTextAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
-        const _secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+        const secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
 
         // テキストが存在することを確認
         expect(firstItemTextAfter || "").toBeTruthy();
-        expect(_secondItemTextAfter || "").toBeTruthy();
+        expect(secondItemTextAfter || "").toBeTruthy();
     });
 
     test("複数アイテムにまたがる選択範囲をDeleteキーで削除できる", async ({ page }) => {
@@ -154,14 +154,14 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 3) return;
 
-            const _secondItemId = items[1].getAttribute("data-item-id");
+            const secondItemId = items[1].getAttribute("data-item-id");
             const thirdItemId = items[2].getAttribute("data-item-id");
 
-            if (!_secondItemId || !thirdItemId) return;
+            if (!secondItemId || !thirdItemId) return;
 
             // 選択範囲を設定
             store.setSelection({
-                startItemId: _secondItemId,
+                startItemId: secondItemId,
                 startOffset: 0,
                 endItemId: thirdItemId,
                 endOffset: 0,
@@ -179,7 +179,6 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
         } catch (e) {
-            void e; // explicitly mark as intentionally unused
             console.log("Selection not created, skipping test");
             return;
         }
@@ -202,14 +201,14 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
 
         // 残りのアイテムのテキストを確認
         const firstItemTextAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
-        const _secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+        const secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
 
         // テキストが存在することを確認
         expect(firstItemTextAfter || "").toBeTruthy();
 
         // 2つ目のアイテムが存在しない場合もあるため、条件付きでチェック
         if (afterCount > 1) {
-            expect(_secondItemTextAfter || "").toBeTruthy();
+            expect(secondItemTextAfter || "").toBeTruthy();
         }
     });
 
@@ -236,14 +235,14 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 3) return;
 
-            const _secondItemId = items[1].getAttribute("data-item-id");
+            const secondItemId = items[1].getAttribute("data-item-id");
             const thirdItemId = items[2].getAttribute("data-item-id");
 
-            if (!_secondItemId || !thirdItemId) return;
+            if (!secondItemId || !thirdItemId) return;
 
             // 選択範囲を設定
             store.setSelection({
-                startItemId: _secondItemId,
+                startItemId: secondItemId,
                 startOffset: 3, // "Sec" の後
                 endItemId: thirdItemId,
                 endOffset: 2, // "Th" の後
@@ -261,7 +260,6 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
         } catch (e) {
-            void e; // explicitly mark as intentionally unused
             console.log("Selection not created, skipping test");
             return;
         }
@@ -282,11 +280,11 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         expect(afterCount).toBeLessThan(beforeCount);
 
         // 結合されたアイテムのテキストを確認
-        const _secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+        const secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
 
         // 結合されたテキストが正しいことを確認（前半部分と後半部分が結合されている）
-        expect(_secondItemTextAfter).toContain("Sec");
-        expect(_secondItemTextAfter).toContain("ird item text");
+        expect(secondItemTextAfter).toContain("Sec");
+        expect(secondItemTextAfter).toContain("ird item text");
     });
 
     test("カーソル位置が適切に更新される", async ({ page }) => {
@@ -313,15 +311,15 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             if (items.length < 2) return;
 
             const firstItemId = items[0].getAttribute("data-item-id");
-            const _secondItemId = items[1].getAttribute("data-item-id");
+            const secondItemId = items[1].getAttribute("data-item-id");
 
-            if (!firstItemId || !_secondItemId) return;
+            if (!firstItemId || !secondItemId) return;
 
             // 選択範囲を設定
             store.setSelection({
                 startItemId: firstItemId,
                 startOffset: 3, // "Fir" の後
-                endItemId: _secondItemId,
+                endItemId: secondItemId,
                 endOffset: 0, // 2つ目のアイテムの先頭
                 userId: "local",
                 isReversed: false,
@@ -337,7 +335,6 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
         } catch (e) {
-            void e; // explicitly mark as intentionally unused
             console.log("Selection not created, skipping test");
             return;
         }
@@ -349,7 +346,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.waitForTimeout(500);
 
         // カーソルが表示されていることを確認
-        await page.evaluate(() => {
+        const cursorVisible = await page.evaluate(() => {
             return document.querySelector(".editor-overlay .cursor") !== null;
         });
 

@@ -101,6 +101,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
         await page.waitForTimeout(500);
 
         // プレビューが表示されているか確認
+        const previewElement = page.locator(".link-preview-popup");
         const isPreviewVisible = await TestHelpers.forceCheckVisibility(".link-preview-popup", page);
 
         // 通常のマウスオーバーでプレビューが表示されない場合は、強制的にプレビューを表示
@@ -170,7 +171,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
                     `[${pageName}]`, // 自己参照リンクを追加
                 ];
 
-                additionalLines.forEach((line) => {
+                additionalLines.forEach((line, index) => {
                     const newItem = firstItem.cloneNode(true) as HTMLElement;
                     const newTextElement = newItem.querySelector(".item-text");
                     if (newTextElement) {
@@ -220,6 +221,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
         await page.waitForTimeout(500);
 
         // プレビューが表示されているか確認
+        const previewElement = page.locator(".link-preview-popup");
         const isPreviewVisible = await TestHelpers.forceCheckVisibility(".link-preview-popup", page);
 
         // 通常のマウスオーバーでプレビューが表示されない場合は、強制的にプレビューを表示
@@ -337,6 +339,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
         await page.waitForTimeout(500);
 
         // プレビューが表示されているか確認
+        const previewElement = page.locator(".link-preview-popup");
         const isPreviewVisible = await TestHelpers.forceCheckVisibility(".link-preview-popup", page);
 
         // 通常のマウスオーバーでプレビューが表示されない場合は、強制的にプレビューを表示
@@ -447,6 +450,7 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
         await page.waitForTimeout(500);
 
         // プレビューが表示されているか確認
+        const previewElement = page.locator(".link-preview-popup");
         const isPreviewVisible = await TestHelpers.forceCheckVisibility(".link-preview-popup", page);
 
         // 通常のマウスオーバーでプレビューが表示されない場合は、強制的にプレビューを表示

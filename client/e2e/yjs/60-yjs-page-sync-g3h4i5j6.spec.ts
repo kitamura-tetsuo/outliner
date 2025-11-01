@@ -11,7 +11,7 @@ registerCoverageHooks();
 test.setTimeout(120_000);
 
 test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
-    test("two browser contexts connect to same page and see same page data", async ({ browser }) => {
+    test("two browser contexts connect to same page and see same page data", async ({ browser }, testInfo) => {
         // Create first browser context
         const context1 = await browser.newContext();
         const page1 = await context1.newPage();
@@ -55,9 +55,9 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Create project and page programmatically
         const projectId = `p${Date.now().toString(16)}`;
         const pageInfo = await page1.evaluate(async (pid) => {
-            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
+            // @ts-ignore
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
-            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
+            // @ts-ignore
             const { Project } = await import("/src/schema/app-schema.ts");
 
             const conn = await createProjectConnection(pid);
@@ -107,7 +107,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Verify page1 still has the page after WebSocket connection
         const page1VerifyInfo = await page1.evaluate(async ({ pageId }) => {
             const conn = (window as any).__TEST_CONN__;
-            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
+            // @ts-ignore
             const { Project } = await import("/src/schema/app-schema.ts");
             const project = Project.fromDoc(conn.doc);
             const items = project.items as any;
@@ -172,9 +172,9 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Connect to the same project programmatically
         console.log(`page2: Connecting to project ${pageInfo.projectId}`);
         await page2.evaluate(async (pid) => {
-            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
+            // @ts-ignore
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
-            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
+            // @ts-ignore
             const { Project } = await import("/src/schema/app-schema.ts");
 
             const conn = await createProjectConnection(pid);
@@ -211,7 +211,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         console.log("Triggering a change in page1 to force sync...");
         await page1.evaluate(async ({ pageId }) => {
             const conn = (window as any).__TEST_CONN__;
-            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
+            // @ts-ignore
             const { Project } = await import("/src/schema/app-schema.ts");
             const project = Project.fromDoc(conn.doc);
             const items = project.items as any;
@@ -246,7 +246,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
                 }
 
                 try {
-                    // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
+                    // @ts-ignore
                     const { Project } = await import("/src/schema/app-schema.ts");
                     const project = Project.fromDoc(conn.doc);
 

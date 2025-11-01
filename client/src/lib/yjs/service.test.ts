@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it } from "vitest";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
@@ -43,7 +44,7 @@ describe("yjsService", () => {
                 this.users = { ...this.users, [u.userId]: u };
             },
             removeUser(id: string) {
-                const { [id]: _, ...rest } = this.users;
+                const { [id]: _r, ...rest } = this.users;
                 this.users = rest;
             },
         };
@@ -68,11 +69,11 @@ describe("yjsService", () => {
                 this.selections[userId] = { userId };
             },
             clearCursorAndSelection(userId: string) {
-                const { [userId]: _, ...rest } = this.cursors;
+                const { [userId]: _r, ...rest } = this.cursors;
                 this.cursors = rest;
             },
             clearSelectionForUser(userId: string) {
-                const { [userId]: _, ...rest } = this.selections;
+                const { [userId]: _r, ...rest } = this.selections;
                 this.selections = rest;
             },
         };

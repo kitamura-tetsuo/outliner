@@ -20,9 +20,9 @@ test.describe("Page subdoc provider", () => {
     test("uses separate rooms and awareness for each page", async ({ page }) => {
         const projectId = `p-${Date.now()}`;
         const ids = await page.evaluate(async pid => {
-            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
+            // @ts-ignore
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
-            // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
+            // @ts-ignore
             const { Project } = await import("/src/schema/app-schema.ts");
             const conn = await createProjectConnection(pid);
             (window as any).__CONN__ = conn;

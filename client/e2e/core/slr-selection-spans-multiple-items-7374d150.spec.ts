@@ -166,6 +166,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
 
         // 最初のアイテムを取得
         const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItemText = firstItem.locator(".item-text");
 
         // 最初のアイテムをクリックして選択状態をリセット
         await firstItem.locator(".item-content").click({ force: true });

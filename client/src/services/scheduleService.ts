@@ -9,11 +9,7 @@ export interface Schedule {
     createdAt?: string;
 }
 
-interface ApiRequestBody {
-    [key: string]: unknown;
-}
-
-async function fetchApi(path: string, body: ApiRequestBody) {
+async function fetchApi(path: string, body: any) {
     const idToken = await userManager.auth.currentUser?.getIdToken();
     if (!idToken) throw new Error("No auth token");
 
@@ -34,10 +30,7 @@ async function fetchApi(path: string, body: ApiRequestBody) {
     return res.json();
 }
 
-export async function createSchedule(
-    pageId: string,
-    schedule: { strategy: string; nextRunAt: number; params?: Record<string, unknown>; },
-) {
+export async function createSchedule(pageId: string, schedule: { strategy: string; nextRunAt: number; params?: any; }) {
     return fetchApi("create-schedule", { pageId, schedule });
 }
 
@@ -53,7 +46,7 @@ export async function cancelSchedule(pageId: string, scheduleId: string) {
 export async function updateSchedule(
     pageId: string,
     scheduleId: string,
-    schedule: { strategy: string; nextRunAt: number; params?: Record<string, unknown>; },
+    schedule: { strategy: string; nextRunAt: number; params?: any; },
 ) {
     return fetchApi("update-schedule", { pageId, scheduleId, schedule });
 }

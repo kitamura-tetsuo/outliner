@@ -11,8 +11,8 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("Multi-Page Schedule Management", () => {
     let testProject: { projectName: string; pageName: string; };
 
-    test.beforeEach(async ({ page }) => {
-        testProject = await TestHelpers.prepareTestEnvironment(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        testProject = await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // Enable console logging
         page.on("console", msg => console.log("PAGE LOG:", msg.text()));
@@ -131,7 +131,7 @@ test.describe("Multi-Page Schedule Management", () => {
         }
     });
 
-    test("schedule operations across pages", async ({ page }) => {
+    test("schedule operations across pages", async ({ page }, testInfo) => {
         const { projectName, pageName } = testProject;
 
         // Create another page in the same project using the correct method
@@ -139,14 +139,13 @@ test.describe("Multi-Page Schedule Management", () => {
             const store = window.generalStore;
             if (store && store.project) {
                 // Use the addPage method to create a new page
-                store.project.addPage("other-page", "test-user");
+                const newPage = store.project.addPage("other-page", "test-user");
                 console.log("Created other-page in same project");
             }
         });
 
         // Wait for the page to be created and allow time for synchronization
-        // Increased timeout from 1000ms to 5000ms to ensure Yjs has time to synchronize the new page
-        await page.waitForTimeout(5000);
+        await page.waitForTimeout(1000);
 
         // Open schedule for first page
         const firstPageId = await page.evaluate(() => {

@@ -1,10 +1,8 @@
 {
     "name": "scripts",
     "version": "1.0.0",
-    "type": "module",
     "description": "VSCodeのlaunch.jsonで定義されているLocalhost設定をbashで実行するためのスクリプト集です。",
     "main": "backup-production-data.js",
-    "type": "module",
     "directories": {
         "test": "tests"
     },

@@ -18,25 +18,12 @@ async function performCursorAction(
     options: { value?: string; offset?: number; } = {},
 ): Promise<string | number | void> {
     return page.evaluate(({ itemId, action, options, userId }) => {
-        const editorOverlayStore = (window as {
-            editorOverlayStore?: {
-                getCursorInstances: () => {
-                    itemId: string;
-                    userId: string;
-                    offset: number;
-                    applyToStore: () => void;
-                    insertText: (text: string) => void;
-                    deleteBackward: () => void;
-                    deleteForward: () => void;
-                    insertLineBreak: () => void;
-                }[];
-            };
-        }).editorOverlayStore;
+        const editorOverlayStore = (window as any).editorOverlayStore;
         const getCursorInstances = editorOverlayStore?.getCursorInstances?.bind(editorOverlayStore);
         if (!getCursorInstances) {
             throw new Error("Cursor instances not available on editorOverlayStore");
         }
-        const cursor = getCursorInstances().find((c) => c.itemId === itemId && c.userId === userId);
+        const cursor = getCursorInstances().find((c: any) => c.itemId === itemId && c.userId === userId);
         if (!cursor) {
             throw new Error(`Cursor not found for itemId=${itemId}`);
         }

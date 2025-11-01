@@ -32,10 +32,10 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
         await textarea.focus();
 
         // カーソルが表示されるのを待つ
-        const _cursorVisible = await TestHelpers.waitForCursorVisible(page);
+        const cursorVisible = await TestHelpers.waitForCursorVisible(page);
 
         // カーソルが表示されない場合、手動でカーソルを設定
-        if (!_cursorVisible) {
+        if (!cursorVisible) {
             const itemId = await item.getAttribute("data-item-id");
             if (itemId) {
                 await page.evaluate(itemId => {

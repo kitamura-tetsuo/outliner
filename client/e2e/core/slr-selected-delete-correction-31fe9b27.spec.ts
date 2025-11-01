@@ -20,7 +20,7 @@ test.describe("SLR-0008: Selected Edge Case", () => {
         await page.keyboard.up("Shift");
         await page.keyboard.press("Delete");
         await page.waitForTimeout(500);
-        const _itemCount = await page.locator(".outliner-item").count();
-        expect(_itemCount).toBeGreaterThan(0);
+        const itemCount = await page.locator(".outliner-item").count();
+        expect(itemCount).toBeGreaterThan(0);
     });
 });

@@ -18,7 +18,7 @@ test.describe("PRS-0001: presence indicators", () => {
         pageName = ids.pageName;
     });
 
-    test("shows multiple user avatars", async ({ page }) => {
+    test("shows multiple user avatars", async ({ page, browser }, testInfo) => {
         await page.goto(`/${projectName}/${pageName}`);
 
         // プレゼンス要素が表示されるまで待つ

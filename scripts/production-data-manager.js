@@ -13,13 +13,8 @@
  * - help: ヘルプ表示
  */
 
-import { spawn } from "child_process";
-import path from "path";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const { spawn } = require("child_process");
+const path = require("path");
 
 // 色付きログ出力
 const colors = {
@@ -237,13 +232,11 @@ async function main() {
 }
 
 // スクリプト実行
-const isMainModule = process.argv[1] && new URL(process.argv[1], "file://").pathname === __filename;
-
-if (isMainModule) {
+if (require.main === module) {
     main().catch(error => {
         log(`❌ 予期しないエラー: ${error.message}`, "red");
         process.exit(1);
     });
 }
 
-export { main, runBackup, runCheck, runDelete };
+module.exports = { main, runCheck, runBackup, runDelete };

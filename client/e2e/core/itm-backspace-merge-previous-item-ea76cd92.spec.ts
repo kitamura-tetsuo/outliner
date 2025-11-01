@@ -18,8 +18,8 @@ test.describe("ITM-ea76cd92: Backspace merge previous item", () => {
         await TestHelpers.waitForOutlinerItems(page);
 
         // アイテム数を確認
-        const _itemCount = await page.locator(".outliner-item").count();
-        console.log(`Found ${_itemCount} items`);
+        const itemCount = await page.locator(".outliner-item").count();
+        console.log(`Found ${itemCount} items`);
 
         // 実際のテストデータは1番目と2番目のアイテム（0番目はページタイトル）
         const firstId = await TestHelpers.getItemIdByIndex(page, 1); // "First"

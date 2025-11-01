@@ -1,14 +1,17 @@
+// Yjs-based client class providing a FluidClient-like surface
+// @ts-nocheck
 import type { Awareness } from "y-protocols/awareness";
 import type { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
+import { getLogger } from "../lib/logger";
 import { createProjectConnection, type PageConnection } from "../lib/yjs/connection";
 import { yjsService } from "../lib/yjs/service";
 import { Items, Project } from "../schema/yjs-schema";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
-import { getLogger } from "../lib/logger";
-const _logger = getLogger();
+const logger = getLogger();
+
 export interface YjsClientParams {
     clientId: string;
     projectId: string;

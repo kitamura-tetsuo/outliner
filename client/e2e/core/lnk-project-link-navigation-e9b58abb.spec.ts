@@ -34,11 +34,11 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         // Move focus away from the first item to ensure it's no longer in editing mode
         // First click on the second item to shift focus
-        const _secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
-        expect(_secondItemId).not.toBeNull();
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(secondItemId).not.toBeNull();
 
         // Click the second item to shift focus from first item
-        await page.locator(`.outliner-item[data-item-id="${_secondItemId}"]`).locator(".item-content").click();
+        await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").click();
 
         // Wait for the update to propagate and for the first item to be rendered in non-editing mode
         await page.waitForTimeout(500);

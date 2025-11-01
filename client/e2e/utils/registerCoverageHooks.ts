@@ -112,7 +112,7 @@ function registerPreciseCoverageHooks(): void {
 
             console.log(`[PreciseCoverage] Started with callCount and detailed mode`);
         } catch (error: any) {
-            console.error("Authentication error:", error);
+            console.error("[PreciseCoverage] カバレッジ収集の開始に失敗しました:", error);
         }
     });
 

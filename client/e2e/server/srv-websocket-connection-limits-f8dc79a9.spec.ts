@@ -28,7 +28,7 @@ test.describe("WebSocket connection limits", () => {
             sinon = require("../../../server/node_modules/sinon");
             ({ loadConfig } = require("../../../server/src/config"));
             ({ startServer } = require("../../../server/src/server"));
-        } catch {
+        } catch (e) {
             console.log("Server TS runtime not available; skipping server limit test");
             return;
         }

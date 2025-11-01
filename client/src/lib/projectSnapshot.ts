@@ -148,6 +148,7 @@ export function snapshotToOpml(snapshot: ProjectSnapshot): string {
 
 export function snapshotToProject(snapshot: ProjectSnapshot): Project {
     const project = Project.createInstance(snapshot.title || "Untitled Project");
+    const rootItems: any = project.items as any;
 
     for (const root of snapshot.items) {
         const page = project.addPage(root.text, "snapshot");
@@ -185,9 +186,7 @@ export function createSnapshotClient(projectName: string, project: Project): any
         getTree: () => project.items,
         isContainerConnected: true,
         getAllData: () => projectToAllData(project),
-        getTreeAsJson: (
-            _path?: string,
-        ) => projectToAllData(project),
+        getTreeAsJson: (_path?: string) => projectToAllData(project),
         dispose: () => {},
         get connectionState() {
             return "Connected";

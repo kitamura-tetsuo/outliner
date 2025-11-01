@@ -14,6 +14,6 @@ test.describe("LNK-9bddc693: link preview", () => {
     });
 
     test("page loads", async ({ page }) => {
-        await expect(page).toHaveURL(/Test%20Project/);
+        await expect(page).toHaveURL(/Test\%20Project/);
     });
 });

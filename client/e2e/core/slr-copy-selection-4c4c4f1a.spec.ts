@@ -80,15 +80,15 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
             if (items.length < 2) return;
 
             const firstItemId = items[0].getAttribute("data-item-id");
-            const _secondItemId = items[1].getAttribute("data-item-id");
+            const secondItemId = items[1].getAttribute("data-item-id");
 
-            if (!firstItemId || !_secondItemId) return;
+            if (!firstItemId || !secondItemId) return;
 
             // 選択範囲を設定
             store.setSelection({
                 startItemId: firstItemId,
                 startOffset: 0,
-                endItemId: _secondItemId,
+                endItemId: secondItemId,
                 endOffset: "Second item text".length,
                 userId: "local",
                 isReversed: false,

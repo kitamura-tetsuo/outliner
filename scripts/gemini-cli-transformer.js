@@ -1,8 +1,8 @@
-import { spawn } from "child_process";
-import { log } from "claude-code-router";
-import fs from "fs/promises";
-import os from "os";
-import path from "path";
+const { spawn } = require("child_process");
+const fs = require("fs/promises");
+const path = require("path");
+const os = require("os");
+const { log } = require("claude-code-router");
 
 class GeminiCLITransformer {
     name = "gemini-cli-direct";
@@ -320,4 +320,4 @@ class GeminiCLITransformer {
     }
 }
 
-export default GeminiCLITransformer;
+module.exports = GeminiCLITransformer;

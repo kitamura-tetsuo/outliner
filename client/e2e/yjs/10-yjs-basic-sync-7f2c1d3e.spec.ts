@@ -12,7 +12,7 @@ import { prepareTwoBrowserPages, setupUpdateTracking } from "../../src/lib/yjs/t
 
 test("basic map value sync via y-websocket", async ({ browser }) => {
     // Prepare two browser pages with minimal Yjs connections
-    const { page1: p1, page2: p2, context1: ctx1, context2: ctx2 } = await prepareTwoBrowserPages(browser, {
+    const { page1: p1, page2: p2, context1: ctx1, context2: ctx2, projectId } = await prepareTwoBrowserPages(browser, {
         page1Prefix: "p1",
         page2Prefix: "p2",
     });

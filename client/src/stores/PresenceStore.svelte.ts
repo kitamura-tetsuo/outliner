@@ -1,3 +1,5 @@
+import { colorForUser } from "./colorForUser";
+
 export interface PresenceUser {
     userId: string;
     userName: string;

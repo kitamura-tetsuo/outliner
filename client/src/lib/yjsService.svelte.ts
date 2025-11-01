@@ -5,7 +5,9 @@ import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
-import { log } from "./logger";
+import { getLogger, log } from "./logger";
+
+const logger = getLogger();
 
 interface ClientKey {
     type: "container" | "user";
@@ -38,17 +40,15 @@ class Registry {
 let registry: Registry;
 if (
     typeof window !== "undefined"
-        && (window as Window & Record<string, unknown>).__YJS_CLIENT_REGISTRY__
-    || (window as Window & Record<string, unknown>).__FLUID_CLIENT_REGISTRY__
+    && ((window as any).__YJS_CLIENT_REGISTRY__ || (window as any).__FLUID_CLIENT_REGISTRY__)
 ) {
-    registry = ((window as Window & Record<string, unknown>).__YJS_CLIENT_REGISTRY__
-        || (window as Window & Record<string, unknown>).__FLUID_CLIENT_REGISTRY__) as Registry;
+    registry = ((window as any).__YJS_CLIENT_REGISTRY__ || (window as any).__FLUID_CLIENT_REGISTRY__) as Registry;
 } else {
     registry = new Registry();
     if (typeof window !== "undefined") {
-        (window as Window & Record<string, unknown>).__YJS_CLIENT_REGISTRY__ = registry;
+        (window as any).__YJS_CLIENT_REGISTRY__ = registry;
         // Legacy alias for components still reading FLUID registry
-        (window as Window & Record<string, unknown>).__FLUID_CLIENT_REGISTRY__ = registry;
+        (window as any).__FLUID_CLIENT_REGISTRY__ = registry;
     }
 }
 
@@ -84,32 +84,24 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     );
     const project = Project.createInstance(containerName);
     const client = await YjsClient.connect(projectId, project);
-    registry.set(keyFor(userId, projectId), [client, project]);
+    const k = keyFor(userId, projectId);
+    registry.set(k, [client, project]);
 
     // update store
     yjsStore.yjsClient = client;
     if (typeof window !== "undefined") {
-        (window as Window & Record<string, unknown>).__CURRENT_PROJECT__ = project;
-        (window as Window & Record<string, string>).__CURRENT_PROJECT_TITLE__ = containerName;
+        (window as any).__CURRENT_PROJECT__ = project;
+        (window as any).__CURRENT_PROJECT_TITLE__ = containerName;
     }
     return client;
 }
 
 export async function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
     log("yjsService", "info", `Get client by title: ${projectTitle}`);
-    for (const [, [client, project]] of registry.entries()) {
+    for (const [k, [client, project]] of registry.entries()) {
         if (project?.title === projectTitle && client) return client;
     }
     return undefined;
-}
-
-export function getProjectTitle(containerId: string): string {
-    for (const [k, [, project]] of registry.entries()) {
-        if (k.includes(containerId) && project?.title) {
-            return project.title;
-        }
-    }
-    return "";
 }
 
 export async function createClient(containerId?: string): Promise<YjsClient> {
@@ -123,11 +115,12 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     }
     const resolvedId = containerId || uuid();
     const title = typeof window !== "undefined"
-        ? ((window as Window & Record<string, string | undefined>).__CURRENT_PROJECT_TITLE__ ?? "Test Project")
+        ? ((window as any).__CURRENT_PROJECT_TITLE__ ?? "Test Project")
         : "Test Project";
     const project = Project.createInstance(title);
     const client = await YjsClient.connect(resolvedId, project);
-    registry.set(keyFor(userId, resolvedId), [client, project]);
+    const k = keyFor(userId, resolvedId);
+    registry.set(k, [client, project]);
     yjsStore.yjsClient = client;
     return client;
 }
@@ -140,10 +133,8 @@ export function cleanupClient() {
 }
 
 // Compatibility stubs for UI that previously used Fluid Functions
-export async function deleteContainer(containerId: string): Promise<boolean> {
+export async function deleteContainer(_containerId: string): Promise<boolean> {
     // No-op in Yjs-only mode; containers are client-local concepts here.
-    // Using containerId to satisfy function signature
-    console.log(`[yjsService] deleteContainer called for: ${containerId}`);
     return true;
 }
 
@@ -154,7 +145,7 @@ export async function getUserContainers(): Promise<{ containers: string[]; defau
 
 // Testing hooks
 if (process.env.NODE_ENV === "test" && typeof window !== "undefined") {
-    (window as Window & Record<string, unknown>).__YJS_SERVICE__ = {
+    (window as any).__YJS_SERVICE__ = {
         createNewProject,
         getClientByProjectTitle,
         createClient,

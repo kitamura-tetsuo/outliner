@@ -49,7 +49,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await page.waitForTimeout(300);
 
         // ページタイトルの子アイテム数を取得
-        const rootItemsBefore: unknown = await TreeValidator.getTreePathData(page, "items.0.items");
+        const rootItemsBefore: any = await TreeValidator.getTreePathData(page, "items.0.items");
         const countBefore = Object.keys(rootItemsBefore || {}).length;
         console.log("MOB-0003: root items before indent", countBefore, JSON.stringify(rootItemsBefore));
 
@@ -65,7 +65,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         console.log("MOB-0003: Clicked indent button");
 
         await page.waitForTimeout(500);
-        const rootItemsAfterIndentImmediate: unknown = await TreeValidator.getTreePathData(page, "items.0.items");
+        const rootItemsAfterIndentImmediate: any = await TreeValidator.getTreePathData(page, "items.0.items");
         console.log(
             "MOB-0003: root items immediate after indent",
             Object.keys(rootItemsAfterIndentImmediate || {}).length,
@@ -73,7 +73,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         );
 
         await expect.poll(async () => {
-            const rootItems: unknown = await TreeValidator.getTreePathData(page, "items.0.items");
+            const rootItems: any = await TreeValidator.getTreePathData(page, "items.0.items");
             return Object.keys(rootItems || {}).length;
         }).toBe(countBefore - 1);
 
@@ -84,8 +84,8 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         const pageItem = afterIndentData.items[0];
         const pageChildren = Object.values(pageItem.items);
         // Get the second child of the page (一行目: テスト), which now has a child
-        const secondChild = pageChildren[1] as { items?: Record<string, { id: string; }>; };
-        const indentedItemId = secondChild.items ? Object.values(secondChild.items)[0]?.id : null;
+        const secondChild: any = pageChildren[1];
+        const indentedItemId = secondChild.items ? (Object.values(secondChild.items)[0] as any).id : null;
         console.log("MOB-0003: indented item ID:", indentedItemId);
 
         // Set the active item directly to the indented item
@@ -101,7 +101,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await page.waitForTimeout(500);
 
         await expect.poll(async () => {
-            const rootItems: unknown = await TreeValidator.getTreePathData(page, "items.0.items");
+            const rootItems: any = await TreeValidator.getTreePathData(page, "items.0.items");
             return Object.keys(rootItems || {}).length;
         }).toBe(countBefore);
 
@@ -163,7 +163,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // データ構造から子要素があることを確認
         const afterNewChildData = await TreeValidator.getTreeData(page);
-        const hasChildItems = Object.values(afterNewChildData.items).some((item) =>
+        const hasChildItems = Object.values(afterNewChildData.items).some((item: any) =>
             item.items && Object.keys(item.items).length > 0
         );
         expect(hasChildItems).toBe(true);

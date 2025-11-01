@@ -49,7 +49,7 @@ export class DataValidationHelpers {
      * Resets Yjs state and other global state between tests.
      * Swallows errors by design so it never fails the test teardown.
      */
-    static async tryCleanupAfterEach(page: Page): Promise<void> {
+    static async tryCleanupAfterEach(page: Page, testInfo: TestInfo): Promise<void> {
         try {
             // Check if page is still open before trying to evaluate
             if (page.isClosed()) {

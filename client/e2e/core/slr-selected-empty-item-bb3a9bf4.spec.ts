@@ -90,7 +90,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
-        } catch {
+        } catch (e) {
             console.log("Selection not created, skipping test");
             return;
         }
@@ -121,9 +121,9 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await page.waitForTimeout(500);
 
         // 削除後のアイテム数を確認（環境によって異なる可能性がある）
-        const _itemCount = await page.locator(".outliner-item").count();
-        console.log(`After deletion, item count: ${_itemCount}`);
+        const itemCount = await page.locator(".outliner-item").count();
+        console.log(`After deletion, item count: ${itemCount}`);
         // 削除が行われたことを確認するのではなく、アイテムが存在することを確認
-        expect(_itemCount).toBeGreaterThan(0);
+        expect(itemCount).toBeGreaterThan(0);
     });
 });

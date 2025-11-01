@@ -64,8 +64,8 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
     });
 
     test("テキスト選択範囲をドラッグ＆ドロップで移動できる", async ({ page }) => {
-        const _itemCount = await page.locator(".outliner-item").count();
-        expect(_itemCount).toBeGreaterThanOrEqual(3);
+        const itemCount = await page.locator(".outliner-item").count();
+        expect(itemCount).toBeGreaterThanOrEqual(3);
         const firstItem = page.locator(".outliner-item").nth(0);
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
@@ -133,13 +133,13 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         console.log(`Pasted text: "${pastedText}"`);
 
         const firstItemTextAfter = await firstItem.locator(".item-text").textContent() || "";
-        const _thirdItemTextAfter = await thirdItem.locator(".item-text").textContent() || "";
+        const thirdItemTextAfter = await thirdItem.locator(".item-text").textContent() || "";
 
         // デバッグ情報を出力
         console.log(`First item text after paste: "${firstItemTextAfter}"`);
-        console.log(`Third item text after paste: "${_thirdItemTextAfter}"`);
+        console.log(`Third item text after paste: "${thirdItemTextAfter}"`);
 
         expect(firstItemTextAfter).not.toContain("First");
-        expect(_thirdItemTextAfter).toContain("First");
+        expect(thirdItemTextAfter).toContain("First");
     });
 });

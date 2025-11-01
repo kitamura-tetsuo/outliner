@@ -5,7 +5,7 @@ import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
 test.describe("Page Route Debug", () => {
-    test("debug page route loading process", async ({ page }) => {
+    test("debug page route loading process", async ({ page }, testInfo) => {
         console.log("Debug: Starting page route debug test");
 
         // コンソールログをキャプチャ

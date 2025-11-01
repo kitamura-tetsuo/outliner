@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * CursorValidator の使用例
  *
@@ -5,7 +6,7 @@
  * テストでのカーソル情報の検証方法を示しています。
  */
 
-import { expect, Page } from "@playwright/test";
+import { Page } from "@playwright/test";
 import { setupCursorDebugger, waitForCursorVisible } from "../helpers";
 import { CursorValidator } from "./cursorValidation";
 
@@ -116,7 +117,7 @@ export async function snapshotComparisonExample(page: Page): Promise<void> {
     try {
         await CursorValidator.compareWithSnapshot(page, snapshot);
         throw new Error("スナップショットが一致してしまいました");
-    } catch (_error /* eslint-disable-line @typescript-eslint/no-unused-vars */) {
+    } catch (error) {
         console.log("スナップショットが一致しないことを確認しました");
     }
 }

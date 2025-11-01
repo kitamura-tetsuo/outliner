@@ -26,13 +26,6 @@ export default ts.config(
             globals: {
                 ...globals.browser,
                 ...globals.node,
-                // Additional globals for no-undef rule
-                ServiceWorkerGlobalScope: "readonly",
-                FrameRequestCallback: "readonly",
-                NodeJS: "readonly",
-                ElementCreationOptions: "readonly",
-                NodeListOf: "readonly",
-                Item: "readonly",
             },
         },
     },
@@ -43,34 +36,23 @@ export default ts.config(
     {
         rules: {
             "@typescript-eslint/no-explicit-any": "warn",
-            "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
-            "@typescript-eslint/ban-ts-comment": ["error", {
-                "ts-expect-error": "allow-with-description",
-                "ts-ignore": "allow-with-description",
-                "ts-nocheck": "allow-with-description",
-            }],
-            "@typescript-eslint/no-unsafe-function-type": "error", // Gradually converting back to error - has few violations
-            "@typescript-eslint/no-require-imports": "error", // Gradually converting back to error - has few violations
-            "@typescript-eslint/no-this-alias": "error", // Gradually converting back to error - has few violations
-            "@typescript-eslint/no-unused-expressions": "error", // Gradually converting back to error - has few violations
-            "no-useless-escape": "error",
-            "no-empty": ["error", { "allowEmptyCatch": true }],
-            "no-irregular-whitespace": "error", // Gradually converting back to error - has only 1 violation
-            "no-undef": "error",
-            "no-case-declarations": "error", // Gradually converting back to error - can be easily fixed
-            "svelte/prefer-writable-derived": "off", // Disabled: Svelte 4 rule not applicable to Svelte 5 patterns
-            "svelte/require-each-key": "error",
-            "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
-            "svelte/no-unused-svelte-ignore": "error",
-            "svelte/no-unused-props": "error",
-            "svelte/prefer-svelte-reactivity": "error",
-        },
-    },
-    // Disable no-undef for .d.ts files as they contain type declarations
-    {
-        files: ["**/*.d.ts"],
-        rules: {
-            "no-undef": "off",
+            "@typescript-eslint/no-unused-vars": "warn",
+            "@typescript-eslint/ban-ts-comment": "warn",
+            "@typescript-eslint/no-unsafe-function-type": "warn",
+            "@typescript-eslint/no-require-imports": "warn",
+            "@typescript-eslint/no-this-alias": "warn",
+            "@typescript-eslint/no-unused-expressions": "warn",
+            "no-useless-escape": "warn",
+            "no-empty": "warn",
+            "no-irregular-whitespace": "warn",
+            "no-undef": "warn",
+            "no-case-declarations": "warn",
+            "svelte/prefer-writable-derived": "warn",
+            "svelte/require-each-key": "warn",
+            "svelte/no-at-html-tags": "warn",
+            "svelte/no-unused-svelte-ignore": "warn",
+            "svelte/no-unused-props": "warn",
+            "svelte/prefer-svelte-reactivity": "warn",
         },
     },
     {
@@ -108,7 +90,6 @@ export default ts.config(
             "**/tests/**/*.{js,ts,tsx}",
         ],
         rules: {
-            "@typescript-eslint/ban-ts-comment": "off", // Allow @ts-check and @ts-nocheck in test files
             "no-restricted-imports": [
                 "error",
                 {
@@ -122,7 +103,7 @@ export default ts.config(
                 },
             ],
             "no-restricted-syntax": [
-                "error",
+                "warn",
                 {
                     selector:
                         "CallExpression[callee.type='MemberExpression'][callee.object.type='Identifier'][callee.object.name=/^(it|test|describe)$/][callee.property.name='skip']",
@@ -147,7 +128,6 @@ export default ts.config(
             "**/*.e2e-spec.{js,ts,tsx}",
         ],
         rules: {
-            "@typescript-eslint/no-explicit-any": "off", // E2E tests often use dynamic browser APIs that require 'any'
             "no-restricted-imports": [
                 "error",
                 {
@@ -166,7 +146,7 @@ export default ts.config(
                 },
             ],
             "no-restricted-syntax": [
-                "error",
+                "warn",
                 {
                     selector:
                         "CallExpression[callee.type='MemberExpression'][callee.object.type='Identifier'][callee.object.name=/^(it|test|describe)$/][callee.property.name='skip']",

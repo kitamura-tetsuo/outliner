@@ -94,9 +94,9 @@ test.describe("CLM-0003: 右へ移動", () => {
         await secondItem.waitFor({ state: "visible" });
 
         // 2つ目のアイテムのテキスト内容を確認
-        const _secondItemText = await secondItem.locator(".item-text").textContent();
-        console.log(`2番目のアイテムのテキスト: ${_secondItemText}`);
-        expect(_secondItemText).toContain("Second item");
+        const secondItemText = await secondItem.locator(".item-text").textContent();
+        console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
+        expect(secondItemText).toContain("Second item");
 
         // 保存したIDを使って最初のアイテムに戻る
         await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-content").click();
@@ -117,14 +117,14 @@ test.describe("CLM-0003: 右へ移動", () => {
 
         const initialItemId = cursorData.activeItemId;
         const initialOffset = cursorData.cursorInstances?.[0]?.offset;
-        const _initialText = await page.locator(`.outliner-item[data-item-id="${initialItemId}"] .item-text`)
+        const initialText = await page.locator(`.outliner-item[data-item-id="${initialItemId}"] .item-text`)
             .textContent();
         console.log(
-            `移動前: アイテムID=${initialItemId}, オフセット=${initialOffset}, テキスト長=${_initialText?.length}`,
+            `移動前: アイテムID=${initialItemId}, オフセット=${initialOffset}, テキスト長=${initialText?.length}`,
         );
 
         // 確認：カーソルが実際に末尾にあるか（テキスト長とオフセットが一致するか）
-        expect(initialOffset).toBe(_initialText?.length);
+        expect(initialOffset).toBe(initialText?.length);
 
         // もう一度Endキーを押してカーソル位置を確実に末尾にする
         await page.keyboard.press("End");
@@ -133,8 +133,8 @@ test.describe("CLM-0003: 右へ移動", () => {
         // 再度確認
         cursorData = await CursorValidator.getCursorData(page);
         const confirmedOffset = cursorData.cursorInstances?.[0]?.offset;
-        console.log(`再確認: オフセット=${confirmedOffset}, テキスト長=${_initialText?.length}`);
-        expect(confirmedOffset).toBe(_initialText?.length);
+        console.log(`再確認: オフセット=${confirmedOffset}, テキスト長=${initialText?.length}`);
+        expect(confirmedOffset).toBe(initialText?.length);
 
         // 右矢印キーを押下
         await page.keyboard.press("ArrowRight");
@@ -153,13 +153,13 @@ test.describe("CLM-0003: 右へ移動", () => {
         console.log(`移動後のアイテムID: ${updatedItemId}, オフセット: ${updatedOffset}`);
 
         // 2番目のアイテムのIDを取得
-        const _secondItemId = await secondItem.getAttribute("data-item-id");
-        console.log(`2番目のアイテムID: ${_secondItemId}`);
+        const secondItemId = await secondItem.getAttribute("data-item-id");
+        console.log(`2番目のアイテムID: ${secondItemId}`);
 
         // The expected behavior is that when pressing ArrowRight at the end of an item,
         // the cursor should move to the next item at the beginning (offset 0)
         // If the functionality is not working as expected, we need to document this
-        expect(updatedItemId).toBe(_secondItemId);
+        expect(updatedItemId).toBe(secondItemId);
         expect(updatedOffset).toBe(0);
 
         // 2番目のアイテムにテキストを入力して、正しく入力されることを確認

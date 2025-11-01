@@ -1,13 +1,12 @@
-// @ts-nocheck - TODO: Add proper type annotations for Cursor class and related types
+// @ts-nocheck
+import type { Item } from "../../schema/yjs-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 
 export class CursorFormatting {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private cursor: any; // Cursorクラスのインスタンスを保持
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(cursor: any) {
         this.cursor = cursor;
     }
@@ -113,7 +112,6 @@ export class CursorFormatting {
     /**
      * 複数アイテムにまたがる選択範囲にScrapbox構文のフォーマットを適用する
      */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private applyScrapboxFormattingToMultipleItems(
         selection: any,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",

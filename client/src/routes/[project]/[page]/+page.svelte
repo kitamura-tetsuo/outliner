@@ -45,11 +45,6 @@ let pageNotFound = $state(false);
 
 let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 
-// Optional variable for pending imports - defined to avoid ESLint no-undef errors
-// This is used in conditional checks and may be set by external code
-let _pendingImport: any[] | undefined;
-let _project: any;
-
 // URLパラメータと認証状態を監視して更新
 // 同一条件での多重実行を避け、Svelte の update depth exceeded を回避するためのキー
 // 注意: $state を使うと $effect が自分で読んで書く依存を持ちループになるため、通常変数で保持する
@@ -162,7 +157,10 @@ async function loadProjectAndPage() {
         }
     } catch {}
 
-            logger.info(`loadProjectAndPage: Set isLoading=true, calling getYjsClientByProjectTitle`);
+            // 既存の暫定ページ内容（同一ドキュメント外）を保持（E2Eでの事前シードの引き継ぎ）
+            const preAttachPage: any = store.currentPage as any;
+
+        logger.info(`loadProjectAndPage: Set isLoading=true, calling getYjsClientByProjectTitle`);
 
     try {
         // コンテナを読み込む
@@ -212,8 +210,8 @@ async function loadProjectAndPage() {
                 const proj = client.getProject?.();
                 if (proj) {
                     let appliedPendingImport = false;
-                    let pendingImport: any[] | null = null;
                     try {
+                        let pendingImport: any[] | null = null;
                         try {
                             const win: any = window as any;
                             const byTitle = win?.__PENDING_IMPORTS__;
@@ -527,8 +525,8 @@ async function loadProjectAndPage() {
                                 || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
                             );
                             if (isTestEnv && pageRef) {
-                                const _pageItems: any = (pageRef as any).items as any;
-                                const len = _pageItems?.length ?? 0;
+                                const cpItems: any = (pageRef as any).items as any;
+                                const len = cpItems?.length ?? 0;
                                 if (len === 0) {
                                     const defaults = [
                                         "一行目: テスト",
@@ -536,7 +534,7 @@ async function loadProjectAndPage() {
                                         "三行目: 並び順チェック",
                                     ];
                                     for (const line of defaults) {
-                                        const node = _pageItems.addNode?.("tester");
+                                        const node = cpItems.addNode?.("tester");
                                         node?.updateText?.(line);
                                     }
 
@@ -577,6 +575,8 @@ async function loadProjectAndPage() {
 
                         // Final safety: even if SKIP_TEST_CONTAINER_SEED is true, ensure at least some children exist for E2E stability
                         try {
+                            const ref: any = (store.currentPage as any);
+                            const cpItems: any = ref?.items as any;
                             const isTestEnv = (
                                 import.meta.env.MODE === "test"
                                 || import.meta.env.VITE_IS_TEST === "true"
@@ -593,11 +593,11 @@ async function loadProjectAndPage() {
                                 const trySeed = () => {
                                     try {
                                         const ref2: any = (store.currentPage as any);
-                                        const pageItems2: any = ref2?.items as any;
-                                        const lenNow = pageItems2?.length ?? 0;
-                                        if (pageItems2 && lenNow < 3) {
+                                        const cpItems2: any = ref2?.items as any;
+                                        const lenNow = cpItems2?.length ?? 0;
+                                        if (cpItems2 && lenNow < 3) {
                                             for (let i = lenNow; i < 3; i++) {
-                                                const node = pageItems2.addNode?.("tester");
+                                                const node = cpItems2.addNode?.("tester");
                                                 node?.updateText?.(defaults[i] ?? "");
                                             }
                                             logger.info("E2E: Fallback default lines seeded (post-attach) to reach 3 items");
@@ -644,6 +644,7 @@ async function loadProjectAndPage() {
                 if (snapshot) {
                     const hydrated = snapshotToProject(snapshot);
                     store.project = hydrated as any;
+                    project = hydrated as any;
                     if (!yjsStore.yjsClient) {
                         try {
                             yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as any;

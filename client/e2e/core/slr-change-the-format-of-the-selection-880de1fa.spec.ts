@@ -236,7 +236,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // 2つ目のアイテムのテキストを確認
         const secondItem = page.locator(".outliner-item").nth(1);
-        const _secondItemText = await secondItem.locator(".item-text").textContent();
-        expect(_secondItemText).toBeTruthy();
+        const secondItemText = await secondItem.locator(".item-text").textContent();
+        expect(secondItemText).toBeTruthy();
     });
 });

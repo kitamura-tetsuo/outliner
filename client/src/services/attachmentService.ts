@@ -1,10 +1,6 @@
 import { userManager } from "../auth/UserManager";
 
-interface ApiRequestBody {
-    [key: string]: unknown;
-}
-
-async function callApi(path: string, body: ApiRequestBody) {
+async function callApi(path: string, body: any) {
     const idToken = await userManager.auth.currentUser?.getIdToken();
     if (!idToken) throw new Error("No auth token");
     const apiBaseUrl = "http://localhost:57000";

@@ -6,7 +6,9 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { waitForCursorVisible } from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
+import { TreeValidator } from "../utils/treeValidation";
 
 /**
  * @file LNK-0003.spec.ts

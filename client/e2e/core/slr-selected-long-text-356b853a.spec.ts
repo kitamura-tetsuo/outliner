@@ -67,7 +67,7 @@ test.describe("SLR-356b853a: 長いテキストの選択範囲", () => {
         // await page.waitForTimeout(500);
         //
         // // ペーストされたテキストを確認
-        // const _secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+        // const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
         // expect(secondItemText).toContain("Second item text");
         // expect(secondItemText).toContain("This is a very long text");
     });

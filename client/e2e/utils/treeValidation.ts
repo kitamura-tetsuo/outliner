@@ -40,7 +40,7 @@ export class TreeValidator {
                 return !!(gs && gs.project);
             }, { timeout });
         } catch (error) {
-            console.error("Authentication error:", error);
+            console.error("TreeValidator: project not ready within timeout", error);
             throw new Error(`Project not ready within ${timeout}ms`);
         }
     }

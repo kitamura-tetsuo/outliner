@@ -76,16 +76,11 @@ export function getFirebaseApp(): FirebaseApp {
         globalRef[globalKey] = app;
         logger.info("Firebase app: Initialized new instance");
         return app;
-    } catch (error: unknown) {
+    } catch (error: any) {
         logger.error("Firebase app initialization error:", error);
 
         // 重複アプリエラーの場合は既存のアプリを使用
-        if (
-            error && typeof error === "object" && "code" in error
-                && (error as { code?: string; }).code === "app/duplicate-app"
-            || error && typeof error === "object" && "message" in error
-                && (error as { message?: string; }).message?.includes("already exists")
-        ) {
+        if (error?.code === "app/duplicate-app" || error?.message?.includes("already exists")) {
             logger.info("Firebase app: Duplicate app error, attempting recovery");
             const existingApps = getApps();
             if (existingApps.length > 0) {

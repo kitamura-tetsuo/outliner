@@ -10,8 +10,8 @@
  * 実行前に必ずバックアップを取得してください。
  */
 
-import https from "https";
-import readline from "readline";
+const https = require("https");
+const readline = require("readline");
 
 // 設定
 const PRODUCTION_URL = "https://us-central1-outliner-d57b0.cloudfunctions.net/deleteAllProductionData";
@@ -195,11 +195,11 @@ async function main() {
 }
 
 // スクリプト実行
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
     main().catch(error => {
         log(`❌ 予期しないエラー: ${error.message}`, "red");
         process.exit(1);
     });
 }
 
-export { ADMIN_TOKEN, CONFIRMATION_CODE, makeRequest };
+module.exports = { makeRequest, ADMIN_TOKEN, CONFIRMATION_CODE };

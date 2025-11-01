@@ -8,14 +8,9 @@ import {
     userManager,
 } from "../auth/UserManager";
 
-interface AuthResult {
-    user?: IUser;
-    [key: string]: unknown;
-}
-
 interface Props {
     // Define callback props instead of using createEventDispatcher
-    onAuthSuccess?: ((authResult: AuthResult) => void) | undefined;
+    onAuthSuccess?: ((authResult: any) => void) | undefined;
     onAuthLogout?: (() => void) | undefined;
 }
 
@@ -68,10 +63,7 @@ onMount(() => {
 
     // テスト用: カスタム認証イベントリスナー
     if (typeof document !== "undefined") {
-        interface AuthSuccessEvent extends CustomEvent {
-            detail: AuthResult;
-        }
-        document.addEventListener("auth-success", (event: AuthSuccessEvent) => {
+        document.addEventListener("auth-success", (event: any) => {
             if (event.detail && event.detail.user) {
                 currentUser = event.detail.user;
                 // Call the callback prop directly
