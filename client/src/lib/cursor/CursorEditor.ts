@@ -172,7 +172,7 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const text: string = (target.text as any)?.toString?.() ?? "";
+        const text: string = (target.text ?? "").toString();
         const beforeText = text.slice(0, cursor.offset);
         const afterText = text.slice(cursor.offset);
         const pageTitle = isPageItem(target);
@@ -184,7 +184,9 @@ export class CursorEditor {
                 newItem.updateText(afterText);
 
                 const oldItemId = cursor.itemId;
-                const clearCursorAndSelection = (store as any).clearCursorAndSelection;
+                const clearCursorAndSelection =
+                    (store as unknown as { clearCursorAndSelection?: (userId: string) => void; })
+                        .clearCursorAndSelection;
                 if (typeof clearCursorAndSelection === "function") {
                     if (typeof clearCursorAndSelection.call === "function") {
                         clearCursorAndSelection.call(store, cursor.userId);

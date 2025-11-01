@@ -69,7 +69,7 @@ export class Cursor implements CursorEditingContext {
         }
         // Fallback: search across all pages in the current project
         try {
-            const proj: { items?: Iterable<Item>; } | undefined = (generalStore as any).project;
+            const proj = generalStore.project;
             const pages: Iterable<Item> | undefined = proj?.items;
             if (pages && pages[Symbol.iterator]) {
                 for (const p of pages) {
@@ -97,7 +97,7 @@ export class Cursor implements CursorEditingContext {
 
     applyToStore() {
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `Cursor.applyToStore called for cursorId=${this.cursorId}, itemId=${this.itemId}, offset=${this.offset}`,
             );
@@ -143,7 +143,9 @@ export class Cursor implements CursorEditingContext {
                         textarea.focus();
 
                         // デバッグ情報
-                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        if (
+                            typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE
+                        ) {
                             console.log(
                                 `Cursor.applyToStore: Focus set. Active element is textarea: ${
                                     document.activeElement === textarea
@@ -154,7 +156,7 @@ export class Cursor implements CursorEditingContext {
                 });
             } else {
                 // テキストエリアが見つからない場合はエラーログ
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.error(`Cursor.applyToStore: Global textarea not found`);
                 }
             }
@@ -242,7 +244,7 @@ export class Cursor implements CursorEditingContext {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`moveUp called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
@@ -250,7 +252,7 @@ export class Cursor implements CursorEditingContext {
         const visualLineInfo = getVisualLineInfo(this.itemId, this.offset);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
 
@@ -283,7 +285,7 @@ export class Cursor implements CursorEditingContext {
         const targetColumn = this.initialColumn;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
             );
@@ -299,7 +301,7 @@ export class Cursor implements CursorEditingContext {
                 this.applyToStore();
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `Moved to previous visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
                     );
@@ -316,7 +318,7 @@ export class Cursor implements CursorEditingContext {
                 this.navigateToItem("up");
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
             } else {
@@ -329,7 +331,7 @@ export class Cursor implements CursorEditingContext {
                     store.startCursorBlink();
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`Moved to start of current item: offset=${this.offset}`);
                     }
                 }
@@ -342,7 +344,7 @@ export class Cursor implements CursorEditingContext {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`moveDown called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
@@ -350,7 +352,7 @@ export class Cursor implements CursorEditingContext {
         const visualLineInfo = getVisualLineInfo(this.itemId, this.offset);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
 
@@ -384,7 +386,7 @@ export class Cursor implements CursorEditingContext {
         const targetColumn = this.initialColumn;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
             );
@@ -400,7 +402,7 @@ export class Cursor implements CursorEditingContext {
                 this.applyToStore();
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `Moved to next visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
                     );
@@ -417,7 +419,7 @@ export class Cursor implements CursorEditingContext {
                 this.navigateToItem("down");
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
             } else {
@@ -431,7 +433,7 @@ export class Cursor implements CursorEditingContext {
                     store.startCursorBlink();
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`Moved to end of current item: offset=${this.offset}`);
                     }
                 }
@@ -483,7 +485,7 @@ export class Cursor implements CursorEditingContext {
      */
     onKeyDown(event: KeyboardEvent): boolean {
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`onKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}`);
         }
 
@@ -492,7 +494,7 @@ export class Cursor implements CursorEditingContext {
         const activeSelection = hasSelection ? this.getSelection() : undefined;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`Has selection: ${hasSelection}`);
             if (activeSelection) {
                 console.log(`Selections:`, [activeSelection]);
@@ -968,7 +970,7 @@ export class Cursor implements CursorEditingContext {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`extendSelectionDown called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
@@ -994,7 +996,7 @@ export class Cursor implements CursorEditingContext {
                 isReversed = false;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `Extending forward selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                     );
@@ -1013,7 +1015,7 @@ export class Cursor implements CursorEditingContext {
                     isReversed = false;
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(
                             `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                         );
@@ -1034,7 +1036,7 @@ export class Cursor implements CursorEditingContext {
                 isReversed = true;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `Extending reversed selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                     );
@@ -1053,7 +1055,7 @@ export class Cursor implements CursorEditingContext {
                     isReversed = false;
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(
                             `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                         );
@@ -1080,7 +1082,7 @@ export class Cursor implements CursorEditingContext {
                 isReversed = false;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `New selection within same item: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                     );
@@ -1092,7 +1094,7 @@ export class Cursor implements CursorEditingContext {
                 isReversed = false;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `New selection across items: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                     );
@@ -1131,7 +1133,7 @@ export class Cursor implements CursorEditingContext {
         });
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`Selection created with ID: ${selectionId}, isReversed=${isReversed}`);
             console.log(`Current selections:`, store.selections);
         }
@@ -1143,7 +1145,7 @@ export class Cursor implements CursorEditingContext {
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
 
@@ -1203,7 +1205,7 @@ export class Cursor implements CursorEditingContext {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`extendSelectionToLineStart called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
@@ -1216,7 +1218,7 @@ export class Cursor implements CursorEditingContext {
         const lineStartOffset = getLineStartOffset(text, currentLineIndex);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `Current line index: ${currentLineIndex}, lineStartOffset: ${lineStartOffset}, text: "${text}"`,
             );
@@ -1224,7 +1226,7 @@ export class Cursor implements CursorEditingContext {
 
         // 現在のカーソル位置が既に行頭にある場合は何もしない
         if (this.offset === lineStartOffset && !existingSelection) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Already at line start, no selection created`);
             }
             return;
@@ -1272,7 +1274,7 @@ export class Cursor implements CursorEditingContext {
         }
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
             );
@@ -1302,7 +1304,7 @@ export class Cursor implements CursorEditingContext {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`extendSelectionToLineEnd called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
@@ -1315,13 +1317,13 @@ export class Cursor implements CursorEditingContext {
         const lineEndOffset = getLineEndOffset(text, currentLineIndex);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`Current line index: ${currentLineIndex}, lineEndOffset: ${lineEndOffset}, text: "${text}"`);
         }
 
         // 現在のカーソル位置が既に行末にある場合は何もしない
         if (this.offset === lineEndOffset && !existingSelection) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Already at line end, no selection created`);
             }
             return;
@@ -1360,7 +1362,7 @@ export class Cursor implements CursorEditingContext {
         }
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
             );
@@ -1377,7 +1379,7 @@ export class Cursor implements CursorEditingContext {
         });
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`Selection created with ID: ${selectionId}`);
             console.log(`Current selections:`, store.selections);
         }
@@ -1393,7 +1395,7 @@ export class Cursor implements CursorEditingContext {
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
 
@@ -1417,7 +1419,7 @@ export class Cursor implements CursorEditingContext {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
                 if (selectionElements.length === 0) {
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`Selection still not visible after 100ms, forcing update again`);
                     }
 
@@ -1720,7 +1722,7 @@ export class Cursor implements CursorEditingContext {
      */
     private navigateToItem(direction: "left" | "right" | "up" | "down") {
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `navigateToItem called with direction=${direction}, itemId=${this.itemId}, offset=${this.offset}`,
             );
@@ -1738,7 +1740,7 @@ export class Cursor implements CursorEditingContext {
         const currentColumn = getCurrentColumn(currentText, this.offset);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`Current column: ${currentColumn}, current text: "${currentText}"`);
         }
 
@@ -1748,14 +1750,14 @@ export class Cursor implements CursorEditingContext {
             const currentTarget = this.findTarget();
             const parentOfCurrent = currentTarget?.parent;
             const isParentItem = parentOfCurrent && prevItem && "id" in parentOfCurrent
-                && prevItem.id === (parentOfCurrent as any).id;
+                && prevItem.id === (parentOfCurrent as unknown as { id: string; }).id;
             if (prevItem && !isParentItem) {
                 newItemId = prevItem.id;
                 newOffset = prevItem.text?.length || 0;
                 itemChanged = true;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
                 }
             } else {
@@ -1765,7 +1767,7 @@ export class Cursor implements CursorEditingContext {
                     newOffset = 0;
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                     }
                 }
@@ -1821,7 +1823,7 @@ export class Cursor implements CursorEditingContext {
                 itemChanged = true;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
                 }
             } else if (atEndOfCurrentItem) {
@@ -1871,7 +1873,10 @@ export class Cursor implements CursorEditingContext {
                                 itemChanged = true;
 
                                 // デバッグ情報
-                                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                if (
+                                    typeof window !== "undefined"
+                                    && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE
+                                ) {
                                     console.log(
                                         `Moving right to next item (DOM direct lookup): id=${nextItemId}, offset=${newOffset}`,
                                     );
@@ -1897,7 +1902,10 @@ export class Cursor implements CursorEditingContext {
                                 newOffset = 0;
                                 itemChanged = true;
 
-                                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                if (
+                                    typeof window !== "undefined"
+                                    && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE
+                                ) {
                                     console.log(
                                         `Moving right to next item (tree fallback): id=${nextItemId}, offset=${newOffset}`,
                                     );
@@ -1924,7 +1932,10 @@ export class Cursor implements CursorEditingContext {
                                 newOffset = 0;
                                 itemChanged = true;
 
-                                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                if (
+                                    typeof window !== "undefined"
+                                    && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE
+                                ) {
                                     console.log(
                                         `Moving right to next item (breadth-first fallback): id=${nextItemId}, offset=${newOffset}`,
                                     );
@@ -1957,7 +1968,10 @@ export class Cursor implements CursorEditingContext {
                                     newOffset = 0;
                                     itemChanged = true;
 
-                                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                    if (
+                                        typeof window !== "undefined"
+                                        && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE
+                                    ) {
                                         console.log(
                                             `Moving right to next item (last resort DOM): id=${nextItemId}, offset=${newOffset}`,
                                         );
@@ -1976,7 +1990,7 @@ export class Cursor implements CursorEditingContext {
                     // Stay at the end of the current item but ensure we update the cursor state
                     // This case occurs when there is no next item available
                     newOffset = text.length;
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(
                             `No next item found after all attempts. Staying at end of current item: offset=${newOffset}`,
                         );
@@ -1989,7 +2003,7 @@ export class Cursor implements CursorEditingContext {
                     newOffset = this.getTargetText(target).length;
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
                 }
@@ -2028,7 +2042,7 @@ export class Cursor implements CursorEditingContext {
 
                 itemChanged = true;
 
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
                     );
@@ -2038,7 +2052,7 @@ export class Cursor implements CursorEditingContext {
                 newOffset = 0;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                 }
             }
@@ -2082,7 +2096,7 @@ export class Cursor implements CursorEditingContext {
                 console.log(
                     `navigateToItem down - Moving to next item's first line: itemId=${nextItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}`,
                 );
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `Moving down to next item's first line: id=${nextItem.id}, firstLineIndex=${firstLineIndex}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
                     );
@@ -2094,7 +2108,7 @@ export class Cursor implements CursorEditingContext {
                     newOffset = this.getTargetText(target).length;
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
                 }
@@ -2104,7 +2118,7 @@ export class Cursor implements CursorEditingContext {
         // アイテムが変更された場合のみ処理を実行
         if (itemChanged) {
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
             }
 
@@ -2119,7 +2133,7 @@ export class Cursor implements CursorEditingContext {
                 .map(c => c.cursorId);
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Removing cursors: ${cursorsToRemove.join(", ")}`);
             }
 
@@ -2133,7 +2147,7 @@ export class Cursor implements CursorEditingContext {
                 .map(c => c.cursorId);
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
             }
 
@@ -2178,7 +2192,7 @@ export class Cursor implements CursorEditingContext {
             store.startCursorBlink();
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Item not changed, updated offset: ${newOffset}`);
             }
         }
@@ -2410,7 +2424,11 @@ export class Cursor implements CursorEditingContext {
         }
 
         // Check if node has items that are iterable
-        if (node.items && typeof (node.items as any)[Symbol.iterator] === "function") {
+        if (
+            node.items
+            && typeof (node.items as unknown as { [Symbol.iterator]?: () => Iterator<any>; })[Symbol.iterator]
+                === "function"
+        ) {
             for (const child of node.items as Iterable<any>) {
                 this.collectAllItemIds(child, ids);
             }
