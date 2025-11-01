@@ -364,14 +364,14 @@ export class KeyEventHandler {
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    const text = (node?.text || "").toString();
                     const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
 
                     // 内部リンク開始直後 ([/) や [ ... ] 内ではパレットを出さない
                     if (prevChar === "[") {
                         preventPalette = true;
                     } else {
-                        const beforeCursor = text.slice(0, cursor.offset);
+                        const beforeCursor = (text || "").slice(0, cursor.offset);
                         const lastOpenBracket = beforeCursor.lastIndexOf("[");
                         const lastCloseBracket = beforeCursor.lastIndexOf("]");
                         if (lastOpenBracket > lastCloseBracket) {
@@ -424,14 +424,14 @@ export class KeyEventHandler {
                 try {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    const text = (node?.text || "").toString();
                     const before = text.slice(0, cursor.offset);
                     const lastSlash = before.lastIndexOf("/");
                     const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
                     try {
                         console.log("KeyEventHandler Palette Enter: before=", before, " cmd=", cmd);
                     } catch {}
-                    if (/^alias$/i.test(cmd)) {
+                    if (/^alias$/i.test(cmd) && node) {
                         commandPaletteStore.hide();
                         // コマンド文字列を削除
                         const newText = text.slice(0, lastSlash) + text.slice(cursor.offset);
@@ -511,7 +511,7 @@ export class KeyEventHandler {
             try {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
-                const text = node?.text || "";
+                const text = (node?.text || "").toString();
                 const before = text.slice(0, cursor.offset);
                 const lastSlash = before.lastIndexOf("/");
                 const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";

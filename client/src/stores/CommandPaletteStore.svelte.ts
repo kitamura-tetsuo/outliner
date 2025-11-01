@@ -189,7 +189,7 @@ class CommandPaletteStore {
         if (!node) return;
 
         // 現在のテキストからコマンド部分を抽出
-        const text = node.text || "";
+        const text = (node.text || "").toString();
         const beforeSlash = text.slice(0, this.commandStartOffset);
         const afterCursor = text.slice(cursor.offset);
 
@@ -240,7 +240,7 @@ class CommandPaletteStore {
 
         // クエリが空の場合はスラッシュも削除してコマンドパレットを非表示
         if (this.query.length === 0) {
-            const text = node.text || "";
+            const text = (node.text || "").toString();
             const beforeSlash = text.slice(0, this.commandStartOffset);
             const afterCursor = text.slice(cursor.offset);
 
@@ -257,7 +257,7 @@ class CommandPaletteStore {
         }
 
         // 現在のテキストからコマンド部分を削除
-        const text = node.text || "";
+        const text = (node.text || "").toString();
         const beforeSlash = text.slice(0, this.commandStartOffset);
         const afterCursor = text.slice(cursor.offset);
 

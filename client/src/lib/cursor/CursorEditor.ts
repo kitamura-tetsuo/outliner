@@ -487,11 +487,11 @@ export class CursorEditor {
         const nextItem = findNextItem(cursor.itemId);
         if (!nextItem) return;
 
-        const currentText = currentItem.text || "";
-        const nextText = nextItem.text || "";
+        const currentText = (currentItem.text || "").toString();
+        const nextText = (nextItem.text || "").toString();
         currentItem.updateText(currentText + nextText);
 
-        nextItem.delete();
+        this.deleteItemNode(nextItem);
     }
 
     private deleteEmptyItem() {
@@ -520,7 +520,7 @@ export class CursorEditor {
         }
 
         store.clearCursorForItem(cursor.itemId);
-        currentItem.delete();
+        this.deleteItemNode(currentItem);
 
         cursor.itemId = targetItemId;
         cursor.offset = targetOffset;
@@ -548,8 +548,8 @@ export class CursorEditor {
         const root = generalStore.currentPage;
         if (!root) return;
 
-        const startItem = searchItem(root, selection.startItemId);
-        const endItem = searchItem(root, selection.endItemId);
+        const startItem = searchItem(root as unknown as Item, selection.startItemId);
+        const endItem = searchItem(root as unknown as Item, selection.endItemId);
         if (!startItem || !endItem) return;
 
         const isReversed = !!selection.isReversed;
@@ -567,9 +567,9 @@ export class CursorEditor {
         if (firstIndex === -1 || lastIndex === -1) return;
 
         try {
-            const firstText = firstItem.text || "";
+            const firstText = (firstItem.text || "").toString();
             const newFirstText = firstText.substring(0, firstOffset);
-            const lastText = lastItem.text || "";
+            const lastText = (lastItem.text || "").toString();
             const newLastText = lastText.substring(lastOffset);
 
             const itemsToRemove: string[] = [];
@@ -585,7 +585,10 @@ export class CursorEditor {
             firstItem.updateText(newFirstText + newLastText);
 
             for (let i = lastIndex; i > firstIndex; i--) {
-                items.removeAt(i);
+                const itemToRemove = items.at(i);
+                if (itemToRemove) {
+                    this.deleteItemNode(itemToRemove);
+                }
             }
 
             cursor.itemId = firstItem.id;
@@ -687,10 +690,10 @@ export class CursorEditor {
 
         for (let i = firstIdx; i <= lastIdx; i++) {
             const itemId = allItemIds[i];
-            const item = searchItem(generalStore.currentPage!, itemId);
+            const item = searchItem(generalStore.currentPage as unknown as Item, itemId);
             if (!item) continue;
 
-            const text = item.text || "";
+            const text = (item.text || "").toString();
 
             if (i === firstIdx && i === lastIdx) {
                 const start = isReversed ? endOffset : startOffset;

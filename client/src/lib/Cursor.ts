@@ -464,7 +464,7 @@ export class Cursor implements CursorEditingContext {
         this.editor.deleteForward();
     }
 
-    deleteMultiItemSelection(selection: import("./cursor/CursorEditor").SelectionRange) {
+    deleteMultiItemSelection(selection: import("../stores/EditorOverlayStore.svelte").SelectionRange) {
         this.editor.deleteMultiItemSelection(selection);
     }
 
@@ -1534,7 +1534,7 @@ export class Cursor implements CursorEditingContext {
     moveToDocumentStart() {
         const root = generalStore.currentPage;
         if (!root) return;
-        let item: Item = root;
+        let item = root as unknown as Item;
         while (item.items && (item.items as Iterable<Item>)[Symbol.iterator]) {
             const iter = (item.items as Iterable<Item>)[Symbol.iterator]();
             const first = iter.next();
@@ -1551,7 +1551,7 @@ export class Cursor implements CursorEditingContext {
     moveToDocumentEnd() {
         const root = generalStore.currentPage;
         if (!root) return;
-        let item: Item = root;
+        let item = root as unknown as Item;
         while (item.items && (item.items as Iterable<Item>)[Symbol.iterator]) {
             let last: Item | undefined;
             for (const child of item.items as Iterable<Item>) {
@@ -1747,7 +1747,8 @@ export class Cursor implements CursorEditingContext {
             const prevItem = findPreviousItem(this.itemId);
             const currentTarget = this.findTarget();
             const parentOfCurrent = currentTarget?.parent;
-            const isParentItem = parentOfCurrent && prevItem && prevItem.id === parentOfCurrent.id;
+            const isParentItem = parentOfCurrent && prevItem && "id" in parentOfCurrent
+                && prevItem.id === (parentOfCurrent as any).id;
             if (prevItem && !isParentItem) {
                 newItemId = prevItem.id;
                 newOffset = prevItem.text?.length || 0;
