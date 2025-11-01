@@ -17,7 +17,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
     test("option list updates after createNewProject + setUserContainer replacement", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo);
 
         const select = page.locator("select.container-select");
         await expect(select).toBeVisible();

@@ -204,7 +204,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
             get(target, prop) {
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
                     return function(...args: unknown[]) {
-                        // オリジナルのロガーメソッドを呼び出し
+                        // オリジナルのロガーメソードを呼び出し
                         (target as any)[prop as string](...args);
 
                         // コンソールにも出力（同じレベルで）

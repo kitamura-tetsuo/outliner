@@ -99,11 +99,11 @@ export class TestHelpers {
                 // Vite エラーオーバーレイ抑止
                 (window as Window & Record<string, any>).__vite_plugin_react_preamble_installed__ = true;
                 const originalCreateElement = document.createElement;
-                document.createElement = function(tagName: string, options?: any) {
+                document.createElement = function(tagName: string, ...args: [ElementCreationOptions?]) {
                     if (tagName === "vite-error-overlay") {
-                        return originalCreateElement.call(this, "div", options);
+                        return originalCreateElement.call(this, "div", args[0]);
                     }
-                    return originalCreateElement.call(this, tagName, options);
+                    return originalCreateElement.call(this, tagName, ...args);
                 } as typeof document.createElement;
             } catch {}
         }, wsMode);
@@ -112,7 +112,7 @@ export class TestHelpers {
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
         // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines);
     }
 
     /**
@@ -564,8 +564,8 @@ export class TestHelpers {
                 if (!page.isClosed()) {
                     await page.screenshot({ path: "client/test-results/cursor-visible-timeout.png" });
                 }
-            } catch (screenshotError) {
-                console.log("Failed to take screenshot:", screenshotError);
+            } catch (screenshotError: any) {
+                console.log("Failed to take screenshot:", screenshotError.message || screenshotError);
             }
             return false;
         }
@@ -668,10 +668,11 @@ export class TestHelpers {
         page: Page,
         testInfo?: TestInfo,
         lines: string[],
-        browser?: Browser,
+        _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
-        void browser;
+        void testInfo;
+        void _browser;
         TestHelpers.slog("navigateToTestProjectPage start");
 
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;

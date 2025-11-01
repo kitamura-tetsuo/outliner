@@ -13,6 +13,8 @@ const ASSETS = [
 type ServiceWorkerGlobalScope = typeof globalThis & {
     skipWaiting(): Promise<void>;
 };
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type FrameRequestCallback = (time: number) => void;
 
 // Service Worker環境でのidbインポート
 declare const self: ServiceWorkerGlobalScope;
