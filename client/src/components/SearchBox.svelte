@@ -146,6 +146,7 @@ let results = $derived.by(() => {
 $effect(() => {
     selected = results.length ? 0 : -1;
 });
+
 function handleKeydown(e: KeyboardEvent) {
     if (e.isComposing) return;
     if (e.key === 'ArrowDown') {
