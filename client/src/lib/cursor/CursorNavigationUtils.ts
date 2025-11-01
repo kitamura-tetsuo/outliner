@@ -3,7 +3,17 @@ import { store as generalStore } from "../../stores/store.svelte";
 
 function collectChildren(node: Item): Item[] {
     const items = node.items as Iterable<Item> | undefined;
-    if (!items || typeof (items as any)[Symbol.iterator] !== "function") {
+    if (!items) {
+        return [];
+    }
+
+    // Type guard to check if items is iterable
+    // We need this check because items might come from external code
+    const isItemsIterable = (obj: unknown): obj is Iterable<Item> => {
+        return typeof obj === "object" && obj !== null && typeof (obj as any)[Symbol.iterator] === "function";
+    };
+
+    if (!isItemsIterable(items)) {
         return [];
     }
 

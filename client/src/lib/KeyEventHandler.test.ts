@@ -1,6 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KeyEventHandler } from "./KeyEventHandler";
 
+// Type declaration to avoid 'any' in test file
+declare global {
+    var __testMocks: {
+        mockInsertText: typeof vi.fn;
+        mockClearSelections: typeof vi.fn;
+        mockStartCursorBlink: typeof vi.fn;
+    } | undefined;
+    var lastCopiedText: string | undefined;
+    var clipboard: {
+        readText: () => Promise<string>;
+    } | undefined;
+}
+
 // Mock stores to avoid circular dependency
 vi.mock("../stores/CommandPaletteStore.svelte", () => ({
     commandPaletteStore: {
@@ -24,7 +37,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
     let selections: Record<string, unknown> = {};
 
     // Store mocks in global for test access
-    (globalThis as any).__testMocks = {
+    globalThis.__testMocks = {
         mockInsertText,
         mockClearSelections,
         mockStartCursorBlink,
@@ -47,15 +60,15 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
 
 describe("KeyEventHandler.handlePaste", () => {
     // Get mocked functions from global
-    const { mockInsertText } = (globalThis as any).__testMocks;
+    const { mockInsertText } = globalThis.__testMocks || {};
 
     beforeEach(() => {
         vi.clearAllMocks();
-        (window as any).lastCopiedText = undefined;
+        globalThis.lastCopiedText = undefined;
     });
 
     afterEach(() => {
-        delete (navigator as any).clipboard;
+        globalThis.clipboard = undefined;
     });
 
     const createEvent = (text: string): ClipboardEvent => {
@@ -105,7 +118,7 @@ describe("KeyEventHandler.handlePaste", () => {
 
     it("falls back to global lastCopiedText when clipboard empty", async () => {
         const event = createEvent("");
-        (window as any).lastCopiedText = "fallback";
+        globalThis.lastCopiedText = "fallback";
         Object.defineProperty(navigator, "clipboard", {
             value: { readText: () => Promise.resolve("") },
             configurable: true,
