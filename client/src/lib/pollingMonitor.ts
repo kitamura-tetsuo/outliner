@@ -61,7 +61,11 @@ class PollingMonitor {
         this.enabled = true;
 
         // setIntervalをインターセプト
-        window.setInterval = (callback: any, delay?: number, ...args: any[]): any => {
+        window.setInterval = (
+            callback: (...args: unknown[]) => unknown,
+            delay?: number,
+            ...args: unknown[]
+        ): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -84,7 +88,7 @@ class PollingMonitor {
             }
 
             // ラップされたコールバック
-            const wrappedCallback = (...callbackArgs: any[]) => {
+            const wrappedCallback = (...callbackArgs: unknown[]) => {
                 call.executionCount++;
                 call.lastExecutedAt = Date.now();
                 return callback(...callbackArgs);
@@ -93,13 +97,13 @@ class PollingMonitor {
             const timerId = this.originalSetInterval(wrappedCallback, delay, ...args);
 
             // タイマーIDをマッピング
-            (call as any).timerId = timerId;
+            (call as { timerId?: number; }).timerId = timerId;
 
             return timerId;
         };
 
         // setTimeoutをインターセプト
-        window.setTimeout = (callback: any, delay?: number, ...args: any[]): any => {
+        window.setTimeout = (callback: (...args: unknown[]) => unknown, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -120,7 +124,7 @@ class PollingMonitor {
                 return id;
             }
 
-            const wrappedCallback = (...callbackArgs: any[]) => {
+            const wrappedCallback = (...callbackArgs: unknown[]) => {
                 call.executionCount++;
                 call.lastExecutedAt = Date.now();
                 this.calls.delete(id); // setTimeoutは一度だけ実行
@@ -128,7 +132,7 @@ class PollingMonitor {
             };
 
             const timerId = this.originalSetTimeout(wrappedCallback, delay, ...args);
-            (call as any).timerId = timerId;
+            (call as { timerId?: number; }).timerId = timerId;
 
             return timerId;
         };
@@ -162,7 +166,7 @@ class PollingMonitor {
             };
 
             const frameId = this.originalRequestAnimationFrame(wrappedCallback);
-            (call as any).frameId = frameId;
+            (call as { frameId?: number; }).frameId = frameId;
 
             return frameId;
         };
@@ -272,5 +276,5 @@ export const pollingMonitor = new PollingMonitor();
 
 // グローバルに公開（デバッグ用）
 if (typeof window !== "undefined") {
-    (window as any).__pollingMonitor = pollingMonitor;
+    (window as { __pollingMonitor?: typeof pollingMonitor; }).__pollingMonitor = pollingMonitor;
 }
