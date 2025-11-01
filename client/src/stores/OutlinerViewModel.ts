@@ -6,14 +6,14 @@ const logger = getLogger();
 const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
     || import.meta.env.MODE === "test"
     || import.meta.env.VITE_IS_TEST === "true";
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
     if (!__IS_E2E__) console.log(...args);
 };
 
-const isItemLike = (obj: any): boolean => {
+const isItemLike = (obj: unknown): boolean => {
     try {
-        const id = obj?.id;
-        const txt = obj?.text;
+        const id = (obj as unknown as { id?: unknown; })?.id;
+        const txt = (obj as unknown as { text?: unknown; })?.text;
         return typeof id === "string" && id.length > 0
             && (typeof txt === "string" || typeof txt?.toString === "function");
     } catch {
