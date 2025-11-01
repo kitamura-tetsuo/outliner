@@ -12,6 +12,33 @@ interface FormatToken {
 }
 
 /**
+ * マッチ情報を表すインターフェース
+ */
+interface MatchInfo {
+    type: string;
+    start: number;
+    end: number;
+    content: string;
+    url?: string;
+    isProjectLink?: boolean;
+}
+
+/**
+ * Window オブジェクトの拡張インターフェース
+ */
+interface WindowWithStore extends Window {
+    appStore?: {
+        pages?: {
+            current?: Array<{ text?: string; }>;
+        };
+        project?: {
+            title?: string;
+        };
+    };
+    ScrapboxFormatter?: typeof ScrapboxFormatter;
+}
+
+/**
  * Scrapbox構文のフォーマットを処理するユーティリティクラス
  */
 export class ScrapboxFormatter {
@@ -177,14 +204,7 @@ export class ScrapboxFormatter {
         matches.sort((a, b) => a.start - b.start);
 
         // 重複や入れ子のマッチを処理
-        const validMatches: {
-            type: string;
-            start: number;
-            end: number;
-            content: string;
-            url?: string;
-            isProjectLink?: boolean;
-        }[] = [];
+        const validMatches: MatchInfo[] = [];
 
         for (const match of matches) {
             // 既存の有効なマッチと重複していないか確認
@@ -241,7 +261,7 @@ export class ScrapboxFormatter {
                 content: match.content,
                 start: match.start,
                 end: match.end,
-                url: (match as any).url,
+                url: match.url,
                 isProjectLink: match.isProjectLink,
             });
 
@@ -871,7 +891,8 @@ export class ScrapboxFormatter {
 
         try {
             // グローバルストアからページ情報を取得
-            const store = (window as any).appStore;
+            const w = window as WindowWithStore;
+            const store = w.appStore;
             if (!store || !store.pages) return false;
 
             // 現在のプロジェクトを取得
@@ -885,7 +906,7 @@ export class ScrapboxFormatter {
             }
 
             // ページ名が一致するページを検索
-            for (const page of store.pages.current) {
+            for (const page of store.pages.current ?? []) {
                 // Ensure page.text is a string before calling toLowerCase
                 const pageText = String(page?.text ?? "");
                 if (pageText.toLowerCase() === pageName.toLowerCase()) {
@@ -903,5 +924,5 @@ export class ScrapboxFormatter {
 
 // グローバルに参照できるようにする（テスト環境でアクセスするため）
 if (typeof window !== "undefined") {
-    (window as any).ScrapboxFormatter = ScrapboxFormatter;
+    (window as WindowWithStore).ScrapboxFormatter = ScrapboxFormatter;
 }

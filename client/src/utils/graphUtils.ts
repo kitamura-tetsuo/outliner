@@ -3,6 +3,16 @@ export interface GraphData {
     links: Array<{ source: string; target: string; }>;
 }
 
+interface PageNode {
+    id: string;
+    items?: unknown;
+}
+
+interface TextItem {
+    text?: string;
+    toString?: () => string;
+}
+
 function escapeRegExp(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -13,25 +23,25 @@ function containsLink(text: string, target: string, project: string): boolean {
     return internal.test(text) || projectPattern.test(text);
 }
 
-function toArray(p: any): any[] {
+function toArray(p: unknown): Array<unknown> {
     try {
         if (Array.isArray(p)) return p;
-        if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
-        const len = p?.length;
+        if (p && typeof p[Symbol.iterator] === "function") return Array.from(p as Iterable<unknown>);
+        const len = (p as { length?: number; })?.length;
         if (typeof len === "number" && len >= 0) {
-            const r: any[] = [];
-            for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
+            const r: Array<unknown> = [];
+            for (let i = 0; i < len; i++) r.push((p as { at?: (index: number) => unknown; })?.[i]);
             return r;
         }
     } catch {}
-    return [] as any[];
+    return [];
 }
 
-function getText(v: any): string {
+function getText(v: unknown): string {
     try {
         if (typeof v === "string") return v;
-        if (v?.text !== undefined) {
-            const t = v.text;
+        if (v && typeof v === "object" && "text" in v && v.text !== undefined) {
+            const t = (v as { text?: unknown; }).text;
             if (typeof t === "string") return t;
             if (t && typeof t.toString === "function") return t.toString();
         }
@@ -40,16 +50,20 @@ function getText(v: any): string {
     return String(v ?? "");
 }
 
-export function buildGraph(pagesMaybe: any, projectTitle: string): GraphData {
+export function buildGraph(pagesMaybe: unknown, projectTitle: string): GraphData {
     const pages = toArray(pagesMaybe);
 
-    const nodes = pages.map((p: any) => ({ id: p.id, name: getText(p) }));
+    const nodes = pages.map((p: unknown) => {
+        const page = p as PageNode;
+        return { id: page.id, name: getText(p) };
+    });
     const links: { source: string; target: string; }[] = [];
 
     for (const src of pages) {
         const srcText = getText(src).toLowerCase();
-        const childArr = toArray((src as any).items || []);
-        const childTexts = childArr.map((i: any) => getText(i).toLowerCase());
+        const srcNode = src as PageNode;
+        const childArr = toArray(srcNode.items || []);
+        const childTexts = childArr.map((i: unknown) => getText(i).toLowerCase());
         const texts = [srcText, ...childTexts];
 
         for (const dst of pages) {
