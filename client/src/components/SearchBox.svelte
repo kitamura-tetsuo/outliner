@@ -1,13 +1,9 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
-import type { Project } from '../schema/app-schema';
-import type { ItemLike } from '../types/yjs-types';
+import type { Item, Items, Project } from '../schema/app-schema';
 import { searchHistoryStore } from '../stores/SearchHistoryStore.svelte';
 import { onMount } from 'svelte';
 import { store } from '../stores/store.svelte';
-
-// Type alias for backward compatibility
-type Item = ItemLike;
 
 interface Props { project?: Project }
 let { project }: Props = $props();
@@ -21,23 +17,21 @@ let effectiveProject: Project | null = $derived.by(() => {
         if (cur) return cur;
         const gs = (window as any).generalStore;
         if (gs?.project) return gs.project as Project;
-<<<<<<< HEAD
-=======
         const parts = window.location.pathname.split("/").filter(Boolean);
-        void parts[0]; // Previously projectTitle
-        void (window as any).__YJS_SERVICE__; // Previously service
-        void (window as any).__YJS_STORE__; // Previously yjsStoreRef
+        const projectTitle = parts[0] ? decodeURIComponent(parts[0]) : '';
+        const service = (window as any).__YJS_SERVICE__;
+        const yjsStoreRef = (window as any).__YJS_STORE__;
         // Do NOT auto-create a project here. In tests this can create an empty
         // project separate from the one prepared by TestHelpers, which breaks
         // SearchBox results. Wait for store.project or global state instead.
         // Keeping this block as a no-op fallback only.
->>>>>>> origin/main
     }
     return null;
 });
 
 let query = $state('');
 let selected = $state(-1);
+let isFocused = $state(false);
 let inputEl: HTMLInputElement | null = null;
 // Preserve focus across reactive project changes to keep dropdown stable in tests
 let shouldRefocus = $state(false);
@@ -104,7 +98,7 @@ let results = $derived.by(() => {
                     const arr = (items as any).toArray();
                     if (arr && arr.length) return arr;
                 }
-            } catch {
+            } catch (e) {
                 // Continue to next source
                 continue;
             }
@@ -141,11 +135,7 @@ let results = $derived.by(() => {
     return searchResults;
 });
 
-// Reset selected when results change
-// Note: This $effect is necessary because selected needs to be both:
-// 1. Reactive to results changes (reset when results change)
-// 2. Mutable by user interaction (arrow key navigation)
-// This is a valid use case for $effect in Svelte 5
+// 結果が変更されたときにselectedを更新
 $effect(() => {
     selected = results.length ? 0 : -1;
 });
@@ -302,8 +292,8 @@ onMount(() => {
         bind:this={inputEl}
         bind:value={query}
         onkeydown={handleKeydown}
-        onfocus={() => { shouldRefocus = true; }}
-        oninput={() => { shouldRefocus = true; }}
+        onfocus={() => { isFocused = true; shouldRefocus = true; }}
+        oninput={() => { isFocused = true; shouldRefocus = true; }}
         onblur={() => {
             // Keep focus while user is interacting with the search suggestions in tests
             // Outliner may steal focus to the global textarea; when query is non-empty,
@@ -311,6 +301,8 @@ onMount(() => {
             if (query && query.length > 0) {
                 shouldRefocus = true;
                 queueMicrotask(() => inputEl?.focus());
+            } else {
+                isFocused = false;
             }
         }}
     />

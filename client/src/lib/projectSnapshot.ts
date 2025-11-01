@@ -185,14 +185,10 @@ export function createSnapshotClient(projectName: string, project: Project): any
         getTree: () => project.items,
         isContainerConnected: true,
         getAllData: () => projectToAllData(project),
-<<<<<<< HEAD
         getTreeAsJson: (
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             _path?: string,
         ) => projectToAllData(project),
-=======
-        getTreeAsJson: () => projectToAllData(project),
->>>>>>> origin/main
         dispose: () => {},
         get connectionState() {
             return "Connected";

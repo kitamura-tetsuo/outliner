@@ -19,12 +19,7 @@ export class PresenceStore {
     }
 
     removeUser(userId: string) {
-<<<<<<< HEAD
         const { [userId]: _removed, ...rest } = this.users; // eslint-disable-line @typescript-eslint/no-unused-vars
-=======
-        const { [userId]: _, ...rest } = this.users; // eslint-disable-line @typescript-eslint/no-unused-vars
-        this.users = rest;
->>>>>>> origin/main
         this.users = rest;
         try {
             if (typeof window !== "undefined") {

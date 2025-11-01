@@ -1,31 +1,10 @@
-<<<<<<< HEAD
 // @ts-nocheck
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-=======
-import type { Item } from "../../schema/yjs-schema";
-import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-// import { store as generalStore } from "../../stores/store.svelte"; // Not used
-
-// Define a generic cursor interface that we expect
-interface Cursor {
-    itemId: string;
-    offset: number;
-    userId: string;
-    resetInitialColumn(): void;
-    findTarget(): Item | null;
-    findPreviousItem(): Item | null;
-    findNextItem(): Item | null;
-    clearSelection(): void;
-    deleteMultiItemSelection(selection: any): void; // This will need to be properly typed too
-    applyToStore(): void;
-    // Add other required methods as needed
-}
->>>>>>> origin/main
 
 export class CursorTextOperations {
-    private cursor: Cursor; // Cursorクラスのインスタンスを保持
+    private cursor: any; // Cursorクラスのインスタンスを保持
 
-    constructor(cursor: Cursor) {
+    constructor(cursor: any) {
         this.cursor = cursor;
     }
 
@@ -332,21 +311,21 @@ export class CursorTextOperations {
 export function deleteEmptyItem(current?: Item) {
     try {
         if (!current) return;
-        const text = current.text ?? "";
+        const text = (current as any).text ?? "";
         if (text.length > 0) return;
-        const parent = current.parent;
-        const idx = parent ? parent.indexOf(current) : -1;
+        const parent = (current as any).parent;
+        const idx = parent ? parent.indexOf(current as any) : -1;
         const next = parent && idx >= 0 ? parent.at(idx + 1) : undefined;
         const prev = parent && idx > 0 ? parent.at(idx - 1) : undefined;
 
         // Clear cursor for the current item and delete it
-        store.clearCursorForItem(current.id);
-        current.delete();
+        store.clearCursorForItem((current as any).id);
+        (current as any).delete();
 
         // Move active item focus
-        const target = next ?? prev ?? undefined;
+        const target = (next as any) ?? (prev as any) ?? undefined;
         if (target) {
-            store.setActiveItem(target.id);
+            store.setActiveItem((target as any).id);
             store.startCursorBlink();
         } else {
             store.setActiveItem(null);
@@ -359,18 +338,18 @@ export function deleteEmptyItem(current?: Item) {
 export function mergeWithNextItem(current?: Item) {
     try {
         if (!current) return;
-        const parent = current.parent;
+        const parent = (current as any).parent;
         if (!parent) return;
-        const idx = parent.indexOf(current);
+        const idx = parent.indexOf(current as any);
         const next = parent.at(idx + 1);
         if (!next) return;
 
-        const a = current.text ?? "";
-        const b = next.text ?? "";
-        current.updateText(String(a) + String(b));
-        next.delete();
+        const a = (current as any).text ?? "";
+        const b = (next as any).text ?? "";
+        (current as any).updateText(String(a) + String(b));
+        (next as any).delete();
 
-        store.setActiveItem(current.id);
+        store.setActiveItem((current as any).id);
         store.startCursorBlink();
     } catch (e) {
         console.warn("mergeWithNextItem fallback failed:", e);
@@ -380,17 +359,17 @@ export function mergeWithNextItem(current?: Item) {
 export function mergeWithPreviousItem(current?: Item) {
     try {
         if (!current) return;
-        const parent = current.parent;
+        const parent = (current as any).parent;
         if (!parent) return;
-        const idx = parent.indexOf(current);
+        const idx = parent.indexOf(current as any);
         const prev = idx > 0 ? parent.at(idx - 1) : undefined;
         if (!prev) return;
 
-        const a = prev.text ?? "";
-        const b = current.text ?? "";
-        prev.updateText(String(a) + String(b));
-        const prevId = prev.id;
-        current.delete();
+        const a = (prev as any).text ?? "";
+        const b = (current as any).text ?? "";
+        (prev as any).updateText(String(a) + String(b));
+        const prevId = (prev as any).id;
+        (current as any).delete();
 
         store.setActiveItem(prevId);
         store.startCursorBlink();

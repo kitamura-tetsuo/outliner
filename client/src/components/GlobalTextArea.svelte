@@ -11,10 +11,7 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 let textareaRef: HTMLTextAreaElement;
-<<<<<<< HEAD
-=======
-let isComposing = false; // eslint-disable-line @typescript-eslint/no-unused-vars
->>>>>>> origin/main
+let isComposing = false;
 let measureCanvas: HTMLCanvasElement | null = null;
 let measureCtx: CanvasRenderingContext2D | null = null;
 
@@ -79,6 +76,7 @@ onMount(() => {
     // テスト用にKeyEventHandlerをグローバルに公開
     if (typeof window !== "undefined") {
         (window as any).__KEY_EVENT_HANDLER__ = KeyEventHandler;
+        (window as any).Items = Items;
         (window as any).generalStore = generalStore;
     }
 
@@ -305,6 +303,7 @@ function updateCompositionWidth(text: string) {
 }
 
 function handleCompositionStart(event: CompositionEvent) {
+    isComposing = true;
     store.setIsComposing(true);
     textareaRef.classList.add("ime-input");
     textareaRef.style.opacity = "1";
@@ -353,6 +352,7 @@ function handleInput(event: Event) {
 // CompositionEnd イベントを KeyEventHandler へ委譲
 function handleCompositionEnd(event: CompositionEvent) {
     KeyEventHandler.handleCompositionEnd(event);
+    isComposing = false;
     store.setIsComposing(false);
     textareaRef.classList.remove("ime-input");
     textareaRef.style.opacity = "0";
@@ -386,11 +386,7 @@ async function handlePaste(event: ClipboardEvent) {
 }
 
 // フォーカス喪失時の処理を追加
-<<<<<<< HEAD
-function handleBlur() {
-=======
-function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-eslint/no-unused-vars
->>>>>>> origin/main
+function handleBlur(_event: FocusEvent) {
     const activeItemId = store.getActiveItem();
     // エイリアスピッカー表示中はフォーカス復元しない
     if (aliasPickerStore.isVisible) {

@@ -59,19 +59,8 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
                     context: extractContext(pageText, normalizedTargetName),
                 });
             }
-            }
 
             // 子アイテムをチェック
-<<<<<<< HEAD
-            const items = pageData.items as any;
-            if (items && items.length > 0) {
-                for (let i = 0; i < items.length; i++) {
-                    const item = items[i];
-                    if (item && containsLink(item.text, normalizedTargetName)) {
-                        backlinks.push({
-                            sourcePageId: pageData.id,
-                            sourcePageName: pageData.text,
-=======
             const items = pageItem.items as Iterable<Item> & { length?: number; };
             if (items && items.length && items.length > 0) {
                 for (const item of items) {
@@ -80,7 +69,6 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
                         backlinks.push({
                             sourcePageId: pageItem.id,
                             sourcePageName: pageText,
->>>>>>> origin/main
                             sourceItemId: item.id,
                             sourceItemText: itemText,
                             context: extractContext(itemText, normalizedTargetName),

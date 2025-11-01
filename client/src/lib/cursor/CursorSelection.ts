@@ -1,11 +1,5 @@
-<<<<<<< HEAD
 // @ts-nocheck
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-=======
-// import type { Item } from "../../schema/yjs-schema"; // Not used
-import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-// import { store as generalStore } from "../../stores/store.svelte"; // Not used
->>>>>>> origin/main
 
 export class CursorSelection {
     private cursor: any; // Cursorクラスのインスタンスを保持
@@ -418,14 +412,14 @@ export class CursorSelection {
 
             // 現在位置を保存
             const oldItemId = this.cursor.itemId;
-            // const oldOffset = this.cursor.offset; // Not used
+            const _oldOffset = this.cursor.offset;
 
             // カーソルを下に移動
             this.cursor.moveDown();
 
             // 移動先が同じアイテム内の場合は、全テキストを選択
             if (this.cursor.itemId === oldItemId) {
-                // const text = target.text || ""; // Not used
+                const _text = target.text || "";
                 endItemId = this.cursor.itemId;
                 endOffset = this.cursor.offset;
                 isReversed = false;

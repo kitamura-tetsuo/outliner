@@ -1,41 +1,10 @@
-<<<<<<< HEAD
 // @ts-nocheck
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-=======
-import type { Item } from "../../schema/yjs-schema";
-import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-// import { store as generalStore } from "../../stores/store.svelte"; // Not used
-
-// Define a generic cursor interface that we expect
-interface Cursor {
-    itemId: string;
-    offset: number;
-    userId: string;
-    cursorId?: string;
-    initialColumn: number | null;
-    resetInitialColumn(): void;
-    findTarget(): Item | null;
-    findPreviousItem(): Item | null;
-    findNextItem(): Item | null;
-    clearSelection(): void;
-    applyToStore(): void;
-    getVisualLineInfo(
-        itemId: string,
-        offset: number,
-    ): { lineIndex: number; lineStartOffset: number; totalLines: number; } | null;
-    getCurrentLineIndex(text: string, offset: number): number;
-    getLineStartOffset(text: string, lineIndex: number): number;
-    getVisualLineOffsetRange(itemId: string, lineIndex: number): { startOffset: number; endOffset: number; } | null;
-    getLineEndOffset(text: string, lineIndex: number): number;
-    getCurrentColumn(text: string, offset: number): number;
-    // Add other required methods as needed
-}
->>>>>>> origin/main
 
 export class CursorNavigation {
-    private cursor: Cursor; // Cursorクラスのインスタンスを保持
+    private cursor: any; // Cursorクラスのインスタンスを保持
 
-    constructor(cursor: Cursor) {
+    constructor(cursor: any) {
         this.cursor = cursor;
     }
 
@@ -92,7 +61,7 @@ export class CursorNavigation {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`moveUp called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
         }
 
@@ -100,7 +69,7 @@ export class CursorNavigation {
         const visualLineInfo = this.cursor.getVisualLineInfo(this.cursor.itemId, this.cursor.offset);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
 
@@ -133,7 +102,7 @@ export class CursorNavigation {
         const targetColumn = this.cursor.initialColumn;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
             );
@@ -149,7 +118,7 @@ export class CursorNavigation {
                 this.cursor.applyToStore();
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
                         `Moved to previous visual line in same item: offset=${this.cursor.offset}, targetColumn=${targetColumn}`,
                     );
@@ -166,7 +135,7 @@ export class CursorNavigation {
                 this.navigateToItem("up");
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moved to previous item: itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
                 }
             } else {
@@ -179,7 +148,7 @@ export class CursorNavigation {
                     store.startCursorBlink();
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`Moved to start of current item: offset=${this.cursor.offset}`);
                     }
                 }
@@ -195,7 +164,7 @@ export class CursorNavigation {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`moveDown called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
         }
 
@@ -203,7 +172,7 @@ export class CursorNavigation {
         const visualLineInfo = this.cursor.getVisualLineInfo(this.cursor.itemId, this.cursor.offset);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
 
@@ -237,7 +206,7 @@ export class CursorNavigation {
         const targetColumn = this.cursor.initialColumn;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
             );
@@ -253,7 +222,7 @@ export class CursorNavigation {
                 this.cursor.applyToStore();
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
                         `Moved to next visual line in same item: offset=${this.cursor.offset}, targetColumn=${targetColumn}`,
                     );
@@ -270,7 +239,7 @@ export class CursorNavigation {
                 this.navigateToItem("down");
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moved to next item: itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
                 }
             } else {
@@ -284,7 +253,7 @@ export class CursorNavigation {
                     store.startCursorBlink();
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`Moved to end of current item: offset=${this.cursor.offset}`);
                     }
                 }
@@ -298,7 +267,7 @@ export class CursorNavigation {
      */
     navigateToItem(direction: "left" | "right" | "up" | "down") {
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(
                 `navigateToItem called with direction=${direction}, itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`,
             );
@@ -316,7 +285,7 @@ export class CursorNavigation {
         const currentColumn = this.cursor.getCurrentColumn(currentText, this.cursor.offset);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Current column: ${currentColumn}, current text: "${currentText}"`);
         }
 
@@ -329,7 +298,7 @@ export class CursorNavigation {
                 itemChanged = true;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
                 }
             } else {
@@ -339,7 +308,7 @@ export class CursorNavigation {
                     newOffset = 0;
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                     }
                 }
@@ -352,7 +321,7 @@ export class CursorNavigation {
                 itemChanged = true;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
                 }
             } else {
@@ -362,7 +331,7 @@ export class CursorNavigation {
                     newOffset = target.text?.length || 0;
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
                 }
@@ -399,7 +368,7 @@ export class CursorNavigation {
                 console.log(
                     `navigateToItem up - Moving to previous item's last line: itemId=${prevItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}`,
                 );
-                if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
                         `Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
                     );
@@ -409,7 +378,7 @@ export class CursorNavigation {
                 newOffset = 0;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                 }
             }
@@ -418,11 +387,7 @@ export class CursorNavigation {
             if (nextItem) {
                 newItemId = nextItem.id;
                 const nextText = nextItem.text || "";
-<<<<<<< HEAD
                 const _nextLines = nextText.split("\n");
-=======
-                // const nextLines = nextText.split("\n"); // Not used
->>>>>>> origin/main
                 const firstLineIndex = 0;
                 const firstLineStart = this.cursor.getLineStartOffset(nextText, firstLineIndex);
                 const firstLineEnd = this.cursor.getLineEndOffset(nextText, firstLineIndex);
@@ -451,7 +416,7 @@ export class CursorNavigation {
                 console.log(
                     `navigateToItem down - Moving to next item's first line: itemId=${nextItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}`,
                 );
-                if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
                         `Moving down to next item's first line: id=${nextItem.id}, firstLineIndex=${firstLineIndex}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
                     );
@@ -463,7 +428,7 @@ export class CursorNavigation {
                     newOffset = target.text?.length || 0;
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
                 }
@@ -473,7 +438,7 @@ export class CursorNavigation {
         // アイテムが変更された場合のみ処理を実行
         if (itemChanged) {
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
             }
 
@@ -487,7 +452,7 @@ export class CursorNavigation {
                 .map(c => c.cursorId);
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Removing cursors: ${cursorsToRemove.join(", ")}`);
             }
 
@@ -501,7 +466,7 @@ export class CursorNavigation {
                 .map(c => c.cursorId);
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
             }
 
@@ -546,7 +511,7 @@ export class CursorNavigation {
             store.startCursorBlink();
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Item not changed, updated offset: ${newOffset}`);
             }
         }
