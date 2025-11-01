@@ -2,10 +2,13 @@
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
 
-export class CursorSelection {
-    private cursor: any; // Cursorクラスのインスタンスを保持
+import type { CursorEditingContext } from "./CursorEditor";
+import { getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "./CursorTextUtils";
 
-    constructor(cursor: any) {
+export class CursorSelection {
+    private cursor: CursorEditingContext;
+
+    constructor(cursor: CursorEditingContext) {
         this.cursor = cursor;
     }
 
@@ -519,10 +522,10 @@ export class CursorSelection {
         if (!target) return;
 
         const text = target.text || "";
-        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
+        const currentLineIndex = getCurrentLineIndex(text, this.cursor.offset);
 
         // 現在の行の開始位置に移動
-        this.cursor.offset = this.cursor.getLineStartOffset(text, currentLineIndex);
+        this.cursor.offset = getLineStartOffset(text, currentLineIndex);
         this.cursor.applyToStore();
 
         // カーソルが正しく更新されたことを確認
@@ -537,10 +540,10 @@ export class CursorSelection {
         if (!target) return;
 
         const text = target.text || "";
-        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
+        const currentLineIndex = getCurrentLineIndex(text, this.cursor.offset);
 
         // 現在の行の終了位置に移動
-        this.cursor.offset = this.cursor.getLineEndOffset(text, currentLineIndex);
+        this.cursor.offset = getLineEndOffset(text, currentLineIndex);
         this.cursor.applyToStore();
 
         // カーソルが正しく更新されたことを確認
@@ -569,8 +572,8 @@ export class CursorSelection {
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";
-        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
-        const lineStartOffset = this.cursor.getLineStartOffset(text, currentLineIndex);
+        const currentLineIndex = getCurrentLineIndex(text, this.cursor.offset);
+        const lineStartOffset = getLineStartOffset(text, currentLineIndex);
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -675,8 +678,8 @@ export class CursorSelection {
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";
-        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
-        const lineEndOffset = this.cursor.getLineEndOffset(text, currentLineIndex);
+        const currentLineIndex = getCurrentLineIndex(text, this.cursor.offset);
+        const lineEndOffset = getLineEndOffset(text, currentLineIndex);
 
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {

@@ -141,6 +141,7 @@ export default ts.config(
             "e2e/**/*.{js,ts,tsx}",
             "e2e/**/*.{test,spec}.{js,ts,tsx}",
             "**/*.e2e-spec.{js,ts,tsx}",
+            "playwright.config.ts",
         ],
         rules: {
             "@typescript-eslint/no-explicit-any": "off", // E2E tests often use dynamic browser APIs that require 'any'

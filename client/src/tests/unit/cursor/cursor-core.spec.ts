@@ -43,11 +43,42 @@ describe("Cursor", () => {
         // Reset mocks
         vi.clearAllMocks();
 
+        // Create mock text objects that can be mutated
+        const mockItemText = {
+            value: "Test text content",
+            toString() {
+                return this.value;
+            },
+            get length() {
+                return this.value.length;
+            },
+            delete(start: number, count: number) {
+                this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+            },
+            insert(pos: number, text: string) {
+                this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+            },
+        };
+
+        const mockParentItemText = {
+            value: "Parent text content",
+            toString() {
+                return this.value;
+            },
+            get length() {
+                return this.value.length;
+            },
+            delete(start: number, count: number) {
+                this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+            },
+            insert(pos: number, text: string) {
+                this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+            },
+        };
+
         // Create mock items
         mockItem = {
             id: "test-item-1",
-            text: "Test text content",
-            parent: null,
             items: {
                 [Symbol.iterator]: function*() {
                     // Empty iterator
@@ -55,12 +86,16 @@ describe("Cursor", () => {
             },
             updateText: vi.fn(),
             delete: vi.fn(),
+            get text() {
+                return mockItemText as any;
+            },
+            get parent() {
+                return mockParentItem;
+            },
         } as unknown as Item;
 
         mockParentItem = {
             id: "parent-item-1",
-            text: "Parent text content",
-            parent: null,
             items: {
                 [Symbol.iterator]: function*() {
                     yield mockItem;
@@ -70,10 +105,10 @@ describe("Cursor", () => {
             },
             updateText: vi.fn(),
             delete: vi.fn(),
+            get text() {
+                return mockParentItemText as any;
+            },
         } as unknown as Item;
-
-        // Set up parent relationship
-        mockItem.parent = mockParentItem;
 
         // Mock the general store
         (generalStore as any).currentPage = mockParentItem;
@@ -128,10 +163,6 @@ describe("Cursor", () => {
     });
 
     describe("Movement methods", () => {
-        beforeEach(() => {
-            editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
-        });
-
         describe("moveLeft", () => {
             it("should move the cursor left within the same item", () => {
                 const cursor = new Cursor("cursor-1", {
@@ -167,7 +198,6 @@ describe("Cursor", () => {
 
         describe("moveRight", () => {
             it("should move the cursor right within the same item", () => {
-                mockItem.text = "Test text";
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
@@ -183,7 +213,6 @@ describe("Cursor", () => {
             });
 
             it("should not move the cursor right if already at the end", () => {
-                mockItem.text = "Test";
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 4,
@@ -202,7 +231,6 @@ describe("Cursor", () => {
     describe("Text manipulation methods", () => {
         describe("insertText", () => {
             it("should insert text at the current cursor position", () => {
-                mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
                 const cursor = new Cursor("cursor-1", {
@@ -223,7 +251,6 @@ describe("Cursor", () => {
 
         describe("deleteBackward", () => {
             it("should delete the character before the cursor", () => {
-                mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
                 const cursor = new Cursor("cursor-1", {
@@ -244,7 +271,6 @@ describe("Cursor", () => {
 
         describe("deleteForward", () => {
             it("should delete the character after the cursor", () => {
-                mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
                 const cursor = new Cursor("cursor-1", {
@@ -267,7 +293,6 @@ describe("Cursor", () => {
     describe("Line operations", () => {
         describe("moveToLineStart", () => {
             it("should move cursor to the start of the current line", () => {
-                mockItem.text = "First line\nSecond line\nThird line";
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 15, // Middle of "Second line"
@@ -285,7 +310,6 @@ describe("Cursor", () => {
 
         describe("moveToLineEnd", () => {
             it("should move cursor to the end of the current line", () => {
-                mockItem.text = "First line\nSecond line\nThird line";
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 15, // Middle of "Second line"

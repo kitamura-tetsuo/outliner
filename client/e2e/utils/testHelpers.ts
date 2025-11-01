@@ -1,4 +1,5 @@
-import { type Browser, expect, type Page } from "@playwright/test";
+/// <reference lib="dom" />
+import { type Browser, expect, type Page, type TestInfo } from "@playwright/test";
 import { startCoverage, stopCoverage } from "../helpers/coverage.js";
 import { CursorValidator } from "./cursorValidation.js";
 
@@ -100,7 +101,7 @@ export class TestHelpers {
                 const originalCreateElement = document.createElement;
                 document.createElement = function(tagName: string, ...args: [ElementCreationOptions?]) {
                     if (tagName === "vite-error-overlay") {
-                        return originalCreateElement.call(this, "div", ...args);
+                        return originalCreateElement.call(this, "div", args[0]);
                     }
                     return originalCreateElement.call(this, tagName, ...args);
                 } as typeof document.createElement;
@@ -111,7 +112,7 @@ export class TestHelpers {
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
         // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines);
     }
 
     /**
@@ -563,8 +564,8 @@ export class TestHelpers {
                 if (!page.isClosed()) {
                     await page.screenshot({ path: "client/test-results/cursor-visible-timeout.png" });
                 }
-            } catch (screenshotError) {
-                console.log("Failed to take screenshot:", screenshotError);
+            } catch (screenshotError: any) {
+                console.log("Failed to take screenshot:", screenshotError.message || screenshotError);
             }
             return false;
         }
@@ -665,7 +666,7 @@ export class TestHelpers {
      */
     public static async navigateToTestProjectPage(
         page: Page,
-        testInfo?: any,
+        testInfo?: TestInfo,
         lines: string[],
         _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
@@ -1651,7 +1652,7 @@ export class TestHelpers {
                 const currentPage = gs?.currentPage;
                 if (!currentPage) return null;
 
-                function find(node: any, target: string): any | null {
+                const find = function(node: any, target: string): any | null {
                     if (!node) return null;
                     if (node.id === target) {
                         return node;
@@ -1666,7 +1667,7 @@ export class TestHelpers {
                         if (found) return found;
                     }
                     return null;
-                }
+                };
 
                 const node = find(currentPage, id);
                 if (node) {

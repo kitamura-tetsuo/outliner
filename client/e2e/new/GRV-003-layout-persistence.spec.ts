@@ -1,7 +1,6 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-// @ts-nocheck
 /** @feature GRV-0002
  *  Title   : Graph view layout persistence
  *  Source  : docs/client-features.yaml
@@ -52,6 +51,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
             await page.waitForURL(/\/.*\/graph$/, { timeout: 5000 });
         } catch (error) {
             console.log("Current URL after click:", page.url());
+            console.log("Navigation error:", (error as Error).message);
             throw error;
         }
 

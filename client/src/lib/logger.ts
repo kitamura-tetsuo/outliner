@@ -148,7 +148,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
             }
 
             // 元のログメソッドを呼び出し
-            return originalMethod("", ...args);
+            return (originalMethod as any)("", ...args);
         };
     });
 
@@ -335,7 +335,7 @@ export function log(
 
     // 2. Pinoロガーを使ってサーバーに送信（ログファイルに記録）
     const logger = getLogger(componentName, false); // コンソール出力せずサーバーに送信
-    logger[level].apply(logger, ["", ...args]);
+    (logger as any)[level]("", ...args);
 }
 
 /**
@@ -345,6 +345,8 @@ function extractErrorDetails(
     error: Error | unknown,
 ): { message: string; stack?: string; name?: string; [key: string]: unknown; } {
     if (error instanceof Error) {
+        // エラーのプロパティを抽出（name, message, stack以外も含む）
+        const { name, message, stack, ...customProps } = error as Error & Record<string, unknown>;
         return {
             message: error.message,
             name: error.name,

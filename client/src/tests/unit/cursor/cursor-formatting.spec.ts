@@ -9,7 +9,7 @@ import { ScrapboxFormatter } from "../../../utils/ScrapboxFormatter";
 vi.mock("../../../stores/EditorOverlayStore.svelte", () => {
     const mockStore = {
         updateCursor: vi.fn(),
-        setCursor: vi.fn(),
+        setCursor: vi.fn(() => "new-cursor-id"),
         setActiveItem: vi.fn(),
         getTextareaRef: vi.fn(),
         clearCursorForItem: vi.fn(),
@@ -54,10 +54,26 @@ describe("Cursor Formatting", () => {
         // Reset mocks
         vi.clearAllMocks();
 
+        // Create mock text object
+        const mockItemText = {
+            value: "This is a test text for formatting",
+            toString() {
+                return this.value;
+            },
+            get length() {
+                return this.value.length;
+            },
+            delete(start: number, count: number) {
+                this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+            },
+            insert(pos: number, text: string) {
+                this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+            },
+        };
+
         // Create mock item
         mockItem = {
             id: "test-item-1",
-            text: "This is a test text for formatting",
             parent: null,
             items: {
                 [Symbol.iterator]: function*() {
@@ -66,6 +82,9 @@ describe("Cursor Formatting", () => {
             },
             updateText: vi.fn(),
             delete: vi.fn(),
+            get text() {
+                return mockItemText as any;
+            },
         } as unknown as Item;
 
         // Mock the general store
@@ -77,9 +96,6 @@ describe("Cursor Formatting", () => {
                 },
             },
         };
-
-        // Setup editor overlay store mocks
-        editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
     });
 
     afterEach(() => {

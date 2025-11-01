@@ -11,11 +11,12 @@ import {
     signOut,
     type User as FirebaseUser,
 } from "firebase/auth";
+import pino from "pino";
 import { getEnv } from "../lib/env";
 import { getFirebaseApp } from "../lib/firebase-app";
 import { getLogger } from "../lib/logger"; // log関数をインポート
 
-const logger = getLogger();
+const logger: pino.Logger = getLogger();
 
 // ユーザー情報の型定義
 export interface IUser {
@@ -178,7 +179,9 @@ export class UserManager {
 
         // E2Eテスト用にFirebaseメール/パスワード認証を使う
         if (isTestEnvironment) {
-            logger.info("[UserManager] E2E test environment detected, using Firebase auth emulator with test account");
+            logger.info(
+                "[UserManager] E2E test environment detected, using Firebase auth emulator with test account",
+            );
             logger.info("[UserManager] Attempting E2E test login with test@example.com");
 
             // テストユーザーでログイン

@@ -6,7 +6,7 @@ registerCoverageHooks();
 
 test.describe("FSE-9d3f2b1c: Firestore store exposes itself to window", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo);
     });
 
     test("firestoreStore is attached to window", async ({ page }) => {

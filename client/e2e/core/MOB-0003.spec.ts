@@ -1,7 +1,6 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-// @ts-nocheck
 /** @feature MOB-0003
  *  Title   : Mobile Bottom Action Toolbar
  *  Source  : docs/client-features.yaml
@@ -27,11 +26,14 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await expect(toolbar).toBeVisible();
 
         const items = page.locator(".outliner-item");
-        const itemSnapshot = await items.evaluateAll(nodes =>
-            nodes.map(node => ({
-                id: node.getAttribute("data-item-id"),
-                text: node.querySelector(".item-content")?.textContent?.trim() || "",
-            }))
+        const itemSnapshot = await items.evaluateAll((nodes: Element[]) =>
+            nodes.map(node => {
+                const element = node as HTMLElement;
+                return {
+                    id: element.getAttribute("data-item-id"),
+                    text: element.querySelector(".item-content")?.textContent?.trim() || "",
+                };
+            })
         );
         console.log("MOB-0003: item order", JSON.stringify(itemSnapshot));
         // Get the second root item (index 3 overall, which is the second child of page title)
@@ -40,7 +42,9 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly via editorOverlayStore
         await page.evaluate((itemId) => {
-            const store = (window as any).editorOverlayStore;
+            const store = (window as Window & Record<string, unknown>).editorOverlayStore as {
+                setActiveItem?: (id: string) => void;
+            } | undefined;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
                 console.log("MOB-0003: Active item set to", itemId);
@@ -90,7 +94,9 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly to the indented item
         await page.evaluate((itemId) => {
-            const store = (window as any).editorOverlayStore;
+            const store = (window as Window & Record<string, unknown>).editorOverlayStore as {
+                setActiveItem?: (id: string) => void;
+            } | undefined;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
@@ -112,7 +118,9 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            const store = (window as any).editorOverlayStore;
+            const store = (window as Window & Record<string, unknown>).editorOverlayStore as {
+                setActiveItem?: (id: string) => void;
+            } | undefined;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
@@ -133,7 +141,9 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            const store = (window as any).editorOverlayStore;
+            const store = (window as Window & Record<string, unknown>).editorOverlayStore as {
+                setActiveItem?: (id: string) => void;
+            } | undefined;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
@@ -151,7 +161,9 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            const store = (window as any).editorOverlayStore;
+            const store = (window as Window & Record<string, unknown>).editorOverlayStore as {
+                setActiveItem?: (id: string) => void;
+            } | undefined;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
             }
