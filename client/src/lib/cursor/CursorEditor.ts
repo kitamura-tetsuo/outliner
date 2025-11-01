@@ -1,5 +1,5 @@
-import type { Item } from "../../schema/yjs-schema";
-import { Items } from "../../schema/yjs-schema";
+import type { Item } from "../../schema/app-schema";
+import { Items } from "../../schema/app-schema";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
@@ -23,6 +23,9 @@ export interface CursorEditingContext {
     applyToStore(): void;
     findTarget(): Item | undefined;
 }
+
+// Re-export SelectionRange for use in other files
+export type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 
 export class CursorEditor {
     constructor(private readonly cursor: CursorEditingContext) {}
@@ -487,8 +490,8 @@ export class CursorEditor {
         const nextItem = findNextItem(cursor.itemId);
         if (!nextItem) return;
 
-        const currentText = currentItem.text || "";
-        const nextText = nextItem.text || "";
+        const currentText = currentItem.text;
+        const nextText = nextItem.text;
         currentItem.updateText(currentText + nextText);
 
         nextItem.delete();
@@ -567,9 +570,9 @@ export class CursorEditor {
         if (firstIndex === -1 || lastIndex === -1) return;
 
         try {
-            const firstText = firstItem.text || "";
+            const firstText = firstItem.text;
             const newFirstText = firstText.substring(0, firstOffset);
-            const lastText = lastItem.text || "";
+            const lastText = lastItem.text;
             const newLastText = lastText.substring(lastOffset);
 
             const itemsToRemove: string[] = [];

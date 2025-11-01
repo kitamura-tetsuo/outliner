@@ -1,7 +1,6 @@
 // import type { Item } from "../../schema/yjs-schema"; // Not used
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
-
 export class CursorSelection {
     private cursor: any; // Cursorクラスのインスタンスを保持
 
