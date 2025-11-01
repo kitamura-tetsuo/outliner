@@ -42,7 +42,9 @@ let isAuthenticated = $state(false);
 
 // グローバルへのフォールバック公開（早期に window.generalStore を満たす）
 if (browser) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).generalStore = (window as any).generalStore || appStore;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).appStore = (window as any).appStore || appStore;
 }
 // URL からプロジェクト/ページを初期化して window.generalStore.project と currentPage を満たす
@@ -53,6 +55,7 @@ if (browser) {
         const pageTitle = decodeURIComponent(parts[1] || "");
 
         if (!(appStore as any).project) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (appStore as any).project = (Project as any).createInstance(projectTitle);
             console.log("INIT: Provisional Project set in +layout.svelte", { projectTitle, pageTitle });
         }
@@ -60,9 +63,10 @@ if (browser) {
         // currentPage が未設定で、URL に pageTitle がある場合は準備
         if (pageTitle && !(appStore as any).currentPage && (appStore as any).project) {
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const itemsAny: any = (appStore as any).project.items;
                 // 既存ページにタイトル一致があるかチェック
-                let found: any = null;
+                let found: unknown = null;
                 const len = itemsAny?.length ?? 0;
                 for (let i = 0; i < len; i++) {
                     const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
@@ -73,7 +77,10 @@ if (browser) {
                     found = itemsAny?.addNode?.("tester");
                     found?.updateText?.(pageTitle);
                 }
-                if (found) (appStore as any).currentPage = found;
+                if (found) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (appStore as any).currentPage = found;
+                }
             } catch {}
         }
     } catch {}
@@ -83,10 +90,12 @@ if (browser) {
 function ensureCurrentPageByRoute(pj: string, pg: string) {
     try {
         if (!browser || !pg) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const gs: any = appStore;
         if (!gs?.project) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const items: any = gs.project.items;
-        let found: any = null;
+        let found: unknown = null;
         const len = items?.length ?? 0;
         for (let i = 0; i < len; i++) {
             const p = items.at ? items.at(i) : items[i];
@@ -97,7 +106,10 @@ function ensureCurrentPageByRoute(pj: string, pg: string) {
             found = items?.addNode?.("tester");
             found?.updateText?.(pg);
         }
-        if (found) gs.currentPage = found;
+        if (found) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            gs.currentPage = found;
+        }
     } catch {}
 }
 
@@ -217,11 +229,14 @@ onMount(async () => {
     if (browser) {
         // E2E: Hydration detection flag for stable waits
         try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__E2E_LAYOUT_MOUNTED__ = true;
             document.dispatchEvent(new Event("E2E_LAYOUT_MOUNTED"));
         } catch {}
         // Dynamically import browser-only modules
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let userManager: any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let yjsService: any;
         try {
             ({ userManager } = await import("../auth/UserManager"));
@@ -253,7 +268,8 @@ onMount(async () => {
                 .then(reg => {
                     if (import.meta.env.DEV) logger.info("Service worker registered successfully");
                     if ("sync" in reg) {
-                        (reg as any).sync.register("sync-ops").catch((err: any) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (reg as any).sync.register("sync-ops").catch((err: unknown) => {
                             logger.warn("Failed to register background sync:", err);
                         });
                     }
@@ -273,7 +289,7 @@ onMount(async () => {
         }
         else {
             // 認証状態の変更を監視
-            userManager?.addEventListener((authResult: any) => {
+            userManager?.addEventListener((authResult: unknown) => {
                 isAuthenticated = authResult !== null;
                 if (isAuthenticated && browser) {
                     setupGlobalDebugFunctions(yjsService?.yjsHighService);
@@ -337,8 +353,10 @@ onMount(async () => {
                 const origDispatchElement = Element.prototype.dispatchEvent;
                 // Avoid double-patching
                 if (!(window as any).__E2E_DROP_PATCHED__) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (window as any).__E2E_DROP_PATCHED__ = true;
 
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const wrap = function(this: any, orig: any, event: Event): boolean {
                         try { console.log('[E2E] dispatchEvent:', event?.type, 'instanceof DragEvent=', event instanceof DragEvent); } catch {}
                         try { if (event && event.type === 'drop') { (window as any).__E2E_ATTEMPTED_DROP__ = true; } } catch {}
@@ -348,6 +366,7 @@ onMount(async () => {
                                     bubbles: true,
                                     cancelable: true,
                                 } as DragEventInit);
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 try { Object.defineProperty(de, 'dataTransfer', { value: (event as any).dataTransfer, configurable: true }); } catch {}
                                 try { (window as any).__E2E_DROP_HANDLERS__?.forEach((fn: any) => { try { fn(this, de); } catch {} }); } catch {}
                                 return orig.call(this, de);
@@ -365,18 +384,22 @@ onMount(async () => {
                     console.log('[E2E] Patched EventTarget.prototype.dispatchEvent and Element.prototype.dispatchEvent for drop events');
                     try {
                         window.addEventListener('drop', (e: any) => {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             try { console.log('[E2E] window drop listener:', { type: e?.type, isDragEvent: e instanceof DragEvent, hasDT: !!e?.dataTransfer, dtTypes: e?.dataTransfer?.types }); } catch {}
                         }, true);
                     } catch {}
 
                     // Record files added into DataTransfer in E2E to recover when event.dataTransfer is unavailable in Playwright isolated world
                     try {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const anyWin: any = window as any;
                         anyWin.__E2E_LAST_FILES__ = [] as File[];
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const itemsProto = (DataTransferItemList as any)?.prototype;
                         if (itemsProto && !anyWin.__E2E_DT_ADD_PATCHED__) {
                             anyWin.__E2E_DT_ADD_PATCHED__ = true;
                             const origAdd = itemsProto.add;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             itemsProto.add = function(data: any, type?: string) {
                                 try {
                                     if (data instanceof File) {
@@ -390,9 +413,11 @@ onMount(async () => {
 
                         // Getterフック: DataTransfer.prototype.items の getter をラップして add をプロキシ化
                         try {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const desc = Object.getOwnPropertyDescriptor(DataTransfer.prototype as any, 'items');
                             if (desc && typeof desc.get === 'function' && !anyWin.__E2E_DT_ITEMS_GETTER_PATCHED__) {
                                 anyWin.__E2E_DT_ITEMS_GETTER_PATCHED__ = true;
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 Object.defineProperty(DataTransfer.prototype as any, 'items', {
                                     configurable: true,
                                     enumerable: true,
@@ -401,10 +426,12 @@ onMount(async () => {
                                         try {
                                             if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
                                                 const orig = list.add;
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                 list.add = function(data: any, _type?: string) {
                                                     try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
                                                     return orig.apply(this, [data, _type]);
                                                 } as any;
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                 (list as any).__e2eAddPatched = true;
                                                 try { console.log('[E2E] Patched DT.items.add via getter'); } catch {}
                                             }
@@ -418,9 +445,11 @@ onMount(async () => {
                         // Fallback: wrap File constructor to record created files from evaluateHandle context as well
                         if (!anyWin.__E2E_FILE_CTOR_PATCHED__) {
                             anyWin.__E2E_FILE_CTOR_PATCHED__ = true;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const OrigFile = (window as any).File;
                             if (OrigFile) {
                                 const Wrapped = new Proxy(OrigFile, {
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     construct(target: any, args: any[]) {
                                         const f = new target(...args);
                                         try { anyWin.__E2E_LAST_FILES__.push(f); } catch {}
@@ -436,20 +465,25 @@ onMount(async () => {
                         // Stronger fallback: wrap DataTransfer constructor to ensure items.add is patched per instance
                         if (!anyWin.__E2E_DT_CTOR_PATCHED__) {
                             anyWin.__E2E_DT_CTOR_PATCHED__ = true;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const OrigDT = (window as any).DataTransfer;
                             if (OrigDT) {
                                 const WrappedDT = new Proxy(OrigDT, {
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     construct(target: any, args: any[]) {
                                         const dt = new target(...args);
                                         try {
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                             const list: any = (dt as any).items;
                                             if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
                                                 const origAdd = list.add;
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                 list.add = function(data: any, _type?: string) {
                                                     try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
                                                     try { console.log('[E2E] DT(instance).items.add called'); } catch {}
                                                     return origAdd.apply(this, [data, _type]);
                                                 } as any;
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                 (list as any).__e2eAddPatched = true;
                                             }
                                         } catch {}
@@ -468,12 +502,15 @@ onMount(async () => {
         // DEBUG: log drop/dragover events globally to diagnose Playwright dispatchEvent
         try {
             window.addEventListener('drop', (ev: any) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 try { console.log('[GlobalDrop] drop received target=', (ev?.target as any)?.className || (ev?.target as any)?.tagName); } catch {}
             }, { capture: true });
             document.addEventListener('drop', (ev: any) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 try { console.log('[DocDrop] drop received target=', (ev?.target as any)?.className || (ev?.target as any)?.tagName); } catch {}
             }, { capture: true });
             window.addEventListener('dragover', (ev: any) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 try { console.log('[GlobalDrop] dragover received target=', (ev?.target as any)?.className || (ev?.target as any)?.tagName); } catch {}
             }, { capture: true });
         } catch {}
