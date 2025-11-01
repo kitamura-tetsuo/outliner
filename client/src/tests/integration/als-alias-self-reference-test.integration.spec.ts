@@ -14,7 +14,7 @@ describe("ALS alias self reference", () => {
         const items = [{ id: "alias", text: "alias", items: [] }];
         generalStore.currentPage = { id: "root", text: "root", items } as any;
         render(AliasPicker);
-        const _user = userEvent.setup();
+        const user = userEvent.setup();
 
         aliasPickerStore.show("alias");
         const option = screen.queryByRole("button", { name: "root/alias" });

@@ -17,7 +17,7 @@ interface QueryResult {
 
 let SQL: any;
 let db: Database | null = null;
-let _currentQuery = "";
+let currentQuery = "";
 let currentSelect = "";
 let worker: SyncWorker | null = null;
 
@@ -51,7 +51,7 @@ export async function initDb() {
                 wasmBinary = fs.readFileSync(possiblePath);
                 wasmPath = possiblePath;
                 break;
-            } catch (_e) {
+            } catch (e) {
                 // Continue to next path
             }
         }
@@ -161,9 +161,9 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
 export function runQuery(sql: string) {
     console.log("Running query:", sql);
     if (!db) throw new Error("DB not initialized");
-    const { sql: extended, _aliases, tableMap } = extendQuery(sql);
+    const { sql: extended, aliases, tableMap } = extendQuery(sql);
     console.log("Extended query:", extended);
-    _currentQuery = extended;
+    currentQuery = extended;
     const idx = extended.toUpperCase().lastIndexOf("SELECT");
     currentSelect = idx >= 0 ? extended.slice(idx) : extended;
     const results = db.exec(extended);

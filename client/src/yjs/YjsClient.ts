@@ -10,7 +10,7 @@ import { yjsService } from "../lib/yjs/service";
 import { Items, Project } from "../schema/yjs-schema";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
-const _logger = getLogger();
+const logger = getLogger();
 
 export interface YjsClientParams {
     clientId: string;

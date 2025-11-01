@@ -39,6 +39,7 @@ const logger = getLogger("AppLayout");
 
 // 認証関連の状態
 let isAuthenticated = $state(false);
+let error: string | undefined = $state(undefined);
 
 // グローバルへのフォールバック公開（早期に window.generalStore を満たす）
 if (browser) {
@@ -137,7 +138,7 @@ async function rotateLogFiles() {
                 return;
             }
         }
-        catch (_fetchError) {
+        catch (fetchError) {
             // fetch失敗時はsendBeaconを試す - エラーは記録しない
             if (import.meta.env.DEV) {
                 logger.debug(
@@ -168,7 +169,7 @@ async function rotateLogFiles() {
                 const img = new Image();
                 img.src = `${API_URL}/api/rotate-logs?t=${Date.now()}`;
             }
-            catch (_imgError) {
+            catch (imgError) {
                 // 最後の試行なのでエラーは無視
             }
         }
@@ -223,11 +224,11 @@ onMount(async () => {
         // Dynamically import browser-only modules
         let userManager: any;
         let yjsService: any;
-        let _services: any;
+        let services: any;
         try {
             ({ userManager } = await import("../auth/UserManager"));
             yjsService = await import("../lib/yjsService.svelte");
-            _services = await import("../services");
+            services = await import("../services");
         } catch (e) {
             logger.error("Failed to load client-only modules", e);
         }

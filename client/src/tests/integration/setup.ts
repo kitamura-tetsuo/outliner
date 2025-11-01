@@ -18,7 +18,7 @@ class MockWebsocketProvider {
         serverUrl: string,
         roomname: string,
         doc: Y.Doc,
-        _options?: {
+        options?: {
             connect?: boolean;
             params?: Record<string, string>;
         },
@@ -61,7 +61,7 @@ class MockWebsocketProvider {
                         this.emit("subdocs", [subdocsEvent]);
                     }
                 });
-            } catch (_e) {
+            } catch (e) {
                 // Ignore errors in test environment
             }
         };

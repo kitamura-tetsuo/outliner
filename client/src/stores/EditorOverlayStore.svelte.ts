@@ -471,7 +471,7 @@ export class EditorOverlayStore {
 
         // 指定されたユーザーの選択範囲を削除（通常の選択範囲と矩形選択の両方）
         this.selections = Object.fromEntries(
-            Object.entries(this.selections).filter(([, s]) => {
+            Object.entries(this.selections).filter(([_, s]) => {
                 // オブジェクトのuserIdプロパティが一致するか確認
                 return s.userId !== userId && (s.userId || "local") !== userId;
             }),
@@ -483,7 +483,7 @@ export class EditorOverlayStore {
             console.log(`Selections after clearing:`, this.selections);
 
             // 選択範囲が正しくクリアされたか確認
-            const remainingSelections = Object.entries(this.selections).filter(([, s]) =>
+            const remainingSelections = Object.entries(this.selections).filter(([_, s]) =>
                 s.userId === userId || (s.userId || "local") === userId
             );
 
@@ -622,14 +622,14 @@ export class EditorOverlayStore {
             // Reactive state を更新
             // userId が undefined の場合は "local" として扱う
             this.cursors = Object.fromEntries(
-                Object.entries(this.cursors).filter(([, c]) => (c.userId || "local") !== userId),
+                Object.entries(this.cursors).filter(([_, c]) => (c.userId || "local") !== userId),
             );
         }
 
         // 選択範囲も削除する場合
         if (clearSelections) {
             this.selections = Object.fromEntries(
-                Object.entries(this.selections).filter(([, s]) => s.userId !== userId),
+                Object.entries(this.selections).filter(([_, s]) => s.userId !== userId),
             );
         }
 
@@ -906,7 +906,7 @@ export class EditorOverlayStore {
                     // 複数アイテムにまたがる選択範囲
                     selectionText = this.getTextFromMultiItemSelection(sel);
                 }
-            } catch {
+            } catch (error) {
                 // エラーが発生しても処理を続行
                 continue;
             }
@@ -987,7 +987,7 @@ export class EditorOverlayStore {
 
                 return result;
             }
-        } catch {
+        } catch (e) {
             // If Yjs store access fails, continue to fallback
         }
 

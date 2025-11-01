@@ -72,7 +72,7 @@ class UserDeletionService {
         return await this.auth.verifyIdToken(idToken);
     }
 
-    async getUserContainers(_userId: string): Promise<string[]> {
+    async getUserContainers(userId: string): Promise<string[]> {
         const userDoc = await mockDocRef.get();
 
         if (!userDoc.exists) {
@@ -84,7 +84,7 @@ class UserDeletionService {
     }
 
     async removeUserFromContainers(userId: string, containerIds: string[]): Promise<void> {
-        for (const _ of containerIds) {
+        for (const _containerId of containerIds) {
             const containerDoc = await mockDocRef.get();
 
             if (containerDoc.exists) {
@@ -107,7 +107,7 @@ class UserDeletionService {
         }
     }
 
-    async deleteUserData(_userId: string): Promise<void> {
+    async deleteUserData(userId: string): Promise<void> {
         await mockDocRef.delete();
     }
 

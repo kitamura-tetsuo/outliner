@@ -7,7 +7,7 @@ vi.mock("../../services", () => {
     const now = Date.now();
     const data = [{ id: "s1", timestamp: now - 1000, author: "user1", content: "old" }];
     return {
-        listSnapshots: (_project: string, _page: string) => data,
+        listSnapshots: (project: string, page: string) => data,
         getSnapshot: (project: string, page: string, id: string) => data.find(d => d.id === id) ?? null,
         addSnapshot: vi.fn(),
         replaceWithSnapshot: vi.fn((project: string, page: string, id: string) => ({

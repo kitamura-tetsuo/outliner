@@ -37,6 +37,7 @@ let allSelections = $derived.by(() => Object.values(store.selections));
 let clipboardRef: HTMLTextAreaElement;
 let localActiveItemId = $state<string | null>(null);
 let localCursorVisible = $state<boolean>(false);
+let localAnimationPaused = $state<boolean>(false);
 // derive a stable visibility that does not blink while alias picker is open
 // in test environments, always show the cursor
 let overlayCursorVisible = $derived.by(() => {
