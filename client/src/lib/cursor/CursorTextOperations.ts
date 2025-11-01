@@ -42,11 +42,11 @@ export class CursorTextOperations {
         console.log(`insertText: Current text: "${currentText}"`);
 
         // 選択範囲がある場合は、選択範囲を削除してからテキストを挿入
-        const selection = Object.values(store.selections).find(s =>
+        const selection = Object.values(store.selections).find((s: any) =>
             s.userId === this.cursor.userId
             && s.startItemId === this.cursor.itemId
             && s.endItemId === this.cursor.itemId
-        );
+        ) as any;
 
         if (selection && selection.startOffset !== selection.endOffset) {
             // 選択範囲のテキストを削除
@@ -92,7 +92,7 @@ export class CursorTextOperations {
         if (!node) return;
 
         // 選択範囲がある場合は、選択範囲を削除
-        const selection = Object.values(store.selections).find(s => s.userId === this.cursor.userId);
+        const selection = Object.values(store.selections).find((s: any) => s.userId === this.cursor.userId) as any;
 
         if (selection && selection.startOffset !== selection.endOffset) {
             // 複数アイテムにまたがる選択範囲の場合
@@ -151,7 +151,7 @@ export class CursorTextOperations {
         if (!node) return;
 
         // 選択範囲がある場合は、選択範囲を削除
-        const selection = Object.values(store.selections).find(s => s.userId === this.cursor.userId);
+        const selection = Object.values(store.selections).find((s: any) => s.userId === this.cursor.userId) as any;
 
         if (selection && selection.startOffset !== selection.endOffset) {
             // 複数アイテムにまたがる選択範囲の場合

@@ -8,7 +8,7 @@ function collectChildren(node: Item): Item[] {
     }
 
     const children: Item[] = [];
-    for (const child of items) {
+    for (const child of Array.from(items)) {
         children.push(child);
     }
     return children;

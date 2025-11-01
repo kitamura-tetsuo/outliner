@@ -71,8 +71,8 @@ export class Cursor implements CursorEditingContext {
         try {
             const proj: { items?: Iterable<Item>; } | undefined = (generalStore as any).project;
             const pages: Iterable<Item> | undefined = proj?.items;
-            if (pages && pages[Symbol.iterator]) {
-                for (const p of pages) {
+            if (pages) {
+                for (const p of Array.from(pages)) {
                     const f = searchItem(p, this.itemId);
                     if (f) return f;
                 }
@@ -1546,9 +1546,9 @@ export class Cursor implements CursorEditingContext {
         const root = generalStore.currentPage;
         if (!root) return;
         let item: Item = root;
-        while (item.items && (item.items as Iterable<Item>)[Symbol.iterator]) {
+        while (item.items && typeof (item.items as Iterable<Item>)[Symbol.iterator] === "function") {
             let last: Item | undefined;
-            for (const child of item.items as Iterable<Item>) {
+            for (const child of Array.from(item.items as Iterable<Item>)) {
                 last = child;
             }
             if (!last) break;
@@ -1740,7 +1740,7 @@ export class Cursor implements CursorEditingContext {
         if (direction === "left") {
             const prevItem = findPreviousItem(this.itemId);
             const currentTarget = this.findTarget();
-            const parentOfCurrent = currentTarget?.parent;
+            const parentOfCurrent = currentTarget?.parent as Item | null | undefined;
             const isParentItem = parentOfCurrent && prevItem && prevItem.id === parentOfCurrent.id;
             if (prevItem && !isParentItem) {
                 newItemId = prevItem.id;
@@ -2108,8 +2108,8 @@ export class Cursor implements CursorEditingContext {
             // 注意: 全てのカーソルをクリアするのではなく、同じユーザーのカーソルのみをクリア
             const cursorEntries = store.cursors ? Object.values(store.cursors) : [];
             const cursorsToRemove = cursorEntries
-                .filter(c => c.userId === this.userId && c.cursorId !== this.cursorId)
-                .map(c => c.cursorId);
+                .filter((c: any) => c.userId === this.userId && c.cursorId !== this.cursorId)
+                .map((c: any) => c.cursorId);
 
             // デバッグ情報
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -2122,8 +2122,8 @@ export class Cursor implements CursorEditingContext {
             // 移動先アイテムの既存のカーソルも削除（重複防止）
             // 注意: 同じユーザーのカーソルのみを削除
             const cursorsInTargetItem = cursorEntries
-                .filter(c => c.itemId === newItemId && c.userId === this.userId)
-                .map(c => c.cursorId);
+                .filter((c: any) => c.itemId === newItemId && c.userId === this.userId)
+                .map((c: any) => c.cursorId);
 
             // デバッグ情報
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -2404,7 +2404,7 @@ export class Cursor implements CursorEditingContext {
 
         // Check if node has items that are iterable
         if (node.items && typeof (node.items as any)[Symbol.iterator] === "function") {
-            for (const child of node.items as Iterable<any>) {
+            for (const child of Array.from(node.items as Iterable<any>)) {
                 this.collectAllItemIds(child, ids);
             }
         }

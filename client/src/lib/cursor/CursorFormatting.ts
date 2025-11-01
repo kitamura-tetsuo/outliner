@@ -51,7 +51,7 @@ export class CursorFormatting {
      */
     private applyScrapboxFormatting(formatType: "bold" | "italic" | "strikethrough" | "underline" | "code") {
         // 選択範囲を取得
-        const selection = Object.values(store.selections).find(s => s.userId === this.cursor.userId);
+        const selection = Object.values(store.selections).find((s: any) => s.userId === this.cursor.userId) as any;
 
         if (!selection || selection.startOffset === selection.endOffset) {
             // 選択範囲がない場合は何もしない

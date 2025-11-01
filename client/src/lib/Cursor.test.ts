@@ -214,7 +214,7 @@ describe("Cursor", () => {
             vi.spyOn(cursor as unknown as { findTarget: () => Item | undefined; }, "findTarget").mockImplementation(
                 () => {
                     const items = mockCurrentPage!.items as unknown as Item[];
-                    return items.at ? items.at(0) : items[0];
+                    return items.length > 0 ? items[0] : undefined;
                 },
             );
             // Prevent actual navigation/merge for these simple tests
