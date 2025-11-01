@@ -20,7 +20,7 @@ function getStorageKey(title: string): string {
     return `${STORAGE_PREFIX}${encodeURIComponent(title || "__untitled__")}`;
 }
 
-function toPlainText(value: any): string {
+function toPlainText(value: unknown): string {
     if (!value) return "";
     if (typeof value === "string") return value;
     if (typeof value.toString === "function") {
@@ -29,15 +29,15 @@ function toPlainText(value: any): string {
     return String(value ?? "");
 }
 
-function collectItems(items: any): SnapshotItem[] {
-    if (!items || typeof items.length !== "number") return [];
+function collectItems(items: unknown): SnapshotItem[] {
+    if (!items || typeof items !== "object" || !("length" in items) || typeof items.length !== "number") return [];
     const result: SnapshotItem[] = [];
-    const length = items.length as number;
+    const length = items.length;
     for (let i = 0; i < length; i++) {
         const node = items.at ? items.at(i) : items[i];
         if (!node) continue;
-        const text = toPlainText(node.text);
-        const children = collectItems(node.items);
+        const text = toPlainText((node as { text?: unknown; }).text);
+        const children = collectItems((node as { items?: unknown; }).items);
         result.push({ text, children });
     }
     return result;
@@ -81,7 +81,7 @@ export function saveProjectSnapshot(project: Project | undefined): void {
     try {
         const snapshot: ProjectSnapshot = {
             title: project.title ?? "",
-            items: collectItems(project.items as any),
+            items: collectItems(project.items),
         };
         if (isPlaceholder(snapshot)) return;
         if (!hasMeaningfulContent(snapshot)) return;
@@ -151,21 +151,21 @@ export function snapshotToProject(snapshot: ProjectSnapshot): Project {
 
     for (const root of snapshot.items) {
         const page = project.addPage(root.text, "snapshot");
-        populateChildren(page.items as any, root.children);
+        populateChildren(page.items, root.children);
     }
 
     return project;
 }
 
-function populateChildren(items: any, children: SnapshotItem[]) {
+function populateChildren(items: unknown, children: SnapshotItem[]) {
     if (!items) return;
     for (const child of children) {
-        const node = items.addNode ? items.addNode("snapshot") : null;
+        const node = (items as { addNode?: (type: string) => unknown; })?.addNode?.("snapshot");
         if (!node) continue;
-        if (node.updateText) {
-            node.updateText(child.text);
+        if ((node as { updateText?: (text: string) => void; })?.updateText) {
+            (node as { updateText: (text: string) => void; }).updateText(child.text);
         }
-        populateChildren(node.items as any, child.children);
+        populateChildren((node as { items?: unknown; })?.items, child.children);
     }
 }
 
@@ -177,7 +177,7 @@ function escapeHtml(str: string): string {
         .replace(/"/g, "&quot;");
 }
 
-export function createSnapshotClient(projectName: string, project: Project): any {
+export function createSnapshotClient(projectName: string, project: Project): unknown {
     const client = {
         containerId: `snapshot-${encodeURIComponent(projectName || "")}`,
         clientId: `snapshot-${Date.now().toString(16)}`,
@@ -196,32 +196,33 @@ export function createSnapshotClient(projectName: string, project: Project): any
     };
     try {
         if (typeof window !== "undefined") {
-            const registry = (window as any).__YJS_CLIENT_REGISTRY__;
-            if (registry?.set) {
+            const registry = (window as { __YJS_CLIENT_REGISTRY__?: unknown; })?.__YJS_CLIENT_REGISTRY__;
+            if (registry && typeof registry === "object" && "set" in registry) {
                 const key = `snapshot:${projectName}:${Date.now().toString(16)}`;
-                registry.set(key, [client, project]);
+                (registry as { set: (key: string, value: unknown) => void; }).set(key, [client, project]);
             }
         }
     } catch {}
     return client;
 }
 
-function projectToAllData(project: Project): any {
-    const walk = (items: any): any[] => {
-        if (!items || typeof items.length !== "number") return [];
-        const result: any[] = [];
-        const length = items.length as number;
+function projectToAllData(project: Project): unknown {
+    const walk = (items: unknown): unknown[] => {
+        if (!items || typeof items !== "object" || !("length" in items) || typeof items.length !== "number") return [];
+        const result: unknown[] = [];
+        const length = items.length;
         for (let i = 0; i < length; i++) {
             const node = items.at ? items.at(i) : items[i];
             if (!node) continue;
-            const text = node.text?.toString?.() ?? String(node.text ?? "");
+            const text = (node as { text?: unknown; })?.text?.toString?.()
+                ?? String((node as { text?: unknown; })?.text ?? "");
             result.push({
-                id: String(node.id ?? i),
+                id: String((node as { id?: unknown; })?.id ?? i),
                 text,
-                items: walk(node.items),
+                items: walk((node as { items?: unknown; })?.items),
             });
         }
         return result;
     };
-    return { items: walk(project.items as any) };
+    return { items: walk(project.items) };
 }
