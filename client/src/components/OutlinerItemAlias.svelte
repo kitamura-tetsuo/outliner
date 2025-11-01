@@ -5,6 +5,8 @@ import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
 import { getLogger } from "../lib/logger";
+import type { ItemLike } from "../types/yjs-types";
+import * as Y from "yjs";
 
 const logger = getLogger("OutlinerItemAlias");
 
@@ -22,15 +24,15 @@ let aliasTargetId = $state<string | undefined>(item.aliasTargetId);
 
 onMount(() => {
     try {
-        const anyItem: any = item as any;
-        const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+        const itemLike = item as ItemLike;
+        const ymap = itemLike?.tree?.getNodeValueFromKey?.(itemLike?.key) as Y.Map<unknown> | undefined;
         if (ymap && typeof ymap.observe === 'function') {
-            const obs = (e?: any) => {
+            const obs = (e?: Y.YMapEvent<unknown>) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
                         const newValue = ymap.get?.('aliasTargetId');
                         if (newValue !== aliasTargetId) {
-                            aliasTargetId = newValue;
+                            aliasTargetId = newValue as string | undefined;
                             logger.debug("OutlinerItemAlias: aliasTargetId updated via observe", { itemId: modelId, newValue });
                         }
                     }
@@ -49,10 +51,10 @@ let aliasLastConfirmedPulse: { itemId: string; targetId: string; at: number } | 
 onMount(() => {
     const iv = setInterval(() => {
         try {
-            const ap: any = (typeof window !== 'undefined') ? (window as any).aliasPickerStore : null;
+            const ap = (typeof window !== 'undefined') ? (window as any).aliasPickerStore as { lastConfirmedItemId?: string; lastConfirmedTargetId?: string; lastConfirmedAt?: number } : null;
             const li = ap?.lastConfirmedItemId;
             const lt = ap?.lastConfirmedTargetId;
-            const la = ap?.lastConfirmedAt as number | null;
+            const la = ap?.lastConfirmedAt;
             if (li && lt && la && (Date.now() - la < 6000) && li === modelId) {
                 aliasLastConfirmedPulse = { itemId: li, targetId: lt, at: la };
             }
@@ -62,14 +64,13 @@ onMount(() => {
 });
 
 const aliasTargetIdEffective = $derived.by(() => {
-    void (aliasPickerStore as any)?.tick;
     void aliasLastConfirmedPulse;
     const base = aliasTargetId;
     if (base) return base;
 
-    const lastItemId = (aliasPickerStore as any)?.lastConfirmedItemId;
-    const lastTargetId = (aliasPickerStore as any)?.lastConfirmedTargetId;
-    const lastAt = (aliasPickerStore as any)?.lastConfirmedAt as number | null;
+    const lastItemId = (aliasPickerStore as any)?.lastConfirmedItemId as string | undefined;
+    const lastTargetId = (aliasPickerStore as any)?.lastConfirmedTargetId as string | undefined;
+    const lastAt = (aliasPickerStore as any)?.lastConfirmedAt as number | undefined;
 
     if (lastTargetId && lastAt && Date.now() - lastAt < 6000 && lastItemId === modelId) {
         return lastTargetId;
@@ -96,17 +97,16 @@ const aliasTarget = $derived.by(() => {
 });
 
 const aliasPath = $derived.by(() => {
-    void (aliasPickerStore as any)?.tick;
     void aliasLastConfirmedPulse;
     void aliasTargetIdEffective;
-    
+
     try {
         const page = generalStore.currentPage;
         const targetId = aliasTargetIdEffective;
         if (targetId && page) {
             const p = findPath(page, targetId);
             if (p && p.length > 0) return p;
-            
+
             // フォールバック
             const fallbackTarget = findItem(page, targetId);
             if (fallbackTarget) return [fallbackTarget];
@@ -119,9 +119,9 @@ const aliasPath = $derived.by(() => {
 
 function findItem(node: Item, id: string): Item | undefined {
     if (node.id === id) return node;
-    const children = node.items;
+    const children = node.items as Item[] | undefined;
     if (children) {
-        for (const child of children as any) {
+        for (const child of children) {
             const found = findItem(child, id);
             if (found) return found;
         }
@@ -132,13 +132,13 @@ function findItem(node: Item, id: string): Item | undefined {
 function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
     if (!node) return null;
     if (node.id === id) return [...path, node];
-    const children = node.items;
+    const children = node.items as Item[] | undefined;
     if (children) {
-        const len = Number.isFinite((children as any).length) ? (children as any).length as number : 0;
+        const len = Number.isFinite(children.length) ? children.length : 0;
         for (let i = 0; i < len; i++) {
             let child: Item | undefined;
             try {
-                child = (children as any).at ? (children as any).at(i) as Item : (children as any)[i] as Item;
+                child = children.at ? children.at(i) : children[i];
             } catch { child = undefined; }
             if (!child) continue;
             const res = findPath(child, id, [...path, node]);
@@ -159,7 +159,7 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
             {/each}
         {:else}
             <button type="button">
-                {findItem(generalStore.currentPage as any, aliasTargetIdEffective)?.text || "Loading..."}
+                {findItem(generalStore.currentPage as Item, aliasTargetIdEffective)?.text || "Loading..."}
             </button>
         {/if}
     </div>

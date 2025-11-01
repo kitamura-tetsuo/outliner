@@ -14,7 +14,7 @@ const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !=
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
     const __origDebug = (logger as any)?.debug?.bind?.(logger);
-    (logger as any).debug = (...args: any[]) => {
+    (logger as any).debug = (...args: unknown[]) => {
         if (DEBUG_LOG && __origDebug) { try { __origDebug(...args); } catch {} }
     };
 } catch {}
@@ -39,7 +39,7 @@ onMount(() => {
                 document.querySelector = ((sel: string) => {
                     try {
                         if (/^\[data-item-id="/.test(sel)) {
-                            const ap: any = W.aliasPickerStore;
+                            const ap: unknown = W.aliasPickerStore;
                             const li = ap?.lastConfirmedItemId;
                             if (li) {
                                 const el = origQS(`[data-item-id="${li}"]`);
@@ -94,8 +94,8 @@ onMount(() => {
     // インデックス優先で自動的に再オープン（E2E 安定化）
     try {
         const gs: any = generalStore as any;
-        const cp: any = gs?.currentPage;
-        const items: any = cp?.items as any;
+        const cp: unknown = gs?.currentPage;
+        const items: unknown = cp?.items as any;
         const targetId = gs?.openCommentItemId;
         let exists = false;
         if (items) {
@@ -189,7 +189,7 @@ let commentCountLocal = $state(0);
 /**
  * Yjs comments 配列から正規化されたコメント数を取得
  */
-function normalizeCommentCount(arr: any): number {
+function normalizeCommentCount(arr: unknown): number {
     if (!arr || typeof arr.length !== "number") return 0;
     return Number(arr.length);
 }
@@ -197,7 +197,7 @@ function normalizeCommentCount(arr: any): number {
 /**
  * item.comments が Y.Array であることを確認し、なければ初期化
  */
-function ensureCommentsArray(): any {
+function ensureCommentsArray(): unknown {
     try {
         const it = item as any;
         if (!it) return null;
@@ -242,7 +242,7 @@ function syncCommentCountFromItem() {
 /**
  * コメント数をローカル状態に適用（observe コールバック用）
  */
-function applyCommentCount(arrOrCount: any) {
+function applyCommentCount(arrOrCount: unknown) {
     let newCount: number;
     if (typeof arrOrCount === "number") {
         newCount = arrOrCount;
@@ -323,9 +323,9 @@ let aliasTargetId = $state<string | undefined>(item.aliasTargetId);
 onMount(() => {
     try {
         const anyItem: any = item as any;
-        const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+        const ymap: unknown = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
         if (ymap && typeof ymap.observe === 'function') {
-            const obs = (e?: any) => {
+            const obs = (e?: unknown) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
                         aliasTargetId = ymap.get?.('aliasTargetId');
@@ -421,18 +421,18 @@ const aliasTargetIdEffective = $derived.by(() => {
 function addAttachmentToDomTargetOrModel(ev: DragEvent, url: string) {
     try {
         const w: any = (typeof window !== 'undefined') ? (window as any) : null;
-        const targetEl: any = (ev?.target as any)?.closest?.('.outliner-item') || null;
+        const targetEl: unknown = (ev?.target as any)?.closest?.('.outliner-item') || null;
         const targetId: string | null = targetEl?.getAttribute?.('data-item-id') ?? null;
-        let targetItem: any = null;
+        let targetItem: unknown = null;
         if (w && targetId && w.generalStore?.currentPage?.items) {
-            const items: any = w.generalStore.currentPage.items;
+            const items: unknown = w.generalStore.currentPage.items;
             const len = items?.length ?? 0;
             for (let i = 0; i < len; i++) {
-                const cand: any = items.at ? items.at(i) : items[i];
+                const cand: unknown = items.at ? items.at(i) : items[i];
                 if (String(cand?.id) === String(targetId)) { targetItem = cand; break; }
             }
         }
-        const itm: any = targetItem || (model?.original as any);
+        const itm: unknown = targetItem || (model?.original as any);
         // まず正式APIを試み、失敗・未定義なら直接Y.Arrayへpushするフォールバック
         // 重複防止
         try {
@@ -463,7 +463,7 @@ let componentType = $state<string | undefined>(undefined);
 function handleComponentTypeChange(newType: string) {
     if (!item) return;
 
-    const setMapField = (it: any, key: string, value: any) => {
+    const setMapField = (it: unknown, key: string, value: unknown) => {
         try {
             const tree = it?.tree;
             const nodeKey = it?.key;
@@ -506,7 +506,7 @@ onMount(() => {
             h1();
         }
         if (m && typeof m.observe === "function") {
-            const h2 = (e?: any) => {
+            const h2 = (e?: unknown) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
                         compTypeValue = m.get?.("componentType");
@@ -1289,7 +1289,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                     if (!full) {
                         // generalStore からのフォールバック
                         const w: any = (window as any);
-                        const items: any = w?.generalStore?.currentPage?.items;
+                        const items: unknown = w?.generalStore?.currentPage?.items;
                         const len = items?.length ?? 0;
                         for (let i = 0; i < len; i++) {
                             const it = items.at ? items.at(i) : items[i];
@@ -1691,7 +1691,7 @@ onMount(() => {
 // E2E: dispatchEvent フックからの直接通知を受け取り、対象要素が自分の displayRef 配下なら handleDrop を実行
 onMount(() => {
     try {
-        const anyWin: any = (typeof window !== 'undefined') ? window : undefined;
+        const anyWin: unknown = (typeof window !== 'undefined') ? window : undefined;
         if (!anyWin) return;
         if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [] as any[];
         const fn = (el: Element, ev: DragEvent) => {
@@ -1752,7 +1752,7 @@ onMount(() => {
 
         onDestroy(() => {
             try {
-                const arr: any[] = anyWin.__E2E_DROP_HANDLERS__;
+                const arr: unknown[] = anyWin.__E2E_DROP_HANDLERS__;
                 const i = arr.indexOf(fn);
                 if (i >= 0) arr.splice(i, 1);
             } catch {}

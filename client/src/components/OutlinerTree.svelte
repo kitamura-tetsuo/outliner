@@ -75,7 +75,7 @@ let dragCurrentOffset = $state(0);
 let __displayItemsTick = $state(0);
 onMount(() => {
     try {
-        const ymap: any = (pageItem as any)?.ydoc?.getMap?.("orderedTree");
+        const ymap: unknown = (pageItem as any)?.ydoc?.getMap?.("orderedTree");
         if (ymap && typeof ymap.observeDeep === "function") {
             const handler = () => { try { if (typeof window !== 'undefined' && (window as any).__E2E__) console.log('OutlinerTree: observeDeep tick'); } catch {} __displayItemsTick = Date.now(); };
             ymap.observeDeep(handler);
@@ -666,7 +666,7 @@ function handlePasteMultiItem(event: CustomEvent) {
     // 選択範囲がある場合は、選択範囲を削除してからペースト
     if (selections && selections.length > 0) {
         // 複数アイテムにまたがる選択範囲がある場合
-        const multiItemSelection = selections.find((sel: any) => sel.startItemId !== sel.endItemId);
+        const multiItemSelection = selections.find((sel: unknown) => sel.startItemId !== sel.endItemId);
 
         if (multiItemSelection) {
             // 複数アイテムにまたがる選択範囲を処理
@@ -738,7 +738,7 @@ function handlePasteMultiItem(event: CustomEvent) {
 }
 
 // 複数アイテムにまたがる選択範囲にペーストする
-function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
+function handleMultiItemSelectionPaste(selection: unknown, lines: string[]) {
     // デバッグ情報
     if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
         console.log(`handleMultiItemSelectionPaste called with selection:`, selection);
@@ -832,7 +832,7 @@ function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
 }
 
 // 単一アイテム内の選択範囲にペーストする
-function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
+function handleSingleItemSelectionPaste(selection: unknown, lines: string[]) {
     // デバッグ情報
     if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
         console.log(`handleSingleItemSelectionPaste called with selection:`, selection);
@@ -1196,7 +1196,7 @@ function handleSingleItemSelectionDrop(selection: any, targetItemId: string, pos
 }
 
 // 複数アイテムにまたがる選択範囲をドロップする
-function handleMultiItemSelectionDrop(selection: any, targetItemId: string, position: string, text: string) {
+function handleMultiItemSelectionDrop(selection: unknown, targetItemId: string, position: string, text: string) {
     // デバッグ情報
     if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
         console.log(`handleMultiItemSelectionDrop called with selection:`, selection);

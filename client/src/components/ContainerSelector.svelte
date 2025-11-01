@@ -86,7 +86,7 @@ onMount(() => {
     // 認証状態の変化を監視
     const userManagerInstance = (window as any).__USER_MANAGER__;
     if (userManagerInstance) {
-        const unsubscribe = userManagerInstance.addEventListener((authResult: any) => {
+        const unsubscribe = userManagerInstance.addEventListener((authResult: unknown) => {
             if (authResult) {
                 logger.info("ContainerSelector - User authenticated, containers should be available");
             } else {

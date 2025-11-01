@@ -80,11 +80,11 @@ function removeHighlights() {
         });
 }
 
-function getPagesToSearch(): any[] {
+function getPagesToSearch(): Item[] {
     // 1) project.items を優先
     try {
         const items = (project as any)?.items;
-        const arr: any[] = [];
+        const arr: Item[] = [];
         if (items) {
             if (typeof items[Symbol.iterator] === "function") {
                 for (const p of items as any) arr.push(p);
@@ -102,7 +102,7 @@ function getPagesToSearch(): any[] {
     try {
         const gs = (window as any).generalStore;
         const pages = gs?.pages?.current;
-        const arr: any[] = [];
+        const arr: Item[] = [];
         if (pages) {
             if (typeof pages[Symbol.iterator] === "function") {
                 for (const p of pages as any) arr.push(p);
@@ -139,7 +139,7 @@ function handleSearch() {
             if (titleMatches.length) collected.push({ item: p as any, page: p as any, matches: titleMatches } as any);
 
             // 子アイテムを明示的にスキャン（ArrayLike/Iterable 双方対応）
-            const children: any = (p as any).items;
+            const children: unknown = (p as any).items;
             if (children) {
                 // Iterable 優先（Yjs/Fluid 双対応）
                 try {

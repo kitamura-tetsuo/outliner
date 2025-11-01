@@ -56,18 +56,23 @@ $effect(() => {
     }
 });
 
-function update(data: any) {
+interface QueryResult {
+    rows: Record<string, unknown>[];
+    columnsMeta: { name: string }[];
+}
+
+function update(data: QueryResult) {
     if (!chart) return;
     hasData = data.rows.length > 0;
     if (!hasData) {
         chart.clear();
         return;
     }
-    const columns = data.columnsMeta.map((c: any) => c.name);
+    const columns = data.columnsMeta.map(c => c.name);
     const option = {
-        xAxis: { type: "category", data: data.rows.map((_: any, i: number) => i.toString()) },
+        xAxis: { type: "category", data: data.rows.map((_, i) => i.toString()) },
         yAxis: { type: "value" },
-        series: columns.map(col => ({ type: "bar", data: data.rows.map((r: any) => r[col]) })),
+        series: columns.map(col => ({ type: "bar", data: data.rows.map(r => r[col]) })),
     };
     chart.setOption(option, { notMerge: true });
 }

@@ -8,9 +8,18 @@ import {
     userManager,
 } from "../auth/UserManager";
 
+interface AuthResult {
+    user: {
+        id: string;
+        name: string;
+        email?: string;
+        photoURL?: string;
+    };
+}
+
 interface Props {
     // Define callback props instead of using createEventDispatcher
-    onAuthSuccess?: ((authResult: any) => void) | undefined;
+    onAuthSuccess?: ((authResult: AuthResult) => void) | undefined;
     onAuthLogout?: (() => void) | undefined;
 }
 
@@ -63,7 +72,7 @@ onMount(() => {
 
     // テスト用: カスタム認証イベントリスナー
     if (typeof document !== "undefined") {
-        document.addEventListener("auth-success", (event: any) => {
+        document.addEventListener("auth-success", (event: CustomEvent<AuthResult>) => {
             if (event.detail && event.detail.user) {
                 currentUser = event.detail.user;
                 // Call the callback prop directly
@@ -114,9 +123,9 @@ async function handleLogout() {
         error = "";
         await userManager.logout();
     }
-    catch (err) {
+    catch (err: unknown) {
         console.error("Logout error:", err);
-        error = (err as Error).message || "ログアウト中にエラーが発生しました";
+        error = err instanceof Error ? err.message : "ログアウト中にエラーが発生しました";
         isLoading = false;
     }
 }

@@ -726,7 +726,7 @@ function getTextByItemId(itemId: string): string {
 
   // 3) generalStore から探索
   try {
-    const W: any = (typeof window !== 'undefined') ? (window as any) : null;
+    const W = (typeof window !== 'undefined') ? (window as any) : null;
     const gs = W?.generalStore;
     const page = gs?.currentPage;
     const items = page?.items;
@@ -766,7 +766,8 @@ function handleCopy(event: ClipboardEvent) {
   }
 
   // まず矩形選択（ボックス選択）が存在するかを優先的に処理
-  const boxSel = selections.find((s: any) => s.isBoxSelection && s.boxSelectionRanges && s.boxSelectionRanges.length > 0) as any;
+  const boxSel = selections.find((s: { isBoxSelection?: boolean; boxSelectionRanges?: unknown[] }) =>
+    s?.isBoxSelection && s.boxSelectionRanges && s.boxSelectionRanges.length > 0) as any;
   if (!selectedText && boxSel) {
     const lines: string[] = [];
     for (const r of boxSel.boxSelectionRanges) {
@@ -817,11 +818,12 @@ function handleCopy(event: ClipboardEvent) {
         const multicursorText: string[] = [];
 
         // 各カーソルの選択テキストを収集
-        cursorInstances.forEach((cursor: any) => {
+        cursorInstances.forEach((cursor: { itemId?: string }) => {
           const itemId = cursor.itemId;
+          if (!itemId) return;
 
           // 該当するアイテムの選択範囲を探す
-          const selection = Object.values(store.selections).find((sel: any) =>
+          const selection = Object.values(store.selections).find((sel: { startItemId?: string; endItemId?: string }) =>
             sel.startItemId === itemId || sel.endItemId === itemId
           );
 
@@ -1209,7 +1211,7 @@ function handlePaste(event: ClipboardEvent) {
     // 少なくとも1つの選択が更新中であれば true
     const anySelectionUpdating = $derived.by(() => {
         try {
-            return Object.values(store.selections).some((s: any) => !!s?.isUpdating);
+            return Object.values(store.selections).some((s: { isUpdating?: boolean }) => !!s?.isUpdating);
         } catch {
             return false;
         }

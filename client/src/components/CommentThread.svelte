@@ -11,9 +11,9 @@ const dispatch = createEventDispatcher();
 interface Props {
     comments?: Comments;
     currentUser: string;
-    doc: any;
+    doc: Y.Doc;
     onCountChanged?: (count: number) => void;
-    item?: any; // Outliner Item (for late-binding comments getter)
+    item?: object; // Outliner Item (for late-binding comments getter)
 }
 
 let props: Props = $props();
@@ -26,9 +26,9 @@ let localComments = $state<Comment[]>([]);
 let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
 
-function e2eLog(entry: any) {
+function e2eLog(entry: Record<string, unknown>) {
     try {
-        const w: any = window as any;
+        const w = (window as any) as { E2E_LOGS?: unknown[] };
         w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
         w.E2E_LOGS.push({ t: Date.now(), comp: 'CommentThread', ...entry });
     } catch {}
@@ -48,12 +48,12 @@ onMount(() => {
     let unobserve: (() => void) | undefined;
     try {
         // 1) Comments ラッパがあれば内部の yArray を取得（private だが JS では参照可能）
-        let yarr: any = (comments as any)?.yArray;
+        let yarr = (comments as any)?.yArray as Y.Array<Y.Map<Comment>> | undefined;
         // 2) なければ item 経由で Y.Map -> "comments" を確保
         if (!yarr && props.item) {
-            const anyItem: any = props.item as any;
-            const tree = anyItem?.tree; const key = anyItem?.key;
-            const value = tree?.getNodeValueFromKey?.(key) as any;
+            const itemLike = props.item as { tree?: { getNodeValueFromKey?: (key: string) => unknown }; key?: string };
+            const tree = itemLike?.tree; const key = itemLike?.key;
+            const value = tree?.getNodeValueFromKey?.(key) as Y.Array<Y.Map<Comment>> | undefined;
             if (value) {
                 yarr = value.get?.("comments");
                 if (!yarr) { yarr = new (Y as any).Array(); value.set?.("comments", yarr); }
@@ -198,7 +198,7 @@ function add() {
     let commentsObj = (props.comments as any) ?? (props.item as any)?.comments;
     if (!commentsObj && props.item) {
         try {
-            const anyItem: any = props.item as any;
+            const anyItem: unknown = props.item as any;
             const tree = anyItem?.tree;
 
             const key = anyItem?.key;
@@ -309,10 +309,10 @@ function add() {
     newText = '';
 }
 function remove(id: string) {
-    let commentsObj: any = (props.comments as any) ?? (props.item as any)?.comments;
+    let commentsObj: unknown = (props.comments as any) ?? (props.item as any)?.comments;
     if (!commentsObj && props.item) {
         try {
-            const anyItem: any = props.item as any;
+            const anyItem: unknown = props.item as any;
             const tree = anyItem?.tree;
             const key = anyItem?.key;
             if (tree && key) {
@@ -353,10 +353,10 @@ function startEdit(c: Comment) {
 
 function saveEdit(id: string) {
     try { logger.debug('[CommentThread] saveEdit start id=', id, 'editText=', editText); } catch {}
-    let commentsObj: any = (props.comments as any) ?? (props.item as any)?.comments;
+    let commentsObj: unknown = (props.comments as any) ?? (props.item as any)?.comments;
     if (!commentsObj && props.item) {
         try {
-            const anyItem: any = props.item as any;
+            const anyItem: unknown = props.item as any;
             const tree = anyItem?.tree;
             const key = anyItem?.key;
             if (tree && key) {

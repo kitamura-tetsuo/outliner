@@ -17,7 +17,7 @@ onMount(() => {
 });
 onDestroy(() => { try { __unsubscribe?.(); } catch {} });
 
-function handleCellEdit(rowIndex: number, columnKey: string, newValue: any) {
+function handleCellEdit(rowIndex: number, columnKey: string, newValue: unknown) {
     const row = data.rows[rowIndex];
     const info = mapEdit(data.columnsMeta, row, columnKey);
     if (info) {

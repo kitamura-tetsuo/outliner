@@ -57,7 +57,7 @@ let results = $derived.by(() => {
     // Resolve pages robustly. Prefer a non-empty store.pages.current, otherwise
     // fall back to project.items. Reading from `store` ensures reactivity when
     // pages load after the user begins typing.
-    const collectPages = (): any[] => {
+    const collectPages = (): Item[] => {
         const sources = [
             // Primary: store.pages.current (reactive to Yjs changes)
             () => store.pages?.current,
@@ -76,7 +76,7 @@ let results = $derived.by(() => {
                 const items = getSource();
                 if (!items) continue;
 
-                const arr: any[] = [];
+                const arr: Item[] = [];
 
                 // Try iterator first
                 if (typeof items[Symbol.iterator] === 'function') {
@@ -262,7 +262,13 @@ onMount(() => {
             }
         );
         // 親チェーンの computed styles を上位へ辿って計測
-        const chain: any[] = [];
+        interface DebugChainNode {
+            tag: string;
+            id: string;
+            cls: string;
+            styles: ReturnType<typeof styles> | null;
+        }
+        const chain: DebugChainNode[] = [];
         let node: HTMLElement | null = inputEl;
         const limit = 15;
         let count = 0;

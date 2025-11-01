@@ -122,9 +122,9 @@ onMount(() => {
             if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
             const k = ev.key;
             if (typeof k === "string" && k.length === 1) {
-                const w: any = (window as any);
+                const w = (window as any) as { __KEYSTREAM__?: string };
                 w.__KEYSTREAM__ = (w.__KEYSTREAM__ || "") + k;
-                if (w.__KEYSTREAM__.length > 256) {
+                if (w.__KEYSTREAM__ && w.__KEYSTREAM__.length > 256) {
                     w.__KEYSTREAM__ = w.__KEYSTREAM__.slice(-256);
                 }
             }
@@ -202,7 +202,7 @@ onMount(() => {
     // フォールバック: パレット表示中はグローバルkeydownから直接文字入力/移動/確定を転送
     try {
         const paletteTypeForwarder = (ev: KeyboardEvent) => {
-            const cps: any = (window as any).commandPaletteStore ?? commandPaletteStore;
+            const cps = (window as any).commandPaletteStore ?? commandPaletteStore;
             if (!cps?.isVisible) return;
             const k = ev.key;
             if (!ev.ctrlKey && !ev.metaKey && !ev.altKey && k.length === 1 && k !== "/") {
