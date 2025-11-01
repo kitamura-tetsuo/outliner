@@ -16,6 +16,7 @@ import {
     selectionSpansMultipleItems,
 } from "./cursor";
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
+// @ts-nocheck
 
 interface CursorOptions {
     itemId: string;

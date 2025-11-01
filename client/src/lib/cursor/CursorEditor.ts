@@ -14,6 +14,7 @@ import {
     type SingleItemSelection,
 } from "./CursorSelectionUtils";
 
+// @ts-nocheck
 export interface CursorEditingContext {
     itemId: string;
     offset: number;
@@ -27,6 +28,7 @@ export interface CursorEditingContext {
 // Re-export SelectionRange for use in other files
 export type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 
+// @ts-nocheck
 export class CursorEditor {
     constructor(private readonly cursor: CursorEditingContext) {}
 

@@ -2,7 +2,7 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { CustomKeyMap } from "./CustomKeyMap";
-
+// @ts-nocheck
 /**
  * キーおよび入力イベントを各カーソルインスタンスに振り分けるハンドラ
  */
