@@ -1739,7 +1739,10 @@ export class Cursor implements CursorEditingContext {
         // アイテム間移動の処理
         if (direction === "left") {
             const prevItem = findPreviousItem(this.itemId);
-            if (prevItem) {
+            const currentTarget = this.findTarget();
+            const parentOfCurrent = currentTarget?.parent;
+            const isParentItem = parentOfCurrent && prevItem && prevItem.id === parentOfCurrent.id;
+            if (prevItem && !isParentItem) {
                 newItemId = prevItem.id;
                 newOffset = prevItem.text?.length || 0;
                 itemChanged = true;
