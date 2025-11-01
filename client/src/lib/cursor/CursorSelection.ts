@@ -412,14 +412,12 @@ export class CursorSelection {
 
             // 現在位置を保存
             const oldItemId = this.cursor.itemId;
-            const _oldOffset = this.cursor.offset;
 
             // カーソルを下に移動
             this.cursor.moveDown();
 
             // 移動先が同じアイテム内の場合は、全テキストを選択
             if (this.cursor.itemId === oldItemId) {
-                const _text = target.text || "";
                 endItemId = this.cursor.itemId;
                 endOffset = this.cursor.offset;
                 isReversed = false;
