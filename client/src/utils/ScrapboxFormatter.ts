@@ -115,7 +115,7 @@ export class ScrapboxFormatter {
             { type: "italic", start: "[/ ", end: "]", regex: /\[\/\s+([^\]]*)\]/g },
             // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
             { type: "internalLink", start: "[/", end: "]", regex: /\[\/([^\s\]]+)\]/g },
-            { type: "strikethrough", start: "[-", end: "]", regex: /\[\-(.*?)\]/g },
+            { type: "strikethrough", start: "[-", end: "]", regex: /\[-(.*?)\]/g },
             { type: "underline", start: "<u>", end: "</u>", regex: /<u>(.*?)<\/u>/g },
             { type: "code", start: "`", end: "`", regex: /`(.*?)`/g },
             {
@@ -126,7 +126,7 @@ export class ScrapboxFormatter {
                 regex: /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g,
             },
             // 通常の内部リンク（page-name形式）- ハイフンを含むページ名も許可
-            { type: "internalLink", start: "[", end: "]", regex: /\[([^\[\]]+?)\]/g },
+            { type: "internalLink", start: "[", end: "]", regex: /\[([^[\]]+?)\]/g },
             { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm },
         ];
 
@@ -318,7 +318,7 @@ export class ScrapboxFormatter {
                                 existsClassTokens = this.checkPageExists(pageName, projectName)
                                     ? "page-exists"
                                     : "page-not-exists";
-                            } catch (e) {
+                            } catch {
                                 existsClassTokens = "page-not-exists";
                             }
 
@@ -558,7 +558,7 @@ export class ScrapboxFormatter {
                     let existsClass = "page-not-exists"; // default for safety
                     try {
                         existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
-                    } catch (e) {
+                    } catch {
                         // In case of any error in checkPageExists, default to page-not-exists
                         existsClass = "page-not-exists";
                     }
@@ -584,7 +584,7 @@ export class ScrapboxFormatter {
             });
 
             // 取り消し線
-            const strikethroughRegex = /\[\-(.*?)\]/g;
+            const strikethroughRegex = /\[-(.*?)\]/g;
             input = input.replace(strikethroughRegex, (match, content) => {
                 const html = `<s>${processFormat(content)}</s>`;
                 return createPlaceholder(html);
@@ -610,7 +610,7 @@ export class ScrapboxFormatter {
 
             // 通常の内部リンク - 外部リンクの後に処理する必要がある
             // [text] 形式で、text が [ または ] を含まないもの
-            const internalLinkRegex = /\[([^\[\]]+?)\]/g;
+            const internalLinkRegex = /\[([^[\]]+?)\]/g;
             input = input.replace(internalLinkRegex, (match, text) => {
                 // ページの存在確認用のクラスを追加
                 const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
@@ -716,7 +716,7 @@ export class ScrapboxFormatter {
 
         // 取り消し線
         html = html.replace(
-            /(\[)(\-)(.*?)(\])/g,
+            /(\[)(-)(.*?)(\])/g,
             '<span class="control-char">$1</span><span class="control-char">$2</span><s>$3</s><span class="control-char">$4</span>',
         );
 
@@ -749,7 +749,7 @@ export class ScrapboxFormatter {
 
         // 通常の内部リンク - カーソルがある時は制御文字のみ表示
         html = html.replace(
-            /(\[)([^\[\]\/\-][^\[\]]*?)(\])/g,
+            /(\[)([^[\]/-][^[\]]*?)(\])/g,
             '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
 
@@ -838,16 +838,16 @@ export class ScrapboxFormatter {
         if (!text) return false;
 
         // 基本フォーマットの正規表現パターン
-        const basicFormatPattern = /\[\[(.*?)\]\]|\[\/(.*?)\]|\[\-(.*?)\]|`(.*?)`/;
+        const basicFormatPattern = /\[\[(.*?)\]\]|\[\/(.*?)\]|\[-(.*?)\]|`(.*?)`/;
 
         // 外部リンクの正規表現パターン
         const linkPattern = /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/;
 
         // 内部リンクの正規表現パターン
-        const internalLinkPattern = /\[([^\[\]\/][^\[\]]*?)\]/;
+        const internalLinkPattern = /\[([^[\]/][^[\]]*?)\]/;
 
         // プロジェクト内部リンクの正規表現パターン
-        const projectLinkPattern = /\[\/([\w\-\/]+)\]/;
+        const projectLinkPattern = /\[\/([\w\-/]+)\]/;
 
         // 引用の正規表現パターン
         const quotePattern = /^>\s(.*?)$/m;
@@ -894,7 +894,7 @@ export class ScrapboxFormatter {
             }
 
             return false;
-        } catch (e) {
+        } catch {
             // If there's an error, assume the page doesn't exist
             return false;
         }

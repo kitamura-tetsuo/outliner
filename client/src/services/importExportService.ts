@@ -1,8 +1,7 @@
-// @ts-nocheck
 import { Items, Project } from "../schema/app-schema";
 
 function escapeHtml(str: unknown): string {
-    const s = (typeof str === "string" || typeof (str as any)?.toString === "function")
+    const s = (typeof str === "string" || (str != null && typeof (str as object)?.toString === "function"))
         ? String(str ?? "")
         : "";
     return s

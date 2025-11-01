@@ -37,7 +37,7 @@ test.describe("Cursor sync between tabs", () => {
             await page1.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
                 timeout: 10000, // Shorter timeout to avoid hanging
             });
-        } catch (error) {
+        } catch {
             console.log("YJS connection not established on page1, continuing with test");
             // Continue even if connection fails - test might still work with local sync
         }
@@ -66,7 +66,7 @@ test.describe("Cursor sync between tabs", () => {
             await page2.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
                 timeout: 10000, // Shorter timeout to avoid hanging
             });
-        } catch (error) {
+        } catch {
             console.log("YJS connection not established on page2, continuing with test");
             // Continue even if connection fails - test might still work with local sync
         }

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/svelte";
+import { render, waitFor } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 import OutlinerTree from "../../components/OutlinerTree.svelte";
 import { Project } from "../../schema/app-schema";

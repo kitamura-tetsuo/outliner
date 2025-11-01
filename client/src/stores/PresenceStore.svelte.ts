@@ -1,5 +1,3 @@
-import { colorForUser } from "./colorForUser";
-
 export interface PresenceUser {
     userId: string;
     userName: string;
@@ -21,7 +19,8 @@ export class PresenceStore {
     }
 
     removeUser(userId: string) {
-        const { [userId]: _removed, ...rest } = this.users;
+        const { [userId]: _, ...rest } = this.users; // eslint-disable-line @typescript-eslint/no-unused-vars
+        this.users = rest;
         this.users = rest;
         try {
             if (typeof window !== "undefined") {

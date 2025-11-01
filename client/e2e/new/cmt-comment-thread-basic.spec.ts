@@ -112,7 +112,7 @@ test.describe("CMT-0001: comment threads", () => {
         }
     });
 
-    test("add, edit and remove comment", async ({ page }, testInfo) => {
+    test("add, edit and remove comment", async ({ page }) => {
         // Using TestHelpers.prepareTestEnvironment from beforeEach ensures we have a fresh page for this test
         await TestHelpers.waitForOutlinerItems(page);
         // インデックス1を使用（インデックス0はページタイトルでコメントボタンが表示されない）

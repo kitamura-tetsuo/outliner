@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Item, Items, Project } from "../../schema/app-schema";
 import { type ItemMatch, replaceAll, replaceFirst, searchItems, type SearchOptions } from "./index";
 
