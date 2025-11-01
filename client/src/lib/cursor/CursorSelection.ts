@@ -1,10 +1,11 @@
 // @ts-nocheck - TODO: Add proper type annotations for Cursor class and related types
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
+import type { Cursor } from "../Cursor";
 
 export class CursorSelection {
-    private cursor: any; // Cursorクラスのインスタンスを保持
+    private cursor: Cursor; // Cursorクラスのインスタンスを保持
 
-    constructor(cursor: any) {
+    constructor(cursor: Cursor) {
         this.cursor = cursor;
     }
 
@@ -310,7 +311,7 @@ export class CursorSelection {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`extendSelectionDown called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
         }
 
@@ -339,7 +340,7 @@ export class CursorSelection {
                 isReversed = false;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `Extending forward selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                     );
@@ -358,7 +359,7 @@ export class CursorSelection {
                     isReversed = false;
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(
                             `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                         );
@@ -379,7 +380,7 @@ export class CursorSelection {
                 isReversed = true;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `Extending reversed selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                     );
@@ -398,7 +399,7 @@ export class CursorSelection {
                     isReversed = false;
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(
                             `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                         );
@@ -423,7 +424,7 @@ export class CursorSelection {
                 isReversed = false;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `New selection within same item: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                     );
@@ -435,7 +436,7 @@ export class CursorSelection {
                 isReversed = false;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `New selection across items: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                     );
@@ -474,7 +475,7 @@ export class CursorSelection {
         });
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`Selection created with ID: ${selectionId}, isReversed=${isReversed}`);
             console.log(`Current selections:`, store.selections);
         }
@@ -486,7 +487,7 @@ export class CursorSelection {
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
 
@@ -552,7 +553,7 @@ export class CursorSelection {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `extendSelectionToLineStart called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`,
             );
@@ -570,7 +571,7 @@ export class CursorSelection {
         const lineStartOffset = this.cursor.getLineStartOffset(text, currentLineIndex);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `Current line index: ${currentLineIndex}, lineStartOffset: ${lineStartOffset}, text: "${text}"`,
             );
@@ -578,7 +579,7 @@ export class CursorSelection {
 
         // 現在のカーソル位置が既に行頭にある場合は何もしない
         if (this.cursor.offset === lineStartOffset && !existingSelection) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Already at line start, no selection created`);
             }
             return;
@@ -626,7 +627,7 @@ export class CursorSelection {
         }
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
             );
@@ -658,7 +659,7 @@ export class CursorSelection {
         if (!target) return;
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `extendSelectionToLineEnd called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`,
             );
@@ -676,13 +677,13 @@ export class CursorSelection {
         const lineEndOffset = this.cursor.getLineEndOffset(text, currentLineIndex);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`Current line index: ${currentLineIndex}, lineEndOffset: ${lineEndOffset}, text: "${text}"`);
         }
 
         // 現在のカーソル位置が既に行末にある場合は何もしない
         if (this.cursor.offset === lineEndOffset && !existingSelection) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Already at line end, no selection created`);
             }
             return;
@@ -721,7 +722,7 @@ export class CursorSelection {
         }
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
             );
@@ -738,7 +739,7 @@ export class CursorSelection {
         });
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`Selection created with ID: ${selectionId}`);
             console.log(`Current selections:`, store.selections);
         }
@@ -754,7 +755,7 @@ export class CursorSelection {
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
 
@@ -778,7 +779,7 @@ export class CursorSelection {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
                 if (selectionElements.length === 0) {
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`Selection still not visible after 100ms, forcing update again`);
                     }
 
