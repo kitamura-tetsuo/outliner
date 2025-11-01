@@ -1,7 +1,7 @@
 id: ENV-0011
 title: Codex e2e progress script fallback
 title-ja: Codex以外ではGitHub用E2Eスクリプトを実行
-description: scripts/run-e2e-progress-for-codex.sh detects the Codex environment and runs `npm run github:test:e2e` when not inside Codex.
+description: scripts/run-e2e-progress.sh detects the Codex environment and runs `npm run github:test:e2e` when not inside Codex.
 category: environment
 status: implemented
 components: []

@@ -1,7 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async () => {
     try {
         // ログローテーション要求をサーバーにプロキシ
         const apiBaseUrl = process.env.VITE_API_SERVER_URL || "http://localhost:7091";
@@ -26,7 +26,7 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 };
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async () => {
     try {
         // GETリクエストの場合（Image src用のフォールバック）
         const apiBaseUrl = process.env.VITE_API_SERVER_URL || "http://localhost:7091";

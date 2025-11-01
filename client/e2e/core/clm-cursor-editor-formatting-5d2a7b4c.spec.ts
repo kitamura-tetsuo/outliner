@@ -17,10 +17,19 @@ type CursorAction = "insertText";
 
 async function performCursorAction(page: Page, itemId: string, action: CursorAction, value: string) {
     await page.evaluate(({ itemId, userId, value }) => {
-        const overlayStore = (window as any).editorOverlayStore;
+        const overlayStore = (window as {
+            editorOverlayStore?: {
+                getCursorInstances: () => {
+                    itemId: string;
+                    userId: string;
+                    offset: number;
+                    insertText: (text: string) => void;
+                }[];
+            };
+        }).editorOverlayStore;
         const getCursorInstances = overlayStore?.getCursorInstances?.bind(overlayStore);
         if (!getCursorInstances) throw new Error("cursor instances unavailable");
-        const cursor = getCursorInstances().find((c: any) => c.itemId === itemId && c.userId === userId);
+        const cursor = getCursorInstances().find((c) => c.itemId === itemId && c.userId === userId);
         if (!cursor) throw new Error(`Cursor not found for item ${itemId}`);
         cursor.offset = 0;
         cursor.insertText(value);
@@ -29,9 +38,23 @@ async function performCursorAction(page: Page, itemId: string, action: CursorAct
 
 async function setSelectionRange(page: Page, itemId: string, startOffset: number, endOffset: number) {
     await page.evaluate(({ itemId, startOffset, endOffset, userId }) => {
-        const overlayStore = (window as any).editorOverlayStore;
-        overlayStore.clearSelectionForUser(userId);
-        overlayStore.setSelection({
+        const overlayStore = (window as {
+            editorOverlayStore?: {
+                clearSelectionForUser: (userId: string) => void;
+                setSelection: (
+                    selection: {
+                        startItemId: string;
+                        startOffset: number;
+                        endItemId: string;
+                        endOffset: number;
+                        userId: string;
+                        isReversed: boolean;
+                    },
+                ) => void;
+            };
+        }).editorOverlayStore;
+        overlayStore!.clearSelectionForUser(userId);
+        overlayStore!.setSelection({
             startItemId: itemId,
             startOffset,
             endItemId: itemId,
@@ -45,10 +68,14 @@ async function setSelectionRange(page: Page, itemId: string, startOffset: number
 
 async function callFormatting(page: Page, itemId: string, method: FormattingMethod) {
     await page.evaluate(({ itemId, method, userId }) => {
-        const overlayStore = (window as any).editorOverlayStore;
+        const overlayStore = (window as {
+            editorOverlayStore?: {
+                getCursorInstances: () => { itemId: string; userId: string; [key: string]: any; }[];
+            };
+        }).editorOverlayStore;
         const getCursorInstances = overlayStore?.getCursorInstances?.bind(overlayStore);
         if (!getCursorInstances) throw new Error("cursor instances unavailable");
-        const cursor = getCursorInstances().find((c: any) => c.itemId === itemId && c.userId === userId);
+        const cursor = getCursorInstances().find((c) => c.itemId === itemId && c.userId === userId);
         if (!cursor) throw new Error(`Cursor not found for item ${itemId}`);
         if (typeof cursor[method] !== "function") {
             throw new Error(`Cursor method ${method} is not available`);
@@ -66,9 +93,15 @@ test.describe("CLM-5d2a7b4c: Cursor formatting delegates to CursorEditor", () =>
     test("applies Scrapbox formatting via CursorEditor", async ({ page }) => {
         // Create a new empty item to work with, separate from the page item which contains the page title
         await page.evaluate(() => {
-            const gs = (window as any).generalStore;
+            const gs = (window as {
+                generalStore?: {
+                    currentPage?: {
+                        items?: { addNode: (text: string) => { updateText: (text: string) => void; }; };
+                    };
+                };
+            }).generalStore;
             if (gs?.currentPage) {
-                const items = gs.currentPage.items as any;
+                const items = gs.currentPage.items;
                 if (items && typeof items.addNode === "function") {
                     const newItem = items.addNode("tester");
                     if (newItem && typeof newItem.updateText === "function") {
@@ -83,9 +116,19 @@ test.describe("CLM-5d2a7b4c: Cursor formatting delegates to CursorEditor", () =>
 
         // Get the ID of the newly created item (likely the last item)
         const itemId = await page.evaluate(() => {
-            const gs = (window as any).generalStore;
+            const gs = (window as {
+                generalStore?: {
+                    currentPage?: {
+                        items?: {
+                            length: number;
+                            at?: (index: number) => { id: string; } | undefined;
+                            [index: number]: { id: string; };
+                        };
+                    };
+                };
+            }).generalStore;
             if (gs?.currentPage) {
-                const items = gs.currentPage.items as any;
+                const items = gs.currentPage.items;
                 if (items && items.length > 0) {
                     const lastItem = items.at ? items.at(items.length - 1) : items[items.length - 1];
                     return lastItem?.id;

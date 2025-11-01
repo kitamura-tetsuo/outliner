@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getLogger } from "../lib/logger";
 import { Item, Items } from "../schema/app-schema";
 
@@ -195,7 +194,7 @@ export class OutlinerViewModel {
     private recalculateOrderAndDepthItem(
         item: Item,
         depth: number = 0,
-        parentId: string | null = null,
+        parentId: string | null = null, // eslint-disable-line @typescript-eslint/no-unused-vars
     ): void {
         if (!isItemLike(item)) return;
 

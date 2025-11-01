@@ -21,19 +21,6 @@ let editingId = $state("");
 let editingTime = $state("");
 let isDownloading = $state(false);
 
-function collectAllItemIds(node: any, out: string[]) {
-    if (!node) return;
-    const id = node?.id || "";
-    if (id) out.push(String(id));
-    const children: any = node?.items as any;
-    const len = children?.length ?? 0;
-    for (let i = 0; i < len; i++) {
-        const child = children?.at ? children.at(i) : children?.[i];
-        if (child) collectAllItemIds(child, out);
-    }
-}
-
-
 onMount(async () => {
     const params = $page.params as { project: string; page: string; };
     project = decodeURIComponent(params.project || "");
@@ -63,14 +50,14 @@ onMount(async () => {
     // 1) 最優先: currentPage のページIDを使用（ページ単位のスケジュール管理のため）
     try {
         if (store.currentPage) {
-            pageId = String((store.currentPage as any)?.id ?? "");
+            pageId = String(store.currentPage?.id ?? "");
         }
     } catch {}
 
     // 2) currentPage が未確定の場合は URL の pageTitle から該当ページを特定
     if (!pageId) {
         try {
-            const items: any = store.pages?.current as any;
+            const items: any = store.pages?.current;
             const len = items?.length ?? 0;
             let found: any = undefined;
             for (let i = 0; i < len; i++) {
