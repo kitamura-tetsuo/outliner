@@ -985,7 +985,7 @@ export class KeyEventHandler {
 
         if (boxSelection) {
             // 矩形選択の場合
-            selectedText = store.getBoxSelectionText("local");
+            selectedText = store.getSelectedText("local");
             isBoxSelectionCopy = true;
 
             // デバッグ情報
@@ -1183,15 +1183,17 @@ export class KeyEventHandler {
 
         // 矢印キーに応じて選択範囲を更新
         switch (event.key) {
-            case "ArrowLeft":
+            case "ArrowLeft": {
                 newEndOffset = Math.max(0, KeyEventHandler.boxSelectionState.endOffset - 1);
                 break;
-            case "ArrowRight":
+            }
+            case "ArrowRight": {
                 // アイテムのテキスト長を取得
                 const itemText = KeyEventHandler.getItemText(KeyEventHandler.boxSelectionState.endItemId);
                 newEndOffset = Math.min(itemText.length, KeyEventHandler.boxSelectionState.endOffset + 1);
                 break;
-            case "ArrowUp":
+            }
+            case "ArrowUp": {
                 // 上のアイテムを取得
                 const prevItem = KeyEventHandler.getAdjacentItem(KeyEventHandler.boxSelectionState.endItemId, "prev");
                 if (prevItem) {
@@ -1200,7 +1202,8 @@ export class KeyEventHandler {
                     newEndOffset = Math.min(prevItem.text.length, KeyEventHandler.boxSelectionState.endOffset);
                 }
                 break;
-            case "ArrowDown":
+            }
+            case "ArrowDown": {
                 // 下のアイテムを取得
                 const nextItem = KeyEventHandler.getAdjacentItem(KeyEventHandler.boxSelectionState.endItemId, "next");
                 if (nextItem) {
@@ -1209,6 +1212,7 @@ export class KeyEventHandler {
                     newEndOffset = Math.min(nextItem.text.length, KeyEventHandler.boxSelectionState.endOffset);
                 }
                 break;
+            }
         }
 
         // 終了位置を更新
@@ -1601,7 +1605,16 @@ export class KeyEventHandler {
         }
 
         try {
-            // 矩形選択の状態をリセット
+            // 矩形選択の状態をリセット（ranges を空にしてから state をリセット）
+            if (KeyEventHandler.boxSelectionState.ranges) {
+                KeyEventHandler.boxSelectionState.ranges = [];
+            }
+
+            // 選択範囲をクリアしてから state を完全にリセット
+            store.clearSelectionForUser("local");
+            store.clearSelections(); // すべての選択を確実にクリア
+
+            // state を完全にリセット
             KeyEventHandler.boxSelectionState = {
                 active: false,
                 startItemId: null,
@@ -1610,9 +1623,6 @@ export class KeyEventHandler {
                 endOffset: 0,
                 ranges: [],
             };
-
-            // 選択範囲をクリア
-            store.clearSelectionForUser("local");
 
             // デバッグ情報
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -1975,7 +1985,7 @@ export class KeyEventHandler {
 
         if (boxSelection) {
             // 矩形選択の場合
-            selectedText = store.getBoxSelectionText("local");
+            selectedText = store.getSelectedText("local");
             isBoxSelectionCut = true;
 
             // デバッグ情報

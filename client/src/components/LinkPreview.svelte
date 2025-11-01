@@ -105,8 +105,9 @@ function findPageByName(name: string): Item | null {
 
     // ページ名が一致するページを検索
     for (const page of store.pages.current) {
-        if (page.text.toLowerCase() === name.toLowerCase()) {
-            return page;
+        const item = page as Item;
+        if (item.text.toLowerCase() === name.toLowerCase()) {
+            return item;
         }
     }
 
@@ -160,8 +161,8 @@ onDestroy(() => {
                     <div class="preview-items">
                         {#if previewContent && previewContent.items && (previewContent.items as any).length > 0}
                             <ul>
-                                {#each Array.from({ length: Math.min(5, (previewContent.items as any).length) }, (_, i) => (previewContent.items as any)[i]) as item (item.id)}
-                                    <li>{item.text}</li>
+                                {#each Array.from({ length: Math.min(5, (previewContent.items as any).length) }, (_, i) => (previewContent.items as any).at(i)) as item (item?.id)}
+                                    <li>{item?.text ?? ''}</li>
                                 {/each}
 
                                 {#if (previewContent.items as any).length > 5}

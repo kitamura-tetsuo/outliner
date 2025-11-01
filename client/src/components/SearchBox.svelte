@@ -80,25 +80,38 @@ let results = $derived.by(() => {
                     for (const p of items as any) {
                         if (p) arr.push(p);
                     }
-                    if (arr.length) return arr;
                 }
 
-                // Try array-like access
-                if (typeof (items as any).length === 'number') {
+                // Try array-like access if iterator didn't yield results
+                if (!arr.length && typeof (items as any).length === 'number') {
                     const len = (items as any).length;
                     for (let i = 0; i < len; i++) {
                         const v = (items as any).at ? (items as any).at(i) : (items as any)[i];
                         if (typeof v !== 'undefined' && v !== null) arr.push(v);
                     }
-                    if (arr.length) return arr;
                 }
 
-                // Try toArray method if available
-                if (typeof (items as any).toArray === 'function') {
-                    const arr = (items as any).toArray();
-                    if (arr && arr.length) return arr;
+                // Try toArray method if other methods didn't yield results
+                if (!arr.length && typeof (items as any).toArray === 'function') {
+                    const toArrayResult = (items as any).toArray();
+                    if (toArrayResult) {
+                        // Handle both arrays and array-like results from toArray()
+                        if (Array.isArray(toArrayResult)) {
+                            return toArrayResult;
+                        } else if (toArrayResult.length !== undefined) {
+                            // Handle array-like objects that aren't arrays
+                            for (let i = 0; i < toArrayResult.length; i++) {
+                                const v = toArrayResult.at ? toArrayResult.at(i) : toArrayResult[i];
+                                if (typeof v !== 'undefined' && v !== null) {
+                                    arr.push(v);
+                                }
+                            }
+                        }
+                    }
                 }
-            } catch (e) {
+                // Only return if we found items from this source
+                if (arr.length) return arr;
+            } catch {
                 // Continue to next source
                 continue;
             }
@@ -273,8 +286,9 @@ onMount(() => {
         const toolbar = document.querySelector('[data-testid="main-toolbar"]') as HTMLElement | null;
         console.info(logPrefix, "main-toolbar styles", styles(toolbar));
     } catch {}
-    // schedule a few ticks to help early reactivity with global generalStore
-    for (let i = 0; i < 8; i++) setTimeout(() => (refreshTick += 1), i * 50);
+    // schedule refresh ticks to help early reactivity with global generalStore
+    // Increase ticks and interval to ensure pages are loaded before search
+    for (let i = 0; i < 20; i++) setTimeout(() => (refreshTick += 1), i * 100);
 });
 </script>
 

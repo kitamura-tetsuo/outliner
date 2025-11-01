@@ -30,7 +30,7 @@ describe("Firebase emulator起動待機機能 (API-0002)", function() {
         };
 
         // waitForFirebaseEmulator関数を模擬実装
-        waitForFirebaseEmulator = async function(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
+        waitForFirebaseEmulator = async function(maxRetries = 60, initialDelay = 2000, maxDelay = 15000) {
             const isEmulator = processStub.env.FIREBASE_AUTH_EMULATOR_HOST
                 || processStub.env.FIRESTORE_EMULATOR_HOST
                 || processStub.env.FIREBASE_EMULATOR_HOST;

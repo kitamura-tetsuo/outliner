@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("GRV-0001: Graph View navigation", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }, _testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "Root node with [child] link",
             "child",

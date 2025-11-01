@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias self-reference prevention", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }, _testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 

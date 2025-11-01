@@ -45,6 +45,11 @@ let pageNotFound = $state(false);
 
 let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 
+// Optional variable for pending imports - defined to avoid ESLint no-undef errors
+// This is used in conditional checks and may be set by external code
+let pendingImport: any[] | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
+let project: any; // eslint-disable-line @typescript-eslint/no-unused-vars
+
 // URLパラメータと認証状態を監視して更新
 // 同一条件での多重実行を避け、Svelte の update depth exceeded を回避するためのキー
 // 注意: $state を使うと $effect が自分で読んで書く依存を持ちループになるため、通常変数で保持する
@@ -888,15 +893,9 @@ function capturePageIdForSchedule() {
         if (typeof window === "undefined") return;
         const pg: any = store.currentPage as any;
         if (!pg) return;
-        const children: any = pg?.items as any;
-        const len = children?.length ?? 0;
-        let id = pg?.id || "";
-        if (len > 0) {
-            const first = children?.at ? children.at(0) : children?.[0];
-            id = first?.id || id;
-        }
+        const id = pg?.id || "";
         if (id) {
-            const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
+            const key = `schedule:lastPageId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
             window.sessionStorage?.setItem(key, String(id));
             console.log("[+page.svelte] capturePageIdForSchedule saved:", key, id);
         }

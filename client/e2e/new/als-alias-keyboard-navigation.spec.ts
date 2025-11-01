@@ -9,7 +9,7 @@ import { expect, test } from "../fixtures/console-forward";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias picker keyboard navigation", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }, _testInfo) => {
         // Increase timeout for test setup
         test.setTimeout(120000);
 
@@ -218,7 +218,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
                 timeout: 5000,
             });
             await expect(page.locator(`.outliner-item[data-item-id="${aliasId}"] .alias-path`)).toBeVisible();
-        } catch (e) {
+        } catch (_e) {
             console.warn("Alias path not visible within timeout; aliasTargetId is set, continuing.");
         }
     });

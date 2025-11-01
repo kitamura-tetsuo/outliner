@@ -9,9 +9,49 @@ describe("page subdoc provider", () => {
         const project = Project.fromDoc(conn.doc);
         const p1 = project.addPage("P1", "u1");
         const p2 = project.addPage("P2", "u1");
-        await new Promise(r => setTimeout(r, 100));
-        const c1 = conn.getPageConnection(p1.id)!;
-        const c2 = conn.getPageConnection(p2.id)!;
+
+        // Wait for page connections to be established
+        // Since adding a page creates subdocs asynchronously, we need to wait for the connection to be established
+        const c1 = await new Promise((resolve, reject) => {
+            let resolved = false;
+            const check = () => {
+                const pageConn = conn.getPageConnection(p1.id);
+                if (pageConn) {
+                    resolved = true;
+                    resolve(pageConn);
+                } else if (!resolved) {
+                    setTimeout(check, 50);
+                }
+            };
+            setTimeout(check, 0);
+            // Set timeout for resolution
+            setTimeout(() => {
+                if (!resolved) {
+                    reject(new Error("Timeout waiting for page connection p1"));
+                }
+            }, 10000);
+        });
+
+        const c2 = await new Promise((resolve, reject) => {
+            let resolved = false;
+            const check = () => {
+                const pageConn = conn.getPageConnection(p2.id);
+                if (pageConn) {
+                    resolved = true;
+                    resolve(pageConn);
+                } else if (!resolved) {
+                    setTimeout(check, 50);
+                }
+            };
+            setTimeout(check, 0);
+            // Set timeout for resolution
+            setTimeout(() => {
+                if (!resolved) {
+                    reject(new Error("Timeout waiting for page connection p2"));
+                }
+            }, 10000);
+        });
+
         expect(c1.provider.roomname).toBe(`projects/${projectId}/pages/${p1.id}`);
         expect(c2.provider.roomname).toBe(`projects/${projectId}/pages/${p2.id}`);
         c1.awareness.setLocalStateField("presence", { cursor: { itemId: "a", offset: 0 } });

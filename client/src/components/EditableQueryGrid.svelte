@@ -42,7 +42,7 @@ function isEditing(rowIndex: number, columnKey: string): boolean {
 function addColumn(index: number) {
     const newName = `col${data.columnsMeta.length + 1}`;
     data.columnsMeta.splice(index + 1, 0, { name: newName });
-    data.rows.forEach(r => (r[newName] = ""));
+    data.rows.forEach((r: any) => (r[newName] = ""));
     queryStore.update(q => {
         q.columnsMeta = data.columnsMeta;
         q.rows = data.rows;

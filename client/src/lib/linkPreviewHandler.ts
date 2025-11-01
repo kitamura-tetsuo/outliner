@@ -48,8 +48,10 @@ export function pageExists(pageName: string, projectName?: string): boolean {
     if (!store.pages) return false;
 
     // ページ名が一致するページを検索
-    for (const page of store.pages.current) {
-        if (page.text.toLowerCase() === pageName.toLowerCase()) {
+    for (const page of store.pages.current as unknown[]) {
+        const pageData = page as { text: string | { toString(): string; }; };
+        const pageText = typeof pageData.text === "string" ? pageData.text : pageData.text?.toString() ?? "";
+        if (pageText.toLowerCase() === pageName.toLowerCase()) {
             return true;
         }
     }
@@ -66,9 +68,11 @@ function findPageByName(name: string): Item | null {
     if (!store.pages) return null;
 
     // ページ名が一致するページを検索
-    for (const page of store.pages.current) {
-        if (page.text.toLowerCase() === name.toLowerCase()) {
-            return page;
+    for (const page of store.pages.current as unknown[]) {
+        const pageData = page as any;
+        const pageText = typeof pageData.text === "string" ? pageData.text : (pageData.text?.toString?.() ?? "");
+        if (pageText.toLowerCase() === name.toLowerCase()) {
+            return pageData as Item;
         }
     }
 
@@ -221,8 +225,8 @@ function updatePreviewPosition(previewElement: HTMLElement, targetElement: HTMLE
  * リンクにマウスオーバーした際のハンドラ
  * @param event マウスイベント
  */
-function handleLinkMouseEnter(event: MouseEvent): void {
-    const target = event.target as HTMLElement;
+function handleLinkMouseEnter(event: Event): void {
+    const target = (event as MouseEvent).target as HTMLElement;
 
     // 既存のタイマーをクリア
     if (hideTimer !== null) {
