@@ -16,7 +16,7 @@ const readmeFile = path.join(repoRoot, "README.md");
 
 test("README explains sequential Playwright testing", () => {
     const content = fs.readFileSync(readmeFile, "utf-8");
-    expect(content).toMatch(/run-e2e-progress-for-codex\.sh\s+1/);
+    expect(content).toMatch(/run-e2e-progress\.sh\s+1/);
     expect(content).toMatch(/timeout/i);
 });
 
