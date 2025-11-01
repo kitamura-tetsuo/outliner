@@ -4,6 +4,7 @@ import { beforeEach } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
+import type { PlainItemData } from "../../types/yjs-types";
 beforeEach(() => aliasPickerStore.reset());
 
 // Mirrors e2e/new/als-alias-self-reference-test.spec.ts
@@ -11,14 +12,14 @@ beforeEach(() => aliasPickerStore.reset());
 describe("ALS alias self reference", () => {
     it("prevents selecting self", async () => {
         const items = [{ id: "alias", text: "alias", items: [] }];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        generalStore.currentPage = { id: "root", text: "root", items } as PlainItemData;
         render(AliasPicker);
 
         aliasPickerStore.show("alias");
         const option = screen.queryByRole("button", { name: "root/alias" });
         expect(option).toBeNull();
         aliasPickerStore.hide();
-        expect((items[0] as any).aliasTargetId).toBeUndefined();
+        expect((items[0] as PlainItemData & { aliasTargetId?: string; }).aliasTargetId).toBeUndefined();
         expect(aliasPickerStore.isVisible).toBe(false);
     });
 });

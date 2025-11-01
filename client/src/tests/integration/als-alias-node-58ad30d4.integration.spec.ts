@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
+import type { PlainItemData } from "../../types/yjs-types";
 
 // Mirrors e2e/new/als-alias-node-58ad30d4.spec.ts
 
@@ -14,14 +15,15 @@ describe("ALS alias node", () => {
             { id: "2", text: "second", items: [] },
             { id: "alias", text: "alias", items: [] },
         ];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        generalStore.currentPage = { id: "root", text: "root", items } as PlainItemData;
         render(AliasPicker);
 
         const user = userEvent.setup();
         aliasPickerStore.show("alias");
         const option = await screen.findByRole("button", { name: "root/second" });
         await user.click(option);
-        const pageItems = (generalStore.currentPage as any).items;
+        const pageItems =
+            (generalStore.currentPage as PlainItemData & { items: Array<{ aliasTargetId?: string; }>; }).items;
         expect(pageItems[2].aliasTargetId).toBe("2");
         expect(aliasPickerStore.isVisible).toBe(false);
     });

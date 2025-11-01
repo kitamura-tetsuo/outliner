@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
+import type { PlainItemData } from "../../types/yjs-types";
 
 // Mirrors e2e/new/als-alias-keyboard-navigation.spec.ts
 
@@ -14,7 +15,7 @@ describe("ALS alias keyboard navigation", () => {
             { id: "2", text: "second", items: [] },
             { id: "alias", text: "alias", items: [] },
         ];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        generalStore.currentPage = { id: "root", text: "root", items } as PlainItemData;
         render(AliasPicker);
 
         aliasPickerStore.show("alias");
@@ -36,7 +37,8 @@ describe("ALS alias keyboard navigation", () => {
         expect(options[1].closest("li")?.classList.contains("selected")).toBe(true);
 
         await user.keyboard("{Enter}");
-        const pageItems = (generalStore.currentPage as any).items;
+        const pageItems =
+            (generalStore.currentPage as PlainItemData & { items: Array<{ aliasTargetId?: string; }>; }).items;
         expect(pageItems[2].aliasTargetId).toBe("2");
         expect(aliasPickerStore.isVisible).toBe(false);
     });

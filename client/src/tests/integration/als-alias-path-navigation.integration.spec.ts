@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
+import type { PlainItemData } from "../../types/yjs-types";
 
 import { beforeEach } from "vitest";
 beforeEach(() => aliasPickerStore.reset());
@@ -15,7 +16,7 @@ describe("ALS alias path navigation", () => {
             { id: "p", text: "parent", items: [{ id: "c", text: "child", items: [] }] },
             { id: "alias", text: "alias", items: [] },
         ];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        generalStore.currentPage = { id: "root", text: "root", items } as PlainItemData;
         render(AliasPicker);
 
         aliasPickerStore.show("alias");

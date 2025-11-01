@@ -1,4 +1,5 @@
 import { render, waitFor } from "@testing-library/svelte";
+import type { ComponentType } from "svelte";
 import { describe, expect, it } from "vitest";
 import OutlinerTree from "../../components/OutlinerTree.svelte";
 import { Project } from "../../schema/app-schema";
@@ -10,7 +11,7 @@ class ResizeObserver {
     unobserve() {}
     disconnect() {}
 }
-(globalThis as any).ResizeObserver = ResizeObserver;
+(globalThis as unknown).ResizeObserver = ResizeObserver;
 
 describe("ATT: attachments UI rerenders on Yjs updates (integration)", () => {
     it("renders an attachment preview when Item.addAttachment is called", async () => {
@@ -20,10 +21,14 @@ describe("ATT: attachments UI rerenders on Yjs updates (integration)", () => {
         item.updateText("item with attachment");
 
         // Provide globals expected by components
-        generalStore.project = project as any;
-        generalStore.currentPage = page as any;
+        generalStore.project = project;
+        generalStore.currentPage = page;
 
-        const { container } = render(OutlinerTree as any, { pageItem: page, projectName: "test", pageName: "page" });
+        const { container } = render(OutlinerTree as ComponentType, {
+            pageItem: page,
+            projectName: "test",
+            pageName: "page",
+        });
 
         const ONEPX_PNG =
             "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAukB9pG0Jb8AAAAASUVORK5CYII=";
