@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { WebsocketProvider } from "y-websocket";
 
 vi.mock("../../../auth/UserManager", () => ({
     userManager: {
@@ -17,7 +18,7 @@ describe("refreshAuthAndReconnect", () => {
             shouldConnect: true,
             wsconnected: false,
             connect: vi.fn(),
-        } as any;
+        } as WebsocketProvider;
 
         const handler = refreshAuthAndReconnect(provider);
         await handler();

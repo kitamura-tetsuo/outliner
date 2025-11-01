@@ -35,4 +35,27 @@ interface Window {
     getFluidTreeDebugData?: () => Record<string, unknown>;
     getYjsTreeDebugData?: () => Record<string, unknown>;
     getYjsTreePathData?: (path?: string) => Record<string, unknown>;
+    presenceStore?: PresenceStore;
+    __YJS_STORE__?: YjsStore;
+}
+
+// YJS Test Store interface
+interface YjsStore {
+    getIsConnected(): boolean;
+    getConnectionState(): string;
+}
+
+// Presence Store interface
+interface PresenceStore {
+    users: Record<string, { userId: string; userName: string; color: string; }>;
+    setUser(user: { userId: string; userName: string; color: string; }): void;
+    removeUser(userId: string): void;
+}
+
+// Extend globalThis for test environments
+declare global {
+    interface globalThis {
+        presenceStore?: PresenceStore;
+        __YJS_STORE__?: YjsStore;
+    }
 }
