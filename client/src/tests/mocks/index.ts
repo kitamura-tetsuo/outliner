@@ -1,10 +1,22 @@
 // filepath: /workspace/client/src/tests/mocks/index.ts
 import { vi } from "vitest";
 import * as UserManagerModule from "../../auth/UserManager";
+import type { IUser } from "../../auth/UserManager";
 import { resetMockFirestore, setupMockFirestore } from "./firestoreMock";
 
+// Mock type for UserManager (testing purposes)
+interface MockUserManager {
+    getCurrentUser(): IUser | null;
+    addEventListener(listener: (result: { user: IUser; } | null) => void): () => void;
+    auth: {
+        currentUser: {
+            getIdToken(): Promise<string>;
+        };
+    };
+}
+
 // Mock for UserManager
-const mockUserManager = {
+const mockUserManager: MockUserManager = {
     getCurrentUser: vi.fn().mockReturnValue({
         id: "test-user-id",
         name: "Test User",
@@ -33,7 +45,7 @@ export function setupMocks({
     firestore = {},
 } = {}) {
     // Mock userManager instance
-    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(mockUserManager as any);
+    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(mockUserManager);
 
     // Setup Firestore mock with optional initial data
     setupMockFirestore(firestore);
