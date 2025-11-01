@@ -19,21 +19,21 @@ import {
     createSnapshotClient,
 } from "../../../lib/projectSnapshot";
 
-let project: any = undefined;
+let project: unknown = undefined;
 let exportText = $state("");
 let importText = $state("");
 let importFormat = $state("opml");
 
-function projectLooksLikePlaceholder(candidate: any): boolean {
+function projectLooksLikePlaceholder(candidate: unknown): boolean {
     if (!candidate) return true;
     try {
-        const items: any = candidate.items as any;
-        const length = items?.length ?? 0;
+        const items: unknown = (candidate as { items?: unknown })?.items;
+        const length = (items as { length?: number })?.length ?? 0;
         if (length === 0) return true;
         if (length === 1) {
-            const first = items.at ? items.at(0) : items[0];
-            const text = first?.text?.toString?.() ?? String(first?.text ?? "");
-            const childLength = first?.items?.length ?? 0;
+            const first = (items as unknown[])?.at ? (items as unknown[])?.at(0) : (items as unknown[])?.[0];
+            const text = first && typeof first === 'object' ? (first as { text?: unknown })?.text?.toString?.() ?? String((first as { text?: unknown })?.text ?? "") : "";
+            const childLength = first && typeof first === 'object' ? (first as { items?: { length?: number } })?.items?.length ?? 0 : 0;
             if (text === "settings" && childLength === 0) return true;
         }
     } catch {}
@@ -54,7 +54,7 @@ function hydrateFromSnapshotIfNeeded() {
         } catch {}
         if (!yjsStore.yjsClient) {
             try {
-                yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as any;
+                yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as unknown;
             } catch {}
         }
         project = hydrated;
@@ -159,7 +159,7 @@ async function doImport() {
     if (yjsProject) {
         console.log("doImport: Using Yjs-connected project, updating stores");
         yjsStore.yjsClient = yjsStore.yjsClient; // This triggers reactivity in yjsStore
-        store.project = yjsProject as any;
+        store.project = yjsProject as unknown;
     } else {
         // If no Yjs project was available, update as before
         console.log("doImport: No Yjs project, using fallback");
@@ -169,28 +169,28 @@ async function doImport() {
     // Ensure snapshot storage reflects the imported tree for subsequent navigations
     try {
         saveProjectSnapshot(currentProject);
-        const toPlain = (items: any): any[] => {
+        const toPlain = (items: unknown): unknown[] => {
             if (!items) return [];
-            const len = items.length ?? 0;
-            const result: any[] = [];
+            const len = (items as { length?: number })?.length ?? 0;
+            const result: unknown[] = [];
             for (let idx = 0; idx < len; idx++) {
-                const node = items.at ? items.at(idx) : items[idx];
+                const node = (items as unknown[])?.at ? (items as unknown[])?.at(idx) : (items as unknown[])?.[idx];
                 if (!node) continue;
                 result.push({
-                    text: node?.text?.toString?.() ?? String(node?.text ?? ""),
-                    children: toPlain(node?.items as any),
+                    text: node && typeof node === 'object' ? (node as { text?: unknown })?.text?.toString?.() ?? String((node as { text?: unknown })?.text ?? "") : "",
+                    children: toPlain(node && typeof node === 'object' ? (node as { items?: unknown })?.items : undefined),
                 });
             }
             return result;
         };
-        const plainTree = toPlain(currentProject.items as any);
+        const plainTree = toPlain(currentProject.items as unknown);
         try {
-            const win: any = window as any;
+            const win = window as unknown as { __PENDING_IMPORTS__?: Record<string, unknown> };
             if (!win.__PENDING_IMPORTS__) win.__PENDING_IMPORTS__ = {};
             win.__PENDING_IMPORTS__[projectName ?? "__untitled__"] = plainTree;
             console.log("doImport: Stored pending import in-memory", {
                 projectName,
-                rootCount: plainTree.length,
+                rootCount: (plainTree as unknown[]).length,
                 keys: Object.keys(win.__PENDING_IMPORTS__),
             });
         } catch (pendingError) {
@@ -223,7 +223,7 @@ async function doImport() {
     if (currentProject.items && currentProject.items.length > 0) {
         const firstPage = currentProject.items[0];
         try {
-            store.currentPage = firstPage as any;
+            store.currentPage = firstPage as unknown;
         } catch {}
         const pageName = firstPage.text;
         console.log(`doImport: Navigating to /${projectName}/${pageName}`);

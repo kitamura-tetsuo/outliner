@@ -7,7 +7,7 @@ import {
     queryStore,
 } from "../../services/sqlService";
 
-let data = $state({ rows: [], columnsMeta: [] } as any);
+let data = $state({ rows: [], columnsMeta: [] } as unknown);
 
 // Svelte 5のリアクティブな購読
 $effect(() => {

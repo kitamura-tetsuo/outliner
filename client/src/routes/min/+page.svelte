@@ -39,7 +39,7 @@ let verificationResult = $state("");
 // テスト用に環境変数をwindowオブジェクトに公開
 onMount(() => {
     if (typeof window !== "undefined") {
-        (window as any).testEnvVars = {
+        (window as unknown as { testEnvVars?: Record<string, unknown> }).testEnvVars = {
             VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
             VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
             VITE_TOKEN_VERIFY_URL: import.meta.env.VITE_TOKEN_VERIFY_URL,
@@ -63,7 +63,7 @@ async function signIn() {
         const data = await response.json();
         verificationResult = JSON.stringify(data, null, 2);
     }
-    catch (error) {
+    catch (error: unknown) {
         console.error("ログインまたは検証処理でエラーが発生しました:", error);
     }
 }

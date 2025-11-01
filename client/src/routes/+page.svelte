@@ -59,7 +59,7 @@ async function handleContainerSelected(
         // Defer import to avoid SSR issues in test/SSR context
         const { createYjsClient } = await import("../services");
         const client = await createYjsClient(selectedContainerId);
-        yjsStore.yjsClient = client as any;
+        yjsStore.yjsClient = client as unknown;
 
         // プロジェクトページへ遷移
         // コンテナ名をプロジェクト名として使用
@@ -67,7 +67,7 @@ async function handleContainerSelected(
         logger.info(`Navigating to project page: /${projectName}`);
         goto(`/${projectName}`);
     }
-    catch (error) {
+    catch (error: unknown) {
         logger.error("Failed to switch container:", error);
     }
 }

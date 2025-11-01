@@ -215,7 +215,7 @@ async function loadProjectAndPage() {
                     let pendingImport: unknown[] | null = null;
                     try {
                         try {
-                            const win = window; // eslint-disable-line @typescript-eslint/no-explicit-any
+                            const win = window;
                             const byTitle = win?.__PENDING_IMPORTS__;
                             if (byTitle) {
                                 const keys = Object.keys(byTitle);
@@ -435,7 +435,7 @@ async function loadProjectAndPage() {
                                             const mapId = (fromId: string | undefined, toId: string | undefined) => {
                                                 if (!fromId || !toId) return;
                                                 try {
-                                                    const w = (typeof window !== "undefined") ? window : null; // eslint-disable-line @typescript-eslint/no-explicit-any
+                                                    const w = (typeof window !== "undefined") ? window : null;
                                                     if (!w) return;
                                                     if (!w.__ITEM_ID_MAP__) w.__ITEM_ID_MAP__ = {};
                                                     w.__ITEM_ID_MAP__[String(fromId)] = String(toId);
@@ -481,7 +481,7 @@ async function loadProjectAndPage() {
                             } catch {}
 
                             try {
-                                const win = window; // eslint-disable-line @typescript-eslint/no-explicit-any
+                                const win = window;
                                 const pendingMap = win?.__PENDING_IMPORTS__;
                                 let pendingPage: unknown = null;
                                 if (Array.isArray(pendingImport)) {

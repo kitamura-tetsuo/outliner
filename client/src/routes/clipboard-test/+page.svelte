@@ -47,7 +47,7 @@ async function handleClipboardCopy() {
     try {
         // グローバル変数に保存（テスト用）
         if (typeof window !== "undefined") {
-            (window as any).lastCopyText = clipboardText;
+            (window as unknown as { lastCopyText?: string }).lastCopyText = clipboardText;
         }
 
         // 両方の方法を試す
@@ -115,7 +115,7 @@ async function handleClipboardPaste() {
             });
 
             // グローバル変数から取得（テスト用）
-            const globalText = typeof window !== "undefined" ? (window as any).lastCopyText || "" : "";
+            const globalText = typeof window !== "undefined" ? (window as unknown as { lastCopyText?: string }).lastCopyText || "" : "";
             if (globalText) {
                 clipboardEvent.clipboardData?.setData("text/plain", globalText);
                 log(`グローバル変数からテキストを取得: ${globalText}`);
@@ -127,8 +127,8 @@ async function handleClipboardPaste() {
 
             log(`ClipboardEvent 'paste' をディスパッチしました`);
         }
-        catch (clipboardEventError: any) {
-            log(`ClipboardEvent 'paste' ディスパッチ失敗: ${clipboardEventError.message}`);
+        catch (clipboardEventError: unknown) {
+            log(`ClipboardEvent 'paste' ディスパッチ失敗: ${clipboardEventError instanceof Error ? clipboardEventError.message : String(clipboardEventError)}`);
         }
 
         // 方法2: navigator.clipboard API
@@ -149,15 +149,15 @@ async function handleClipboardPaste() {
             }
         }, 100);
     }
-    catch (err: any) {
-        showResult("clipboard", `ペースト失敗: ${err.message}`, false);
-        log(`navigator.clipboard.readText 失敗: ${err.message}`);
+    catch (err: unknown) {
+        showResult("clipboard", `ペースト失敗: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`navigator.clipboard.readText 失敗: ${err instanceof Error ? err.message : String(err)}`);
 
         // DOMを強制的に更新（テスト用）
         setTimeout(() => {
             const resultElement = document.querySelector(".test-section:first-child .result");
             if (resultElement) {
-                resultElement.textContent = `❌ ペースト失敗: ${err.message}`;
+                resultElement.textContent = `❌ ペースト失敗: ${err instanceof Error ? err.message : String(err)}`;
                 resultElement.classList.add("error");
                 resultElement.classList.remove("success");
             }
@@ -180,9 +180,9 @@ function handleExecCommandCopy() {
             log('document.execCommand("copy") 失敗');
         }
     }
-    catch (err) {
-        showResult("execCommand", `コピー失敗: ${err.message}`, false);
-        log(`document.execCommand("copy") 失敗: ${err.message}`);
+    catch (err: unknown) {
+        showResult("execCommand", `コピー失敗: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`document.execCommand("copy") 失敗: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
@@ -201,9 +201,9 @@ function handleExecCommandPaste() {
             log('document.execCommand("paste") 失敗');
         }
     }
-    catch (err) {
-        showResult("execCommand", `ペースト失敗: ${err.message}`, false);
-        log(`document.execCommand("paste") 失敗: ${err.message}`);
+    catch (err: unknown) {
+        showResult("execCommand", `ペースト失敗: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`document.execCommand("paste") 失敗: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
@@ -222,9 +222,9 @@ async function checkPermissions() {
         showResult("permission", `clipboard-read: ${clipboardRead.state}, clipboard-write: ${clipboardWrite.state}`);
         log(`clipboard-read: ${clipboardRead.state}, clipboard-write: ${clipboardWrite.state}`);
     }
-    catch (err) {
-        showResult("permission", `権限確認失敗: ${err.message}`, false);
-        log(`権限確認失敗: ${err.message}`);
+    catch (err: unknown) {
+        showResult("permission", `権限確認失敗: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`権限確認失敗: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
@@ -235,11 +235,11 @@ async function handlePlaywrightCopy() {
         showResult("playwright", `コピー成功: ${playwrightText}`);
         log(`Playwright用コピー成功: ${playwrightText}`);
         // グローバル変数に保存（テスト用）
-        (window as any).lastCopiedText = playwrightText;
+        (window as unknown as { lastCopiedText?: string }).lastCopiedText = playwrightText;
     }
-    catch (err) {
-        showResult("playwright", `コピー失敗: ${err.message}`, false);
-        log(`Playwright用コピー失敗: ${err.message}`);
+    catch (err: unknown) {
+        showResult("playwright", `コピー失敗: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`Playwright用コピー失敗: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
@@ -250,11 +250,11 @@ async function handlePlaywrightPaste() {
         showResult("playwright", `ペースト成功: ${text}`);
         log(`Playwright用ペースト成功: ${text}`);
         // グローバル変数に保存（テスト用）
-        (window as any).lastPastedText = text;
+        (window as unknown as { lastPastedText?: string }).lastPastedText = text;
     }
-    catch (err) {
-        showResult("playwright", `ペースト失敗: ${err.message}`, false);
-        log(`Playwright用ペースト失敗: ${err.message}`);
+    catch (err: unknown) {
+        showResult("playwright", `ペースト失敗: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`Playwright用ペースト失敗: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
