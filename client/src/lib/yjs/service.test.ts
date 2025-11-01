@@ -4,6 +4,11 @@ import * as Y from "yjs";
 import { Items } from "../../schema/yjs-schema";
 import { yjsService } from "./service";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function yCast<T = any>(obj: unknown): T {
+    return obj as T;
+}
+
 describe("yjsService", () => {
     it("adds and reorders items", () => {
         const project = yjsService.createProject("test");
@@ -38,8 +43,8 @@ describe("yjsService", () => {
         const awareness = new Awareness(new Y.Doc());
         // Provide a minimal global presence store to avoid importing .svelte.ts
         const presenceStore = {
-            users: {} as any,
-            setUser(u: any) {
+            users: {} as Record<string, unknown>,
+            setUser(u: { userId: string; userName: string; }) {
                 this.users = { ...this.users, [u.userId]: u };
             },
             removeUser(id: string) {
@@ -48,11 +53,11 @@ describe("yjsService", () => {
                 this.users = updatedUsers;
             },
         };
-        (globalThis as any).presenceStore = presenceStore;
+        yCast<{ presenceStore?: typeof presenceStore; }>(globalThis).presenceStore = presenceStore;
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
-        expect(presenceStore.users["u1"].userName).toBe("Alice");
-        awareness.setLocalStateField("user", null as any);
+        expect((presenceStore.users["u1"] as { userName?: string; }).userName).toBe("Alice");
+        awareness.setLocalStateField("user", null);
         unbind();
     });
 
@@ -60,12 +65,12 @@ describe("yjsService", () => {
         const awareness = new Awareness(new Y.Doc());
         // Provide a minimal global overlay store
         const editorOverlayStore = {
-            cursors: {} as any,
-            selections: {} as any,
-            setCursor({ itemId, offset, userId }: any) {
+            cursors: {} as Record<string, unknown>,
+            selections: {} as Record<string, unknown>,
+            setCursor({ itemId, offset, userId }: { itemId: string; offset: number; userId: string; }) {
                 this.cursors[userId] = { itemId, offset, userId };
             },
-            setSelection({ userId }: any) {
+            setSelection({ userId }: { userId: string; }) {
                 this.selections[userId] = { userId };
             },
             clearCursorAndSelection(userId: string) {
@@ -79,7 +84,7 @@ describe("yjsService", () => {
                 this.selections = updatedSelections;
             },
         };
-        (globalThis as any).editorOverlayStore = editorOverlayStore;
+        yCast<{ editorOverlayStore?: typeof editorOverlayStore; }>(globalThis).editorOverlayStore = editorOverlayStore;
         const unbind = yjsService.bindPagePresence(awareness);
 
         // seed local state (ignored by overlay sync)
@@ -87,17 +92,19 @@ describe("yjsService", () => {
         awareness.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } });
 
         // simulate remote collaborator
-        const states = (awareness as any).getStates();
+        const states = yCast<Map<number, unknown>>(awareness).getStates();
         states.set(42, {
             user: { userId: "u2", name: "Bob" },
             presence: { cursor: { itemId: "i1", offset: 0 } },
         });
-        (awareness as any).emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
+        yCast(awareness).emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
 
-        const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
+        const cursor = Object.values(editorOverlayStore.cursors).find(c =>
+            (c as { userId?: string; })?.userId === "u2"
+        );
         expect(cursor?.itemId).toBe("i1");
 
-        (awareness as any).emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
+        yCast(awareness).emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
         unbind();
     });
 });
