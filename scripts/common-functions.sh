@@ -493,16 +493,10 @@ start_yjs_server() {
   echo "Starting Yjs WebSocket server on port ${TEST_YJS_PORT}..."
   cd "${ROOT_DIR}/server"
   mkdir -p "${ROOT_DIR}/yjs-data"
-  # Ensure dependencies are installed
-  echo "Installing server dependencies..."
-  npm --proxy='' --https-proxy='' ci || {
-    echo "npm ci failed, trying npm install..."
-    npm --proxy='' --https-proxy='' install
-  }
-  # Verify ws module is installed
-  if [ ! -d "node_modules/ws" ]; then
-    echo "Error: ws module not found. Installing..."
-    npm --proxy='' --https-proxy='' install ws
+  # Ensure dependencies
+  if [ ! -d node_modules ]; then
+    echo "Installing server dependencies (npm ci) ..."
+    npm --proxy='' --https-proxy='' ci
   fi
   # Build TypeScript and start compiled server to avoid ts-node dependency issues
   echo "Building server..."
@@ -510,7 +504,7 @@ start_yjs_server() {
     npm run build --silent || npm run build
   fi
   echo "Launching compiled server..."
-  npx dotenvx run --env-file=.env.test -- bash -lc "DISABLE_Y_LEVELDB=true PORT=${TEST_YJS_PORT} node dist/index.js" \
+  npx dotenvx run --env-file=.env.test -- bash -lc "DISABLE_Y_LEVELDB=true PORT=${TEST_YJS_PORT} npm start --silent" \
     </dev/null > "${ROOT_DIR}/server/logs/yjs-websocket.log" 2>&1 &
   local yjs_pid=$!
   echo "Yjs WebSocket server started with PID: ${yjs_pid}"

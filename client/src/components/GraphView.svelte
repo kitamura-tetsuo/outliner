@@ -3,6 +3,7 @@ import { goto } from "$app/navigation";
 import * as echarts from "echarts";
 import { onMount } from "svelte";
 import { store } from "../stores/store.svelte";
+import type * as Y from "yjs";
 import { buildGraph } from "../utils/graphUtils";
 
 let graphDiv: HTMLDivElement;

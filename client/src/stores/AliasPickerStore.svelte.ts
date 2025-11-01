@@ -52,7 +52,7 @@ class AliasPickerStore {
             if (typeof document !== "undefined") {
                 setTimeout(() => {
                     try {
-                        document.querySelector(".alias-picker");
+                        const el = document.querySelector(".alias-picker");
                     } catch {}
                 }, 0);
             }

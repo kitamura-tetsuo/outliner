@@ -1240,6 +1240,7 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
     }
 
     // 選択範囲の方向を考慮
+    const _isReversed = selection.isReversed || false;
     const actualStartIndex = Math.min(startIndex, endIndex);
     const actualEndIndex = Math.max(startIndex, endIndex);
 

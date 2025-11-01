@@ -2,6 +2,7 @@
 // moved to onMount to avoid initial-value capture warnings
 
 import { Comments, Item } from "../schema/app-schema";
+import type { Item as ItemType } from "../schema/app-schema";
 import * as Y from "yjs";
 import { store as generalStore } from "../stores/store.svelte";
 import { onMount } from "svelte";
