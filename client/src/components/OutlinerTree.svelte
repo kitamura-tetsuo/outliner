@@ -1116,7 +1116,7 @@ function handleItemDragEnd(event: CustomEvent) {
 }
 
 // 単一アイテム内の選択範囲をドロップする
-function handleSingleItemSelectionDrop(selection: any, targetItemId: string, position: string, _dropEffect: string) { // eslint-disable-line @typescript-eslint/no-unused-vars
+function handleSingleItemSelectionDrop(selection: any, targetItemId: string, position: string, _text: string) {
     // デバッグ情報
     if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
         console.log(`handleSingleItemSelectionDrop called with selection:`, selection);
