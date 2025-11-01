@@ -20,13 +20,13 @@ interface MockUser {
 interface MockUserData {
     accessibleContainerIds: string[];
     defaultContainerId: string | null;
-    updatedAt: any;
+    updatedAt: Date | Timestamp | undefined;
 }
 
 interface MockContainerData {
     accessibleUserIds: string[];
-    createdAt: any;
-    updatedAt: any;
+    createdAt: Date | Timestamp | undefined;
+    updatedAt: Date | Timestamp | undefined;
 }
 
 // Firebase Admin SDK のモック
@@ -185,7 +185,7 @@ describe("User Deletion Service - Unit Tests", () => {
         });
 
         it("ユーザーIDがundefinedの場合、エラーを投げること", () => {
-            expect(() => service.validateUserDeletion(undefined as any)).toThrow("User ID is required");
+            expect(() => service.validateUserDeletion(undefined as unknown)).toThrow("User ID is required");
         });
     });
 

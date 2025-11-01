@@ -47,7 +47,7 @@ describe("Cursor", () => {
         mockItem = {
             id: "test-item-1",
             text: "Test text content",
-            parent: null,
+            parent: null as Item | null,
             items: {
                 [Symbol.iterator]: function*() {
                     // Empty iterator
@@ -55,12 +55,12 @@ describe("Cursor", () => {
             },
             updateText: vi.fn(),
             delete: vi.fn(),
-        } as unknown as Item;
+        } as Item;
 
         mockParentItem = {
             id: "parent-item-1",
             text: "Parent text content",
-            parent: null,
+            parent: null as Item | null,
             items: {
                 [Symbol.iterator]: function*() {
                     yield mockItem;
@@ -70,13 +70,13 @@ describe("Cursor", () => {
             },
             updateText: vi.fn(),
             delete: vi.fn(),
-        } as unknown as Item;
+        } as Item;
 
         // Set up parent relationship
         mockItem.parent = mockParentItem;
 
         // Mock the general store
-        (generalStore as any).currentPage = mockParentItem;
+        (generalStore as { currentPage: Item | null; }).currentPage = mockParentItem;
     });
 
     afterEach(() => {
