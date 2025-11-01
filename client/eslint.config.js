@@ -56,7 +56,7 @@ export default ts.config(
             "svelte/require-each-key": "warn",
             "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
             "svelte/no-unused-svelte-ignore": "warn",
-            "svelte/no-unused-props": "warn",
+            "svelte/no-unused-props": "error",
             "svelte/prefer-svelte-reactivity": "warn",
         },
     },
