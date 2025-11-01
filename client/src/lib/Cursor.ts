@@ -1,4 +1,4 @@
-import type { Item } from "../schema/yjs-schema";
+import type { Item } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import {
@@ -1746,9 +1746,7 @@ export class Cursor implements CursorEditingContext {
         if (direction === "left") {
             const prevItem = findPreviousItem(this.itemId);
             const currentTarget = this.findTarget();
-            const parentOfCurrent = currentTarget?.parent;
-            const isParentItem = parentOfCurrent && prevItem && prevItem.id === parentOfCurrent.id;
-            if (prevItem && !isParentItem) {
+            if (prevItem) {
                 newItemId = prevItem.id;
                 newOffset = prevItem.text?.length || 0;
                 itemChanged = true;
