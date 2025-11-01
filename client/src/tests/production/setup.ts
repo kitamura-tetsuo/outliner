@@ -4,7 +4,7 @@ import { afterAll, beforeAll } from "vitest";
 beforeAll(async () => {
     // Production Cloud Backend Serversが起動していることを確認
     try {
-        const response = await fetch("http://localhost:57000/api/health");
+        const response: Response = await fetch("http://localhost:57000/api/health");
         if (!response.ok) {
             throw new Error("Firebase Functions not available");
         }

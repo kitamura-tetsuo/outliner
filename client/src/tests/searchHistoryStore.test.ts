@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-let store: any;
+let store: { add: (item: string) => void; history: string[]; };
 
 function getHistory() {
     return store.history;

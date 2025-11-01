@@ -1,5 +1,22 @@
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
 
+// Type definitions for window object extensions
+interface UserManager {
+    loginWithEmailPassword: (email: string, password: string) => Promise<void>;
+    getCurrentUser: () => unknown;
+    auth: {
+        currentUser: unknown;
+    };
+}
+
+interface TestDataHelper {
+    createTestUserData: () => TestUserContainer;
+    clearTestData: () => void;
+    setupTestEnvironment: () => TestUserContainer;
+    performTestLogin: () => Promise<void>;
+    logDebugInfo: () => void;
+}
+
 /**
  * Test data helper functions for test environments only
  * These functions should never be used in production code
@@ -27,7 +44,8 @@ export function createTestUserData(): TestUserContainer {
     };
 
     // Set test data in firestoreStore using public API to ensure reactivity wrapping
-    (firestoreStore as any).setUserContainer(testUserContainer as any);
+    // Type assertion needed because setUserContainer is internal method
+    (firestoreStore as { setUserContainer: (user: TestUserContainer) => void; }).setUserContainer(testUserContainer);
 
     return testUserContainer;
 }
@@ -58,7 +76,7 @@ export function setupTestEnvironment(): TestUserContainer {
  */
 export async function performTestLogin(): Promise<void> {
     try {
-        const userManager = (window as any).__USER_MANAGER__;
+        const userManager = (window as { __USER_MANAGER__?: UserManager; }).__USER_MANAGER__;
         if (userManager && userManager.loginWithEmailPassword) {
             await userManager.loginWithEmailPassword("test@example.com", "password");
             console.log("Manual test login successful");
@@ -77,8 +95,8 @@ export async function performTestLogin(): Promise<void> {
  */
 export function logDebugInfo(): void {
     console.log("=== Test Debug Info ===");
-    console.log("Current user:", (window as any).__USER_MANAGER__?.getCurrentUser());
-    console.log("Auth state:", (window as any).__USER_MANAGER__?.auth?.currentUser);
+    console.log("Current user:", (window as { __USER_MANAGER__?: UserManager; }).__USER_MANAGER__?.getCurrentUser());
+    console.log("Auth state:", (window as { __USER_MANAGER__?: UserManager; }).__USER_MANAGER__?.auth?.currentUser);
     console.log("Firestore userContainer:", firestoreStore.userContainer);
     console.log("======================");
 }
@@ -91,7 +109,7 @@ if (typeof window !== "undefined") {
         || window.location.hostname === "localhost";
 
     if (isTestEnv) {
-        (window as any).__TEST_DATA_HELPER__ = {
+        (window as { __TEST_DATA_HELPER__?: TestDataHelper; }).__TEST_DATA_HELPER__ = {
             createTestUserData,
             clearTestData,
             setupTestEnvironment,
