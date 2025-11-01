@@ -16,7 +16,6 @@ import {
     selectionSpansMultipleItems,
 } from "./cursor";
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
-// @ts-nocheck
 
 interface CursorOptions {
     itemId: string;
@@ -87,13 +86,7 @@ export class Cursor implements CursorEditingContext {
 
     private getTargetText(target: Item | undefined): string {
         const raw = target?.text;
-        if (typeof raw === "string") return raw;
-        if (raw && typeof raw.toString === "function") {
-            try {
-                return raw.toString();
-            } catch {}
-        }
-        return raw == null ? "" : String(raw);
+        return raw ?? "";
     }
 
     applyToStore() {
@@ -1746,7 +1739,6 @@ export class Cursor implements CursorEditingContext {
         // アイテム間移動の処理
         if (direction === "left") {
             const prevItem = findPreviousItem(this.itemId);
-            const currentTarget = this.findTarget();
             if (prevItem) {
                 newItemId = prevItem.id;
                 newOffset = prevItem.text?.length || 0;

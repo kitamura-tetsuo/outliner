@@ -1,8 +1,6 @@
-import type { Item } from "../../schema/yjs-schema";
+import type { Item } from "../../schema/app-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
-
-// @ts-nocheck
 // Define a generic cursor interface that we expect
 interface Cursor {
     itemId: string;

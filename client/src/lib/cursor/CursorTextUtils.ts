@@ -12,7 +12,6 @@ export interface VisualLineInfo {
     lines: VisualLineSegment[];
 }
 
-// @ts-nocheck
 /**
  * Count the number of logical lines in a text block.
  */

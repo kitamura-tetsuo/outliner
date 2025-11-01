@@ -2,8 +2,6 @@
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
-// @ts-nocheck
-
 export class CursorFormatting {
     private cursor: any; // Cursorクラスのインスタンスを保持
 

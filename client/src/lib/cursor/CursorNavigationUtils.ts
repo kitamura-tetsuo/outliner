@@ -1,6 +1,5 @@
-import type { Item } from "../../schema/yjs-schema";
+import type { Item } from "../../schema/app-schema";
 import { store as generalStore } from "../../stores/store.svelte";
-// @ts-nocheck
 
 function collectChildren(node: Item): Item[] {
     const items = node.items as Iterable<Item> | undefined;
