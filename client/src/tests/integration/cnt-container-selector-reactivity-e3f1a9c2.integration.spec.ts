@@ -10,8 +10,8 @@ import { firestoreStore } from "../../stores/firestoreStore.svelte";
 describe("CNT: ContainerSelector option count reflects accessibleContainerIds", () => {
     beforeEach(() => {
         // ContainerSelector 内の ensureUserLoggedIn が参照するオブジェクトを最小スタブ
-        (globalThis as any).window ||= globalThis as any;
-        (globalThis as any).window.__USER_MANAGER__ = {
+        (globalThis as typeof globalThis & { window?: typeof globalThis; }).window ||= globalThis;
+        (globalThis as typeof globalThis & { window?: typeof globalThis; }).window!.__USER_MANAGER__ = {
             addEventListener: vi.fn(() => vi.fn()),
             getCurrentUser: vi.fn(() => ({ id: "test-user" })),
             auth: { currentUser: { uid: "test-user" } },
@@ -25,7 +25,7 @@ describe("CNT: ContainerSelector option count reflects accessibleContainerIds", 
             defaultContainerId: "c-1",
             createdAt: new Date(),
             updatedAt: new Date(),
-        } as any);
+        });
     });
 
     it("option 数が accessibleContainerIds の増減に合わせて変化する", async () => {
@@ -36,7 +36,7 @@ describe("CNT: ContainerSelector option count reflects accessibleContainerIds", 
         expect(within(select).getAllByRole("option").length).toBe(1);
 
         // 2 件に増やす（配列の破壊的変更 -> Proxy 経由で setUserContainer + ucVersion 増分）
-        (firestoreStore.userContainer!.accessibleContainerIds as any).push("c-2");
+        (firestoreStore.userContainer!.accessibleContainerIds as string[]).push("c-2");
         // store integrity check
         expect(firestoreStore.userContainer?.accessibleContainerIds?.length ?? 0).toBe(2);
         await waitFor(() => {
@@ -44,7 +44,7 @@ describe("CNT: ContainerSelector option count reflects accessibleContainerIds", 
         });
 
         // 1 件に戻す（pop -> setUserContainer + ucVersion 増分）
-        (firestoreStore.userContainer!.accessibleContainerIds as any).pop();
+        (firestoreStore.userContainer!.accessibleContainerIds as string[]).pop();
         await waitFor(() => {
             expect(within(select).getAllByRole("option").length).toBe(1);
         });
@@ -58,7 +58,7 @@ firestoreStore.setUserContainer({
     defaultContainerId: "c-1",
     createdAt: new Date(),
     updatedAt: new Date(),
-} as any);
+});
 
 it("setUserContainer による差し替えでも option 数が即時に反映される", async () => {
     render(ContainerSelector);
@@ -73,7 +73,7 @@ it("setUserContainer による差し替えでも option 数が即時に反映さ
         defaultContainerId: "c-1",
         createdAt: new Date(),
         updatedAt: new Date(),
-    } as any);
+    });
     expect(firestoreStore.userContainer?.accessibleContainerIds?.length ?? 0).toBe(2);
     await waitFor(() => {
         expect(within(select).getAllByRole("option").length).toBe(2);
@@ -86,7 +86,7 @@ it("setUserContainer による差し替えでも option 数が即時に反映さ
         defaultContainerId: "c-1",
         createdAt: new Date(),
         updatedAt: new Date(),
-    } as any);
+    });
     await waitFor(() => {
         expect(within(select).getAllByRole("option").length).toBe(1);
     });
