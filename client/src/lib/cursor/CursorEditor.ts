@@ -394,9 +394,9 @@ export class CursorEditor {
         store.startCursorBlink();
     }
 
-    private getPlainText(item: any): string {
+    private getPlainText(item: Item): string {
         if (!item) return "";
-        const textValue = (item as any).text;
+        const textValue = item.text;
         if (typeof textValue === "string") return textValue;
         if (textValue && typeof textValue.toString === "function") {
             try {
@@ -412,7 +412,7 @@ export class CursorEditor {
         return "";
     }
 
-    private updateItemText(item: any, text: string) {
+    private updateItemText(item: Item, text: string) {
         if (!item) return;
         if (typeof item.updateText === "function") {
             item.updateText(text);
@@ -438,7 +438,7 @@ export class CursorEditor {
         } catch {}
     }
 
-    private deleteItemNode(item: any) {
+    private deleteItemNode(item: Item) {
         if (!item) return;
         if (typeof item.delete === "function") {
             item.delete();
@@ -464,7 +464,7 @@ export class CursorEditor {
         }
     }
 
-    private runInTransaction(participants: any[], action: () => void) {
+    private runInTransaction(participants: Item[], action: () => void) {
         const doc = participants
             .map(item => (item as any)?.ydoc)
             .find(candidate => candidate && typeof candidate.transact === "function");

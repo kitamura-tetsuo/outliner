@@ -2343,7 +2343,7 @@ export class Cursor implements CursorEditingContext {
      * @param currentItemId The ID of the current item
      * @returns The next item if found, otherwise undefined
      */
-    private findNextItemViaDOM(currentItemId: string): any | undefined {
+    private findNextItemViaDOM(currentItemId: string): Item | undefined {
         if (typeof document === "undefined") return undefined;
 
         // Find the current element in the DOM
@@ -2403,14 +2403,14 @@ export class Cursor implements CursorEditingContext {
      * @param ids Array to collect IDs into
      * @returns Array of item IDs in tree traversal order
      */
-    private collectAllItemIds(node: any, ids: string[]): string[] {
+    private collectAllItemIds(node: Item, ids: string[]): string[] {
         if (node.id) {
             ids.push(node.id);
         }
 
         // Check if node has items that are iterable
-        if (node.items && typeof (node.items as any)[Symbol.iterator] === "function") {
-            for (const child of node.items as Iterable<any>) {
+        if (node.items && typeof (node.items as Iterable<Item>)[Symbol.iterator] === "function") {
+            for (const child of node.items as Iterable<Item>) {
                 this.collectAllItemIds(child, ids);
             }
         }

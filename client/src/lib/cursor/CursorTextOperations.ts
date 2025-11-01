@@ -1,4 +1,5 @@
 import type { Item } from "../../schema/yjs-schema";
+import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
 
@@ -12,7 +13,7 @@ interface Cursor {
     findPreviousItem(): Item | null;
     findNextItem(): Item | null;
     clearSelection(): void;
-    deleteMultiItemSelection(selection: any): void; // This will need to be properly typed too
+    deleteMultiItemSelection(selection: SelectionRange): void;
     applyToStore(): void;
     // Add other required methods as needed
 }
