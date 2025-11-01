@@ -364,18 +364,23 @@ export class KeyEventHandler {
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
-                    const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
-
-                    // 内部リンク開始直後 ([/) や [ ... ] 内ではパレットを出さない
-                    if (prevChar === "[") {
+                    if (!node) {
                         preventPalette = true;
                     } else {
-                        const beforeCursor = text.slice(0, cursor.offset);
-                        const lastOpenBracket = beforeCursor.lastIndexOf("[");
-                        const lastCloseBracket = beforeCursor.lastIndexOf("]");
-                        if (lastOpenBracket > lastCloseBracket) {
-                            preventPalette = true; // 内部リンク内
+                        const rawText = node.text;
+                        const text = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
+                        const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
+
+                        // 内部リンク開始直後 ([/) や [ ... ] 内ではパレットを出さない
+                        if (prevChar === "[") {
+                            preventPalette = true;
+                        } else {
+                            const beforeCursor = text.slice(0, cursor.offset);
+                            const lastOpenBracket = beforeCursor.lastIndexOf("[");
+                            const lastCloseBracket = beforeCursor.lastIndexOf("]");
+                            if (lastOpenBracket > lastCloseBracket) {
+                                preventPalette = true; // 内部リンク内
+                            }
                         }
                     }
                 }
@@ -424,7 +429,11 @@ export class KeyEventHandler {
                 try {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    if (!node) {
+                        return;
+                    }
+                    const rawText = node.text;
+                    const text = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
                     const before = text.slice(0, cursor.offset);
                     const lastSlash = before.lastIndexOf("/");
                     const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
@@ -511,7 +520,11 @@ export class KeyEventHandler {
             try {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
-                const text = node?.text || "";
+                if (!node) {
+                    return;
+                }
+                const rawText = node.text;
+                const text = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
                 const before = text.slice(0, cursor.offset);
                 const lastSlash = before.lastIndexOf("/");
                 const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
