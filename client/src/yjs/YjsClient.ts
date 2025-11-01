@@ -8,7 +8,7 @@ import { Items, Project } from "../schema/yjs-schema";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
 import { getLogger } from "../lib/logger";
-const logger = getLogger();
+const _logger = getLogger();
 export interface YjsClientParams {
     clientId: string;
     projectId: string;

@@ -13,7 +13,7 @@ const ASSETS = [
 type ServiceWorkerGlobalScope = typeof globalThis & {
     skipWaiting(): Promise<void>;
 };
-type FrameRequestCallback = (time: number) => void;
+type _FrameRequestCallback = (time: number) => void;
 
 // Service Worker環境でのidbインポート
 declare const self: ServiceWorkerGlobalScope;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getLogger } from "../lib/logger";
 import { Item, Items } from "../schema/app-schema";
 

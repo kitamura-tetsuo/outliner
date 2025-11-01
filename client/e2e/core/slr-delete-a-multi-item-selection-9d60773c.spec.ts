@@ -349,11 +349,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.waitForTimeout(500);
 
         // カーソルが表示されていることを確認
-<<<<<<< HEAD
-        const _cursorVisible = await page.evaluate(() => {
-=======
         await page.evaluate(() => {
->>>>>>> origin/main
             return document.querySelector(".editor-overlay .cursor") !== null;
         });
 

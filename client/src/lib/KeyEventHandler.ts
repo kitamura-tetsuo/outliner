@@ -913,7 +913,7 @@ export class KeyEventHandler {
     /**
      * IMEのcompositionstartイベントを処理する
      */
-    static handleCompositionStart(_event: CompositionEvent) { // eslint-disable-line @typescript-eslint/no-unused-vars
+    static handleCompositionStart(_event: CompositionEvent) {
         KeyEventHandler.lastCompositionLength = 0;
     }
     /**

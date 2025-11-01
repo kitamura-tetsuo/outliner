@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck - TODO: Add proper type annotations for Cursor class and related types
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 
 export class CursorTextOperations {

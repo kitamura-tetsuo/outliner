@@ -367,7 +367,7 @@ test.afterEach(async ({ page }) => {
                 try {
                     generalStore.setCursor(null);
                 } catch (e) {
-                    console.warn("Could not reset cursor in generalStore:", _e);
+                    console.warn("Could not reset cursor in generalStore:", e);
                 }
             }
         }

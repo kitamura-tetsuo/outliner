@@ -274,7 +274,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
                             console.log(`page2: Found page with ID ${pageId}`);
                             // Return the page data immediately
                             const pageItems = page.items as any;
-                            const _itemCount = pageItems?.length ?? 0;
+                            const itemCount = pageItems?.length ?? 0;
                             const itemTexts: string[] = [];
                             for (let j = 0; j < itemCount; j++) {
                                 const item = pageItems.at ? pageItems.at(j) : pageItems[j];

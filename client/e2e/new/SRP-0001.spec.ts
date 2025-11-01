@@ -88,7 +88,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         try {
             await btn.click({ force: true });
         } catch (e) {
-            console.log("Search button click failed, trying DOM click", _e);
+            console.log("Search button click failed, trying DOM click", e);
             await page.evaluate(() => {
                 const el = document.querySelector<HTMLButtonElement>('[data-testid="search-toggle-button"]');
                 el?.click();
@@ -273,7 +273,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         try {
             await page.click(".search-btn-action", { timeout: 2000 });
         } catch (e) {
-            console.log(".search-btn-action click failed, trying DOM click", _e);
+            console.log(".search-btn-action click failed, trying DOM click", e);
             await page.evaluate(() => {
                 const btn = document.querySelector<HTMLButtonElement>(".search-btn-action");
                 btn?.click();
@@ -335,7 +335,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         try {
             await page.getByTestId("replace-all-button").click({ timeout: 2000 });
         } catch (e) {
-            console.log(".replace-all-btn click failed, trying DOM click", _e);
+            console.log(".replace-all-btn click failed, trying DOM click", e);
             await page.evaluate(() => {
                 const btn = document.querySelector<HTMLButtonElement>('[data-testid="replace-all-button"]');
                 btn?.click();

@@ -71,11 +71,7 @@ test.describe("CLM-0008: 行末へ移動", () => {
         let initialX = 0;
         try {
             initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
-<<<<<<< HEAD
         } catch {
-=======
-        } catch (_) { // eslint-disable-line @typescript-eslint/no-unused-vars
->>>>>>> origin/main
             // カーソル要素がまだ描画されていない場合でも処理を続行
             console.log("Initial cursor position not available, continuing test");
         }
@@ -104,11 +100,7 @@ test.describe("CLM-0008: 行末へ移動", () => {
         let newX = 0;
         try {
             newX = await cursor.evaluate(el => el.getBoundingClientRect().left);
-<<<<<<< HEAD
         } catch {
-=======
-        } catch (_) { // eslint-disable-line @typescript-eslint/no-unused-vars
->>>>>>> origin/main
             console.log("New cursor position not available, continuing test");
         }
 
@@ -130,11 +122,9 @@ test.describe("CLM-0008: 行末へ移動", () => {
             if (cursorOffset) {
                 expect(cursorOffset).not.toBeNull();
             }
-<<<<<<< HEAD
+            // DOM要素の取得が失敗しても、アプリケーション状態の検証ができれば問題なし
+            console.log("Cursor offset check failed, but continuing since app state was verified");
         } catch {
-=======
-        } catch (_) { // eslint-disable-line @typescript-eslint/no-unused-vars
->>>>>>> origin/main
             // DOM要素の取得が失敗しても、アプリケーション状態の検証ができれば問題なし
             console.log("Cursor offset check failed, but continuing since app state was verified");
         }

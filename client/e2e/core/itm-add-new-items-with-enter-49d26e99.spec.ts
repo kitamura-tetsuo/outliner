@@ -143,22 +143,10 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
             await page.keyboard.press("ArrowRight");
         }
 
-<<<<<<< HEAD
-        // 初期テキストを取得
-        const _initialText = await page.locator(`.outliner-item[data-item-id="${_firstItemId}"]`).locator(".item-text")
-            .textContent();
-
-=======
->>>>>>> origin/main
         // Enterキーを押下
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
-<<<<<<< HEAD
-        // アイテム数を確認
-        const _itemCount = await page.locator(".outliner-item").count();
-=======
->>>>>>> origin/main
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
@@ -203,12 +191,6 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
-<<<<<<< HEAD
-        // アイテム数を確認
-        const _itemCount = await page.locator(".outliner-item").count();
-
-=======
->>>>>>> origin/main
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 

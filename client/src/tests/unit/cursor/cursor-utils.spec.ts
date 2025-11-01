@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { isPageItem } from "../../../lib/cursor/CursorNavigationUtils";
-import type { Item } from "../../../schema/yjs-schema";
 
 describe("Cursor Utilities", () => {
     describe("isPageItem", () => {
@@ -9,7 +8,7 @@ describe("Cursor Utilities", () => {
                 parent: {
                     parentKey: "root",
                 },
-            } as unknown as Item;
+            } as any;
 
             expect(isPageItem(mockItem)).toBe(true);
         });
@@ -17,7 +16,7 @@ describe("Cursor Utilities", () => {
         it("should return false for items without parent", () => {
             const mockItem = {
                 parent: null,
-            } as unknown as Item;
+            } as any;
 
             expect(isPageItem(mockItem)).toBe(false);
         });
@@ -27,7 +26,7 @@ describe("Cursor Utilities", () => {
                 parent: {
                     parentKey: "some-other-key",
                 },
-            } as unknown as Item;
+            } as any;
 
             expect(isPageItem(mockItem)).toBe(false);
         });
@@ -35,7 +34,7 @@ describe("Cursor Utilities", () => {
         it("should return false for items with undefined parent", () => {
             const mockItem = {
                 parent: undefined,
-            } as unknown as Item;
+            } as any;
 
             expect(isPageItem(mockItem)).toBe(false);
         });

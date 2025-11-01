@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Cursor } from "../../../lib/Cursor";
-import type { Item } from "../../../schema/yjs-schema";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../../stores/store.svelte";
 
@@ -36,8 +35,8 @@ vi.mock("../../../stores/store.svelte", () => {
 });
 
 describe("Cursor", () => {
-    let mockItem: Item;
-    let mockParentItem: Item;
+    let mockItem: any;
+    let mockParentItem: any;
 
     beforeEach(() => {
         // Reset mocks
@@ -55,7 +54,7 @@ describe("Cursor", () => {
             },
             updateText: vi.fn(),
             delete: vi.fn(),
-        } as unknown as Item;
+        } as any;
 
         mockParentItem = {
             id: "parent-item-1",
@@ -70,7 +69,7 @@ describe("Cursor", () => {
             },
             updateText: vi.fn(),
             delete: vi.fn(),
-        } as unknown as Item;
+        } as any;
 
         // Set up parent relationship
         mockItem.parent = mockParentItem;
@@ -129,7 +128,7 @@ describe("Cursor", () => {
 
     describe("Movement methods", () => {
         beforeEach(() => {
-            editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
+            (editorOverlayStore.setCursor as any).mockReturnValue("new-cursor-id");
         });
 
         describe("moveLeft", () => {

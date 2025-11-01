@@ -11,7 +11,7 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 let textareaRef: HTMLTextAreaElement;
-let isComposing = false;
+let _isComposing = false;
 let measureCanvas: HTMLCanvasElement | null = null;
 let measureCtx: CanvasRenderingContext2D | null = null;
 
@@ -279,12 +279,12 @@ onDestroy(() => {
     store.setTextareaRef(null);
     try { (generalStore as any).textareaRef = null; } catch {}
     try {
-        const f = (window as any).__ALIAS_FWD__ as any;
-        if (f) window.removeEventListener("keydown", f, { capture: true } as any);
+        const f = (window as any).__ALIAS_FWD__ as ((ev: KeyboardEvent) => void) | undefined;
+        if (f) window.removeEventListener("keydown", f, { capture: true });
     } catch {}
     try {
-        const s = (window as any).__SLASH_FWD__ as any;
-        if (s) window.removeEventListener("keydown", s, { capture: true } as any);
+        const s = (window as any).__SLASH_FWD__ as ((ev: KeyboardEvent) => void) | undefined;
+        if (s) window.removeEventListener("keydown", s, { capture: true });
     } catch {}
 });
 
@@ -303,7 +303,7 @@ function updateCompositionWidth(text: string) {
 }
 
 function handleCompositionStart(event: CompositionEvent) {
-    isComposing = true;
+    _isComposing = true;
     store.setIsComposing(true);
     textareaRef.classList.add("ime-input");
     textareaRef.style.opacity = "1";
@@ -352,7 +352,7 @@ function handleInput(event: Event) {
 // CompositionEnd イベントを KeyEventHandler へ委譲
 function handleCompositionEnd(event: CompositionEvent) {
     KeyEventHandler.handleCompositionEnd(event);
-    isComposing = false;
+    _isComposing = false;
     store.setIsComposing(false);
     textareaRef.classList.remove("ime-input");
     textareaRef.style.opacity = "0";
@@ -399,7 +399,7 @@ function handleBlur(_event: FocusEvent) {
                 textareaRef.focus();
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                     console.log(
                         `GlobalTextArea: focus restored after blur. Active element is textarea: ${
                             document.activeElement === textareaRef
@@ -429,7 +429,7 @@ function handleBlur(_event: FocusEvent) {
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("clipboard-read-error"));
             }
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.error("GlobalTextArea.handlePaste failed", error);
             }
         }

@@ -118,17 +118,10 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
             // 2番目のアイテムが表示されるまで待機（タイムアウトを短くする）
             try {
                 await page.waitForSelector(".outliner-item:nth-child(2)", { timeout: 5000 });
-<<<<<<< HEAD
-                const _secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
-                console.log(`2番目のアイテムのテキスト: ${_secondItemText}`);
-                expect(_secondItemText).toContain("Test text 2"); // 2番目のアイテムに入力したテキストが含まれていることを確認
-            } catch {
-=======
                 const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
                 console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
                 expect(secondItemText).toContain("Test text 2"); // 2番目のアイテムに入力したテキストが含まれていることを確認
-            } catch (_) { // eslint-disable-line @typescript-eslint/no-unused-vars
->>>>>>> origin/main
+            } catch {
                 console.log("2番目のアイテムが見つかりませんでした。テストを続行します。");
                 // エラーが発生しても、テストは失敗とせずに続行
             }

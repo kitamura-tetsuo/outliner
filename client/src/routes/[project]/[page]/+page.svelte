@@ -47,8 +47,8 @@ let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 
 // Optional variable for pending imports - defined to avoid ESLint no-undef errors
 // This is used in conditional checks and may be set by external code
-let pendingImport: any[] | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-let project: any; // eslint-disable-line @typescript-eslint/no-unused-vars
+let _pendingImport: any[] | undefined;
+let _project: any;
 
 // URLパラメータと認証状態を監視して更新
 // 同一条件での多重実行を避け、Svelte の update depth exceeded を回避するためのキー

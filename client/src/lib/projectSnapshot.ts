@@ -186,7 +186,6 @@ export function createSnapshotClient(projectName: string, project: Project): any
         isContainerConnected: true,
         getAllData: () => projectToAllData(project),
         getTreeAsJson: (
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             _path?: string,
         ) => projectToAllData(project),
         dispose: () => {},
