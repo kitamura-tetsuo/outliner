@@ -4,7 +4,6 @@
  */
 
 import fs from "fs";
-import path from "path";
 
 /**
  * Normalize a snapshot by stripping IDs/timestamps and only keeping texts

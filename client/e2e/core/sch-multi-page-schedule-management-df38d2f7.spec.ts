@@ -11,8 +11,8 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("Multi-Page Schedule Management", () => {
     let testProject: { projectName: string; pageName: string; };
 
-    test.beforeEach(async ({ page }, testInfo) => {
-        testProject = await TestHelpers.prepareTestEnvironment(page, testInfo);
+    test.beforeEach(async ({ page }) => {
+        testProject = await TestHelpers.prepareTestEnvironment(page);
 
         // Enable console logging
         page.on("console", msg => console.log("PAGE LOG:", msg.text()));
@@ -131,7 +131,7 @@ test.describe("Multi-Page Schedule Management", () => {
         }
     });
 
-    test("schedule operations across pages", async ({ page }, testInfo) => {
+    test("schedule operations across pages", async ({ page }) => {
         const { projectName, pageName } = testProject;
 
         // Create another page in the same project using the correct method
@@ -139,7 +139,7 @@ test.describe("Multi-Page Schedule Management", () => {
             const store = window.generalStore;
             if (store && store.project) {
                 // Use the addPage method to create a new page
-                const newPage = store.project.addPage("other-page", "test-user");
+                store.project.addPage("other-page", "test-user");
                 console.log("Created other-page in same project");
             }
         });

@@ -15,9 +15,17 @@
 
 import { spawn } from "child_process";
 import path from "path";
+<<<<<<< HEAD
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+=======
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+>>>>>>> origin/main
 
 // 色付きログ出力
 const colors = {
@@ -235,7 +243,13 @@ async function main() {
 }
 
 // スクリプト実行
+<<<<<<< HEAD
 if (import.meta.url === `file://${process.argv[1]}`) {
+=======
+const isMainModule = process.argv[1] && new URL(process.argv[1], "file://").pathname === __filename;
+
+if (isMainModule) {
+>>>>>>> origin/main
     main().catch(error => {
         log(`❌ 予期しないエラー: ${error.message}`, "red");
         process.exit(1);

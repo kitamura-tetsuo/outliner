@@ -54,8 +54,13 @@ test.describe("SLR-0009: アイテムドラッグ＆ドロップ", () => {
         const _itemCount = await page.locator(".outliner-item").count();
         expect(_itemCount).toBeGreaterThanOrEqual(3);
         const firstItemText = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
+<<<<<<< HEAD
         const _secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
         const _thirdItemText = await page.locator(".outliner-item").nth(2).locator(".item-text").textContent();
+=======
+        await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+        await page.locator(".outliner-item").nth(2).locator(".item-text").textContent();
+>>>>>>> origin/main
         const secondItem = page.locator(".outliner-item").nth(1);
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
@@ -72,13 +77,11 @@ test.describe("SLR-0009: アイテムドラッグ＆ドロップ", () => {
         await page.keyboard.press("Control+v");
         await page.waitForTimeout(500);
         const firstItemAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent() || "";
-        let secondItemAfter = "";
-        let thirdItemAfter = "";
         if (await page.locator(".outliner-item").count() > 1) {
-            secondItemAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent() || "";
+            await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
         }
         if (await page.locator(".outliner-item").count() > 2) {
-            thirdItemAfter = await page.locator(".outliner-item").nth(2).locator(".item-text").textContent() || "";
+            await page.locator(".outliner-item").nth(2).locator(".item-text").textContent();
         }
         const finalItemCount = await page.locator(".outliner-item").count();
         expect(finalItemCount).toBeGreaterThanOrEqual(2);

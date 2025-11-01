@@ -1,5 +1,4 @@
 import { render, screen, waitFor, within } from "@testing-library/svelte";
-import { tick } from "svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ContainerSelector from "../../components/ContainerSelector.svelte";
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
@@ -38,7 +37,7 @@ describe("CNT: ContainerSelector option count reflects accessibleContainerIds", 
 
         // 2 件に増やす（配列の破壊的変更 -> Proxy 経由で setUserContainer + ucVersion 増分）
         (firestoreStore.userContainer!.accessibleContainerIds as any).push("c-2");
-        // store  integrity check
+        // store integrity check
         expect(firestoreStore.userContainer?.accessibleContainerIds?.length ?? 0).toBe(2);
         await waitFor(() => {
             expect(within(select).getAllByRole("option").length).toBe(2);

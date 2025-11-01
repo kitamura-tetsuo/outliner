@@ -160,6 +160,7 @@ function highlightLinkInContext(context: string, pageName: string): string {
                                 </button>
                             </div>
                             <div class="backlink-context">
+                                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                                 {@html highlightLinkInContext(backlink.context, pageName)}
                             </div>
                         </li>

@@ -12,16 +12,12 @@ class MockWebsocketProvider {
     public roomname: string;
 
     // Simple event emitter implementation for testing
-    private eventListeners: Map<string, Function[]> = new Map();
+    private eventListeners: Map<string, ((...args: any[]) => void)[]> = new Map();
 
     constructor(
         serverUrl: string,
         roomname: string,
         doc: Y.Doc,
-        options?: {
-            connect?: boolean;
-            params?: Record<string, string>;
-        },
     ) {
         this.doc = doc;
         this.roomname = roomname;
@@ -61,7 +57,7 @@ class MockWebsocketProvider {
                         this.emit("subdocs", [subdocsEvent]);
                     }
                 });
-            } catch (e) {
+            } catch {
                 // Ignore errors in test environment
             }
         };
@@ -82,14 +78,14 @@ class MockWebsocketProvider {
         // Cleanup
     }
 
-    public on(event: string, callback: Function) {
+    public on(event: string, callback: (...args: any[]) => void) {
         if (!this.eventListeners.has(event)) {
             this.eventListeners.set(event, []);
         }
         this.eventListeners.get(event)?.push(callback);
     }
 
-    public off(event: string, callback: Function) {
+    public off(event: string, callback: (...args: any[]) => void) {
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             const index = listeners.indexOf(callback);

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
@@ -112,10 +111,7 @@ export class KeyEventHandler {
         });
 
         // Ctrl+X cut
-        add("x", true, false, false, (
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            _event: KeyboardEvent,
-        ) => {
+        add("x", true, false, false, () => {
             // カットイベントを手動で発生させる
             const clipboardEvent = new ClipboardEvent("cut", {
                 clipboardData: new DataTransfer(),
@@ -917,10 +913,7 @@ export class KeyEventHandler {
     /**
      * IMEのcompositionstartイベントを処理する
      */
-    static handleCompositionStart(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        _event: CompositionEvent,
-    ) {
+    static handleCompositionStart(_event: CompositionEvent) { // eslint-disable-line @typescript-eslint/no-unused-vars
         KeyEventHandler.lastCompositionLength = 0;
     }
     /**
@@ -991,7 +984,7 @@ export class KeyEventHandler {
 
         if (boxSelection) {
             // 矩形選択の場合
-            selectedText = store.getBoxSelectionText("local");
+            selectedText = store.getSelectedText("local");
             isBoxSelectionCopy = true;
 
             // デバッグ情報
@@ -1189,15 +1182,17 @@ export class KeyEventHandler {
 
         // 矢印キーに応じて選択範囲を更新
         switch (event.key) {
-            case "ArrowLeft":
+            case "ArrowLeft": {
                 newEndOffset = Math.max(0, KeyEventHandler.boxSelectionState.endOffset - 1);
                 break;
-            case "ArrowRight":
+            }
+            case "ArrowRight": {
                 // アイテムのテキスト長を取得
                 const itemText = KeyEventHandler.getItemText(KeyEventHandler.boxSelectionState.endItemId);
                 newEndOffset = Math.min(itemText.length, KeyEventHandler.boxSelectionState.endOffset + 1);
                 break;
-            case "ArrowUp":
+            }
+            case "ArrowUp": {
                 // 上のアイテムを取得
                 const prevItem = KeyEventHandler.getAdjacentItem(KeyEventHandler.boxSelectionState.endItemId, "prev");
                 if (prevItem) {
@@ -1206,7 +1201,8 @@ export class KeyEventHandler {
                     newEndOffset = Math.min(prevItem.text.length, KeyEventHandler.boxSelectionState.endOffset);
                 }
                 break;
-            case "ArrowDown":
+            }
+            case "ArrowDown": {
                 // 下のアイテムを取得
                 const nextItem = KeyEventHandler.getAdjacentItem(KeyEventHandler.boxSelectionState.endItemId, "next");
                 if (nextItem) {
@@ -1215,6 +1211,7 @@ export class KeyEventHandler {
                     newEndOffset = Math.min(nextItem.text.length, KeyEventHandler.boxSelectionState.endOffset);
                 }
                 break;
+            }
         }
 
         // 終了位置を更新
@@ -1981,7 +1978,7 @@ export class KeyEventHandler {
 
         if (boxSelection) {
             // 矩形選択の場合
-            selectedText = store.getBoxSelectionText("local");
+            selectedText = store.getSelectedText("local");
             isBoxSelectionCut = true;
 
             // デバッグ情報

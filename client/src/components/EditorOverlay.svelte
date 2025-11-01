@@ -37,7 +37,6 @@ let allSelections = $derived.by(() => Object.values(store.selections));
 let clipboardRef: HTMLTextAreaElement;
 let localActiveItemId = $state<string | null>(null);
 let localCursorVisible = $state<boolean>(false);
-let localAnimationPaused = $state<boolean>(false);
 // derive a stable visibility that does not blink while alias picker is open
 // in test environments, always show the cursor
 let overlayCursorVisible = $derived.by(() => {
@@ -60,7 +59,7 @@ function measureTextWidthFallback(itemId: string, text: string): number {
     // 標準的な文字幅（スペース、英数字、日本語など）を使用
     let width = 0;
     for (const char of text) {
-        if (char.match(/[a-zA-Z0-9\.,;:\[\](){}]/)) {
+        if (char.match(/[a-zA-Z0-9.,;:[\](){}]/)) {
             // 半角文字はフォントサイズの半分程度
             width += parseFloat(fontProperties.fontSize) * 0.5;
         } else if (char.match(/[一-龯]/)) {
@@ -165,25 +164,11 @@ function updateTextareaPosition() {
             return;
         }
 
-        // Get the EditorOverlay's and tree container's positions relative to the viewport
-        const overlayRect = overlayRef.getBoundingClientRect();
+        // Get the tree container's position relative to the viewport
         const treeContainer = resolveTreeContainer();
         if (!treeContainer) return;
         const treeContainerRect = treeContainer.getBoundingClientRect();
 
-        // Convert position from tree-container-relative to overlay-relative
-        // This is needed because calculateCursorPixelPosition returns coordinates relative to tree container
-        const posRelativeToOverlay = {
-            left: pos.left + (treeContainerRect.left - overlayRect.left),
-            top: pos.top + (treeContainerRect.top - overlayRect.top)
-        };
-
-        // Position the textarea at the same viewport coordinates as the cursor
-        // would be if it were positioned within the overlay
-        const finalLeft = overlayRect.left + posRelativeToOverlay.left;
-        const finalTop = overlayRect.top + posRelativeToOverlay.top;
-
-        // Simplified: finalLeft = treeContainerRect.left + pos.left (same as before but clearer logic)
         // Position the textarea using viewport coordinates
         textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left}px`, 'important');
         textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top}px`, 'important');
@@ -308,12 +293,6 @@ onMount(() => {
 });
 
 // より正確なテキスト測定を行うヘルパー関数
-function createMeasurementSpan(itemId: string, text: string): HTMLSpanElement {
-    // legacy helper kept for safety; no longer used to append nodes
-    const span = document.createElement('span');
-    span.textContent = text;
-    return span;
-}
 
 function measureTextWidthCanvas(itemId: string, text: string): number {
     const itemInfo = positionMap[itemId];
@@ -328,7 +307,9 @@ function measureTextWidthCanvas(itemId: string, text: string): number {
     const font = `${fontProperties.fontWeight} ${fontProperties.fontSize} ${fontProperties.fontFamily}`.trim();
     try {
         measureCtx.font = font;
-    } catch {}
+    } catch {
+        // Intentionally empty - catch potential errors without further handling
+    }
     const m = measureCtx.measureText(text);
     return m.width || 0;
 }
@@ -379,7 +360,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
                 element,
                 NodeFilter.SHOW_TEXT,
                 {
-                    acceptNode: function(node) {
+                    acceptNode: function() {
                         return NodeFilter.FILTER_ACCEPT;
                     }
                 }
@@ -628,7 +609,9 @@ onMount(() => {
                 if (typeof window !== 'undefined' && txt) {
                     (window as any).lastCopiedText = txt;
                 }
-            } catch {}
+            } catch {
+                // Intentionally empty - catch potential errors without further handling
+            }
         }
     };
     document.addEventListener('keydown', keydownHandler as EventListener);
@@ -682,14 +665,22 @@ onMount(() => {
                             attributes: true,
                             attributeFilter: ['style', 'class']
                         });
-                    } catch {}
+                    } catch {
+                        // Intentionally empty - catch potential errors without further handling
+                    }
                 }
                 debouncedUpdatePositionMap();
             }
-        } catch {}
+        } catch {
+            // Intentionally empty - catch potential errors without further handling
+        }
     };
-    try { window.addEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {}
-    return () => { try { window.removeEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {} };
+    try { window.addEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {
+        // Intentionally empty - catch potential errors without further handling
+    }
+    return () => { try { window.removeEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {
+        // Intentionally empty - catch potential errors without further handling
+    } };
 });
 
 onDestroy(() => {
@@ -729,7 +720,9 @@ function getTextByItemId(itemId: string): string {
     if (ta && activeId === itemId) {
       return ta.value || "";
     }
-  } catch {}
+  } catch {
+    // Intentionally empty - catch potential errors without further handling
+  }
 
   // 3) generalStore から探索
   try {
@@ -744,7 +737,9 @@ function getTextByItemId(itemId: string): string {
         return String(it?.text ?? "");
       }
     }
-  } catch {}
+  } catch {
+    // Intentionally empty - catch potential errors without further handling
+  }
   return "";
 }
 
@@ -1235,7 +1230,9 @@ function handlePaste(event: ClipboardEvent) {
                 if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
                     console.log('EditorOverlay: setupUpdatingFlag set true for', key, 'class=', node.className);
                 }
-            } catch {}
+            } catch {
+                // Intentionally empty - catch potential errors without further handling
+            }
         });
         updatingFlags[key] = true; // デバッグ用の副作用（UIはこれに依存しない）
         const timer = setTimeout(() => {
@@ -1284,24 +1281,24 @@ function handlePaste(event: ClipboardEvent) {
         {/if}
 
     {#each Object.entries(store.selections) as [selKey, sel] (selKey)}
-        {@const _debugRenderSel = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: render selection', sel, sel.boxSelectionRanges, Array.isArray(sel.boxSelectionRanges)) : null}
+
         {@const selectionStyle = getSelectionStyle(sel)}
         {#if sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId}
             {#if sel.isBoxSelection && sel.boxSelectionRanges}
                 <!-- 矩形選択（ボックス選択）の場合 -->
                 {#each sel.boxSelectionRanges as range, index (`${selKey}-${range.itemId}-${index}`)}
-                    {@const _debugRange = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: range', range) : null}
+
                     {@const rect = calculateSelectionPixelRange(range.itemId, range.startOffset, range.endOffset, sel.isReversed)}
-                    {@const _debugRect = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: rect', rect) : null}
+
                     {#if rect}
                         {@const isPageTitle = range.itemId === "page-title"}
                         {@const isFirstRange = index === 0}
                         {@const isLastRange = index === sel.boxSelectionRanges.length - 1}
                         {@const isStartItem = range.itemId === sel.startItemId}
                         {@const isEndItem = range.itemId === sel.endItemId}
-                        {@const _dbgUp = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: isUpdating seen in template =', sel.isUpdating) : null}
+
                         {@const boxKey = `${selKey}:${index}`}
-                        {@const _dbgFlag = (typeof window !== 'undefined' && (window as any).DEBUG_MODE) ? console.log('EditorOverlay: updatingFlags[boxKey]=', boxKey, !!updatingFlags[boxKey]) : null}
+
 
                         <!-- 一時的なマーカー（テスト検出用）。isUpdating=trueの間だけ存在 -->
                         {#if sel.isUpdating}

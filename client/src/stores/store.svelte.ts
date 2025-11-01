@@ -135,7 +135,11 @@ class GeneralStore {
         const project = v;
         const ymap = (project as any)?.ydoc?.getMap?.("orderedTree");
         const subscribe = createSubscriber((_update) => {
+<<<<<<< HEAD
             const handler = (_events: Array<Y.YEvent<unknown>>, _transaction?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+=======
+            const handler = (_events: Array<Y.YEvent<unknown>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+>>>>>>> origin/main
                 try {
                     saveProjectSnapshot(project);
                 } catch {

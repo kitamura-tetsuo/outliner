@@ -5,9 +5,17 @@
 
 import fs from "fs";
 import path from "path";
+<<<<<<< HEAD
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+=======
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+>>>>>>> origin/main
 
 const configPath = path.join(__dirname, "..", "firebase.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));

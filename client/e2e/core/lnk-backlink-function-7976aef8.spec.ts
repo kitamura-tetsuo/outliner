@@ -6,9 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
-import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
-import { TreeValidator } from "../utils/treeValidation";
 
 /**
  * @file LNK-0007.spec.ts
@@ -33,7 +31,11 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
+<<<<<<< HEAD
         const _sourceUrl = page.url();
+=======
+        const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
+>>>>>>> origin/main
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "target-page-" + Date.now().toString().slice(-6);
@@ -83,10 +85,17 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
+<<<<<<< HEAD
         const _sourceUrl = page.url();
 
         // 最初のページのタイトルを取得
         const _sourceTitle = await page.locator("h1").textContent();
+=======
+        const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
+
+        // 最初のページのタイトルを取得
+        const sourceTitle = await page.locator("h1").textContent(); // eslint-disable-line @typescript-eslint/no-unused-vars
+>>>>>>> origin/main
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "backlink-target-" + Date.now().toString().slice(-6);
@@ -178,7 +187,11 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
+<<<<<<< HEAD
         const _sourceUrl = page.url();
+=======
+        const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
+>>>>>>> origin/main
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "badge-target-" + Date.now().toString().slice(-6);
@@ -233,7 +246,11 @@ test.describe("LNK-0007: バックリンク機能", () => {
         // テストページをセットアップ
 
         // 最初のページのURLを保存
+<<<<<<< HEAD
         const _sourceUrl = page.url();
+=======
+        const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
+>>>>>>> origin/main
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "toggle-target-" + Date.now().toString().slice(-6);
@@ -301,7 +318,11 @@ test.describe("LNK-0007: バックリンク機能", () => {
         const _sourceUrl = page.url();
 
         // 最初のページのタイトルを取得
+<<<<<<< HEAD
         const _sourceTitle = await page.locator("h1").textContent();
+=======
+        const sourceTitle = await page.locator("h1").textContent(); // eslint-disable-line @typescript-eslint/no-unused-vars
+>>>>>>> origin/main
 
         // テスト用のターゲットページ名を生成
         const targetPageName = "click-target-" + Date.now().toString().slice(-6);
@@ -336,7 +357,11 @@ test.describe("LNK-0007: バックリンク機能", () => {
         await page.waitForTimeout(500);
 
         // バックリンクパネルの内容が表示されていることを確認
+<<<<<<< HEAD
         const _backlinkContent = page.locator(".backlink-content");
+=======
+        const backlinkContent = page.locator(".backlink-content"); // eslint-disable-line @typescript-eslint/no-unused-vars
+>>>>>>> origin/main
         const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
 
         if (!isContentVisible) {

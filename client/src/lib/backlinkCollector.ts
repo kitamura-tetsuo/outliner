@@ -4,6 +4,7 @@
  * このモジュールは、ページへのバックリンク（他のページからのリンク）を収集するための機能を提供します。
  */
 
+import type { Item } from "../schema/yjs-schema";
 import { store } from "../stores/store.svelte";
 import { getLogger } from "./logger";
 
@@ -41,24 +42,27 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
     try {
         // すべてのページを検索
         for (const page of store.pages.current) {
-            const pageData = page as any;
+            const pageItem = page as Item;
+            const pageText = String(pageItem.text);
             // 対象ページ自身は除外
-            if (pageData.text.toLowerCase() === normalizedTargetName) {
+            if (pageText.toLowerCase() === normalizedTargetName) {
                 continue;
             }
 
             // ページ自身のテキストをチェック
-            if (containsLink(pageData.text, normalizedTargetName)) {
+            if (containsLink(pageText, normalizedTargetName)) {
                 backlinks.push({
-                    sourcePageId: pageData.id,
-                    sourcePageName: pageData.text,
-                    sourceItemId: pageData.id,
-                    sourceItemText: pageData.text,
-                    context: extractContext(pageData.text, normalizedTargetName),
+                    sourcePageId: pageItem.id,
+                    sourcePageName: pageText,
+                    sourceItemId: pageItem.id,
+                    sourceItemText: pageText,
+                    context: extractContext(pageText, normalizedTargetName),
                 });
+            }
             }
 
             // 子アイテムをチェック
+<<<<<<< HEAD
             const items = pageData.items as any;
             if (items && items.length > 0) {
                 for (let i = 0; i < items.length; i++) {
@@ -67,9 +71,19 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
                         backlinks.push({
                             sourcePageId: pageData.id,
                             sourcePageName: pageData.text,
+=======
+            const items = pageItem.items as Iterable<Item> & { length?: number; };
+            if (items && items.length && items.length > 0) {
+                for (const item of items) {
+                    const itemText = String(item.text);
+                    if (item && containsLink(itemText, normalizedTargetName)) {
+                        backlinks.push({
+                            sourcePageId: pageItem.id,
+                            sourcePageName: pageText,
+>>>>>>> origin/main
                             sourceItemId: item.id,
-                            sourceItemText: item.text,
-                            context: extractContext(item.text, normalizedTargetName),
+                            sourceItemText: itemText,
+                            context: extractContext(itemText, normalizedTargetName),
                         });
                     }
                 }
@@ -79,7 +93,7 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
         logger.info(`Collected ${backlinks.length} backlinks for page: ${targetPageName}`);
         return backlinks;
     } catch (error) {
-        logger.error(`Error collecting backlinks for page ${targetPageName}:`, error);
+        logger.error({ error }, `Error collecting backlinks for page ${targetPageName}`);
         return [];
     }
 }

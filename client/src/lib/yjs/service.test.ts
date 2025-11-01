@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it } from "vitest";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
@@ -44,8 +43,14 @@ describe("yjsService", () => {
                 this.users = { ...this.users, [u.userId]: u };
             },
             removeUser(id: string) {
+<<<<<<< HEAD
                 const { [id]: _, ...rest } = this.users;
                 this.users = rest;
+=======
+                const updatedUsers = { ...this.users };
+                delete updatedUsers[id];
+                this.users = updatedUsers;
+>>>>>>> origin/main
             },
         };
         (globalThis as any).presenceStore = presenceStore;
@@ -69,12 +74,23 @@ describe("yjsService", () => {
                 this.selections[userId] = { userId };
             },
             clearCursorAndSelection(userId: string) {
+<<<<<<< HEAD
                 const { [userId]: _, ...rest } = this.cursors;
                 this.cursors = rest;
             },
             clearSelectionForUser(userId: string) {
                 const { [userId]: _, ...rest } = this.selections;
                 this.selections = rest;
+=======
+                const updatedCursors = { ...this.cursors };
+                delete updatedCursors[userId];
+                this.cursors = updatedCursors;
+            },
+            clearSelectionForUser(userId: string) {
+                const updatedSelections = { ...this.selections };
+                delete updatedSelections[userId];
+                this.selections = updatedSelections;
+>>>>>>> origin/main
             },
         };
         (globalThis as any).editorOverlayStore = editorOverlayStore;

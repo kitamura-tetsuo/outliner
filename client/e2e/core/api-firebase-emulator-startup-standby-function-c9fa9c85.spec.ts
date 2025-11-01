@@ -8,7 +8,7 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 
 // Utility function to retry request until success or timeout
-async function waitForHealth(request: any, attempts = 10) {
+async function waitForHealth(request: import("@playwright/test").APIRequestContext, attempts = 10) {
     for (let i = 0; i < attempts; i++) {
         try {
             const response = await request.get("http://localhost:57000/health");

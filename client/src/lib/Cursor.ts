@@ -1,4 +1,4 @@
-// @ts-nocheck
+import type { Item } from "../schema/yjs-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import {
@@ -61,30 +61,30 @@ export class Cursor implements CursorEditingContext {
     }
 
     // SharedTree 上の Item を再帰検索
-    findTarget(): any {
-        const root = generalStore.currentPage as any;
+    findTarget(): Item | undefined {
+        const root = generalStore.currentPage as Item | undefined;
         if (root) {
             const found = searchItem(root, this.itemId);
             if (found) return found;
         }
         // Fallback: search across all pages in the current project
         try {
-            const proj: any = (generalStore as any).project;
-            const pages: any = proj?.items;
+            const proj: { items?: Iterable<Item>; } | undefined = (generalStore as any).project;
+            const pages: Iterable<Item> | undefined = proj?.items;
             if (pages && pages[Symbol.iterator]) {
-                for (const p of pages as Iterable<any>) {
+                for (const p of pages) {
                     const f = searchItem(p, this.itemId);
                     if (f) return f;
                 }
             }
         } catch {}
         if (typeof window !== "undefined") {
-            console.debug("findTarget: not found", { itemId: this.itemId, rootId: (root as any)?.id });
+            console.debug("findTarget: not found", { itemId: this.itemId, rootId: root?.id });
         }
         return undefined;
     }
 
-    private getTargetText(target: any): string {
+    private getTargetText(target: Item | undefined): string {
         const raw = target?.text;
         if (typeof raw === "string") return raw;
         if (raw && typeof raw.toString === "function") {
@@ -464,7 +464,7 @@ export class Cursor implements CursorEditingContext {
         this.editor.deleteForward();
     }
 
-    deleteMultiItemSelection(selection: any) {
+    deleteMultiItemSelection(selection: import("./cursor/CursorEditor").SelectionRange) {
         this.editor.deleteMultiItemSelection(selection);
     }
 
@@ -1067,12 +1067,14 @@ export class Cursor implements CursorEditingContext {
 
             // 現在位置を保存
             const oldItemId = this.itemId;
+            // const oldOffset = this.offset; // Not used
 
             // カーソルを下に移動
             this.moveDown();
 
             // 移動先が同じアイテム内の場合は、全テキストを選択
             if (this.itemId === oldItemId) {
+                // const text = this.getTargetText(target); // Not used
                 endItemId = this.itemId;
                 endOffset = this.offset;
                 isReversed = false;
@@ -2050,6 +2052,7 @@ export class Cursor implements CursorEditingContext {
             if (nextItem) {
                 newItemId = nextItem.id;
                 const nextText = this.getTargetText(nextItem);
+                // const nextLines = nextText.split("\n"); // Not used
                 const firstLineIndex = 0;
                 const firstLineStart = getLineStartOffset(nextText, firstLineIndex);
                 const firstLineEnd = getLineEndOffset(nextText, firstLineIndex);
@@ -2199,6 +2202,7 @@ export class Cursor implements CursorEditingContext {
         if (!startItemEl || !endItemEl) return;
 
         const startItemText = startItemEl.textContent || "";
+        // const endItemText = endItemEl.textContent || ""; // Not used
 
         // 単一アイテム内の選択範囲の場合
         if (startItemId === endItemId) {
