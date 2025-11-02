@@ -211,6 +211,31 @@ describe("Cursor Integration", () => {
 
     describe("Text Operations", () => {
         it("should handle text insertion with selection", () => {
+            // Override text for this test
+            const testText = {
+                value: "Hello World",
+                toString() {
+                    return this.value;
+                },
+                get length() {
+                    return this.value.length;
+                },
+                delete(start: number, count: number) {
+                    this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+                },
+                insert(pos: number, text: string) {
+                    this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+                },
+            };
+
+            // Temporarily override the getter
+            Object.defineProperty(mockItem, "text", {
+                get() {
+                    return testText;
+                },
+                configurable: true,
+            });
+
             mockItem.updateText = vi.fn();
 
             // Mock a selection
@@ -239,6 +264,31 @@ describe("Cursor Integration", () => {
         });
 
         it("should handle line breaks correctly", () => {
+            // Override text for this test
+            const testText = {
+                value: "Hello World",
+                toString() {
+                    return this.value;
+                },
+                get length() {
+                    return this.value.length;
+                },
+                delete(start: number, count: number) {
+                    this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+                },
+                insert(pos: number, text: string) {
+                    this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+                },
+            };
+
+            // Temporarily override the getter
+            Object.defineProperty(mockItem, "text", {
+                get() {
+                    return testText;
+                },
+                configurable: true,
+            });
+
             mockItem.updateText = vi.fn();
 
             // Ensure parent has indexOf and addNode methods

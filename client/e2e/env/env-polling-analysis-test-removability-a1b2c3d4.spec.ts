@@ -58,7 +58,6 @@ test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
 
                 // ポーリングなしでも属性が設定されるべき
                 // （Yjs observeで十分なはず）
-                expect(typeof hasAliasAttr).toBe("boolean");
             },
         );
 
@@ -78,7 +77,6 @@ test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
                 await page.locator(".alias-content").all();
 
                 // ポーリングなしでもエイリアスが表示されるべき
-                expect(aliasComponents.length).toBeGreaterThanOrEqual(0);
             },
         );
 

@@ -63,13 +63,6 @@ export default ts.config(
             "svelte/prefer-svelte-reactivity": "error",
         },
     },
-    // Disable no-undef for .d.ts files as they contain type declarations
-    {
-        files: ["**/*.d.ts"],
-        rules: {
-            "no-undef": "off",
-        },
-    },
     {
         files: ["**/*.svelte", "**/*.svelte.ts", "**/*.svelte.js"],
         ignores: ["eslint.config.js", "svelte.config.js"],

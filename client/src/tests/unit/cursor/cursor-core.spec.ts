@@ -213,6 +213,31 @@ describe("Cursor", () => {
             });
 
             it("should not move the cursor right if already at the end", () => {
+                // Override the text for this test to be "Test" (4 chars)
+                const testText = {
+                    value: "Test",
+                    toString() {
+                        return this.value;
+                    },
+                    get length() {
+                        return this.value.length;
+                    },
+                    delete(start: number, count: number) {
+                        this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+                    },
+                    insert(pos: number, text: string) {
+                        this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+                    },
+                };
+
+                // Temporarily override the getter
+                Object.defineProperty(mockItem, "text", {
+                    get() {
+                        return testText;
+                    },
+                    configurable: true,
+                });
+
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 4,
@@ -231,6 +256,31 @@ describe("Cursor", () => {
     describe("Text manipulation methods", () => {
         describe("insertText", () => {
             it("should insert text at the current cursor position", () => {
+                // Override the text for this test
+                const testText = {
+                    value: "Hello World",
+                    toString() {
+                        return this.value;
+                    },
+                    get length() {
+                        return this.value.length;
+                    },
+                    delete(start: number, count: number) {
+                        this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+                    },
+                    insert(pos: number, text: string) {
+                        this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+                    },
+                };
+
+                // Temporarily override the getter
+                Object.defineProperty(mockItem, "text", {
+                    get() {
+                        return testText;
+                    },
+                    configurable: true,
+                });
+
                 mockItem.updateText = vi.fn();
 
                 const cursor = new Cursor("cursor-1", {
@@ -251,6 +301,31 @@ describe("Cursor", () => {
 
         describe("deleteBackward", () => {
             it("should delete the character before the cursor", () => {
+                // Override the text for this test
+                const testText = {
+                    value: "Hello World",
+                    toString() {
+                        return this.value;
+                    },
+                    get length() {
+                        return this.value.length;
+                    },
+                    delete(start: number, count: number) {
+                        this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+                    },
+                    insert(pos: number, text: string) {
+                        this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+                    },
+                };
+
+                // Temporarily override the getter
+                Object.defineProperty(mockItem, "text", {
+                    get() {
+                        return testText;
+                    },
+                    configurable: true,
+                });
+
                 mockItem.updateText = vi.fn();
 
                 const cursor = new Cursor("cursor-1", {
@@ -271,6 +346,31 @@ describe("Cursor", () => {
 
         describe("deleteForward", () => {
             it("should delete the character after the cursor", () => {
+                // Override the text for this test
+                const testText = {
+                    value: "Hello World",
+                    toString() {
+                        return this.value;
+                    },
+                    get length() {
+                        return this.value.length;
+                    },
+                    delete(start: number, count: number) {
+                        this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+                    },
+                    insert(pos: number, text: string) {
+                        this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+                    },
+                };
+
+                // Temporarily override the getter
+                Object.defineProperty(mockItem, "text", {
+                    get() {
+                        return testText;
+                    },
+                    configurable: true,
+                });
+
                 mockItem.updateText = vi.fn();
 
                 const cursor = new Cursor("cursor-1", {
@@ -293,6 +393,31 @@ describe("Cursor", () => {
     describe("Line operations", () => {
         describe("moveToLineStart", () => {
             it("should move cursor to the start of the current line", () => {
+                // Override the text for this test to have multiple lines
+                const multilineText = {
+                    value: "First line\nSecond line\nThird line",
+                    toString() {
+                        return this.value;
+                    },
+                    get length() {
+                        return this.value.length;
+                    },
+                    delete(start: number, count: number) {
+                        this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+                    },
+                    insert(pos: number, text: string) {
+                        this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+                    },
+                };
+
+                // Temporarily override the getter
+                Object.defineProperty(mockItem, "text", {
+                    get() {
+                        return multilineText;
+                    },
+                    configurable: true,
+                });
+
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 15, // Middle of "Second line"
@@ -310,6 +435,31 @@ describe("Cursor", () => {
 
         describe("moveToLineEnd", () => {
             it("should move cursor to the end of the current line", () => {
+                // Override the text for this test to have multiple lines
+                const multilineText = {
+                    value: "First line\nSecond line\nThird line",
+                    toString() {
+                        return this.value;
+                    },
+                    get length() {
+                        return this.value.length;
+                    },
+                    delete(start: number, count: number) {
+                        this.value = (this.value || "").slice(0, start) + (this.value || "").slice(start + count);
+                    },
+                    insert(pos: number, text: string) {
+                        this.value = (this.value || "").slice(0, pos) + text + (this.value || "").slice(pos);
+                    },
+                };
+
+                // Temporarily override the getter
+                Object.defineProperty(mockItem, "text", {
+                    get() {
+                        return multilineText;
+                    },
+                    configurable: true,
+                });
+
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 15, // Middle of "Second line"
