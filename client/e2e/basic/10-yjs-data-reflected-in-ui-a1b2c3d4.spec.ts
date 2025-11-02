@@ -25,28 +25,30 @@ test.describe("YjsのデータがUIに反映される", () => {
     test("lines が正しい順番で表示される", async ({ page }) => {
         // currentPage がセットされるのを待機
         await page.waitForFunction(() => {
-            const gs = (window as { generalStore?: { currentPage?: Record<string, unknown>; }; }).generalStore;
+            const gs = window.generalStore;
             return !!(gs && gs.currentPage);
         }, { timeout: 15000 });
 
         // 念のため: currentPage の子を lines に合わせて整える（不足分は生成、既存は上書き）
         await page.evaluate((lines) => {
-            const gs =
-                (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; }).generalStore;
+            const gs = window.generalStore;
             const p = gs?.currentPage;
             const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
 
-            const existing = (items as any).length ?? 0;
+            const existing = (items as { length?: number; }).length ?? 0;
             // 既存分は上書き
             for (let i = 0; i < Math.min(existing as number, lines.length); i++) {
-                const it = (items as any).at ? (items as any).at(i) : (items as any)[i];
-                (it as any)?.updateText?.(lines[i]);
+                const it = (items as { at?: (index: number) => unknown; [index: number]: unknown; })
+                        .at
+                    ? (items as { at: (index: number) => unknown; }).at(i)
+                    : (items as unknown[])[i];
+                (it as { updateText?: (text: string) => void; })?.updateText?.(lines[i]);
             }
             // 不足分は追加
             for (let i = existing as number; i < lines.length; i++) {
-                const node = (items as any).addNode?.("tester");
-                (node as any)?.updateText?.(lines[i]);
+                const node = (items as { addNode?: (type: string) => unknown; }).addNode?.("tester");
+                (node as { updateText?: (text: string) => void; })?.updateText?.(lines[i]);
             }
         }, lines);
 
@@ -77,8 +79,7 @@ test.describe("YjsのデータがUIに反映される", () => {
             // モデル側の件数が期待分になるまで待機
             await page.waitForFunction(
                 (expectedLen) => {
-                    const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
-                        .generalStore;
+                    const gs = window.generalStore;
                     const items = gs?.currentPage?.items;
                     return !!items && typeof items.length === "number" && items.length >= expectedLen;
                 },
@@ -88,13 +89,12 @@ test.describe("YjsのデータがUIに反映される", () => {
 
             // 各アイテムのテキストをモデル経由で設定
             await page.evaluate((lines) => {
-                const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
-                    .generalStore;
-                const items = gs?.currentPage?.items as any;
+                const gs = window.generalStore;
+                const items = gs?.currentPage?.items as { at?: (index: number) => unknown; [index: number]: unknown; };
                 if (!items) return;
                 for (let i = 0; i < lines.length; i++) {
                     const it = items.at ? items.at(i) : items[i];
-                    (it as any)?.updateText?.(lines[i]);
+                    (it as { updateText?: (text: string) => void; })?.updateText?.(lines[i]);
                 }
             }, lines);
         }
