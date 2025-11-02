@@ -98,7 +98,7 @@ export class TestHelpers {
                 // Vite エラーオーバーレイ抑止
                 (window as Window & Record<string, any>).__vite_plugin_react_preamble_installed__ = true;
                 const originalCreateElement = document.createElement;
-                document.createElement = function(tagName: string, ...args: [ElementCreationOptions?]) {
+                document.createElement = function(tagName: string, ...args: [any?]) {
                     if (tagName === "vite-error-overlay") {
                         return originalCreateElement.call(this, "div", ...args);
                     }

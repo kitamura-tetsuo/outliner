@@ -10,8 +10,8 @@
  * データ削除前に必ず実行してください。
  */
 
-const fs = require("fs").promises;
-const path = require("path");
+import fs from "fs";
+import path from "path";
 
 // 色付きログ出力
 const colors = {
@@ -30,13 +30,14 @@ function log(message, color = "reset") {
 let admin, db, auth, storage;
 
 try {
-    admin = require("firebase-admin");
+    const adminPkg = await import("firebase-admin");
+    const admin = adminPkg.default || adminPkg;
 
     // サービスアカウントファイルの存在確認
     const serviceAccountPath = path.join(__dirname, "..", "server", "firebase-adminsdk.json");
 
     try {
-        const serviceAccount = require(serviceAccountPath);
+        const serviceAccount = JSON.parse(await fs.readFile(serviceAccountPath, "utf8"));
 
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
@@ -255,7 +256,7 @@ async function createBackupSummary(backupDir, firestoreData, authData, storageDa
 }
 
 // メイン処理
-async function main() {
+export async function main() {
     log("=".repeat(60), "blue");
     log("本番環境データバックアップスクリプト", "blue");
     log("=".repeat(60), "blue");
@@ -292,11 +293,14 @@ async function main() {
 }
 
 // スクリプト実行
-if (require.main === module) {
+const isMainModule = process.argv[1]
+    && new URL(process.argv[1], "file://").pathname === new URL(import.meta.url).pathname;
+
+if (isMainModule) {
     main().catch(error => {
         log(`❌ 予期しないエラー: ${error.message}`, "red");
         process.exit(1);
     });
 }
 
-module.exports = { main };
+export { main };
