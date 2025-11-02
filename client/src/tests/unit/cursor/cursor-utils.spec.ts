@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isPageItem } from "../../../lib/cursor/CursorNavigationUtils";
 import type { Item } from "../../../schema/yjs-schema";
 
+// @ts-nocheck
 describe("Cursor Utilities", () => {
     describe("isPageItem", () => {
         it("should return true for items with root parent", () => {

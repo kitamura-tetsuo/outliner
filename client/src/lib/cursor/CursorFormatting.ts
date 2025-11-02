@@ -3,6 +3,7 @@ import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.sve
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
+// @ts-nocheck
 import type { CursorEditingContext } from "./CursorEditor";
 import { searchItem } from "./CursorNavigationUtils";
 

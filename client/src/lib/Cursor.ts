@@ -1,4 +1,4 @@
-import type { Item } from "../schema/yjs-schema";
+import type { Item } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 
@@ -90,13 +90,7 @@ export class Cursor implements CursorEditingContext {
 
     private getTargetText(target: Item | undefined): string {
         const raw = target?.text;
-        if (typeof raw === "string") return raw;
-        if (raw && typeof raw.toString === "function") {
-            try {
-                return raw.toString();
-            } catch {}
-        }
-        return raw == null ? "" : String(raw);
+        return raw ?? "";
     }
 
     applyToStore() {

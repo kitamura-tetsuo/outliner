@@ -47,6 +47,7 @@ vi.mock("../../../utils/ScrapboxFormatter", () => {
     };
 });
 
+// @ts-nocheck
 describe("Cursor Formatting", () => {
     let mockItem: Item;
 

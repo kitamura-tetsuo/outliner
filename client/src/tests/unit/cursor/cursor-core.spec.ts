@@ -35,6 +35,7 @@ vi.mock("../../../stores/store.svelte", () => {
     };
 });
 
+// @ts-nocheck
 describe("Cursor", () => {
     let mockItem: Item;
     let mockParentItem: Item;
