@@ -490,8 +490,8 @@ export class CursorEditor {
         const nextItem = findNextItem(cursor.itemId);
         if (!nextItem) return;
 
-        const currentText = currentItem.text;
-        const nextText = nextItem.text;
+        const currentText = currentItem.text || "";
+        const nextText = nextItem.text || "";
         currentItem.updateText(currentText + nextText);
 
         nextItem.delete();
@@ -570,9 +570,9 @@ export class CursorEditor {
         if (firstIndex === -1 || lastIndex === -1) return;
 
         try {
-            const firstText = firstItem.text;
+            const firstText = firstItem.text || "";
             const newFirstText = firstText.substring(0, firstOffset);
-            const lastText = lastItem.text;
+            const lastText = lastItem.text || "";
             const newLastText = lastText.substring(lastOffset);
 
             const itemsToRemove: string[] = [];

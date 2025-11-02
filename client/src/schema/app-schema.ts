@@ -210,7 +210,8 @@ export class Item {
     updateText(text: string) {
         const t = this.value.get("text") as Y.Text;
         t.delete(0, t.length);
-        if (text) t.insert(0, text);
+        // Always insert text, even if empty, to ensure proper Yjs synchronization
+        t.insert(0, text || "");
         this.value.set("lastChanged", Date.now());
     }
 

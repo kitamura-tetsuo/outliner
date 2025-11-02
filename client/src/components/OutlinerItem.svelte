@@ -131,8 +131,8 @@ import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 // These are called in try-catch blocks and are meant to fail silently if not implemented
 const mirrorAttachment = (_url: string) => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
 let attachmentsMirror: string[] = []; // eslint-disable-line @typescript-eslint/no-unused-vars
-let e2eTimer: ReturnType<typeof setInterval> | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-const addNewItem = () => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
+let e2eTimer: ReturnType<typeof setInterval> | undefined;
+const addNewItem = () => {};
 
 interface Props {
     model: OutlinerItemViewModel;

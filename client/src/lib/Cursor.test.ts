@@ -56,7 +56,7 @@ const createMockItem = (id: string, text: string, children: Item[] = []): Item =
         key: mockKey,
         id,
         text,
-        items: children as unknown as import("../schema/yjs-schema").Items,
+        items: children as unknown as import("../schema/app-schema").Items,
         updateText: vi.fn((newText: string) => {
             (item as { text: string; }).text = newText;
         }),

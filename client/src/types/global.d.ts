@@ -4,6 +4,11 @@
 // DOM types
 type NodeListOf<T> = globalThis.NodeListOf<T>;
 
+// Extended Window interface for custom properties
+interface Window {
+    DEBUG_MODE?: boolean;
+}
+
 // Callback types
 type FrameRequestCallback = (time: number) => void;
 
@@ -11,8 +16,6 @@ type FrameRequestCallback = (time: number) => void;
 type Console = typeof console;
 
 // NodeJS namespace for compatibility
-// eslint-disable-next-line @typescript-eslint/no-namespace
 declare namespace NodeJS {
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    interface Timeout {}
+    interface Timeout {} // eslint-disable-line @typescript-eslint/no-empty-object-type
 }
