@@ -15,7 +15,7 @@ export function setupGlobalDebugFunctions() {
     if (typeof window !== "undefined") {
         // In Playwright tests, avoid exposing goto to prevent navigation loops.
         if (process.env.NODE_ENV !== "test") {
-            (window as any).__SVELTE_GOTO__ = async (
+            window.__SVELTE_GOTO__ = async (
                 url: string,
                 opts?: {
                     replaceState?: boolean;
@@ -30,20 +30,30 @@ export function setupGlobalDebugFunctions() {
             };
         } else {
             try {
-                delete (window as any).__SVELTE_GOTO__;
+                delete window.__SVELTE_GOTO__;
             } catch {}
         }
         // サービス / ストア / ユーザーマネージャ
-        (window as any).__FLUID_SERVICE__ = yjsHighService;
-        (window as any).__FLUID_STORE__ = yjsStore; // keep legacy name for helpers
-        (window as any).__USER_MANAGER__ = userManager;
-        (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
+        window.__FLUID_SERVICE__ = yjsHighService;
+        window.__FLUID_STORE__ = yjsStore; // keep legacy name for helpers
+        window.__USER_MANAGER__ = userManager;
+        window.__SNAPSHOT_SERVICE__ = snapshotService;
         logger.debug("Global debug functions initialized");
     }
 }
 
 declare global {
     interface Window {
+        __SVELTE_GOTO__?: (
+            url: string,
+            opts?: {
+                replaceState?: boolean;
+                noScroll?: boolean;
+                keepFocus?: boolean;
+                invalidateAll?: boolean;
+                state?: Record<string, unknown>;
+            },
+        ) => Promise<void>;
         getFluidTreeDebugData?: () => Record<string, unknown>;
         getFluidTreePathData?: (path?: string) => Record<string, unknown>;
         getYjsTreeDebugData?: () => Record<string, unknown>;
@@ -59,12 +69,12 @@ if (process.env.NODE_ENV === "test") {
     if (typeof window !== "undefined") {
         // Do not expose __SVELTE_GOTO__ in tests to force page.goto in helpers
         try {
-            delete (window as any).__SVELTE_GOTO__;
+            delete window.__SVELTE_GOTO__;
         } catch {}
-        (window as any).__FLUID_SERVICE__ = yjsHighService;
-        (window as any).__FLUID_STORE__ = yjsStore;
-        (window as any).__USER_MANAGER__ = userManager;
-        (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
+        window.__FLUID_SERVICE__ = yjsHighService;
+        window.__FLUID_STORE__ = yjsStore;
+        window.__USER_MANAGER__ = userManager;
+        window.__SNAPSHOT_SERVICE__ = snapshotService;
 
         // SharedTreeのデータ構造を取得するデバッグ関数
         window.getFluidTreeDebugData = function(): Record<string, unknown> {
@@ -73,7 +83,7 @@ if (process.env.NODE_ENV === "test") {
                     "YjsClient is not initialized. Please wait for the client to be ready.",
                 );
             }
-            return (yjsStore.yjsClient as { getAllData: () => Record<string, unknown>; }).getAllData();
+            return yjsStore.yjsClient.getAllData();
         };
 
         // 特定のパスのデータを取得するデバッグ関数
@@ -83,15 +93,13 @@ if (process.env.NODE_ENV === "test") {
                     "YjsClient is not initialized. Please wait for the client to be ready.",
                 );
             }
-            return (yjsStore.yjsClient as { getTreeAsJson: (path?: string) => Record<string, unknown>; }).getTreeAsJson(
-                path,
-            );
+            return yjsStore.yjsClient.getTreeAsJson(path);
         };
 
         // Yjs tree structure debug helpers
         window.getYjsTreeDebugData = function(): Record<string, unknown> {
             type ProjectLike = { ydoc: Y.Doc; tree: YTree; };
-            const proj = (yjsStore.yjsClient?.project as unknown) as ProjectLike | undefined;
+            const proj = yjsStore.yjsClient?.project as ProjectLike | undefined;
             if (!proj) {
                 throw new Error("FluidClient project not initialized");
             }
@@ -104,13 +112,13 @@ if (process.env.NODE_ENV === "test") {
                 return {
                     id: item.id,
                     text: item.text,
-                    items: [...children].map(child => toPlain(child as AppItem)),
+                    items: [...children].map(child => toPlain(child)),
                 };
             };
             const rootItems = new Items(project.ydoc, project.tree, "root");
             return {
                 itemCount: rootItems.length,
-                items: [...rootItems].map(item => toPlain(item as AppItem)),
+                items: [...rootItems].map(item => toPlain(item)),
             };
         };
 

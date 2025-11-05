@@ -9,6 +9,8 @@ import type { Item } from "../schema/app-schema";
 import { store } from "../stores/store.svelte";
 import { getLogger } from "./logger";
 
+type EventListener = (event: Event) => void;
+
 const logger = getLogger("LinkPreviewHandler");
 
 // プレビューポップアップのスタイル
