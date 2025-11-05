@@ -2,6 +2,7 @@ import { render } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { describe, expect, it } from "vitest";
 import PresenceAvatars from "../../../components/PresenceAvatars.svelte";
+import type { PresenceStore } from "../../../stores/PresenceStore.svelte";
 
 // Local copy to avoid importing PresenceStore module from tests
 function colorForUser(id: string): string {
@@ -19,7 +20,7 @@ describe("PRS-0001 presence indicators", () => {
     it("renders and updates user avatars", async () => {
         // Render first so component imports and initializes the store on window
         const { container } = render(PresenceAvatars);
-        const presenceStore = (globalThis as any).presenceStore;
+        const presenceStore = globalThis.presenceStore as PresenceStore;
         // reset store then add initial user
         presenceStore.users = {};
         presenceStore.setUser({ userId: "u1", userName: "User 1", color: colorForUser("u1") });
