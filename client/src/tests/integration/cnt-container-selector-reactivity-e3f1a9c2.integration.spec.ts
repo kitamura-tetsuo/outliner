@@ -10,8 +10,9 @@ import { firestoreStore } from "../../stores/firestoreStore.svelte";
 describe("CNT: ContainerSelector option count reflects accessibleContainerIds", () => {
     beforeEach(() => {
         // ContainerSelector 内の ensureUserLoggedIn が参照するオブジェクトを最小スタブ
-        globalThis.window ||= globalThis;
-        globalThis.window.__USER_MANAGER__ = {
+        const g = globalThis as unknown as { window?: Window & { __USER_MANAGER__?: unknown; }; };
+        g.window ||= globalThis as unknown as Window;
+        g.window.__USER_MANAGER__ = {
             addEventListener: vi.fn(() => vi.fn()),
             getCurrentUser: vi.fn(() => ({ id: "test-user" })),
             auth: { currentUser: { uid: "test-user" } },
@@ -36,7 +37,7 @@ describe("CNT: ContainerSelector option count reflects accessibleContainerIds", 
         expect(within(select).getAllByRole("option").length).toBe(1);
 
         // 2 件に増やす（配列の破壊的変更 -> Proxy 経由で setUserContainer + ucVersion 増分）
-        firestoreStore.userContainer!.accessibleContainerIds.push("c-2");
+        (firestoreStore.userContainer!.accessibleContainerIds as unknown as string[]).push("c-2");
         // store integrity check
         expect(firestoreStore.userContainer?.accessibleContainerIds?.length ?? 0).toBe(2);
         await waitFor(() => {
@@ -44,7 +45,7 @@ describe("CNT: ContainerSelector option count reflects accessibleContainerIds", 
         });
 
         // 1 件に戻す（pop -> setUserContainer + ucVersion 増分）
-        firestoreStore.userContainer!.accessibleContainerIds.pop();
+        (firestoreStore.userContainer!.accessibleContainerIds as unknown as string[]).pop();
         await waitFor(() => {
             expect(within(select).getAllByRole("option").length).toBe(1);
         });

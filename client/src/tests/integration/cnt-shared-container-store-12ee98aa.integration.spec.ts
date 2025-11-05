@@ -9,7 +9,7 @@ import UserContainerDisplay from "../fixtures/UserContainerDisplay.svelte";
 describe("CNT shared container store", () => {
     it("reflects user container updates", async () => {
         render(UserContainerDisplay);
-        const storeGlobal: unknown = globalThis.window?.__FIRESTORE_STORE__ ?? firestoreStore;
+        const storeGlobal: any = (globalThis as any).window?.__FIRESTORE_STORE__ ?? firestoreStore;
         storeGlobal.setUserContainer({
             userId: "u",
             accessibleContainerIds: ["a"],

@@ -14,9 +14,15 @@ class ResizeObserver {
     unobserve() {}
     disconnect() {}
 }
-globalThis.ResizeObserver = ResizeObserver;
-globalThis.requestAnimationFrame = (cb: FrameRequestCallback) => setTimeout(cb, 0);
-globalThis.YTree = YTree;
+(globalThis as unknown as {
+    ResizeObserver?: typeof ResizeObserver;
+    requestAnimationFrame?: typeof requestAnimationFrame;
+    YTree?: typeof YTree;
+}).ResizeObserver = ResizeObserver;
+(globalThis as unknown as { requestAnimationFrame?: typeof requestAnimationFrame; }).requestAnimationFrame = (
+    cb: FrameRequestCallback,
+) => setTimeout(cb, 0);
+(globalThis as unknown as { YTree?: typeof YTree; }).YTree = YTree;
 
 describe("ITM-0001: Enterで新規アイテム追加", () => {
     it("splits the item at the cursor position", () => {
