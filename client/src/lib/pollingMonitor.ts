@@ -61,10 +61,9 @@ class PollingMonitor {
      */
     start() {
         if (this.enabled) return;
-        this.enabled = true;
+        this.enabled = true; // setIntervalをインターセプト
 
-        // setIntervalをインターセプト
-        window.setInterval = (callback: TimerHandler, delay?: number, ...args: unknown[]): number => {
+        (window as any).setInterval = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -112,7 +111,9 @@ class PollingMonitor {
                 call.timerId = timerId as number;
                 return timerId as number;
             }
-        };
+        }; // setTimeoutをインターセプト
+
+        (window as any).setTimeout = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -161,10 +162,9 @@ class PollingMonitor {
                 call.timerId = timerId as number;
                 return timerId as number;
             }
-        };
+        }; // requestAnimationFrameをインターセプト
 
-        // requestAnimationFrameをインターセプト
-        window.requestAnimationFrame = (callback: FrameRequestCallback): number => {
+        (window as any).requestAnimationFrame = (callback: FrameRequestCallback): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
