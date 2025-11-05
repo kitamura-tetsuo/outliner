@@ -16,9 +16,12 @@ export interface UserContainer {
     updatedAt: Date;
 }
 
-class GeneralStore {
+export class GeneralStore {
     // 直接公開フィールド（$state が追跡可能なプロパティ）
     public userContainer: UserContainer | null = null;
+
+    // Property to identify real firestore store instances
+    public __isRealFirestoreStore?: boolean;
 
     // $state 再計算トリガ（CustomEvent 不要のためのトップレベル依存）
     public ucVersion = 0;
