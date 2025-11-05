@@ -12,9 +12,18 @@ interface Cursor {
     findPreviousItem(): Item | null;
     findNextItem(): Item | null;
     clearSelection(): void;
-    deleteMultiItemSelection(selection: any): void; // This will need to be properly typed too
+    deleteMultiItemSelection(selection: Selection): void;
     applyToStore(): void;
     // Add other required methods as needed
+}
+
+// Selection interface based on actual usage
+interface Selection {
+    userId: string;
+    startItemId: string;
+    endItemId: string;
+    startOffset: number;
+    endOffset: number;
 }
 
 export class CursorTextOperations {

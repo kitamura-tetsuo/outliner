@@ -32,6 +32,9 @@ export default ts.config(
                 NodeJS: "readonly",
                 ElementCreationOptions: "readonly",
                 NodeListOf: "readonly",
+                // TypeScript DOM types that are not recognized by no-undef
+                TimerHandler: "readonly",
+                EventListener: "readonly",
             },
         },
     },
