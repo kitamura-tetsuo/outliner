@@ -20,6 +20,8 @@ export interface PollingCall {
     executionCount: number;
     lastExecutedAt?: number;
     disabled: boolean;
+    timerId?: number;
+    frameId?: number;
 }
 
 export interface PollingStats {
@@ -62,7 +64,7 @@ class PollingMonitor {
         this.enabled = true;
 
         // setIntervalをインターセプト
-        window.setInterval = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
+        window.setInterval = (callback: TimerHandler, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -84,23 +86,33 @@ class PollingMonitor {
                 return id;
             }
 
-            // ラップされたコールバック
-            const wrappedCallback = (...callbackArgs: unknown[]) => {
-                call.executionCount++;
-                call.lastExecutedAt = Date.now();
-                return callback(...callbackArgs);
-            };
-
-            const timerId = this.originalSetInterval(wrappedCallback, delay, ...args);
-
-            // タイマーIDをマッピング
-            (call as { timerId?: number; }).timerId = timerId;
-
-            return timerId;
+            if (typeof callback === "function") {
+                const wrappedCallback = (...callbackArgs: unknown[]) => {
+                    call.executionCount++;
+                    call.lastExecutedAt = Date.now();
+                    return (callback as (...args: unknown[]) => unknown)(...callbackArgs);
+                };
+                const timerId = this.originalSetInterval(wrappedCallback as unknown as TimerHandler, delay, ...args);
+                call.timerId = timerId as number;
+                return timerId as number;
+            } else {
+                const wrappedStringCallback = () => {
+                    call.executionCount++;
+                    call.lastExecutedAt = Date.now();
+                    try {
+                        // eslint-disable-next-line no-new-func
+                        new Function(String(callback))();
+                    } catch {}
+                };
+                const timerId = this.originalSetInterval(
+                    wrappedStringCallback as unknown as TimerHandler,
+                    delay,
+                    ...args,
+                );
+                call.timerId = timerId as number;
+                return timerId as number;
+            }
         };
-
-        // setTimeoutをインターセプト
-        window.setTimeout = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -121,17 +133,34 @@ class PollingMonitor {
                 return id;
             }
 
-            const wrappedCallback = (...callbackArgs: unknown[]) => {
-                call.executionCount++;
-                call.lastExecutedAt = Date.now();
-                this.calls.delete(id); // setTimeoutは一度だけ実行
-                return callback(...callbackArgs);
-            };
-
-            const timerId = this.originalSetTimeout(wrappedCallback, delay, ...args);
-            (call as { timerId?: number; }).timerId = timerId;
-
-            return timerId;
+            if (typeof callback === "function") {
+                const wrappedCallback = (...callbackArgs: unknown[]) => {
+                    call.executionCount++;
+                    call.lastExecutedAt = Date.now();
+                    this.calls.delete(id); // setTimeoutは一度だけ実行
+                    return (callback as (...args: unknown[]) => unknown)(...callbackArgs);
+                };
+                const timerId = this.originalSetTimeout(wrappedCallback as unknown as TimerHandler, delay, ...args);
+                call.timerId = timerId as number;
+                return timerId as number;
+            } else {
+                const wrappedStringCallback = () => {
+                    call.executionCount++;
+                    call.lastExecutedAt = Date.now();
+                    this.calls.delete(id);
+                    try {
+                        // eslint-disable-next-line no-new-func
+                        new Function(String(callback))();
+                    } catch {}
+                };
+                const timerId = this.originalSetTimeout(
+                    wrappedStringCallback as unknown as TimerHandler,
+                    delay,
+                    ...args,
+                );
+                call.timerId = timerId as number;
+                return timerId as number;
+            }
         };
 
         // requestAnimationFrameをインターセプト
@@ -163,7 +192,7 @@ class PollingMonitor {
             };
 
             const frameId = this.originalRequestAnimationFrame(wrappedCallback);
-            (call as { frameId?: number; }).frameId = frameId;
+            call.frameId = frameId;
 
             return frameId;
         };
@@ -272,6 +301,11 @@ class PollingMonitor {
 export const pollingMonitor = new PollingMonitor();
 
 // グローバルに公開（デバッグ用）
+declare global {
+    interface Window {
+        __pollingMonitor?: PollingMonitor;
+    }
+}
 if (typeof window !== "undefined") {
-    (window as { __pollingMonitor?: PollingMonitor; }).__pollingMonitor = pollingMonitor;
+    window.__pollingMonitor = pollingMonitor;
 }

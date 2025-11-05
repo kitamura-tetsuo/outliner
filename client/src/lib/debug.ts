@@ -1,7 +1,10 @@
 import { goto } from "$app/navigation";
+import type * as Y from "yjs";
+import type { YTree } from "yjs-orderedtree";
 import { userManager } from "../auth/UserManager";
 import * as yjsHighService from "../lib/yjsService.svelte";
 import { Items } from "../schema/app-schema";
+import type { Item as AppItem } from "../schema/app-schema";
 import * as snapshotService from "../services/snapshotService";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { getLogger } from "./logger";
@@ -85,36 +88,47 @@ if (process.env.NODE_ENV === "test") {
 
         // Yjs tree structure debug helpers
         window.getYjsTreeDebugData = function() {
-            const fc = yjsStore.yjsClient as { project?: { ydoc: unknown; tree: unknown; items: unknown; }; };
-            if (!fc?.project) {
+            type ProjectLike = { ydoc: Y.Doc; tree: YTree; };
+            const proj = (yjsStore.yjsClient?.project as unknown) as ProjectLike | undefined;
+            if (!proj) {
                 throw new Error("FluidClient project not initialized");
             }
-            const project = fc.project;
-            const toPlain = (
-                item: { id: string; text?: { toString: () => string; }; key: string; },
-            ): { id: string; text: string; items: unknown[]; } => {
-                const children = new Items(project.ydoc, project.tree, item.key);
+            const project = proj;
+
+            type PlainNode = { id: string; text: string; items: PlainNode[]; };
+
+            const toPlain = (item: AppItem): PlainNode => {
+                const children = new Items(project.ydoc, project.tree, item.key!);
                 return {
                     id: item.id,
-                    text: item.text?.toString() ?? "",
-                    items: [...children].map(child =>
-                        toPlain({ id: child.id, text: { toString: () => child.text }, key: child.key! })
-                    ),
+                    text: item.text,
+                    items: [...children].map(child => toPlain(child as AppItem)),
                 };
             };
-            const rootItems = project.items as Items;
+            const rootItems = new Items(project.ydoc, project.tree, "root");
             return {
                 itemCount: rootItems.length,
-                items: [...rootItems].map(item =>
-                    toPlain({ id: item.id, text: { toString: () => item.text }, key: item.key! })
-                ),
+                items: [...rootItems].map(item => toPlain(item as AppItem)),
             };
         };
 
         window.getYjsTreePathData = function(path?: string) {
             const data = window.getYjsTreeDebugData?.();
             if (!path) return data;
-            return path.split(".").reduce((prev: unknown, curr: string) => prev?.[curr as keyof typeof prev], data);
+            const getByPath = (value: unknown, p: string): unknown => {
+                return p.split(".").reduce<unknown>((prev, curr) => {
+                    if (prev === undefined || prev === null) return prev;
+                    if (Array.isArray(prev)) {
+                        const idx = Number(curr);
+                        return Number.isFinite(idx) ? prev[idx] : undefined;
+                    }
+                    if (typeof prev === "object") {
+                        return (prev as Record<string, unknown>)[curr];
+                    }
+                    return undefined;
+                }, value);
+            };
+            return getByPath(data, path);
         };
 
         logger.debug("Global debug functions initialized");

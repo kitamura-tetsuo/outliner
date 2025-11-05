@@ -26,6 +26,10 @@ const PREVIEW_STYLES: Partial<CSSStyleDeclaration> = {
     fontSize: "14px",
 };
 
+function camelToKebab(s: string): string {
+    return s.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+}
+
 // 現在表示中のプレビュー要素
 let currentPreview: HTMLElement | null = null;
 // プレビュー表示タイマー
@@ -87,9 +91,7 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
 
     // スタイルを適用
     Object.entries(PREVIEW_STYLES).forEach(([key, value]) => {
-        if (value !== undefined) {
-            previewElement.style[key as keyof CSSStyleDeclaration] = value;
-        }
+        previewElement.style.setProperty(camelToKebab(key), value);
     });
 
     // プロジェクト内リンクの場合
@@ -126,18 +128,19 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
         itemsDiv.style.maxHeight = "220px";
         itemsDiv.style.overflowY = "auto";
 
-        if (foundPage.items && foundPage.items.length > 0) {
+        const pageItems = foundPage.items;
+        if (pageItems && pageItems.length > 0) {
             const ul = document.createElement("ul");
             ul.style.margin = "0";
             ul.style.padding = "0 0 0 20px";
 
             // 最大5つまでのアイテムを表示
-            const maxItems = Math.min(5, foundPage.items.length);
+            const maxItems = Math.min(5, pageItems.length);
             for (let i = 0; i < maxItems; i++) {
-                const item = foundPage.items.at(i);
+                const item = pageItems.at(i);
                 if (item) {
                     const li = document.createElement("li");
-                    li.textContent = item.text || "";
+                    li.textContent = item.text ?? "";
                     li.style.marginBottom = "4px";
                     li.style.color = "#555";
                     li.style.lineHeight = "1.4";
@@ -146,7 +149,7 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
             }
 
             // 5つ以上ある場合は「...」を表示
-            if (foundPage.items.length > 5) {
+            if (pageItems.length > 5) {
                 const moreLi = document.createElement("li");
                 moreLi.textContent = "...";
                 moreLi.style.color = "#888";
