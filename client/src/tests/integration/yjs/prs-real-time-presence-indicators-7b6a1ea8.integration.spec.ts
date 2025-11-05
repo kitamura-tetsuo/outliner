@@ -20,7 +20,7 @@ describe("PRS-0001 presence indicators", () => {
     it("renders and updates user avatars", async () => {
         // Render first so component imports and initializes the store on window
         const { container } = render(PresenceAvatars);
-        const presenceStore = (globalThis as any).presenceStore as PresenceStore;
+        const presenceStore = (globalThis as unknown).presenceStore as PresenceStore;
         // reset store then add initial user
         presenceStore.users = {};
         presenceStore.setUser({ userId: "u1", userName: "User 1", color: colorForUser("u1") });

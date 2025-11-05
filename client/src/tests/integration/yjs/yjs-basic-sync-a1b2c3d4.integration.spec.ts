@@ -8,7 +8,7 @@ import type { YjsStore } from "../../../stores/yjsStore.svelte";
 
 describe("yjs basic sync", () => {
     it("exposes connection state", () => {
-        const store = (globalThis as any).__YJS_STORE__ as YjsStore;
+        const store = (globalThis as unknown).__YJS_STORE__ as YjsStore;
         expect(store).toBeDefined();
         expect(typeof store.getIsConnected()).toBe("boolean");
     });

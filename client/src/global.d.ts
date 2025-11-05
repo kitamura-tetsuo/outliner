@@ -40,14 +40,14 @@ interface Window {
     mockContainerConnected?: boolean;
     _alertMessage?: string;
     __FLUID_CLIENT__?: object;
-    __YJS_STORE__?: any;
-    presenceStore?: any;
+    __YJS_STORE__?: unknown;
+    presenceStore?: unknown;
     getFluidTreeDebugData?: () => Record<string, unknown>;
     getYjsTreeDebugData?: () => Record<string, unknown>;
     getYjsTreePathData?: (path?: string) => Record<string, unknown>;
 }
 
 declare global {
-    var __YJS_STORE__: any;
-    var presenceStore: any;
+    var __YJS_STORE__: unknown;
+    var presenceStore: unknown;
 }
