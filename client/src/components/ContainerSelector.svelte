@@ -5,6 +5,15 @@ import { getLogger } from "../lib/logger";
 import { containersFromUserContainer } from "../stores/containerStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { firestoreStore } from "../stores/firestoreStore.svelte";
+
+declare global {
+    interface Window {
+        __USER_MANAGER__?: {
+            addEventListener: (callback: (authResult: unknown) => void) => () => void;
+        };
+    }
+}
+
 const logger = getLogger();
 
 interface Props {
@@ -39,7 +48,7 @@ $effect(() => {
 
 
 // 現在ロード中のコンテナIDを表示
-let currentContainerId = yjsStore.currentContainerId as any;
+let currentContainerId = yjsStore.currentContainerId;
 
 
 
@@ -84,9 +93,9 @@ onMount(() => {
     }
 
     // 認証状態の変化を監視
-    const userManagerInstance = (window as any).__USER_MANAGER__;
+    const userManagerInstance = window.__USER_MANAGER__;
     if (userManagerInstance) {
-        const unsubscribe = userManagerInstance.addEventListener((authResult: any) => {
+        const unsubscribe = userManagerInstance.addEventListener((authResult: unknown) => {
             if (authResult) {
                 logger.info("ContainerSelector - User authenticated, containers should be available");
             } else {
@@ -115,7 +124,7 @@ onMount(() => {
 // ユーザーのログイン状態を確認し、必要に応じてログインを試行する関数
 async function ensureUserLoggedIn() {
     // UserManagerのインスタンスを取得
-    const userManagerInstance = (window as any).__USER_MANAGER__;
+    const userManagerInstance = window.__USER_MANAGER__;
     if (!userManagerInstance) {
         logger.warn("ContainerSelector - UserManager not available");
         return;
@@ -184,7 +193,7 @@ async function reloadCurrentContainer() {
 
         // ファクトリーメソッドを使用して現在のコンテナを再ロード
         const client = await createYjsClient(currentContainerId);
-        yjsStore.yjsClient = client as any;
+        yjsStore.yjsClient = client;
     }
     catch (err) {
         logger.error("コンテナ再ロードエラー:", err);

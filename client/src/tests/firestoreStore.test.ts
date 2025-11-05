@@ -56,7 +56,7 @@ describe("Firestore Store", () => {
     });
 
     it("should return a list of user containers", async () => {
-        const containers = await (firestoreStore as any).getUserContainers();
+        const containers = await firestoreStore.getUserContainers();
 
         expect(containers).toHaveLength(3);
         expect(containers[0].id).toBe("test-container-1");

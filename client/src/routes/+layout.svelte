@@ -21,7 +21,7 @@ import AliasPicker from "../components/AliasPicker.svelte";
 // Defer services import; it depends on UserManager
 import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
-// Load test data helper globally in test environments so E2E can seed data on any route
+// Load test data helper globally in test environments so E2E can seed data on unknown route
 if (browser && (
     import.meta.env.MODE === "test" ||
     import.meta.env.VITE_IS_TEST === "true" ||
@@ -42,8 +42,8 @@ let isAuthenticated = $state(false);
 
 // グローバルへのフォールバック公開（早期に window.generalStore を満たす）
 if (browser) {
-    (window as any).generalStore = (window as any).generalStore || appStore;
-    (window as any).appStore = (window as any).appStore || appStore;
+    (window).generalStore = (window).generalStore || appStore;
+    (window).appStore = (window).appStore || appStore;
 }
 // URL からプロジェクト/ページを初期化して window.generalStore.project と currentPage を満たす
 if (browser) {
@@ -52,17 +52,17 @@ if (browser) {
         const projectTitle = decodeURIComponent(parts[0] || "Untitled Project");
         const pageTitle = decodeURIComponent(parts[1] || "");
 
-        if (!(appStore as any).project) {
-            (appStore as any).project = (Project as any).createInstance(projectTitle);
+        if (!(appStore).project) {
+            (appStore).project = (Project).createInstance(projectTitle);
             console.log("INIT: Provisional Project set in +layout.svelte", { projectTitle, pageTitle });
         }
 
         // currentPage が未設定で、URL に pageTitle がある場合は準備
-        if (pageTitle && !(appStore as any).currentPage && (appStore as any).project) {
+        if (pageTitle && !(appStore).currentPage && (appStore).project) {
             try {
-                const itemsAny: any = (appStore as any).project.items;
+                const itemsAny: unknown = (appStore).project.items;
                 // 既存ページにタイトル一致があるかチェック
-                let found: any = null;
+                let found: unknown = null;
                 const len = itemsAny?.length ?? 0;
                 for (let i = 0; i < len; i++) {
                     const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
@@ -73,7 +73,7 @@ if (browser) {
                     found = itemsAny?.addNode?.("tester");
                     found?.updateText?.(pageTitle);
                 }
-                if (found) (appStore as any).currentPage = found;
+                if (found) (appStore).currentPage = found;
             } catch {}
         }
     } catch {}
@@ -83,10 +83,10 @@ if (browser) {
 function ensureCurrentPageByRoute(pj: string, pg: string) {
     try {
         if (!browser || !pg) return;
-        const gs: any = appStore;
+        const gs: unknown = appStore;
         if (!gs?.project) return;
-        const items: any = gs.project.items;
-        let found: any = null;
+        const items: unknown = gs.project.items;
+        let found: unknown = null;
         const len = items?.length ?? 0;
         for (let i = 0; i < len; i++) {
             const p = items.at ? items.at(i) : items[i];
@@ -217,12 +217,12 @@ onMount(async () => {
     if (browser) {
         // E2E: Hydration detection flag for stable waits
         try {
-            (window as any).__E2E_LAYOUT_MOUNTED__ = true;
+            (window).__E2E_LAYOUT_MOUNTED__ = true;
             document.dispatchEvent(new Event("E2E_LAYOUT_MOUNTED"));
         } catch {}
         // Dynamically import browser-only modules
-        let userManager: any;
-        let yjsService: any;
+        let userManager: unknown;
+        let yjsService: unknown;
         try {
             ({ userManager } = await import("../auth/UserManager"));
             yjsService = await import("../lib/yjsService.svelte");
@@ -253,7 +253,7 @@ onMount(async () => {
                 .then(reg => {
                     if (import.meta.env.DEV) logger.info("Service worker registered successfully");
                     if ("sync" in reg) {
-                        (reg as any).sync.register("sync-ops").catch((err: any) => {
+                        (reg).sync.register("sync-ops").catch((err: unknown) => {
                             logger.warn("Failed to register background sync:", err);
                         });
                     }
@@ -273,7 +273,7 @@ onMount(async () => {
         }
         else {
             // 認証状態の変更を監視
-            userManager?.addEventListener((authResult: any) => {
+            userManager?.addEventListener((authResult: unknown) => {
                 isAuthenticated = authResult !== null;
                 if (isAuthenticated && browser) {
                     setupGlobalDebugFunctions(yjsService?.yjsHighService);
@@ -336,24 +336,24 @@ onMount(async () => {
                 const origDispatchEventTarget = EventTarget.prototype.dispatchEvent;
                 const origDispatchElement = Element.prototype.dispatchEvent;
                 // Avoid double-patching
-                if (!(window as any).__E2E_DROP_PATCHED__) {
-                    (window as any).__E2E_DROP_PATCHED__ = true;
+                if (!(window).__E2E_DROP_PATCHED__) {
+                    (window).__E2E_DROP_PATCHED__ = true;
 
-                    const wrap = function(this: any, orig: any, event: Event): boolean {
+                    const wrap = function(this: unknown, orig: unknown, event: Event): boolean {
                         try { console.log('[E2E] dispatchEvent:', event?.type, 'instanceof DragEvent=', event instanceof DragEvent); } catch {}
-                        try { if (event && event.type === 'drop') { (window as any).__E2E_ATTEMPTED_DROP__ = true; } } catch {}
+                        try { if (event && event.type === 'drop') { (window).__E2E_ATTEMPTED_DROP__ = true; } } catch {}
                         try {
                             if (event && event.type === 'drop' && !(event instanceof DragEvent)) {
                                 const de = new DragEvent('drop', {
                                     bubbles: true,
                                     cancelable: true,
                                 } as DragEventInit);
-                                try { Object.defineProperty(de, 'dataTransfer', { value: (event as any).dataTransfer, configurable: true }); } catch {}
-                                try { (window as any).__E2E_DROP_HANDLERS__?.forEach((fn: any) => { try { fn(this, de); } catch {} }); } catch {}
+                                try { Object.defineProperty(de, 'dataTransfer', { value: (event).dataTransfer, configurable: true }); } catch {}
+                                try { (window).__E2E_DROP_HANDLERS__?.forEach((fn: unknown) => { try { fn(this, de); } catch {} }); } catch {}
                                 return orig.call(this, de);
                             }
                         } catch {}
-                        try { if (event && event.type === 'drop') { (window as any).__E2E_DROP_HANDLERS__?.forEach((fn: any) => { try { fn(this, event); } catch {} }); } } catch {}
+                        try { if (event && event.type === 'drop') { (window).__E2E_DROP_HANDLERS__?.forEach((fn: unknown) => { try { fn(this, event); } catch {} }); } } catch {}
                         return orig.call(this, event);
                     };
 
@@ -364,23 +364,23 @@ onMount(async () => {
 
                     console.log('[E2E] Patched EventTarget.prototype.dispatchEvent and Element.prototype.dispatchEvent for drop events');
                     try {
-                        window.addEventListener('drop', (e: any) => {
+                        window.addEventListener('drop', (e: unknown) => {
                             try { console.log('[E2E] window drop listener:', { type: e?.type, isDragEvent: e instanceof DragEvent, hasDT: !!e?.dataTransfer, dtTypes: e?.dataTransfer?.types }); } catch {}
                         }, true);
                     } catch {}
 
                     // Record files added into DataTransfer in E2E to recover when event.dataTransfer is unavailable in Playwright isolated world
                     try {
-                        const anyWin: any = window as any;
-                        anyWin.__E2E_LAST_FILES__ = [] as File[];
-                        const itemsProto = (DataTransferItemList as any)?.prototype;
-                        if (itemsProto && !anyWin.__E2E_DT_ADD_PATCHED__) {
-                            anyWin.__E2E_DT_ADD_PATCHED__ = true;
+                        const unknownWin: unknown = window;
+                        unknownWin.__E2E_LAST_FILES__ = [] as File[];
+                        const itemsProto = (DataTransferItemList)?.prototype;
+                        if (itemsProto && !unknownWin.__E2E_DT_ADD_PATCHED__) {
+                            unknownWin.__E2E_DT_ADD_PATCHED__ = true;
                             const origAdd = itemsProto.add;
-                            itemsProto.add = function(data: any, type?: string) {
+                            itemsProto.add = function(data: unknown, type?: string) {
                                 try {
                                     if (data instanceof File) {
-                                        anyWin.__E2E_LAST_FILES__.push(data);
+                                        unknownWin.__E2E_LAST_FILES__.push(data);
                                         try { console.log('[E2E] DataTransfer.items.add(File): recorded', { name: data.name, type: data.type, size: data.size }); } catch {}
                                     }
                                 } catch {}
@@ -390,10 +390,10 @@ onMount(async () => {
 
                         // Getterフック: DataTransfer.prototype.items の getter をラップして add をプロキシ化
                         try {
-                            const desc = Object.getOwnPropertyDescriptor(DataTransfer.prototype as any, 'items');
-                            if (desc && typeof desc.get === 'function' && !anyWin.__E2E_DT_ITEMS_GETTER_PATCHED__) {
-                                anyWin.__E2E_DT_ITEMS_GETTER_PATCHED__ = true;
-                                Object.defineProperty(DataTransfer.prototype as any, 'items', {
+                            const desc = Object.getOwnPropertyDescriptor(DataTransfer.prototype, 'items');
+                            if (desc && typeof desc.get === 'function' && !unknownWin.__E2E_DT_ITEMS_GETTER_PATCHED__) {
+                                unknownWin.__E2E_DT_ITEMS_GETTER_PATCHED__ = true;
+                                Object.defineProperty(DataTransfer.prototype, 'items', {
                                     configurable: true,
                                     enumerable: true,
                                     get: function() {
@@ -401,11 +401,11 @@ onMount(async () => {
                                         try {
                                             if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
                                                 const orig = list.add;
-                                                list.add = function(data: any, _type?: string) {
-                                                    try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
+                                                list.add = function(data: unknown, _type?: string) {
+                                                    try { if (data instanceof File) unknownWin.__E2E_LAST_FILES__.push(data); } catch {}
                                                     return orig.apply(this, [data, _type]);
-                                                } as any;
-                                                (list as any).__e2eAddPatched = true;
+                                                };
+                                                (list).__e2eAddPatched = true;
                                                 try { console.log('[E2E] Patched DT.items.add via getter'); } catch {}
                                             }
                                         } catch {}
@@ -416,48 +416,48 @@ onMount(async () => {
                         } catch {}
 
                         // Fallback: wrap File constructor to record created files from evaluateHandle context as well
-                        if (!anyWin.__E2E_FILE_CTOR_PATCHED__) {
-                            anyWin.__E2E_FILE_CTOR_PATCHED__ = true;
-                            const OrigFile = (window as any).File;
+                        if (!unknownWin.__E2E_FILE_CTOR_PATCHED__) {
+                            unknownWin.__E2E_FILE_CTOR_PATCHED__ = true;
+                            const OrigFile = (window).File;
                             if (OrigFile) {
                                 const Wrapped = new Proxy(OrigFile, {
-                                    construct(target: any, args: any[]) {
+                                    construct(target: unknown, args: unknown[]) {
                                         const f = new target(...args);
-                                        try { anyWin.__E2E_LAST_FILES__.push(f); } catch {}
+                                        try { unknownWin.__E2E_LAST_FILES__.push(f); } catch {}
                                         try { console.log('[E2E] File constructed:', { name: f.name, type: f.type, size: f.size }); } catch {}
                                         return f;
                                     }
                                 });
                                 // @ts-expect-error - Need to replace window.File for E2E attachment testing
-                                (window as any).File = Wrapped;
+                                (window).File = Wrapped;
                             }
                         }
 
                         // Stronger fallback: wrap DataTransfer constructor to ensure items.add is patched per instance
-                        if (!anyWin.__E2E_DT_CTOR_PATCHED__) {
-                            anyWin.__E2E_DT_CTOR_PATCHED__ = true;
-                            const OrigDT = (window as any).DataTransfer;
+                        if (!unknownWin.__E2E_DT_CTOR_PATCHED__) {
+                            unknownWin.__E2E_DT_CTOR_PATCHED__ = true;
+                            const OrigDT = (window).DataTransfer;
                             if (OrigDT) {
                                 const WrappedDT = new Proxy(OrigDT, {
-                                    construct(target: any, args: any[]) {
+                                    construct(target: unknown, args: unknown[]) {
                                         const dt = new target(...args);
                                         try {
-                                            const list: any = (dt as any).items;
+                                            const list: unknown = (dt).items;
                                             if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
                                                 const origAdd = list.add;
-                                                list.add = function(data: any, _type?: string) {
-                                                    try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
+                                                list.add = function(data: unknown, _type?: string) {
+                                                    try { if (data instanceof File) unknownWin.__E2E_LAST_FILES__.push(data); } catch {}
                                                     try { console.log('[E2E] DT(instance).items.add called'); } catch {}
                                                     return origAdd.apply(this, [data, _type]);
-                                                } as any;
-                                                (list as any).__e2eAddPatched = true;
+                                                };
+                                                (list).__e2eAddPatched = true;
                                             }
                                         } catch {}
                                         return dt;
                                     }
                                 });
                                 // @ts-expect-error - Need to replace window.DataTransfer for E2E drag/drop testing
-                                (window as any).DataTransfer = WrappedDT;
+                                (window).DataTransfer = WrappedDT;
                             }
                         }
                     } catch {}
@@ -467,14 +467,14 @@ onMount(async () => {
 
         // DEBUG: log drop/dragover events globally to diagnose Playwright dispatchEvent
         try {
-            window.addEventListener('drop', (ev: any) => {
-                try { console.log('[GlobalDrop] drop received target=', (ev?.target as any)?.className || (ev?.target as any)?.tagName); } catch {}
+            window.addEventListener('drop', (ev: unknown) => {
+                try { console.log('[GlobalDrop] drop received target=', (ev?.target)?.className || (ev?.target)?.tagName); } catch {}
             }, { capture: true });
-            document.addEventListener('drop', (ev: any) => {
-                try { console.log('[DocDrop] drop received target=', (ev?.target as any)?.className || (ev?.target as any)?.tagName); } catch {}
+            document.addEventListener('drop', (ev: unknown) => {
+                try { console.log('[DocDrop] drop received target=', (ev?.target)?.className || (ev?.target)?.tagName); } catch {}
             }, { capture: true });
-            window.addEventListener('dragover', (ev: any) => {
-                try { console.log('[GlobalDrop] dragover received target=', (ev?.target as any)?.className || (ev?.target as any)?.tagName); } catch {}
+            window.addEventListener('dragover', (ev: unknown) => {
+                try { console.log('[GlobalDrop] dragover received target=', (ev?.target)?.className || (ev?.target)?.tagName); } catch {}
             }, { capture: true });
         } catch {}
 

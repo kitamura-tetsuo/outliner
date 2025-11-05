@@ -11,14 +11,14 @@ beforeEach(() => aliasPickerStore.reset());
 describe("ALS alias self reference", () => {
     it("prevents selecting self", async () => {
         const items = [{ id: "alias", text: "alias", items: [] }];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        generalStore.currentPage = { id: "root", text: "root", items };
         render(AliasPicker);
 
         aliasPickerStore.show("alias");
         const option = screen.queryByRole("button", { name: "root/alias" });
         expect(option).toBeNull();
         aliasPickerStore.hide();
-        expect((items[0] as any).aliasTargetId).toBeUndefined();
+        expect(items[0].aliasTargetId).toBeUndefined();
         expect(aliasPickerStore.isVisible).toBe(false);
     });
 });

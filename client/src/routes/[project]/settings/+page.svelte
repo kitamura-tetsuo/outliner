@@ -19,15 +19,15 @@ import {
     createSnapshotClient,
 } from "../../../lib/projectSnapshot";
 
-let project: any = undefined;
+let project: unknown = undefined;
 let exportText = $state("");
 let importText = $state("");
 let importFormat = $state("opml");
 
-function projectLooksLikePlaceholder(candidate: any): boolean {
+function projectLooksLikePlaceholder(candidate: unknown): boolean {
     if (!candidate) return true;
     try {
-        const items: any = candidate.items as any;
+        const items: unknown = candidate.items;
         const length = items?.length ?? 0;
         if (length === 0) return true;
         if (length === 1) {
@@ -54,7 +54,7 @@ function hydrateFromSnapshotIfNeeded() {
         } catch {}
         if (!yjsStore.yjsClient) {
             try {
-                yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as any;
+                yjsStore.yjsClient = createSnapshotClient(projectName, hydrated);
             } catch {}
         }
         project = hydrated;
@@ -159,7 +159,7 @@ async function doImport() {
     if (yjsProject) {
         console.log("doImport: Using Yjs-connected project, updating stores");
         yjsStore.yjsClient = yjsStore.yjsClient; // This triggers reactivity in yjsStore
-        store.project = yjsProject as any;
+        store.project = yjsProject;
     } else {
         // If no Yjs project was available, update as before
         console.log("doImport: No Yjs project, using fallback");
@@ -169,23 +169,23 @@ async function doImport() {
     // Ensure snapshot storage reflects the imported tree for subsequent navigations
     try {
         saveProjectSnapshot(currentProject);
-        const toPlain = (items: any): any[] => {
+        const toPlain = (items: unknown): unknown[] => {
             if (!items) return [];
             const len = items.length ?? 0;
-            const result: any[] = [];
+            const result: unknown[] = [];
             for (let idx = 0; idx < len; idx++) {
                 const node = items.at ? items.at(idx) : items[idx];
                 if (!node) continue;
                 result.push({
                     text: node?.text?.toString?.() ?? String(node?.text ?? ""),
-                    children: toPlain(node?.items as any),
+                    children: toPlain(node?.items),
                 });
             }
             return result;
         };
-        const plainTree = toPlain(currentProject.items as any);
+        const plainTree = toPlain(currentProject.items);
         try {
-            const win: any = window as any;
+            const win: unknown = window;
             if (!win.__PENDING_IMPORTS__) win.__PENDING_IMPORTS__ = {};
             win.__PENDING_IMPORTS__[projectName ?? "__untitled__"] = plainTree;
             console.log("doImport: Stored pending import in-memory", {
@@ -223,7 +223,7 @@ async function doImport() {
     if (currentProject.items && currentProject.items.length > 0) {
         const firstPage = currentProject.items[0];
         try {
-            store.currentPage = firstPage as any;
+            store.currentPage = firstPage;
         } catch {}
         const pageName = firstPage.text;
         console.log(`doImport: Navigating to /${projectName}/${pageName}`);

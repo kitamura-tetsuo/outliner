@@ -11,11 +11,12 @@ import {
     signOut,
     type User as FirebaseUser,
 } from "firebase/auth";
+import pino from "pino";
 import { getEnv } from "../lib/env";
 import { getFirebaseApp } from "../lib/firebase-app";
 import { getLogger } from "../lib/logger"; // log関数をインポート
 
-const logger = getLogger();
+const logger = getLogger() as pino.Logger;
 
 // ユーザー情報の型定義
 export interface IUser {

@@ -44,14 +44,14 @@ function getAccessibleName(el: HTMLElement): string {
 }
 
 function styles(el: Element | null) {
-    if (!el) return null as any;
+    if (!el) return null;
     const cs = getComputedStyle(el as Element);
     return {
         display: cs.display,
         visibility: cs.visibility,
         opacity: cs.opacity,
         transform: cs.transform,
-        clipPath: (cs as any).clipPath ?? (cs as any)["clip-path"],
+        clipPath: (cs).clipPath ?? (cs)["clip-path"],
         pointerEvents: cs.pointerEvents,
     };
 }
@@ -108,12 +108,12 @@ onMount(async () => {
     try {
         if (!effectiveProject && typeof window !== "undefined") {
             // First, use direct global current project if available
-            const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
+            const cur = (window).__CURRENT_PROJECT__ as Project | undefined;
             if (cur) {
                 project = cur;
             } else {
                 // Fallback: pick latest project from client registry
-                const reg = (window as any).__FLUID_CLIENT_REGISTRY__;
+                const reg = (window).__FLUID_CLIENT_REGISTRY__;
                 if (reg && typeof reg.getAllKeys === 'function') {
                     const keys = reg.getAllKeys();
                     if (keys.length > 0) {
@@ -128,7 +128,7 @@ onMount(async () => {
                 if (!project) {
                     const pathParts = window.location.pathname.split("/").filter(Boolean);
                     const projectTitle = pathParts[0] ? decodeURIComponent(pathParts[0]) : "";
-                    const service = (window as any).__FLUID_SERVICE__;
+                    const service = (window).__FLUID_SERVICE__;
                     if (service && projectTitle) {
                         const client = await (service.getClientByProjectTitle?.(projectTitle) ?? service.getFluidClientByProjectTitle?.(projectTitle));
                         if (client) {

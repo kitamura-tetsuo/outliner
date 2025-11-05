@@ -2,21 +2,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // モジュールをモック
 // Provide a local mock instead of importing .svelte.ts in tests
-const mockCursor: any = {
+const mockCursor: unknown = {
     itemId: "test-item",
     offset: 5,
     findTarget: vi.fn(() => ({ text: "hello/", updateText: vi.fn() })),
     applyToStore: vi.fn(),
 };
-const mockEditorOverlayStore = { getCursorInstances: vi.fn(() => [mockCursor]) } as any;
+const mockEditorOverlayStore = { getCursorInstances: vi.fn(() => [mockCursor]) };
 vi.mock("./EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockEditorOverlayStore }));
 
 // Access global store if available; otherwise provide a local minimal implementation
 const commandPaletteStore = (() => {
-    const g = globalThis as any;
+    const g = globalThis;
     if (g.commandPaletteStore) return g.commandPaletteStore;
     // Minimal replica sufficient for this test
-    const state: any = {
+    const state: unknown = {
         isVisible: false,
         position: { top: 0, left: 0 },
         query: "",
@@ -28,9 +28,9 @@ const commandPaletteStore = (() => {
         ],
         get filtered() {
             const q = state.query.toLowerCase();
-            return state.commands.filter((c: any) => c.label.toLowerCase().includes(q));
+            return state.commands.filter((c: unknown) => c.label.toLowerCase().includes(q));
         },
-        show(pos: any) {
+        show(pos: unknown) {
             state.position = pos;
             state.query = "";
             state.selectedIndex = 0;

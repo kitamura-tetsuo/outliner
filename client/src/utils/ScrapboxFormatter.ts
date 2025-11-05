@@ -241,7 +241,7 @@ export class ScrapboxFormatter {
                 content: match.content,
                 start: match.start,
                 end: match.end,
-                url: (match as any).url,
+                url: match.url,
                 isProjectLink: match.isProjectLink,
             });
 
@@ -559,7 +559,7 @@ export class ScrapboxFormatter {
                     try {
                         existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
                     } catch {
-                        // In case of any error in checkPageExists, default to page-not-exists
+                        // In case of unknown error in checkPageExists, default to page-not-exists
                         existsClass = "page-not-exists";
                     }
 
@@ -871,7 +871,7 @@ export class ScrapboxFormatter {
 
         try {
             // グローバルストアからページ情報を取得
-            const store = (window as any).appStore;
+            const store = window.appStore;
             if (!store || !store.pages) return false;
 
             // 現在のプロジェクトを取得
@@ -903,5 +903,5 @@ export class ScrapboxFormatter {
 
 // グローバルに参照できるようにする（テスト環境でアクセスするため）
 if (typeof window !== "undefined") {
-    (window as any).ScrapboxFormatter = ScrapboxFormatter;
+    window.ScrapboxFormatter = ScrapboxFormatter;
 }

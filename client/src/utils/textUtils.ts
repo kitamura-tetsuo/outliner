@@ -5,12 +5,12 @@ export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content
     const x = event.clientX;
     const y = event.clientY;
     // Caret API を試す
-    if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
+    if (textEl && (document.caretRangeFromPoint || document.caretPositionFromPoint)) {
         let range: Range | null = null;
         if (document.caretRangeFromPoint) {
             range = document.caretRangeFromPoint(x, y);
         } else {
-            const posInfo = (document as any).caretPositionFromPoint(x, y);
+            const posInfo = document.caretPositionFromPoint(x, y);
             if (posInfo) {
                 range = document.createRange();
                 range.setStart(posInfo.offsetNode, posInfo.offset);

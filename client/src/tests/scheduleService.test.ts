@@ -19,7 +19,7 @@ beforeEach(() => {
 it("calls createSchedule API", async () => {
     // fetchのモックレスポンスを設定
     const mockResponse = { scheduleId: "test-schedule-id" };
-    (global.fetch as any).mockResolvedValueOnce({
+    global.fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
     });
@@ -51,7 +51,7 @@ it("calls listSchedules API", async () => {
         { id: "schedule1", strategy: "one_shot", params: {}, nextRunAt: Date.now() + 60000 },
         { id: "schedule2", strategy: "recurring", params: {}, nextRunAt: Date.now() + 120000 },
     ];
-    (global.fetch as any).mockResolvedValueOnce({
+    global.fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ schedules: mockSchedules }),
     });
@@ -81,7 +81,7 @@ it("calls listSchedules API", async () => {
 it("calls cancelSchedule API", async () => {
     // fetchのモックレスポンスを設定
     const mockResponse = { success: true };
-    (global.fetch as any).mockResolvedValueOnce({
+    global.fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
     });
@@ -108,7 +108,7 @@ it("calls cancelSchedule API", async () => {
 
 it("calls updateSchedule API", async () => {
     const mockResponse = { success: true };
-    (global.fetch as any).mockResolvedValueOnce({
+    global.fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
     });

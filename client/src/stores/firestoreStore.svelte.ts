@@ -26,7 +26,7 @@ class GeneralStore {
     // 明示 API で wrap + 新参照を適用
     setUserContainer(value: UserContainer | null) {
         // $state が追跡する公開プロパティに直接代入
-        const self = firestoreStore as any;
+        const self = firestoreStore;
         const prevVersion = self.ucVersion ?? 0;
         const prevLength = self.userContainer?.accessibleContainerIds?.length ?? 0;
         const prevDefault = self.userContainer?.defaultContainerId;
@@ -80,15 +80,15 @@ class GeneralStore {
                     typeof v === "function"
                     && ["push", "pop", "splice", "shift", "unshift", "sort", "reverse"].includes(String(prop))
                 ) {
-                    return (...args: any[]) => {
-                        const res = (v as any).apply(target, args);
+                    return (...args: unknown[]) => {
+                        const res = v.apply(target, args);
                         // 同一参照でも reactivity を起こすため再代入
                         try {
                             // 新しい配列を作って差し替える
                             const nextArr = Array.from(target);
                             const next: UserContainer = { ...value, accessibleContainerIds: nextArr };
                             // Proxy 経由で確実に reactivity を発火させるため、公開プロキシに代入
-                            (firestoreStore as any).setUserContainer(next); // API 経由で ucVersion++ を確実に反映
+                            firestoreStore.setUserContainer(next); // API 経由で ucVersion++ を確実に反映
                         } catch (e) {
                             logger.warn("Failed to trigger userContainer update after array mutation", e);
                         }
@@ -103,7 +103,7 @@ class GeneralStore {
     }
 
     reset() {
-        const self = firestoreStore as any;
+        const self = firestoreStore;
         self.userContainer = null;
         self.ucVersion = 0;
     }
@@ -115,13 +115,13 @@ class GeneralStore {
 // 2重ロード対策: 既存のグローバルがあればそれを使う
 const __tmpStore = $state(new GeneralStore());
 const existingCandidate = typeof window !== "undefined"
-    ? (window as any).__FIRESTORE_STORE__
-    : (globalThis as any).__FIRESTORE_STORE__;
+    ? window.__FIRESTORE_STORE__
+    : globalThis.__FIRESTORE_STORE__;
 const shouldReuseExisting = typeof existingCandidate === "object"
     && existingCandidate !== null
     && existingCandidate.__isRealFirestoreStore === true;
 export const firestoreStore = (shouldReuseExisting ? existingCandidate : __tmpStore) as typeof __tmpStore;
-(firestoreStore as any).__isRealFirestoreStore = true;
+firestoreStore.__isRealFirestoreStore = true;
 
 // テスト環境ではグローバルに公開してE2Eから制御できるようにする
 if (typeof window !== "undefined") {
@@ -130,7 +130,7 @@ if (typeof window !== "undefined") {
         || import.meta.env.VITE_IS_TEST === "true"
         || window.location.hostname === "localhost";
     if (isTestEnv) {
-        (window as any).__FIRESTORE_STORE__ = firestoreStore;
+        window.__FIRESTORE_STORE__ = firestoreStore;
     }
 }
 

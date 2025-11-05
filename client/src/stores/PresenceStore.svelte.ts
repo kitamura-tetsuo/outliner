@@ -41,5 +41,5 @@ export class PresenceStore {
 
 export const presenceStore = $state(new PresenceStore());
 if (typeof window !== "undefined") {
-    (window as any).presenceStore = presenceStore;
+    window.presenceStore = presenceStore;
 }

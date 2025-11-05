@@ -5,6 +5,15 @@ import { queryStore } from "../services/sqlService";
 import { initDb, runQuery } from "../services/sqlService";
 import type { Item } from "../schema/app-schema";
 
+interface ColumnMeta {
+    name: string;
+}
+
+interface QueryData {
+    rows: Record<string, unknown>[];
+    columnsMeta: ColumnMeta[];
+}
+
 interface Props {
     item?: Item;
 }
@@ -56,18 +65,18 @@ $effect(() => {
     }
 });
 
-function update(data: any) {
+function update(data: QueryData) {
     if (!chart) return;
     hasData = data.rows.length > 0;
     if (!hasData) {
         chart.clear();
         return;
     }
-    const columns = data.columnsMeta.map((c: any) => c.name);
+    const columns = data.columnsMeta.map((c) => c.name);
     const option = {
-        xAxis: { type: "category", data: data.rows.map((_: any, i: number) => i.toString()) },
+        xAxis: { type: "category", data: data.rows.map((_, i: number) => i.toString()) },
         yAxis: { type: "value" },
-        series: columns.map(col => ({ type: "bar", data: data.rows.map((r: any) => r[col]) })),
+        series: columns.map(col => ({ type: "bar", data: data.rows.map((r: Record<string, unknown>) => r[col]) })),
     };
     chart.setOption(option, { notMerge: true });
 }

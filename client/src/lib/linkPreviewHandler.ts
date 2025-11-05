@@ -87,7 +87,7 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
 
     // スタイルを適用
     Object.entries(PREVIEW_STYLES).forEach(([key, value]) => {
-        previewElement.style[key as any] = value;
+        previewElement.style[key] = value;
     });
 
     // プロジェクト内リンクの場合
@@ -124,15 +124,15 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
         itemsDiv.style.maxHeight = "220px";
         itemsDiv.style.overflowY = "auto";
 
-        if (foundPage.items && (foundPage.items as any).length > 0) {
+        if (foundPage.items && foundPage.items.length > 0) {
             const ul = document.createElement("ul");
             ul.style.margin = "0";
             ul.style.padding = "0 0 0 20px";
 
             // 最大5つまでのアイテムを表示
-            const maxItems = Math.min(5, (foundPage.items as any).length);
+            const maxItems = Math.min(5, foundPage.items.length);
             for (let i = 0; i < maxItems; i++) {
-                const item = (foundPage.items as any)[i];
+                const item = foundPage.items[i];
                 if (item) {
                     const li = document.createElement("li");
                     li.textContent = item.text || "";
@@ -144,7 +144,7 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
             }
 
             // 5つ以上ある場合は「...」を表示
-            if ((foundPage.items as any).length > 5) {
+            if (foundPage.items.length > 5) {
                 const moreLi = document.createElement("li");
                 moreLi.textContent = "...";
                 moreLi.style.color = "#888";

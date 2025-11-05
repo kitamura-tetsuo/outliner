@@ -4,7 +4,7 @@ import { Item, Project } from "./app-schema";
 // モック: Cursor が依存するストアのうち、今回のテストで使用するのは currentPage のみ
 vi.mock("../stores/store.svelte", () => ({
     store: {
-        currentPage: undefined as any,
+        currentPage: undefined,
         subscribe: vi.fn(),
         update: vi.fn(),
         set: vi.fn(),
@@ -20,7 +20,7 @@ describe("Items.asArrayLike iterable characteristics", () => {
         const project = Project.createInstance("iterable-test");
 
         // ルート直下に2ページ相当のアイテムを作成
-        const rootItems: any = (project as any).items;
+        const rootItems: unknown = project.items;
         const a = rootItems.addNode("user");
         a.updateText("A");
         const b = rootItems.addNode("user");
@@ -52,7 +52,7 @@ describe("Items.asArrayLike iterable characteristics", () => {
 describe("Cursor.searchItem recursion over children (no exceptions)", () => {
     it("findTarget() locates deep child without throwing", () => {
         const project = Project.createInstance("cursor-search");
-        const rootItems: any = (project as any).items;
+        const rootItems: unknown = project.items;
 
         const page = rootItems.addNode("user");
         page.updateText("Page");
@@ -63,17 +63,17 @@ describe("Cursor.searchItem recursion over children (no exceptions)", () => {
         c2.updateText("child-2");
 
         // Cursor が参照する currentPage を設定
-        (generalStore as any).currentPage = page as Item;
+        generalStore.currentPage = page as Item;
 
         const cursor = new Cursor("cur-1", {
             itemId: c2.id,
             offset: 0,
             isActive: true,
             userId: "u1",
-        } as any);
+        });
 
         // 例外が出ないこと、および見つかること
-        let found: any;
+        let found: unknown;
         expect(() => {
             found = cursor.findTarget();
         }).not.toThrow();
