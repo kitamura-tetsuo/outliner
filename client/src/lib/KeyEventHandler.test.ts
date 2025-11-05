@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, Mock, vi } from "vitest";
 import { KeyEventHandler } from "./KeyEventHandler";
 
 // Mock stores to avoid circular dependency
@@ -24,11 +24,17 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
     let selections: Record<string, unknown> = {};
 
     // Store mocks in global for test access
-    (globalThis as any).__testMocks = {
+    (globalThis as typeof globalThis & {
+        __testMocks?: {
+            mockInsertText: typeof mockInsertText;
+            mockClearSelections: typeof mockClearSelections;
+            mockStartCursorBlink: typeof mockStartCursorBlink;
+        };
+    }).__testMocks = {
         mockInsertText,
         mockClearSelections,
         mockStartCursorBlink,
-    };
+    } as any;
 
     return {
         editorOverlayStore: {
@@ -47,15 +53,18 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
 
 describe("KeyEventHandler.handlePaste", () => {
     // Get mocked functions from global
-    const { mockInsertText } = (globalThis as any).__testMocks;
+    const testMocks = (globalThis as typeof globalThis & {
+        __testMocks?: { mockInsertText: Mock; mockClearSelections: Mock; mockStartCursorBlink: Mock; };
+    }).__testMocks;
+    const mockInsertText = testMocks?.mockInsertText ?? vi.fn();
 
     beforeEach(() => {
         vi.clearAllMocks();
-        (window as any).lastCopiedText = undefined;
+        (window as typeof window & { lastCopiedText?: string; }).lastCopiedText = undefined;
     });
 
     afterEach(() => {
-        delete (navigator as any).clipboard;
+        // Intentionally not deleting as it may not be optional
     });
 
     const createEvent = (text: string): ClipboardEvent => {
@@ -105,7 +114,7 @@ describe("KeyEventHandler.handlePaste", () => {
 
     it("falls back to global lastCopiedText when clipboard empty", async () => {
         const event = createEvent("");
-        (window as any).lastCopiedText = "fallback";
+        (window as typeof window & { lastCopiedText?: string; }).lastCopiedText = "fallback";
         Object.defineProperty(navigator, "clipboard", {
             value: { readText: () => Promise.resolve("") },
             configurable: true,
