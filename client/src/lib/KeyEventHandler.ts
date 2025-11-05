@@ -154,8 +154,9 @@ export class KeyEventHandler {
                     try {
                         // 先にストアの選択インデックスから直接確定（DOMに依存しない）
                         try {
-                            const ap = aliasPickerStore;
-                            const opts = Array.isArray(ap?.options) ? ap.options : [];
+                            const w = typeof window !== "undefined" ? window : null;
+                            const ap = w?.aliasPickerStore ?? aliasPickerStore;
+                            const opts: Array<{ id: string; }> = Array.isArray(ap?.options) ? ap.options : [];
                             let si: number = typeof ap?.selectedIndex === "number" ? ap.selectedIndex : 0;
                             if (opts.length > 0) {
                                 si = Math.max(0, Math.min(si, opts.length - 1));
@@ -200,25 +201,18 @@ export class KeyEventHandler {
                         // 最初のコンテンツ行（= テストの secondId）をターゲットに設定
                         try {
                             const w = typeof window !== "undefined" ? window : null;
-                            const gs = w?.generalStore || w?.appStore;
+                            const gs = w?.generalStore ?? w?.appStore ?? null;
                             const root = gs?.currentPage;
-                            const picker = aliasPickerStore;
+                            const picker = w?.aliasPickerStore ?? aliasPickerStore;
                             const aliasId: string | null = picker?.itemId ?? null;
-                            const firstContent = root?.items && root.items.length > 0
-                                ? (root.items.at ? root.items.at(0) : root.items[0])
+                            const firstContent = root?.items && (root.items as any).length > 0
+                                ? ((root.items as any).at ? (root.items as any).at(0) : (root.items as any)[0])
                                 : null;
                             if (root && aliasId && firstContent?.id) {
-                                const find = (
-                                    node: { id: string; items?: unknown; [key: string]: unknown; } | null,
-                                    id: string,
-                                ): { id: string; items?: unknown; [key: string]: unknown; } | null => {
+                                const find = (node: unknown, id: string): unknown => {
                                     if (!node) return null;
-                                    if (node.id === id) return node;
-                                    const ch = node.items as {
-                                        at?: (index: number) => unknown;
-                                        length?: number;
-                                        [index: number]: unknown;
-                                    } | undefined;
+                                    if ((node as any)?.id === id) return node;
+                                    const ch = (node as any)?.items;
                                     const len = ch?.length ?? 0;
                                     for (let i = 0; i < len; i++) {
                                         const c = ch?.at ? ch.at(i) : (ch as any)?.[i];
@@ -316,14 +310,14 @@ export class KeyEventHandler {
         if (event.key === "Enter" && cursorInstances.length > 0) {
             const cursor = cursorInstances[0];
             const node = cursor.findTarget();
-            const rawText = node?.text;
+            const rawText = (node as any)?.text;
             const text: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
             const before = text.slice(0, cursor.offset);
             earlyBeforeForLog = before;
             const lastSlash = before.lastIndexOf("/");
             const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
 
-            const gsAny = typeof window !== "undefined" ? window.generalStore : null;
+            const gsAny = typeof window !== "undefined" ? (window as any).generalStore : null;
             const ta: HTMLTextAreaElement | undefined = gsAny?.textareaRef;
             const taValue: string | null = ta?.value ?? null;
             const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
@@ -413,8 +407,8 @@ export class KeyEventHandler {
             } else if (event.key === "Enter") {
                 // Palette 可視時: フィルタに Alias が含まれていれば常に Alias を優先確定
                 try {
-                    const filtered: unknown[] = (commandPaletteStore as any).filtered ?? [];
-                    const hasAlias = filtered.some((c: unknown) => (c as any)?.type === "alias");
+                    const filtered: Array<{ type?: string; }> = (commandPaletteStore as any).filtered ?? [];
+                    const hasAlias = filtered.some(c => c?.type === "alias");
                     if (hasAlias) {
                         try {
                             console.log(
@@ -448,8 +442,8 @@ export class KeyEventHandler {
                         cursor.applyToStore();
 
                         // 新規アイテムを末尾に追加し、AliasPicker を表示
-                        const gs: any = typeof window !== "undefined" ? (window as any).generalStore : null;
-                        const items: any = gs?.currentPage?.items;
+                        const gs = typeof window !== "undefined" ? (window as any).generalStore : null;
+                        const items = gs?.currentPage?.items;
                         if (items && typeof items.addNode === "function") {
                             const userId = cursor.userId || "local";
                             const prevLen = typeof items.length === "number" ? items.length : 0;
@@ -469,7 +463,8 @@ export class KeyEventHandler {
                                     console.log("KeyEventHandler(Palette): showing AliasPicker for", newItem.id);
                                 } catch {}
                                 {
-                                    aliasPickerStore.show(newItem.id);
+                                    const w = typeof window !== "undefined" ? (window as any) : null;
+                                    (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
                                 }
                                 // カーソル移動
                                 store.clearCursorAndSelection(userId);
@@ -524,7 +519,7 @@ export class KeyEventHandler {
                 const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
 
                 // textarea の実値も併用して厳密に検出
-                const gs = typeof window !== "undefined" ? window.generalStore : null;
+                const gs = typeof window !== "undefined" ? (window as any).generalStore : null;
                 const ta: HTMLTextAreaElement | undefined = gs?.textareaRef;
                 const taValue: string | null = ta?.value ?? null;
                 const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
@@ -571,7 +566,8 @@ export class KeyEventHandler {
                                 console.log("KeyEventHandler: showing AliasPicker for", newItem.id);
                             } catch {}
                             {
-                                aliasPickerStore.show(newItem.id);
+                                const w = typeof window !== "undefined" ? (window as any) : null;
+                                (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
                             }
                             // カーソル移動
                             store.clearCursorAndSelection(userId);
@@ -620,7 +616,7 @@ export class KeyEventHandler {
                 try {
                     setTimeout(() => {
                         try {
-                            const w = typeof window !== "undefined" ? window : null;
+                            const w = typeof window !== "undefined" ? (window as any) : null;
                             const tryOpen = (attempt = 0) => {
                                 try {
                                     const activeId = store.getActiveItem?.();
@@ -696,7 +692,7 @@ export class KeyEventHandler {
                 try {
                     setTimeout(() => {
                         try {
-                            const w = typeof window !== "undefined" ? window : null;
+                            const w = typeof window !== "undefined" ? (window as any) : null;
                             const tryOpen = (attempt = 0) => {
                                 try {
                                     const activeId = store.getActiveItem?.();
@@ -766,7 +762,7 @@ export class KeyEventHandler {
 
         // 直近の入力ストリームをバッファリング（パレットのフォールバック検出用）
         try {
-            const w = typeof window !== "undefined" ? window : null;
+            const w = typeof window !== "undefined" ? (window as any) : null;
             const gs = w?.generalStore ?? {};
             const ch: string = typeof inputEvent.data === "string" ? inputEvent.data : "";
             gs.__lastInputStream = (gs.__lastInputStream || "") + ch;
@@ -1686,10 +1682,7 @@ export class KeyEventHandler {
                 try {
                     text = await navigator.clipboard.readText();
                 } catch (error) {
-                    if (
-                        typeof window !== "undefined"
-                        && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
-                    ) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         if (error?.name === "NotAllowedError") {
                             console.warn("Clipboard permission denied", error);
                         } else {

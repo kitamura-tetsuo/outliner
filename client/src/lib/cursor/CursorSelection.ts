@@ -1,23 +1,10 @@
-import type { Item } from "../../schema/yjs-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-
-interface Cursor {
-    itemId: string;
-    offset: number;
-    userId: string;
-    findTarget(): Item | null;
-    moveLeft(): void;
-    moveRight(): void;
-    moveUp(): void;
-    moveDown(): void;
-    updateGlobalTextareaSelection(startItemId: string, startOffset: number, endItemId: string, endOffset: number): void;
-    applyToStore(): void;
-}
+import type { CursorEditingContext } from "./CursorEditor";
 
 export class CursorSelection {
-    private cursor: Cursor; // Cursorクラスのインスタンスを保持
+    private cursor: CursorEditingContext;
 
-    constructor(cursor: Cursor) {
+    constructor(cursor: CursorEditingContext) {
         this.cursor = cursor;
     }
 
