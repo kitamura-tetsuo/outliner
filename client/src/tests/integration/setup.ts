@@ -12,7 +12,7 @@ class MockWebsocketProvider {
     public roomname: string;
 
     // Simple event emitter implementation for testing
-    private eventListeners: Map<string, ((...args: any[]) => void)[]> = new Map();
+    private eventListeners: Map<string, ((...args: unknown[]) => void)[]> = new Map();
 
     constructor(
         serverUrl: string,
@@ -35,7 +35,7 @@ class MockWebsocketProvider {
             try {
                 // Listen for changes to the "pages" map
                 const pagesMap = doc.getMap<Y.Doc>("pages");
-                pagesMap.observe((event: any) => {
+                pagesMap.observe((event: Y.YMapEvent<Y.Doc>) => {
                     const addedDocs: Y.Doc[] = [];
                     const removedDocs: Y.Doc[] = [];
 
@@ -78,14 +78,14 @@ class MockWebsocketProvider {
         // Cleanup
     }
 
-    public on(event: string, callback: (...args: any[]) => void) {
+    public on(event: string, callback: (...args: unknown[]) => void) {
         if (!this.eventListeners.has(event)) {
             this.eventListeners.set(event, []);
         }
         this.eventListeners.get(event)?.push(callback);
     }
 
-    public off(event: string, callback: (...args: any[]) => void) {
+    public off(event: string, callback: (...args: unknown[]) => void) {
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             const index = listeners.indexOf(callback);
@@ -95,7 +95,7 @@ class MockWebsocketProvider {
         }
     }
 
-    public emit(event: string, args: any[] = []) {
+    public emit(event: string, args: unknown[] = []) {
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             listeners.forEach(callback => {
