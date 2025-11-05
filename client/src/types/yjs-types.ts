@@ -1,6 +1,6 @@
 /**
  * Comprehensive type definitions for Yjs-based data structures
- * This file provides proper types to replace 'any' throughout the codebase
+ * This file provides proper types to replace 'unknown' throughout the codebase
  */
 
 import type * as Y from "yjs";

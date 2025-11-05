@@ -33,7 +33,7 @@ const baseLogger = pino({
         },
         // transmit: {
         //     level: "info", // このレベル以上のログをサーバーに送信
-        //     send: (level: string, logEvent: any) => {
+        //     send: (level: string, logEvent: unknown) => {
         //         // デバッグ用: 送信されるログデータを確認
         //         if (import.meta.env.DEV) {
         //             // console.debug('ログ送信:', { level, logEvent });

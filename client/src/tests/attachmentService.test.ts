@@ -4,7 +4,7 @@ import { deleteAttachment, listAttachments, uploadAttachment } from "../services
 
 describe("attachmentService", () => {
     beforeEach(() => {
-        // Reset any mocks before each test
+        // Reset unknown mocks before each test
         vi.clearAllMocks();
     });
 

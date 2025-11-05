@@ -14,14 +14,14 @@ describe("ALS alias node", () => {
             { id: "2", text: "second", items: [] },
             { id: "alias", text: "alias", items: [] },
         ];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        generalStore.currentPage = { id: "root", text: "root", items } as unknown;
         render(AliasPicker);
 
         const user = userEvent.setup();
         aliasPickerStore.show("alias");
         const option = await screen.findByRole("button", { name: "root/second" });
         await user.click(option);
-        const pageItems = (generalStore.currentPage as any).items;
+        const pageItems = (generalStore.currentPage as unknown).items;
         expect(pageItems[2].aliasTargetId).toBe("2");
         expect(aliasPickerStore.isVisible).toBe(false);
     });

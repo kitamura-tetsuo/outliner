@@ -11,12 +11,12 @@ let chart: echarts.ECharts | undefined;
 function saveLayout() {
     if (!chart) return;
     try {
-        const option = chart.getOption() as any;
+        const option = chart.getOption() as unknown;
         const nodes = option.series[0].data;
 
         // EChartsの内部状態から実際の位置を取得
         const layoutData = {
-            nodes: nodes.map((n: any) => {
+            nodes: nodes.map((n: unknown) => {
                 // EChartsの内部状態から位置を取得
                 const actualPosition = chart?.convertFromPixel({ seriesIndex: 0 }, [n.x || 0, n.y || 0]);
                 return {
@@ -36,7 +36,7 @@ function saveLayout() {
     }
 }
 
-function loadLayout(nodes: any[]) {
+function loadLayout(nodes: unknown[]) {
     try {
         const savedLayout = localStorage.getItem("graph-layout");
         if (!savedLayout) return nodes;
@@ -46,7 +46,7 @@ function loadLayout(nodes: any[]) {
 
         if (layoutData.nodes) {
             for (const savedNode of layoutData.nodes) {
-                const node = nodes.find((n: any) => n.id === savedNode.id);
+                const node = nodes.find((n: unknown) => n.id === savedNode.id);
                 if (node && savedNode.x !== undefined && savedNode.y !== undefined) {
                     node.x = savedNode.x;
                     node.y = savedNode.y;
@@ -67,18 +67,18 @@ function update() {
     if (!chart) return;
 
     // storeからデータを取得（Yjs Items 互換: 配列/Iterable/Array-like を許容）
-    const toArray = (p: any) => {
+    const toArray = (p: unknown) => {
         try {
             if (Array.isArray(p)) return p;
             if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
             const len = p?.length;
             if (typeof len === "number" && len >= 0) {
-                const r: any[] = [];
+                const r: unknown[] = [];
                 for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
                 return r;
             }
         } catch {}
-        return [] as any[];
+        return [] as unknown[];
     };
 
     const pages = toArray(store.pages?.current || []);
@@ -112,8 +112,8 @@ function update() {
 
 onMount(() => {
     chart = echarts.init(graphDiv);
-    (window as any).__GRAPH_CHART__ = chart;
-    chart.on("click", (params: any) => {
+    window.__GRAPH_CHART__ = chart;
+    chart.on("click", (params: unknown) => {
         if (params.dataType === "node") {
             const pageName = params.data.name;
             const projectName = store.project?.title;
@@ -145,7 +145,7 @@ onMount(() => {
     // React to project structure changes via minimal-granularity Yjs observeDeep on orderedTree
     let detachDocListener: (() => void) | undefined;
     try {
-        const ymap: any = (store.project as any)?.ydoc?.getMap?.("orderedTree");
+        const ymap: unknown = (store.project as unknown)?.ydoc?.getMap?.("orderedTree");
         if (ymap && typeof ymap.observeDeep === "function") {
             const handler = () => { try { update(); } catch {} };
             ymap.observeDeep(handler);

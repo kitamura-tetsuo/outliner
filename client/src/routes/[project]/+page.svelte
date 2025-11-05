@@ -22,7 +22,7 @@ let isAuthenticated = $state(false);
 let projectNotFound = $state(false);
 
 // 認証成功時の処理
-async function handleAuthSuccess(authResult: any) {
+async function handleAuthSuccess(authResult: unknown) {
     if (import.meta.env.DEV) {
         logger.info("認証成功:", authResult);
     }

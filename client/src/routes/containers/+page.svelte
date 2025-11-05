@@ -46,7 +46,7 @@ async function createNewContainer() {
 
     try {
         // 現在のクライアントを破棄してリセット
-        const client = yjsStore.yjsClient as any;
+        const client = yjsStore.yjsClient as unknown;
         if (client) {
             client.dispose?.();
             yjsStore.yjsClient = undefined;
@@ -59,7 +59,7 @@ async function createNewContainer() {
         createdContainerId = newClient.containerId;
 
         // ストアを更新
-        yjsStore.yjsClient = newClient as any;
+        yjsStore.yjsClient = newClient as unknown;
 
         // サーバーに保存（デフォルトコンテナとして設定）
         await saveContainerId(createdContainerId);

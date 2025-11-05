@@ -107,7 +107,7 @@ function isWsEnabled(): boolean {
             && window.localStorage?.getItem?.("VITE_YJS_FORCE_WS") === "true";
         if (forceLS) return true;
 
-        // Disable takes precedence over any enabling override (unless forced above)
+        // Disable takes precedence over unknown enabling override (unless forced above)
         const envDisabled = String(import.meta.env.VITE_YJS_DISABLE_WS || "") === "true";
         const lsDisabled = typeof window !== "undefined"
             && window.localStorage?.getItem?.("VITE_YJS_DISABLE_WS") === "true";
@@ -359,10 +359,10 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         params: token ? { auth: token } : undefined,
         connect: wsEnabled,
     });
-    (provider as any).__wsDisabled = !wsEnabled;
+    (provider as unknown).__wsDisabled = !wsEnabled;
     if (!wsEnabled) {
         try {
-            (provider as any).connect = () => {};
+            (provider as unknown).connect = () => {};
         } catch {}
     }
     const awareness = provider.awareness;
@@ -400,15 +400,15 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         params: token ? { auth: token } : undefined,
         connect: wsEnabled,
     });
-    (provider as any).__wsDisabled = !wsEnabled;
+    (provider as unknown).__wsDisabled = !wsEnabled;
     if (!wsEnabled) {
         try {
-            (provider as any).connect = () => {};
+            (provider as unknown).connect = () => {};
         } catch {}
     } else {
         // 明示接続: 稀に connect: true が反映されないケースがあるため冪等に connect() を呼ぶ
         try {
-            (provider as any).connect?.();
+            (provider as unknown).connect?.();
         } catch {}
     }
     // Debug hook (guarded)

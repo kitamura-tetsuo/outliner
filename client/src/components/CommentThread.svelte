@@ -11,9 +11,9 @@ const dispatch = createEventDispatcher();
 interface Props {
     comments?: Comments;
     currentUser: string;
-    doc: any;
+    doc: unknown;
     onCountChanged?: (count: number) => void;
-    item?: any; // Outliner Item (for late-binding comments getter)
+    item?: unknown; // Outliner Item (for late-binding comments getter)
 }
 
 let props: Props = $props();
@@ -26,9 +26,9 @@ let localComments = $state<Comment[]>([]);
 let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
 
-function e2eLog(entry: any) {
+function e2eLog(entry: unknown) {
     try {
-        const w: any = window as any;
+        const w: unknown = window as unknown;
         w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
         w.E2E_LOGS.push({ t: Date.now(), comp: 'CommentThread', ...entry });
     } catch {}
@@ -48,15 +48,15 @@ onMount(() => {
     let unobserve: (() => void) | undefined;
     try {
         // 1) Comments ラッパがあれば内部の yArray を取得（private だが JS では参照可能）
-        let yarr: any = (comments as any)?.yArray;
+        let yarr: unknown = (comments as unknown)?.yArray;
         // 2) なければ item 経由で Y.Map -> "comments" を確保
         if (!yarr && props.item) {
-            const anyItem: any = props.item as any;
+            const anyItem: unknown = props.item as unknown;
             const tree = anyItem?.tree; const key = anyItem?.key;
-            const value = tree?.getNodeValueFromKey?.(key) as any;
+            const value = tree?.getNodeValueFromKey?.(key) as unknown;
             if (value) {
                 yarr = value.get?.("comments");
-                if (!yarr) { yarr = new (Y as any).Array(); value.set?.("comments", yarr); }
+                if (!yarr) { yarr = new (Y as unknown).Array(); value.set?.("comments", yarr); }
             }
         }
         if (yarr && typeof yarr.observeDeep === "function") {
@@ -64,7 +64,7 @@ onMount(() => {
             const handler = () => { 
                 try { 
                     // Convert the Y.Array directly to plain objects
-                    const plainComments = yarr.toArray().map((yMap: Y.Map<any>) => ({
+                    const plainComments = yarr.toArray().map((yMap: Y.Map<unknown>) => ({
                         id: yMap.get("id"),
                         author: yMap.get("author"),
                         text: yMap.get("text"),
@@ -100,7 +100,7 @@ onMount(() => {
 // Yjsの自動同期は一旦停止（CMT-0001 安定化のため、add/remove 時の即時通知に限定）
 // $effect(() => {
 //     try {
-//         const list = (commentsSubscriber.current as any) ?? [];
+//         const list = (commentsSubscriber.current as unknown) ?? [];
 //         commentsList = list as Comment[];
 //         recompute();
 //         onCountChanged?.(commentsList.length);
@@ -135,7 +135,7 @@ onMount(() => {
             try { add(); } catch {}
         }
     };
-    try { threadRef?.addEventListener('click', handler, { capture: true } as any); } catch {}
+    try { threadRef?.addEventListener('click', handler, { capture: true } as unknown); } catch {}
     // Direct binding on the button element as the strongest fallback
     try {
 // E2E安定化: 入力DOMの値をポーリングして自動追加（環境によってbind:valueが効かない場合の最終手段）
@@ -158,21 +158,21 @@ onMount(() => {
 });
 
         const btnEl = threadRef?.querySelector('[data-testid="add-comment-btn"]');
-        btnEl?.addEventListener('click', handler as any, { capture: true } as any);
+        btnEl?.addEventListener('click', handler as unknown, { capture: true } as unknown);
     } catch {}
     // Global capture as ultimate safety
-    try { document.addEventListener('click', handler, true as any); } catch {}
-    try { document.addEventListener('pointerdown', handler, true as any); } catch {}
-    try { document.addEventListener('mousedown', handler, true as any); } catch {}
+    try { document.addEventListener('click', handler, true as unknown); } catch {}
+    try { document.addEventListener('pointerdown', handler, true as unknown); } catch {}
+    try { document.addEventListener('mousedown', handler, true as unknown); } catch {}
     return () => {
-        try { threadRef?.removeEventListener('click', handler, { capture: true } as any); } catch {}
+        try { threadRef?.removeEventListener('click', handler, { capture: true } as unknown); } catch {}
         try {
             const btnEl = threadRef?.querySelector('[data-testid="add-comment-btn"]');
-            btnEl?.removeEventListener('click', handler as any, { capture: true } as any);
+            btnEl?.removeEventListener('click', handler as unknown, { capture: true } as unknown);
         } catch {}
-        try { document.removeEventListener('click', handler, true as any); } catch {}
-        try { document.removeEventListener('pointerdown', handler, true as any); } catch {}
-        try { document.removeEventListener('mousedown', handler, true as any); } catch {}
+        try { document.removeEventListener('click', handler, true as unknown); } catch {}
+        try { document.removeEventListener('pointerdown', handler, true as unknown); } catch {}
+        try { document.removeEventListener('mousedown', handler, true as unknown); } catch {}
     };
 });
 
@@ -183,7 +183,7 @@ function add() {
     try {
         const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
         const before = container ? (container.querySelectorAll('[data-testid="comment-thread"] .comment').length) : 0;
-        const cid = container?.getAttribute('data-item-id') || (props.item as any)?.id || '';
+        const cid = container?.getAttribute('data-item-id') || (props.item as unknown)?.id || '';
         e2eLog({ tag: 'add:start', id: cid, before, newText });
     } catch {}
     // DOMからも値を取得して、bind:value が効かない環境でも追加できるようにする
@@ -195,18 +195,18 @@ function add() {
         } catch {}
     }
     if (!text) return;
-    let commentsObj = (props.comments as any) ?? (props.item as any)?.comments;
+    let commentsObj = (props.comments as unknown) ?? (props.item as unknown)?.comments;
     if (!commentsObj && props.item) {
         try {
-            const anyItem: any = props.item as any;
+            const anyItem: unknown = props.item as unknown;
             const tree = anyItem?.tree;
 
             const key = anyItem?.key;
             if (tree && key) {
-                const value = tree.getNodeValueFromKey(key) as Y.Map<any>;
-                let arr = value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+                const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
+                let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
                 if (!arr) {
-                    arr = new Y.Array<Y.Map<any>>();
+                    arr = new Y.Array<Y.Map<unknown>>();
                     value.set("comments", arr);
                 }
                 commentsObj = new Comments(arr);
@@ -224,8 +224,8 @@ function add() {
     // comments オブジェクトが不正でも UI は進める（DOM/イベントで確実に反映）
     const time = Date.now();
     let id: string;
-    if (commentsObj && typeof (commentsObj as any).addComment === 'function') {
-        const res = (commentsObj as any).addComment(user, newText);
+    if (commentsObj && typeof (commentsObj as unknown).addComment === 'function') {
+        const res = (commentsObj as unknown).addComment(user, newText);
         id = res?.id || `local-${time}-${Math.random().toString(36).slice(2)}`;
         logger.debug('[CommentThread] comment added to Yjs, id=', id);
     } else {
@@ -239,7 +239,7 @@ function add() {
         const threadEl = container?.querySelector('[data-testid="comment-thread"]') as HTMLElement | null;
         const before = threadEl ? threadEl.querySelectorAll('.comment').length : 0;
         const predicted = before + 1;
-        const id = (props.item as any)?.id || container?.getAttribute('data-item-id');
+        const id = (props.item as unknown)?.id || container?.getAttribute('data-item-id');
         if (id) {
             const nodes = document.querySelectorAll(`[data-item-id="${id}"] .comment-count`);
             nodes.forEach(el => { (el as HTMLElement).textContent = String(predicted); });
@@ -247,7 +247,7 @@ function add() {
     } catch {}
     // 楽観的ローカル追加で即時にDOMへ反映
     try {
-        const optimistic = { id, author: user, text: newText, created: time, lastChanged: time } as any;
+        const optimistic = { id, author: user, text: newText, created: time, lastChanged: time } as unknown;
         localComments = [...localComments, optimistic];
 
     } catch {}
@@ -260,15 +260,15 @@ function add() {
 
         // Calculate the count directly from the Yjs array which should be updated immediately after add
         let countNow = 0;
-        if (commentsObj && typeof (commentsObj as any).length === 'number') {
-            countNow = (commentsObj as any).length;
+        if (commentsObj && typeof (commentsObj as unknown).length === 'number') {
+            countNow = (commentsObj as unknown).length;
         } else {
             // Fallback: try to get the length from the item's comments
             try {
                 if (props.item && typeof props.item.comments !== 'undefined') {
                     const itemComments = props.item.comments;
-                    if (typeof (itemComments as any).length === 'number') {
-                        countNow = (itemComments as any).length;
+                    if (typeof (itemComments as unknown).length === 'number') {
+                        countNow = (itemComments as unknown).length;
                     }
                 }
             } catch {}
@@ -302,23 +302,23 @@ function add() {
 
     try {
         const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-        const cid = container?.getAttribute('data-item-id') || (props.item as any)?.id || '';
+        const cid = container?.getAttribute('data-item-id') || (props.item as unknown)?.id || '';
         const after = (renderCommentsState?.length ?? 0);
         e2eLog({ tag: 'add:end', id: cid, after });
     } catch {}
     newText = '';
 }
 function remove(id: string) {
-    let commentsObj: any = (props.comments as any) ?? (props.item as any)?.comments;
+    let commentsObj: unknown = (props.comments as unknown) ?? (props.item as unknown)?.comments;
     if (!commentsObj && props.item) {
         try {
-            const anyItem: any = props.item as any;
+            const anyItem: unknown = props.item as unknown;
             const tree = anyItem?.tree;
             const key = anyItem?.key;
             if (tree && key) {
-                const value = tree.getNodeValueFromKey(key) as Y.Map<any>;
-                let arr = value.get("comments") as Y.Array<Y.Map<any>> | undefined;
-                if (!arr) { arr = new Y.Array<Y.Map<any>>(); value.set("comments", arr); }
+                const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
+                let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
+                if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
                 commentsObj = new Comments(arr);
                 logger.debug('[CommentThread] ensured comments for remove via tree/key');
             }
@@ -353,16 +353,16 @@ function startEdit(c: Comment) {
 
 function saveEdit(id: string) {
     try { logger.debug('[CommentThread] saveEdit start id=', id, 'editText=', editText); } catch {}
-    let commentsObj: any = (props.comments as any) ?? (props.item as any)?.comments;
+    let commentsObj: unknown = (props.comments as unknown) ?? (props.item as unknown)?.comments;
     if (!commentsObj && props.item) {
         try {
-            const anyItem: any = props.item as any;
+            const anyItem: unknown = props.item as unknown;
             const tree = anyItem?.tree;
             const key = anyItem?.key;
             if (tree && key) {
-                const value = tree.getNodeValueFromKey(key) as Y.Map<any>;
-                let arr = value.get("comments") as Y.Array<Y.Map<any>> | undefined;
-                if (!arr) { arr = new Y.Array<Y.Map<any>>(); value.set("comments", arr); }
+                const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
+                let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
+                if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
                 commentsObj = new Comments(arr);
                 logger.debug('[CommentThread] ensured comments for saveEdit via tree/key');
             }
@@ -382,10 +382,10 @@ function saveEdit(id: string) {
     try { /* Yjs derived updates; no direct assignment to commentsList */ logger.debug('[CommentThread] updateComment applied'); } catch (e) { logger.error('[CommentThread] toPlain after update error', e); }
     
     // Update local state to immediately reflect the change while we wait for Yjs observer
-    localComments = localComments.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } as any : c);
+    localComments = localComments.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } as unknown : c);
     
     // Update renderCommentsState to immediately show the change in UI, but only update the specific field
-    renderCommentsState = renderCommentsState.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } as any : c);
+    renderCommentsState = renderCommentsState.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } as unknown : c);
 
     try { logger.debug('[CommentThread] renderCommentsState after update', renderCommentsState); } catch {}
     editingId = null;

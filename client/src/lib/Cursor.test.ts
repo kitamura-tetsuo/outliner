@@ -19,7 +19,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => ({
         update: vi.fn(),
         set: vi.fn(),
         updateCursor: vi.fn(),
-        setCursor: vi.fn((opts: any) => `cursor-${opts.itemId}-${Math.random()}`),
+        setCursor: vi.fn((opts: unknown) => `cursor-${opts.itemId}-${Math.random()}`),
         setActiveItem: vi.fn(),
         getTextareaRef: vi.fn(() => mockTextareaElement),
         startCursorBlink: vi.fn(),
@@ -218,10 +218,10 @@ describe("Cursor", () => {
                 },
             );
             // Prevent actual navigation/merge for these simple tests
-            vi.spyOn((cursor as any).editor, "mergeWithPreviousItem").mockImplementation(() => {});
-            vi.spyOn((cursor as any).editor, "mergeWithNextItem").mockImplementation(() => {});
+            vi.spyOn((cursor as unknown).editor, "mergeWithPreviousItem").mockImplementation(() => {});
+            vi.spyOn((cursor as unknown).editor, "mergeWithNextItem").mockImplementation(() => {});
             // Mock navigateToItem to prevent actual navigation in simple tests
-            vi.spyOn(cursor as any, "navigateToItem").mockImplementation(() => {});
+            vi.spyOn(cursor as unknown, "navigateToItem").mockImplementation(() => {});
         });
 
         it("moveLeft should decrease offset if offset > 0", () => {
@@ -258,10 +258,10 @@ describe("Cursor", () => {
             generalStore.currentPage = mockCurrentPage;
             cursor.itemId = "item1";
             // findTargetがmockItemを返すように設定
-            vi.spyOn(cursor as any, "findTarget").mockReturnValue(mockItem);
+            vi.spyOn(cursor as unknown, "findTarget").mockReturnValue(mockItem);
             // Prevent actual navigation/merge for these simple tests
-            vi.spyOn((cursor as any).editor, "mergeWithPreviousItem").mockImplementation(() => {});
-            vi.spyOn((cursor as any).editor, "mergeWithNextItem").mockImplementation(() => {});
+            vi.spyOn((cursor as unknown).editor, "mergeWithPreviousItem").mockImplementation(() => {});
+            vi.spyOn((cursor as unknown).editor, "mergeWithNextItem").mockImplementation(() => {});
         });
 
         it("insertText should insert character at current offset and update offset", () => {
@@ -324,7 +324,7 @@ describe("Cursor", () => {
 
         it("deleteBackward at offset 0 triggers mergeWithPreviousItem", () => {
             cursor.offset = 0;
-            const spy = vi.spyOn((cursor as any).editor, "mergeWithPreviousItem").mockImplementation(
+            const spy = vi.spyOn((cursor as unknown).editor, "mergeWithPreviousItem").mockImplementation(
                 () => {},
             );
             cursor.deleteBackward();
@@ -335,7 +335,7 @@ describe("Cursor", () => {
             // 空のアイテムを設定
             mockItem.text = "";
             cursor.offset = 0;
-            const spy = vi.spyOn((cursor as any).editor, "deleteEmptyItem").mockImplementation(() => {});
+            const spy = vi.spyOn((cursor as unknown).editor, "deleteEmptyItem").mockImplementation(() => {});
             cursor.deleteForward();
             expect(spy).toHaveBeenCalled();
         });
@@ -344,7 +344,7 @@ describe("Cursor", () => {
             // 空でないアイテムの末尾に設定
             mockItem.text = "Hello";
             cursor.offset = 5; // 末尾
-            const spy = vi.spyOn((cursor as any).editor, "mergeWithNextItem").mockImplementation(
+            const spy = vi.spyOn((cursor as unknown).editor, "mergeWithNextItem").mockImplementation(
                 () => {},
             );
             cursor.deleteForward();
@@ -361,7 +361,7 @@ describe("Cursor", () => {
             mockCurrentPage = createMockItem("page1", "Page Title", [mockItem]);
             generalStore.currentPage = mockCurrentPage;
             cursor.itemId = "item1";
-            vi.spyOn(cursor as any, "findTarget").mockReturnValue(mockItem);
+            vi.spyOn(cursor as unknown, "findTarget").mockReturnValue(mockItem);
         });
 
         it("moveWordLeft and moveWordRight work correctly", () => {
@@ -376,7 +376,7 @@ describe("Cursor", () => {
 
         it("moveToDocumentStart and moveToDocumentEnd", () => {
             const other = createMockItem("item2", "Second");
-            (mockCurrentPage!.items as any).push(other);
+            (mockCurrentPage!.items as unknown).push(other);
             cursor.moveToDocumentEnd();
             expect(cursor.itemId).toBe("item2");
             expect(cursor.offset).toBe(other.text.length);

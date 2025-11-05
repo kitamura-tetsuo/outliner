@@ -2,8 +2,8 @@
 import { firestoreStore as moduleStore } from "../../stores/firestoreStore.svelte";
 import { onMount } from "svelte";
 // Vitest + JSDOM での 2 重ロード対策: window に公開されたインスタンスがあればそれを使う
-const storeRef = (typeof window !== "undefined" && (window as any).__FIRESTORE_STORE__)
-    ? (window as any).__FIRESTORE_STORE__
+const storeRef = (typeof window !== "undefined" && window.__FIRESTORE_STORE__)
+    ? window.__FIRESTORE_STORE__
     : moduleStore;
 
 // 直接代入で UI を更新するローカル状態（$derived に依存しない）
@@ -18,7 +18,7 @@ function computeDisplayed(ids: string[], def?: string) {
 onMount(() => {
     const apply = () => {
         try {
-            const u = (storeRef as any).userContainer;
+            const u = (storeRef as unknown).userContainer;
             idsLocal = Array.from(u?.accessibleContainerIds ?? []);
             defaultIdLocal = u?.defaultContainerId;
         } catch {}

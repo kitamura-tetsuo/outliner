@@ -4,7 +4,7 @@ import { firestoreStore } from "./firestoreStore.svelte";
 
 describe("firestoreStore", () => {
     beforeEach(() => {
-        // Clear any existing test data before each test
+        // Clear unknown existing test data before each test
         clearTestData();
     });
 

@@ -9,7 +9,7 @@ class ResizeObserver {
     unobserve() {}
     disconnect() {}
 }
-(globalThis as any).ResizeObserver = ResizeObserver;
+(globalThis as unknown).ResizeObserver = ResizeObserver;
 
 /**
  * CMT-0001 派生状態のみで再描画が成立することを検証する軽量統合テスト

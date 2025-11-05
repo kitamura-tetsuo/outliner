@@ -45,18 +45,18 @@ if (typeof globalThis.cancelAnimationFrame !== "function") {
     };
 }
 
-// ---- Vitest bootstrap: ensure a single firestoreStore instance shared across UI & tests ----
+// ---- Vitest bootstrap: ensure a single firestoreStore instance shared across UI & tests ----
 try {
     // Ensure window exists
-    (globalThis as any).window ||= globalThis as any;
+    globalThis.window ||= globalThis;
     // Import the real store early so it can publish itself to window.__FIRESTORE_STORE__
     // and so subsequent imports (including Svelte-compiled graph) pick up the same instance.
     // Note: this path is relative to project root (vite config uses the same resolver in tests)
     const mod = await import("./src/stores/firestoreStore.svelte");
-    const fsStore = (mod as any).firestoreStore;
+    const fsStore = mod.firestoreStore;
     if (fsStore) {
-        (globalThis as any).window.__FIRESTORE_STORE__ ||= fsStore;
-        (globalThis as any).__FIRESTORE_STORE__ ||= fsStore;
+        globalThis.window.__FIRESTORE_STORE__ ||= fsStore;
+        (globalThis as unknown as { __FIRESTORE_STORE__?: unknown; }).__FIRESTORE_STORE__ ||= fsStore;
     }
 } catch {
     // no-op: if import fails here, module will still set __FIRESTORE_STORE__ on first import
@@ -66,10 +66,10 @@ try {
 try {
     // Import the real yjsStore early so it can publish itself to window.__YJS_STORE__
     const yjsMod = await import("./src/stores/yjsStore.svelte");
-    const yjsStoreInstance = (yjsMod as any).yjsStore;
+    const yjsStoreInstance = yjsMod.yjsStore;
     if (yjsStoreInstance) {
-        (globalThis as any).window.__YJS_STORE__ ||= yjsStoreInstance;
-        (globalThis as any).__YJS_STORE__ ||= yjsStoreInstance;
+        globalThis.window.__YJS_STORE__ ||= yjsStoreInstance;
+        (globalThis as unknown as { __YJS_STORE__?: unknown; }).__YJS_STORE__ ||= yjsStoreInstance;
     }
 } catch {
     // no-op: if import fails here, module will still set __YJS_STORE__ on first import

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 describe("yjs basic sync", () => {
     it("exposes connection state", () => {
-        const store = (globalThis as any).__YJS_STORE__;
+        const store = (globalThis as unknown).__YJS_STORE__;
         expect(store).toBeDefined();
         expect(typeof store.getIsConnected()).toBe("boolean");
     });

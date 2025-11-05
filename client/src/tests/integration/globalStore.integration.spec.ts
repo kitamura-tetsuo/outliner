@@ -5,7 +5,7 @@ import { yjsStore } from "../../stores/yjsStore.svelte";
 
 describe("Yjs connection state (no facade)", () => {
     it("allows direct set/get on yjsStore", async () => {
-        yjsStore.isConnected = true as any;
+        yjsStore.isConnected = true as unknown;
         expect(yjsStore.getIsConnected()).toBe(true);
     });
 });

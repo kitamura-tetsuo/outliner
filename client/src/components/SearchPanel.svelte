@@ -34,7 +34,7 @@ onMount(() => {
     } catch {}
     if (isTestEnv && typeof window !== "undefined") {
         const update = () => {
-            const flag = (window as any).__SEARCH_PANEL_VISIBLE__ === true;
+            const flag = window.__SEARCH_PANEL_VISIBLE__ === true;
             if (flag !== e2eForceShow) e2eForceShow = flag;
         };
         update();
@@ -80,18 +80,18 @@ function removeHighlights() {
         });
 }
 
-function getPagesToSearch(): any[] {
+function getPagesToSearch(): unknown[] {
     // 1) project.items を優先
     try {
-        const items = (project as any)?.items;
-        const arr: any[] = [];
+        const items = (project as unknown)?.items;
+        const arr: unknown[] = [];
         if (items) {
             if (typeof items[Symbol.iterator] === "function") {
-                for (const p of items as any) arr.push(p);
-            } else if (typeof (items as any).length === "number") {
-                const len = (items as any).length;
+                for (const p of items as unknown) arr.push(p);
+            } else if (typeof (items as unknown).length === "number") {
+                const len = (items as unknown).length;
                 for (let i = 0; i < len; i++) {
-                    const v = (items as any).at ? (items as any).at(i) : (items as any)[i];
+                    const v = (items as unknown).at ? (items as unknown).at(i) : (items as unknown)[i];
                     if (typeof v !== "undefined") arr.push(v);
                 }
             }
@@ -100,16 +100,16 @@ function getPagesToSearch(): any[] {
     } catch {}
     // 2) generalStore.pages.current をフォールバック
     try {
-        const gs = (window as any).generalStore;
+        const gs = window.generalStore;
         const pages = gs?.pages?.current;
-        const arr: any[] = [];
+        const arr: unknown[] = [];
         if (pages) {
             if (typeof pages[Symbol.iterator] === "function") {
-                for (const p of pages as any) arr.push(p);
-            } else if (typeof (pages as any).length === "number") {
-                const len = (pages as any).length;
+                for (const p of pages as unknown) arr.push(p);
+            } else if (typeof (pages as unknown).length === "number") {
+                const len = (pages as unknown).length;
                 for (let i = 0; i < len; i++) {
-                    const v = (pages as any).at ? (pages as any).at(i) : (pages as any)[i];
+                    const v = (pages as unknown).at ? (pages as unknown).at(i) : (pages as unknown)[i];
                     if (typeof v !== "undefined") arr.push(v);
                 }
             }
@@ -131,34 +131,34 @@ function handleSearch() {
         matches = searchItems(pageItem, searchQuery, options).map(m => ({ ...m, page: pageItem! }));
     }
     else if (pages.length) {
-        const collected: Array<PageItemMatch<Item>> = [] as any;
+        const collected: Array<PageItemMatch<Item>> = [] as unknown;
         for (const p of pages) {
             // まずページタイトルを検索
-            const pageTitle = ((p as any).text?.toString?.() ?? String((p as any).text ?? "")) as string;
+            const pageTitle = ((p as unknown).text?.toString?.() ?? String((p as unknown).text ?? "")) as string;
             const titleMatches = findMatches(pageTitle, searchQuery, options);
-            if (titleMatches.length) collected.push({ item: p as any, page: p as any, matches: titleMatches } as any);
+            if (titleMatches.length) collected.push({ item: p as unknown, page: p as unknown, matches: titleMatches } as unknown);
 
             // 子アイテムを明示的にスキャン（ArrayLike/Iterable 双方対応）
-            const children: any = (p as any).items;
+            const children: unknown = (p as unknown).items;
             if (children) {
                 // Iterable 優先（Yjs/Fluid 双対応）
                 try {
                     if (typeof children[Symbol.iterator] === "function") {
-                        for (const child of children as any) {
+                        for (const child of children as unknown) {
                             if (!child) continue;
-                            const text = ((child as any).text?.toString?.() ?? String((child as any).text ?? "")) as string;
+                            const text = ((child as unknown).text?.toString?.() ?? String((child as unknown).text ?? "")) as string;
                             const m = findMatches(text, searchQuery, options);
-                            if (m.length) collected.push({ item: child as any, page: p as any, matches: m } as any);
+                            if (m.length) collected.push({ item: child as unknown, page: p as unknown, matches: m } as unknown);
                         }
                     } else {
                         let len = 0;
-                        try { len = (children as any)?.length ?? 0; } catch {}
+                        try { len = (children as unknown)?.length ?? 0; } catch {}
                         for (let i = 0; i < len; i++) {
-                            const child = (children as any).at ? (children as any).at(i) : (children as any)[i];
+                            const child = (children as unknown).at ? (children as unknown).at(i) : (children as unknown)[i];
                             if (!child) continue;
-                            const text = ((child as any).text?.toString?.() ?? String((child as any).text ?? "")) as string;
+                            const text = ((child as unknown).text?.toString?.() ?? String((child as unknown).text ?? "")) as string;
                             const m = findMatches(text, searchQuery, options);
-                            if (m.length) collected.push({ item: child as any, page: p as any, matches: m } as any);
+                            if (m.length) collected.push({ item: child as unknown, page: p as unknown, matches: m } as unknown);
                         }
                     }
                 } catch {
@@ -166,7 +166,7 @@ function handleSearch() {
                 }
             }
         }
-        matches = collected as any;
+        matches = collected as unknown;
     }
     else if (pageItem) {
         matches = searchItems(pageItem, searchQuery, options).map(m => ({ ...m, page: pageItem! }));
@@ -175,34 +175,34 @@ function handleSearch() {
         matches = [];
     }
     matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
-    try { (window as any).__E2E_LAST_MATCH_COUNT__ = matchCount; console.log("SearchPanel.handleSearch matches", { matchCount, items: matches.map(m => ({ page: (m.page as any)?.text?.toString?.() ?? String((m.page as any)?.text ?? ""), item: (m.item as any)?.text?.toString?.() ?? String((m.item as any)?.text ?? "") })) }); } catch {}
+    try { window.__E2E_LAST_MATCH_COUNT__ = matchCount; console.log("SearchPanel.handleSearch matches", { matchCount, items: matches.map(m => ({ page: (m.page as unknown)?.text?.toString?.() ?? String((m.page as unknown)?.text ?? ""), item: (m.item as unknown)?.text?.toString?.() ?? String((m.item as unknown)?.text ?? "") })) }); } catch {}
 
     // ページ単位のフォールバック: プロジェクト検索で0件の場合、現在ページのみで再検索
     if (matchCount === 0 && pageItem) {
-        const localMatches = searchItems(pageItem as any, searchQuery, options).map(m => ({ ...m, page: pageItem! }));
+        const localMatches = searchItems(pageItem as unknown, searchQuery, options).map(m => ({ ...m, page: pageItem! }));
         if (localMatches.length) {
-            matches = localMatches as any;
+            matches = localMatches as unknown;
             matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
-            try { (window as any).__E2E_LAST_MATCH_COUNT__ = matchCount; console.log("SearchPanel.handleSearch page fallback matches", { matchCount }); } catch {}
+            try { window.__E2E_LAST_MATCH_COUNT__ = matchCount; console.log("SearchPanel.handleSearch page fallback matches", { matchCount }); } catch {}
         }
     }
 
     // フォールバック: 0件ならページタイトルのみで再検索（E2E安定化）
     if (matchCount === 0 && (isTestEnv || true)) {
-        const fallback: Array<PageItemMatch<Item>> = [] as any;
+        const fallback: Array<PageItemMatch<Item>> = [] as unknown;
         for (const p of pages.length ? pages : (pageItem ? [pageItem] : [])) {
-            const text = ((p as any).text?.toString?.() ?? String((p as any).text ?? "")) as string;
+            const text = ((p as unknown).text?.toString?.() ?? String((p as unknown).text ?? "")) as string;
             const m = findMatches(text, searchQuery, options);
-            if (m.length) fallback.push({ item: p as any, page: p as any, matches: m } as any);
+            if (m.length) fallback.push({ item: p as unknown, page: p as unknown, matches: m } as unknown);
         }
         if (fallback.length) {
-            matches = fallback as any;
+            matches = fallback as unknown;
             matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
-            try { (window as any).__E2E_LAST_MATCH_COUNT__ = matchCount; console.log("SearchPanel.handleSearch fallback matches", { matchCount, items: matches.map(m => ({ page: (m.page as any)?.text?.toString?.() ?? String((m.page as any)?.text ?? ""), item: (m.item as any)?.text?.toString?.() ?? String((m.item as any)?.text ?? "") })) }); } catch {}
+            try { window.__E2E_LAST_MATCH_COUNT__ = matchCount; console.log("SearchPanel.handleSearch fallback matches", { matchCount, items: matches.map(m => ({ page: (m.page as unknown)?.text?.toString?.() ?? String((m.page as unknown)?.text ?? ""), item: (m.item as unknown)?.text?.toString?.() ?? String((m.item as unknown)?.text ?? "") })) }); } catch {}
         }
     }
 
-    highlight(matches as any, options);
+    highlight(matches as unknown, options);
 }
 
 function handleReplace() {
@@ -210,7 +210,7 @@ function handleReplace() {
     const pages = getPagesToSearch();
     if (pages.length) {
         for (const p of pages) {
-            if (replaceFirst(p as any, searchQuery, replaceText, options)) {
+            if (replaceFirst(p as unknown, searchQuery, replaceText, options)) {
                 handleSearch();
                 return;
             }
@@ -228,16 +228,16 @@ function handleReplaceAll() {
     if (pages.length) {
         let total = 0;
         for (const p of pages) {
-            const replaced = replaceAll(p as any, searchQuery, replaceText, options);
+            const replaced = replaceAll(p as unknown, searchQuery, replaceText, options);
             total += replaced;
         }
         // フォールバック: タイトル置換
         if (total === 0) {
             for (const p of pages) {
-                const text = ((p as any).text?.toString?.() ?? String((p as any).text ?? "")) as string;
+                const text = ((p as unknown).text?.toString?.() ?? String((p as unknown).text ?? "")) as string;
                 const regex = buildRegExp(searchQuery, options);
                 const newText = text.replace(regex, replaceText);
-                if (newText !== text && (p as any).updateText) (p as any).updateText(newText);
+                if (newText !== text && (p as unknown).updateText) (p as unknown).updateText(newText);
             }
         }
         handleSearch();
@@ -250,7 +250,7 @@ function handleReplaceAll() {
 
 function jumpTo(match: PageItemMatch<Item>) {
     if (!project) return;
-    const pageName = encodeURIComponent(((match.page as any).text?.toString?.() ?? String((match.page as any).text ?? "")) as string);
+    const pageName = encodeURIComponent(((match.page as unknown).text?.toString?.() ?? String((match.page as unknown).text ?? "")) as string);
     const projectTitle = encodeURIComponent(project.title);
     goto(`/${projectTitle}/${pageName}`);
 }
@@ -324,8 +324,8 @@ $effect(() => {
                     {#each matches as m (`${m.page.id}-${m.item.id}`)}
                         <li class="result-item" data-testid="search-result-item">
                             <button class="result-button" data-testid="search-result-button" onclick={() => jumpTo(m)}>
-                                <span class="result-page" data-testid="search-result-page">{(m.page as any).text?.toString?.() ?? String((m.page as any).text ?? "")}</span> -
-                                <span class="result-snippet" data-testid="search-result-snippet">{(m.item as any).text?.toString?.() ?? String((m.item as any).text ?? "")}</span>
+                                <span class="result-page" data-testid="search-result-page">{(m.page as unknown).text?.toString?.() ?? String((m.page as unknown).text ?? "")}</span> -
+                                <span class="result-snippet" data-testid="search-result-snippet">{(m.item as unknown).text?.toString?.() ?? String((m.item as unknown).text ?? "")}</span>
                             </button>
                         </li>
                     {/each}

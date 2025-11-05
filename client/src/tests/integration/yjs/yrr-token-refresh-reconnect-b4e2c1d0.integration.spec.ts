@@ -17,7 +17,7 @@ describe("refreshAuthAndReconnect", () => {
             shouldConnect: true,
             wsconnected: false,
             connect: vi.fn(),
-        } as any;
+        } as unknown;
 
         const handler = refreshAuthAndReconnect(provider);
         await handler();

@@ -172,7 +172,7 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const text: string = (target.text as any)?.toString?.() ?? "";
+        const text: string = (target.text as unknown)?.toString?.() ?? "";
         const beforeText = text.slice(0, cursor.offset);
         const afterText = text.slice(cursor.offset);
         const pageTitle = isPageItem(target);
@@ -184,7 +184,7 @@ export class CursorEditor {
                 newItem.updateText(afterText);
 
                 const oldItemId = cursor.itemId;
-                const clearCursorAndSelection = (store as any).clearCursorAndSelection;
+                const clearCursorAndSelection = (store as unknown).clearCursorAndSelection;
                 if (typeof clearCursorAndSelection === "function") {
                     if (typeof clearCursorAndSelection.call === "function") {
                         clearCursorAndSelection.call(store, cursor.userId);
@@ -214,7 +214,7 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as any;
+            const parent = target.parent as unknown;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
@@ -233,7 +233,7 @@ export class CursorEditor {
                     newItem.updateText(afterText);
 
                     const oldItemId = cursor.itemId;
-                    const clearCursorAndSelection = (store as any).clearCursorAndSelection;
+                    const clearCursorAndSelection = (store as unknown).clearCursorAndSelection;
                     if (typeof clearCursorAndSelection === "function") {
                         if (typeof clearCursorAndSelection.call === "function") {
                             clearCursorAndSelection.call(store, cursor.userId);
@@ -377,7 +377,7 @@ export class CursorEditor {
         const combinedText = `${prevText}${currentText}`;
 
         const oldItemId = cursor.itemId;
-        const prevId = (prevItem as any)?.id ?? cursor.itemId;
+        const prevId = (prevItem as unknown)?.id ?? cursor.itemId;
         const newOffset = prevText.length;
 
         this.runInTransaction([prevItem, currentItem], () => {
@@ -394,33 +394,33 @@ export class CursorEditor {
         store.startCursorBlink();
     }
 
-    private getPlainText(item: any): string {
+    private getPlainText(item: unknown): string {
         if (!item) return "";
-        const textValue = (item as any).text;
+        const textValue = (item as unknown).text;
         if (typeof textValue === "string") return textValue;
         if (textValue && typeof textValue.toString === "function") {
             try {
                 return textValue.toString();
             } catch {}
         }
-        if (typeof (item as any).getText === "function") {
+        if (typeof (item as unknown).getText === "function") {
             try {
-                const result = (item as any).getText();
+                const result = (item as unknown).getText();
                 if (typeof result === "string") return result;
             } catch {}
         }
         return "";
     }
 
-    private updateItemText(item: any, text: string) {
+    private updateItemText(item: unknown, text: string) {
         if (!item) return;
         if (typeof item.updateText === "function") {
             item.updateText(text);
             return;
         }
 
-        const tree = (item as any)?.tree;
-        const key = (item as any)?.key ?? (item as any)?.id;
+        const tree = (item as unknown)?.tree;
+        const key = (item as unknown)?.key ?? (item as unknown)?.id;
         if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
 
         const value = tree.getNodeValueFromKey(key);
@@ -438,20 +438,20 @@ export class CursorEditor {
         } catch {}
     }
 
-    private deleteItemNode(item: any) {
+    private deleteItemNode(item: unknown) {
         if (!item) return;
         if (typeof item.delete === "function") {
             item.delete();
             return;
         }
 
-        const key = (item as any)?.key ?? (item as any)?.id;
+        const key = (item as unknown)?.key ?? (item as unknown)?.id;
         if (!key) return;
 
         const treeCandidates = [
-            (item as any)?.tree,
-            (item as any)?.parent?.tree,
-            (generalStore as any)?.project?.tree,
+            (item as unknown)?.tree,
+            (item as unknown)?.parent?.tree,
+            (generalStore as unknown)?.project?.tree,
         ];
 
         for (const tree of treeCandidates) {
@@ -464,9 +464,9 @@ export class CursorEditor {
         }
     }
 
-    private runInTransaction(participants: any[], action: () => void) {
+    private runInTransaction(participants: unknown[], action: () => void) {
         const doc = participants
-            .map(item => (item as any)?.ydoc)
+            .map(item => (item as unknown)?.ydoc)
             .find(candidate => candidate && typeof candidate.transact === "function");
 
         if (doc) {

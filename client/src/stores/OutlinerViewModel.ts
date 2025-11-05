@@ -6,11 +6,11 @@ const logger = getLogger();
 const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
     || import.meta.env.MODE === "test"
     || import.meta.env.VITE_IS_TEST === "true";
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
     if (!__IS_E2E__) console.log(...args);
 };
 
-const isItemLike = (obj: any): boolean => {
+const isItemLike = (obj: unknown): boolean => {
     try {
         const id = obj?.id;
         const txt = obj?.text;
@@ -77,7 +77,7 @@ export class OutlinerViewModel {
             debugLog("OutlinerViewModel: updateFromModel called");
             debugLog(
                 "OutlinerViewModel: pageItem.items length:",
-                (pageItem.items as any)?.length || 0,
+                (pageItem.items as unknown)?.length || 0,
             );
 
             // 既存のビューモデルをクリアせず、更新または追加する
@@ -131,9 +131,9 @@ export class OutlinerViewModel {
         if (existingViewModel) {
             // プロパティを更新（参照は維持）
             existingViewModel.text = item.text.toString();
-            existingViewModel.votes = [...((item as any).votes || [])];
-            existingViewModel.lastChanged = (item as any).lastChanged;
-            existingViewModel.commentCount = (item as any).comments?.length ?? 0;
+            existingViewModel.votes = [...((item as unknown).votes || [])];
+            existingViewModel.lastChanged = (item as unknown).lastChanged;
+            existingViewModel.commentCount = (item as unknown).comments?.length ?? 0;
             debugLog(
                 `OutlinerViewModel: Updated existing view model for "${item.text}"`,
             );
@@ -143,11 +143,11 @@ export class OutlinerViewModel {
                 id: item.id,
                 original: item,
                 text: item.text.toString(),
-                votes: [...((item as any).votes || [])],
-                author: (item as any).author,
-                created: (item as any).created,
-                lastChanged: (item as any).lastChanged,
-                commentCount: (item as any).comments?.length ?? 0,
+                votes: [...((item as unknown).votes || [])],
+                author: (item as unknown).author,
+                created: (item as unknown).created,
+                lastChanged: (item as unknown).lastChanged,
+                commentCount: (item as unknown).comments?.length ?? 0,
             });
             debugLog(
                 `OutlinerViewModel: Created new view model for "${item.text}"`,
@@ -158,7 +158,11 @@ export class OutlinerViewModel {
         this.parentMap.set(item.id, parentId);
 
         // 子アイテムも処理
-        if (((it: any) => (it && typeof it.length === "number" && typeof it.at === "function"))((item as any).items)) {
+        if (
+            ((it: unknown) => (it && typeof it.length === "number" && typeof it.at === "function"))(
+                (item as unknown).items,
+            )
+        ) {
             const children = item.items;
             debugLog(
                 `OutlinerViewModel: Processing ${children.length} children for "${item.text.toString()}"`,
@@ -214,12 +218,12 @@ export class OutlinerViewModel {
         this.depthMap.set(item.id, depth);
         const vm = this.viewModels.get(item.id);
         if (vm) {
-            vm.commentCount = (item as any).comments?.length ?? 0;
+            vm.commentCount = (item as unknown).comments?.length ?? 0;
         }
 
         // 子アイテムを処理（折りたたまれていない場合のみ）
         const isCollapsed = this.collapsedMap.get(item.id);
-        const ch: any = (item as any).items;
+        const ch: unknown = (item as unknown).items;
         const hasChildren = !!(ch && typeof ch.length === "number" && typeof ch.at === "function" && ch.length > 0);
 
         debugLog(
@@ -256,8 +260,8 @@ export class OutlinerViewModel {
         // モデルから表示情報を再計算（アイテムインスタンスは維持）
         const rootItem = this.findRootItem(itemId);
         if (
-            ((it: any) => (it && typeof it.length === "number" && typeof it.at === "function"))(
-                (rootItem as any)?.items,
+            ((it: unknown) => (it && typeof it.length === "number" && typeof it.at === "function"))(
+                (rootItem as unknown)?.items,
             )
         ) {
             this.recalculateOrderAndDepth(rootItem.items);
@@ -316,7 +320,7 @@ export class OutlinerViewModel {
     hasChildren(itemId: string): boolean {
         const model = this.viewModels.get(itemId);
         if (!model || !model.original || !model.original.items) return false;
-        const ch: any = (model.original as any).items;
+        const ch: unknown = (model.original as unknown).items;
         return !!(ch && typeof ch.length === "number" && typeof ch.at === "function" && ch.length > 0);
     }
 

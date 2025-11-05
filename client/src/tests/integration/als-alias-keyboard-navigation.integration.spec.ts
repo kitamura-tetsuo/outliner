@@ -14,7 +14,7 @@ describe("ALS alias keyboard navigation", () => {
             { id: "2", text: "second", items: [] },
             { id: "alias", text: "alias", items: [] },
         ];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        generalStore.currentPage = { id: "root", text: "root", items } as unknown;
         render(AliasPicker);
 
         aliasPickerStore.show("alias");
@@ -36,7 +36,7 @@ describe("ALS alias keyboard navigation", () => {
         expect(options[1].closest("li")?.classList.contains("selected")).toBe(true);
 
         await user.keyboard("{Enter}");
-        const pageItems = (generalStore.currentPage as any).items;
+        const pageItems = (generalStore.currentPage as unknown).items;
         expect(pageItems[2].aliasTargetId).toBe("2");
         expect(aliasPickerStore.isVisible).toBe(false);
     });

@@ -12,7 +12,7 @@ interface Cursor {
     findPreviousItem(): Item | null;
     findNextItem(): Item | null;
     clearSelection(): void;
-    deleteMultiItemSelection(selection: any): void; // This will need to be properly typed too
+    deleteMultiItemSelection(selection: unknown): void; // This will need to be properly typed too
     applyToStore(): void;
     // Add other required methods as needed
 }

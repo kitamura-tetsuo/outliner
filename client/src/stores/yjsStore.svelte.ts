@@ -18,19 +18,19 @@ class YjsStore {
         }
         // コメントスレッドの選択はドキュメント切替時に無効化してデフォルト挙動に任せる
         try {
-            (globalStore as any).openCommentItemId = null;
+            (globalStore as unknown).openCommentItemId = null;
         } catch {}
         this._client = v;
         this.isConnected = !!(v?.isContainerConnected);
         if (v) {
             const connectedProject = v.getProject();
-            const newGuid: string | undefined = (connectedProject as any)?.ydoc?.guid;
-            const existingGuid: string | undefined = (globalStore.project as any)?.ydoc?.guid;
+            const newGuid: string | undefined = (connectedProject as unknown)?.ydoc?.guid;
+            const existingGuid: string | undefined = (globalStore.project as unknown)?.ydoc?.guid;
 
             // If the currently connected project refers to the same Y.Doc (GUID), skip
             if (
                 (existingGuid && newGuid && existingGuid === newGuid)
-                || globalStore.project === (connectedProject as any)
+                || globalStore.project === (connectedProject as unknown)
             ) {
                 return;
             }
@@ -39,7 +39,7 @@ class YjsStore {
                 return;
             }
 
-            globalStore.project = connectedProject as any;
+            globalStore.project = connectedProject as unknown;
             this._lastProjectGuid = newGuid ?? null;
 
             // In headless E2E runs, pages can be created on a provisional project
@@ -53,36 +53,36 @@ class YjsStore {
                     // ケースA: 接続済みプロジェクトが空 -> 以前のページを丸ごと移植（ID維持）
                     if (newCount === 0) {
                         for (let i = 0; i < prevCount; i++) {
-                            const prevPage: any = prevItems.at ? prevItems.at(i) : prevItems[i];
+                            const prevPage: unknown = prevItems.at ? prevItems.at(i) : prevItems[i];
                             const title = prevPage?.text?.toString?.() ?? String(prevPage?.text ?? "");
                             if (!title) continue;
-                            const cp: any = connectedProject as any;
+                            const cp: unknown = connectedProject as unknown;
                             try {
-                                const newPage: any = (typeof cp.addPage === "function")
+                                const newPage: unknown = (typeof cp.addPage === "function")
                                     ? cp.addPage(title, "tester")
                                     : (cp.items?.addNode ? cp.items.addNode("tester") : null);
                                 if (!newPage) continue;
                                 // ページIDを引き継ぐ
                                 try {
-                                    (newPage as any).value?.set?.("id", String(prevPage.id));
+                                    (newPage as unknown).value?.set?.("id", String(prevPage.id));
                                 } catch {}
                                 try {
                                     newPage.updateText?.(title);
                                 } catch {}
                                 // 子行もID/テキストを引き継ぐ
                                 try {
-                                    const prevLines: any = prevPage?.items as any;
+                                    const prevLines: unknown = prevPage?.items as unknown;
                                     const len = prevLines?.length ?? 0;
                                     for (let j = 0; j < len; j++) {
-                                        const prevLine: any = prevLines.at ? prevLines.at(j) : prevLines[j];
+                                        const prevLine: unknown = prevLines.at ? prevLines.at(j) : prevLines[j];
                                         if (!prevLine) continue;
                                         const txt = prevLine.text?.toString?.() ?? String(prevLine.text ?? "");
-                                        const newLine: any = newPage.items?.addNode
+                                        const newLine: unknown = newPage.items?.addNode
                                             ? newPage.items.addNode("tester")
                                             : null;
                                         if (!newLine) continue;
                                         try {
-                                            (newLine as any).value?.set?.("id", String(prevLine.id));
+                                            (newLine as unknown).value?.set?.("id", String(prevLine.id));
                                         } catch {}
                                         try {
                                             newLine.updateText?.(txt);
@@ -94,15 +94,15 @@ class YjsStore {
                     } else {
                         // ケースB: 接続済みプロジェクトに既存ページあり -> タイトル一致でIDを上書き（行もインデックス一致で上書き）
                         try {
-                            const newPages: any = newItems;
-                            const getTitle = (p: any) => p?.text?.toString?.() ?? String(p?.text ?? "");
+                            const newPages: unknown = newItems;
+                            const getTitle = (p: unknown) => p?.text?.toString?.() ?? String(p?.text ?? "");
                             const newLen = newPages?.length ?? 0;
                             for (let i = 0; i < newLen; i++) {
-                                const curPage: any = newPages.at ? newPages.at(i) : newPages[i];
+                                const curPage: unknown = newPages.at ? newPages.at(i) : newPages[i];
                                 if (!curPage) continue;
                                 const title = getTitle(curPage);
                                 // 以前のプロジェクトから同名ページを探す
-                                let matchPrev: any = null;
+                                let matchPrev: unknown = null;
                                 for (let k = 0; k < prevCount; k++) {
                                     const pp = prevItems.at ? prevItems.at(k) : prevItems[k];
                                     if (getTitle(pp) === title) {
@@ -113,19 +113,19 @@ class YjsStore {
                                 if (!matchPrev) continue;
                                 // ページIDを上書き
                                 try {
-                                    (curPage as any).value?.set?.("id", String(matchPrev.id));
+                                    (curPage as unknown).value?.set?.("id", String(matchPrev.id));
                                 } catch {}
                                 // 子行のIDをインデックス対応で上書き
                                 try {
-                                    const prevLines: any = matchPrev?.items as any;
-                                    const newLines: any = curPage?.items as any;
+                                    const prevLines: unknown = matchPrev?.items as unknown;
+                                    const newLines: unknown = curPage?.items as unknown;
                                     const len = Math.min(prevLines?.length ?? 0, newLines?.length ?? 0);
                                     for (let j = 0; j < len; j++) {
-                                        const prevLine: any = prevLines.at ? prevLines.at(j) : prevLines[j];
-                                        const curLine: any = newLines.at ? newLines.at(j) : newLines[j];
+                                        const prevLine: unknown = prevLines.at ? prevLines.at(j) : prevLines[j];
+                                        const curLine: unknown = newLines.at ? newLines.at(j) : newLines[j];
                                         if (!prevLine || !curLine) continue;
                                         try {
-                                            (curLine as any).value?.set?.("id", String(prevLine.id));
+                                            (curLine as unknown).value?.set?.("id", String(prevLine.id));
                                         } catch {}
                                     }
                                 } catch {}
@@ -174,5 +174,5 @@ class YjsStore {
 
 export const yjsStore = $state(new YjsStore());
 if (typeof window !== "undefined") {
-    (window as any).__YJS_STORE__ = yjsStore;
+    window.__YJS_STORE__ = yjsStore;
 }

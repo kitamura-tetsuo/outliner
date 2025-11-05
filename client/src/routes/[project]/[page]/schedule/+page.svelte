@@ -57,9 +57,9 @@ onMount(async () => {
     // 2) currentPage が未確定の場合は URL の pageTitle から該当ページを特定
     if (!pageId) {
         try {
-            const items: any = store.pages?.current;
+            const items: unknown = store.pages?.current;
             const len = items?.length ?? 0;
-            let found: any = undefined;
+            let found: unknown = undefined;
             for (let i = 0; i < len; i++) {
                 const p = items?.at ? items.at(i) : items?.[i];
                 const title = p?.text?.toString?.() ?? String(p?.text ?? "");

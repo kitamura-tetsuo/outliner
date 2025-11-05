@@ -3,7 +3,7 @@ import initSqlJs from "sql.js";
 import { beforeAll, describe, expect, it } from "vitest";
 import { SyncWorker } from "../services/syncWorker";
 
-let db: any;
+let db: unknown;
 
 const require = createRequire(import.meta.url);
 

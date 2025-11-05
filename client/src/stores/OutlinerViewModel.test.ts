@@ -46,7 +46,7 @@ describe("OutlinerViewModel", () => {
         vm.toggleCollapsed("child1");
         expect(vm.isCollapsed("child1")).toBe(true);
         // when collapsed, child1's children would be hidden; simulate by adding grandchild
-        const grand = ((tree.items as any)[0] as Item).items.addNode("u");
+        const grand = ((tree.items as unknown)[0] as Item).items.addNode("u");
         grand.id = "grand";
         grand.text = "grand";
         vm.updateFromModel(tree);
@@ -54,13 +54,13 @@ describe("OutlinerViewModel", () => {
     });
 
     it("tracks comment counts", () => {
-        const c = ((tree.items as any)[0] as Item).addComment("u", "hi");
+        const c = ((tree.items as unknown)[0] as Item).addComment("u", "hi");
         vm.updateFromModel(tree);
         expect(vm.getViewModel("child1")?.commentCount).toBe(1);
-        ((tree.items as any)[0] as Item).updateComment(c.id, "edited");
+        ((tree.items as unknown)[0] as Item).updateComment(c.id, "edited");
         vm.updateFromModel(tree);
         expect(vm.getViewModel("child1")?.commentCount).toBe(1);
-        ((tree.items as any)[0] as Item).deleteComment(c.id);
+        ((tree.items as unknown)[0] as Item).deleteComment(c.id);
         vm.updateFromModel(tree);
         expect(vm.getViewModel("child1")?.commentCount).toBe(0);
     });

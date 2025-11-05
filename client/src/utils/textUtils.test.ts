@@ -3,17 +3,23 @@ import { JSDOM } from "jsdom";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getClickPosition, pixelPositionToTextPosition } from "./textUtils";
 
-let originalGetBoundingClientRect: any;
-let originalGetComputedStyle: any;
+let originalGetBoundingClientRect: typeof Element.prototype.getBoundingClientRect | undefined;
+let originalGetComputedStyle: typeof window.getComputedStyle | undefined;
 
 beforeAll(() => {
     // グローバルに DOM をセット
     const dom = new JSDOM("<!DOCTYPE html><body></body>");
-    (global as any).window = dom.window;
-    (global as any).document = dom.window.document;
-    (global as any).Element = dom.window.Element;
-    (global as any).HTMLElement = dom.window.HTMLElement;
-    (global as any).Node = dom.window.Node;
+    (global as unknown as {
+        window?: typeof dom.window;
+        document?: typeof dom.window.document;
+        Element?: typeof dom.window.Element;
+        HTMLElement?: typeof dom.window.HTMLElement;
+        Node?: typeof dom.window.Node;
+    }).window = dom.window;
+    (global as unknown as { document?: typeof dom.window.document; }).document = dom.window.document;
+    (global as unknown as { Element?: typeof dom.window.Element; }).Element = dom.window.Element;
+    (global as unknown as { HTMLElement?: typeof dom.window.HTMLElement; }).HTMLElement = dom.window.HTMLElement;
+    (global as unknown as { Node?: typeof dom.window.Node; }).Node = dom.window.Node;
     // getBoundingClientRect をモック: textContent 長さ * 10px
     originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
     Element.prototype.getBoundingClientRect = function() {
@@ -27,13 +33,17 @@ beforeAll(() => {
         fontSize: "",
         fontWeight: "",
         letterSpacing: "",
-    } as any);
+    } as unknown as CSSStyleDeclaration);
 });
 
 afterAll(() => {
     // モック解除
-    Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
-    window.getComputedStyle = originalGetComputedStyle;
+    if (originalGetBoundingClientRect) {
+        Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
+    if (originalGetComputedStyle) {
+        window.getComputedStyle = originalGetComputedStyle;
+    }
 });
 
 describe("getClickPosition", () => {

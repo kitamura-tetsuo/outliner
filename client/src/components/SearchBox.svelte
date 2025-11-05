@@ -17,14 +17,14 @@ let effectiveProject: Project | null = $derived.by(() => {
     const fromProps = project ?? (store.project ?? null);
     if (fromProps) return fromProps;
     if (typeof window !== 'undefined') {
-        const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
+        const cur = window.__CURRENT_PROJECT__ as Project | undefined;
         if (cur) return cur;
-        const gs = (window as any).generalStore;
+        const gs = window.generalStore;
         if (gs?.project) return gs.project as Project;
         const parts = window.location.pathname.split("/").filter(Boolean);
         void parts[0]; // Previously projectTitle
-        void (window as any).__YJS_SERVICE__; // Previously service
-        void (window as any).__YJS_STORE__; // Previously yjsStoreRef
+        void window.__YJS_SERVICE__; // Previously service
+        void window.__YJS_STORE__; // Previously yjsStoreRef
         // Do NOT auto-create a project here. In tests this can create an empty
         // project separate from the one prepared by TestHelpers, which breaks
         // SearchBox results. Wait for store.project or global state instead.
@@ -50,14 +50,14 @@ let results = $derived.by(() => {
     let projectToUse: Project | null = effectiveProject;
     if (!projectToUse && typeof window !== 'undefined') {
         // try global fallbacks
-        const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
+        const cur = window.__CURRENT_PROJECT__ as Project | undefined;
         if (cur) projectToUse = cur;
     }
 
     // Resolve pages robustly. Prefer a non-empty store.pages.current, otherwise
     // fall back to project.items. Reading from `store` ensures reactivity when
     // pages load after the user begins typing.
-    const collectPages = (): any[] => {
+    const collectPages = (): unknown[] => {
         const sources = [
             // Primary: store.pages.current (reactive to Yjs changes)
             () => store.pages?.current,
@@ -66,9 +66,9 @@ let results = $derived.by(() => {
             // Fallback 2: projectToUse.items
             () => projectToUse?.items,
             // Fallback 3: window.generalStore.project.items
-            () => typeof window !== 'undefined' ? (window as any).generalStore?.project?.items : undefined,
+            () => typeof window !== 'undefined' ? window.generalStore?.project?.items : undefined,
             // Fallback 4: window.appStore.project.items
-            () => typeof window !== 'undefined' ? (window as any).appStore?.project?.items : undefined,
+            () => typeof window !== 'undefined' ? window.appStore?.project?.items : undefined,
         ];
 
         for (const getSource of sources) {
@@ -76,29 +76,29 @@ let results = $derived.by(() => {
                 const items = getSource();
                 if (!items) continue;
 
-                const arr: any[] = [];
+                const arr: unknown[] = [];
 
                 // Try iterator first
                 if (typeof items[Symbol.iterator] === 'function') {
-                    for (const p of items as any) {
+                    for (const p of items as unknown) {
                         if (p) arr.push(p);
                     }
                     if (arr.length) return arr;
                 }
 
                 // Try array-like access
-                if (typeof (items as any).length === 'number') {
-                    const len = (items as any).length;
+                if (typeof (items as unknown).length === 'number') {
+                    const len = (items as unknown).length;
                     for (let i = 0; i < len; i++) {
-                        const v = (items as any).at ? (items as any).at(i) : (items as any)[i];
+                        const v = (items as unknown).at ? (items as unknown).at(i) : (items as unknown)[i];
                         if (typeof v !== 'undefined' && v !== null) arr.push(v);
                     }
                     if (arr.length) return arr;
                 }
 
                 // Try toArray method if available
-                if (typeof (items as any).toArray === 'function') {
-                    const arr = (items as any).toArray();
+                if (typeof (items as unknown).toArray === 'function') {
+                    const arr = (items as unknown).toArray();
                     if (arr && arr.length) return arr;
                 }
             } catch {
@@ -164,12 +164,12 @@ function handleKeydown(e: KeyboardEvent) {
 function resolveProjectTitle(targetPage: Item | null): string {
     const storeProject = store.project ?? null;
     const derivedProject = effectiveProject ?? null;
-    const pageDoc = targetPage ? ((targetPage as any)?.ydoc ?? null) : null;
+    const pageDoc = targetPage ? ((targetPage as unknown)?.ydoc ?? null) : null;
     const projectMatches = (proj: Project | null) => {
         if (!proj) return false;
-        const projDoc = (proj as any)?.ydoc ?? null;
+        const projDoc = (proj as unknown)?.ydoc ?? null;
         if (pageDoc && projDoc && projDoc !== pageDoc) return false;
-        if (derivedProject && projDoc && (derivedProject as any)?.ydoc && projDoc !== (derivedProject as any)?.ydoc) {
+        if (derivedProject && projDoc && (derivedProject as unknown)?.ydoc && projDoc !== (derivedProject as unknown)?.ydoc) {
             return false;
         }
         return true;
@@ -187,12 +187,12 @@ function resolveProjectTitle(targetPage: Item | null): string {
 function navigateToPage(page?: Item) {
     const targetPage = page || (selected >= 0 && results[selected] ? results[selected] : null);
     if (targetPage) {
-        const title = (targetPage as any)?.text?.toString?.() ?? String((targetPage as any)?.text ?? "");
+        const title = (targetPage as unknown)?.text?.toString?.() ?? String((targetPage as unknown)?.text ?? "");
         searchHistoryStore.add(title);
         // Prefer a project whose Y.Doc matches the active page/project before falling back to placeholders
         let projTitle = resolveProjectTitle(targetPage);
         if (!projTitle && typeof window !== 'undefined') {
-            const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
+            const cur = window.__CURRENT_PROJECT__ as Project | undefined;
             projTitle = cur?.title ?? projTitle;
             if (!projTitle) {
                 const pathParts = window.location.pathname.split("/").filter(Boolean);
@@ -225,14 +225,14 @@ onMount(() => {
     try {
         const logPrefix = "[SEA-0001][SearchBox]";
         const styles = (el: Element | null) => {
-            if (!el) return null as any;
+            if (!el) return null as unknown;
             const cs = getComputedStyle(el as Element);
             return {
                 display: cs.display,
                 visibility: cs.visibility,
                 opacity: cs.opacity,
                 transform: cs.transform,
-                clipPath: (cs as any).clipPath ?? (cs as any)["clip-path"],
+                clipPath: (cs as unknown).clipPath ?? (cs as unknown)["clip-path"],
                 pointerEvents: cs.pointerEvents,
             };
         };
@@ -262,7 +262,7 @@ onMount(() => {
             }
         );
         // 親チェーンの computed styles を上位へ辿って計測
-        const chain: any[] = [];
+        const chain: unknown[] = [];
         let node: HTMLElement | null = inputEl;
         const limit = 15;
         let count = 0;

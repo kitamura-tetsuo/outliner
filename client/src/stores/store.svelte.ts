@@ -34,7 +34,7 @@ class GeneralStore {
             if (proj?.ydoc && page?.ydoc && proj.ydoc !== page.ydoc) {
                 const title = page?.text?.toString?.() ?? String(page?.text ?? "");
                 const items = proj.items;
-                let next: any = null;
+                let next: unknown = null;
                 const len = items?.length ?? 0;
                 for (let i = 0; i < len; i++) {
                     const p = items.at ? items.at(i) : items[i];
@@ -55,7 +55,7 @@ class GeneralStore {
                     const prevLen = prevItems?.length ?? 0;
                     const nextLen = nextItems?.length ?? 0;
                     if (prevLen > 0) {
-                        const isPlaceholderChild = (node: any) => {
+                        const isPlaceholderChild = (node: unknown) => {
                             const text = node?.text?.toString?.() ?? String(node?.text ?? "");
                             if (!text) return true;
                             return text === "一行目: テスト" || text === "二行目: Yjs 反映"
@@ -77,7 +77,7 @@ class GeneralStore {
                                 nextItems.removeAt(nextItems.length - 1);
                             }
 
-                            const cloneBranch = (source: any, target: any) => {
+                            const cloneBranch = (source: unknown, target: unknown) => {
                                 if (!source || !target) return;
                                 const length = source?.length ?? 0;
                                 for (let index = 0; index < length; index++) {
@@ -87,7 +87,7 @@ class GeneralStore {
                                     const created = target?.addNode?.("tester");
                                     if (!created) continue;
                                     created.updateText?.(text);
-                                    cloneBranch(from?.items as any, created?.items as any);
+                                    cloneBranch(from?.items as unknown, created?.items as unknown);
                                 }
                             };
                             cloneBranch(prevItems, nextItems);
@@ -96,7 +96,7 @@ class GeneralStore {
                 } catch {
                     // Ignore errors during child item migration
                 }
-                this._currentPage = next as any;
+                this._currentPage = next as unknown;
                 // 通知
                 this._currentPageSubscribers.forEach(fn => {
                     try {
@@ -133,7 +133,7 @@ class GeneralStore {
 
         // Yjs observeDeep でルートツリーを監視し、Svelteの購読にブリッジ
         const project = v;
-        const ymap = (project as any)?.ydoc?.getMap?.("orderedTree");
+        const ymap = (project as unknown)?.ydoc?.getMap?.("orderedTree");
         const subscribe = createSubscriber((_update) => {
             const handler = (_events: Array<Y.YEvent<unknown>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
                 try {

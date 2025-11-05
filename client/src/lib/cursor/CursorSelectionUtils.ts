@@ -33,7 +33,7 @@ export function getSelectionForUser(userId: string): SelectionRange | undefined 
 }
 
 /**
- * Determine if the provided selection has any length.
+ * Determine if the provided selection has unknown length.
  */
 export function selectionHasRange(selection: SelectionRange | undefined): boolean {
     if (!selection) return false;

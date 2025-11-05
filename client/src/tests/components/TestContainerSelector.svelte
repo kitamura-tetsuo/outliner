@@ -16,7 +16,7 @@ let { onContainerSelected = () => {} }: Props = $props();
 
 // イベントレス: $state/$derived 依存で再計算
 let userContainer = $derived.by(() => {
-    void (firestoreStore as any).ucVersion; // 依存関係
+    void (firestoreStore as unknown).ucVersion; // 依存関係
     return firestoreStore.userContainer;
 });
 

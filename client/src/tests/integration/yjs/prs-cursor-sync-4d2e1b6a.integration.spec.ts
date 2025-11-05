@@ -10,7 +10,7 @@ describe("yjs presence", () => {
         const c2 = await createProjectConnection(projectId);
 
         // Wait for both project connections to be fully synchronized before proceeding
-        // This ensures both clients are connected and have synchronized any initial state
+        // This ensures both clients are connected and have synchronized unknown initial state
         await new Promise(resolve => {
             let syncedCount = 0;
             const checkSync = () => {
