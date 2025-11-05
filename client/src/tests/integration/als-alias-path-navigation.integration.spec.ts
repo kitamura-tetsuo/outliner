@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
+import { Item, Items } from "../../schema/app-schema";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 
@@ -15,7 +16,11 @@ describe("ALS alias path navigation", () => {
             { id: "p", text: "parent", items: [{ id: "c", text: "child", items: [] }] },
             { id: "alias", text: "alias", items: [] },
         ];
-        generalStore.currentPage = { id: "root", text: "root", items };
+        (generalStore as unknown as { currentPage: Item; }).currentPage = {
+            id: "root",
+            text: "root",
+            items: items as unknown as Items,
+        } as unknown as Item;
         render(AliasPicker);
 
         aliasPickerStore.show("alias");
