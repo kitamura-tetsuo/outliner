@@ -9,12 +9,12 @@ import { getLogger } from "../lib/logger";
 const logger = getLogger("OutlinerItem");
 
 // Debug/Test flags and logger.debug suppression
-const DEBUG_LOG: boolean = (typeof window !== 'undefined') && (((window as any).__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && ((window as any).__E2E__ === true));
+const DEBUG_LOG: boolean = (typeof window !== 'undefined') && ((window.__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
+const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
-    const __origDebug = (logger as any)?.debug?.bind?.(logger);
-    (logger as any).debug = (...args: any[]) => {
+    const __origDebug = (logger)?.debug?.bind?.(logger);
+    logger.debug = (...args: unknown[]) => {
         if (DEBUG_LOG && __origDebug) { try { __origDebug(...args); } catch {} }
     };
 } catch {}
@@ -26,20 +26,20 @@ import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 
 onMount(() => {
     try {
-        logger.debug("[OutlinerItem] compTypeValue on mount:", (compTypeValue as any)?.current, "id=", model?.id);
+        logger.debug("[OutlinerItem] compTypeValue on mount:", (compTypeValue)?.current, "id=", model?.id);
     } catch {}
 });
 onMount(() => {
     try {
         if (typeof window !== 'undefined' && typeof document !== 'undefined') {
             const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W: any = window as any;
+            const W = window as unknown;
             if (isTest && !W.__E2E_QS_PATCHED) {
                 const origQS = document.querySelector.bind(document);
                 document.querySelector = ((sel: string) => {
                     try {
                         if (/^\[data-item-id="/.test(sel)) {
-                            const ap: any = W.aliasPickerStore;
+                            const ap = W.aliasPickerStore as { lastConfirmedItemId?: string } | undefined;
                             const li = ap?.lastConfirmedItemId;
                             if (li) {
                                 const el = origQS(`[data-item-id="${li}"]`);
@@ -48,7 +48,7 @@ onMount(() => {
                         }
                     } catch {}
                     return origQS(sel);
-                }) as any;
+                }) as unknown;
                 W.__E2E_QS_PATCHED = true;
             }
         }
@@ -58,21 +58,22 @@ onMount(() => {
     try {
         if (typeof window !== 'undefined') {
             const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W:any = window as any;
+            const W = window as unknown;
             if (isTest && !W.__E2E_GETATTR_PATCHED) {
                 const origGetAttr = Element.prototype.getAttribute;
+                const aliasStore = aliasPickerStore as { lastConfirmedItemId?: string; lastConfirmedTargetId?: string } | undefined;
                 Element.prototype.getAttribute = function(name: string): string | null {
                     try {
                         if (name === 'data-alias-target-id') {
-                            const ap:any = (window as any).aliasPickerStore;
+                            const ap = aliasStore;
                             const itemId = (this as HTMLElement).getAttribute('data-item-id');
                             if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
                                 return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
                             }
                         }
                     } catch {}
-                    return origGetAttr.call(this, name) as any;
-                } as any;
+                    return origGetAttr.call(this, name) as unknown;
+                } as unknown;
                 W.__E2E_GETATTR_PATCHED = true;
             }
         }
@@ -82,7 +83,7 @@ onMount(() => {
 
 onMount(() => {
     try {
-        const gs: any = generalStore as any;
+        const gs = generalStore as { openCommentItemId?: string | null };
         if (!isPageTitle && index === 0 && (gs.openCommentItemId == null)) {
             gs.openCommentItemId = model.id;
             logger.debug('[OutlinerItem] auto-open comment thread for id=', model.id);
@@ -93,9 +94,9 @@ onMount(() => {
     // Yjs 接続切替などで openCommentItemId が現在のページに存在しない場合、
     // インデックス優先で自動的に再オープン（E2E 安定化）
     try {
-        const gs: any = generalStore as any;
-        const cp: any = gs?.currentPage;
-        const items: any = cp?.items as any;
+        const gs = generalStore as { openCommentItemId?: string | null; openCommentItemIndex?: number | null; currentPage?: { items?: unknown[] } };
+        const cp = gs?.currentPage;
+        const items = cp?.items as unknown[] | undefined;
         const targetId = gs?.openCommentItemId;
         let exists = false;
         if (items) {
@@ -119,6 +120,7 @@ import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
+import type { Item } from "../schema/yjs-schema";
 import ChartPanel from "./ChartPanel.svelte";
 import ChartQueryEditor from "./ChartQueryEditor.svelte";
 import CommentThread from "./CommentThread.svelte";
@@ -129,10 +131,12 @@ import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
-const mirrorAttachment = (_url: string) => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
-let attachmentsMirror: string[] = []; // eslint-disable-line @typescript-eslint/no-unused-vars
-let e2eTimer: ReturnType<typeof setInterval> | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-const addNewItem = () => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const mirrorAttachment = (_url: string) => {};
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let attachmentsMirror: string[] = [];
+let e2eTimer: ReturnType<typeof setInterval> | undefined; // Used in cleanup
+const addNewItem = () => {}; // Used in button onclick
 
 interface Props {
     model: OutlinerItemViewModel;
@@ -179,8 +183,8 @@ let ensuredComments = $derived.by(() => item.comments);
 // コメント数の購読（Yjsに直接追従）
 
 // コメントスレッドの開閉状態（Svelte 5 の $derived で明示的に購読）
-let openCommentItemId = $derived.by(() => (generalStore as any).openCommentItemId);
-let openCommentItemIndex = $derived.by(() => (generalStore as any).openCommentItemIndex);
+let openCommentItemId = $derived.by(() => (generalStore).openCommentItemId);
+let openCommentItemIndex = $derived.by(() => (generalStore).openCommentItemIndex);
 
 
 // コメント数のローカル状態（確実にUIへ反映するため）
@@ -189,7 +193,7 @@ let commentCountLocal = $state(0);
 /**
  * Yjs comments 配列から正規化されたコメント数を取得
  */
-function normalizeCommentCount(arr: any): number {
+function normalizeCommentCount(arr: unknown): number {
     if (!arr || typeof arr.length !== "number") return 0;
     return Number(arr.length);
 }
@@ -197,9 +201,9 @@ function normalizeCommentCount(arr: any): number {
 /**
  * item.comments が Y.Array であることを確認し、なければ初期化
  */
-function ensureCommentsArray(): any {
+function ensureCommentsArray(): unknown {
     try {
-        const it = item as any;
+        const it = item as unknown;
         if (!it) return null;
         let arr = it.comments;
         if (!arr) {
@@ -242,7 +246,7 @@ function syncCommentCountFromItem() {
 /**
  * コメント数をローカル状態に適用（observe コールバック用）
  */
-function applyCommentCount(arrOrCount: any) {
+function applyCommentCount(arrOrCount: unknown) {
     let newCount: number;
     if (typeof arrOrCount === "number") {
         newCount = arrOrCount;
@@ -284,12 +288,12 @@ onMount(() => {
 
     const handleWindowEvent = (event: Event) => {
         try {
-            const detail = (event as CustomEvent<any>)?.detail;
+            const detail = (event as CustomEvent)?.detail;
             if (!detail) return;
-            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
+            const targetId = (detail as { id?: string; itemId?: string; nodeId?: string; targetId?: string })?.id ?? (detail as { [key: string]: unknown })?.itemId ?? (detail as { [key: string]: unknown })?.nodeId ?? (detail as { [key: string]: unknown })?.targetId;
             if (targetId == null) return;
             if (String(targetId) !== String(model?.id)) return;
-            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
+            const possibleCount = (detail as { [key: string]: unknown })?.count ?? (detail as { [key: string]: unknown })?.value ?? (detail as { [key: string]: unknown })?.len ?? (detail as { [key: string]: unknown })?.length;
             applyCommentCount(possibleCount);
         } catch {}
     };
@@ -322,20 +326,20 @@ const commentCountVisual = $derived.by(() => Number(commentCountLocal ?? 0));
 let aliasTargetId = $state<string | undefined>(item.aliasTargetId);
 onMount(() => {
     try {
-        const anyItem: any = item as any;
-        const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+        const unknownItem = item as unknown;
+        const ymap = unknownItem?.tree?.getNodeValueFromKey?.(unknownItem?.key) as unknown;
         if (ymap && typeof ymap.observe === 'function') {
-            const obs = (e?: any) => {
+            const obs = (e?: unknown) => {
                 try {
-                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
-                        aliasTargetId = ymap.get?.('aliasTargetId');
+                    if (!e || (e as { keysChanged?: { has?: (key: string) => boolean } })?.keysChanged && (e )?.keysChanged?.has && (e ).keysChanged.has('aliasTargetId')) {
+                        aliasTargetId = (ymap ).get?.('aliasTargetId');
                     }
                 } catch {}
             };
-            ymap.observe(obs);
+            (ymap ).observe(obs);
             // 初期反映
             obs();
-            onDestroy(() => { try { ymap.unobserve(obs); } catch {} });
+            onDestroy(() => { try { (ymap ).unobserve(obs); } catch {} });
         }
     } catch {}
 });
@@ -343,7 +347,7 @@ onMount(() => {
 // This replaces the polling approach with proper Svelte 5 reactivity
 let aliasLastConfirmedPulse = $derived.by(() => {
     // Subscribe to aliasPickerStore changes
-    const ap: any = aliasPickerStore as any;
+    const ap = aliasPickerStore as { lastConfirmedItemId?: string; lastConfirmedTargetId?: string; lastConfirmedAt?: number | null };
     const li = ap?.lastConfirmedItemId;
     const lt = ap?.lastConfirmedTargetId;
     const la = ap?.lastConfirmedAt as number | null;
@@ -392,13 +396,13 @@ $effect(() => {
 });
 
 const aliasTargetIdEffective = $derived.by(() => {
-    void (aliasPickerStore as any)?.tick;
+    void (aliasPickerStore)?.tick;
     void aliasLastConfirmedPulse; // Make sure to react to pulse changes
     const base = aliasTargetId;
     if (base) return base;
-    const lastItemId = (aliasPickerStore as any)?.lastConfirmedItemId;
-    const lastTargetId = (aliasPickerStore as any)?.lastConfirmedTargetId;
-    const lastAt = (aliasPickerStore as any)?.lastConfirmedAt as number | null;
+    const lastItemId = (aliasPickerStore)?.lastConfirmedItemId;
+    const lastTargetId = (aliasPickerStore)?.lastConfirmedTargetId;
+    const lastAt = (aliasPickerStore)?.lastConfirmedAt as number | null;
     const isE2E = typeof window !== 'undefined' && window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
     const isEmpty = (textString ?? '').toString().trim().length === 0;
     if (lastTargetId && lastAt && Date.now() - lastAt < 2000) {
@@ -420,31 +424,31 @@ const aliasTargetIdEffective = $derived.by(() => {
 // DOM からドロップ対象の outliner-item を特定して、その Item に添付を追加する（トップレベル定義）
 function addAttachmentToDomTargetOrModel(ev: DragEvent, url: string) {
     try {
-        const w: any = (typeof window !== 'undefined') ? (window as any) : null;
-        const targetEl: any = (ev?.target as any)?.closest?.('.outliner-item') || null;
+        const w = (typeof window !== 'undefined') ? window : null;
+        const targetEl = (ev?.target as unknown)?.closest?.('.outliner-item') || null;
         const targetId: string | null = targetEl?.getAttribute?.('data-item-id') ?? null;
-        let targetItem: any = null;
-        if (w && targetId && w.generalStore?.currentPage?.items) {
-            const items: any = w.generalStore.currentPage.items;
+        let targetItem: unknown = null;
+        if (w && targetId && (w ).generalStore?.currentPage?.items) {
+            const items = (w ).generalStore.currentPage.items as unknown[] | undefined;
             const len = items?.length ?? 0;
             for (let i = 0; i < len; i++) {
-                const cand: any = items.at ? items.at(i) : items[i];
-                if (String(cand?.id) === String(targetId)) { targetItem = cand; break; }
+                const cand = items.at ? items.at(i) : items[i];
+                if (String((cand )?.id) === String(targetId)) { targetItem = cand; break; }
             }
         }
-        const itm: any = targetItem || (model?.original as any);
+        const itm: unknown = targetItem || (model?.original as Item);
         // まず正式APIを試み、失敗・未定義なら直接Y.Arrayへpushするフォールバック
         // 重複防止
         try {
-            const exists = !!(itm?.attachments?.toArray?.()?.includes?.(url));
+            const exists = !!((itm )?.attachments?.toArray?.()?.includes?.(url));
             if (!exists) {
-                try { itm?.addAttachment?.(url); } catch { try { itm?.attachments?.push?.([url]); } catch {} }
+                try { (itm )?.addAttachment?.(url); } catch { try { (itm )?.attachments?.push?.([url]); } catch {} }
             }
         } catch {
-            try { itm?.addAttachment?.(url); } catch { try { itm?.attachments?.push?.([url]); } catch {} }
+            try { (itm )?.addAttachment?.(url); } catch { try { (itm )?.attachments?.push?.([url]); } catch {} }
         }
         // テスト環境ではイベントを発火
-        try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(itm?.id || model.id) } })); } } catch {}
+        try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String((itm )?.id || model.id) } })); } } catch {}
     } catch {}
 }
 
@@ -463,14 +467,14 @@ let componentType = $state<string | undefined>(undefined);
 function handleComponentTypeChange(newType: string) {
     if (!item) return;
 
-    const setMapField = (it: any, key: string, value: any) => {
+    const setMapField = (it: unknown, key: string, value: unknown) => {
         try {
             const tree = it?.tree;
             const nodeKey = it?.key;
             const m = tree?.getNodeValueFromKey?.(nodeKey);
-            if (m && typeof m.set === "function") {
-                m.set(key, value);
-                if (key !== "lastChanged") m.set("lastChanged", Date.now());
+            if (m && typeof (m ).set === "function") {
+                (m ).set(key, value);
+                if (key !== "lastChanged") (m ).set("lastChanged", Date.now());
                 return true;
             }
         } catch {}
@@ -479,13 +483,13 @@ function handleComponentTypeChange(newType: string) {
 
     const value = newType === "none" ? undefined : newType;
     // app-schema の場合は setter があるので優先して使う
-    if ("componentType" in (item as any)) {
-        try { (item as any).componentType = value; } catch {}
+    if ("componentType" in item) {
+        try { item.componentType = value; } catch {}
     }
     // yjs-schema / フォールバック
-    setMapField(item as any, "componentType", value);
+    setMapField(item as unknown, "componentType", value);
     // Optimistically update local state so UI reflects the change without waiting for Yjs propagation
-    componentType = value as any;
+    componentType = value as unknown;
 }
 
 // Yjs 最小粒度 observe による同期
@@ -495,29 +499,29 @@ let compTypeValue = $state<string | undefined>(undefined);
 onMount(() => {
     let unsubs: Array<() => void> = [];
     try {
-        const anyItem: any = item as any;
-        const tree = anyItem?.tree; const key = anyItem?.key;
-        const m = tree?.getNodeValueFromKey?.(key) as any;
-        const t = m?.get?.("text");
+        const unknownItem = item as unknown;
+        const tree = unknownItem?.tree; const key = unknownItem?.key;
+        const m = tree?.getNodeValueFromKey?.(key) as unknown;
+        const t = (m )?.get?.("text");
         if (t && typeof t.observe === "function") {
             const h1 = () => { try { textString = t.toString?.() ?? ""; } catch {} };
             t.observe(h1); unsubs.push(() => { try { t.unobserve(h1); } catch {} });
             // 初期反映
             h1();
         }
-        if (m && typeof m.observe === "function") {
-            const h2 = (e?: any) => {
+        if (m && typeof (m ).observe === "function") {
+            const h2 = (e?: unknown) => {
                 try {
-                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
-                        compTypeValue = m.get?.("componentType");
+                    if (!e || (e )?.keysChanged && (e )?.keysChanged?.has && (e ).keysChanged.has('componentType')) {
+                        compTypeValue = (m ).get?.("componentType");
                     }
                 } catch {}
             };
-            m.observe(h2); unsubs.push(() => { try { m.unobserve(h2); } catch {} });
+            (m ).observe(h2); unsubs.push(() => { try { (m ).unobserve(h2); } catch {} });
             h2();
         } else {
             // フォールバック: 直接取得
-            try { compTypeValue = (anyItem as any).componentType; } catch {}
+            try { compTypeValue = (unknownItem ).componentType; } catch {}
         }
     } catch {}
     return () => { for (const fn of unsubs) { try { fn(); } catch {} } };
@@ -573,13 +577,13 @@ function getClickPosition(event: MouseEvent, content: string): number {
     const textEl = displayRef.querySelector(".item-text") as HTMLElement;
 
     // Caret APIを試す
-    if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
+    if (textEl && (document.caretRangeFromPoint || document.caretPositionFromPoint)) {
         let range: Range | null = null;
         if (document.caretRangeFromPoint) {
             range = document.caretRangeFromPoint(x, y);
         }
         else {
-            const posInfo = (document as any).caretPositionFromPoint(x, y);
+            const posInfo = document.caretPositionFromPoint(x, y);
             if (posInfo) {
                 range = document.createRange();
                 range.setStart(posInfo.offsetNode, posInfo.offset);
@@ -724,7 +728,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     const preserveAltClick = event?.altKey === true;
 
     // デバッグ情報
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         // Intentionally empty: placeholder for debug logging
     }
 
@@ -855,7 +859,7 @@ function toggleVote() {
 }
 
 function toggleComments() {
-    const gs: any = generalStore as any;
+    const gs = generalStore as { openCommentItemId?: string | null; openCommentItemIndex?: number | null };
     if (gs.openCommentItemId === model.id) {
         gs.openCommentItemId = null;
         gs.openCommentItemIndex = null;
@@ -899,7 +903,7 @@ function handleClick(event: MouseEvent) {
         const pos = getClickPosition(event, textString);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             // Intentionally empty: placeholder for debug logging
         }
 
@@ -912,7 +916,7 @@ function handleClick(event: MouseEvent) {
         });
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             // Intentionally empty: placeholder for debug logging
         }
 
@@ -934,7 +938,7 @@ function handleClick(event: MouseEvent) {
                     textarea.focus();
 
                     // フォーカスが設定されたかチェック
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
                         // Intentionally empty: placeholder for debug logging
                     }
                 }, 10);
@@ -1107,7 +1111,7 @@ function handleMouseMove(event: MouseEvent) {
  */
 function handleBoxSelection(event: MouseEvent, currentPosition: number) {
     // デバッグ情報
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         // Intentionally empty: placeholder for debug logging
     }
 
@@ -1288,19 +1292,19 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                     let full = el?.textContent || '';
                     if (!full) {
                         // generalStore からのフォールバック
-                        const w: any = (window as any);
-                        const items: any = w?.generalStore?.currentPage?.items;
+                        const w = window;
+                        const items = (w )?.generalStore?.currentPage?.items as unknown[] | undefined;
                         const len = items?.length ?? 0;
                         for (let i = 0; i < len; i++) {
                             const it = items.at ? items.at(i) : items[i];
-                            if (it?.id === r.itemId) { full = String(it?.text ?? ''); break; }
+                            if ((it )?.id === r.itemId) { full = String((it )?.text ?? ''); break; }
                         }
                     }
                     const s = Math.max(0, Math.min(full.length, Math.min(r.startOffset, r.endOffset)));
                     const e = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
                     lines.push(full.substring(s, e));
                 }
-                (window as any).lastCopiedText = lines.join('\n');
+                window.lastCopiedText = lines.join('\n');
             }
         } catch {}
 
@@ -1451,7 +1455,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     if (maybeCustom?.detail && typeof maybeCustom.detail === "object" && "targetItemId" in maybeCustom.detail) {
         logger.debug("OutlinerItem handleDrop: custom event detail", maybeCustom.detail);
         event.preventDefault?.();
-        try { event.stopPropagation?.(); (event as any).stopImmediatePropagation?.(); } catch {}
+        try { event.stopPropagation?.(); event.stopImmediatePropagation?.(); } catch {}
 
         isDropTarget = false;
 
@@ -1478,7 +1482,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     logger.debug("OutlinerItem handleDrop: event received", event);
     // デフォルト動作を防止
     event.preventDefault();
-    try { event.stopPropagation(); (event as any).stopImmediatePropagation?.(); } catch {}
+    try { event.stopPropagation(); event.stopImmediatePropagation?.(); } catch {}
 
 
     // ドロップターゲットフラグをクリア
@@ -1491,7 +1495,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     // ファイルドロップ（DataTransfer.files または DataTransfer.items(kind=file) の両対応、もしくは E2E フォールバック）
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
     const hasFileItems = !!dt && dt.items && Array.from(dt.items).some(it => it.kind === "file");
-    const e2eFiles: File[] = (typeof window !== 'undefined' && (window as any).__E2E_LAST_FILES__ && Array.isArray((window as any).__E2E_LAST_FILES__)) ? (window as any).__E2E_LAST_FILES__ as File[] : [];
+    const e2eFiles: File[] = (typeof window !== 'undefined' && window.__E2E_LAST_FILES__ && Array.isArray(window.__E2E_LAST_FILES__)) ? window.__E2E_LAST_FILES__ as File[] : [];
     const hasE2eFiles = e2eFiles.length > 0;
 
     if (hasFileList || hasFileItems || hasE2eFiles) {
@@ -1509,7 +1513,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
             } else if (hasE2eFiles) {
                 // Playwright フォールバック: 事前に DataTransfer.items.add で記録された最後のファイル群を使用
                 files.push(...e2eFiles);
-                try { (window as any).__E2E_LAST_FILES__ = []; } catch {}
+                try { window.__E2E_LAST_FILES__ = []; } catch {}
             }
 
             if (files.length > 0) {
@@ -1518,7 +1522,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                 try { containerId = await getDefaultContainerId(); } catch {}
                 if (!containerId && typeof window !== "undefined") {
                     try { containerId = window.localStorage?.getItem?.("currentContainerId") ?? undefined; } catch {}
-                    try { containerId = containerId || (window as any).__CURRENT_PROJECT_TITLE__; } catch {}
+                    try { containerId = containerId || window.__CURRENT_PROJECT_TITLE__; } catch {}
                 }
                 containerId = containerId || "test-container";
 
@@ -1533,32 +1537,32 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         // アップロードに失敗してもローカルプレビューでフォールバック（E2E 安定化）
                         try {
                             const localUrl = URL.createObjectURL(file);
-                            try { model.original.addAttachment(localUrl); } catch { try { (model.original as any)?.attachments?.push?.([localUrl]); } catch {} }
+                            try { model.original.addAttachment(localUrl); } catch { try { (model.original as unknown)?.attachments?.push?.([localUrl]); } catch {} }
                             try { mirrorAttachment(localUrl); } catch {}
                             // テスト環境では自ミラーも即時更新 - attachmentsMirror is handled in OutlinerItemAttachments component
                             try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
                             // 接続後Doc への補助反映（IDマップ経由）
                             try {
-                                const w:any = (typeof window !== 'undefined') ? (window as any) : null;
-                                const map = w?.__ITEM_ID_MAP__;
+                                const w = (typeof window !== 'undefined') ? window : null;
+                                const map = (w )?.__ITEM_ID_MAP__;
                                 const mappedId = map ? map[String(model.id)] : undefined;
-                                const curPage:any = w?.generalStore?.currentPage;
+                                const curPage = (w )?.generalStore?.currentPage;
                                 if (mappedId && curPage?.items) {
-                                    const len = curPage.items.length ?? 0;
+                                    const len = (curPage ).items.length ?? 0;
                                     for (let i = 0; i < len; i++) {
-                                        const cand:any = curPage.items.at ? curPage.items.at(i) : curPage.items[i];
-                                        if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as any)?.attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
+                                        const cand = (curPage ).items.at ? (curPage ).items.at(i) : (curPage ).items[i];
+                                        if (String((cand )?.id) === String(mappedId)) { try { (cand )?.addAttachment?.(localUrl); } catch { try { (cand )?.attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                                     }
                                 }
                             } catch {}
                         } catch {}
-                        logger.error("attachment upload failed", e as any);
+                        logger.error("attachment upload failed", e as unknown);
                     }
                 }
             } else {
                 // E2E最終フォールバック: DataTransfer からファイル取得できなかった場合でも、
                 // テスト環境ではダミー添付を追加して UI 経路（プレビュー表示）を検証可能にする
-                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as any).__E2E__)) {
+                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
@@ -1574,23 +1578,23 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         return;
     }
 
-    // E2E最終最終フォールバック: DataTransfer が無い/空でもテストではダミー添付を追加
-    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as any).__E2E__)) && (!dt || (((dt as any).files?.length ?? 0) === 0 && ((dt as any).items?.length ?? 0) === 0))) {
+    // E2E最終最終フォールバック: DataTransfer が無い/空でもテストではダミー附件を追加
+    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) && (!dt || ((dt.files?.length ?? 0) === 0 && (dt.items?.length ?? 0) === 0))) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
             addAttachmentToDomTargetOrModel(event, localUrl);
 
             try {
-                const w:any = (typeof window !== 'undefined') ? (window as any) : null;
-                const map = w?.__ITEM_ID_MAP__;
+                const w = (typeof window !== 'undefined') ? window : null;
+                const map = (w )?.__ITEM_ID_MAP__;
                 const mappedId = map ? map[String(model.id)] : undefined;
-                const curPage:any = w?.generalStore?.currentPage;
+                const curPage = (w )?.generalStore?.currentPage;
                 if (mappedId && curPage?.items) {
-                    const len = curPage.items.length ?? 0;
+                    const len = (curPage ).items.length ?? 0;
                     for (let i = 0; i < len; i++) {
-                        const cand:any = curPage.items.at ? curPage.items.at(i) : curPage.items[i];
-                        if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch {} try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
+                        const cand = (curPage ).items.at ? (curPage ).items.at(i) : (curPage ).items[i];
+                        if (String((cand )?.id) === String(mappedId)) { try { (cand )?.addAttachment?.(localUrl); } catch {} try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                     }
                 }
             } catch {}
@@ -1643,7 +1647,7 @@ onMount(() => {
 
             custom.preventDefault?.();
             custom.stopPropagation?.();
-            (custom as any).stopImmediatePropagation?.();
+            custom.stopImmediatePropagation?.();
 
             dispatch("drop", {
                 targetItemId: detail.targetItemId ?? model.id,
@@ -1658,42 +1662,42 @@ onMount(() => {
 
         if (displayRef) {
             displayForward = maybeForward;
-            displayRef.addEventListener('synthetic-drop', displayForward as any, { capture: true } as any);
-            displayRef.addEventListener('drop', handleDrop as any, { capture: true } as any);
-            displayRef.addEventListener('drop', handleDrop as any, { capture: false } as any);
-            displayRef.addEventListener('dragover', handleDragOver as any, { capture: true } as any);
-            displayRef.addEventListener('dragover', handleDragOver as any, { capture: false } as any);
+            displayRef.addEventListener('synthetic-drop', displayForward as unknown, { capture: true });
+            displayRef.addEventListener('drop', handleDrop as unknown, { capture: true });
+            displayRef.addEventListener('drop', handleDrop as unknown, { capture: false });
+            displayRef.addEventListener('dragover', handleDragOver as unknown, { capture: true });
+            displayRef.addEventListener('dragover', handleDragOver as unknown, { capture: false });
         }
         if (itemRef) {
             itemForward = maybeForward;
-            itemRef.addEventListener('synthetic-drop', itemForward as any, { capture: true } as any);
-            itemRef.addEventListener('drop', handleDrop as any, { capture: true } as any);
-            itemRef.addEventListener('drop', handleDrop as any, { capture: false } as any);
+            itemRef.addEventListener('synthetic-drop', itemForward as unknown, { capture: true });
+            itemRef.addEventListener('drop', handleDrop as unknown, { capture: true });
+            itemRef.addEventListener('drop', handleDrop as unknown, { capture: false });
         }
     } catch {}
     return () => {
         try {
             if (displayForward) {
-                displayRef?.removeEventListener?.('synthetic-drop', displayForward as any, { capture: true } as any);
+                displayRef?.removeEventListener?.('synthetic-drop', displayForward as unknown, { capture: true });
             }
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: false } as any);
+            displayRef?.removeEventListener?.('drop', handleDrop as unknown, { capture: true });
+            displayRef?.removeEventListener?.('drop', handleDrop as unknown, { capture: false });
+            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown, { capture: true });
+            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown, { capture: false });
             if (itemForward) {
-                itemRef?.removeEventListener?.('synthetic-drop', itemForward as any, { capture: true } as any);
+                itemRef?.removeEventListener?.('synthetic-drop', itemForward as unknown, { capture: true });
             }
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
+            itemRef?.removeEventListener?.('drop', handleDrop as unknown, { capture: true });
+            itemRef?.removeEventListener?.('drop', handleDrop as unknown, { capture: false });
         } catch {}
     };
 });
 // E2E: dispatchEvent フックからの直接通知を受け取り、対象要素が自分の displayRef 配下なら handleDrop を実行
 onMount(() => {
     try {
-        const anyWin: any = (typeof window !== 'undefined') ? window : undefined;
-        if (!anyWin) return;
-        if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [] as any[];
+        const unknownWin = (typeof window !== 'undefined') ? window : undefined;
+        if (!unknownWin) return;
+        if (!(unknownWin ).__E2E_DROP_HANDLERS__) (unknownWin ).__E2E_DROP_HANDLERS__ = [];
         const fn = (el: Element, ev: DragEvent) => {
             try {
                 if (displayRef && (el === displayRef || displayRef.contains(el))) {
@@ -1701,10 +1705,10 @@ onMount(() => {
                 }
             } catch {}
         };
-        anyWin.__E2E_DROP_HANDLERS__.push(fn);
+        (unknownWin ).__E2E_DROP_HANDLERS__.push(fn);
 
         // E2E: 強制的に handleDrop を起動するグローバル関数（テスト専用）。要素が自分配下なら drop を合成して処理。
-        if (anyWin.__E2E__) {
+        if ((unknownWin ).__E2E__) {
             const selfInvoker = (el: Element) => {
                 try {
                     if (displayRef && (el === displayRef || displayRef.contains(el))) {
@@ -1713,11 +1717,11 @@ onMount(() => {
                     }
                 } catch {}
             };
-            if (!anyWin.__E2E_FORCE_HANDLE_DROP__) {
-                anyWin.__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
+            if (!(unknownWin ).__E2E_FORCE_HANDLE_DROP__) {
+                (unknownWin ).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
             } else {
-                const prev = anyWin.__E2E_FORCE_HANDLE_DROP__;
-                anyWin.__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
+                const prev = (unknownWin ).__E2E_FORCE_HANDLE_DROP__;
+                (unknownWin ).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
             }
 
             // E2E: 直接添付を追加するテスト専用ヘルパー（DnDの最終結果を決定的に再現）
@@ -1732,9 +1736,9 @@ onMount(() => {
                         try {
                             // Test environment immediate mirror update - attachmentsMirror is handled in OutlinerItemAttachments component
                             // if (IS_TEST) {
-                            //     const arr: any[] = ((model?.original as any)?.attachments?.toArray?.() ?? []);
+                            //     const arr: unknown[] = ((model?.original as Item)?.attachments?.toArray?.() ?? []);
                             //     if (arr.length > 0) {
-                            //         attachmentsMirror = arr.map((u: any) => Array.isArray(u) ? u[0] : u);
+                            //         attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
                             //     }
                             // }
                         } catch {}
@@ -1742,17 +1746,17 @@ onMount(() => {
                     }
                 } catch {}
             };
-            if (!anyWin.__E2E_ADD_ATTACHMENT__) {
-                anyWin.__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
+            if (!(unknownWin ).__E2E_ADD_ATTACHMENT__) {
+                (unknownWin ).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
             } else {
-                const prevAdd = anyWin.__E2E_ADD_ATTACHMENT__;
-                anyWin.__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
+                const prevAdd = (unknownWin ).__E2E_ADD_ATTACHMENT__;
+                (unknownWin ).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
             }
         }
 
         onDestroy(() => {
             try {
-                const arr: any[] = anyWin.__E2E_DROP_HANDLERS__;
+                const arr: unknown[] = (unknownWin ).__E2E_DROP_HANDLERS__;
                 const i = arr.indexOf(fn);
                 if (i >= 0) arr.splice(i, 1);
             } catch {}
@@ -1765,12 +1769,12 @@ onMount(() => {
 
 onMount(() => {
     try {
-        displayRef?.addEventListener?.('drop', handleDrop as any, { capture: true });
-        displayRef?.addEventListener?.('drop', handleDrop as any, { capture: false });
-        displayRef?.addEventListener?.('dragover', handleDragOver as any, { capture: true });
-        displayRef?.addEventListener?.('dragover', handleDragOver as any, { capture: false });
-        itemRef?.addEventListener?.('drop', handleDrop as any, { capture: true });
-        itemRef?.addEventListener?.('drop', handleDrop as any, { capture: false });
+        displayRef?.addEventListener?.('drop', handleDrop as unknown, { capture: true });
+        displayRef?.addEventListener?.('drop', handleDrop as unknown, { capture: false });
+        displayRef?.addEventListener?.('dragover', handleDragOver as unknown, { capture: true });
+        displayRef?.addEventListener?.('dragover', handleDragOver as unknown, { capture: false });
+        itemRef?.addEventListener?.('drop', handleDrop as unknown, { capture: true });
+        itemRef?.addEventListener?.('drop', handleDrop as unknown, { capture: false });
     } catch {}
 
     // E2E file drop support removed - use proper Playwright file drop API instead
@@ -1780,14 +1784,14 @@ onMount(() => {
 
     return () => {
         try {
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: false } as any);
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
+            displayRef?.removeEventListener?.('drop', handleDrop as unknown, { capture: true });
+            displayRef?.removeEventListener?.('drop', handleDrop as unknown, { capture: false });
+            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown, { capture: true });
+            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown, { capture: false });
+            itemRef?.removeEventListener?.('drop', handleDrop as unknown, { capture: true });
+            itemRef?.removeEventListener?.('drop', handleDrop as unknown, { capture: false });
         } catch {}
-        try { if (e2eTimer) clearInterval(e2eTimer); } catch {}
+        try { if (e2eTimer) { clearInterval(e2eTimer); void e2eTimer; } } catch {}
     };
 });
 
@@ -1897,10 +1901,10 @@ onMount(() => {
     data-item-id={model.id}
     data-active={isItemActive}
     data-alias-target-id={
-        [ (aliasPickerStore as any)?.tick,
+        [ (aliasPickerStore)?.tick,
           (aliasTargetIdEffective
-            || (((aliasPickerStore as any)?.lastConfirmedItemId === model.id)
-                && (aliasPickerStore as any)?.lastConfirmedTargetId)
+            || (((aliasPickerStore)?.lastConfirmedItemId === model.id)
+                && (aliasPickerStore)?.lastConfirmedTargetId)
             || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
             || "") ][1]
     }
@@ -1945,8 +1949,8 @@ onMount(() => {
                             class="item-text"
                             class:title-text={isPageTitle}
                             class:formatted={ScrapboxFormatter.hasFormatting(textString)}
-                            oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
-                            onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
+                            oninput={(e: Event) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as Item)?.updateText?.(t); } catch {} }}
+                            onchange={(e: Event) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as Item)?.updateText?.(t); } catch {} }}
                         >
                             <!-- XSS-safe: ScrapboxFormatter.formatWithControlChars() escapes HTML before applying formatting -->
                             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -1958,8 +1962,8 @@ onMount(() => {
                             class="item-text"
                             class:title-text={isPageTitle}
                             class:formatted={ScrapboxFormatter.hasFormatting(textString)}
-                            oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
-                            onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
+                            oninput={(e: Event) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as Item)?.updateText?.(t); } catch {} }}
+                            onchange={(e: Event) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as Item)?.updateText?.(t); } catch {} }}
                         >
                             <!-- XSS-safe: ScrapboxFormatter.formatToHtml() escapes HTML before applying formatting -->
                             <!-- eslint-disable-next-line svelte/no-at-html-tags -->

@@ -59,7 +59,7 @@ async function handleContainerSelected(
         // Defer import to avoid SSR issues in test/SSR context
         const { createYjsClient } = await import("../services");
         const client = await createYjsClient(selectedContainerId);
-        yjsStore.yjsClient = client as any;
+        yjsStore.yjsClient = client;
 
         // プロジェクトページへ遷移
         // コンテナ名をプロジェクト名として使用

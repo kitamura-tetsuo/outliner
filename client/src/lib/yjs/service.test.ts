@@ -38,8 +38,8 @@ describe("yjsService", () => {
         const awareness = new Awareness(new Y.Doc());
         // Provide a minimal global presence store to avoid importing .svelte.ts
         const presenceStore = {
-            users: {} as any,
-            setUser(u: any) {
+            users: {},
+            setUser(u: unknown) {
                 this.users = { ...this.users, [u.userId]: u };
             },
             removeUser(id: string) {
@@ -48,11 +48,11 @@ describe("yjsService", () => {
                 this.users = updatedUsers;
             },
         };
-        (globalThis as any).presenceStore = presenceStore;
+        globalThis.presenceStore = presenceStore;
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
         expect(presenceStore.users["u1"].userName).toBe("Alice");
-        awareness.setLocalStateField("user", null as any);
+        awareness.setLocalStateField("user", null);
         unbind();
     });
 
@@ -60,12 +60,12 @@ describe("yjsService", () => {
         const awareness = new Awareness(new Y.Doc());
         // Provide a minimal global overlay store
         const editorOverlayStore = {
-            cursors: {} as any,
-            selections: {} as any,
-            setCursor({ itemId, offset, userId }: any) {
+            cursors: {},
+            selections: {},
+            setCursor({ itemId, offset, userId }: unknown) {
                 this.cursors[userId] = { itemId, offset, userId };
             },
-            setSelection({ userId }: any) {
+            setSelection({ userId }: unknown) {
                 this.selections[userId] = { userId };
             },
             clearCursorAndSelection(userId: string) {
@@ -79,7 +79,7 @@ describe("yjsService", () => {
                 this.selections = updatedSelections;
             },
         };
-        (globalThis as any).editorOverlayStore = editorOverlayStore;
+        globalThis.editorOverlayStore = editorOverlayStore;
         const unbind = yjsService.bindPagePresence(awareness);
 
         // seed local state (ignored by overlay sync)
@@ -87,17 +87,17 @@ describe("yjsService", () => {
         awareness.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } });
 
         // simulate remote collaborator
-        const states = (awareness as any).getStates();
+        const states = awareness.getStates();
         states.set(42, {
             user: { userId: "u2", name: "Bob" },
             presence: { cursor: { itemId: "i1", offset: 0 } },
         });
-        (awareness as any).emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
+        awareness.emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
 
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
 
-        (awareness as any).emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
+        awareness.emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
         unbind();
     });
 });

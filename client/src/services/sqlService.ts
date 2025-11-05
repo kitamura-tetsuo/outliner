@@ -63,7 +63,7 @@ export async function initDb() {
         }
 
         if (!wasmBinary) {
-            throw new Error("Could not find sql-wasm.wasm file in any expected location");
+            throw new Error("Could not find sql-wasm.wasm file in unknown expected location");
         }
 
         console.log(`Loading WASM from: ${wasmPath}`);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createProjectConnection } from "../../../lib/yjs/connection";
+import { createProjectConnection, type PageConnection } from "../../../lib/yjs/connection";
 import { Project } from "../../../schema/app-schema";
 
 // TODO: Re-enable this test once YJS mocking is properly implemented
@@ -10,7 +10,7 @@ describe("yjs presence", () => {
         const c2 = await createProjectConnection(projectId);
 
         // Wait for both project connections to be fully synchronized before proceeding
-        // This ensures both clients are connected and have synchronized any initial state
+        // This ensures both clients are connected and have synchronized unknown initial state
         await new Promise(resolve => {
             let syncedCount = 0;
             const checkSync = () => {
@@ -88,7 +88,7 @@ describe("yjs presence", () => {
 
         // Wait for page connections to be established on both clients
         // Since adding a page creates subdocs asynchronously, we need to wait for the connection to be established
-        const p1c1 = await new Promise(resolve => {
+        const p1c1 = await new Promise<PageConnection | null>(resolve => {
             let resolved = false;
             const check = () => {
                 const conn = c1.getPageConnection(page.id);
@@ -109,7 +109,7 @@ describe("yjs presence", () => {
             }, 10000);
         });
 
-        const p1c2 = await new Promise(resolve => {
+        const p1c2 = await new Promise<PageConnection | null>(resolve => {
             let resolved = false;
             const check = () => {
                 const conn = c2.getPageConnection(page.id);

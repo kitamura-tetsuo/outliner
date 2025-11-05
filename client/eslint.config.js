@@ -19,6 +19,7 @@ export default ts.config(
             ".svelte-kit/non-ambient.d.ts",
             ".svelte-kit/types/**/*",
             ".svelte-kit/output/**/*",
+            "playwright-report/**/*",
         ],
     },
     {

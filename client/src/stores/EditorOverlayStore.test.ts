@@ -2,18 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Local minimal replica to avoid importing .svelte.ts in tests
 class TestEditorOverlayStore {
-    cursors: Record<string, any> = {};
-    cursorInstances = new Map<string, any>();
+    cursors: Record<string, unknown> = {};
+    cursorInstances = new Map<string, unknown>();
     cursorHistory: string[] = [];
-    selections: Record<string, any> = {};
+    selections: Record<string, unknown> = {};
     activeItemId: string | null = null;
     cursorVisible = true;
     animationPaused = false;
-    private timerId: any;
+    private timerId: unknown;
     private genUUID() {
         return Math.random().toString(36).slice(2);
     }
-    addCursor({ itemId, offset, isActive, userId = "local" }: any) {
+    addCursor({ itemId, offset, isActive, userId = "local" }: unknown) {
         const id = this.genUUID();
         this.cursorInstances.set(id, { itemId, offset, isActive, userId });
         this.cursors = { ...this.cursors, [id]: { cursorId: id, itemId, offset, isActive, userId } };
@@ -36,26 +36,26 @@ class TestEditorOverlayStore {
         return id ? this.cursors[id] : null;
     }
     clearCursorForItem(itemId: string) {
-        const keep = Object.entries(this.cursors).filter((entry: [string, any]) => entry[1].itemId !== itemId);
+        const keep = Object.entries(this.cursors).filter((entry: [string, unknown]) => entry[1].itemId !== itemId);
         this.cursors = Object.fromEntries(keep);
     }
-    setSelection(sel: any) {
+    setSelection(sel: unknown) {
         const key = `${sel.startItemId}-${sel.endItemId}-${sel.userId || "local"}`;
         this.selections = { ...this.selections, [key]: sel };
     }
     clearCursorAndSelection(userId = "local", clearSelections = false) {
         this.cursors = Object.fromEntries(
-            Object.entries(this.cursors).filter((entry: [string, any]) => entry[1].userId !== userId),
+            Object.entries(this.cursors).filter((entry: [string, unknown]) => entry[1].userId !== userId),
         );
         if (clearSelections) {
             this.selections = Object.fromEntries(
-                Object.entries(this.selections).filter((entry: [string, any]) => entry[1].userId !== userId),
+                Object.entries(this.selections).filter((entry: [string, unknown]) => entry[1].userId !== userId),
             );
         }
     }
     clearSelectionForUser(userId = "local") {
         this.selections = Object.fromEntries(
-            Object.entries(this.selections).filter(([key, s]: any) =>
+            Object.entries(this.selections).filter(([key, s]: unknown) =>
                 !key.includes(`-${userId}`) && s.userId !== userId
             ),
         );

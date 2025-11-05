@@ -15,6 +15,14 @@ declare namespace NodeJS {
     type Timeout = ReturnType<typeof setTimeout>;
 }
 
+// Forward declarations for test globals
+declare module "../../stores/PresenceStore.svelte" {
+    export class PresenceStore {}
+}
+declare module "../../stores/yjsStore.svelte" {
+    export class YjsStore {}
+}
+
 interface Window {
     mockFluidClient?: boolean;
     mockUser?: {
@@ -32,7 +40,14 @@ interface Window {
     mockContainerConnected?: boolean;
     _alertMessage?: string;
     __FLUID_CLIENT__?: object;
+    __YJS_STORE__?: any;
+    presenceStore?: any;
     getFluidTreeDebugData?: () => Record<string, unknown>;
     getYjsTreeDebugData?: () => Record<string, unknown>;
     getYjsTreePathData?: (path?: string) => Record<string, unknown>;
+}
+
+declare global {
+    var __YJS_STORE__: any;
+    var presenceStore: any;
 }

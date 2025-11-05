@@ -33,7 +33,7 @@ const baseLogger = pino({
         },
         // transmit: {
         //     level: "info", // このレベル以上のログをサーバーに送信
-        //     send: (level: string, logEvent: any) => {
+        //     send: (level: string, logEvent: unknown) => {
         //         // デバッグ用: 送信されるログデータを確認
         //         if (import.meta.env.DEV) {
         //             // console.debug('ログ送信:', { level, logEvent });
@@ -124,13 +124,26 @@ function getCallerFile(): string {
 }
 
 /**
+ * Enhanced logger interface that adds file information to log calls
+ */
+interface EnhancedLogger extends pino.Logger {
+    trace: (...args: unknown[]) => void;
+    debug: (...args: unknown[]) => void;
+    info: (...args: unknown[]) => void;
+    warn: (...args: unknown[]) => void;
+    error: (...args: unknown[]) => void;
+    fatal: (...args: unknown[]) => void;
+    child: (bindings: pino.Bindings) => EnhancedLogger;
+}
+
+/**
  * 各ログレベルのメソッドをラップして行番号情報を追加する
  */
-function createEnhancedLogger(logger: pino.Logger): pino.Logger {
+function createEnhancedLogger(logger: pino.Logger): EnhancedLogger {
     // 拡張するログレベル
     const levels = ["trace", "debug", "info", "warn", "error", "fatal"] as const;
     // 基本的な機能を持つロガーを作成
-    const enhancedLogger = Object.create(logger);
+    const enhancedLogger = Object.create(logger) as EnhancedLogger;
 
     // 各ログレベルメソッドをラップ
     levels.forEach(level => {
@@ -154,7 +167,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
 
     // child メソッドを特別に上書き
     const originalChild = logger.child.bind(logger);
-    enhancedLogger.child = function(bindings: pino.Bindings): pino.Logger {
+    enhancedLogger.child = function(bindings: pino.Bindings): EnhancedLogger {
         // 元の child メソッドを呼び出し
         const childLogger = originalChild(bindings);
         // 子ロガーも強化
@@ -190,7 +203,7 @@ const consoleStyles = {
  * 呼び出し元のファイル名と行番号を child logger のコンテキストに付加して返す
  * コンソールにも同時に出力したい場合は enableConsole を true に設定
  */
-export function getLogger(componentName?: string, enableConsole: boolean = true): pino.Logger {
+export function getLogger(componentName?: string, enableConsole: boolean = true): EnhancedLogger {
     const file = getCallerFile();
     const module = componentName || file;
     const isCustomModule = componentName !== undefined && componentName !== file;
@@ -280,7 +293,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                 }
                 return (target as Record<string, unknown>)[prop as string];
             },
-        }) as pino.Logger;
+        }) as EnhancedLogger;
     }
 
     return childLogger;

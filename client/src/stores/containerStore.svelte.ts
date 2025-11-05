@@ -87,14 +87,14 @@ if (typeof window !== "undefined") {
         || import.meta.env.VITE_IS_TEST === "true"
         || window.location.hostname === "localhost";
     if (isTestEnv) {
-        (window as any).__CONTAINER_STORE__ = containerStore;
+        window.__CONTAINER_STORE__ = containerStore;
     }
 }
 
 // Hook into firestoreStore updates to keep containers mirrored without polling
-const originalSetUserContainer = (firestoreStore as any).setUserContainer?.bind(firestoreStore);
+const originalSetUserContainer = firestoreStore.setUserContainer?.bind(firestoreStore);
 if (typeof originalSetUserContainer === "function") {
-    (firestoreStore as any).setUserContainer = (value: UserContainer | null) => {
+    firestoreStore.setUserContainer = (value: UserContainer | null) => {
         originalSetUserContainer(value);
         try {
             containerStore.syncFromFirestore();

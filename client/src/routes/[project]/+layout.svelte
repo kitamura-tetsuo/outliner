@@ -11,7 +11,7 @@ import { Project } from "../../schema/yjs-schema";
 // このレイアウトは /[project] と /[project]/[page] の両方に適用されます
 let { data, children } = $props();
 
-let project: any = $state(null);
+let project: unknown = $state(null);
 
 // ストアからプロジェクトを取得
 $effect(() => {
@@ -23,7 +23,7 @@ $effect(() => {
 // URLパラメータからプロジェクト名を取得
 $effect(() => {
     // Prefer explicit param over optional data prop
-    const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
+    const projectParam = (pageStore?.params?.project as string) || (data)?.project;
     if (!projectParam) return;
 
     // E2E安定化: テスト環境では即時に空プロジェクトを用意して generalStore.project を満たす
@@ -35,8 +35,8 @@ $effect(() => {
     if (isTestEnv && !store.project) {
         try {
             const provisional = Project.createInstance(projectParam);
-            store.project = provisional as any;
-            project = provisional as any;
+            store.project = provisional;
+            project = provisional;
             console.log("E2E: Provisional Project set in +layout.svelte for fast readiness", { title: provisional.title });
         } catch {}
     }
@@ -48,7 +48,7 @@ $effect(() => {
 
 async function loadProject(projectNameFromParam?: string) {
     try {
-        const projectName = projectNameFromParam ?? (data as any).project;
+        const projectName = projectNameFromParam ?? (data).project;
 
         // プロジェクト名からYjsクライアントを取得
         let client = await getYjsClientByProjectTitle(projectName);
@@ -66,7 +66,7 @@ async function loadProject(projectNameFromParam?: string) {
             }
         }
         if (client) {
-            yjsStore.yjsClient = client as any;
+            yjsStore.yjsClient = client;
             project = client.getProject();
             // expose project to the global store so pages become available immediately
             store.project = project;
@@ -81,7 +81,7 @@ onMount(() => {
     try {
         userManager.addEventListener(() => {
             // If project not yet loaded but param exists, try again when auth flips
-            const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
+            const projectParam = (pageStore?.params?.project as string) || (data)?.project;
             if (projectParam && !yjsStore.yjsClient) {
                 loadProject(projectParam);
             }

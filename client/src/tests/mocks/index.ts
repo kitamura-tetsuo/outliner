@@ -33,7 +33,7 @@ export function setupMocks({
     firestore = {},
 } = {}) {
     // Mock userManager instance
-    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(mockUserManager as any);
+    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(mockUserManager);
 
     // Setup Firestore mock with optional initial data
     setupMockFirestore(firestore);

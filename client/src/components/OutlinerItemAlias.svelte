@@ -22,13 +22,13 @@ let aliasTargetId = $state<string | undefined>(item.aliasTargetId);
 
 onMount(() => {
     try {
-        const anyItem: any = item as any;
-        const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
-        if (ymap && typeof ymap.observe === 'function') {
-            const obs = (e?: any) => {
+        const unknownItem = item as unknown;
+        const ymap = unknownItem?.tree?.getNodeValueFromKey?.(unknownItem?.key) as unknown;
+        if (ymap && typeof (ymap ).observe === 'function') {
+            const obs = (e?: unknown) => {
                 try {
-                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
-                        const newValue = ymap.get?.('aliasTargetId');
+                    if (!e || (e )?.keysChanged && (e )?.keysChanged?.has && (e ).keysChanged.has('aliasTargetId')) {
+                        const newValue = (ymap ).get?.('aliasTargetId');
                         if (newValue !== aliasTargetId) {
                             aliasTargetId = newValue;
                             logger.debug("OutlinerItemAlias: aliasTargetId updated via observe", { itemId: modelId, newValue });
@@ -36,9 +36,9 @@ onMount(() => {
                     }
                 } catch {}
             };
-            ymap.observe(obs);
+            (ymap ).observe(obs);
             obs(); // 初期反映
-            onDestroy(() => { try { ymap.unobserve(obs); } catch {} });
+            onDestroy(() => { try { (ymap ).unobserve(obs); } catch {} });
         }
     } catch {}
 });
@@ -49,7 +49,7 @@ let aliasLastConfirmedPulse: { itemId: string; targetId: string; at: number } | 
 onMount(() => {
     const iv = setInterval(() => {
         try {
-            const ap: any = (typeof window !== 'undefined') ? (window as any).aliasPickerStore : null;
+            const ap = (typeof window !== 'undefined') ? window.aliasPickerStore : null;
             const li = ap?.lastConfirmedItemId;
             const lt = ap?.lastConfirmedTargetId;
             const la = ap?.lastConfirmedAt as number | null;
@@ -62,14 +62,14 @@ onMount(() => {
 });
 
 const aliasTargetIdEffective = $derived.by(() => {
-    void (aliasPickerStore as any)?.tick;
+    void (aliasPickerStore)?.tick;
     void aliasLastConfirmedPulse;
     const base = aliasTargetId;
     if (base) return base;
 
-    const lastItemId = (aliasPickerStore as any)?.lastConfirmedItemId;
-    const lastTargetId = (aliasPickerStore as any)?.lastConfirmedTargetId;
-    const lastAt = (aliasPickerStore as any)?.lastConfirmedAt as number | null;
+    const lastItemId = (aliasPickerStore)?.lastConfirmedItemId;
+    const lastTargetId = (aliasPickerStore)?.lastConfirmedTargetId;
+    const lastAt = (aliasPickerStore)?.lastConfirmedAt as number | null;
 
     if (lastTargetId && lastAt && Date.now() - lastAt < 6000 && lastItemId === modelId) {
         return lastTargetId;
@@ -96,7 +96,7 @@ const aliasTarget = $derived.by(() => {
 });
 
 const aliasPath = $derived.by(() => {
-    void (aliasPickerStore as any)?.tick;
+    void (aliasPickerStore)?.tick;
     void aliasLastConfirmedPulse;
     void aliasTargetIdEffective;
     
@@ -121,7 +121,7 @@ function findItem(node: Item, id: string): Item | undefined {
     if (node.id === id) return node;
     const children = node.items;
     if (children) {
-        for (const child of children as any) {
+        for (const child of children as unknown) {
             const found = findItem(child, id);
             if (found) return found;
         }
@@ -134,11 +134,11 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
     if (node.id === id) return [...path, node];
     const children = node.items;
     if (children) {
-        const len = Number.isFinite((children as any).length) ? (children as any).length as number : 0;
+        const len = Number.isFinite(children.length) ? children.length as number : 0;
         for (let i = 0; i < len; i++) {
             let child: Item | undefined;
             try {
-                child = (children as any).at ? (children as any).at(i) as Item : (children as any)[i] as Item;
+                child = children.at ? children.at(i) as Item : children[i] as Item;
             } catch { child = undefined; }
             if (!child) continue;
             const res = findPath(child, id, [...path, node]);
@@ -159,7 +159,7 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
             {/each}
         {:else}
             <button type="button">
-                {findItem(generalStore.currentPage as any, aliasTargetIdEffective)?.text || "Loading..."}
+                {findItem(generalStore.currentPage as unknown, aliasTargetIdEffective)?.text || "Loading..."}
             </button>
         {/if}
     </div>

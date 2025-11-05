@@ -43,12 +43,16 @@ onMount(() => {
 
     store.setTextareaRef(textareaRef);
     // generalStore にも参照を保持（コマンドパレットのフォールバックで利用）
-    try { (generalStore as any).textareaRef = textareaRef; } catch {}
+    try {
+        if (typeof generalStore === 'object' && generalStore !== null) {
+            (generalStore as { textareaRef?: HTMLTextAreaElement }).textareaRef = textareaRef;
+        }
+    } catch {}
     console.log("GlobalTextArea: Textarea reference set in store");
 
     // KeyEventHandler をグローバルに公開（テスト用）
     if (typeof window !== "undefined") {
-        (window as any).KeyEventHandler = KeyEventHandler;
+        (window as typeof window & { KeyEventHandler?: typeof KeyEventHandler }).KeyEventHandler = KeyEventHandler;
     }
 
     // 初期フォーカスを設定
@@ -75,9 +79,13 @@ onMount(() => {
 
     // テスト用にKeyEventHandlerをグローバルに公開
     if (typeof window !== "undefined") {
-        (window as any).__KEY_EVENT_HANDLER__ = KeyEventHandler;
-        (window as any).Items = Items;
-        (window as any).generalStore = generalStore;
+        (window as typeof window & {
+            __KEY_EVENT_HANDLER__?: typeof KeyEventHandler;
+            Items?: typeof Items;
+            generalStore?: typeof generalStore;
+        }).__KEY_EVENT_HANDLER__ = KeyEventHandler;
+        (window as typeof window & { Items?: typeof Items }).Items = Items;
+        (window as typeof window & { generalStore?: typeof generalStore }).generalStore = generalStore;
     }
 
     // エイリアスピッカー可視時のキーを常にピッカーへフォワード（フォーカスに依存しない）
@@ -98,7 +106,7 @@ onMount(() => {
         };
         window.addEventListener("keydown", forward, { capture: true });
         // onDestroyで解除
-        (window as any).__ALIAS_FWD__ = forward;
+        (window as typeof window & { __ALIAS_FWD__?: typeof forward }).__ALIAS_FWD__ = forward;
     } catch {}
 
     // フォールバック: スラッシュ押下で常にパレットを表示（内部リンク直後はKeyEventHandler側で抑止）
@@ -106,14 +114,15 @@ onMount(() => {
         const slashListener = (ev: KeyboardEvent) => {
             if (ev.key !== "/") return;
             // 既に表示中なら何もしない
-            if ((window as any).commandPaletteStore?.isVisible) return;
+            const win = window as typeof window & { commandPaletteStore?: { isVisible: boolean } };
+            if (win.commandPaletteStore?.isVisible) return;
             try {
                 const pos = commandPaletteStore.getCursorScreenPosition();
                 commandPaletteStore.show(pos || { top: 0, left: 0 });
             } catch {}
         };
         window.addEventListener("keydown", slashListener, { capture: true });
-        (window as any).__SLASH_FWD__ = slashListener;
+        (window as typeof window & { __SLASH_FWD__?: typeof slashListener }).__SLASH_FWD__ = slashListener;
     } catch {}
 
     // 直近のキー入力を常に記録（/ch のような連続入力を検出するため）
@@ -122,15 +131,15 @@ onMount(() => {
             if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
             const k = ev.key;
             if (typeof k === "string" && k.length === 1) {
-                const w: any = (window as any);
+                const w = window as typeof window & { __KEYSTREAM__?: string };
                 w.__KEYSTREAM__ = (w.__KEYSTREAM__ || "") + k;
-                if (w.__KEYSTREAM__.length > 256) {
+                if (w.__KEYSTREAM__ && w.__KEYSTREAM__.length > 256) {
                     w.__KEYSTREAM__ = w.__KEYSTREAM__.slice(-256);
                 }
             }
         };
         window.addEventListener("keydown", recordKeys, { capture: true });
-        (window as any).__KEYSTREAM_FWD__ = recordKeys;
+        (window as typeof window & { __KEYSTREAM_FWD__?: typeof recordKeys }).__KEYSTREAM_FWD__ = recordKeys;
     } catch {}
     // フォールバック: テキストエリアにフォーカスがない場合でも入力を反映
     try {
@@ -141,7 +150,8 @@ onMount(() => {
                 (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
             if (ev.isComposing || (!isBoxSelectionKey && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
             // エイリアスピッカー/コマンドパレット表示中は既存のフォワーダーに任せる
-            if (aliasPickerStore.isVisible || (window as any).commandPaletteStore?.isVisible) return;
+            const win = window as typeof window & { commandPaletteStore?: { isVisible: boolean } };
+            if (aliasPickerStore.isVisible || win.commandPaletteStore?.isVisible) return;
 
             const activeId = store.getActiveItem();
             const ta = textareaRef;
@@ -195,14 +205,15 @@ onMount(() => {
             }
         };
         window.addEventListener("keydown", typingFallback, { capture: true });
-        (window as any).__TYPING_FWD__ = typingFallback;
+        (window as typeof window & { __TYPING_FWD__?: typeof typingFallback }).__TYPING_FWD__ = typingFallback;
     } catch {}
 
 
     // フォールバック: パレット表示中はグローバルkeydownから直接文字入力/移動/確定を転送
     try {
         const paletteTypeForwarder = (ev: KeyboardEvent) => {
-            const cps: any = (window as any).commandPaletteStore ?? commandPaletteStore;
+            const win = window as typeof window & { commandPaletteStore?: typeof commandPaletteStore };
+            const cps = win.commandPaletteStore ?? commandPaletteStore;
             if (!cps?.isVisible) return;
             const k = ev.key;
             if (!ev.ctrlKey && !ev.metaKey && !ev.altKey && k.length === 1 && k !== "/") {
@@ -224,7 +235,8 @@ onMount(() => {
                     // 直接 textarea の値からも厳密に検出
                     let textSaysAlias = false;
                     try {
-                        const ta: HTMLTextAreaElement | null | undefined = (window as any).generalStore?.textareaRef;
+                        const win = window as typeof window & { generalStore?: { textareaRef?: HTMLTextAreaElement | null } };
+                        const ta: HTMLTextAreaElement | null | undefined = win.generalStore?.textareaRef;
                         if (ta && typeof ta.value === "string") {
                             const before = ta.value.slice(0, typeof ta.selectionStart === "number" ? ta.selectionStart : ta.value.length);
                             textSaysAlias = /\/(?:al|ali|alia|alias)$/i.test(before);
@@ -255,7 +267,7 @@ onMount(() => {
             if (k === "ArrowUp") { cps.move(-1); ev.preventDefault(); return; }
         };
         window.addEventListener("keydown", paletteTypeForwarder, { capture: true });
-        (window as any).__PALETTE_FWD__ = paletteTypeForwarder;
+        (window as typeof window & { __PALETTE_FWD__?: typeof paletteTypeForwarder }).__PALETTE_FWD__ = paletteTypeForwarder;
     } catch {}
 
     // グローバル: フォーカス位置に関わらず KeyEventHandler を呼ぶバックアップ
@@ -271,20 +283,26 @@ onMount(() => {
             KeyEventHandler.handleKeyDown(ev);
         };
         window.addEventListener("keydown", globalKeyForwarder);
-        (window as any).__GLOBAL_KEY_FWD__ = globalKeyForwarder;
+        (window as typeof window & { __GLOBAL_KEY_FWD__?: typeof globalKeyForwarder }).__GLOBAL_KEY_FWD__ = globalKeyForwarder;
     } catch {}
 });
 
 onDestroy(() => {
     store.setTextareaRef(null);
-    try { (generalStore as any).textareaRef = null; } catch {}
     try {
-        const f = (window as any).__ALIAS_FWD__ as any;
-        if (f) window.removeEventListener("keydown", f, { capture: true } as any);
+        if (typeof generalStore === 'object' && generalStore !== null) {
+            (generalStore as { textareaRef?: HTMLTextAreaElement }).textareaRef = null;
+        }
     } catch {}
     try {
-        const s = (window as any).__SLASH_FWD__ as any;
-        if (s) window.removeEventListener("keydown", s, { capture: true } as any);
+        const win = window as typeof window & { __ALIAS_FWD__?: (ev: KeyboardEvent) => void };
+        const f = win.__ALIAS_FWD__;
+        if (f) window.removeEventListener("keydown", f, { capture: true } as AddEventListenerOptions);
+    } catch {}
+    try {
+        const win = window as typeof window & { __SLASH_FWD__?: (ev: KeyboardEvent) => void };
+        const s = win.__SLASH_FWD__;
+        if (s) window.removeEventListener("keydown", s, { capture: true } as AddEventListenerOptions);
     } catch {}
 });
 
@@ -399,7 +417,8 @@ function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-esl
                 textareaRef.focus();
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                const win = window as typeof window & { DEBUG_MODE?: boolean };
+                if (typeof window !== "undefined" && win.DEBUG_MODE) {
                     console.log(
                         `GlobalTextArea: focus restored after blur. Active element is textarea: ${
                             document.activeElement === textareaRef
@@ -429,7 +448,8 @@ function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-esl
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("clipboard-read-error"));
             }
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            const win = window as typeof window & { DEBUG_MODE?: boolean };
+            if (typeof window !== "undefined" && win.DEBUG_MODE) {
                 console.error("GlobalTextArea.handlePaste failed", error);
             }
         }

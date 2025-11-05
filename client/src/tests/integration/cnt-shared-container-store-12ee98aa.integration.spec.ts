@@ -9,14 +9,14 @@ import UserContainerDisplay from "../fixtures/UserContainerDisplay.svelte";
 describe("CNT shared container store", () => {
     it("reflects user container updates", async () => {
         render(UserContainerDisplay);
-        const storeGlobal: any = (globalThis as any).window?.__FIRESTORE_STORE__ ?? firestoreStore;
+        const storeGlobal: unknown = globalThis.window?.__FIRESTORE_STORE__ ?? firestoreStore;
         storeGlobal.setUserContainer({
             userId: "u",
             accessibleContainerIds: ["a"],
             defaultContainerId: "a",
             createdAt: new Date(),
             updatedAt: new Date(),
-        } as any);
+        });
         await tick();
         await tick();
         // store 自体は更新されているか（デバッグ用アサーション）
@@ -32,7 +32,7 @@ describe("CNT shared container store", () => {
             defaultContainerId: "b",
             createdAt: new Date(),
             updatedAt: new Date(),
-        } as any);
+        });
         await tick();
         expect(screen.getByTestId("default").textContent).toBe("b");
         expect(screen.getAllByRole("listitem").map(li => li.textContent)).toEqual(["a", "b"]);

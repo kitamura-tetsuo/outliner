@@ -3,17 +3,17 @@ import { JSDOM } from "jsdom";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getClickPosition, pixelPositionToTextPosition } from "./textUtils";
 
-let originalGetBoundingClientRect: any;
-let originalGetComputedStyle: any;
+let originalGetBoundingClientRect: unknown;
+let originalGetComputedStyle: unknown;
 
 beforeAll(() => {
     // グローバルに DOM をセット
     const dom = new JSDOM("<!DOCTYPE html><body></body>");
-    (global as any).window = dom.window;
-    (global as any).document = dom.window.document;
-    (global as any).Element = dom.window.Element;
-    (global as any).HTMLElement = dom.window.HTMLElement;
-    (global as any).Node = dom.window.Node;
+    global.window = dom.window;
+    global.document = dom.window.document;
+    global.Element = dom.window.Element;
+    global.HTMLElement = dom.window.HTMLElement;
+    global.Node = dom.window.Node;
     // getBoundingClientRect をモック: textContent 長さ * 10px
     originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
     Element.prototype.getBoundingClientRect = function() {
@@ -27,7 +27,7 @@ beforeAll(() => {
         fontSize: "",
         fontWeight: "",
         letterSpacing: "",
-    } as any);
+    });
 });
 
 afterAll(() => {

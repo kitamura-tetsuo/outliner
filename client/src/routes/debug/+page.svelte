@@ -17,7 +17,7 @@ import { createYjsClient } from "../../services";
 const logger = getLogger();
 
 let error: string | undefined = $state(undefined);
-let debugInfo: any = $state({});
+let debugInfo: unknown = $state({});
 let hostInfo = $state("");
 let portInfo = $state("");
 let envConfig = getDebugConfig();
@@ -28,7 +28,7 @@ let connectionStatus = $state("未接続");
 let isConnected = $state(false);
 
 // 認証成功時の処理
-async function handleAuthSuccess(authResult: any) {
+async function handleAuthSuccess(authResult: unknown) {
     logger.info("認証成功:", authResult);
     isAuthenticated = true;
 
@@ -69,7 +69,7 @@ async function retryConnection() {
 
 // 接続状態の更新
 function updateConnectionStatus() {
-    const client = yjsStore.yjsClient as any;
+    const client = yjsStore.yjsClient;
     if (client) {
         connectionStatus = client.getConnectionStateString() || "未接続";
         isConnected = client.isContainerConnected || false;
@@ -82,7 +82,7 @@ function updateConnectionStatus() {
 }
 
 // 定期的に接続状態を更新
-let statusInterval: any;
+let statusInterval: unknown;
 
 onMount(() => {
     console.debug("[debug/+page] Component mounted");

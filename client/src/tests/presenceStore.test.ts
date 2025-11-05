@@ -13,7 +13,7 @@ describe("presence store", () => {
     it("adds and removes users", () => {
         // Render a component to initialize window.presenceStore
         render(PresenceAvatars);
-        const presenceStore = (globalThis as any).presenceStore;
+        const presenceStore = globalThis.presenceStore;
         presenceStore.setUser({ userId: "u1", userName: "Alice", color: colorForUser("u1") });
         expect(presenceStore.users["u1"].userName).toBe("Alice");
         presenceStore.removeUser("u1");

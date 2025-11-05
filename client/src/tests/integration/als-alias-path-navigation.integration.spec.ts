@@ -15,7 +15,7 @@ describe("ALS alias path navigation", () => {
             { id: "p", text: "parent", items: [{ id: "c", text: "child", items: [] }] },
             { id: "alias", text: "alias", items: [] },
         ];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        generalStore.currentPage = { id: "root", text: "root", items };
         render(AliasPicker);
 
         aliasPickerStore.show("alias");

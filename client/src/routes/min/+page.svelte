@@ -39,7 +39,7 @@ let verificationResult = $state("");
 // テスト用に環境変数をwindowオブジェクトに公開
 onMount(() => {
     if (typeof window !== "undefined") {
-        (window as any).testEnvVars = {
+        (window).testEnvVars = {
             VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
             VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
             VITE_TOKEN_VERIFY_URL: import.meta.env.VITE_TOKEN_VERIFY_URL,

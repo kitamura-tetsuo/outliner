@@ -76,7 +76,7 @@ describe("Cursor Integration", () => {
         mockItem.parent = mockParentItem;
 
         // Mock the general store
-        (generalStore as any).currentPage = mockParentItem;
+        generalStore.currentPage = mockParentItem;
 
         // Setup editor overlay store mocks
         editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
@@ -132,7 +132,7 @@ describe("Cursor Integration", () => {
                     if (item === secondItem) return 1;
                     return -1;
                 },
-            } as any;
+            };
 
             const cursor = new Cursor("cursor-1", {
                 itemId: "test-item-1",
@@ -158,7 +158,7 @@ describe("Cursor Integration", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            editorOverlayStore.selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -188,11 +188,11 @@ describe("Cursor Integration", () => {
 
             // Ensure parent has indexOf and addNode methods
             if (mockItem.parent) {
-                (mockItem.parent as any).indexOf = (item: Item) => {
+                mockItem.parent.indexOf = (item: Item) => {
                     if (item === mockItem) return 0;
                     return -1;
                 };
-                (mockItem.parent as any).addNode = vi.fn().mockReturnValue({
+                mockItem.parent.addNode = vi.fn().mockReturnValue({
                     id: "new-item-1",
                     text: "World",
                     updateText: vi.fn(),
@@ -220,7 +220,7 @@ describe("Cursor Integration", () => {
             expect(mockItem.updateText).toHaveBeenCalledWith("Hello");
             // Check if either parent.addNode or mockParentItem.items.addNode was called
             expect(
-                (mockItem.parent as any).addNode || mockParentItem.items.addNode,
+                mockItem.parent.addNode || mockParentItem.items.addNode,
             ).toHaveBeenCalled();
         });
     });

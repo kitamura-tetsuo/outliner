@@ -37,8 +37,8 @@ import type { WebsocketProvider } from "y-websocket";
  * // In E2E test
  * const value = await page.evaluate(async () => {
  *     const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/testHelpers.ts");
- *     const provider = (window as any).__PROVIDER__;
- *     const m = (window as any).__DOC__.getMap("m");
+ *     const provider = (window).__PROVIDER__;
+ *     const m = (window).__DOC__.getMap("m");
  *
  *     await waitForSyncedAndDataForTest(
  *         provider,
@@ -190,7 +190,7 @@ export async function initializeBrowserPage(
 
     // Wait for UserManager to be available
     await page.waitForFunction(
-        () => !!(window as any).__USER_MANAGER__,
+        () => !!window.__USER_MANAGER__,
         null,
         { timeout: 10000 },
     );
@@ -198,7 +198,7 @@ export async function initializeBrowserPage(
     // Authenticate if required
     if (requireAuth) {
         await page.evaluate(async () => {
-            const mgr = (window as any).__USER_MANAGER__;
+            const mgr = window.__USER_MANAGER__;
             await mgr?.loginWithEmailPassword?.(
                 "test@example.com",
                 "password",
@@ -207,7 +207,7 @@ export async function initializeBrowserPage(
 
         // Wait for authentication to complete
         await page.waitForFunction(
-            () => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(),
+            () => !!window.__USER_MANAGER__?.getCurrentUser?.(),
             null,
             { timeout: 10000 },
         );
@@ -257,15 +257,15 @@ export async function createMinimalYjsConnection(
     return await page.evaluate(
         async ({ pid, docVar, providerVar, enableLogging, importPath }) => {
             const { createMinimalProjectConnection } = await import(
-                importPath as any
+                importPath
             );
             const conn = await createMinimalProjectConnection(pid);
-            (window as any)[docVar] = conn.doc;
-            const provider = conn.provider as any;
-            (window as any)[providerVar] = provider;
+            window[docVar] = conn.doc;
+            const provider = conn.provider;
+            window[providerVar] = provider;
 
             if (enableLogging) {
-                provider.on("status", (e: any) => console.log(`[${providerVar}] status`, e.status));
+                provider.on("status", (e: unknown) => console.log(`[${providerVar}] status`, e.status));
                 provider.on("sync", (isSynced: boolean) => console.log(`[${providerVar}] sync`, isSynced));
                 console.log(
                     `[${providerVar}] init wsconnected=`,
@@ -302,7 +302,7 @@ export async function createMinimalYjsConnection(
  *     docVar: "__DOC2__",
  *     counterVar: "__UPDATES2__"
  * });
- * const updateCount = await page.evaluate(() => (window as any).__UPDATES2__);
+ * const updateCount = await page.evaluate(() => (window).__UPDATES2__);
  * ```
  */
 export async function setupUpdateTracking(
@@ -321,21 +321,21 @@ export async function setupUpdateTracking(
 
     await page.evaluate(
         ({ docVar, counterVar, counterV2Var }) => {
-            const doc = (window as any)[docVar];
+            const doc = window[docVar];
             if (!doc) {
                 console.error(`setupUpdateTracking: ${docVar} not found`);
                 return;
             }
 
-            (window as any)[counterVar] = 0;
-            (window as any)[counterV2Var] = 0;
+            window[counterVar] = 0;
+            window[counterV2Var] = 0;
 
             doc.on("update", () => {
-                (window as any)[counterVar]++;
+                window[counterVar]++;
             });
 
             doc.on("updateV2", () => {
-                (window as any)[counterV2Var]++;
+                window[counterV2Var]++;
             });
         },
         { docVar, counterVar, counterV2Var },
@@ -374,7 +374,7 @@ export interface TwoBrowserPagesResult {
  *
  * // Use page1 and page2 for testing
  * await page1.evaluate(() => {
- *     const doc = (window as any).__DOC__;
+ *     const doc = (window).__DOC__;
  *     doc.getMap("m").set("key", "value");
  * });
  *
@@ -500,9 +500,9 @@ export interface TwoFullBrowserPagesResult {
  */
 export async function prepareTwoFullBrowserPages(
     browser: Browser,
-    testInfo: any,
+    testInfo: unknown,
     initialItems: string[],
-    TestHelpers: any,
+    TestHelpers: unknown,
 ): Promise<TwoFullBrowserPagesResult> {
     // Create first browser context
     const context1 = await browser.newContext();
@@ -534,7 +534,7 @@ export async function prepareTwoFullBrowserPages(
     // Wait for page1 to initialize Yjs client and project
     await page1.waitForFunction(
         () => {
-            const yjsStore = (window as any).__YJS_STORE__;
+            const yjsStore = window.__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             if (!client) {
                 console.log("page1: yjsClient not found");
@@ -545,7 +545,7 @@ export async function prepareTwoFullBrowserPages(
                 console.log("page1: project not found");
                 return false;
             }
-            const items = project.items as any;
+            const items = project.items;
             const pageCount = items?.length ?? 0;
             console.log(`page1: Yjs client initialized, pageCount=${pageCount}`);
             return !!(project && items);
@@ -571,10 +571,10 @@ export async function prepareTwoFullBrowserPages(
         localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
         localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
         localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-        (window as any).__E2E__ = true;
-        (window as any).__vite_plugin_react_preamble_installed__ = true;
+        window.__E2E__ = true;
+        window.__vite_plugin_react_preamble_installed__ = true;
         const originalCreateElement = document.createElement.bind(document);
-        document.createElement = function(tagName: string, ...args: any[]): HTMLElement {
+        document.createElement = function(tagName: string, ...args: unknown[]): HTMLElement {
             if (tagName === "vite-error-overlay") {
                 return originalCreateElement("div", ...args);
             }
@@ -588,13 +588,13 @@ export async function prepareTwoFullBrowserPages(
     // Authenticate page2
     await page2.waitForFunction(
         () => {
-            return !!(window as any).__USER_MANAGER__;
+            return !!window.__USER_MANAGER__;
         },
         { timeout: 10000 },
     );
 
     await page2.evaluate(async () => {
-        const mgr = (window as any).__USER_MANAGER__;
+        const mgr = window.__USER_MANAGER__;
         if (mgr?.loginWithEmailPassword) {
             await mgr.loginWithEmailPassword("test@example.com", "password");
         }
@@ -603,7 +603,7 @@ export async function prepareTwoFullBrowserPages(
     // Wait for page2 authentication to complete
     await page2.waitForFunction(
         () => {
-            const mgr = (window as any).__USER_MANAGER__;
+            const mgr = window.__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
         },
         { timeout: 10000 },
@@ -612,7 +612,7 @@ export async function prepareTwoFullBrowserPages(
     // Wait for page2 to initialize Yjs client and appStore
     await page2.waitForFunction(
         () => {
-            const yjsStore = (window as any).__YJS_STORE__;
+            const yjsStore = window.__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             if (!client) {
                 console.log("page2: yjsClient not found");
@@ -623,7 +623,7 @@ export async function prepareTwoFullBrowserPages(
                 console.log("page2: project or items not found");
                 return false;
             }
-            const appStore = (window as any).appStore;
+            const appStore = window.appStore;
             if (!appStore) {
                 console.log("page2: appStore not found");
                 return false;
