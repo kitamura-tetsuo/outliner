@@ -28,7 +28,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
         mockInsertText,
         mockClearSelections,
         mockStartCursorBlink,
-    };
+    } as any;
 
     return {
         editorOverlayStore: {
