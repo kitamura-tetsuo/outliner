@@ -44,6 +44,16 @@ export function setupGlobalDebugFunctions() {
 
 declare global {
     interface Window {
+        __SVELTE_GOTO__?: (
+            url: string,
+            opts?: {
+                replaceState?: boolean;
+                noScroll?: boolean;
+                keepFocus?: boolean;
+                invalidateAll?: boolean;
+                state?: Record<string, unknown>;
+            },
+        ) => Promise<void>;
         getFluidTreeDebugData?: () => Record<string, unknown>;
         getFluidTreePathData?: (path?: string) => Record<string, unknown>;
         getYjsTreeDebugData?: () => Record<string, unknown>;
@@ -80,7 +90,7 @@ if (process.env.NODE_ENV === "test") {
                     "YjsClient is not initialized. Please wait for the client to be ready.",
                 );
             }
-            return (yjsStore.yjsClient as { getAllData: () => Record<string, unknown>; }).getAllData();
+            return yjsStore.yjsClient.getAllData();
         };
 
         // 特定のパスのデータを取得するデバッグ関数
@@ -90,15 +100,13 @@ if (process.env.NODE_ENV === "test") {
                     "YjsClient is not initialized. Please wait for the client to be ready.",
                 );
             }
-            return (yjsStore.yjsClient as { getTreeAsJson: (path?: string) => Record<string, unknown>; }).getTreeAsJson(
-                path,
-            );
+            return yjsStore.yjsClient.getTreeAsJson(path);
         };
 
         // Yjs tree structure debug helpers
         window.getYjsTreeDebugData = function(): Record<string, unknown> {
             type ProjectLike = { ydoc: Y.Doc; tree: YTree; };
-            const proj = (yjsStore.yjsClient?.project as unknown) as ProjectLike | undefined;
+            const proj = yjsStore.yjsClient?.project as ProjectLike | undefined;
             if (!proj) {
                 throw new Error("FluidClient project not initialized");
             }
@@ -111,13 +119,13 @@ if (process.env.NODE_ENV === "test") {
                 return {
                     id: item.id,
                     text: item.text,
-                    items: [...children].map(child => toPlain(child as AppItem)),
+                    items: [...children].map(child => toPlain(child)),
                 };
             };
             const rootItems = new Items(project.ydoc, project.tree, "root");
             return {
                 itemCount: rootItems.length,
-                items: [...rootItems].map(item => toPlain(item as AppItem)),
+                items: [...rootItems].map(item => toPlain(item)),
             };
         };
 

@@ -10,6 +10,7 @@
 // Type definitions for callback handlers
 type FrameRequestCallback = (time: number) => void;
 type TimerCallback = (...args: unknown[]) => void;
+type TimerHandler = string | ((this: Window, ...args: unknown[]) => unknown);
 
 export interface PollingCall {
     id: number;
@@ -31,18 +32,29 @@ export interface PollingStats {
     calls: Map<number, PollingCall>;
 }
 
+declare global {
+    interface Window {
+        setInterval: typeof setInterval;
+        setTimeout: typeof setTimeout;
+        clearInterval: typeof clearInterval;
+        clearTimeout: typeof clearTimeout;
+        requestAnimationFrame: typeof requestAnimationFrame;
+        cancelAnimationFrame: typeof cancelAnimationFrame;
+    }
+}
+
 class PollingMonitor {
     private calls: Map<number, PollingCall> = new Map();
     private nextId = 1;
     private enabled = false;
 
     // オリジナルの関数を保存
-    private originalSetInterval: typeof setInterval;
-    private originalSetTimeout: typeof setTimeout;
-    private originalClearInterval: typeof clearInterval;
-    private originalClearTimeout: typeof clearTimeout;
-    private originalRequestAnimationFrame: typeof requestAnimationFrame;
-    private originalCancelAnimationFrame: typeof cancelAnimationFrame;
+    private originalSetInterval: typeof window.setInterval;
+    private originalSetTimeout: typeof window.setTimeout;
+    private originalClearInterval: typeof window.clearInterval;
+    private originalClearTimeout: typeof window.clearTimeout;
+    private originalRequestAnimationFrame: typeof window.requestAnimationFrame;
+    private originalCancelAnimationFrame: typeof window.cancelAnimationFrame;
 
     // 無効化するポーリングのパターン
     private disablePatterns: RegExp[] = [];
@@ -63,11 +75,7 @@ class PollingMonitor {
         if (this.enabled) return;
         this.enabled = true; // setIntervalをインターセプト
 
-        (window as unknown as {
-            setInterval: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
-            setTimeout: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
-            requestAnimationFrame: (callback: FrameRequestCallback) => number;
-        }).setInterval = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
+        window.setInterval = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -95,9 +103,9 @@ class PollingMonitor {
                     call.lastExecutedAt = Date.now();
                     return (callback as (...args: unknown[]) => unknown)(...callbackArgs);
                 };
-                const timerId = this.originalSetInterval(wrappedCallback as unknown as TimerHandler, delay, ...args);
-                call.timerId = timerId as number;
-                return timerId as number;
+                const timerId = this.originalSetInterval(wrappedCallback as TimerHandler, delay, ...args);
+                call.timerId = timerId;
+                return timerId;
             } else {
                 const wrappedStringCallback = () => {
                     call.executionCount++;
@@ -107,20 +115,16 @@ class PollingMonitor {
                     } catch {}
                 };
                 const timerId = this.originalSetInterval(
-                    wrappedStringCallback as unknown as TimerHandler,
+                    wrappedStringCallback as TimerHandler,
                     delay,
                     ...args,
                 );
-                call.timerId = timerId as number;
-                return timerId as number;
+                call.timerId = timerId;
+                return timerId;
             }
         }; // setTimeoutをインターセプト
 
-        (window as unknown as {
-            setInterval: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
-            setTimeout: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
-            requestAnimationFrame: (callback: FrameRequestCallback) => number;
-        }).setTimeout = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
+        window.setTimeout = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -148,9 +152,9 @@ class PollingMonitor {
                     this.calls.delete(id); // setTimeoutは一度だけ実行
                     return (callback as (...args: unknown[]) => unknown)(...callbackArgs);
                 };
-                const timerId = this.originalSetTimeout(wrappedCallback as unknown as TimerHandler, delay, ...args);
-                call.timerId = timerId as number;
-                return timerId as number;
+                const timerId = this.originalSetTimeout(wrappedCallback as TimerHandler, delay, ...args);
+                call.timerId = timerId;
+                return timerId;
             } else {
                 const wrappedStringCallback = () => {
                     call.executionCount++;
@@ -161,20 +165,16 @@ class PollingMonitor {
                     } catch {}
                 };
                 const timerId = this.originalSetTimeout(
-                    wrappedStringCallback as unknown as TimerHandler,
+                    wrappedStringCallback as TimerHandler,
                     delay,
                     ...args,
                 );
-                call.timerId = timerId as number;
-                return timerId as number;
+                call.timerId = timerId;
+                return timerId;
             }
         }; // requestAnimationFrameをインターセプト
 
-        (window as unknown as {
-            setInterval: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
-            setTimeout: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
-            requestAnimationFrame: (callback: FrameRequestCallback) => number;
-        }).requestAnimationFrame = (callback: FrameRequestCallback): number => {
+        window.requestAnimationFrame = (callback: FrameRequestCallback): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
