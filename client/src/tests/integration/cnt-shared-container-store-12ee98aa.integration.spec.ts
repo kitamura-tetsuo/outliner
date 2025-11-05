@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { describe, expect, it } from "vitest";
-import { firestoreStore } from "../../stores/firestoreStore.svelte";
+import { firestoreStore, type GeneralStore } from "../../stores/firestoreStore.svelte";
 import UserContainerDisplay from "../fixtures/UserContainerDisplay.svelte";
 
 // Mirrors e2e/new/cnt-shared-container-store-12ee98aa.spec.ts
@@ -9,7 +9,9 @@ import UserContainerDisplay from "../fixtures/UserContainerDisplay.svelte";
 describe("CNT shared container store", () => {
     it("reflects user container updates", async () => {
         render(UserContainerDisplay);
-        const storeGlobal: unknown = globalThis.window?.__FIRESTORE_STORE__ ?? firestoreStore;
+        const storeGlobal: GeneralStore = (globalThis as unknown as {
+            window?: { __FIRESTORE_STORE__?: GeneralStore; };
+        }).window?.__FIRESTORE_STORE__ ?? firestoreStore;
         storeGlobal.setUserContainer({
             userId: "u",
             accessibleContainerIds: ["a"],

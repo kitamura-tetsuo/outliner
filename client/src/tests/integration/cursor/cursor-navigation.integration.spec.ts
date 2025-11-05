@@ -73,13 +73,14 @@ describe("Cursor Integration", () => {
         } as unknown as Item;
 
         // Set up parent relationship
-        mockItem.parent = mockParentItem;
+        (mockItem as unknown as { parent: typeof mockParentItem; }).parent = mockParentItem;
 
         // Mock the general store
-        generalStore.currentPage = mockParentItem;
+        (generalStore as unknown as { currentPage: typeof mockParentItem; }).currentPage = mockParentItem;
 
         // Setup editor overlay store mocks
-        editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
+        (editorOverlayStore as unknown as { setCursor: typeof editorOverlayStore.setCursor; }).setCursor
+            .mockReturnValue("new-cursor-id");
     });
 
     afterEach(() => {
@@ -121,7 +122,13 @@ describe("Cursor Integration", () => {
             } as unknown as Item;
 
             // Update parent to include second item
-            mockParentItem.items = {
+            (mockParentItem as unknown as {
+                items: {
+                    [Symbol.iterator]: typeof mockParentItem.items[Symbol.iterator];
+                    addNode: (...args: unknown[]) => unknown;
+                    indexOf: (item: Item) => number;
+                };
+            }).items = {
                 [Symbol.iterator]: function*() {
                     yield mockItem;
                     yield secondItem;
@@ -154,11 +161,11 @@ describe("Cursor Integration", () => {
 
     describe("Text Operations", () => {
         it("should handle text insertion with selection", () => {
-            mockItem.text = "Hello World";
+            (mockItem as unknown as { text: string; }).text = "Hello World";
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            editorOverlayStore.selections = {
+            (editorOverlayStore as unknown as { selections: Record<string, unknown>; }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -183,29 +190,34 @@ describe("Cursor Integration", () => {
         });
 
         it("should handle line breaks correctly", () => {
-            mockItem.text = "Hello World";
+            (mockItem as unknown as { text: string; }).text = "Hello World";
             mockItem.updateText = vi.fn();
 
             // Ensure parent has indexOf and addNode methods
             if (mockItem.parent) {
-                mockItem.parent.indexOf = (item: Item) => {
+                (mockItem.parent as unknown as {
+                    indexOf: (item: Item) => number;
+                    addNode: (...args: unknown[]) => unknown;
+                }).indexOf = (item: Item) => {
                     if (item === mockItem) return 0;
                     return -1;
                 };
-                mockItem.parent.addNode = vi.fn().mockReturnValue({
+                (mockItem.parent as unknown as { addNode: (...args: unknown[]) => unknown; }).addNode = vi.fn()
+                    .mockReturnValue({
+                        id: "new-item-1",
+                        text: "World",
+                        updateText: vi.fn(),
+                        delete: vi.fn(),
+                    });
+            }
+
+            (mockParentItem as unknown as { items: { addNode: (...args: unknown[]) => unknown; }; }).items.addNode = vi
+                .fn().mockReturnValue({
                     id: "new-item-1",
                     text: "World",
                     updateText: vi.fn(),
                     delete: vi.fn(),
                 });
-            }
-
-            mockParentItem.items.addNode = vi.fn().mockReturnValue({
-                id: "new-item-1",
-                text: "World",
-                updateText: vi.fn(),
-                delete: vi.fn(),
-            });
 
             const cursor = new Cursor("cursor-1", {
                 itemId: "test-item-1",
@@ -220,7 +232,9 @@ describe("Cursor Integration", () => {
             expect(mockItem.updateText).toHaveBeenCalledWith("Hello");
             // Check if either parent.addNode or mockParentItem.items.addNode was called
             expect(
-                mockItem.parent.addNode || mockParentItem.items.addNode,
+                (mockItem.parent as unknown as { addNode?: (...args: unknown[]) => unknown; })?.addNode
+                    || (mockParentItem as unknown as { items: { addNode: (...args: unknown[]) => unknown; }; }).items
+                        .addNode,
             ).toHaveBeenCalled();
         });
     });
