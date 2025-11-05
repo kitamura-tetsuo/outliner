@@ -15,7 +15,7 @@ export function setupGlobalDebugFunctions() {
     if (typeof window !== "undefined") {
         // In Playwright tests, avoid exposing goto to prevent navigation loops.
         if (process.env.NODE_ENV !== "test") {
-            (window as any).__SVELTE_GOTO__ = async (
+            window.__SVELTE_GOTO__ = async (
                 url: string,
                 opts?: {
                     replaceState?: boolean;
@@ -30,14 +30,14 @@ export function setupGlobalDebugFunctions() {
             };
         } else {
             try {
-                delete (window as any).__SVELTE_GOTO__;
+                delete window.__SVELTE_GOTO__;
             } catch {}
         }
         // サービス / ストア / ユーザーマネージャ
-        (window as any).__FLUID_SERVICE__ = yjsHighService;
-        (window as any).__FLUID_STORE__ = yjsStore; // keep legacy name for helpers
-        (window as any).__USER_MANAGER__ = userManager;
-        (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
+        window.__FLUID_SERVICE__ = yjsHighService;
+        window.__FLUID_STORE__ = yjsStore; // keep legacy name for helpers
+        window.__USER_MANAGER__ = userManager;
+        window.__SNAPSHOT_SERVICE__ = snapshotService;
         logger.debug("Global debug functions initialized");
     }
 }
@@ -52,6 +52,13 @@ declare global {
         __FLUID_STORE__?: typeof yjsStore;
         __USER_MANAGER__?: typeof userManager;
         __SNAPSHOT_SERVICE__?: typeof snapshotService;
+        __SVELTE_GOTO__?: (url: string, opts?: {
+            replaceState?: boolean;
+            noScroll?: boolean;
+            keepFocus?: boolean;
+            invalidateAll?: boolean;
+            state?: Record<string, unknown>;
+        }) => Promise<void>;
     }
 }
 
@@ -59,12 +66,12 @@ if (process.env.NODE_ENV === "test") {
     if (typeof window !== "undefined") {
         // Do not expose __SVELTE_GOTO__ in tests to force page.goto in helpers
         try {
-            delete (window as any).__SVELTE_GOTO__;
+            delete window.__SVELTE_GOTO__;
         } catch {}
-        (window as any).__FLUID_SERVICE__ = yjsHighService;
-        (window as any).__FLUID_STORE__ = yjsStore;
-        (window as any).__USER_MANAGER__ = userManager;
-        (window as any).__SNAPSHOT_SERVICE__ = snapshotService;
+        window.__FLUID_SERVICE__ = yjsHighService;
+        window.__FLUID_STORE__ = yjsStore;
+        window.__USER_MANAGER__ = userManager;
+        window.__SNAPSHOT_SERVICE__ = snapshotService;
 
         // SharedTreeのデータ構造を取得するデバッグ関数
         window.getFluidTreeDebugData = function(): Record<string, unknown> {

@@ -63,7 +63,11 @@ class PollingMonitor {
         if (this.enabled) return;
         this.enabled = true; // setIntervalをインターセプト
 
-        (window as any).setInterval = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
+        (window as unknown as {
+            setInterval: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
+            setTimeout: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
+            requestAnimationFrame: (callback: FrameRequestCallback) => number;
+        }).setInterval = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -99,7 +103,6 @@ class PollingMonitor {
                     call.executionCount++;
                     call.lastExecutedAt = Date.now();
                     try {
-                        // eslint-disable-next-line no-new-func
                         new Function(String(callback))();
                     } catch {}
                 };
@@ -113,7 +116,11 @@ class PollingMonitor {
             }
         }; // setTimeoutをインターセプト
 
-        (window as any).setTimeout = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
+        (window as unknown as {
+            setInterval: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
+            setTimeout: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
+            requestAnimationFrame: (callback: FrameRequestCallback) => number;
+        }).setTimeout = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -150,7 +157,6 @@ class PollingMonitor {
                     call.lastExecutedAt = Date.now();
                     this.calls.delete(id);
                     try {
-                        // eslint-disable-next-line no-new-func
                         new Function(String(callback))();
                     } catch {}
                 };
@@ -164,7 +170,11 @@ class PollingMonitor {
             }
         }; // requestAnimationFrameをインターセプト
 
-        (window as any).requestAnimationFrame = (callback: FrameRequestCallback): number => {
+        (window as unknown as {
+            setInterval: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
+            setTimeout: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
+            requestAnimationFrame: (callback: FrameRequestCallback) => number;
+        }).requestAnimationFrame = (callback: FrameRequestCallback): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -304,6 +314,9 @@ export const pollingMonitor = new PollingMonitor();
 declare global {
     interface Window {
         __pollingMonitor?: PollingMonitor;
+        setInterval?: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
+        setTimeout?: (callback: TimerCallback, delay?: number, ...args: unknown[]) => number;
+        requestAnimationFrame?: (callback: FrameRequestCallback) => number;
     }
 }
 if (typeof window !== "undefined") {
