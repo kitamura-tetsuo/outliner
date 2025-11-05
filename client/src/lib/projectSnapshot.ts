@@ -1,4 +1,4 @@
-import { Project } from "../schema/app-schema";
+import { Items, Project } from "../schema/app-schema";
 
 export type SnapshotItem = {
     text: string;
@@ -20,24 +20,45 @@ function getStorageKey(title: string): string {
     return `${STORAGE_PREFIX}${encodeURIComponent(title || "__untitled__")}`;
 }
 
-function toPlainText(value: any): string {
+function toPlainText(value: unknown): string {
     if (!value) return "";
     if (typeof value === "string") return value;
-    if (typeof value.toString === "function") {
-        return value.toString();
+    const toStr = (value as { toString?: unknown; }).toString;
+    if (typeof toStr === "function") {
+        return toStr.call(value);
     }
     return String(value ?? "");
 }
 
-function collectItems(items: any): SnapshotItem[] {
-    if (!items || typeof items.length !== "number") return [];
+type HasLength = { length?: unknown; };
+export type ArrayLikeWithAt<T = unknown> = {
+    length: number;
+    at?(index: number): T | undefined;
+    [index: number]: T | undefined;
+};
+type NodeLike = {
+    id?: unknown;
+    text?: unknown;
+    items?: Items | ArrayLikeWithAt<NodeLike> | undefined;
+    updateText?: (t: string) => void;
+};
+
+function isArrayLike<T = unknown>(value: unknown): value is ArrayLikeWithAt<T> {
+    const len = (value as HasLength)?.length;
+    return typeof len === "number" && len >= 0;
+}
+
+function collectItems(items: Items | ArrayLikeWithAt<NodeLike> | null | undefined): SnapshotItem[] {
+    if (!items) return [];
+    const list = isArrayLike<NodeLike>(items as unknown) ? (items as unknown as ArrayLikeWithAt<NodeLike>) : null;
+    if (!list) return [];
     const result: SnapshotItem[] = [];
-    const length = items.length as number;
-    for (let i = 0; i < length; i++) {
-        const node = items.at ? items.at(i) : items[i];
+    for (let i = 0; i < list.length; i++) {
+        const node = list.at ? list.at(i) : list[i];
         if (!node) continue;
-        const text = toPlainText(node.text);
-        const children = collectItems(node.items);
+        const n = node as NodeLike;
+        const text = toPlainText(n.text);
+        const children = collectItems(n.items as Items | ArrayLikeWithAt<NodeLike> | undefined);
         result.push({ text, children });
     }
     return result;
@@ -81,7 +102,7 @@ export function saveProjectSnapshot(project: Project | undefined): void {
     try {
         const snapshot: ProjectSnapshot = {
             title: project.title ?? "",
-            items: collectItems(project.items as any),
+            items: collectItems(project.items),
         };
         if (isPlaceholder(snapshot)) return;
         if (!hasMeaningfulContent(snapshot)) return;
@@ -151,21 +172,20 @@ export function snapshotToProject(snapshot: ProjectSnapshot): Project {
 
     for (const root of snapshot.items) {
         const page = project.addPage(root.text, "snapshot");
-        populateChildren(page.items as any, root.children);
+        populateChildren(page.items, root.children);
     }
 
     return project;
 }
 
-function populateChildren(items: any, children: SnapshotItem[]) {
+function populateChildren(items: Items, children: SnapshotItem[]) {
     if (!items) return;
     for (const child of children) {
-        const node = items.addNode ? items.addNode("snapshot") : null;
-        if (!node) continue;
-        if (node.updateText) {
+        const node = items.addNode("snapshot");
+        if (typeof node.updateText === "function") {
             node.updateText(child.text);
         }
-        populateChildren(node.items as any, child.children);
+        populateChildren(node.items, child.children);
     }
 }
 
@@ -177,8 +197,25 @@ function escapeHtml(str: string): string {
         .replace(/"/g, "&quot;");
 }
 
-export function createSnapshotClient(projectName: string, project: Project): any {
-    const client = {
+interface SnapshotClient {
+    containerId: string;
+    clientId: string;
+    getProject(): Project;
+    getTree(): Items;
+    isContainerConnected: boolean;
+    getAllData(): AllData;
+    getTreeAsJson(): AllData;
+    dispose(): void;
+    readonly connectionState: "Connected";
+    getConnectionStateString(): string;
+}
+
+interface WindowWithYjsRegistry {
+    __YJS_CLIENT_REGISTRY__?: Map<string, [SnapshotClient, Project]>;
+}
+
+export function createSnapshotClient(projectName: string, project: Project): SnapshotClient {
+    const client: SnapshotClient = {
         containerId: `snapshot-${encodeURIComponent(projectName || "")}`,
         clientId: `snapshot-${Date.now().toString(16)}`,
         getProject: () => project,
@@ -196,7 +233,7 @@ export function createSnapshotClient(projectName: string, project: Project): any
     };
     try {
         if (typeof window !== "undefined") {
-            const registry = (window as any).__YJS_CLIENT_REGISTRY__;
+            const registry = (window as unknown as WindowWithYjsRegistry).__YJS_CLIENT_REGISTRY__;
             if (registry?.set) {
                 const key = `snapshot:${projectName}:${Date.now().toString(16)}`;
                 registry.set(key, [client, project]);
@@ -206,22 +243,25 @@ export function createSnapshotClient(projectName: string, project: Project): any
     return client;
 }
 
-function projectToAllData(project: Project): any {
-    const walk = (items: any): any[] => {
-        if (!items || typeof items.length !== "number") return [];
-        const result: any[] = [];
-        const length = items.length as number;
+type AllDataNode = { id: string; text: string; items: AllDataNode[]; };
+type AllData = { items: AllDataNode[]; };
+
+function projectToAllData(project: Project): AllData {
+    const walk = (items: Items): AllDataNode[] => {
+        if (!items || typeof (items as { length?: unknown; }).length !== "number") return [];
+        const result: AllDataNode[] = [];
+        const length = (items as { length: number; }).length;
         for (let i = 0; i < length; i++) {
-            const node = items.at ? items.at(i) : items[i];
+            const node = items.at ? items.at(i) : (items as ArrayLikeWithAt<unknown>)[i];
             if (!node) continue;
-            const text = node.text?.toString?.() ?? String(node.text ?? "");
+            const text = node.text?.toString?.() ?? String((node as { text?: unknown; }).text ?? "");
             result.push({
-                id: String(node.id ?? i),
+                id: String((node as { id?: unknown; }).id ?? i),
                 text,
-                items: walk(node.items),
+                items: walk(node.items as Items),
             });
         }
         return result;
     };
-    return { items: walk(project.items as any) };
+    return { items: walk(project.items) };
 }
