@@ -3,7 +3,6 @@ import { userManager } from "../auth/UserManager";
 import type { UserManager } from "../auth/UserManager";
 
 declare global {
-    // eslint-disable-next-line no-var
     var __USER_MANAGER__: UserManager;
 }
 

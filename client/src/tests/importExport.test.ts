@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Item, type Items, Project } from "../schema/app-schema";
+import { Project } from "../schema/app-schema";
 import {
     exportProjectToMarkdown,
     exportProjectToOpml,

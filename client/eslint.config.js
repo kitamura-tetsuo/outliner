@@ -32,6 +32,7 @@ export default ts.config(
                 NodeJS: "readonly",
                 ElementCreationOptions: "readonly",
                 NodeListOf: "readonly",
+                Console: "readonly",
             },
         },
     },
@@ -100,11 +101,12 @@ export default ts.config(
     },
     {
         files: [
-            "**/*.{test,spec}.{js,ts,tsx}",
-            "**/*.integration.spec.{js,ts}",
-            "**/tests/**/*.{js,ts,tsx}",
+            "**/*.{test,spec}.{js,ts,tsx,svelte}",
+            "**/*.integration.spec.{js,ts,svelte}",
+            "**/tests/**/*.{js,ts,tsx,svelte}",
         ],
         rules: {
+            "@typescript-eslint/no-explicit-any": "off", // Test files often use dynamic typing for mocking and fixtures
             "no-restricted-imports": [
                 "error",
                 {

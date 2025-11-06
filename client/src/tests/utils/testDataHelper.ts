@@ -1,6 +1,5 @@
 import type { UserManager } from "../../auth/UserManager";
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
-import type { UserContainer } from "../../stores/firestoreStore.svelte";
 
 /**
  * Test data helper functions for test environments only
@@ -93,14 +92,18 @@ if (typeof window !== "undefined") {
         || process.env.NODE_ENV === "test"
         || window.location.hostname === "localhost";
 
+    // Define the helper object before assigning it
+    const testDataHelper = {
+        createTestUserData,
+        clearTestData,
+        setupTestEnvironment,
+        performTestLogin,
+        logDebugInfo,
+    };
+
     if (isTestEnv) {
-        (window as typeof window & { __TEST_DATA_HELPER__?: typeof import("."); }).__TEST_DATA_HELPER__ = {
-            createTestUserData,
-            clearTestData,
-            setupTestEnvironment,
-            performTestLogin,
-            logDebugInfo,
-        };
+        (window as typeof window & { __TEST_DATA_HELPER__?: typeof testDataHelper; }).__TEST_DATA_HELPER__ =
+            testDataHelper;
         console.log("Test data helper registered globally");
     }
 }
