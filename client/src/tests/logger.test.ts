@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 // useConsoleAPIをモックするためにloggerモジュールを先にモック
-vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
+vi.mock("../lib/logger", async (importOriginal: () => Promise<unknown>) => {
     const actual = await importOriginal();
 
     // loggerをカスタムタイプとして定義
@@ -12,7 +12,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
         warn: Mock;
         error: Mock;
         fatal: Mock;
-        [key: string]: any;
+        [key: string]: unknown;
     };
 
     return {
@@ -28,9 +28,9 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
                 fatal: vi.fn(),
             };
 
-            // ロガーメソッドが呼ばれたらコンソールも呼ぶよう設定
+            // ロガーメéthodが呼ばれたらコンソールも呼ぶよう設定
             (["trace", "debug", "info", "warn", "error", "fatal"] as const).forEach(level => {
-                logger[level].mockImplementation((...args: any[]) => {
+                logger[level].mockImplementation((...args: unknown[]) => {
                     const consoleMethod = level === "trace" || level === "debug"
                         ? "log"
                         : level === "fatal"
@@ -98,7 +98,7 @@ import { getLogger } from "../lib/logger";
 // windowオブジェクトのグローバルモックを設定（jsdomなしでテストする場合に必要）
 global.window = {
     console: console,
-} as any;
+} as unknown;
 
 // fetchのモック
 global.fetch = vi.fn(() =>
@@ -106,12 +106,13 @@ global.fetch = vi.fn(() =>
         ok: true,
         json: () => Promise.resolve({}),
     })
-) as any;
+) as unknown;
 
 describe("Logger", () => {
     // コンソールのモックを設定
     const originalConsole = { ...console };
-    const mockConsole = {
+    const mockConsole: Console = {
+        ...console,
         log: vi.fn(),
         info: vi.fn(),
         warn: vi.fn(),
@@ -121,8 +122,8 @@ describe("Logger", () => {
 
     beforeEach(() => {
         // コンソールをモックに置き換え
-        global.console = mockConsole as any;
-        global.window.console = mockConsole as any;
+        global.console = mockConsole;
+        global.window.console = mockConsole;
 
         // モックをリセット
         vi.clearAllMocks();

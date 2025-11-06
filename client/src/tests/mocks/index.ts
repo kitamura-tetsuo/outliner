@@ -4,7 +4,17 @@ import * as UserManagerModule from "../../auth/UserManager";
 import { resetMockFirestore, setupMockFirestore } from "./firestoreMock";
 
 // Mock for UserManager
-const mockUserManager = {
+const mockUserManager: {
+    getCurrentUser: () => { id: string; name: string; email: string; };
+    addEventListener: (
+        callback: (event: { user: { id: string; name: string; email: string; }; }) => void,
+    ) => () => void;
+    auth: {
+        currentUser: {
+            getIdToken: () => Promise<string>;
+        };
+    };
+} = {
     getCurrentUser: vi.fn().mockReturnValue({
         id: "test-user-id",
         name: "Test User",
@@ -33,7 +43,7 @@ export function setupMocks({
     firestore = {},
 } = {}) {
     // Mock userManager instance
-    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(mockUserManager as any);
+    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(mockUserManager);
 
     // Setup Firestore mock with optional initial data
     setupMockFirestore(firestore);

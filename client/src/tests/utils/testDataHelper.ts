@@ -1,4 +1,6 @@
+import type { UserManager } from "../../auth/UserManager";
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
+import type { UserContainer } from "../../stores/firestoreStore.svelte";
 
 /**
  * Test data helper functions for test environments only
@@ -27,7 +29,7 @@ export function createTestUserData(): TestUserContainer {
     };
 
     // Set test data in firestoreStore using public API to ensure reactivity wrapping
-    (firestoreStore as any).setUserContainer(testUserContainer as any);
+    firestoreStore.setUserContainer(testUserContainer);
 
     return testUserContainer;
 }
@@ -58,7 +60,7 @@ export function setupTestEnvironment(): TestUserContainer {
  */
 export async function performTestLogin(): Promise<void> {
     try {
-        const userManager = (window as any).__USER_MANAGER__;
+        const userManager = (window as typeof window & { __USER_MANAGER__?: UserManager; }).__USER_MANAGER__;
         if (userManager && userManager.loginWithEmailPassword) {
             await userManager.loginWithEmailPassword("test@example.com", "password");
             console.log("Manual test login successful");
@@ -76,9 +78,10 @@ export async function performTestLogin(): Promise<void> {
  * Only available in test environments
  */
 export function logDebugInfo(): void {
+    const wm = (window as typeof window & { __USER_MANAGER__?: UserManager; }).__USER_MANAGER__;
     console.log("=== Test Debug Info ===");
-    console.log("Current user:", (window as any).__USER_MANAGER__?.getCurrentUser());
-    console.log("Auth state:", (window as any).__USER_MANAGER__?.auth?.currentUser);
+    console.log("Current user:", wm?.getCurrentUser());
+    console.log("Auth state:", wm?.auth?.currentUser);
     console.log("Firestore userContainer:", firestoreStore.userContainer);
     console.log("======================");
 }
@@ -91,7 +94,7 @@ if (typeof window !== "undefined") {
         || window.location.hostname === "localhost";
 
     if (isTestEnv) {
-        (window as any).__TEST_DATA_HELPER__ = {
+        (window as typeof window & { __TEST_DATA_HELPER__?: typeof import("."); }).__TEST_DATA_HELPER__ = {
             createTestUserData,
             clearTestData,
             setupTestEnvironment,
