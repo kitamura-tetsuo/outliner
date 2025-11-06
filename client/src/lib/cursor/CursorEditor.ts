@@ -22,6 +22,26 @@ export interface CursorEditingContext {
     clearSelection(): void;
     applyToStore(): void;
     findTarget(): Item | undefined;
+    // Cursor movement methods
+    moveLeft(): void;
+    moveRight(): void;
+    moveUp(): void;
+    moveDown(): void;
+    // Text position utility methods
+    getCurrentColumn(text: string, offset: number): number;
+    getCurrentLineIndex(text: string, offset: number): number;
+    getLineStartOffset(text: string, lineIndex: number): number;
+    getLineEndOffset(text: string, lineIndex: number): number;
+    getVisualLineInfo(
+        itemId: string,
+        offset: number,
+    ): { lineIndex: number; lineStartOffset: number; totalLines: number; } | null;
+    getVisualLineOffsetRange(itemId: string, lineIndex: number): { startOffset: number; endOffset: number; } | null;
+    // Navigation utility methods
+    findNextItem(): Item | undefined;
+    findPreviousItem(): Item | undefined;
+    // Selection utility method
+    updateGlobalTextareaSelection(startItemId: string, startOffset: number, endItemId: string, endOffset: number): void;
 }
 
 export class CursorEditor {
@@ -502,11 +522,11 @@ export class CursorEditor {
         const nextItem = findNextItem(cursor.itemId);
         if (!nextItem) return;
 
-        const currentText = currentItem.text || "";
-        const nextText = nextItem.text || "";
+        const currentText = currentItem.text ? currentItem.text.toString() : "";
+        const nextText = nextItem.text ? nextItem.text.toString() : "";
         currentItem.updateText(currentText + nextText);
 
-        nextItem.delete();
+        (nextItem as any).delete();
     }
 
     protected deleteEmptyItem() {
@@ -535,7 +555,7 @@ export class CursorEditor {
         }
 
         store.clearCursorForItem(cursor.itemId);
-        currentItem.delete();
+        (currentItem as any).delete();
 
         cursor.itemId = targetItemId;
         cursor.offset = targetOffset;
@@ -563,7 +583,12 @@ export class CursorEditor {
         const root = generalStore.currentPage;
         if (!root) return;
 
+        // Type mismatch between app-schema and yjs-schema Item
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         const startItem = searchItem(root, selection.startItemId);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         const endItem = searchItem(root, selection.endItemId);
         if (!startItem || !endItem) return;
 
@@ -573,18 +598,18 @@ export class CursorEditor {
         const firstOffset = isReversed ? selection.endOffset : selection.startOffset;
         const lastOffset = isReversed ? selection.startOffset : selection.endOffset;
 
-        const parent = firstItem.parent;
+        const parent = firstItem.parent as Items;
         if (!parent || parent !== lastItem.parent) return;
 
-        const items = parent as Items;
-        const firstIndex = items.indexOf(firstItem);
-        const lastIndex = items.indexOf(lastItem);
+        const items = parent;
+        const firstIndex = items.indexOf(firstItem as any);
+        const lastIndex = items.indexOf(lastItem as any);
         if (firstIndex === -1 || lastIndex === -1) return;
 
         try {
-            const firstText = firstItem.text || "";
+            const firstText = firstItem.text ? firstItem.text.toString() : "";
             const newFirstText = firstText.substring(0, firstOffset);
-            const lastText = lastItem.text || "";
+            const lastText = lastItem.text ? lastItem.text.toString() : "";
             const newLastText = lastText.substring(lastOffset);
 
             const itemsToRemove: string[] = [];
@@ -600,7 +625,7 @@ export class CursorEditor {
             firstItem.updateText(newFirstText + newLastText);
 
             for (let i = lastIndex; i > firstIndex; i--) {
-                items.removeAt(i);
+                (items as any).removeAt(i);
             }
 
             cursor.itemId = firstItem.id;
@@ -702,10 +727,13 @@ export class CursorEditor {
 
         for (let i = firstIdx; i <= lastIdx; i++) {
             const itemId = allItemIds[i];
+            // Type mismatch between app-schema and yjs-schema Item
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
             const item = searchItem(generalStore.currentPage!, itemId);
             if (!item) continue;
 
-            const text = item.text || "";
+            const text = item.text ? item.text.toString() : "";
 
             if (i === firstIdx && i === lastIdx) {
                 const start = isReversed ? endOffset : startOffset;

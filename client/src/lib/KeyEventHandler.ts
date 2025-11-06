@@ -155,7 +155,7 @@ export class KeyEventHandler {
                         // 先にストアの選択インデックスから直接確定（DOMに依存しない）
                         try {
                             const w = typeof window !== "undefined" ? window : null;
-                            const ap = w?.aliasPickerStore ?? aliasPickerStore;
+                            const ap = (w as any)?.aliasPickerStore ?? aliasPickerStore;
                             const opts: Array<{ id: string; }> = Array.isArray(ap?.options) ? ap.options : [];
                             let si: number = typeof ap?.selectedIndex === "number" ? ap.selectedIndex : 0;
                             if (opts.length > 0) {
@@ -203,7 +203,7 @@ export class KeyEventHandler {
                             const w = typeof window !== "undefined" ? window : null;
                             const gs = w?.generalStore ?? w?.appStore ?? null;
                             const root = gs?.currentPage;
-                            const picker = w?.aliasPickerStore ?? aliasPickerStore;
+                            const picker = (w as any)?.aliasPickerStore ?? aliasPickerStore;
                             const aliasId: string | null = picker?.itemId ?? null;
                             const firstContent = root?.items && (root.items as any).length > 0
                                 ? ((root.items as any).at ? (root.items as any).at(0) : (root.items as any)[0])
@@ -221,7 +221,7 @@ export class KeyEventHandler {
                                     }
                                     return null;
                                 };
-                                const aliasItem = find(root, aliasId);
+                                const aliasItem = find(root, aliasId) as any;
                                 if (aliasItem && !aliasItem.aliasTargetId) {
                                     try {
                                         console.log(
@@ -263,7 +263,7 @@ export class KeyEventHandler {
 
                                     // モデル側も最終アイテムに対してフォールバック設定
                                     if (lastId && lastId !== aliasId) {
-                                        const aliasItem2 = find(root, lastId);
+                                        const aliasItem2 = find(root, lastId) as any;
                                         if (aliasItem2 && !aliasItem2.aliasTargetId) {
                                             try {
                                                 console.log(
@@ -364,7 +364,7 @@ export class KeyEventHandler {
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    const text = node?.text ? node.text.toString() : "";
                     const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
 
                     // 内部リンク開始直後 ([/) や [ ... ] 内ではパレットを出さない
@@ -426,7 +426,7 @@ export class KeyEventHandler {
                 try {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    const text = node?.text ? node.text.toString() : "";
                     const before = text.slice(0, cursor.offset);
                     const lastSlash = before.lastIndexOf("/");
                     const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
@@ -437,7 +437,9 @@ export class KeyEventHandler {
                         commandPaletteStore.hide();
                         // コマンド文字列を削除
                         const newText = String(text).slice(0, lastSlash) + String(text).slice(cursor.offset);
-                        node.updateText(newText);
+                        if (node) {
+                            node.updateText(newText);
+                        }
                         cursor.offset = lastSlash;
                         cursor.applyToStore();
 
@@ -1683,7 +1685,7 @@ export class KeyEventHandler {
                     text = await navigator.clipboard.readText();
                 } catch (error) {
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                        if (error?.name === "NotAllowedError") {
+                        if ((error as any)?.name === "NotAllowedError") {
                             console.warn("Clipboard permission denied", error);
                         } else {
                             console.error("navigator.clipboard.readText failed", error);
@@ -1693,7 +1695,7 @@ export class KeyEventHandler {
                     if (typeof window !== "undefined") {
                         window.dispatchEvent(
                             new CustomEvent(
-                                error?.name === "NotAllowedError"
+                                (error as any)?.name === "NotAllowedError"
                                     ? "clipboard-permission-denied"
                                     : "clipboard-read-error",
                             ),
