@@ -69,14 +69,15 @@ describe("Cursor Formatting", () => {
         } as unknown as Item;
 
         // Mock the general store
-        (generalStore as any).currentPage = {
-            id: "page-1",
-            items: {
-                [Symbol.iterator]: function*() {
-                    yield mockItem;
+        (generalStore as { currentPage: { id: string; items: { [Symbol.iterator]: () => Iterator<Item>; }; } | null; })
+            .currentPage = {
+                id: "page-1",
+                items: {
+                    [Symbol.iterator]: function*() {
+                        yield mockItem;
+                    },
                 },
-            },
-        };
+            };
 
         // Setup editor overlay store mocks
         editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
@@ -91,7 +92,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as { selections: Record<string, unknown>; }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -122,7 +123,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as { selections: Record<string, unknown>; }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -153,7 +154,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as { selections: Record<string, unknown>; }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -184,7 +185,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as { selections: Record<string, unknown>; }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
