@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 // useConsoleAPIをモックするためにloggerモジュールを先にモック
-vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
+vi.mock("../lib/logger", async (importOriginal: () => Promise<unknown>) => {
     const actual = await importOriginal();
 
     // loggerをカスタムタイプとして定義
@@ -12,7 +12,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
         warn: Mock;
         error: Mock;
         fatal: Mock;
-        [key: string]: any;
+        [key: string]: Mock;
     };
 
     return {
@@ -30,7 +30,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
 
             // ロガーメソッドが呼ばれたらコンソールも呼ぶよう設定
             (["trace", "debug", "info", "warn", "error", "fatal"] as const).forEach(level => {
-                logger[level].mockImplementation((...args: any[]) => {
+                logger[level].mockImplementation((...args: unknown[]) => {
                     const consoleMethod = level === "trace" || level === "debug"
                         ? "log"
                         : level === "fatal"
@@ -98,7 +98,7 @@ import { getLogger } from "../lib/logger";
 // windowオブジェクトのグローバルモックを設定（jsdomなしでテストする場合に必要）
 global.window = {
     console: console,
-} as any;
+} as unknown as Window & typeof globalThis;
 
 // fetchのモック
 global.fetch = vi.fn(() =>
@@ -106,7 +106,7 @@ global.fetch = vi.fn(() =>
         ok: true,
         json: () => Promise.resolve({}),
     })
-) as any;
+) as unknown as typeof fetch;
 
 describe("Logger", () => {
     // コンソールのモックを設定
@@ -121,8 +121,8 @@ describe("Logger", () => {
 
     beforeEach(() => {
         // コンソールをモックに置き換え
-        global.console = mockConsole as any;
-        global.window.console = mockConsole as any;
+        global.console = mockConsole as unknown as Console;
+        global.window.console = mockConsole as unknown as Console;
 
         // モックをリセット
         vi.clearAllMocks();

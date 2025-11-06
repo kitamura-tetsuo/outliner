@@ -1,9 +1,10 @@
 import { createRequire } from "module";
 import initSqlJs from "sql.js";
+import type { Database } from "sql.js";
 import { beforeAll, describe, expect, it } from "vitest";
 import { SyncWorker } from "../services/syncWorker";
 
-let db: any;
+let db: Database;
 
 const require = createRequire(import.meta.url);
 
