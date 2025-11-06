@@ -11,6 +11,13 @@ export interface UserContainer {
     updatedAt: Date;
 }
 
+// Interface for initial data parameter
+interface SetupMockFirestoreData {
+    userId?: string;
+    defaultContainerId?: string;
+    accessibleContainerIds?: string[];
+}
+
 // Mock user container store
 export const mockUserContainer: Writable<UserContainer | null> = writable(null);
 
@@ -21,11 +28,7 @@ let mockUnsubscribe: (() => void) | null = null;
 const mockContainers: Map<string, UserContainer> = new Map();
 
 // Setup initial mock data
-export function setupMockFirestore(initialData?: {
-    userId?: string;
-    defaultContainerId?: string;
-    accessibleContainerIds?: string[];
-}) {
+export function setupMockFirestore(initialData?: SetupMockFirestoreData) {
     // Clear previous mock data
     mockContainers.clear();
 
@@ -74,7 +77,7 @@ export function mockInitFirestoreSync(): () => void {
     }
 
     // Simulate Firestore snapshot listener
-    const containerData = mockContainers.get(currentUserId);
+    const containerData: UserContainer | undefined = mockContainers.get(currentUserId);
     if (containerData) {
         mockUserContainer.set(containerData);
         log("firestoreMock", "debug", `[MOCK] Loaded container data for user ${currentUserId}`);
@@ -84,7 +87,7 @@ export function mockInitFirestoreSync(): () => void {
     }
 
     // Create a mock unsubscribe function
-    mockUnsubscribe = () => {
+    mockUnsubscribe = (): void => {
         log("firestoreMock", "debug", "[MOCK] Unsubscribed from Firestore");
     };
 
@@ -98,14 +101,15 @@ export async function mockSaveContainerId(containerId: string): Promise<boolean>
     }
 
     const userId = "test-user-id";
-    const existingData = mockContainers.get(userId) || {
+    const storedData = mockContainers.get(userId);
+    const existingData: UserContainer = storedData ?? {
         userId,
         accessibleContainerIds: [],
         createdAt: new Date(),
         updatedAt: new Date(),
     };
 
-    const updatedData = {
+    const updatedData: UserContainer = {
         ...existingData,
         defaultContainerId: containerId,
         updatedAt: new Date(),
@@ -124,14 +128,15 @@ export async function mockSaveContainerIdToServer(containerId: string): Promise<
     }
 
     const userId = "test-user-id";
-    const existingData = mockContainers.get(userId) || {
+    const storedData = mockContainers.get(userId);
+    const existingData: UserContainer = storedData ?? {
         userId,
         accessibleContainerIds: [],
         createdAt: new Date(),
         updatedAt: new Date(),
     };
 
-    const updatedData = {
+    const updatedData: UserContainer = {
         ...existingData,
         defaultContainerId: containerId,
         accessibleContainerIds: existingData.accessibleContainerIds
@@ -193,7 +198,7 @@ export async function mockGetUserContainers(): Promise<{ id: string; name?: stri
 
 // Helper function to build containers list
 function buildContainersList(data: UserContainer): { id: string; name?: string; isDefault?: boolean; }[] {
-    const containers = [];
+    const containers: { id: string; name?: string; isDefault?: boolean; }[] = [];
 
     // Add default container if exists
     if (data.defaultContainerId) {
@@ -206,9 +211,9 @@ function buildContainersList(data: UserContainer): { id: string; name?: string; 
 
     // Add other accessible containers
     if (data.accessibleContainerIds && data.accessibleContainerIds.length > 0) {
-        const additionalContainers = data.accessibleContainerIds
-            .filter(id => id !== data.defaultContainerId)
-            .map(id => ({
+        const additionalContainers: { id: string; name?: string; isDefault?: boolean; }[] = data.accessibleContainerIds
+            .filter((id: string) => id !== data.defaultContainerId)
+            .map((id: string) => ({
                 id,
                 name: `コンテナ ${id.substring(0, 8)}...`,
                 isDefault: false,

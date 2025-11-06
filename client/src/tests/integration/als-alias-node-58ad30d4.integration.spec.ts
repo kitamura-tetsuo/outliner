@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
+import { Project } from "../../schema/app-schema";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 
@@ -9,20 +10,29 @@ import { store as generalStore } from "../../stores/store.svelte";
 
 describe("ALS alias node", () => {
     it("assigns target when option clicked", async () => {
-        const items = [
-            { id: "1", text: "first", items: [] },
-            { id: "2", text: "second", items: [] },
-            { id: "alias", text: "alias", items: [] },
-        ];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        // Create project and page
+        const project = Project.createInstance("test");
+        const page = project.addPage("root", "test-user");
+        generalStore.project = project;
+        generalStore.currentPage = page;
+
+        // Create child items
+        const firstItem = page.items.addNode("test-user");
+        firstItem.updateText("first");
+        const secondItem = page.items.addNode("test-user");
+        secondItem.updateText("second");
+        const aliasItem = page.items.addNode("test-user");
+        aliasItem.updateText("alias");
+
         render(AliasPicker);
 
         const user = userEvent.setup();
-        aliasPickerStore.show("alias");
+        aliasPickerStore.show(aliasItem.id);
         const option = await screen.findByRole("button", { name: "root/second" });
         await user.click(option);
-        const pageItems = (generalStore.currentPage as any).items;
-        expect(pageItems[2].aliasTargetId).toBe("2");
+        const pageItems = generalStore.currentPage?.items;
+        const aliasItemActual = pageItems?.at(2);
+        expect(aliasItemActual?.aliasTargetId).toBe(secondItem.id);
         expect(aliasPickerStore.isVisible).toBe(false);
     });
 });
