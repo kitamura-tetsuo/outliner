@@ -368,7 +368,7 @@ export class CursorEditor {
         this.applyScrapboxFormatting("code");
     }
 
-    private mergeWithPreviousItem() {
+    protected mergeWithPreviousItem() {
         const cursor = this.cursor;
         const currentItem = cursor.findTarget();
         if (!currentItem) return;
@@ -494,7 +494,7 @@ export class CursorEditor {
         action();
     }
 
-    private mergeWithNextItem() {
+    protected mergeWithNextItem() {
         const cursor = this.cursor;
         const currentItem = cursor.findTarget();
         if (!currentItem) return;
@@ -509,7 +509,7 @@ export class CursorEditor {
         nextItem.delete();
     }
 
-    private deleteEmptyItem() {
+    protected deleteEmptyItem() {
         const cursor = this.cursor;
         const currentItem = cursor.findTarget();
         if (!currentItem) return;

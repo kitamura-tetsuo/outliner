@@ -89,7 +89,7 @@ describe("Cursor", () => {
         });
 
         // findTargetがモックアイテムを返すように設定
-        vi.spyOn(cursor as unknown as { findTarget: () => Item | undefined; }, "findTarget").mockImplementation(() => {
+        vi.spyOn(cursor, "findTarget").mockImplementation(() => {
             if (generalStore.currentPage && cursor.itemId === (generalStore.currentPage as Item).id) {
                 return generalStore.currentPage as Item;
             }
@@ -211,7 +211,7 @@ describe("Cursor", () => {
             cursor.itemId = "item1"; // Ensure cursor is on a valid item
             cursor.offset = 5; // Initial offset
             // findTargetがmockCurrentPage.items[0]を返すように
-            vi.spyOn(cursor as unknown as { findTarget: () => Item | undefined; }, "findTarget").mockImplementation(
+            vi.spyOn(cursor, "findTarget").mockImplementation(
                 () => {
                     const items = mockCurrentPage!.items as unknown as Item[];
                     return items.at ? items.at(0) : items[0];
@@ -221,7 +221,7 @@ describe("Cursor", () => {
             vi.spyOn(cursor.editor, "mergeWithPreviousItem").mockImplementation(() => {});
             vi.spyOn(cursor.editor, "mergeWithNextItem").mockImplementation(() => {});
             // Mock navigateToItem to prevent actual navigation in simple tests
-            vi.spyOn(cursor as unknown as { navigateToItem: (direction: string) => void; }, "navigateToItem")
+            vi.spyOn(cursor, "navigateToItem")
                 .mockImplementation(() => {});
         });
 

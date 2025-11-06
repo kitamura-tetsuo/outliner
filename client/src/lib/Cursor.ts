@@ -31,7 +31,7 @@ export class Cursor implements CursorEditingContext {
     isActive: boolean;
     userId: string;
     // 上下キー操作時に使用する初期列位置
-    private readonly editor: CursorEditor;
+    protected readonly editor: CursorEditor;
     private initialColumn: number | null = null;
 
     private getSelection() {
@@ -1722,7 +1722,7 @@ export class Cursor implements CursorEditingContext {
      * アイテム間を移動する
      * @param direction 移動方向
      */
-    private navigateToItem(direction: "left" | "right" | "up" | "down") {
+    protected navigateToItem(direction: "left" | "right" | "up" | "down") {
         // デバッグ情報
         if (typeof window !== "undefined" && (window as unknown as { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
             console.log(
