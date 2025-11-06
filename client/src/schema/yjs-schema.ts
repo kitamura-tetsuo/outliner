@@ -10,8 +10,8 @@ export class Item {
         public readonly key: string,
     ) {}
 
-    private get value(): Y.Map<any> {
-        return this.tree.getNodeValueFromKey(this.key) as Y.Map<any>;
+    private get value(): Y.Map<unknown> {
+        return this.tree.getNodeValueFromKey(this.key) as Y.Map<unknown>;
     }
 
     get id(): string {
@@ -27,6 +27,29 @@ export class Item {
         t.delete(0, t.length);
         if (text) t.insert(0, text);
         this.value.set("lastChanged", Date.now());
+    }
+
+    // Metadata getters for debug/inspection
+    get author(): unknown {
+        return this.value.get("author");
+    }
+
+    get created(): unknown {
+        return this.value.get("created");
+    }
+
+    get lastChanged(): unknown {
+        return this.value.get("lastChanged");
+    }
+
+    // Votes: ensure an array is present and return it
+    get votes(): Y.Array<unknown> {
+        let arr = this.value.get("votes") as Y.Array<unknown> | undefined;
+        if (!arr) {
+            arr = new Y.Array<unknown>();
+            this.value.set("votes", arr);
+        }
+        return arr;
     }
 
     // 添付ファイル: Y.Array<string> を保証して返す
@@ -77,7 +100,7 @@ export class Item {
     }
 
     get parent(): Items | null {
-        const parentKey = (this.tree as any).getNodeParentFromKey(this.key);
+        const parentKey = this.tree.getNodeParentFromKey(this.key);
         if (!parentKey) return null;
         return new Items(this.ydoc, this.tree, parentKey);
     }
@@ -108,7 +131,7 @@ export class Items {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
 
-        const value = new Y.Map<any>();
+        const value = new Y.Map<unknown>();
         value.set("id", nodeKey);
         value.set("author", author);
         value.set("created", now);
@@ -118,7 +141,7 @@ export class Items {
         value.set("text", new Y.Text());
         value.set("votes", new Y.Array<string>());
         value.set("attachments", new Y.Array<string>());
-        value.set("comments", new Y.Array<Y.Map<any>>());
+        value.set("comments", new Y.Array<Y.Map<unknown>>());
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 
@@ -175,7 +198,7 @@ export class Project {
 
     get title(): string {
         try {
-            const meta = this.ydoc.getMap("metadata") as Y.Map<any>;
+            const meta = this.ydoc.getMap("metadata") as Y.Map<unknown>;
             return String(meta.get("title") ?? "");
         } catch {
             return "";
@@ -191,7 +214,7 @@ export class Project {
         const page = this.items.addNode(author ?? "user");
         page.updateText(title ?? "");
         const pages = this.ydoc.getMap<Y.Doc>("pages");
-        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as any);
+        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as { guid?: string; parent?: Y.Doc; });
         pages.set(page.id, subdoc);
         subdoc.load();
         return page;

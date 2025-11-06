@@ -1,6 +1,8 @@
 // Augmented type definitions for y-protocols/awareness to strengthen typing in our app
 // Narrow the local state fields we actually use across the app
 
+import type * as Y from "yjs";
+
 declare module "y-protocols/awareness" {
     export interface PresenceCursor {
         itemId: string;
@@ -21,16 +23,16 @@ declare module "y-protocols/awareness" {
     }
 
     export class Awareness {
-        constructor(doc: any);
+        constructor(doc: Y.Doc);
         getLocalState(): LocalPresenceState | undefined;
         setLocalStateField<K extends keyof LocalPresenceState>(field: K, value: LocalPresenceState[K]): void;
         on(
             event: "change",
-            cb: (payload: { added: number[]; updated: number[]; removed: number[]; }, origin: any) => void,
+            cb: (payload: { added: number[]; updated: number[]; removed: number[]; }, origin: unknown) => void,
         ): void;
         off(
             event: "change",
-            cb: (payload: { added: number[]; updated: number[]; removed: number[]; }, origin: any) => void,
+            cb: (payload: { added: number[]; updated: number[]; removed: number[]; }, origin: unknown) => void,
         ): void;
         getStates(): Map<number, LocalPresenceState>;
     }

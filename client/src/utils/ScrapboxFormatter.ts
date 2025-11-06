@@ -241,7 +241,7 @@ export class ScrapboxFormatter {
                 content: match.content,
                 start: match.start,
                 end: match.end,
-                url: (match as any).url,
+                url: match.url,
                 isProjectLink: match.isProjectLink,
             });
 
@@ -871,7 +871,9 @@ export class ScrapboxFormatter {
 
         try {
             // グローバルストアからページ情報を取得
-            const store = (window as any).appStore;
+            const store = (window as unknown as {
+                appStore?: { pages?: { current: Array<{ text?: unknown; }>; }; project?: { title?: string; }; };
+            }).appStore;
             if (!store || !store.pages) return false;
 
             // 現在のプロジェクトを取得
@@ -903,5 +905,5 @@ export class ScrapboxFormatter {
 
 // グローバルに参照できるようにする（テスト環境でアクセスするため）
 if (typeof window !== "undefined") {
-    (window as any).ScrapboxFormatter = ScrapboxFormatter;
+    (window as unknown as { ScrapboxFormatter: typeof ScrapboxFormatter; }).ScrapboxFormatter = ScrapboxFormatter;
 }

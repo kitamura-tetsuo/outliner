@@ -13,21 +13,21 @@ function containsLink(text: string, target: string, project: string): boolean {
     return internal.test(text) || projectPattern.test(text);
 }
 
-function toArray(p: any): any[] {
+function toArray(p: unknown): unknown[] {
     try {
         if (Array.isArray(p)) return p;
         if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
         const len = p?.length;
         if (typeof len === "number" && len >= 0) {
-            const r: any[] = [];
+            const r: unknown[] = [];
             for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
             return r;
         }
     } catch {}
-    return [] as any[];
+    return [] as unknown[];
 }
 
-function getText(v: any): string {
+function getText(v: unknown): string {
     try {
         if (typeof v === "string") return v;
         if (v?.text !== undefined) {
@@ -40,19 +40,30 @@ function getText(v: any): string {
     return String(v ?? "");
 }
 
-export function buildGraph(pagesMaybe: any, projectTitle: string): GraphData {
+export function buildGraph(pagesMaybe: unknown, projectTitle: string): GraphData {
     const pages = toArray(pagesMaybe);
 
-    const nodes = pages.map((p: any) => ({ id: p.id, name: getText(p) }));
+    type PageLike = { id: string; text?: unknown; items?: unknown; };
+    const isPageLike = (v: unknown): v is PageLike => {
+        if (v && typeof v === "object") {
+            const obj = v as Record<string, unknown>;
+            return typeof obj.id === "string";
+        }
+        return false;
+    };
+
+    const pageObjs = pages.filter(isPageLike);
+
+    const nodes = pageObjs.map((p) => ({ id: p.id, name: getText(p) }));
     const links: { source: string; target: string; }[] = [];
 
-    for (const src of pages) {
+    for (const src of pageObjs) {
         const srcText = getText(src).toLowerCase();
-        const childArr = toArray((src as any).items || []);
-        const childTexts = childArr.map((i: any) => getText(i).toLowerCase());
+        const childArr = toArray(src.items ?? []);
+        const childTexts = childArr.map((i) => getText(i).toLowerCase());
         const texts = [srcText, ...childTexts];
 
-        for (const dst of pages) {
+        for (const dst of pageObjs) {
             if (src.id === dst.id) continue;
             const target = getText(dst).toLowerCase();
             if (texts.some(t => containsLink(t, target, (projectTitle || "").toLowerCase()))) {

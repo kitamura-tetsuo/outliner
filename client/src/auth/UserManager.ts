@@ -212,14 +212,12 @@ export class UserManager {
             logger.debug("Firebase Auth initialized, setting up listener");
 
             this.unsubscribeAuth = onAuthStateChanged(auth, async firebaseUser => {
-                logger.debug("onAuthStateChanged triggered", {
-                    hasUser: !!firebaseUser,
-                    userId: firebaseUser?.uid,
-                    email: firebaseUser?.email,
-                });
+                logger.debug(
+                    `onAuthStateChanged triggered - hasUser=${!!firebaseUser}, userId=${firebaseUser?.uid}, email=${firebaseUser?.email}`,
+                );
 
                 if (firebaseUser) {
-                    logger.info("User signed in via onAuthStateChanged", { userId: firebaseUser.uid });
+                    logger.info(`User signed in via onAuthStateChanged - userId=${firebaseUser.uid}`);
                     await this.handleUserSignedIn(firebaseUser);
                 } else {
                     logger.info("User signed out via onAuthStateChanged");
@@ -243,7 +241,7 @@ export class UserManager {
     // ユーザーサインイン処理
     private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<void> {
         try {
-            logger.debug("handleUserSignedIn started", { uid: firebaseUser.uid });
+            logger.debug(`handleUserSignedIn started - uid=${firebaseUser.uid}`);
 
             // ユーザーオブジェクトを作成
             const providerIds = firebaseUser.providerData
@@ -261,10 +259,9 @@ export class UserManager {
                 providerIds: providerIds.length > 0 ? providerIds : undefined,
             };
 
-            logger.info("Notifying listeners of successful authentication", {
-                userId: user.id,
-                listenerCount: this.listeners.length,
-            });
+            logger.info(
+                `Notifying listeners of successful authentication - userId=${user.id}, listenerCount=${this.listeners.length}`,
+            );
 
             // 認証結果をリスナーに通知
             this.notifyListeners({
@@ -273,7 +270,7 @@ export class UserManager {
 
             logger.debug("handleUserSignedIn completed successfully");
         } catch (error) {
-            logger.error({ error }, "Error handling user sign in");
+            logger.error(`Error handling user sign in: ${error}`);
             // エラーが発生した場合は認証失敗として扱う
             this.notifyListeners(null);
         }
@@ -332,25 +329,25 @@ export class UserManager {
                     // まず通常のFirebase認証を試みる
                     logger.debug("[UserManager] Calling signInWithEmailAndPassword");
                     const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
-                    logger.info("[UserManager] Email/password login successful via Firebase Auth", {
-                        userId: userCredential.user.uid,
-                    });
+                    logger.info(
+                        `[UserManager] Email/password login successful via Firebase Auth - userId=${userCredential.user.uid}`,
+                    );
                     return;
                 } catch (firebaseError) {
                     const errorObj = firebaseError as { message?: string; code?: string; };
-                    logger.warn("[UserManager] Firebase Auth login failed:", errorObj.message);
+                    logger.warn(`[UserManager] Firebase Auth login failed: ${errorObj.message}`);
 
                     // ユーザーが存在しない場合は作成を試みる
                     if (errorObj.code === "auth/user-not-found") {
                         try {
                             logger.info("[UserManager] User not found, attempting to create user");
                             const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
-                            logger.info("[UserManager] New user created and logged in successfully", {
-                                userId: userCredential.user.uid,
-                            });
+                            logger.info(
+                                `[UserManager] New user created and logged in successfully - userId=${userCredential.user.uid}`,
+                            );
                             return;
                         } catch (createError) {
-                            logger.error({ error: createError }, "[UserManager] Failed to create new user");
+                            logger.error(`[UserManager] Failed to create new user: ${createError}`);
                         }
                     }
                     // すべての方法が失敗した場合は元のエラーをスロー
@@ -386,9 +383,7 @@ export class UserManager {
         if (this.auth.currentUser) {
             const user = this.getCurrentUser();
             if (user) {
-                logger.debug("addEventListener: User already authenticated, notifying immediately", {
-                    userId: user.id,
-                });
+                logger.debug(`addEventListener: User already authenticated, notifying immediately - userId=${user.id}`);
                 listener({
                     user,
                 });
