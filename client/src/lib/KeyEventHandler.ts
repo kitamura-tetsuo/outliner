@@ -7,6 +7,19 @@ import { CustomKeyMap } from "./CustomKeyMap";
  * キーおよび入力イベントを各カーソルインスタンスに振り分けるハンドラ
  */
 export class KeyEventHandler {
+    /**
+     * YText または文字列から文字列を取得する
+     */
+    private static getTextContent(text: unknown): string {
+        if (typeof text === "string") {
+            return text;
+        }
+        // YText objects need to be converted to string
+        if (text && typeof (text as any).toString === "function") {
+            return (text as any).toString();
+        }
+        return "";
+    }
     // 矩形選択の状態を保持
     private static boxSelectionState: {
         active: boolean;
@@ -364,7 +377,7 @@ export class KeyEventHandler {
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    const text = KeyEventHandler.getTextContent(node?.text);
                     const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
 
                     // 内部リンク開始直後 ([/) や [ ... ] 内ではパレットを出さない
@@ -424,7 +437,8 @@ export class KeyEventHandler {
                 try {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    if (!node) return;
+                    const text = KeyEventHandler.getTextContent(node.text);
                     const before = text.slice(0, cursor.offset);
                     const lastSlash = before.lastIndexOf("/");
                     const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
@@ -444,7 +458,7 @@ export class KeyEventHandler {
                         const items: any = gs?.currentPage?.items;
                         if (items && typeof items.addNode === "function") {
                             const userId = cursor.userId || "local";
-                            const prevLen = typeof items.length === "number" ? items.length : 0;
+                            const prevLen: number = typeof items.length === "number" ? items.length : 0;
                             try {
                                 items.addNode(userId);
                             } catch {
@@ -452,7 +466,8 @@ export class KeyEventHandler {
                                     items.addNode(userId, prevLen);
                                 } catch {}
                             }
-                            const lastIndex = (typeof items.length === "number" ? items.length : prevLen + 1) - 1;
+                            const lastIndex: number = (typeof items.length === "number" ? items.length : prevLen + 1)
+                                - 1;
                             const newItem = items[lastIndex];
                             if (newItem) {
                                 newItem.text = "";
@@ -511,7 +526,8 @@ export class KeyEventHandler {
             try {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
-                const text = node?.text || "";
+                if (!node) return;
+                const text = KeyEventHandler.getTextContent(node.text);
                 const before = text.slice(0, cursor.offset);
                 const lastSlash = before.lastIndexOf("/");
                 const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
@@ -547,7 +563,7 @@ export class KeyEventHandler {
                     const items: any = gs?.currentPage?.items;
                     if (items && typeof items.addNode === "function") {
                         const userId = cursor.userId || "local";
-                        const prevLen = typeof items.length === "number" ? items.length : 0;
+                        const prevLen: number = typeof items.length === "number" ? items.length : 0;
                         try {
                             items.addNode(userId);
                         } catch {
@@ -555,7 +571,7 @@ export class KeyEventHandler {
                                 items.addNode(userId, prevLen);
                             } catch {}
                         }
-                        const lastIndex = (typeof items.length === "number" ? items.length : prevLen + 1) - 1;
+                        const lastIndex: number = (typeof items.length === "number" ? items.length : prevLen + 1) - 1;
                         const newItem = items[lastIndex];
                         if (newItem) {
                             newItem.text = "";
