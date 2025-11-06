@@ -145,7 +145,7 @@ describe("yjs presence", () => {
             throw new Error("page connection not established");
         }
 
-        p1c1.awareness.setLocalState({
+        (p1c1 as any).awareness.setLocalState({
             user: { userId: "u1", name: "A" },
             presence: { cursor: { itemId: "root", offset: 0 } },
         });
@@ -153,14 +153,14 @@ describe("yjs presence", () => {
 
         // Manual workaround for awareness synchronization in test environment
         // In a real environment, this would happen through WebSockets
-        const states1 = p1c1.awareness.getStates();
-        const states2 = p1c2.awareness.getStates();
-        if (states2.size <= 1 && Array.from(states2.values()).every(s => !s.presence?.cursor?.itemId)) {
+        const states1 = (p1c1 as any).awareness.getStates();
+        const states2 = (p1c2 as any).awareness.getStates();
+        if (states2.size <= 1 && Array.from(states2.values()).every((s: any) => !s.presence?.cursor?.itemId)) {
             // Find the presence state from first awareness and copy it to second if not synchronized
             for (const [, state] of states1.entries()) {
                 if (state.presence?.cursor?.itemId === "root") {
                     // Manually set the presence state on the second client
-                    p1c2.awareness.setLocalState(state);
+                    (p1c2 as any).awareness.setLocalState(state);
                     break;
                 }
             }
@@ -169,14 +169,14 @@ describe("yjs presence", () => {
         // Wait for the manual sync to take effect
         await new Promise(r => setTimeout(r, 100));
 
-        const states = p1c2.awareness.getStates();
+        const states = (p1c2 as any).awareness.getStates();
         console.log("States size:", states.size);
         console.log("States values:", Array.from(states.values()));
-        const received = Array.from(states.values()).some(s => s.presence?.cursor?.itemId === "root");
+        const received = Array.from(states.values()).some((s: any) => s.presence?.cursor?.itemId === "root");
         console.log("Received:", received);
         expect(received).toBe(true);
-        p1c1.dispose();
-        p1c2.dispose();
+        (p1c1 as any).dispose();
+        (p1c2 as any).dispose();
         c1.dispose();
         c2.dispose();
         await new Promise(r => setTimeout(r, 0));
