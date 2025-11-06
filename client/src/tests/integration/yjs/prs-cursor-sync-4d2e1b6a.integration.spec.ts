@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PageConnection, ProjectConnection } from "../../../lib/yjs/connection";
 import { createProjectConnection } from "../../../lib/yjs/connection";
 import { Project } from "../../../schema/app-schema";
 
@@ -14,7 +15,7 @@ describe("yjs presence", () => {
         await new Promise(resolve => {
             let syncedCount = 0;
             const checkSync = () => {
-                if (c1.provider.synced && c2.provider.synced) {
+                if ((c1 as ProjectConnection).provider.synced && (c2 as ProjectConnection).provider.synced) {
                     syncedCount++;
                     // Check twice to ensure stable sync state
                     if (syncedCount >= 2) resolve(undefined);
@@ -73,10 +74,10 @@ describe("yjs presence", () => {
 
         // If synchronization didn't happen, let's try to manually add the page to the second project
         // This is a workaround for the test environment's synchronization issues
-        const pagesMap2 = c2.doc.getMap("pages");
+        const pagesMap2 = (c2 as ProjectConnection).doc.getMap("pages");
         if (!pagesMap2.has(page.id)) {
             console.log("Manually adding page to second client due to sync issues");
-            const pagesMap1 = c1.doc.getMap("pages");
+            const pagesMap1 = (c1 as ProjectConnection).doc.getMap("pages");
             const pageDoc = pagesMap1.get(page.id);
             if (pageDoc) {
                 pagesMap2.set(page.id, pageDoc);
@@ -88,10 +89,10 @@ describe("yjs presence", () => {
 
         // Wait for page connections to be established on both clients
         // Since adding a page creates subdocs asynchronously, we need to wait for the connection to be established
-        const p1c1 = await new Promise(resolve => {
+        const p1c1 = await new Promise<PageConnection | null>(resolve => {
             let resolved = false;
             const check = () => {
-                const conn = c1.getPageConnection(page.id);
+                const conn = (c1 as ProjectConnection).getPageConnection(page.id);
                 if (conn) {
                     resolved = true;
                     resolve(conn);
@@ -109,10 +110,10 @@ describe("yjs presence", () => {
             }, 10000);
         });
 
-        const p1c2 = await new Promise(resolve => {
+        const p1c2 = await new Promise<PageConnection | null>(resolve => {
             let resolved = false;
             const check = () => {
-                const conn = c2.getPageConnection(page.id);
+                const conn = (c2 as ProjectConnection).getPageConnection(page.id);
                 if (conn) {
                     resolved = true;
                     resolve(conn);
@@ -145,7 +146,7 @@ describe("yjs presence", () => {
             throw new Error("page connection not established");
         }
 
-        (p1c1 as any).awareness.setLocalState({
+        (p1c1 as PageConnection).awareness.setLocalState({
             user: { userId: "u1", name: "A" },
             presence: { cursor: { itemId: "root", offset: 0 } },
         });
@@ -153,14 +154,21 @@ describe("yjs presence", () => {
 
         // Manual workaround for awareness synchronization in test environment
         // In a real environment, this would happen through WebSockets
-        const states1 = (p1c1 as any).awareness.getStates();
-        const states2 = (p1c2 as any).awareness.getStates();
-        if (states2.size <= 1 && Array.from(states2.values()).every((s: any) => !s.presence?.cursor?.itemId)) {
+        const states1 = (p1c1 as PageConnection).awareness.getStates();
+        const states2 = (p1c2 as PageConnection).awareness.getStates();
+        if (
+            states2.size <= 1
+            && Array.from(states2.values()).every((s: unknown) =>
+                !(s as { presence?: { cursor?: { itemId?: string; }; }; })?.presence?.cursor?.itemId
+            )
+        ) {
             // Find the presence state from first awareness and copy it to second if not synchronized
             for (const [, state] of states1.entries()) {
-                if (state.presence?.cursor?.itemId === "root") {
+                if (
+                    (state as { presence?: { cursor?: { itemId?: string; }; }; })?.presence?.cursor?.itemId === "root"
+                ) {
                     // Manually set the presence state on the second client
-                    (p1c2 as any).awareness.setLocalState(state);
+                    (p1c2 as PageConnection).awareness.setLocalState(state);
                     break;
                 }
             }
@@ -169,16 +177,18 @@ describe("yjs presence", () => {
         // Wait for the manual sync to take effect
         await new Promise(r => setTimeout(r, 100));
 
-        const states = (p1c2 as any).awareness.getStates();
+        const states = (p1c2 as PageConnection).awareness.getStates();
         console.log("States size:", states.size);
         console.log("States values:", Array.from(states.values()));
-        const received = Array.from(states.values()).some((s: any) => s.presence?.cursor?.itemId === "root");
+        const received = Array.from(states.values()).some((s: unknown) =>
+            (s as { presence?: { cursor?: { itemId?: string; }; }; })?.presence?.cursor?.itemId === "root"
+        );
         console.log("Received:", received);
         expect(received).toBe(true);
-        (p1c1 as any).dispose();
-        (p1c2 as any).dispose();
-        c1.dispose();
-        c2.dispose();
+        (p1c1 as PageConnection).dispose();
+        (p1c2 as PageConnection).dispose();
+        (c1 as ProjectConnection).dispose();
+        (c2 as ProjectConnection).dispose();
         await new Promise(r => setTimeout(r, 0));
     });
 });

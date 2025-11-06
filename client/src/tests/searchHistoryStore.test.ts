@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-type SearchHistoryStore = {
-    add: (query: string) => void;
+let store: {
     history: string[];
+    add: (query: string) => void;
+    reset: () => void;
 };
-
-let store: SearchHistoryStore;
 
 function getHistory() {
     return store.history;

@@ -7,20 +7,14 @@ import { yjsService } from "../lib/yjs/service";
 import { Items, Project } from "../schema/yjs-schema";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
-// Type definitions for data structures
-interface SerializedItem {
+interface TreeNode {
     id: string;
     text: string;
-    author?: string;
-    votes: string[];
-    created?: number;
-    lastChanged?: number;
-    items?: SerializedItemData;
-}
-
-interface SerializedItemData {
-    itemCount: number;
-    items: SerializedItem[];
+    author: string;
+    votes: unknown[];
+    created: unknown;
+    lastChanged: unknown;
+    items?: TreeNode[];
 }
 
 export interface YjsClientParams {
@@ -99,7 +93,24 @@ export class YjsClient {
         return this._getPageConnection?.(pageId);
     }
 
-    public updatePresence(state: { cursor?: { itemId: string; offset: number; }; selection?: unknown; } | null) {
+    public updatePresence(
+        state: {
+            cursor?: { itemId: string; offset: number; };
+            selection?: {
+                startItemId: string;
+                startOffset: number;
+                endItemId: string;
+                endOffset: number;
+                isReversed?: boolean;
+                isBoxSelection?: boolean;
+                boxSelectionRanges?: {
+                    itemId: string;
+                    startOffset: number;
+                    endOffset: number;
+                }[] | undefined;
+            };
+        } | null,
+    ) {
         if (!this._awareness) return;
         yjsService.setPresence(this._awareness, state);
     }
@@ -122,7 +133,7 @@ export class YjsClient {
             // WebsocketProvider has a private flag; infer from wsconnected when available
             const p = this._provider;
             if (!p) return true; // treat offline as connected for local mode
-            return !!(p.wsconnected ?? p.connected ?? (p as unknown as { _connected?: boolean; })._connected ?? false);
+            return !!(p.wsconnected ?? (p as unknown as { _connected?: boolean; })._connected ?? false);
         } catch {
             return true;
         }
@@ -137,34 +148,49 @@ export class YjsClient {
     }
 
     // Debug helpers similar to FluidClient
-    getAllData(): SerializedItemData {
+    getAllData(): { itemCount: number; items: TreeNode[]; } {
         const items = this.project.items as Items;
-        const collect = (it: Items): SerializedItemData => {
-            const arr: SerializedItem[] = [];
-            const len = it.length ?? 0;
+        const collect = (it: Items): TreeNode[] => {
+            const arr: TreeNode[] = [];
+            const itemsProxy = it as unknown as {
+                length: number;
+                at?: (i: number) => unknown;
+                [index: number]: unknown;
+            };
+            const len = itemsProxy.length ?? 0;
             for (let i = 0; i < len; i++) {
-                const item = it.at(i);
+                const item = itemsProxy.at ? itemsProxy.at(i) : itemsProxy[i];
                 if (!item) continue;
-                const node: SerializedItem = {
-                    id: item.id,
-                    text: item.text?.toString?.() ?? "",
-                    author: item.value.get("author") as string | undefined,
-                    votes: (item.value.get("votes") as Y.Array<string>)?.toArray() ?? [],
-                    created: item.value.get("created") as number | undefined,
-                    lastChanged: item.value.get("lastChanged") as number | undefined,
+                const itemProxy = item as unknown as {
+                    id: string;
+                    text: { toString?: () => string; };
+                    items: Items;
+                    author: unknown;
+                    votes: unknown[];
+                    created: unknown;
+                    lastChanged: unknown;
                 };
-                const children = item.items as Items;
-                if (children && (children.length ?? 0) > 0) {
+                const node: TreeNode = {
+                    id: itemProxy.id,
+                    text: itemProxy.text?.toString?.() ?? "",
+                    author: String(itemProxy.author),
+                    votes: [...(itemProxy.votes ?? [])],
+                    created: itemProxy.created,
+                    lastChanged: itemProxy.lastChanged,
+                };
+                const children = itemProxy.items;
+                if (children && ((children as unknown as { length: number; }).length ?? 0) > 0) {
                     node.items = collect(children);
                 }
                 arr.push(node);
             }
-            return { itemCount: arr.length, items: arr };
+            return arr;
         };
-        return collect(items);
+        const collectedItems = collect(items);
+        return { itemCount: collectedItems.length, items: collectedItems };
     }
 
-    getTreeAsJson(path?: string): SerializedItemData | unknown {
+    getTreeAsJson(path?: string): unknown {
         const treeData = this.getAllData();
         if (!path) return treeData;
         const parts = path.split(".");
@@ -178,20 +204,20 @@ export class YjsClient {
 
     public async createPage(pageName: string, lines: string[]): Promise<void> {
         const pageItem = (this.project.items as Items).addNode("user");
-        pageItem.text.insert?.(0, pageName);
+        (pageItem.text as Y.Text).insert?.(0, pageName);
         const pageChildren = pageItem.items as Items;
         for (const line of lines) {
             const item = pageChildren.addNode("user");
-            item.text.insert?.(0, line);
+            (item.text as Y.Text).insert?.(0, line);
         }
     }
 
     public dispose() {
         try {
-            this._provider?.destroy?.();
+            this._provider?.destroy();
         } catch {}
         try {
-            this._doc?.destroy?.();
+            this._doc?.destroy();
         } catch {}
         try {
             presenceStore.getUsers().forEach(u => presenceStore.removeUser(u.userId));

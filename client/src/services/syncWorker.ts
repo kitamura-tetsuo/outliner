@@ -12,6 +12,8 @@ type EventListener = (...args: unknown[]) => void;
 // Define a minimal interface for the sql.js database object to avoid 'any'
 export interface SqlJsDatabase {
     prepare: (sql: string) => SqlJsStatement;
+    run: (sql: string) => void;
+    exec: (sql: string) => SqlJsResult[];
     // Add other methods as needed
 }
 
@@ -19,6 +21,10 @@ interface SqlJsStatement {
     run: (params?: unknown[]) => SqlJsStatement;
     free: () => void;
     // Add other methods as needed
+}
+
+export interface SqlJsResult {
+    values: unknown[][];
 }
 
 export class SyncWorker {

@@ -9,10 +9,12 @@ import type { Item } from "../schema/app-schema";
 import { store } from "../stores/store.svelte";
 import { getLogger } from "./logger";
 
+type EventListener = (event: Event) => void;
+
 const logger = getLogger("LinkPreviewHandler");
 
 // プレビューポップアップのスタイル
-const PREVIEW_STYLES = {
+const PREVIEW_STYLES: Partial<CSSStyleDeclaration> = {
     position: "absolute",
     zIndex: "1000",
     width: "300px",
@@ -25,6 +27,10 @@ const PREVIEW_STYLES = {
     overflow: "hidden",
     fontSize: "14px",
 };
+
+function camelToKebab(s: string): string {
+    return s.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+}
 
 // 現在表示中のプレビュー要素
 let currentPreview: HTMLElement | null = null;
@@ -48,7 +54,7 @@ export function pageExists(pageName: string, projectName?: string): boolean {
     if (!store.pages) return false;
 
     // ページ名が一致するページを検索
-    for (const page of store.pages.current) {
+    for (const page of store.pages.current as Item[]) {
         if (page.text.toLowerCase() === pageName.toLowerCase()) {
             return true;
         }
@@ -66,7 +72,7 @@ function findPageByName(name: string): Item | null {
     if (!store.pages) return null;
 
     // ページ名が一致するページを検索
-    for (const page of store.pages.current) {
+    for (const page of store.pages.current as Item[]) {
         if (page.text.toLowerCase() === name.toLowerCase()) {
             return page;
         }
@@ -87,7 +93,9 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
 
     // スタイルを適用
     Object.entries(PREVIEW_STYLES).forEach(([key, value]) => {
-        previewElement.style[key as any] = value;
+        if (value !== undefined && value !== null) {
+            previewElement.style.setProperty(camelToKebab(key), String(value));
+        }
     });
 
     // プロジェクト内リンクの場合
@@ -124,18 +132,19 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
         itemsDiv.style.maxHeight = "220px";
         itemsDiv.style.overflowY = "auto";
 
-        if (foundPage.items && (foundPage.items as any).length > 0) {
+        const pageItems = foundPage.items;
+        if (pageItems && pageItems.length > 0) {
             const ul = document.createElement("ul");
             ul.style.margin = "0";
             ul.style.padding = "0 0 0 20px";
 
             // 最大5つまでのアイテムを表示
-            const maxItems = Math.min(5, (foundPage.items as any).length);
+            const maxItems = Math.min(5, pageItems.length);
             for (let i = 0; i < maxItems; i++) {
-                const item = (foundPage.items as any)[i];
+                const item = pageItems.at(i);
                 if (item) {
                     const li = document.createElement("li");
-                    li.textContent = item.text || "";
+                    li.textContent = item.text ?? "";
                     li.style.marginBottom = "4px";
                     li.style.color = "#555";
                     li.style.lineHeight = "1.4";
@@ -144,7 +153,7 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
             }
 
             // 5つ以上ある場合は「...」を表示
-            if ((foundPage.items as any).length > 5) {
+            if (pageItems.length > 5) {
                 const moreLi = document.createElement("li");
                 moreLi.textContent = "...";
                 moreLi.style.color = "#888";
@@ -310,8 +319,8 @@ function addLinkEventListeners(element: Element): void {
     const hasListeners = element.getAttribute("data-link-listeners") === "true";
 
     if (!hasListeners) {
-        element.addEventListener("mouseenter", handleLinkMouseEnter);
-        element.addEventListener("mouseleave", handleLinkMouseLeave);
+        element.addEventListener("mouseenter", handleLinkMouseEnter as EventListener);
+        element.addEventListener("mouseleave", handleLinkMouseLeave as EventListener);
 
         // リスナーが設定されたことを示すフラグを設定
         element.setAttribute("data-link-listeners", "true");
@@ -341,7 +350,7 @@ export function setupLinkPreviewHandlers(): void {
 
         logger.info(`Link preview handlers set up for ${internalLinks.length} links`);
     } catch (error) {
-        logger.error("Error setting up link preview handlers:", error);
+        logger.error(`Error setting up link preview handlers: ${error}`);
     }
 }
 
@@ -415,7 +424,7 @@ function setupMutationObserver(): void {
 
         logger.info("MutationObserver for link preview handlers set up");
     } catch (error) {
-        logger.error("Error setting up MutationObserver:", error);
+        logger.error(`Error setting up MutationObserver: ${error}`);
     }
 }
 

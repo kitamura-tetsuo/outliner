@@ -117,7 +117,7 @@ class UserDeletionService {
         await this.auth.deleteUser(userId);
     }
 
-    validateUserDeletion(userId: string): void {
+    validateUserDeletion(userId: string | undefined): void {
         if (!userId) {
             throw new Error("User ID is required");
         }
@@ -182,6 +182,10 @@ describe("User Deletion Service - Unit Tests", () => {
 
         it("ユーザーIDが空の場合、エラーを投げること", () => {
             expect(() => service.validateUserDeletion("")).toThrow("User ID is required");
+        });
+
+        it("ユーザーIDがundefinedの場合、エラーを投げること", () => {
+            expect(() => service.validateUserDeletion(undefined)).toThrow("User ID is required");
         });
     });
 

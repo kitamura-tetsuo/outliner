@@ -1,4 +1,5 @@
 import type { Item } from "../../schema/yjs-schema";
+import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
 
@@ -12,7 +13,7 @@ interface Cursor {
     findPreviousItem(): Item | null;
     findNextItem(): Item | null;
     clearSelection(): void;
-    deleteMultiItemSelection(selection: any): void; // This will need to be properly typed too
+    deleteMultiItemSelection(selection: SelectionRange): void;
     applyToStore(): void;
     // Add other required methods as needed
 }
@@ -107,9 +108,9 @@ export class CursorTextOperations {
                 // 選択範囲のテキストを削除
                 const startOffset = Math.min(selection.startOffset, selection.endOffset);
                 const endOffset = Math.max(selection.startOffset, selection.endOffset);
-                let txt = node.text;
-                txt = txt.slice(0, startOffset) + txt.slice(endOffset);
-                node.updateText(txt);
+                const txt = typeof node.text === "string" ? node.text : (node.text?.toString?.() ?? "");
+                const newTxt = txt.slice(0, startOffset) + txt.slice(endOffset);
+                node.updateText(newTxt);
 
                 // カーソル位置を更新
                 this.cursor.offset = startOffset;
@@ -166,9 +167,9 @@ export class CursorTextOperations {
                 // 選択範囲のテキストを削除
                 const startOffset = Math.min(selection.startOffset, selection.endOffset);
                 const endOffset = Math.max(selection.startOffset, selection.endOffset);
-                let txt = node.text;
-                txt = txt.slice(0, startOffset) + txt.slice(endOffset);
-                node.updateText(txt);
+                const txt = typeof node.text === "string" ? node.text : (node.text?.toString?.() ?? "");
+                const newTxt = txt.slice(0, startOffset) + txt.slice(endOffset);
+                node.updateText(newTxt);
 
                 // カーソル位置を更新
                 this.cursor.offset = startOffset;
@@ -202,7 +203,8 @@ export class CursorTextOperations {
         // グローバルテキストエリアの値も同期
         const textarea = store.getTextareaRef();
         if (textarea) {
-            textarea.value = node.text;
+            const text = typeof node.text === "string" ? node.text : (node.text?.toString?.() ?? "");
+            textarea.value = text;
             textarea.setSelectionRange(this.cursor.offset, this.cursor.offset);
             console.log(`deleteForward: Synced textarea value: "${textarea.value}"`);
         }
@@ -219,14 +221,16 @@ export class CursorTextOperations {
         if (!prevItem) return;
 
         // 前のアイテムのテキストを取得
-        const prevText = prevItem.text || "";
-        const currentText = currentItem.text || "";
+        const prevText = typeof prevItem.text === "string" ? prevItem.text : (prevItem.text?.toString?.() ?? "");
+        const currentText = typeof currentItem.text === "string"
+            ? currentItem.text
+            : (currentItem.text?.toString?.() ?? "");
 
         // 前のアイテムのテキストを更新
         prevItem.updateText(prevText + currentText);
 
         // 現在のアイテムを削除
-        currentItem.delete();
+        currentItem.tree.deleteNodeAndDescendants(currentItem.key);
 
         // カーソル位置を更新
         const oldItemId = this.cursor.itemId;
@@ -254,14 +258,16 @@ export class CursorTextOperations {
         if (!nextItem) return;
 
         // 現在のアイテムと次のアイテムのテキストを取得
-        const currentText = currentItem.text || "";
-        const nextText = nextItem.text || "";
+        const currentText = typeof currentItem.text === "string"
+            ? currentItem.text
+            : (currentItem.text?.toString?.() ?? "");
+        const nextText = typeof nextItem.text === "string" ? nextItem.text : (nextItem.text?.toString?.() ?? "");
 
         // 現在のアイテムのテキストを更新
         currentItem.updateText(currentText + nextText);
 
         // 次のアイテムを削除
-        nextItem.delete();
+        nextItem.tree.deleteNodeAndDescendants(nextItem.key);
 
         // カーソル位置はそのまま（現在のアイテムの末尾）
     }
@@ -303,7 +309,7 @@ export class CursorTextOperations {
         store.clearCursorForItem(this.cursor.itemId);
 
         // アイテムを削除
-        currentItem.delete();
+        currentItem.tree.deleteNodeAndDescendants(currentItem.key);
 
         // 新しい位置にカーソルを設定
         this.cursor.itemId = targetItemId;
@@ -336,7 +342,7 @@ export function deleteEmptyItem(current?: Item) {
 
         // Clear cursor for the current item and delete it
         store.clearCursorForItem(current.id);
-        current.delete();
+        current.tree.deleteNodeAndDescendants(current.key);
 
         // Move active item focus
         const target = next ?? prev ?? undefined;
@@ -363,7 +369,7 @@ export function mergeWithNextItem(current?: Item) {
         const a = current.text ?? "";
         const b = next.text ?? "";
         current.updateText(String(a) + String(b));
-        next.delete();
+        next.tree.deleteNodeAndDescendants(next.key);
 
         store.setActiveItem(current.id);
         store.startCursorBlink();
@@ -385,7 +391,7 @@ export function mergeWithPreviousItem(current?: Item) {
         const b = current.text ?? "";
         prev.updateText(String(a) + String(b));
         const prevId = prev.id;
-        current.delete();
+        current.tree.deleteNodeAndDescendants(current.key);
 
         store.setActiveItem(prevId);
         store.startCursorBlink();

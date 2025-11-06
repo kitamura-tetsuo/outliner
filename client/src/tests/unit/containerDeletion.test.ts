@@ -71,7 +71,7 @@ class ContainerDeletionService {
         return await this.auth.verifyIdToken(idToken);
     }
 
-    validateContainerId(containerId: string): void {
+    validateContainerId(containerId: string | undefined): void {
         if (!containerId) {
             throw new Error("Container ID is required");
         }
@@ -163,6 +163,10 @@ describe("Container Deletion Service - Unit Tests", () => {
 
         it("コンテナIDが空の場合、エラーを投げること", () => {
             expect(() => service.validateContainerId("")).toThrow("Container ID is required");
+        });
+
+        it("コンテナIDがundefinedの場合、エラーを投げること", () => {
+            expect(() => service.validateContainerId(undefined)).toThrow("Container ID is required");
         });
     });
 

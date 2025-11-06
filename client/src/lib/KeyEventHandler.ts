@@ -154,9 +154,9 @@ export class KeyEventHandler {
                     try {
                         // 先にストアの選択インデックスから直接確定（DOMに依存しない）
                         try {
-                            const w: any = window as any;
-                            const ap: any = w?.aliasPickerStore ?? aliasPickerStore;
-                            const opts: any[] = Array.isArray(ap?.options) ? ap.options : [];
+                            const w = typeof window !== "undefined" ? window : null;
+                            const ap = (w as any)?.aliasPickerStore ?? aliasPickerStore;
+                            const opts: Array<{ id: string; }> = Array.isArray(ap?.options) ? ap.options : [];
                             let si: number = typeof ap?.selectedIndex === "number" ? ap.selectedIndex : 0;
                             if (opts.length > 0) {
                                 si = Math.max(0, Math.min(si, opts.length - 1));
@@ -200,28 +200,28 @@ export class KeyEventHandler {
                         // クリック経路で確定できなかった場合のフォールバック：
                         // 最初のコンテンツ行（= テストの secondId）をターゲットに設定
                         try {
-                            const w: any = window as any;
-                            const gs: any = w.generalStore || w.appStore;
+                            const w = typeof window !== "undefined" ? window : null;
+                            const gs = w?.generalStore ?? w?.appStore ?? null;
                             const root = gs?.currentPage;
-                            const picker = (w.aliasPickerStore ?? aliasPickerStore) as any;
+                            const picker = (w as any)?.aliasPickerStore ?? aliasPickerStore;
                             const aliasId: string | null = picker?.itemId ?? null;
-                            const firstContent: any = root?.items && (root.items as any).length > 0
+                            const firstContent = root?.items && (root.items as any).length > 0
                                 ? ((root.items as any).at ? (root.items as any).at(0) : (root.items as any)[0])
                                 : null;
                             if (root && aliasId && firstContent?.id) {
-                                const find = (node: any, id: string): any => {
+                                const find = (node: unknown, id: string): unknown => {
                                     if (!node) return null;
-                                    if (node.id === id) return node;
-                                    const ch: any = node.items;
+                                    if ((node as any)?.id === id) return node;
+                                    const ch = (node as any)?.items;
                                     const len = ch?.length ?? 0;
                                     for (let i = 0; i < len; i++) {
-                                        const c = ch.at ? ch.at(i) : ch[i];
-                                        const r = find(c, id);
+                                        const c = ch?.at ? ch.at(i) : (ch as any)?.[i];
+                                        const r = find(c as any, id);
                                         if (r) return r;
                                     }
                                     return null;
                                 };
-                                const aliasItem = find(root, aliasId);
+                                const aliasItem = find(root, aliasId) as any;
                                 if (aliasItem && !aliasItem.aliasTargetId) {
                                     try {
                                         console.log(
@@ -263,7 +263,7 @@ export class KeyEventHandler {
 
                                     // モデル側も最終アイテムに対してフォールバック設定
                                     if (lastId && lastId !== aliasId) {
-                                        const aliasItem2 = find(root, lastId);
+                                        const aliasItem2 = find(root, lastId) as any;
                                         if (aliasItem2 && !aliasItem2.aliasTargetId) {
                                             try {
                                                 console.log(
@@ -310,15 +310,15 @@ export class KeyEventHandler {
         if (event.key === "Enter" && cursorInstances.length > 0) {
             const cursor = cursorInstances[0];
             const node = cursor.findTarget();
-            const rawText: any = (node as any)?.text;
+            const rawText = (node as any)?.text;
             const text: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
             const before = text.slice(0, cursor.offset);
             earlyBeforeForLog = before;
             const lastSlash = before.lastIndexOf("/");
             const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
 
-            const gsAny: any = typeof window !== "undefined" ? (window as any).generalStore : null;
-            const ta: HTMLTextAreaElement | undefined = gsAny?.textareaRef as any;
+            const gsAny = typeof window !== "undefined" ? (window as any).generalStore : null;
+            const ta: HTMLTextAreaElement | undefined = gsAny?.textareaRef;
             const taValue: string | null = ta?.value ?? null;
             const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
             const source = typeof taValue === "string" ? taValue : text;
@@ -364,7 +364,7 @@ export class KeyEventHandler {
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    const text = node?.text ? node.text.toString() : "";
                     const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
 
                     // 内部リンク開始直後 ([/) や [ ... ] 内ではパレットを出さない
@@ -387,7 +387,9 @@ export class KeyEventHandler {
                 }
             } catch (e) {
                 // 失敗しても通常入力は継続
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.warn("Slash pre-show failed:", e);
                 }
             }
@@ -405,7 +407,7 @@ export class KeyEventHandler {
             } else if (event.key === "Enter") {
                 // Palette 可視時: フィルタに Alias が含まれていれば常に Alias を優先確定
                 try {
-                    const filtered: any[] = (commandPaletteStore as any).filtered ?? [];
+                    const filtered: Array<{ type?: string; }> = (commandPaletteStore as any).filtered ?? [];
                     const hasAlias = filtered.some(c => c?.type === "alias");
                     if (hasAlias) {
                         try {
@@ -424,7 +426,7 @@ export class KeyEventHandler {
                 try {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    const text = node?.text ? node.text.toString() : "";
                     const before = text.slice(0, cursor.offset);
                     const lastSlash = before.lastIndexOf("/");
                     const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
@@ -434,14 +436,16 @@ export class KeyEventHandler {
                     if (/^alias$/i.test(cmd)) {
                         commandPaletteStore.hide();
                         // コマンド文字列を削除
-                        const newText = text.slice(0, lastSlash) + text.slice(cursor.offset);
-                        node.updateText(newText);
+                        const newText = String(text).slice(0, lastSlash) + String(text).slice(cursor.offset);
+                        if (node) {
+                            node.updateText(newText);
+                        }
                         cursor.offset = lastSlash;
                         cursor.applyToStore();
 
                         // 新規アイテムを末尾に追加し、AliasPicker を表示
-                        const gs: any = typeof window !== "undefined" ? (window as any).generalStore : null;
-                        const items: any = gs?.currentPage?.items;
+                        const gs = typeof window !== "undefined" ? (window as any).generalStore : null;
+                        const items = gs?.currentPage?.items;
                         if (items && typeof items.addNode === "function") {
                             const userId = cursor.userId || "local";
                             const prevLen = typeof items.length === "number" ? items.length : 0;
@@ -456,12 +460,12 @@ export class KeyEventHandler {
                             const newItem = items[lastIndex];
                             if (newItem) {
                                 newItem.text = "";
-                                (newItem as any).aliasTargetId = undefined;
+                                newItem.aliasTargetId = undefined;
                                 try {
                                     console.log("KeyEventHandler(Palette): showing AliasPicker for", newItem.id);
                                 } catch {}
                                 {
-                                    const w: any = typeof window !== "undefined" ? (window as any) : null;
+                                    const w = typeof window !== "undefined" ? (window as any) : null;
                                     (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
                                 }
                                 // カーソル移動
@@ -500,7 +504,7 @@ export class KeyEventHandler {
 
         // カーソルがない場合は処理しない
         if (cursorInstances.length === 0) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`No cursor instances found, skipping key event`);
             }
             return;
@@ -512,16 +516,16 @@ export class KeyEventHandler {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
                 const text = node?.text || "";
-                const before = text.slice(0, cursor.offset);
+                const before = String(text).slice(0, cursor.offset);
                 const lastSlash = before.lastIndexOf("/");
                 const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
 
                 // textarea の実値も併用して厳密に検出
-                const gs: any = typeof window !== "undefined" ? (window as any).generalStore : null;
-                const ta: HTMLTextAreaElement | undefined = gs?.textareaRef as any;
+                const gs = typeof window !== "undefined" ? (window as any).generalStore : null;
+                const ta: HTMLTextAreaElement | undefined = gs?.textareaRef;
                 const taValue: string | null = ta?.value ?? null;
                 const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
-                const source = typeof taValue === "string" ? taValue : text;
+                const source = typeof taValue === "string" ? taValue : String(text);
                 const srcBefore = source.slice(0, caretPos);
                 const srcLastSlash = srcBefore.lastIndexOf("/");
                 const srcCmd = srcLastSlash >= 0 ? srcBefore.slice(srcLastSlash + 1) : "";
@@ -544,7 +548,7 @@ export class KeyEventHandler {
                     // NOTE: '/alias' のテキスト除去は必須ではないためスキップ（E2Eはピッカー表示を検証）
 
                     // 新規アイテムを末尾に追加
-                    const items: any = gs?.currentPage?.items;
+                    const items = gs?.currentPage?.items;
                     if (items && typeof items.addNode === "function") {
                         const userId = cursor.userId || "local";
                         const prevLen = typeof items.length === "number" ? items.length : 0;
@@ -559,12 +563,12 @@ export class KeyEventHandler {
                         const newItem = items[lastIndex];
                         if (newItem) {
                             newItem.text = "";
-                            (newItem as any).aliasTargetId = undefined;
+                            newItem.aliasTargetId = undefined;
                             try {
                                 console.log("KeyEventHandler: showing AliasPicker for", newItem.id);
                             } catch {}
                             {
-                                const w: any = typeof window !== "undefined" ? (window as any) : null;
+                                const w = typeof window !== "undefined" ? (window as any) : null;
                                 (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
                             }
                             // カーソル移動
@@ -582,7 +586,9 @@ export class KeyEventHandler {
                     }
                 }
             } catch (e) {
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.warn("Enter alias fallback failed:", e);
                 }
             }
@@ -598,7 +604,7 @@ export class KeyEventHandler {
         const handler = KeyEventHandler.keyHandlers.get(keyCombo);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
             console.log(`Looking for handler with key combo:`, keyCombo);
             console.log(`Handler found: ${handler !== undefined}`);
         }
@@ -612,7 +618,7 @@ export class KeyEventHandler {
                 try {
                     setTimeout(() => {
                         try {
-                            const w: any = typeof window !== "undefined" ? (window as any) : null;
+                            const w = typeof window !== "undefined" ? (window as any) : null;
                             const tryOpen = (attempt = 0) => {
                                 try {
                                     const activeId = store.getActiveItem?.();
@@ -688,7 +694,7 @@ export class KeyEventHandler {
                 try {
                     setTimeout(() => {
                         try {
-                            const w: any = typeof window !== "undefined" ? (window as any) : null;
+                            const w = typeof window !== "undefined" ? (window as any) : null;
                             const tryOpen = (attempt = 0) => {
                                 try {
                                     const activeId = store.getActiveItem?.();
@@ -729,7 +735,7 @@ export class KeyEventHandler {
         }
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
             console.log(`Key event handled: ${handled}`);
             if (handled) {
                 // カーソル状態をログに出力
@@ -758,8 +764,8 @@ export class KeyEventHandler {
 
         // 直近の入力ストリームをバッファリング（パレットのフォールバック検出用）
         try {
-            const w: any = typeof window !== "undefined" ? (window as any) : null;
-            const gs: any = w?.generalStore ?? {};
+            const w = typeof window !== "undefined" ? (window as any) : null;
+            const gs = w?.generalStore ?? {};
             const ch: string = typeof inputEvent.data === "string" ? inputEvent.data : "";
             gs.__lastInputStream = (gs.__lastInputStream || "") + ch;
             if (gs.__lastInputStream.length > 256) {
@@ -769,7 +775,7 @@ export class KeyEventHandler {
 
         // IME composition中の入力は重複処理を避けるため無視する
         if (inputEvent.isComposing || inputEvent.inputType.startsWith("insertComposition")) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`Skipping input event during composition`);
             }
             return;
@@ -783,9 +789,9 @@ export class KeyEventHandler {
             if (cursorInstances.length > 0) {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
-                const rawText: any = node?.text;
+                const rawText = node?.text;
                 const text: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
-                const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
+                const prevChar = cursor.offset > 0 ? text.charAt(cursor.offset - 1) : "";
 
                 // [の直後の/の場合、または既に[で始まる内部リンク内の場合はコマンドパレットを表示しない
                 if (prevChar === "[") {
@@ -825,14 +831,14 @@ export class KeyEventHandler {
 
         // カーソルがない場合は処理しない
         if (cursorInstances.length === 0) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`No cursor instances found, skipping input event`);
             }
             return;
         }
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
             console.log(`Applying input to ${cursorInstances.length} cursor instances`);
             console.log(`Current cursors:`, Object.values(store.cursors));
         }
@@ -865,7 +871,7 @@ export class KeyEventHandler {
                     if (
                         typeof window !== "undefined"
                         && typeof document !== "undefined"
-                        && (window as any).DEBUG_MODE
+                        && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
                     ) {
                         console.log(
                             `Focus set after input. Active element is textarea: ${
@@ -877,7 +883,7 @@ export class KeyEventHandler {
             });
         } else {
             // テキストエリアが見つからない場合はエラーログ
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.error(`Global textarea not found in handleInput`);
             }
         }
@@ -886,7 +892,7 @@ export class KeyEventHandler {
         store.startCursorBlink();
 
         // カーソル状態をログに出力
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
             store.logCursorState();
         }
 
@@ -996,7 +1002,7 @@ export class KeyEventHandler {
             selectedText = store.getSelectedText("local");
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`Selected text from store: "${selectedText}"`);
             }
         }
@@ -1027,12 +1033,18 @@ export class KeyEventHandler {
                             event.clipboardData.setData("application/vscode-editor", metadataJson);
 
                             // デバッグ情報
-                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            if (
+                                typeof window !== "undefined"
+                                && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                            ) {
                                 console.log(`VS Code metadata added:`, vscodeMetadata);
                             }
                         } catch (error) {
                             // メタデータの設定に失敗した場合はログに出力
-                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            if (
+                                typeof window !== "undefined"
+                                && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                            ) {
                                 console.error(`Failed to set VS Code metadata:`, error);
                             }
                         }
@@ -1076,14 +1088,14 @@ export class KeyEventHandler {
      */
     static handleBoxSelection(event: KeyboardEvent) {
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
             console.log(`KeyEventHandler.handleBoxSelection called with key=${event.key}`);
         }
 
         // 現在のカーソル位置を取得
         const cursorInstances = store.getCursorInstances();
         if (cursorInstances.length === 0) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`No cursor instances found, skipping box selection`);
             }
             return;
@@ -1092,7 +1104,7 @@ export class KeyEventHandler {
         // 現在のアクティブカーソル
         const activeCursor = cursorInstances.find(c => c.isActive) || cursorInstances[0];
         if (!activeCursor || !activeCursor.itemId) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`No active cursor or invalid cursor, skipping box selection`);
             }
             return;
@@ -1171,7 +1183,7 @@ export class KeyEventHandler {
             // ここでは DOM 操作は不要
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`Box selection started at item=${activeItemId}, offset=${activeOffset}`);
             }
         }
@@ -1289,12 +1301,16 @@ export class KeyEventHandler {
                 }
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.log(`Box selection updated:`, KeyEventHandler.boxSelectionState);
                 }
             } catch (error) {
                 // エラーが発生した場合はログに出力
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.error(`Error in handleBoxSelection:`, error);
                     if (error instanceof Error) {
                         console.error(`Error message: ${error.message}`);
@@ -1306,7 +1322,7 @@ export class KeyEventHandler {
             }
         } else {
             // 範囲が無効な場合はログに出力
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`Invalid box selection range, cancelling`);
             }
             // 矩形選択をキャンセル
@@ -1319,12 +1335,12 @@ export class KeyEventHandler {
      */
     private static updateBoxSelectionRanges() {
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
             console.log(`updateBoxSelectionRanges called`);
         }
 
         if (!KeyEventHandler.boxSelectionState.startItemId || !KeyEventHandler.boxSelectionState.endItemId) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(
                     `Invalid item IDs: startItemId=${KeyEventHandler.boxSelectionState.startItemId}, endItemId=${KeyEventHandler.boxSelectionState.endItemId}`,
                 );
@@ -1340,7 +1356,9 @@ export class KeyEventHandler {
             );
 
             if (itemsInRange.length === 0) {
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.log(`No items found in range`);
                 }
                 return;
@@ -1386,12 +1404,12 @@ export class KeyEventHandler {
             KeyEventHandler.boxSelectionState.ranges = ranges;
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`Box selection ranges updated:`, ranges);
             }
         } catch (error) {
             // エラーが発生した場合はログに出力
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.error(`Error in updateBoxSelectionRanges:`, error);
                 if (error instanceof Error) {
                     console.error(`Error message: ${error.message}`);
@@ -1472,7 +1490,7 @@ export class KeyEventHandler {
         }
 
         if (!startItemId || !endItemId) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`Invalid item IDs: startItemId=${startItemId}, endItemId=${endItemId}`);
             }
             return [];
@@ -1483,7 +1501,9 @@ export class KeyEventHandler {
             const items = Array.from(document.querySelectorAll(".outliner-item"));
 
             if (items.length === 0) {
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.log(`No outliner items found in the document`);
                 }
                 return [];
@@ -1493,7 +1513,9 @@ export class KeyEventHandler {
             const endIndex = items.findIndex(item => item.getAttribute("data-item-id") === endItemId);
 
             if (startIndex === -1 || endIndex === -1) {
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.log(`Item not found: startIndex=${startIndex}, endIndex=${endIndex}`);
                 }
                 return [];
@@ -1517,14 +1539,14 @@ export class KeyEventHandler {
             }
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`Found ${itemsInRange.length} items between ${startItemId} and ${endItemId}`);
             }
 
             return itemsInRange;
         } catch (error) {
             // エラーが発生した場合はログに出力
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.error(`Error in getItemsBetween:`, error);
                 if (error instanceof Error) {
                     console.error(`Error message: ${error.message}`);
@@ -1587,7 +1609,7 @@ export class KeyEventHandler {
             return direction;
         } catch (error) {
             // エラーが発生した場合はログに出力
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.error(`Error in getBoxSelectionDirection:`, error);
             }
             return "";
@@ -1599,7 +1621,7 @@ export class KeyEventHandler {
      */
     static cancelBoxSelection() {
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
             console.log(`KeyEventHandler.cancelBoxSelection called`);
         }
 
@@ -1618,12 +1640,12 @@ export class KeyEventHandler {
             store.clearSelectionForUser("local");
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`Box selection cancelled`);
             }
         } catch (error) {
             // エラーが発生した場合はログに出力
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.error(`Error in cancelBoxSelection:`, error);
                 if (error instanceof Error) {
                     console.error(`Error message: ${error.message}`);
@@ -1649,7 +1671,7 @@ export class KeyEventHandler {
      */
     static async handlePaste(event: ClipboardEvent): Promise<void> {
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
             console.log(`KeyEventHandler.handlePaste called`);
         }
 
@@ -1661,9 +1683,9 @@ export class KeyEventHandler {
             if (!text && typeof navigator !== "undefined" && navigator.clipboard) {
                 try {
                     text = await navigator.clipboard.readText();
-                } catch (error: any) {
+                } catch (error) {
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                        if (error?.name === "NotAllowedError") {
+                        if ((error as any)?.name === "NotAllowedError") {
                             console.warn("Clipboard permission denied", error);
                         } else {
                             console.error("navigator.clipboard.readText failed", error);
@@ -1673,7 +1695,7 @@ export class KeyEventHandler {
                     if (typeof window !== "undefined") {
                         window.dispatchEvent(
                             new CustomEvent(
-                                error?.name === "NotAllowedError"
+                                (error as any)?.name === "NotAllowedError"
                                     ? "clipboard-permission-denied"
                                     : "clipboard-read-error",
                             ),
@@ -1695,26 +1717,31 @@ export class KeyEventHandler {
             if (!text) return;
 
             // VS Code固有のメタデータを取得
-            let vscodeMetadata: any = null;
+            let vscodeMetadata: unknown = null;
             try {
                 const vscodeData = event.clipboardData?.getData("application/vscode-editor");
                 if (vscodeData) {
                     vscodeMetadata = JSON.parse(vscodeData);
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (
+                        typeof window !== "undefined"
+                        && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                    ) {
                         console.log(`VS Code metadata detected:`, vscodeMetadata);
                     }
                 }
             } catch (error) {
                 // メタデータの解析に失敗した場合は無視
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.error(`Failed to parse VS Code metadata:`, error);
                 }
             }
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`Pasting text: "${text}"`);
             }
 
@@ -1724,9 +1751,11 @@ export class KeyEventHandler {
             // グローバル変数に保存（E2E テスト環境専用）
             // 本番環境では使用されないが、E2E テストでペースト内容を検証するために必要
             if (typeof window !== "undefined") {
-                (window as any).lastPastedText = text;
+                (window as typeof window & { lastPastedText?: string; lastVSCodeMetadata?: unknown; }).lastPastedText =
+                    text;
                 if (vscodeMetadata) {
-                    (window as any).lastVSCodeMetadata = vscodeMetadata;
+                    (window as typeof window & { lastPastedText?: string; lastVSCodeMetadata?: unknown; })
+                        .lastVSCodeMetadata = vscodeMetadata;
                 }
             }
 
@@ -1742,17 +1771,19 @@ export class KeyEventHandler {
 
             // VS Codeのマルチカーソルテキストが含まれている場合
             if (
-                vscodeMetadata && Array.isArray(vscodeMetadata.multicursorText)
-                && vscodeMetadata.multicursorText.length > 0
+                vscodeMetadata && Array.isArray((vscodeMetadata as any).multicursorText)
+                && (vscodeMetadata as any).multicursorText.length > 0
             ) {
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`VS Code multicursor text detected:`, vscodeMetadata.multicursorText);
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
+                    console.log(`VS Code multicursor text detected:`, (vscodeMetadata as any).multicursorText);
                 }
 
-                const multicursorText = vscodeMetadata.multicursorText;
+                const multicursorText = (vscodeMetadata as any).multicursorText;
                 const cursorInstances = store.getCursorInstances();
-                const pasteMode = vscodeMetadata.pasteMode || "spread"; // デフォルトはspread
+                const pasteMode = (vscodeMetadata as any).pasteMode || "spread"; // デフォルトはspread
 
                 // pasteMode: 'spread' - 各カーソルに異なるテキストを挿入
                 // pasteMode: 'full' - 各カーソルに同じテキストを挿入
@@ -1777,7 +1808,9 @@ export class KeyEventHandler {
             // 矩形選択（ボックス選択）へのペーストの場合
             if (boxSelection && boxSelection.boxSelectionRanges) {
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.log(`Pasting into box selection:`, boxSelection);
                 }
 
@@ -1786,7 +1819,9 @@ export class KeyEventHandler {
                 const boxRanges = boxSelection.boxSelectionRanges;
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.log(`Box selection ranges:`, boxRanges);
                     console.log(`Lines to paste:`, lines);
                 }
@@ -1801,7 +1836,10 @@ export class KeyEventHandler {
                     // アイテムを取得
                     const itemEl = document.querySelector(`[data-item-id="${itemId}"]`);
                     if (!itemEl) {
-                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        if (
+                            typeof window !== "undefined"
+                            && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                        ) {
                             console.warn(`Item element not found for ID: ${itemId}`);
                         }
                         continue;
@@ -1810,7 +1848,10 @@ export class KeyEventHandler {
                     // テキスト要素を取得
                     const textEl = itemEl.querySelector(".item-text");
                     if (!textEl) {
-                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        if (
+                            typeof window !== "undefined"
+                            && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                        ) {
                             console.warn(`Text element not found for item ID: ${itemId}`);
                         }
                         continue;
@@ -1826,7 +1867,10 @@ export class KeyEventHandler {
                     const newText = currentText.substring(0, startOffset) + lineText + currentText.substring(endOffset);
 
                     // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (
+                        typeof window !== "undefined"
+                        && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                    ) {
                         console.log(`Item ${i} (ID: ${itemId}): Replacing text from ${startOffset} to ${endOffset}`);
                         console.log(`Current text: "${currentText}"`);
                         console.log(`Line text to paste: "${lineText}"`);
@@ -1845,7 +1889,10 @@ export class KeyEventHandler {
                         });
                         cursor = store.cursorInstances.get(cursorId);
 
-                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        if (
+                            typeof window !== "undefined"
+                            && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                        ) {
                             console.log(`Created new cursor for item ID: ${itemId}`);
                         }
                     }
@@ -1859,17 +1906,26 @@ export class KeyEventHandler {
                             cursor.offset = startOffset + lineText.length;
                             cursor.applyToStore();
 
-                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            if (
+                                typeof window !== "undefined"
+                                && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                            ) {
                                 console.log(`Updated text for item ID: ${itemId}`);
                                 console.log(`New cursor offset: ${cursor.offset}`);
                             }
                         } else {
-                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            if (
+                                typeof window !== "undefined"
+                                && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                            ) {
                                 console.warn(`Target item not found for cursor with item ID: ${itemId}`);
                             }
                         }
                     } else {
-                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        if (
+                            typeof window !== "undefined"
+                            && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                        ) {
                             console.warn(`Cursor not found or created for item ID: ${itemId}`);
                         }
                     }
@@ -1883,7 +1939,9 @@ export class KeyEventHandler {
 
                 // グローバル変数に保存（テスト用）
                 if (typeof window !== "undefined") {
-                    (window as any).lastBoxSelectionPaste = {
+                    (window as typeof window & {
+                        lastBoxSelectionPaste?: { text: string; lines: string[]; boxRanges: unknown[]; };
+                    }).lastBoxSelectionPaste = {
                         text,
                         lines,
                         boxRanges,
@@ -1896,14 +1954,16 @@ export class KeyEventHandler {
             // 矩形選択（ボックス選択）からのペーストの場合
             // VS Codeでは、矩形選択からのコピーは特殊なメタデータを含む
             if (
-                vscodeMetadata && vscodeMetadata.isFromEmptySelection === false
-                && vscodeMetadata.mode === "plaintext" && text.includes("\n")
+                vscodeMetadata && (vscodeMetadata as any).isFromEmptySelection === false
+                && (vscodeMetadata as any).mode === "plaintext" && text.includes("\n")
             ) {
                 // 矩形選択からのペーストとして処理
                 const lines = text.split(/\r?\n/);
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.log(`Box selection paste detected, lines:`, lines);
                 }
 
@@ -1925,7 +1985,9 @@ export class KeyEventHandler {
                 const lines = text.split(/\r?\n/);
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.log(`Multi-line paste detected, lines:`, lines);
                 }
 
@@ -1943,7 +2005,7 @@ export class KeyEventHandler {
             cursorInstances.forEach(cursor => cursor.insertText(text));
         } catch (error) {
             // エラーが発生した場合はログに出力し UI に通知
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.error(`Error in handlePaste:`, error);
             }
             if (typeof window !== "undefined") {
@@ -1958,7 +2020,7 @@ export class KeyEventHandler {
      */
     static handleCut(event: ClipboardEvent) {
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
             console.log(`KeyEventHandler.handleCut called`);
         }
 
@@ -1982,7 +2044,7 @@ export class KeyEventHandler {
             isBoxSelectionCut = true;
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`Box selection text: "${selectedText}"`);
             }
         } else {
@@ -1990,7 +2052,7 @@ export class KeyEventHandler {
             selectedText = store.getSelectedText("local");
 
             // デバッグ情報
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE) {
                 console.log(`Selected text from store: "${selectedText}"`);
             }
         }
@@ -2021,12 +2083,18 @@ export class KeyEventHandler {
                             event.clipboardData.setData("application/vscode-editor", metadataJson);
 
                             // デバッグ情報
-                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            if (
+                                typeof window !== "undefined"
+                                && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                            ) {
                                 console.log(`VS Code metadata added:`, vscodeMetadata);
                             }
                         } catch (error) {
                             // メタデータの設定に失敗した場合はログに出力
-                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            if (
+                                typeof window !== "undefined"
+                                && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                            ) {
                                 console.error(`Failed to set VS Code metadata:`, error);
                             }
                         }
@@ -2036,8 +2104,10 @@ export class KeyEventHandler {
                 // グローバル変数に保存（E2E テスト環境専用）
                 // 本番環境では使用されないが、E2E テストでカット内容を検証するために必要
                 if (typeof window !== "undefined") {
-                    (window as any).lastCopiedText = selectedText;
-                    (window as any).lastCopiedIsBoxSelection = isBoxSelectionCut;
+                    (window as typeof window & { lastCopiedText?: string; lastCopiedIsBoxSelection?: boolean; })
+                        .lastCopiedText = selectedText;
+                    (window as typeof window & { lastCopiedText?: string; lastCopiedIsBoxSelection?: boolean; })
+                        .lastCopiedIsBoxSelection = isBoxSelectionCut;
                 }
 
                 // フォールバック: execCommandを使用してコピー
@@ -2051,12 +2121,16 @@ export class KeyEventHandler {
                 document.body.removeChild(textarea);
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.log(`Clipboard updated with: "${selectedText}" (using execCommand fallback)`);
                 }
             } catch (error) {
                 // エラーが発生した場合はログに出力
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean; })?.DEBUG_MODE
+                ) {
                     console.error(`Error in handleCut:`, error);
                 }
             }
@@ -2078,5 +2152,6 @@ export class KeyEventHandler {
 
 // テスト用にKeyEventHandlerをグローバルに公開
 if (typeof window !== "undefined") {
-    (window as any).__KEY_EVENT_HANDLER__ = KeyEventHandler;
+    (window as typeof window & { __KEY_EVENT_HANDLER__?: typeof KeyEventHandler; }).__KEY_EVENT_HANDLER__ =
+        KeyEventHandler;
 }

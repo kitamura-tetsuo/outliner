@@ -32,7 +32,9 @@ export default ts.config(
                 NodeJS: "readonly",
                 ElementCreationOptions: "readonly",
                 NodeListOf: "readonly",
-                Console: "readonly",
+                // TypeScript DOM types that are not recognized by no-undef
+                TimerHandler: "readonly",
+                EventListener: "readonly",
             },
         },
     },
@@ -101,12 +103,11 @@ export default ts.config(
     },
     {
         files: [
-            "**/*.{test,spec}.{js,ts,tsx,svelte}",
-            "**/*.integration.spec.{js,ts,svelte}",
-            "**/tests/**/*.{js,ts,tsx,svelte}",
+            "**/*.{test,spec}.{js,ts,tsx}",
+            "**/*.integration.spec.{js,ts}",
+            "**/tests/**/*.{js,ts,tsx}",
         ],
         rules: {
-            "@typescript-eslint/no-explicit-any": "off", // Test files often use dynamic typing for mocking and fixtures
             "no-restricted-imports": [
                 "error",
                 {

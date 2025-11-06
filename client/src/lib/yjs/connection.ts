@@ -7,6 +7,10 @@ import { pageRoomPath, projectRoomPath } from "./roomPath";
 import { yjsService } from "./service";
 import { attachTokenRefresh } from "./tokenRefresh";
 
+interface ExtendedWebsocketProvider extends WebsocketProvider {
+    __wsDisabled?: boolean;
+}
+
 // Minimal guarded debug logging for initial sync progress (disabled in production by default)
 function isConnDebugEnabled(): boolean {
     try {
@@ -33,14 +37,16 @@ function attachConnDebug(label: string, provider: WebsocketProvider, awareness: 
         // awareness states count
         const logAwareness = () => {
             try {
-                const states = (awareness as { getStates?: () => Map<number, unknown>; })?.getStates?.();
+                const states = awareness.getStates();
                 const count = states?.size ?? 0;
                 console.log(`[yjs-conn] ${label} awareness.states=${count}`);
             } catch {}
         };
         awareness.on(
             "change",
-            logAwareness as (event: { added: number[]; removed: number[]; updated: number[]; }) => void,
+            () => {
+                logAwareness();
+            },
         );
         logAwareness();
         // doc update count and last payload size
@@ -77,6 +83,7 @@ export type ProjectConnection = {
     provider: WebsocketProvider;
     awareness: Awareness;
     getPageConnection: (pageId: string) => PageConnection | undefined;
+    getPageConnectionOrWait: (pageId: string, timeoutMs?: number) => Promise<PageConnection | undefined>;
     dispose: () => void;
 };
 
@@ -191,15 +198,15 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         token = "";
     }
     const wsEnabled = isWsEnabled();
-    const provider = new WebsocketProvider(wsBase, room, doc, {
+    const provider: ExtendedWebsocketProvider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
         connect: wsEnabled,
     });
     // Mark disabled state for downstream logic (e.g., token refresh) and hard-stop connect()
-    (provider as WebsocketProvider & { __wsDisabled?: boolean; }).__wsDisabled = !wsEnabled;
+    provider.__wsDisabled = !wsEnabled;
     if (!wsEnabled) {
         try {
-            (provider as WebsocketProvider & { connect: () => void; }).connect = () => {};
+            provider.connect = () => {};
         } catch {}
     }
     const awareness = provider.awareness;
@@ -249,16 +256,16 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         token = "";
     }
     const wsEnabled = isWsEnabled();
-    const provider = new WebsocketProvider(wsBase, room, doc, {
+    const provider: ExtendedWebsocketProvider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
         connect: wsEnabled,
     });
 
     // Mark disabled state and prevent accidental connects
-    (provider as WebsocketProvider & { __wsDisabled?: boolean; }).__wsDisabled = !wsEnabled;
+    provider.__wsDisabled = !wsEnabled;
     if (!wsEnabled) {
         try {
-            (provider as WebsocketProvider & { connect: () => void; }).connect = () => {};
+            provider.connect = () => {};
         } catch {}
     }
 
@@ -295,7 +302,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // Fallback: also observe direct changes to the pages map (helps in test env)
     try {
         const pagesMap = doc.getMap<Y.Doc>("pages");
-        pagesMap.observe((e: Y.YEvent<Y.AbstractType<unknown>>) => {
+        pagesMap.observe((e: Y.YMapEvent<Y.Doc>) => {
             const keysChanged = e.changes.keys;
             for (const key of keysChanged.keys()) {
                 const sub = pagesMap.get(key);
@@ -311,6 +318,28 @@ export async function createProjectConnection(projectId: string): Promise<Projec
             }
         });
     } catch {}
+
+    const getPageConnectionOrWait = async (pageId: string, timeoutMs = 1000): Promise<PageConnection | undefined> => {
+        // First, try to get the existing connection
+        const existing = pages.get(pageId);
+        if (existing) {
+            return existing;
+        }
+
+        // If not found, wait for it to be established
+        const startTime = Date.now();
+        const checkInterval = 10; // Check every 10ms
+
+        while (Date.now() - startTime < timeoutMs) {
+            const conn = pages.get(pageId);
+            if (conn) {
+                return conn;
+            }
+            await new Promise(resolve => setTimeout(resolve, checkInterval));
+        }
+
+        return undefined;
+    };
 
     const dispose = () => {
         try {
@@ -332,7 +361,14 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         } catch {}
     };
 
-    return { doc, provider, awareness, getPageConnection: id => pages.get(id), dispose };
+    return {
+        doc,
+        provider,
+        awareness,
+        getPageConnection: id => pages.get(id),
+        getPageConnectionOrWait,
+        dispose,
+    };
 }
 
 export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<{
@@ -355,14 +391,14 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         }
     }
     const wsEnabled = isWsEnabled();
-    const provider = new WebsocketProvider(wsBase, room, doc, {
+    const provider: ExtendedWebsocketProvider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
         connect: wsEnabled,
     });
-    (provider as any).__wsDisabled = !wsEnabled;
+    provider.__wsDisabled = !wsEnabled;
     if (!wsEnabled) {
         try {
-            (provider as any).connect = () => {};
+            provider.connect = () => {};
         } catch {}
     }
     const awareness = provider.awareness;
@@ -396,19 +432,19 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         token = "";
     }
     const wsEnabled = isWsEnabled();
-    const provider = new WebsocketProvider(wsBase, room, doc, {
+    const provider: ExtendedWebsocketProvider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
         connect: wsEnabled,
     });
-    (provider as any).__wsDisabled = !wsEnabled;
+    provider.__wsDisabled = !wsEnabled;
     if (!wsEnabled) {
         try {
-            (provider as any).connect = () => {};
+            provider.connect = () => {};
         } catch {}
     } else {
         // 明示接続: 稀に connect: true が反映されないケースがあるため冪等に connect() を呼ぶ
         try {
-            (provider as any).connect?.();
+            provider.connect?.();
         } catch {}
     }
     // Debug hook (guarded)

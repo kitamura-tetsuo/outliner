@@ -72,11 +72,11 @@ describe("Cursor", () => {
             delete: vi.fn(),
         } as unknown as Item;
 
-        // Set up parent relationship
+        // Set up parent relationship (cast to any to bypass read-only constraint in test)
         (mockItem as any).parent = mockParentItem;
 
         // Mock the general store
-        (generalStore as any).currentPage = mockParentItem;
+        (generalStore as unknown as { currentPage: Item | null; }).currentPage = mockParentItem;
     });
 
     afterEach(() => {
@@ -129,7 +129,7 @@ describe("Cursor", () => {
 
     describe("Movement methods", () => {
         beforeEach(() => {
-            (editorOverlayStore as any).setCursor.mockReturnValue("new-cursor-id");
+            // setCursor is already configured in the mock to return "new-cursor-id"
         });
 
         describe("moveLeft", () => {

@@ -1,2 +1,8 @@
 
 .env.keys
+
+# Playwright
+playwright-report
+playwright-report/
+playwright/.cache/
+blob-report/

@@ -35,6 +35,20 @@ declare global {
         clipboard?: {
             writeText?: (text: string) => Promise<void>;
         };
+        // KeyEventHandler and test utilities
+        KeyEventHandler?: typeof KeyEventHandler;
+        __KEY_EVENT_HANDLER__?: typeof KeyEventHandler;
+        __KEYSTREAM__?: string;
+        __ALIAS_FWD__?: (ev: KeyboardEvent) => void;
+        __SLASH_FWD__?: (ev: KeyboardEvent) => void;
+        __KEYSTREAM_FWD__?: (ev: KeyboardEvent) => void;
+        __TYPING_FWD__?: (ev: KeyboardEvent) => void;
+        __PALETTE_FWD__?: (ev: KeyboardEvent) => void;
+        __GLOBAL_KEY_FWD__?: (ev: KeyboardEvent) => void;
+        commandPaletteStore?: typeof commandPaletteStore;
+        generalStore?: GeneralStore & { textareaRef?: HTMLTextAreaElement | null; };
+        aliasPickerStore?: typeof aliasPickerStore;
+        __aliasTargetId?: string;
     }
 }
 
