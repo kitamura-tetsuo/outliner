@@ -15,7 +15,7 @@ test.describe("snapshot diff viewer", () => {
     });
 
     test("display diff and revert", async ({ page }, testInfo) => {
-        const { projectName, pageName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+        const { projectName, pageName } = await TestHelpers.navigateToTestProjectPage(page, [], testInfo);
         await page.evaluate(
             ({ projectName, pageName }) => {
                 (window as any).__SNAPSHOT_SERVICE__.setCurrentContent(

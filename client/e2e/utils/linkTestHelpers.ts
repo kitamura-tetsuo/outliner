@@ -335,7 +335,7 @@ export class LinkTestHelpers {
         await page.evaluate(({ pageName, projectName, pageExists }) => {
             // グローバル関数が存在しない場合は作成
             if (!window.__testShowLinkPreview) {
-                window.__testShowLinkPreview = (pageName, projectName, pageExists) => {
+                window.__testShowLinkPreview = (pageName: string, projectName?: string, pageExists?: boolean) => {
                     console.log(`Forcing link preview for page: ${pageName} (exists: ${pageExists})`);
 
                     // プレビューポップアップを作成
@@ -578,6 +578,6 @@ export class LinkTestHelpers {
 declare global {
     interface Window {
         __linkPreviewMutationObserver?: MutationObserver;
-        __testShowLinkPreview?: (pageName: string, projectName?: string, pageExists?: boolean) => HTMLElement;
+        __testShowLinkPreview?: (pageName: string, projectName?: string, pageExists?: boolean) => Element;
     }
 }

@@ -12,19 +12,34 @@ type Item = ItemLike;
 interface Props { project?: Project }
 let { project }: Props = $props();
 
+// Type declarations for global window properties
+declare global {
+  interface Window {
+    __CURRENT_PROJECT__?: Project;
+    __YJS_SERVICE__?: unknown;
+    __YJS_STORE__?: unknown;
+    generalStore?: {
+      project?: Project;
+    };
+    appStore?: {
+      project?: Project;
+    };
+  }
+}
+
 // Resolve project from multiple sources for robustness in tests
 let effectiveProject: Project | null = $derived.by(() => {
     const fromProps = project ?? (store.project ?? null);
     if (fromProps) return fromProps;
     if (typeof window !== 'undefined') {
-        const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
+        const cur = window.__CURRENT_PROJECT__;
         if (cur) return cur;
-        const gs = (window as any).generalStore;
-        if (gs?.project) return gs.project as Project;
+        const gs = window.generalStore;
+        if (gs?.project) return gs.project;
         const parts = window.location.pathname.split("/").filter(Boolean);
         void parts[0]; // Previously projectTitle
-        void (window as any).__YJS_SERVICE__; // Previously service
-        void (window as any).__YJS_STORE__; // Previously yjsStoreRef
+        void window.__YJS_SERVICE__; // Previously service
+        void window.__YJS_STORE__; // Previously yjsStoreRef
         // Do NOT auto-create a project here. In tests this can create an empty
         // project separate from the one prepared by TestHelpers, which breaks
         // SearchBox results. Wait for store.project or global state instead.
@@ -50,14 +65,14 @@ let results = $derived.by(() => {
     let projectToUse: Project | null = effectiveProject;
     if (!projectToUse && typeof window !== 'undefined') {
         // try global fallbacks
-        const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
+        const cur = window.__CURRENT_PROJECT__;
         if (cur) projectToUse = cur;
     }
 
     // Resolve pages robustly. Prefer a non-empty store.pages.current, otherwise
     // fall back to project.items. Reading from `store` ensures reactivity when
     // pages load after the user begins typing.
-    const collectPages = (): any[] => {
+    const collectPages = (): Item[] => {
         const sources = [
             // Primary: store.pages.current (reactive to Yjs changes)
             () => store.pages?.current,
@@ -66,9 +81,9 @@ let results = $derived.by(() => {
             // Fallback 2: projectToUse.items
             () => projectToUse?.items,
             // Fallback 3: window.generalStore.project.items
-            () => typeof window !== 'undefined' ? (window as any).generalStore?.project?.items : undefined,
+            () => typeof window !== 'undefined' ? window.generalStore?.project?.items : undefined,
             // Fallback 4: window.appStore.project.items
-            () => typeof window !== 'undefined' ? (window as any).appStore?.project?.items : undefined,
+            () => typeof window !== 'undefined' ? window.appStore?.project?.items : undefined,
         ];
 
         for (const getSource of sources) {
@@ -76,29 +91,31 @@ let results = $derived.by(() => {
                 const items = getSource();
                 if (!items) continue;
 
-                const arr: any[] = [];
+                const arr: Item[] = [];
 
                 // Try iterator first
                 if (typeof items[Symbol.iterator] === 'function') {
-                    for (const p of items as any) {
+                    for (const p of items as Iterable<Item>) {
                         if (p) arr.push(p);
                     }
                     if (arr.length) return arr;
                 }
 
                 // Try array-like access
-                if (typeof (items as any).length === 'number') {
-                    const len = (items as any).length;
+                if (typeof (items as { length?: number }).length === 'number') {
+                    const len = (items as { length: number }).length;
                     for (let i = 0; i < len; i++) {
-                        const v = (items as any).at ? (items as any).at(i) : (items as any)[i];
+                        const v = (items as { at?: (index: number) => Item; [key: number]: Item }).at
+                            ? (items as { at: (index: number) => Item }).at(i)
+                            : (items as { [key: number]: Item })[i];
                         if (typeof v !== 'undefined' && v !== null) arr.push(v);
                     }
                     if (arr.length) return arr;
                 }
 
                 // Try toArray method if available
-                if (typeof (items as any).toArray === 'function') {
-                    const arr = (items as any).toArray();
+                if (typeof (items as { toArray?: () => Item[] }).toArray === 'function') {
+                    const arr = (items as { toArray: () => Item[] }).toArray();
                     if (arr && arr.length) return arr;
                 }
             } catch {
@@ -164,12 +181,12 @@ function handleKeydown(e: KeyboardEvent) {
 function resolveProjectTitle(targetPage: Item | null): string {
     const storeProject = store.project ?? null;
     const derivedProject = effectiveProject ?? null;
-    const pageDoc = targetPage ? ((targetPage as any)?.ydoc ?? null) : null;
+    const pageDoc = targetPage ? (targetPage as { ydoc?: unknown })?.ydoc ?? null : null;
     const projectMatches = (proj: Project | null) => {
         if (!proj) return false;
-        const projDoc = (proj as any)?.ydoc ?? null;
+        const projDoc = (proj as { ydoc?: unknown })?.ydoc ?? null;
         if (pageDoc && projDoc && projDoc !== pageDoc) return false;
-        if (derivedProject && projDoc && (derivedProject as any)?.ydoc && projDoc !== (derivedProject as any)?.ydoc) {
+        if (derivedProject && projDoc && (derivedProject as { ydoc?: unknown })?.ydoc && projDoc !== (derivedProject as { ydoc?: unknown })?.ydoc) {
             return false;
         }
         return true;
@@ -187,12 +204,12 @@ function resolveProjectTitle(targetPage: Item | null): string {
 function navigateToPage(page?: Item) {
     const targetPage = page || (selected >= 0 && results[selected] ? results[selected] : null);
     if (targetPage) {
-        const title = (targetPage as any)?.text?.toString?.() ?? String((targetPage as any)?.text ?? "");
+        const title = (targetPage as { text?: { toString?: () => string } | string })?.text?.toString?.() ?? String((targetPage as { text?: unknown })?.text ?? "");
         searchHistoryStore.add(title);
         // Prefer a project whose Y.Doc matches the active page/project before falling back to placeholders
         let projTitle = resolveProjectTitle(targetPage);
         if (!projTitle && typeof window !== 'undefined') {
-            const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
+            const cur = window.__CURRENT_PROJECT__;
             projTitle = cur?.title ?? projTitle;
             if (!projTitle) {
                 const pathParts = window.location.pathname.split("/").filter(Boolean);
@@ -224,17 +241,26 @@ $effect(() => {
 onMount(() => {
     try {
         const logPrefix = "[SEA-0001][SearchBox]";
-        const styles = (el: Element | null) => {
-            if (!el) return null as any;
+        type StyleInfo = {
+            display: string;
+            visibility: string;
+            opacity: string;
+            transform: string;
+            clipPath?: string;
+            pointerEvents: string;
+        };
+        const styles = (el: Element | null): StyleInfo | null => {
+            if (!el) return null;
             const cs = getComputedStyle(el as Element);
-            return {
+            const styleInfo: StyleInfo = {
                 display: cs.display,
                 visibility: cs.visibility,
                 opacity: cs.opacity,
                 transform: cs.transform,
-                clipPath: (cs as any).clipPath ?? (cs as any)["clip-path"],
+                clipPath: (cs as unknown as { clipPath?: string })?.clipPath ?? (cs as unknown as Record<string, string>)?.["clip-path"],
                 pointerEvents: cs.pointerEvents,
             };
+            return styleInfo;
         };
         const rect = inputEl?.getBoundingClientRect?.();
         const e20 = document.elementFromPoint?.(20, 20) as Element | null;
@@ -262,7 +288,13 @@ onMount(() => {
             }
         );
         // 親チェーンの computed styles を上位へ辿って計測
-        const chain: any[] = [];
+        type ChainItem = {
+            tag: string;
+            id: string;
+            cls: string;
+            styles: StyleInfo | null;
+        };
+        const chain: ChainItem[] = [];
         let node: HTMLElement | null = inputEl;
         const limit = 15;
         let count = 0;

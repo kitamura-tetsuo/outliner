@@ -69,14 +69,14 @@ describe("Cursor Formatting", () => {
         } as unknown as Item;
 
         // Mock the general store
-        (generalStore as any).currentPage = {
+        (generalStore as typeof generalStore & { currentPage?: Item; }).currentPage = {
             id: "page-1",
             items: {
                 [Symbol.iterator]: function*() {
                     yield mockItem;
                 },
             },
-        };
+        } as Item;
 
         // Setup editor overlay store mocks
         editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
@@ -91,7 +91,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as typeof editorOverlayStore & { selections?: Record<string, unknown>; }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -122,7 +122,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as typeof editorOverlayStore & { selections?: Record<string, unknown>; }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -153,7 +153,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as typeof editorOverlayStore & { selections?: Record<string, unknown>; }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -184,7 +184,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as typeof editorOverlayStore & { selections?: Record<string, unknown>; }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",

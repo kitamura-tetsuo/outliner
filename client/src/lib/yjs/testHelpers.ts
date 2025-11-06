@@ -37,8 +37,8 @@ import type { WebsocketProvider } from "y-websocket";
  * // In E2E test
  * const value = await page.evaluate(async () => {
  *     const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/testHelpers.ts");
- *     const provider = (window as any).__PROVIDER__;
- *     const m = (window as any).__DOC__.getMap("m");
+ *     const provider = (window as { __PROVIDER__?: { getMap: (name: string) => { get: (key: string) => unknown } } }).__PROVIDER__;
+ *     const m = (window as { __DOC__?: { getMap: (name: string) => { get: (key: string) => unknown } } }).__DOC__.getMap("m");
  *
  *     await waitForSyncedAndDataForTest(
  *         provider,
@@ -190,7 +190,7 @@ export async function initializeBrowserPage(
 
     // Wait for UserManager to be available
     await page.waitForFunction(
-        () => !!(window as any).__USER_MANAGER__,
+        () => !!(window as { __USER_MANAGER__?: unknown; }).__USER_MANAGER__,
         null,
         { timeout: 10000 },
     );
@@ -198,16 +198,19 @@ export async function initializeBrowserPage(
     // Authenticate if required
     if (requireAuth) {
         await page.evaluate(async () => {
-            const mgr = (window as any).__USER_MANAGER__;
-            await mgr?.loginWithEmailPassword?.(
-                "test@example.com",
-                "password",
-            );
+            const mgr = (window as { __USER_MANAGER__?: unknown; }).__USER_MANAGER__;
+            await (mgr as { loginWithEmailPassword?: (email: string, password: string) => Promise<void>; })
+                ?.loginWithEmailPassword?.(
+                    "test@example.com",
+                    "password",
+                );
         });
 
         // Wait for authentication to complete
         await page.waitForFunction(
-            () => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(),
+            () =>
+                !!(window as { __USER_MANAGER__?: { getCurrentUser?: () => unknown; }; }).__USER_MANAGER__
+                    ?.getCurrentUser?.(),
             null,
             { timeout: 10000 },
         );
@@ -257,16 +260,25 @@ export async function createMinimalYjsConnection(
     return await page.evaluate(
         async ({ pid, docVar, providerVar, enableLogging, importPath }) => {
             const { createMinimalProjectConnection } = await import(
-                importPath as any
+                importPath as string
             );
             const conn = await createMinimalProjectConnection(pid);
-            (window as any)[docVar] = conn.doc;
-            const provider = conn.provider as any;
-            (window as any)[providerVar] = provider;
+            (window as unknown as { [key: string]: unknown; })[docVar] = conn.doc;
+            const provider = conn.provider as {
+                on: (event: string, cb: (...args: unknown[]) => void) => void;
+                connect?: () => void;
+                wsconnected?: boolean;
+                synced?: boolean;
+                url?: string;
+            };
+            (window as unknown as { [key: string]: unknown; })[providerVar] = provider;
 
             if (enableLogging) {
-                provider.on("status", (e: any) => console.log(`[${providerVar}] status`, e.status));
-                provider.on("sync", (isSynced: boolean) => console.log(`[${providerVar}] sync`, isSynced));
+                provider.on(
+                    "status",
+                    (e: unknown) => console.log(`[${providerVar}] status`, (e as { status?: string; })?.status),
+                );
+                provider.on("sync", (isSynced: unknown) => console.log(`[${providerVar}] sync`, isSynced));
                 console.log(
                     `[${providerVar}] init wsconnected=`,
                     provider.wsconnected,
@@ -302,7 +314,7 @@ export async function createMinimalYjsConnection(
  *     docVar: "__DOC2__",
  *     counterVar: "__UPDATES2__"
  * });
- * const updateCount = await page.evaluate(() => (window as any).__UPDATES2__);
+ * const updateCount = await page.evaluate(() => window as { [key: string]: unknown }.__UPDATES2__);
  * ```
  */
 export async function setupUpdateTracking(
@@ -321,21 +333,23 @@ export async function setupUpdateTracking(
 
     await page.evaluate(
         ({ docVar, counterVar, counterV2Var }) => {
-            const doc = (window as any)[docVar];
+            const doc = (window as unknown as { [key: string]: unknown; })[docVar] as {
+                on: (event: string, cb: () => void) => void;
+            };
             if (!doc) {
                 console.error(`setupUpdateTracking: ${docVar} not found`);
                 return;
             }
 
-            (window as any)[counterVar] = 0;
-            (window as any)[counterV2Var] = 0;
+            (window as unknown as { [key: string]: number; })[counterVar] = 0;
+            (window as unknown as { [key: string]: number; })[counterV2Var] = 0;
 
             doc.on("update", () => {
-                (window as any)[counterVar]++;
+                (window as unknown as { [key: string]: number; })[counterVar]++;
             });
 
             doc.on("updateV2", () => {
-                (window as any)[counterV2Var]++;
+                (window as unknown as { [key: string]: number; })[counterV2Var]++;
             });
         },
         { docVar, counterVar, counterV2Var },
@@ -374,7 +388,7 @@ export interface TwoBrowserPagesResult {
  *
  * // Use page1 and page2 for testing
  * await page1.evaluate(() => {
- *     const doc = (window as any).__DOC__;
+ *     const doc = (window as { __DOC__?: { getMap: (name: string) => { set: (key: string, value: string) => void } } }).__DOC__;
  *     doc.getMap("m").set("key", "value");
  * });
  *
@@ -500,9 +514,9 @@ export interface TwoFullBrowserPagesResult {
  */
 export async function prepareTwoFullBrowserPages(
     browser: Browser,
-    testInfo: any,
+    testInfo: unknown,
     initialItems: string[],
-    TestHelpers: any,
+    TestHelpers: unknown,
 ): Promise<TwoFullBrowserPagesResult> {
     // Create first browser context
     const context1 = await browser.newContext();
@@ -521,7 +535,13 @@ export async function prepareTwoFullBrowserPages(
     });
 
     // Prepare test environment for page1
-    const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(
+    const { projectName, pageName } = await (TestHelpers as {
+        prepareTestEnvironment: (
+            page: Page,
+            testInfo: unknown,
+            initialItems: string[],
+        ) => Promise<{ projectName: string; pageName: string; }>;
+    }).prepareTestEnvironment(
         page1,
         testInfo,
         initialItems,
@@ -534,7 +554,9 @@ export async function prepareTwoFullBrowserPages(
     // Wait for page1 to initialize Yjs client and project
     await page1.waitForFunction(
         () => {
-            const yjsStore = (window as any).__YJS_STORE__;
+            const yjsStore = (window as Window & {
+                __YJS_STORE__?: { yjsClient?: { getProject?: () => { items: { length: number; }; }; }; };
+            }).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             if (!client) {
                 console.log("page1: yjsClient not found");
@@ -545,7 +567,7 @@ export async function prepareTwoFullBrowserPages(
                 console.log("page1: project not found");
                 return false;
             }
-            const items = project.items as any;
+            const items = project.items as { length: number; };
             const pageCount = items?.length ?? 0;
             console.log(`page1: Yjs client initialized, pageCount=${pageCount}`);
             return !!(project && items);
@@ -571,15 +593,18 @@ export async function prepareTwoFullBrowserPages(
         localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
         localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
         localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-        (window as any).__E2E__ = true;
-        (window as any).__vite_plugin_react_preamble_installed__ = true;
+        (window as Window & { __E2E__?: boolean; }).__E2E__ = true;
+        (window as Window & { __vite_plugin_react_preamble_installed__?: unknown; })
+            .__vite_plugin_react_preamble_installed__ = true;
         const originalCreateElement = document.createElement.bind(document);
-        document.createElement = function(tagName: string, ...args: any[]): HTMLElement {
+        const patchedCreateElement = function(tagName: string, ...args: unknown[]): unknown {
             if (tagName === "vite-error-overlay") {
-                return originalCreateElement("div", ...args);
+                return originalCreateElement("div", ...(args as [unknown?]));
             }
-            return originalCreateElement(tagName, ...args);
-        } as typeof document.createElement;
+            return originalCreateElement(tagName, ...(args as [unknown?]));
+        };
+        (document as unknown as { createElement?: typeof document.createElement; }).createElement =
+            patchedCreateElement;
     });
 
     // Navigate page2 to the same URL as page1
@@ -588,13 +613,15 @@ export async function prepareTwoFullBrowserPages(
     // Authenticate page2
     await page2.waitForFunction(
         () => {
-            return !!(window as any).__USER_MANAGER__;
+            return !!(window as { __USER_MANAGER__?: unknown; }).__USER_MANAGER__;
         },
         { timeout: 10000 },
     );
 
     await page2.evaluate(async () => {
-        const mgr = (window as any).__USER_MANAGER__;
+        const mgr = (window as Window & {
+            __USER_MANAGER__?: { loginWithEmailPassword?: (email: string, password: string) => Promise<void>; };
+        }).__USER_MANAGER__;
         if (mgr?.loginWithEmailPassword) {
             await mgr.loginWithEmailPassword("test@example.com", "password");
         }
@@ -603,7 +630,8 @@ export async function prepareTwoFullBrowserPages(
     // Wait for page2 authentication to complete
     await page2.waitForFunction(
         () => {
-            const mgr = (window as any).__USER_MANAGER__;
+            const mgr =
+                (window as Window & { __USER_MANAGER__?: { getCurrentUser?: () => unknown; }; }).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
         },
         { timeout: 10000 },
@@ -612,7 +640,9 @@ export async function prepareTwoFullBrowserPages(
     // Wait for page2 to initialize Yjs client and appStore
     await page2.waitForFunction(
         () => {
-            const yjsStore = (window as any).__YJS_STORE__;
+            const yjsStore =
+                (window as Window & { __YJS_STORE__?: { yjsClient?: { getProject?: () => { items: unknown; }; }; }; })
+                    .__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             if (!client) {
                 console.log("page2: yjsClient not found");
@@ -623,7 +653,7 @@ export async function prepareTwoFullBrowserPages(
                 console.log("page2: project or items not found");
                 return false;
             }
-            const appStore = (window as any).appStore;
+            const appStore = (window as Window & { appStore?: unknown; }).appStore;
             if (!appStore) {
                 console.log("page2: appStore not found");
                 return false;

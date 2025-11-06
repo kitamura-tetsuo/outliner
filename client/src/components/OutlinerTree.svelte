@@ -12,6 +12,15 @@ import { OutlinerViewModel } from "../stores/OutlinerViewModel";
 import { userManager } from "../auth/UserManager";
 import EditorOverlay from "./EditorOverlay.svelte";
 import OutlinerItem from "./OutlinerItem.svelte";
+import * as Y from "yjs";
+
+interface SelectionRange {
+    startItemId: string;
+    endItemId: string;
+    startOffset: number;
+    endOffset: number;
+    isReversed?: boolean;
+}
 
 
 
@@ -33,8 +42,8 @@ let { pageItem, projectName = "", pageName = "", isReadOnly = false, onEdit }: P
 let currentUser = $state("anonymous");
 // Remount key to eliminate any possibility of Y.Doc switching within a mounted instance
 const outlinerKey = $derived.by(() => {
-    const ydocGuid = (pageItem as any)?.ydoc?.guid as (string | undefined);
-    const id = (pageItem as any)?.id as (string | undefined);
+    const ydocGuid = pageItem.ydoc instanceof Y.Doc ? pageItem.ydoc.guid : undefined;
+    const id = pageItem.id;
     return ydocGuid ?? id ?? `${projectName}:${pageName}`;
 });
 
@@ -75,9 +84,9 @@ let dragCurrentOffset = $state(0);
 let __displayItemsTick = $state(0);
 onMount(() => {
     try {
-        const ymap: any = (pageItem as any)?.ydoc?.getMap?.("orderedTree");
+        const ymap = pageItem.ydoc instanceof Y.Doc ? pageItem.ydoc.getMap("orderedTree") : undefined;
         if (ymap && typeof ymap.observeDeep === "function") {
-            const handler = () => { try { if (typeof window !== 'undefined' && (window as any).__E2E__) console.log('OutlinerTree: observeDeep tick'); } catch {} __displayItemsTick = Date.now(); };
+            const handler = () => { try { if (typeof window !== 'undefined' && window.__E2E__) console.log('OutlinerTree: observeDeep tick'); } catch {} __displayItemsTick = Date.now(); };
             ymap.observeDeep(handler);
             return () => { try { ymap.unobserveDeep(handler); } catch {} };
         }
@@ -91,7 +100,7 @@ onMount(() => {
 // E2E 環境のフォールバック: まれに observe が届かない環境で DOM 更新を確実にする
 onMount(() => {
     try {
-        if (typeof window !== 'undefined' && (window as any).__E2E__) {
+        if (typeof window !== 'undefined' && window.__E2E__) {
             const timer = setInterval(() => { __displayItemsTick = Date.now(); }, 200);
             return () => clearInterval(timer);
         }
@@ -125,7 +134,7 @@ function updateItemPositions() {
     });
 
     // デバッグ用のログ
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         console.log("Heights:", $state.snapshot(itemHeights));
         console.log("Positions:", $state.snapshot(itemPositions));
     }
@@ -159,7 +168,7 @@ function handleItemResize(event: CustomEvent) {
                 updateItemPositions();
 
                 // デバッグ用のログ
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     console.log(`Item ${index} height changed to ${height}px`);
                 }
             }
@@ -201,9 +210,9 @@ onDestroy(() => {
 });
 
 function handleAddItem() {
-    if (pageItem && !isReadOnly && (pageItem as any).items) {
+    if (pageItem && !isReadOnly && pageItem.items) {
         // 末尾にアイテム追加
-        (pageItem as any).items.addNode(currentUser);
+        pageItem.items.addNode(currentUser);
     }
 }
 
@@ -220,16 +229,16 @@ function handleEdit() {
     if (!activeId || activeId !== last.model.id) return;
 
     // 最下部アイテムが空でない場合のみ追加
-    const lastText = (last.model.original.text as any)?.toString?.() ?? "";
-    if (lastText.trim().length === 0) return;
+    const lastText = last.model.original.text ?? "";
+    if (typeof lastText === "string" && lastText.trim().length === 0) return;
 
     const parent = last.model.original.parent;
     if (parent) {
         const idx = parent.indexOf(last.model.original);
         parent.addNode(currentUser, idx + 1);
     } else if (pageItem.items) {
-        const idx = (pageItem.items as any).indexOf(last.model.original);
-        (pageItem.items as any).addNode(currentUser, idx + 1);
+        const idx = pageItem.items.indexOf(last.model.original);
+        pageItem.items.addNode(currentUser, idx + 1);
     }
 }
 
@@ -247,10 +256,10 @@ function handleIndent(event: CustomEvent) {
     const itemViewModel = viewModel.getViewModel(itemId);
     if (!itemViewModel) return;
 
-    const item = itemViewModel.original as any;
-    const tree = item?.tree as any;
-    const doc = item?.ydoc as any;
-    const key = item?.key as string | undefined;
+    const item = itemViewModel.original;
+    const tree = item?.tree;
+    const doc = item?.ydoc;
+    const key = item?.key;
 
     try {
         console.log("handleIndent debug", {
@@ -326,10 +335,10 @@ function handleUnindent(event: CustomEvent) {
     const itemViewModel = viewModel.getViewModel(itemId);
     if (!itemViewModel) return;
 
-    const item = itemViewModel.original as any;
-    const tree = item?.tree as any;
-    const doc = item?.ydoc as any;
-    const key = item?.key as string | undefined;
+    const item = itemViewModel.original;
+    const tree = item?.tree;
+    const doc = item?.ydoc;
+    const key = item?.key;
 
     if (!tree || !doc || !key || typeof tree.getNodeParentFromKey !== "function") {
         if (typeof logger.warn === "function") {
@@ -403,7 +412,7 @@ if (typeof window !== 'undefined') {
     try {
         const flag = localStorage.getItem('DEBUG_MODE');
         if (flag === '1' || flag === 'true') {
-            (window as any).DEBUG_MODE = true;
+            window.DEBUG_MODE = true;
         }
     } catch {}
 }
@@ -417,7 +426,7 @@ function handleNavigateToItem(event: CustomEvent) {
         editorOverlayStore.clearSelections();
     }
 
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         console.log(
             `Navigation event received: direction=${direction}, fromItemId=${fromItemId}, toItemId=${toItemId}, cursorScreenX=${cursorScreenX}`,
         );
@@ -535,7 +544,7 @@ function handleNavigateToItem(event: CustomEvent) {
         targetIndex = currentIndex + 1;
     }
 
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         console.log(
             `Navigation calculation: currentIndex=${currentIndex}, targetIndex=${targetIndex}, items count=${displayItems.length}`,
         );
@@ -550,7 +559,7 @@ function handleNavigateToItem(event: CustomEvent) {
 
 // 指定したアイテムにフォーカスし、カーソル位置を設定する
 function focusItemWithPosition(itemId: string, cursorScreenX?: number, shiftKey = false, direction?: string) {
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         console.log(`Focusing item ${itemId} with cursor X: ${cursorScreenX}px, shift=${shiftKey}, direction=${direction}`);
     }
 
@@ -584,7 +593,7 @@ function focusItemWithPosition(itemId: string, cursorScreenX?: number, shiftKey 
             // イベントをディスパッチ
             item.dispatchEvent(event);
 
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 console.log(`Dispatched focus-item event to ${itemId} with X: ${cursorXValue}px, shift=${shiftKey}`);
             }
         }
@@ -601,7 +610,7 @@ function focusItemWithPosition(itemId: string, cursorScreenX?: number, shiftKey 
             const finishEditEvent = new CustomEvent("finish-edit");
             activeElement.dispatchEvent(finishEditEvent);
 
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 console.log(`Sent finish-edit event to active item ${activeItem}`);
             }
 
@@ -635,7 +644,7 @@ function handleAddSibling(event: CustomEvent) {
             parent.addNode(currentUser, itemIndex + 1);
         } else {
             // ルートレベルのアイテムとして追加
-            const items = pageItem.items as any;
+            const items = pageItem.items;
             if (items) {
                 const itemIndex = items.indexOf(currentItem.model.original);
                 items.addNode(currentUser, itemIndex + 1);
@@ -650,7 +659,7 @@ function handlePasteMultiItem(event: CustomEvent) {
     const { lines, selections, activeItemId } = event.detail;
 
     // デバッグ情報
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`handlePasteMultiItem called with lines:`, lines);
         console.log(`Selections:`, selections);
         console.log(`Active item ID: ${activeItemId}`);
@@ -658,15 +667,15 @@ function handlePasteMultiItem(event: CustomEvent) {
 
     // テスト用にグローバル変数に設定
     if (typeof window !== 'undefined') {
-        (window as any).lastPasteLines = lines;
-        (window as any).lastPasteSelections = selections;
-        (window as any).lastPasteActiveItemId = activeItemId;
+        window.lastPasteLines = lines;
+        window.lastPasteSelections = selections;
+        window.lastPasteActiveItemId = activeItemId;
     }
 
     // 選択範囲がある場合は、選択範囲を削除してからペースト
     if (selections && selections.length > 0) {
         // 複数アイテムにまたがる選択範囲がある場合
-        const multiItemSelection = selections.find((sel: any) => sel.startItemId !== sel.endItemId);
+        const multiItemSelection = selections.find((sel: SelectionRange) => sel.startItemId !== sel.endItemId);
 
         if (multiItemSelection) {
             // 複数アイテムにまたがる選択範囲を処理
@@ -693,7 +702,7 @@ function handlePasteMultiItem(event: CustomEvent) {
             const firstAvailableItemId = displayItems[0].model.id;
             const firstAvailableIndex = 0;
 
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                 console.log(`Active item not found, using first available item: ${firstAvailableItemId}`);
             }
 
@@ -707,7 +716,7 @@ function handlePasteMultiItem(event: CustomEvent) {
                 const newIndex = firstAvailableIndex + i;
                 items.addNode(currentUser, newIndex);
                 // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-                const newItem = (items as any).at(newIndex);
+                const newItem = items.at(newIndex);
                 if (newItem) {
                     newItem.updateText(lines[i]);
                 }
@@ -730,7 +739,7 @@ function handlePasteMultiItem(event: CustomEvent) {
         const newIndex = itemIndex + i;
         items.addNode(currentUser, newIndex);
         // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-        const newItem = (items as any).at(newIndex);
+        const newItem = items.at(newIndex);
         if (newItem) {
             newItem.updateText(lines[i]);
         }
@@ -738,9 +747,9 @@ function handlePasteMultiItem(event: CustomEvent) {
 }
 
 // 複数アイテムにまたがる選択範囲にペーストする
-function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
+function handleMultiItemSelectionPaste(selection: SelectionRange, lines: string[]) {
     // デバッグ情報
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`handleMultiItemSelectionPaste called with selection:`, selection);
         console.log(`Lines to paste:`, lines);
     }
@@ -754,7 +763,7 @@ function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
     const endIndex = displayItems.findIndex(d => d.model.id === endItemId);
 
     if (startIndex < 0 || endIndex < 0) {
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Start or end item not found: startIndex=${startIndex}, endIndex=${endIndex}`);
         }
         return;
@@ -765,7 +774,7 @@ function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
     const actualStartIndex = Math.min(startIndex, endIndex);
     const actualEndIndex = Math.max(startIndex, endIndex);
 
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`Selection direction: isReversed=${isReversed}`);
         console.log(`Actual indices: start=${actualStartIndex}, end=${actualEndIndex}`);
     }
@@ -779,12 +788,12 @@ function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
             const startItem = displayItems[i].model.original;
             startItem.updateText(lines[0] || '');
 
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                 console.log(`Updated first item text to: "${lines[0] || ''}"`);
             }
         } else {
             // それ以外のアイテムは削除
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                 console.log(`Removing item at index ${i}`);
             }
             items.removeAt(i);
@@ -794,12 +803,12 @@ function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
     // 残りの行を新しいアイテムとして追加
     for (let i = 1; i < lines.length; i++) {
         const newIndex = actualStartIndex + i;
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Adding new item at index ${newIndex} with text: "${lines[i]}"`);
         }
         items.addNode(currentUser, newIndex);
         // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-        const newItem = (items as any).at(newIndex);
+        const newItem = items.at(newIndex);
         if (newItem) {
             newItem.updateText(lines[i]);
         }
@@ -808,7 +817,7 @@ function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
     // カーソル位置を更新
     const newCursorItemId = displayItems[actualStartIndex]?.model.id;
     if (newCursorItemId) {
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Setting cursor to item ${newCursorItemId} at offset ${(lines[0] || '').length}`);
         }
 
@@ -825,16 +834,16 @@ function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
         // 選択範囲をクリア
         editorOverlayStore.clearSelections();
     } else {
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Could not find cursor item at index ${actualStartIndex}`);
         }
     }
 }
 
 // 単一アイテム内の選択範囲にペーストする
-function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
+function handleSingleItemSelectionPaste(selection: SelectionRange, lines: string[]) {
     // デバッグ情報
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`handleSingleItemSelectionPaste called with selection:`, selection);
         console.log(`Lines to paste:`, lines);
     }
@@ -846,7 +855,7 @@ function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
     // アイテムのインデックスを取得
     const itemIndex = displayItems.findIndex(d => d.model.id === itemId);
     if (itemIndex < 0) {
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Item not found: itemId=${itemId}, itemIndex=${itemIndex}`);
         }
         return;
@@ -854,9 +863,9 @@ function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
 
     const items = pageItem.items as Items;
     const item = displayItems[itemIndex].model.original;
-    const text: string = (item.text as any)?.toString?.() ?? "";
+    const text: string = item.text ?? "";
 
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`Original text: "${text}"`);
         console.log(`Selection range: start=${startOffset}, end=${endOffset}`);
     }
@@ -866,7 +875,7 @@ function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
         const newText = text.substring(0, startOffset) + lines[0] + text.substring(endOffset);
         item.updateText(newText);
 
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Updated text to: "${newText}"`);
         }
 
@@ -886,7 +895,7 @@ function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
         const newFirstText = text.substring(0, startOffset) + lines[0];
         item.updateText(newFirstText);
 
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Updated first item text to: "${newFirstText}"`);
         }
 
@@ -894,26 +903,26 @@ function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
         for (let i = 1; i < lines.length; i++) {
             const newIndex = itemIndex + i;
 
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                 console.log(`Adding new item at index ${newIndex}`);
             }
 
             items.addNode(currentUser, newIndex);
             // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-            const newItem = (items as any).at(newIndex);
+            const newItem = items.at(newIndex);
             if (newItem) {
                 if (i === lines.length - 1) {
                     // 最後の行は、選択範囲の後ろのテキストを追加
                     const lastItemText = lines[i] + text.substring(endOffset);
                     newItem.updateText(lastItemText);
 
-                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                         console.log(`Last item text set to: "${lastItemText}"`);
                     }
                 } else {
                     newItem.updateText(lines[i]);
 
-                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                         console.log(`Item ${i} text set to: "${lines[i]}"`);
                     }
                 }
@@ -927,7 +936,7 @@ function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
             const lastLine = lines[lines.length - 1];
             const newOffset = lastLine.length;
 
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                 console.log(`Setting cursor to last item ${lastItemId} at offset ${newOffset}`);
             }
 
@@ -944,7 +953,7 @@ function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
             // 選択範囲をクリア
             editorOverlayStore.clearSelections();
         } else {
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                 console.log(`Could not find last item at index ${lastItemIndex}`);
             }
         }
@@ -991,7 +1000,7 @@ function handleItemDragStart(event: CustomEvent) {
     dragCurrentItemId = itemId;
     dragCurrentOffset = offset;
 
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         console.log(`Drag start: itemId=${itemId}, offset=${offset}`);
     }
 }
@@ -1010,7 +1019,7 @@ function handleItemDrag(event: CustomEvent) {
     // 選択範囲を更新
     updateDragSelection();
 
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         console.log(`Dragging: itemId=${itemId}, offset=${offset}`);
     }
 }
@@ -1062,13 +1071,13 @@ function handleItemDrop(event: CustomEvent) {
     const { targetItemId, position, text, selection, sourceItemId } = event.detail;
 
     try {
-        const w: any = typeof window !== 'undefined' ? (window as any) : null;
+        const w = typeof window !== 'undefined' ? window : null;
         if (w && Array.isArray(w.E2E_LOGS)) {
             w.E2E_LOGS.push({ tag: 'handleItemDrop', targetItemId, position, sourceItemId, selection: selection ? 'yes' : 'no', t: Date.now() });
         }
     } catch {}
 
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         console.log(`Drop event: targetItemId=${targetItemId}, position=${position}, sourceItemId=${sourceItemId}`);
         console.log(`Text: "${text}"`);
         console.log(`Selection:`, selection);
@@ -1105,7 +1114,7 @@ function handleItemDrop(event: CustomEvent) {
 function handleItemDragEnd(event: CustomEvent) {
     const { itemId } = event.detail;
 
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         console.log(`Drag end: itemId=${itemId}`);
     }
 
@@ -1116,9 +1125,9 @@ function handleItemDragEnd(event: CustomEvent) {
 }
 
 // 単一アイテム内の選択範囲をドロップする
-function handleSingleItemSelectionDrop(selection: any, targetItemId: string, position: string, _dropEffect: string) { // eslint-disable-line @typescript-eslint/no-unused-vars
+function handleSingleItemSelectionDrop(selection: SelectionRange, targetItemId: string, position: string, _dropEffect: string) { // eslint-disable-line @typescript-eslint/no-unused-vars
     // デバッグ情報
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`handleSingleItemSelectionDrop called with selection:`, selection);
         console.log(`Target: itemId=${targetItemId}, position=${position}`);
     }
@@ -1132,7 +1141,7 @@ function handleSingleItemSelectionDrop(selection: any, targetItemId: string, pos
     const targetIndex = displayItems.findIndex(d => d.model.id === targetItemId);
 
     if (sourceIndex < 0 || targetIndex < 0) {
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`);
         }
         return;
@@ -1140,16 +1149,16 @@ function handleSingleItemSelectionDrop(selection: any, targetItemId: string, pos
 
     // ソースアイテムのテキストを取得
     const sourceItem = displayItems[sourceIndex].model.original;
-    const sourceText: string = (sourceItem.text as any)?.toString?.() ?? "";
+    const sourceText: string = sourceItem.text ?? "";
 
     // ターゲットアイテムのテキストを取得
     const targetItem = displayItems[targetIndex].model.original;
-    const targetText: string = (targetItem.text as any)?.toString?.() ?? "";
+    const targetText: string = targetItem.text ?? "";
 
     // 選択範囲のテキストを取得
     const selectedText = sourceText.substring(startOffset, endOffset);
 
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`Selected text: "${selectedText}"`);
     }
 
@@ -1157,7 +1166,7 @@ function handleSingleItemSelectionDrop(selection: any, targetItemId: string, pos
     const newSourceText = sourceText.substring(0, startOffset) + sourceText.substring(endOffset);
     sourceItem.updateText(newSourceText);
 
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`Updated source text: "${newSourceText}"`);
     }
 
@@ -1174,7 +1183,7 @@ function handleSingleItemSelectionDrop(selection: any, targetItemId: string, pos
         targetItem.updateText(targetText.substring(0, middleOffset) + selectedText + targetText.substring(middleOffset));
     }
 
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`Updated target text: "${targetItem.text}"`);
     }
 
@@ -1196,9 +1205,9 @@ function handleSingleItemSelectionDrop(selection: any, targetItemId: string, pos
 }
 
 // 複数アイテムにまたがる選択範囲をドロップする
-function handleMultiItemSelectionDrop(selection: any, targetItemId: string, position: string, text: string) {
+function handleMultiItemSelectionDrop(selection: SelectionRange, targetItemId: string, position: string, text: string) {
     // デバッグ情報
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`handleMultiItemSelectionDrop called with selection:`, selection);
         console.log(`Target: itemId=${targetItemId}, position=${position}`);
     }
@@ -1213,7 +1222,7 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
     const targetIndex = displayItems.findIndex(d => d.model.id === targetItemId);
 
     if (startIndex < 0 || endIndex < 0 || targetIndex < 0) {
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Start, end, or target item not found: startIndex=${startIndex}, endIndex=${endIndex}, targetIndex=${targetIndex}`);
         }
         return;
@@ -1226,7 +1235,7 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
     // 選択範囲内のテキストを取得
     const selectedText = text;
 
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`Selected text: "${selectedText}"`);
     }
 
@@ -1239,12 +1248,12 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
             const startItem = displayItems[i].model.original;
             startItem.updateText('');
 
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                 console.log(`Cleared first item text`);
             }
         } else {
             // それ以外のアイテムは削除
-            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                 console.log(`Removing item at index ${i}`);
             }
             items.removeAt(i);
@@ -1266,7 +1275,7 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
             items.addNode(currentUser, targetIndex + i);
-            const newItem = (items as any).at(targetIndex + i);
+            const newItem = items.at(targetIndex + i);
             if (newItem) {
                 newItem.updateText(lines[i]);
             }
@@ -1278,7 +1287,7 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
             items.addNode(currentUser, targetIndex + i);
-            const newItem = (items as any).at(targetIndex + i);
+            const newItem = items.at(targetIndex + i);
             if (newItem) {
                 newItem.updateText(lines[i]);
             }
@@ -1291,14 +1300,14 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
         // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
             items.addNode(currentUser, targetIndex + i);
-            const newItem = (items as any).at(targetIndex + i);
+            const newItem = items.at(targetIndex + i);
             if (newItem) {
                 newItem.updateText(lines[i]);
             }
         }
     }
 
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`Updated target text: "${targetItem.text}"`);
     }
 
@@ -1322,7 +1331,7 @@ function handleMultiItemSelectionDrop(selection: any, targetItemId: string, posi
 // アイテム全体を移動する
 function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position: string) {
     // デバッグ情報
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`handleItemMoveDrop called with sourceItemId=${sourceItemId}, targetItemId=${targetItemId}, position=${position}`);
     }
 
@@ -1331,7 +1340,7 @@ function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position
     const targetIndex = displayItems.findIndex(d => d.model.id === targetItemId);
 
     if (sourceIndex < 0 || targetIndex < 0) {
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`);
         }
         return;
@@ -1339,7 +1348,7 @@ function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position
 
     // ソースアイテムとターゲットアイテムが同じ場合は何もしない
     if (sourceIndex === targetIndex) {
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Source and target are the same item, no action needed`);
         }
         return;
@@ -1353,7 +1362,7 @@ function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position
     const targetKey = targetItem.key!;
 
     try {
-        const w: any = typeof window !== 'undefined' ? (window as any) : null;
+        const w = typeof window !== 'undefined' ? window : null;
         if (w && Array.isArray(w.E2E_LOGS)) {
             w.E2E_LOGS.push({ tag: 'handleItemMoveDrop', source: sourceItemId, target: targetItemId, position, t: Date.now() });
         }
@@ -1388,7 +1397,7 @@ function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position
 // 外部からのテキストをドロップする
 function handleExternalTextDrop(targetItemId: string, position: string, text: string) {
     // デバッグ情報
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`handleExternalTextDrop called with targetItemId=${targetItemId}, position=${position}`);
         console.log(`Text: "${text}"`);
     }
@@ -1397,7 +1406,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
     const targetIndex = displayItems.findIndex(d => d.model.id === targetItemId);
 
     if (targetIndex < 0) {
-        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
             console.log(`Target item not found: targetIndex=${targetIndex}`);
         }
         return;
@@ -1452,7 +1461,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
         }
     }
 
-    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
         console.log(`Updated target text: "${targetItem.text}"`);
     }
 

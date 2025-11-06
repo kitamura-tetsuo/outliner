@@ -4,6 +4,28 @@ import * as Y from "yjs";
 import { Items } from "../../schema/yjs-schema";
 import { yjsService } from "./service";
 
+// Type definitions for mocks
+interface User {
+    userId: string;
+    userName?: string;
+    name?: string;
+}
+
+interface PresenceStore {
+    users: Record<string, User>;
+    setUser: (u: User) => void;
+    removeUser: (id: string) => void;
+}
+
+interface EditorOverlayStore {
+    cursors: Record<string, { itemId: string; offset: number; userId: string; }>;
+    selections: Record<string, { userId: string; }>;
+    setCursor: (opts: { itemId: string; offset: number; userId: string; }) => void;
+    setSelection: (opts: { userId: string; }) => void;
+    clearCursorAndSelection: (userId: string) => void;
+    clearSelectionForUser: (userId: string) => void;
+}
+
 describe("yjsService", () => {
     it("adds and reorders items", () => {
         const project = yjsService.createProject("test");
@@ -37,9 +59,9 @@ describe("yjsService", () => {
     it("binds project presence to store", () => {
         const awareness = new Awareness(new Y.Doc());
         // Provide a minimal global presence store to avoid importing .svelte.ts
-        const presenceStore = {
-            users: {} as any,
-            setUser(u: any) {
+        const presenceStore: PresenceStore = {
+            users: {},
+            setUser(u: User) {
                 this.users = { ...this.users, [u.userId]: u };
             },
             removeUser(id: string) {
@@ -48,24 +70,24 @@ describe("yjsService", () => {
                 this.users = updatedUsers;
             },
         };
-        (globalThis as any).presenceStore = presenceStore;
+        (globalThis as typeof globalThis & { presenceStore?: PresenceStore; }).presenceStore = presenceStore;
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
         expect(presenceStore.users["u1"].userName).toBe("Alice");
-        awareness.setLocalStateField("user", null as any);
+        awareness.setLocalStateField("user", null);
         unbind();
     });
 
     it("binds page presence to overlay", () => {
         const awareness = new Awareness(new Y.Doc());
         // Provide a minimal global overlay store
-        const editorOverlayStore = {
-            cursors: {} as any,
-            selections: {} as any,
-            setCursor({ itemId, offset, userId }: any) {
+        const editorOverlayStore: EditorOverlayStore = {
+            cursors: {},
+            selections: {},
+            setCursor({ itemId, offset, userId }) {
                 this.cursors[userId] = { itemId, offset, userId };
             },
-            setSelection({ userId }: any) {
+            setSelection({ userId }) {
                 this.selections[userId] = { userId };
             },
             clearCursorAndSelection(userId: string) {
@@ -79,7 +101,8 @@ describe("yjsService", () => {
                 this.selections = updatedSelections;
             },
         };
-        (globalThis as any).editorOverlayStore = editorOverlayStore;
+        (globalThis as typeof globalThis & { editorOverlayStore?: EditorOverlayStore; }).editorOverlayStore =
+            editorOverlayStore;
         const unbind = yjsService.bindPagePresence(awareness);
 
         // seed local state (ignored by overlay sync)
@@ -87,17 +110,17 @@ describe("yjsService", () => {
         awareness.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } });
 
         // simulate remote collaborator
-        const states = (awareness as any).getStates();
+        const states = awareness.getStates();
         states.set(42, {
             user: { userId: "u2", name: "Bob" },
             presence: { cursor: { itemId: "i1", offset: 0 } },
         });
-        (awareness as any).emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
+        awareness.emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
 
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
 
-        (awareness as any).emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
+        awareness.emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
         unbind();
     });
 });

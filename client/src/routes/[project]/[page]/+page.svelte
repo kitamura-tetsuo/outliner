@@ -47,8 +47,8 @@ let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 
 // Optional variable for pending imports - defined to avoid ESLint no-undef errors
 // This is used in conditional checks and may be set by external code
-let pendingImport: any[] | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-let project: any; // eslint-disable-line @typescript-eslint/no-unused-vars
+let pendingImport: unknown[] | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
+let project: unknown; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 // URLパラメータと認証状態を監視して更新
 // 同一条件での多重実行を避け、Svelte の update depth exceeded を回避するためのキー
@@ -56,10 +56,10 @@ let project: any; // eslint-disable-line @typescript-eslint/no-unused-vars
 let lastLoadKey: string | null = null;
 let __loadingInProgress = false; // 再入防止
 
-function projectLooksLikePlaceholder(candidate: any): boolean {
+function projectLooksLikePlaceholder(candidate: unknown): boolean {
     if (!candidate) return true;
     try {
-        const items: any = candidate.items as any;
+        const items = (candidate as { items?: unknown })?.items;
         const length = items?.length ?? 0;
         if (length === 0) return true;
         if (length === 1) {
@@ -121,7 +121,7 @@ function scheduleLoadIfNeeded(
 }
 
 // 認証成功時の処理
-async function handleAuthSuccess(authResult: any) {
+async function handleAuthSuccess(authResult: unknown) {
     logger.info("handleAuthSuccess: 認証成功:", authResult);
     logger.info(`handleAuthSuccess: Setting isAuthenticated from ${isAuthenticated} to true`);
     isAuthenticated = true;
@@ -150,9 +150,9 @@ async function loadProjectAndPage() {
         if (!store.project) {
             const { Project } = await import("../../../schema/app-schema");
             const provisional = Project.createInstance(projectName);
-            store.project = provisional as any;
+            store.project = provisional as unknown;
             if (typeof window !== "undefined") {
-                logger.debug("DEBUG: provisional store.project set?", !!(window as any).generalStore?.project);
+                logger.debug("DEBUG: provisional store.project set?", !!((window as { [key: string]: unknown }).generalStore?.project));
             }
             // コラボレーションテストでは、暫定ページを作成せず、Yjsの同期を待つ
             // shouldSkipTestSeed()がtrueの場合は、ページ作成をスキップ
@@ -180,7 +180,7 @@ async function loadProjectAndPage() {
         if (!client && yjsStore.yjsClient) {
             const fallbackProject = yjsStore.yjsClient.getProject?.();
             if (fallbackProject && (fallbackProject.title === projectName)) {
-                client = yjsStore.yjsClient as any;
+                client = yjsStore.yjsClient as unknown;
             }
         }
         // テスト環境ではクライアントが見つからない場合に自動作成
@@ -206,17 +206,16 @@ async function loadProjectAndPage() {
         logger.info(`loadProjectAndPage: Setting yjsStore.yjsClient when available`);
         logger.info(`loadProjectAndPage: Client before setting: containerId=${client?.containerId}, clientId=${client?.clientId}`);
         if (client) {
-            yjsStore.yjsClient = client as any;
+            yjsStore.yjsClient = client as unknown;
             try {
                 // Ensure global store has the project set for tests that rely on window.generalStore.project
                 const proj = client.getProject?.();
                 if (proj) {
                     let appliedPendingImport = false;
-                    let pendingImport: any[] | null = null;
+                    let pendingImport: unknown[] | null = null;
                     try {
                         try {
-                            const win: any = window as any;
-                            const byTitle = win?.__PENDING_IMPORTS__;
+                            const byTitle = (window as { [key: string]: unknown })?.__PENDING_IMPORTS__;
                             if (byTitle) {
                                 const keys = Object.keys(byTitle);
                                 logger.info("loadProjectAndPage: Pending import keys", { keys: JSON.stringify(keys) });
@@ -244,17 +243,17 @@ async function loadProjectAndPage() {
                         } catch {}
 
                         if (Array.isArray(pendingImport) && pendingImport.length > 0) {
-                            const projectItems: any = proj.items as any;
+                            const projectItems = (proj as { items?: unknown })?.items;
                             const findPage = (title: string) => {
-                                const len = projectItems?.length ?? 0;
+                                const len = (projectItems as { length?: number })?.length ?? 0;
                                 for (let index = 0; index < len; index++) {
-                                    const page = projectItems.at ? projectItems.at(index) : projectItems[index];
-                                    const text = page?.text?.toString?.() ?? String(page?.text ?? "");
+                                    const page = projectItems.at ? (projectItems as { at?: (i: number) => unknown }).at?.(index) : (projectItems as unknown[])?.[index];
+                                    const text = (page as { text?: unknown })?.text?.toString?.() ?? String((page as { text?: unknown })?.text ?? "");
                                     if (text === title) return page;
                                 }
                                 return null;
                             };
-                            const populate = (nodes: any[], targetItems: any) => {
+                            const populate = (nodes: unknown[], targetItems: unknown) => {
                                 if (!targetItems) return;
                                 // Check if targetItems is a Yjs Array before calling removeAt
                                 if (typeof targetItems.removeAt === "function") {
@@ -266,22 +265,22 @@ async function loadProjectAndPage() {
                                     targetItems.splice(0, targetItems.length);
                                 }
                                 for (const nodeData of nodes) {
-                                    const text = nodeData?.text ?? "";
-                                    const children = Array.isArray(nodeData?.children) ? nodeData.children : [];
-                                    const node = targetItems.addNode?.("snapshot");
+                                    const text = (nodeData as { text?: unknown })?.text ?? "";
+                                    const children = Array.isArray((nodeData as { children?: unknown })?.children) ? (nodeData as { children?: unknown[] })?.children : [];
+                                    const node = (targetItems as { addNode?: (type: string) => unknown })?.addNode?.("snapshot");
                                     if (!node) continue;
-                                    node.updateText?.(text);
-                                    populate(children, node?.items as any);
+                                    (node as { updateText?: (t: string) => void })?.updateText?.(text);
+                                    populate(children, (node as { items?: unknown })?.items);
                                 }
                             };
                             for (const root of pendingImport) {
-                                const title = root?.text ?? "";
+                                const title = (root as { text?: unknown })?.text ?? "";
                                 if (!title) continue;
                                 let pageNode = findPage(title);
                                 if (!pageNode) {
                                     pageNode = proj.addPage(title, "snapshot");
                                 }
-                                populate(root?.children ?? [], pageNode?.items as any);
+                                populate((root as { children?: unknown[] })?.children ?? [], (pageNode as { items?: unknown })?.items);
                             }
                             appliedPendingImport = true;
                             logger.info("loadProjectAndPage: Applied pending import tree to connected project", { projectName });
@@ -300,9 +299,9 @@ async function loadProjectAndPage() {
                         });
                         const snapshot = loadProjectSnapshot(projectName);
                         if (!appliedPendingImport && snapshot && Array.isArray(snapshot.items) && snapshot.items.length > 0) {
-                            const projectItems: any = proj.items as any;
-                            const snapshotTitles = new Set(snapshot.items.map(root => root?.text ?? ""));
-                            const getTitle = (page: any) => page?.text?.toString?.() ?? String(page?.text ?? "");
+                            const projectItems = (proj as { items?: unknown })?.items;
+                            const snapshotTitles = new Set(snapshot.items.map(root => (root as { text?: unknown })?.text ?? ""));
+                            const getTitle = (page: unknown) => (page as { text?: unknown })?.text?.toString?.() ?? String((page as { text?: unknown })?.text ?? "");
 
                             // Remove pages not present in snapshot to avoid stale placeholders
                             for (let index = (projectItems?.length ?? 0) - 1; index >= 0; index--) {
@@ -314,7 +313,7 @@ async function loadProjectAndPage() {
                                 }
                             }
 
-                            const populateChildren = (children: any[], targetItems: any) => {
+                            const populateChildren = (children: unknown[], targetItems: unknown) => {
                                 if (!targetItems) return;
                                 // Check if targetItems is a Yjs Array before calling removeAt
                                 if (typeof targetItems.removeAt === "function") {
@@ -328,15 +327,15 @@ async function loadProjectAndPage() {
                                 for (const child of children ?? []) {
                                     const node = targetItems.addNode?.("snapshot");
                                     if (!node) continue;
-                                    node.updateText?.(child?.text ?? "");
-                                    populateChildren(child?.children ?? [], node?.items as any);
+                                    (node as { updateText?: (t: string) => void })?.updateText?.((child as { text?: unknown })?.text ?? "");
+                                    populateChildren((child as { children?: unknown[] })?.children ?? [], (node as { items?: unknown })?.items);
                                 }
                             };
 
                             for (const root of snapshot.items) {
-                                const title = root?.text ?? "";
+                                const title = (root as { text?: unknown })?.text ?? "";
                                 if (!title) continue;
-                                let pageNode: any = null;
+                                let pageNode: unknown = null;
                                 const existingCount = projectItems?.length ?? 0;
                                 for (let idx = 0; idx < existingCount; idx++) {
                                     const candidate = projectItems.at ? projectItems.at(idx) : projectItems[idx];
@@ -349,58 +348,58 @@ async function loadProjectAndPage() {
                                 if (!pageNode) {
                                     pageNode = proj.addPage(title, "snapshot");
                                 } else {
-                                    pageNode.updateText?.(title);
+                                    (pageNode as { updateText?: (t: string) => void })?.updateText?.(title);
                                 }
-                                populateChildren(root?.children ?? [], pageNode?.items as any);
+                                populateChildren((root as { children?: unknown[] })?.children ?? [], (pageNode as { items?: unknown })?.items);
                             }
                         }
                     } catch (snapshotError) {
                         logger.warn("loadProjectAndPage: Failed to hydrate project from snapshot", snapshotError);
                     }
 
-                    store.project = proj as any;
+                    store.project = proj as unknown;
                     logger.info(`loadProjectAndPage: store.project set from client (title="${proj?.title}")`);
 
                     // After Yjs client attach: ensure requested page exists in CONNECTED project
                     try {
-                        const itemsAny: any = (store.project as any).items as any;
+                        const itemsAny = (store.project as { items?: unknown })?.items;
                         const hasTitle = (title: string) => {
                             const len = itemsAny?.length ?? 0;
                             for (let i = 0; i < len; i++) {
                                 const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
-                                const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                                const t = (p as { text?: unknown })?.text?.toString?.() ?? String((p as { text?: unknown })?.text ?? "");
                                 if (String(t).toLowerCase() === String(title).toLowerCase()) return p;
                             }
                             return null;
                         };
-                        let pageRef: any = hasTitle(pageName);
+                        let pageRef: unknown = hasTitle(pageName);
                         if (!pageRef && pageName) {
                             pageRef = itemsAny?.addNode?.("tester");
-                            pageRef?.updateText?.(pageName);
+                            (pageRef as { updateText?: (t: string) => void })?.updateText?.(pageName);
                             logger.info(`E2E: Created requested page after Yjs attach: "${pageName}"`);
                         }
                         if (pageRef) {
                             // Capture current provisional page BEFORE switching, to migrate its children if needed
-                            const prevCurrent: any = (store.currentPage as any);
+                            const prevCurrent = (store.currentPage as unknown);
                             // Move currentPage to the connected project's page
                             try {
                                 const cur = prevCurrent;
                                 const sameDoc = !!(cur?.ydoc && pageRef?.ydoc && cur.ydoc === pageRef.ydoc);
                                 if (!sameDoc || cur?.id !== pageRef?.id) {
-                                    store.currentPage = pageRef as any;
+                                    store.currentPage = pageRef as unknown;
                                 }
                             } catch {}
                             // Migrate pre-attached seeded children from provisional page to connected page if needed
                             try {
-                                const prev: any = prevCurrent;
-                                const next: any = pageRef;
+                                const prev = prevCurrent;
+                                const next = pageRef;
                                 const isDifferentDoc = !!(prev?.ydoc && next?.ydoc && prev.ydoc !== next.ydoc);
                                 if (isDifferentDoc) {
                                     for (let attempt = 0; attempt < 20; attempt++) {
                                         const prevLen = prev?.items?.length ?? 0;
                                         const nextLen = next?.items?.length ?? 0;
-                                        const isPlaceholderChild = (node: any) => {
-                                            const text = node?.text?.toString?.() ?? String(node?.text ?? "");
+                                        const isPlaceholderChild = (node: unknown) => {
+                                            const text = (node as { text?: unknown })?.text?.toString?.() ?? String((node as { text?: unknown })?.text ?? "");
                                             if (!text) return true;
                                             return text === "一行目: テスト" || text === "二行目: Yjs 反映" || text === "三行目: 並び順チェック";
                                         };
@@ -435,42 +434,42 @@ async function loadProjectAndPage() {
                                             const mapId = (fromId: string | undefined, toId: string | undefined) => {
                                                 if (!fromId || !toId) return;
                                                 try {
-                                                    const w:any = (typeof window !== "undefined") ? (window as any) : null;
+                                                    const w = (typeof window !== "undefined") ? window as { [key: string]: unknown } : null;
                                                     if (!w) return;
                                                     if (!w.__ITEM_ID_MAP__) w.__ITEM_ID_MAP__ = {};
                                                     w.__ITEM_ID_MAP__[String(fromId)] = String(toId);
                                                 } catch {}
                                             };
-                                            const copyAttachments = (sourceNode: any, targetNode: any) => {
+                                            const copyAttachments = (sourceNode: unknown, targetNode: unknown) => {
                                                 try {
-                                                    const srcAtt: any = sourceNode?.attachments;
-                                                    const arr: any[] = srcAtt?.toArray ? srcAtt.toArray() : (Array.isArray(srcAtt) ? srcAtt : []);
+                                                    const srcAtt = (sourceNode as { attachments?: unknown })?.attachments;
+                                                    const arr = srcAtt?.toArray ? srcAtt.toArray() : (Array.isArray(srcAtt) ? srcAtt : []);
                                                     for (const entry of arr) {
                                                         const url = Array.isArray(entry) ? entry[0] : entry;
                                                         targetNode?.addAttachment?.(url);
                                                     }
                                                 } catch {}
                                             };
-                                            const cloneBranch = (sourceItems: any, targetItems: any) => {
+                                            const cloneBranch = (sourceItems: unknown, targetItems: unknown) => {
                                                 if (!sourceItems || !targetItems) return;
                                                 const length = sourceItems?.length ?? 0;
                                                 for (let index = 0; index < length; index++) {
                                                     const srcNode = sourceItems.at ? sourceItems.at(index) : sourceItems[index];
                                                     if (!srcNode) continue;
-                                                    const text = srcNode?.text?.toString?.() ?? String(srcNode?.text ?? "");
+                                                    const text = (srcNode as { text?: unknown })?.text?.toString?.() ?? String((srcNode as { text?: unknown })?.text ?? "");
                                                     const destNode = targetItems?.addNode?.("tester");
                                                     if (!destNode) continue;
-                                                    destNode.updateText?.(text);
-                                                    mapId((srcNode as any)?.id, (destNode as any)?.id);
+                                                    (destNode as { updateText?: (t: string) => void })?.updateText?.(text);
+                                                    mapId((srcNode as { id?: unknown })?.id as string | undefined, (destNode as { id?: unknown })?.id as string | undefined);
                                                     copyAttachments(srcNode, destNode);
-                                                    cloneBranch(srcNode?.items as any, destNode?.items as any);
+                                                    cloneBranch((srcNode as { items?: unknown })?.items, (destNode as { items?: unknown })?.items);
                                                 }
                                             };
 
                                             while ((next?.items?.length ?? 0) > 0) {
                                                 next.items.removeAt(next.items.length - 1);
                                             }
-                                            cloneBranch(prev.items as any, next.items as any);
+                                            cloneBranch(prev.items, next.items);
                                             logger.info("E2E: Migrated provisional page children to connected page");
                                             break;
                                         }
@@ -481,33 +480,32 @@ async function loadProjectAndPage() {
                             } catch {}
 
                             try {
-                                const win: any = window as any;
-                                const pendingMap = win?.__PENDING_IMPORTS__;
-                                let pendingPage: any = null;
+                                const pendingMap = (window as { [key: string]: unknown })?.__PENDING_IMPORTS__;
+                                let pendingPage: unknown = null;
                                 if (Array.isArray(pendingImport)) {
-                                    pendingPage = pendingImport.find((root: any) => root?.text === pageName);
+                                    pendingPage = pendingImport.find((root: unknown) => (root as { text?: unknown })?.text === pageName);
                                 }
                                 if (!pendingPage && pendingMap && pendingMap[projectName]) {
                                     const entry = pendingMap[projectName];
                                     if (Array.isArray(entry)) {
-                                        pendingPage = entry.find((root: any) => root?.text === pageName);
+                                        pendingPage = entry.find((root: unknown) => (root as { text?: unknown })?.text === pageName);
                                     }
                                 }
                                 if (pendingPage) {
-                                    const applyChildren = (nodes: any[], targetItems: any) => {
+                                    const applyChildren = (nodes: unknown[], targetItems: unknown) => {
                                         if (!targetItems) return;
                                         while ((targetItems.length ?? 0) > 0) {
                                             targetItems.removeAt(targetItems.length - 1);
                                         }
                                         for (const nodeData of nodes ?? []) {
-                                            const text = nodeData?.text ?? "";
+                                            const text = (nodeData as { text?: unknown })?.text ?? "";
                                             const child = targetItems.addNode?.("pending-import");
                                             if (!child) continue;
-                                            child.updateText?.(text);
-                                            applyChildren(nodeData?.children ?? [], child?.items as any);
+                                            (child as { updateText?: (t: string) => void })?.updateText?.(text);
+                                            applyChildren((nodeData as { children?: unknown[] })?.children ?? [], (child as { items?: unknown })?.items);
                                         }
                                     };
-                                    applyChildren(pendingPage?.children ?? [], pageRef?.items as any);
+                                    applyChildren((pendingPage as { children?: unknown[] })?.children ?? [], (pageRef as { items?: unknown })?.items);
                                     if (pendingMap && pendingMap[projectName]) {
                                         delete pendingMap[projectName];
                                     }
@@ -527,7 +525,7 @@ async function loadProjectAndPage() {
                                 || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
                             );
                             if (isTestEnv && pageRef) {
-                                const _pageItems: any = (pageRef as any).items as any;
+                                const _pageItems = (pageRef as { items?: unknown })?.items;
                                 const len = _pageItems?.length ?? 0;
                                 if (len === 0) {
                                     const defaults = [
@@ -558,7 +556,7 @@ async function loadProjectAndPage() {
             try {
                 const proj = yjsStore.yjsClient?.getProject?.();
                 if (proj) {
-                    store.project = proj as any;
+                    store.project = proj as unknown;
                     logger.info(`loadProjectAndPage: store.project set from existing yjsStore client (title="${proj?.title}")`);
                 }
             } catch {}
@@ -569,7 +567,7 @@ async function loadProjectAndPage() {
 
         // グローバルストアの状態をログ出力
         if (typeof window !== "undefined") {
-            const globalStore = (window as any).generalStore;
+            const globalStore = (window as { [key: string]: unknown }).generalStore;
             logger.info(`Global generalStore exists: ${!!globalStore}`);
             if (globalStore) {
                 logger.info(`generalStore.project exists: ${!!globalStore.project}`);
@@ -592,8 +590,8 @@ async function loadProjectAndPage() {
                                 let attempts = 0;
                                 const trySeed = () => {
                                     try {
-                                        const ref2: any = (store.currentPage as any);
-                                        const pageItems2: any = ref2?.items as any;
+                                        const ref2 = (store.currentPage as unknown);
+                                        const pageItems2 = (ref2 as { items?: unknown })?.items;
                                         const lenNow = pageItems2?.length ?? 0;
                                         if (pageItems2 && lenNow < 3) {
                                             for (let i = lenNow; i < 3; i++) {
@@ -637,25 +635,25 @@ async function loadProjectAndPage() {
 
         if (store.project) {
             logger.info(`Project title: "${store.project.title}"`);
-            const items = store.project.items as any;
+            const items = store.project.items as unknown;
             logger.info(`Project items count: ${items?.length || 0}`);
             if (projectLooksLikePlaceholder(store.project)) {
                 const snapshot = loadProjectSnapshot(projectName);
                 if (snapshot) {
                     const hydrated = snapshotToProject(snapshot);
-                    store.project = hydrated as any;
+                    store.project = hydrated as unknown;
                     if (!yjsStore.yjsClient) {
                         try {
-                            yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as any;
+                            yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as unknown;
                         } catch {}
                     }
                     try {
-                        const pages: any = hydrated.items as any;
+                        const pages = (hydrated as { items?: unknown })?.items;
                         const len = pages?.length ?? 0;
-                        let target: any = null;
+                        let target: unknown = null;
                         for (let i = 0; i < len; i++) {
                             const p = pages.at ? pages.at(i) : pages[i];
-                            const title = p?.text?.toString?.() ?? String(p?.text ?? "");
+                            const title = (p as { text?: unknown })?.text?.toString?.() ?? String((p as { text?: unknown })?.text ?? "");
                             if (title === pageName) {
                                 target = p;
                                 break;
@@ -665,7 +663,7 @@ async function loadProjectAndPage() {
                             target = pages.at ? pages.at(0) : pages[0];
                         }
                         if (target) {
-                            store.currentPage = target as any;
+                            store.currentPage = target as unknown;
                         }
                     } catch {}
                 }
@@ -676,11 +674,11 @@ async function loadProjectAndPage() {
         if (store.pages) {
             logger.info(`Available pages count: ${store.pages.current.length}`);
             {
-                const arr: any = store.pages.current as any;
+                const arr = store.pages.current as unknown[];
                 const len = arr?.length ?? 0;
                 for (let i = 0; i < len; i++) {
                     const p = arr?.at ? arr.at(i) : arr[i];
-                    const title = (p?.text as any)?.toString?.() ?? String((p as any)?.text ?? "");
+                    const title = (p as { text?: unknown })?.text?.toString?.() ?? String((p as { text?: unknown })?.text ?? "");
                     logger.info(`Page ${i}: "${title}"`);
                 }
             }
@@ -695,20 +693,20 @@ async function loadProjectAndPage() {
                 || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
             );
             if (store.project && store.pages && isTestEnv) {
-                const itemsAny: any = (store.project as any).items as any;
+                const itemsAny = (store.project as { items?: unknown })?.items;
                 const hasTitle = (title: string) => {
                     const len = itemsAny?.length ?? 0;
                     for (let i = 0; i < len; i++) {
                         const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
-                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                        const t = (p as { text?: unknown })?.text?.toString?.() ?? String((p as { text?: unknown })?.text ?? "");
                         if (String(t).toLowerCase() === String(title).toLowerCase()) return true;
                     }
                     return false;
                 };
                 const ensurePage = (title: string) => {
                     try {
-                        if (typeof (store.project as any).addPage === "function") {
-                            return (store.project as any).addPage(title, "tester");
+                        if (typeof (store.project as { addPage?: (t: string, u: string) => unknown }).addPage === "function") {
+                            return (store.project as { addPage?: (t: string, u: string) => unknown }).addPage?.(title, "tester");
                         } else if (itemsAny?.addNode) {
                             const node = itemsAny.addNode("tester");
                             node?.updateText?.(title);
@@ -737,11 +735,11 @@ async function loadProjectAndPage() {
         // 必要なら currentPage をここでフォールバック設定（+layout に依存しすぎない）
         if (store.pages && !store.currentPage) {
             try {
-                const arr: any = store.pages.current as any;
+                const arr = store.pages.current as unknown[];
                 const len = arr?.length ?? 0;
                 for (let i = 0; i < len; i++) {
                     const p = arr?.at ? arr.at(i) : arr[i];
-                    const title = (p?.text as any)?.toString?.() ?? String((p as any)?.text ?? "");
+                    const title = (p as { text?: unknown })?.text?.toString?.() ?? String((p as { text?: unknown })?.text ?? "");
                     if (title.toLowerCase() === String(pageName).toLowerCase()) {
                         store.currentPage = p;
                         logger.info(`Fallback: store.currentPage set in +page.svelte to "${title}" (id=${p?.id})`);
@@ -765,7 +763,7 @@ async function loadProjectAndPage() {
             logger.warn(`store.project exists: ${!!store.project}`);
             if (store.project) {
                 logger.warn(`store.project.items exists: ${!!store.project.items}`);
-                const items = store.project.items as any;
+                const items = store.project.items as unknown;
                 logger.warn(`store.project.items length: ${items?.length || 0}`);
             }
         }
@@ -794,8 +792,8 @@ onMount(() => {
         const iv = setInterval(() => {
             try {
                 capturePageIdForSchedule();
-                const pg: any = store.currentPage as any;
-                const len = pg?.items?.length ?? 0;
+                const pg = (store.currentPage as unknown);
+                const len = (pg as { items?: unknown })?.items?.length ?? 0;
                 if (len > 0 || ++tries > 50) {
                     clearInterval(iv);
                 }
@@ -818,15 +816,15 @@ onMount(() => {
         console.log(`[+page.svelte] onMount: Collaboration test mode, waiting for Yjs sync...`);
         console.log(`[+page.svelte] onMount: store.currentPage=${!!store.currentPage}, pageName="${pageName}"`);
         if (!store.currentPage) {
-            const itemsAny: any = (store.project as any).items as any;
+            const itemsAny = (store.project as { items?: unknown })?.items;
             // Yjsの同期を待つために、定期的にページリストをチェック
             const checkInterval = setInterval(() => {
                 const currentLen = itemsAny?.length ?? 0;
                 for (let i = 0; i < currentLen; i++) {
                     const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
-                    const title = p?.text?.toString?.() ?? String(p?.text ?? "");
+                    const title = (p as { text?: unknown })?.text?.toString?.() ?? String((p as { text?: unknown })?.text ?? "");
                     if (String(title).toLowerCase() === String(pageName).toLowerCase()) {
-                        store.currentPage = p as any;
+                        store.currentPage = p as unknown;
                         clearInterval(checkInterval);
                         console.log(`[+page.svelte] Found page via Yjs sync: ${title} (id=${p?.id})`);
                         break;
@@ -850,14 +848,14 @@ onMount(() => {
         if (isTestEnv && store.project) {
             console.log(`[+page.svelte] onMount: store.currentPage=${!!store.currentPage}, pageName="${pageName}"`);
             if (!store.currentPage) {
-                const itemsAny: any = (store.project as any).items as any;
+                const itemsAny = (store.project as { items?: unknown })?.items;
                 const len = itemsAny?.length ?? 0;
                 console.log(`[+page.svelte] onMount: Searching for page in ${len} items`);
                 // 既存ページ検索（タイトル一致）
-                let found: any = null;
+                let found: unknown = null;
                 for (let i = 0; i < len; i++) {
                     const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
-                    const title = p?.text?.toString?.() ?? String(p?.text ?? "");
+                    const title = (p as { text?: unknown })?.text?.toString?.() ?? String((p as { text?: unknown })?.text ?? "");
                     if (String(title).toLowerCase() === String(pageName).toLowerCase()) {
                         found = p;
                         console.log(`[+page.svelte] onMount: Found existing page "${title}" (id=${p?.id})`);
@@ -865,8 +863,8 @@ onMount(() => {
                     }
                 }
                 if (found) {
-                    store.currentPage = found as any;
-                    console.log(`[+page.svelte] onMount: Set currentPage to existing page: ${found?.text?.toString?.()} (id=${found?.id})`);
+                    store.currentPage = found as unknown;
+                    console.log(`[+page.svelte] onMount: Set currentPage to existing page: ${(found as { text?: unknown })?.text?.toString?.()} (id=${(found as { id?: unknown })?.id})`);
                 }
             } else {
                 console.log(`[+page.svelte] onMount: store.currentPage already set, skipping search`);
@@ -885,14 +883,14 @@ onMount(() => {
 function capturePageIdForSchedule() {
     try {
         if (typeof window === "undefined") return;
-        const pg: any = store.currentPage as any;
+        const pg = (store.currentPage as unknown);
         if (!pg) return;
-        const children: any = pg?.items as any;
+        const children = (pg as { items?: unknown })?.items;
         const len = children?.length ?? 0;
-        let id = pg?.id || "";
+        let id = (pg as { id?: unknown })?.id || "";
         if (len > 0) {
             const first = children?.at ? children.at(0) : children?.[0];
-            id = first?.id || id;
+            id = (first as { id?: unknown })?.id || id;
         }
         if (id) {
             const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
@@ -923,27 +921,27 @@ function goToGraphView() {
 // 画面上部からもアイテムを追加できる補助ボタン（E2E安定化用）
 function addItemFromTopToolbar() {
     try {
-        let pageItem: any = store.currentPage as any;
+        let pageItem = (store.currentPage as unknown);
         // currentPage が未用意なら、URL の pageName で暫定ページを作成
         if (!pageItem) {
-            const proj: any = store.project as any;
+            const proj = (store.project as { addPage?: (t: string, u: string) => unknown });
             if (proj?.addPage && pageName) {
                 try {
                     const created = proj.addPage(pageName, "tester");
                     if (created) {
-                        store.currentPage = created as any;
+                        store.currentPage = created as unknown;
                         pageItem = created;
                     }
                 } catch {}
             }
         }
-        if (!pageItem || !pageItem.items) return;
+        if (!pageItem || !(pageItem as { items?: unknown })?.items) return;
         const user = userManager.getCurrentUser()?.id ?? "tester";
-        const node = pageItem.items.addNode(user);
+        const node = (pageItem as { items?: { addNode: (u: string) => unknown } })?.items?.addNode(user);
         // 追加直後にアクティブ化してテストの後工程を安定
-        if (node && node.id) {
-            editorOverlayStore.setCursor({ itemId: node.id, offset: 0, isActive: true, userId: "local" });
-            editorOverlayStore.setActiveItem(node.id);
+        if (node && (node as { id?: unknown })?.id) {
+            editorOverlayStore.setCursor({ itemId: (node as { id: string })?.id, offset: 0, isActive: true, userId: "local" });
+            editorOverlayStore.setActiveItem((node as { id: string })?.id);
         }
     } catch (e) {
         console.warn("addItemFromTopToolbar failed", e);
@@ -955,7 +953,7 @@ function toggleSearchPanel() {
     const before = isSearchPanelVisible;
     isSearchPanelVisible = !isSearchPanelVisible;
     if (typeof window !== "undefined") {
-        (window as any).__SEARCH_PANEL_VISIBLE__ = isSearchPanelVisible;
+        (window as { [key: string]: unknown }).__SEARCH_PANEL_VISIBLE__ = isSearchPanelVisible;
     }
     logger.debug("toggleSearchPanel called", { before, after: isSearchPanelVisible });
 }
@@ -1004,7 +1002,7 @@ onMount(async () => {
 
     // E2E デバッグ用: 検索パネルを強制的に開く関数を公開
     if (typeof window !== "undefined") {
-        (window as any).__OPEN_SEARCH__ = async () => {
+        (window as { [key: string]: unknown }).__OPEN_SEARCH__ = async () => {
             // 現在非表示のときだけトグルボタンをクリックして開く（二重トグル防止）
             if (!isSearchPanelVisible) {
                 const btn = document.querySelector<HTMLButtonElement>(".search-btn");
@@ -1016,7 +1014,7 @@ onMount(async () => {
                 await new Promise(r => setTimeout(r, 25));
                 tries++;
             }
-            (window as any).__SEARCH_PANEL_VISIBLE__ = true;
+            (window as { [key: string]: unknown }).__SEARCH_PANEL_VISIBLE__ = true;
             logger.debug("E2E: __OPEN_SEARCH__ ensured visible (no double toggle)", { found: !!document.querySelector('[data-testid="search-panel"]'), tries });
         };
     }

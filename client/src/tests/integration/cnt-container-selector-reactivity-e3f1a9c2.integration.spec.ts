@@ -3,6 +3,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ContainerSelector from "../../components/ContainerSelector.svelte";
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
 
+// Type definitions
+interface UserManager {
+    addEventListener: (event: string, callback: () => void) => () => void;
+    getCurrentUser: () => { id: string; };
+    auth: { currentUser: { uid: string; }; };
+    loginWithEmailPassword: () => Promise<{ success: boolean; }>;
+}
+
+interface UserContainer {
+    userId: string;
+    accessibleContainerIds: string[];
+    defaultContainerId: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
 // ContainerSelector の <select> の option 数が
 // firestoreStore.userContainer.accessibleContainerIds の増減に連動して
 // 直接増減することを検証する（UI レベルの検証）
@@ -10,8 +26,11 @@ import { firestoreStore } from "../../stores/firestoreStore.svelte";
 describe("CNT: ContainerSelector option count reflects accessibleContainerIds", () => {
     beforeEach(() => {
         // ContainerSelector 内の ensureUserLoggedIn が参照するオブジェクトを最小スタブ
-        (globalThis as any).window ||= globalThis as any;
-        (globalThis as any).window.__USER_MANAGER__ = {
+        const g = globalThis as typeof globalThis & {
+            window?: typeof globalThis & { __USER_MANAGER__?: UserManager; };
+        };
+        g.window ||= globalThis as typeof globalThis & { __USER_MANAGER__?: UserManager; };
+        g.window.__USER_MANAGER__ = {
             addEventListener: vi.fn(() => vi.fn()),
             getCurrentUser: vi.fn(() => ({ id: "test-user" })),
             auth: { currentUser: { uid: "test-user" } },
@@ -19,13 +38,15 @@ describe("CNT: ContainerSelector option count reflects accessibleContainerIds", 
         };
 
         // 初期状態: コンテナ 1 件
-        firestoreStore.setUserContainer({
-            userId: "u",
-            accessibleContainerIds: ["c-1"],
-            defaultContainerId: "c-1",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        } as any);
+        firestoreStore.setUserContainer(
+            {
+                userId: "u",
+                accessibleContainerIds: ["c-1"],
+                defaultContainerId: "c-1",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            } satisfies UserContainer,
+        );
     });
 
     it("option 数が accessibleContainerIds の増減に合わせて変化する", async () => {
@@ -36,7 +57,7 @@ describe("CNT: ContainerSelector option count reflects accessibleContainerIds", 
         expect(within(select).getAllByRole("option").length).toBe(1);
 
         // 2 件に増やす（配列の破壊的変更 -> Proxy 経由で setUserContainer + ucVersion 増分）
-        (firestoreStore.userContainer!.accessibleContainerIds as any).push("c-2");
+        (firestoreStore.userContainer!.accessibleContainerIds as string[]).push("c-2");
         // store integrity check
         expect(firestoreStore.userContainer?.accessibleContainerIds?.length ?? 0).toBe(2);
         await waitFor(() => {
@@ -44,7 +65,7 @@ describe("CNT: ContainerSelector option count reflects accessibleContainerIds", 
         });
 
         // 1 件に戻す（pop -> setUserContainer + ucVersion 増分）
-        (firestoreStore.userContainer!.accessibleContainerIds as any).pop();
+        (firestoreStore.userContainer!.accessibleContainerIds as string[]).pop();
         await waitFor(() => {
             expect(within(select).getAllByRole("option").length).toBe(1);
         });
@@ -52,13 +73,15 @@ describe("CNT: ContainerSelector option count reflects accessibleContainerIds", 
 });
 
 // 明示的に初期化（前テストの push/pop 影響を遮断）
-firestoreStore.setUserContainer({
-    userId: "u",
-    accessibleContainerIds: ["c-1"],
-    defaultContainerId: "c-1",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-} as any);
+firestoreStore.setUserContainer(
+    {
+        userId: "u",
+        accessibleContainerIds: ["c-1"],
+        defaultContainerId: "c-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    } satisfies UserContainer,
+);
 
 it("setUserContainer による差し替えでも option 数が即時に反映される", async () => {
     render(ContainerSelector);
@@ -67,26 +90,30 @@ it("setUserContainer による差し替えでも option 数が即時に反映さ
     expect(within(select).getAllByRole("option").length).toBe(1);
 
     // 差し替えで 2 件
-    firestoreStore.setUserContainer({
-        userId: "u",
-        accessibleContainerIds: ["c-1", "c-2"],
-        defaultContainerId: "c-1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    } as any);
+    firestoreStore.setUserContainer(
+        {
+            userId: "u",
+            accessibleContainerIds: ["c-1", "c-2"],
+            defaultContainerId: "c-1",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        } satisfies UserContainer,
+    );
     expect(firestoreStore.userContainer?.accessibleContainerIds?.length ?? 0).toBe(2);
     await waitFor(() => {
         expect(within(select).getAllByRole("option").length).toBe(2);
     });
 
     // 差し替えで 1 件に戻す
-    firestoreStore.setUserContainer({
-        userId: "u",
-        accessibleContainerIds: ["c-1"],
-        defaultContainerId: "c-1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    } as any);
+    firestoreStore.setUserContainer(
+        {
+            userId: "u",
+            accessibleContainerIds: ["c-1"],
+            defaultContainerId: "c-1",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        } satisfies UserContainer,
+    );
     await waitFor(() => {
         expect(within(select).getAllByRole("option").length).toBe(1);
     });

@@ -218,6 +218,9 @@ test.describe("Multi-Page Schedule Management", () => {
         await page.locator("text=予約管理").click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
 
+        // Wait for the schedule management page to fully load before checking for schedules
+        await page.waitForTimeout(2000);
+
         // Wait for schedules to load and verify the schedule is still present
         await expect(page.locator('[data-testid="schedule-item"]')).toHaveCount(1, { timeout: 10000 });
 

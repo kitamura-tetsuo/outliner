@@ -1,3 +1,4 @@
+import type { Project } from "../schema/app-schema";
 import type { YjsClient } from "../yjs/YjsClient";
 import { store as globalStore } from "./store.svelte";
 
@@ -18,19 +19,20 @@ class YjsStore {
         }
         // コメントスレッドの選択はドキュメント切替時に無効化してデフォルト挙動に任せる
         try {
-            (globalStore as any).openCommentItemId = null;
+            globalStore.openCommentItemId = null;
         } catch {}
         this._client = v;
         this.isConnected = !!(v?.isContainerConnected);
         if (v) {
             const connectedProject = v.getProject();
-            const newGuid: string | undefined = (connectedProject as any)?.ydoc?.guid;
-            const existingGuid: string | undefined = (globalStore.project as any)?.ydoc?.guid;
+            const newGuid: string | undefined = (connectedProject as unknown as Project)?.ydoc?.guid;
+            const existingGuid: string | undefined = (globalStore.project as unknown as Project | undefined)?.ydoc
+                ?.guid;
 
             // If the currently connected project refers to the same Y.Doc (GUID), skip
             if (
                 (existingGuid && newGuid && existingGuid === newGuid)
-                || globalStore.project === (connectedProject as any)
+                || globalStore.project === (connectedProject as unknown as Project)
             ) {
                 return;
             }
@@ -39,7 +41,7 @@ class YjsStore {
                 return;
             }
 
-            globalStore.project = connectedProject as any;
+            globalStore.project = connectedProject as unknown as Project;
             this._lastProjectGuid = newGuid ?? null;
 
             // In headless E2E runs, pages can be created on a provisional project
@@ -174,5 +176,5 @@ class YjsStore {
 
 export const yjsStore = $state(new YjsStore());
 if (typeof window !== "undefined") {
-    (window as any).__YJS_STORE__ = yjsStore;
+    window.__YJS_STORE__ = yjsStore;
 }

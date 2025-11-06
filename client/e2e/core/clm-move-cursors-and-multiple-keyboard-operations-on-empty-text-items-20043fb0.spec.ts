@@ -90,8 +90,13 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
         expect(cursorCountAfterFourthMove).toBe(1); // カーソルが1つだけ存在することを確認
 
         // 15. 1番目のアイテムにテキストを入力
-        await page.keyboard.type("Test text 1");
-        await page.waitForTimeout(1000);
+        // 1番目のアイテムのIDを取得
+        const firstItemId = await page.locator(".outliner-item").first().getAttribute("data-item-id");
+        // カーソルを設定してからテキストを入力
+        await TestHelpers.setCursor(page, firstItemId!);
+        await TestHelpers.insertText(page, firstItemId!, "Test text 1");
+        // テキストの同期を待つため長時間待機
+        await page.waitForTimeout(5000);
 
         // 16. 1番目のアイテムのテキスト内容を確認
         const firstItemText = await page.locator(".outliner-item").first().locator(".item-text").textContent();
@@ -105,7 +110,9 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
         await page.waitForTimeout(1000);
 
         // 18. 2番目のアイテムにテキストを入力
-        await page.keyboard.type("Test text 2");
+        const secondItemId = await page.locator(".outliner-item").nth(1).getAttribute("data-item-id");
+        console.log(`2番目のアイテムのID: ${secondItemId}`);
+        await TestHelpers.insertText(page, secondItemId!, "Test text 2");
         await page.waitForTimeout(1000);
 
         // 19. 2番目のアイテムのテキスト内容を確認

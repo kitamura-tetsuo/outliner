@@ -3,6 +3,20 @@ import pino from "pino";
 // Type definition for Console to avoid no-undef errors
 type Console = typeof console;
 
+// Type definition for a properly typed logger method
+type LoggerMethod = (msg: string, ...args: unknown[]) => boolean;
+
+// Type definition for enhanced logger interface
+interface EnhancedLogger extends Omit<pino.Logger, "child"> {
+    trace: LoggerMethod;
+    debug: LoggerMethod;
+    info: LoggerMethod;
+    warn: LoggerMethod;
+    error: LoggerMethod;
+    fatal: LoggerMethod;
+    child: (bindings: pino.Bindings) => EnhancedLogger;
+}
+
 // 環境変数からAPIサーバーURLを取得（デフォルトはlocalhostの認証サーバー）
 // const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071"; // Not used
 
@@ -20,17 +34,6 @@ const baseLogger = pino({
     level: import.meta.env.DEV ? "debug" : "info", // 開発環境では詳細なログを出力
     browser: {
         asObject: true, // ログをオブジェクトとして扱う
-        write: {
-            // Pino のデフォルトコンソール出力を無効化（カスタム出力のみを使用）
-            info: () => {},
-            debug: () => {},
-            error: () => {},
-            fatal: () => {},
-            warn: () => {},
-            trace: () => {},
-            log: () => {},
-            silent: () => {},
-        },
         // transmit: {
         //     level: "info", // このレベル以上のログをサーバーに送信
         //     send: (level: string, logEvent: any) => {
@@ -126,7 +129,7 @@ function getCallerFile(): string {
 /**
  * 各ログレベルのメソッドをラップして行番号情報を追加する
  */
-function createEnhancedLogger(logger: pino.Logger): pino.Logger {
+function createEnhancedLogger(logger: pino.Logger): EnhancedLogger {
     // 拡張するログレベル
     const levels = ["trace", "debug", "info", "warn", "error", "fatal"] as const;
     // 基本的な機能を持つロガーを作成
@@ -134,8 +137,9 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
 
     // 各ログレベルメソッドをラップ
     levels.forEach(level => {
-        const originalMethod = logger[level].bind(logger);
-        enhancedLogger[level] = (...args: unknown[]) => {
+        const originalMethod = logger[level].bind(logger) as (...args: unknown[]) => unknown;
+        // Create a properly typed wrapper function
+        const levelMethod = function(msg: string, ...args: unknown[]): boolean {
             // ログ呼び出し時に位置情報を取得
             const file = getCallerFile();
 
@@ -148,13 +152,14 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
             }
 
             // 元のログメソッドを呼び出し
-            return originalMethod("", ...args);
+            return originalMethod(msg, ...args) as boolean;
         };
+        enhancedLogger[level] = levelMethod as typeof logger[typeof level];
     });
 
     // child メソッドを特別に上書き
     const originalChild = logger.child.bind(logger);
-    enhancedLogger.child = function(bindings: pino.Bindings): pino.Logger {
+    enhancedLogger.child = function(bindings: pino.Bindings): EnhancedLogger {
         // 元の child メソッドを呼び出し
         const childLogger = originalChild(bindings);
         // 子ロガーも強化
@@ -190,7 +195,7 @@ const consoleStyles = {
  * 呼び出し元のファイル名と行番号を child logger のコンテキストに付加して返す
  * コンソールにも同時に出力したい場合は enableConsole を true に設定
  */
-export function getLogger(componentName?: string, enableConsole: boolean = true): pino.Logger {
+export function getLogger(componentName?: string, enableConsole: boolean = true): EnhancedLogger {
     const file = getCallerFile();
     const module = componentName || file;
     const isCustomModule = componentName !== undefined && componentName !== file;
@@ -203,9 +208,9 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
         return new Proxy(childLogger, {
             get(target, prop) {
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
-                    return function(...args: unknown[]) {
+                    return ((msg: string, ...args: unknown[]): boolean => {
                         // オリジナルのロガーメソッドを呼び出し
-                        (target as Record<string, unknown>)[prop as string](...args);
+                        (target as Record<string, unknown>)[prop as string](msg, ...args);
 
                         // コンソールにも出力（同じレベルで）
                         const consoleMethod = prop === "trace" || prop === "debug"
@@ -276,11 +281,11 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                 ...args,
                             );
                         }
-                    };
+                    }) as (msg: string, ...args: unknown[]) => boolean;
                 }
                 return (target as Record<string, unknown>)[prop as string];
             },
-        }) as pino.Logger;
+        }) as EnhancedLogger;
     }
 
     return childLogger;

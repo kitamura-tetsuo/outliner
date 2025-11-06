@@ -2,6 +2,7 @@
 // moved to onMount to avoid initial-value capture warnings
 
 import { Comments, Item } from "../schema/app-schema";
+import type { ItemValueType } from "../types/yjs-types";
 import * as Y from "yjs";
 import { store as generalStore } from "../stores/store.svelte";
 import { onMount } from "svelte";
@@ -11,7 +12,19 @@ import PresenceAvatars from "./PresenceAvatars.svelte";
 import SlashCommandPalette from "./SlashCommandPalette.svelte";
 import AliasPicker from "./AliasPicker.svelte";
 
-
+// Extended window interface for test/debug properties
+declare global {
+    interface Window {
+        E2E_LOGS?: Array<{ tag: string; id?: string; detail?: unknown; url?: string; t: number }>;
+        __itemCommentPatched?: boolean;
+        commentCountsByItemId?: Map<string, number>;
+        generalStore?: typeof generalStore;
+        localStorage?: Storage;
+    }
+    interface Items {
+        __commentPatchApplied?: boolean;
+    }
+}
 
 interface Props {
     pageItem?: Item; // undefined を許容して常時マウント可能に
@@ -51,15 +64,15 @@ onMount(() => {
         try {
             window.addEventListener('item-comment-count', (e: Event) => {
                 try {
-                    const ce = e as CustomEvent<any>;
-                    const W:any = (window as any);
+                    const ce = e as CustomEvent;
+                    const W = window;
                     if (Array.isArray(W.E2E_LOGS)) W.E2E_LOGS.push({ tag: 'item-comment-count', detail: ce?.detail, t: Date.now() });
                 } catch {}
             });
         } catch {}
 
         try {
-            const W:any = (typeof window !== 'undefined') ? (window as any) : null;
+            const W = (typeof window !== 'undefined') ? window : null;
             if (W && !W.__itemCommentPatched) {
                 W.__itemCommentPatched = true;
     // Log moved from module scope to avoid initial-value capture warnings
@@ -82,11 +95,11 @@ onMount(() => {
         console.log("OutlinerBase script completed successfully");
     } catch {}
 
-                const ItemCls: any = Item;
+                const ItemCls = Item;
 
-                const ensureCommentsArrayOn = (target: any) => {
+                const ensureCommentsArrayOn = (target: Item) => {
                     try {
-                        const map: any = target?.value;
+                        const map: Y.Map<ItemValueType> = target?.value as Y.Map<ItemValueType>;
                         if (!map || typeof map.get !== "function" || typeof map.set !== "function") return null;
                         let arr = map.get?.("comments");
                         if (!arr) {
@@ -105,7 +118,7 @@ onMount(() => {
                             const arr = ensureCommentsArrayOn(this);
                             if (!arr) {
                                 const fallback = new Y.Array();
-                                try { (this as any)?.value?.set?.("comments", fallback); } catch {}
+                                try { this?.value?.set?.("comments", fallback); } catch {}
                                 return new Comments(fallback);
                             }
                             return new Comments(arr);
@@ -113,7 +126,7 @@ onMount(() => {
                     });
                 }
 
-                const broadcastCommentCount = (ctx: any) => {
+                const broadcastCommentCount = (ctx: Item) => {
                     const arr = ensureCommentsArrayOn(ctx);
                     const len = arr?.length ?? 0;
                     W.commentCountsByItemId = W.commentCountsByItemId || new Map();
@@ -126,7 +139,7 @@ onMount(() => {
 
                 const origAdd = typeof ItemCls.prototype.addComment === "function" ? ItemCls.prototype.addComment : null;
                 ItemCls.prototype.addComment = function(author: string, text: string) {
-                    let result: any;
+                    let result: ReturnType<Comments['addComment']>;
                     if (origAdd) {
                         result = origAdd.call(this, author, text);
                     } else {
@@ -140,7 +153,7 @@ onMount(() => {
 
                 const origDel = typeof ItemCls.prototype.deleteComment === "function" ? ItemCls.prototype.deleteComment : null;
                 ItemCls.prototype.deleteComment = function(commentId: string) {
-                    let result: any;
+                    let result: ReturnType<Comments['deleteComment']>;
                     if (origDel) {
                         result = origDel.call(this, commentId);
                     } else {
@@ -156,13 +169,13 @@ onMount(() => {
         // Items.at() から返る Item へ一時的に add/deleteComment フックを注入（テストの page.evaluate ルートを確実に捕捉）
         const patchItems = () => {
             try {
-                const gs:any = (typeof window !== 'undefined' && (window as any).generalStore) || generalStore;
-                const pageAny:any = gs?.currentPage;
-                const items:any = pageAny?.items;
-                if (!items || (items as any).__commentPatchApplied) return;
+                const gs = (typeof window !== 'undefined' && window.generalStore) || generalStore;
+                const pageAny = gs?.currentPage;
+                const items = pageAny?.items;
+                if (!items || items.__commentPatchApplied) return;
                 const origAt = items.at?.bind(items);
                 if (typeof origAt !== 'function') return;
-                const patchSingle = (node: any) => {
+                const patchSingle = (node: Item) => {
                     if (!node || node.__commentPatched) return node;
                     node.__commentPatched = true;
                     try {
@@ -173,7 +186,7 @@ onMount(() => {
                                     const arr = ensureCommentsArrayOn(this);
                                     if (!arr) {
                                         const fallbackArr = new Y.Array();
-                                        try { (this as any)?.value?.set?.("comments", fallbackArr); } catch {}
+                                        try { this?.value?.set?.("comments", fallbackArr); } catch {}
                                         return new Comments(fallbackArr);
                                     }
                                     return new Comments(arr);
@@ -218,9 +231,9 @@ onMount(() => {
                     return node;
                 };
 
-                (items as any).__commentPatchApplied = true;
+                items.__commentPatchApplied = true;
                 items.at = function(index:number) {
-                    const it:any = origAt(index);
+                    const it = origAt(index);
                     return patchSingle(it);
                 };
 
@@ -237,12 +250,12 @@ onMount(() => {
         } catch {}
 
     try {
-        const gs: any = (typeof window !== "undefined" && (window as any).generalStore) || generalStore;
+        const gs = (typeof window !== "undefined" && window.generalStore) || generalStore;
         if (!gs?.project) return;
-        const skipSeed = (typeof window !== 'undefined') && (window as any).localStorage?.getItem?.('SKIP_TEST_CONTAINER_SEED') === 'true';
+        const skipSeed = (typeof window !== 'undefined') && window.localStorage?.getItem?.('SKIP_TEST_CONTAINER_SEED') === 'true';
         if (!gs.currentPage && !skipSeed) {
-            const items: any = gs.project.items as any;
-            let found: any = null;
+            const items = gs.project.items;
+            let found = null as Item | null;
             const len = items?.length ?? 0;
             for (let i = 0; i < len; i++) {
                 const p = items.at ? items.at(i) : items[i];
@@ -258,8 +271,8 @@ onMount(() => {
         // E2E stabilization: ensure at least 2 child items exist quickly in test env
         try {
             const isTest = typeof window !== 'undefined' && window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const pageAny: any = gs.currentPage as any;
-            const cpItems: any = pageAny?.items;
+            const pageAny = gs.currentPage;
+            const cpItems = pageAny?.items;
             const curLen = cpItems?.length ?? 0;
             if (isTest && pageAny && cpItems && curLen < 3) {
                 const defaults = ["一行目: テスト", "二行目: Yjs 反映", "三行目: 並び順チェック"];
@@ -273,12 +286,12 @@ onMount(() => {
         // ナビゲーション直後など非同期タイミングの取りこぼし対策でもう一度試行
         setTimeout(() => {
             try {
-                const gs2: any = (typeof window !== "undefined" && (window as any).generalStore) || generalStore;
+                const gs2 = (typeof window !== "undefined" && window.generalStore) || generalStore;
 
 
                 if (gs2?.project && !gs2.currentPage) {
-                    const items2: any = gs2.project.items as any;
-                    let found2: any = null;
+                    const items2 = gs2.project.items;
+                    let found2 = null as Item | null;
                     const len2 = items2?.length ?? 0;
                     for (let i = 0; i < len2; i++) {
                         const p = items2.at ? items2.at(i) : items2[i];
@@ -300,7 +313,7 @@ onMount(() => {
 
 <div class="outliner-base" data-testid="outliner-base">
     {#if effectivePageItem}
-        {#key (effectivePageItem?.ydoc ? (effectivePageItem.ydoc as any).guid ?? effectivePageItem.id : effectivePageItem.id)}
+        {#key (effectivePageItem?.ydoc ? (effectivePageItem.ydoc as { guid?: string }).guid ?? effectivePageItem.id : effectivePageItem.id)}
             <OutlinerTree
                 pageItem={effectivePageItem}
                 projectName={projectName}

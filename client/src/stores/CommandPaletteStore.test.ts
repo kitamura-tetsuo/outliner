@@ -1,22 +1,58 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Type definitions for mocks
+interface MockCursor {
+    itemId: string;
+    offset: number;
+    findTarget: ReturnType<typeof vi.fn>;
+    applyToStore: ReturnType<typeof vi.fn>;
+}
+
+interface MockEditorOverlayStore {
+    getCursorInstances: () => MockCursor[];
+}
+
+interface Command {
+    label: string;
+    type: string;
+}
+
+interface Position {
+    top: number;
+    left: number;
+}
+
 // モジュールをモック
 // Provide a local mock instead of importing .svelte.ts in tests
-const mockCursor: any = {
+const mockCursor: MockCursor = {
     itemId: "test-item",
     offset: 5,
     findTarget: vi.fn(() => ({ text: "hello/", updateText: vi.fn() })),
     applyToStore: vi.fn(),
 };
-const mockEditorOverlayStore = { getCursorInstances: vi.fn(() => [mockCursor]) } as any;
+const mockEditorOverlayStore: MockEditorOverlayStore = { getCursorInstances: vi.fn(() => [mockCursor]) };
 vi.mock("./EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockEditorOverlayStore }));
 
 // Access global store if available; otherwise provide a local minimal implementation
 const commandPaletteStore = (() => {
-    const g = globalThis as any;
+    const g = globalThis as typeof globalThis & { commandPaletteStore?: unknown; };
     if (g.commandPaletteStore) return g.commandPaletteStore;
     // Minimal replica sufficient for this test
-    const state: any = {
+    const state: {
+        isVisible: boolean;
+        position: Position;
+        query: string;
+        selectedIndex: number;
+        commands: Command[];
+        _cmdItemId: string | null;
+        _cmdOffset: number;
+        _cmdStart: number;
+        filtered: Command[];
+        show: (pos: Position) => void;
+        hide: () => void;
+        handleCommandInput: (ch: string) => void;
+        handleCommandBackspace: () => void;
+    } = {
         isVisible: false,
         position: { top: 0, left: 0 },
         query: "",
@@ -26,11 +62,14 @@ const commandPaletteStore = (() => {
             { label: "Chart", type: "chart" },
             { label: "Alias", type: "alias" },
         ],
+        _cmdItemId: null,
+        _cmdOffset: 0,
+        _cmdStart: 0,
         get filtered() {
             const q = state.query.toLowerCase();
-            return state.commands.filter((c: any) => c.label.toLowerCase().includes(q));
+            return state.commands.filter((c: Command) => c.label.toLowerCase().includes(q));
         },
-        show(pos: any) {
+        show(pos: Position) {
             state.position = pos;
             state.query = "";
             state.selectedIndex = 0;

@@ -44,14 +44,14 @@ function getAccessibleName(el: HTMLElement): string {
 }
 
 function styles(el: Element | null) {
-    if (!el) return null as any;
+    if (!el) return null;
     const cs = getComputedStyle(el as Element);
     return {
         display: cs.display,
         visibility: cs.visibility,
         opacity: cs.opacity,
         transform: cs.transform,
-        clipPath: (cs as any).clipPath ?? (cs as any)["clip-path"],
+        clipPath: (cs as Partial<CSSStyleDeclaration> & Record<string, string | null>)["clipPath"] ?? (cs as Partial<CSSStyleDeclaration> & Record<string, string | null>)["clip-path"],
         pointerEvents: cs.pointerEvents,
     };
 }
@@ -108,18 +108,18 @@ onMount(async () => {
     try {
         if (!effectiveProject && typeof window !== "undefined") {
             // First, use direct global current project if available
-            const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
+            const cur = (window as Window & { __CURRENT_PROJECT__?: Project; }).__CURRENT_PROJECT__;
             if (cur) {
                 project = cur;
             } else {
                 // Fallback: pick latest project from client registry
-                const reg = (window as any).__FLUID_CLIENT_REGISTRY__;
+                const reg = (window as Window & { __FLUID_CLIENT_REGISTRY__?: { getAllKeys: () => string[]; get: (key: string) => unknown; }; }).__FLUID_CLIENT_REGISTRY__;
                 if (reg && typeof reg.getAllKeys === 'function') {
                     const keys = reg.getAllKeys();
                     if (keys.length > 0) {
                         const last = keys[keys.length - 1];
                         const inst = reg.get(last);
-                        const proj = inst?.[4];
+                        const proj = (inst as [unknown, Project | undefined])?.[1];
                         if (proj) {
                             project = proj;
                         }
@@ -128,7 +128,7 @@ onMount(async () => {
                 if (!project) {
                     const pathParts = window.location.pathname.split("/").filter(Boolean);
                     const projectTitle = pathParts[0] ? decodeURIComponent(pathParts[0]) : "";
-                    const service = (window as any).__FLUID_SERVICE__;
+                    const service = (window as Window & { __FLUID_SERVICE__?: { getClientByProjectTitle?: (title: string) => { getProject: () => Project; }; getFluidClientByProjectTitle?: (title: string) => { getProject: () => Project; }; }; }).__FLUID_SERVICE__;
                     if (service && projectTitle) {
                         const client = await (service.getClientByProjectTitle?.(projectTitle) ?? service.getFluidClientByProjectTitle?.(projectTitle));
                         if (client) {

@@ -54,7 +54,7 @@ export class YjsClient {
             const title = project?.title ?? "";
             connectedProject = Project.fromDoc(doc);
             try {
-                const meta = doc.getMap("metadata") as any;
+                const meta = doc.getMap("metadata") as Y.Map<unknown>;
                 if (title && !meta.get("title")) meta.set("title", title);
             } catch {}
         } catch {}
@@ -83,7 +83,7 @@ export class YjsClient {
         return this._getPageConnection?.(pageId);
     }
 
-    public updatePresence(state: { cursor?: { itemId: string; offset: number; }; selection?: any; } | null) {
+    public updatePresence(state: { cursor?: { itemId: string; offset: number; }; selection?: unknown; } | null) {
         if (!this._awareness) return;
         yjsService.setPresence(this._awareness, state);
     }
@@ -104,7 +104,7 @@ export class YjsClient {
     public get isContainerConnected(): boolean {
         try {
             // WebsocketProvider has a private flag; infer from wsconnected when available
-            const p: any = this._provider;
+            const p = this._provider;
             if (!p) return true; // treat offline as connected for local mode
             return !!(p.wsconnected ?? p.connected ?? p._connected ?? false);
         } catch {
@@ -123,23 +123,33 @@ export class YjsClient {
     // Debug helpers similar to FluidClient
     getAllData() {
         const items = this.project.items as Items;
-        const collect = (it: Items | any): any => {
-            const arr: any[] = [];
-            const len = (it as any).length ?? 0;
+        const collect = (it: Items | unknown): unknown => {
+            const arr: unknown[] = [];
+            const len = (it as Items).length ?? 0;
             for (let i = 0; i < len; i++) {
-                const item = (it as any).at ? (it as any).at(i) : (it as any)[i];
+                const item = (it as Items).at ? (it as Items).at(i) : (it as unknown as Items)[i];
                 if (!item) continue;
-                const node: any = {
-                    id: item.id,
-                    text: item.text?.toString?.() ?? "",
-                    author: (item as any).author,
-                    votes: [...((item as any).votes ?? [])],
-                    created: (item as any).created,
-                    lastChanged: (item as any).lastChanged,
+                const itemData = item as unknown as {
+                    id?: string;
+                    text?: { toString?: () => string; };
+                    author?: string;
+                    votes?: unknown[];
+                    created?: number;
+                    lastChanged?: number;
+                    items?: Items;
                 };
-                const children = item.items as Items;
-                if (children && ((children as any).length ?? 0) > 0) {
-                    node.items = collect(children);
+                const node: unknown = {
+                    id: itemData.id || "",
+                    text: itemData.text?.toString?.() ?? "",
+                    author: itemData.author,
+                    votes: [...(itemData.votes ?? [])],
+                    created: itemData.created,
+                    lastChanged: itemData.lastChanged,
+                };
+                const children = itemData.items as Items;
+                if (children && (children.length ?? 0) > 0) {
+                    const nodeObj = node as { items?: unknown; };
+                    nodeObj.items = collect(children);
                 }
                 arr.push(node);
             }
@@ -152,30 +162,34 @@ export class YjsClient {
         const treeData = this.getAllData();
         if (!path) return treeData;
         const parts = path.split(".");
-        let result: any = treeData;
+        let result: unknown = treeData;
         for (const part of parts) {
             if (result === undefined || result === null) return null;
-            result = result[part];
+            result = (result as Record<string, unknown>)[part];
         }
         return result;
     }
 
     public async createPage(pageName: string, lines: string[]): Promise<void> {
         const pageItem = (this.project.items as Items).addNode("user");
-        (pageItem.text as any).insert?.(0, pageName);
+        const textType = pageItem.text as unknown as { insert?: (offset: number, text: string) => void; };
+        textType.insert?.(0, pageName);
         const pageChildren = pageItem.items as Items;
         for (const line of lines) {
             const item = pageChildren.addNode("user");
-            (item.text as any).insert?.(0, line);
+            const itemTextType = item.text as unknown as { insert?: (offset: number, text: string) => void; };
+            itemTextType.insert?.(0, line);
         }
     }
 
     public dispose() {
         try {
-            (this._provider as any)?.destroy?.();
+            const provider = this._provider as unknown as { destroy?: () => void; };
+            provider.destroy?.();
         } catch {}
         try {
-            (this._doc as any)?.destroy?.();
+            const doc = this._doc as unknown as { destroy?: () => void; };
+            doc.destroy?.();
         } catch {}
         try {
             presenceStore.getUsers().forEach(u => presenceStore.removeUser(u.userId));

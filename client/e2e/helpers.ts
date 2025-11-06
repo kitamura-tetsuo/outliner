@@ -78,12 +78,11 @@ declare global {
         mockUser?: { id: string; name: string; email?: string; };
         getYjsTreeDebugData?: () => any;
         getYjsTreePathData?: (path?: string) => any;
-        getCursorDebugData?: () => any;
-        getCursorPathData?: (path?: string) => any;
+        getCursorDebugData?: () => unknown;
+        getCursorPathData?: (path?: string) => unknown;
         _alertMessage?: string | null;
         __SVELTE_GOTO__?: any;
         generalStore?: any;
-        editorOverlayStore?: any;
         ScrapboxFormatter?: any;
         __FIRESTORE_STORE__?: any;
     }

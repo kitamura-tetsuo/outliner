@@ -3,7 +3,7 @@ import { store as generalStore } from "../../stores/store.svelte";
 
 function collectChildren(node: Item): Item[] {
     const items = node.items as Iterable<Item> | undefined;
-    if (!items || typeof (items as any)[Symbol.iterator] !== "function") {
+    if (!items || typeof (items as Iterable<unknown>)[Symbol.iterator] !== "function") {
         return [];
     }
 
@@ -37,6 +37,10 @@ export function findPreviousItem(currentItemId: string): Item | undefined {
     const root = generalStore.currentPage as unknown as Item | undefined;
     if (!root) return undefined;
 
+    if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
+        console.log(`findPreviousItem called for currentItemId=${currentItemId}, root.id=${root.id}`);
+    }
+
     return findPreviousItemRecursive(root, currentItemId);
 }
 
@@ -48,14 +52,16 @@ function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item
     const children = collectChildren(node);
     for (let i = 0; i < children.length; i++) {
         const child = children[i];
-        const prevForChild = i > 0 ? getDeepestDescendant(children[i - 1]) : node;
+        const prevForChild = i > 0 ? getDeepestDescendant(children[i - 1]) : undefined;
 
         if (child.id === targetId) {
             return prevForChild;
         }
 
         const found = findPreviousItemRecursive(child, targetId, prevForChild);
-        if (found) return found;
+        if (found) {
+            return found;
+        }
     }
 
     return undefined;
@@ -142,4 +148,20 @@ export function searchItem(node: Item, id: string): Item | undefined {
     }
 
     return undefined;
+}
+
+/**
+ * Debug function to dump the tree structure
+ */
+export function dumpTree(node: Item, indent: number = 0): string {
+    const spaces = "  ".repeat(indent);
+    const text = (node.text as string) || "";
+    const result = `${spaces}- ${node.id} "${text.substring(0, 20)}"${text.length > 20 ? "..." : ""}\n`;
+
+    const children = collectChildren(node);
+    for (const child of children) {
+        result += dumpTree(child, indent + 1);
+    }
+
+    return result;
 }

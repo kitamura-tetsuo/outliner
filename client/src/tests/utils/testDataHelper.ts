@@ -27,7 +27,8 @@ export function createTestUserData(): TestUserContainer {
     };
 
     // Set test data in firestoreStore using public API to ensure reactivity wrapping
-    (firestoreStore as any).setUserContainer(testUserContainer as any);
+    (firestoreStore as typeof firestoreStore & { setUserContainer?: (data: TestUserContainer) => void; })
+        .setUserContainer!(testUserContainer);
 
     return testUserContainer;
 }
@@ -58,7 +59,9 @@ export function setupTestEnvironment(): TestUserContainer {
  */
 export async function performTestLogin(): Promise<void> {
     try {
-        const userManager = (window as any).__USER_MANAGER__;
+        const userManager = (window as Window & {
+            __USER_MANAGER__?: { loginWithEmailPassword?: (email: string, password: string) => Promise<void>; };
+        }).__USER_MANAGER__;
         if (userManager && userManager.loginWithEmailPassword) {
             await userManager.loginWithEmailPassword("test@example.com", "password");
             console.log("Manual test login successful");
@@ -77,8 +80,14 @@ export async function performTestLogin(): Promise<void> {
  */
 export function logDebugInfo(): void {
     console.log("=== Test Debug Info ===");
-    console.log("Current user:", (window as any).__USER_MANAGER__?.getCurrentUser());
-    console.log("Auth state:", (window as any).__USER_MANAGER__?.auth?.currentUser);
+    console.log(
+        "Current user:",
+        (window as Window & { __USER_MANAGER__?: unknown; })?.__USER_MANAGER__?.getCurrentUser?.(),
+    );
+    console.log(
+        "Auth state:",
+        (window as Window & { __USER_MANAGER__?: unknown; })?.__USER_MANAGER__?.auth?.currentUser,
+    );
     console.log("Firestore userContainer:", firestoreStore.userContainer);
     console.log("======================");
 }
@@ -91,7 +100,7 @@ if (typeof window !== "undefined") {
         || window.location.hostname === "localhost";
 
     if (isTestEnv) {
-        (window as any).__TEST_DATA_HELPER__ = {
+        (window as Window & { __TEST_DATA_HELPER__?: unknown; }).__TEST_DATA_HELPER__ = {
             createTestUserData,
             clearTestData,
             setupTestEnvironment,

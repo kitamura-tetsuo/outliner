@@ -78,38 +78,39 @@ export async function initPollingMonitor(page: Page) {
                     return this.originalSetInterval(wrappedCallback, delay, ...args);
                 };
 
-                window.setTimeout = (callback: any, delay?: number, ...args: any[]): any => {
-                    const stack = new Error().stack || "";
-                    const id = this.nextId++;
-                    const disabled = this.disablePatterns.some(p => p.test(stack));
+                window.setTimeout =
+                    ((callback: (...args: unknown[]) => void, delay?: number, ...args: unknown[]): number => {
+                        const stack = new Error().stack || "";
+                        const id = this.nextId++;
+                        const disabled = this.disablePatterns.some(p => p.test(stack));
 
-                    this.calls.set(id, {
-                        id,
-                        type: "setTimeout",
-                        delay,
-                        stack,
-                        createdAt: Date.now(),
-                        executionCount: 0,
-                        disabled,
-                    });
+                        this.calls.set(id, {
+                            id,
+                            type: "setTimeout",
+                            delay,
+                            stack,
+                            createdAt: Date.now(),
+                            executionCount: 0,
+                            disabled,
+                        });
 
-                    if (disabled) {
-                        console.log(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);
-                        return id;
-                    }
-
-                    const wrappedCallback = (...callbackArgs: any[]) => {
-                        const call = this.calls.get(id);
-                        if (call) {
-                            call.executionCount++;
-                            call.lastExecutedAt = Date.now();
+                        if (disabled) {
+                            console.log(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);
+                            return id;
                         }
-                        this.calls.delete(id);
-                        return callback(...callbackArgs);
-                    };
 
-                    return this.originalSetTimeout(wrappedCallback, delay, ...args);
-                };
+                        const wrappedCallback = (...callbackArgs: unknown[]) => {
+                            const call = this.calls.get(id);
+                            if (call) {
+                                call.executionCount++;
+                                call.lastExecutedAt = Date.now();
+                            }
+                            this.calls.delete(id);
+                            return callback(...callbackArgs);
+                        };
+
+                        return this.originalSetTimeout(wrappedCallback, delay, ...args);
+                    }) as typeof window.setTimeout;
             }
 
             addDisablePattern(pattern: RegExp) {

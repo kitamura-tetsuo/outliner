@@ -1,4 +1,4 @@
-import { type Browser, expect, type Page } from "@playwright/test";
+import { type Browser, expect, type Page, type TestInfo } from "@playwright/test";
 import { startCoverage, stopCoverage } from "../helpers/coverage.js";
 import { CursorValidator } from "./cursorValidation.js";
 
@@ -111,7 +111,7 @@ export class TestHelpers {
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
         // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+        return await TestHelpers.navigateToTestProjectPage(page, lines, testInfo as TestInfo | undefined, browser);
     }
 
     /**
@@ -162,34 +162,35 @@ export class TestHelpers {
                 || (window as Window & Record<string, any>).generalStore;
             if (!store || !store.pages) return [] as Array<{ id: string; text: string; }>;
 
-            const toArray = (p: unknown) => {
-                if (!p) return [] as any[];
+            const toArray = (p: unknown): unknown[] => {
+                if (!p) return [];
                 try {
                     if (Array.isArray(p)) return p;
-                    if (typeof p === "object" && p !== null && typeof (p as any)[Symbol.iterator] === "function") {
+                    if (typeof p === "object" && p !== null && Symbol.iterator in p) {
                         return Array.from(p as Iterable<unknown>);
                     }
                     const len = (p as { length?: number; }).length;
                     if (typeof len === "number" && len >= 0) {
-                        const r: any[] = [];
+                        const r: unknown[] = [];
                         for (let i = 0; i < len; i++) {
-                            const v = (p as any).at ? p.at(i) : (p as any)[i];
+                            const v = (p as { at?: (index: number) => unknown; })[i];
                             if (typeof v !== "undefined") r.push(v);
                         }
                         return r;
                     }
                 } catch {}
-                return Object.values(p).filter((x: any) =>
+                return Object.values(p as Record<string, unknown>).filter((x: unknown) =>
                     x && typeof x === "object" && x !== null && ("id" in x || "text" in x)
                 );
             };
 
             const pages = toArray(store.pages.current);
-            return pages.map((p: any) => {
-                const textVal = (p?.text && typeof (p.text as { toString?: unknown; }).toString === "function")
-                    ? (p.text as any).toString()
-                    : String(p?.text ?? "");
-                return { id: String(p.id), text: textVal };
+            return pages.map((p: unknown) => {
+                const page = p as { id?: unknown; text?: unknown; toString?: () => string; };
+                const textVal = (page?.text && typeof (page.text as { toString?: unknown; }).toString === "function")
+                    ? String(page.text.toString())
+                    : String(page?.text ?? "");
+                return { id: String(page.id), text: textVal };
             });
         });
     }
@@ -393,10 +394,19 @@ export class TestHelpers {
 
                     try {
                         // カーソル情報を取得
-                        const cursors = Object.values(editorOverlayStore.cursors);
-                        const selections = Object.values(editorOverlayStore.selections);
-                        const activeItemId = editorOverlayStore.activeItemId;
-                        const cursorVisible = editorOverlayStore.cursorVisible;
+                        const store = editorOverlayStore as {
+                            cursors?: unknown;
+                            selections?: unknown;
+                            activeItemId?: unknown;
+                            cursorVisible?: unknown;
+                            cursorInstances?:
+                                | { forEach?: (cb: (value: unknown, key: string) => void) => void; }
+                                | unknown;
+                        };
+                        const cursors = Object.values(store.cursors || {});
+                        const selections = Object.values(store.selections || {});
+                        const activeItemId = store.activeItemId;
+                        const cursorVisible = store.cursorVisible;
 
                         // カーソルインスタンスの情報を取得
                         const cursorInstances: Array<{
@@ -407,15 +417,24 @@ export class TestHelpers {
                             userId: string;
                         }> = [];
 
-                        editorOverlayStore.cursorInstances.forEach((cursor: any, id: string) => {
-                            cursorInstances.push({
-                                cursorId: id,
-                                itemId: cursor.itemId,
-                                offset: cursor.offset,
-                                isActive: cursor.isActive,
-                                userId: cursor.userId,
+                        const cursorInstancesObj = store.cursorInstances as { [key: string]: unknown; } | undefined;
+                        if (cursorInstancesObj) {
+                            Object.entries(cursorInstancesObj).forEach(([id, cursor]) => {
+                                const c = cursor as {
+                                    itemId?: unknown;
+                                    offset?: unknown;
+                                    isActive?: unknown;
+                                    userId?: unknown;
+                                };
+                                cursorInstances.push({
+                                    cursorId: id,
+                                    itemId: String(c.itemId || ""),
+                                    offset: Number(c.offset || 0),
+                                    isActive: Boolean(c.isActive || false),
+                                    userId: String(c.userId || ""),
+                                });
                             });
-                        });
+                        }
 
                         return {
                             cursors,
@@ -665,12 +684,10 @@ export class TestHelpers {
      */
     public static async navigateToTestProjectPage(
         page: Page,
-        testInfo?: any,
         lines: string[],
+        testInfo?: TestInfo,
         _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
-        // Derive worker index for unique naming; default to 1 when testInfo is absent
-        void testInfo;
         void _browser;
         TestHelpers.slog("navigateToTestProjectPage start");
 
@@ -2105,11 +2122,11 @@ export class TestHelpers {
 // グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
 declare global {
     interface Window {
-        getCursorDebugData?: () => any;
-        getCursorPathData?: (path?: string) => any;
-        __testShowLinkPreview?: (pageName: string, projectName?: string) => HTMLElement;
+        getCursorDebugData?: () => unknown;
+        getCursorPathData?: (path?: string) => unknown;
+        __testShowLinkPreview?: (pageName: string, projectName?: string, pageExists?: boolean) => Element;
         _alertMessage?: string | null | undefined;
-        __USER_MANAGER__?: any;
-        editorOverlayStore?: any;
+        __USER_MANAGER__?: import("../../src/auth/UserManager").UserManager;
+        editorOverlayStore?: unknown;
     }
 }

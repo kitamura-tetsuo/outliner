@@ -3,17 +3,18 @@ import { JSDOM } from "jsdom";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getClickPosition, pixelPositionToTextPosition } from "./textUtils";
 
-let originalGetBoundingClientRect: any;
-let originalGetComputedStyle: any;
+let originalGetBoundingClientRect: unknown;
+let originalGetComputedStyle: unknown;
 
 beforeAll(() => {
     // グローバルに DOM をセット
     const dom = new JSDOM("<!DOCTYPE html><body></body>");
-    (global as any).window = dom.window;
-    (global as any).document = dom.window.document;
-    (global as any).Element = dom.window.Element;
-    (global as any).HTMLElement = dom.window.HTMLElement;
-    (global as any).Node = dom.window.Node;
+    (globalThis as typeof globalThis & { window?: typeof dom.window; }).window = dom.window;
+    (globalThis as typeof globalThis & { document?: typeof dom.window.document; }).document = dom.window.document;
+    (globalThis as typeof globalThis & { Element?: typeof dom.window.Element; }).Element = dom.window.Element;
+    (globalThis as typeof globalThis & { HTMLElement?: typeof dom.window.HTMLElement; }).HTMLElement =
+        dom.window.HTMLElement;
+    (globalThis as typeof globalThis & { Node?: typeof dom.window.Node; }).Node = dom.window.Node;
     // getBoundingClientRect をモック: textContent 長さ * 10px
     originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
     Element.prototype.getBoundingClientRect = function() {
@@ -27,7 +28,7 @@ beforeAll(() => {
         fontSize: "",
         fontWeight: "",
         letterSpacing: "",
-    } as any);
+    } as unknown as CSSStyleDeclaration);
 });
 
 afterAll(() => {

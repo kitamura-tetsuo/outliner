@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
+import { Item } from "../../schema/app-schema";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 
@@ -11,12 +12,26 @@ beforeEach(() => aliasPickerStore.reset());
 
 describe("ALS alias path navigation", () => {
     it("enumerates nested item paths", async () => {
-        const items = [
-            { id: "p", text: "parent", items: [{ id: "c", text: "child", items: [] }] },
-            { id: "alias", text: "alias", items: [] },
-        ];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        // Create root item with proper Yjs tree structure
+        generalStore.currentPage = new Item({ id: "root", text: "root" });
         render(AliasPicker);
+
+        // Add parent item with a child
+        if (generalStore.currentPage) {
+            const parent = generalStore.currentPage.items.addNode("author", 0);
+            parent.id = "p";
+            parent.text = "parent";
+
+            // Add child to parent
+            const child = parent.items.addNode("author", 0);
+            child.id = "c";
+            child.text = "child";
+
+            // Add alias item
+            const aliasItem = generalStore.currentPage.items.addNode("author", 1);
+            aliasItem.id = "alias";
+            aliasItem.text = "alias";
+        }
 
         aliasPickerStore.show("alias");
         const options = await screen.findAllByRole("button");

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { describe, expect, it } from "vitest";
-import { firestoreStore } from "../../stores/firestoreStore.svelte";
+import { firestoreStore, type UserContainer } from "../../stores/firestoreStore.svelte";
 import UserContainerDisplay from "../fixtures/UserContainerDisplay.svelte";
 
 // Mirrors e2e/new/cnt-shared-container-store-12ee98aa.spec.ts
@@ -9,14 +9,16 @@ import UserContainerDisplay from "../fixtures/UserContainerDisplay.svelte";
 describe("CNT shared container store", () => {
     it("reflects user container updates", async () => {
         render(UserContainerDisplay);
-        const storeGlobal: any = (globalThis as any).window?.__FIRESTORE_STORE__ ?? firestoreStore;
+        const storeGlobal =
+            (globalThis as typeof window & { __FIRESTORE_STORE__?: typeof firestoreStore; }).window?.__FIRESTORE_STORE__
+                ?? firestoreStore;
         storeGlobal.setUserContainer({
             userId: "u",
             accessibleContainerIds: ["a"],
             defaultContainerId: "a",
             createdAt: new Date(),
             updatedAt: new Date(),
-        } as any);
+        } as UserContainer);
         await tick();
         await tick();
         // store 自体は更新されているか（デバッグ用アサーション）
@@ -32,7 +34,7 @@ describe("CNT shared container store", () => {
             defaultContainerId: "b",
             createdAt: new Date(),
             updatedAt: new Date(),
-        } as any);
+        } as UserContainer);
         await tick();
         expect(screen.getByTestId("default").textContent).toBe("b");
         expect(screen.getAllByRole("listitem").map(li => li.textContent)).toEqual(["a", "b"]);

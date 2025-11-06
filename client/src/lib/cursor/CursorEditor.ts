@@ -5,6 +5,9 @@ import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.sve
 import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
+
+// Re-export SelectionRange for use in other modules
+export type { SelectionRange };
 import {
     getSelectionForUser,
     getSingleItemSelectionForUser,
@@ -172,19 +175,27 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const text: string = (target.text as any)?.toString?.() ?? "";
+        const text: string = target.text?.toString?.() ?? "";
         const beforeText = text.slice(0, cursor.offset);
         const afterText = text.slice(cursor.offset);
         const pageTitle = isPageItem(target);
 
+        console.log(
+            `[DEBUG] insertLineBreak: itemId=${cursor.itemId}, offset=${cursor.offset}, text="${text}", beforeText="${beforeText}", afterText="${afterText}", pageTitle=${pageTitle}`,
+        );
+
         if (pageTitle) {
             if (target.items && target.items instanceof Items) {
                 target.updateText(beforeText);
+                console.log(`[DEBUG] After updateText(beforeText), target.text="${target.text?.toString?.() ?? ""}"`);
                 const newItem = target.items.addNode(cursor.userId, 0);
                 newItem.updateText(afterText);
+                console.log(
+                    `[DEBUG] After newItem.updateText(afterText), newItem.text="${newItem.text?.toString?.() ?? ""}"`,
+                );
 
                 const oldItemId = cursor.itemId;
-                const clearCursorAndSelection = (store as any).clearCursorAndSelection;
+                const clearCursorAndSelection = store.clearCursorAndSelection;
                 if (typeof clearCursorAndSelection === "function") {
                     if (typeof clearCursorAndSelection.call === "function") {
                         clearCursorAndSelection.call(store, cursor.userId);
@@ -214,7 +225,7 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as any;
+            const parent = target.parent;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
@@ -228,12 +239,20 @@ export class CursorEditor {
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
                     const currentIndex = itemsCollection.indexOf(target);
                     target.updateText(beforeText);
+                    console.log(
+                        `[DEBUG] After updateText(beforeText), target.text="${target.text?.toString?.() ?? ""}"`,
+                    );
                     const newItem = addNode(cursor.userId, currentIndex + 1);
                     if (!newItem) return;
                     newItem.updateText(afterText);
+                    console.log(
+                        `[DEBUG] After newItem.updateText(afterText), newItem.text="${
+                            newItem.text?.toString?.() ?? ""
+                        }"`,
+                    );
 
                     const oldItemId = cursor.itemId;
-                    const clearCursorAndSelection = (store as any).clearCursorAndSelection;
+                    const clearCursorAndSelection = store.clearCursorAndSelection;
                     if (typeof clearCursorAndSelection === "function") {
                         if (typeof clearCursorAndSelection.call === "function") {
                             clearCursorAndSelection.call(store, cursor.userId);
@@ -377,7 +396,7 @@ export class CursorEditor {
         const combinedText = `${prevText}${currentText}`;
 
         const oldItemId = cursor.itemId;
-        const prevId = (prevItem as any)?.id ?? cursor.itemId;
+        const prevId = prevItem.id ?? cursor.itemId;
         const newOffset = prevText.length;
 
         this.runInTransaction([prevItem, currentItem], () => {
@@ -394,33 +413,27 @@ export class CursorEditor {
         store.startCursorBlink();
     }
 
-    private getPlainText(item: any): string {
+    private getPlainText(item: Item): string {
         if (!item) return "";
-        const textValue = (item as any).text;
+        const textValue = item.text;
         if (typeof textValue === "string") return textValue;
         if (textValue && typeof textValue.toString === "function") {
             try {
                 return textValue.toString();
             } catch {}
         }
-        if (typeof (item as any).getText === "function") {
-            try {
-                const result = (item as any).getText();
-                if (typeof result === "string") return result;
-            } catch {}
-        }
         return "";
     }
 
-    private updateItemText(item: any, text: string) {
+    private updateItemText(item: Item, text: string) {
         if (!item) return;
         if (typeof item.updateText === "function") {
             item.updateText(text);
             return;
         }
 
-        const tree = (item as any)?.tree;
-        const key = (item as any)?.key ?? (item as any)?.id;
+        const tree = item.tree;
+        const key = item.key ?? item.id;
         if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
 
         const value = tree.getNodeValueFromKey(key);
@@ -438,20 +451,20 @@ export class CursorEditor {
         } catch {}
     }
 
-    private deleteItemNode(item: any) {
+    private deleteItemNode(item: Item) {
         if (!item) return;
         if (typeof item.delete === "function") {
             item.delete();
             return;
         }
 
-        const key = (item as any)?.key ?? (item as any)?.id;
+        const key = item.key ?? item.id;
         if (!key) return;
 
         const treeCandidates = [
-            (item as any)?.tree,
-            (item as any)?.parent?.tree,
-            (generalStore as any)?.project?.tree,
+            item.tree,
+            item.parent?.tree,
+            generalStore.project?.tree,
         ];
 
         for (const tree of treeCandidates) {
@@ -464,9 +477,9 @@ export class CursorEditor {
         }
     }
 
-    private runInTransaction(participants: any[], action: () => void) {
+    private runInTransaction(participants: Item[], action: () => void) {
         const doc = participants
-            .map(item => (item as any)?.ydoc)
+            .map(item => item.ydoc)
             .find(candidate => candidate && typeof candidate.transact === "function");
 
         if (doc) {

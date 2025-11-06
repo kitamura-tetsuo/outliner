@@ -8,16 +8,23 @@ vi.mock("../../../auth/UserManager", () => ({
     },
 }));
 
+import type { WebsocketProvider } from "y-websocket";
 import { refreshAuthAndReconnect } from "../../../lib/yjs/tokenRefresh";
 
 describe("refreshAuthAndReconnect", () => {
     it("updates params and reconnects", async () => {
+        // Set NODE_ENV to test to ensure timestamp is appended
+        vi.stubGlobal("process", {
+            ...process,
+            env: { ...process.env, NODE_ENV: "test" },
+        });
+
         const provider = {
             params: {},
             shouldConnect: true,
             wsconnected: false,
             connect: vi.fn(),
-        } as any;
+        } as unknown as WebsocketProvider;
 
         const handler = refreshAuthAndReconnect(provider);
         await handler();

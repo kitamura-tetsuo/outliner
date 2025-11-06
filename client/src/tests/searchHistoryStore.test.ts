@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-let store: any;
+let store: unknown;
 
 function getHistory() {
     return store.history;

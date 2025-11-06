@@ -44,8 +44,8 @@ class CommandPaletteStore {
 
     private deriveQueryFromDoc(): string {
         try {
-            const w: any = typeof window !== "undefined" ? (window as any) : null;
-            const gs: any = w?.generalStore ?? null;
+            const w = typeof window !== "undefined" ? (window as unknown as { [key: string]: unknown; }) : null;
+            const gs: unknown = w?.generalStore ?? null;
 
             // 1) 直近の入力ストリームから推測
             const stream: string = typeof gs?.__lastInputStream === "string" ? gs.__lastInputStream : "";
@@ -75,7 +75,7 @@ class CommandPaletteStore {
 
             // 3) window のキーストリームからのフォールバック
             try {
-                const wAny: any = typeof window !== "undefined" ? (window as any) : null;
+                const wAny = typeof window !== "undefined" ? (window as unknown as { [key: string]: unknown; }) : null;
                 const ks: string = typeof wAny?.__KEYSTREAM__ === "string" ? wAny.__KEYSTREAM__ : "";
                 if (ks) {
                     const lastSlash = ks.lastIndexOf("/");
@@ -101,7 +101,7 @@ class CommandPaletteStore {
                 console.log("[deriveQueryFromDoc] No node found");
                 return "";
             }
-            const text = (node as any).text ?? "";
+            const text = (node as { text?: unknown; }).text ?? "";
             const s = Math.max(0, this.commandStartOffset + 1);
             const e = Math.max(
                 s,
@@ -347,7 +347,7 @@ class CommandPaletteStore {
         if (this.commandCursorItemId) {
             const node = cursor.findTarget();
             if (node) {
-                const raw = (node as any).text ?? "";
+                const raw = (node as { text?: unknown; }).text ?? "";
                 const text = typeof raw === "string" ? raw : (raw?.toString?.() ?? "");
                 const beforeSlash = text.slice(0, this.commandStartOffset);
                 const afterCursor = text.slice(cursor.offset);
@@ -363,7 +363,7 @@ class CommandPaletteStore {
         }
 
         // 常にページ内容のアイテムリストに追加する
-        const generalStore = (window as any).generalStore;
+        const generalStore = (window as Window & { generalStore?: unknown; }).generalStore;
         if (!generalStore?.currentPage?.items) {
             return;
         }
@@ -377,17 +377,25 @@ class CommandPaletteStore {
 
         // テキストは空にして、コンポーネントタイプを設定
         // yjs-schema / app-schema の両方で動作するように updateText を使用
-        if (typeof (newItem as any).updateText === "function") (newItem as any).updateText("");
-        else (newItem as any).text = "";
+        const newItemObj = newItem as { updateText?: (text: string) => void; text?: unknown; };
+        if (typeof newItemObj.updateText === "function") newItemObj.updateText("");
+        else newItemObj.text = "";
 
-        const setMapField = (it: any, key: string, value: any) => {
+        const setMapField = (it: unknown, key: string, value: unknown) => {
             try {
-                const tree = it?.tree;
-                const nodeKey = it?.key;
-                const m = tree?.getNodeValueFromKey?.(nodeKey);
-                if (m && typeof m.set === "function") {
-                    m.set(key, value);
-                    if (key !== "lastChanged") m.set("lastChanged", Date.now());
+                const item = it as { tree?: unknown; key?: unknown; };
+                const tree = item?.tree;
+                const nodeKey = item?.key;
+                const m = tree as { getNodeValueFromKey?: (key: unknown) => unknown; };
+                const node = m?.getNodeValueFromKey?.(nodeKey);
+                if (
+                    node && typeof node === "object" && node !== null && "set" in node
+                    && typeof (node as { set: (k: unknown, v: unknown) => void; }).set === "function"
+                ) {
+                    (node as { set: (k: unknown, v: unknown) => void; }).set(key, value);
+                    if (key !== "lastChanged") {
+                        (node as { set: (k: unknown, v: unknown) => void; }).set("lastChanged", Date.now());
+                    }
                     return true;
                 }
             } catch {}
@@ -396,7 +404,7 @@ class CommandPaletteStore {
 
         if (type === "alias") {
             if (!setMapField(newItem, "aliasTargetId", undefined)) {
-                (newItem as any).aliasTargetId = undefined;
+                (newItem as { aliasTargetId?: unknown; }).aliasTargetId = undefined;
             }
             try {
                 console.log("[CommandPaletteStore.insert] showing AliasPicker for new item:", newItem.id);
@@ -405,7 +413,7 @@ class CommandPaletteStore {
         } else {
             // componentType を安全に設定
             if (!setMapField(newItem, "componentType", type)) {
-                (newItem as any).componentType = type;
+                (newItem as { componentType?: unknown; }).componentType = type;
             }
         }
         editorOverlayStore.clearCursorAndSelection(cursor.userId);
@@ -439,5 +447,5 @@ export const commandPaletteStore = $state(new CommandPaletteStore());
 
 // expose for debugging and test access without importing .svelte.ts
 if (typeof window !== "undefined") {
-    (window as any).commandPaletteStore = commandPaletteStore;
+    (window as Window & { commandPaletteStore?: unknown; }).commandPaletteStore = commandPaletteStore;
 }

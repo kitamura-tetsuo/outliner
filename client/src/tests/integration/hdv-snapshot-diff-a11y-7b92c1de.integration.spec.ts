@@ -22,7 +22,7 @@ vi.mock("../../services", () => {
 describe("HDV: SnapshotDiffModal a11y - li に onclick を持たない", () => {
     beforeEach(() => {
         // JSDOM/Testing Library 上では window の型がランタイムと一致しないことがあるため
-        // 以降の (window as any) 利用は Playwright/JSDOM の型不定性に伴う安全な緩和です。
+        // 以降の window as { [key: string]: unknown } 利用は Playwright/JSDOM の型不定性に伴う安全な緩和です。
     });
 
     it("スナップショット選択は button のクリックで動作し、li には onclick が無い", async () => {

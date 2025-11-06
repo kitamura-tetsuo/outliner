@@ -3,7 +3,12 @@ import { mapEdit } from "../services/editMapper";
 import { applyEdit, queryStore } from "../services/sqlService";
 import { onDestroy, onMount } from "svelte";
 
-let data = $state({ rows: [], columnsMeta: [] } as any);
+interface GridData {
+    rows: Array<Record<string, string>>;
+    columnsMeta: Array<{ name: string }>;
+}
+
+let data = $state<GridData>({ rows: [], columnsMeta: [] });
 let editingCell = $state<{ rowIndex: number; columnKey: string; } | null>(null);
 let draggedColumnIndex = $state<number | null>(null);
 let draggedRowIndex = $state<number | null>(null);
@@ -17,7 +22,7 @@ onMount(() => {
 });
 onDestroy(() => { try { __unsubscribe?.(); } catch {} });
 
-function handleCellEdit(rowIndex: number, columnKey: string, newValue: any) {
+function handleCellEdit(rowIndex: number, columnKey: string, newValue: string) {
     const row = data.rows[rowIndex];
     const info = mapEdit(data.columnsMeta, row, columnKey);
     if (info) {

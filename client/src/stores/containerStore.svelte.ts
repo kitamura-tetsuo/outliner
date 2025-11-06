@@ -87,14 +87,19 @@ if (typeof window !== "undefined") {
         || import.meta.env.VITE_IS_TEST === "true"
         || window.location.hostname === "localhost";
     if (isTestEnv) {
-        (window as any).__CONTAINER_STORE__ = containerStore;
+        (window as Window & { __CONTAINER_STORE__?: unknown; }).__CONTAINER_STORE__ = containerStore;
     }
 }
 
 // Hook into firestoreStore updates to keep containers mirrored without polling
-const originalSetUserContainer = (firestoreStore as any).setUserContainer?.bind(firestoreStore);
+const originalSetUserContainer =
+    (firestoreStore as unknown as { setUserContainer?: (value: UserContainer | null) => void; }).setUserContainer?.bind(
+        firestoreStore,
+    );
 if (typeof originalSetUserContainer === "function") {
-    (firestoreStore as any).setUserContainer = (value: UserContainer | null) => {
+    (firestoreStore as unknown as { setUserContainer: (value: UserContainer | null) => void; }).setUserContainer = (
+        value: UserContainer | null,
+    ) => {
         originalSetUserContainer(value);
         try {
             containerStore.syncFromFirestore();

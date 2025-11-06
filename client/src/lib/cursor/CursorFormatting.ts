@@ -1,12 +1,14 @@
 // import type { Item } from "../../schema/yjs-schema"; // Not used
+import type { Cursor } from "../../lib/Cursor";
+import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 
 export class CursorFormatting {
-    private cursor: any; // Cursorクラスのインスタンスを保持
+    private cursor: Cursor; // Cursorクラスのインスタンスを保持
 
-    constructor(cursor: any) {
+    constructor(cursor: Cursor) {
         this.cursor = cursor;
     }
 
@@ -112,7 +114,7 @@ export class CursorFormatting {
      * 複数アイテムにまたがる選択範囲にScrapbox構文のフォーマットを適用する
      */
     private applyScrapboxFormattingToMultipleItems(
-        selection: any,
+        selection: SelectionRange,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
         // 開始アイテムと終了アイテムのIDを取得

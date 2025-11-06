@@ -13,50 +13,68 @@ function containsLink(text: string, target: string, project: string): boolean {
     return internal.test(text) || projectPattern.test(text);
 }
 
-function toArray(p: any): any[] {
+function toArray(p: unknown): unknown[] {
     try {
         if (Array.isArray(p)) return p;
-        if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
-        const len = p?.length;
+        if (p && typeof p === "object" && Symbol.iterator in p) return Array.from(p as Iterable<unknown>);
+        const obj = p as { length?: unknown; };
+        const len = obj.length;
         if (typeof len === "number" && len >= 0) {
-            const r: any[] = [];
-            for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
+            const r: unknown[] = [];
+            const arrayLike = p as { at?: (i: number) => unknown; [index: number]: unknown; };
+            for (let i = 0; i < len; i++) r.push(arrayLike.at ? arrayLike.at(i) : arrayLike[i]);
             return r;
         }
     } catch {}
-    return [] as any[];
+    return [];
 }
 
-function getText(v: any): string {
+function getText(v: unknown): string {
     try {
         if (typeof v === "string") return v;
-        if (v?.text !== undefined) {
-            const t = v.text;
+        const obj = v as { text?: unknown; };
+        if (obj?.text !== undefined) {
+            const t = obj.text;
             if (typeof t === "string") return t;
-            if (t && typeof t.toString === "function") return t.toString();
+            if (
+                t && typeof t === "object" && "toString" in t
+                && typeof (t as { toString: () => string; }).toString === "function"
+            ) {
+                return (t as { toString: () => string; }).toString();
+            }
         }
-        if (v && typeof v.toString === "function") return v.toString();
+        if (
+            v && typeof v === "object" && v !== null && "toString" in v
+            && typeof (v as { toString: () => string; }).toString === "function"
+        ) {
+            return (v as { toString: () => string; }).toString();
+        }
     } catch {}
     return String(v ?? "");
 }
 
-export function buildGraph(pagesMaybe: any, projectTitle: string): GraphData {
+export function buildGraph(pagesMaybe: unknown, projectTitle?: string): GraphData {
     const pages = toArray(pagesMaybe);
 
-    const nodes = pages.map((p: any) => ({ id: p.id, name: getText(p) }));
+    const nodes = pages.map((p: unknown) => {
+        const obj = p as { id?: unknown; text?: unknown; };
+        return { id: String(obj.id ?? ""), name: getText(p) };
+    });
     const links: { source: string; target: string; }[] = [];
 
     for (const src of pages) {
+        const srcObj = src as { id?: unknown; items?: unknown; text?: unknown; };
         const srcText = getText(src).toLowerCase();
-        const childArr = toArray((src as any).items || []);
-        const childTexts = childArr.map((i: any) => getText(i).toLowerCase());
+        const childArr = toArray((srcObj.items as unknown) || []);
+        const childTexts = childArr.map((i: unknown) => getText(i).toLowerCase());
         const texts = [srcText, ...childTexts];
 
         for (const dst of pages) {
-            if (src.id === dst.id) continue;
+            const dstObj = dst as { id?: unknown; };
+            if (srcObj.id === dstObj.id) continue;
             const target = getText(dst).toLowerCase();
             if (texts.some(t => containsLink(t, target, (projectTitle || "").toLowerCase()))) {
-                links.push({ source: src.id, target: dst.id });
+                links.push({ source: String(srcObj.id ?? ""), target: String(dstObj.id ?? "") });
             }
         }
     }

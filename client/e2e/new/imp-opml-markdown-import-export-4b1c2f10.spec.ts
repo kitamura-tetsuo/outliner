@@ -14,8 +14,8 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("export markdown and opml", async ({ page }, testInfo) => {
-        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, [
+    test("export markdown and opml", async ({ page }) => {
+        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, [
             "Child item",
         ]);
         const encoded = encodeURIComponent(projectName);
@@ -43,8 +43,8 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         expect(opml).toContain("Child item");
     });
 
-    test("import markdown", async ({ page }, testInfo) => {
-        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+    test("import markdown", async ({ page }) => {
+        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, []);
         const encoded = encodeURIComponent(projectName);
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
@@ -88,8 +88,8 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         expect(hasChild).toBeGreaterThan(0);
     });
 
-    test("import opml", async ({ page }, testInfo) => {
-        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+    test("import opml", async ({ page }) => {
+        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, []);
         const encoded = encodeURIComponent(projectName);
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
@@ -129,8 +129,8 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         expect(hasChild).toBeGreaterThan(0);
     });
 
-    test("import nested markdown", async ({ page }, testInfo) => {
-        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
+    test("import nested markdown", async ({ page }) => {
+        const { projectName } = await TestHelpers.navigateToTestProjectPage(page, []);
         const encoded = encodeURIComponent(projectName);
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();

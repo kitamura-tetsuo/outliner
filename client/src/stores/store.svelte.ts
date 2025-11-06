@@ -34,7 +34,7 @@ class GeneralStore {
             if (proj?.ydoc && page?.ydoc && proj.ydoc !== page.ydoc) {
                 const title = page?.text?.toString?.() ?? String(page?.text ?? "");
                 const items = proj.items;
-                let next: any = null;
+                let next: unknown = null;
                 const len = items?.length ?? 0;
                 for (let i = 0; i < len; i++) {
                     const p = items.at ? items.at(i) : items[i];
@@ -55,8 +55,9 @@ class GeneralStore {
                     const prevLen = prevItems?.length ?? 0;
                     const nextLen = nextItems?.length ?? 0;
                     if (prevLen > 0) {
-                        const isPlaceholderChild = (node: any) => {
-                            const text = node?.text?.toString?.() ?? String(node?.text ?? "");
+                        const isPlaceholderChild = (node: unknown) => {
+                            const text = (node as { text?: unknown; })?.text?.toString?.()
+                                ?? String((node as { text?: unknown; })?.text ?? "");
                             if (!text) return true;
                             return text === "一行目: テスト" || text === "二行目: Yjs 反映"
                                 || text === "三行目: 並び順チェック";
@@ -77,17 +78,25 @@ class GeneralStore {
                                 nextItems.removeAt(nextItems.length - 1);
                             }
 
-                            const cloneBranch = (source: any, target: any) => {
+                            const cloneBranch = (source: unknown, target: unknown) => {
                                 if (!source || !target) return;
-                                const length = source?.length ?? 0;
+                                const length = (source as { length?: number; })?.length ?? 0;
                                 for (let index = 0; index < length; index++) {
-                                    const from = source.at ? source.at(index) : source[index];
+                                    const from = (source as { at?: (i: number) => unknown; [i: number]: unknown; }).at
+                                        ? (source as { at: (i: number) => unknown; }).at(index)
+                                        : (source as unknown[])[index];
                                     if (!from) continue;
-                                    const text = from?.text?.toString?.() ?? String(from?.text ?? "");
-                                    const created = target?.addNode?.("tester");
+                                    const text = (from as { text?: unknown; })?.text?.toString?.()
+                                        ?? String((from as { text?: unknown; })?.text ?? "");
+                                    const created = (target as { addNode?: (userId: string) => unknown; })?.addNode?.(
+                                        "tester",
+                                    );
                                     if (!created) continue;
-                                    created.updateText?.(text);
-                                    cloneBranch(from?.items as any, created?.items as any);
+                                    (created as { updateText?: (text: string) => void; })?.updateText?.(text);
+                                    cloneBranch(
+                                        (from as { items?: unknown; })?.items,
+                                        (created as { items?: unknown; })?.items,
+                                    );
                                 }
                             };
                             cloneBranch(prevItems, nextItems);
@@ -96,7 +105,7 @@ class GeneralStore {
                 } catch {
                     // Ignore errors during child item migration
                 }
-                this._currentPage = next as any;
+                this._currentPage = next as unknown;
                 // 通知
                 this._currentPageSubscribers.forEach(fn => {
                     try {
@@ -133,7 +142,9 @@ class GeneralStore {
 
         // Yjs observeDeep でルートツリーを監視し、Svelteの購読にブリッジ
         const project = v;
-        const ymap = (project as any)?.ydoc?.getMap?.("orderedTree");
+        const ymap = (project as unknown as { ydoc?: { getMap?: (name: string) => unknown; }; })?.ydoc?.getMap?.(
+            "orderedTree",
+        );
         const subscribe = createSubscriber((_update) => {
             const handler = (_events: Array<Y.YEvent<unknown>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
                 try {
@@ -169,8 +180,8 @@ export const store = $state(new GeneralStore());
 
 // グローバルに参照できるようにする（ScrapboxFormatter.tsからアクセスするため）
 if (typeof window !== "undefined") {
-    (window as unknown as { appStore: GeneralStore; }).appStore = store;
-    (window as unknown as { generalStore: GeneralStore; }).generalStore = store; // TestHelpersとの互換性のため
+    (window as Window & { appStore?: unknown; generalStore?: unknown; }).appStore = store;
+    (window as Window & { generalStore?: unknown; }).generalStore = store; // TestHelpersとの互換性のため
 
     // 起動直後に仮プロジェクトを用意（本接続が来れば yjsStore が置換）
     try {

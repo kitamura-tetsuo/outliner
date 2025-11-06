@@ -5,11 +5,20 @@ import "../stores/PresenceStore.svelte";
 
 type PresenceUser = { userId: string; userName: string; color: string };
 
+// Type declaration for global presence store
+declare global {
+  interface Window {
+    presenceStore?: {
+      users?: Record<string, PresenceUser>;
+    };
+  }
+}
+
 let users = $state<PresenceUser[]>([]);
 
 function readUsers(): PresenceUser[] {
   try {
-    const store = (globalThis as any).presenceStore;
+    const store = globalThis.presenceStore;
     return store ? Object.values(store.users || {}) : [];
   } catch { return []; }
 }

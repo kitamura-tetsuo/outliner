@@ -1,2 +1,8 @@
-
 .env.keys
+playwright-report/
+test-results/
+coverage/
+.nyc_output/
+dist/
+build/
+.svelte-kit/

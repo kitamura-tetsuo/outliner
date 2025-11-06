@@ -6,7 +6,12 @@ export function refreshAuthAndReconnect(provider: WebsocketProvider): () => Prom
         try {
             const t = await userManager.auth.currentUser?.getIdToken(true);
             if (t) {
-                const p = provider as any;
+                const p = provider as unknown as WebsocketProvider & {
+                    params?: Record<string, string>;
+                    __wsDisabled?: boolean;
+                    wsconnected?: boolean;
+                    connect?: () => void;
+                };
                 const newAuth = process.env.NODE_ENV === "test" ? `${t}:${Date.now()}` : t;
                 p.params = { ...(p.params || {}), auth: newAuth };
                 // WS が無効化されている場合は再接続を行わない（テスト環境抑止）
@@ -14,7 +19,7 @@ export function refreshAuthAndReconnect(provider: WebsocketProvider): () => Prom
                     return;
                 }
                 // disconnect 後でも確実に再接続を試みる（有効時のみ）
-                if (p.wsconnected !== true) p.connect();
+                if (p.wsconnected !== true && p.connect) p.connect();
             }
         } catch {}
     };

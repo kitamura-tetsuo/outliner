@@ -34,7 +34,7 @@ if (process.env.E2E_DISABLE_AUTO_SNAPSHOT !== "1") {
             await Promise.race([savePromise, saveTimeout]);
 
             // Add cleanup to ensure test isolation
-            const cleanupPromise = DataValidationHelpers.tryCleanupAfterEach(page, testInfo);
+            const cleanupPromise = DataValidationHelpers.tryCleanupAfterEach(page);
             const cleanupTimeout = new Promise(resolve =>
                 setTimeout(() => {
                     console.log("[afterEach] Cleanup operation timeout");

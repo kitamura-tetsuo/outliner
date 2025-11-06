@@ -21,16 +21,16 @@ declare module "y-protocols/awareness" {
     }
 
     export class Awareness {
-        constructor(doc: any);
+        constructor(doc: unknown);
         getLocalState(): LocalPresenceState | undefined;
         setLocalStateField<K extends keyof LocalPresenceState>(field: K, value: LocalPresenceState[K]): void;
         on(
             event: "change",
-            cb: (payload: { added: number[]; updated: number[]; removed: number[]; }, origin: any) => void,
+            cb: (payload: { added: number[]; updated: number[]; removed: number[]; }, origin: unknown) => void,
         ): void;
         off(
             event: "change",
-            cb: (payload: { added: number[]; updated: number[]; removed: number[]; }, origin: any) => void,
+            cb: (payload: { added: number[]; updated: number[]; removed: number[]; }, origin: unknown) => void,
         ): void;
         getStates(): Map<number, LocalPresenceState>;
     }

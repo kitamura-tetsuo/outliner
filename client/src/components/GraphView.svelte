@@ -5,18 +5,27 @@ import { onMount } from "svelte";
 import { store } from "../stores/store.svelte";
 import { buildGraph } from "../utils/graphUtils";
 
+// Extended window interface for chart
+declare global {
+    interface Window {
+        __GRAPH_CHART__?: echarts.ECharts;
+    }
+}
+
 let graphDiv: HTMLDivElement;
 let chart: echarts.ECharts | undefined;
 
 function saveLayout() {
     if (!chart) return;
     try {
-        const option = chart.getOption() as any;
+        const option = chart.getOption() as unknown as {
+            series: Array<{ data: Array<{ id: string; x?: number; y?: number; fixed?: boolean }> }>;
+        };
         const nodes = option.series[0].data;
 
         // EChartsの内部状態から実際の位置を取得
         const layoutData = {
-            nodes: nodes.map((n: any) => {
+            nodes: nodes.map((n) => {
                 // EChartsの内部状態から位置を取得
                 const actualPosition = chart?.convertFromPixel({ seriesIndex: 0 }, [n.x || 0, n.y || 0]);
                 return {
@@ -36,7 +45,7 @@ function saveLayout() {
     }
 }
 
-function loadLayout(nodes: any[]) {
+function loadLayout(nodes: Array<{ id: string; x?: number; y?: number; fixed?: boolean }>) {
     try {
         const savedLayout = localStorage.getItem("graph-layout");
         if (!savedLayout) return nodes;
@@ -46,7 +55,7 @@ function loadLayout(nodes: any[]) {
 
         if (layoutData.nodes) {
             for (const savedNode of layoutData.nodes) {
-                const node = nodes.find((n: any) => n.id === savedNode.id);
+                const node = nodes.find((n) => n.id === savedNode.id);
                 if (node && savedNode.x !== undefined && savedNode.y !== undefined) {
                     node.x = savedNode.x;
                     node.y = savedNode.y;
@@ -67,18 +76,21 @@ function update() {
     if (!chart) return;
 
     // storeからデータを取得（Yjs Items 互換: 配列/Iterable/Array-like を許容）
-    const toArray = (p: any) => {
+    const toArray = <T,>(p: unknown): T[] => {
         try {
-            if (Array.isArray(p)) return p;
-            if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
-            const len = p?.length;
+            if (Array.isArray(p)) return p as T[];
+            if (p && typeof (p as { [Symbol.iterator]: unknown })[Symbol.iterator] === "function") {
+                return Array.from(p as Iterable<T>);
+            }
+            const obj = p as { length?: number; at?: (i: number) => unknown; [index: number]: unknown };
+            const len = obj?.length;
             if (typeof len === "number" && len >= 0) {
-                const r: any[] = [];
-                for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
+                const r: T[] = [];
+                for (let i = 0; i < len; i++) r.push(obj.at ? (obj.at(i) as T) : (obj[i] as T));
                 return r;
             }
         } catch {}
-        return [] as any[];
+        return [];
     };
 
     const pages = toArray(store.pages?.current || []);
@@ -112,8 +124,8 @@ function update() {
 
 onMount(() => {
     chart = echarts.init(graphDiv);
-    (window as any).__GRAPH_CHART__ = chart;
-    chart.on("click", (params: any) => {
+    window.__GRAPH_CHART__ = chart;
+    chart.on("click", (params: echarts.ECElementEvent) => {
         if (params.dataType === "node") {
             const pageName = params.data.name;
             const projectName = store.project?.title;
@@ -145,7 +157,11 @@ onMount(() => {
     // React to project structure changes via minimal-granularity Yjs observeDeep on orderedTree
     let detachDocListener: (() => void) | undefined;
     try {
-        const ymap: any = (store.project as any)?.ydoc?.getMap?.("orderedTree");
+        type YDocType = { getMap: (name: string) => { observeDeep: (fn: () => void) => void; unobserveDeep: (fn: () => void) => void } };
+        type ProjectWithYDoc = { ydoc?: YDocType };
+        const project = store.project as ProjectWithYDoc;
+        const ydoc = project?.ydoc;
+        const ymap = ydoc?.getMap?.("orderedTree");
         if (ymap && typeof ymap.observeDeep === "function") {
             const handler = () => { try { update(); } catch {} };
             ymap.observeDeep(handler);

@@ -9,12 +9,12 @@ import { getLogger } from "../lib/logger";
 const logger = getLogger("OutlinerItem");
 
 // Debug/Test flags and logger.debug suppression
-const DEBUG_LOG: boolean = (typeof window !== 'undefined') && (((window as any).__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && ((window as any).__E2E__ === true));
+const DEBUG_LOG: boolean = (typeof window !== 'undefined') && ((window.__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
+const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
-    const __origDebug = (logger as any)?.debug?.bind?.(logger);
-    (logger as any).debug = (...args: any[]) => {
+    const __origDebug = logger.debug?.bind?.(logger);
+    logger.debug = (...args: unknown[]) => {
         if (DEBUG_LOG && __origDebug) { try { __origDebug(...args); } catch {} }
     };
 } catch {}
@@ -26,20 +26,19 @@ import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 
 onMount(() => {
     try {
-        logger.debug("[OutlinerItem] compTypeValue on mount:", (compTypeValue as any)?.current, "id=", model?.id);
+        logger.debug("[OutlinerItem] compTypeValue on mount:", compTypeValue?.current, "id=", model?.id);
     } catch {}
 });
 onMount(() => {
     try {
         if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-            const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W: any = window as any;
-            if (isTest && !W.__E2E_QS_PATCHED) {
+            const isTest = (window as ExtendedWindow).localStorage?.getItem?.('VITE_IS_TEST') === 'true';
+            if (isTest && !(window as ExtendedWindow).__E2E_QS_PATCHED) {
                 const origQS = document.querySelector.bind(document);
                 document.querySelector = ((sel: string) => {
                     try {
                         if (/^\[data-item-id="/.test(sel)) {
-                            const ap: any = W.aliasPickerStore;
+                            const ap = (window as ExtendedWindow).aliasPickerStore;
                             const li = ap?.lastConfirmedItemId;
                             if (li) {
                                 const el = origQS(`[data-item-id="${li}"]`);
@@ -48,8 +47,8 @@ onMount(() => {
                         }
                     } catch {}
                     return origQS(sel);
-                }) as any;
-                W.__E2E_QS_PATCHED = true;
+                });
+                (window as ExtendedWindow).__E2E_QS_PATCHED = true;
             }
         }
     } catch {}
@@ -57,23 +56,22 @@ onMount(() => {
 onMount(() => {
     try {
         if (typeof window !== 'undefined') {
-            const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W:any = window as any;
-            if (isTest && !W.__E2E_GETATTR_PATCHED) {
+            const isTest = (window as ExtendedWindow).localStorage?.getItem?.('VITE_IS_TEST') === 'true';
+            if (isTest && !(window as ExtendedWindow).__E2E_GETATTR_PATCHED) {
                 const origGetAttr = Element.prototype.getAttribute;
                 Element.prototype.getAttribute = function(name: string): string | null {
                     try {
                         if (name === 'data-alias-target-id') {
-                            const ap:any = (window as any).aliasPickerStore;
+                            const ap = (window as ExtendedWindow).aliasPickerStore;
                             const itemId = (this as HTMLElement).getAttribute('data-item-id');
                             if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
                                 return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
                             }
                         }
                     } catch {}
-                    return origGetAttr.call(this, name) as any;
-                } as any;
-                W.__E2E_GETATTR_PATCHED = true;
+                    return origGetAttr.call(this, name);
+                };
+                (window as ExtendedWindow).__E2E_GETATTR_PATCHED = true;
             }
         }
     } catch {}
@@ -82,7 +80,7 @@ onMount(() => {
 
 onMount(() => {
     try {
-        const gs: any = generalStore as any;
+        const gs = generalStore as Record<string, unknown>;
         if (!isPageTitle && index === 0 && (gs.openCommentItemId == null)) {
             gs.openCommentItemId = model.id;
             logger.debug('[OutlinerItem] auto-open comment thread for id=', model.id);
@@ -93,10 +91,10 @@ onMount(() => {
     // Yjs 接続切替などで openCommentItemId が現在のページに存在しない場合、
     // インデックス優先で自動的に再オープン（E2E 安定化）
     try {
-        const gs: any = generalStore as any;
-        const cp: any = gs?.currentPage;
-        const items: any = cp?.items as any;
-        const targetId = gs?.openCommentItemId;
+        const gs = generalStore as Record<string, unknown>;
+        const cp = gs?.currentPage as Record<string, unknown> | undefined;
+        const items = cp?.items as Array<Record<string, unknown>> | undefined;
+        const targetId = gs?.openCommentItemId as string | undefined;
         let exists = false;
         if (items) {
             const len = items?.length ?? 0;
@@ -131,8 +129,66 @@ import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 // These are called in try-catch blocks and are meant to fail silently if not implemented
 const mirrorAttachment = (_url: string) => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
 let attachmentsMirror: string[] = []; // eslint-disable-line @typescript-eslint/no-unused-vars
-let e2eTimer: ReturnType<typeof setInterval> | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-const addNewItem = () => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
+let e2eTimer: ReturnType<typeof setInterval> | undefined;
+const addNewItem = () => {};
+
+// Type definitions for window object extensions
+interface ExtendedWindow extends Window {
+    DEBUG_MODE?: boolean;
+    __E2E_DEBUG__?: boolean;
+    __E2E__?: boolean;
+    __E2E_LAST_FILES__?: File[];
+    __CURRENT_PROJECT_TITLE__?: string;
+    __ITEM_ID_MAP__?: Record<string, string>;
+    __E2E_DROP_HANDLERS__?: Array<(el: Element, ev: DragEvent) => void>;
+    __E2E_FORCE_HANDLE_DROP__?: (el: Element) => void;
+    __E2E_ADD_ATTACHMENT__?: (el: Element, text?: string) => void;
+    lastCopiedText?: string;
+    __E2E_QS_PATCHED?: boolean;
+    __E2E_GETATTR_PATCHED?: boolean;
+    aliasPickerStore?: {
+        lastConfirmedItemId?: string;
+        lastConfirmedTargetId?: string;
+    };
+    VITE_IS_TEST?: string;
+    innerWidth?: number;
+    generalStore?: {
+        currentPage?: {
+            items?: Array<{
+                id?: string;
+                text?: string;
+                addAttachment?: (url: string) => void;
+                attachments?: {
+                    push?: (items: string[]) => void;
+                    toArray?: () => string[];
+                };
+            }>;
+        };
+    };
+}
+
+// Type for items with potential addAttachment method
+interface ItemWithAttachments {
+    id?: string;
+    text?: string;
+    addAttachment?: (url: string) => void;
+    attachments?: {
+        push?: (items: string[]) => void;
+        toArray?: () => string[];
+    };
+}
+
+// Type for event listeners
+type EventListenerOptions = boolean | AddEventListenerOptions;
+type EventListenerOrEventListenerObject = EventListener | EventListenerObject;
+
+// Type for aliasPickerStore
+interface AliasPickerStore {
+    tick?: number;
+    lastConfirmedItemId?: string;
+    lastConfirmedTargetId?: string;
+    lastConfirmedAt?: number;
+}
 
 interface Props {
     model: OutlinerItemViewModel;
@@ -179,8 +235,8 @@ let ensuredComments = $derived.by(() => item.comments);
 // コメント数の購読（Yjsに直接追従）
 
 // コメントスレッドの開閉状態（Svelte 5 の $derived で明示的に購読）
-let openCommentItemId = $derived.by(() => (generalStore as any).openCommentItemId);
-let openCommentItemIndex = $derived.by(() => (generalStore as any).openCommentItemIndex);
+let openCommentItemId = $derived.by(() => (generalStore as Record<string, unknown>).openCommentItemId);
+let openCommentItemIndex = $derived.by(() => (generalStore as Record<string, unknown>).openCommentItemIndex);
 
 
 // コメント数のローカル状態（確実にUIへ反映するため）
@@ -189,17 +245,17 @@ let commentCountLocal = $state(0);
 /**
  * Yjs comments 配列から正規化されたコメント数を取得
  */
-function normalizeCommentCount(arr: any): number {
-    if (!arr || typeof arr.length !== "number") return 0;
-    return Number(arr.length);
+function normalizeCommentCount(arr: unknown): number {
+    if (!arr || typeof arr !== 'object' || !('length' in arr) || typeof (arr as Record<string, unknown>).length !== "number") return 0;
+    return Number((arr as Record<string, unknown>).length);
 }
 
 /**
  * item.comments が Y.Array であることを確認し、なければ初期化
  */
-function ensureCommentsArray(): any {
+function ensureCommentsArray(): unknown {
     try {
-        const it = item as any;
+        const it = item as Record<string, unknown>;
         if (!it) return null;
         let arr = it.comments;
         if (!arr) {
@@ -242,7 +298,7 @@ function syncCommentCountFromItem() {
 /**
  * コメント数をローカル状態に適用（observe コールバック用）
  */
-function applyCommentCount(arrOrCount: any) {
+function applyCommentCount(arrOrCount: unknown) {
     let newCount: number;
     if (typeof arrOrCount === "number") {
         newCount = arrOrCount;
@@ -284,13 +340,13 @@ onMount(() => {
 
     const handleWindowEvent = (event: Event) => {
         try {
-            const detail = (event as CustomEvent<any>)?.detail;
+            const detail = (event as CustomEvent<Record<string, unknown>>)?.detail;
             if (!detail) return;
-            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
+            const targetId = (detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId) as string | undefined;
             if (targetId == null) return;
             if (String(targetId) !== String(model?.id)) return;
             const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
-            applyCommentCount(possibleCount);
+            applyCommentCount(possibleCount as number);
         } catch {}
     };
 
@@ -322,13 +378,13 @@ const commentCountVisual = $derived.by(() => Number(commentCountLocal ?? 0));
 let aliasTargetId = $state<string | undefined>(item.aliasTargetId);
 onMount(() => {
     try {
-        const anyItem: any = item as any;
-        const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+        const anyItem = item as Record<string, unknown>;
+        const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key) as Record<string, unknown> | undefined;
         if (ymap && typeof ymap.observe === 'function') {
-            const obs = (e?: any) => {
+            const obs = (e?: Record<string, unknown>) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
-                        aliasTargetId = ymap.get?.('aliasTargetId');
+                        aliasTargetId = ymap.get?.('aliasTargetId') as string | undefined;
                     }
                 } catch {}
             };
@@ -343,9 +399,9 @@ onMount(() => {
 // This replaces the polling approach with proper Svelte 5 reactivity
 let aliasLastConfirmedPulse = $derived.by(() => {
     // Subscribe to aliasPickerStore changes
-    const ap: any = aliasPickerStore as any;
-    const li = ap?.lastConfirmedItemId;
-    const lt = ap?.lastConfirmedTargetId;
+    const ap = aliasPickerStore as Record<string, unknown>;
+    const li = ap?.lastConfirmedItemId as string | undefined;
+    const lt = ap?.lastConfirmedTargetId as string | undefined;
     const la = ap?.lastConfirmedAt as number | null;
 
     if (li && lt && la && (Date.now() - la < 6000) && li === model.id) {
@@ -392,13 +448,13 @@ $effect(() => {
 });
 
 const aliasTargetIdEffective = $derived.by(() => {
-    void (aliasPickerStore as any)?.tick;
+    void (aliasPickerStore as Record<string, unknown>)?.tick;
     void aliasLastConfirmedPulse; // Make sure to react to pulse changes
     const base = aliasTargetId;
     if (base) return base;
-    const lastItemId = (aliasPickerStore as any)?.lastConfirmedItemId;
-    const lastTargetId = (aliasPickerStore as any)?.lastConfirmedTargetId;
-    const lastAt = (aliasPickerStore as any)?.lastConfirmedAt as number | null;
+    const lastItemId = (aliasPickerStore as Record<string, unknown>)?.lastConfirmedItemId as string | undefined;
+    const lastTargetId = (aliasPickerStore as Record<string, unknown>)?.lastConfirmedTargetId as string | undefined;
+    const lastAt = (aliasPickerStore as Record<string, unknown>)?.lastConfirmedAt as number | null;
     const isE2E = typeof window !== 'undefined' && window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
     const isEmpty = (textString ?? '').toString().trim().length === 0;
     if (lastTargetId && lastAt && Date.now() - lastAt < 2000) {
@@ -420,19 +476,19 @@ const aliasTargetIdEffective = $derived.by(() => {
 // DOM からドロップ対象の outliner-item を特定して、その Item に添付を追加する（トップレベル定義）
 function addAttachmentToDomTargetOrModel(ev: DragEvent, url: string) {
     try {
-        const w: any = (typeof window !== 'undefined') ? (window as any) : null;
-        const targetEl: any = (ev?.target as any)?.closest?.('.outliner-item') || null;
+        const w = (typeof window !== 'undefined') ? (window as Record<string, unknown>) : null;
+        const targetEl = (ev?.target as Element | null)?.closest?.('.outliner-item') as HTMLElement | null;
         const targetId: string | null = targetEl?.getAttribute?.('data-item-id') ?? null;
-        let targetItem: any = null;
-        if (w && targetId && w.generalStore?.currentPage?.items) {
-            const items: any = w.generalStore.currentPage.items;
+        let targetItem: Record<string, unknown> | null = null;
+        if (w && targetId && (w.generalStore as Record<string, unknown>)?.currentPage?.items) {
+            const items = (w.generalStore as Record<string, unknown>).currentPage?.items as Array<Record<string, unknown>> | undefined;
             const len = items?.length ?? 0;
             for (let i = 0; i < len; i++) {
-                const cand: any = items.at ? items.at(i) : items[i];
+                const cand = items.at ? items.at(i) : items[i];
                 if (String(cand?.id) === String(targetId)) { targetItem = cand; break; }
             }
         }
-        const itm: any = targetItem || (model?.original as any);
+        const itm = targetItem || (model?.original as Record<string, unknown>);
         // まず正式APIを試み、失敗・未定義なら直接Y.Arrayへpushするフォールバック
         // 重複防止
         try {
@@ -463,11 +519,11 @@ let componentType = $state<string | undefined>(undefined);
 function handleComponentTypeChange(newType: string) {
     if (!item) return;
 
-    const setMapField = (it: any, key: string, value: any) => {
+    const setMapField = (it: Record<string, unknown>, key: string, value: unknown) => {
         try {
             const tree = it?.tree;
             const nodeKey = it?.key;
-            const m = tree?.getNodeValueFromKey?.(nodeKey);
+            const m = tree?.getNodeValueFromKey?.(nodeKey) as Record<string, unknown> | undefined;
             if (m && typeof m.set === "function") {
                 m.set(key, value);
                 if (key !== "lastChanged") m.set("lastChanged", Date.now());
@@ -479,13 +535,13 @@ function handleComponentTypeChange(newType: string) {
 
     const value = newType === "none" ? undefined : newType;
     // app-schema の場合は setter があるので優先して使う
-    if ("componentType" in (item as any)) {
-        try { (item as any).componentType = value; } catch {}
+    if ("componentType" in (item as Record<string, unknown>)) {
+        try { (item as Record<string, unknown>).componentType = value; } catch {}
     }
     // yjs-schema / フォールバック
-    setMapField(item as any, "componentType", value);
+    setMapField(item as Record<string, unknown>, "componentType", value);
     // Optimistically update local state so UI reflects the change without waiting for Yjs propagation
-    componentType = value as any;
+    componentType = value as string | undefined;
 }
 
 // Yjs 最小粒度 observe による同期
@@ -495,21 +551,21 @@ let compTypeValue = $state<string | undefined>(undefined);
 onMount(() => {
     let unsubs: Array<() => void> = [];
     try {
-        const anyItem: any = item as any;
+        const anyItem = item as Record<string, unknown>;
         const tree = anyItem?.tree; const key = anyItem?.key;
-        const m = tree?.getNodeValueFromKey?.(key) as any;
-        const t = m?.get?.("text");
+        const m = tree?.getNodeValueFromKey?.(key) as Record<string, unknown> | undefined;
+        const t = m?.get?.("text") as Record<string, unknown> | undefined;
         if (t && typeof t.observe === "function") {
-            const h1 = () => { try { textString = t.toString?.() ?? ""; } catch {} };
+            const h1 = () => { try { textString = (t.toString?.() ?? "") as string; } catch {} };
             t.observe(h1); unsubs.push(() => { try { t.unobserve(h1); } catch {} });
             // 初期反映
             h1();
         }
         if (m && typeof m.observe === "function") {
-            const h2 = (e?: any) => {
+            const h2 = (e?: Record<string, unknown>) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
-                        compTypeValue = m.get?.("componentType");
+                        compTypeValue = m.get?.("componentType") as string | undefined;
                     }
                 } catch {}
             };
@@ -517,7 +573,7 @@ onMount(() => {
             h2();
         } else {
             // フォールバック: 直接取得
-            try { compTypeValue = (anyItem as any).componentType; } catch {}
+            try { compTypeValue = anyItem.componentType as string | undefined; } catch {}
         }
     } catch {}
     return () => { for (const fn of unsubs) { try { fn(); } catch {} } };
@@ -573,13 +629,14 @@ function getClickPosition(event: MouseEvent, content: string): number {
     const textEl = displayRef.querySelector(".item-text") as HTMLElement;
 
     // Caret APIを試す
-    if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
+    if (textEl && (document.caretRangeFromPoint || (document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null }).caretPositionFromPoint)) {
         let range: Range | null = null;
         if (document.caretRangeFromPoint) {
             range = document.caretRangeFromPoint(x, y);
         }
         else {
-            const posInfo = (document as any).caretPositionFromPoint(x, y);
+            const docWithCaret = document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null };
+            const posInfo = docWithCaret.caretPositionFromPoint?.(x, y);
             if (posInfo) {
                 range = document.createRange();
                 range.setStart(posInfo.offsetNode, posInfo.offset);
@@ -724,7 +781,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     const preserveAltClick = event?.altKey === true;
 
     // デバッグ情報
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && (window as Record<string, unknown>).DEBUG_MODE) {
         // Intentionally empty: placeholder for debug logging
     }
 
@@ -855,7 +912,7 @@ function toggleVote() {
 }
 
 function toggleComments() {
-    const gs: any = generalStore as any;
+    const gs = generalStore as Record<string, unknown>;
     if (gs.openCommentItemId === model.id) {
         gs.openCommentItemId = null;
         gs.openCommentItemIndex = null;
@@ -899,7 +956,7 @@ function handleClick(event: MouseEvent) {
         const pos = getClickPosition(event, textString);
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Record<string, unknown>).DEBUG_MODE) {
             // Intentionally empty: placeholder for debug logging
         }
 
@@ -912,7 +969,7 @@ function handleClick(event: MouseEvent) {
         });
 
         // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Record<string, unknown>).DEBUG_MODE) {
             // Intentionally empty: placeholder for debug logging
         }
 
@@ -934,7 +991,7 @@ function handleClick(event: MouseEvent) {
                     textarea.focus();
 
                     // フォーカスが設定されたかチェック
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as ExtendedWindow).DEBUG_MODE) {
                         // Intentionally empty: placeholder for debug logging
                     }
                 }, 10);
@@ -1107,7 +1164,7 @@ function handleMouseMove(event: MouseEvent) {
  */
 function handleBoxSelection(event: MouseEvent, currentPosition: number) {
     // デバッグ情報
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && (window as ExtendedWindow).DEBUG_MODE) {
         // Intentionally empty: placeholder for debug logging
     }
 
@@ -1288,8 +1345,8 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                     let full = el?.textContent || '';
                     if (!full) {
                         // generalStore からのフォールバック
-                        const w: any = (window as any);
-                        const items: any = w?.generalStore?.currentPage?.items;
+                        const w = window as ExtendedWindow;
+                        const items = w?.generalStore?.currentPage?.items;
                         const len = items?.length ?? 0;
                         for (let i = 0; i < len; i++) {
                             const it = items.at ? items.at(i) : items[i];
@@ -1300,7 +1357,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                     const e = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
                     lines.push(full.substring(s, e));
                 }
-                (window as any).lastCopiedText = lines.join('\n');
+                (window as ExtendedWindow).lastCopiedText = lines.join('\n');
             }
         } catch {}
 
@@ -1451,7 +1508,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     if (maybeCustom?.detail && typeof maybeCustom.detail === "object" && "targetItemId" in maybeCustom.detail) {
         logger.debug("OutlinerItem handleDrop: custom event detail", maybeCustom.detail);
         event.preventDefault?.();
-        try { event.stopPropagation?.(); (event as any).stopImmediatePropagation?.(); } catch {}
+        try { event.stopPropagation?.(); (event as Event & { stopImmediatePropagation?: () => void }).stopImmediatePropagation?.(); } catch {}
 
         isDropTarget = false;
 
@@ -1478,7 +1535,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     logger.debug("OutlinerItem handleDrop: event received", event);
     // デフォルト動作を防止
     event.preventDefault();
-    try { event.stopPropagation(); (event as any).stopImmediatePropagation?.(); } catch {}
+    try { event.stopPropagation(); (event as Event & { stopImmediatePropagation?: () => void }).stopImmediatePropagation?.(); } catch {}
 
 
     // ドロップターゲットフラグをクリア
@@ -1491,7 +1548,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     // ファイルドロップ（DataTransfer.files または DataTransfer.items(kind=file) の両対応、もしくは E2E フォールバック）
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
     const hasFileItems = !!dt && dt.items && Array.from(dt.items).some(it => it.kind === "file");
-    const e2eFiles: File[] = (typeof window !== 'undefined' && (window as any).__E2E_LAST_FILES__ && Array.isArray((window as any).__E2E_LAST_FILES__)) ? (window as any).__E2E_LAST_FILES__ as File[] : [];
+    const e2eFiles: File[] = (typeof window !== 'undefined' && (window as ExtendedWindow).__E2E_LAST_FILES__ && Array.isArray((window as ExtendedWindow).__E2E_LAST_FILES__)) ? (window as ExtendedWindow).__E2E_LAST_FILES__ as File[] : [];
     const hasE2eFiles = e2eFiles.length > 0;
 
     if (hasFileList || hasFileItems || hasE2eFiles) {
@@ -1509,7 +1566,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
             } else if (hasE2eFiles) {
                 // Playwright フォールバック: 事前に DataTransfer.items.add で記録された最後のファイル群を使用
                 files.push(...e2eFiles);
-                try { (window as any).__E2E_LAST_FILES__ = []; } catch {}
+                try { (window as ExtendedWindow).__E2E_LAST_FILES__ = []; } catch {}
             }
 
             if (files.length > 0) {
@@ -1518,7 +1575,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                 try { containerId = await getDefaultContainerId(); } catch {}
                 if (!containerId && typeof window !== "undefined") {
                     try { containerId = window.localStorage?.getItem?.("currentContainerId") ?? undefined; } catch {}
-                    try { containerId = containerId || (window as any).__CURRENT_PROJECT_TITLE__; } catch {}
+                    try { containerId = containerId || (window as ExtendedWindow).__CURRENT_PROJECT_TITLE__; } catch {}
                 }
                 containerId = containerId || "test-container";
 
@@ -1533,32 +1590,32 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         // アップロードに失敗してもローカルプレビューでフォールバック（E2E 安定化）
                         try {
                             const localUrl = URL.createObjectURL(file);
-                            try { model.original.addAttachment(localUrl); } catch { try { (model.original as any)?.attachments?.push?.([localUrl]); } catch {} }
+                            try { model.original.addAttachment(localUrl); } catch { try { (model.original as ItemWithAttachments)?.attachments?.push?.([localUrl]); } catch {} }
                             try { mirrorAttachment(localUrl); } catch {}
                             // テスト環境では自ミラーも即時更新 - attachmentsMirror is handled in OutlinerItemAttachments component
                             try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
                             // 接続後Doc への補助反映（IDマップ経由）
                             try {
-                                const w:any = (typeof window !== 'undefined') ? (window as any) : null;
+                                const w = (typeof window !== 'undefined') ? (window as ExtendedWindow) : null;
                                 const map = w?.__ITEM_ID_MAP__;
                                 const mappedId = map ? map[String(model.id)] : undefined;
-                                const curPage:any = w?.generalStore?.currentPage;
+                                const curPage = w?.generalStore?.currentPage;
                                 if (mappedId && curPage?.items) {
                                     const len = curPage.items.length ?? 0;
                                     for (let i = 0; i < len; i++) {
-                                        const cand:any = curPage.items.at ? curPage.items.at(i) : curPage.items[i];
-                                        if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as any)?.attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
+                                        const cand = curPage.items.at ? curPage.items.at(i) : curPage.items[i];
+                                        if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as ItemWithAttachments)?.attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                                     }
                                 }
                             } catch {}
                         } catch {}
-                        logger.error("attachment upload failed", e as any);
+                        logger.error("attachment upload failed", e as unknown);
                     }
                 }
             } else {
                 // E2E最終フォールバック: DataTransfer からファイル取得できなかった場合でも、
                 // テスト環境ではダミー添付を追加して UI 経路（プレビュー表示）を検証可能にする
-                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as any).__E2E__)) {
+                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as ExtendedWindow).__E2E__)) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
@@ -1575,21 +1632,21 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     }
 
     // E2E最終最終フォールバック: DataTransfer が無い/空でもテストではダミー添付を追加
-    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as any).__E2E__)) && (!dt || (((dt as any).files?.length ?? 0) === 0 && ((dt as any).items?.length ?? 0) === 0))) {
+    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as ExtendedWindow).__E2E__)) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
             addAttachmentToDomTargetOrModel(event, localUrl);
 
             try {
-                const w:any = (typeof window !== 'undefined') ? (window as any) : null;
+                const w = (typeof window !== 'undefined') ? (window as ExtendedWindow) : null;
                 const map = w?.__ITEM_ID_MAP__;
                 const mappedId = map ? map[String(model.id)] : undefined;
-                const curPage:any = w?.generalStore?.currentPage;
+                const curPage = w?.generalStore?.currentPage;
                 if (mappedId && curPage?.items) {
                     const len = curPage.items.length ?? 0;
                     for (let i = 0; i < len; i++) {
-                        const cand:any = curPage.items.at ? curPage.items.at(i) : curPage.items[i];
+                        const cand = curPage.items.at ? curPage.items.at(i) : curPage.items[i];
                         if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch {} try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                     }
                 }
@@ -1643,7 +1700,7 @@ onMount(() => {
 
             custom.preventDefault?.();
             custom.stopPropagation?.();
-            (custom as any).stopImmediatePropagation?.();
+            (custom as Event & { stopImmediatePropagation?: () => void }).stopImmediatePropagation?.();
 
             dispatch("drop", {
                 targetItemId: detail.targetItemId ?? model.id,
@@ -1658,42 +1715,42 @@ onMount(() => {
 
         if (displayRef) {
             displayForward = maybeForward;
-            displayRef.addEventListener('synthetic-drop', displayForward as any, { capture: true } as any);
-            displayRef.addEventListener('drop', handleDrop as any, { capture: true } as any);
-            displayRef.addEventListener('drop', handleDrop as any, { capture: false } as any);
-            displayRef.addEventListener('dragover', handleDragOver as any, { capture: true } as any);
-            displayRef.addEventListener('dragover', handleDragOver as any, { capture: false } as any);
+            displayRef.addEventListener('synthetic-drop', displayForward as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
+            displayRef.addEventListener('drop', handleDrop as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
+            displayRef.addEventListener('drop', handleDrop as EventListenerOrEventListenerObject, { capture: false } as EventListenerOptions);
+            displayRef.addEventListener('dragover', handleDragOver as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
+            displayRef.addEventListener('dragover', handleDragOver as EventListenerOrEventListenerObject, { capture: false } as EventListenerOptions);
         }
         if (itemRef) {
             itemForward = maybeForward;
-            itemRef.addEventListener('synthetic-drop', itemForward as any, { capture: true } as any);
-            itemRef.addEventListener('drop', handleDrop as any, { capture: true } as any);
-            itemRef.addEventListener('drop', handleDrop as any, { capture: false } as any);
+            itemRef.addEventListener('synthetic-drop', itemForward as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
+            itemRef.addEventListener('drop', handleDrop as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
+            itemRef.addEventListener('drop', handleDrop as EventListenerOrEventListenerObject, { capture: false } as EventListenerOptions);
         }
     } catch {}
     return () => {
         try {
             if (displayForward) {
-                displayRef?.removeEventListener?.('synthetic-drop', displayForward as any, { capture: true } as any);
+                displayRef?.removeEventListener?.('synthetic-drop', displayForward as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
             }
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: false } as any);
+            displayRef?.removeEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: false } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', handleDragOver as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', handleDragOver as EventListenerOrEventListenerObject, { capture: false } as EventListenerOptions);
             if (itemForward) {
-                itemRef?.removeEventListener?.('synthetic-drop', itemForward as any, { capture: true } as any);
+                itemRef?.removeEventListener?.('synthetic-drop', itemForward as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
             }
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
+            itemRef?.removeEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: false } as EventListenerOptions);
         } catch {}
     };
 });
 // E2E: dispatchEvent フックからの直接通知を受け取り、対象要素が自分の displayRef 配下なら handleDrop を実行
 onMount(() => {
     try {
-        const anyWin: any = (typeof window !== 'undefined') ? window : undefined;
+        const anyWin = (typeof window !== 'undefined') ? (window as ExtendedWindow) : undefined;
         if (!anyWin) return;
-        if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [] as any[];
+        if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [];
         const fn = (el: Element, ev: DragEvent) => {
             try {
                 if (displayRef && (el === displayRef || displayRef.contains(el))) {
@@ -1752,9 +1809,9 @@ onMount(() => {
 
         onDestroy(() => {
             try {
-                const arr: any[] = anyWin.__E2E_DROP_HANDLERS__;
-                const i = arr.indexOf(fn);
-                if (i >= 0) arr.splice(i, 1);
+                const arr = anyWin.__E2E_DROP_HANDLERS__;
+                const i = arr?.indexOf(fn);
+                if (i && i >= 0) arr.splice(i, 1);
             } catch {}
         });
     } catch {}
@@ -1765,12 +1822,12 @@ onMount(() => {
 
 onMount(() => {
     try {
-        displayRef?.addEventListener?.('drop', handleDrop as any, { capture: true });
-        displayRef?.addEventListener?.('drop', handleDrop as any, { capture: false });
-        displayRef?.addEventListener?.('dragover', handleDragOver as any, { capture: true });
-        displayRef?.addEventListener?.('dragover', handleDragOver as any, { capture: false });
-        itemRef?.addEventListener?.('drop', handleDrop as any, { capture: true });
-        itemRef?.addEventListener?.('drop', handleDrop as any, { capture: false });
+        displayRef?.addEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: true });
+        displayRef?.addEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: false });
+        displayRef?.addEventListener?.('dragover', handleDragOver as EventListenerOrEventListenerObject, { capture: true });
+        displayRef?.addEventListener?.('dragover', handleDragOver as EventListenerOrEventListenerObject, { capture: false });
+        itemRef?.addEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: true });
+        itemRef?.addEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: false });
     } catch {}
 
     // E2E file drop support removed - use proper Playwright file drop API instead
@@ -1780,12 +1837,12 @@ onMount(() => {
 
     return () => {
         try {
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: false } as any);
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
+            displayRef?.removeEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: false } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', handleDragOver as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', handleDragOver as EventListenerOrEventListenerObject, { capture: false } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: true } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', handleDrop as EventListenerOrEventListenerObject, { capture: false } as EventListenerOptions);
         } catch {}
         try { if (e2eTimer) clearInterval(e2eTimer); } catch {}
     };
@@ -1897,10 +1954,10 @@ onMount(() => {
     data-item-id={model.id}
     data-active={isItemActive}
     data-alias-target-id={
-        [ (aliasPickerStore as any)?.tick,
+        [ (aliasPickerStore as AliasPickerStore)?.tick,
           (aliasTargetIdEffective
-            || (((aliasPickerStore as any)?.lastConfirmedItemId === model.id)
-                && (aliasPickerStore as any)?.lastConfirmedTargetId)
+            || (((aliasPickerStore as AliasPickerStore)?.lastConfirmedItemId === model.id)
+                && (aliasPickerStore as AliasPickerStore)?.lastConfirmedTargetId)
             || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
             || "") ][1]
     }
@@ -1945,8 +2002,8 @@ onMount(() => {
                             class="item-text"
                             class:title-text={isPageTitle}
                             class:formatted={ScrapboxFormatter.hasFormatting(textString)}
-                            oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
-                            onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
+                            oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as { updateText?: (text: string) => void })?.updateText?.(t); } catch {} }}
+                            onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as { updateText?: (text: string) => void })?.updateText?.(t); } catch {} }}
                         >
                             <!-- XSS-safe: ScrapboxFormatter.formatWithControlChars() escapes HTML before applying formatting -->
                             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -1958,8 +2015,8 @@ onMount(() => {
                             class="item-text"
                             class:title-text={isPageTitle}
                             class:formatted={ScrapboxFormatter.hasFormatting(textString)}
-                            oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
-                            onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
+                            oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as { updateText?: (text: string) => void })?.updateText?.(t); } catch {} }}
+                            onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as { updateText?: (text: string) => void })?.updateText?.(t); } catch {} }}
                         >
                             <!-- XSS-safe: ScrapboxFormatter.formatToHtml() escapes HTML before applying formatting -->
                             <!-- eslint-disable-next-line svelte/no-at-html-tags -->

@@ -1,25 +1,25 @@
-import type { Awareness } from "y-protocols/awareness";
-import { Item, Items, Project } from "../../schema/yjs-schema";
+import type { Awareness, PresenceCursor, PresenceSelection } from "y-protocols/awareness";
+import { Item, Items, Project, YTree } from "../../schema/yjs-schema";
 import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
 
-function childrenKeys(tree: any, parentKey: string): string[] {
+function childrenKeys(tree: YTree, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);
     return tree.sortChildrenByOrder(children, parentKey);
 }
 
 function resolveOverlayStore(): typeof editorOverlayStore | undefined {
-    return (globalThis as any).editorOverlayStore ?? editorOverlayStore;
+    return (globalThis as { editorOverlayStore?: typeof editorOverlayStore; }).editorOverlayStore ?? editorOverlayStore;
 }
 
 function resolvePresenceStore(): typeof presenceStore | undefined {
-    return (globalThis as any).presenceStore ?? presenceStore;
+    return (globalThis as { presenceStore?: typeof presenceStore; }).presenceStore ?? presenceStore;
 }
 
 function resolveUserColor(userId: string, provided?: string): string {
     if (provided) return provided;
-    const globalColorForUser = (globalThis as any).colorForUser as ((id: string) => string) | undefined;
+    const globalColorForUser = (globalThis as { colorForUser?: (id: string) => string; }).colorForUser;
     if (typeof globalColorForUser === "function") {
         try {
             return globalColorForUser(userId);
@@ -31,7 +31,21 @@ function resolveUserColor(userId: string, provided?: string): string {
 function applyPresenceToOverlay(
     overlay: typeof editorOverlayStore | undefined,
     user: { userId: string; name?: string; color?: string; },
-    presence: { cursor?: { itemId: string; offset: number; }; selection?: any; } | null | undefined,
+    presence:
+        | {
+            cursor?: PresenceCursor;
+            selection?: PresenceSelection & {
+                isReversed?: boolean;
+                isBoxSelection?: boolean;
+                boxSelectionRanges?: Array<{
+                    itemId: string;
+                    startOffset: number;
+                    endOffset: number;
+                }>;
+            };
+        }
+        | null
+        | undefined,
 ) {
     if (!overlay || !user) return;
     const color = resolveUserColor(user.userId, user.color);
@@ -77,10 +91,15 @@ export const yjsService = {
     },
 
     moveItem(project: Project, itemKey: string, newParentKey: string, index?: number) {
-        const tree = project.tree as any;
+        const tree = project.tree as unknown as YTree & {
+            moveChildToParent: (childKey: string, parentKey: string) => void;
+            setNodeBefore: (nodeKey: string, target: string) => void;
+            setNodeAfter: (nodeKey: string, target: string) => void;
+            setNodeOrderToEnd: (nodeKey: string) => void;
+        };
         tree.moveChildToParent(itemKey, newParentKey);
         if (index !== undefined) {
-            const siblings = childrenKeys(tree, newParentKey).filter((k: string) => k !== itemKey);
+            const siblings = childrenKeys(tree, newParentKey).filter(k => k !== itemKey);
             const clamped = Math.max(0, Math.min(index, siblings.length));
             if (clamped === 0 && siblings[0]) tree.setNodeBefore(itemKey, siblings[0]);
             else if (clamped >= siblings.length) tree.setNodeOrderToEnd(itemKey);
@@ -93,7 +112,11 @@ export const yjsService = {
     },
 
     indentItem(project: Project, itemKey: string) {
-        const tree = project.tree as any;
+        const tree = project.tree as unknown as YTree & {
+            getNodeParentFromKey: (key: string) => string | undefined;
+            moveChildToParent: (childKey: string, parentKey: string) => void;
+            setNodeOrderToEnd: (nodeKey: string) => void;
+        };
         const parent = tree.getNodeParentFromKey(itemKey);
         if (!parent) return;
         const siblings = childrenKeys(tree, parent);
@@ -106,7 +129,11 @@ export const yjsService = {
     },
 
     outdentItem(project: Project, itemKey: string) {
-        const tree = project.tree as any;
+        const tree = project.tree as unknown as YTree & {
+            getNodeParentFromKey: (key: string) => string | undefined;
+            moveChildToParent: (childKey: string, parentKey: string) => void;
+            setNodeAfter: (nodeKey: string, target: string) => void;
+        };
         const parent = tree.getNodeParentFromKey(itemKey);
         if (!parent) return;
         const grand = tree.getNodeParentFromKey(parent);
@@ -116,10 +143,15 @@ export const yjsService = {
     },
 
     reorderItem(project: Project, itemKey: string, index: number) {
-        const tree = project.tree as any;
+        const tree = project.tree as unknown as YTree & {
+            getNodeParentFromKey: (key: string) => string | undefined;
+            setNodeBefore: (nodeKey: string, target: string) => void;
+            setNodeAfter: (nodeKey: string, target: string) => void;
+            setNodeOrderToEnd: (nodeKey: string) => void;
+        };
         const parent = tree.getNodeParentFromKey(itemKey);
         if (!parent) return;
-        const siblings = childrenKeys(tree, parent).filter((k: string) => k !== itemKey);
+        const siblings = childrenKeys(tree, parent).filter(k => k !== itemKey);
         const clamped = Math.max(0, Math.min(index, siblings.length));
         if (clamped === 0 && siblings[0]) tree.setNodeBefore(itemKey, siblings[0]);
         else if (clamped >= siblings.length) tree.setNodeOrderToEnd(itemKey);
@@ -131,21 +163,27 @@ export const yjsService = {
         item.updateText(text);
     },
 
-    setPresence(awareness: Awareness, state: { cursor?: any; selection?: any; } | null) {
+    setPresence(
+        awareness: Awareness,
+        state: {
+            cursor?: PresenceCursor;
+            selection?: PresenceSelection;
+        } | null,
+    ) {
         awareness.setLocalStateField("presence", state ?? null);
     },
 
     getPresence(awareness: Awareness) {
-        return awareness.getLocalState()?.presence as any;
+        return awareness.getLocalState()?.presence;
     },
 
     bindProjectPresence(awareness: Awareness) {
-        const update = ({ added, updated, removed }: any) => {
+        const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
             // Prefer the globally-registered store when running in the browser.
             const target = resolvePresenceStore();
             if (!target) return;
-            const states = (awareness as any).getStates();
-            const clientId = (awareness as any).clientID;
+            const states = awareness.getStates();
+            const clientId = (awareness as unknown as { clientID: number; }).clientID;
             const overlay = resolveOverlayStore();
 
             [...added, ...updated].forEach((id: number) => {
@@ -172,17 +210,17 @@ export const yjsService = {
                 }
             });
         };
-        (awareness as any).on("change", update);
-        update({ added: Array.from((awareness as any).getStates().keys()), updated: [], removed: [] });
-        return () => (awareness as any).off("change", update);
+        awareness.on("change", update);
+        update({ added: Array.from(awareness.getStates().keys()), updated: [], removed: [] });
+        return () => awareness.off("change", update);
     },
 
     bindPagePresence(awareness: Awareness) {
-        const update = ({ added, updated, removed }: any) => {
+        const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
             const overlay = resolveOverlayStore();
             if (!overlay) return; // no-op when overlay store not present
-            const states = (awareness as any).getStates();
-            const clientId = (awareness as any).clientID;
+            const states = awareness.getStates();
+            const clientId = (awareness as unknown as { clientID: number; }).clientID;
 
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);
@@ -200,8 +238,8 @@ export const yjsService = {
                 applyPresenceToOverlay(overlay, user, null);
             });
         };
-        (awareness as any).on("change", update);
-        return () => (awareness as any).off("change", update);
+        awareness.on("change", update);
+        return () => awareness.off("change", update);
     },
 };
 

@@ -10,6 +10,23 @@ export type ProjectSnapshot = {
     items: SnapshotItem[];
 };
 
+type SnapshotClient = {
+    containerId: string;
+    clientId: string;
+    getProject: () => Project;
+    getTree: () => unknown;
+    isContainerConnected: boolean;
+    getAllData: () => { items: unknown[]; };
+    getTreeAsJson: () => { items: unknown[]; };
+    dispose: () => void;
+    connectionState: string;
+    getConnectionStateString: () => string;
+};
+
+type ProjectData = {
+    items: unknown[];
+};
+
 const STORAGE_PREFIX = "outliner:project-snapshot:";
 
 function hasWindowStorage(): boolean {
@@ -20,24 +37,31 @@ function getStorageKey(title: string): string {
     return `${STORAGE_PREFIX}${encodeURIComponent(title || "__untitled__")}`;
 }
 
-function toPlainText(value: any): string {
+function toPlainText(value: unknown): string {
     if (!value) return "";
     if (typeof value === "string") return value;
-    if (typeof value.toString === "function") {
-        return value.toString();
+    if (
+        typeof value === "object" && value !== null && "toString" in value
+        && typeof (value as { toString: () => unknown; }).toString === "function"
+    ) {
+        return String((value as { toString: () => unknown; }).toString());
     }
     return String(value ?? "");
 }
 
-function collectItems(items: any): SnapshotItem[] {
-    if (!items || typeof items.length !== "number") return [];
+function collectItems(items: unknown): SnapshotItem[] {
+    if (
+        !items || typeof items !== "object" || items === null || !("length" in items)
+        || typeof (items as { length: unknown; }).length !== "number"
+    ) return [];
     const result: SnapshotItem[] = [];
-    const length = items.length as number;
+    const itemsArray = items as { length: number; at?: (i: number) => unknown; [index: number]: unknown; };
+    const length = itemsArray.length;
     for (let i = 0; i < length; i++) {
-        const node = items.at ? items.at(i) : items[i];
+        const node = itemsArray.at ? itemsArray.at(i) : itemsArray[i];
         if (!node) continue;
-        const text = toPlainText(node.text);
-        const children = collectItems(node.items);
+        const text = toPlainText((node as { text: unknown; }).text);
+        const children = collectItems((node as { items: unknown; }).items);
         result.push({ text, children });
     }
     return result;
@@ -81,7 +105,7 @@ export function saveProjectSnapshot(project: Project | undefined): void {
     try {
         const snapshot: ProjectSnapshot = {
             title: project.title ?? "",
-            items: collectItems(project.items as any),
+            items: collectItems(project.items),
         };
         if (isPlaceholder(snapshot)) return;
         if (!hasMeaningfulContent(snapshot)) return;
@@ -151,21 +175,22 @@ export function snapshotToProject(snapshot: ProjectSnapshot): Project {
 
     for (const root of snapshot.items) {
         const page = project.addPage(root.text, "snapshot");
-        populateChildren(page.items as any, root.children);
+        populateChildren(page.items, root.children);
     }
 
     return project;
 }
 
-function populateChildren(items: any, children: SnapshotItem[]) {
-    if (!items) return;
+function populateChildren(items: unknown, children: SnapshotItem[]) {
+    if (!items || typeof items !== "object") return;
+    const itemsObj = items as { addNode?: (type: string) => { updateText?: (text: string) => void; items: unknown; }; };
     for (const child of children) {
-        const node = items.addNode ? items.addNode("snapshot") : null;
+        const node = itemsObj.addNode ? itemsObj.addNode("snapshot") : null;
         if (!node) continue;
         if (node.updateText) {
             node.updateText(child.text);
         }
-        populateChildren(node.items as any, child.children);
+        populateChildren(node.items, child.children);
     }
 }
 
@@ -177,8 +202,8 @@ function escapeHtml(str: string): string {
         .replace(/"/g, "&quot;");
 }
 
-export function createSnapshotClient(projectName: string, project: Project): any {
-    const client = {
+export function createSnapshotClient(projectName: string, project: Project): SnapshotClient {
+    const client: SnapshotClient = {
         containerId: `snapshot-${encodeURIComponent(projectName || "")}`,
         clientId: `snapshot-${Date.now().toString(16)}`,
         getProject: () => project,
@@ -187,16 +212,15 @@ export function createSnapshotClient(projectName: string, project: Project): any
         getAllData: () => projectToAllData(project),
         getTreeAsJson: () => projectToAllData(project),
         dispose: () => {},
-        get connectionState() {
-            return "Connected";
-        },
+        connectionState: "Connected",
         getConnectionStateString() {
             return "接続済み";
         },
     };
     try {
         if (typeof window !== "undefined") {
-            const registry = (window as any).__YJS_CLIENT_REGISTRY__;
+            const registry = (window as Window & { __YJS_CLIENT_REGISTRY__?: Map<string, [SnapshotClient, Project]>; })
+                .__YJS_CLIENT_REGISTRY__;
             if (registry?.set) {
                 const key = `snapshot:${projectName}:${Date.now().toString(16)}`;
                 registry.set(key, [client, project]);
@@ -206,22 +230,27 @@ export function createSnapshotClient(projectName: string, project: Project): any
     return client;
 }
 
-function projectToAllData(project: Project): any {
-    const walk = (items: any): any[] => {
-        if (!items || typeof items.length !== "number") return [];
-        const result: any[] = [];
-        const length = items.length as number;
+function projectToAllData(project: Project): ProjectData {
+    const walk = (items: unknown): unknown[] => {
+        if (
+            !items || typeof items !== "object" || items === null || !("length" in items)
+            || typeof (items as { length: unknown; }).length !== "number"
+        ) return [];
+        const result: unknown[] = [];
+        const itemsArray = items as { length: number; at?: (i: number) => unknown; [index: number]: unknown; };
+        const length = itemsArray.length;
         for (let i = 0; i < length; i++) {
-            const node = items.at ? items.at(i) : items[i];
+            const node = itemsArray.at ? itemsArray.at(i) : itemsArray[i];
             if (!node) continue;
-            const text = node.text?.toString?.() ?? String(node.text ?? "");
+            const nodeObj = node as { text?: unknown; id?: unknown; items?: unknown; };
+            const text = nodeObj.text?.toString?.() ?? String(nodeObj.text ?? "");
             result.push({
-                id: String(node.id ?? i),
+                id: String(nodeObj.id ?? i),
                 text,
-                items: walk(node.items),
+                items: walk(nodeObj.items),
             });
         }
         return result;
     };
-    return { items: walk(project.items as any) };
+    return { items: walk(project.items) };
 }

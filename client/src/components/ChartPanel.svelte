@@ -19,14 +19,14 @@ onMount(async () => {
     try {
         await initDb();
         isInitialized = true;
-        
+
         chart = echarts.init(chartDiv);
-        
+
         // If an item is provided and has a chartQuery, run it
         if (item && item.chartQuery) {
             runQuery(item.chartQuery);
         }
-        
+
         const unsub = queryStore.subscribe(update);
         return () => {
             unsub();
@@ -56,18 +56,27 @@ $effect(() => {
     }
 });
 
-function update(data: any) {
+interface ColumnMeta {
+    name: string;
+}
+
+interface QueryData {
+    rows: Record<string, unknown>[];
+    columnsMeta: ColumnMeta[];
+}
+
+function update(data: QueryData) {
     if (!chart) return;
     hasData = data.rows.length > 0;
     if (!hasData) {
         chart.clear();
         return;
     }
-    const columns = data.columnsMeta.map((c: any) => c.name);
+    const columns = data.columnsMeta.map((c: ColumnMeta) => c.name);
     const option = {
-        xAxis: { type: "category", data: data.rows.map((_: any, i: number) => i.toString()) },
+        xAxis: { type: "category", data: data.rows.map((_: Record<string, unknown>, i: number) => i.toString()) },
         yAxis: { type: "value" },
-        series: columns.map(col => ({ type: "bar", data: data.rows.map((r: any) => r[col]) })),
+        series: columns.map(col => ({ type: "bar", data: data.rows.map((r: Record<string, unknown>) => r[col]) })),
     };
     chart.setOption(option, { notMerge: true });
 }

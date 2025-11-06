@@ -1,19 +1,50 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// Type definitions for test store
+interface CursorData {
+    cursorId: string;
+    itemId: string;
+    offset: number;
+    isActive: boolean;
+    userId: string;
+}
+
+interface CursorInstance {
+    itemId: string;
+    offset: number;
+    isActive: boolean;
+    userId: string;
+}
+
+interface SelectionData {
+    startItemId: string;
+    startOffset: number;
+    endItemId: string;
+    endOffset: number;
+    userId?: string;
+}
+
+interface AddCursorOptions {
+    itemId: string;
+    offset: number;
+    isActive: boolean;
+    userId?: string;
+}
+
 // Local minimal replica to avoid importing .svelte.ts in tests
 class TestEditorOverlayStore {
-    cursors: Record<string, any> = {};
-    cursorInstances = new Map<string, any>();
+    cursors: Record<string, CursorData> = {};
+    cursorInstances = new Map<string, CursorInstance>();
     cursorHistory: string[] = [];
-    selections: Record<string, any> = {};
+    selections: Record<string, SelectionData> = {};
     activeItemId: string | null = null;
     cursorVisible = true;
     animationPaused = false;
-    private timerId: any;
+    private timerId: unknown;
     private genUUID() {
         return Math.random().toString(36).slice(2);
     }
-    addCursor({ itemId, offset, isActive, userId = "local" }: any) {
+    addCursor({ itemId, offset, isActive, userId = "local" }: AddCursorOptions) {
         const id = this.genUUID();
         this.cursorInstances.set(id, { itemId, offset, isActive, userId });
         this.cursors = { ...this.cursors, [id]: { cursorId: id, itemId, offset, isActive, userId } };
@@ -36,26 +67,26 @@ class TestEditorOverlayStore {
         return id ? this.cursors[id] : null;
     }
     clearCursorForItem(itemId: string) {
-        const keep = Object.entries(this.cursors).filter((entry: [string, any]) => entry[1].itemId !== itemId);
+        const keep = Object.entries(this.cursors).filter((entry: [string, CursorData]) => entry[1].itemId !== itemId);
         this.cursors = Object.fromEntries(keep);
     }
-    setSelection(sel: any) {
+    setSelection(sel: SelectionData) {
         const key = `${sel.startItemId}-${sel.endItemId}-${sel.userId || "local"}`;
         this.selections = { ...this.selections, [key]: sel };
     }
     clearCursorAndSelection(userId = "local", clearSelections = false) {
         this.cursors = Object.fromEntries(
-            Object.entries(this.cursors).filter((entry: [string, any]) => entry[1].userId !== userId),
+            Object.entries(this.cursors).filter((entry: [string, CursorData]) => entry[1].userId !== userId),
         );
         if (clearSelections) {
             this.selections = Object.fromEntries(
-                Object.entries(this.selections).filter((entry: [string, any]) => entry[1].userId !== userId),
+                Object.entries(this.selections).filter((entry: [string, SelectionData]) => entry[1].userId !== userId),
             );
         }
     }
     clearSelectionForUser(userId = "local") {
         this.selections = Object.fromEntries(
-            Object.entries(this.selections).filter(([key, s]: any) =>
+            Object.entries(this.selections).filter(([key, s]: [string, SelectionData]) =>
                 !key.includes(`-${userId}`) && s.userId !== userId
             ),
         );

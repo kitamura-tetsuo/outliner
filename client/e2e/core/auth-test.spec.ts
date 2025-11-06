@@ -31,7 +31,7 @@ test.describe("Authentication Test", () => {
         console.log("Debug: Before authentication:", beforeAuth);
 
         // 認証を実行
-        const authResult = await page.evaluate(async () => {
+        const authResult = await page.evaluate(() => {
             const win = window as {
                 __USER_MANAGER__?: {
                     addEventListener: (callback: (result: { user?: any; }) => void) => () => void;
@@ -48,7 +48,7 @@ test.describe("Authentication Test", () => {
 
                 // 認証状態の変更を監視
                 let authCompleted = false;
-                const authPromise = new Promise(resolve => {
+                const authPromise = new Promise<{ success: boolean; user?: unknown; error?: string; }>(resolve => {
                     const cleanup = userManager.addEventListener((authResult: { user?: any; }) => {
                         console.log("Auth state changed:", authResult);
                         if (authResult && authResult.user) {
@@ -68,15 +68,15 @@ test.describe("Authentication Test", () => {
                 });
 
                 // ログイン実行
-                await userManager.loginWithEmailPassword("test@example.com", "password");
+                userManager.loginWithEmailPassword("test@example.com", "password");
                 console.log("Login method called, waiting for auth state change...");
 
-                return await authPromise;
+                return authPromise;
             } catch (error) {
                 console.error("Authentication error:", error);
                 return { success: false, error: error instanceof Error ? error.message : String(error) };
             }
-        });
+        }) as { success: boolean; user?: unknown; error?: string; };
 
         console.log("Debug: Authentication result:", authResult);
 

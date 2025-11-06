@@ -59,8 +59,7 @@ test.describe("CLM-0002: 左へ移動", () => {
         expect(updatedOffset).toBe(initialOffset - 1);
     });
 
-    test("一番最初の文字にある時は、一つ前のアイテムの最後の文字へ移動する", async ({ page }) => {
-        // This test is skipped temporarily until the cross-item cursor movement logic is fixed
+    test("一番最初の文字にある時は一つ前のアイテムの最後の文字へ移動する", async ({ page }) => {
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
@@ -84,7 +83,7 @@ test.describe("CLM-0002: 左へ移動", () => {
 
         // 左矢印キーを押下して前のアイテムに移動
         await page.keyboard.press("ArrowLeft");
-        await page.waitForTimeout(200); // 少し長めに待機
+        await page.waitForTimeout(500); // 十分な時間を待つ
 
         // カーソル情報を取得して検証
         const cursorData = await CursorValidator.getCursorData(page);

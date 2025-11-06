@@ -209,7 +209,8 @@ export class Item {
 
     updateText(text: string) {
         const t = this.value.get("text") as Y.Text;
-        t.delete(0, t.length);
+        const len = typeof t.length === "number" ? t.length : 0;
+        t.delete(0, len);
         if (text) t.insert(0, text);
         this.value.set("lastChanged", Date.now());
     }
