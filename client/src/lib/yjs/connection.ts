@@ -83,6 +83,7 @@ export type ProjectConnection = {
     provider: WebsocketProvider;
     awareness: Awareness;
     getPageConnection: (pageId: string) => PageConnection | undefined;
+    getPageConnectionOrWait: (pageId: string, timeoutMs?: number) => Promise<PageConnection | undefined>;
     dispose: () => void;
 };
 
@@ -318,6 +319,28 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         });
     } catch {}
 
+    const getPageConnectionOrWait = async (pageId: string, timeoutMs = 1000): Promise<PageConnection | undefined> => {
+        // First, try to get the existing connection
+        const existing = pages.get(pageId);
+        if (existing) {
+            return existing;
+        }
+
+        // If not found, wait for it to be established
+        const startTime = Date.now();
+        const checkInterval = 10; // Check every 10ms
+
+        while (Date.now() - startTime < timeoutMs) {
+            const conn = pages.get(pageId);
+            if (conn) {
+                return conn;
+            }
+            await new Promise(resolve => setTimeout(resolve, checkInterval));
+        }
+
+        return undefined;
+    };
+
     const dispose = () => {
         try {
             unbind();
@@ -338,7 +361,14 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         } catch {}
     };
 
-    return { doc, provider, awareness, getPageConnection: id => pages.get(id), dispose };
+    return {
+        doc,
+        provider,
+        awareness,
+        getPageConnection: id => pages.get(id),
+        getPageConnectionOrWait,
+        dispose,
+    };
 }
 
 export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<{

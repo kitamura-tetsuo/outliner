@@ -1,16 +1,18 @@
 import { createRequire } from "module";
 import initSqlJs from "sql.js";
-import type { Database } from "sql.js";
 import { beforeAll, describe, expect, it } from "vitest";
 import { SyncWorker } from "../services/syncWorker";
 
-let db: Database;
+// Import the SqlJsDatabase interface from syncWorker for type checking
+type SqlJsDatabase = import("../services/syncWorker").SqlJsDatabase;
+
+let db: SqlJsDatabase;
 
 const require = createRequire(import.meta.url);
 
 beforeAll(async () => {
     const SQL = await initSqlJs({ locateFile: () => require.resolve("sql.js/dist/sql-wasm.wasm") });
-    db = new SQL.Database();
+    db = new SQL.Database() as unknown as SqlJsDatabase;
     db.run("CREATE TABLE tbl(id TEXT PRIMARY KEY, val INTEGER)");
     db.run("INSERT INTO tbl VALUES('a',1)");
 });

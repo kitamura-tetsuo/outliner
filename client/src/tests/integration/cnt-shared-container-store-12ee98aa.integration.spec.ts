@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { describe, expect, it } from "vitest";
+import type { UserContainer } from "../../stores/firestoreStore.svelte";
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
 import UserContainerDisplay from "../fixtures/UserContainerDisplay.svelte";
 
@@ -9,16 +10,9 @@ import UserContainerDisplay from "../fixtures/UserContainerDisplay.svelte";
 describe("CNT shared container store", () => {
     it("reflects user container updates", async () => {
         render(UserContainerDisplay);
-        const storeGlobal: {
-            setUserContainer: (userContainer: {
-                userId: string;
-                accessibleContainerIds: string[];
-                defaultContainerId: string;
-                createdAt: Date;
-                updatedAt: Date;
-            }) => void;
-        } = (globalThis as unknown as { window?: { __FIRESTORE_STORE__?: typeof firestoreStore; }; }).window
-            ?.__FIRESTORE_STORE__ ?? firestoreStore;
+        const storeGlobal =
+            (globalThis as unknown as { window?: { __FIRESTORE_STORE__?: typeof firestoreStore; }; }).window
+                ?.__FIRESTORE_STORE__ ?? firestoreStore;
         storeGlobal.setUserContainer({
             userId: "u",
             accessibleContainerIds: ["a"],
@@ -29,7 +23,8 @@ describe("CNT shared container store", () => {
         await tick();
         await tick();
         // store 自体は更新されているか（デバッグ用アサーション）
-        expect(storeGlobal.userContainer?.defaultContainerId).toBe("a");
+        expect((storeGlobal as unknown as { userContainer: UserContainer | null; }).userContainer?.defaultContainerId)
+            .toBe("a");
         // まずリスト表示を確認（リアクティブ更新の完了を待つ）
         expect(screen.getAllByRole("listitem").map(li => li.textContent)).toEqual(["a"]);
         // その後、defaultContainerId の可視化を検証
@@ -41,7 +36,7 @@ describe("CNT shared container store", () => {
             defaultContainerId: "b",
             createdAt: new Date(),
             updatedAt: new Date(),
-        } as any);
+        });
         await tick();
         expect(screen.getByTestId("default").textContent).toBe("b");
         expect(screen.getAllByRole("listitem").map(li => li.textContent)).toEqual(["a", "b"]);

@@ -533,7 +533,7 @@ export class CursorSelection {
         const target = this.cursor.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        const text = target.text?.toString?.() ?? "";
         const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
 
         // 現在の行の開始位置に移動
@@ -551,7 +551,7 @@ export class CursorSelection {
         const target = this.cursor.findTarget();
         if (!target) return;
 
-        const text = target.text || "";
+        const text = target.text?.toString?.() ?? "";
         const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
 
         // 現在の行の終了位置に移動
@@ -583,7 +583,7 @@ export class CursorSelection {
         );
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
-        const text = target.text || "";
+        const text = target.text?.toString?.() ?? "";
         const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
         const lineStartOffset = this.cursor.getLineStartOffset(text, currentLineIndex);
 
@@ -689,7 +689,7 @@ export class CursorSelection {
         );
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
-        const text = target.text || "";
+        const text = target.text?.toString?.() ?? "";
         const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
         const lineEndOffset = this.cursor.getLineEndOffset(text, currentLineIndex);
 

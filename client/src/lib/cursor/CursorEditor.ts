@@ -236,16 +236,10 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as Item | undefined;
+            const parent = target.parent;
             if (parent) {
-                const itemsCollection = typeof parent.indexOf === "function"
-                    ? parent
-                    : parent?.items;
-                const addNode = typeof parent.addNode === "function"
-                    ? parent.addNode.bind(parent)
-                    : typeof itemsCollection?.addNode === "function"
-                    ? itemsCollection.addNode.bind(itemsCollection)
-                    : undefined;
+                const itemsCollection = parent;
+                const addNode = parent.addNode.bind(parent);
 
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
                     const currentIndex = itemsCollection.indexOf(target);
@@ -457,13 +451,15 @@ export class CursorEditor {
                 yText
                 && typeof (yText as { delete?: (n: number) => void; insert?: (n: number, s: string) => void; }).delete
                     === "function"
-                && typeof yText.insert === "function"
+                && typeof (yText as { insert?: (n: number, s: string) => void; }).insert === "function"
             ) {
-                (yText as { delete: (n: number) => void; insert: (n: number, s: string) => void; }).delete(
-                    0,
-                    (yText as { length?: number; }).length ?? 0,
-                );
-                if (text) (yText as { insert: (n: number, s: string) => void; }).insert(0, text);
+                const yTextObj = yText as unknown as {
+                    delete: (index: number, length: number) => void;
+                    insert: (index: number, text: string) => void;
+                    length?: number;
+                };
+                yTextObj.delete(0, yTextObj.length ?? 0);
+                if (text) yTextObj.insert(0, text);
             } else if (value && typeof (value as { set?: (k: string, v: unknown) => void; }).set === "function") {
                 (value as { set: (k: string, v: unknown) => void; }).set("text", text);
             }
@@ -475,27 +471,20 @@ export class CursorEditor {
 
     private deleteItemNode(item: Item | undefined) {
         if (!item) return;
-        if (typeof item.delete === "function") {
-            item.delete();
-            return;
-        }
 
-        const key = (item as unknown as { key?: string; }).key ?? (item as unknown as { id?: string; }).id;
+        const key = item.key;
         if (!key) return;
 
-        const treeCandidates = [
-            (item as unknown as { tree?: unknown; }).tree,
-            (item as unknown as { parent?: { tree?: unknown; }; })?.parent?.tree,
-            (generalStore as unknown as { project?: { tree?: unknown; }; })?.project?.tree,
-        ];
-
-        for (const tree of treeCandidates) {
-            if (tree && typeof tree.deleteNodeAndDescendants === "function") {
-                try {
-                    tree.deleteNodeAndDescendants(key);
-                    return;
-                } catch {}
-            }
+        const tree = item.tree;
+        if (
+            tree
+            && typeof (tree as { deleteNodeAndDescendants?: (key: string) => void; }).deleteNodeAndDescendants
+                === "function"
+        ) {
+            try {
+                (tree as { deleteNodeAndDescendants: (key: string) => void; }).deleteNodeAndDescendants(key);
+                return;
+            } catch {}
         }
     }
 
@@ -526,7 +515,7 @@ export class CursorEditor {
         const nextText = nextItem.text ? nextItem.text.toString() : "";
         currentItem.updateText(currentText + nextText);
 
-        (nextItem as any).delete();
+        this.deleteItemNode(nextItem);
     }
 
     protected deleteEmptyItem() {

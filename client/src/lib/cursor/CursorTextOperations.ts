@@ -230,7 +230,7 @@ export class CursorTextOperations {
         prevItem.updateText(prevText + currentText);
 
         // 現在のアイテムを削除
-        (currentItem as any).delete();
+        currentItem.tree.deleteNodeAndDescendants(currentItem.key);
 
         // カーソル位置を更新
         const oldItemId = this.cursor.itemId;
@@ -267,7 +267,7 @@ export class CursorTextOperations {
         currentItem.updateText(currentText + nextText);
 
         // 次のアイテムを削除
-        (nextItem as any).delete();
+        nextItem.tree.deleteNodeAndDescendants(nextItem.key);
 
         // カーソル位置はそのまま（現在のアイテムの末尾）
     }
@@ -309,7 +309,7 @@ export class CursorTextOperations {
         store.clearCursorForItem(this.cursor.itemId);
 
         // アイテムを削除
-        (currentItem as any).delete();
+        currentItem.tree.deleteNodeAndDescendants(currentItem.key);
 
         // 新しい位置にカーソルを設定
         this.cursor.itemId = targetItemId;
@@ -342,7 +342,7 @@ export function deleteEmptyItem(current?: Item) {
 
         // Clear cursor for the current item and delete it
         store.clearCursorForItem(current.id);
-        (current as any).delete();
+        current.tree.deleteNodeAndDescendants(current.key);
 
         // Move active item focus
         const target = next ?? prev ?? undefined;
@@ -369,7 +369,7 @@ export function mergeWithNextItem(current?: Item) {
         const a = current.text ?? "";
         const b = next.text ?? "";
         current.updateText(String(a) + String(b));
-        (next as any).delete();
+        next.tree.deleteNodeAndDescendants(next.key);
 
         store.setActiveItem(current.id);
         store.startCursorBlink();
@@ -391,7 +391,7 @@ export function mergeWithPreviousItem(current?: Item) {
         const b = current.text ?? "";
         prev.updateText(String(a) + String(b));
         const prevId = prev.id;
-        (current as any).delete();
+        current.tree.deleteNodeAndDescendants(current.key);
 
         store.setActiveItem(prevId);
         store.startCursorBlink();

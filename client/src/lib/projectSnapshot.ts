@@ -224,8 +224,8 @@ export function createSnapshotClient(projectName: string, project: Project): Sna
         getAllData: () => projectToAllData(project),
         getTreeAsJson: () => projectToAllData(project),
         dispose: () => {},
-        get connectionState() {
-            return "Connected";
+        get connectionState(): "Connected" {
+            return "Connected" as const;
         },
         getConnectionStateString() {
             return "接続済み";
@@ -252,13 +252,16 @@ function projectToAllData(project: Project): AllData {
         const result: AllDataNode[] = [];
         const length = (items as { length: number; }).length;
         for (let i = 0; i < length; i++) {
-            const node = items.at ? items.at(i) : (items as ArrayLikeWithAt<unknown>)[i];
+            // Type mismatch between Items.at() return type and array indexing
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            const node = items.at ? items.at(i) : undefined;
             if (!node) continue;
             const text = node.text?.toString?.() ?? String((node as { text?: unknown; }).text ?? "");
             result.push({
                 id: String((node as { id?: unknown; }).id ?? i),
                 text,
-                items: walk(node.items as Items),
+                items: walk((node as { items: Items; }).items),
             });
         }
         return result;

@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
+// Type for Console
+type ConsoleType = typeof console;
+
 // useConsoleAPIをモックするためにloggerモジュールを先にモック
 vi.mock("../lib/logger", async (importOriginal: () => Promise<unknown>) => {
     const actual = await importOriginal();
@@ -16,7 +19,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<unknown>) => {
     };
 
     return {
-        ...actual,
+        ...(actual as Record<string, unknown>),
         getLogger: (componentName = "TestComponent") => {
             // シンプルなロガーモックを作成
             const logger: LoggerMock = {
@@ -121,8 +124,8 @@ describe("Logger", () => {
 
     beforeEach(() => {
         // コンソールをモックに置き換え
-        global.console = mockConsole as unknown as Console;
-        global.window.console = mockConsole as unknown as Console;
+        global.console = mockConsole as unknown as ConsoleType;
+        global.window.console = mockConsole as unknown as ConsoleType;
 
         // モックをリセット
         vi.clearAllMocks();

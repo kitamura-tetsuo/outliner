@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 let store: {
     history: string[];
     add: (query: string) => void;
-    clear: () => void;
+    reset: () => void;
 };
 
 function getHistory() {

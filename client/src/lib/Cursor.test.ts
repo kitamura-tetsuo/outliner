@@ -103,7 +103,7 @@ describe("Cursor", () => {
                     items.push(item);
                 }
             }
-            return item;
+            return item as Item;
         });
     });
 
@@ -211,18 +211,18 @@ describe("Cursor", () => {
             cursor.itemId = "item1"; // Ensure cursor is on a valid item
             cursor.offset = 5; // Initial offset
             // findTargetがmockCurrentPage.items[0]を返すように
-            vi.spyOn(cursor, "findTarget").mockImplementation(
-                () => {
-                    const items = mockCurrentPage!.items as unknown as Item[];
-                    return items.at ? items.at(0) : items[0];
-                },
-            );
+            vi.spyOn(cursor, "findTarget").mockImplementation(() => {
+                const items = mockCurrentPage!.items as unknown as Item[];
+                return items.at ? items.at(0) : items[0];
+            });
             // Prevent actual navigation/merge for these simple tests
-            vi.spyOn(cursor.editor, "mergeWithPreviousItem").mockImplementation(() => {});
-            vi.spyOn(cursor.editor, "mergeWithNextItem").mockImplementation(() => {});
+            const editor = (cursor as unknown as {
+                editor: { mergeWithPreviousItem: () => void; mergeWithNextItem: () => void; };
+            }).editor;
+            vi.spyOn(editor, "mergeWithPreviousItem").mockImplementation(() => {});
+            vi.spyOn(editor, "mergeWithNextItem").mockImplementation(() => {});
             // Mock navigateToItem to prevent actual navigation in simple tests
-            vi.spyOn(cursor, "navigateToItem")
-                .mockImplementation(() => {});
+            (cursor as unknown as { navigateToItem: ReturnType<typeof vi.fn>; }).navigateToItem = vi.fn();
         });
 
         it("moveLeft should decrease offset if offset > 0", () => {
@@ -261,8 +261,11 @@ describe("Cursor", () => {
             // findTargetがmockItemを返すように設定
             vi.spyOn(cursor, "findTarget").mockReturnValue(mockItem);
             // Prevent actual navigation/merge for these simple tests
-            vi.spyOn(cursor.editor, "mergeWithPreviousItem").mockImplementation(() => {});
-            vi.spyOn(cursor.editor, "mergeWithNextItem").mockImplementation(() => {});
+            const editor = (cursor as unknown as {
+                editor: { mergeWithPreviousItem: () => void; mergeWithNextItem: () => void; };
+            }).editor;
+            vi.spyOn(editor, "mergeWithPreviousItem").mockImplementation(() => {});
+            vi.spyOn(editor, "mergeWithNextItem").mockImplementation(() => {});
         });
 
         it("insertText should insert character at current offset and update offset", () => {
@@ -325,29 +328,28 @@ describe("Cursor", () => {
 
         it("deleteBackward at offset 0 triggers mergeWithPreviousItem", () => {
             cursor.offset = 0;
-            const spy = vi.spyOn(cursor.editor, "mergeWithPreviousItem").mockImplementation(
-                () => {},
-            );
+            const editor = (cursor as unknown as { editor: { mergeWithPreviousItem: () => void; }; }).editor;
+            const spy = vi.spyOn(editor, "mergeWithPreviousItem").mockImplementation(() => {});
             cursor.deleteBackward();
             expect(spy).toHaveBeenCalled();
         });
 
         it("deleteForward on empty item triggers deleteEmptyItem", () => {
             // 空のアイテムを設定
-            mockItem.text = "";
+            (mockItem as unknown as { text: string; }).text = "";
             cursor.offset = 0;
-            const spy = vi.spyOn(cursor.editor, "deleteEmptyItem").mockImplementation(() => {});
+            const editor = (cursor as unknown as { editor: { deleteEmptyItem: () => void; }; }).editor;
+            const spy = vi.spyOn(editor, "deleteEmptyItem").mockImplementation(() => {});
             cursor.deleteForward();
             expect(spy).toHaveBeenCalled();
         });
 
         it("deleteForward on non-empty item at end triggers mergeWithNextItem", () => {
             // 空でないアイテムの末尾に設定
-            mockItem.text = "Hello";
+            (mockItem as unknown as { text: string; }).text = "Hello";
             cursor.offset = 5; // 末尾
-            const spy = vi.spyOn(cursor.editor, "mergeWithNextItem").mockImplementation(
-                () => {},
-            );
+            const editor = (cursor as unknown as { editor: { mergeWithNextItem: () => void; }; }).editor;
+            const spy = vi.spyOn(editor, "mergeWithNextItem").mockImplementation(() => {});
             cursor.deleteForward();
             expect(spy).toHaveBeenCalled();
         });

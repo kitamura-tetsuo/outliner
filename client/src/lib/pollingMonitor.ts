@@ -32,17 +32,6 @@ export interface PollingStats {
     calls: Map<number, PollingCall>;
 }
 
-declare global {
-    interface Window {
-        setInterval: typeof setInterval;
-        setTimeout: typeof setTimeout;
-        clearInterval: typeof clearInterval;
-        clearTimeout: typeof clearTimeout;
-        requestAnimationFrame: typeof requestAnimationFrame;
-        cancelAnimationFrame: typeof cancelAnimationFrame;
-    }
-}
-
 class PollingMonitor {
     private calls: Map<number, PollingCall> = new Map();
     private nextId = 1;
@@ -75,7 +64,7 @@ class PollingMonitor {
         if (this.enabled) return;
         this.enabled = true; // setIntervalをインターセプト
 
-        window.setInterval = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
+        (window as any).setInterval = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -124,7 +113,7 @@ class PollingMonitor {
             }
         }; // setTimeoutをインターセプト
 
-        window.setTimeout = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
+        (window as any).setTimeout = (callback: TimerCallback, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -174,7 +163,7 @@ class PollingMonitor {
             }
         }; // requestAnimationFrameをインターセプト
 
-        window.requestAnimationFrame = (callback: FrameRequestCallback): number => {
+        (window as any).requestAnimationFrame = (callback: FrameRequestCallback): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -216,12 +205,12 @@ class PollingMonitor {
     stop() {
         if (!this.enabled) return;
 
-        window.setInterval = this.originalSetInterval;
-        window.setTimeout = this.originalSetTimeout;
-        window.clearInterval = this.originalClearInterval;
-        window.clearTimeout = this.originalClearTimeout;
-        window.requestAnimationFrame = this.originalRequestAnimationFrame;
-        window.cancelAnimationFrame = this.originalCancelAnimationFrame;
+        (window as any).setInterval = this.originalSetInterval;
+        (window as any).setTimeout = this.originalSetTimeout;
+        (window as any).clearInterval = this.originalClearInterval;
+        (window as any).clearTimeout = this.originalClearTimeout;
+        (window as any).requestAnimationFrame = this.originalRequestAnimationFrame;
+        (window as any).cancelAnimationFrame = this.originalCancelAnimationFrame;
 
         this.enabled = false;
         console.log("[PollingMonitor] Monitoring stopped");

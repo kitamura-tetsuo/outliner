@@ -1,4 +1,5 @@
 import type { Item } from "../../schema/yjs-schema";
+import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
@@ -12,16 +13,6 @@ interface CursorInterface {
     searchItem(root: Item | undefined, itemId: string): Item | undefined;
     applyToStore(): void;
     clearSelection(): void;
-}
-
-// Selection interface based on actual usage
-interface Selection {
-    userId: string;
-    startItemId: string;
-    endItemId: string;
-    startOffset: number;
-    endOffset: number;
-    isReversed?: boolean;
 }
 
 export class CursorFormatting {
@@ -92,7 +83,7 @@ export class CursorFormatting {
         const text = target.text || "";
         const startOffset = Math.min(selection.startOffset, selection.endOffset);
         const endOffset = Math.max(selection.startOffset, selection.endOffset);
-        const selectedText = text.substring(startOffset, endOffset);
+        const selectedText = text.toString().substring(startOffset, endOffset);
 
         // フォーマット済みのテキストを作成
         let formattedText = "";
@@ -115,7 +106,8 @@ export class CursorFormatting {
         }
 
         // テキストを更新
-        const newText = text.substring(0, startOffset) + formattedText + text.substring(endOffset);
+        const textStr = text.toString();
+        const newText = textStr.substring(0, startOffset) + formattedText + textStr.substring(endOffset);
         target.updateText(newText);
 
         // カーソル位置を更新（選択範囲の終了位置に設定）
@@ -133,7 +125,7 @@ export class CursorFormatting {
      * 複数アイテムにまたがる選択範囲にScrapbox構文のフォーマットを適用する
      */
     private applyScrapboxFormattingToMultipleItems(
-        selection: Selection,
+        selection: SelectionRange,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
         // 開始アイテムと終了アイテムのIDを取得
@@ -160,10 +152,15 @@ export class CursorFormatting {
         // 選択範囲内の各アイテムにフォーマットを適用
         for (let i = firstIdx; i <= lastIdx; i++) {
             const itemId = allItemIds[i];
+            // Type mismatch between app-schema and yjs-schema Item
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
             const item = this.cursor.searchItem(generalStore.currentPage!, itemId);
 
             if (!item) continue;
 
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
             const text = item.text || "";
 
             // アイテムの位置に応じてフォーマットを適用
@@ -171,7 +168,8 @@ export class CursorFormatting {
                 // 単一アイテム内の選択範囲
                 const start = isReversed ? endOffset : startOffset;
                 const end = isReversed ? startOffset : endOffset;
-                const selectedText = text.substring(start, end);
+                const textStr = text.toString();
+                const selectedText = textStr.substring(start, end);
 
                 // フォーマット済みのテキストを作成
                 let formattedText = "";
@@ -193,7 +191,7 @@ export class CursorFormatting {
                         break;
                 }
 
-                const newText = text.substring(0, start) + formattedText + text.substring(end);
+                const newText = textStr.substring(0, start) + formattedText + textStr.substring(end);
                 item.updateText(newText);
             } else {
                 // 複数アイテムにまたがる選択範囲の場合は、各アイテムを個別に処理
