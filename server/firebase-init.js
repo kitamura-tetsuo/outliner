@@ -92,7 +92,7 @@ if (!serviceAccount.project_id && !isEmulatorEnvironment) {
     process.exit(1);
 }
 
-async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
+async function waitForFirebaseEmulator(maxRetries = 60, initialDelay = 2000, maxDelay = 15000) {
     const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST
         || process.env.FIRESTORE_EMULATOR_HOST
         || process.env.FIREBASE_EMULATOR_HOST;
@@ -107,6 +107,11 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
                 process.env.FIREBASE_EMULATOR_HOST || "(unset)"
             }`,
     );
+
+    // Initial delay to allow emulator to fully start
+    logger.info(`Waiting initial ${initialDelay}ms for emulator to stabilize...`);
+    await new Promise(resolve => setTimeout(resolve, initialDelay));
+
     let retryCount = 0;
     let delay = initialDelay;
     while (retryCount < maxRetries) {
@@ -128,7 +133,13 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
             return;
         } catch (error) {
             retryCount++;
-            if (error.code === "ECONNREFUSED" || error.message.includes("ECONNREFUSED")) {
+            const isConnectionError = error.code === "ECONNREFUSED"
+                || error.message.includes("ECONNREFUSED")
+                || error.code === "ECONNRESET"
+                || error.message.includes("ECONNRESET")
+                || error.message.includes("Connection refused")
+                || error.message.includes("Unable to fetch project Admin SDK configuration");
+            if (isConnectionError) {
                 logger.warn(`Firebase emulator not ready yet (attempt ${retryCount}/${maxRetries}): ${error.message}`);
                 if (retryCount < maxRetries) {
                     logger.info(`Waiting ${delay}ms before next retry...`);
@@ -141,7 +152,9 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
             }
         }
     }
-    throw new Error(`Firebase emulator connection failed after ${maxRetries} attempts`);
+    logger.error(`Firebase emulator connection failed after ${maxRetries} attempts`);
+    // Don't throw - continue with limited functionality in emulator mode
+    logger.warn("Continuing with limited Firebase functionality due to emulator connection failure");
 }
 
 async function clearFirestoreEmulatorData() {
