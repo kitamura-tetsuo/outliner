@@ -172,7 +172,7 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const text: string = (target.text as any)?.toString?.() ?? "";
+        const text: string = (target.text as unknown as { toString?: () => string; })?.toString?.() ?? "";
         const beforeText = text.slice(0, cursor.offset);
         const afterText = text.slice(cursor.offset);
         const pageTitle = isPageItem(target);
@@ -184,7 +184,9 @@ export class CursorEditor {
                 newItem.updateText(afterText);
 
                 const oldItemId = cursor.itemId;
-                const clearCursorAndSelection = (store as any).clearCursorAndSelection;
+                const clearCursorAndSelection =
+                    (store as unknown as { clearCursorAndSelection?: (userId: string) => void; })
+                        .clearCursorAndSelection;
                 if (typeof clearCursorAndSelection === "function") {
                     if (typeof clearCursorAndSelection.call === "function") {
                         clearCursorAndSelection.call(store, cursor.userId);
@@ -214,7 +216,7 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as any;
+            const parent = target.parent as Item | undefined;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
@@ -233,7 +235,9 @@ export class CursorEditor {
                     newItem.updateText(afterText);
 
                     const oldItemId = cursor.itemId;
-                    const clearCursorAndSelection = (store as any).clearCursorAndSelection;
+                    const clearCursorAndSelection =
+                        (store as unknown as { clearCursorAndSelection?: (userId: string) => void; })
+                            .clearCursorAndSelection;
                     if (typeof clearCursorAndSelection === "function") {
                         if (typeof clearCursorAndSelection.call === "function") {
                             clearCursorAndSelection.call(store, cursor.userId);
@@ -377,7 +381,7 @@ export class CursorEditor {
         const combinedText = `${prevText}${currentText}`;
 
         const oldItemId = cursor.itemId;
-        const prevId = (prevItem as any)?.id ?? cursor.itemId;
+        const prevId = prevItem?.id ?? cursor.itemId;
         const newOffset = prevText.length;
 
         this.runInTransaction([prevItem, currentItem], () => {
@@ -394,64 +398,75 @@ export class CursorEditor {
         store.startCursorBlink();
     }
 
-    private getPlainText(item: any): string {
+    private getPlainText(item: Item | undefined): string {
         if (!item) return "";
-        const textValue = (item as any).text;
+        const textValue = (item as unknown as { text?: unknown; }).text;
         if (typeof textValue === "string") return textValue;
         if (textValue && typeof textValue.toString === "function") {
             try {
                 return textValue.toString();
             } catch {}
         }
-        if (typeof (item as any).getText === "function") {
+        if (typeof (item as unknown as { getText?: () => string; }).getText === "function") {
             try {
-                const result = (item as any).getText();
+                const result = (item as unknown as { getText?: () => string; }).getText?.();
                 if (typeof result === "string") return result;
             } catch {}
         }
         return "";
     }
 
-    private updateItemText(item: any, text: string) {
+    private updateItemText(item: Item | undefined, text: string) {
         if (!item) return;
         if (typeof item.updateText === "function") {
             item.updateText(text);
             return;
         }
 
-        const tree = (item as any)?.tree;
-        const key = (item as any)?.key ?? (item as any)?.id;
-        if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
+        const tree = (item as unknown as { tree?: unknown; }).tree;
+        const key = (item as unknown as { key?: string; }).key ?? (item as unknown as { id?: string; }).id;
+        if (
+            !tree || !key
+            || typeof (tree as { getNodeValueFromKey?: (key: string) => unknown; }).getNodeValueFromKey !== "function"
+        ) return;
 
-        const value = tree.getNodeValueFromKey(key);
-        const yText = value?.get?.("text");
+        const value = (tree as { getNodeValueFromKey: (key: string) => unknown; }).getNodeValueFromKey(key);
+        const yText = (value as { get?: (key: string) => unknown; })?.get?.("text");
         try {
-            if (yText && typeof yText.delete === "function" && typeof yText.insert === "function") {
-                yText.delete(0, yText.length);
-                if (text) yText.insert(0, text);
-            } else if (value && typeof value.set === "function") {
-                value.set("text", text);
+            if (
+                yText
+                && typeof (yText as { delete?: (n: number) => void; insert?: (n: number, s: string) => void; }).delete
+                    === "function"
+                && typeof yText.insert === "function"
+            ) {
+                (yText as { delete: (n: number) => void; insert: (n: number, s: string) => void; }).delete(
+                    0,
+                    (yText as { length?: number; }).length ?? 0,
+                );
+                if (text) (yText as { insert: (n: number, s: string) => void; }).insert(0, text);
+            } else if (value && typeof (value as { set?: (k: string, v: unknown) => void; }).set === "function") {
+                (value as { set: (k: string, v: unknown) => void; }).set("text", text);
             }
-            if (value && typeof value.set === "function") {
-                value.set("lastChanged", Date.now());
+            if (value && typeof (value as { set?: (k: string, v: unknown) => void; }).set === "function") {
+                (value as { set: (k: string, v: unknown) => void; }).set("lastChanged", Date.now());
             }
         } catch {}
     }
 
-    private deleteItemNode(item: any) {
+    private deleteItemNode(item: Item | undefined) {
         if (!item) return;
         if (typeof item.delete === "function") {
             item.delete();
             return;
         }
 
-        const key = (item as any)?.key ?? (item as any)?.id;
+        const key = (item as unknown as { key?: string; }).key ?? (item as unknown as { id?: string; }).id;
         if (!key) return;
 
         const treeCandidates = [
-            (item as any)?.tree,
-            (item as any)?.parent?.tree,
-            (generalStore as any)?.project?.tree,
+            (item as unknown as { tree?: unknown; }).tree,
+            (item as unknown as { parent?: { tree?: unknown; }; })?.parent?.tree,
+            (generalStore as unknown as { project?: { tree?: unknown; }; })?.project?.tree,
         ];
 
         for (const tree of treeCandidates) {
@@ -464,9 +479,9 @@ export class CursorEditor {
         }
     }
 
-    private runInTransaction(participants: any[], action: () => void) {
+    private runInTransaction(participants: (Item | undefined)[], action: () => void) {
         const doc = participants
-            .map(item => (item as any)?.ydoc)
+            .map(item => (item as unknown as { ydoc?: { transact: (fn: () => void) => void; }; })?.ydoc)
             .find(candidate => candidate && typeof candidate.transact === "function");
 
         if (doc) {
