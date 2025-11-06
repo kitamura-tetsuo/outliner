@@ -35,6 +35,12 @@ fi
 : "${FIREBASE_FUNCTIONS_PORT:=${FN_FROM_CFG:-57070}}"
 : "${FIREBASE_HOSTING_PORT:=${HS_FROM_CFG:-57000}}"
 : "${FIREBASE_STORAGE_PORT:=${ST_FROM_CFG:-59200}}"
+# Export numeric ports for child processes that rely on them (e.g., server/firebase-init.js)
+export FIREBASE_AUTH_PORT
+export FIREBASE_FIRESTORE_PORT
+export FIREBASE_FUNCTIONS_PORT
+export FIREBASE_HOSTING_PORT
+export FIREBASE_STORAGE_PORT
 
 # Environment settings
 export NODE_ENV=test

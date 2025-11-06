@@ -433,10 +433,49 @@ EOF
   export AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
   export FIRESTORE_EMULATOR_HOST="localhost:${FIREBASE_FIRESTORE_PORT}"
   export FIREBASE_EMULATOR_HOST="localhost:${FIREBASE_FUNCTIONS_PORT}"
-  echo "Using env: FIREBASE_AUTH_EMULATOR_HOST=${FIREBASE_AUTH_EMULATOR_HOST} FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST} FIREBASE_EMULATOR_HOST=${FIREBASE_EMULATOR_HOST}"
+  export FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID}"
+  echo "Using env: FIREBASE_AUTH_EMULATOR_HOST=${FIREBASE_AUTH_EMULATOR_HOST} FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST} FIREBASE_EMULATOR_HOST=${FIREBASE_EMULATOR_HOST} FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}"
+
+  # Wait for Firebase Admin SDK to be able to connect (not just port open)
+  echo "Testing Firebase Admin SDK connection to emulator..."
+  local max_admin_retries=30
+  local admin_retry=0
+  while [ $admin_retry -lt $max_admin_retries ]; do
+    if timeout 5 node -e "
+      process.env.FIREBASE_AUTH_EMULATOR_HOST='localhost:${FIREBASE_AUTH_PORT}';
+      process.env.FIRESTORE_EMULATOR_HOST='localhost:${FIREBASE_FIRESTORE_PORT}';
+      process.env.FIREBASE_EMULATOR_HOST='localhost:${FIREBASE_FUNCTIONS_PORT}';
+      process.env.FIREBASE_PROJECT_ID='${FIREBASE_PROJECT_ID}';
+      process.env.USE_FIREBASE_EMULATOR='true';
+      const admin = require('firebase-admin');
+      admin.initializeApp({ projectId: '${FIREBASE_PROJECT_ID}' });
+      admin.auth().listUsers(1).then(() => {
+        console.log('SUCCESS');
+        process.exit(0);
+      }).catch(err => {
+        console.log('FAILED:', err.message);
+        process.exit(1);
+      });
+    " 2>/dev/null | grep -q "SUCCESS"; then
+      echo "Firebase Admin SDK successfully connected to emulator"
+      break
+    fi
+    admin_retry=$((admin_retry + 1))
+    if [ $admin_retry -lt $max_admin_retries ]; then
+      echo "Firebase Admin SDK connection attempt $admin_retry/$max_admin_retries failed, retrying..."
+      sleep 2
+    fi
+  done
+
+  if [ $admin_retry -eq $max_admin_retries ]; then
+    echo "ERROR: Firebase Admin SDK could not connect to emulator after $max_admin_retries attempts"
+    echo "Proceeding anyway, but tests may fail..."
+  fi
+
   FIREBASE_AUTH_EMULATOR_HOST="${FIREBASE_AUTH_EMULATOR_HOST}" \
   FIRESTORE_EMULATOR_HOST="${FIRESTORE_EMULATOR_HOST}" \
   FIREBASE_EMULATOR_HOST="${FIREBASE_EMULATOR_HOST}" \
+  FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID}" \
   node "${ROOT_DIR}/server/scripts/init-firebase-emulator.js" &
 
   # Test Firebase Functions endpoint directly
@@ -527,6 +566,10 @@ start_tinylicious() {
 start_api_server() {
   echo "Starting API server on port ${TEST_API_PORT}..."
   cd "${ROOT_DIR}/server"
+  # Ensure emulator hosts are explicitly passed to the server process
+  FIREBASE_AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}" \
+  FIRESTORE_EMULATOR_HOST="localhost:${FIREBASE_FIRESTORE_PORT}" \
+  FIREBASE_EMULATOR_HOST="localhost:${FIREBASE_FUNCTIONS_PORT}" \
   npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} </dev/null > "${ROOT_DIR}/server/logs/test-log-service-tee.log" 2>&1 &
   cd "${ROOT_DIR}"
 }
