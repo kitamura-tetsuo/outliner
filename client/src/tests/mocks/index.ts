@@ -6,6 +6,14 @@ import { resetMockFirestore, setupMockFirestore } from "./firestoreMock";
 // Import IUser type from UserManager
 import type { IUser } from "../../auth/UserManager";
 
+// Type alias for RequestInit in test environment
+type FetchOptions = {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    [key: string]: unknown;
+};
+
 // Mock interface that matches the parts of UserManager used in tests
 interface MockUserManager {
     getCurrentUser: () => IUser | null;
@@ -18,7 +26,7 @@ interface MockUserManager {
 }
 
 // Mock for UserManager
-const mockUserManager: MockUserManager = {
+const mockUserManager = {
     getCurrentUser: vi.fn().mockReturnValue({
         id: "test-user-id",
         name: "Test User",
@@ -40,21 +48,29 @@ const mockUserManager: MockUserManager = {
             getIdToken: vi.fn().mockResolvedValue("mock-id-token"),
         },
     },
-};
+} as MockUserManager;
 
 // Setup all mocks at once
 export function setupMocks({
     firestore = {},
+}: {
+    firestore?: {
+        userId?: string;
+        defaultContainerId?: string;
+        accessibleContainerIds?: string[];
+    };
 } = {}) {
     // Mock userManager instance
-    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(mockUserManager);
+    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(
+        mockUserManager as unknown as UserManagerModule.UserManager,
+    );
 
     // Setup Firestore mock with optional initial data
     setupMockFirestore(firestore);
 
     // Mock fetch for API calls
     const originalFetch = global.fetch;
-    global.fetch = vi.fn().mockImplementation((url, options) => {
+    global.fetch = vi.fn().mockImplementation((url: string, options?: FetchOptions) => {
         if (url.includes("/api/save-container")) {
             return Promise.resolve({
                 ok: true,

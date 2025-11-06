@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
+import type { Item } from "../../schema/app-schema";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 
@@ -9,13 +10,21 @@ beforeEach(() => aliasPickerStore.reset());
 
 // Mirrors e2e/new/als-alias-path-navigation.spec.ts
 
+// Interface for test data structure
+interface TestItemData {
+    id: string;
+    text: string;
+    items: TestItemData[];
+    aliasTargetId?: string;
+}
+
 describe("ALS alias path navigation", () => {
     it("enumerates nested item paths", async () => {
-        const items = [
+        const items: TestItemData[] = [
             { id: "p", text: "parent", items: [{ id: "c", text: "child", items: [] }] },
             { id: "alias", text: "alias", items: [] },
         ];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        generalStore.currentPage = { id: "root", text: "root", items } as unknown as Item;
         render(AliasPicker);
 
         aliasPickerStore.show("alias");

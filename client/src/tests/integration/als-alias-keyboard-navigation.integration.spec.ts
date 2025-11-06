@@ -2,19 +2,28 @@ import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
+import type { Item } from "../../schema/app-schema";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 
 // Mirrors e2e/new/als-alias-keyboard-navigation.spec.ts
 
+// Interface for test data structure
+interface TestItemData {
+    id: string;
+    text: string;
+    items: TestItemData[];
+    aliasTargetId?: string;
+}
+
 describe("ALS alias keyboard navigation", () => {
     it("navigates options with arrow keys and selects target", async () => {
-        const items = [
+        const items: TestItemData[] = [
             { id: "1", text: "first", items: [] },
             { id: "2", text: "second", items: [] },
             { id: "alias", text: "alias", items: [] },
         ];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        generalStore.currentPage = { id: "root", text: "root", items } as unknown as Item;
         render(AliasPicker);
 
         aliasPickerStore.show("alias");
@@ -36,8 +45,9 @@ describe("ALS alias keyboard navigation", () => {
         expect(options[1].closest("li")?.classList.contains("selected")).toBe(true);
 
         await user.keyboard("{Enter}");
-        const pageItems = (generalStore.currentPage as any).items;
-        expect(pageItems[2].aliasTargetId).toBe("2");
+        const pageItems = generalStore.currentPage?.items;
+        const aliasItem = pageItems?.at(2);
+        expect(aliasItem?.aliasTargetId).toBe("2");
         expect(aliasPickerStore.isVisible).toBe(false);
     });
 });
