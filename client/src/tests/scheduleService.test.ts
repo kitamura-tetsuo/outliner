@@ -1,5 +1,13 @@
-import { beforeEach, expect, it, type Mock, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import { cancelSchedule, createSchedule, listSchedules, updateSchedule } from "../services/scheduleService";
+
+// Type declarations for test globals
+type FetchMock = {
+    (input: string | URL, init?: unknown): Promise<Response>;
+    mockResolvedValueOnce: (value: Response) => void;
+    mockReturnValueOnce: (value: Response) => void;
+    toHaveBeenCalledWith: (...args: unknown[]) => void;
+};
 
 // UserManagerをモックして、実際のAPIエンドポイントを使用
 vi.mock("../auth/UserManager", () => ({
@@ -10,7 +18,7 @@ vi.mock("../auth/UserManager", () => ({
 }));
 
 // fetchをモックして、実際のAPIレスポンスをシミュレート
-(global as any).fetch = vi.fn() as any;
+(globalThis as any).fetch = vi.fn() as unknown as FetchMock;
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -19,7 +27,7 @@ beforeEach(() => {
 it("calls createSchedule API", async () => {
     // fetchのモックレスポンスを設定
     const mockResponse = { scheduleId: "test-schedule-id" };
-    (global as any).fetch.mockResolvedValueOnce({
+    (globalThis as any).fetch!.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
     });
@@ -31,7 +39,7 @@ it("calls createSchedule API", async () => {
     expect(result.scheduleId).toBe("test-schedule-id");
 
     // fetchが正しいパラメータで呼ばれたことを確認
-    expect((global as any).fetch).toHaveBeenCalledWith(
+    expect((globalThis as any).fetch).toHaveBeenCalledWith(
         "http://localhost:57000/api/create-schedule",
         {
             method: "POST",
@@ -51,7 +59,7 @@ it("calls listSchedules API", async () => {
         { id: "schedule1", strategy: "one_shot", params: {}, nextRunAt: Date.now() + 60000 },
         { id: "schedule2", strategy: "recurring", params: {}, nextRunAt: Date.now() + 120000 },
     ];
-    (global as any).fetch.mockResolvedValueOnce({
+    (globalThis as any).fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ schedules: mockSchedules }),
     });
@@ -65,7 +73,7 @@ it("calls listSchedules API", async () => {
     expect(result[1].id).toBe("schedule2");
 
     // fetchが正しいパラメータで呼ばれたことを確認
-    expect((global as any).fetch).toHaveBeenCalledWith(
+    expect((globalThis as any).fetch).toHaveBeenCalledWith(
         "http://localhost:57000/api/list-schedules",
         {
             method: "POST",
@@ -81,7 +89,7 @@ it("calls listSchedules API", async () => {
 it("calls cancelSchedule API", async () => {
     // fetchのモックレスポンスを設定
     const mockResponse = { success: true };
-    (global as any).fetch.mockResolvedValueOnce({
+    (globalThis as any).fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
     });
@@ -92,7 +100,7 @@ it("calls cancelSchedule API", async () => {
     expect(result.success).toBe(true);
 
     // fetchが正しいパラメータで呼ばれたことを確認
-    expect((global as any).fetch).toHaveBeenCalledWith(
+    expect((globalThis as any).fetch).toHaveBeenCalledWith(
         "http://localhost:57000/api/cancel-schedule",
         {
             method: "POST",
@@ -108,7 +116,7 @@ it("calls cancelSchedule API", async () => {
 
 it("calls updateSchedule API", async () => {
     const mockResponse = { success: true };
-    (global as any).fetch.mockResolvedValueOnce({
+    (globalThis as any).fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
     });
@@ -122,7 +130,7 @@ it("calls updateSchedule API", async () => {
     expect(result).toBeDefined();
     expect(result.success).toBe(true);
 
-    expect((global as any).fetch).toHaveBeenCalledWith(
+    expect((globalThis as any).fetch).toHaveBeenCalledWith(
         "http://localhost:57000/api/update-schedule",
         {
             method: "POST",

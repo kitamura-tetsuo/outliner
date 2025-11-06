@@ -1,8 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
+// Type declarations for test globals
+type FetchMock = {
+    (input: string | URL, init?: unknown): Promise<Response>;
+    mockResolvedValueOnce: (value: Response) => void;
+    mockReturnValueOnce: (value: Response) => void;
+    toHaveBeenCalledWith: (...args: unknown[]) => void;
+};
+
 // useConsoleAPIをモックするためにloggerモジュールを先にモック
-vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
-    const actual = await importOriginal();
+vi.mock("../lib/logger", async (importOriginal: () => Promise<unknown>) => {
+    const actual = await importOriginal() as object;
 
     // loggerをカスタムタイプとして定義
     type LoggerMock = {
@@ -16,7 +24,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
     };
 
     return {
-        ...actual,
+        ...(actual as object),
         getLogger: (componentName = "TestComponent") => {
             // シンプルなロガーモックを作成
             const logger: LoggerMock = {
@@ -96,17 +104,17 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
 import { getLogger } from "../lib/logger";
 
 // windowオブジェクトのグローバルモックを設定（jsdomなしでテストする場合に必要）
-(global as any).window = {
+(globalThis as any).window = {
     console: console,
 };
 
 // fetchのモック
-(global as any).fetch = vi.fn(() =>
+(globalThis as any).fetch = vi.fn(() =>
     Promise.resolve({
         ok: true,
         json: () => Promise.resolve({}),
     })
-);
+) as unknown as FetchMock;
 
 describe("Logger", () => {
     // コンソールのモックを設定
