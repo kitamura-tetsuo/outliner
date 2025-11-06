@@ -7,6 +7,16 @@ import { yjsService } from "../lib/yjs/service";
 import { Items, Project } from "../schema/yjs-schema";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
+interface TreeNode {
+    id: string;
+    text: string;
+    author: string;
+    votes: unknown[];
+    created: unknown;
+    lastChanged: unknown;
+    items?: TreeNode[];
+}
+
 export interface YjsClientParams {
     clientId: string;
     projectId: string;
@@ -54,7 +64,7 @@ export class YjsClient {
             const title = project?.title ?? "";
             connectedProject = Project.fromDoc(doc);
             try {
-                const meta = doc.getMap("metadata") as any;
+                const meta = doc.getMap("metadata") as Y.Map<unknown>;
                 if (title && !meta.get("title")) meta.set("title", title);
             } catch {}
         } catch {}
@@ -83,7 +93,24 @@ export class YjsClient {
         return this._getPageConnection?.(pageId);
     }
 
-    public updatePresence(state: { cursor?: { itemId: string; offset: number; }; selection?: any; } | null) {
+    public updatePresence(
+        state: {
+            cursor?: { itemId: string; offset: number; };
+            selection?: {
+                startItemId: string;
+                startOffset: number;
+                endItemId: string;
+                endOffset: number;
+                isReversed?: boolean;
+                isBoxSelection?: boolean;
+                boxSelectionRanges?: {
+                    itemId: string;
+                    startOffset: number;
+                    endOffset: number;
+                }[] | undefined;
+            };
+        } | null,
+    ) {
         if (!this._awareness) return;
         yjsService.setPresence(this._awareness, state);
     }
@@ -104,9 +131,9 @@ export class YjsClient {
     public get isContainerConnected(): boolean {
         try {
             // WebsocketProvider has a private flag; infer from wsconnected when available
-            const p: any = this._provider;
+            const p = this._provider;
             if (!p) return true; // treat offline as connected for local mode
-            return !!(p.wsconnected ?? p.connected ?? p._connected ?? false);
+            return !!(p.wsconnected ?? (p as unknown as { _connected?: boolean; })._connected ?? false);
         } catch {
             return true;
         }
@@ -121,61 +148,76 @@ export class YjsClient {
     }
 
     // Debug helpers similar to FluidClient
-    getAllData() {
+    getAllData(): { itemCount: number; items: TreeNode[]; } {
         const items = this.project.items as Items;
-        const collect = (it: Items | any): any => {
-            const arr: any[] = [];
-            const len = (it as any).length ?? 0;
+        const collect = (it: Items): TreeNode[] => {
+            const arr: TreeNode[] = [];
+            const itemsProxy = it as unknown as {
+                length: number;
+                at?: (i: number) => unknown;
+                [index: number]: unknown;
+            };
+            const len = itemsProxy.length ?? 0;
             for (let i = 0; i < len; i++) {
-                const item = (it as any).at ? (it as any).at(i) : (it as any)[i];
+                const item = itemsProxy.at ? itemsProxy.at(i) : itemsProxy[i];
                 if (!item) continue;
-                const node: any = {
-                    id: item.id,
-                    text: item.text?.toString?.() ?? "",
-                    author: (item as any).author,
-                    votes: [...((item as any).votes ?? [])],
-                    created: (item as any).created,
-                    lastChanged: (item as any).lastChanged,
+                const itemProxy = item as unknown as {
+                    id: string;
+                    text: { toString?: () => string; };
+                    items: Items;
+                    author: unknown;
+                    votes: unknown[];
+                    created: unknown;
+                    lastChanged: unknown;
                 };
-                const children = item.items as Items;
-                if (children && ((children as any).length ?? 0) > 0) {
+                const node: TreeNode = {
+                    id: itemProxy.id,
+                    text: itemProxy.text?.toString?.() ?? "",
+                    author: String(itemProxy.author),
+                    votes: [...(itemProxy.votes ?? [])],
+                    created: itemProxy.created,
+                    lastChanged: itemProxy.lastChanged,
+                };
+                const children = itemProxy.items;
+                if (children && ((children as unknown as { length: number; }).length ?? 0) > 0) {
                     node.items = collect(children);
                 }
                 arr.push(node);
             }
-            return { itemCount: arr.length, items: arr };
+            return arr;
         };
-        return collect(items);
+        const collectedItems = collect(items);
+        return { itemCount: collectedItems.length, items: collectedItems };
     }
 
-    getTreeAsJson(path?: string) {
+    getTreeAsJson(path?: string): unknown {
         const treeData = this.getAllData();
         if (!path) return treeData;
         const parts = path.split(".");
-        let result: any = treeData;
+        let result: unknown = treeData;
         for (const part of parts) {
             if (result === undefined || result === null) return null;
-            result = result[part];
+            result = (result as Record<string, unknown>)[part];
         }
         return result;
     }
 
     public async createPage(pageName: string, lines: string[]): Promise<void> {
         const pageItem = (this.project.items as Items).addNode("user");
-        (pageItem.text as any).insert?.(0, pageName);
+        (pageItem.text as Y.Text).insert?.(0, pageName);
         const pageChildren = pageItem.items as Items;
         for (const line of lines) {
             const item = pageChildren.addNode("user");
-            (item.text as any).insert?.(0, line);
+            (item.text as Y.Text).insert?.(0, line);
         }
     }
 
     public dispose() {
         try {
-            (this._provider as any)?.destroy?.();
+            this._provider?.destroy();
         } catch {}
         try {
-            (this._doc as any)?.destroy?.();
+            this._doc?.destroy();
         } catch {}
         try {
             presenceStore.getUsers().forEach(u => presenceStore.removeUser(u.userId));
