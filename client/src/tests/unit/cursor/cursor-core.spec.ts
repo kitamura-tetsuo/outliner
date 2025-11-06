@@ -3,6 +3,7 @@ import { Cursor } from "../../../lib/Cursor";
 import type { Item } from "../../../schema/yjs-schema";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../../stores/store.svelte";
+import type { GeneralStore } from "../../../stores/store.svelte";
 
 // Mock the stores
 vi.mock("../../../stores/EditorOverlayStore.svelte", () => {
@@ -76,7 +77,7 @@ describe("Cursor", () => {
         mockItem.parent = mockParentItem;
 
         // Mock the general store
-        (generalStore as any).currentPage = mockParentItem;
+        (generalStore as GeneralStore).currentPage = mockParentItem;
     });
 
     afterEach(() => {
