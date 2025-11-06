@@ -388,6 +388,13 @@ export class Item {
         return new Items(this.ydoc, this.tree!, parentKey);
     }
 
+    // 親アイテム。ルート直下は null
+    get parentItem(): Item | null {
+        const parentKey = this.tree!.getNodeParentFromKey(this.key!);
+        if (!parentKey) return null;
+        return new Item(this.ydoc, this.tree!, parentKey);
+    }
+
     // 親内でのインデックス（親がない場合は -1）
     indexInParent(): number {
         const p = this.parent;

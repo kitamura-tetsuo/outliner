@@ -435,9 +435,11 @@ export class KeyEventHandler {
                         commandPaletteStore.hide();
                         // コマンド文字列を削除
                         const newText = text.slice(0, lastSlash) + text.slice(cursor.offset);
-                        node.updateText(newText);
-                        cursor.offset = lastSlash;
-                        cursor.applyToStore();
+                        if (node) {
+                            node.updateText(newText);
+                            cursor.offset = lastSlash;
+                            cursor.applyToStore();
+                        }
 
                         // 新規アイテムを末尾に追加し、AliasPicker を表示
                         const gs: any = typeof window !== "undefined" ? (window as any).generalStore : null;

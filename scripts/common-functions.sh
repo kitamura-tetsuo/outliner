@@ -393,9 +393,20 @@ EOF
   echo "Firebase emulator starting with project: ${FIREBASE_PROJECT_ID}"
   echo "Using config file: firebase.emulator.json"
   echo "Starting emulators: auth,firestore,functions,hosting,storage"
-  firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
+
+  # Prefer globally installed firebase CLI; fall back to npx if unavailable
+  local firebase_cmd="firebase"
+  if ! command -v firebase >/dev/null 2>&1; then
+    echo "Firebase CLI not found on PATH. Falling back to 'npx --yes firebase-tools'"
+    firebase_cmd="npx --yes firebase-tools"
+  fi
+
+  # Launch emulators in background and capture logs
+  set +e  # allow background command failure to not abort the whole script immediately
+  ${firebase_cmd} emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
   FIREBASE_PID=$!
-  echo "Firebase emulator started with PID: ${FIREBASE_PID}"
+  set -e
+  echo "Firebase emulator started (spawned) with PID: ${FIREBASE_PID}"
   echo "Firebase emulator log will be written to: ${ROOT_DIR}/server/logs/firebase-emulator.log"
 
   cd "${ROOT_DIR}"
