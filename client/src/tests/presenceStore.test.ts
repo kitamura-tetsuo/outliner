@@ -9,11 +9,18 @@ function colorForUser(id: string): string {
     return `hsl(${hash}, 70%, 50%)`;
 }
 
+type PresenceUser = { userId: string; userName: string; color: string; };
+type PresenceStore = {
+    users: Record<string, PresenceUser>;
+    setUser: (user: PresenceUser) => void;
+    removeUser: (userId: string) => void;
+};
+
 describe("presence store", () => {
     it("adds and removes users", () => {
         // Render a component to initialize window.presenceStore
         render(PresenceAvatars);
-        const presenceStore = (globalThis as any).presenceStore;
+        const presenceStore = (globalThis as any).presenceStore as PresenceStore;
         presenceStore.setUser({ userId: "u1", userName: "Alice", color: colorForUser("u1") });
         expect(presenceStore.users["u1"].userName).toBe("Alice");
         presenceStore.removeUser("u1");

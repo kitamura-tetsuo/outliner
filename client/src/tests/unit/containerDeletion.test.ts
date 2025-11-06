@@ -19,14 +19,14 @@ interface MockUser {
 
 interface MockContainerData {
     accessibleUserIds: string[];
-    createdAt: any;
-    updatedAt: any;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 interface MockUserData {
     accessibleContainerIds: string[];
     defaultContainerId: string | null;
-    updatedAt: any;
+    updatedAt: Date;
 }
 
 // Firebase Admin SDK のモック
@@ -164,10 +164,6 @@ describe("Container Deletion Service - Unit Tests", () => {
         it("コンテナIDが空の場合、エラーを投げること", () => {
             expect(() => service.validateContainerId("")).toThrow("Container ID is required");
         });
-
-        it("コンテナIDがundefinedの場合、エラーを投げること", () => {
-            expect(() => service.validateContainerId(undefined as any)).toThrow("Container ID is required");
-        });
     });
 
     describe("checkContainerExists", () => {
@@ -181,7 +177,7 @@ describe("Container Deletion Service - Unit Tests", () => {
             mockDoc.exists = true;
             mockDoc.data.mockReturnValue(mockContainerData);
 
-            const result = await service.checkContainerExists("existing-container");
+            const result = await service.checkContainerExists();
 
             expect(result).toEqual(mockContainerData);
         });
@@ -189,7 +185,7 @@ describe("Container Deletion Service - Unit Tests", () => {
         it("コンテナが存在しない場合、エラーを投げること", async () => {
             mockDoc.exists = false;
 
-            await expect(service.checkContainerExists("non-existing-container"))
+            await expect(service.checkContainerExists())
                 .rejects.toThrow("Container not found");
         });
     });

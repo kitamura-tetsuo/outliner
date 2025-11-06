@@ -26,7 +26,17 @@ interface MockUserManager {
 }
 
 // Mock for UserManager
-const mockUserManager = {
+const mockUserManager: {
+    getCurrentUser: () => { id: string; name: string; email: string; };
+    addEventListener: (
+        callback: (event: { user: { id: string; name: string; email: string; }; }) => void,
+    ) => () => void;
+    auth: {
+        currentUser: {
+            getIdToken: () => Promise<string>;
+        };
+    };
+} = {
     getCurrentUser: vi.fn().mockReturnValue({
         id: "test-user-id",
         name: "Test User",

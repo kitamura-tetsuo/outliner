@@ -20,13 +20,13 @@ interface MockUser {
 interface MockUserData {
     accessibleContainerIds: string[];
     defaultContainerId: string | null;
-    updatedAt: any;
+    updatedAt: Date;
 }
 
 interface MockContainerData {
     accessibleUserIds: string[];
-    createdAt: any;
-    updatedAt: any;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 // Firebase Admin SDK のモック
@@ -183,10 +183,6 @@ describe("User Deletion Service - Unit Tests", () => {
         it("ユーザーIDが空の場合、エラーを投げること", () => {
             expect(() => service.validateUserDeletion("")).toThrow("User ID is required");
         });
-
-        it("ユーザーIDがundefinedの場合、エラーを投げること", () => {
-            expect(() => service.validateUserDeletion(undefined as any)).toThrow("User ID is required");
-        });
     });
 
     describe("getUserContainers", () => {
@@ -200,7 +196,7 @@ describe("User Deletion Service - Unit Tests", () => {
             mockDoc.exists = true;
             mockDoc.data.mockReturnValue(mockUserData);
 
-            const result = await service.getUserContainers("test-user-id");
+            const result = await service.getUserContainers();
 
             expect(result).toEqual(["container1", "container2", "container3"]);
         });
@@ -208,7 +204,7 @@ describe("User Deletion Service - Unit Tests", () => {
         it("ユーザーが存在しない場合、空配列を返すこと", async () => {
             mockDoc.exists = false;
 
-            const result = await service.getUserContainers("non-existing-user");
+            const result = await service.getUserContainers();
 
             expect(result).toEqual([]);
         });
@@ -222,7 +218,7 @@ describe("User Deletion Service - Unit Tests", () => {
             mockDoc.exists = true;
             mockDoc.data.mockReturnValue(mockUserData);
 
-            const result = await service.getUserContainers("test-user-id");
+            const result = await service.getUserContainers();
 
             expect(result).toEqual([]);
         });

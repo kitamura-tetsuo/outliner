@@ -73,13 +73,13 @@ describe("Cursor Integration", () => {
         } as unknown as Item;
 
         // Set up parent relationship
-        mockItem.parent = mockParentItem;
+        (mockItem as any).parent = mockParentItem;
 
         // Mock the general store
         (generalStore as any).currentPage = mockParentItem;
 
         // Setup editor overlay store mocks
-        editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
+        (editorOverlayStore as any).setCursor.mockReturnValue("new-cursor-id");
     });
 
     afterEach(() => {
@@ -121,7 +121,7 @@ describe("Cursor Integration", () => {
             } as unknown as Item;
 
             // Update parent to include second item
-            mockParentItem.items = {
+            (mockParentItem as any).items = {
                 [Symbol.iterator]: function*() {
                     yield mockItem;
                     yield secondItem;
@@ -147,14 +147,14 @@ describe("Cursor Integration", () => {
             expect(cursor.itemId).toBe("test-item-1"); // Should stay on same item
 
             // Move to end of first item and then right to next item
-            cursor.offset = mockItem.text.length;
+            cursor.offset = (mockItem as any).text.length;
             // Note: This would normally trigger navigation, but we're testing the logic here
         });
     });
 
     describe("Text Operations", () => {
         it("should handle text insertion with selection", () => {
-            mockItem.text = "Hello World";
+            (mockItem as any).text = "Hello World";
             mockItem.updateText = vi.fn();
 
             // Mock a selection
@@ -183,7 +183,7 @@ describe("Cursor Integration", () => {
         });
 
         it("should handle line breaks correctly", () => {
-            mockItem.text = "Hello World";
+            (mockItem as any).text = "Hello World";
             mockItem.updateText = vi.fn();
 
             // Ensure parent has indexOf and addNode methods

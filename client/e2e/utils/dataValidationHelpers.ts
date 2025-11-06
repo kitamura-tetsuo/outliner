@@ -20,16 +20,16 @@ export class DataValidationHelpers {
             const labelBase = testInfo.title.replace(/[^a-z0-9_-]+/gi, "-");
             const label = `${labelBase}-auto-${Date.now()}`;
             await DataValidationHelpers.saveSnapshotsAndCompare(page, label);
-        } catch (e: any) {
+        } catch (e) {
             // Do not fail the test if snapshot saving fails
-            console.warn("[afterEach] snapshot skipped:", e?.message ?? e);
+            console.warn("[afterEach] snapshot skipped:", e instanceof Error ? e.message : String(e));
         } finally {
             try {
                 // Check if page is still open before trying to dump logs
                 if (!page.isClosed()) {
                     // Dump E2E logs if present
                     const logs = await page.evaluate(() => {
-                        const w: any = window as any;
+                        const w = window as unknown as { E2E_LOGS?: unknown[]; };
                         return Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS.slice(-200) : [];
                     }, { timeout: 2000 });
                     if (Array.isArray(logs) && logs.length) {
@@ -39,7 +39,13 @@ export class DataValidationHelpers {
                     console.log("[afterEach] Page already closed, skipping log dump");
                 }
             } catch (e) {
-                console.warn("[afterEach] log dump skipped:", e?.message ?? e);
+                const errorMsg = e instanceof Error ? e.message : String(e);
+                // Check if the test has ended - in this case, skip silently
+                if (errorMsg.includes("Test ended") || errorMsg.includes("Execution context was destroyed")) {
+                    console.log("[afterEach] Test ended, skipping log dump");
+                } else {
+                    console.warn("[afterEach] log dump skipped:", errorMsg);
+                }
             }
         }
     }
@@ -62,7 +68,15 @@ export class DataValidationHelpers {
             await page.evaluate(() => {
                 try {
                     // Clear any existing E2E logs
-                    const w: any = window as any;
+                    const w = window as unknown as {
+                        E2E_LOGS?: unknown[];
+                        generalStore?: unknown;
+                        editorOverlayStore?: unknown;
+                        aliasPickerStore?: unknown;
+                        commandPaletteStore?: unknown;
+                        userPreferencesStore?: unknown;
+                        searchHistoryStore?: unknown;
+                    };
                     if (Array.isArray(w.E2E_LOGS)) {
                         w.E2E_LOGS.length = 0;
                     }
@@ -142,13 +156,25 @@ export class DataValidationHelpers {
                 } catch (e) {
                     console.warn("[afterEach] cleanup warning:", e);
                 }
-            }, { timeout: 5000 }).catch((e) => {
-                // Ignore errors during cleanup evaluation
-                console.log("[afterEach] cleanup evaluation skipped:", e?.message ?? e);
+            }, { timeout: 2000 }).catch((e) => {
+                const errorMsg = e instanceof Error ? e.message : String(e);
+                // Check if the test has ended - in this case, skip silently
+                if (errorMsg.includes("Test ended") || errorMsg.includes("Execution context was destroyed")) {
+                    console.log("[afterEach] Test ended, skipping cleanup evaluation");
+                } else {
+                    // Ignore other errors during cleanup evaluation
+                    console.log("[afterEach] cleanup evaluation skipped:", errorMsg);
+                }
             });
-        } catch (e: any) {
-            // Do not fail the test if cleanup fails
-            console.warn("[afterEach] cleanup skipped:", e?.message ?? e);
+        } catch (e) {
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            // Check if the test has ended - in this case, skip silently
+            if (errorMsg.includes("Test ended") || errorMsg.includes("Execution context was destroyed")) {
+                console.log("[afterEach] Test ended, skipping cleanup");
+            } else {
+                // Do not fail the test if cleanup fails
+                console.warn("[afterEach] cleanup skipped:", errorMsg);
+            }
         }
     }
 
@@ -162,11 +188,21 @@ export class DataValidationHelpers {
         // Wait for the project to be available in the store
         try {
             await page.waitForFunction(() => {
-                const store = (window as any).generalStore || (window as any).appStore;
+                const w = window as unknown as {
+                    generalStore?: { project?: unknown; };
+                    appStore?: { project?: unknown; };
+                };
+                const store = w.generalStore || w.appStore;
                 return !!(store && store.project);
-            }, { timeout: 5000 });
+            }, { timeout: 2000, polling: 100 });
         } catch (e) {
-            console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", e?.message ?? e);
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            // Check if the test has ended - in this case, skip silently
+            if (errorMsg.includes("Test ended") || errorMsg.includes("Execution context was destroyed")) {
+                console.log("[saveSnapshotsAndCompare] Test ended, skipping snapshot");
+                return;
+            }
+            console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", errorMsg);
             return; // Skip snapshot if project is not available
         }
 
@@ -180,35 +216,46 @@ export class DataValidationHelpers {
         let result;
         try {
             result = await page.evaluate(async () => {
-                function yTextToString(t: any): string {
+                function yTextToString(t: unknown): string {
                     if (!t) return "";
                     try {
-                        return typeof t.toString === "function" ? t.toString() : String(t);
+                        return typeof (t as { toString?: () => string; }).toString === "function"
+                            ? (t as { toString: () => string; }).toString()
+                            : String(t);
                     } catch {
                         return String(t);
                     }
                 }
 
-                const store = (window as any).generalStore || (window as any).appStore;
+                const w = window as unknown as {
+                    generalStore?: { project?: unknown; };
+                    appStore?: { project?: unknown; };
+                };
+                const store = w.generalStore || w.appStore;
                 if (!store || !store.project) {
                     throw new Error("Project not available on window.generalStore/appStore");
                 }
 
-                const project = store.project;
+                const project = store.project as { items?: { length?: number; at?: (i: number) => unknown; }; };
                 const pages: Array<{ title: string; items: Array<{ text: string; }>; }> = [];
 
                 // project.items is proxied array-like; iterate by length
-                const len = (project.items as any)?.length ?? 0;
+                const len = project.items?.length ?? 0;
                 for (let i = 0; i < len; i++) {
-                    const pageItem = (project.items as any).at(i);
+                    const pageItem = project.items?.at(i);
                     if (!pageItem) continue;
-                    const pageTitle = yTextToString(pageItem.text);
+                    const pageItemObj = pageItem as {
+                        text?: unknown;
+                        items?: { length?: number; at?: (j: number) => unknown; };
+                    };
+                    const pageTitle = yTextToString(pageItemObj.text);
                     const children: Array<{ text: string; }> = [];
-                    const clen = (pageItem.items as any)?.length ?? 0;
+                    const clen = pageItemObj.items?.length ?? 0;
                     for (let j = 0; j < clen; j++) {
-                        const child = (pageItem.items as any).at(j);
+                        const child = pageItemObj.items?.at(j);
                         if (!child) continue;
-                        children.push({ text: yTextToString(child.text) });
+                        const childObj = child as { text?: unknown; };
+                        children.push({ text: yTextToString(childObj.text) });
                     }
                     // First item is the page title by convention (legacy snapshotter alignment)
                     pages.push({ title: pageTitle, items: [{ text: pageTitle }, ...children] });
@@ -218,9 +265,15 @@ export class DataValidationHelpers {
                     mode: "yjs",
                     yjsJson: JSON.stringify({ projectTitle: String(project.title ?? ""), pages }, null, 2),
                 };
-            }, { timeout: 5000 });
+            }, { timeout: 2000 });
         } catch (e) {
-            console.warn("[saveSnapshotsAndCompare] evaluate failed:", e?.message ?? e);
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            // Check if the test has ended - in this case, skip silently
+            if (errorMsg.includes("Test ended") || errorMsg.includes("Execution context was destroyed")) {
+                console.log("[saveSnapshotsAndCompare] Test ended, skipping snapshot");
+                return;
+            }
+            console.warn("[saveSnapshotsAndCompare] evaluate failed:", errorMsg);
             return; // Skip snapshot if evaluation fails
         }
 
