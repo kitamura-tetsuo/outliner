@@ -54,7 +54,7 @@ export class YjsClient {
             const title = project?.title ?? "";
             connectedProject = Project.fromDoc(doc);
             try {
-                const meta = doc.getMap("metadata") as any;
+                const meta = doc.getMap("metadata") as Y.Map<unknown>;
                 if (title && !meta.get("title")) meta.set("title", title);
             } catch {}
         } catch {}
@@ -83,7 +83,7 @@ export class YjsClient {
         return this._getPageConnection?.(pageId);
     }
 
-    public updatePresence(state: { cursor?: { itemId: string; offset: number; }; selection?: any; } | null) {
+    public updatePresence(state: { cursor?: { itemId: string; offset: number; }; selection?: unknown; } | null) {
         if (!this._awareness) return;
         yjsService.setPresence(this._awareness, state);
     }
@@ -104,7 +104,7 @@ export class YjsClient {
     public get isContainerConnected(): boolean {
         try {
             // WebsocketProvider has a private flag; infer from wsconnected when available
-            const p: any = this._provider;
+            const p = this._provider;
             if (!p) return true; // treat offline as connected for local mode
             return !!(p.wsconnected ?? p.connected ?? p._connected ?? false);
         } catch {
@@ -123,22 +123,39 @@ export class YjsClient {
     // Debug helpers similar to FluidClient
     getAllData() {
         const items = this.project.items as Items;
-        const collect = (it: Items | any): any => {
-            const arr: any[] = [];
-            const len = (it as any).length ?? 0;
+        interface CollectResult {
+            itemCount: number;
+            items: Array<{
+                id: string;
+                text: string;
+                author?: unknown;
+                votes: unknown[];
+                created?: unknown;
+                lastChanged?: unknown;
+                items?: CollectResult;
+            }>;
+        }
+        const collect = (it: Items | Y.Tree<unknown>): CollectResult => {
+            const arr: CollectResult["items"] = [];
+            const len = (it as Y.Tree<unknown>).length ?? 0;
             for (let i = 0; i < len; i++) {
-                const item = (it as any).at ? (it as any).at(i) : (it as any)[i];
+                const item = (it as Y.Tree<unknown>).at
+                    ? (it as Y.Tree<unknown>).at(i)
+                    : (it as Y.Tree<unknown>)[i] as Item | undefined;
                 if (!item) continue;
-                const node: any = {
+                const node: CollectResult["items"][number] = {
                     id: item.id,
                     text: item.text?.toString?.() ?? "",
-                    author: (item as any).author,
-                    votes: [...((item as any).votes ?? [])],
-                    created: (item as any).created,
-                    lastChanged: (item as any).lastChanged,
+                    author: (item as unknown as { value: Y.Map<unknown>; }).value.get("author"),
+                    votes: [
+                        ...((item as unknown as { value: Y.Map<unknown>; }).value.get("votes") as Y.Array<unknown>
+                            ?? []),
+                    ],
+                    created: (item as unknown as { value: Y.Map<unknown>; }).value.get("created"),
+                    lastChanged: (item as unknown as { value: Y.Map<unknown>; }).value.get("lastChanged"),
                 };
                 const children = item.items as Items;
-                if (children && ((children as any).length ?? 0) > 0) {
+                if (children && (children as Y.Tree<unknown>).length > 0) {
                     node.items = collect(children);
                 }
                 arr.push(node);
@@ -152,30 +169,30 @@ export class YjsClient {
         const treeData = this.getAllData();
         if (!path) return treeData;
         const parts = path.split(".");
-        let result: any = treeData;
+        let result: unknown = treeData;
         for (const part of parts) {
             if (result === undefined || result === null) return null;
-            result = result[part];
+            result = (result as Record<string, unknown>)[part];
         }
         return result;
     }
 
     public async createPage(pageName: string, lines: string[]): Promise<void> {
         const pageItem = (this.project.items as Items).addNode("user");
-        (pageItem.text as any).insert?.(0, pageName);
+        pageItem.text.insert?.(0, pageName);
         const pageChildren = pageItem.items as Items;
         for (const line of lines) {
             const item = pageChildren.addNode("user");
-            (item.text as any).insert?.(0, line);
+            item.text.insert?.(0, line);
         }
     }
 
     public dispose() {
         try {
-            (this._provider as any)?.destroy?.();
+            this._provider?.destroy?.();
         } catch {}
         try {
-            (this._doc as any)?.destroy?.();
+            this._doc?.destroy?.();
         } catch {}
         try {
             presenceStore.getUsers().forEach(u => presenceStore.removeUser(u.userId));
