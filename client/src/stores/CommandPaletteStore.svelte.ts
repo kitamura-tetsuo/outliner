@@ -13,11 +13,14 @@ class CommandPaletteStore {
      * YText または文字列から文字列を取得する
      */
     private getTextContent(text: unknown): string {
+        if (text == null) {
+            return "";
+        }
         if (typeof text === "string") {
             return text;
         }
         // YText objects need to be converted to string
-        if (text && typeof (text as any).toString === "function") {
+        if (typeof (text as any).toString === "function") {
             return (text as any).toString();
         }
         return "";

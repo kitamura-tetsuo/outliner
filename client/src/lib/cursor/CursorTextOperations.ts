@@ -19,6 +19,19 @@ interface Cursor {
 
 export class CursorTextOperations {
     private cursor: Cursor; // Cursorクラスのインスタンスを保持
+    /**
+     * YText または文字列から文字列を取得する
+     */
+    static getTextContent(text: unknown): string {
+        if (typeof text === "string") {
+            return text;
+        }
+        // YText objects need to be converted to string
+        if (text && typeof (text as any).toString === "function") {
+            return (text as any).toString();
+        }
+        return "";
+    }
 
     constructor(cursor: Cursor) {
         this.cursor = cursor;
@@ -107,7 +120,7 @@ export class CursorTextOperations {
                 // 選択範囲のテキストを削除
                 const startOffset = Math.min(selection.startOffset, selection.endOffset);
                 const endOffset = Math.max(selection.startOffset, selection.endOffset);
-                let txt = node.text;
+                let txt = CursorTextOperations.getTextContent(node.text);
                 txt = txt.slice(0, startOffset) + txt.slice(endOffset);
                 node.updateText(txt);
 
@@ -120,7 +133,7 @@ export class CursorTextOperations {
         } else {
             // 通常の削除
             if (this.cursor.offset > 0) {
-                let txt = node.text?.toString?.() ?? "";
+                let txt = CursorTextOperations.getTextContent(node.text);
                 const pos = this.cursor.offset - 1;
                 txt = txt.slice(0, pos) + txt.slice(pos + 1);
                 node.updateText(txt);
@@ -166,7 +179,7 @@ export class CursorTextOperations {
                 // 選択範囲のテキストを削除
                 const startOffset = Math.min(selection.startOffset, selection.endOffset);
                 const endOffset = Math.max(selection.startOffset, selection.endOffset);
-                let txt = node.text;
+                let txt = CursorTextOperations.getTextContent(node.text);
                 txt = txt.slice(0, startOffset) + txt.slice(endOffset);
                 node.updateText(txt);
 
@@ -178,7 +191,7 @@ export class CursorTextOperations {
             }
         } else {
             // 通常の削除
-            let txt = node.text?.toString?.() ?? "";
+            let txt = CursorTextOperations.getTextContent(node.text);
             if (this.cursor.offset < txt.length) {
                 txt = txt.slice(0, this.cursor.offset) + txt.slice(this.cursor.offset + 1);
                 node.updateText(txt);
@@ -202,7 +215,7 @@ export class CursorTextOperations {
         // グローバルテキストエリアの値も同期
         const textarea = store.getTextareaRef();
         if (textarea) {
-            textarea.value = node.text;
+            textarea.value = CursorTextOperations.getTextContent(node.text);
             textarea.setSelectionRange(this.cursor.offset, this.cursor.offset);
             console.log(`deleteForward: Synced textarea value: "${textarea.value}"`);
         }
@@ -219,14 +232,14 @@ export class CursorTextOperations {
         if (!prevItem) return;
 
         // 前のアイテムのテキストを取得
-        const prevText = prevItem.text || "";
-        const currentText = currentItem.text || "";
+        const prevText = CursorTextOperations.getTextContent(prevItem.text);
+        const currentText = CursorTextOperations.getTextContent(currentItem.text);
 
         // 前のアイテムのテキストを更新
         prevItem.updateText(prevText + currentText);
 
         // 現在のアイテムを削除
-        currentItem.delete();
+        currentItem.parent?.deleteItem(currentItem.id);
 
         // カーソル位置を更新
         const oldItemId = this.cursor.itemId;
@@ -254,14 +267,14 @@ export class CursorTextOperations {
         if (!nextItem) return;
 
         // 現在のアイテムと次のアイテムのテキストを取得
-        const currentText = currentItem.text || "";
-        const nextText = nextItem.text || "";
+        const currentText = CursorTextOperations.getTextContent(currentItem.text);
+        const nextText = CursorTextOperations.getTextContent(nextItem.text);
 
         // 現在のアイテムのテキストを更新
         currentItem.updateText(currentText + nextText);
 
         // 次のアイテムを削除
-        nextItem.delete();
+        nextItem.parent?.deleteItem(nextItem.id);
 
         // カーソル位置はそのまま（現在のアイテムの末尾）
     }
@@ -303,7 +316,7 @@ export class CursorTextOperations {
         store.clearCursorForItem(this.cursor.itemId);
 
         // アイテムを削除
-        currentItem.delete();
+        currentItem.parent?.deleteItem(currentItem.id);
 
         // 新しい位置にカーソルを設定
         this.cursor.itemId = targetItemId;
@@ -327,7 +340,7 @@ export class CursorTextOperations {
 export function deleteEmptyItem(current?: Item) {
     try {
         if (!current) return;
-        const text = current.text ?? "";
+        const text = CursorTextOperations.getTextContent(current.text);
         if (text.length > 0) return;
         const parent = current.parent;
         const idx = parent ? parent.indexOf(current) : -1;
@@ -336,7 +349,7 @@ export function deleteEmptyItem(current?: Item) {
 
         // Clear cursor for the current item and delete it
         store.clearCursorForItem(current.id);
-        current.delete();
+        current.parent?.deleteItem(current.id);
 
         // Move active item focus
         const target = next ?? prev ?? undefined;
@@ -360,10 +373,10 @@ export function mergeWithNextItem(current?: Item) {
         const next = parent.at(idx + 1);
         if (!next) return;
 
-        const a = current.text ?? "";
-        const b = next.text ?? "";
-        current.updateText(String(a) + String(b));
-        next.delete();
+        const a = CursorTextOperations.getTextContent(current.text);
+        const b = CursorTextOperations.getTextContent(next.text);
+        current.updateText(a + b);
+        next.parent?.deleteItem(next.id);
 
         store.setActiveItem(current.id);
         store.startCursorBlink();
@@ -381,11 +394,11 @@ export function mergeWithPreviousItem(current?: Item) {
         const prev = idx > 0 ? parent.at(idx - 1) : undefined;
         if (!prev) return;
 
-        const a = prev.text ?? "";
-        const b = current.text ?? "";
-        prev.updateText(String(a) + String(b));
+        const a = CursorTextOperations.getTextContent(prev.text);
+        const b = CursorTextOperations.getTextContent(current.text);
+        prev.updateText(a + b);
         const prevId = prev.id;
-        current.delete();
+        current.parent?.deleteItem(current.id);
 
         store.setActiveItem(prevId);
         store.startCursorBlink();

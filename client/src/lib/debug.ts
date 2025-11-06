@@ -12,7 +12,7 @@ export function setupGlobalDebugFunctions() {
     if (typeof window !== "undefined") {
         // In Playwright tests, avoid exposing goto to prevent navigation loops.
         if (process.env.NODE_ENV !== "test") {
-            (window as Window & Record<string, unknown>).__SVELTE_GOTO__ = async (
+            (window as unknown as Window & Record<string, unknown>).__SVELTE_GOTO__ = async (
                 url: string,
                 opts?: {
                     replaceState?: boolean;
@@ -27,14 +27,14 @@ export function setupGlobalDebugFunctions() {
             };
         } else {
             try {
-                delete (window as Window & Record<string, unknown>).__SVELTE_GOTO__;
+                delete (window as unknown as Window & Record<string, unknown>).__SVELTE_GOTO__;
             } catch {}
         }
         // サービス / ストア / ユーザーマネージャ
-        (window as Window & Record<string, unknown>).__FLUID_SERVICE__ = yjsHighService;
-        (window as Window & Record<string, unknown>).__FLUID_STORE__ = yjsStore; // keep legacy name for helpers
-        (window as Window & Record<string, unknown>).__USER_MANAGER__ = userManager;
-        (window as Window & Record<string, unknown>).__SNAPSHOT_SERVICE__ = snapshotService;
+        (window as unknown as Window & Record<string, unknown>).__FLUID_SERVICE__ = yjsHighService;
+        (window as unknown as Window & Record<string, unknown>).__FLUID_STORE__ = yjsStore; // keep legacy name for helpers
+        (window as unknown as Window & Record<string, unknown>).__USER_MANAGER__ = userManager;
+        (window as unknown as Window & Record<string, unknown>).__SNAPSHOT_SERVICE__ = snapshotService;
         logger.debug("Global debug functions initialized");
     }
 }
@@ -58,10 +58,10 @@ if (process.env.NODE_ENV === "test") {
         try {
             delete (window as Window & Record<string, unknown>).__SVELTE_GOTO__;
         } catch {}
-        (window as Window & Record<string, unknown>).__FLUID_SERVICE__ = yjsHighService;
-        (window as Window & Record<string, unknown>).__FLUID_STORE__ = yjsStore;
-        (window as Window & Record<string, unknown>).__USER_MANAGER__ = userManager;
-        (window as Window & Record<string, unknown>).__SNAPSHOT_SERVICE__ = snapshotService;
+        (window as unknown as Window & Record<string, unknown>).__FLUID_SERVICE__ = yjsHighService;
+        (window as unknown as Window & Record<string, unknown>).__FLUID_STORE__ = yjsStore;
+        (window as unknown as Window & Record<string, unknown>).__USER_MANAGER__ = userManager;
+        (window as unknown as Window & Record<string, unknown>).__SNAPSHOT_SERVICE__ = snapshotService;
 
         // SharedTreeのデータ構造を取得するデバッグ関数
         window.getFluidTreeDebugData = function() {

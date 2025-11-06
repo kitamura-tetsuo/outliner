@@ -79,7 +79,10 @@ describe("yjs presence", () => {
             const pagesMap1 = c1.doc.getMap("pages");
             const pageDoc = pagesMap1.get(page.id);
             if (pageDoc) {
-                pagesMap2.set(page.id, pageDoc);
+                // Create a new sub-document with the same GUID instead of reusing the existing one
+                // to avoid "This document was already integrated as a sub-document" error
+                const newPageDoc = new (pageDoc.constructor as any)({ guid: page.id, parent: c2.doc });
+                pagesMap2.set(page.id, newPageDoc);
             }
         }
 

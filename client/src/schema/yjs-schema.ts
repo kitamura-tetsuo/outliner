@@ -18,14 +18,24 @@ export class Item {
         return this.value.get("id") as string;
     }
 
-    get text(): Y.Text {
-        return this.value.get("text") as Y.Text;
+    get text(): string {
+        const t = this.value.get("text") as Y.Text;
+        return t ? t.toString() : "";
     }
 
     updateText(text: string) {
-        const t = this.text;
+        const t = this.value.get("text") as Y.Text;
         t.delete(0, t.length);
         if (text) t.insert(0, text);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // alias target id stored in Y.Map
+    get aliasTargetId(): string | undefined {
+        return this.value.get("aliasTargetId");
+    }
+    set aliasTargetId(v: string | undefined) {
+        this.value.set("aliasTargetId", v);
         this.value.set("lastChanged", Date.now());
     }
 
@@ -90,6 +100,10 @@ export class Items {
         public readonly parentKey: string,
     ) {}
 
+    get id(): string {
+        return this.parentKey;
+    }
+
     private childrenKeys(): string[] {
         const children = this.tree.getNodeChildrenFromKey(this.parentKey);
         return this.tree.sortChildrenByOrder(children, this.parentKey);
@@ -138,6 +152,23 @@ export class Items {
 
     indexOf(item: Item): number {
         return this.childrenKeys().indexOf(item.key);
+    }
+
+    removeAt(index: number) {
+        const key = this.childrenKeys()[index];
+        if (key) {
+            (this.tree as any).deleteNodeAndDescendants(key);
+        }
+    }
+
+    addAlias(targetId: string, author: string, index?: number): Item {
+        const it = this.addNode(author, index);
+        it.aliasTargetId = targetId;
+        return it;
+    }
+
+    deleteItem(itemId: string): void {
+        (this.tree as any).deleteNode(itemId);
     }
 
     [Symbol.iterator](): Iterator<Item> {

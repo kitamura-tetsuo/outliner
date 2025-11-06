@@ -14,6 +14,8 @@ import {
     type SingleItemSelection,
 } from "./CursorSelectionUtils";
 
+export type { SelectionRange };
+
 export interface CursorEditingContext {
     itemId: string;
     offset: number;
@@ -26,6 +28,20 @@ export interface CursorEditingContext {
 
 export class CursorEditor {
     constructor(private readonly cursor: CursorEditingContext) {}
+
+    /**
+     * YText または文字列から文字列を取得する
+     */
+    private static getTextContent(text: unknown): string {
+        if (typeof text === "string") {
+            return text;
+        }
+        // YText objects need to be converted to string
+        if (text && typeof (text as any).toString === "function") {
+            return (text as any).toString();
+        }
+        return "";
+    }
 
     private getSelection(): SelectionRange | undefined {
         return getSelectionForUser(this.cursor.userId);
@@ -487,11 +503,11 @@ export class CursorEditor {
         const nextItem = findNextItem(cursor.itemId);
         if (!nextItem) return;
 
-        const currentText = currentItem.text || "";
-        const nextText = nextItem.text || "";
+        const currentText = CursorEditor.getTextContent(currentItem.text);
+        const nextText = CursorEditor.getTextContent(nextItem.text);
         currentItem.updateText(currentText + nextText);
 
-        nextItem.delete();
+        currentItem.parent?.deleteItem(nextItem.id);
     }
 
     private deleteEmptyItem() {
@@ -499,7 +515,7 @@ export class CursorEditor {
         const currentItem = cursor.findTarget();
         if (!currentItem) return;
 
-        if (currentItem.text && currentItem.text.length > 0) return;
+        if (CursorEditor.getTextContent(currentItem.text).length > 0) return;
 
         const nextItem = findNextItem(cursor.itemId);
 
@@ -513,14 +529,14 @@ export class CursorEditor {
             const prevItem = findPreviousItem(cursor.itemId);
             if (prevItem) {
                 targetItemId = prevItem.id;
-                targetOffset = prevItem.text ? prevItem.text.length : 0;
+                targetOffset = CursorEditor.getTextContent(prevItem.text).length;
             } else {
                 return;
             }
         }
 
         store.clearCursorForItem(cursor.itemId);
-        currentItem.delete();
+        currentItem.parent?.deleteItem(currentItem.id);
 
         cursor.itemId = targetItemId;
         cursor.offset = targetOffset;
@@ -567,9 +583,9 @@ export class CursorEditor {
         if (firstIndex === -1 || lastIndex === -1) return;
 
         try {
-            const firstText = firstItem.text || "";
+            const firstText = CursorEditor.getTextContent(firstItem.text);
             const newFirstText = firstText.substring(0, firstOffset);
-            const lastText = lastItem.text || "";
+            const lastText = CursorEditor.getTextContent(lastItem.text);
             const newLastText = lastText.substring(lastOffset);
 
             const itemsToRemove: string[] = [];
@@ -585,7 +601,10 @@ export class CursorEditor {
             firstItem.updateText(newFirstText + newLastText);
 
             for (let i = lastIndex; i > firstIndex; i--) {
-                items.removeAt(i);
+                const itemToRemove = items.at(i);
+                if (itemToRemove) {
+                    items.deleteItem(itemToRemove.id);
+                }
             }
 
             cursor.itemId = firstItem.id;
@@ -690,7 +709,7 @@ export class CursorEditor {
             const item = searchItem(generalStore.currentPage!, itemId);
             if (!item) continue;
 
-            const text = item.text || "";
+            const text = CursorEditor.getTextContent(item.text);
 
             if (i === firstIdx && i === lastIdx) {
                 const start = isReversed ? endOffset : startOffset;

@@ -185,6 +185,14 @@ install_os_utilities() {
     fi
   fi
 
+  # Verify Java is properly installed and available
+  if command -v java >/dev/null 2>&1; then
+    echo "Java is available at: $(which java)"
+    java -version 2>&1 | head -n1
+  else
+    echo "WARNING: Java installation may have failed"
+  fi
+
   # For Playwright's --with-deps chromium
   local playwright_deps=(
     libatk1.0-0
@@ -376,6 +384,28 @@ start_firebase_emulator() {
   echo "Starting Firebase emulator..."
   cd "${ROOT_DIR}"
 
+  # Verify Java is available before starting emulator
+  if ! command -v java >/dev/null 2>&1; then
+    echo "ERROR: Java is not installed or not in PATH. Cannot start Firebase emulator."
+    return 1
+  fi
+
+  # Verify Firebase CLI is available
+  if ! command -v firebase >/dev/null 2>&1; then
+    echo "ERROR: Firebase CLI is not installed or not in PATH. Cannot start Firebase emulator."
+    return 1
+  fi
+
+  # Verify emulator config file exists
+  if [ ! -f "${ROOT_DIR}/firebase.emulator.json" ]; then
+    echo "ERROR: firebase.emulator.json not found. Generating emulator config..."
+    node "${SCRIPT_DIR}/setup-emulator-config.js"
+    if [ ! -f "${ROOT_DIR}/firebase.emulator.json" ]; then
+      echo "ERROR: Failed to generate firebase.emulator.json"
+      return 1
+    fi
+  fi
+
   # Create .env file for Firebase Functions (without reserved environment variables)
   echo "Creating .env file for Firebase Functions..."
   cat > "${ROOT_DIR}/functions/.env" << EOF
@@ -397,6 +427,17 @@ EOF
   FIREBASE_PID=$!
   echo "Firebase emulator started with PID: ${FIREBASE_PID}"
   echo "Firebase emulator log will be written to: ${ROOT_DIR}/server/logs/firebase-emulator.log"
+
+  # Give the emulator a moment to start before checking the log
+  sleep 3
+
+  # Check if the process is still running
+  if ! kill -0 ${FIREBASE_PID} 2>/dev/null; then
+    echo "ERROR: Firebase emulator process terminated unexpectedly"
+    echo "Last 50 lines of Firebase emulator log:"
+    tail -50 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No log available"
+    return 1
+  fi
 
   cd "${ROOT_DIR}"
 

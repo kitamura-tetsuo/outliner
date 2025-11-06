@@ -8,6 +8,9 @@ jobs:
   e2e-basic:
     runs-on: self-hosted
     timeout-minutes: 45
+    env:
+      FIREBASE_PROJECT_ID: outliner-d57b0
+      VITE_IS_TEST: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,7 +22,9 @@ jobs:
 
       - name: Setup test environment
         run: |
+          echo "Starting setup with FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}"
           ./scripts/setup.sh
+          echo "Setup completed"
 
       - name: Run basic E2E tests sequentially
         run: |

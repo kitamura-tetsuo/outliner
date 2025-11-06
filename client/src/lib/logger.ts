@@ -390,7 +390,7 @@ function setupGlobalErrorHandlers(): void {
         uncaughtLogger.error(errorInfo);
         const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
         const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
-        const marker = (window as Record<string, unknown>).__LAST_EFFECT__ as string || "<unknown>";
+        const marker = (window as unknown as Record<string, unknown>).__LAST_EFFECT__ as string || "<unknown>";
         console.error(`%c${errMsg}`, consoleStyles.fileInfo, stackTop);
         console.error("[EFFECT-MARKER]", marker);
         console.error("[STACK]", stackTop);
@@ -411,7 +411,7 @@ function setupGlobalErrorHandlers(): void {
         uncaughtLogger.error(errorInfo);
         const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
         const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
-        const marker = (window as Record<string, unknown>).__LAST_EFFECT__ as string || "<unknown>";
+        const marker = (window as unknown as Record<string, unknown>).__LAST_EFFECT__ as string || "<unknown>";
         console.error(`%c${errMsg}`, consoleStyles.fileInfo, stackTop);
         console.error("[EFFECT-MARKER]", marker);
         console.error("[STACK]", stackTop);

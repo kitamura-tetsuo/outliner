@@ -29,6 +29,19 @@ interface Cursor {
 
 export class CursorNavigation {
     private cursor: Cursor; // Cursorクラスのインスタンスを保持
+    /**
+     * YText または文字列から文字列を取得する
+     */
+    private static getTextContent(text: unknown): string {
+        if (typeof text === "string") {
+            return text;
+        }
+        // YText objects need to be converted to string
+        if (text && typeof (text as any).toString === "function") {
+            return (text as any).toString();
+        }
+        return "";
+    }
 
     constructor(cursor: Cursor) {
         this.cursor = cursor;
@@ -204,7 +217,7 @@ export class CursorNavigation {
 
         if (!visualLineInfo) {
             // フォールバック: 論理的な行での処理（改行文字ベース）
-            const text = target.text || "";
+            const text = CursorNavigation.getTextContent(target.text);
             const lines = text.split("\n");
             const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
             if (currentLineIndex < lines.length - 1) {
@@ -270,7 +283,7 @@ export class CursorNavigation {
                 }
             } else {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動
-                const text = target.text || "";
+                const text = CursorNavigation.getTextContent(target.text);
                 if (this.cursor.offset < text.length) {
                     this.cursor.offset = text.length;
                     this.cursor.applyToStore();
@@ -307,7 +320,7 @@ export class CursorNavigation {
 
         // 現在のアイテムのテキストを取得
         const currentTarget = this.cursor.findTarget();
-        const currentText = currentTarget?.text || "";
+        const currentText = CursorNavigation.getTextContent(currentTarget?.text);
         const currentColumn = this.cursor.getCurrentColumn(currentText, this.cursor.offset);
 
         // デバッグ情報
@@ -320,7 +333,7 @@ export class CursorNavigation {
             const prevItem = this.cursor.findPreviousItem();
             if (prevItem) {
                 newItemId = prevItem.id;
-                newOffset = prevItem.text?.length || 0;
+                newOffset = CursorNavigation.getTextContent(prevItem.text).length;
                 itemChanged = true;
 
                 // デバッグ情報
@@ -354,7 +367,7 @@ export class CursorNavigation {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動
                 const target = this.cursor.findTarget();
                 if (target) {
-                    newOffset = target.text?.length || 0;
+                    newOffset = CursorNavigation.getTextContent(target.text).length;
 
                     // デバッグ情報
                     if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
@@ -366,7 +379,7 @@ export class CursorNavigation {
             const prevItem = this.cursor.findPreviousItem();
             if (prevItem) {
                 newItemId = prevItem.id;
-                const prevText = prevItem.text || "";
+                const prevText = CursorNavigation.getTextContent(prevItem.text);
                 const prevLines = prevText.split("\n");
                 const lastLineIndex = prevLines.length - 1;
                 const lastLineStart = this.cursor.getLineStartOffset(prevText, lastLineIndex);
@@ -412,7 +425,7 @@ export class CursorNavigation {
             const nextItem = this.cursor.findNextItem();
             if (nextItem) {
                 newItemId = nextItem.id;
-                const nextText = nextItem.text || "";
+                const nextText = CursorNavigation.getTextContent(nextItem.text);
                 // const nextLines = nextText.split("\n"); // Not used
                 const firstLineIndex = 0;
                 const firstLineStart = this.cursor.getLineStartOffset(nextText, firstLineIndex);
@@ -431,7 +444,7 @@ export class CursorNavigation {
                 // 特殊ケース: 現在のカーソルが行の末尾（オフセットがテキスト長）にある場合は、
                 // 次のアイテムの最初の行の末尾に移動
                 const currentTarget = this.cursor.findTarget();
-                const currentText = currentTarget?.text || "";
+                const currentText = CursorNavigation.getTextContent(currentTarget?.text);
                 if (this.cursor.offset === currentText.length) {
                     newOffset = firstLineEnd;
                 }
@@ -451,7 +464,7 @@ export class CursorNavigation {
                 // 次のアイテムがない場合は、同じアイテムの末尾に移動
                 const target = this.cursor.findTarget();
                 if (target) {
-                    newOffset = target.text?.length || 0;
+                    newOffset = CursorNavigation.getTextContent(target.text).length;
 
                     // デバッグ情報
                     if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
