@@ -3,6 +3,19 @@
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 
+interface ItemData {
+    id: string;
+    author: string;
+    created: number;
+    lastChanged: number;
+    componentType?: string;
+    aliasTargetId?: string;
+    text: Y.Text;
+    votes: Y.Array<string>;
+    attachments: Y.Array<string>;
+    comments: Y.Array<Y.Map<unknown>>;
+}
+
 export class Item {
     constructor(
         public readonly ydoc: Y.Doc,
@@ -10,31 +23,31 @@ export class Item {
         public readonly key: string,
     ) {}
 
-    private get value(): Y.Map<any> {
-        return this.tree.getNodeValueFromKey(this.key) as Y.Map<any>;
+    private get value(): Y.Map<ItemData> {
+        return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemData>;
     }
 
     get id(): string {
-        return this.value.get("id") as string;
+        return this.value.get("id") as unknown as string;
     }
 
     get text(): Y.Text {
-        return this.value.get("text") as Y.Text;
+        return this.value.get("text") as unknown as Y.Text;
     }
 
     updateText(text: string) {
         const t = this.text;
         t.delete(0, t.length);
         if (text) t.insert(0, text);
-        this.value.set("lastChanged", Date.now());
+        this.value.set("lastChanged", Date.now() as unknown as ItemData);
     }
 
     // 添付ファイル: Y.Array<string> を保証して返す
     get attachments(): Y.Array<string> {
-        let arr = this.value.get("attachments") as Y.Array<string> | undefined;
+        let arr = this.value.get("attachments") as unknown as Y.Array<string> | undefined;
         if (!arr) {
             arr = new Y.Array<string>();
-            this.value.set("attachments", arr);
+            this.value.set("attachments", arr as unknown as ItemData);
         }
         return arr;
     }
@@ -44,7 +57,7 @@ export class Item {
         const arr = this.attachments;
         if (!arr.toArray().includes(url)) {
             arr.push([url]);
-            this.value.set("lastChanged", Date.now());
+            this.value.set("lastChanged", Date.now() as unknown as ItemData);
             try {
                 if (typeof window !== "undefined") {
                     window.dispatchEvent(
@@ -61,7 +74,7 @@ export class Item {
         const idx = arr.toArray().indexOf(url);
         if (idx >= 0) {
             arr.delete(idx, 1);
-            this.value.set("lastChanged", Date.now());
+            this.value.set("lastChanged", Date.now() as unknown as ItemData);
             try {
                 if (typeof window !== "undefined") {
                     window.dispatchEvent(
@@ -108,17 +121,17 @@ export class Items {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
 
-        const value = new Y.Map<any>();
-        value.set("id", nodeKey);
-        value.set("author", author);
-        value.set("created", now);
-        value.set("lastChanged", now);
-        value.set("componentType", undefined);
-        value.set("aliasTargetId", undefined);
-        value.set("text", new Y.Text());
-        value.set("votes", new Y.Array<string>());
-        value.set("attachments", new Y.Array<string>());
-        value.set("comments", new Y.Array<Y.Map<any>>());
+        const value = new Y.Map<unknown>();
+        value.set("id", nodeKey as unknown as ItemData);
+        value.set("author", author as unknown as ItemData);
+        value.set("created", now as unknown as ItemData);
+        value.set("lastChanged", now as unknown as ItemData);
+        value.set("componentType", undefined as unknown as ItemData);
+        value.set("aliasTargetId", undefined as unknown as ItemData);
+        value.set("text", new Y.Text() as unknown as ItemData);
+        value.set("votes", new Y.Array<string>() as unknown as ItemData);
+        value.set("attachments", new Y.Array<string>() as unknown as ItemData);
+        value.set("comments", new Y.Array<Y.Map<unknown>>() as unknown as ItemData);
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 
@@ -175,7 +188,7 @@ export class Project {
 
     get title(): string {
         try {
-            const meta = this.ydoc.getMap("metadata") as Y.Map<any>;
+            const meta = this.ydoc.getMap("metadata") as Y.Map<unknown>;
             return String(meta.get("title") ?? "");
         } catch {
             return "";
