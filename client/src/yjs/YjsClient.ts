@@ -135,25 +135,19 @@ export class YjsClient {
                 items?: CollectResult;
             }>;
         }
-        const getItem = (it: Items | Record<string, unknown>, index: number): Item | undefined => {
-            if ("at" in it && typeof it.at === "function") {
-                return it.at(index);
-            }
-            return (it as Items)[index];
-        };
-        const collect = (it: Items | Record<string, unknown>): CollectResult => {
+        const collect = (it: Items): CollectResult => {
             const arr: CollectResult["items"] = [];
-            const len = (it as Items).length ?? 0;
+            const len = it.length ?? 0;
             for (let i = 0; i < len; i++) {
-                const item = getItem(it, i);
+                const item = it.at(i);
                 if (!item) continue;
                 const node: CollectResult["items"][number] = {
                     id: String(item.id ?? ""),
                     text: String(item.text?.toString?.() ?? ""),
-                    author: item.value.get("author"),
-                    votes: [...(item.value.get("votes") as Y.Array<unknown> ?? [])],
-                    created: item.value.get("created"),
-                    lastChanged: item.value.get("lastChanged"),
+                    author: item.author,
+                    votes: Array.isArray(item.votes?.toArray?.()) ? item.votes.toArray() : ([] as unknown[]),
+                    created: item.created,
+                    lastChanged: item.lastChanged,
                 };
                 const children = item.items as Items;
                 if (children && (children.length ?? 0) > 0) {

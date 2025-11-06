@@ -29,6 +29,29 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
+    // Metadata getters for debug/inspection
+    get author(): unknown {
+        return this.value.get("author");
+    }
+
+    get created(): unknown {
+        return this.value.get("created");
+    }
+
+    get lastChanged(): unknown {
+        return this.value.get("lastChanged");
+    }
+
+    // Votes: ensure an array is present and return it
+    get votes(): Y.Array<unknown> {
+        let arr = this.value.get("votes") as Y.Array<unknown> | undefined;
+        if (!arr) {
+            arr = new Y.Array<unknown>();
+            this.value.set("votes", arr);
+        }
+        return arr;
+    }
+
     // 添付ファイル: Y.Array<string> を保証して返す
     get attachments(): Y.Array<string> {
         let arr = this.value.get("attachments") as Y.Array<string> | undefined;
