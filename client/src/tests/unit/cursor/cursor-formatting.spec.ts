@@ -81,7 +81,7 @@ describe("Cursor Formatting", () => {
         };
 
         // Setup editor overlay store mocks
-        editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
+        // setCursor is already configured in the mock to return "new-cursor-id"
     });
 
     afterEach(() => {

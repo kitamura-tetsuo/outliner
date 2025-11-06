@@ -74,7 +74,7 @@ describe("Cursor", () => {
         } as unknown as Item;
 
         // Set up parent relationship
-        mockItem.parent = mockParentItem;
+        (mockItem as any).parent = mockParentItem;
 
         // Mock the general store
         (generalStore as GeneralStore).currentPage = mockParentItem;
@@ -130,7 +130,7 @@ describe("Cursor", () => {
 
     describe("Movement methods", () => {
         beforeEach(() => {
-            editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
+            // setCursor is already configured in the mock to return "new-cursor-id"
         });
 
         describe("moveLeft", () => {

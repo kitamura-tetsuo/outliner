@@ -4,7 +4,7 @@ import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Item } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
 
-class GeneralStore {
+export class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
     pages: { current: unknown[]; } = { current: [] };
     private _currentPage: Item | undefined;
