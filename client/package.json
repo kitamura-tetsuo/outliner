@@ -98,7 +98,7 @@
         "github:test:integration": "vitest run --project integration --reporter=github-actions --reporter=dot",
         "github:test:production": "vitest run --project production --reporter=github-actions --reporter=dot",
         "github:test:unit": "vitest run --project unit --coverage --reporter=github-actions --reporter=dot",
-        "lint": "npx dprint fmt && eslint .",
+        "lint": "npx dprint fmt && eslint . --max-warnings=-1",
         "paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide",
         "prepare": "svelte-kit sync || echo ''",
         "preview": "vite preview",
