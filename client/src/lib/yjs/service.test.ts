@@ -119,6 +119,8 @@ describe("yjsService", () => {
             user: { userId: "u2", name: "Bob" },
             presence: { cursor: { itemId: "i1", offset: 0 } },
         });
+        // Trigger change event for the manually added state
+        (awareness as any).emit("change", [{ added: [42], updated: [], removed: [] }, "local"]);
 
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");

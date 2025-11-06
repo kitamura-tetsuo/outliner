@@ -256,6 +256,7 @@ export const yjsService = {
             });
         };
         awareness.on("change", update);
+        update({ added: Array.from(awareness.getStates().keys()), updated: [], removed: [] });
         return () => awareness.off("change", update);
     },
 };

@@ -44,7 +44,7 @@ function attachConnDebug(label: string, provider: WebsocketProvider, awareness: 
         };
         awareness.on(
             "change",
-            (event: { added: number[]; removed: number[]; updated: number[]; }) => {
+            () => {
                 logAwareness();
             },
         );

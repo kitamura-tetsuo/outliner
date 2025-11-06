@@ -77,7 +77,7 @@ export class Item {
     }
 
     get parent(): Items | null {
-        const parentKey = (this.tree as any).getNodeParentFromKey(this.key);
+        const parentKey = this.tree.getNodeParentFromKey(this.key);
         if (!parentKey) return null;
         return new Items(this.ydoc, this.tree, parentKey);
     }
@@ -191,7 +191,7 @@ export class Project {
         const page = this.items.addNode(author ?? "user");
         page.updateText(title ?? "");
         const pages = this.ydoc.getMap<Y.Doc>("pages");
-        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as any);
+        const subdoc = new Y.Doc({ guid: page.id });
         pages.set(page.id, subdoc);
         subdoc.load();
         return page;
