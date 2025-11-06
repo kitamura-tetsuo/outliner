@@ -62,13 +62,6 @@ declare global {
         __FLUID_STORE__?: typeof yjsStore;
         __USER_MANAGER__?: typeof userManager;
         __SNAPSHOT_SERVICE__?: typeof snapshotService;
-        __SVELTE_GOTO__?: (url: string, opts?: {
-            replaceState?: boolean;
-            noScroll?: boolean;
-            keepFocus?: boolean;
-            invalidateAll?: boolean;
-            state?: Record<string, unknown>;
-        }) => Promise<void>;
     }
 }
 
@@ -100,7 +93,7 @@ if (process.env.NODE_ENV === "test") {
                     "YjsClient is not initialized. Please wait for the client to be ready.",
                 );
             }
-            return yjsStore.yjsClient.getTreeAsJson(path);
+            return yjsStore.yjsClient.getTreeAsJson(path) as Record<string, unknown>;
         };
 
         // Yjs tree structure debug helpers
@@ -126,7 +119,7 @@ if (process.env.NODE_ENV === "test") {
             return {
                 itemCount: rootItems.length,
                 items: [...rootItems].map(item => toPlain(item)),
-            };
+            } as Record<string, unknown>;
         };
 
         window.getYjsTreePathData = function(path?: string): Record<string, unknown> {

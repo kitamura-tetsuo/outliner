@@ -1,12 +1,33 @@
-// import type { Item } from "../../schema/yjs-schema"; // Not used
+import type { Item } from "../../schema/yjs-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 
-export class CursorFormatting {
-    private cursor: any; // Cursorクラスのインスタンスを保持
+// Define a generic cursor interface that we expect
+interface CursorInterface {
+    itemId: string;
+    offset: number;
+    userId: string;
+    findTarget(): Item | undefined;
+    searchItem(root: Item | undefined, itemId: string): Item | undefined;
+    applyToStore(): void;
+    clearSelection(): void;
+}
 
-    constructor(cursor: any) {
+// Selection interface based on actual usage
+interface Selection {
+    userId: string;
+    startItemId: string;
+    endItemId: string;
+    startOffset: number;
+    endOffset: number;
+    isReversed?: boolean;
+}
+
+export class CursorFormatting {
+    private cursor: CursorInterface; // Cursorクラスのインスタンスを保持
+
+    constructor(cursor: CursorInterface) {
         this.cursor = cursor;
     }
 
@@ -112,7 +133,7 @@ export class CursorFormatting {
      * 複数アイテムにまたがる選択範囲にScrapbox構文のフォーマットを適用する
      */
     private applyScrapboxFormattingToMultipleItems(
-        selection: any,
+        selection: Selection,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
         // 開始アイテムと終了アイテムのIDを取得
