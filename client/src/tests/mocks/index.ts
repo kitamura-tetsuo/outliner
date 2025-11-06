@@ -3,14 +3,28 @@ import { vi } from "vitest";
 import * as UserManagerModule from "../../auth/UserManager";
 import { resetMockFirestore, setupMockFirestore } from "./firestoreMock";
 
+// Import IUser type from UserManager
+import type { IUser } from "../../auth/UserManager";
+
+// Mock interface that matches the parts of UserManager used in tests
+interface MockUserManager {
+    getCurrentUser: () => IUser | null;
+    addEventListener: (listener: (result: { user: IUser; } | null) => void) => () => void;
+    auth: {
+        currentUser: {
+            getIdToken: () => Promise<string>;
+        } | null;
+    };
+}
+
 // Mock for UserManager
-const mockUserManager = {
+const mockUserManager: MockUserManager = {
     getCurrentUser: vi.fn().mockReturnValue({
         id: "test-user-id",
         name: "Test User",
         email: "test@example.com",
     }),
-    addEventListener: vi.fn().mockImplementation(callback => {
+    addEventListener: vi.fn().mockImplementation((callback) => {
         // Simulate auth state change notification
         callback({
             user: {
@@ -33,7 +47,7 @@ export function setupMocks({
     firestore = {},
 } = {}) {
     // Mock userManager instance
-    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(mockUserManager as any);
+    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(mockUserManager);
 
     // Setup Firestore mock with optional initial data
     setupMockFirestore(firestore);
