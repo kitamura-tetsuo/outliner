@@ -74,7 +74,7 @@ describe("Cursor", () => {
         } as unknown as Item;
 
         // Set up parent relationship
-        (mockItem as any).parent = mockParentItem;
+        mockItem.parent = mockParentItem;
 
         // Mock the general store
         (generalStore as GeneralStore).currentPage = mockParentItem;
