@@ -4,7 +4,7 @@ import * as Y from "yjs";
 
 import { createProjectConnection, type PageConnection } from "../lib/yjs/connection";
 import { yjsService } from "../lib/yjs/service";
-import { Items, Project } from "../schema/yjs-schema";
+import { Item, Items, Project } from "../schema/yjs-schema";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
 export interface YjsClientParams {
@@ -103,10 +103,10 @@ export class YjsClient {
 
     public get isContainerConnected(): boolean {
         try {
-            // WebsocketProvider has a private flag; infer from wsconnected when available
+            // WebsocketProvider has wsconnected property
             const p = this._provider;
             if (!p) return true; // treat offline as connected for local mode
-            return !!(p.wsconnected ?? p.connected ?? p._connected ?? false);
+            return !!p.wsconnected;
         } catch {
             return true;
         }
@@ -135,27 +135,28 @@ export class YjsClient {
                 items?: CollectResult;
             }>;
         }
-        const collect = (it: Items | Y.Tree<unknown>): CollectResult => {
+        const getItem = (it: Items | Record<string, unknown>, index: number): Item | undefined => {
+            if ("at" in it && typeof it.at === "function") {
+                return it.at(index);
+            }
+            return (it as Items)[index];
+        };
+        const collect = (it: Items | Record<string, unknown>): CollectResult => {
             const arr: CollectResult["items"] = [];
-            const len = (it as Y.Tree<unknown>).length ?? 0;
+            const len = (it as Items).length ?? 0;
             for (let i = 0; i < len; i++) {
-                const item = (it as Y.Tree<unknown>).at
-                    ? (it as Y.Tree<unknown>).at(i)
-                    : (it as Y.Tree<unknown>)[i] as Item | undefined;
+                const item = getItem(it, i);
                 if (!item) continue;
                 const node: CollectResult["items"][number] = {
-                    id: item.id,
-                    text: item.text?.toString?.() ?? "",
-                    author: (item as unknown as { value: Y.Map<unknown>; }).value.get("author"),
-                    votes: [
-                        ...((item as unknown as { value: Y.Map<unknown>; }).value.get("votes") as Y.Array<unknown>
-                            ?? []),
-                    ],
-                    created: (item as unknown as { value: Y.Map<unknown>; }).value.get("created"),
-                    lastChanged: (item as unknown as { value: Y.Map<unknown>; }).value.get("lastChanged"),
+                    id: String(item.id ?? ""),
+                    text: String(item.text?.toString?.() ?? ""),
+                    author: item.value.get("author"),
+                    votes: [...(item.value.get("votes") as Y.Array<unknown> ?? [])],
+                    created: item.value.get("created"),
+                    lastChanged: item.value.get("lastChanged"),
                 };
                 const children = item.items as Items;
-                if (children && (children as Y.Tree<unknown>).length > 0) {
+                if (children && (children.length ?? 0) > 0) {
                     node.items = collect(children);
                 }
                 arr.push(node);

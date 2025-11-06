@@ -1,4 +1,5 @@
 import { createSubscriber } from "svelte/reactivity";
+import { SvelteSet } from "svelte/reactivity";
 import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Item } from "../schema/app-schema";
@@ -8,7 +9,7 @@ export class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
     pages: { current: unknown[]; } = { current: [] };
     private _currentPage: Item | undefined;
-    private readonly _currentPageSubscribers = new Set<() => void>();
+    private readonly _currentPageSubscribers = new SvelteSet<() => void>();
     // 現在開いているコメントスレッドのアイテムID（同時に1つのみ表示）
     openCommentItemId: string | null = null;
     // Fallback: 接続切替時などIDが変わるケースに備えてインデックスも保持
