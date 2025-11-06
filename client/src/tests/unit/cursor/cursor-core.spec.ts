@@ -76,7 +76,7 @@ describe("Cursor", () => {
         mockItem.parent = mockParentItem;
 
         // Mock the general store
-        (generalStore as any).currentPage = mockParentItem;
+        (generalStore as unknown as { currentPage: Item | null; }).currentPage = mockParentItem;
     });
 
     afterEach(() => {

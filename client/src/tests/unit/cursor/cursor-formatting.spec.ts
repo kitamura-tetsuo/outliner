@@ -69,7 +69,9 @@ describe("Cursor Formatting", () => {
         } as unknown as Item;
 
         // Mock the general store
-        (generalStore as any).currentPage = {
+        (generalStore as unknown as {
+            currentPage: { id: string; items: { [Symbol.iterator]: () => Iterator<Item>; }; } | null;
+        }).currentPage = {
             id: "page-1",
             items: {
                 [Symbol.iterator]: function*() {
@@ -91,7 +93,12 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as unknown as {
+                selections: Record<
+                    string,
+                    { userId: string; startItemId: string; endItemId: string; startOffset: number; endOffset: number; }
+                >;
+            }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -122,7 +129,12 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as unknown as {
+                selections: Record<
+                    string,
+                    { userId: string; startItemId: string; endItemId: string; startOffset: number; endOffset: number; }
+                >;
+            }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -153,7 +165,12 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as unknown as {
+                selections: Record<
+                    string,
+                    { userId: string; startItemId: string; endItemId: string; startOffset: number; endOffset: number; }
+                >;
+            }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -184,7 +201,12 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as any).selections = {
+            (editorOverlayStore as unknown as {
+                selections: Record<
+                    string,
+                    { userId: string; startItemId: string; endItemId: string; startOffset: number; endOffset: number; }
+                >;
+            }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
