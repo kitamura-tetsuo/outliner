@@ -71,7 +71,7 @@ class ContainerDeletionService {
         return await this.auth.verifyIdToken(idToken);
     }
 
-    validateContainerId(containerId: string): void {
+    validateContainerId(containerId: string | undefined): void {
         if (!containerId) {
             throw new Error("Container ID is required");
         }
@@ -181,7 +181,7 @@ describe("Container Deletion Service - Unit Tests", () => {
             mockDoc.exists = true;
             mockDoc.data.mockReturnValue(mockContainerData);
 
-            const result = await service.checkContainerExists("existing-container");
+            const result = await service.checkContainerExists();
 
             expect(result).toEqual(mockContainerData);
         });
@@ -189,7 +189,7 @@ describe("Container Deletion Service - Unit Tests", () => {
         it("コンテナが存在しない場合、エラーを投げること", async () => {
             mockDoc.exists = false;
 
-            await expect(service.checkContainerExists("non-existing-container"))
+            await expect(service.checkContainerExists())
                 .rejects.toThrow("Container not found");
         });
     });

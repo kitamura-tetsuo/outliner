@@ -117,7 +117,7 @@ class UserDeletionService {
         await this.auth.deleteUser(userId);
     }
 
-    validateUserDeletion(userId: string): void {
+    validateUserDeletion(userId: string | undefined): void {
         if (!userId) {
             throw new Error("User ID is required");
         }
@@ -200,7 +200,7 @@ describe("User Deletion Service - Unit Tests", () => {
             mockDoc.exists = true;
             mockDoc.data.mockReturnValue(mockUserData);
 
-            const result = await service.getUserContainers("test-user-id");
+            const result = await service.getUserContainers();
 
             expect(result).toEqual(["container1", "container2", "container3"]);
         });
@@ -208,7 +208,7 @@ describe("User Deletion Service - Unit Tests", () => {
         it("ユーザーが存在しない場合、空配列を返すこと", async () => {
             mockDoc.exists = false;
 
-            const result = await service.getUserContainers("non-existing-user");
+            const result = await service.getUserContainers();
 
             expect(result).toEqual([]);
         });
@@ -222,7 +222,7 @@ describe("User Deletion Service - Unit Tests", () => {
             mockDoc.exists = true;
             mockDoc.data.mockReturnValue(mockUserData);
 
-            const result = await service.getUserContainers("test-user-id");
+            const result = await service.getUserContainers();
 
             expect(result).toEqual([]);
         });
