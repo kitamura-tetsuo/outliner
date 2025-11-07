@@ -1,5 +1,5 @@
-import type { Item } from "../../schema/yjs-schema";
-import { Items } from "../../schema/yjs-schema";
+import type { Item } from "../../schema/app-schema";
+import { Items } from "../../schema/app-schema";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
