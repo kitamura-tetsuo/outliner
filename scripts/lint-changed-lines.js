@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 // Usage:
 // BASE=origin/main node scripts/lint-changed-lines.js
 // or set BASE env in CI to the PR base branch
@@ -33,6 +34,7 @@ if (files.length === 0) {
 
 // 2) Extract added/changed line ranges (+ side) for each file
 // map: filepath -> [{start, end}, ...]
+/** @type {Record<string, Array<{ start: number; end: number; }>>} */
 const fileRanges = {};
 for (const file of files) {
     // --unified=0 gets line ranges clearly without hunk context
@@ -57,18 +59,31 @@ if (Object.keys(fileRanges).length === 0) {
 
 // 3) Run ESLint on changed files (JSON output)
 const eslintCmd = `npx eslint -f json ${Object.keys(fileRanges).map(f => `"${f}"`).join(" ")} --cache`;
+/** @type {string} */
 let eslintOut;
 try {
     eslintOut = run(eslintCmd);
 } catch (e) {
     // eslint returns non-zero on errors — we still want its JSON
-    eslintOut = e.stdout || e.stdout === undefined ? e.stdout : "";
+    /** @type {{ stdout?: string }} */
+    const error = e;
+    eslintOut = error.stdout || "";
 }
 if (!eslintOut) {
     console.log("No eslint output (maybe no issues).");
     process.exit(0);
 }
 
+/** @type {Array<{
+    filePath: string;
+    messages: Array<{
+        line: number;
+        column: number;
+        severity: number;
+        ruleId: string;
+        message: string;
+    }>;
+}>} */
 let results;
 try {
     results = JSON.parse(eslintOut);
@@ -79,11 +94,25 @@ try {
 }
 
 // 4) Filter ESLint messages against changed lines
+/**
+ * @param {number} line
+ * @param {Array<{ start: number; end: number; }>} ranges
+ */
 function inRanges(line, ranges) {
     for (const r of ranges) if (line >= r.start && line <= r.end) return true;
     return false;
 }
 
+/** @type {Array<{
+    filePath: string;
+    messages: Array<{
+        line: number;
+        column: number;
+        severity: number;
+        ruleId: string;
+        message: string;
+    }>;
+}>} */
 const filtered = [];
 for (const fileRes of results) {
     const relPath = path.relative(process.cwd(), fileRes.filePath);
