@@ -11,7 +11,8 @@ import { expect, test } from "@playwright/test";
 async function waitForHealth(request: import("@playwright/test").APIRequestContext, attempts = 10) {
     for (let i = 0; i < attempts; i++) {
         try {
-            const response = await request.get("http://localhost:57000/health");
+            // Use the hosting emulator port (57000) which applies rewrite rules
+            const response = await request.get("http://localhost:57000/api/health");
             if (response.ok()) {
                 return response;
             }

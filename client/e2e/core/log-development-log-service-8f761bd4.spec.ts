@@ -9,7 +9,8 @@ import { expect, test } from "@playwright/test";
 
 test.describe("LOG-0001: log service health", () => {
     test("/health endpoint returns OK", async ({ request }) => {
-        const response = await request.get("http://localhost:57000/health");
+        // Use the hosting emulator port (57000) which applies rewrite rules
+        const response = await request.get("http://localhost:57000/api/health");
         expect(response.status()).toBe(200);
         const body = await response.json();
         expect(body.status).toBe("OK");
@@ -17,7 +18,8 @@ test.describe("LOG-0001: log service health", () => {
     });
 
     test("POST to /health returns 405 Method Not Allowed", async ({ request }) => {
-        const res = await request.post("http://localhost:57000/health");
+        // Use the hosting emulator port (57000) which applies rewrite rules
+        const res = await request.post("http://localhost:57000/api/health");
         expect(res.status()).toBe(405);
     });
 });
