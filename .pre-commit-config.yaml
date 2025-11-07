@@ -7,21 +7,21 @@ repos:
         entry: python ./scripts/check_playwright_webserver.py
         pass_filenames: false
         always_run: true
-        stages: [pre-commit]
+        stages: [commit]
       - id: remove-feature-docs
         name: Remove feature docs before commit
         language: script
         entry: ./scripts/remove_feature_docs.sh
         pass_filenames: false
         always_run: true
-        stages: [pre-commit]
+        stages: [commit]
       - id: pre-commit
         name: Run pre-commit.py
         language: python
         entry: python ./scripts/pre_commit.py
         pass_filenames: false
         always_run: true
-        stages: [pre-commit]
+        stages: [commit]
         additional_dependencies:
           - loguru
           - PyYAML
@@ -31,5 +31,5 @@ repos:
         entry: ./scripts/check_format.sh
         pass_filenames: false
         always_run: true
-        stages: [pre-commit, pre-push]
+        stages: [commit, push]
         verbose: true
