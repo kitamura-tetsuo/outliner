@@ -15,4 +15,5 @@ jobs:
       - name: Lint changed lines
         env:
           BASE: origin/main
-        run: node ./scripts/lint-changed-lines.js
+        run: npm run lint:diff-lines
+        working-directory: client
