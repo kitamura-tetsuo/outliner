@@ -17,7 +17,7 @@ import { createYjsClient } from "../../services";
 const logger = getLogger();
 
 let error: string | undefined = $state(undefined);
-let debugInfo: any = $state({});
+let debugInfo: Record<string, unknown> = $state({});
 let hostInfo = $state("");
 let portInfo = $state("");
 let envConfig = getDebugConfig();
@@ -28,8 +28,8 @@ let connectionStatus = $state("未接続");
 let isConnected = $state(false);
 
 // 認証成功時の処理
-async function handleAuthSuccess(authResult: any) {
-    logger.info("認証成功:", authResult);
+async function handleAuthSuccess(_authResult: unknown) {
+    logger.info("認証成功:", _authResult);
     isAuthenticated = true;
 
     // 認証成功後に自動的にFluidクライアントを初期化
@@ -69,11 +69,11 @@ async function retryConnection() {
 
 // 接続状態の更新
 function updateConnectionStatus() {
-    const client = yjsStore.yjsClient as any;
+    const client: { getConnectionStateString?: () => string; isContainerConnected?: boolean; getDebugInfo?: () => Record<string, unknown> } = yjsStore.yjsClient as unknown;
     if (client) {
-        connectionStatus = client.getConnectionStateString() || "未接続";
+        connectionStatus = client.getConnectionStateString?.() || "未接続";
         isConnected = client.isContainerConnected || false;
-        debugInfo = client.getDebugInfo();
+        debugInfo = client.getDebugInfo?.() || {};
     }
     else {
         connectionStatus = "未接続";
@@ -82,7 +82,7 @@ function updateConnectionStatus() {
 }
 
 // 定期的に接続状態を更新
-let statusInterval: any;
+let statusInterval: ReturnType<typeof setInterval>;
 
 onMount(() => {
     console.debug("[debug/+page] Component mounted");

@@ -22,8 +22,8 @@ let isAuthenticated = $state(false);
 let createdContainerId: string | undefined = $state(undefined);
 
 // 認証成功時の処理
-async function handleAuthSuccess(authResult) {
-    logger.info("認証成功:", authResult);
+async function handleAuthSuccess(_authResult: unknown) {
+    logger.info("認証成功:", _authResult);
     isAuthenticated = true;
 }
 
@@ -46,7 +46,7 @@ async function createNewContainer() {
 
     try {
         // 現在のクライアントを破棄してリセット
-        const client = yjsStore.yjsClient as any;
+        const client: { dispose?: () => void } = yjsStore.yjsClient as unknown;
         if (client) {
             client.dispose?.();
             yjsStore.yjsClient = undefined;
@@ -56,10 +56,10 @@ async function createNewContainer() {
         const newClient = await yjsHighService.createNewProject(containerName);
 
         // 作成されたIDを取得
-        createdContainerId = newClient.containerId;
+        createdContainerId = (newClient as { containerId?: string }).containerId;
 
         // ストアを更新
-        yjsStore.yjsClient = newClient as any;
+        yjsStore.yjsClient = newClient as { containerId?: string };
 
         // サーバーに保存（デフォルトコンテナとして設定）
         await saveContainerId(createdContainerId);

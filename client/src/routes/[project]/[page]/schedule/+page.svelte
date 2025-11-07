@@ -57,18 +57,18 @@ onMount(async () => {
     // 2) currentPage が未確定の場合は URL の pageTitle から該当ページを特定
     if (!pageId) {
         try {
-            const items: any = store.pages?.current;
+            const items: { length?: number; at?: (i: number) => unknown } = store.pages?.current as unknown;
             const len = items?.length ?? 0;
-            let found: any = undefined;
+            let found: unknown = undefined;
             for (let i = 0; i < len; i++) {
-                const p = items?.at ? items.at(i) : items?.[i];
-                const title = p?.text?.toString?.() ?? String(p?.text ?? "");
+                const p = items?.at ? items.at(i) : (items as unknown[])[i];
+                const title = (p as { text?: { toString?: () => string } })?.text?.toString?.() ?? String((p as { text?: unknown })?.text ?? "");
                 if (String(title).toLowerCase() === String(pageTitle).toLowerCase()) {
                     found = p;
                     break;
                 }
             }
-            if (found) pageId = String(found?.id ?? "");
+            if (found) pageId = String((found as { id?: string })?.id ?? "");
         } catch {}
     }
 
