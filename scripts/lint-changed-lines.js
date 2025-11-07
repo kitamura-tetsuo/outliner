@@ -40,7 +40,7 @@ for (const file of files) {
     // --unified=0 gets line ranges clearly without hunk context
     const diff = run(`git diff --unified=0 ${BASE}...HEAD -- ${file}`);
     const ranges = [];
-    const hunkRe = /\@\@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? \@\@/g;
+    const hunkRe = /@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/g;
     let m;
     while ((m = hunkRe.exec(diff)) !== null) {
         const start = parseInt(m[1], 10);
