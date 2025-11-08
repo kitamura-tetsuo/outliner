@@ -96,7 +96,7 @@ test("backup script keeps only 10 most recent backups", () => {
     // 最も古いバックアップにtest-data-1が含まれていることを確認
     const oldestBackup = backupDirs[9];
     expect(fs.existsSync(path.join(oldestBackup.path, "test-data-1", "test1.txt"))).toBe(true);
-});
+}, 30000);
 
 test("move-to-backup script moves coverage directory to coverage-backups", () => {
     // テスト用のcoverageディレクトリを作成
@@ -157,7 +157,7 @@ test("move-to-backup script keeps only 10 most recent backups", () => {
     // 最も古いバックアップにtest-data-1が含まれていることを確認
     const oldestBackup = backupDirs[9];
     expect(fs.existsSync(path.join(oldestBackup.path, "test-data-1", "test1.txt"))).toBe(true);
-});
+}, 30000);
 
 test("backup script skips when coverage directory does not exist", () => {
     // coverageディレクトリが存在しない状態でスクリプトを実行

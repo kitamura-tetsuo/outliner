@@ -2,8 +2,8 @@
  * 環境チェック機能のテスト
  */
 
-const { describe, it, expect, beforeAll, afterAll } = require("@jest/globals");
-const { detectEmulatorEnvironment, checkProductionHealth } = require("../check-production-environment");
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { checkProductionHealth, detectEmulatorEnvironment } from "../check-production-environment.js";
 
 describe("環境チェック機能", () => {
     let originalEnv;
