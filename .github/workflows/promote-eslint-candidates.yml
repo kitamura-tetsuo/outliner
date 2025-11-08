@@ -43,7 +43,7 @@ jobs:
           node-version: 18
 
       - name: Install Dependencies
-        run: npm ci
+        run: cd client && npm ci
 
       - name: Detect promotion candidates
         id: detect
@@ -67,17 +67,17 @@ jobs:
           fi
 
           # Check if candidates were found
-          if grep -q '"candidates":\s*\[\]' detect-output.log; then
-            echo "No candidates found"
+          CANDIDATE_FILE=$(ls -t scripts/promote-candidates-*.json 2>/dev/null | head -1)
+          if [ -n "$CANDIDATE_FILE" ]; then
+            CANDIDATE_COUNT=$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync('$CANDIDATE_FILE')); console.log(data.candidates.length);")
+            if [ "$CANDIDATE_COUNT" -gt 0 ]; then
+              echo "Candidates found: $CANDIDATE_COUNT"
+              echo "candidates_found=true" >> $GITHUB_OUTPUT
+            else
+              echo "No candidates found"
+            fi
           else
-            echo "Candidates found"
-            echo "candidates_found=true" >> $GITHUB_OUTPUT
-          fi
-
-          # Extract number of candidates for PR body
-          CANDIDATE_COUNT=$(grep -o '"candidates":\s*\[\]' detect-output.log | wc -l | xargs)
-          if [ "$CANDIDATE_COUNT" -eq 0 ]; then
-            CANDIDATE_COUNT=$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(\$(ls -t scripts/promote-candidates-*.json | head -1))); console.log(data.candidates.length);")
+            echo "No candidate file found"
           fi
           echo "candidate_count=$CANDIDATE_COUNT" >> $GITHUB_OUTPUT
 
