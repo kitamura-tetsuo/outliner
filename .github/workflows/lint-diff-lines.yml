@@ -14,6 +14,6 @@ jobs:
         working-directory: client
       - name: Lint changed lines
         env:
-          BASE: origin/${{ github.base_ref }}
+          BASE: origin/${{ github.base_ref || 'main' }}
         run: npm run lint:diff-lines
         working-directory: client

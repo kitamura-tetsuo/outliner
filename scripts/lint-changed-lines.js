@@ -8,7 +8,13 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
-const BASE = process.env.BASE || "origin/main";
+const BASE = process.env.BASE?.trim() || "origin/main";
+
+// Validate BASE is not empty or just a trailing slash
+if (!BASE || BASE === "origin/" || BASE.endsWith("/")) {
+    console.error(`Invalid BASE value: '${BASE}', using 'origin/main' instead`);
+    process.exit(1);
+}
 const EXT_GLOB = ["js", "jsx", "ts", "tsx", "svelte"]; // Include svelte files
 
 function run(cmd) {
