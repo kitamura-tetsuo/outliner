@@ -4,9 +4,9 @@
  * 注意: このテストはテスト環境でのみ実行されます
  */
 
-const { describe, it, expect, beforeAll, afterAll } = require("@jest/globals");
-const { makeRequest, ADMIN_TOKEN, CONFIRMATION_CODE } = require("../delete-production-data");
-const { detectEmulatorEnvironment } = require("../check-production-environment");
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { detectEmulatorEnvironment } from "../check-production-environment.js";
+import { ADMIN_TOKEN, CONFIRMATION_CODE, makeRequest } from "../delete-production-data.js";
 
 describe("本番環境データ削除機能", () => {
     let originalEnv;

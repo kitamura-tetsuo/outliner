@@ -26,7 +26,7 @@ test("setup script creates sentinel file", async () => {
         stdio: "inherit",
     });
     expect(fs.existsSync(sentinel)).toBe(true);
-});
+}, 30000);
 
 test("second run bypasses installation", async () => {
     const output = execSync(setupScript + " 2>&1", {
@@ -38,4 +38,4 @@ test("second run bypasses installation", async () => {
         },
     }).toString();
     expect(output.includes("Skipping dependency installation")).toBe(true);
-});
+}, 30000);

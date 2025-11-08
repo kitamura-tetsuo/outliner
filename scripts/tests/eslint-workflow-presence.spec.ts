@@ -1,9 +1,12 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 
 describe("ESLint promotion workflow presence", () => {
-    const workflowPath = path.resolve(process.cwd(), "../../.github/workflows/promote-eslint-candidates.yml");
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const workflowPath = path.resolve(__dirname, "../../.github/workflows/promote-eslint-candidates.yml");
 
     it("workflow file exists", () => {
         expect(fs.existsSync(workflowPath)).toBe(true);
