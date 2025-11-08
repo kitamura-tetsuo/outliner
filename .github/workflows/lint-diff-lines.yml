@@ -14,6 +14,6 @@ jobs:
         working-directory: client
       - name: Lint changed lines
         env:
-          BASE: ${{ github.base_ref && format('origin/{0}', github.base_ref) || 'origin/main' }}
+          BASE: ${{ github.base_ref && 'origin/' + github.base_ref || 'origin/' + github.event.repository.default_branch }}
         run: npm run lint:diff-lines
         working-directory: client
