@@ -423,8 +423,9 @@ EOF
   fi
 
   # Additional wait for Firebase Functions to fully initialize
-  echo "Waiting additional 10 seconds for Firebase Functions to fully initialize..."
-  sleep 10
+  # In CI environments, emulators may need more time to be fully ready
+  echo "Waiting additional 30 seconds for Firebase Functions to fully initialize..."
+  sleep 30
 
   # Now that emulators are listening, initialize admin and test user in background
   echo "Launching Firebase emulator initializer (admin + test user) ..."
