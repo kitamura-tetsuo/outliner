@@ -178,7 +178,7 @@ function runESLint(files, rules) {
         try {
             // Build command with files as arguments
             const eslintCommand =
-                `npx eslint --format=json --config client/eslint.config.js --ext .js,.ts,.svelte --max-warnings=0 ${
+                `npx --yes --prefix client eslint --format=json --config client/eslint.config.js --ext .js,.ts,.svelte --max-warnings=0 ${
                     batch.join(" ")
                 }`;
 

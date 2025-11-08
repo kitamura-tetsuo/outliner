@@ -101,6 +101,8 @@ llm_task.md
 
 *.log
 *.md
+!.github/
+!.github/*.md
 *.backup
 *.bak
 *.temp
