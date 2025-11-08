@@ -301,9 +301,6 @@ jobs:
           cd functions
           npm run lint -- --fix
 
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools@latest
-
       - name: Firebase deployment dry run
         run: |
           # Create temporary env file for functions (similar to deploy workflow)
