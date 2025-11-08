@@ -126,6 +126,7 @@ function getFilesToScan() {
 function applyExclusions(files) {
     const exclusionPatterns = [
         "node_modules",
+        "vendor",
         "dist",
         "build",
         ".git",
@@ -387,5 +388,10 @@ function main() {
     console.log("\nDone!");
 }
 
-// Run main function
-main();
+// Execute only when run directly (not when imported for tests)
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
+    main();
+}
+
+// Export functions for testing
+export { applyExclusions, calculateScore, generateOutput, getFilesToScan, identifyCandidates, parseArgs, runESLint };
