@@ -1,14 +1,15 @@
-import { createSubscriber } from "svelte/reactivity";
+import { createSubscriber, SvelteSet } from "svelte/reactivity";
 import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
-import type { Item } from "../schema/app-schema";
+import type { Item, ItemLike } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
+import type { PlainItemData } from "../types/yjs-types";
 
 export class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
     pages: { current: unknown[]; } = { current: [] };
     private _currentPage: Item | undefined;
-    private readonly _currentPageSubscribers = new Set<() => void>();
+    private readonly _currentPageSubscribers = new SvelteSet<() => void>();
     // 現在開いているコメントスレッドのアイテムID（同時に1つのみ表示）
     openCommentItemId: string | null = null;
     // Fallback: 接続切替時などIDが変わるケースに備えてインデックスも保持
@@ -34,7 +35,7 @@ export class GeneralStore {
             if (proj?.ydoc && page?.ydoc && proj.ydoc !== page.ydoc) {
                 const title = page?.text?.toString?.() ?? String(page?.text ?? "");
                 const items = proj.items;
-                let next: any = null;
+                let next: Item | null = null;
                 const len = items?.length ?? 0;
                 for (let i = 0; i < len; i++) {
                     const p = items.at ? items.at(i) : items[i];
@@ -55,7 +56,7 @@ export class GeneralStore {
                     const prevLen = prevItems?.length ?? 0;
                     const nextLen = nextItems?.length ?? 0;
                     if (prevLen > 0) {
-                        const isPlaceholderChild = (node: any) => {
+                        const isPlaceholderChild = (node: ItemLike | PlainItemData | null | undefined) => {
                             const text = node?.text?.toString?.() ?? String(node?.text ?? "");
                             if (!text) return true;
                             return text === "一行目: テスト" || text === "二行目: Yjs 反映"
@@ -77,26 +78,31 @@ export class GeneralStore {
                                 nextItems.removeAt(nextItems.length - 1);
                             }
 
-                            const cloneBranch = (source: any, target: any) => {
+                            const cloneBranch = (
+                                source: ItemLike | PlainItemData | null | undefined,
+                                target: ItemLike | null | undefined,
+                            ) => {
                                 if (!source || !target) return;
-                                const length = source?.length ?? 0;
+                                const length = source && "length" in source ? (source.length ?? 0) : 0;
                                 for (let index = 0; index < length; index++) {
-                                    const from = source.at ? source.at(index) : source[index];
+                                    const from = source && "at" in source
+                                        ? (source.at ? source.at(index) : source[index])
+                                        : null;
                                     if (!from) continue;
                                     const text = from?.text?.toString?.() ?? String(from?.text ?? "");
-                                    const created = target?.addNode?.("tester");
+                                    const created = target?.items?.addNode?.("tester");
                                     if (!created) continue;
-                                    created.updateText?.(text);
-                                    cloneBranch(from?.items as any, created?.items as any);
+                                    created?.updateText?.(text);
+                                    cloneBranch(from, created);
                                 }
                             };
-                            cloneBranch(prevItems, nextItems);
+                            cloneBranch(prevItems as ItemLike | PlainItemData, nextItems as ItemLike);
                         }
                     }
                 } catch {
                     // Ignore errors during child item migration
                 }
-                this._currentPage = next as any;
+                this._currentPage = next;
                 // 通知
                 this._currentPageSubscribers.forEach(fn => {
                     try {
