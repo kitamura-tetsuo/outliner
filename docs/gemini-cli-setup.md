@@ -1,6 +1,15 @@
-# Gemini CLI Setup for Self-Hosted GitHub Actions Runner
+# Gemini CLI Setup for Self-Hosted GitHub Actions Runner（←アーカイブ）
 
-このドキュメントでは、self-hosted GitHub Actions runnerでGemini CLIを永続的に利用可能にする方法を説明します。
+**📌 重要**: このドキュメントはアーカイブされました。Gemini CI ワークフローは無効化されており、現在self-hosted runnerは使用されていません。
+
+**現在の状況**:
+- ✅ GitHub-hosted runners に移行済み
+- ✅ Gemini CI ワークフロー無効化（`.disabled` ファイルとして保存）
+- ✅ 全てのCI/CD機能はGitHub-hosted runnersで継続稼働
+
+---
+
+**以前の情報**: このドキュメントでは、self-hosted GitHub Actions runnerでGemini CLIを永続的に利用可能にする方法を説明していました。
 
 ## 概要
 

@@ -11,7 +11,7 @@ permissions:
 jobs:
   mutation:
     runs-on:
-      - self-hosted
+      # - self-hosted
       - Linux
       - X64
     defaults:

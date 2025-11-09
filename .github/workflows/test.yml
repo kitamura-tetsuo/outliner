@@ -23,7 +23,7 @@ jobs:
     if: |
       (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') &&
       !(github.event_name == 'push' && contains(github.event.head_commit.message, 'Auto-fix: Format code with dprint'))
-    runs-on: self-hosted
+    # runs-on: self-hosted
     timeout-minutes: 45
     permissions:
       contents: write
@@ -551,7 +551,7 @@ jobs:
 
             comment += `📊 [View detailed results](${runUrl})\n`;
             comment += `🔍 [View all checks](${context.payload.pull_request.html_url}/checks)\n\n`;
-            comment += `**Commit:** ${context.sha.substring(0, 7)} | **Runner:** self-hosted`;
+            comment += `**Commit:** ${context.sha.substring(0, 7)}`;
 
             try {
               await github.rest.issues.createComment({
