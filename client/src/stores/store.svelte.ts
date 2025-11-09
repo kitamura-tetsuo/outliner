@@ -1,9 +1,9 @@
 import { createSubscriber, SvelteSet } from "svelte/reactivity";
 import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
-import type { Item } from "../schema/app-schema";
+import type { Item, ItemLike } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
-import type { ItemLike, PlainItemData } from "../types/yjs-types";
+import type { PlainItemData } from "../types/yjs-types";
 
 export class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
