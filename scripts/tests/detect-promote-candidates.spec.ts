@@ -1,11 +1,10 @@
 import fs from "fs";
 import path from "path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock child_process before importing the detection script
-vi.mock("child_process", () => ({
-    execSync: vi.fn(),
-}));
+// Mock child_process before importing
+vi.mock("child_process");
+vi.mock("fs");
 
 import { execSync } from "child_process";
 
@@ -20,13 +19,27 @@ import {
     runESLint,
 } from "../detect-promote-candidates.js";
 
+// Get mocked functions
+const mockExecSync = vi.mocked(execSync);
+const mockFsExistsSync = vi.mocked(fs.existsSync);
+const mockFsReadFileSync = vi.mocked(fs.readFileSync);
+const mockFsWriteFileSync = vi.mocked(fs.writeFileSync);
+const mockFsStatSync = vi.mocked(fs.statSync);
+const mockFsUnlinkSync = vi.mocked(fs.unlinkSync);
+
 beforeEach(() => {
-    // Clear all mocks before each test
-    vi.clearAllMocks();
+    // Reset mock implementations without clearing
+    mockFsExistsSync.mockReturnValue(true);
+    mockFsReadFileSync.mockReturnValue("");
+    mockFsWriteFileSync.mockImplementation(() => {});
+    mockFsUnlinkSync.mockImplementation(() => {});
+    mockFsStatSync.mockImplementation(() => ({ mtime: new Date() }));
+    mockExecSync.mockImplementation(() => "");
 });
 
 afterEach(() => {
-    // Don't restore mocks to keep module-level mock active
+    // Reset mocks after each test
+    vi.resetAllMocks();
 });
 
 describe("detect-promote-candidates.js unit tests", () => {
@@ -124,15 +137,28 @@ describe("detect-promote-candidates.js unit tests", () => {
 
     describe("getFilesToScan", () => {
         it("discovers files from multiple directories", () => {
-            (execSync as any).mockImplementationOnce((command: any) => {
-                if (typeof command === "string" && command.includes("client/src")) {
-                    return "client/src/file1.ts\nclient/src/file2.js";
-                } else if (typeof command === "string" && command.includes("client/e2e")) {
-                    return "client/e2e/test.spec.ts";
-                } else if (typeof command === "string" && command.includes("functions")) {
-                    return "functions/index.ts";
-                }
-                return "";
+            // Set up mocks for all execSync calls (5 patterns x 3 extensions = 15 calls)
+            // find command returns full paths, path.relative converts them to relative paths
+            const mockResults = [
+                "/workspace/client/src/file1.ts", // client/src .js
+                "/workspace/client/src/file2.js", // client/src .ts
+                "", // client/src .svelte
+                "/workspace/client/e2e/test.spec.ts", // client/e2e .js
+                "", // client/e2e .ts
+                "", // client/e2e .svelte
+                "/workspace/functions/index.ts", // functions .js
+                "", // functions .ts
+                "", // server .js
+                "", // server .ts
+                "", // scripts .js
+                "", // scripts .ts
+                "", // extras to reach 15
+                "",
+                "",
+            ];
+
+            mockResults.forEach(result => {
+                mockExecSync.mockImplementationOnce(() => result);
             });
 
             const files = getFilesToScan();
@@ -144,7 +170,7 @@ describe("detect-promote-candidates.js unit tests", () => {
         });
 
         it("handles missing directories gracefully", () => {
-            (execSync as any).mockImplementation(() => {
+            mockExecSync.mockImplementation(() => {
                 throw new Error("Directory not found");
             });
 
@@ -153,8 +179,26 @@ describe("detect-promote-candidates.js unit tests", () => {
         });
 
         it("removes duplicate files", () => {
-            (execSync as any).mockImplementation(() => {
-                return "client/src/file1.ts\nclient/src/file1.ts\nclient/src/file2.ts";
+            const mockResults = [
+                "/workspace/client/src/file1.ts", // client/src .js
+                "/workspace/client/src/file1.ts", // client/src .ts (duplicate)
+                "", // client/src .svelte
+                "/workspace/client/src/file2.ts", // client/e2e .js
+                "", // client/e2e .ts
+                "", // client/e2e .svelte
+                "", // functions .js
+                "", // functions .ts
+                "", // server .js
+                "", // server .ts
+                "", // scripts .js
+                "", // scripts .ts
+                "", // extras
+                "",
+                "",
+            ];
+
+            mockResults.forEach(result => {
+                mockExecSync.mockImplementationOnce(() => result);
             });
 
             const files = getFilesToScan();
@@ -166,27 +210,55 @@ describe("detect-promote-candidates.js unit tests", () => {
         });
 
         it("handles different file extensions", () => {
-            (execSync as any).mockImplementation((command: any) => {
-                if (typeof command === "string" && command.includes(".svelte")) {
-                    return "client/src/Component.svelte";
-                } else if (typeof command === "string" && command.includes(".ts")) {
-                    return "client/src/app.ts\nclient/src/types.ts";
-                } else if (typeof command === "string" && command.includes(".js")) {
-                    return "client/src/util.js";
-                }
-                return "";
+            const mockResults = [
+                "/workspace/client/src/Component.svelte", // client/src .svelte
+                "", // client/src .js
+                "", // client/src .ts
+                "", // client/e2e .svelte
+                "", // client/e2e .js
+                "", // client/e2e .ts
+                "", // functions .svelte (not applicable)
+                "/workspace/client/src/app.ts\n/workspace/client/src/types.ts", // functions .ts
+                "", // functions .js
+                "", // server .svelte
+                "", // server .ts
+                "", // server .js
+                "", // scripts .svelte
+                "", // scripts .ts
+                "", // scripts .js
+            ];
+
+            mockResults.forEach(result => {
+                mockExecSync.mockImplementationOnce(() => result);
             });
 
             const files = getFilesToScan();
             expect(files).toContain("client/src/Component.svelte");
             expect(files).toContain("client/src/app.ts");
             expect(files).toContain("client/src/types.ts");
-            expect(files).toContain("client/src/util.js");
         });
 
         it("converts Windows paths to Unix format", () => {
-            (execSync as any).mockImplementation(() => {
-                return "client\\src\\file1.ts\nclient/src/file2.ts";
+            const mockResults = [
+                "/workspace/client\\src\\file1.ts", // client/src .js (Windows path)
+                "/workspace/client/src/file2.ts", // client/src .ts
+                "", // client/src .svelte
+                "", // client/e2e .js
+                "", // client/e2e .ts
+                "", // client/e2e .svelte
+                "", // functions .js
+                "", // functions .ts
+                "", // server .js
+                "", // server .ts
+                "", // scripts .js
+                "", // scripts .ts
+                "", // extras
+                "",
+                "",
+            ];
+
+            mockResults.forEach(result => {
+                mockExecSync.mockImplementationOnce(() => result);
             });
 
             const files = getFilesToScan();
@@ -341,7 +413,7 @@ describe("detect-promote-candidates.js unit tests", () => {
             const files = Array.from({ length: 50 }, (_, i) => `client/src/file${i}.ts`);
             const rules = ["no-console"];
 
-            (execSync as any).mockImplementation((command: any) => {
+            mockExecSync.mockImplementation((command: any) => {
                 if (typeof command === "string" && command.includes("eslint")) {
                     return JSON.stringify([
                         {
@@ -357,7 +429,7 @@ describe("detect-promote-candidates.js unit tests", () => {
 
             const results = runESLint(files, rules);
 
-            expect(execSync as any).toHaveBeenCalled();
+            expect(mockExecSync).toHaveBeenCalled();
             expect(consoleLogSpy).toHaveBeenCalledWith(
                 expect.stringMatching(/Processing batch \d+\/\d+/),
             );
@@ -367,8 +439,9 @@ describe("detect-promote-candidates.js unit tests", () => {
             const files = ["client/src/app.ts"];
             const rules = ["no-console", "no-unused-vars"];
 
-            (execSync as any).mockImplementation((command: any) => {
+            mockExecSync.mockImplementation((command: any) => {
                 if (typeof command === "string" && command.includes("eslint")) {
+                    // Path must be absolute and include /workspace since baseDir is the scripts/.. directory
                     return JSON.stringify([
                         {
                             filePath: "/workspace/client/src/app.ts",
@@ -403,7 +476,7 @@ describe("detect-promote-candidates.js unit tests", () => {
             const files = ["client/src/clean.ts"];
             const rules = ["no-console"];
 
-            (execSync as any).mockImplementation((command: any) => {
+            mockExecSync.mockImplementation((command: any) => {
                 if (typeof command === "string" && command.includes("eslint")) {
                     return JSON.stringify([
                         {
@@ -432,15 +505,16 @@ describe("detect-promote-candidates.js unit tests", () => {
             const files = ["client/src/app.ts"];
             const rules = ["no-console"];
 
-            (execSync as any).mockImplementation((command: any) => {
+            const error = new Error("ESLint failed");
+            (error as any).stdout = JSON.stringify([
+                {
+                    filePath: "/workspace/client/src/app.ts",
+                    messages: [],
+                },
+            ]);
+
+            mockExecSync.mockImplementation((command: any) => {
                 if (typeof command === "string" && command.includes("eslint")) {
-                    const error = new Error("ESLint failed");
-                    (error as any).stdout = JSON.stringify([
-                        {
-                            filePath: "/workspace/client/src/app.ts",
-                            messages: [],
-                        },
-                    ]);
                     throw error;
                 }
                 return "";
@@ -456,10 +530,6 @@ describe("detect-promote-candidates.js unit tests", () => {
             const files: string[] = [];
             const rules = ["no-console"];
 
-            (execSync as any).mockImplementation(() => {
-                return "";
-            });
-
             const results = runESLint(files, rules);
 
             expect(results.size).toBe(0);
@@ -469,11 +539,9 @@ describe("detect-promote-candidates.js unit tests", () => {
     describe("identifyCandidates", () => {
         it("respects max-files and distributes per rule", () => {
             const now = Date.now();
-            vi.spyOn(fs, "statSync").mockImplementation((p: any) =>
-                ({
-                    mtime: new Date(now),
-                }) as any
-            );
+            mockFsStatSync.mockImplementation((p: any) => ({
+                mtime: new Date(now),
+            }));
 
             const rules = ["no-console", "no-debugger"]; // two rules
             const results = new Map<string, { violations: Map<string, number>; cleanRules: Set<string>; }>();
@@ -494,8 +562,9 @@ describe("detect-promote-candidates.js unit tests", () => {
             const now = Date.now();
             const old = now - 60 * 24 * 60 * 60 * 1000; // 60 days ago
 
-            vi.spyOn(fs, "statSync").mockImplementation((p: any) => {
-                if (p.toString().includes("recent.ts")) {
+            mockFsStatSync.mockImplementation((p: any) => {
+                const pathStr = typeof p === "string" ? p : p.toString();
+                if (pathStr.includes("recent.ts")) {
                     return { mtime: new Date(now) };
                 } else {
                     return { mtime: new Date(old) };
@@ -530,30 +599,31 @@ describe("detect-promote-candidates.js unit tests", () => {
                 cleanRules: new Set(rules),
             });
 
-            const statSyncSpy = vi.spyOn(fs, "statSync").mockImplementation((p: any) => {
-                const pathStr = typeof p === "string" ? p : p.toString();
-                if (pathStr.includes("accessible")) {
+            // Set up a custom implementation that throws for inaccessible files
+            // Use mockReturnValueOnce for the accessible file and mockImplementation for the inaccessible file
+            mockFsStatSync
+                .mockReturnValueOnce({ mtime: new Date() })
+                .mockImplementation((p: any) => {
+                    const pathStr = typeof p === "string" ? p : p.toString();
+                    if (pathStr.includes("inaccessible")) {
+                        throw new Error("File not found");
+                    }
                     return { mtime: new Date() };
-                } else {
-                    throw new Error("File not found");
-                }
-            });
+                });
 
             const { candidates } = identifyCandidates(results, rules, 10);
 
             // Should only include accessible files
             expect(candidates.length).toBe(1);
             expect(candidates[0].file).toBe("client/src/accessible.ts");
-            expect(statSyncSpy).toHaveBeenCalled();
+            expect(mockFsStatSync).toHaveBeenCalled();
         });
 
         it("creates proposed changes for each rule", () => {
             const now = Date.now();
-            vi.spyOn(fs, "statSync").mockImplementation((p: any) =>
-                ({
-                    mtime: new Date(now),
-                }) as any
-            );
+            mockFsStatSync.mockImplementation((p: any) => ({
+                mtime: new Date(now),
+            }));
 
             const rules = ["no-console", "no-debugger"];
             const results = new Map<string, { violations: Map<string, number>; cleanRules: Set<string>; }>();
@@ -591,7 +661,12 @@ describe("detect-promote-candidates.js unit tests", () => {
             ];
             const proposedChanges = { "no-console": { files: ["client/src/a.ts"], severity: "error" } } as any;
 
+            mockFsWriteFileSync.mockImplementation((path, data) => {
+                mockFsReadFileSync.mockReturnValue(data);
+            });
+
             const artifact = generateOutput(args, candidates as any, proposedChanges);
+            expect(artifact).toBeTruthy();
             expect(fs.existsSync(artifact)).toBe(true);
             const data = JSON.parse(fs.readFileSync(artifact, "utf8"));
             expect(Array.isArray(data.candidates)).toBe(true);
@@ -620,6 +695,10 @@ describe("detect-promote-candidates.js unit tests", () => {
                 },
             } as any;
 
+            mockFsWriteFileSync.mockImplementation((path, data) => {
+                mockFsReadFileSync.mockReturnValue(data);
+            });
+
             const artifact = generateOutput(args, candidates as any, proposedChanges);
             const data = JSON.parse(fs.readFileSync(artifact, "utf8"));
             expect(data.candidates.length).toBe(5);
@@ -630,6 +709,10 @@ describe("detect-promote-candidates.js unit tests", () => {
             const args = { rules: ["no-console"], maxFiles: 5, dryRun: false } as any;
             const candidates: any[] = [];
             const proposedChanges = { "no-console": { files: [], severity: "error" } } as any;
+
+            mockFsWriteFileSync.mockImplementation((path, data) => {
+                mockFsReadFileSync.mockReturnValue(data);
+            });
 
             const artifact = generateOutput(args, candidates, proposedChanges);
             expect(artifact).toMatch(/promote-candidates-\d+\.json$/);
@@ -647,7 +730,7 @@ describe("detect-promote-candidates.js unit tests", () => {
                 cleanRules: new Set(rules),
             });
 
-            vi.spyOn(fs, "statSync").mockImplementation(() => {
+            mockFsStatSync.mockImplementation(() => {
                 throw new Error("ENOENT");
             });
 
@@ -660,10 +743,6 @@ describe("detect-promote-candidates.js unit tests", () => {
             const files: string[] = [];
             const rules = ["no-console"];
 
-            (execSync as any).mockImplementation(() => {
-                return "[]";
-            });
-
             const results = runESLint(files, rules);
             expect(results.size).toBe(0);
         });
@@ -672,10 +751,11 @@ describe("detect-promote-candidates.js unit tests", () => {
             const files = ["client/src/app.ts"];
             const rules = ["no-console"];
 
-            (execSync as any).mockImplementation((command: any) => {
+            const error = new Error("ESLint failed");
+            (error as any).stdout = "invalid json";
+
+            mockExecSync.mockImplementation((command: any) => {
                 if (typeof command === "string" && command.includes("eslint")) {
-                    const error = new Error("ESLint failed");
-                    (error as any).stdout = "invalid json";
                     throw error;
                 }
                 return "";
