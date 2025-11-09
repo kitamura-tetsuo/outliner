@@ -1,6 +1,19 @@
-# GitHub Actions Setup for Claude Code Integration
+# GitHub Actions Setup for Claude Code Integration（←アーカイブ）
 
-このドキュメントでは、issue作成時にClaude Code Actionがself-hosted runnerで実行され、claude-code-routerを使ってGemini CLIが動作するように設定する手順を説明します。
+**📌 重要**: このドキュメントはアーカイブされました。Gemini CI ワークフローは無効化されており、現在self-hosted runnerは使用されていません。
+
+**現在の状況**:
+- ✅ GitHub-hosted runners に移行済み
+- ✅ Gemini CI ワークフロー無効化（`.disabled` ファイルとして保存）
+- ✅ 全てのCI/CD機能はGitHub-hosted runnersで継続稼働
+
+**新しいドキュメント**:
+- 英語版: `docs/github-actions-setup-en.md`
+- 日本語版（現在のアーカイブ情報）: `docs/gemini-cli-setup.md`
+
+---
+
+**以前の情報**: このドキュメントでは、issue作成時にClaude Code Actionがself-hosted runnerで実行され、claude-code-routerを使ってGemini CLIが動作するように設定する手順を説明していました。
 
 ## 概要
 
