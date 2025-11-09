@@ -398,22 +398,9 @@ EOF
   echo "Firebase emulator started with PID: ${FIREBASE_PID}"
   echo "Firebase emulator log will be written to: ${ROOT_DIR}/server/logs/firebase-emulator.log"
 
-  # Verify the emulator is actually listening on expected ports
-  echo "Verifying Firebase emulators are listening on TCP ports..."
-  local port_check_failed=false
-  for port in ${FIREBASE_AUTH_PORT} ${FIREBASE_FUNCTIONS_PORT} ${FIREBASE_HOSTING_PORT}; do
-    if ! port_is_open ${port}; then
-      echo "WARNING: Port ${port} is not open yet"
-      port_check_failed=true
-    fi
-  done
-  if [ "$port_check_failed" = true ]; then
-    echo "WARNING: Some Firebase emulator ports are not open. Checking log for errors..."
-    tail -50 "${ROOT_DIR}/server/logs/firebase-emulator.log"
-    echo "Continuing anyway, emulators may still be starting up..."
-  else
-    echo "All Firebase emulator ports are open"
-  fi
+  # Give the emulators a brief moment to begin initialization before any checks
+  # CI 環境では起動に時間がかかるため、即時チェックはノイズになる
+  sleep 5
 
   cd "${ROOT_DIR}"
 
