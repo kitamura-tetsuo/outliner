@@ -2,7 +2,8 @@ import { createSubscriber, SvelteSet } from "svelte/reactivity";
 import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Item } from "../schema/app-schema";
-import { Items, Project } from "../schema/app-schema";
+import { Project } from "../schema/app-schema";
+import type { ItemLike, PlainItemData } from "../types/yjs-types";
 
 export class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
@@ -55,7 +56,7 @@ export class GeneralStore {
                     const prevLen = prevItems?.length ?? 0;
                     const nextLen = nextItems?.length ?? 0;
                     if (prevLen > 0) {
-                        const isPlaceholderChild = (node: Item | null | undefined) => {
+                        const isPlaceholderChild = (node: ItemLike | PlainItemData | null | undefined) => {
                             const text = node?.text?.toString?.() ?? String(node?.text ?? "");
                             if (!text) return true;
                             return text === "一行目: テスト" || text === "二行目: Yjs 反映"
@@ -77,20 +78,25 @@ export class GeneralStore {
                                 nextItems.removeAt(nextItems.length - 1);
                             }
 
-                            const cloneBranch = (source: Items | undefined, target: Items | undefined) => {
+                            const cloneBranch = (
+                                source: ItemLike | PlainItemData | null | undefined,
+                                target: ItemLike | null | undefined,
+                            ) => {
                                 if (!source || !target) return;
-                                const length = source?.length ?? 0;
+                                const length = source && "length" in source ? (source.length ?? 0) : 0;
                                 for (let index = 0; index < length; index++) {
-                                    const from = source.at ? source.at(index) : source[index];
+                                    const from = source && "at" in source
+                                        ? (source.at ? source.at(index) : source[index])
+                                        : null;
                                     if (!from) continue;
                                     const text = from?.text?.toString?.() ?? String(from?.text ?? "");
-                                    const created = target?.addNode?.("tester");
+                                    const created = target?.items?.addNode?.("tester");
                                     if (!created) continue;
-                                    created.updateText?.(text);
-                                    cloneBranch(from?.items, created?.items);
+                                    created?.updateText?.(text);
+                                    cloneBranch(from, created);
                                 }
                             };
-                            cloneBranch(prevItems, nextItems);
+                            cloneBranch(prevItems as ItemLike | PlainItemData, nextItems as ItemLike);
                         }
                     }
                 } catch {

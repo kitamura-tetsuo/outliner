@@ -121,7 +121,7 @@ let logger = pino(
         timestamp: pino.stdTimeFunctions.isoTime,
     },
     pino.multistream([
-        //        { stream: serverLogStream }, // サーバーログをサーバーログディレクトリに保存
+        { stream: serverLogStream }, // サーバーログをサーバーログディレクトリに保存
         { stream: prettyStream }, // 整形ログをコンソールに表示
     ]),
 );
@@ -134,10 +134,10 @@ let logger = pino(
  */
 async function rotateLogFile(logFilePath, maxBackups = 2) {
     try {
-        // ログファイルが存在するか確認
+        // ログファイルが存在するか確認し、なければ作成
         if (!await fsExtra.pathExists(logFilePath)) {
-            console.log(`ログファイルが存在しません: ${logFilePath}`);
-            return false;
+            console.log(`ログファイルが存在しません。作成します: ${logFilePath}`);
+            await fsExtra.ensureFile(logFilePath);
         }
 
         const directory = path.dirname(logFilePath);
