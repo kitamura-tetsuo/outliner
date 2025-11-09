@@ -398,6 +398,23 @@ EOF
   echo "Firebase emulator started with PID: ${FIREBASE_PID}"
   echo "Firebase emulator log will be written to: ${ROOT_DIR}/server/logs/firebase-emulator.log"
 
+  # Verify the emulator is actually listening on expected ports
+  echo "Verifying Firebase emulators are listening on TCP ports..."
+  local port_check_failed=false
+  for port in ${FIREBASE_AUTH_PORT} ${FIREBASE_FUNCTIONS_PORT} ${FIREBASE_HOSTING_PORT}; do
+    if ! port_is_open ${port}; then
+      echo "WARNING: Port ${port} is not open yet"
+      port_check_failed=true
+    fi
+  done
+  if [ "$port_check_failed" = true ]; then
+    echo "WARNING: Some Firebase emulator ports are not open. Checking log for errors..."
+    tail -50 "${ROOT_DIR}/server/logs/firebase-emulator.log"
+    echo "Continuing anyway, emulators may still be starting up..."
+  else
+    echo "All Firebase emulator ports are open"
+  fi
+
   cd "${ROOT_DIR}"
 
   # Wait for Firebase emulator to start and verify it's working
@@ -423,8 +440,9 @@ EOF
   fi
 
   # Additional wait for Firebase Functions to fully initialize
-  echo "Waiting additional 10 seconds for Firebase Functions to fully initialize..."
-  sleep 10
+  # In CI environments, emulators may need more time to be fully ready
+  echo "Waiting additional 30 seconds for Firebase Functions to fully initialize..."
+  sleep 30
 
   # Now that emulators are listening, initialize admin and test user in background
   echo "Launching Firebase emulator initializer (admin + test user) ..."

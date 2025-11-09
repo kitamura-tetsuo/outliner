@@ -1,0 +1,31 @@
+{
+    "timestamp": "2025-11-08T13:55:39.257Z",
+    "rules": [
+        "no-console"
+    ],
+    "candidates": [
+        {
+            "file": "client/src/lib/CustomKeyMap.svelte.ts",
+            "rule": "no-console",
+            "currentStatus": "clean",
+            "lastModified": "2025-11-06T04:47:35.597Z",
+            "score": 35
+        },
+        {
+            "file": "client/src/lib/yjsService.svelte.ts",
+            "rule": "no-console",
+            "currentStatus": "clean",
+            "lastModified": "2025-11-06T04:47:35.788Z",
+            "score": 35
+        }
+    ],
+    "proposedChanges": {
+        "no-console": {
+            "files": [
+                "client/src/lib/CustomKeyMap.svelte.ts",
+                "client/src/lib/yjsService.svelte.ts"
+            ],
+            "severity": "error"
+        }
+    }
+}

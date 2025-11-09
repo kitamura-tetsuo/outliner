@@ -1,0 +1,157 @@
+name: ESLint Rule Promotion
+
+on:
+  schedule:
+    # Weekly on Monday at 03:00 UTC (12:00 JST)
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      rules:
+        description: 'Comma-separated list of ESLint rules to check (default: no-console,no-unused-vars)'
+        type: string
+        default: 'no-console,no-unused-vars'
+        required: false
+      max_files:
+        description: 'Maximum number of candidate files to return (default: 10)'
+        type: number
+        default: 10
+        required: false
+      dry_run:
+        description: 'Run in dry-run mode (no changes will be made)'
+        type: boolean
+        default: false
+      safe_mode:
+        description: 'Safe mode - only create PR, do not apply changes'
+        type: boolean
+        default: true
+
+jobs:
+  detect-promotion-candidates:
+    name: Detect and Promote ESLint Rules
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for accurate file modification dates
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: cd client && npm ci
+
+      - name: Detect promotion candidates
+        id: detect
+        run: |
+          # Determine rules and max-files from inputs or defaults
+          RULES="${{ github.event.inputs.rules || 'no-console,no-unused-vars' }}"
+          MAX_FILES="${{ github.event.inputs.max_files || 10 }}"
+          DRY_RUN="${{ github.event.inputs.dry_run || false }}"
+
+          echo "rules=$RULES" >> $GITHUB_OUTPUT
+          echo "max_files=$MAX_FILES" >> $GITHUB_OUTPUT
+          echo "max_files_value=$MAX_FILES" >> $GITHUB_OUTPUT
+          echo "candidates_found=false" >> $GITHUB_OUTPUT
+
+          # Run detection script
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Running in DRY RUN mode..."
+            node ./scripts/detect-promote-candidates.js --rules "$RULES" --max-files $MAX_FILES --dry-run > detect-output.log 2>&1
+          else
+            node ./scripts/detect-promote-candidates.js --rules "$RULES" --max-files $MAX_FILES > detect-output.log 2>&1
+          fi
+
+          # Check if candidates were found
+          CANDIDATE_FILE=$(ls -t scripts/promote-candidates-*.json 2>/dev/null | head -1)
+          if [ -n "$CANDIDATE_FILE" ]; then
+            CANDIDATE_COUNT=$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync('$CANDIDATE_FILE')); console.log(data.candidates.length);")
+            if [ "$CANDIDATE_COUNT" -gt 0 ]; then
+              echo "Candidates found: $CANDIDATE_COUNT"
+              echo "candidates_found=true" >> $GITHUB_OUTPUT
+            else
+              echo "No candidates found"
+            fi
+          else
+            echo "No candidate file found"
+          fi
+          echo "candidate_count=$CANDIDATE_COUNT" >> $GITHUB_OUTPUT
+
+          # Show summary
+          echo "=== Detection Summary ==="
+          cat detect-output.log | tail -50
+
+      - name: Upload detection results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eslint-promotion-candidates
+          path: |
+            detect-output.log
+            scripts/promote-candidates-*.json
+          retention-days: 30
+
+      - name: Create Pull Request
+        if: steps.detect.outputs.candidates_found == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore: promote eslint rules for candidate files
+
+            Detected and promoting ESLint rules to error level for clean files
+          title: '[chore/eslint] promote rules'
+          body: |
+            ## ESLint Rule Promotion
+
+            Auto-generated promotion PR based on detection results.
+
+            **Detection Date**: ${{ github.event.head_commit.timestamp || 'N/A' }}
+            **Rules**: ${{ steps.detect.outputs.rules }}
+            **Candidates Found**: ${{ steps.detect.outputs.candidate_count }} files
+            **Max Files**: ${{ steps.detect.outputs.max_files }}
+
+            ### Detection Results
+            See attached candidate list for details. The detection script identified files that have zero violations for the specified ESLint rules, making them suitable candidates for promoting those rules from "warn" to "error" level.
+
+            ### Review Checklist
+            - [ ] Verify all files are appropriate for promotion
+            - [ ] Check that no regression will occur in CI/CD
+            - [ ] Confirm backup of current ESLint config exists
+            - [ ] Test locally if needed before merging
+            - [ ] Review the impact on existing codebases
+
+            ### Rollback
+            If issues arise after merging, revert this PR and restore from backup:
+            ```bash
+            # If you have a backup, restore it with:
+            # cp .eslintrc.json.bak-YYYYMMDD .eslintrc.json
+
+            # Or manually revert the changes by editing the ESLint config
+            ```
+
+            ### Files Modified
+            This PR promotes the following ESLint rules to "error" level:
+            - ${{ steps.detect.outputs.rules }}
+
+            For the following files (showing top ${{ steps.detect.outputs.max_files }} candidates):
+            See the attached candidate list for complete details.
+
+            ---
+            *This PR was created automatically by the ESLint promotion workflow.*
+          labels: |
+            chore
+            eslint
+            automation
+          branch: chore/eslint-promote/${{ github.run_number }}
+          delete-branch: true
+
+      - name: Check for issues
+        if: failure()
+        run: |
+          echo "::error::ESLint promotion detection failed. Please check the logs for details."
+          echo "::notice::If this was a scheduled run, you can trigger a manual run to retry with different parameters."

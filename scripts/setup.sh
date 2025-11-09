@@ -78,6 +78,12 @@ fi
 echo "=== Outliner Test Environment Setup ==="
 echo "ROOT_DIR: ${ROOT_DIR}"
 
+# In CI/self-hosted environments, always run full setup to ensure clean state
+if [ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
+  echo "CI environment detected, removing setup sentinel to ensure full setup..."
+  rm -f "$SETUP_SENTINEL"
+fi
+
 # Note for env tests: keep tokens for discovery
 # start_tinylicious (disabled on Yjs branch)
 # start_api_server   (deprecated; handled by SvelteKit APIs)
@@ -192,7 +198,12 @@ cd "${ROOT_DIR}"
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
 kill_ports || echo "Warning: Some ports could not be killed"
-sleep 2
+# Additional cleanup: kill any stuck Firebase processes
+pkill -9 -f "firebase emulators:start" 2>/dev/null || true
+pkill -9 -f "functionsEmulatorRuntime" 2>/dev/null || true
+pkill -9 -f "cloud-firestore-emulator" 2>/dev/null || true
+pkill -9 -f "cloud-storage-rules" 2>/dev/null || true
+sleep 3
 
 # Start all test servers unless skipped
 if [ "${SKIP_SERVER_START:-0}" -eq 1 ]; then

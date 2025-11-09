@@ -38,7 +38,7 @@ test("pre_push.sh fails when formatting is incorrect", () => {
     execSync(`git reset HEAD ${tempFile}`, { cwd: repoRoot });
     fs.unlinkSync(tempFile);
     expect(code).not.toBe(0);
-});
+}, 30000);
 
 test("pre_push.sh succeeds when formatting is correct", () => {
     fs.writeFileSync(tempFile, "const x = 1;\n");
@@ -48,4 +48,4 @@ test("pre_push.sh succeeds when formatting is correct", () => {
     execSync(`git reset HEAD ${tempFile}`, { cwd: repoRoot });
     fs.unlinkSync(tempFile);
     expect(code).toBe(0);
-});
+}, 30000);

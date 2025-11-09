@@ -139,7 +139,7 @@ export class GeneralStore {
 
         // Yjs observeDeep でルートツリーを監視し、Svelteの購読にブリッジ
         const project = v;
-        const ymap = (project as any)?.ydoc?.getMap?.("orderedTree");
+        const ymap = project?.ydoc?.getMap?.("orderedTree");
         const subscribe = createSubscriber((_update) => {
             const handler = (_events: Array<Y.YEvent<unknown>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
                 try {
