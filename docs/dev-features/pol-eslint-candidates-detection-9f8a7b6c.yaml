@@ -1,0 +1,35 @@
+title: ESLint Candidates Detection Script
+title-ja: ESLint候補検出スクリプト
+description: 'Added ESLint Detection Script that identifies files ready for rule promotion from warn to error level.
+
+  The script scans the codebase to find files with zero violations for specified ESLint rules,
+
+  helping developers systematically promote rules from "warn" to "error" severity.
+
+  '
+details: "- **New Script**: `scripts/detect-promote-candidates.js`\n  - Command-line interface for identifying ESLint rule promotion candidates\n  - Supports batch processing to avoid command-line length limits\n  - Prioritizes files based on modification date and location importance\n  - Generates detailed JSON reports with proposed changes\n\n- **Key Features**:\n  - Configurable rule checking with `--rules` parameter\n  - Maximum file limit with `--max-files` parameter\n  - Dry-run mode to preview changes without making them\n  - Exclusion patterns for test files, node_modules, etc.\n  - Priority scoring based on file recency and importance\n\n- **Test Infrastructure**:\n  - Added comprehensive test coverage in `scripts/tests/detect-promote-candidates.spec.ts`\n  - Integration with existing test framework (Vitest)\n  - Validates script functionality and output format\n\n- **Dependencies**:\n  - Updated scripts/package.json with required dependencies\n  - Package-lock.json updated to reflect new dependencies\n\n- **Usage Example**:\n  ```bash\n  node scripts/detect-promote-candidates.js --rules \"no-console,no-unused-vars\" --max-files 20\n  ```\n\n- **Output**:\n  - Console display of promotion candidates\n  - JSON artifact file saved with timestamp: `promote-candidates-<timestamp>.json`\n  - Structured data including file paths, rules, and priority scores\n"
+benefits: '- Automates identification of files ready for stricter ESLint rules
+
+  - Reduces manual code review effort for rule promotion
+
+  - Provides data-driven approach to improving code quality
+
+  - Integrates with existing development workflow
+
+  '
+test_coverage: '- Unit tests for core functions
+
+  - Integration tests with actual ESLint execution
+
+  - Validation of command-line argument parsing
+
+  - Verification of exclusion pattern handling
+
+  '
+related_files:
+- scripts/detect-promote-candidates.js (main script)
+- scripts/package.json (dependencies)
+- scripts/tests/detect-promote-candidates.spec.ts (tests)
+- scripts/promote-candidates-*.json (output artifacts)
+changelog:
+- 2025-11-09: Initial implementation of ESLint candidates detection
