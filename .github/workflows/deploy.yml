@@ -62,9 +62,11 @@ jobs:
           npm ci
 
       - name: Set Firebase project
+        if: github.actor != 'dependabot[bot]'
         run: firebase use outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
 
       - name: Clean up old Firebase Functions config
+        if: github.actor != 'dependabot[bot]'
         run: |
           # 既存のFirebase Functions環境変数を削除
           echo "Cleaning up old Firebase Functions config..."
@@ -76,5 +78,6 @@ jobs:
           npm run lint -- --fix
 
       - name: Deploy to Firebase
+        if: github.actor != 'dependabot[bot]'
         run: firebase deploy --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive --force
 

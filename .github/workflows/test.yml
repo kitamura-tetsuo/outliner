@@ -302,6 +302,7 @@ jobs:
           npm run lint -- --fix
 
       - name: Firebase deployment dry run
+        if: github.actor != 'dependabot[bot]'
         run: |
           # Create temporary env file for functions (similar to deploy workflow)
           cat > functions/.env <<EOF
