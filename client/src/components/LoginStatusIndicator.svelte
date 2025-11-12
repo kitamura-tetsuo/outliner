@@ -69,6 +69,97 @@ onDestroy(() => {
     unsubscribe?.();
     unsubscribe = undefined;
 });
+
+// Dropdown menu state and handlers
+let isMenuOpen = $state(false);
+let indicatorEl: HTMLDivElement | null = null;
+let menuEl: HTMLDivElement | null = null;
+let signOutBtn: HTMLButtonElement | null = null;
+const menuId = "user-menu";
+
+let menuTop = $state(0);
+let menuLeft = $state(0);
+
+function updateMenuPosition() {
+    if (!indicatorEl) return;
+    const r = indicatorEl.getBoundingClientRect();
+    // Anchor to the right edge with a small offset; clamp to viewport
+    const menuWidth = 180;
+    menuTop = Math.round(r.bottom + 6);
+    menuLeft = Math.round(Math.max(8, Math.min(window.innerWidth - menuWidth - 8, r.right - menuWidth)));
+}
+
+function attachGlobalHandlers() {
+    document.addEventListener("click", handleDocumentClick, true);
+    window.addEventListener("resize", handleWindowResize);
+    window.addEventListener("scroll", handleWindowResize, true);
+}
+
+function detachGlobalHandlers() {
+    document.removeEventListener("click", handleDocumentClick, true);
+    window.removeEventListener("resize", handleWindowResize);
+    window.removeEventListener("scroll", handleWindowResize, true);
+}
+
+function handleDocumentClick(e: MouseEvent) {
+    const target = e.target as Node;
+    if (menuEl?.contains(target) || indicatorEl?.contains(target)) return;
+    closeMenu();
+}
+
+function handleWindowResize() {
+    if (isMenuOpen) updateMenuPosition();
+}
+
+function openMenu() {
+    if (!isAuthenticated) return;
+    isMenuOpen = true;
+    updateMenuPosition();
+    setTimeout(() => signOutBtn?.focus(), 0);
+    attachGlobalHandlers();
+}
+
+function closeMenu() {
+    isMenuOpen = false;
+    detachGlobalHandlers();
+}
+
+function toggleMenu() {
+    if (!isAuthenticated) return;
+    isMenuOpen ? closeMenu() : openMenu();
+}
+
+function onKeyDownIndicator(e: KeyboardEvent) {
+    if (!isAuthenticated) return;
+    if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggleMenu();
+    } else if (e.key === "Escape") {
+        e.preventDefault();
+        closeMenu();
+    }
+}
+
+function onKeyDownMenu(e: KeyboardEvent) {
+    if (e.key === "Escape") {
+        e.stopPropagation();
+        e.preventDefault();
+        closeMenu();
+    }
+}
+
+onDestroy(() => {
+    detachGlobalHandlers();
+});
+
+async function signOut() {
+    try {
+        await manager.logout();
+    } finally {
+        closeMenu();
+    }
+}
+
 </script>
 
 <div
@@ -78,11 +169,16 @@ onDestroy(() => {
     class:loading={isLoading}
     data-testid="login-status-indicator"
     data-status={status}
-    role="status"
-    aria-live="polite"
-    aria-busy={isLoading ? "true" : "false"}
+    role="button"
+    aria-haspopup="menu"
+    aria-expanded={isAuthenticated ? (isMenuOpen ? "true" : "false") : "false"}
+    aria-controls={isAuthenticated ? menuId : undefined}
     aria-label={statusLabel}
     title={statusLabel}
+    tabindex={isAuthenticated ? 0 : -1}
+    onclick={toggleMenu}
+    onkeydown={onKeyDownIndicator}
+    bind:this={indicatorEl}
 >
     {#if isLoading}
         <span class="icon-badge">
@@ -136,6 +232,28 @@ onDestroy(() => {
         <span class="status-text">
             <span class="status-label">Not signed in</span>
         </span>
+    {/if}
+    {#if isMenuOpen && isAuthenticated}
+        <div
+            id={menuId}
+            data-testid="user-menu"
+            role="menu"
+            class="user-menu"
+            bind:this={menuEl}
+            onkeydown={onKeyDownMenu}
+            tabindex="-1"
+            style={`position: fixed; top: ${menuTop}px; left: ${menuLeft}px; z-index: 10002; background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 0.25rem; box-shadow: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);`}
+        >
+            <button
+                type="button"
+                role="menuitem"
+                data-testid="user-menu-signout"
+                class="menu-item"
+                bind:this={signOutBtn}
+                onclick={signOut}
+                style="display:block; width:100%; text-align:left; padding:0.5rem 0.75rem; background:transparent; border:0; border-radius:0.375rem; font-size:0.875rem; cursor:pointer;"
+            >Sign out</button>
+        </div>
     {/if}
 </div>
 
