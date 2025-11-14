@@ -70,7 +70,7 @@ describe("ContainerStore", () => {
         expect(containers[1].name).toBe("テストプロジェクト2"); // Falls back to registry
     });
 
-    it("falls back to test project name when no title available in test env", async () => {
+    it("falls back to container ID when no title is available", async () => {
         // Mock empty cache and empty registry
         mockCache.getTitle.mockReturnValue(undefined);
         const { getProjectTitle } = await import("../lib/projectTitleProvider");
@@ -86,26 +86,29 @@ describe("ContainerStore", () => {
 
         const containers = containersFromUserContainer(userContainer);
 
-        // In test environment, should use test project name format
-        expect(containers[0].name).toMatch(/テストプロジェクト/);
-        expect(containers[0].name).toContain("iner"); // Last 4 chars of "unknown-container"
+        expect(containers[0].name).toBe("unknown-container");
     });
 
-    it("handles container names correctly in test environment", () => {
+    it("uses container ID when registry returns default project title", async () => {
         // Reset mock to ensure clean state
         mockCache.getTitle.mockReturnValue(undefined);
         mockCache.setTitle.mockClear();
 
-        const containers = containersFromUserContainer(firestoreStore.userContainer!);
+        const { getProjectTitle } = await import("../lib/projectTitleProvider");
+        vi.mocked(getProjectTitle).mockReturnValue("プロジェクト");
 
-        // Verify containers are created with proper names
-        expect(containers).toHaveLength(2);
-        expect(containers[0].id).toBe("c1");
-        expect(containers[1].id).toBe("c2");
+        const userContainer = {
+            userId: "test",
+            accessibleContainerIds: ["proj-1234"],
+            defaultContainerId: "proj-1234",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        } as UserContainer;
 
-        // In test environment, when registry returns empty, should use test project format
-        // The actual behavior shows "テストプロジェクトc1" format
-        expect(containers[0].name).toMatch(/テストプロジェクト/);
-        expect(containers[1].name).toMatch(/テストプロジェクト/);
+        const containers = containersFromUserContainer(userContainer);
+
+        expect(containers).toHaveLength(1);
+        expect(containers[0].id).toBe("proj-1234");
+        expect(containers[0].name).toBe("proj-1234");
     });
 });

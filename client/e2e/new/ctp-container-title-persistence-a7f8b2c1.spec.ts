@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-import { TestHelpers } from "./utils/TestHelpers";
+import { TestHelpers } from "../utils/testHelpers";
 
 registerCoverageHooks();
 
@@ -49,36 +49,53 @@ test.describe("Container Title Persistence", () => {
     });
 
     test("shows container ID when title is unavailable", async ({ page }) => {
-        // Navigate to home page
+        // Navigate to home page and ensure Firestore store is available
         await page.goto("/");
-        await page.waitForLoadState("networkidle");
+        await page.waitForFunction(() => {
+            try {
+                return typeof (window as any).__FIRESTORE_STORE__ !== "undefined";
+            } catch {
+                return false;
+            }
+        }, { timeout: 10000 });
 
-        // Simulate a container with missing title by manipulating localStorage
+        // Simulate a container with missing title by manipulating localStorage and store state
         await page.evaluate(() => {
-            // Add a container ID to userContainer but without cached title
+            const containerId = "missing-title-container-123";
+            const fs: any = (window as any).__FIRESTORE_STORE__;
+            if (!fs || typeof fs.setUserContainer !== "function") {
+                throw new Error("__FIRESTORE_STORE__.setUserContainer is not available");
+            }
+
+            const now = new Date();
             const mockUserContainer = {
                 userId: "test-user-id",
-                accessibleContainerIds: ["missing-title-container-123"],
-                defaultContainerId: "missing-title-container-123",
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                accessibleContainerIds: [containerId],
+                defaultContainerId: containerId,
+                createdAt: now,
+                updatedAt: now,
             };
 
             // Clear any existing title cache for this container
-            const titleCache = JSON.parse(localStorage.getItem("outliner_container_titles") || "{}");
-            delete titleCache["missing-title-container-123"];
-            localStorage.setItem("outliner_container_titles", JSON.stringify(titleCache));
+            const titleCache = JSON.parse(window.localStorage.getItem("outliner_container_titles") || "{}");
+            delete titleCache[containerId];
+            window.localStorage.setItem("outliner_container_titles", JSON.stringify(titleCache));
 
-            // Trigger firestore store update
-            window.dispatchEvent(
-                new CustomEvent("firestore-uc-changed", {
-                    detail: { userContainer: mockUserContainer },
-                }),
-            );
+            fs.setUserContainer(mockUserContainer);
         });
 
         // Wait for the dropdown to update
-        await page.waitForTimeout(1000);
+        await page.waitForFunction(
+            (id) => {
+                const select = document.querySelector("select.container-select");
+                if (!select) return false;
+                return Array.from(select.querySelectorAll("option")).some(option =>
+                    (option as HTMLOptionElement).textContent?.includes(id)
+                );
+            },
+            "missing-title-container-123",
+            { timeout: 10000 },
+        );
 
         // Verify container appears with ID as fallback label
         const dropdown = page.locator("select.container-select");
@@ -91,39 +108,56 @@ test.describe("Container Title Persistence", () => {
     });
 
     test("uses cached title when available", async ({ page }) => {
-        // Navigate to home page
+        // Navigate to home page and ensure Firestore store is available
         await page.goto("/");
-        await page.waitForLoadState("networkidle");
+        await page.waitForFunction(() => {
+            try {
+                return typeof (window as any).__FIRESTORE_STORE__ !== "undefined";
+            } catch {
+                return false;
+            }
+        }, { timeout: 10000 });
 
         // Set up a container with cached title
         await page.evaluate(() => {
             const containerId = "cached-title-container-456";
             const cachedTitle = "Cached Project Title";
 
-            // Set cached title
-            const titleCache = JSON.parse(localStorage.getItem("outliner_container_titles") || "{}");
-            titleCache[containerId] = cachedTitle;
-            localStorage.setItem("outliner_container_titles", JSON.stringify(titleCache));
+            const fs: any = (window as any).__FIRESTORE_STORE__;
+            if (!fs || typeof fs.setUserContainer !== "function") {
+                throw new Error("__FIRESTORE_STORE__.setUserContainer is not available");
+            }
 
-            // Add container to userContainer
+            // Set cached title
+            const titleCache = JSON.parse(window.localStorage.getItem("outliner_container_titles") || "{}");
+            titleCache[containerId] = cachedTitle;
+            window.localStorage.setItem("outliner_container_titles", JSON.stringify(titleCache));
+
+            // Add container to userContainer via store API
+            const now = new Date();
             const mockUserContainer = {
                 userId: "test-user-id",
                 accessibleContainerIds: [containerId],
                 defaultContainerId: containerId,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                createdAt: now,
+                updatedAt: now,
             };
 
-            // Trigger firestore store update
-            window.dispatchEvent(
-                new CustomEvent("firestore-uc-changed", {
-                    detail: { userContainer: mockUserContainer },
-                }),
-            );
+            fs.setUserContainer(mockUserContainer);
         });
 
         // Wait for the dropdown to update
-        await page.waitForTimeout(1000);
+        await page.waitForFunction(
+            (label) => {
+                const select = document.querySelector("select.container-select");
+                if (!select) return false;
+                return Array.from(select.querySelectorAll("option")).some(option =>
+                    (option as HTMLOptionElement).textContent?.includes(label)
+                );
+            },
+            "Cached Project Title",
+            { timeout: 10000 },
+        );
 
         // Verify container appears with cached title
         const dropdown = page.locator("select.container-select");
@@ -136,33 +170,50 @@ test.describe("Container Title Persistence", () => {
     });
 
     test("backwards compatibility with existing containers", async ({ page }) => {
-        // Navigate to home page
+        // Navigate to home page and ensure Firestore store is available
         await page.goto("/");
-        await page.waitForLoadState("networkidle");
+        await page.waitForFunction(() => {
+            try {
+                return typeof (window as any).__FIRESTORE_STORE__ !== "undefined";
+            } catch {
+                return false;
+            }
+        }, { timeout: 10000 });
 
         // Simulate existing containers without cached titles
         await page.evaluate(() => {
+            const fs: any = (window as any).__FIRESTORE_STORE__;
+            if (!fs || typeof fs.setUserContainer !== "function") {
+                throw new Error("__FIRESTORE_STORE__.setUserContainer is not available");
+            }
+
             const mockUserContainer = {
                 userId: "test-user-id",
                 accessibleContainerIds: ["legacy-container-1", "legacy-container-2"],
                 defaultContainerId: "legacy-container-1",
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                createdAt: new Date(),
+                updatedAt: new Date(),
             };
 
             // Clear title cache to simulate legacy state
-            localStorage.removeItem("outliner_container_titles");
+            window.localStorage.removeItem("outliner_container_titles");
 
-            // Trigger firestore store update
-            window.dispatchEvent(
-                new CustomEvent("firestore-uc-changed", {
-                    detail: { userContainer: mockUserContainer },
-                }),
-            );
+            fs.setUserContainer(mockUserContainer);
         });
 
-        // Wait for the dropdown to update
-        await page.waitForTimeout(1000);
+        // Wait for the dropdown to update with both legacy containers
+        await page.waitForFunction(
+            (ids) => {
+                const select = document.querySelector("select.container-select");
+                if (!select) return false;
+                const texts = Array.from(select.querySelectorAll("option")).map(option =>
+                    (option as HTMLOptionElement).textContent || ""
+                );
+                return (ids as string[]).every(id => texts.some(text => text.includes(id)));
+            },
+            ["legacy-container-1", "legacy-container-2"],
+            { timeout: 10000 },
+        );
 
         // Verify containers appear with IDs as fallback (backwards compatibility)
         const dropdown = page.locator("select.container-select");

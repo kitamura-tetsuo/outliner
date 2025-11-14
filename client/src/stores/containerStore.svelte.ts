@@ -17,13 +17,6 @@ export function containersFromUserContainer(
         return [];
     }
 
-    // テスト環境の検出（より広範囲に検出）
-    const isTestEnv = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test"
-        || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.mockFluidClient === false)
-        || (typeof window !== "undefined" && window.location.hostname === "localhost");
-
     // ID 重複を排除して安定化
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
     const uniqueIds = Array.from(new Set(data.accessibleContainerIds));
@@ -55,14 +48,9 @@ export function containersFromUserContainer(
                 }
             }
 
-            // Fallback logic based on environment
+            // Fallback logic: always use container ID when no meaningful title is available
             if (!name || name.trim() === "" || name === "プロジェクト") {
-                if (isTestEnv) {
-                    name = `テストプロジェクト${id.slice(-4)}`;
-                } else {
-                    // In production, use container ID as fallback label
-                    name = id;
-                }
+                name = id;
             }
 
             return {

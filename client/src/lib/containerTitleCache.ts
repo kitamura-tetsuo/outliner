@@ -43,7 +43,7 @@ export class ContainerTitleCache {
                 }
             }
         } catch (error) {
-            logger.warn("Failed to load container titles from localStorage");
+            logger.warn({ error }, "Failed to load container titles from localStorage");
             this.cache = {};
         }
         this.isInitialized = true;
@@ -61,7 +61,7 @@ export class ContainerTitleCache {
             window.localStorage.setItem(CACHE_KEY, JSON.stringify(this.cache));
             logger.debug("Saved container titles to cache");
         } catch (error) {
-            logger.warn("Failed to save container titles to localStorage");
+            logger.warn({ error }, "Failed to save container titles to localStorage");
         }
     }
 
