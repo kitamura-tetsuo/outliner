@@ -1,0 +1,22 @@
+id: ACC-9e4c2a17
+title: 'Account menu: Sign out'
+title-ja: アカウントメニュー：サインアウト
+description: 'Clicking the login status indicator opens a dropdown with a single "Sign out" action.
+
+  Selecting it logs out via Firebase Auth (UserManager.logout) and closes the menu.
+
+  '
+category: auth
+status: implemented
+components:
+- client/src/components/LoginStatusIndicator.svelte
+services:
+- client/src/auth/UserManager.ts
+tests:
+- client/e2e/auth/user-menu-signout-9e4c2a17.spec.ts
+acceptance:
+- Clicking "Sign out" calls userManager.logout(), closes the menu, and the indicator shows "Not signed in" (data-status=unauthenticated)
+- Pressing Esc or clicking outside closes the menu
+- 'The menu contains exactly one actionable item: Sign out'
+- When authenticated, clicking the indicator toggles a menu anchored to it
+- When unauthenticated, clicking the indicator does nothing

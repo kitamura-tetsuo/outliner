@@ -13,6 +13,7 @@ notes:
 - client/src/lib/yjs/connection.ts の getWsBase() を WS ベース URL の単一の取得元とする
 - E2E 環境では VITE_YJS_DISABLE_WS と VITE_IS_TEST/localStorage により WebSocket 接続を抑止
 - 既存のハードコード（ポート直指定等）は撤廃・抑制
+- Production sourcing: VITE_YJS_WS_URL is provided from GitHub Actions repository Variable (YJS_WS_URL) via .github/workflows/deploy.yml
 verification:
 - client/e2e/core/nav-outlinerbase-min-visibility-7a3c91e2.spec.ts で最低限の可視性と WS 誤接続なしを確認
 - getWsBase() の優先順位: VITE_YJS_WS_URL を最優先、無ければ VITE_YJS_PORT、最後に 7093 を既定

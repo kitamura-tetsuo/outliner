@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte";
+import { resolveRoute } from "$app/paths";
 import { createYjsClient } from "../services";
 import { getLogger } from "../lib/logger";
 import { containersFromUserContainer } from "../stores/containerStore.svelte";
@@ -248,7 +249,7 @@ async function reloadCurrentContainer() {
                 現在のコンテナを再読み込み
             </button>
 
-            <a href="/containers" class="new-container-link"> 新規作成 </a>
+            <a href={resolveRoute("/containers")} class="new-container-link"> 新規作成 </a>
         </div>
     </div>
 </div>
