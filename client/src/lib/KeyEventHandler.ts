@@ -424,7 +424,12 @@ export class KeyEventHandler {
                 try {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    if (!node) {
+                        commandPaletteStore.confirm();
+                        event.preventDefault();
+                        return;
+                    }
+                    const text = node.text || "";
                     const before = text.slice(0, cursor.offset);
                     const lastSlash = before.lastIndexOf("/");
                     const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";

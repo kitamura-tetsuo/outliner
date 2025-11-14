@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { TestHelpers } from "./utils/testHelpers";
 
 /**
  * 指定数のアウトライナーアイテムが表示されるまで待機
@@ -18,6 +19,18 @@ export async function ensureOutlinerItemCount(page: Page, count: number, timeout
     const current = await page.locator(".outliner-item[data-item-id]").count();
     if (current < count) {
         await waitForOutlinerItems(page, count, timeout);
+    }
+}
+
+/**
+ * カーソルデバッグ用のユーティリティ。
+ * CursorValidator の例や一部のE2Eテストから利用される。
+ */
+export async function setupCursorDebugger(page: Page): Promise<void> {
+    try {
+        await (TestHelpers as any).setupCursorDebugger(page);
+    } catch (error) {
+        console.warn("setupCursorDebugger: skipping debug injection:", error);
     }
 }
 

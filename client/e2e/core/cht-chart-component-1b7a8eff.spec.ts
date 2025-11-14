@@ -37,11 +37,11 @@ test.describe("CHT-001: Chart auto-refresh", () => {
         const chart = page.locator("#chart");
         await expect(chart).toBeVisible();
 
-        const initial = await page.evaluate(() => (window as { chartData: number[]; }).chartData);
+        const initial = await page.evaluate(() => (window as any).chartData as number[]);
         expect(initial).toEqual([120, 200, 150]);
 
-        await page.waitForFunction(() => (window as { chartData: number[]; }).chartData[0] === 220);
-        const updated = await page.evaluate(() => (window as { chartData: number[]; }).chartData);
+        await page.waitForFunction(() => (window as any).chartData[0] === 220);
+        const updated = await page.evaluate(() => (window as any).chartData as number[]);
         expect(updated).toEqual([220, 300, 250]);
     });
 

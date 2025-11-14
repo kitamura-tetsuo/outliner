@@ -10,7 +10,7 @@ export interface Op {
 type EventListener = (...args: unknown[]) => void;
 
 // Define a minimal interface for the sql.js database object to avoid 'any'
-interface SqlJsDatabase {
+export interface SqlJsDatabase {
     prepare: (sql: string) => SqlJsStatement;
     // Add other methods as needed
 }

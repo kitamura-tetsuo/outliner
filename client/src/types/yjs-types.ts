@@ -3,7 +3,7 @@
  * This file provides proper types to replace 'any' throughout the codebase
  */
 
-import type * as Y from "yjs";
+import * as Y from "yjs";
 import type { YTree } from "yjs-orderedtree";
 
 /**

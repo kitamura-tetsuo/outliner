@@ -34,12 +34,15 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         await expect(select).toBeVisible();
         const initialCount = await select.locator("option").count();
 
-        // Programmatically add a new container to the store
+        // Programmatically add a new container to the store and seed its title for the selector
         await page.evaluate(() => {
             const fs: any = (window as any).__FIRESTORE_STORE__;
+            const helper: any = (window as any).__TEST_DATA_HELPER__;
+            const id = "test-container-3";
             if (fs?.userContainer) {
-                fs.userContainer.accessibleContainerIds.push("test-container-3");
+                fs.userContainer.accessibleContainerIds.push(id);
             }
+            helper?.setContainerTitle?.(id, "テストプロジェクト3");
         });
 
         // Wait for the dropdown to reflect the new container

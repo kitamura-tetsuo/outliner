@@ -76,7 +76,7 @@ test.describe("Authentication Test", () => {
                 console.error("Authentication error:", error);
                 return { success: false, error: error instanceof Error ? error.message : String(error) };
             }
-        });
+        }) as { success: boolean; user?: any; error?: string; };
 
         console.log("Debug: Authentication result:", authResult);
 

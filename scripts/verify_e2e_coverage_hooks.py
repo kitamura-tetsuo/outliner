@@ -20,8 +20,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 E2E_DIR = REPO_ROOT / "client" / "e2e"
 
 # Regex patterns (tolerant to whitespace and optional semicolon)
+# Accept both "../utils/registerCoverageHooks" (for subdirectories) and "./utils/registerCoverageHooks" (for specs in client/e2e root)
 IMPORT_RE = re.compile(
-    r"import\s*\{\s*registerCoverageHooks\s*\}\s*from\s*[\"\']\.\./utils/registerCoverageHooks[\"\']\s*;?",
+    r"import\s*\{\s*registerCoverageHooks\s*\}\s*from\s*[\"\'](?:\.\./|\./)utils/registerCoverageHooks[\"\']\s*;?",
     re.MULTILINE,
 )
 CALL_RE = re.compile(r"registerCoverageHooks\s*\(\s*\)\s*;?", re.MULTILINE)

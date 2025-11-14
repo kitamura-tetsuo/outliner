@@ -1,7 +1,7 @@
-import initSqlJs, { type Database } from "sql.js";
+import initSqlJs, { type Database, type SqlJsStatic } from "sql.js";
 import { writable } from "svelte/store";
 import type { EditInfo } from "./editMapper";
-import { type Op, SyncWorker } from "./syncWorker";
+import { type Op, type SqlJsDatabase, SyncWorker } from "./syncWorker";
 
 interface ColumnMeta {
     name: string;
@@ -15,7 +15,7 @@ interface QueryResult {
     columnsMeta: ColumnMeta[];
 }
 
-type SqlJsModule = typeof import("sql.js");
+type SqlJsModule = SqlJsStatic;
 let SQL: SqlJsModule | null = null;
 let db: Database | null = null;
 let currentSelect = "";
@@ -84,8 +84,12 @@ export async function initDb() {
         });
     }
 
+    if (!SQL) {
+        throw new Error("Failed to initialize SQL.js");
+    }
+
     db = new SQL.Database();
-    worker = new SyncWorker(db);
+    worker = new SyncWorker(db as unknown as SqlJsDatabase);
     console.log("SQL.js database initialized successfully");
 }
 
@@ -134,6 +138,8 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
         return { sql, aliases: [], tableMap };
     }
 
+    const aliases = Object.keys(tableMap);
+
     const selectMatch = selectPart.match(/select\s+([\s\S]+?)\s+from/i);
     console.log("selectMatch:", selectMatch);
     if (!selectMatch) {
@@ -143,7 +149,7 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
 
     const selectClause = selectMatch[1];
     console.log("selectClause:", selectClause);
-    const aliasesInSelect = Object.keys(tableMap);
+    const aliasesInSelect = aliases;
     const additions = aliasesInSelect
         .filter(a => !new RegExp(`${a}.id`, "i").test(selectClause))
         .map(a => `${a}.id AS ${a}_pk`);
@@ -152,9 +158,6 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
         console.log("No additions needed, returning original");
         return { sql, aliases: aliasesInSelect, tableMap };
     }
-
-    // Extract aliases from the tableMap keys
-    const aliases = Object.keys(tableMap);
 
     const newSelect = `${selectClause}, ${additions.join(", ")}`;
     const modifiedSelectPart = selectPart.replace(selectMatch[0], `SELECT ${newSelect} FROM`);
