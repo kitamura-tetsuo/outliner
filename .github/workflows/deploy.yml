@@ -6,6 +6,7 @@ on:
     types:
       - completed
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -28,6 +29,14 @@ jobs:
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools@latest
+
+      - name: Check YJS_WS_URL
+        run: |
+          if [ -z "${{ vars.YJS_WS_URL }}" ]; then
+            echo "Error: GitHub Actions variable YJS_WS_URL is not set or is empty."
+            exit 1
+          fi
+          echo "YJS_WS_URL=${{ vars.YJS_WS_URL }}"
 
       - name: Create client env file
         run: |
