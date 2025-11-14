@@ -33,7 +33,7 @@
         "@inlang/plugin-message-format": "^4.0.0",
         "@modelcontextprotocol/sdk": "^1.18.0",
         "@playwright/mcp": "^0.0.36",
-        "@playwright/test": "^1.53.0-alpha-2025-05-30",
+        "@playwright/test": "^1.56.1",
         "@stryker-mutator/core": "^9.2.0",
         "@stryker-mutator/typescript-checker": "^9.2.0",
         "@stryker-mutator/vitest-runner": "^9.2.0",
