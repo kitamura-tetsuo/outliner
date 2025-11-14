@@ -15,8 +15,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    env:
-      GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -72,7 +70,9 @@ jobs:
       - name: Setup GCP credentials
         if: github.actor != 'dependabot[bot]'
         run: |
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/gcp-key.json"
           echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > "$GOOGLE_APPLICATION_CREDENTIALS"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS" >> "$GITHUB_ENV"
       - name: Set Firebase project
         if: github.actor != 'dependabot[bot]'
         run: firebase use outliner-d57b0
