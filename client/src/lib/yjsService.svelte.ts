@@ -5,6 +5,7 @@ import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
+import { containerTitleCache } from "./containerTitleCache";
 import { log } from "./logger";
 
 interface ClientKey {
@@ -86,6 +87,9 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     const client = await YjsClient.connect(projectId, project);
     registry.set(keyFor(userId, projectId), [client, project]);
 
+    // Cache the container title for persistence across reloads
+    containerTitleCache.setTitle(projectId, containerName);
+
     // update store
     yjsStore.yjsClient = client;
     if (typeof window !== "undefined") {
@@ -128,6 +132,10 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     const project = Project.createInstance(title);
     const client = await YjsClient.connect(resolvedId, project);
     registry.set(keyFor(userId, resolvedId), [client, project]);
+
+    // Cache the container title for persistence across reloads
+    containerTitleCache.setTitle(resolvedId, title);
+
     yjsStore.yjsClient = client;
     return client;
 }
