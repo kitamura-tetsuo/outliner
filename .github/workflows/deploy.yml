@@ -105,5 +105,5 @@ jobs:
 
       - name: Deploy to Firebase
         if: github.actor != 'dependabot[bot]'
-        run: firebase deploy --only hosting,functions,firestore:rules,storage:rules --project outliner-d57b0 --non-interactive --force
+        run: firebase deploy --only hosting,functions,firestore:rules,storage --project outliner-d57b0 --non-interactive --force
 
