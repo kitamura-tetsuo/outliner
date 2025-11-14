@@ -12,26 +12,25 @@ test("opens user menu and signs out from toolbar indicator", async ({ page }, te
     const indicator = page.getByTestId("login-status-indicator");
     await expect(indicator).toBeVisible();
 
-    // Ensure authenticated; fallback to dev-login UI when needed
-    let status = (await indicator.getAttribute("data-status")) || "";
+    // Ensure authenticated; use UserManager directly since dev-login UI is not on home page
+    const status = (await indicator.getAttribute("data-status")) || "";
     if (status !== "authenticated") {
-        // Try built-in dev-login UI in AuthComponent
-        const devToggle = page.locator("button.dev-toggle");
-        if (await devToggle.isVisible()) {
-            await devToggle.click();
-            await page.waitForSelector(".dev-login-form", { timeout: 10000 });
-            await page.locator("#email").fill("test@example.com");
-            await page.locator("#password").fill("password");
-            await page.locator("button.dev-login-btn").click();
-        } else {
-            // Fallback: call UserManager directly if UI is not present
-            await page.evaluate(async () => {
+        // Use UserManager directly to authenticate
+        await page.evaluate(async () => {
+            // Wait for UserManager to be available
+            let attempts = 0;
+            while (attempts < 50) {
                 const mgr = (window as any).__USER_MANAGER__;
                 if (mgr?.loginWithEmailPassword) {
                     await mgr.loginWithEmailPassword("test@example.com", "password");
+                    return;
                 }
-            });
-        }
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            throw new Error("UserManager not available after waiting");
+        });
+
         // Wait for toolbar indicator to reflect authenticated state
         await expect(indicator).toHaveAttribute("data-status", "authenticated", { timeout: 20000 });
     }
@@ -49,7 +48,4 @@ test("opens user menu and signs out from toolbar indicator", async ({ page }, te
 
     await expect(indicator).toHaveAttribute("data-status", "unauthenticated", { timeout: 20000 });
     await expect(menu).toBeHidden({ timeout: 10000 });
-
-    // Optional: dev-login toggle visible again
-    await expect(page.locator("button.dev-toggle")).toBeVisible();
 });

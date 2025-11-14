@@ -73,8 +73,8 @@ onDestroy(() => {
 // Dropdown menu state and handlers
 let isMenuOpen = $state(false);
 let indicatorEl: HTMLDivElement | null = null;
-let menuEl: HTMLDivElement | null = null;
-let signOutBtn: HTMLButtonElement | null = null;
+let menuEl: HTMLDivElement | null = $state(null);
+let signOutBtn: HTMLButtonElement | null = $state(null);
 const menuId = "user-menu";
 
 let menuTop = $state(0);
@@ -126,7 +126,11 @@ function closeMenu() {
 
 function toggleMenu() {
     if (!isAuthenticated) return;
-    isMenuOpen ? closeMenu() : openMenu();
+    if (isMenuOpen) {
+        closeMenu();
+    } else {
+        openMenu();
+    }
 }
 
 function onKeyDownIndicator(e: KeyboardEvent) {
