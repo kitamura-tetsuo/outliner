@@ -28,7 +28,7 @@
     "jsonwebtoken": "^9.0.0"
   },
   "devDependencies": {
-    "axios": "^1.11.0",
+    "axios": "^1.13.2",
     "eslint": "^9.39.1",
     "eslint-config-google": "^0.14.0",
     "eslint-config-prettier": "^10.1.8",
