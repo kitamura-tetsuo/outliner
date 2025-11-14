@@ -1,3 +1,4 @@
+import { containerTitleCache } from "../lib/containerTitleCache";
 import { getProjectTitle } from "../lib/projectTitleProvider";
 import { firestoreStore, type UserContainer } from "./firestoreStore.svelte";
 
@@ -16,29 +17,42 @@ export function containersFromUserContainer(
         return [];
     }
 
-    // テスト環境の検出（より広範囲に検出）
-    const isTestEnv = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test"
-        || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.mockFluidClient === false)
-        || (typeof window !== "undefined" && window.location.hostname === "localhost");
-
     // ID 重複を排除して安定化
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
     const uniqueIds = Array.from(new Set(data.accessibleContainerIds));
     return uniqueIds
         .map(id => {
             let name: string;
-            try {
-                name = getProjectTitle(id);
-            } catch (error) {
-                console.warn(`Failed to get project title for ${id}:`, error);
-                name = "";
+
+            // Try to get title from multiple sources in order of preference:
+            // 1. Client-side cache (persisted across reloads)
+            // 2. Live Yjs registry (current session)
+            // 3. Fallback to container ID
+
+            // First try cached title
+            const cachedTitle = containerTitleCache.getTitle(id);
+            if (cachedTitle) {
+                name = cachedTitle;
+            } else {
+                // Try live registry
+                try {
+                    name = getProjectTitle(id);
+                } catch (error) {
+                    console.warn(`Failed to get project title for ${id}:`, error);
+                    name = "";
+                }
+
+                // If we got a title from registry, cache it for future use
+                if (name && name.trim() && name !== "プロジェクト") {
+                    containerTitleCache.setTitle(id, name);
+                }
             }
-            // テスト環境で名前が空の場合、デフォルト名を使用
-            if (isTestEnv && (!name || name.trim() === "")) {
-                name = `テストプロジェクト${id.slice(-4)}`;
+
+            // Fallback logic: always use container ID when no meaningful title is available
+            if (!name || name.trim() === "" || name === "プロジェクト") {
+                name = id;
             }
+
             return {
                 id,
                 name,
@@ -46,15 +60,9 @@ export function containersFromUserContainer(
             };
         })
         .filter(container => {
-            if (isTestEnv) {
-                // テスト環境では、名前が空でないものを全て表示（\"プロジェクト\" も許可）
-                return !!(container.name && container.name.trim() !== "");
-            } else {
-                // 本番環境では、厳密な条件でフィルタリング
-                return container.name
-                    && container.name.trim() !== ""
-                    && container.name !== "プロジェクト";
-            }
+            // Always include containers that have valid names or IDs
+            // Since we now use container ID as fallback, we should never filter out valid containers
+            return !!(container.name && container.name.trim() !== "");
         });
 }
 

@@ -78,7 +78,7 @@ export async function initPollingMonitor(page: Page) {
                     return this.originalSetInterval(wrappedCallback, delay, ...args);
                 };
 
-                window.setTimeout = (callback: any, delay?: number, ...args: any[]): any => {
+                (window as any).setTimeout = (callback: any, delay?: number, ...args: any[]): any => {
                     const stack = new Error().stack || "";
                     const id = this.nextId++;
                     const disabled = this.disablePatterns.some(p => p.test(stack));

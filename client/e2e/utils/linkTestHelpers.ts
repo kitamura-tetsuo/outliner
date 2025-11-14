@@ -335,7 +335,11 @@ export class LinkTestHelpers {
         await page.evaluate(({ pageName, projectName, pageExists }) => {
             // グローバル関数が存在しない場合は作成
             if (!window.__testShowLinkPreview) {
-                window.__testShowLinkPreview = (pageName, projectName, pageExists) => {
+                window.__testShowLinkPreview = (
+                    pageName: string,
+                    projectName?: string,
+                    pageExists: boolean = true,
+                ): HTMLElement => {
                     console.log(`Forcing link preview for page: ${pageName} (exists: ${pageExists})`);
 
                     // プレビューポップアップを作成
@@ -376,7 +380,7 @@ export class LinkTestHelpers {
                     (popup as HTMLElement).style.padding = "10px";
                     (popup as HTMLElement).style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
 
-                    return popup;
+                    return popup as HTMLElement;
                 };
             }
 

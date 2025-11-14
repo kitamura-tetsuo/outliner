@@ -74,6 +74,11 @@ if [ $# -eq 0 ]; then
 
   npm run test:unit
   npm run test:integration
+
+  # Ensure Codex test services (SvelteKit dev server, Firebase emulators, Yjs server) are running
+  # before executing the full E2E suite. This matches the behavior used when running individual
+  # E2E specs via the argument-based path below.
+  ensure_codex_services
   npm run test:e2e --
   exit 0
 fi

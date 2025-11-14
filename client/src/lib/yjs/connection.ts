@@ -295,7 +295,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // Fallback: also observe direct changes to the pages map (helps in test env)
     try {
         const pagesMap = doc.getMap<Y.Doc>("pages");
-        pagesMap.observe((e: Y.YEvent<Y.AbstractType<unknown>>) => {
+        pagesMap.observe((e) => {
             const keysChanged = e.changes.keys;
             for (const key of keysChanged.keys()) {
                 const sub = pagesMap.get(key);

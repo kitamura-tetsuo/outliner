@@ -19,9 +19,7 @@ test.describe("Yjs client attach and DOM reflect", () => {
 
         // Ensure currentPage exists in the global store, then seed default lines
         await page.evaluate(() => {
-            const gs = (window as {
-                generalStore?: { project?: Record<string, unknown>; currentPage?: Record<string, unknown>; };
-            }).generalStore;
+            const gs = (window as { generalStore?: any; }).generalStore;
             if (!gs?.project) {
                 console.error("No project found in generalStore");
                 return;

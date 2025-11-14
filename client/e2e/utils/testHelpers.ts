@@ -173,13 +173,13 @@ export class TestHelpers {
                     if (typeof len === "number" && len >= 0) {
                         const r: any[] = [];
                         for (let i = 0; i < len; i++) {
-                            const v = (p as any).at ? p.at(i) : (p as any)[i];
+                            const v = (p as any).at ? (p as any).at(i) : (p as any)[i];
                             if (typeof v !== "undefined") r.push(v);
                         }
                         return r;
                     }
                 } catch {}
-                return Object.values(p).filter((x: any) =>
+                return Object.values(p as any).filter((x: any) =>
                     x && typeof x === "object" && x !== null && ("id" in x || "text" in x)
                 );
             };
@@ -665,7 +665,7 @@ export class TestHelpers {
      */
     public static async navigateToTestProjectPage(
         page: Page,
-        testInfo?: any,
+        testInfo: { workerIndex?: number; } | null | undefined,
         lines: string[],
         _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {
@@ -2107,7 +2107,7 @@ declare global {
     interface Window {
         getCursorDebugData?: () => any;
         getCursorPathData?: (path?: string) => any;
-        __testShowLinkPreview?: (pageName: string, projectName?: string) => HTMLElement;
+        __testShowLinkPreview?: (pageName: string, projectName?: string, pageExists?: boolean) => HTMLElement;
         _alertMessage?: string | null | undefined;
         __USER_MANAGER__?: any;
         editorOverlayStore?: any;

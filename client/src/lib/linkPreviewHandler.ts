@@ -47,8 +47,9 @@ export function pageExists(pageName: string, projectName?: string): boolean {
 
     if (!store.pages) return false;
 
+    const pages = store.pages.current as Item[];
     // ページ名が一致するページを検索
-    for (const page of store.pages.current) {
+    for (const page of pages) {
         if (page.text.toLowerCase() === pageName.toLowerCase()) {
             return true;
         }
@@ -65,8 +66,9 @@ export function pageExists(pageName: string, projectName?: string): boolean {
 function findPageByName(name: string): Item | null {
     if (!store.pages) return null;
 
+    const pages = store.pages.current as Item[];
     // ページ名が一致するページを検索
-    for (const page of store.pages.current) {
+    for (const page of pages) {
         if (page.text.toLowerCase() === name.toLowerCase()) {
             return page;
         }
@@ -221,7 +223,7 @@ function updatePreviewPosition(previewElement: HTMLElement, targetElement: HTMLE
  * リンクにマウスオーバーした際のハンドラ
  * @param event マウスイベント
  */
-function handleLinkMouseEnter(event: MouseEvent): void {
+function handleLinkMouseEnter(event: Event): void {
     const target = event.target as HTMLElement;
 
     // 既存のタイマーをクリア

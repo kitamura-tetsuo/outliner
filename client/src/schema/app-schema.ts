@@ -153,22 +153,26 @@ export class Item {
     }
 
     get id(): string {
-        return this.value.get("id");
+        const v = this.value.get("id");
+        return typeof v === "string" ? v : "";
     }
     set id(v: string) {
         this.value.set("id", v ?? "");
     }
 
     get author(): string {
-        return this.value.get("author") ?? "";
+        const v = this.value.get("author");
+        return typeof v === "string" ? v : "";
     }
 
     get created(): number {
-        return this.value.get("created") ?? 0;
+        const v = this.value.get("created");
+        return typeof v === "number" ? v : 0;
     }
 
     get lastChanged(): number {
-        return this.value.get("lastChanged") ?? 0;
+        const v = this.value.get("lastChanged");
+        return typeof v === "number" ? v : 0;
     }
 
     get text(): string {
@@ -182,7 +186,8 @@ export class Item {
 
     // componentType stored in Y.Map ("table" | "chart" | undefined)
     get componentType(): string | undefined {
-        return this.value.get("componentType");
+        const v = this.value.get("componentType");
+        return typeof v === "string" ? v : undefined;
     }
     set componentType(v: string | undefined) {
         this.value.set("componentType", v);
@@ -191,7 +196,8 @@ export class Item {
 
     // chart query stored in Y.Map
     get chartQuery(): string | undefined {
-        return this.value.get("chartQuery");
+        const v = this.value.get("chartQuery");
+        return typeof v === "string" ? v : undefined;
     }
     set chartQuery(v: string | undefined) {
         this.value.set("chartQuery", v);
@@ -200,7 +206,8 @@ export class Item {
 
     // alias target id stored in Y.Map
     get aliasTargetId(): string | undefined {
-        return this.value.get("aliasTargetId");
+        const v = this.value.get("aliasTargetId");
+        return typeof v === "string" ? v : undefined;
     }
     set aliasTargetId(v: string | undefined) {
         this.value.set("aliasTargetId", v);
@@ -215,7 +222,8 @@ export class Item {
     }
 
     get votes(): Y.Array<string> {
-        return this.value.get("votes");
+        const v = this.value.get("votes");
+        return (v as Y.Array<string>) || new Y.Array<string>();
     }
 
     toggleVote(user: string) {
@@ -238,13 +246,13 @@ export class Item {
     addAttachment(url: string) {
         // 1) もし現在の Item が仮Doc(接続前)で、接続後のDocが存在する場合は、対応するノードにも反映する
         try {
-            interface WindowWithStore extends Window {
+            type WindowWithStore = Window & {
                 generalStore?: {
                     currentPage?: Item;
                 };
                 __ITEM_ID_MAP__?: Record<string, string>;
                 E2E_LOGS?: Array<{ tag: string; id: string; url: string; t: number; }>;
-            }
+            };
             const w = (typeof window !== "undefined") ? (window as unknown as WindowWithStore) : null;
             const currentPage = w?.generalStore?.currentPage;
             const thisDoc = this.ydoc;
@@ -378,14 +386,14 @@ export class Item {
     }
 
     get items(): Items {
-        return wrapArrayLike(new Items(this.ydoc, this.tree!, this.key!));
+        return wrapArrayLike(new Items(this.ydoc as Y.Doc, this.tree!, this.key!));
     }
 
     // 親の子集合（Items）。ルート直下は null
     get parent(): Items | null {
         const parentKey = this.tree!.getNodeParentFromKey(this.key!);
         if (!parentKey) return null;
-        return new Items(this.ydoc, this.tree!, parentKey);
+        return new Items(this.ydoc as Y.Doc, this.tree!, parentKey);
     }
 
     // 親内でのインデックス（親がない場合は -1）
