@@ -15,6 +15,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -66,23 +68,33 @@ jobs:
           cd functions
           npm ci
 
+
+      - name: Setup GCP credentials
+        if: github.actor != 'dependabot[bot]'
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > "$GOOGLE_APPLICATION_CREDENTIALS"
       - name: Set Firebase project
         if: github.actor != 'dependabot[bot]'
-        run: firebase use outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
+        run: firebase use outliner-d57b0
 
       - name: Clean up old Firebase Functions config
         if: github.actor != 'dependabot[bot]'
         run: |
           # 既存のFirebase Functions環境変数を削除
           echo "Cleaning up old Firebase Functions config..."
-          firebase functions:config:unset azure --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No azure config to remove"
+          firebase functions:config:unset azure --project outliner-d57b0 || echo "No azure config to remove"
 
       - name: Lint functions
         run: |
           cd functions
           npm run lint -- --fix
 
+      - name: Verify Firebase CLI version
+        run: |
+          echo "Firebase CLI version:"
+          firebase --version
+
       - name: Deploy to Firebase
         if: github.actor != 'dependabot[bot]'
-        run: firebase deploy --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive --force
+        run: firebase deploy --only hosting,functions,firestore:rules,storage:rules --project outliner-d57b0 --non-interactive --force
 
