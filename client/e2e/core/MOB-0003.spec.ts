@@ -162,8 +162,8 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await page.waitForTimeout(500);
 
         // データ構造から子要素があることを確認
-        const afterNewChildData = await TreeValidator.getTreeData(page);
-        const hasChildItems = Object.values(afterNewChildData.items).some((item) =>
+        const afterNewChildData: any = await TreeValidator.getTreeData(page);
+        const hasChildItems = Object.values(afterNewChildData.items as Record<string, any>).some((item: any) =>
             item.items && Object.keys(item.items).length > 0
         );
         expect(hasChildItems).toBe(true);

@@ -2,6 +2,7 @@ import type { Awareness } from "y-protocols/awareness";
 import type { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
+import { containerTitleCache } from "../lib/containerTitleCache";
 import { createProjectConnection, type PageConnection } from "../lib/yjs/connection";
 import { yjsService } from "../lib/yjs/service";
 import { Items, Project } from "../schema/yjs-schema";
@@ -58,6 +59,13 @@ export class YjsClient {
                 if (title && !meta.get("title")) meta.set("title", title);
             } catch {}
         } catch {}
+
+        // Cache the project title for persistence across reloads
+        const finalTitle = connectedProject.title || project?.title;
+        if (finalTitle && finalTitle.trim() && finalTitle !== "プロジェクト") {
+            containerTitleCache.setTitle(projectId, finalTitle);
+        }
+
         const clientId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
         return new YjsClient({
             clientId,

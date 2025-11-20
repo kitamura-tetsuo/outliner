@@ -278,46 +278,10 @@ function initFirestoreSync(): () => void {
 }
 
 // サーバーAPIを使ってコンテナIDを保存（更新はサーバーサイドでのみ行う）
+// NOTE: For backwards compatibility, this delegates to saveContainerIdToServer, which
+//       handles both test (mock) and production environments.
 export async function saveContainerId(containerId: string): Promise<boolean> {
-    try {
-        const currentUser = userManager.getCurrentUser();
-        if (!currentUser) {
-            throw new Error("ユーザーがログインしていません");
-        }
-
-        // Firebase IDトークンを取得
-        const idToken = await userManager.auth.currentUser?.getIdToken();
-        if (!idToken) {
-            throw new Error("認証トークンを取得できません");
-        }
-
-        // /api/プレフィックスを付加してhost経由で呼び出し
-        logger.info(`Saving container ID via /api/saveContainer`);
-
-        // Firebase Functionsを呼び出してコンテナIDを保存
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
-        const response = await fetch(`${apiBaseUrl}/api/save-container`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                idToken,
-                containerId,
-            }),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API error: ${response.status} ${errorText}`);
-        }
-
-        const result = await response.json();
-        return result.success === true;
-    } catch (error) {
-        logger.error("コンテナID保存エラー:", error);
-        return false;
-    }
+    return saveContainerIdToServer(containerId);
 }
 
 // デフォルトコンテナIDを取得
@@ -496,5 +460,22 @@ if (typeof window !== "undefined") {
             }
             unsubscribeAuth();
         });
+    } else {
+        // Test environment: rehydrate userContainer from localStorage if a containerId was previously saved.
+        try {
+            const containerId = window.localStorage?.getItem?.("currentContainerId");
+            if (containerId && !firestoreStore.userContainer) {
+                const now = new Date();
+                firestoreStore.setUserContainer({
+                    userId: "test-user-id",
+                    defaultContainerId: containerId,
+                    accessibleContainerIds: [containerId],
+                    createdAt: now,
+                    updatedAt: now,
+                });
+            }
+        } catch (error) {
+            logger.warn("Failed to rehydrate userContainer from localStorage.currentContainerId", error);
+        }
     }
 }

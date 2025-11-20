@@ -1,0 +1,65 @@
+id: FTR-a7f8b2c1
+feature_id: FTR-a7f8b2c1
+status: implemented
+title: Container Title Persistence and ID Fallback Display
+title-ja: コンテナタイトルの永続化とID代替表示
+description: "Persist container titles on the client side and show container IDs as fallback labels \nwhen titles are missing in the home dropdown. This ensures containers remain visible \nacross page reloads and browser sessions.\n"
+description-ja: 'コンテナタイトルをクライアント側で永続化し、ホームドロップダウンでタイトルが
+
+  見つからない場合にコンテナIDを代替ラベルとして表示します。これにより、
+
+  ページリロードやブラウザセッション間でコンテナが表示され続けることを保証します。
+
+  '
+acceptance_criteria:
+- When getProjectTitle(containerId) returns empty string, container is still included in dropdown
+- Container label falls back to container ID in production when title unavailable
+- Client-side persistence for Yjs project titles keyed by container ID using localStorage
+- Dropdown uses persisted title if available, otherwise live Yjs client, otherwise container ID
+- Production filtering no longer hides valid containers solely because titles cannot be resolved
+- Backwards compatible with existing userContainers entries without local title cache
+- Newly created containers immediately populate local title cache and show titles in dropdown
+acceptance_criteria-ja:
+- getProjectTitle(containerId)が空文字を返してもコンテナはドロップダウンに含まれる
+- タイトルが利用できない場合、本番環境ではコンテナIDが代替ラベルとして使用される
+- localStorageを使用したコンテナID別のYjsプロジェクトタイトルのクライアント側永続化
+- ドロップダウンは利用可能な場合は永続化されたタイトル、そうでなければライブYjsクライアント、最後にコンテナIDを使用
+- 本番環境のフィルタリングはタイトルが解決できないという理由だけで有効なコンテナを隠さない
+- ローカルタイトルキャッシュなしの既存userContainersエントリとの後方互換性
+- 新規作成されたコンテナは即座にローカルタイトルキャッシュに入力され、ドロップダウンにタイトルが表示される
+implementation_notes:
+- ContainerTitleCache class provides localStorage-based title persistence
+- containersFromUserContainer function updated to use cached titles as fallback
+- Container creation flow saves titles to cache when new containers are created
+- YjsClient.connect caches project titles when connections are established
+- Production filter simplified to always include containers with valid names/IDs
+implementation_notes-ja:
+- ContainerTitleCacheクラスがlocalStorageベースのタイトル永続化を提供
+- containersFromUserContainer関数がキャッシュされたタイトルを代替として使用するよう更新
+- コンテナ作成フローで新しいコンテナが作成されたときにタイトルをキャッシュに保存
+- YjsClient.connectで接続が確立されたときにプロジェクトタイトルをキャッシュ
+- 本番環境フィルタを簡素化し、有効な名前/IDを持つコンテナを常に含める
+files_modified:
+- client/src/lib/containerTitleCache.ts
+- client/src/stores/containerStore.svelte.ts
+- client/src/lib/yjsService.svelte.ts
+- client/src/yjs/YjsClient.ts
+test_scenarios:
+- Create container, reload home page, verify container remains visible in dropdown
+- Verify that when titles unavailable, dropdown shows IDs instead of hiding entries
+- Verify client-side title cache is used when available
+- Test backwards compatibility with existing containers without cached titles
+test_scenarios-ja:
+- コンテナを作成し、ホームページをリロードし、ドロップダウンでコンテナが表示され続けることを確認
+- タイトルが利用できない場合、ドロップダウンがエントリを隠すのではなくIDを表示することを確認
+- 利用可能な場合にクライアント側タイトルキャッシュが使用されることを確認
+- キャッシュされたタイトルのない既存コンテナとの後方互換性をテスト
+related_issues:
+- issue: 1061
+  description: Original issue requesting container title persistence and ID fallback display
+tags:
+- container-management
+- persistence
+- user-experience
+- dropdown
+- title-caching

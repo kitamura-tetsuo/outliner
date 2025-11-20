@@ -1,3 +1,4 @@
+import { containerTitleCache } from "../../lib/containerTitleCache";
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
 
 /**
@@ -14,6 +15,18 @@ export interface TestUserContainer {
 }
 
 /**
+ * Sets a human-readable title for a given test container ID.
+ * This is used only in test environments to keep UI expectations stable.
+ */
+export function setContainerTitle(containerId: string, title: string): void {
+    try {
+        containerTitleCache.setTitle(containerId, title);
+    } catch {
+        // Container title caching is a best-effort helper in tests; ignore failures.
+    }
+}
+
+/**
  * Creates test user data for testing purposes
  * Only available in test environments
  */
@@ -25,6 +38,10 @@ export function createTestUserData(): TestUserContainer {
         createdAt: new Date(),
         updatedAt: new Date(),
     };
+
+    // Prepopulate container title cache so container selector shows localized titles.
+    setContainerTitle("test-container-1", "テストプロジェクト1");
+    setContainerTitle("test-container-2", "テストプロジェクト2");
 
     // Set test data in firestoreStore using public API to ensure reactivity wrapping
     (firestoreStore as any).setUserContainer(testUserContainer as any);
@@ -97,6 +114,7 @@ if (typeof window !== "undefined") {
             setupTestEnvironment,
             performTestLogin,
             logDebugInfo,
+            setContainerTitle,
         };
         console.log("Test data helper registered globally");
     }

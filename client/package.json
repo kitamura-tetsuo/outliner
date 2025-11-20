@@ -94,7 +94,7 @@
         "dev:localhost": "npm run paraglide:compile && NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- bash -lc 'E2E_DISABLE_HMR=1 E2E_DISABLE_WATCH=1 vite dev --host 0.0.0.0 --port 7090'",
         "dev:localhost:tinylicious": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- npx tinylicious --port 7092",
         "format": "npx dprint fmt",
-        "github:test:e2e": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test --reporter=github,line \"$@\"' --",
+        "github:test:e2e": "NODE_ENV=test TEST_ENV=localhost dotenvx run --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npx playwright test --reporter=github,line \"$@\"' --",
         "github:test:integration": "vitest run --project integration --reporter=github-actions --reporter=dot",
         "github:test:production": "vitest run --project production --reporter=github-actions --reporter=dot",
         "github:test:unit": "vitest run --project unit --coverage --reporter=github-actions --reporter=dot",

@@ -94,8 +94,9 @@ describe("yjsService", () => {
         });
         (awareness as any).emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
 
-        const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
-        expect(cursor?.itemId).toBe("i1");
+        const cursor = (Object.values(editorOverlayStore.cursors as Record<string, unknown>) as any[])
+            .find((c: any) => c.userId === "u2");
+        expect((cursor as any)?.itemId).toBe("i1");
 
         (awareness as any).emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
         unbind();

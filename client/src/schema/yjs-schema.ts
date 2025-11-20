@@ -18,12 +18,17 @@ export class Item {
         return this.value.get("id") as string;
     }
 
-    get text(): Y.Text {
-        return this.value.get("text") as Y.Text;
+    get text(): string {
+        const t = this.value.get("text") as Y.Text | undefined;
+        return t ? t.toString() : "";
     }
 
     updateText(text: string) {
-        const t = this.text;
+        let t = this.value.get("text") as Y.Text | undefined;
+        if (!t) {
+            t = new Y.Text();
+            this.value.set("text", t);
+        }
         t.delete(0, t.length);
         if (text) t.insert(0, text);
         this.value.set("lastChanged", Date.now());

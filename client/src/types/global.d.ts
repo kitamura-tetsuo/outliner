@@ -3,6 +3,7 @@
 
 import type { UserManager } from "../auth/UserManager";
 import type { Project } from "../schema/app-schema";
+import type { Project as YjsProject } from "../schema/yjs-schema";
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import type { GeneralStore } from "../stores/store.svelte";
 
@@ -18,7 +19,7 @@ type Console = typeof console;
 // Window extension for test environment globals
 declare global {
     interface Window {
-        __CURRENT_PROJECT__?: Project;
+        __CURRENT_PROJECT__?: Project | YjsProject;
         generalStore?: GeneralStore;
         __YJS_SERVICE__?: unknown;
         __YJS_STORE__?: unknown;
