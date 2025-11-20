@@ -179,7 +179,9 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     const room = pageRoomPath(projectId, pageId);
     if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
         try {
-            new IndexeddbPersistence(room, doc);
+            // Per-container local persistence with container-<id> key
+            const containerKey = `container-${projectId}`;
+            new IndexeddbPersistence(containerKey, doc);
         } catch { /* no-op in Node */ }
     }
     let token = "";
@@ -234,10 +236,13 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     const wsBase = getWsBase();
     const room = projectRoomPath(projectId);
 
-    // Local persistence keyed by room path
+    // Local persistence keyed by container ID for full Y.Doc caching
+    // This enables offline editing and fast reconnection
     if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
         try {
-            new IndexeddbPersistence(room, doc);
+            // Use container-<id> format as specified in issue #1063
+            const containerKey = `container-${projectId}`;
+            new IndexeddbPersistence(containerKey, doc);
         } catch { /* no-op in Node */ }
     }
 
@@ -343,7 +348,9 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     const room = projectRoomPath(projectId);
     if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
         try {
-            new IndexeddbPersistence(room, doc);
+            // Use container-<id> format for consistency with createProjectConnection
+            const containerKey = `container-${projectId}`;
+            new IndexeddbPersistence(containerKey, doc);
         } catch { /* no-op in Node */ }
     }
     let token = "";
