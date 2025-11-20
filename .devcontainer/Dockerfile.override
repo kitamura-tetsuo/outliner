@@ -1,0 +1,59 @@
+FROM mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
+
+# Install system dependencies if needed
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+    # Add any extra dependencies you might need here
+    curl \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    xauth \
+    default-jre \
+    python3.11-venv \
+    pipx \
+    gh \
+    pre-commit \
+    openssh-server \
+    # docker-compose-plugin \
+    && apt-get clean -y && rm -rf /var/lib/apt/lists/* && mkdir -p /var/run/sshd \
+    && echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+
+# Install Docker CLI
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
+    > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends docker-ce-cli \
+    && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+
+# Switch to non-root user
+USER node
+
+# Install Playwright
+RUN npx playwright install --with-deps
+RUN npm install -g dotenv-cli firebase-tools
+RUN curl -fsSL https://dprint.dev/install.sh | sh
+
+# Any additional customizations can go here
+RUN git config --global user.name "Tetsuo Kitamura"
+RUN git config --global user.email kitamura.tetsuo@gmail.com
+RUN git config --global pull.ff only
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+RUN pipx ensurepath   # 必要に応じてシェルを再起動/再ログイン
+# RUN pipx install git+https://github.com/kitamura-tetsuo/auto-coder.git
+
+RUN pipx install git+https://github.com/kitamura-tetsuo/github-sub-issue.git
+
+RUN cd ~ && rm -rf gemini-cli && git clone https://github.com/kitamura-tetsuo/gemini-cli ; cd gemini-cli && git pull && npm install && npm run bundle && npm link && gemini -h
+
+RUN npm install -g @anthropic-ai/claude-code
+RUN npm install -g @augmentcode/auggie
+RUN npm install -g @openai/codex
+RUN npm install -g @qwen-code/qwen-code
+
+# Switch back to root for permissions compatibility with VSCode
+USER root

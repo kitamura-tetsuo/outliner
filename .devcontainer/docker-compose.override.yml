@@ -1,13 +1,51 @@
 services:
   app:
+    build:
+      context: .
+      dockerfile: /home/ubuntu/src/outliner/.devcontainer/Dockerfile.override
+
+    networks:
+      graphrag-network:
+
+
+    ports:
+      - "${SSH_PORT:-2222}:2222"
+
+    environment:
+      - DOCKER_NETWORK_NAME="graphrag-network"
+
     volumes:
+      - type: bind
+        source: ../..
+        target: /workspaces
+        consistency: cached
       - type: bind
         source: /home/ubuntu/src
         target: /home/node/src
         consistency: cached
       - type: bind
+        source: /home/ubuntu/0
+        target: /home/node/0
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/1
+        target: /home/node/1
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/2
+        target: /home/node/2
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/3
+        target: /home/node/3
+        consistency: cached
+      - type: bind
         source: /home/ubuntu/.ssh
         target: /home/node/.ssh
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/.config/gh/
+        target: /home/node/.config/gh/
         consistency: cached
       - type: bind
         source: /home/ubuntu/.augment
@@ -16,6 +54,10 @@ services:
       - type: bind
         source: /home/ubuntu/.auto-coder
         target: /home/node/.auto-coder
+        consistency: cached
+      - type: bind
+        source: /home/ubuntu/.claude
+        target: /home/node/.claude
         consistency: cached
       - type: bind
         source: /home/ubuntu/.codex
@@ -29,7 +71,11 @@ services:
         source: /home/ubuntu/.qwen
         target: /home/node/.qwen
         consistency: cached
-    command: bash -c "rm -rf /workspace/.setup-installed; /workspace/.devcontainer/setup.override.sh; sleep infinity"
+    command: bash -c "sudo mkdir -p /var/run/sshd && sudo mkdir -p /root/.ssh && sudo sh -c 'if [ -f /home/node/.ssh/id_rsa ]; then ssh-keygen -y -f /home/node/.ssh/id_rsa >> /root/.ssh/authorized_keys; fi; cat /home/node/.ssh/*.pub >> /root/.ssh/authorized_keys 2>/dev/null || true' && sudo chmod 600 /root/.ssh/authorized_keys && sudo /usr/sbin/sshd && rm -rf /workspace/.setup-installed; sleep infinity"
+    # command: bash -c "rm -rf /workspace/.setup-installed; /workspace/.devcontainer/setup.override.sh; sleep infinity"
 
-
-
+networks:
+  graphrag-network:
+    name: graphrag-network
+    driver: bridge
+    external: true
