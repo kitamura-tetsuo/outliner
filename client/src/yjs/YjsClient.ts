@@ -47,6 +47,45 @@ export class YjsClient {
     // Build a client with active provider/awareness
     static async connect(projectId: string, project: Project): Promise<YjsClient> {
         const { doc, provider, awareness, getPageConnection } = await createProjectConnection(projectId);
+
+        // Wait for IndexedDB persistence to sync before binding to editor
+        // This ensures fast initial load from cache and offline editing support
+        try {
+            // Wait for the doc to load from IndexedDB cache
+            await new Promise<void>((resolve) => {
+                // The IndexeddbPersistence will emit 'synced' when initial load completes
+                // We set up a timeout fallback in case the event doesn't fire
+                let resolved = false;
+                const timeout = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        resolve();
+                    }
+                }, 5000); // 5 second timeout for initial load
+
+                // Listen for the synced event from IndexedDB persistence
+                doc.on("synced", () => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        resolve();
+                    }
+                });
+
+                // If already synced, resolve immediately
+                if ((doc as any).isSynced) {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        resolve();
+                    }
+                }
+            });
+        } catch {
+            // Continue even if sync check fails - IndexedDB persistence will still work
+            console.log("[YjsClient] IndexedDB sync check failed, continuing anyway");
+        }
+
         // Build a Project bound to the provider's doc to ensure schema/awareness consistency
         let connectedProject: Project = project;
         try {

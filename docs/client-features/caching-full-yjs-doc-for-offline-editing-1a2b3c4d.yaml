@@ -1,0 +1,19 @@
+id: FTR-1a2b3c4d
+title: Full local Y.Doc caching for offline editing and fast reconnection
+title-ja: オフライン編集と高速再接続のための完全なローカルY.Docキャッシュ
+description: 'Implements comprehensive local persistence of Y.Doc state using IndexedDB for each container, enabling offline editing and instant restoration from cache. Each container''s Y.Doc is persisted with a container-<id> key format, ensuring fast initial load and maintaining edits across browser restarts without requiring backend connectivity.
+
+  '
+category: core
+status: implemented
+tests:
+- client/e2e/basic/caching-full-yjs-doc-for-offline-editing-1a2b3c4d.spec.ts
+related_issues:
+- issue: '#1061'
+  description: Metadata Y.Doc implementation for title handling and dropdown labels
+implementation_details:
+  backend: Local IndexedDB storage using y-indexeddb library
+  storage_key_pattern: container-{containerId}
+  cache_rehydration: Automatic on container open via IndexeddbPersistence.synced event
+  offline_support: Full - all edits persisted locally and synchronized when backend available
+  consistency: Works alongside metadata Y.Doc from
