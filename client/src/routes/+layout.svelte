@@ -226,6 +226,8 @@ onMount(async () => {
         try {
             ({ userManager } = await import("../auth/UserManager"));
             yjsService = await import("../lib/yjsService.svelte");
+            // Initialize metadata Y.Doc with IndexedDB persistence
+            await import("../lib/metaDoc.svelte");
             await import("../services");
         } catch (e) {
             logger.error("Failed to load client-only modules", e);
