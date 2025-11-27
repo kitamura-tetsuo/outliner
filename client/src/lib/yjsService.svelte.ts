@@ -6,6 +6,7 @@ import { Project } from "../schema/yjs-schema";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
 import { log } from "./logger";
+import { setContainerTitleInMetaDoc } from "./metaDoc.svelte";
 
 interface ClientKey {
     type: "container" | "user";
@@ -85,6 +86,9 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     const project = Project.createInstance(containerName);
     const client = await YjsClient.connect(projectId, project);
     registry.set(keyFor(userId, projectId), [client, project]);
+
+    // Save container title to metadata Y.Doc for persistence across page reloads
+    setContainerTitleInMetaDoc(projectId, containerName);
 
     // update store
     yjsStore.yjsClient = client;
