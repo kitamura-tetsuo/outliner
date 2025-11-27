@@ -34,7 +34,7 @@
         "@modelcontextprotocol/sdk": "^1.22.0",
         "@playwright/mcp": "^0.0.48",
         "@playwright/test": "^1.56.1",
-        "@stryker-mutator/core": "^9.2.0",
+        "@stryker-mutator/core": "^9.4.0",
         "@stryker-mutator/typescript-checker": "^9.2.0",
         "@stryker-mutator/vitest-runner": "^9.2.0",
         "@sveltejs/adapter-auto": "^6.0.1",
