@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { resolve } from "$app/paths";
 import { page } from "$app/stores";
 import { onMount } from "svelte";
 import {
@@ -18,20 +19,26 @@ import {
     snapshotToOpml,
     createSnapshotClient,
 } from "../../../lib/projectSnapshot";
+import type { Project, Items } from "../../../schema/app-schema";
 
-let project: any = undefined;
+interface PlainTreeItem {
+    text: string;
+    children: PlainTreeItem[];
+}
+
+let project: Project | undefined = undefined;
 let exportText = $state("");
 let importText = $state("");
 let importFormat = $state("opml");
 
-function projectLooksLikePlaceholder(candidate: any): boolean {
+function projectLooksLikePlaceholder(candidate: Project | undefined): boolean {
     if (!candidate) return true;
     try {
-        const items: any = candidate.items as any;
+        const items = candidate.items;
         const length = items?.length ?? 0;
         if (length === 0) return true;
         if (length === 1) {
-            const first = items.at ? items.at(0) : items[0];
+            const first = items.at(0);
             const text = first?.text?.toString?.() ?? String(first?.text ?? "");
             const childLength = first?.items?.length ?? 0;
             if (text === "settings" && childLength === 0) return true;
@@ -54,7 +61,7 @@ function hydrateFromSnapshotIfNeeded() {
         } catch {}
         if (!yjsStore.yjsClient) {
             try {
-                yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as any;
+                yjsStore.yjsClient = createSnapshotClient(projectName, hydrated);
             } catch {}
         }
         project = hydrated;
@@ -159,7 +166,7 @@ async function doImport() {
     if (yjsProject) {
         console.log("doImport: Using Yjs-connected project, updating stores");
         yjsStore.yjsClient = yjsStore.yjsClient; // This triggers reactivity in yjsStore
-        store.project = yjsProject as any;
+        store.project = yjsProject;
     } else {
         // If no Yjs project was available, update as before
         console.log("doImport: No Yjs project, using fallback");
@@ -169,23 +176,26 @@ async function doImport() {
     // Ensure snapshot storage reflects the imported tree for subsequent navigations
     try {
         saveProjectSnapshot(currentProject);
-        const toPlain = (items: any): any[] => {
+        const toPlain = (items: Items): PlainTreeItem[] => {
             if (!items) return [];
             const len = items.length ?? 0;
-            const result: any[] = [];
+            const result: PlainTreeItem[] = [];
             for (let idx = 0; idx < len; idx++) {
-                const node = items.at ? items.at(idx) : items[idx];
+                const node = items.at(idx);
                 if (!node) continue;
                 result.push({
-                    text: node?.text?.toString?.() ?? String(node?.text ?? ""),
-                    children: toPlain(node?.items as any),
+                    text: node.text.toString(),
+                    children: toPlain(node.items),
                 });
             }
             return result;
         };
-        const plainTree = toPlain(currentProject.items as any);
+        const plainTree = toPlain(currentProject.items);
         try {
-            const win: any = window as any;
+            interface WindowWithPendingImports extends Window {
+                __PENDING_IMPORTS__?: Record<string, PlainTreeItem[]>;
+            }
+            const win = window as WindowWithPendingImports;
             if (!win.__PENDING_IMPORTS__) win.__PENDING_IMPORTS__ = {};
             win.__PENDING_IMPORTS__[projectName ?? "__untitled__"] = plainTree;
             console.log("doImport: Stored pending import in-memory", {
@@ -223,11 +233,11 @@ async function doImport() {
     if (currentProject.items && currentProject.items.length > 0) {
         const firstPage = currentProject.items[0];
         try {
-            store.currentPage = firstPage as any;
+            store.currentPage = firstPage;
         } catch {}
         const pageName = firstPage.text;
         console.log(`doImport: Navigating to /${projectName}/${pageName}`);
-        await goto(`/${projectName}/${pageName}`);
+        await goto(resolve(`/${projectName}/${pageName}`));
     }
     else {
         console.log("doImport: No pages found after import");
