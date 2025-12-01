@@ -48,6 +48,9 @@ test.describe("コンテナタイトルの永続化テスト", () => {
         await expect(containerElement).toContainText(projectTitle);
 
         // コンテナIDでも確認（フォールバック機能）
+        const containerItem = page.locator(
+            `[data-container-id="${projectTitle}"], [data-project-name="${projectTitle}"]`,
+        );
         // フォールバック: プロジェクト名による検索でコンテナが見つからない場合はコンテナの存在を確認
         if (await containerElement.count() > 0) {
             // コンテナが表示されていることを確認（具体的なテキストは環境によって異なる可能性あり）

@@ -60,9 +60,11 @@ function togglePanel() {
 function navigateToPage(_pageId: string, pageName: string) {
     if (!projectName) {
         // プロジェクト名が指定されていない場合は現在のプロジェクトを使用
+        // eslint-disable-next-line svelte/no-navigation-without-resolve
         goto(`/${pageName}`);
     }
     else {
+        // eslint-disable-next-line svelte/no-navigation-without-resolve
         goto(`/${projectName}/${pageName}`);
     }
 }

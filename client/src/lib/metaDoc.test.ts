@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as Y from "yjs";
 import { containersMap, getContainerTitleFromMetaDoc, metaDoc, setContainerTitleInMetaDoc } from "./metaDoc.svelte";
 
 // Mock IndexedDBPersistence
@@ -10,10 +9,6 @@ vi.mock("y-indexeddb", () => {
     }));
     return { IndexeddbPersistence };
 });
-
-// Mock window for IndexedDB check
-const originalWindow = global.window;
-const originalConsoleLog = console.log;
 
 describe("metaDoc", () => {
     beforeEach(() => {

@@ -44,3 +44,22 @@ if (typeof window !== "undefined") {
         console.log("[metaDoc] IndexedDB data loaded");
     });
 }
+// Expose metaDoc functions to window for E2E testing
+if (typeof window !== "undefined") {
+    const isTestEnv = import.meta.env.MODE === "test"
+        || process.env.NODE_ENV === "test"
+        || import.meta.env.VITE_IS_TEST === "true"
+        || window.location.hostname === "localhost";
+
+    if (isTestEnv) {
+        (window as Window & typeof globalThis & {
+            __META_DOC_MODULE__?: {
+                setContainerTitleInMetaDoc: typeof setContainerTitleInMetaDoc;
+                getContainerTitleFromMetaDoc: typeof getContainerTitleFromMetaDoc;
+            };
+        }).__META_DOC_MODULE__ = {
+            setContainerTitleInMetaDoc,
+            getContainerTitleFromMetaDoc,
+        };
+    }
+}
