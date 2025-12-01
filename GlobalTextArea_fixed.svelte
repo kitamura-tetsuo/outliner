@@ -43,7 +43,7 @@ onMount(() => {
 
     store.setTextareaRef(textareaRef);
     // generalStore にも参照を保持（コマンドパレットのフォールバックで利用）
-    try { generalStore.textareaRef = textareaRef; } catch {}
+    try { (generalStore as any).textareaRef = textareaRef; } catch {}
     console.log("GlobalTextArea: Textarea reference set in store");
 
     // KeyEventHandler をグローバルに公開（テスト用）
@@ -277,7 +277,7 @@ onMount(() => {
 
 onDestroy(() => {
     store.setTextareaRef(null);
-    try { generalStore.textareaRef = null; } catch {}
+    try { (generalStore as any).textareaRef = null; } catch {}
     try {
         const f = (window as any).__ALIAS_FWD__ as any;
         if (f) window.removeEventListener("keydown", f, { capture: true } as any);

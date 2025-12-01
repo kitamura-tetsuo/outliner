@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { resolve } from "$app/paths";
 import * as echarts from "echarts";
 import { onMount } from "svelte";
 import { store } from "../stores/store.svelte";
@@ -118,10 +119,10 @@ onMount(() => {
             const pageName = params.data.name;
             const projectName = store.project?.title;
             if (projectName) {
-                goto(`/${projectName}/${pageName}`);
+                goto(resolve(`/${projectName}/${pageName}`));
             }
             else {
-                goto(`/${pageName}`);
+                goto(resolve(`/${pageName}`));
             }
         }
     });
