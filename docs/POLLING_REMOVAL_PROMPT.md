@@ -37,6 +37,7 @@
 ## 使用例
 
 ### 単一ファイル
+
 ```
 OutlinerItemAlias.svelte のポーリングを削除して下さい。
 
@@ -48,6 +49,7 @@ OutlinerItemAlias.svelte のポーリングを削除して下さい。
 ```
 
 ### 複数ファイル
+
 ```
 以下のファイルのポーリングを削除して下さい:
 - CommentThread.svelte
@@ -61,6 +63,7 @@ OutlinerItemAlias.svelte のポーリングを削除して下さい。
 ```
 
 ### 特定のポーリングタイプ
+
 ```
 EditorOverlay.svelte の位置更新ポーリング (16ms間隔) を削除して下さい。
 
@@ -76,6 +79,7 @@ EditorOverlay.svelte の位置更新ポーリング (16ms間隔) を削除して
 ### setInterval/setTimeout → Svelte リアクティビティ
 
 **削除前**:
+
 ```typescript
 setInterval(() => {
     const value = someStore.getValue();
@@ -86,6 +90,7 @@ setInterval(() => {
 ```
 
 **削除後**:
+
 ```typescript
 let reactiveValue = $derived(someStore.getValue());
 
@@ -99,9 +104,10 @@ $effect(() => {
 ### setInterval/setTimeout → Yjs observe
 
 **削除前**:
+
 ```typescript
 setInterval(() => {
-    const value = ymap.get('key');
+    const value = ymap.get("key");
     if (value !== lastValue) {
         lastValue = value;
         updateUI(value);
@@ -110,11 +116,12 @@ setInterval(() => {
 ```
 
 **削除後**:
+
 ```typescript
 onMount(() => {
     const observer = (event) => {
-        if (event.keysChanged.has('key')) {
-            const value = ymap.get('key');
+        if (event.keysChanged.has("key")) {
+            const value = ymap.get("key");
             updateUI(value);
         }
     };
@@ -127,6 +134,7 @@ onMount(() => {
 ### requestAnimationFrame → MutationObserver
 
 **削除前**:
+
 ```typescript
 function checkPosition() {
     const rect = element.getBoundingClientRect();
@@ -137,15 +145,16 @@ requestAnimationFrame(checkPosition);
 ```
 
 **削除後**:
+
 ```typescript
 const observer = new MutationObserver(() => {
     const rect = element.getBoundingClientRect();
     updatePosition(rect);
 });
-observer.observe(element, { 
-    attributes: true, 
-    childList: true, 
-    subtree: true 
+observer.observe(element, {
+    attributes: true,
+    childList: true,
+    subtree: true,
 });
 onDestroy(() => observer.disconnect());
 ```
@@ -199,4 +208,3 @@ onDestroy(() => observer.disconnect());
 - [ポーリング削除ワークフロー](./POLLING_REMOVAL_WORKFLOW.md)
 - [ポーリング削除結果](./POLLING_REMOVAL_RESULTS.md)
 - [ポーリングツールインデックス](./POLLING_TOOLS_INDEX.md)
-

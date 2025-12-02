@@ -19,14 +19,17 @@
 コードベースをスキャンして、すべてのポーリング処理を検出・分類します。
 
 **実行方法:**
+
 ```bash
 npm run analyze:polling
 ```
 
 **出力:**
+
 - `docs/polling-analysis-report.md`: 分析レポート
 
 **分類:**
+
 - **必要なポーリング**: 削除すべきでないもの
 - **疑わしいポーリング**: 削除候補
 - **テスト専用ポーリング**: テスト環境でのみ実行
@@ -36,8 +39,9 @@ npm run analyze:polling
 ブラウザ内でポーリング呼び出しをインターセプトして追跡します。
 
 **使用方法:**
+
 ```typescript
-import { pollingMonitor } from '$lib/pollingMonitor';
+import { pollingMonitor } from "$lib/pollingMonitor";
 
 // モニタリング開始
 pollingMonitor.start();
@@ -55,16 +59,17 @@ console.log(pollingMonitor.generateReport());
 特定のポーリングを無効化してテストを実行し、影響を確認します。
 
 **使用方法:**
+
 ```typescript
-import { testWithoutPolling } from '../utils/pollingTestHelper';
+import { testWithoutPolling } from "../utils/pollingTestHelper";
 
 const result = await testWithoutPolling(
     page,
-    'Test name',
+    "Test name",
     /ファイル名.*ポーリング識別子/,
     async () => {
         // テストコード
-    }
+    },
 );
 
 // result.isRemovable が true なら削除可能
@@ -75,11 +80,13 @@ const result = await testWithoutPolling(
 実際にポーリングを無効化してE2Eテストを実行します。
 
 **実行方法:**
+
 ```bash
 npm run test:polling
 ```
 
 **出力:**
+
 - `docs/polling-removability-report.md`: 削除可能性レポート
 
 ## 使用ワークフロー
@@ -125,6 +132,7 @@ npm run test:polling
 **例: OutlinerItem.svelte の 340行目のポーリング**
 
 削除前:
+
 ```typescript
 onMount(() => {
     const iv = setInterval(() => {
@@ -135,6 +143,7 @@ onMount(() => {
 ```
 
 削除後:
+
 ```typescript
 // ポーリングを削除し、Yjs observeで代替
 onMount(() => {
@@ -192,14 +201,14 @@ npm test
 ```typescript
 // Before: ポーリング
 setInterval(() => {
-    const value = ymap.get('key');
+    const value = ymap.get("key");
     localState = value;
 }, 100);
 
 // After: Yjs observe
 ymap.observe((event) => {
-    if (event.keysChanged.has('key')) {
-        localState = ymap.get('key');
+    if (event.keysChanged.has("key")) {
+        localState = ymap.get("key");
     }
 });
 ```
@@ -226,13 +235,13 @@ DOMの変更を監視する場合:
 ```typescript
 // Before: ポーリング
 setInterval(() => {
-    const el = document.querySelector('.target');
+    const el = document.querySelector(".target");
     if (el) updatePosition(el);
 }, 16);
 
 // After: MutationObserver
 const observer = new MutationObserver(() => {
-    const el = document.querySelector('.target');
+    const el = document.querySelector(".target");
     if (el) updatePosition(el);
 });
 observer.observe(document.body, { childList: true, subtree: true });
@@ -287,4 +296,3 @@ observer.observe(document.body, { childList: true, subtree: true });
 - [docs/dev-features/pol-polling-analysis-and-removal-tool-a1b2c3d4.yaml](./dev-features/pol-polling-analysis-and-removal-tool-a1b2c3d4.yaml) - 機能仕様
 - [Yjs Documentation](https://docs.yjs.dev/) - Yjs observeの詳細
 - [Svelte 5 Runes](https://svelte.dev/docs/svelte/$derived) - Svelteリアクティビティの詳細
-
