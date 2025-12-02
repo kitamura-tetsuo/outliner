@@ -57,13 +57,13 @@ function togglePanel() {
 }
 
 // バックリンク先のページに移動する
-function navigateToPage(_pageId: string, pageName: string) {
+async function navigateToPage(_pageId: string, pageName: string) {
     if (!projectName) {
         // プロジェクト名が指定されていない場合は現在のプロジェクトを使用
-        goto(`/${pageName}`);
+        await goto(`/${pageName}`);
     }
     else {
-        goto(`/${projectName}/${pageName}`);
+        await goto(`/${projectName}/${pageName}`);
     }
 }
 
