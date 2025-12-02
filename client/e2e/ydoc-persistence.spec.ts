@@ -1,7 +1,7 @@
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 import "./utils/registerAfterEachSnapshot";
-import { BrowserContext, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "./utils/testHelpers";
 
 /**
@@ -59,24 +59,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             try {
                 const gs = (window as any).generalStore || (window as any).appStore;
                 return gs?.project?.title ?? "";
-            } catch {
-                return "";
-            }
-        });
-    }
-
-    /**
-     * Helper to get container ID from project state
-     */
-    async function getContainerId(page: any): Promise<string> {
-        return await page.evaluate(() => {
-            try {
-                const yjsService = (window as any).__YJS_SERVICE__;
-                if (yjsService?.getClientByProjectTitle) {
-                    return ""; // Will be filled by registry
-                }
-                // Fallback: extract from URL or registry
-                return (window as any).__CURRENT_PROJECT__?.id || "";
             } catch {
                 return "";
             }
@@ -406,7 +388,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
             const pageName1 = container1Info.pageName;
 
             // Verify content
-            let content1 = await getCurrentPageTexts(page);
+            const content1 = await getCurrentPageTexts(page);
             expect(content1[0]).toBe("Container 1 specific data");
 
             // Create second container
