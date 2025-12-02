@@ -1,0 +1,35 @@
+id: FTR-a1b2c3d4
+title: Container Title Persistence
+title-ja: コンテナタイトル永続化
+description: 'Persist container titles in a local-only Y.Doc for reliable display in the home dropdown across page reloads.
+
+
+  This feature introduces a metadata Y.Doc (metaDoc) that stores container titles locally in IndexedDB. When building the home dropdown options, the system resolves container labels using a three-tier fallback chain:
+
+  1. First, try to read the title from metaDoc (metadata Y.Doc)
+
+  2. If not available, fall back to getProjectTitle (from live Yjs project)
+
+  3. If neither yields a non-empty title, use the raw container ID as the label
+
+
+  This ensures that containers remain visible in the home dropdown even after full page reloads or new browser sessions. The metaDoc is persisted using y-indexeddb and is never synchronized with any backend, making it strictly a local cache for container metadata.
+
+  '
+category: project
+status: implemented
+components:
+- client/src/lib/metaDoc.svelte
+- client/src/stores/containerStore.svelte.ts
+services:
+- client/src/lib/projectTitleProvider
+- client/src/lib/yjsService.svelte
+tests:
+- client/e2e/container-title-persistence.spec.ts
+acceptance:
+- Container titles are persisted in a local-only Y.Doc (metaDoc)
+- Containers remain visible in home dropdown after page reload
+- Home dropdown resolves labels using metaDoc → getProjectTitle → ID fallback chain
+- Multiple containers maintain independent titles in metaDoc
+- When titles cannot be resolved, container IDs are displayed instead of hiding entries
+- metaDoc is persisted in IndexedDB and survives page reloads
