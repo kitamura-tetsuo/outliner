@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { createPersistence, waitForSync } from "./yjsPersistence";
 import "fake-indexeddb/auto";
