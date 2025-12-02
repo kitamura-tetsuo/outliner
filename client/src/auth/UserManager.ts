@@ -27,7 +27,7 @@ export interface IUser {
 }
 
 // 認証結果の型定義
-interface IAuthResult {
+export interface IAuthResult {
     user: IUser;
 }
 

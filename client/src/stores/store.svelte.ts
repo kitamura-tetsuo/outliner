@@ -1,13 +1,13 @@
 import { createSubscriber, SvelteSet } from "svelte/reactivity";
 import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
-import type { Item, ItemLike } from "../schema/app-schema";
+import type { Item, ItemLike, Items } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
 import type { PlainItemData } from "../types/yjs-types";
 
 export class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
-    pages: { current: unknown[]; } = { current: [] };
+    pages: { current: Items | undefined; } = { current: undefined };
     private _currentPage: Item | undefined;
     private readonly _currentPageSubscribers = new SvelteSet<() => void>();
     // 現在開いているコメントスレッドのアイテムID（同時に1つのみ表示）
@@ -15,6 +15,7 @@ export class GeneralStore {
     // Fallback: 接続切替時などIDが変わるケースに備えてインデックスも保持
     openCommentItemIndex: number | null = null;
     private _project: Project | undefined;
+    textareaRef: HTMLTextAreaElement | null = null;
 
     private _subscribeCurrentPage = createSubscriber((update) => {
         this._currentPageSubscribers.add(update);
@@ -38,7 +39,7 @@ export class GeneralStore {
                 let next: Item | null = null;
                 const len = items?.length ?? 0;
                 for (let i = 0; i < len; i++) {
-                    const p = items.at ? items.at(i) : items[i];
+                    const p = items.at(i);
                     const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                     if (String(t).toLowerCase() === String(title).toLowerCase()) {
                         next = p;
@@ -165,9 +166,9 @@ export class GeneralStore {
         this.pages = {
             get current() {
                 subscribe();
-                return project.items as unknown[];
+                return project.items;
             },
-        } as { current: unknown[]; };
+        };
     }
 }
 

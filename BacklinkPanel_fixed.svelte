@@ -1,6 +1,5 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
-import { resolve } from "$app/paths";
 import {
     type Backlink,
     collectBacklinks,
@@ -58,13 +57,13 @@ function togglePanel() {
 }
 
 // バックリンク先のページに移動する
-async function navigateToPage(_pageId: string, pageName: string) {
+function navigateToPage(_pageId: string, pageName: string) {
     if (!projectName) {
         // プロジェクト名が指定されていない場合は現在のプロジェクトを使用
-        await goto(resolve(`/${pageName}`));
+        goto(`/${pageName}`);
     }
     else {
-        await goto(resolve(`/${projectName}/${pageName}`));
+        goto(`/${projectName}/${pageName}`);
     }
 }
 
