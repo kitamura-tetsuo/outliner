@@ -5,6 +5,13 @@ import { createPersistence, waitForSync } from "../../../../src/lib/yjsPersisten
 // Import the class from the mock
 import { IndexeddbPersistence } from "y-indexeddb";
 
+// Type for mock persistence object
+interface MockPersistence {
+    once: ReturnType<typeof vi.fn>;
+    synced: boolean;
+    destroy: ReturnType<typeof vi.fn>;
+}
+
 // Mock IndexeddbPersistence from y-indexeddb
 vi.mock("y-indexeddb", () => {
     const mockPersistence = {
@@ -23,17 +30,11 @@ vi.mock("y-indexeddb", () => {
 });
 
 describe("yjsPersistence", () => {
-    let mockPersistence: any;
     let doc: Y.Doc;
 
     beforeEach(() => {
         vi.clearAllMocks();
         doc = new Y.Doc();
-        mockPersistence = {
-            once: vi.fn(),
-            synced: false,
-            destroy: vi.fn(),
-        };
     });
 
     describe("createPersistence", () => {
@@ -56,9 +57,9 @@ describe("yjsPersistence", () => {
             const containerId = "test-container-789";
 
             // Track the callback that was passed to once
-            let syncCallback: Function | null = null;
-            const mockPersistenceImpl = {
-                once: vi.fn((event: string, callback: Function) => {
+            let syncCallback: (() => void) | null = null;
+            const mockPersistenceImpl: MockPersistence = {
+                once: vi.fn((event: string, callback: () => void) => {
                     if (event === "synced") {
                         syncCallback = callback;
                     }
@@ -67,7 +68,7 @@ describe("yjsPersistence", () => {
                 destroy: vi.fn(),
             };
 
-            vi.mocked(IndexeddbPersistence).mockImplementationOnce(() => mockPersistenceImpl as any);
+            vi.mocked(IndexeddbPersistence).mockImplementationOnce(() => mockPersistenceImpl);
 
             createPersistence(containerId, doc);
 
@@ -86,39 +87,42 @@ describe("yjsPersistence", () => {
 
     describe("waitForSync", () => {
         it("should resolve immediately if already synced", async () => {
-            const persistence = {
+            const persistence: MockPersistence = {
                 synced: true,
                 once: vi.fn(),
+                destroy: vi.fn(),
             };
 
-            await expect(waitForSync(persistence as any)).resolves.toBeUndefined();
+            await expect(waitForSync(persistence)).resolves.toBeUndefined();
             expect(persistence.once).not.toHaveBeenCalled();
         });
 
         it("should wait for sync event if not synced", async () => {
-            const persistence = {
+            const persistence: MockPersistence = {
                 synced: false,
-                once: vi.fn((event, callback) => {
+                once: vi.fn((event: string, callback: () => void) => {
                     // Simulate sync happening after a short delay
                     setTimeout(callback, 10);
                 }),
+                destroy: vi.fn(),
             };
 
-            await expect(waitForSync(persistence as any)).resolves.toBeUndefined();
+            await expect(waitForSync(persistence)).resolves.toBeUndefined();
             expect(persistence.once).toHaveBeenCalledWith("synced", expect.any(Function));
         });
 
         it("should handle multiple calls to waitForSync", async () => {
-            const persistence = {
+            const persistence: MockPersistence = {
                 synced: false,
-                once: vi.fn((event, callback) => {
+                once: vi.fn((event: string, callback: () => void) => {
                     // Simulate sync happening after a short delay
                     setTimeout(callback, 10);
                 }),
+                destroy: vi.fn(),
             };
 
-            const waitPromise1 = waitForSync(persistence as any);
-            const waitPromise2 = waitForSync(persistence as any);
+            const waitPromise1 = waitForSync(persistence);
+            const waitPromise2 = waitForSync(persistence);
 
             // Both should be pending
             expect(persistence.once).toHaveBeenCalledTimes(2);
