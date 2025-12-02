@@ -1,3 +1,4 @@
+import { getContainerTitleFromMetaDoc } from "../lib/metaDoc.svelte";
 import { getProjectTitle } from "../lib/projectTitleProvider";
 import { firestoreStore, type UserContainer } from "./firestoreStore.svelte";
 
@@ -28,12 +29,22 @@ export function containersFromUserContainer(
     const uniqueIds = Array.from(new Set(data.accessibleContainerIds));
     return uniqueIds
         .map(id => {
+            // Resolve container label with fallback chain:
+            // 1. Try getContainerTitleFromMetaDoc (metadata Y.Doc)
+            // 2. If empty, try getProjectTitle (live Yjs project)
+            // 3. If still empty, use the raw container ID
             let name: string;
             try {
-                name = getProjectTitle(id);
+                name = getContainerTitleFromMetaDoc(id);
+                if (!name || name.trim() === "") {
+                    name = getProjectTitle(id);
+                }
+                if (!name || name.trim() === "") {
+                    name = id;
+                }
             } catch (error) {
-                console.warn(`Failed to get project title for ${id}:`, error);
-                name = "";
+                console.warn(`Failed to get container title for ${id}:`, error);
+                name = id;
             }
             // テスト環境で名前が空の場合、デフォルト名を使用
             if (isTestEnv && (!name || name.trim() === "")) {
