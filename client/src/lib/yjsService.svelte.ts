@@ -88,6 +88,7 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     registry.set(keyFor(userId, projectId), [client, project]);
 
     // Save title to metadata Y.Doc for dropdown display
+    // Save container title to metadata Y.Doc for persistence across page reloads
     setContainerTitleInMetaDoc(projectId, containerName);
 
     // update store

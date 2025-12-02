@@ -51,6 +51,6 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
 
         const options = select.locator("option");
         await expect(options).toHaveCount(initialCount + 1);
-        await expect(options.last()).toHaveText(/テストプロジェクト/);
+        await expect(options.last()).toHaveText(/test-container-3/);
     });
 });
