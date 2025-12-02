@@ -3,6 +3,7 @@
 **📌 重要**: このドキュメントはアーカイブされました。Gemini CI ワークフローは無効化されており、現在self-hosted runnerは使用されていません。
 
 **現在の状況**:
+
 - ✅ GitHub-hosted runners に移行済み
 - ✅ Gemini CI ワークフロー無効化（`.disabled` ファイルとして保存）
 - ✅ 全てのCI/CD機能はGitHub-hosted runnersで継続稼働

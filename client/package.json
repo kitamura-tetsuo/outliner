@@ -109,7 +109,7 @@
         "coverage:backup": "node scripts/backup-coverage.js",
         "coverage:move-to-backup": "node scripts/move-coverage-to-backup.js",
         "coverage:report": "vitest run --project unit --project integration --coverage && npm run coverage:merge",
-        "test": "npm run coverage:move-to-backup && NODE_ENV=test dotenvx run --overload --env-file=.env.test -- vitest run --project unit --project integration --coverage && npm run coverage:backup && npm run test:e2e && npm run coverage:backup && npm run coverage:e2e && npm run coverage:backup && npm run coverage:merge && npm run coverage:backup",
+        "test": "npm run coverage:move-to-backup && npm run coverage:cleanup && NODE_ENV=test dotenvx run --overload --env-file=.env.test -- vitest run --project unit --project integration --coverage && npm run coverage:backup && npm run test:e2e && npm run coverage:backup && npm run coverage:e2e && npm run coverage:backup && npm run coverage:merge && npm run coverage:backup",
         "test:e2e": "NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npx playwright test --reporter=list \"$@\"' --",
         "test:e2e:basic": "NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" playwright test ./e2e/basic --reporter=list \"$@\"' --",
         "test:e2e:debug": "NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npx playwright test --reporter=list --debug \"$@\"' --",
@@ -121,7 +121,8 @@
         "test:unit": "vitest run --project unit --coverage",
         "test:mutation": "NODE_ENV=test dotenvx run --overload --env-file=.env.test -- stryker run --incremental",
         "analyze:polling": "node ../scripts/analyze-polling.mjs",
-        "test:polling": "NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npx playwright test ./e2e/env/env-polling-analysis-test-removability-a1b2c3d4.spec.ts --reporter=list' --"
+        "test:polling": "NODE_ENV=test TEST_ENV=localhost dotenvx run --overload --env-file=.env.test -- env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'xvfb-run --auto-servernum --server-args=\"-screen 0 1280x960x24\" npx playwright test ./e2e/env/env-polling-analysis-test-removability-a1b2c3d4.spec.ts --reporter=list' --",
+        "coverage:cleanup": "node scripts/cleanup-coverage.js"
     },
     "type": "module",
     "version": "0.0.1"

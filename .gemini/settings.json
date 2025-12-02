@@ -1,13 +1,8 @@
 {
   "mcpServers": {
     "graphrag": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/home/node/graphrag_mcp",
-        "run",
-        "main.py"
-      ]
+      "command": "/home/node/graphrag_mcp/run_server.sh",
+      "args": []
     }
   }
 }

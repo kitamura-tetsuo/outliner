@@ -7,6 +7,7 @@
 ## 現状
 
 分析の結果:
+
 - **総ポーリング数**: 104件
 - **疑わしいポーリング**: 78件（削除候補）
 - **テスト専用ポーリング**: 26件
@@ -79,6 +80,7 @@ npm run analyze:polling
 #### パターン1: Yjs Observeで置き換え
 
 **削除前:**
+
 ```typescript
 onMount(() => {
     const iv = setInterval(() => {
@@ -89,12 +91,13 @@ onMount(() => {
 ```
 
 **削除後:**
+
 ```typescript
 onMount(() => {
     const ymap = item.tree.getNodeValueFromKey(item.key);
     const observer = (event) => {
-        if (event.keysChanged.has('aliasTargetId')) {
-            aliasTargetId = ymap.get('aliasTargetId');
+        if (event.keysChanged.has("aliasTargetId")) {
+            aliasTargetId = ymap.get("aliasTargetId");
         }
     };
     ymap.observe(observer);
@@ -105,6 +108,7 @@ onMount(() => {
 #### パターン2: Svelte $derivedで置き換え
 
 **削除前:**
+
 ```typescript
 let value = $state(0);
 onMount(() => {
@@ -116,6 +120,7 @@ onMount(() => {
 ```
 
 **削除後:**
+
 ```typescript
 let value = $derived(store.getValue());
 ```
@@ -123,11 +128,12 @@ let value = $derived(store.getValue());
 #### パターン3: 単純に削除
 
 **削除前:**
+
 ```typescript
 // E2E安定化: 入力DOMの値をポーリング
 onMount(() => {
     const iv = setInterval(() => {
-        const inputEl = document.querySelector('input');
+        const inputEl = document.querySelector("input");
         if (inputEl?.value) {
             newText = inputEl.value;
         }
@@ -137,9 +143,10 @@ onMount(() => {
 ```
 
 **削除後:**
+
 ```typescript
 // bind:valueで十分
-<input bind:value={newText} />
+<input bind:value={newText} />;
 ```
 
 ### ステップ4: テストを実行
@@ -246,11 +253,11 @@ git commit -m "refactor: Remove unnecessary polling in OutlinerItem.svelte
 1. **ポーリング削除前後でプロファイリング**
    ```javascript
    // ブラウザコンソールで
-   performance.mark('start');
+   performance.mark("start");
    // 操作を実行
-   performance.mark('end');
-   performance.measure('operation', 'start', 'end');
-   console.log(performance.getEntriesByType('measure'));
+   performance.mark("end");
+   performance.measure("operation", "start", "end");
+   console.log(performance.getEntriesByType("measure"));
    ```
 
 2. **代替実装の最適化**
@@ -262,19 +269,24 @@ git commit -m "refactor: Remove unnecessary polling in OutlinerItem.svelte
 削除の進捗を追跡するために、以下のチェックリストを使用します:
 
 ### OutlinerItem.svelte
+
 - [ ] aliasLastConfirmedPulse ポーリング (行340)
 - [ ] E2Eファイルドロップポーリング (行1765)
 
 ### OutlinerItemAlias.svelte
+
 - [ ] aliasLastConfirmedPulse ポーリング (行50)
 
 ### CommentThread.svelte
+
 - [ ] 入力値ポーリング (行147)
 
 ### EditorOverlay.svelte
+
 - [ ] 位置更新ポーリング (行213)
 
 ### その他
+
 - [ ] Checklist.svelte の自動リセットポーリング
 - [ ] AliasPicker.svelte のフォーカスポーリング
 - [ ] AuthComponent.svelte のローディング状態ポーリング
@@ -284,4 +296,3 @@ git commit -m "refactor: Remove unnecessary polling in OutlinerItem.svelte
 - [POLLING_ANALYSIS_GUIDE.md](./POLLING_ANALYSIS_GUIDE.md) - 詳細なガイド
 - [polling-analysis-report.md](./polling-analysis-report.md) - 分析レポート
 - [AGENTS.md](../AGENTS.md) - プロジェクトガイドライン
-

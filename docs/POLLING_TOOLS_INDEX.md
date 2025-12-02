@@ -11,6 +11,7 @@
 **目的**: コードベースをスキャンして、すべてのポーリング処理を検出・分類
 
 **使用方法**:
+
 ```bash
 cd client
 npm run analyze:polling
@@ -19,6 +20,7 @@ npm run analyze:polling
 **出力**: `docs/polling-analysis-report.md`
 
 **機能**:
+
 - setInterval、setTimeout、requestAnimationFrameを検出
 - 必要/疑わしい/テスト専用に分類
 - 各ポーリングのコンテキストを表示
@@ -30,8 +32,9 @@ npm run analyze:polling
 **目的**: ブラウザ内でポーリング呼び出しをインターセプトして追跡
 
 **使用方法**:
+
 ```typescript
-import { pollingMonitor } from '$lib/pollingMonitor';
+import { pollingMonitor } from "$lib/pollingMonitor";
 
 // モニタリング開始
 pollingMonitor.start();
@@ -48,6 +51,7 @@ pollingMonitor.addDisablePattern(/OutlinerItem.*alias/);
 ```
 
 **機能**:
+
 - ポーリング呼び出しのインターセプト
 - 実行回数の追跡
 - スタックトレースの記録
@@ -60,22 +64,24 @@ pollingMonitor.addDisablePattern(/OutlinerItem.*alias/);
 **目的**: E2Eテストでポーリングを無効化してテスト
 
 **使用方法**:
+
 ```typescript
-import { testWithoutPolling } from '../utils/pollingTestHelper';
+import { testWithoutPolling } from "../utils/pollingTestHelper";
 
 const result = await testWithoutPolling(
     page,
-    'Test name',
+    "Test name",
     /ファイル名.*ポーリング識別子/,
     async () => {
         // テストコード
-    }
+    },
 );
 
 // result.isRemovable が true なら削除可能
 ```
 
 **機能**:
+
 - 特定のポーリングを無効化
 - ポーリングあり/なしでテストを実行
 - 削除可能性を判定
@@ -87,6 +93,7 @@ const result = await testWithoutPolling(
 **目的**: 実際にポーリングを無効化してE2Eテストを実行
 
 **使用方法**:
+
 ```bash
 cd client
 npm run test:polling
@@ -95,6 +102,7 @@ npm run test:polling
 **出力**: `docs/polling-removability-report.md`
 
 **機能**:
+
 - 主要なポーリングを無効化してテスト
 - テスト結果を比較
 - 削除可能なポーリングをレポート
@@ -267,4 +275,3 @@ workspace/
 ## ライセンス
 
 このツールセットはプロジェクトのライセンスに従います。
-
