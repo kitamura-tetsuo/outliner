@@ -40,7 +40,7 @@ class AliasPickerStore {
         this.selectedIndex = 0;
         try {
             if (typeof window !== "undefined") {
-                (window as any).ALIAS_PICKER_SHOW_COUNT = ((window as any).ALIAS_PICKER_SHOW_COUNT || 0) + 1;
+                window.ALIAS_PICKER_SHOW_COUNT = (window.ALIAS_PICKER_SHOW_COUNT || 0) + 1;
                 window.dispatchEvent(new CustomEvent("aliaspicker-visibility", { detail: { visible: true } }));
                 window.dispatchEvent(new CustomEvent("aliaspicker-options", { detail: { options: this.options } }));
             }
@@ -156,7 +156,7 @@ class AliasPickerStore {
             if (node.id === id) return node;
             const items = node.items as Items;
             if (!items) return undefined;
-            for (const child of items as any as Iterable<Item>) {
+            for (const child of items) {
                 const found = this.findItemDFS(child, id, depth + 1);
                 if (found) return found;
             }
@@ -178,16 +178,21 @@ class AliasPickerStore {
         // itemId が未設定の場合でも E2E を安定化させるために、アクティブアイテムや末尾アイテムから補完
         if (!this.itemId) {
             try {
-                const w: any = typeof window !== "undefined" ? (window as any) : null;
-                const eos: any = w?.editorOverlayStore;
-                const activeId: string | null = eos?.getActiveItem?.() ?? null;
+                const w = typeof window !== "undefined" ? window : null;
+                const eos = w?.editorOverlayStore;
+                const activeId: string | null = eos && typeof eos === "object" && "getActiveItem" in eos
+                    ? (eos as { getActiveItem: () => string | null; })?.getActiveItem?.() ?? null
+                    : null;
                 if (activeId) {
                     console.log("AliasPickerStore.confirmById: patched missing itemId from activeId:", activeId);
                     this.itemId = activeId;
                 } else {
-                    const items: any = (generalStore.currentPage as any)?.items;
+                    const items = generalStore.currentPage && typeof generalStore.currentPage === "object"
+                            && "items" in generalStore.currentPage
+                        ? (generalStore.currentPage as { items: Items; })?.items
+                        : null;
                     const last = items && typeof items.length === "number" && items.length > 0
-                        ? ((items as any).at ? (items as any).at(items.length - 1) : (items as any)[items.length - 1])
+                        ? items.at(items.length - 1) ?? items[items.length - 1]
                         : null;
                     if (last?.id) {
                         this.itemId = last.id;
@@ -209,8 +214,14 @@ class AliasPickerStore {
 
                 // Yjsモデルへの書き込みを確実にするため、Y.Mapに直接アクセス
                 try {
-                    const anyItem: any = item as any;
-                    const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+                    const anyItem = item as {
+                        tree?: {
+                            getNodeValueFromKey: (
+                                key: string,
+                            ) => { set: (key: string, value: string) => void; } | undefined;
+                        };
+                    };
+                    const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
                     if (ymap && typeof ymap.set === "function") {
                         ymap.set("aliasTargetId", id);
                     }
@@ -235,18 +246,18 @@ class AliasPickerStore {
         const root = generalStore.currentPage;
         if (root) {
             try {
-                const children = (root as any).items as Items;
+                const children = "items" in root ? (root as { items: Items; }).items : undefined;
                 if (children && typeof children.length === "number") {
-                    const rawRootText: any = (root as any).text;
+                    const rawRootText = "text" in root ? (root as { text: unknown; }).text : null;
                     const rootText: string = typeof rawRootText === "string"
                         ? rawRootText
-                        : (rawRootText?.toString?.() ?? "");
+                        : (typeof rawRootText === "object" && rawRootText && "toString" in rawRootText
+                            ? (rawRootText as { toString: () => string; }).toString()
+                            : "");
                     for (let i = 0; i < children.length; i++) {
                         let child: Item | undefined;
                         try {
-                            child = (children as any).at
-                                ? (children as any).at(i) as Item
-                                : (children as any)[i] as Item;
+                            child = children.at ? children.at(i) : children[i];
                         } catch {
                             child = undefined;
                         }
@@ -285,21 +296,25 @@ class AliasPickerStore {
         }
 
         visited.add(node.id);
-        const rawText: any = (node as any).text;
-        const nodeText: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
+        const rawText = "text" in node ? (node as { text: unknown; }).text : null;
+        const nodeText: string = typeof rawText === "string"
+            ? rawText
+            : (typeof rawText === "object" && rawText && "toString" in rawText
+                ? (rawText as { toString: () => string; }).toString()
+                : "");
         const current = [...path, nodeText || ""];
         out.push({ id: node.id, path: current.join("/") });
 
         try {
             const children = node.items as Items;
             if (!children) return;
-            const len = Number.isFinite((children as any).length) ? (children as any).length as number : 0;
+            const len = Number.isFinite(children.length) ? children.length as number : 0;
             for (let i = 0; i < len; i++) {
                 let child: Item | undefined;
                 try {
-                    child = (children as any).at ? (children as any).at(i) as Item : (children as any)[i] as Item;
+                    child = children.at ? children.at(i) : children[i];
                 } catch {
-                    child = undefined as any;
+                    child = undefined;
                 }
                 if (child && child.id && !visited.has(child.id)) {
                     this.traverse(child, current, out, visited, depth + 1);
@@ -336,7 +351,7 @@ class AliasPickerStore {
             const items = current.items as Items;
             if (items) {
                 for (let i = 0; i < items.length; i++) {
-                    const child = (items as any).at ? (items as any).at(i) as Item : (items as any)[i] as Item;
+                    const child = items.at ? items.at(i) : items[i];
                     if (child && !visited.has(child.id)) {
                         queue.push(child);
                     }
@@ -364,7 +379,7 @@ class AliasPickerStore {
         const items = node.items as Items;
         if (items) {
             for (let i = 0; i < items.length; i++) {
-                const child = (items as any).at ? (items as any).at(i) as Item : (items as any)[i] as Item;
+                const child = items.at ? items.at(i) : items[i];
                 if (child) {
                     const found = this.findItem(child, id, depth + 1);
                     if (found) return found;
@@ -390,5 +405,5 @@ class AliasPickerStore {
 export const aliasPickerStore = $state(new AliasPickerStore());
 
 if (typeof window !== "undefined") {
-    (window as any).aliasPickerStore = aliasPickerStore;
+    window.aliasPickerStore = aliasPickerStore;
 }

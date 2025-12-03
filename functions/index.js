@@ -1998,3 +1998,114 @@ exports.deleteAllProductionData = onRequest(
     }
   },
 );
+
+// プロジェクト名を変更するエンドポイント
+exports.renameProject = onRequest({ cors: true }, async (req, res) => {
+  // CORS設定
+  setCorsHeaders(req, res);
+
+  // プリフライト OPTIONS リクエストの処理
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  // POSTメソッド以外は拒否
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    const { idToken, containerId, newTitle } = req.body;
+
+    if (!containerId || !newTitle) {
+      return res.status(400).json({
+        error: "Container ID and new title are required",
+      });
+    }
+
+    // Firebaseトークンを検証
+    // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
+    const isEmulatorEnv = !!(
+      process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FUNCTIONS_EMULATOR === "true"
+    );
+
+    let userId;
+    try {
+      // エミュレーター環境では checkRevoked: false を設定
+      const decodedToken = await admin.auth().verifyIdToken(
+        idToken,
+        !isEmulatorEnv,
+      );
+      userId = decodedToken.uid;
+
+      logger.info(
+        `renameProject: Token verified successfully for user: ${userId} (emulator: ${isEmulatorEnv})`,
+      );
+    } catch (tokenError) {
+      logger.error(
+        `renameProject: Token verification failed: ${tokenError.message}`,
+      );
+
+      // エミュレーター環境でのフォールバック（最後の手段）
+      if (
+        isEmulatorEnv &&
+        idToken &&
+        typeof idToken === "string" &&
+        idToken.length > 0
+      ) {
+        logger.warn(
+          "renameProject: Using fallback emulator user ID due to token verification failure",
+        );
+        userId = "test-emulator-user";
+      } else {
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
+    }
+
+    // ユーザーがコンテナにアクセス権を持っているかチェック
+    const hasAccess = await checkContainerAccess(userId, containerId);
+    if (!hasAccess) {
+      logger.warn(
+        `Access denied for user ${userId} to container ${containerId}`,
+      );
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Firestoreのプロジェクト情報を更新
+    const projectDocRef = db.collection("projects").doc(containerId);
+    const projectDoc = await projectDocRef.get();
+
+    if (!projectDoc.exists) {
+      // プロジェクトドキュメントが存在しない場合は作成
+      await projectDocRef.set({
+        containerId,
+        title: newTitle,
+        ownerId: userId,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      logger.info(`Created new project document for container ${containerId}`);
+    } else {
+      // 既存ドキュメントの場合はタイトルを更新
+      await projectDocRef.update({
+        title: newTitle,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      logger.info(
+        `Updated project title for container ${containerId} to "${newTitle}"`,
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      containerId,
+      title: newTitle,
+    });
+  } catch (error) {
+    logger.error(`Error renaming project: ${error.message}`, { error });
+    return res.status(500).json({
+      error: "Failed to rename project",
+    });
+  }
+});
