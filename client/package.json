@@ -125,5 +125,5 @@
         "coverage:cleanup": "node scripts/cleanup-coverage.js"
     },
     "type": "module",
-    "version": "0.0.1"
+    "version": "1.0.0"
 }
