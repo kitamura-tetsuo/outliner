@@ -93,7 +93,7 @@ async function handleContainerSelected(
 
     <!-- 新規コンテナ作成リンク -->
     <div class="action-buttons">
-        <a href="/containers" class="new-container-button">
+        <a href="/projects" class="new-container-button">
             <span class="icon">+</span> 新しいアウトライナーを作成
         </a>
     </div>
