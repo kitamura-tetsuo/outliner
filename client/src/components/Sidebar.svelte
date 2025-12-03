@@ -1,10 +1,19 @@
 <script lang="ts">
     import { containerStore } from "../stores/containerStore.svelte";
+    import { store } from "../stores/store.svelte";
+    import { goto } from "$app/navigation";
 
     let { isOpen = $bindable(true) } = $props();
 
     // Collapsible state for Projects section
     let isProjectsCollapsed = $state(false);
+    // Collapsible state for Pages section
+    let isPagesCollapsed = $state(false);
+
+    function handlePageClick(pageId: string, pageName: string) {
+        // Navigate to the page
+        goto(`/${encodeURIComponent(pageName)}`);
+    }
 </script>
 
 <aside class="sidebar" class:open={isOpen}>
@@ -58,9 +67,59 @@
             {/if}
         </div>
 
+        <!-- Pages section -->
         <div class="sidebar-section">
-            <h3 class="sidebar-section-title">Pages</h3>
-            <p class="sidebar-placeholder">Page list will be implemented here</p>
+            <button
+                class="section-header"
+                onclick={() => isPagesCollapsed = !isPagesCollapsed}
+                aria-expanded={!isPagesCollapsed}
+                aria-label="Toggle pages section"
+            >
+                <h3 class="sidebar-section-title">Pages</h3>
+                <svg
+                    class="chevron-icon"
+                    class:rotated={isPagesCollapsed}
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                >
+                    <path
+                        d="M4 6L8 10L12 6"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+            </button>
+
+            {#if !isPagesCollapsed}
+                <div class="page-list">
+                    {#if !store.project || store.project.items.length === 0}
+                        <p class="sidebar-placeholder">No pages available</p>
+                    {:else}
+                        {#each store.project.items as page (page.id)}
+                            <div
+                                class="page-item"
+                                onclick={() => handlePageClick(page.id, page.text)}
+                                role="button"
+                                tabindex="0"
+                                onkeydown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        handlePageClick(page.id, page.text);
+                                    }
+                                }}
+                            >
+                                <span class="page-title">{page.text || "Untitled page"}</span>
+                                <span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
+                            </div>
+                        {/each}
+                    {/if}
+                </div>
+            {/if}
         </div>
 
         <div class="sidebar-section">
@@ -189,6 +248,46 @@
         white-space: nowrap;
     }
 
+    .page-list {
+        margin-top: 0.5rem;
+    }
+
+    .page-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem;
+        border-radius: 4px;
+        background-color: rgba(0, 0, 0, 0.02);
+        margin-bottom: 0.25rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .page-item:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .page-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .page-title {
+        font-size: 0.875rem;
+        color: #374151;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+        margin-right: 0.5rem;
+    }
+
+    .page-date {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        flex-shrink: 0;
+    }
+
     .default-badge {
         font-size: 0.75rem;
         padding: 0.125rem 0.375rem;
@@ -206,6 +305,22 @@
 
     :global(html.dark) .project-name {
         color: #e5e7eb;
+    }
+
+    :global(html.dark) .page-item {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    :global(html.dark) .page-item:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    :global(html.dark) .page-title {
+        color: #e5e7eb;
+    }
+
+    :global(html.dark) .page-date {
+        color: #9ca3af;
     }
 
     :global(html.dark) .section-header:hover .sidebar-section-title {
