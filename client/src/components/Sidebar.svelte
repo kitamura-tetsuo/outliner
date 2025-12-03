@@ -1,5 +1,10 @@
 <script lang="ts">
+    import { containerStore } from "../stores/containerStore.svelte";
+
     let { isOpen = $bindable(true) } = $props();
+
+    // Collapsible state for Projects section
+    let isProjectsCollapsed = $state(false);
 </script>
 
 <aside class="sidebar" class:open={isOpen}>
@@ -7,10 +12,50 @@
         <h2 class="sidebar-title">Sidebar</h2>
         <p class="sidebar-description">This is a placeholder sidebar component.</p>
 
-        <!-- Placeholder sections -->
+        <!-- Projects section -->
         <div class="sidebar-section">
-            <h3 class="sidebar-section-title">Projects</h3>
-            <p class="sidebar-placeholder">Project list will be implemented here</p>
+            <button
+                class="section-header"
+                onclick={() => isProjectsCollapsed = !isProjectsCollapsed}
+                aria-expanded={!isProjectsCollapsed}
+                aria-label="Toggle projects section"
+            >
+                <h3 class="sidebar-section-title">Projects</h3>
+                <svg
+                    class="chevron-icon"
+                    class:rotated={isProjectsCollapsed}
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                >
+                    <path
+                        d="M4 6L8 10L12 6"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+            </button>
+
+            {#if !isProjectsCollapsed}
+                <div class="project-list">
+                    {#if containerStore.containers.length === 0}
+                        <p class="sidebar-placeholder">No projects available</p>
+                    {:else}
+                        {#each containerStore.containers as container (container.id)}
+                            <div class="project-item">
+                                <span class="project-name">{container.name}</span>
+                                {#if container.isDefault}
+                                    <span class="default-badge">Default</span>
+                                {/if}
+                            </div>
+                        {/each}
+                    {/if}
+                </div>
+            {/if}
         </div>
 
         <div class="sidebar-section">
@@ -77,6 +122,94 @@
         color: #9ca3af;
         font-size: 0.875rem;
         font-style: italic;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        cursor: pointer;
+        user-select: none;
+        padding: 0.25rem 0;
+        background: none;
+        border: none;
+        text-align: left;
+        color: inherit;
+        font: inherit;
+    }
+
+    .section-header:hover .sidebar-section-title {
+        color: #2563eb;
+    }
+
+    .section-header:hover .chevron-icon {
+        color: #374151;
+    }
+
+    :global(html.dark) .section-header:hover .sidebar-section-title {
+        color: #60a5fa;
+    }
+
+    :global(html.dark) .section-header:hover .chevron-icon {
+        color: #e5e7eb;
+    }
+
+    .chevron-icon {
+        transition: transform 0.2s ease;
+    }
+
+    .chevron-icon.rotated {
+        transform: rotate(-90deg);
+    }
+
+    .project-list {
+        margin-top: 0.5rem;
+    }
+
+    .project-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem;
+        border-radius: 4px;
+        background-color: rgba(0, 0, 0, 0.02);
+        margin-bottom: 0.25rem;
+    }
+
+    .project-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .project-name {
+        font-size: 0.875rem;
+        color: #374151;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .default-badge {
+        font-size: 0.75rem;
+        padding: 0.125rem 0.375rem;
+        background-color: #10b981;
+        color: white;
+        border-radius: 3px;
+        font-weight: 500;
+        margin-left: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    :global(html.dark) .project-item {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    :global(html.dark) .project-name {
+        color: #e5e7eb;
+    }
+
+    :global(html.dark) .section-header:hover .sidebar-section-title {
+        color: #60a5fa;
     }
 
     /* Dark mode styles */
