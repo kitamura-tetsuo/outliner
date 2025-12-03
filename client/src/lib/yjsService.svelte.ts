@@ -6,7 +6,7 @@ import { Project } from "../schema/yjs-schema";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
 import { log } from "./logger";
-import { setContainerTitleInMetaDoc } from "./metaDoc.svelte";
+import { getContainerTitleFromMetaDoc, setContainerTitleInMetaDoc } from "./metaDoc.svelte";
 
 interface ClientKey {
     type: "container" | "user";
@@ -87,6 +87,7 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     const client = await YjsClient.connect(projectId, project);
     registry.set(keyFor(userId, projectId), [client, project]);
 
+    // Save title to metadata Y.Doc for dropdown display
     // Save container title to metadata Y.Doc for persistence across page reloads
     setContainerTitleInMetaDoc(projectId, containerName);
 
@@ -108,11 +109,18 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
 }
 
 export function getProjectTitle(containerId: string): string {
+    // First, try to get the title from the loaded project in registry
     for (const [k, [, project]] of registry.entries()) {
         if (k.includes(containerId) && project?.title) {
             return project.title;
         }
     }
+    // Fallback: get title from metadata Y.Doc (works for cached containers)
+    const metaTitle = getContainerTitleFromMetaDoc(containerId);
+    if (metaTitle) {
+        return metaTitle;
+    }
+    // Final fallback: return empty string
     return "";
 }
 
@@ -132,6 +140,10 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     const project = Project.createInstance(title);
     const client = await YjsClient.connect(resolvedId, project);
     registry.set(keyFor(userId, resolvedId), [client, project]);
+
+    // Save title to metadata Y.Doc for dropdown display
+    setContainerTitleInMetaDoc(resolvedId, title);
+
     yjsStore.yjsClient = client;
     return client;
 }

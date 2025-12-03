@@ -38,8 +38,8 @@ describe("yjsService", () => {
         const awareness = new Awareness(new Y.Doc());
         // Provide a minimal global presence store to avoid importing .svelte.ts
         const presenceStore = {
-            users: {} as any,
-            setUser(u: any) {
+            users: {} as Record<string, unknown>,
+            setUser(u: { userId: string; [key: string]: unknown; }) {
                 this.users = { ...this.users, [u.userId]: u };
             },
             removeUser(id: string) {
@@ -52,7 +52,7 @@ describe("yjsService", () => {
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
         expect(presenceStore.users["u1"].userName).toBe("Alice");
-        awareness.setLocalStateField("user", null as any);
+        awareness.setLocalStateField("user", null);
         unbind();
     });
 
@@ -60,12 +60,12 @@ describe("yjsService", () => {
         const awareness = new Awareness(new Y.Doc());
         // Provide a minimal global overlay store
         const editorOverlayStore = {
-            cursors: {} as any,
-            selections: {} as any,
-            setCursor({ itemId, offset, userId }: any) {
+            cursors: {} as Record<string, unknown>,
+            selections: {} as Record<string, unknown>,
+            setCursor({ itemId, offset, userId }: { itemId: string; offset: number; userId: string; }) {
                 this.cursors[userId] = { itemId, offset, userId };
             },
-            setSelection({ userId }: any) {
+            setSelection({ userId }: { userId: string; }) {
                 this.selections[userId] = { userId };
             },
             clearCursorAndSelection(userId: string) {

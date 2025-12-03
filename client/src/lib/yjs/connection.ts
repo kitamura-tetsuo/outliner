@@ -1,8 +1,8 @@
-import { IndexeddbPersistence } from "y-indexeddb";
 import type { Awareness } from "y-protocols/awareness";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
+import { createPersistence, waitForSync } from "../yjsPersistence";
 import { pageRoomPath, projectRoomPath } from "./roomPath";
 import { yjsService } from "./service";
 import { attachTokenRefresh } from "./tokenRefresh";
@@ -179,7 +179,8 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     const room = pageRoomPath(projectId, pageId);
     if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
         try {
-            new IndexeddbPersistence(room, doc);
+            const persistence = createPersistence(room, doc);
+            await waitForSync(persistence);
         } catch { /* no-op in Node */ }
     }
     let token = "";
@@ -234,10 +235,11 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     const wsBase = getWsBase();
     const room = projectRoomPath(projectId);
 
-    // Local persistence keyed by room path
+    // Attach IndexedDB persistence and wait for initial sync
     if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
         try {
-            new IndexeddbPersistence(room, doc);
+            const persistence = createPersistence(room, doc);
+            await waitForSync(persistence);
         } catch { /* no-op in Node */ }
     }
 
@@ -343,7 +345,8 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     const room = projectRoomPath(projectId);
     if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
         try {
-            new IndexeddbPersistence(room, doc);
+            const persistence = createPersistence(room, doc);
+            await waitForSync(persistence);
         } catch { /* no-op in Node */ }
     }
     let token = "";
@@ -359,10 +362,10 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         params: token ? { auth: token } : undefined,
         connect: wsEnabled,
     });
-    (provider as any).__wsDisabled = !wsEnabled;
+    (provider as WebsocketProvider & { __wsDisabled?: boolean; }).__wsDisabled = !wsEnabled;
     if (!wsEnabled) {
         try {
-            (provider as any).connect = () => {};
+            (provider as WebsocketProvider & { connect: () => void; }).connect = () => {};
         } catch {}
     }
     const awareness = provider.awareness;
@@ -389,6 +392,15 @@ export async function createMinimalProjectConnection(projectId: string): Promise
     const doc = new Y.Doc({ guid: projectId });
     const wsBase = getWsBase();
     const room = projectRoomPath(projectId);
+
+    // Attach IndexedDB persistence and wait for initial sync
+    if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
+        try {
+            const persistence = createPersistence(room, doc);
+            await waitForSync(persistence);
+        } catch { /* no-op in Node */ }
+    }
+
     let token = "";
     try {
         token = await getFreshIdToken();
@@ -400,19 +412,19 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         params: token ? { auth: token } : undefined,
         connect: wsEnabled,
     });
-    (provider as any).__wsDisabled = !wsEnabled;
+    (provider as WebsocketProvider & { __wsDisabled?: boolean; }).__wsDisabled = !wsEnabled;
     if (!wsEnabled) {
         try {
-            (provider as any).connect = () => {};
+            (provider as WebsocketProvider & { connect: () => void; }).connect = () => {};
         } catch {}
     } else {
         // 明示接続: 稀に connect: true が反映されないケースがあるため冪等に connect() を呼ぶ
         try {
-            (provider as any).connect?.();
+            (provider as WebsocketProvider & { connect?: () => void; }).connect?.();
         } catch {}
     }
     // Debug hook (guarded)
-    attachConnDebug(room, provider, provider.awareness as unknown as Awareness, doc);
+    attachConnDebug(room, provider, provider.awareness, doc);
     const dispose = () => {
         try {
             provider.destroy();

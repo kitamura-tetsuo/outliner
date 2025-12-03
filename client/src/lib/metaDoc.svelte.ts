@@ -6,6 +6,7 @@ import * as Y from "yjs";
 export const metaDoc = new Y.Doc();
 
 // IndexedDB persistence for local-only storage
+// Use a separate database name from container Y.Docs to avoid conflicts
 const persistence = new IndexeddbPersistence("outliner-meta", metaDoc);
 
 // Y.Map structure for storing container metadata
@@ -14,6 +15,7 @@ export const containersMap = metaDoc.getMap("containers");
 // Type for container metadata
 interface ContainerMetadata {
     title: string;
+    lastOpenedAt?: number;
 }
 
 /**
@@ -35,6 +37,29 @@ export function setContainerTitleInMetaDoc(containerId: string, title: string): 
     containersMap.set(containerId, { title } as ContainerMetadata);
 }
 
+/**
+ * Update the last opened timestamp for a container
+ * @param containerId - The container ID to update
+ */
+export function updateLastOpenedAt(containerId: string): void {
+    const containerData = containersMap.get(containerId) as ContainerMetadata | undefined;
+    const currentTitle = containerData?.title || "";
+    containersMap.set(containerId, {
+        title: currentTitle,
+        lastOpenedAt: Date.now(),
+    } as ContainerMetadata);
+}
+
+/**
+ * Get last opened timestamp for a container
+ * @param containerId - The container ID to look up
+ * @returns The timestamp or undefined if not found
+ */
+export function getLastOpenedAt(containerId: string): number | undefined {
+    const containerData = containersMap.get(containerId) as ContainerMetadata | undefined;
+    return containerData?.lastOpenedAt;
+}
+
 // Log initialization status
 if (typeof window !== "undefined") {
     console.log("[metaDoc] Initialized metadata Y.Doc with IndexedDB persistence");
@@ -44,6 +69,7 @@ if (typeof window !== "undefined") {
         console.log("[metaDoc] IndexedDB data loaded");
     });
 }
+
 // Expose metaDoc functions to window for E2E testing
 if (typeof window !== "undefined") {
     const isTestEnv = import.meta.env.MODE === "test"
@@ -56,10 +82,14 @@ if (typeof window !== "undefined") {
             __META_DOC_MODULE__?: {
                 setContainerTitleInMetaDoc: typeof setContainerTitleInMetaDoc;
                 getContainerTitleFromMetaDoc: typeof getContainerTitleFromMetaDoc;
+                updateLastOpenedAt: typeof updateLastOpenedAt;
+                getLastOpenedAt: typeof getLastOpenedAt;
             };
         }).__META_DOC_MODULE__ = {
             setContainerTitleInMetaDoc,
             getContainerTitleFromMetaDoc,
+            updateLastOpenedAt,
+            getLastOpenedAt,
         };
     }
 }

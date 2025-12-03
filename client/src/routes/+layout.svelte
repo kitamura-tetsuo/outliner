@@ -5,6 +5,8 @@ import { page } from "$app/stores";
 import { getLogger } from "$lib/logger";
 import { store as appStore } from "../stores/store.svelte";
 import { Project } from "../schema/app-schema";
+import type { Item } from "../schema/app-schema";
+import type { GeneralStore } from "../stores/store.svelte";
 import {
     onDestroy,
     onMount,
@@ -42,8 +44,10 @@ let isAuthenticated = $state(false);
 
 // グローバルへのフォールバック公開（早期に window.generalStore を満たす）
 if (browser) {
-    (window as any).generalStore = (window as any).generalStore || appStore;
-    (window as any).appStore = (window as any).appStore || appStore;
+    (window as Window & typeof globalThis & { generalStore?: GeneralStore; appStore?: GeneralStore }).generalStore =
+        (window as Window & typeof globalThis & { generalStore?: GeneralStore; appStore?: GeneralStore }).generalStore || appStore;
+    (window as Window & typeof globalThis & { generalStore?: GeneralStore; appStore?: GeneralStore }).appStore =
+        (window as Window & typeof globalThis & { generalStore?: GeneralStore; appStore?: GeneralStore }).appStore || appStore;
 }
 // URL からプロジェクト/ページを初期化して window.generalStore.project と currentPage を満たす
 if (browser) {
@@ -52,28 +56,28 @@ if (browser) {
         const projectTitle = decodeURIComponent(parts[0] || "Untitled Project");
         const pageTitle = decodeURIComponent(parts[1] || "");
 
-        if (!(appStore as any).project) {
-            (appStore as any).project = (Project as any).createInstance(projectTitle);
+        if (!appStore.project) {
+            appStore.project = Project.createInstance(projectTitle);
             console.log("INIT: Provisional Project set in +layout.svelte", { projectTitle, pageTitle });
         }
 
         // currentPage が未設定で、URL に pageTitle がある場合は準備
-        if (pageTitle && !(appStore as any).currentPage && (appStore as any).project) {
+        if (pageTitle && !appStore.currentPage && appStore.project) {
             try {
-                const itemsAny: any = (appStore as any).project.items;
+                const items = appStore.project.items;
                 // 既存ページにタイトル一致があるかチェック
-                let found: any = null;
-                const len = itemsAny?.length ?? 0;
+                let found: Item | null = null;
+                const len = items?.length ?? 0;
                 for (let i = 0; i < len; i++) {
-                    const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
+                    const p = items.at ? items.at(i) : items[i];
                     const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                     if (String(t).toLowerCase() === String(pageTitle).toLowerCase()) { found = p; break; }
                 }
                 if (!found) {
-                    found = itemsAny?.addNode?.("tester");
+                    found = items?.addNode?.("tester");
                     found?.updateText?.(pageTitle);
                 }
-                if (found) (appStore as any).currentPage = found;
+                if (found) appStore.currentPage = found;
             } catch {}
         }
     } catch {}
@@ -83,10 +87,10 @@ if (browser) {
 function ensureCurrentPageByRoute(pj: string, pg: string) {
     try {
         if (!browser || !pg) return;
-        const gs: any = appStore;
+        const gs = appStore;
         if (!gs?.project) return;
-        const items: any = gs.project.items;
-        let found: any = null;
+        const items = gs.project.items;
+        let found: Item | null = null;
         const len = items?.length ?? 0;
         for (let i = 0; i < len; i++) {
             const p = items.at ? items.at(i) : items[i];

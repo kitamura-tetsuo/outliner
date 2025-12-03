@@ -1,0 +1,62 @@
+id: FTR-7fa5a073
+title: Local Y.Doc Caching and Offline Editing
+title-ja: ローカルY.Docキャッシュとオフライン編集
+description: 'Full Y.Doc content for each container is persisted locally in IndexedDB, enabling offline editing and fast reconnection without requiring a backend. Every outliner container''s Y.Doc (Yjs document) is automatically cached in the browser''s IndexedDB, allowing users to edit containers without an internet connection and restore content instantly from local cache on page reload.
+
+  '
+category: persistence
+status: implemented
+components:
+- src/lib/metaDoc.svelte.ts
+- src/lib/yjsPersistence.ts
+- src/lib/yjsService.svelte.ts
+services:
+- y-indexeddb (IndexedDB persistence)
+tests:
+- client/e2e/ydoc-persistence.spec.ts
+- client/src/lib/yjsPersistence.test.ts
+acceptance:
+- Changes merge correctly when connectivity is restored (via Yjs CRDT)
+- Container content is restored instantly from local cache on page reload
+- Load sequence prioritizes local cache before any backend synchronization
+- Metadata Y.Doc integration allows dropdown title display to work correctly
+- Multiple containers maintain independent caches
+- Offline edits are persisted locally and survive browser restarts
+- Users can edit containers while offline without network connectivity
+- Y.Doc content is automatically cached in IndexedDB for each container
+implementation:
+  storage: 'IndexedDB via `y-indexeddb` library with database schema:
+
+    - Container Y.Docs: `"container-<containerId>"` database name
+
+    - Metadata Y.Doc: `"outliner-meta"` database name (from #1061)
+
+    '
+  auto_save: 'Changes are persisted automatically on every Y.Doc update via
+
+    y-indexeddb''s built-in persistence mechanism
+
+    '
+  load_sequence: '1. Create new Y.Doc instance
+
+    2. Attach IndexedDB persistence with container-specific key
+
+    3. Wait for initial sync from IndexedDB
+
+    4. Bind editor to restored Y.Doc state
+
+    5. Apply any remote updates (when backend available)
+
+    '
+  integration_with_metadata_cache: "The full Y.Doc caching works alongside the metadata cache:\n- Metadata Y.Doc: Stores container titles and lightweight metadata\n- Full Y.Doc cache: Stores complete document content\n- Shared container IDs: Both use the same container identifier scheme\n- Title resolution priority:\n  1. Metadata Y.Doc title\n  2. Live project title\n  3. Container ID fallback\n"
+related_issues:
+- '#1061: Metadata Y.Doc for container titles (parent design reference)'
+- '#1083: Create IndexedDB persistence wrapper module'
+- '#1084: Integrate IndexedDB persistence into container creation'
+- '#1086: Add unit tests for Y.Doc persistence and cache restoration'
+- '#1087: Add E2E tests for offline editing and cache restoration'
+future_enhancements:
+- Backend synchronization provider
+- Multi-device sync via remote provider
+- Cache size limits and cleanup policies
+- Advanced merge conflict resolution UI
