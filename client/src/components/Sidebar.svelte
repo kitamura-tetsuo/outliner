@@ -124,7 +124,20 @@
 
         <div class="sidebar-section">
             <h3 class="sidebar-section-title">Settings</h3>
-            <p class="sidebar-placeholder">Settings link will be implemented here</p>
+            <div
+                class="settings-link"
+                onclick={() => goto("/settings")}
+                role="button"
+                tabindex="0"
+                onkeydown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        goto("/settings");
+                    }
+                }}
+            >
+                <span class="settings-text">Settings</span>
+            </div>
         </div>
     </div>
 </aside>
@@ -299,6 +312,26 @@
         flex-shrink: 0;
     }
 
+    .settings-link {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        border-radius: 4px;
+        background-color: rgba(0, 0, 0, 0.02);
+        margin-top: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .settings-link:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .settings-text {
+        font-size: 0.875rem;
+        color: #374151;
+    }
+
     :global(html.dark) .project-item {
         background-color: rgba(255, 255, 255, 0.05);
     }
@@ -347,5 +380,17 @@
 
     :global(html.dark) .sidebar-placeholder {
         color: #6b7280;
+    }
+
+    :global(html.dark) .settings-link {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    :global(html.dark) .settings-link:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    :global(html.dark) .settings-text {
+        color: #e5e7eb;
     }
 </style>
