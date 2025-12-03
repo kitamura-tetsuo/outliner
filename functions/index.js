@@ -31,6 +31,7 @@ if (!process.env.FUNCTIONS_EMULATOR) {
 }
 
 const { onRequest } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 
 const admin = require("firebase-admin");
@@ -162,6 +163,18 @@ async function checkContainerAccess(userId, containerId) {
     logger.info(
       `Checking container access for user: ${userId}, container: ${containerId}`,
     );
+
+    // 削除済みプロジェクトの場合はアクセスを拒否
+    const projectDoc = await db.collection("projects").doc(containerId).get();
+    if (projectDoc.exists) {
+      const projectData = projectDoc.data();
+      if (projectData.deletedAt) {
+        logger.info(
+          `Access denied: project ${containerId} is deleted`,
+        );
+        return false;
+      }
+    }
 
     // Check if user is in containerUsers collection
     const containerUserDoc = await db.collection("containerUsers").doc(
@@ -655,6 +668,513 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
   } catch (error) {
     logger.error(`Error deleting container: ${error.message}`, { error });
     return res.status(500).json({ error: "Failed to delete container" });
+  }
+});
+
+// プロジェクトを論理削除（ゴミ箱に移動）するエンドポイント
+exports.deleteProject = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    const { idToken, containerId } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ error: "ID token is required" });
+    }
+
+    if (!containerId) {
+      return res.status(400).json({ error: "Container ID is required" });
+    }
+
+    // Firebaseトークンを検証
+    const isEmulatorEnv = !!(
+      process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FUNCTIONS_EMULATOR === "true"
+    );
+
+    let userId;
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(
+        idToken,
+        !isEmulatorEnv,
+      );
+      userId = decodedToken.uid;
+
+      logger.info(
+        `deleteProject: Token verified successfully for user: ${userId} (emulator: ${isEmulatorEnv})`,
+      );
+    } catch (tokenError) {
+      logger.error(
+        `deleteProject: Token verification failed: ${tokenError.message}`,
+      );
+
+      if (
+        isEmulatorEnv &&
+        idToken &&
+        typeof idToken === "string" &&
+        idToken.length > 0
+      ) {
+        logger.warn(
+          "deleteProject: Using fallback emulator user ID due to token verification failure",
+        );
+        userId = "test-emulator-user";
+      } else {
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
+    }
+
+    // ユーザーがコンテナにアクセス権を持っているかチェック
+    const hasAccess = await checkContainerAccess(userId, containerId);
+    if (!hasAccess) {
+      logger.warn(
+        `Access denied for user ${userId} to container ${containerId}`,
+      );
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // プロジェクトを論理削除
+    const projectDocRef = db.collection("projects").doc(containerId);
+    const projectDoc = await projectDocRef.get();
+
+    if (!projectDoc.exists) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    const projectData = projectDoc.data();
+
+    // 既に削除済みの場合は何もしない
+    if (projectData.deletedAt) {
+      return res.status(200).json({
+        success: true,
+        message: "Project is already deleted",
+      });
+    }
+
+    // プロジェクト所有者のみ削除可能
+    if (projectData.ownerId !== userId) {
+      logger.warn(
+        `Only project owner can delete project. Owner: ${projectData.ownerId}, Requester: ${userId}`,
+      );
+      return res.status(403).json({
+        error: "Only project owner can delete the project",
+      });
+    }
+
+    await projectDocRef.update({
+      deletedAt: FieldValue.serverTimestamp(),
+      deletedBy: userId,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    logger.info(
+      `Project ${containerId} deleted logically by user ${userId}`,
+    );
+
+    return res.status(200).json({
+      success: true,
+      containerId,
+      message: "Project moved to trash",
+    });
+  } catch (error) {
+    logger.error(`Error deleting project: ${error.message}`, { error });
+    return res.status(500).json({
+      error: "Failed to delete project",
+    });
+  }
+});
+
+// 削除されたプロジェクトを復元するエンドポイント
+exports.restoreProject = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    const { idToken, containerId } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ error: "ID token is required" });
+    }
+
+    if (!containerId) {
+      return res.status(400).json({ error: "Container ID is required" });
+    }
+
+    // Firebaseトークンを検証
+    const isEmulatorEnv = !!(
+      process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FUNCTIONS_EMULATOR === "true"
+    );
+
+    let userId;
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(
+        idToken,
+        !isEmulatorEnv,
+      );
+      userId = decodedToken.uid;
+
+      logger.info(
+        `restoreProject: Token verified successfully for user: ${userId} (emulator: ${isEmulatorEnv})`,
+      );
+    } catch (tokenError) {
+      logger.error(
+        `restoreProject: Token verification failed: ${tokenError.message}`,
+      );
+
+      if (
+        isEmulatorEnv &&
+        idToken &&
+        typeof idToken === "string" &&
+        idToken.length > 0
+      ) {
+        logger.warn(
+          "restoreProject: Using fallback emulator user ID due to token verification failure",
+        );
+        userId = "test-emulator-user";
+      } else {
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
+    }
+
+    // ユーザーがコンテナにアクセス権を持っているかチェック
+    const hasAccess = await checkContainerAccess(userId, containerId);
+    if (!hasAccess) {
+      logger.warn(
+        `Access denied for user ${userId} to container ${containerId}`,
+      );
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // プロジェクトを復元
+    const projectDocRef = db.collection("projects").doc(containerId);
+    const projectDoc = await projectDocRef.get();
+
+    if (!projectDoc.exists) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    const projectData = projectDoc.data();
+
+    // 削除されていない場合は何もしない
+    if (!projectData.deletedAt) {
+      return res.status(200).json({
+        success: true,
+        message: "Project is not deleted",
+      });
+    }
+
+    // プロジェクト所有者のみ復元可能
+    if (projectData.ownerId !== userId) {
+      logger.warn(
+        `Only project owner can restore project. Owner: ${projectData.ownerId}, Requester: ${userId}`,
+      );
+      return res.status(403).json({
+        error: "Only project owner can restore the project",
+      });
+    }
+
+    await projectDocRef.update({
+      deletedAt: FieldValue.delete(),
+      deletedBy: FieldValue.delete(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    logger.info(
+      `Project ${containerId} restored by user ${userId}`,
+    );
+
+    return res.status(200).json({
+      success: true,
+      containerId,
+      message: "Project restored",
+    });
+  } catch (error) {
+    logger.error(`Error restoring project: ${error.message}`, { error });
+    return res.status(500).json({
+      error: "Failed to restore project",
+    });
+  }
+});
+
+// プロジェクトを完全に削除するエンドポイント
+exports.permanentlyDeleteProject = onRequest(
+  { cors: true },
+  async (req, res) => {
+    setCorsHeaders(req, res);
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
+    try {
+      const { idToken, containerId } = req.body;
+
+      if (!idToken) {
+        return res.status(400).json({ error: "ID token is required" });
+      }
+
+      if (!containerId) {
+        return res.status(400).json({ error: "Container ID is required" });
+      }
+
+      // Firebaseトークンを検証
+      const isEmulatorEnv = !!(
+        process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+        process.env.FUNCTIONS_EMULATOR === "true"
+      );
+
+      let userId;
+      try {
+        const decodedToken = await admin.auth().verifyIdToken(
+          idToken,
+          !isEmulatorEnv,
+        );
+        userId = decodedToken.uid;
+
+        logger.info(
+          `permanentlyDeleteProject: Token verified successfully for user: ${userId} (emulator: ${isEmulatorEnv})`,
+        );
+      } catch (tokenError) {
+        logger.error(
+          `permanentlyDeleteProject: Token verification failed: ${tokenError.message}`,
+        );
+
+        if (
+          isEmulatorEnv &&
+          idToken &&
+          typeof idToken === "string" &&
+          idToken.length > 0
+        ) {
+          logger.warn(
+            "permanentlyDeleteProject: Using fallback emulator user ID due to token verification failure",
+          );
+          userId = "test-emulator-user";
+        } else {
+          throw new Error(`Authentication failed: ${tokenError.message}`);
+        }
+      }
+
+      // ユーザーがコンテナにアクセス権を持っているかチェック
+      const hasAccess = await checkContainerAccess(userId, containerId);
+      if (!hasAccess) {
+        logger.warn(
+          `Access denied for user ${userId} to container ${containerId}`,
+        );
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // プロジェクトを完全に削除
+      const projectDocRef = db.collection("projects").doc(containerId);
+      const projectDoc = await projectDocRef.get();
+
+      if (!projectDoc.exists) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const projectData = projectDoc.data();
+
+      // プロジェクト所有者のみ完全削除可能
+      if (projectData.ownerId !== userId) {
+        logger.warn(
+          `Only project owner can permanently delete project. Owner: ${projectData.ownerId}, Requester: ${userId}`,
+        );
+        return res.status(403).json({
+          error: "Only project owner can permanently delete the project",
+        });
+      }
+
+      // 論理削除されていないプロジェクトは完全削除不可（誤操作防止）
+      if (!projectData.deletedAt) {
+        return res.status(400).json({
+          error: "Project must be logically deleted before permanent deletion",
+        });
+      }
+
+      // Firestoreトランザクションを使用してプロジェクト関連データを完全削除
+      await db.runTransaction(async transaction => {
+        // コンテナ情報を取得
+        const containerDocRef = db.collection("containerUsers").doc(
+          containerId,
+        );
+        const containerDoc = await transaction.get(containerDocRef);
+
+        if (containerDoc.exists) {
+          const containerData = containerDoc.data();
+          const accessibleUserIds = containerData.accessibleUserIds || [];
+
+          // コンテナにアクセスできる各ユーザーから、コンテナIDを削除
+          for (const accessUserId of accessibleUserIds) {
+            const userDocRef = userContainersCollection.doc(accessUserId);
+            const userDoc = await transaction.get(userDocRef);
+
+            if (userDoc.exists) {
+              const userData = userDoc.data();
+              const accessibleContainerIds = userData.accessibleContainerIds ||
+                [];
+
+              // コンテナIDを削除
+              const updatedContainerIds = accessibleContainerIds.filter(
+                id => id !== containerId,
+              );
+
+              // デフォルトコンテナの更新
+              let defaultContainerId = userData.defaultContainerId;
+              if (defaultContainerId === containerId) {
+                defaultContainerId = updatedContainerIds.length > 0
+                  ? updatedContainerIds[0] : null;
+              }
+
+              transaction.update(userDocRef, {
+                accessibleContainerIds: updatedContainerIds,
+                defaultContainerId: defaultContainerId,
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+            }
+          }
+
+          // コンテナドキュメントを削除
+          transaction.delete(containerDocRef);
+        }
+
+        // プロジェクトドキュメントを削除
+        transaction.delete(projectDocRef);
+      });
+
+      logger.info(
+        `Project ${containerId} permanently deleted by user ${userId}`,
+      );
+
+      return res.status(200).json({
+        success: true,
+        containerId,
+        message: "Project permanently deleted",
+      });
+    } catch (error) {
+      logger.error(
+        `Error permanently deleting project: ${error.message}`,
+        { error },
+      );
+      return res.status(500).json({
+        error: "Failed to permanently delete project",
+      });
+    }
+  },
+);
+
+// 削除されたプロジェクト一覧を取得するエンドポイント（ゴミ箱用）
+exports.listDeletedProjects = onRequest({ cors: true }, async (req, res) => {
+  setCorsHeaders(req, res);
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    // URLクエリパラメータからidTokenを取得
+    const idToken = req.query.idToken;
+
+    if (!idToken) {
+      return res.status(400).json({ error: "ID token is required" });
+    }
+
+    // Firebaseトークンを検証
+    const isEmulatorEnv = !!(
+      process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FUNCTIONS_EMULATOR === "true"
+    );
+
+    let userId;
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(
+        idToken,
+        !isEmulatorEnv,
+      );
+      userId = decodedToken.uid;
+
+      logger.info(
+        `listDeletedProjects: Token verified successfully for user: ${userId} (emulator: ${isEmulatorEnv})`,
+      );
+    } catch (tokenError) {
+      logger.error(
+        `listDeletedProjects: Token verification failed: ${tokenError.message}`,
+      );
+
+      if (
+        isEmulatorEnv &&
+        idToken &&
+        typeof idToken === "string" &&
+        idToken.length > 0
+      ) {
+        logger.warn(
+          "listDeletedProjects: Using fallback emulator user ID due to token verification failure",
+        );
+        userId = "test-emulator-user";
+      } else {
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
+    }
+
+    // 削除済みプロジェクトを一覧取得（所有者のみ）
+    const deletedProjectsQuery = await db
+      .collection("projects")
+      .where("ownerId", "==", userId)
+      .where("deletedAt", ">", 0) // deletedAtが設定されている документы
+      .orderBy("deletedAt", "desc")
+      .get();
+
+    const deletedProjects = [];
+    deletedProjectsQuery.forEach(doc => {
+      const data = doc.data();
+      deletedProjects.push({
+        containerId: doc.id,
+        title: data.title,
+        ownerId: data.ownerId,
+        deletedAt: data.deletedAt ? data.deletedAt.toDate() : null,
+        deletedBy: data.deletedBy,
+        createdAt: data.createdAt ? data.createdAt.toDate() : null,
+        updatedAt: data.updatedAt ? data.updatedAt.toDate() : null,
+      });
+    });
+
+    logger.info(
+      `Found ${deletedProjects.length} deleted projects for user ${userId}`,
+    );
+
+    return res.status(200).json({
+      success: true,
+      projects: deletedProjects,
+    });
+  } catch (error) {
+    logger.error(
+      `Error listing deleted projects: ${error.message}`,
+      { error },
+    );
+    return res.status(500).json({
+      error: "Failed to list deleted projects",
+    });
   }
 });
 
@@ -2087,6 +2607,15 @@ exports.renameProject = onRequest({ cors: true }, async (req, res) => {
       });
       logger.info(`Created new project document for container ${containerId}`);
     } else {
+      const projectData = projectDoc.data();
+
+      // 削除済みプロジェクトは名前を変更できない
+      if (projectData.deletedAt) {
+        return res.status(400).json({
+          error: "Cannot rename a deleted project",
+        });
+      }
+
       // 既存ドキュメントの場合はタイトルを更新
       await projectDocRef.update({
         title: newTitle,
@@ -2107,5 +2636,133 @@ exports.renameProject = onRequest({ cors: true }, async (req, res) => {
     return res.status(500).json({
       error: "Failed to rename project",
     });
+  }
+});
+
+// スケジュール実行: 削除済みプロジェクトを自動パージ（30日超過）
+exports.purgeDeletedProjects = onSchedule({
+  schedule: "every day 03:00", // 毎日午前3時に実行
+  timeZone: "Asia/Tokyo",
+  memory: "512MiB",
+  maxInstances: 1,
+}, async event => {
+  logger.info("Starting purge of deleted projects older than 30 days");
+
+  try {
+    const db = admin.firestore();
+
+    // 30日前のタイムスタンプを計算
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    logger.info(
+      `Looking for projects deleted before: ${thirtyDaysAgo.toISOString()}`,
+    );
+
+    // 30日以内に削除されていないプロジェクトを検索
+    const deletedProjectsQuery = await db
+      .collection("projects")
+      .where("deletedAt", ">", 0) // deletedAtが設定されている документы
+      .get();
+
+    let purgedCount = 0;
+    const errors = [];
+
+    for (const doc of deletedProjectsQuery.docs) {
+      const data = doc.data();
+      const deletedAt = data.deletedAt ? data.deletedAt.toDate() : null;
+
+      // deletedAtが存在し、30日超過の場合
+      if (deletedAt && deletedAt < thirtyDaysAgo) {
+        try {
+          const containerId = doc.id;
+          logger.info(
+            `Purging project ${containerId} (deleted at ${deletedAt.toISOString()})`,
+          );
+
+          // Firestoreトランザクションを使用してプロジェクト関連データを完全削除
+          await db.runTransaction(async transaction => {
+            // コンテナ情報を取得
+            const containerDocRef = db.collection("containerUsers").doc(
+              containerId,
+            );
+            const containerDoc = await transaction.get(containerDocRef);
+
+            if (containerDoc.exists) {
+              const containerData = containerDoc.data();
+              const accessibleUserIds = containerData.accessibleUserIds || [];
+
+              // コンテナにアクセスできる各ユーザーから、コンテナIDを削除
+              for (const accessUserId of accessibleUserIds) {
+                const userDocRef = userContainersCollection.doc(accessUserId);
+                const userDoc = await transaction.get(userDocRef);
+
+                if (userDoc.exists) {
+                  const userData = userDoc.data();
+                  const accessibleContainerIds =
+                    userData.accessibleContainerIds || [];
+
+                  // コンテナIDを削除
+                  const updatedContainerIds = accessibleContainerIds.filter(
+                    id => id !== containerId,
+                  );
+
+                  // デフォルトコンテナの更新
+                  let defaultContainerId = userData.defaultContainerId;
+                  if (defaultContainerId === containerId) {
+                    defaultContainerId = updatedContainerIds.length > 0
+                      ? updatedContainerIds[0] : null;
+                  }
+
+                  transaction.update(userDocRef, {
+                    accessibleContainerIds: updatedContainerIds,
+                    defaultContainerId: defaultContainerId,
+                    updatedAt: FieldValue.serverTimestamp(),
+                  });
+                }
+              }
+
+              // コンテナドキュメントを削除
+              transaction.delete(containerDocRef);
+            }
+
+            // プロジェクトドキュメントを削除
+            transaction.delete(doc.ref);
+          });
+
+          purgedCount++;
+          logger.info(`Successfully purged project ${containerId}`);
+        } catch (purgeError) {
+          logger.error(
+            `Error purging project ${doc.id}: ${purgeError.message}`,
+            { error: purgeError },
+          );
+          errors.push({
+            projectId: doc.id,
+            error: purgeError.message,
+          });
+        }
+      }
+    }
+
+    logger.info(
+      `Purge completed. Projects purged: ${purgedCount}, Errors: ${errors.length}`,
+    );
+
+    // エラーがある場合はログ出力
+    if (errors.length > 0) {
+      logger.error("Errors during purge:", { errors });
+    }
+
+    return {
+      success: true,
+      purgedCount,
+      errorsCount: errors.length,
+      errors: errors.slice(0, 10), // 最大10個の誤差を記録
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error) {
+    logger.error(`Fatal error during purge: ${error.message}`, { error });
+    throw error;
   }
 });
