@@ -1,0 +1,14 @@
+id: PRJ-0001
+title: Project Renaming Feature
+description: Allows users to rename projects through the settings page. Users can update their project title, and the changes are synchronized with the backend database.
+category: project
+status: implemented
+acceptance:
+- プロジェクト名の変更はリアルタイムで反映される
+- プロジェクト設定ページでプロジェクト名を変更できる
+- 変更成功時に確認メッセージが表示される
+- 新しいプロジェクト名がデータベースに保存される
+- 空のプロジェクト名や現在と同じ名前ではエラーメッセージが表示される
+tests:
+- client/e2e/core/prj-rename-project-4c7e38c8.spec.ts
+title-ja: プロジェクト名の変更機能

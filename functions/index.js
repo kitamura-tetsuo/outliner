@@ -1998,3 +1998,78 @@ exports.deleteAllProductionData = onRequest(
     }
   },
 );
+
+// プロジェクト名を変更するエンドポイント
+exports.renameProject = onRequest({ cors: true }, async (req, res) => {
+  // CORS設定
+  setCorsHeaders(req, res);
+
+  // プリフライト OPTIONS リクエストの処理
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  // POSTメソッド以外は拒否
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    const { idToken, containerId, newTitle } = req.body;
+
+    if (!containerId || !newTitle) {
+      return res.status(400).json({
+        error: "Container ID and new title are required",
+      });
+    }
+
+    // Firebaseトークンを検証
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
+
+    // ユーザーがコンテナにアクセス権を持っているかチェック
+    const hasAccess = await checkContainerAccess(userId, containerId);
+    if (!hasAccess) {
+      logger.warn(
+        `Access denied for user ${userId} to container ${containerId}`,
+      );
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Firestoreのプロジェクト情報を更新
+    const projectDocRef = db.collection("projects").doc(containerId);
+    const projectDoc = await projectDocRef.get();
+
+    if (!projectDoc.exists) {
+      // プロジェクトドキュメントが存在しない場合は作成
+      await projectDocRef.set({
+        containerId,
+        title: newTitle,
+        ownerId: userId,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      logger.info(`Created new project document for container ${containerId}`);
+    } else {
+      // 既存ドキュメントの場合はタイトルを更新
+      await projectDocRef.update({
+        title: newTitle,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      logger.info(
+        `Updated project title for container ${containerId} to "${newTitle}"`,
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      containerId,
+      title: newTitle,
+    });
+  } catch (error) {
+    logger.error(`Error renaming project: ${error.message}`, { error });
+    return res.status(500).json({
+      error: "Failed to rename project",
+    });
+  }
+});

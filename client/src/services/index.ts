@@ -48,3 +48,6 @@ export {
 
 // Attachment Service
 export { deleteAttachment, listAttachments, uploadAttachment } from "./attachmentService";
+
+// Project Service
+export { renameProject } from "./projectService";

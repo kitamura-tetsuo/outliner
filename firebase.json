@@ -132,6 +132,10 @@
                 "function": "debugUserContainers"
             },
             {
+                "source": "/api/rename-project",
+                "function": "renameProject"
+            },
+            {
                 "source": "**",
                 "destination": "/index.html"
             }
