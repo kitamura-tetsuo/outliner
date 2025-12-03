@@ -26,7 +26,6 @@ export async function renameProject(containerId: string, newTitle: string): Prom
         }
 
         // Firebase Functionsを呼び出してプロジェクト名を変更
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
         const response = await fetch(getFirebaseFunctionUrl("renameProject"), {
             method: "POST",
             headers: {

@@ -35,6 +35,9 @@ declare global {
         clipboard?: {
             writeText?: (text: string) => Promise<void>;
         };
+        ALIAS_PICKER_SHOW_COUNT?: number;
+        aliasPickerStore?: unknown;
+        editorOverlayStore?: unknown;
     }
 }
 

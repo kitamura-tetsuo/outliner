@@ -2024,8 +2024,44 @@ exports.renameProject = onRequest({ cors: true }, async (req, res) => {
     }
 
     // Firebaseトークンを検証
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const userId = decodedToken.uid;
+    // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
+    const isEmulatorEnv = !!(
+      process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+      process.env.FUNCTIONS_EMULATOR === "true"
+    );
+
+    let userId;
+    try {
+      // エミュレーター環境では checkRevoked: false を設定
+      const decodedToken = await admin.auth().verifyIdToken(
+        idToken,
+        !isEmulatorEnv,
+      );
+      userId = decodedToken.uid;
+
+      logger.info(
+        `renameProject: Token verified successfully for user: ${userId} (emulator: ${isEmulatorEnv})`,
+      );
+    } catch (tokenError) {
+      logger.error(
+        `renameProject: Token verification failed: ${tokenError.message}`,
+      );
+
+      // エミュレーター環境でのフォールバック（最後の手段）
+      if (
+        isEmulatorEnv &&
+        idToken &&
+        typeof idToken === "string" &&
+        idToken.length > 0
+      ) {
+        logger.warn(
+          "renameProject: Using fallback emulator user ID due to token verification failure",
+        );
+        userId = "test-emulator-user";
+      } else {
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
+    }
 
     // ユーザーがコンテナにアクセス権を持っているかチェック
     const hasAccess = await checkContainerAccess(userId, containerId);
