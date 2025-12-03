@@ -317,6 +317,50 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
         // すべての読み取り操作を先に実行
         const userDoc = await transaction.get(userDocRef);
         const containerDoc = await transaction.get(containerDocRef);
+        const projectDocRef = db.collection("projects").doc(containerId);
+        const projectDoc = await transaction.get(projectDocRef);
+
+        // プロジェクトが既に存在する場合、権限をチェック
+        if (projectDoc.exists) {
+          const projectData = projectDoc.data();
+          const permissions = projectData.permissions || [];
+
+          // ユーザーがプロジェクトの許可されたユーザーかチェック
+          const hasPermission = permissions.some(
+            p =>
+              p.userId === userId &&
+              (p.role === "owner" || p.role === "editor"),
+          );
+
+          if (!hasPermission) {
+            // 既存のプロジェクトの場合、許可されたユーザーのみがアクセス可能
+            const accessibleUserIds = containerDoc.data()?.accessibleUserIds ||
+              [];
+            if (!accessibleUserIds.includes(userId)) {
+              throw new Error(
+                "Access denied: User does not have permission to access this project",
+              );
+            }
+          }
+        } else {
+          // 新しいプロジェクトの場合、作成者を所有者として設定
+          const now = FieldValue.serverTimestamp();
+          transaction.set(projectDocRef, {
+            containerId,
+            title: "Untitled Project",
+            ownerId: userId,
+            permissions: [
+              {
+                userId,
+                role: "owner",
+                grantedAt: now,
+                grantedBy: userId,
+              },
+            ],
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
 
         // 読み取り完了後に書き込み操作を開始
         // ユーザーのデフォルトコンテナIDとアクセス可能なコンテナIDを更新
@@ -374,6 +418,14 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
           `${firestoreError.message}`,
         { error: firestoreError },
       );
+
+      if (firestoreError.message.includes("Access denied")) {
+        return res.status(403).json({
+          error:
+            "Access denied: User does not have permission to access this project",
+        });
+      }
+
       return res.status(500).json({
         error: "Database error while saving container ID",
       });
@@ -609,6 +661,23 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
           throw new Error("Access to the container is denied");
         }
 
+        // プロジェクトの権限をチェック（所有者のみ削除可能）
+        const projectDocRef = db.collection("projects").doc(containerId);
+        const projectDoc = await transaction.get(projectDocRef);
+
+        if (projectDoc.exists) {
+          const projectData = projectDoc.data();
+          const permissions = projectData.permissions || [];
+
+          const isOwner = permissions.some(
+            p => p.userId === userId && p.role === "owner",
+          );
+
+          if (!isOwner) {
+            throw new Error("Only project owner can delete the container");
+          }
+        }
+
         // コンテナにアクセスできる各ユーザーから、コンテナIDを削除
         for (const accessUserId of accessibleUserIds) {
           const userDocRef = userContainersCollection.doc(accessUserId);
@@ -658,6 +727,14 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
       if (firestoreError.message === "Access to the container is denied") {
         return res.status(403).json({
           error: "Access to the container is denied",
+        });
+      }
+
+      if (
+        firestoreError.message === "Only project owner can delete the container"
+      ) {
+        return res.status(403).json({
+          error: "Only project owner can delete the container",
         });
       }
 

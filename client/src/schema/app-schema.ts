@@ -489,6 +489,14 @@ export class Items implements Iterable<Item> {
     }
 }
 
+// ProjectPermission type
+export type ProjectPermission = {
+    userId: string;
+    role: "owner" | "editor" | "viewer";
+    grantedAt: number;
+    grantedBy: string;
+};
+
 // プロジェクト（Y.Doc）全体のラッパ
 export class Project {
     constructor(public readonly ydoc: Y.Doc, public readonly tree: YTree) {}
