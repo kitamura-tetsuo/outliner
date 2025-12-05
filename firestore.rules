@@ -1,44 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user has permission
-    function hasProjectPermission(containerId, requiredRole) {
-      let project = get(/databases/$(database)/documents/projects/$(containerId));
-      if (!project.data.permissions) {
-        // If no permissions array exists, allow access (backward compatibility)
-        return request.auth != null;
-      }
-
-      let userPermission = project.data.permissions.filter(p => p.userId == request.auth.uid);
-      if (userPermission.size() == 0) {
-        return false;
-      }
-
-      let userRole = userPermission[0].role;
-      let roleHierarchy = {
-        'viewer': 0,
-        'editor': 1,
-        'owner': 2
-      };
-
-      let userLevel = roleHierarchy[userRole];
-      let requiredLevel = roleHierarchy[requiredRole];
-
-      return userLevel >= requiredLevel;
-    }
-
-    // Projects collection
-    match /projects/{containerId} {
-      allow read: if hasProjectPermission(containerId, 'viewer');
-      allow create: if request.auth != null;
-      allow update: if hasProjectPermission(containerId, 'editor');
-      allow delete: if hasProjectPermission(containerId, 'owner');
-
-      // Allow updating permissions array only for owners
-      allow update: if hasProjectPermission(containerId, 'owner') &&
-        request.resource.data.permissions.size() == resource.data.permissions.size();
-    }
-
     // User containers collection
     match /userContainers/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
@@ -46,9 +8,13 @@ service cloud.firestore {
     }
 
     // Container users collection
-    match /containerUsers/{containerId} {
-      allow read: if hasProjectPermission(containerId, 'viewer');
-      allow write: if hasProjectPermission(containerId, 'owner');
+    match /containerUsers/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Projects collection
+    match /projects/{containerId} {
+      allow read, write: if request.auth != null;
     }
 
     // Pages collection (for schedules, etc.)

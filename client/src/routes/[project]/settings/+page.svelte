@@ -21,6 +21,13 @@ import {
     createSnapshotClient,
 } from "../../../lib/projectSnapshot";
 import type { Project, Items } from "../../../schema/app-schema";
+import ProjectPermissions from "../../../lib/components/ProjectPermissions.svelte";
+import { userManager } from "../../../auth/UserManager";
+import { canDelete } from "../../../lib/services/permissionService";
+import { getFirebaseFunctionUrl } from "../../../lib/firebaseFunctionsUrl";
+import { getLogger } from "../../../lib/logger";
+
+const logger = getLogger();
 
 interface PlainTreeItem {
     text: string;
@@ -35,6 +42,22 @@ let newProjectTitle = $state("");
 let isRenaming = $state(false);
 let renameError: string | undefined = $state(undefined);
 let renameSuccess: string | undefined = $state(undefined);
+
+// Delete project state
+let showDeleteDialog = $state(false);
+let deleteConfirmText = $state("");
+let isDeleting = $state(false);
+let deleteError: string | undefined = $state(undefined);
+let deleteSuccess: string | undefined = $state(undefined);
+
+// Permissions
+let permissions = $state<any[]>([]);
+let ownerId = $state("");
+
+// Current user
+let currentUser = $derived(userManager.getCurrentUser());
+let currentUserId = $derived(currentUser?.id || "");
+let canDeleteDerived = $derived(canDelete(permissions, currentUserId));
 
 function projectLooksLikePlaceholder(candidate: Project | undefined): boolean {
     if (!candidate) return true;
@@ -81,7 +104,7 @@ function hasMeaningfulContent(content: string | undefined): boolean {
     return true;
 }
 
-onMount(() => {
+onMount(async () => {
     // Try to get project from yjsStore first, then from store
     project = yjsStore.yjsClient?.getProject() || store.project;
     hydrateFromSnapshotIfNeeded();
@@ -89,7 +112,30 @@ onMount(() => {
     if (project) {
         newProjectTitle = project.title;
     }
+
+    // Load project permissions
+    await loadPermissions();
 });
+
+async function loadPermissions() {
+    try {
+        const containerId = $page.params.project;
+        if (!containerId) return;
+
+        // Fetch permissions from Firestore
+        // TODO: Implement actual permission loading from Firestore
+        // For now, set current user as owner for backward compatibility
+        permissions = [{
+            userId: currentUserId,
+            role: "owner",
+            grantedAt: Date.now(),
+            grantedBy: currentUserId
+        }];
+        ownerId = currentUserId;
+    } catch (err) {
+        logger.error("Error loading permissions:", err);
+    }
+}
 
 // プロジェクト名を変更する関数
 async function doRenameProject() {
@@ -311,6 +357,71 @@ function exportMarkdown() {
 function exportOpml() {
     doExport("opml");
 }
+
+// Delete project functions
+function openDeleteDialog() {
+    showDeleteDialog = true;
+    deleteConfirmText = "";
+    deleteError = undefined;
+    deleteSuccess = undefined;
+}
+
+function closeDeleteDialog() {
+    showDeleteDialog = false;
+    deleteConfirmText = "";
+    deleteError = undefined;
+}
+
+async function doDeleteProject() {
+    if (!project || !canDeleteDerived) {
+        return;
+    }
+
+    const projectTitle = project.title;
+    if (deleteConfirmText !== projectTitle) {
+        deleteError = "プロジェクト名が一致しません";
+        return;
+    }
+
+    isDeleting = true;
+    deleteError = undefined;
+    deleteSuccess = undefined;
+
+    try {
+        const containerId = $page.params.project;
+
+        // Call the delete API
+        const response = await fetch(getFirebaseFunctionUrl("deleteProject"), {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                idToken: await userManager.auth.currentUser?.getIdToken(),
+                containerId,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        deleteSuccess = `プロジェクト「${projectTitle}」を削除しました`;
+
+        // Wait a bit to show the success message before closing dialog
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        showDeleteDialog = false;
+
+        // Redirect to home page
+        await goto("/");
+    } catch (err) {
+        logger.error("Error deleting project:", err);
+        deleteError = "プロジェクトの削除に失敗しました";
+    } finally {
+        isDeleting = false;
+    }
+}
 </script>
 
 <h2>Project Settings</h2>
@@ -355,6 +466,98 @@ function exportOpml() {
         </div>
     {/if}
 </div>
+
+<!-- Project Permissions -->
+{#if project}
+    <div class="permissions-section">
+        <ProjectPermissions
+            containerId={$page.params.project || ""}
+            permissions={permissions}
+            ownerId={ownerId}
+        />
+    </div>
+{/if}
+
+<!-- Delete Project Section -->
+{#if canDeleteDerived && project}
+    <div class="delete-section">
+        <h3>危険な操作</h3>
+        <p class="warning-text">
+            この操作は取り消すことができません。プロジェクトを削除すると、すべてのデータが失われます。
+        </p>
+
+        {#if deleteSuccess}
+            <div class="success-message" role="alert" data-testid="delete-success">
+                {deleteSuccess}
+            </div>
+        {/if}
+
+        <button
+            onclick={openDeleteDialog}
+            class="delete-button"
+            data-testid="delete-project-button"
+        >
+            プロジェクトを削除
+        </button>
+    </div>
+{/if}
+
+<!-- Delete Confirmation Dialog -->
+{#if showDeleteDialog}
+    <div class="dialog-overlay" onclick={closeDeleteDialog}>
+        <div class="dialog" data-testid="delete-project-dialog" onclick={(e) => e.stopPropagation()}>
+            <h3>プロジェクトの削除</h3>
+            <p>
+                本当にこのプロジェクトを削除しますか？この操作は取り消せません。
+            </p>
+            <p>
+                確認のため、プロジェクト名「<strong>{project?.title}</strong>」を入力してください。
+            </p>
+
+            {#if deleteError}
+                <div class="error-message" role="alert">
+                    {deleteError}
+                </div>
+            {/if}
+
+            {#if deleteSuccess}
+                <div class="success-message" role="alert" data-testid="delete-success">
+                    {deleteSuccess}
+                </div>
+            {/if}
+
+            <input
+                type="text"
+                bind:value={deleteConfirmText}
+                placeholder="プロジェクト名を入力"
+                class="form-input"
+                data-testid="delete-project-input"
+            />
+
+            <div class="dialog-buttons">
+                <button
+                    onclick={closeDeleteDialog}
+                    class="cancel-button"
+                    disabled={isDeleting}
+                >
+                    キャンセル
+                </button>
+                <button
+                    onclick={doDeleteProject}
+                    class="confirm-delete-button"
+                    disabled={isDeleting || deleteConfirmText !== project?.title}
+                    data-testid="confirm-delete-button"
+                >
+                    {#if isDeleting}
+                        削除中...
+                    {:else}
+                        削除する
+                    {/if}
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}
 
 <h2>Import / Export</h2>
 <div class="export-section">
@@ -532,5 +735,138 @@ select {
     border-radius: 4px;
     font-size: 14px;
     margin-bottom: 8px;
+}
+
+/* Permissions Section */
+.permissions-section {
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+/* Delete Project Section */
+.delete-section {
+    background-color: #fff5f5;
+    border: 1px solid #ffcccc;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.delete-section h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #d32f2f;
+    font-size: 18px;
+}
+
+.warning-text {
+    color: #666;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.delete-button {
+    padding: 10px 16px;
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.delete-button:hover {
+    background-color: #b71c1c;
+}
+
+/* Delete Confirmation Dialog */
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.dialog {
+    background-color: white;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dialog h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: #333;
+    font-size: 20px;
+}
+
+.dialog p {
+    margin-bottom: 16px;
+    color: #666;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.dialog-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.cancel-button {
+    padding: 10px 16px;
+    background-color: #f5f5f5;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.cancel-button:hover:not(:disabled) {
+    background-color: #e0e0e0;
+}
+
+.cancel-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.confirm-delete-button {
+    padding: 10px 16px;
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.confirm-delete-button:hover:not(:disabled) {
+    background-color: #b71c1c;
+}
+
+.confirm-delete-button:disabled {
+    background-color: #ffcccc;
+    cursor: not-allowed;
 }
 </style>
