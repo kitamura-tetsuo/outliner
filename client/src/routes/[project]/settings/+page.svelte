@@ -486,12 +486,6 @@ async function doDeleteProject() {
             この操作は取り消すことができません。プロジェクトを削除すると、すべてのデータが失われます。
         </p>
 
-        {#if deleteSuccess}
-            <div class="success-message" role="alert" data-testid="delete-success">
-                {deleteSuccess}
-            </div>
-        {/if}
-
         <button
             onclick={openDeleteDialog}
             class="delete-button"
