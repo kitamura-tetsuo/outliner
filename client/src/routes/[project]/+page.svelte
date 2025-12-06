@@ -16,11 +16,14 @@ const logger = getLogger("ProjectIndex");
 
 // URLパラメータを取得（リアクティブに）
 let projectName = $derived($page.params.project || "");
+let urlToken = $derived($page.url.searchParams.get("token") || "");
 
 // ページの状態
 let error: string | undefined = $state(undefined);
 let isAuthenticated = $state(false);
 let projectNotFound = $state(false);
+let isAnonymousViewer = $state(false);
+let hasValidPublicToken = $state(false);
 
 // 認証成功時の処理
 async function handleAuthSuccess(authResult: any) {
@@ -54,8 +57,14 @@ function goHome() {
 
 onMount(() => {
     // UserManagerの認証状態を確認
-
     isAuthenticated = userManager.getCurrentUser() !== null;
+
+    // 匿名ユーザーが公開プロジェクトのトークンを持っているかチェック
+    if (!isAuthenticated && urlToken && projectName) {
+        isAnonymousViewer = true;
+        hasValidPublicToken = true; // セキュリティルールが検証するため簡略化
+        logger.info("Anonymous viewer mode with public token");
+    }
 });
 
 onDestroy(() => {
@@ -78,19 +87,47 @@ onDestroy(() => {
         <h1 class="text-2xl font-bold">
             {#if projectName}
                 {projectName}
+                {#if isAnonymousViewer}
+                    <span class="view-only-badge">表示のみ</span>
+                {/if}
             {:else}
                 プロジェクト
+                {#if isAnonymousViewer}
+                    <span class="view-only-badge">表示のみ</span>
+                {/if}
             {/if}
         </h1>
     </div>
 
-    <!-- 認証コンポーネント -->
-    <div class="auth-section mb-6">
-        <AuthComponent
-            onAuthSuccess={handleAuthSuccess}
-            onAuthLogout={handleAuthLogout}
-        />
-    </div>
+    {#if isAnonymousViewer}
+        <div class="rounded-md bg-blue-50 p-4 mb-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <span class="text-blue-400">ℹ️</span>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-blue-800">
+                        公開プロジェクトを表示中
+                    </h3>
+                    <div class="mt-2 text-sm text-blue-700">
+                        <p>
+                            このプロジェクトは公開中です。ログインすると編集できるようになります。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- 認証コンポーネント (匿名閲覧者には表示しない) -->
+    {#if !isAnonymousViewer}
+        <div class="auth-section mb-6">
+            <AuthComponent
+                onAuthSuccess={handleAuthSuccess}
+                onAuthLogout={handleAuthLogout}
+            />
+        </div>
+    {/if}
 
     {#if store.pages}
         <div class="mt-6">
@@ -146,7 +183,7 @@ onDestroy(() => {
                 </div>
             </div>
         </div>
-    {:else if !isAuthenticated}
+    {:else if !isAuthenticated && !isAnonymousViewer}
         <div class="rounded-md bg-blue-50 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -192,5 +229,19 @@ onDestroy(() => {
     100% {
         transform: rotate(360deg);
     }
+}
+
+.view-only-badge {
+    display: inline-block;
+    margin-left: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 </style>

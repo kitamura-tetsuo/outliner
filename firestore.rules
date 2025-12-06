@@ -13,8 +13,18 @@ service cloud.firestore {
     }
 
     // Projects collection
+    // Allow public read access for projects that are public
+    // Write access requires authentication and permission
     match /projects/{containerId} {
-      allow read, write: if request.auth != null;
+      allow read: if resource.data.isPublic == true || (request.auth != null);
+      allow write: if request.auth != null && (
+        // Owner can write
+        resource.data.ownerId == request.auth.uid ||
+        // Users with owner permission can write
+        (resource.data.permissions != null && resource.data.permissions.hasAny([request.auth.uid])) ||
+        // Check if user has owner role in permissions array
+        (request.auth.uid in resource.data.permissions.where(role == 'owner').userId)
+      );
     }
 
     // Pages collection (for schedules, etc.)

@@ -48,5 +48,5 @@
         "test": "bash ../scripts/run-server-tests.sh",
         "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000"
     },
-    "version": "1.0.0"
+    "version": "2.0.0"
 }
