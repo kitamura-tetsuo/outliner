@@ -3001,3 +3001,203 @@ exports.purgeDeletedProjects = onSchedule({
     throw error;
   }
 });
+
+// プロジェクトの公開状態を切り替えるAPI
+exports.togglePublic = onRequest(
+  { cors: true },
+  async (req, res) => {
+    setCorsHeaders(req, res);
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).send();
+    }
+
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
+    try {
+      const { idToken, containerId, isPublic } = req.body;
+
+      if (!containerId) {
+        return res.status(400).json({ error: "Container ID is required" });
+      }
+
+      // Firebase IDトークンを検証
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const userId = decodedToken.uid;
+
+      // プロジェクトのドキュメントを取得
+      const projectDocRef = db.collection("projects").doc(containerId);
+      const projectDoc = await projectDocRef.get();
+
+      if (!projectDoc.exists) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const projectData = projectDoc.data();
+      const permissions = projectData.permissions || [];
+
+      // ユーザーがプロジェクトの所有者かチェック
+      const isOwner = projectData.ownerId === userId;
+      const hasOwnerPermission = permissions.some(
+        p => p.userId === userId && p.role === "owner",
+      );
+
+      if (!isOwner && !hasOwnerPermission) {
+        return res.status(403).json({
+          error: "Only project owners can change public status",
+        });
+      }
+
+      // 削除済みプロジェクトは変更不可
+      if (projectData.deletedAt) {
+        return res.status(400).json({
+          error: "Cannot change public status of deleted project",
+        });
+      }
+
+      let publicAccessToken;
+
+      if (isPublic) {
+        // 新しいランダムトークンを生成
+        publicAccessToken = generateSecureToken(32);
+
+        // プロジェクトを公開状態にする
+        await projectDocRef.update({
+          isPublic: true,
+          publicAccessToken: publicAccessToken,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+
+        logger.info(`Made project ${containerId} public`);
+      } else {
+        // プロジェクトを非公開状態にする
+        await projectDocRef.update({
+          isPublic: false,
+          publicAccessToken: FieldValue.delete(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+
+        logger.info(`Made project ${containerId} private`);
+      }
+
+      return res.status(200).json({
+        success: true,
+        isPublic,
+        publicAccessToken: isPublic ? publicAccessToken : undefined,
+      });
+    } catch (error) {
+      logger.error("Toggle public error:", error);
+
+      if (
+        error.code === "auth/id-token-expired" ||
+        error.code === "auth/invalid-id-token" ||
+        error.code === "auth/argument-error"
+      ) {
+        return res.status(401).json({ error: "Authentication failed" });
+      }
+
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
+// プロジェクトの公開状態を取得するAPI
+exports.getProjectPublicStatus = onRequest(
+  { cors: true },
+  async (req, res) => {
+    setCorsHeaders(req, res);
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).send();
+    }
+
+    if (req.method !== "GET") {
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
+    try {
+      const idToken = req.query.idToken;
+      const containerId = req.query.containerId;
+
+      if (!containerId) {
+        return res.status(400).json({ error: "Container ID is required" });
+      }
+
+      // Firebase IDトークンを検証
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const userId = decodedToken.uid;
+
+      // プロジェクトのドキュメントを取得
+      const projectDocRef = db.collection("projects").doc(containerId);
+      const projectDoc = await projectDocRef.get();
+
+      if (!projectDoc.exists) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const projectData = projectDoc.data();
+      const permissions = projectData.permissions || [];
+
+      // ユーザーがプロジェクトにアクセス可能かチェック
+      const hasAccess = projectData.ownerId === userId ||
+        permissions.some(p => p.userId === userId);
+
+      if (!hasAccess) {
+        return res.status(403).json({
+          error:
+            "Access denied: User does not have permission to view this project",
+        });
+      }
+
+      // 削除済みプロジェクトはエラー
+      if (projectData.deletedAt) {
+        return res.status(400).json({
+          error: "Cannot view public status of deleted project",
+        });
+      }
+
+      // 公開状態とトークンを返す（所有者の場合のみトークンも返す）
+      const isOwner = projectData.ownerId === userId;
+      const hasOwnerPermission = permissions.some(
+        p => p.userId === userId && p.role === "owner",
+      );
+
+      const response = {
+        isPublic: projectData.isPublic || false,
+      };
+
+      if (isOwner || hasOwnerPermission) {
+        response.publicAccessToken = projectData.publicAccessToken;
+      }
+
+      return res.status(200).json(response);
+    } catch (error) {
+      logger.error("Get public status error:", error);
+
+      if (
+        error.code === "auth/id-token-expired" ||
+        error.code === "auth/invalid-id-token" ||
+        error.code === "auth/argument-error"
+      ) {
+        return res.status(401).json({ error: "Authentication failed" });
+      }
+
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
+// セキュアなランダムトークンを生成する関数
+function generateSecureToken(length) {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  const randomValues = new Uint8Array(length);
+  crypto.getRandomValues(randomValues);
+  for (let i = 0; i < length; i++) {
+    result += chars[randomValues[i] % chars.length];
+  }
+  return result;
+}
