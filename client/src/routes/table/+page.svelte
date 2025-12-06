@@ -7,7 +7,12 @@ import {
     queryStore,
 } from "../../services/sqlService";
 
-let data = $state({ rows: [], columnsMeta: [] } as any);
+interface QueryData {
+    rows: Array<Record<string, unknown>>;
+    columnsMeta: Array<Record<string, unknown>>;
+}
+
+let data = $state<QueryData>({ rows: [], columnsMeta: [] });
 
 // Svelte 5のリアクティブな購読
 $effect(() => {

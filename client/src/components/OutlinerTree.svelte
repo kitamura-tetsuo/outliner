@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { resolve } from "$app/paths";
 import {
     onDestroy,
     onMount,
@@ -1480,7 +1481,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
     <div class="toolbar">
     <div class="actions">
         <button onclick={handleAddItem}>アイテム追加</button>
-        <button onclick={() => goto(`/${projectName}/${pageName}/diff`)}>
+        <button onclick={() => goto(resolve(`/${projectName}/${pageName}/diff`))}>
             History / Diff
         </button>
     </div>

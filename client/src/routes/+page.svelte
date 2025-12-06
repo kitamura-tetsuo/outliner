@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { resolve } from "$app/paths";
 import ContainerSelector from "../components/ContainerSelector.svelte";
 import { getLogger } from "../lib/logger";
 import { yjsStore } from "../stores/yjsStore.svelte";
@@ -65,7 +66,7 @@ async function handleContainerSelected(
         // コンテナ名をプロジェクト名として使用
         const projectName = containerName || selectedContainerId;
         logger.info(`Navigating to project page: /${projectName}`);
-        goto(`/${projectName}`);
+        goto(resolve(`/${projectName}`));
     }
     catch (error) {
         logger.error("Failed to switch container:", error);
@@ -74,11 +75,11 @@ async function handleContainerSelected(
 </script>
 
 <svelte:head>
-    <title>Outliner</title>
+    <title>アウトライナー一覧 - Outliner</title>
 </svelte:head>
 
 <main class="main-content" data-testid="home-page">
-    <h1>Outliner</h1>
+    <h1>アウトライナー一覧</h1>
 
     <div class="welcome-message">
         <p>Outlinerへようこそ！</p>
@@ -93,7 +94,7 @@ async function handleContainerSelected(
 
     <!-- 新規コンテナ作成リンク -->
     <div class="action-buttons">
-        <a href="/projects" class="new-container-button">
+        <a href={resolve("/projects")} class="new-container-button">
             <span class="icon">+</span> 新しいアウトライナーを作成
         </a>
     </div>
@@ -166,4 +167,3 @@ h2 {
     margin-right: 0.5rem;
 }
 </style>
-// test 1760075075

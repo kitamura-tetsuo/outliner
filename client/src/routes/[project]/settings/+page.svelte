@@ -409,12 +409,12 @@ async function doDeleteProject() {
         deleteSuccess = `プロジェクト「${projectTitle}」を削除しました`;
 
         // Wait a bit to show the success message before closing dialog
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolvePromise => setTimeout(resolvePromise, 1500));
 
         showDeleteDialog = false;
 
         // Redirect to home page
-        await goto("/");
+        await goto(resolve("/"));
     } catch (err) {
         logger.error("Error deleting project:", err);
         deleteError = "プロジェクトの削除に失敗しました";

@@ -1,13 +1,7 @@
 <script lang="ts">
     import type { ProjectPermission } from "../../schema/app-schema";
     import {
-        canEdit,
-        canDelete,
         canManagePermissions,
-        getUserRole,
-        getProjectOwner,
-        upsertPermission,
-        removePermission,
         getEditors,
         getViewers,
     } from "../services/permissionService";
@@ -15,31 +9,31 @@
     import { getFirebaseFunctionUrl } from "../firebaseFunctionsUrl";
     import { getLogger } from "../logger";
 
-    export let containerId: string;
-    export let permissions: ProjectPermission[] = [];
-    export let ownerId: string = "";
+    interface Props {
+        containerId: string;
+        permissions?: ProjectPermission[];
+    }
+
+    let { containerId, permissions = [] }: Props = $props();
 
     const logger = getLogger();
-
-    let newUserEmail = "";
-    let newUserRole: "editor" | "viewer" = "viewer";
-    let isLoading = false;
-    let error = "";
-    let success = "";
+    
+    let newUserEmail = $state("");
+    let newUserRole: "editor" | "viewer" = $state("viewer");
+    let isLoading = $state(false);
+    let error = $state("");
+    let success = $state("");
 
     // Current user info
-    $: currentUser = userManager.getCurrentUser();
-    $: currentUserId = currentUser?.id || "";
+    let currentUser = $derived(userManager.getCurrentUser());
+    let currentUserId = $derived(currentUser?.id || "");
 
     // Check permissions for current user
-    $: canManage = canManagePermissions(permissions, currentUserId);
-    $: isOwner = getUserRole(permissions, currentUserId) === "owner";
+    let canManage = $derived(canManagePermissions(permissions, currentUserId));
 
     // Get permission counts
-    $: owner = getProjectOwner(permissions);
-    $: editors = getEditors(permissions);
-    $: viewers = getViewers(permissions);
-
+    let editors = $derived(getEditors(permissions));
+    let viewers = $derived(getViewers(permissions));
     async function addUser() {
         if (!newUserEmail || !canManage) {
             return;
@@ -69,7 +63,7 @@
                 throw new Error(`API error: ${response.status}`);
             }
 
-            const result = await response.json();
+            await response.json();
             success = `Successfully added ${newUserEmail} as ${newUserRole}`;
             newUserEmail = "";
             newUserRole = "viewer";
@@ -233,7 +227,7 @@
                     </select>
                 </div>
                 <button
-                    on:click={addUser}
+                    onclick={addUser}
                     disabled={!newUserEmail || isLoading}
                     class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -253,7 +247,7 @@
                     Owners ({permissions.filter(p => p.role === "owner").length})
                 </h4>
                 <div class="space-y-2">
-                    {#each permissions.filter(p => p.role === "owner") as permission}
+                    {#each permissions.filter(p => p.role === "owner") as permission (permission.userId)}
                         <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
@@ -288,7 +282,7 @@
                     Editors ({editors.length})
                 </h4>
                 <div class="space-y-2">
-                    {#each editors as permission}
+                    {#each editors as permission (permission.userId)}
                         <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
@@ -310,14 +304,14 @@
                                 {#if canManage}
                                     <select
                                         value={permission.role}
-                                        on:change={(e) => updateUserRole(permission.userId, e.currentTarget.value as "editor" | "viewer")}
+                                        onchange={(e) => updateUserRole(permission.userId, e.currentTarget.value as "editor" | "viewer")}
                                         class="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     >
                                         <option value="editor">Editor</option>
                                         <option value="viewer">Viewer</option>
                                     </select>
                                     <button
-                                        on:click={() => removeUser(permission.userId)}
+                                        onclick={() => removeUser(permission.userId)}
                                         disabled={permission.userId === currentUserId}
                                         class="text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                                         title="Remove user"
@@ -346,7 +340,7 @@
                     Viewers ({viewers.length})
                 </h4>
                 <div class="space-y-2">
-                    {#each viewers as permission}
+                    {#each viewers as permission (permission.userId)}
                         <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
@@ -368,14 +362,14 @@
                                 {#if canManage}
                                     <select
                                         value={permission.role}
-                                        on:change={(e) => updateUserRole(permission.userId, e.currentTarget.value as "editor" | "viewer")}
+                                        onchange={(e) => updateUserRole(permission.userId, e.currentTarget.value as "editor" | "viewer")}
                                         class="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     >
                                         <option value="viewer">Viewer</option>
                                         <option value="editor">Editor</option>
                                     </select>
                                     <button
-                                        on:click={() => removeUser(permission.userId)}
+                                        onclick={() => removeUser(permission.userId)}
                                         disabled={permission.userId === currentUserId}
                                         class="text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                                         title="Remove user"

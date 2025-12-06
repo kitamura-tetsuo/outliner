@@ -37,9 +37,19 @@ let idToken = $state("");
 let verificationResult = $state("");
 
 // テスト用に環境変数をwindowオブジェクトに公開
+declare global {
+    interface Window {
+        testEnvVars?: {
+            VITE_FIREBASE_API_KEY?: string;
+            VITE_FIREBASE_PROJECT_ID?: string;
+            VITE_TOKEN_VERIFY_URL?: string;
+        };
+    }
+}
+
 onMount(() => {
     if (typeof window !== "undefined") {
-        (window as any).testEnvVars = {
+        window.testEnvVars = {
             VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
             VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
             VITE_TOKEN_VERIFY_URL: import.meta.env.VITE_TOKEN_VERIFY_URL,

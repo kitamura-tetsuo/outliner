@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-import { TestHelpers } from "./helpers";
-
 registerCoverageHooks();
+import "./utils/registerAfterEachSnapshot";
+import { expect, test } from "@playwright/test";
+import { TestHelpers } from "./utils/testHelpers";
 
 // Test Owner permissions
 test.describe("Project Permissions - Owner", () => {

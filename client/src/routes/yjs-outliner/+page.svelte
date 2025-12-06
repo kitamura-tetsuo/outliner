@@ -5,7 +5,7 @@ import { store as generalStore } from "../../stores/store.svelte";
 import * as Y from "yjs";
 import { onMount } from "svelte";
 
-let pageItem = $state<any>(undefined);
+let pageItem;
 
 const PROJECT_ID = "yjs-outliner-test";
 

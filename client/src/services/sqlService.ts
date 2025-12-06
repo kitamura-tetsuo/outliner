@@ -40,12 +40,17 @@ export async function initDb() {
     console.log("Initializing SQL.js database...");
 
     // テスト環境または本番環境では適切なパスでWASMを読み込み
-    if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production")) {
+    if (
+        typeof process !== "undefined"
+        && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" || process.env.VITEST === "true"
+            || process.env.NODE_ENV === "production")
+    ) {
         const fs = await import("fs");
         const path = await import("path");
         // Try multiple possible paths for the WASM file
         const possiblePaths = [
             path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm"),
+            path.resolve(__dirname, "../../node_modules/sql.js/dist/sql-wasm.wasm"),
             path.resolve(__dirname, "../node_modules/sql.js/dist/sql-wasm.wasm"),
             "./node_modules/sql.js/dist/sql-wasm.wasm",
         ];

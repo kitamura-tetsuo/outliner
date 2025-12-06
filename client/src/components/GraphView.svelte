@@ -6,18 +6,35 @@ import { onMount } from "svelte";
 import { store } from "../stores/store.svelte";
 import { buildGraph } from "../utils/graphUtils";
 
+// Type definitions for graph nodes
+interface GraphNode {
+    id: string;
+    x?: number;
+    y?: number;
+    fixed?: boolean;
+    name?: string;
+    [key: string]: unknown;
+}
+
+interface GraphOption {
+    series: Array<{
+        data: GraphNode[];
+        links?: Array<{ [key: string]: unknown }>;
+    }>;
+}
+
 let graphDiv: HTMLDivElement;
 let chart: echarts.ECharts | undefined;
 
 function saveLayout() {
     if (!chart) return;
     try {
-        const option = chart.getOption() as any;
+        const option = chart.getOption() as GraphOption;
         const nodes = option.series[0].data;
 
         // EChartsの内部状態から実際の位置を取得
         const layoutData = {
-            nodes: nodes.map((n: any) => {
+            nodes: nodes.map((n: GraphNode) => {
                 // EChartsの内部状態から位置を取得
                 const actualPosition = chart?.convertFromPixel({ seriesIndex: 0 }, [n.x || 0, n.y || 0]);
                 return {
@@ -37,7 +54,7 @@ function saveLayout() {
     }
 }
 
-function loadLayout(nodes: any[]) {
+function loadLayout(nodes: GraphNode[]) {
     try {
         const savedLayout = localStorage.getItem("graph-layout");
         if (!savedLayout) return nodes;
@@ -47,7 +64,7 @@ function loadLayout(nodes: any[]) {
 
         if (layoutData.nodes) {
             for (const savedNode of layoutData.nodes) {
-                const node = nodes.find((n: any) => n.id === savedNode.id);
+                const node = nodes.find((n: GraphNode) => n.id === savedNode.id);
                 if (node && savedNode.x !== undefined && savedNode.y !== undefined) {
                     node.x = savedNode.x;
                     node.y = savedNode.y;
@@ -68,18 +85,20 @@ function update() {
     if (!chart) return;
 
     // storeからデータを取得（Yjs Items 互換: 配列/Iterable/Array-like を許容）
-    const toArray = (p: any) => {
+    const toArray = (p: unknown): GraphNode[] => {
         try {
-            if (Array.isArray(p)) return p;
-            if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
-            const len = p?.length;
+            if (Array.isArray(p)) return p as GraphNode[];
+            if (p && typeof (p as { [Symbol.iterator]: () => Iterator<unknown> })[Symbol.iterator] === "function") {
+                return Array.from(p as Iterable<unknown>) as GraphNode[];
+            }
+            const len = (p as { length?: number })?.length;
             if (typeof len === "number" && len >= 0) {
-                const r: any[] = [];
-                for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
+                const r: GraphNode[] = [];
+                for (let i = 0; i < len; i++) r.push((p as { at?: (i: number) => unknown; [i: number]: unknown }).at ? (p as { at: (i: number) => unknown }).at(i) : (p as { [i: number]: unknown })[i]) as GraphNode;
                 return r;
             }
         } catch {}
-        return [] as any[];
+        return [];
     };
 
     const pages = toArray(store.pages?.current || []);
@@ -96,8 +115,8 @@ function update() {
             type: "graph",
             layout: "force",
             roam: true,
-            data: nodesWithLayout,
-            links,
+            data: nodesWithLayout as GraphNode[],
+            links: links as Array<{ [key: string]: unknown }>,
             label: { position: "right" },
             force: {
                 // 固定ノードの位置を尊重する設定
@@ -113,8 +132,8 @@ function update() {
 
 onMount(() => {
     chart = echarts.init(graphDiv);
-    (window as any).__GRAPH_CHART__ = chart;
-    chart.on("click", (params: any) => {
+    (window as unknown).__GRAPH_CHART__ = chart;
+    chart.on("click", (params: { dataType: string; data: GraphNode }) => {
         if (params.dataType === "node") {
             const pageName = params.data.name;
             const projectName = store.project?.title;
@@ -146,7 +165,7 @@ onMount(() => {
     // React to project structure changes via minimal-granularity Yjs observeDeep on orderedTree
     let detachDocListener: (() => void) | undefined;
     try {
-        const ymap: any = (store.project as any)?.ydoc?.getMap?.("orderedTree");
+        const ymap = (store.project as { ydoc?: { getMap?: (name: string) => { observeDeep?: (handler: () => void) => void; unobserveDeep?: (handler: () => void) => void } } })?.ydoc?.getMap?.("orderedTree");
         if (ymap && typeof ymap.observeDeep === "function") {
             const handler = () => { try { update(); } catch {} };
             ymap.observeDeep(handler);

@@ -220,7 +220,10 @@ export async function listDeletedProjects(): Promise<
         }
 
         // Firebase Functionsを呼び出して削除されたプロジェクト一覧を取得
-        const response = await fetch(getFirebaseFunctionUrl("listDeletedProjects"), {
+        // idTokenをクエリパラメータとして渡す（GETメソッドのため）
+        const url = new URL(getFirebaseFunctionUrl("listDeletedProjects"));
+        url.searchParams.set("idToken", idToken);
+        const response = await fetch(url.toString(), {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",

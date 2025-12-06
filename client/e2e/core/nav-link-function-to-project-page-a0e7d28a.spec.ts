@@ -71,7 +71,7 @@ test.describe("NAV-0002: プロジェクトページへのリンク機能", () =
         await expect(page).toHaveURL("/");
 
         // ホームページのタイトルが表示されることを確認
-        const pageTitle = page.locator('h1:has-text("Outliner")');
+        const pageTitle = page.locator('h1:has-text("アウトライナー一覧")');
         await expect(pageTitle).toBeVisible();
     });
 

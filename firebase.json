@@ -136,6 +136,22 @@
                 "function": "renameProject"
             },
             {
+                "source": "/api/deleteProject",
+                "function": "deleteProject"
+            },
+            {
+                "source": "/api/restoreProject",
+                "function": "restoreProject"
+            },
+            {
+                "source": "/api/permanentlyDeleteProject",
+                "function": "permanentlyDeleteProject"
+            },
+            {
+                "source": "/api/listDeletedProjects",
+                "function": "listDeletedProjects"
+            },
+            {
                 "source": "**",
                 "destination": "/index.html"
             }

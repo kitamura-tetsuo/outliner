@@ -41,8 +41,12 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
 
     try {
         // すべてのページを検索
-        for (const page of store.pages.current) {
-            const pageItem = page as Item;
+        const pages = store.pages.current;
+        if (!pages) {
+            return backlinks;
+        }
+        for (const page of pages) {
+            const pageItem = page as unknown as Item;
             const pageText = String(pageItem.text);
             // 対象ページ自身は除外
             if (pageText.toLowerCase() === normalizedTargetName) {

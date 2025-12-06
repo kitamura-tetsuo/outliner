@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { resolve } from "$app/paths";
 import { onDestroy, onMount } from "svelte";
 import {
     buildRegExp,
@@ -252,7 +253,7 @@ function jumpTo(match: PageItemMatch<Item>) {
     if (!project) return;
     const pageName = encodeURIComponent(((match.page as any).text?.toString?.() ?? String((match.page as any).text ?? "")) as string);
     const projectTitle = encodeURIComponent(project.title);
-    goto(`/${projectTitle}/${pageName}`);
+    goto(resolve(`/${projectTitle}/${pageName}`));
 }
 
 onDestroy(() => {
