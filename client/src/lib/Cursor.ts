@@ -1534,7 +1534,7 @@ export class Cursor implements CursorEditingContext {
     moveToDocumentStart() {
         const root = generalStore.currentPage;
         if (!root) return;
-        let item: Item = root;
+        let item: Item = root as any;
         while (item.items && (item.items as Iterable<Item>)[Symbol.iterator]) {
             const iter = (item.items as Iterable<Item>)[Symbol.iterator]();
             const first = iter.next();
@@ -1551,7 +1551,7 @@ export class Cursor implements CursorEditingContext {
     moveToDocumentEnd() {
         const root = generalStore.currentPage;
         if (!root) return;
-        let item: Item = root;
+        let item: Item = root as any;
         while (item.items && (item.items as Iterable<Item>)[Symbol.iterator]) {
             let last: Item | undefined;
             for (const child of item.items as Iterable<Item>) {
@@ -1748,6 +1748,7 @@ export class Cursor implements CursorEditingContext {
             const currentTarget = this.findTarget();
             const parentOfCurrent = currentTarget?.parent;
             const isParentItem = parentOfCurrent && prevItem && prevItem.id === parentOfCurrent.id;
+            // Don't navigate to parent item when moving left - stay on same item
             if (prevItem && !isParentItem) {
                 newItemId = prevItem.id;
                 newOffset = prevItem.text?.length || 0;

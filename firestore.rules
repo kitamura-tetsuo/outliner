@@ -1,7 +1,28 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access on all documents to any user signed in to the application
+    // User containers collection
+    match /userContainers/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Container users collection
+    match /containerUsers/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Projects collection
+    match /projects/{containerId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Pages collection (for schedules, etc.)
+    match /pages/{pageId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Default: Allow read/write access to authenticated users for other collections
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

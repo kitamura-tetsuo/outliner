@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { resolve } from "$app/paths";
     import AuthComponent from "../../../components/AuthComponent.svelte";
     import { userManager } from "../../../auth/UserManager";
     import { listDeletedProjects, restoreProject, permanentlyDeleteProject } from "../../../services/projectService";
@@ -22,6 +23,7 @@
     let loading = $state(false);
     let error: string | undefined = $state(undefined);
     let success: string | undefined = $state(undefined);
+
     let showDeleteDialog = $state(false);
     let projectToDelete: { containerId: string; title: string } | null = $state(null);
 
@@ -43,7 +45,7 @@
     async function loadDeletedProjects() {
         loading = true;
         error = undefined;
-        success = undefined;
+        // Don't reset success here - it might be showing a success message
 
         try {
             deletedProjects = await listDeletedProjects();
@@ -64,9 +66,14 @@
 
         try {
             const ok = await restoreProject(containerId);
-            if (ok) {
+            if (ok === true) {
                 success = `プロジェクト "${title}" を復元しました`;
-                await loadDeletedProjects(); // リストを更新
+                try {
+                    await loadDeletedProjects(); // リストを更新
+                } catch (loadErr) {
+                    // Don't fail the whole operation if loading fails
+                    logger.error("Error reloading projects:", loadErr);
+                }
             } else {
                 error = `プロジェクト "${title}" の復元に失敗しました`;
             }
@@ -186,6 +193,7 @@
             <div
                 class="mb-4 rounded-md bg-green-100 p-3 text-green-700"
                 role="alert"
+                data-testid="restore-success"
             >
                 {success}
             </div>
@@ -265,7 +273,7 @@
 
     <div class="mt-6 text-center">
         <a
-            href="/projects"
+            href={resolve("/")}
             class="rounded-md px-2 py-1 text-blue-600 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
             プロジェクト一覧に戻る

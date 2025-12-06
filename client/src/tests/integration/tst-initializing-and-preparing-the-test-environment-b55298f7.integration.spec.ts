@@ -8,8 +8,11 @@ import AuthSectionWrapper from "./AuthSectionWrapper.svelte";
 
 describe("basic home page and auth component", () => {
     it("renders home page title", () => {
-        const { getByText } = render(HomePage);
-        expect(getByText("Outliner")).toBeTruthy();
+        const { container } = render(HomePage);
+        const h1 = container.querySelector("h1");
+        expect(h1).toBeTruthy();
+        // The home page contains Japanese title "アウトライナー一覧"
+        expect(h1?.textContent).toContain("アウトライナー");
     });
 
     it("renders auth section with Google login button", async () => {

@@ -24,6 +24,8 @@ export interface CursorEditingContext {
     findTarget(): Item | undefined;
 }
 
+export type { SelectionRange };
+
 export class CursorEditor {
     constructor(private readonly cursor: CursorEditingContext) {}
 
@@ -172,7 +174,7 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const text: string = (target.text as any)?.toString?.() ?? "";
+        const text: string = target.text?.toString?.() ?? "";
         const beforeText = text.slice(0, cursor.offset);
         const afterText = text.slice(cursor.offset);
         const pageTitle = isPageItem(target);
@@ -184,17 +186,9 @@ export class CursorEditor {
                 newItem.updateText(afterText);
 
                 const oldItemId = cursor.itemId;
-                const clearCursorAndSelection = (store as any).clearCursorAndSelection;
-                if (typeof clearCursorAndSelection === "function") {
-                    if (typeof clearCursorAndSelection.call === "function") {
-                        clearCursorAndSelection.call(store, cursor.userId);
-                    } else {
-                        clearCursorAndSelection(cursor.userId);
-                    }
-                } else {
-                    store.clearSelectionForUser?.(cursor.userId);
-                    store.clearCursorForItem?.(oldItemId);
-                }
+                store.clearCursorAndSelection?.(cursor.userId);
+                store.clearSelectionForUser?.(cursor.userId);
+                store.clearCursorForItem?.(oldItemId);
 
                 cursor.itemId = newItem.id;
                 cursor.offset = 0;
@@ -214,7 +208,7 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as any;
+            const parent = target.parent;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
@@ -233,17 +227,9 @@ export class CursorEditor {
                     newItem.updateText(afterText);
 
                     const oldItemId = cursor.itemId;
-                    const clearCursorAndSelection = (store as any).clearCursorAndSelection;
-                    if (typeof clearCursorAndSelection === "function") {
-                        if (typeof clearCursorAndSelection.call === "function") {
-                            clearCursorAndSelection.call(store, cursor.userId);
-                        } else {
-                            clearCursorAndSelection(cursor.userId);
-                        }
-                    } else {
-                        store.clearSelectionForUser?.(cursor.userId);
-                        store.clearCursorForItem?.(oldItemId);
-                    }
+                    store.clearCursorAndSelection?.(cursor.userId);
+                    store.clearSelectionForUser?.(cursor.userId);
+                    store.clearCursorForItem?.(oldItemId);
 
                     cursor.itemId = newItem.id;
                     cursor.offset = 0;
@@ -377,7 +363,7 @@ export class CursorEditor {
         const combinedText = `${prevText}${currentText}`;
 
         const oldItemId = cursor.itemId;
-        const prevId = (prevItem as any)?.id ?? cursor.itemId;
+        const prevId = prevItem?.id ?? cursor.itemId;
         const newOffset = prevText.length;
 
         this.runInTransaction([prevItem, currentItem], () => {
@@ -394,33 +380,35 @@ export class CursorEditor {
         store.startCursorBlink();
     }
 
-    private getPlainText(item: any): string {
+    private getPlainText(item: Item | null | undefined): string {
         if (!item) return "";
-        const textValue = (item as any).text;
+        const textValue = item.text;
         if (typeof textValue === "string") return textValue;
         if (textValue && typeof textValue.toString === "function") {
             try {
                 return textValue.toString();
             } catch {}
         }
-        if (typeof (item as any).getText === "function") {
+        // Fallback for objects with getText method
+        const anyItem = item as any;
+        if (typeof anyItem.getText === "function") {
             try {
-                const result = (item as any).getText();
+                const result = anyItem.getText();
                 if (typeof result === "string") return result;
             } catch {}
         }
         return "";
     }
 
-    private updateItemText(item: any, text: string) {
+    private updateItemText(item: Item | null | undefined, text: string) {
         if (!item) return;
         if (typeof item.updateText === "function") {
             item.updateText(text);
             return;
         }
 
-        const tree = (item as any)?.tree;
-        const key = (item as any)?.key ?? (item as any)?.id;
+        const tree = item?.tree;
+        const key = item?.key ?? item?.id;
         if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
 
         const value = tree.getNodeValueFromKey(key);
@@ -438,20 +426,20 @@ export class CursorEditor {
         } catch {}
     }
 
-    private deleteItemNode(item: any) {
+    private deleteItemNode(item: Item | null | undefined) {
         if (!item) return;
         if (typeof item.delete === "function") {
             item.delete();
             return;
         }
 
-        const key = (item as any)?.key ?? (item as any)?.id;
+        const key = item?.key ?? item?.id;
         if (!key) return;
 
         const treeCandidates = [
-            (item as any)?.tree,
-            (item as any)?.parent?.tree,
-            (generalStore as any)?.project?.tree,
+            item?.tree,
+            item?.parent?.tree,
+            generalStore?.project?.tree,
         ];
 
         for (const tree of treeCandidates) {
@@ -464,9 +452,9 @@ export class CursorEditor {
         }
     }
 
-    private runInTransaction(participants: any[], action: () => void) {
+    private runInTransaction(participants: Array<Item | null | undefined>, action: () => void) {
         const doc = participants
-            .map(item => (item as any)?.ydoc)
+            .map(item => item?.ydoc)
             .find(candidate => candidate && typeof candidate.transact === "function");
 
         if (doc) {

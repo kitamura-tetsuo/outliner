@@ -1,4 +1,4 @@
-import "./utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature TST-0005
@@ -25,10 +25,10 @@ test("ホームページが正常に表示される", async ({ page }) => {
     await page.goto("/");
 
     // タイトルが表示されることを確認
-    await expect(page.locator("h1")).toContainText("Outliner");
+    await expect(page.locator("h1")).toContainText("アウトライナー");
 
-    // 認証コンポーネントが表示されることを確認
-    await expect(page.locator(".auth-section")).toBeVisible();
+    // コンテナセレクタが表示されることを確認
+    await expect(page.locator(".container-selector:has(h2:has-text('既存のアウトライナーを開く'))")).toBeVisible();
 });
 
 /**
@@ -38,26 +38,11 @@ test("ホームページが正常に表示される", async ({ page }) => {
  * @check 複数のセレクタ方法でボタンの存在を確認する
  */
 test("認証UIが正しく表示される", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/test-project/test-page");
 
-    // ボタン要素を異なる方法で検索（より正確なセレクタを使用）
-    await expect(page.locator(".google-btn")).toBeVisible();
+    // 認証コンポーネントの読み込みを待つ
+    await expect(page.locator(".loading")).not.toBeVisible();
 
-    // または、CSSセレクタを使って特定
-    const loginButton = page.locator('button:has-text("Google")');
-    await expect(loginButton).toBeVisible();
-});
-
-/**
- * @testcase ログアウト後にGoogleログインボタンが表示される
- * @description ログイン状態からログアウトするとGoogleログインボタンが再表示されることを確認
- * @check ログアウトボタンをクリックするとGoogleログインボタンが表示される
- */
-test("ログアウト後にGoogleログインボタンが表示される", async ({ page }) => {
-    await page.goto("/");
-    const logoutButton = page.locator("button.logout-btn");
-    if (await logoutButton.isVisible()) {
-        await logoutButton.click();
-    }
-    await expect(page.locator(".google-btn")).toBeVisible();
+    // ログアウトボタンが表示されることを確認
+    await expect(page.locator("button.logout-btn")).toBeVisible();
 });

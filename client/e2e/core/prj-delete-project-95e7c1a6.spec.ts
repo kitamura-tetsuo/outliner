@@ -67,8 +67,8 @@ test.describe("プロジェクトの削除（論理削除）", () => {
         console.log("Success message:", successText);
         expect(successText).toContain("削除");
 
-        // プロジェクト一覧ページに移動
-        await page.goto("/projects");
+        // アプリケーションがホームページにリダイレクトするのを待つ
+        await page.waitForURL("**/", { timeout: 30000 });
         await page.waitForSelector("h1", { timeout: 30000 });
 
         // 削除したプロジェクトがプロジェクト一覧に表示されないことを確認

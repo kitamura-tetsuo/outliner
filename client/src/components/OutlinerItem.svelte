@@ -9,8 +9,8 @@ import { getLogger } from "../lib/logger";
 const logger = getLogger("OutlinerItem");
 
 // Debug/Test flags and logger.debug suppression
-const DEBUG_LOG: boolean = (typeof window !== 'undefined') && (((window as any).__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && ((window as any).__E2E__ === true));
+const DEBUG_LOG: boolean = (typeof window !== 'undefined') && ((window.__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
+const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
     const __origDebug = (logger as any)?.debug?.bind?.(logger);
@@ -32,14 +32,13 @@ onMount(() => {
 onMount(() => {
     try {
         if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-            const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W: any = window as any;
-            if (isTest && !W.__E2E_QS_PATCHED) {
+            const isTest = window.VITE_IS_TEST === 'true';
+            if (isTest && !window.__E2E_QS_PATCHED) {
                 const origQS = document.querySelector.bind(document);
                 document.querySelector = ((sel: string) => {
                     try {
                         if (/^\[data-item-id="/.test(sel)) {
-                            const ap: any = W.aliasPickerStore;
+                            const ap = window.aliasPickerStore;
                             const li = ap?.lastConfirmedItemId;
                             if (li) {
                                 const el = origQS(`[data-item-id="${li}"]`);
@@ -48,8 +47,8 @@ onMount(() => {
                         }
                     } catch {}
                     return origQS(sel);
-                }) as any;
-                W.__E2E_QS_PATCHED = true;
+                }) as typeof origQS;
+                window.__E2E_QS_PATCHED = true;
             }
         }
     } catch {}
@@ -57,23 +56,22 @@ onMount(() => {
 onMount(() => {
     try {
         if (typeof window !== 'undefined') {
-            const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W:any = window as any;
-            if (isTest && !W.__E2E_GETATTR_PATCHED) {
+            const isTest = window.VITE_IS_TEST === 'true';
+            if (isTest && !window.__E2E_GETATTR_PATCHED) {
                 const origGetAttr = Element.prototype.getAttribute;
                 Element.prototype.getAttribute = function(name: string): string | null {
                     try {
                         if (name === 'data-alias-target-id') {
-                            const ap:any = (window as any).aliasPickerStore;
+                            const ap = window.aliasPickerStore;
                             const itemId = (this as HTMLElement).getAttribute('data-item-id');
                             if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
                                 return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
                             }
                         }
                     } catch {}
-                    return origGetAttr.call(this, name) as any;
-                } as any;
-                W.__E2E_GETATTR_PATCHED = true;
+                    return origGetAttr.call(this, name);
+                } as typeof origGetAttr;
+                window.__E2E_GETATTR_PATCHED = true;
             }
         }
     } catch {}
@@ -131,8 +129,8 @@ import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 // These are called in try-catch blocks and are meant to fail silently if not implemented
 const mirrorAttachment = (_url: string) => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
 let attachmentsMirror: string[] = []; // eslint-disable-line @typescript-eslint/no-unused-vars
-let e2eTimer: ReturnType<typeof setInterval> | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-const addNewItem = () => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
+let e2eTimer: ReturnType<typeof setInterval> | undefined;  
+const addNewItem = () => {};  
 
 interface Props {
     model: OutlinerItemViewModel;

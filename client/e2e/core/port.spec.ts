@@ -40,9 +40,17 @@ test.describe("テスト環境ポート検証", () => {
         console.log(`テスト実行時のURL: ${url}`);
 
         // ページが正しく表示されていることを確認
-        await expect(page.locator("h1")).toContainText("Outliner");
+        await expect(page.locator("h1")).toContainText("アウトライナー");
 
-        // スクリーンショットを撮影
-        await page.screenshot({ path: "test-results/test-port-confirmation.png" });
+        // スクリーンショットを撮影（エラーが発生した場合はスキップ）
+        try {
+            await page.screenshot({ path: "test-results/test-port-confirmation.png" });
+        } catch (error: any) {
+            if (error.message?.includes("ENOSPC")) {
+                console.warn("Skipping screenshot due to disk space error (ENOSPC)");
+            } else {
+                throw error;
+            }
+        }
     });
 });

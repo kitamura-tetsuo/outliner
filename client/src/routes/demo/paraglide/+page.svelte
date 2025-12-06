@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { resolve } from "$app/paths";
 import { page } from "$app/stores";
 import * as m from "$lib/paraglide/messages.js";
 import {
@@ -10,7 +11,7 @@ import {
 
 function switchToLanguage(newLanguage: string) {
     const localisedPath = localizeHref(page.url.pathname, { locale: newLanguage });
-    goto(localisedPath);
+    goto(resolve(localisedPath));
 }
 </script>
 

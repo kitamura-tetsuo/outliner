@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { resolve } from "$app/paths";
 import { page } from "$app/stores";
 import {
     onDestroy,
@@ -42,13 +43,13 @@ function handlePageSelected(event: CustomEvent) {
     const pageName = event.detail.pageName;
 
     if (pageName) {
-        goto(`/${projectName}/${pageName}`);
+        goto(resolve(`/${projectName}/${pageName}`));
     }
 }
 
 // ホームに戻る
 function goHome() {
-    goto("/");
+    goto(resolve("/"));
 }
 
 onMount(() => {

@@ -154,9 +154,9 @@ export class KeyEventHandler {
                     try {
                         // 先にストアの選択インデックスから直接確定（DOMに依存しない）
                         try {
-                            const w: any = window as any;
-                            const ap: any = w?.aliasPickerStore ?? aliasPickerStore;
-                            const opts: any[] = Array.isArray(ap?.options) ? ap.options : [];
+                            const w = window;
+                            const ap = w?.aliasPickerStore ?? aliasPickerStore;
+                            const opts = Array.isArray(ap?.options) ? ap.options : [];
                             let si: number = typeof ap?.selectedIndex === "number" ? ap.selectedIndex : 0;
                             if (opts.length > 0) {
                                 si = Math.max(0, Math.min(si, opts.length - 1));
@@ -169,7 +169,7 @@ export class KeyEventHandler {
                                             opts: opts.length,
                                         });
                                     } catch {}
-                                    ap.confirmById(tid);
+                                    ap.confirmById?.(tid);
                                     event.preventDefault();
                                     return;
                                 }
@@ -365,13 +365,13 @@ export class KeyEventHandler {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
                     const text = node?.text || "";
-                    const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
+                    const prevChar = cursor.offset > 0 ? String(text)[cursor.offset - 1] : "";
 
                     // 内部リンク開始直後 ([/) や [ ... ] 内ではパレットを出さない
                     if (prevChar === "[") {
                         preventPalette = true;
                     } else {
-                        const beforeCursor = text.slice(0, cursor.offset);
+                        const beforeCursor = String(text).slice(0, cursor.offset);
                         const lastOpenBracket = beforeCursor.lastIndexOf("[");
                         const lastCloseBracket = beforeCursor.lastIndexOf("]");
                         if (lastOpenBracket > lastCloseBracket) {
@@ -425,16 +425,16 @@ export class KeyEventHandler {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
                     const text = node?.text || "";
-                    const before = text.slice(0, cursor.offset);
+                    const before = String(text).slice(0, cursor.offset);
                     const lastSlash = before.lastIndexOf("/");
                     const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
                     try {
                         console.log("KeyEventHandler Palette Enter: before=", before, " cmd=", cmd);
                     } catch {}
-                    if (/^alias$/i.test(cmd)) {
+                    if (/^alias$/i.test(cmd) && node) {
                         commandPaletteStore.hide();
                         // コマンド文字列を削除
-                        const newText = text.slice(0, lastSlash) + text.slice(cursor.offset);
+                        const newText = String(text).slice(0, lastSlash) + String(text).slice(cursor.offset);
                         node.updateText(newText);
                         cursor.offset = lastSlash;
                         cursor.applyToStore();
@@ -512,7 +512,7 @@ export class KeyEventHandler {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
                 const text = node?.text || "";
-                const before = text.slice(0, cursor.offset);
+                const before = String(text).slice(0, cursor.offset);
                 const lastSlash = before.lastIndexOf("/");
                 const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
 
@@ -521,7 +521,7 @@ export class KeyEventHandler {
                 const ta: HTMLTextAreaElement | undefined = gs?.textareaRef as any;
                 const taValue: string | null = ta?.value ?? null;
                 const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
-                const source = typeof taValue === "string" ? taValue : text;
+                const source = typeof taValue === "string" ? taValue : String(text);
                 const srcBefore = source.slice(0, caretPos);
                 const srcLastSlash = srcBefore.lastIndexOf("/");
                 const srcCmd = srcLastSlash >= 0 ? srcBefore.slice(srcLastSlash + 1) : "";
@@ -2036,8 +2036,8 @@ export class KeyEventHandler {
                 // グローバル変数に保存（E2E テスト環境専用）
                 // 本番環境では使用されないが、E2E テストでカット内容を検証するために必要
                 if (typeof window !== "undefined") {
-                    (window as any).lastCopiedText = selectedText;
-                    (window as any).lastCopiedIsBoxSelection = isBoxSelectionCut;
+                    window.lastCopiedText = selectedText;
+                    window.lastCopiedIsBoxSelection = isBoxSelectionCut;
                 }
 
                 // フォールバック: execCommandを使用してコピー
@@ -2051,12 +2051,12 @@ export class KeyEventHandler {
                 document.body.removeChild(textarea);
 
                 // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     console.log(`Clipboard updated with: "${selectedText}" (using execCommand fallback)`);
                 }
             } catch (error) {
                 // エラーが発生した場合はログに出力
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     console.error(`Error in handleCut:`, error);
                 }
             }
@@ -2078,5 +2078,5 @@ export class KeyEventHandler {
 
 // テスト用にKeyEventHandlerをグローバルに公開
 if (typeof window !== "undefined") {
-    (window as any).__KEY_EVENT_HANDLER__ = KeyEventHandler;
+    window.__KEY_EVENT_HANDLER__ = KeyEventHandler;
 }

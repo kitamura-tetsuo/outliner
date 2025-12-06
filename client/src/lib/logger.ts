@@ -135,20 +135,22 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
     // 各ログレベルメソッドをラップ
     levels.forEach(level => {
         const originalMethod = logger[level].bind(logger);
-        enhancedLogger[level] = (...args: unknown[]) => {
+        enhancedLogger[level] = (msgOrContext: string | Record<string, unknown>, ...args: unknown[]) => {
             // ログ呼び出し時に位置情報を取得
             const file = getCallerFile();
 
-            // 引数の処理: 最初の引数がオブジェクトなら位置情報を追加
-            if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
-                args[0] = { file, ...(args[0] as Record<string, unknown>) };
-            } else {
-                // オブジェクトでない場合は先頭に位置情報を追加
-                args.unshift({ file });
+            // 最初の引数がオブジェクト（構造化ロギング）の場合
+            if (typeof msgOrContext === "object" && msgOrContext !== null) {
+                return originalMethod("", { file, ...msgOrContext }, ...args);
             }
 
-            // 元のログメソッドを呼び出し
-            return originalMethod("", ...args);
+            // 文字列メッセージの場合
+            if (typeof msgOrContext === "string") {
+                return originalMethod(msgOrContext, { file }, ...args);
+            }
+
+            // その他の型の場合（undefined等）
+            return originalMethod(String(msgOrContext), { file }, ...args);
         };
     });
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { resolve } from "$app/paths";
 // Use SvelteKit page store from $app/stores (not $app/state)
 import { page } from "$app/stores";
 import {
@@ -18,6 +19,7 @@ import {
 } from "../../../lib/linkPreviewHandler";
 import { getLogger } from "../../../lib/logger";
 import { createSnapshotClient, loadProjectSnapshot, snapshotToProject } from "../../../lib/projectSnapshot";
+import { Project, type Items } from "../../../schema/app-schema";
 import { getYjsClientByProjectTitle, createNewYjsProject } from "../../../services";
 const logger = getLogger("+page");
 
@@ -48,7 +50,6 @@ let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 // Optional variable for pending imports - defined to avoid ESLint no-undef errors
 // This is used in conditional checks and may be set by external code
 let pendingImport: any[] | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-let project: any; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 // URLパラメータと認証状態を監視して更新
 // 同一条件での多重実行を避け、Svelte の update depth exceeded を回避するためのキー
@@ -56,10 +57,10 @@ let project: any; // eslint-disable-line @typescript-eslint/no-unused-vars
 let lastLoadKey: string | null = null;
 let __loadingInProgress = false; // 再入防止
 
-function projectLooksLikePlaceholder(candidate: any): boolean {
+function projectLooksLikePlaceholder(candidate: Project): boolean {
     if (!candidate) return true;
     try {
-        const items: any = candidate.items as any;
+        const items: Items = candidate.items;
         const length = items?.length ?? 0;
         if (length === 0) return true;
         if (length === 1) {
@@ -121,8 +122,8 @@ function scheduleLoadIfNeeded(
 }
 
 // 認証成功時の処理
-async function handleAuthSuccess(authResult: any) {
-    logger.info("handleAuthSuccess: 認証成功:", authResult);
+async function handleAuthSuccess() {
+    logger.info("handleAuthSuccess: 認証成功");
     logger.info(`handleAuthSuccess: Setting isAuthenticated from ${isAuthenticated} to true`);
     isAuthenticated = true;
 
@@ -150,7 +151,7 @@ async function loadProjectAndPage() {
         if (!store.project) {
             const { Project } = await import("../../../schema/app-schema");
             const provisional = Project.createInstance(projectName);
-            store.project = provisional as any;
+            store.project = provisional;
             if (typeof window !== "undefined") {
                 logger.debug("DEBUG: provisional store.project set?", !!(window as any).generalStore?.project);
             }
@@ -180,7 +181,7 @@ async function loadProjectAndPage() {
         if (!client && yjsStore.yjsClient) {
             const fallbackProject = yjsStore.yjsClient.getProject?.();
             if (fallbackProject && (fallbackProject.title === projectName)) {
-                client = yjsStore.yjsClient as any;
+                client = yjsStore.yjsClient;
             }
         }
         // テスト環境ではクライアントが見つからない場合に自動作成
@@ -206,7 +207,7 @@ async function loadProjectAndPage() {
         logger.info(`loadProjectAndPage: Setting yjsStore.yjsClient when available`);
         logger.info(`loadProjectAndPage: Client before setting: containerId=${client?.containerId}, clientId=${client?.clientId}`);
         if (client) {
-            yjsStore.yjsClient = client as any;
+            yjsStore.yjsClient = client;
             try {
                 // Ensure global store has the project set for tests that rely on window.generalStore.project
                 const proj = client.getProject?.();
@@ -358,7 +359,7 @@ async function loadProjectAndPage() {
                         logger.warn("loadProjectAndPage: Failed to hydrate project from snapshot", snapshotError);
                     }
 
-                    store.project = proj as any;
+                    store.project = proj;
                     logger.info(`loadProjectAndPage: store.project set from client (title="${proj?.title}")`);
 
                     // After Yjs client attach: ensure requested page exists in CONNECTED project
@@ -387,7 +388,7 @@ async function loadProjectAndPage() {
                                 const cur = prevCurrent;
                                 const sameDoc = !!(cur?.ydoc && pageRef?.ydoc && cur.ydoc === pageRef.ydoc);
                                 if (!sameDoc || cur?.id !== pageRef?.id) {
-                                    store.currentPage = pageRef as any;
+                                    store.currentPage = pageRef;
                                 }
                             } catch {}
                             // Migrate pre-attached seeded children from provisional page to connected page if needed
@@ -451,7 +452,7 @@ async function loadProjectAndPage() {
                                                     }
                                                 } catch {}
                                             };
-                                            const cloneBranch = (sourceItems: any, targetItems: any) => {
+                                            const cloneBranch = (sourceItems: Items, targetItems: Items) => {
                                                 if (!sourceItems || !targetItems) return;
                                                 const length = sourceItems?.length ?? 0;
                                                 for (let index = 0; index < length; index++) {
@@ -461,16 +462,16 @@ async function loadProjectAndPage() {
                                                     const destNode = targetItems?.addNode?.("tester");
                                                     if (!destNode) continue;
                                                     destNode.updateText?.(text);
-                                                    mapId((srcNode as any)?.id, (destNode as any)?.id);
+                                                    mapId(srcNode?.id, destNode?.id);
                                                     copyAttachments(srcNode, destNode);
-                                                    cloneBranch(srcNode?.items as any, destNode?.items as any);
+                                                    cloneBranch(srcNode?.items, destNode?.items);
                                                 }
                                             };
 
                                             while ((next?.items?.length ?? 0) > 0) {
                                                 next.items.removeAt(next.items.length - 1);
                                             }
-                                            cloneBranch(prev.items as any, next.items as any);
+                                            cloneBranch(prev.items, next.items);
                                             logger.info("E2E: Migrated provisional page children to connected page");
                                             break;
                                         }
@@ -558,7 +559,7 @@ async function loadProjectAndPage() {
             try {
                 const proj = yjsStore.yjsClient?.getProject?.();
                 if (proj) {
-                    store.project = proj as any;
+                    store.project = proj;
                     logger.info(`loadProjectAndPage: store.project set from existing yjsStore client (title="${proj?.title}")`);
                 }
             } catch {}
@@ -643,10 +644,10 @@ async function loadProjectAndPage() {
                 const snapshot = loadProjectSnapshot(projectName);
                 if (snapshot) {
                     const hydrated = snapshotToProject(snapshot);
-                    store.project = hydrated as any;
+                    store.project = hydrated;
                     if (!yjsStore.yjsClient) {
                         try {
-                            yjsStore.yjsClient = createSnapshotClient(projectName, hydrated) as any;
+                            yjsStore.yjsClient = createSnapshotClient(projectName, hydrated);
                         } catch {}
                     }
                     try {
@@ -665,7 +666,7 @@ async function loadProjectAndPage() {
                             target = pages.at ? pages.at(0) : pages[0];
                         }
                         if (target) {
-                            store.currentPage = target as any;
+                            store.currentPage = target;
                         }
                     } catch {}
                 }
@@ -904,20 +905,20 @@ function capturePageIdForSchedule() {
 
 // ホームに戻る
 function goHome() {
-    goto("/");
+    goto(resolve("/"));
 }
 
 // プロジェクトページに戻る
 function goToProject() {
-    goto(`/${projectName}`);
+    goto(resolve(`/${projectName}`));
 }
 
 function goToSchedule() {
-    goto(`/${projectName}/${pageName}/schedule`);
+    goto(resolve(`/${projectName}/${pageName}/schedule`));
 }
 
 function goToGraphView() {
-    goto(`/${projectName}/graph`);
+    goto(resolve(`/${projectName}/graph`));
 }
 
 // 画面上部からもアイテムを追加できる補助ボタン（E2E安定化用）
@@ -1048,7 +1049,7 @@ onDestroy(() => {
     </title>
 </svelte:head>
 
-<main class="container mx-auto px-4 py-4">
+<main class="container mx-auto px-4 py-4" data-testid="project-viewer">
     <div class="mb-4">
         <!-- パンくずナビゲーション -->
         <nav class="mb-2 flex items-center text-sm text-gray-600">
