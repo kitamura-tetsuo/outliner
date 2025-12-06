@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../../tests/utils/testDataHelper";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { TestHelpers } from "../utils/testHelpers";
 
 registerCoverageHooks();
 
@@ -63,7 +63,7 @@ test.describe("Anonymous Access to Public Projects", () => {
         expect(true).toBe(true);
     });
 
-    test("should validate public access token", async ({ page }) => {
+    test("should validate public access token", async () => {
         // Test token validation:
         // 1. Valid token allows access
         // 2. Invalid token denies access
@@ -92,7 +92,7 @@ test.describe("Anonymous Access to Public Projects", () => {
         expect(true).toBe(true);
     });
 
-    test("should preserve token in URL during navigation", async ({ page }) => {
+    test("should preserve token in URL during navigation", async () => {
         // Access public project with token
         // Navigate between pages
         // Verify token persists in URL

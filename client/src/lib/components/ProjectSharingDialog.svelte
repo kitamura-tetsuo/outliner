@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { userManager } from "../../auth/UserManager";
     import { togglePublic, getProjectPublicStatus } from "../../services/projectService";
     import { getLogger } from "../logger";
 
@@ -19,10 +18,6 @@
     let isLoading = $state(false);
     let error = $state("");
     let copySuccess = $state(false);
-
-    // Current user info
-    let currentUser = $derived(userManager.getCurrentUser());
-    let currentUserId = $derived(currentUser?.id || "");
 
     // Public URL
     let publicUrl = $derived(
@@ -112,18 +107,15 @@
             <div class="dialog-content">
                 {#if isLoading}
                     <div class="loading">読み込み中...</div>
-                {:else}
-                    {#if error}
-                        <div class="error">{error}</div>
-                    {/if}
-
+                {:else if error}
+                    <div class="error">{error}</div>
                     <div class="toggle-section">
                         <div class="toggle-row">
                             <div class="toggle-info">
                                 <h3>プロジェクトを一般公開</h3>
                                 <p class="description">
                                     {#if isPublic}
-                                        このプロジェクトは公開中です。リンク知道的任何人都可以查看。
+                                        このプロジェクトは公開中です。リンク知道的任何人都都可以查看。
                                     {:else}
                                         このプロジェクトは非公開です。所有者のみがアクセスできます。
                                     {/if}
@@ -162,8 +154,55 @@
                                 </p>
                             </div>
                         {/if}
-                    {/if}
-                </div>
+                    </div>
+                {:else}
+                    <div class="toggle-section">
+                        <div class="toggle-row">
+                            <div class="toggle-info">
+                                <h3>プロジェクトを一般公開</h3>
+                                <p class="description">
+                                    {#if isPublic}
+                                        このプロジェクトは公開中です。リンク知道的任何人都都可以查看。
+                                    {:else}
+                                        このプロジェクトは非公開です。所有者のみがアクセスできます。
+                                    {/if}
+                                </p>
+                            </div>
+                            <button
+                                class="toggle-switch"
+                                class:active={isPublic}
+                                onclick={handleTogglePublic}
+                                disabled={isLoading}
+                            >
+                                <span class="toggle-slider"></span>
+                            </button>
+                        </div>
+
+                        {#if isPublic && publicUrl}
+                            <div class="public-url-section">
+                                <h4>公開URL</h4>
+                                <div class="url-display">
+                                    <input
+                                        type="text"
+                                        value={publicUrl}
+                                        readonly
+                                        class="url-input"
+                                    />
+                                    <button
+                                        class="copy-button"
+                                        class:success={copySuccess}
+                                        onclick={copyToClipboard}
+                                    >
+                                        {copySuccess ? "コピー完了!" : "コピー"}
+                                    </button>
+                                </div>
+                                <p class="warning">
+                                    ⚠️ このURLを持つ人是誰でもこのプロジェクトを閲覧できます。共有する際は注意してください。
+                                </p>
+                            </div>
+                        {/if}
+                    </div>
+                {/if}
             </div>
 
             <div class="dialog-footer">

@@ -23,7 +23,6 @@ let error: string | undefined = $state(undefined);
 let isAuthenticated = $state(false);
 let projectNotFound = $state(false);
 let isAnonymousViewer = $state(false);
-let hasValidPublicToken = $state(false);
 
 // 認証成功時の処理
 async function handleAuthSuccess(authResult: any) {
@@ -62,7 +61,6 @@ onMount(() => {
     // 匿名ユーザーが公開プロジェクトのトークンを持っているかチェック
     if (!isAuthenticated && urlToken && projectName) {
         isAnonymousViewer = true;
-        hasValidPublicToken = true; // セキュリティルールが検証するため簡略化
         logger.info("Anonymous viewer mode with public token");
     }
 });

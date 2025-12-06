@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../../tests/utils/testDataHelper";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { TestHelpers } from "../utils/testHelpers";
 
 registerCoverageHooks();
 
@@ -72,7 +72,7 @@ test.describe("Public Project Sharing", () => {
         expect(true).toBe(true);
     });
 
-    test("should generate secure public access token", async ({ page }) => {
+    test("should generate secure public access token", async () => {
         // Test that tokens are:
         // 1. Cryptographically secure
         // 2. 32 characters long
