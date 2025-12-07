@@ -9,4 +9,12 @@ describe("roomPath helpers", () => {
     it("encodes page room path", () => {
         expect(pageRoomPath("proj id", "page/id")).toBe("projects/proj%20id/pages/page%2Fid");
     });
+
+    it("throws when project id is empty", () => {
+        expect(() => projectRoomPath("")).toThrow("projectId");
+    });
+
+    it("throws when page id is empty", () => {
+        expect(() => pageRoomPath("proj", "")).toThrow("pageId");
+    });
 });
