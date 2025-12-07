@@ -27,14 +27,14 @@ if (process.env.E2E_DISABLE_AUTO_SNAPSHOT !== "1") {
                 setTimeout(() => {
                     console.log("[afterEach] Save operation timeout");
                     resolve(undefined);
-                }, 10000)
+                }, 20000)
             );
 
-            // Race save operation with a 10 second timeout
+            // Race save operation with a 20 second timeout
             await Promise.race([savePromise, saveTimeout]);
 
             // Add cleanup to ensure test isolation
-            const cleanupPromise = DataValidationHelpers.tryCleanupAfterEach(page, testInfo);
+            const cleanupPromise = DataValidationHelpers.tryCleanupAfterEach(page);
             const cleanupTimeout = new Promise(resolve =>
                 setTimeout(() => {
                     console.log("[afterEach] Cleanup operation timeout");

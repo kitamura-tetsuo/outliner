@@ -22,6 +22,7 @@ vi.mock("../stores/containerStore.svelte", () => {
 
 vi.mock("../stores/store.svelte", () => {
     const mockProject = {
+        title: "Test Project",
         items: {
             [Symbol.iterator]: function*() {
                 yield {
@@ -163,7 +164,9 @@ describe("Sidebar", () => {
             expect(screen.getByText("No pages available")).toBeInTheDocument();
 
             // Restore
-            store.project = originalProject;
+            if (originalProject) {
+                store.project = originalProject;
+            }
             rerender({ isOpen: true });
         });
 
@@ -285,7 +288,7 @@ describe("Sidebar", () => {
             const pageItem = screen.getByText("Test Page 1").closest("[role='button']");
             if (pageItem) {
                 await user.click(pageItem);
-                expect(goto).toHaveBeenCalledWith("/Test%20Page%201");
+                expect(goto).toHaveBeenCalledWith("/Test%20Project/Test%20Page%201");
             }
         });
 

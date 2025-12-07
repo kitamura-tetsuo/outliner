@@ -11,8 +11,10 @@
     let isPagesCollapsed = $state(false);
 
     function handlePageClick(pageId: string, pageName: string) {
-        // Navigate to the page
-        goto(`/${encodeURIComponent(pageName)}`);
+        // Navigate to the page with proper project context
+        // Use current project from store for consistent navigation
+        const currentProjectTitle = store.project?.title || "Untitled Project";
+        goto(`/${encodeURIComponent(currentProjectTitle)}/${encodeURIComponent(pageName)}`);
     }
 </script>
 
