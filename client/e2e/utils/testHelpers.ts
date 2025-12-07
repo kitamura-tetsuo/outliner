@@ -665,7 +665,7 @@ export class TestHelpers {
      */
     public static async navigateToTestProjectPage(
         page: Page,
-        testInfo?: any,
+        testInfo: any | undefined,
         lines: string[],
         _browser?: Browser,
     ): Promise<{ projectName: string; pageName: string; }> {

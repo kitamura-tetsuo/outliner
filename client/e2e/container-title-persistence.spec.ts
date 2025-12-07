@@ -1,5 +1,5 @@
-import "../utils/registerAfterEachSnapshot";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import "./utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "./utils/registerCoverageHooks";
 registerCoverageHooks();
 /**
  * @file container-title-persistence.spec.ts
@@ -7,7 +7,7 @@ registerCoverageHooks();
  * コンテナタイトルがmetaDocに永続化され、ページ再読み込み後もホーム.dropdownに表示されることを確認
  */
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
+import { TestHelpers } from "./utils/testHelpers";
 
 /**
  * @feature CNT-0001

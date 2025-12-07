@@ -4,7 +4,8 @@ Verify that all Playwright E2E spec files import and call registerCoverageHooks(
 
 Target files: client/e2e/**/*.spec.ts
 Checks:
-  1) import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+  1) import { registerCoverageHooks } from "./utils/registerCoverageHooks"; (for files in e2e/)
+     OR import { registerCoverageHooks } from "../utils/registerCoverageHooks"; (for files in e2e/subdir/)
   2) registerCoverageHooks();
 
 If any file is missing either requirement, exit with non-zero status and print a
@@ -20,8 +21,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 E2E_DIR = REPO_ROOT / "client" / "e2e"
 
 # Regex patterns (tolerant to whitespace and optional semicolon)
+# Accept both ./utils/ (for files in e2e/) and ../utils/ (for files in e2e/subdir/)
 IMPORT_RE = re.compile(
-    r"import\s*\{\s*registerCoverageHooks\s*\}\s*from\s*[\"\']\.\./utils/registerCoverageHooks[\"\']\s*;?",
+    r"import\s*\{\s*registerCoverageHooks\s*\}\s*from\s*[\"']\.\.?/utils/registerCoverageHooks[\"']\s*;?",
     re.MULTILINE,
 )
 CALL_RE = re.compile(r"registerCoverageHooks\s*\(\s*\)\s*;?", re.MULTILINE)
@@ -55,7 +57,9 @@ def main() -> int:
     if offending_import or offending_call:
         print("\n[verify_e2e_coverage_hooks] ERROR: The following E2E spec files are missing registerCoverageHooks requirements:\n")
         if offending_import:
-            print("- Missing import line (add to file top):\n  import { registerCoverageHooks } from \"../utils/registerCoverageHooks\";\n")
+            print("- Missing import line (add to file top):")
+            print("  For files in client/e2e/: import { registerCoverageHooks } from \"./utils/registerCoverageHooks\";")
+            print("  For files in client/e2e/subdir/: import { registerCoverageHooks } from \"../utils/registerCoverageHooks\";\n")
             for p in offending_import:
                 print(f"  • {p}")
             print()
