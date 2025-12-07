@@ -147,26 +147,30 @@
 
 <style>
     .sidebar {
-        width: 0;
-        height: 100vh;
+        width: 250px;
+        max-width: 250px;
+        height: calc(100vh - 5rem);
         position: fixed;
         left: 0;
         top: 5rem; /* Below the toolbar */
         background-color: white;
         border-right: 1px solid #e5e7eb;
-        transition: width 0.3s ease;
+        transition: transform 0.3s ease;
         overflow: hidden;
         z-index: 10;
+        transform: translateX(-100%);
     }
 
     .sidebar.open {
-        width: 250px;
+        transform: translateX(0);
     }
 
     .sidebar-content {
         padding: 1rem;
         height: 100%;
+        width: 100%;
         overflow-y: auto;
+        box-sizing: border-box;
     }
 
     .sidebar-title {

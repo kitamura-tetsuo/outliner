@@ -43,8 +43,8 @@ const logger = getLogger("AppLayout");
 // 認証関連の状態
 let isAuthenticated = $state(false);
 
-// Sidebar state management
-let isSidebarOpen = $state(true);
+// Sidebar state management - starts closed by default
+let isSidebarOpen = $state(false);
 
 // グローバルへのフォールバック公開（早期に window.generalStore を満たす）
 if (browser) {
@@ -558,7 +558,7 @@ onDestroy(async () => {
     </div>
 
     <button
-        class="fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
+        class="theme-toggle fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
         onclick={() => userPreferencesStore.toggleTheme()}
     >
         {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
@@ -608,5 +608,10 @@ onDestroy(async () => {
 
 :global(html.dark) .sidebar-toggle:hover {
     background-color: #1e40af;
+}
+
+/* Theme toggle button - ensure it's above the sidebar */
+.theme-toggle {
+    z-index: 50;
 }
 </style>
