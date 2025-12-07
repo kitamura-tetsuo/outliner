@@ -15,7 +15,8 @@ test("OutlinerBase anchor and main toolbar are visible; no WS '/projects/' 404 h
     await expect(page.locator('[data-testid="outliner-base"]').first()).toBeVisible();
 
     // 2) メインツールバーの可視性
-    await expect(page.getByTestId("main-toolbar").first()).toBeVisible();
+    // Use .main-toolbar class selector to find the real toolbar (not the app.html placeholder)
+    await expect(page.locator('.main-toolbar[data-testid="main-toolbar"]').first()).toBeVisible();
 
     // 3) WebSocket 接続URLを収集し、末尾が '/projects/' の誤接続が無いことを確認
     const wsUrls: string[] = [];
