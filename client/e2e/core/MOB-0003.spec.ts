@@ -14,6 +14,15 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await page.setViewportSize({ width: 375, height: 700 });
         await TestHelpers.prepareTestEnvironment(page, testInfo);
+
+        // Close sidebar on mobile to avoid layout issues
+        const sidebarToggle = page.locator('button[aria-label*="sidebar"]').first();
+        const sidebar = page.locator(".sidebar.open");
+        if (await sidebar.isVisible().catch(() => false)) {
+            await sidebarToggle.click();
+            await page.waitForTimeout(400); // Wait for transition
+        }
+
         const first = page.locator(".outliner-item").first();
         await first.locator(".item-content").click({ force: true });
         await page.waitForSelector("textarea.global-textarea:focus");

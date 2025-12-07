@@ -2,6 +2,7 @@
     import { containerStore } from "../stores/containerStore.svelte";
     import { store } from "../stores/store.svelte";
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
 
     let { isOpen = $bindable(true) } = $props();
 
@@ -10,11 +11,11 @@
     // Collapsible state for Pages section
     let isPagesCollapsed = $state(false);
 
-    function handlePageClick(pageId: string, pageName: string) {
+    async function handlePageClick(pageId: string, pageName: string) {
         // Navigate to the page with proper project context
         // Use current project from store for consistent navigation
         const currentProjectTitle = store.project?.title || "Untitled Project";
-        goto(`/${encodeURIComponent(currentProjectTitle)}/${encodeURIComponent(pageName)}`);
+        await goto(resolve(`/${encodeURIComponent(currentProjectTitle)}/${encodeURIComponent(pageName)}`));
     }
 </script>
 
@@ -128,13 +129,13 @@
             <h3 class="sidebar-section-title">Settings</h3>
             <div
                 class="settings-link"
-                onclick={() => goto("/settings")}
+                onclick={async () => await goto(resolve("/settings"))}
                 role="button"
                 tabindex="0"
-                onkeydown={(e) => {
+                onkeydown={async (e) => {
                     if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        goto("/settings");
+                        await goto(resolve("/settings"));
                     }
                 }}
             >
