@@ -28,19 +28,25 @@ onMount(async () => {
     project = decodeURIComponent(params.project || "");
     pageTitle = decodeURIComponent(params.page || "");
 
-    // 0) セッションに固定されたpageIdがあれば最優先で使用（E2E安定化のため）
+    let sessionPinnedPageId: string | undefined;
+    // 0) セッションに固定されたpageIdを候補として読み出す（ただし即returnせず、現在ページと一致するかを確認する）
     try {
         if (typeof window !== "undefined") {
             const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
             const saved = window.sessionStorage?.getItem(key) || "";
             if (saved) {
-                pageId = String(saved);
-                console.log("Schedule page: Using session pinned pageId=", pageId);
-                await refresh();
-                return;
+                sessionPinnedPageId = String(saved);
+                console.log("Schedule page: Found session pinned pageId=", sessionPinnedPageId);
             }
         }
     } catch {}
+    // セッションに保存されている pageId がある場合は最優先で採用する。
+    // 一度解決した pageId を後続の currentPage などで上書きしてしまうと
+    // リロード後に別のページIDを指してしまうことがあるため、
+    // ここで先に固定しておく。
+    if (sessionPinnedPageId) {
+        pageId = sessionPinnedPageId;
+    }
 
     // store.currentPage が設定されるまで最大5秒待機
     let attempts = 0;
@@ -49,9 +55,15 @@ onMount(async () => {
         attempts++;
     }
 
-    // 1) 最優先: currentPage のページIDを使用（ページ単位のスケジュール管理のため）
+    // 1) 最優先: currentPage が現在のページを指している場合に使用（別ページの値が残っているケースを除外）
     try {
-        if (store.currentPage) {
+        const current = store.currentPage;
+        const currentTitle = current?.text?.toString?.() ?? "";
+        if (
+            !pageId &&
+            current &&
+            currentTitle.toLowerCase() === pageTitle.toLowerCase()
+        ) {
             pageId = String(store.currentPage?.id ?? "");
         }
     } catch {}
@@ -78,17 +90,9 @@ onMount(async () => {
     }
 
     // 3) 最後の手段としてセッションの候補を使用（E2E安定化）
-    if (!pageId) {
-        try {
-            if (typeof window !== "undefined") {
-                const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
-                const saved = window.sessionStorage?.getItem(key) || "";
-                if (saved) {
-                    pageId = String(saved);
-                    console.log("Schedule page: Using session fallback pageId=", saved);
-                }
-            }
-        } catch {}
+    if (!pageId && sessionPinnedPageId) {
+        pageId = sessionPinnedPageId;
+        console.log("Schedule page: Using session fallback pageId=", sessionPinnedPageId);
     }
 
     if (!pageId) {

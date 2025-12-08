@@ -1,7 +1,6 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-// @ts-nocheck
 /** @feature MOB-0003
  *  Title   : Mobile Bottom Action Toolbar
  *  Source  : docs/client-features.yaml
@@ -171,8 +170,10 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await page.waitForTimeout(500);
 
         // データ構造から子要素があることを確認
-        const afterNewChildData = await TreeValidator.getTreeData(page);
-        const hasChildItems = Object.values(afterNewChildData.items).some((item) =>
+        const afterNewChildData = await TreeValidator.getTreeData(page) as {
+            items: Record<string, { items?: Record<string, unknown>; }>;
+        };
+        const hasChildItems = Object.values(afterNewChildData.items ?? {}).some((item) =>
             item.items && Object.keys(item.items).length > 0
         );
         expect(hasChildItems).toBe(true);

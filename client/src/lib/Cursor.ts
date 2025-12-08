@@ -1,4 +1,5 @@
-import type { Item } from "../schema/yjs-schema";
+import type { Item } from "../schema/app-schema";
+import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import {
@@ -57,14 +58,14 @@ export class Cursor implements CursorEditingContext {
         this.offset = opts.offset;
         this.isActive = opts.isActive;
         this.userId = opts.userId;
-        this.editor = new CursorEditor(this);
+        this.editor = new CursorEditor(this as any);
     }
 
     // SharedTree 上の Item を再帰検索
-    findTarget(): Item | undefined {
+    private _findTarget(): Item | undefined {
         const root = generalStore.currentPage as Item | undefined;
         if (root) {
-            const found = searchItem(root, this.itemId);
+            const found = searchItem(root as any, this.itemId) as Item | undefined;
             if (found) return found;
         }
         // Fallback: search across all pages in the current project
@@ -73,7 +74,7 @@ export class Cursor implements CursorEditingContext {
             const pages: Iterable<Item> | undefined = proj?.items;
             if (pages && pages[Symbol.iterator]) {
                 for (const p of pages) {
-                    const f = searchItem(p, this.itemId);
+                    const f = searchItem(p as any, this.itemId) as Item | undefined;
                     if (f) return f;
                 }
             }
@@ -84,12 +85,17 @@ export class Cursor implements CursorEditingContext {
         return undefined;
     }
 
+    // SharedTree 上の Item を再帰検索 (CursorEditingContext interface implementation)
+    findTarget(): any {
+        return this._findTarget();
+    }
+
     private getTargetText(target: Item | undefined): string {
         const raw = target?.text;
         if (typeof raw === "string") return raw;
-        if (raw && typeof raw.toString === "function") {
+        if (raw && typeof (raw as any).toString === "function") {
             try {
-                return raw.toString();
+                return (raw as any).toString();
             } catch {}
         }
         return raw == null ? "" : String(raw);
@@ -311,8 +317,25 @@ export class Cursor implements CursorEditingContext {
         } else {
             // 前のアイテムを探す
             const prevItem = findPreviousItem(this.itemId);
-            if (prevItem) {
-                // 前のアイテムの最後の視覚的な行に移動
+            // Also check for parent item when there's no previous sibling
+            // Note: item.parent returns Items (collection), not Item. We need to find the parent Item.
+            const currentTarget = this.findTarget();
+            const parentCollection = currentTarget?.parent;
+            // Get the parent Item by creating it from parentKey
+            let parentItemInstance: any = null;
+            if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
+                // Create the parent Item from the parentKey
+                parentItemInstance = new (currentTarget!.constructor as any)(
+                    currentTarget!.ydoc,
+                    currentTarget!.tree,
+                    parentCollection.parentKey,
+                );
+            }
+            const hasParentToNavigateTo = !prevItem && parentItemInstance && parentItemInstance.id;
+
+            if (prevItem || hasParentToNavigateTo) {
+                // 前のアイテムまたは親アイテムに移動
+                // navigateToItem("up") will handle both cases
                 this.navigateToItem("up");
 
                 // デバッグ情報
@@ -320,7 +343,7 @@ export class Cursor implements CursorEditingContext {
                     console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
             } else {
-                // 前のアイテムがない場合は、同じアイテムの先頭に移動
+                // 前のアイテムも親アイテムもない場合は、同じアイテムの先頭に移動
                 if (this.offset > 0) {
                     this.offset = 0;
                     this.applyToStore();
@@ -464,7 +487,7 @@ export class Cursor implements CursorEditingContext {
         this.editor.deleteForward();
     }
 
-    deleteMultiItemSelection(selection: import("./cursor/CursorEditor").SelectionRange) {
+    deleteMultiItemSelection(selection: SelectionRange) {
         this.editor.deleteMultiItemSelection(selection);
     }
 
@@ -1744,11 +1767,48 @@ export class Cursor implements CursorEditingContext {
 
         // アイテム間移動の処理
         if (direction === "left") {
-            const prevItem = findPreviousItem(this.itemId);
-            const currentTarget = this.findTarget();
-            const parentOfCurrent = currentTarget?.parent;
-            const isParentItem = parentOfCurrent && prevItem && prevItem.id === parentOfCurrent.id;
-            if (prevItem && !isParentItem) {
+            let prevItem = findPreviousItem(this.itemId);
+
+            // DOM fallback: when tree lookup fails (e.g., first child under page title),
+            // try to use the visual order to locate the previous item.
+            if (!prevItem && typeof document !== "undefined") {
+                const currentEl = document.querySelector(`[data-item-id="${this.itemId}"]`);
+                if (currentEl) {
+                    const allItems = Array.from(document.querySelectorAll("[data-item-id]"));
+                    const currentIndex = allItems.indexOf(currentEl);
+                    if (currentIndex > 0) {
+                        // Walk backwards until we find a previous element that is not an ancestor
+                        // of the current element. Moving to an ancestor would incorrectly jump
+                        // to the parent item when the current item has no previous sibling.
+                        let prevEl: HTMLElement | undefined;
+                        for (let i = currentIndex - 1; i >= 0; i--) {
+                            const candidate = allItems[i] as HTMLElement;
+                            if (candidate.contains(currentEl)) {
+                                continue;
+                            }
+                            prevEl = candidate;
+                            break;
+                        }
+                        if (prevEl) {
+                            const prevItemId = prevEl.getAttribute("data-item-id");
+                            if (prevItemId && prevItemId !== this.itemId) {
+                                prevItem = searchItem(generalStore.currentPage as any, prevItemId);
+                                newItemId = prevItemId;
+                                const treeTextLength = prevItem
+                                    ? this.getTargetText(prevItem as any).length
+                                    : undefined;
+                                const domTextLength = prevEl.querySelector(".item-text")?.textContent?.length
+                                    ?? prevEl.textContent?.length
+                                    ?? 0;
+                                newOffset = treeTextLength ?? domTextLength ?? 0;
+                                itemChanged = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (prevItem && !itemChanged) {
                 newItemId = prevItem.id;
                 newOffset = prevItem.text?.length || 0;
                 itemChanged = true;
@@ -1757,7 +1817,7 @@ export class Cursor implements CursorEditingContext {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
                 }
-            } else {
+            } else if (!itemChanged) {
                 // 前のアイテムがない場合は、同じアイテムの先頭に移動
                 const target = this.findTarget();
                 if (target) {
@@ -1994,10 +2054,24 @@ export class Cursor implements CursorEditingContext {
                 }
             }
         } else if (direction === "up") {
-            const prevItem = findPreviousItem(this.itemId);
+            let prevItem = findPreviousItem(this.itemId);
+            // If no previous sibling, try to navigate to parent item for up direction
+            // Note: item.parent returns Items (collection), not Item. We need to find the parent Item.
+            if (!prevItem) {
+                const currentTarget = this.findTarget();
+                const parentCollection = currentTarget?.parent;
+                // Get the parent Item by creating it from parentKey (skip "root" as it's the project level)
+                if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
+                    prevItem = new (currentTarget!.constructor as any)(
+                        currentTarget!.ydoc,
+                        currentTarget!.tree,
+                        parentCollection.parentKey,
+                    );
+                }
+            }
             if (prevItem) {
                 newItemId = prevItem.id;
-                const prevText = this.getTargetText(prevItem);
+                const prevText = this.getTargetText(prevItem as any);
                 const visualLineInfo = getVisualLineInfo(prevItem.id, prevText.length > 0 ? prevText.length - 1 : 0);
                 let lastLineIndex: number | undefined;
                 let lastLineStart: number | undefined;
@@ -2051,7 +2125,7 @@ export class Cursor implements CursorEditingContext {
 
             if (nextItem) {
                 newItemId = nextItem.id;
-                const nextText = this.getTargetText(nextItem);
+                const nextText = this.getTargetText(nextItem as any);
                 // const nextLines = nextText.split("\n"); // Not used
                 const firstLineIndex = 0;
                 const firstLineStart = getLineStartOffset(nextText, firstLineIndex);

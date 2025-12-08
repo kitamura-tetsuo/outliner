@@ -59,6 +59,12 @@ ensure_codex_services() {
   fi
 }
 
+cleanup_e2e_coverage() {
+  if [ -f "${CLIENT_DIR}/scripts/cleanup-e2e-raw-coverage.js" ]; then
+    node "${CLIENT_DIR}/scripts/cleanup-e2e-raw-coverage.js"
+  fi
+}
+
 cd "$PROJECT_ROOT"
 
 if [ $# -eq 0 ]; then
@@ -74,6 +80,7 @@ if [ $# -eq 0 ]; then
 
   npm run test:unit
   npm run test:integration
+  cleanup_e2e_coverage
   npm run test:e2e --
   exit 0
 fi
@@ -211,6 +218,7 @@ case "$detected_type" in
     ;;
   e2e)
     ensure_codex_services
+    cleanup_e2e_coverage
     for spec in "${normalized_paths[@]}"; do
       npm run test:e2e -- "$spec" "${pass_through[@]}"
     done

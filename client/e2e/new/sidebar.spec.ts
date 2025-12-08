@@ -1,8 +1,36 @@
-import { expect, test } from "@playwright/test";
+import { expect, Page, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 
 registerCoverageHooks();
+
+const getSidebarHelpers = (page: Page) => {
+    const sidebar = page.locator("aside.sidebar");
+    const toggleButton = page.locator("button.sidebar-toggle");
+
+    const isOpen = async () => {
+        const cls = (await sidebar.getAttribute("class")) ?? "";
+        return cls.includes("open");
+    };
+
+    const open = async () => {
+        if (!(await isOpen())) {
+            await toggleButton.click();
+            await page.waitForTimeout(200);
+            await expect(sidebar).toHaveClass(/open/);
+        }
+    };
+
+    const close = async () => {
+        if (await isOpen()) {
+            await toggleButton.click();
+            await page.waitForTimeout(200);
+            await expect(sidebar).not.toHaveClass(/open/);
+        }
+    };
+
+    return { sidebar, toggleButton, isOpen, open, close };
+};
 
 /**
  * E2E Tests for Sidebar functionality
@@ -25,33 +53,32 @@ test.describe("Sidebar Navigation", () => {
     test("should open and close sidebar via main toggle button", async ({ page }) => {
         test.setTimeout(120000);
 
-        // Sidebar should be initially open (default state)
-        await expect(page.locator("aside.sidebar")).toBeVisible();
-        await expect(page.locator("aside.sidebar")).toHaveClass(/open/);
+        const { sidebar, toggleButton, open, close, isOpen } = getSidebarHelpers(page);
 
-        // Find and click the sidebar toggle button
-        const toggleButton = page.locator("button.sidebar-toggle");
-        await expect(toggleButton).toBeVisible();
+        // Sidebar starts closed (to avoid covering other UI)
+        await expect(sidebar).toBeVisible();
+        expect(await isOpen()).toBe(false);
+
+        // Open sidebar
+        await open();
 
         // Close sidebar
-        await toggleButton.click();
-        await page.waitForTimeout(300); // Wait for transition
-
-        // Verify sidebar is closed
-        await expect(page.locator("aside.sidebar")).not.toHaveClass(/open/);
+        await close();
 
         // Reopen sidebar
-        await toggleButton.click();
-        await page.waitForTimeout(300); // Wait for transition
+        await open();
 
-        // Verify sidebar is open
-        await expect(page.locator("aside.sidebar")).toHaveClass(/open/);
+        // Final state should be open
+        await expect(sidebar).toHaveClass(/open/);
+        await expect(toggleButton).toBeVisible();
     });
 
     test("should toggle Projects section", async ({ page }) => {
         test.setTimeout(120000);
 
-        await expect(page.locator("aside.sidebar")).toBeVisible();
+        const { sidebar, open } = getSidebarHelpers(page);
+        await open();
+        await expect(sidebar).toBeVisible();
 
         // Projects section should be initially expanded
         const projectsHeader = page.locator('[aria-label="Toggle projects section"]');
@@ -78,7 +105,9 @@ test.describe("Sidebar Navigation", () => {
     test("should toggle Pages section", async ({ page }) => {
         test.setTimeout(120000);
 
-        await expect(page.locator("aside.sidebar")).toBeVisible();
+        const { sidebar, open } = getSidebarHelpers(page);
+        await open();
+        await expect(sidebar).toBeVisible();
 
         // Pages section should be initially expanded
         const pagesHeader = page.locator('[aria-label="Toggle pages section"]');
@@ -105,7 +134,9 @@ test.describe("Sidebar Navigation", () => {
     test("should navigate to Settings page when Settings link is clicked", async ({ page }) => {
         test.setTimeout(120000);
 
-        await expect(page.locator("aside.sidebar")).toBeVisible();
+        const { sidebar, open } = getSidebarHelpers(page);
+        await open();
+        await expect(sidebar).toBeVisible();
 
         // Click on Settings link
         const settingsLink = page.locator(".settings-link");
@@ -125,7 +156,9 @@ test.describe("Sidebar Navigation", () => {
     test("should show project list in Projects section", async ({ page }) => {
         test.setTimeout(120000);
 
-        await expect(page.locator("aside.sidebar")).toBeVisible();
+        const { sidebar, open } = getSidebarHelpers(page);
+        await open();
+        await expect(sidebar).toBeVisible();
 
         // Projects section should be expanded
         const projectsHeader = page.locator('[aria-label="Toggle projects section"]');
@@ -143,7 +176,9 @@ test.describe("Sidebar Navigation", () => {
     test("should show page list in Pages section", async ({ page }) => {
         test.setTimeout(120000);
 
-        await expect(page.locator("aside.sidebar")).toBeVisible();
+        const { sidebar, open } = getSidebarHelpers(page);
+        await open();
+        await expect(sidebar).toBeVisible();
 
         // Pages section should be expanded
         const pagesHeader = page.locator('[aria-label="Toggle pages section"]');
@@ -160,34 +195,35 @@ test.describe("Sidebar Navigation", () => {
     test("should adjust main content margin when sidebar is toggled", async ({ page }) => {
         test.setTimeout(120000);
 
-        // Ensure sidebar is visible
-        await expect(page.locator("aside.sidebar")).toBeVisible();
+        const { sidebar, open, close } = getSidebarHelpers(page);
+        await expect(sidebar).toBeVisible();
 
-        // Main content should have sidebar margin initially
+        // Main content should not have sidebar margin initially (sidebar closed by default)
         // Use first() to avoid strict mode violation with multiple elements
         const mainContent = page.locator(".main-content").first();
+        await expect(mainContent).not.toHaveClass(/with-sidebar/);
+
+        // Open sidebar
+        await open();
+
+        // Main content should have sidebar margin when open
         await expect(mainContent).toHaveClass(/with-sidebar/);
 
         // Close sidebar
-        const toggleButton = page.locator("button.sidebar-toggle");
-        await toggleButton.click();
-        await page.waitForTimeout(300);
-
-        // Main content should not have sidebar margin when closed
+        await close();
         await expect(mainContent).not.toHaveClass(/with-sidebar/);
 
         // Reopen sidebar
-        await toggleButton.click();
-        await page.waitForTimeout(300);
-
-        // Main content should have sidebar margin again
+        await open();
         await expect(mainContent).toHaveClass(/with-sidebar/);
     });
 
     test("should have proper ARIA attributes for accessibility", async ({ page }) => {
         test.setTimeout(120000);
 
-        await expect(page.locator("aside.sidebar")).toBeVisible();
+        const { sidebar, open } = getSidebarHelpers(page);
+        await open();
+        await expect(sidebar).toBeVisible();
 
         // Toggle button should have aria-label
         const toggleButton = page.locator("button.sidebar-toggle");
@@ -217,7 +253,9 @@ test.describe("Sidebar Navigation", () => {
     test("should handle keyboard navigation on page items", async ({ page }) => {
         test.setTimeout(120000);
 
-        await expect(page.locator("aside.sidebar")).toBeVisible();
+        const { sidebar, open } = getSidebarHelpers(page);
+        await open();
+        await expect(sidebar).toBeVisible();
 
         // Focus on a page item
         const pageItem = page.locator(".page-item").first();
@@ -236,7 +274,9 @@ test.describe("Sidebar Navigation", () => {
     test("should handle keyboard navigation on settings link", async ({ page }) => {
         test.setTimeout(120000);
 
-        await expect(page.locator("aside.sidebar")).toBeVisible();
+        const { sidebar, open } = getSidebarHelpers(page);
+        await open();
+        await expect(sidebar).toBeVisible();
 
         // Focus on settings link
         const settingsLink = page.locator(".settings-link");

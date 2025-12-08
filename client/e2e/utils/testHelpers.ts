@@ -173,7 +173,8 @@ export class TestHelpers {
                     if (typeof len === "number" && len >= 0) {
                         const r: any[] = [];
                         for (let i = 0; i < len; i++) {
-                            const v = (p as any).at ? p.at(i) : (p as any)[i];
+                            const anyVal = p as any;
+                            const v = typeof anyVal.at === "function" ? anyVal.at(i) : anyVal[i];
                             if (typeof v !== "undefined") r.push(v);
                         }
                         return r;
@@ -2107,7 +2108,7 @@ declare global {
     interface Window {
         getCursorDebugData?: () => any;
         getCursorPathData?: (path?: string) => any;
-        __testShowLinkPreview?: (pageName: string, projectName?: string) => HTMLElement;
+        __testShowLinkPreview?: (pageName: string, projectName?: string, pageExists?: boolean) => HTMLElement;
         _alertMessage?: string | null | undefined;
         __USER_MANAGER__?: any;
         editorOverlayStore?: any;

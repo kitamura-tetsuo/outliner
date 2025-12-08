@@ -11,7 +11,8 @@ test.describe("Scheduled Page Publishing", () => {
     test("create schedule via API", async ({ page }) => {
         const response = await page.request.post("/api/create-schedule", {
             data: {
-                idToken: "dummy-token",
+                // An empty token should be rejected by the API (no emulator fallback)
+                idToken: "",
                 pageId: "page-1",
                 schedule: { strategy: "one_shot", nextRunAt: Date.now() + 60000 },
             },
