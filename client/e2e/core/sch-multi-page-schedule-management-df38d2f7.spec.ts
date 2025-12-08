@@ -133,32 +133,51 @@ test.describe("Multi-Page Schedule Management", () => {
 
     test("schedule operations across pages", async ({ page }) => {
         test.setTimeout(60000); // Increase timeout for stability
-        const { projectName, pageName } = testProject;
+        const { projectName } = testProject;
 
-        // Wait for Yjs client to be available to ensure we are using the connected project
-        await page.waitForFunction(() => {
-            const win: any = window as any;
-            const client = win.__YJS_STORE__?.yjsClient;
-            const project = win.generalStore?.project;
-            // Ensure project is fully linked to the Yjs client
-            return client && project && client.getProject && client.getProject() === project;
-        }, { timeout: 30000 });
+        // Strict helper to ensure we are on the connected project and page
+        const ensureConnectedPage = async () => {
+            await page.waitForFunction(() => {
+                const win: any = window as any;
+                const client = win.__YJS_STORE__?.yjsClient;
+                const gs = win.generalStore;
+                if (!client || !gs?.project || !gs?.currentPage) return false;
 
-        // Add a buffer to allow store.project update and page migration to propagate
-        await page.waitForTimeout(2000);
+                // Ensure project matches client project (confirms connected project)
+                // Note: client.getProject might be a function or property depending on impl
+                if (client.getProject) {
+                     const cp = typeof client.getProject === 'function' ? client.getProject() : client.getProject;
+                     if (gs.project !== cp) return false;
+                }
 
-        // Create another page in the same project using the correct method
-        await page.evaluate(async () => {
+                return true;
+            }, { timeout: 30000 });
+            await page.waitForTimeout(500); // Small buffer for reactivity
+        };
+
+        // Wait for connection initially
+        await ensureConnectedPage();
+
+        // Define stable page names for the test
+        const pageName1 = "stable-page-1";
+        const pageName2 = "stable-page-2";
+
+        // Create pages on the connected project
+        await page.evaluate(async ({ p1, p2 }) => {
             const store = window.generalStore;
             if (store && store.project) {
-                // Use the addPage method to create a new page
-                store.project.addPage("other-page", "test-user");
-                console.log("Created other-page in same project");
+                store.project.addPage(p1, "test-user");
+                store.project.addPage(p2, "test-user");
             }
-        });
+        }, { p1: pageName1, p2: pageName2 });
 
-        // Wait for the page to be created and allow time for synchronization
+        // Wait for creation to propagate
         await page.waitForTimeout(1000);
+
+        // Go to page 1
+        await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName1)}`);
+        await page.waitForSelector(`text=${pageName1}`, { timeout: 10000 });
+        await ensureConnectedPage();
 
         // Open schedule for first page
         const firstPageId = await page.evaluate(() => {
@@ -181,7 +200,7 @@ test.describe("Multi-Page Schedule Management", () => {
         await expect(items).toHaveCount(1, { timeout: 10000 });
 
         // Verify the schedule was added correctly
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // Edit schedule
         await items.first().locator('button:has-text("Edit")').click();
@@ -197,12 +216,11 @@ test.describe("Multi-Page Schedule Management", () => {
         await page.locator('button:has-text("Back")').click();
 
         // Navigate to the other page
-        const encodedProject = encodeURIComponent(projectName);
-        await page.goto(`/${encodedProject}/other-page`);
+        await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName2)}`);
 
-        // Wait for page to load and get current page ID
-        await page.waitForSelector("text=other-page", { timeout: 10000 });
-        await page.waitForTimeout(1000);
+        // Wait for page to load
+        await page.waitForSelector(`text=${pageName2}`, { timeout: 10000 });
+        await ensureConnectedPage();
 
         const currentPageId = await page.evaluate(() => {
             return window.generalStore?.currentPage?.id;
@@ -219,13 +237,12 @@ test.describe("Multi-Page Schedule Management", () => {
         // Navigate back to the first page
         await page.locator('button:has-text("Back")').click({ force: true });
 
-        // Return to the first page to verify the schedule is still there
-        const encodedPage = encodeURIComponent(pageName);
-        await page.goto(`/${encodedProject}/${encodedPage}`);
+        // Return to the first page
+        await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName1)}`);
 
         // Wait for page to load completely
-        await page.waitForSelector(`text=${pageName}`, { timeout: 10000 });
-        await page.waitForTimeout(1000);
+        await page.waitForSelector(`text=${pageName1}`, { timeout: 10000 });
+        await ensureConnectedPage();
 
         // Navigate to schedule management again
         await page.locator("text=予約管理").click();
