@@ -1592,6 +1592,46 @@ export class Cursor implements CursorEditingContext {
         if (typeof window !== "undefined") window.scrollBy(0, window.innerHeight);
     }
 
+    moveItemUp() {
+        const item = this.findTarget();
+        if (!item) return;
+
+        const tree = item.tree;
+        const parentKey = (tree as any).getNodeParentFromKey(item.key);
+        if (!parentKey) return;
+
+        const children = tree.getNodeChildrenFromKey(parentKey);
+        const sorted = tree.sortChildrenByOrder(children, parentKey);
+        const index = sorted.indexOf(item.key);
+
+        if (index > 0) {
+            const prevKey = sorted[index - 1];
+            tree.setNodeBefore(item.key, prevKey);
+            this.applyToStore();
+            store.startCursorBlink();
+        }
+    }
+
+    moveItemDown() {
+        const item = this.findTarget();
+        if (!item) return;
+
+        const tree = item.tree;
+        const parentKey = (tree as any).getNodeParentFromKey(item.key);
+        if (!parentKey) return;
+
+        const children = tree.getNodeChildrenFromKey(parentKey);
+        const sorted = tree.sortChildrenByOrder(children, parentKey);
+        const index = sorted.indexOf(item.key);
+
+        if (index < sorted.length - 1) {
+            const nextKey = sorted[index + 1];
+            tree.setNodeAfter(item.key, nextKey);
+            this.applyToStore();
+            store.startCursorBlink();
+        }
+    }
+
     // フォーマットメソッドは下部で定義されています
 
     /**
