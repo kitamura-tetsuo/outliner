@@ -3,7 +3,7 @@
         "@dotenvx/dotenvx": "^1.51.0",
         "@y/websocket-server": "^0.1.1",
         "cors": "^2.8.5",
-        "express": "^5.1.0",
+        "express": "^5.2.1",
         "find-process": "^2.0.0",
         "firebase-admin": "^13.6.0",
         "fs-extra": "^11.3.2",
