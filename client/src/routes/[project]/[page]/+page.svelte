@@ -364,16 +364,16 @@ async function loadProjectAndPage() {
                     // After Yjs client attach: ensure requested page exists in CONNECTED project
                     try {
                         const itemsAny: any = (store.project as any).items as any;
-                        const hasTitle = (title: string) => {
-                            const len = itemsAny?.length ?? 0;
+                        const findPage = (items: any, title: string) => {
+                            const len = items?.length ?? 0;
                             for (let i = 0; i < len; i++) {
-                                const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
+                                const p = items.at ? items.at(i) : items[i];
                                 const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                                 if (String(t).toLowerCase() === String(title).toLowerCase()) return p;
                             }
                             return null;
                         };
-                        let pageRef: any = hasTitle(pageName);
+                        let pageRef: any = findPage(itemsAny, pageName);
 
                         // Retry finding page to avoid duplicate creation during Yjs sync (Test Env only)
                         const isTestEnv = (
@@ -385,7 +385,9 @@ async function loadProjectAndPage() {
                         if (isTestEnv && !pageRef && pageName) {
                             for (let i = 0; i < 50; i++) {
                                 await new Promise(r => setTimeout(r, 200));
-                                pageRef = hasTitle(pageName);
+                                // Re-fetch items from store.project as it might have updated
+                                const currentItems = (store.project as any)?.items;
+                                pageRef = findPage(currentItems, pageName);
                                 if (pageRef) {
                                     logger.info(`E2E: Found page "${pageName}" after retry ${i + 1}`);
                                     break;
@@ -395,7 +397,9 @@ async function loadProjectAndPage() {
                         }
 
                         if (!pageRef && pageName) {
-                            pageRef = itemsAny?.addNode?.("tester");
+                            // Use latest items reference
+                            const targetItems = (store.project as any)?.items ?? itemsAny;
+                            pageRef = targetItems?.addNode?.("tester");
                             pageRef?.updateText?.(pageName);
                             logger.info(`E2E: Created requested page after Yjs attach: "${pageName}"`);
                         }
