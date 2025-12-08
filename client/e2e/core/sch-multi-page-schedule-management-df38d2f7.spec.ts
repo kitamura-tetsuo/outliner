@@ -146,8 +146,8 @@ test.describe("Multi-Page Schedule Management", () => {
                 // Ensure project matches client project (confirms connected project)
                 // Note: client.getProject might be a function or property depending on impl
                 if (client.getProject) {
-                    const cp = typeof client.getProject === "function" ? client.getProject() : client.getProject;
-                    if (gs.project !== cp) return false;
+                     const cp = typeof client.getProject === 'function' ? client.getProject() : client.getProject;
+                     if (gs.project !== cp) return false;
                 }
 
                 return true;
@@ -162,19 +162,7 @@ test.describe("Multi-Page Schedule Management", () => {
         const pageName1 = "stable-page-1";
         const pageName2 = "stable-page-2";
 
-        // Create pages on the connected project
-        await page.evaluate(async ({ p1, p2 }) => {
-            const store = window.generalStore;
-            if (store && store.project) {
-                store.project.addPage(p1, "test-user");
-                store.project.addPage(p2, "test-user");
-            }
-        }, { p1: pageName1, p2: pageName2 });
-
-        // Wait for creation to propagate
-        await page.waitForTimeout(1000);
-
-        // Go to page 1
+        // Go to page 1 (Let +page.svelte create it on the connected project)
         await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName1)}`);
         await page.waitForSelector(`text=${pageName1}`, { timeout: 10000 });
         await ensureConnectedPage();
