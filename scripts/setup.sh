@@ -124,8 +124,11 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   ensure_python_env
 
   # Install pre-commit via pip
-  pip install --no-cache-dir pre-commit
-  pre-commit install --hook-type pre-commit
+  if pip install --no-cache-dir pre-commit; then
+    pre-commit install --hook-type pre-commit || echo "Warning: Failed to install pre-commit hook"
+  else
+    echo "Warning: Failed to install pre-commit package"
+  fi
   echo "Installing all dependencies..."
   install_all_dependencies
 
