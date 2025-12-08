@@ -48,7 +48,9 @@ function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item
     const children = collectChildren(node);
     for (let i = 0; i < children.length; i++) {
         const child = children[i];
-        const prevForChild = i > 0 ? getDeepestDescendant(children[i - 1]) : node;
+        // When target is the first child (i === 0), don't return the parent node.
+        // Instead return undefined to indicate there's no previous navigable item.
+        const prevForChild = i > 0 ? getDeepestDescendant(children[i - 1]) : undefined;
 
         if (child.id === targetId) {
             return prevForChild;
