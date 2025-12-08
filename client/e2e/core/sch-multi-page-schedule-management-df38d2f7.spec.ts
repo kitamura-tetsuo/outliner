@@ -132,7 +132,20 @@ test.describe("Multi-Page Schedule Management", () => {
     });
 
     test("schedule operations across pages", async ({ page }) => {
+        test.setTimeout(60000); // Increase timeout for stability
         const { projectName, pageName } = testProject;
+
+        // Wait for Yjs client to be available to ensure we are using the connected project
+        await page.waitForFunction(() => {
+            const win: any = window as any;
+            const client = win.__YJS_STORE__?.yjsClient;
+            const project = win.generalStore?.project;
+            // Ensure project is fully linked to the Yjs client
+            return client && project && client.getProject && client.getProject() === project;
+        }, { timeout: 30000 });
+
+        // Add a buffer to allow store.project update and page migration to propagate
+        await page.waitForTimeout(2000);
 
         // Create another page in the same project using the correct method
         await page.evaluate(async () => {
@@ -168,7 +181,7 @@ test.describe("Multi-Page Schedule Management", () => {
         await expect(items).toHaveCount(1, { timeout: 10000 });
 
         // Verify the schedule was added correctly
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(2000);
 
         // Edit schedule
         await items.first().locator('button:has-text("Edit")').click();

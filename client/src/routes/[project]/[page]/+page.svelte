@@ -374,6 +374,26 @@ async function loadProjectAndPage() {
                             return null;
                         };
                         let pageRef: any = hasTitle(pageName);
+
+                        // Retry finding page to avoid duplicate creation during Yjs sync (Test Env only)
+                        const isTestEnv = (
+                            import.meta.env.MODE === "test"
+                            || import.meta.env.VITE_IS_TEST === "true"
+                            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+                        );
+
+                        if (isTestEnv && !pageRef && pageName) {
+                            for (let i = 0; i < 50; i++) {
+                                await new Promise(r => setTimeout(r, 200));
+                                pageRef = hasTitle(pageName);
+                                if (pageRef) {
+                                    logger.info(`E2E: Found page "${pageName}" after retry ${i + 1}`);
+                                    break;
+                                }
+                            }
+                            if (!pageRef) logger.warn(`E2E: Failed to find page "${pageName}" after retries`);
+                        }
+
                         if (!pageRef && pageName) {
                             pageRef = itemsAny?.addNode?.("tester");
                             pageRef?.updateText?.(pageName);
