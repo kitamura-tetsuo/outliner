@@ -33,6 +33,7 @@ export default ts.config(
                 NodeJS: "readonly",
                 ElementCreationOptions: "readonly",
                 NodeListOf: "readonly",
+                EventListener: "readonly",
             },
         },
     },
