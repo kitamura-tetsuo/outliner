@@ -4,13 +4,6 @@
 
     const logger = getLogger("RenameProjectDialog");
 
-    interface Props {
-        containerId: string;
-        currentTitle: string;
-        onClose: () => void;
-        onSuccess?: (newTitle: string) => void;
-    }
-
     let { containerId, currentTitle, onClose, onSuccess } = $props();
 
     let newTitle = $state(currentTitle);
@@ -61,9 +54,6 @@
     }
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
     onclick={handleBackdropClick}

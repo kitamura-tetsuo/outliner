@@ -89,7 +89,7 @@ function update() {
         try {
             if (Array.isArray(p)) return p as GraphNode[];
             if (p && typeof (p as { [Symbol.iterator]: () => Iterator<unknown> })[Symbol.iterator] === "function") {
-                return Array.from(p as Iterable<unknown>) as GraphNode[];
+                return Array.from(p as unknown as ArrayLike<unknown>) as GraphNode[];
             }
             const len = (p as { length?: number })?.length;
             if (typeof len === "number" && len >= 0) {

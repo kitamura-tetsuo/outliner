@@ -1,14 +1,5 @@
 <script lang="ts">
-    import type { ProjectMetadata } from "../../stores/projectListStore.svelte";
     import { userManager } from "../../auth/UserManager";
-
-    interface Props {
-        project: ProjectMetadata;
-        onRename?: (project: ProjectMetadata) => void;
-        onDelete?: (project: ProjectMetadata) => void;
-        onShare?: (project: ProjectMetadata) => void;
-        onOpen?: (project: ProjectMetadata) => void;
-    }
 
     let { project, onRename, onDelete, onShare, onOpen } = $props();
 

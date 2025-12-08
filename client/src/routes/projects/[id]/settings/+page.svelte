@@ -1,13 +1,11 @@
 <script lang="ts">
     import { page } from "$app/stores";
     import { projectListStore } from "../../../../stores/projectListStore.svelte";
-    import { renameProject, togglePublic, deleteProject, getProjectPublicStatus } from "../../../../services/projectService";
+    import { renameProject, togglePublic, deleteProject } from "../../../../services/projectService";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
-    import { onMount } from "svelte";
     import { getLogger } from "$lib/logger";
     import { userManager } from "../../../../auth/UserManager";
-    import type { ProjectMetadata } from "../../../../stores/projectListStore.svelte";
     import DeleteProjectDialog from "../../../../../components/DeleteProjectDialog.svelte";
 
     const logger = getLogger("ProjectSettingsPage");
@@ -297,7 +295,7 @@
                                         </td>
                                     </tr>
                                     {#if project.permissions}
-                                        {#each project.permissions as perm}
+                                        {#each project.permissions as perm (perm.userId)}
                                             {#if perm.userId !== project.ownerId}
                                                 <tr>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
