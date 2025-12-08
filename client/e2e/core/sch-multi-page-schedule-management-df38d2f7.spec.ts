@@ -146,8 +146,8 @@ test.describe("Multi-Page Schedule Management", () => {
                 // Ensure project matches client project (confirms connected project)
                 // Note: client.getProject might be a function or property depending on impl
                 if (client.getProject) {
-                    const cp = typeof client.getProject === "function" ? client.getProject() : client.getProject;
-                    if (gs.project !== cp) return false;
+                     const cp = typeof client.getProject === 'function' ? client.getProject() : client.getProject;
+                     if (gs.project !== cp) return false;
                 }
 
                 return true;

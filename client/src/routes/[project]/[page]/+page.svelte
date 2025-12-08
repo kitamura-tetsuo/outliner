@@ -365,6 +365,18 @@ async function loadProjectAndPage() {
                     try {
                         const itemsAny: any = (store.project as any).items as any;
                         const findPage = (items: any, title: string) => {
+                            if (!items) return null;
+                            try {
+                                // Try iterator if available for more robust iteration
+                                if (typeof items[Symbol.iterator] === 'function') {
+                                    for (const p of items) {
+                                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                                        if (String(t).toLowerCase() === String(title).toLowerCase()) return p;
+                                    }
+                                    return null;
+                                }
+                            } catch {}
+
                             const len = items?.length ?? 0;
                             for (let i = 0; i < len; i++) {
                                 const p = items.at ? items.at(i) : items[i];
