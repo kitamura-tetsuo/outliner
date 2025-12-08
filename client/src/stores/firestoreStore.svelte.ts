@@ -72,8 +72,9 @@ class GeneralStore {
 
     // Array 変更（push/spliceなど）でも UI を更新させるための Proxy ラッパー
     public wrapUserContainer(value: UserContainer): UserContainer {
+        // eslint-disable-next-line no-undef
         const arrayHandler: ProxyHandler<string[]> = {
-            get: (target, prop, receiver) => {
+            get: (target: string[], prop: string | symbol, receiver: any) => {
                 const v = Reflect.get(target, prop, receiver);
                 // 破壊的メソッドをフック
                 if (

@@ -4,6 +4,7 @@ import SearchBox from "./SearchBox.svelte";
 import { store } from "../stores/store.svelte";
 import { onMount } from "svelte";
 import LoginStatusIndicator from "./LoginStatusIndicator.svelte";
+import { resolve } from "$app/paths";
 
 interface Props {
     project?: Project | null;
@@ -166,6 +167,9 @@ if (typeof window !== "undefined") {
 <div class="main-toolbar" data-testid="main-toolbar" bind:this={toolbarEl} aria-hidden="false">
     <div class="main-toolbar-content" aria-hidden="false">
         <div class="toolbar-left">
+            <a href={resolve("/projects")} class="flex items-center text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 font-semibold text-lg mr-4 no-underline">
+                Outliner
+            </a>
             <div role="search">
                 <SearchBox project={effectiveProject ?? undefined} />
             </div>
