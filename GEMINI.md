@@ -67,6 +67,14 @@ At the end of your work, create the first prompt for the next session so you can
 State in the prompt that tasks should be progressed sequentially.
 Write the prompt as plain text.
 
+### Pre-Commit Checks
+
+- Before committing, run the following checks:
+  1. `pre-commit run --all-files` (from root)
+  2. `cd client && npm run lint` (to check for lint errors)
+  3. `cd client && npm run check` (Svelte check)
+- Fix any errors before committing.
+
 # 📁 Working Directory Management
 
 **CRITICAL**: Always pay attention to the current working directory when executing commands.
