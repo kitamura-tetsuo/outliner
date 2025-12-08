@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Project Search and Filter", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }) => {
         // Create multiple projects
         // 1. First project
         await TestHelpers.createTestProjectAndPageViaAPI(page, "Alpha Project", "Page 1");
