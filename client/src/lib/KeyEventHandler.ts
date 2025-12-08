@@ -68,6 +68,14 @@ export class KeyEventHandler {
             });
         });
 
+        // Alt+ArrowUp/Down to move items
+        add("ArrowUp", false, true, false, (_, cursors) => {
+            cursors.forEach(c => c.moveItemUp());
+        });
+        add("ArrowDown", false, true, false, (_, cursors) => {
+            cursors.forEach(c => c.moveItemDown());
+        });
+
         // Ctrl+Shift+Alt+Arrow/PageUp/PageDown adds cursors
         ["ArrowDown", "PageDown"].forEach(k => {
             add(k, true, true, true, () => {
