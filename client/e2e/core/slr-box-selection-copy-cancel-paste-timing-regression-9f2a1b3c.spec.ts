@@ -22,17 +22,86 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("ボックス選択のコピー・キャンセル・ペーストのタイミング回帰テスト", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
+
+        // Save original clipboard methods for proper cleanup
+        await page.evaluate(() => {
+            if ((navigator as any).clipboard) {
+                if ((navigator as any).clipboard.readText) {
+                    (navigator as any).clipboard.readText.__original = (navigator as any).clipboard.readText;
+                }
+                if ((navigator as any).clipboard.writeText) {
+                    (navigator as any).clipboard.writeText.__original = (navigator as any).clipboard.writeText;
+                }
+            }
+        });
     });
 
-    test.afterEach(async () => {
-        // 必要に応じてクリーンアップ処理を実装
+    test.afterEach(async ({ page }) => {
+        // Clean up global state to prevent test interference
+        try {
+            await page.evaluate(() => {
+                // Reset global debug mode
+                (window as any).DEBUG_MODE = false;
+
+                // Clear clipboard-related global variables
+                (window as any).lastCopiedText = undefined;
+                (window as any).lastPastedText = undefined;
+                (window as any).lastCopiedIsBoxSelection = undefined;
+                (window as any).lastVSCodeMetadata = undefined;
+                (window as any).lastBoxSelectionPaste = undefined;
+
+                // Reset clipboard API mocks
+                if ((navigator as any).clipboard) {
+                    if ((navigator as any).clipboard.readText.__original) {
+                        (navigator as any).clipboard.readText = (navigator as any).clipboard.readText.__original;
+                    }
+                    if ((navigator as any).clipboard.writeText.__original) {
+                        (navigator as any).clipboard.writeText = (navigator as any).clipboard.writeText.__original;
+                    }
+                }
+
+                // Reset KeyEventHandler box selection state
+                if ((window as any).__KEY_EVENT_HANDLER__) {
+                    const handler = (window as any).__KEY_EVENT_HANDLER__;
+                    if (handler.boxSelectionState) {
+                        handler.boxSelectionState = {
+                            active: false,
+                            startItemId: null,
+                            startOffset: 0,
+                            endItemId: null,
+                            endOffset: 0,
+                            ranges: [],
+                        };
+                    }
+                }
+
+                // Clear editor overlay store selections
+                if ((window as any).editorOverlayStore) {
+                    (window as any).editorOverlayStore.clearSelections();
+                }
+            });
+        } catch (error) {
+            console.log(`Cleanup error: ${error}`);
+        }
     });
 
     test("矩形選択でコピー → Escでキャンセル → 再度矩形選択 → ペースト", async ({ page }) => {
-        // デバッグモードを有効化
+        // デバッグモードを有効化とクリップボードモックの設定
         try {
             await page.evaluate(() => {
                 (window as any).DEBUG_MODE = true;
+
+                // モック: readText は lastCopiedText を返す
+                (navigator as any).clipboard.readText = async () => {
+                    return (window as any).lastCopiedText || "";
+                };
+
+                // モック: writeText は lastCopiedText を更新する
+                (navigator as any).clipboard.writeText = async (text: string) => {
+                    (window as any).lastCopiedText = text;
+                    console.log(`[Mock] writeText: ${text}`);
+                    return Promise.resolve();
+                };
             });
         } catch (error) {
             console.log(`デバッグモード設定中にエラーが発生しました: ${error}`);
@@ -74,26 +143,32 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         await page.keyboard.up("Shift");
         await page.keyboard.up("Alt");
 
-        // 矩形選択が作成されたことを確認
-        const boxSelectionCount1 = await page.evaluate(() => {
-            if (!(window as any).editorOverlayStore) {
-                return 0;
-            }
-            const selections = Object.values((window as any).editorOverlayStore.selections);
-            return selections.filter((s: any) => s.isBoxSelection).length;
-        });
-        console.log(`最初の矩形選択の数: ${boxSelectionCount1}`);
-        expect(boxSelectionCount1).toBe(1);
+        // 矩形選択が作成されたことを確認 (waitForFunctionを使用)
+        await page.waitForFunction(
+            () => {
+                if (!(window as any).editorOverlayStore) return false;
+                const selections = Object.values((window as any).editorOverlayStore.selections);
+                return selections.filter((s: any) => s.isBoxSelection).length === 1;
+            },
+            undefined,
+            { timeout: 5000 },
+        );
 
         // 3. テキストをコピー
         await page.keyboard.press("Control+c");
 
-        // コピーされたテキストを確認
-        const copiedText = await page.evaluate(() => {
-            return (window as any).lastCopiedText || "";
-        });
+        // コピーされたテキストを確認 (waitForFunctionを使用)
+        await page.waitForFunction(
+            () => {
+                const text = (window as any).lastCopiedText;
+                return text && text.length > 0;
+            },
+            undefined,
+            { timeout: 5000 },
+        );
+
+        const copiedText = await page.evaluate(() => (window as any).lastCopiedText);
         console.log(`コピーされたテキスト: "${copiedText}"`);
-        expect(copiedText.length).toBeGreaterThan(0);
 
         // 4. Escキーでキャンセル（ペーストせずに）
         await page.keyboard.press("Escape");
@@ -113,19 +188,16 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
             }
         });
 
-        // 少し待機して選択範囲のクリアを確実にする
-        await page.waitForTimeout(100);
-
-        // 矩形選択がキャンセルされたことを確認
-        const boxSelectionCount2 = await page.evaluate(() => {
-            if (!(window as any).editorOverlayStore) {
-                return 0;
-            }
-            const selections = Object.values((window as any).editorOverlayStore.selections);
-            return selections.filter((s: any) => s.isBoxSelection).length;
-        });
-        console.log(`キャンセル後の矩形選択の数: ${boxSelectionCount2}`);
-        expect(boxSelectionCount2).toBe(0);
+        // 矩形選択がキャンセルされたことを確認 (waitForFunctionを使用)
+        await page.waitForFunction(
+            () => {
+                if (!(window as any).editorOverlayStore) return true; // Storeがない場合は選択なしとみなす
+                const selections = Object.values((window as any).editorOverlayStore.selections);
+                return selections.filter((s: any) => s.isBoxSelection).length === 0;
+            },
+            undefined,
+            { timeout: 5000 },
+        );
 
         // 5. 再度矩形選択を作成
         await page.keyboard.down("Alt");
@@ -139,44 +211,45 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         await page.keyboard.up("Shift");
         await page.keyboard.up("Alt");
 
-        // 矩形選択が再度作成されたことを確認
-        const boxSelectionCount3 = await page.evaluate(() => {
-            if (!(window as any).editorOverlayStore) {
-                return 0;
-            }
-            const selections = Object.values((window as any).editorOverlayStore.selections);
-            return selections.filter((s: any) => s.isBoxSelection).length;
-        });
-        console.log(`2回目の矩形選択の数: ${boxSelectionCount3}`);
-        expect(boxSelectionCount3).toBe(1);
+        // 矩形選択が再度作成されたことを確認 (waitForFunctionを使用)
+        await page.waitForFunction(
+            () => {
+                if (!(window as any).editorOverlayStore) return false;
+                const selections = Object.values((window as any).editorOverlayStore.selections);
+                return selections.filter((s: any) => s.isBoxSelection).length === 1;
+            },
+            undefined,
+            { timeout: 5000 },
+        );
 
         // 6. ペースト
+        await TestHelpers.focusGlobalTextarea(page);
         await page.keyboard.press("Control+v");
 
-        // 少し待機してペースト処理を確実にする
-        await page.waitForTimeout(300);
+        // ペーストが成功したことを確認 (waitForFunctionを使用)
+        await page.waitForFunction(
+            (expectedText) => {
+                const pasted = (window as any).lastPastedText || "";
+                return pasted === expectedText;
+            },
+            copiedText,
+            { timeout: 10000 },
+        );
 
-        // ペーストが成功したことを確認（グローバル変数をチェック）
-        const pastedText = await page.evaluate(() => {
-            return (window as any).lastPastedText || "";
-        });
+        const pastedText = await page.evaluate(() => (window as any).lastPastedText || "");
         console.log(`ペーストされたテキスト: "${pastedText}"`);
-
-        // ペーストされたテキストがコピーされたテキストと一致することを確認
         expect(pastedText).toBe(copiedText);
 
         // 7. 最終的な状態を確認
-        // 矩形選択がクリアされていることを確認
-        const finalBoxSelectionCount = await page.evaluate(() => {
-            if (!(window as any).editorOverlayStore) {
-                return 0;
-            }
-            const selections = Object.values((window as any).editorOverlayStore.selections);
-            return selections.filter((s: any) => s.isBoxSelection).length;
-        });
-        console.log(`最終的な矩形選択の数: ${finalBoxSelectionCount}`);
-
-        // ペースト後は選択範囲がクリアされるべき
-        expect(finalBoxSelectionCount).toBe(0);
+        // ペースト後は選択範囲がクリアされるべき (waitForFunctionを使用)
+        await page.waitForFunction(
+            () => {
+                if (!(window as any).editorOverlayStore) return true;
+                const selections = Object.values((window as any).editorOverlayStore.selections);
+                return selections.filter((s: any) => s.isBoxSelection).length === 0;
+            },
+            undefined,
+            { timeout: 5000 },
+        );
     });
 });

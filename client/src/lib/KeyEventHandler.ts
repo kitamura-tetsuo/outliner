@@ -56,7 +56,9 @@ export class KeyEventHandler {
                 return;
             }
 
-            if (KeyEventHandler.boxSelectionState.active) {
+            const selections = Object.values(store.selections);
+            const boxSelection = selections.find(sel => sel.isBoxSelection);
+            if (boxSelection || KeyEventHandler.boxSelectionState.active) {
                 KeyEventHandler.cancelBoxSelection();
             }
         });
