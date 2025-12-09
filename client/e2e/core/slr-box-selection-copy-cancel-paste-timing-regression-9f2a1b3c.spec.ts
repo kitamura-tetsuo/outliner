@@ -124,20 +124,20 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         await page.locator(".outliner-item").first().click();
 
         // 2. 最初の矩形選択を作成してコピー
-        const firstItemBounds = await page.locator(".outliner-item").first().boundingBox();
-        const secondItemBounds = await page.locator(".outliner-item").nth(1).boundingBox();
+        const startBox = await page.locator(".outliner-item").nth(1).boundingBox();
+        const endBox = await page.locator(".outliner-item").last().boundingBox();
 
-        if (!firstItemBounds || !secondItemBounds) {
-            throw new Error("アイテムの位置を取得できませんでした");
+        if (!startBox || !endBox) {
+            throw new Error("Could not get bounding box");
         }
 
         // Alt+Shiftキーを押しながらマウスドラッグ
         await page.keyboard.down("Alt");
         await page.keyboard.down("Shift");
 
-        await page.mouse.move(firstItemBounds.x + 5, firstItemBounds.y + firstItemBounds.height / 2);
+        await page.mouse.move(startBox.x + 10, startBox.y + startBox.height / 2);
         await page.mouse.down();
-        await page.mouse.move(firstItemBounds.x + 10, secondItemBounds.y + secondItemBounds.height / 2, { steps: 10 });
+        await page.mouse.move(endBox.x + 10, endBox.y + endBox.height / 2, { steps: 10 });
         await page.mouse.up();
 
         await page.keyboard.up("Shift");
@@ -203,9 +203,9 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         await page.keyboard.down("Alt");
         await page.keyboard.down("Shift");
 
-        await page.mouse.move(firstItemBounds.x + 15, firstItemBounds.y + firstItemBounds.height / 2);
+        await page.mouse.move(startBox.x + 15, startBox.y + startBox.height / 2);
         await page.mouse.down();
-        await page.mouse.move(firstItemBounds.x + 20, secondItemBounds.y + secondItemBounds.height / 2, { steps: 10 });
+        await page.mouse.move(endBox.x + 20, endBox.y + endBox.height / 2, { steps: 10 });
         await page.mouse.up();
 
         await page.keyboard.up("Shift");
