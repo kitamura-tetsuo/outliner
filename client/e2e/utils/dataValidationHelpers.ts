@@ -164,7 +164,7 @@ export class DataValidationHelpers {
             await page.waitForFunction(() => {
                 const store = (window as any).generalStore || (window as any).appStore;
                 return !!(store && store.project);
-            }, { timeout: 5000 });
+            }, { timeout: 30000 });
         } catch (e) {
             console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", e?.message ?? e);
             return; // Skip snapshot if project is not available
@@ -218,7 +218,7 @@ export class DataValidationHelpers {
                     mode: "yjs",
                     yjsJson: JSON.stringify({ projectTitle: String(project.title ?? ""), pages }, null, 2),
                 };
-            }, { timeout: 5000 });
+            }, { timeout: 30000 });
         } catch (e) {
             console.warn("[saveSnapshotsAndCompare] evaluate failed:", e?.message ?? e);
             return; // Skip snapshot if evaluation fails

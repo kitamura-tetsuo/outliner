@@ -22,6 +22,14 @@ export class Item {
         return this.value.get("text") as Y.Text;
     }
 
+    get aliasTargetId(): string | undefined {
+        return this.value.get("aliasTargetId") as string | undefined;
+    }
+
+    set aliasTargetId(value: string | undefined) {
+        this.value.set("aliasTargetId", value);
+    }
+
     updateText(text: string) {
         const t = this.text;
         t.delete(0, t.length);
@@ -138,6 +146,17 @@ export class Items {
 
     indexOf(item: Item): number {
         return this.childrenKeys().indexOf(item.key);
+    }
+
+    removeAt(index: number) {
+        const key = this.childrenKeys()[index];
+        if (key) this.tree.deleteNodeAndDescendants(key);
+    }
+
+    addAlias(targetId: string, author: string, index?: number): Item {
+        const it = this.addNode(author, index);
+        it.aliasTargetId = targetId;
+        return it;
     }
 
     [Symbol.iterator](): Iterator<Item> {

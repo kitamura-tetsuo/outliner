@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { TestHelpers } from "./utils/testHelpers";
 
 /**
  * 指定数のアウトライナーアイテムが表示されるまで待機
@@ -65,6 +66,28 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
         console.log("Error in waitForCursorVisible:", error);
         return false;
     }
+}
+
+/**
+ * カーソルデバッグ関数をブラウザコンテキストに注入する
+ * TestHelpers の実装を再利用し、存在しない場合は安全にスキップする
+ */
+export async function setupCursorDebugger(page: Page): Promise<void> {
+    const helpersAny = TestHelpers as unknown as { setupCursorDebugger?: (page: Page) => Promise<void>; };
+    if (typeof helpersAny.setupCursorDebugger === "function") {
+        await helpersAny.setupCursorDebugger(page);
+        return;
+    }
+
+    // Fallback: ensure stub functions exist to avoid runtime errors in tests
+    await page.evaluate(() => {
+        if (typeof window.getCursorDebugData !== "function") {
+            window.getCursorDebugData = () => ({ error: "Cursor debugger unavailable" });
+        }
+        if (typeof window.getCursorPathData !== "function") {
+            window.getCursorPathData = () => ({ error: "Cursor path debugger unavailable" });
+        }
+    });
 }
 
 // NOTE: e2e では Playwright/JSDOM 上の window 構造が実行時に変化するため、

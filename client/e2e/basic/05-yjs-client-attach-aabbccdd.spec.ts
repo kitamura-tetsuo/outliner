@@ -20,7 +20,7 @@ test.describe("Yjs client attach and DOM reflect", () => {
         // Ensure currentPage exists in the global store, then seed default lines
         await page.evaluate(() => {
             const gs = (window as {
-                generalStore?: { project?: Record<string, unknown>; currentPage?: Record<string, unknown>; };
+                generalStore?: { project?: any; currentPage?: any; };
             }).generalStore;
             if (!gs?.project) {
                 console.error("No project found in generalStore");
@@ -38,7 +38,7 @@ test.describe("Yjs client attach and DOM reflect", () => {
                         "tester",
                     );
                     if (created) {
-                        gs.currentPage = created;
+                        gs.currentPage = created as Record<string, unknown>;
                         console.log("Created new currentPage");
                     } else {
                         // Alternative creation method
@@ -47,7 +47,7 @@ test.describe("Yjs client attach and DOM reflect", () => {
                             const pageItem = (items as { addNode: (author: string) => unknown; }).addNode("tester");
                             if (pageItem) {
                                 (pageItem as { updateText: (text: string) => void; }).updateText(pageName);
-                                gs.currentPage = pageItem;
+                                gs.currentPage = pageItem as Record<string, unknown>;
                                 console.log("Created new currentPage via items.addNode");
                             }
                         }

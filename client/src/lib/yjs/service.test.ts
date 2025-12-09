@@ -51,7 +51,7 @@ describe("yjsService", () => {
         (globalThis as any).presenceStore = presenceStore;
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
-        expect(presenceStore.users["u1"].userName).toBe("Alice");
+        expect((presenceStore.users["u1"] as any).userName).toBe("Alice");
         awareness.setLocalStateField("user", null);
         unbind();
     });
@@ -94,7 +94,7 @@ describe("yjsService", () => {
         });
         (awareness as any).emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
 
-        const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
+        const cursor = Object.values(editorOverlayStore.cursors).find((c: any) => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
 
         (awareness as any).emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);

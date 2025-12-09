@@ -7,9 +7,9 @@ registerCoverageHooks();
  */
 import { expect, test } from "@playwright/test";
 
-test("delete-user returns 405 with invalid token", async ({ request }) => {
+test("delete-user returns 401 with invalid token", async ({ request }) => {
     const res = await request.post("http://localhost:7090/api/delete-user", {
         data: { idToken: "invalid" },
     });
-    expect(res.status()).toBe(405);
+    expect(res.status()).toBe(401);
 });

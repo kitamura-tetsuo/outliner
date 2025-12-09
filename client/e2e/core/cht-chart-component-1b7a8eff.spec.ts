@@ -9,10 +9,11 @@ import { expect, test } from "@playwright/test";
 
 test.describe("CHT-001: Chart auto-refresh", () => {
     test("Graph appears and refreshes when data updates", async ({ page }) => {
+        type ChartWindow = Window & { chartData: number[]; };
         await page.setContent(`
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
         <meta charset="UTF-8" />
         <title>Chart Test</title>
         <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.3/dist/echarts.min.js"></script>
@@ -37,11 +38,11 @@ test.describe("CHT-001: Chart auto-refresh", () => {
         const chart = page.locator("#chart");
         await expect(chart).toBeVisible();
 
-        const initial = await page.evaluate(() => (window as { chartData: number[]; }).chartData);
+        const initial = await page.evaluate(() => (window as unknown as ChartWindow).chartData);
         expect(initial).toEqual([120, 200, 150]);
 
-        await page.waitForFunction(() => (window as { chartData: number[]; }).chartData[0] === 220);
-        const updated = await page.evaluate(() => (window as { chartData: number[]; }).chartData);
+        await page.waitForFunction(() => (window as unknown as ChartWindow).chartData[0] === 220);
+        const updated = await page.evaluate(() => (window as unknown as ChartWindow).chartData);
         expect(updated).toEqual([220, 300, 250]);
     });
 

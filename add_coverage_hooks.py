@@ -14,6 +14,15 @@ E2E_DIR = REPO_ROOT / "client" / "e2e"
 def find_spec_files(base: Path) -> list[Path]:
     return [p for p in base.rglob("*.spec.ts") if p.is_file()]
 
+def get_import_path(spec_file: Path) -> str:
+    """Determine the correct relative import path based on file location."""
+    # Files directly in client/e2e/ use ./utils/, files in subdirectories use ../utils/
+    parent = spec_file.parent
+    if parent.name == "e2e":
+        return "./utils/registerCoverageHooks"
+    else:
+        return "../utils/registerCoverageHooks"
+
 def add_coverage_hooks_to_file(spec_file: Path):
     """Add coverage hooks import and call to a spec file."""
     try:
@@ -22,9 +31,9 @@ def add_coverage_hooks_to_file(spec_file: Path):
         print(f"Error reading {spec_file}: {e}")
         return False
 
-    # Check if import already exists
-    has_import = "registerCoverageHooks" in content and "../utils/registerCoverageHooks" in content
-    
+    # Check if import already exists (check for both path patterns)
+    has_import = "registerCoverageHooks" in content and ("/utils/registerCoverageHooks" in content)
+
     # Check if call already exists
     has_call = "registerCoverageHooks()" in content
 
@@ -32,13 +41,16 @@ def add_coverage_hooks_to_file(spec_file: Path):
         # Already has both, skip
         return True
 
+    # Get the correct import path for this file
+    import_path = get_import_path(spec_file)
+
     # Add import after other import statements near the top
     if not has_import:
         # Find where to insert the import - after other imports
         # Look for the line after the last import statement
         lines = content.splitlines()
         insert_pos = 0
-        
+
         # Find the position to insert our import after existing imports
         for i, line in enumerate(lines):
             if line.strip().startswith("import "):
@@ -46,8 +58,8 @@ def add_coverage_hooks_to_file(spec_file: Path):
             elif line.strip() and not line.strip().startswith("import ") and not line.strip().startswith("//"):
                 # Reached a non-import, non-comment line, so stop looking
                 break
-        
-        import_line = 'import { registerCoverageHooks } from "../utils/registerCoverageHooks";'
+
+        import_line = f'import {{ registerCoverageHooks }} from "{import_path}";'
         
         if insert_pos == 0:
             # No imports found, insert after first line (for shebang/typescript directives)

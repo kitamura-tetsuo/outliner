@@ -45,7 +45,7 @@ export function pageExists(pageName: string, projectName?: string): boolean {
         return false;
     }
 
-    if (!store.pages) return false;
+    if (!store.pages?.current) return false;
 
     // ページ名が一致するページを検索
     for (const page of store.pages.current) {
@@ -63,7 +63,7 @@ export function pageExists(pageName: string, projectName?: string): boolean {
  * @returns ページアイテム、見つからない場合はnull
  */
 function findPageByName(name: string): Item | null {
-    if (!store.pages) return null;
+    if (!store.pages?.current) return null;
 
     // ページ名が一致するページを検索
     for (const page of store.pages.current) {
@@ -310,8 +310,8 @@ function addLinkEventListeners(element: Element): void {
     const hasListeners = element.getAttribute("data-link-listeners") === "true";
 
     if (!hasListeners) {
-        element.addEventListener("mouseenter", handleLinkMouseEnter);
-        element.addEventListener("mouseleave", handleLinkMouseLeave);
+        element.addEventListener("mouseenter", handleLinkMouseEnter as EventListener);
+        element.addEventListener("mouseleave", handleLinkMouseLeave as EventListener);
 
         // リスナーが設定されたことを示すフラグを設定
         element.setAttribute("data-link-listeners", "true");
@@ -341,7 +341,7 @@ export function setupLinkPreviewHandlers(): void {
 
         logger.info(`Link preview handlers set up for ${internalLinks.length} links`);
     } catch (error) {
-        logger.error("Error setting up link preview handlers:", error);
+        logger.error("Error setting up link preview handlers", ...(error instanceof Error ? [error] : [String(error)]));
     }
 }
 
@@ -415,7 +415,7 @@ function setupMutationObserver(): void {
 
         logger.info("MutationObserver for link preview handlers set up");
     } catch (error) {
-        logger.error("Error setting up MutationObserver:", error);
+        logger.error("Error setting up MutationObserver", ...(error instanceof Error ? [error] : [String(error)]));
     }
 }
 

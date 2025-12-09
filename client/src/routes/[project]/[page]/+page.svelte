@@ -301,10 +301,13 @@ async function loadProjectAndPage() {
                         const snapshot = loadProjectSnapshot(projectName);
                         if (!appliedPendingImport && snapshot && Array.isArray(snapshot.items) && snapshot.items.length > 0) {
                             const projectItems: any = proj.items as any;
-                            const snapshotTitles = new Set(snapshot.items.map(root => root?.text ?? ""));
+
                             const getTitle = (page: any) => page?.text?.toString?.() ?? String(page?.text ?? "");
 
                             // Remove pages not present in snapshot to avoid stale placeholders
+                            // [REMOVED] This logic was causing data loss when the snapshot was stale (e.g. during E2E tests)
+                            // The snapshot should only be used to hydrate missing data, not to enforce strict equality.
+                            /*
                             for (let index = (projectItems?.length ?? 0) - 1; index >= 0; index--) {
                                 const existing = projectItems.at ? projectItems.at(index) : projectItems[index];
                                 if (!existing) continue;
@@ -313,6 +316,7 @@ async function loadProjectAndPage() {
                                     projectItems.removeAt?.(index);
                                 }
                             }
+                            */
 
                             const populateChildren = (children: any[], targetItems: any) => {
                                 if (!targetItems) return;
@@ -364,18 +368,54 @@ async function loadProjectAndPage() {
                     // After Yjs client attach: ensure requested page exists in CONNECTED project
                     try {
                         const itemsAny: any = (store.project as any).items as any;
-                        const hasTitle = (title: string) => {
-                            const len = itemsAny?.length ?? 0;
+                        const findPage = (items: any, title: string) => {
+                            if (!items) return null;
+                            try {
+                                // Try iterator if available for more robust iteration
+                                if (typeof items[Symbol.iterator] === 'function') {
+                                    for (const p of items) {
+                                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                                        if (String(t).toLowerCase() === String(title).toLowerCase()) return p;
+                                    }
+                                    return null;
+                                }
+                            } catch {}
+
+                            const len = items?.length ?? 0;
                             for (let i = 0; i < len; i++) {
-                                const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
+                                const p = items.at ? items.at(i) : items[i];
                                 const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                                 if (String(t).toLowerCase() === String(title).toLowerCase()) return p;
                             }
                             return null;
                         };
-                        let pageRef: any = hasTitle(pageName);
+                        let pageRef: any = findPage(itemsAny, pageName);
+
+                        // Retry finding page to avoid duplicate creation during Yjs sync (Test Env only)
+                        const isTestEnv = (
+                            import.meta.env.MODE === "test"
+                            || import.meta.env.VITE_IS_TEST === "true"
+                            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+                        );
+
+                        if (isTestEnv && !pageRef && pageName) {
+                            for (let i = 0; i < 50; i++) {
+                                await new Promise(r => setTimeout(r, 200));
+                                // Re-fetch items from store.project as it might have updated
+                                const currentItems = (store.project as any)?.items;
+                                pageRef = findPage(currentItems, pageName);
+                                if (pageRef) {
+                                    logger.info(`E2E: Found page "${pageName}" after retry ${i + 1}`);
+                                    break;
+                                }
+                            }
+                            if (!pageRef) logger.warn(`E2E: Failed to find page "${pageName}" after retries`);
+                        }
+
                         if (!pageRef && pageName) {
-                            pageRef = itemsAny?.addNode?.("tester");
+                            // Use latest items reference
+                            const targetItems = (store.project as any)?.items ?? itemsAny;
+                            pageRef = targetItems?.addNode?.("tester");
                             pageRef?.updateText?.(pageName);
                             logger.info(`E2E: Created requested page after Yjs attach: "${pageName}"`);
                         }
@@ -887,13 +927,11 @@ function capturePageIdForSchedule() {
         if (typeof window === "undefined") return;
         const pg: any = store.currentPage as any;
         if (!pg) return;
-        const children: any = pg?.items as any;
-        const len = children?.length ?? 0;
-        let id = pg?.id || "";
-        if (len > 0) {
-            const first = children?.at ? children.at(0) : children?.[0];
-            id = first?.id || id;
-        }
+        
+        // Always use the page ID itself, not its children
+        // This ensures consistency regardless of page content (empty vs populated)
+        const id = pg.id;
+        
         if (id) {
             const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
             window.sessionStorage?.setItem(key, String(id));

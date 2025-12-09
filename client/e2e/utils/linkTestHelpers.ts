@@ -376,7 +376,7 @@ export class LinkTestHelpers {
                     (popup as HTMLElement).style.padding = "10px";
                     (popup as HTMLElement).style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
 
-                    return popup;
+                    return popup as HTMLElement;
                 };
             }
 

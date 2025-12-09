@@ -487,11 +487,11 @@ export class CursorEditor {
         const nextItem = findNextItem(cursor.itemId);
         if (!nextItem) return;
 
-        const currentText = currentItem.text || "";
-        const nextText = nextItem.text || "";
-        currentItem.updateText(currentText + nextText);
+        const currentText = (currentItem as any).text || "";
+        const nextText = (nextItem as any).text || "";
+        (currentItem as any).updateText(currentText + nextText);
 
-        nextItem.delete();
+        (nextItem as any).delete();
     }
 
     private deleteEmptyItem() {
@@ -520,7 +520,7 @@ export class CursorEditor {
         }
 
         store.clearCursorForItem(cursor.itemId);
-        currentItem.delete();
+        (currentItem as any).delete();
 
         cursor.itemId = targetItemId;
         cursor.offset = targetOffset;
@@ -548,8 +548,8 @@ export class CursorEditor {
         const root = generalStore.currentPage;
         if (!root) return;
 
-        const startItem = searchItem(root, selection.startItemId);
-        const endItem = searchItem(root, selection.endItemId);
+        const startItem = searchItem(root as any, selection.startItemId);
+        const endItem = searchItem(root as any, selection.endItemId);
         if (!startItem || !endItem) return;
 
         const isReversed = !!selection.isReversed;
@@ -558,18 +558,18 @@ export class CursorEditor {
         const firstOffset = isReversed ? selection.endOffset : selection.startOffset;
         const lastOffset = isReversed ? selection.startOffset : selection.endOffset;
 
-        const parent = firstItem.parent;
-        if (!parent || parent !== lastItem.parent) return;
+        const parent = (firstItem as any).parent;
+        if (!parent || parent !== (lastItem as any).parent) return;
 
-        const items = parent as Items;
+        const items = parent as any as Items;
         const firstIndex = items.indexOf(firstItem);
         const lastIndex = items.indexOf(lastItem);
         if (firstIndex === -1 || lastIndex === -1) return;
 
         try {
-            const firstText = firstItem.text || "";
+            const firstText = (firstItem as any).text || "";
             const newFirstText = firstText.substring(0, firstOffset);
-            const lastText = lastItem.text || "";
+            const lastText = (lastItem as any).text || "";
             const newLastText = lastText.substring(lastOffset);
 
             const itemsToRemove: string[] = [];
@@ -582,13 +582,13 @@ export class CursorEditor {
                 store.clearCursorForItem(itemId);
             }
 
-            firstItem.updateText(newFirstText + newLastText);
+            (firstItem as any).updateText(newFirstText + newLastText);
 
             for (let i = lastIndex; i > firstIndex; i--) {
-                items.removeAt(i);
+                (items as any).removeAt(i);
             }
 
-            cursor.itemId = firstItem.id;
+            cursor.itemId = (firstItem as any).id;
             cursor.offset = firstOffset;
             cursor.applyToStore();
 
@@ -687,10 +687,10 @@ export class CursorEditor {
 
         for (let i = firstIdx; i <= lastIdx; i++) {
             const itemId = allItemIds[i];
-            const item = searchItem(generalStore.currentPage!, itemId);
+            const item = searchItem(generalStore.currentPage as any, itemId);
             if (!item) continue;
 
-            const text = item.text || "";
+            const text = (item as any).text || "";
 
             if (i === firstIdx && i === lastIdx) {
                 const start = isReversed ? endOffset : startOffset;
@@ -717,7 +717,7 @@ export class CursorEditor {
                 }
 
                 const newText = text.substring(0, start) + formattedText + text.substring(end);
-                item.updateText(newText);
+                (item as any).updateText(newText);
             } else {
                 // 複数アイテムにまたがる選択範囲の詳細なフォーマットは未対応
             }

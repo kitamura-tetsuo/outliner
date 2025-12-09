@@ -20,6 +20,7 @@ import "../utils/ScrapboxFormatter";
 // グローバルに公開するためにインポート
 import Toolbar from "../components/Toolbar.svelte";
 import AliasPicker from "../components/AliasPicker.svelte";
+import Sidebar from "../components/Sidebar.svelte";
 // Defer services import; it depends on UserManager
 import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
@@ -41,6 +42,9 @@ const logger = getLogger("AppLayout");
 
 // 認証関連の状態
 let isAuthenticated = $state(false);
+
+// Sidebar state management - starts closed by default
+let isSidebarOpen = $state(false);
 
 // グローバルへのフォールバック公開（早期に window.generalStore を満たす）
 if (browser) {
@@ -515,29 +519,99 @@ onDestroy(async () => {
     <!-- Global main toolbar with SearchBox (SEA-0001) -->
     <Toolbar />
 
+    <!-- Sidebar toggle button -->
+    <button
+        class="sidebar-toggle"
+        onclick={() => (isSidebarOpen = !isSidebarOpen)}
+        aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
+    >
+        <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+        >
+            <path
+                d="M3 5C3 4.44772 3.44772 4 4 4H16C16.5523 4 17 4.44772 17 5V15C17 15.5523 16.5523 16 16 16H4C3.44772 16 3 15.5523 3 15V5Z"
+                fill="currentColor"
+            />
+            <path
+                d="M7 10L12 15L17 10"
+                stroke="white"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            />
+        </svg>
+    </button>
+
     <!-- Global AliasPicker component -->
     <AliasPicker />
 
-    <!-- Ensure content is not hidden behind fixed toolbar -->
-    <div class="main-content">
+    <!-- Sidebar component -->
+    <Sidebar bind:isOpen={isSidebarOpen} />
+
+    <!-- Ensure content is not hidden behind fixed toolbar and accounts for sidebar -->
+    <div class="main-content" class:with-sidebar={isSidebarOpen}>
         {@render children()}
     </div>
 
-
     <button
-        class="fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
+        class="theme-toggle fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
         onclick={() => userPreferencesStore.toggleTheme()}
     >
         {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
     </button>
-
-
 </div>
 
 <style>
 /* Keep content clear of the fixed Toolbar (height ~4rem) */
-.main-content { padding-top: 5rem; }
+.main-content {
+    padding-top: 5rem;
+    transition: margin-left 0.3s ease;
+}
 
-/* Keep content clear of the fixed Toolbar (height ~4rem) */
-.main-content { padding-top: 5rem; }
+/* Add left margin when sidebar is open */
+.main-content.with-sidebar {
+    margin-left: 250px;
+}
+
+/* Sidebar toggle button */
+.sidebar-toggle {
+    position: fixed;
+    top: 6rem;
+    left: 1rem;
+    z-index: 100;
+    width: 40px;
+    height: 40px;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s ease, left 0.3s ease;
+}
+
+.sidebar-toggle:hover {
+    background-color: #2563eb;
+}
+
+/* Dark mode for sidebar toggle */
+:global(html.dark) .sidebar-toggle {
+    background-color: #1d4ed8;
+}
+
+:global(html.dark) .sidebar-toggle:hover {
+    background-color: #1e40af;
+}
+
+/* Theme toggle button - ensure it's above the sidebar */
+.theme-toggle {
+    z-index: 50;
+}
 </style>

@@ -135,7 +135,8 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
     // 各ログレベルメソッドをラップ
     levels.forEach(level => {
         const originalMethod = logger[level].bind(logger);
-        enhancedLogger[level] = (...args: unknown[]) => {
+        // Type assertion to match pino's LogFn signature
+        (enhancedLogger as any)[level] = (...args: unknown[]) => {
             // ログ呼び出し時に位置情報を取得
             const file = getCallerFile();
 
@@ -148,7 +149,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
             }
 
             // 元のログメソッドを呼び出し
-            return originalMethod("", ...args);
+            return (originalMethod as any)(...args);
         };
     });
 
@@ -204,8 +205,8 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
             get(target, prop) {
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
                     return function(...args: unknown[]) {
-                        // オリジナルのロガーメソッドを呼び出し
-                        (target as Record<string, unknown>)[prop as string](...args);
+                        // オリジナルのロガーメソードを呼び出し
+                        ((target as any)[prop as string] as (...args: unknown[]) => void)(...args);
 
                         // コンソールにも出力（同じレベルで）
                         const consoleMethod = prop === "trace" || prop === "debug"
@@ -278,7 +279,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                         }
                     };
                 }
-                return (target as Record<string, unknown>)[prop as string];
+                return Reflect.get(target, prop);
             },
         }) as pino.Logger;
     }
@@ -334,8 +335,8 @@ export function log(
     }
 
     // 2. Pinoロガーを使ってサーバーに送信（ログファイルに記録）
-    const logger = getLogger(componentName, false); // コンソール出力せずサーバーに送信
-    logger[level].apply(logger, ["", ...args]);
+    const theLogger = getLogger(componentName, false); // コンソール出力せずサーバーに送信
+    (theLogger[level] as (...args: unknown[]) => void)(...args);
 }
 
 /**
@@ -345,11 +346,12 @@ function extractErrorDetails(
     error: Error | unknown,
 ): { message: string; stack?: string; name?: string; [key: string]: unknown; } {
     if (error instanceof Error) {
+        const { message, name, stack, ...rest } = error as Error & Record<string, unknown>;
         return {
-            message: error.message,
-            name: error.name,
-            stack: error.stack,
-            ...error, // その他のカスタムプロパティも含める
+            message,
+            name,
+            stack,
+            ...rest, // その他のカスタムプロパティも含める
         };
     } else if (typeof error === "string") {
         return { message: error };
@@ -390,7 +392,7 @@ function setupGlobalErrorHandlers(): void {
         uncaughtLogger.error(errorInfo);
         const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
         const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
-        const marker = (window as Record<string, unknown>).__LAST_EFFECT__ as string || "<unknown>";
+        const marker = ((window as unknown as Record<string, unknown>).__LAST_EFFECT__ as string) || "<unknown>";
         console.error(`%c${errMsg}`, consoleStyles.fileInfo, stackTop);
         console.error("[EFFECT-MARKER]", marker);
         console.error("[STACK]", stackTop);
@@ -411,7 +413,7 @@ function setupGlobalErrorHandlers(): void {
         uncaughtLogger.error(errorInfo);
         const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
         const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
-        const marker = (window as Record<string, unknown>).__LAST_EFFECT__ as string || "<unknown>";
+        const marker = ((window as unknown as Record<string, unknown>).__LAST_EFFECT__ as string) || "<unknown>";
         console.error(`%c${errMsg}`, consoleStyles.fileInfo, stackTop);
         console.error("[EFFECT-MARKER]", marker);
         console.error("[STACK]", stackTop);

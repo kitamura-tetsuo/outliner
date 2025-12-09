@@ -84,7 +84,7 @@ export default defineConfig({
     testMatch: "**/*.spec.ts",
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
-    retries: (process.env.CI || !isSingleSpecRun) ? 5 : 10,
+    retries: (process.env.CI || !isSingleSpecRun) ? 2 : 0,
     workers: process.env.CI ? 1 : 1,
     maxFailures: process.env.CI ? 1 : 1,
 
@@ -93,7 +93,7 @@ export default defineConfig({
         // E2Eカバレッジレポートは scripts/generate-e2e-coverage.js で生成されます
     ],
     // テスト実行時のタイムアウトを延長（環境初期化の揺らぎに対応）
-    timeout: 240 * 1000, // 240秒
+    timeout: 30 * 1000, // 30秒
     expect: {
         // 要素の検出待機のタイムアウト設定を延長
         timeout: 30 * 1000, // 30秒

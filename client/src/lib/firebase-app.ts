@@ -77,7 +77,7 @@ export function getFirebaseApp(): FirebaseApp {
         logger.info("Firebase app: Initialized new instance");
         return app;
     } catch (error: unknown) {
-        logger.error("Firebase app initialization error:", error);
+        logger.error("Firebase app initialization error", ...(error instanceof Error ? [error] : [String(error)]));
 
         // 重複アプリエラーの場合は既存のアプリを使用
         if (

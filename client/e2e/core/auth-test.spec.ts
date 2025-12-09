@@ -31,7 +31,11 @@ test.describe("Authentication Test", () => {
         console.log("Debug: Before authentication:", beforeAuth);
 
         // 認証を実行
-        const authResult = await page.evaluate(async () => {
+        const authResult = await page.evaluate<{
+            success?: boolean;
+            user?: any;
+            error?: unknown;
+        }>(async () => {
             const win = window as {
                 __USER_MANAGER__?: {
                     addEventListener: (callback: (result: { user?: any; }) => void) => () => void;
@@ -97,7 +101,7 @@ test.describe("Authentication Test", () => {
         // 認証が成功した場合の追加チェック
         // Note: In test environments, __SVELTE_GOTO__ is intentionally not set (see debug.ts)
         // So we skip waiting for it to avoid test timeout
-        if (authResult.success) {
+        if (authResult?.success) {
             console.log(
                 "Debug: Authentication completed successfully, skipping __SVELTE_GOTO__ check in test environment",
             );

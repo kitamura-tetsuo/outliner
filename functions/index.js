@@ -5,7 +5,7 @@ try {
     process.env.CI === "true" || process.env.NODE_ENV === "test" ||
     process.env.FUNCTIONS_EMULATOR === "true"
   ) {
-    require("@dotenvx/dotenvx").config();
+    require("@dotenvx/dotenvx").config({ path: ".env.test" });
   }
 } catch {
   // dotenvx が無くても処理継続（本番はSecretsを使用）
@@ -541,6 +541,9 @@ exports.deleteUser = onRequest({ cors: true }, async (req, res) => {
     }
   } catch (error) {
     logger.error(`Error deleting user: ${error.message}`, { error });
+    if (error.code && error.code.startsWith("auth/")) {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
     return res.status(500).json({ error: "Failed to delete user" });
   }
 });
@@ -654,6 +657,13 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
     }
   } catch (error) {
     logger.error(`Error deleting container: ${error.message}`, { error });
+    if (
+      error.code === "auth/id-token-expired" ||
+      error.code === "auth/invalid-id-token" ||
+      error.code === "auth/argument-error"
+    ) {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
     return res.status(500).json({ error: "Failed to delete container" });
   }
 });

@@ -1,4 +1,4 @@
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { registerCoverageHooks } from "./utils/registerCoverageHooks";
 registerCoverageHooks();
 import "./utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
