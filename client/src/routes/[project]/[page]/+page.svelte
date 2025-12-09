@@ -301,7 +301,7 @@ async function loadProjectAndPage() {
                         const snapshot = loadProjectSnapshot(projectName);
                         if (!appliedPendingImport && snapshot && Array.isArray(snapshot.items) && snapshot.items.length > 0) {
                             const projectItems: any = proj.items as any;
-                            const snapshotTitles = new Set(snapshot.items.map(root => root?.text ?? ""));
+
                             const getTitle = (page: any) => page?.text?.toString?.() ?? String(page?.text ?? "");
 
                             // Remove pages not present in snapshot to avoid stale placeholders
