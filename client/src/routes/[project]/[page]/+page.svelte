@@ -305,6 +305,9 @@ async function loadProjectAndPage() {
                             const getTitle = (page: any) => page?.text?.toString?.() ?? String(page?.text ?? "");
 
                             // Remove pages not present in snapshot to avoid stale placeholders
+                            // [REMOVED] This logic was causing data loss when the snapshot was stale (e.g. during E2E tests)
+                            // The snapshot should only be used to hydrate missing data, not to enforce strict equality.
+                            /*
                             for (let index = (projectItems?.length ?? 0) - 1; index >= 0; index--) {
                                 const existing = projectItems.at ? projectItems.at(index) : projectItems[index];
                                 if (!existing) continue;
@@ -313,6 +316,7 @@ async function loadProjectAndPage() {
                                     projectItems.removeAt?.(index);
                                 }
                             }
+                            */
 
                             const populateChildren = (children: any[], targetItems: any) => {
                                 if (!targetItems) return;
@@ -923,13 +927,11 @@ function capturePageIdForSchedule() {
         if (typeof window === "undefined") return;
         const pg: any = store.currentPage as any;
         if (!pg) return;
-        const children: any = pg?.items as any;
-        const len = children?.length ?? 0;
-        let id = pg?.id || "";
-        if (len > 0) {
-            const first = children?.at ? children.at(0) : children?.[0];
-            id = first?.id || id;
-        }
+        
+        // Always use the page ID itself, not its children
+        // This ensures consistency regardless of page content (empty vs populated)
+        const id = pg.id;
+        
         if (id) {
             const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
             window.sessionStorage?.setItem(key, String(id));
