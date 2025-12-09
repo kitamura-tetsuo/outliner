@@ -152,7 +152,7 @@ test.describe("Multi-Page Schedule Management", () => {
 
                 return true;
             }, { timeout: 30000 });
-            await page.waitForTimeout(500); // Small buffer for reactivity
+            // await page.waitForTimeout(500); // Small buffer for reactivity
         };
 
         // Wait for connection initially
@@ -187,18 +187,18 @@ test.describe("Multi-Page Schedule Management", () => {
         const items = page.locator('[data-testid="schedule-item"]');
         await expect(items).toHaveCount(1, { timeout: 10000 });
 
-        // Verify the schedule was added correctly
-        await page.waitForTimeout(500);
+        // Verify the schedule was added correctly by checking for the edit button
+        const editButton = items.first().locator('button:has-text("Edit")');
+        await expect(editButton).toBeEnabled();
 
         // Edit schedule
-        await items.first().locator('button:has-text("Edit")').click();
+        await editButton.click();
         const newTime = new Date(Date.now() + 120000).toISOString().slice(0, 16);
         await items.first().locator('input[type="datetime-local"]').fill(newTime);
         await page.locator('button:has-text("Save")').click();
 
-        // Wait for the schedule to be updated
-        await expect(items).toHaveCount(1, { timeout: 5000 });
-        await page.waitForTimeout(500);
+        // Wait for the schedule to be updated and verify the new time is displayed
+        await expect(items.first().getByText(`${newTime.replace("T", " ")}`)).toBeVisible({ timeout: 10000 });
 
         // Navigate back to page list
         await page.locator('button:has-text("Back")').click();
@@ -223,7 +223,9 @@ test.describe("Multi-Page Schedule Management", () => {
         await expect(page.locator('[data-testid="schedule-item"]')).toHaveCount(0, { timeout: 5000 });
 
         // Navigate back to the first page
-        await page.locator('button:has-text("Back")').click({ force: true });
+        const backButton = page.locator('button:has-text("Back")');
+        await expect(backButton).toBeEnabled();
+        await backButton.click();
 
         // Return to the first page
         await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName1)}`);
