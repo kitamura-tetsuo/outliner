@@ -251,6 +251,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         token = "";
     }
     const wsEnabled = isWsEnabled();
+
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
         connect: wsEnabled,

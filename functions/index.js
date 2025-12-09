@@ -541,6 +541,9 @@ exports.deleteUser = onRequest({ cors: true }, async (req, res) => {
     }
   } catch (error) {
     logger.error(`Error deleting user: ${error.message}`, { error });
+    if (error.code && error.code.startsWith("auth/")) {
+      return res.status(401).json({ error: "Authentication failed" });
+    }
     return res.status(500).json({ error: "Failed to delete user" });
   }
 });

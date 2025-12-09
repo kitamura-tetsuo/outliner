@@ -1,3 +1,9 @@
+<script context="module" lang="ts">
+    // ドラッグ開始位置（全アイテムで共有）
+    let dragStartClientX = 0;
+    let dragStartClientY = 0;
+</script>
+
 <script lang="ts">
 import {
     createEventDispatcher,
@@ -1029,6 +1035,8 @@ function handleMouseDown(event: MouseEvent) {
     // 通常のマウスダウン: ドラッグ開始準備
     const clickPosition = getClickPosition(event, textString);
     dragStartPosition = clickPosition;
+    dragStartClientX = event.clientX;
+    dragStartClientY = event.clientY;
 
     // 編集モードを開始
     if (!hasCursorBasedOnState()) {
@@ -1111,17 +1119,17 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         // Intentionally empty: placeholder for debug logging
     }
 
-    // 矩形選択の開始位置と終了位置
-    const startX = Math.min(dragStartPosition, currentPosition);
-    const endX = Math.max(dragStartPosition, currentPosition);
+    // 矩形選択の開始位置と終了位置（ピクセル単位）
+    const startPixelX = Math.min(dragStartClientX, event.clientX);
+    const endPixelX = Math.max(dragStartClientX, event.clientX);
 
-    // ドラッグの開始位置と現在位置のY座標
-    const dragStartY = event.clientY - event.movementY; // 前回のY座標
-    const currentY = event.clientY;
+    // ドラッグの開始位置と現在位置のY座標（ピクセル単位）
+    const startPixelY = dragStartClientY;
+    const endPixelY = event.clientY;
 
     // 選択範囲のY座標の上限と下限
-    const topY = Math.min(dragStartY, currentY);
-    const bottomY = Math.max(dragStartY, currentY);
+    const topY = Math.min(startPixelY, endPixelY);
+    const bottomY = Math.max(startPixelY, endPixelY);
 
     // 表示されているすべてのアイテムを取得
     const allItems = Array.from(document.querySelectorAll(".outliner-item"));
@@ -1141,8 +1149,12 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         const rect = itemElement.getBoundingClientRect();
 
         // アイテムが矩形選択の範囲内にあるかどうかを判定
-        // 現在のアイテムは常に含める
-        if (itemId === model.id || (rect.bottom >= topY && rect.top <= bottomY)) {
+        // Y座標が範囲内にあるアイテムを選択（部分的に重なっている場合も含む）
+        // ただし、完全に範囲外のものは除外
+        const verticalOverlap = Math.max(0, Math.min(rect.bottom, bottomY) - Math.max(rect.top, topY));
+        
+        // 少なくとも1ピクセル以上重なっている、または現在のアイテムである場合
+        if (itemId === model.id || verticalOverlap > 0) {
             itemsInRange.push({
                 itemId,
                 element: itemElement as HTMLElement,
@@ -1172,73 +1184,55 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         const textContent = textElement.textContent || "";
 
         // 選択範囲の開始位置と終了位置を計算
-        // 各アイテムの文字位置を計算するためのより正確な方法
-        let itemStartOffset = startX;
-        let itemEndOffset = endX;
+        const rect = textElement.getBoundingClientRect();
+        
+        // 矩形選択の左端と右端の相対X座標（テキスト要素基準）
+        const relStartX = startPixelX - rect.left;
+        const relEndX = endPixelX - rect.left;
 
-        // テキスト内容に基づいて位置を調整
-        // 文字単位での位置計算を行う
-        if (item.itemId === model.id) {
-            // 現在のアイテムの場合は、ドラッグ開始位置と現在位置を使用
-            itemStartOffset = startX;
-            itemEndOffset = endX;
-        }
-        else {
-            // 他のアイテムの場合は、テキスト内容に基づいて位置を計算
-            // 仮想的なクリックイベントを作成して位置を計算
-            new MouseEvent("click", {
-                clientX: event.clientX,
-                clientY: item.rect.top + (item.rect.height / 2), // アイテムの中央
-            });
+        // 文字単位での位置を計算
+        const span = document.createElement("span");
+        const style = window.getComputedStyle(textElement);
+        span.style.fontFamily = style.fontFamily;
+        span.style.fontSize = style.fontSize;
+        span.style.fontWeight = style.fontWeight;
+        span.style.letterSpacing = style.letterSpacing;
+        span.style.whiteSpace = "pre";
+        span.style.visibility = "hidden";
+        span.style.position = "absolute";
+        document.body.appendChild(span);
 
-            // 水平方向の位置を計算
-            const rect = textElement.getBoundingClientRect();
-            const relX = event.clientX - rect.left;
-
-            // 文字単位での位置を計算
-            const span = document.createElement("span");
-            const style = window.getComputedStyle(textElement);
-            span.style.fontFamily = style.fontFamily;
-            span.style.fontSize = style.fontSize;
-            span.style.fontWeight = style.fontWeight;
-            span.style.letterSpacing = style.letterSpacing;
-            span.style.whiteSpace = "pre";
-            span.style.visibility = "hidden";
-            span.style.position = "absolute";
-            document.body.appendChild(span);
-
-            // 開始位置を計算
-            let startPos = 0;
-            let minStartDist = Infinity;
-            for (let i = 0; i <= textContent.length; i++) {
-                span.textContent = textContent.slice(0, i);
-                const w = span.getBoundingClientRect().width;
-                const d = Math.abs(w - (relX - (endX - startX)));
-                if (d < minStartDist) {
-                    minStartDist = d;
-                    startPos = i;
-                }
+        // 開始位置（オフセット）を計算
+        let startPos = 0;
+        let minStartDist = Infinity;
+        for (let i = 0; i <= textContent.length; i++) {
+            span.textContent = textContent.slice(0, i);
+            const w = span.getBoundingClientRect().width;
+            const d = Math.abs(w - relStartX);
+            if (d < minStartDist) {
+                minStartDist = d;
+                startPos = i;
             }
-
-            // 終了位置を計算
-            let endPos = 0;
-            let minEndDist = Infinity;
-            for (let i = 0; i <= textContent.length; i++) {
-                span.textContent = textContent.slice(0, i);
-                const w = span.getBoundingClientRect().width;
-                const d = Math.abs(w - relX);
-                if (d < minEndDist) {
-                    minEndDist = d;
-                    endPos = i;
-                }
-            }
-
-            document.body.removeChild(span);
-
-            // 計算した位置を使用
-            itemStartOffset = Math.min(startPos, endPos);
-            itemEndOffset = Math.max(startPos, endPos);
         }
+
+        // 終了位置（オフセット）を計算
+        let endPos = 0;
+        let minEndDist = Infinity;
+        for (let i = 0; i <= textContent.length; i++) {
+            span.textContent = textContent.slice(0, i);
+            const w = span.getBoundingClientRect().width;
+            const d = Math.abs(w - relEndX);
+            if (d < minEndDist) {
+                minEndDist = d;
+                endPos = i;
+            }
+        }
+
+        document.body.removeChild(span);
+
+        // 計算した位置を使用
+        let itemStartOffset = Math.min(startPos, endPos);
+        let itemEndOffset = Math.max(startPos, endPos);
 
         // 範囲外の場合は修正
         if (itemStartOffset < 0) itemStartOffset = 0;

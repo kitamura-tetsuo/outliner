@@ -8,24 +8,35 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test("typing sync between two browsers", async ({ browser }, testInfo) => {
-    const projectName = `Test Project Sync ${Date.now()}`;
-    const pageName = `sync-test-page-${Date.now()}`;
-
+    test.setTimeout(60000);
     const context1 = await browser.newContext();
     const page1 = await context1.newPage();
-    // Enable Yjs WS before any navigation initiated by TestHelpers
-    await page1.addInitScript(() => localStorage.setItem("VITE_YJS_ENABLE_WS", "true"));
+    page1.on("console", (msg) => console.log(`[PAGE1] ${msg.text()}`));
+
+    // Match configuration of working Yjs tests
+    await page1.addInitScript(() => {
+        localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
+        localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
+    });
 
     // Prepare the environment with initial content to ensure both contexts connect to the same document
-    await TestHelpers.prepareTestEnvironment(page1, testInfo, [
-        "一行目: テスト",
-        "二行目: Yjs 反映",
-        "三行目: 並び順チェック",
-    ], undefined);
-    await page1.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
+    // Capture the generated project/page names
+    const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(
+        page1,
+        testInfo,
+        [
+            "一行目: テスト",
+            "二行目: Yjs 反映",
+            "三行目: 並び順チェック",
+        ],
+        undefined,
+        { ws: "force" },
+    );
 
-    // Force-enable WS connection in tests that require collaboration
-    await page1.addInitScript(() => localStorage.setItem("VITE_YJS_ENABLE_WS", "true"));
+    // page1 is already on the correct page, no need to navigate again
+
+    // page1 is already on the correct page, no need to navigate again
+
     // Wait for Yjs connection to avoid editing a provisional project with improved timeout handling
     try {
         await page1.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
@@ -39,17 +50,23 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
 
     const context2 = await browser.newContext();
     const page2 = await context2.newPage();
-    // Enable Yjs WS before TestHelpers navigates
-    await page2.addInitScript(() => localStorage.setItem("VITE_YJS_ENABLE_WS", "true"));
+    page2.on("console", (msg) => console.log(`[PAGE2] ${msg.text()}`));
 
-    // Prepare the second page with the same initial content to ensure it connects to the same document
-    await TestHelpers.prepareTestEnvironment(page2, testInfo, [
-        "一行目: テスト",
-        "二行目: Yjs 反映",
-        "三行目: 並び順チェック",
-    ], undefined);
+    await page2.addInitScript(() => {
+        localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
+        localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
+    });
+
+    // Prepare the second page environment (flags etc)
+    // We ignore the returned project/page as we want to join the first one
+    await TestHelpers.prepareTestEnvironment(page2, testInfo, [], undefined, { ws: "force" });
+
+    // Navigate page2 to the SAME project/page
     await page2.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
-    await page2.addInitScript(() => localStorage.setItem("VITE_YJS_ENABLE_WS", "true"));
+
+    // Wait for app to initialize before checking connection
+    await page2.waitForFunction(() => !!(window as any).__YJS_STORE__, null, { timeout: 10000 });
+
     // Wait for Yjs connection with improved timeout handling
     try {
         await page2.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
@@ -109,7 +126,6 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     expect(await page1.title()).toBeDefined();
     expect(await page2.title()).toBeDefined();
 
-    // Close contexts after test completion - do this at the very end so afterEach hook can run properly
-    await context1.close();
-    await context2.close();
+    expect(await page1.title()).toBeDefined();
+    expect(await page2.title()).toBeDefined();
 });

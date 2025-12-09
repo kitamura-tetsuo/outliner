@@ -163,7 +163,7 @@ async function cancel(id: string) {
 
 function startEdit(sch: Schedule) {
     editingId = sch.id;
-    editingTime = new Date(sch.nextRunAt).toISOString().slice(0, 16);
+    editingTime = toLocalISOString(sch.nextRunAt);
 }
 
 async function saveEdit() {
@@ -215,6 +215,26 @@ async function downloadIcs() {
         isDownloading = false;
     }
 }
+
+function formatDate(timestamp: number): string {
+    const d = new Date(timestamp);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+function toLocalISOString(timestamp: number): string {
+    const d = new Date(timestamp);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
 </script>
 
 <div class="p-4">
@@ -243,7 +263,7 @@ async function downloadIcs() {
                     <input type="datetime-local" bind:value={editingTime} class="border p-1" />
                     <button onclick={saveEdit} class="ml-2 px-2 py-1 bg-green-600 text-white rounded">Save</button>
                 {:else}
-                    {new Date(sch.nextRunAt).toLocaleString()}
+                    {formatDate(sch.nextRunAt)}
                     <button onclick={() => startEdit(sch)} class="ml-2 px-2 py-1 bg-yellow-500 text-white rounded">
                         Edit
                     </button>

@@ -140,8 +140,18 @@ export function startServer(config: Config, logger = defaultLogger) {
         totalSockets++;
         ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
         roomCounts.set(docName, (roomCounts.get(docName) ?? 0) + 1);
+        // Buffer messages while waiting for async auth verification
+        const msgBuffer: any[] = [];
+        const bufferListener = (data: any) => {
+            msgBuffer.push(data);
+        };
+        ws.on("message", bufferListener);
+
         try {
             const decoded = await verifyIdTokenCached(token);
+
+            // Remove buffer listener
+            ws.removeListener("message", bufferListener);
             let idleTimer = setTimeout(() => {
                 logger.warn({ event: "ws_connection_closed", reason: "idle_timeout" });
                 ws.close(4004, "IDLE_TIMEOUT");
@@ -215,6 +225,11 @@ export function startServer(config: Config, logger = defaultLogger) {
                     ws.close(4005, "MESSAGE_TOO_LARGE");
                 }
             });
+
+            // Replay buffered messages
+            for (const data of msgBuffer) {
+                ws.emit("message", data);
+            }
             // ws.send パッチで送信フレームを可視化（setupWSConnection より前に適用）
             try {
                 const origSend = ws.send.bind(ws) as any;
