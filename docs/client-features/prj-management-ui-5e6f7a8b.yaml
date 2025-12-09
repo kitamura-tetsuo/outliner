@@ -1,0 +1,11 @@
+id: PRJ-5e6f7a8b
+title: Project Management UI
+title-ja: プロジェクト管理UI
+description: Provides a user interface for managing projects.
+user_story: As a user, I want a clear and intuitive interface to manage my projects, including renaming, deleting, and managing access.
+acceptance_criteria:
+- A dedicated project management page is available.
+- The page lists all projects the user has access to.
+- The UI provides options for renaming, deleting, and managing permissions for each project.
+category: project-management
+status: implemented

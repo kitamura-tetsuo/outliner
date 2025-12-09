@@ -1,0 +1,11 @@
+id: PRJ-1a2b3c4d
+title: Rename Project
+title-ja: プロジェクト名の変更
+description: Allows users to rename their projects.
+user_story: As a user, I want to be able to rename my projects so I can better organize my work.
+acceptance_criteria:
+- Users can change the title of a project.
+- The project's URL slug does not change.
+- The new title is reflected in the project list and on the project page.
+category: project-management
+status: implemented

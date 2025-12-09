@@ -1,0 +1,11 @@
+id: PRJ-4d5e6f7a
+title: Public Project Sharing
+title-ja: プロジェクトの公開共有
+description: Allows users to share their projects publicly.
+user_story: As a user, I want to be able to share a read-only version of my project with anyone via a public link.
+acceptance_criteria:
+- Users can enable or disable public sharing for a project.
+- When public sharing is enabled, a unique, read-only link is generated.
+- Anyone with the link can view the project, but they cannot edit it.
+category: project-management
+status: implemented

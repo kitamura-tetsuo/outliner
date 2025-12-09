@@ -1,0 +1,11 @@
+id: PRJ-3c4d5e6f
+title: Project Access Control
+title-ja: プロジェクトのアクセス制御
+description: Allows project owners to manage user permissions.
+user_story: As a project owner, I want to control who can view and edit my projects.
+acceptance_criteria:
+- Project owners can invite users to a project.
+- Project owners can set permissions for each user (e.g., read-only, read-write).
+- Users can only perform actions that are allowed by their permissions.
+category: project-management
+status: implemented

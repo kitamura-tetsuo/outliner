@@ -1,0 +1,11 @@
+id: PRJ-2b3c4d5e
+title: Delete and Restore Project
+title-ja: プロジェクトの削除と復元
+description: Allows users to delete and restore their projects.
+user_story: As a user, I want to be able to delete projects I no longer need and restore them if I make a mistake.
+acceptance_criteria:
+- Users can move a project to the trash.
+- Trashed projects can be restored.
+- Trashed projects can be permanently deleted.
+category: project-management
+status: implemented
