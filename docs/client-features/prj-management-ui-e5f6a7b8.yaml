@@ -1,0 +1,11 @@
+id: PRJ-0006
+title: Project Management UI
+title-ja: プロジェクト管理UI
+description: Provides a centralized user interface for managing all project-related settings.
+status: implemented
+user_story: As a project owner, I want a single, clear interface to manage all my projects' settings, including renaming, access control, and sharing.
+acceptance_criteria:
+- A dedicated 'Projects' or 'Dashboard' page lists all of the user's projects.
+- Each project in the list has a clear entry point to its settings.
+- The project management UI is intuitive and easy to navigate.
+- All project management features are accessible from this UI.

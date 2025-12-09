@@ -1,0 +1,12 @@
+id: PRJ-0003
+title: Delete and Restore Project
+title-ja: プロジェクトの削除と復元
+description: Allows project owners to delete and restore their projects.
+status: implemented
+user_story: As a project owner, I want to be able to delete projects I no longer need and restore them if I make a mistake.
+acceptance_criteria:
+- Project owners can find a delete option in the project settings.
+- A confirmation dialog is shown before deleting a project.
+- Deleted projects are moved to a 'Trash' or 'Archived' section.
+- Users can restore deleted projects from the trash.
+- Restored projects reappear in the active project list.

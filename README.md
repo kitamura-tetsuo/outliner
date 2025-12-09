@@ -223,6 +223,18 @@ firebase deploy
 
 各ライブラリはMITやApacheなどのライセンスの下で公開されており、`package.json`に詳細が記載されています。
 
+## Project Management
+
+This application provides a comprehensive set of features for managing your projects.
+
+- **Rename Project:** Easily rename your projects to keep them organized.
+- **Delete and Restore:** Delete projects you no longer need, with the option to restore them later.
+- **Access Control:** Manage who can access your projects and what level of permissions they have.
+- **Public Sharing:** Share a read-only version of your projects with a public URL.
+- **Centralized Management UI:** A dedicated UI to manage all your project settings in one place.
+
+For more details, see the [Project Management User Guide](docs/user-guide/project-management.md).
+
 ## SSO ログイン手順（新入社員向け）
 
 1. 会社のSSOアカウントを取得後、社内管理者へGitHubユーザー名を連絡してください。
