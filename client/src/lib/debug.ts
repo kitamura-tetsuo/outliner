@@ -45,7 +45,7 @@ declare global {
         getFluidTreeDebugData?: () => Record<string, unknown>;
         getFluidTreePathData?: (path?: string) => Record<string, unknown>;
         getYjsTreeDebugData?: () => Record<string, unknown>;
-        getYjsTreePathData?: (path?: string) => Record<string, unknown>;
+        getYjsTreePathData?: (path?: string) => unknown;
         __FLUID_SERVICE__?: typeof yjsHighService;
         __FLUID_STORE__?: typeof yjsStore;
         __USER_MANAGER__?: typeof userManager;
@@ -111,7 +111,7 @@ if (process.env.NODE_ENV === "test") {
             };
         };
 
-        window.getYjsTreePathData = function(path?: string): Record<string, unknown> {
+        window.getYjsTreePathData = function(path?: string): unknown {
             const data = window.getYjsTreeDebugData?.();
             if (!path) return data ?? {};
             const result = path.split(".").reduce((prev: unknown, curr: string) => {
@@ -120,7 +120,7 @@ if (process.env.NODE_ENV === "test") {
                 }
                 return undefined;
             }, data);
-            return (result && typeof result === "object" ? result : {}) as Record<string, unknown>;
+            return result;
         };
 
         logger.debug("Global debug functions initialized");

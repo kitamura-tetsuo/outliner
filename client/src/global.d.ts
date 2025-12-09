@@ -34,7 +34,7 @@ interface Window {
     __FLUID_CLIENT__?: object;
     getFluidTreeDebugData?: () => Record<string, unknown>;
     getYjsTreeDebugData?: () => Record<string, unknown>;
-    getYjsTreePathData?: (path?: string) => Record<string, unknown>;
+    getYjsTreePathData?: (path?: string) => unknown;
 
     // GlobalTextArea properties
     KeyEventHandler?: any;
