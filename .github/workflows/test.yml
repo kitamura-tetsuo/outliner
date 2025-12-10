@@ -238,6 +238,7 @@ jobs:
       #     VITE_DISABLE_FLUID_TELEMETRY: true
 
       - name: Run unit and integration tests for github reporting
+        shell: bash
         run: |
           set -o pipefail
           mkdir -p job_logs/${{ github.job }}
@@ -253,6 +254,7 @@ jobs:
           VITE_DISABLE_FLUID_TELEMETRY: true
 
       - name: Run e2e tests for github reporting
+        shell: bash
         run: |
           set -o pipefail
           mkdir -p job_logs/${{ github.job }}

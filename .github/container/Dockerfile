@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/playwright:v1.56.1-jammy
 
 # Install Java and OS utilities
 RUN apt-get update && \
-    apt-get install -y openjdk-17-jre-headless xvfb lsof netcat-openbsd curl && \
+    apt-get install -y openjdk-17-jre-headless xvfb lsof netcat-openbsd curl sudo python3-venv python3-pip && \
     rm -rf /var/lib/apt/lists/*
 
 # Install global npm packages
