@@ -7,24 +7,32 @@ on:
 jobs:
   e2e-basic:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     timeout-minutes: 45
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Setup Java for Firebase emulator
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+      - name: Restore dependencies from cache
+        run: |
+          # Copy pre-installed node_modules from cache
+          cp -r /cache/client/node_modules client/
+          cp -r /cache/server/node_modules server/
+          cp -r /cache/functions/node_modules functions/
+          
+          # Ensure binaries are executable
+          chmod +x client/node_modules/.bin/* || true
+          chmod +x server/node_modules/.bin/* || true
+          chmod +x functions/node_modules/.bin/* || true
 
       - name: Setup test environment
         run: |
+          # Create sentinel file to skip dependency installation in setup.sh
+          touch .setup-installed
           ./scripts/setup.sh
 
       - name: Run basic E2E tests sequentially
