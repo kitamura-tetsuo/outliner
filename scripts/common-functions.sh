@@ -212,10 +212,9 @@ install_os_utilities() {
     wget
   )
 
-  # For original lsof and xvfb
+  # For original lsof
   local original_deps=(
     lsof
-    xvfb
   )
 
   # Check if any dependency is missing

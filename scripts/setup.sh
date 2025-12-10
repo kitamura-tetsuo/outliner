@@ -161,8 +161,8 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
 else
   echo "Skipping dependency installation"
   ensure_python_env
-  if ! command -v xvfb-run >/dev/null 2>&1; then
-    echo "xvfb-run missing; installing OS utilities..."
+  if ! command -v lsof >/dev/null 2>&1; then
+    echo "lsof missing; installing OS utilities..."
     install_os_utilities
   fi
   if [ ! -d "${ROOT_DIR}/client/node_modules" ] || [ ! -d "${ROOT_DIR}/scripts/tests/node_modules" ]; then
