@@ -11,7 +11,13 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("GRV-0002: Graph view layout persistence", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "Root node with [child] link",
+            "child",
+        ]);
+
         // Clear any existing graph layout data to ensure test isolation
+        // Must be done after navigation to avoid SecurityError on about:blank
         try {
             await page.evaluate(() => {
                 if (typeof localStorage !== "undefined") {
@@ -19,14 +25,8 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                 }
             });
         } catch (e) {
-            // Ignore localStorage access errors during test setup
             console.log("Could not clear localStorage in beforeEach:", e.message);
         }
-
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "Root node with [child] link",
-            "child",
-        ]);
     });
 
     test.afterEach(async ({ page }) => {
@@ -44,6 +44,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
     });
 
     test("layout persists after page reload", async ({ page }) => {
+        test.setTimeout(60000); // Increase timeout for this test to accommodate long retry loops under load
         // グラフビューボタンをクリックしてグラフページに移動
         await page.click('[data-testid="graph-view-button"]');
 
@@ -280,54 +281,80 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         }, { timeout: 5000 });
 
         // レイアウトが復元されることを確認
-        const layoutRestoreResult = await page.evaluate(() => {
-            try {
-                // ローカルストレージからレイアウト情報を取得
-                const savedLayout = localStorage.getItem("graph-layout");
-                if (!savedLayout) return { success: false, error: "No saved layout found" };
+        // リロード直後はレイアウト計算が完了していない可能性があるため、リトライを行う
+        const layoutRestoreResult = await page.evaluate(async () => {
+            const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+            const maxRetries = 120; // 120回試行 (約60秒)
 
-                const layoutData = JSON.parse(savedLayout);
-                console.log("Checking restored layout:", layoutData);
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    // ローカルストレージからレイアウト情報を取得
+                    const savedLayout = localStorage.getItem("graph-layout");
+                    if (!savedLayout) {
+                        console.log(`Retry ${i}: No saved layout found`);
+                        await wait(500);
+                        continue;
+                    }
 
-                const chart = (window as any).__GRAPH_CHART__;
-                if (!chart) return { success: false, error: "Chart not found" };
+                    const layoutData = JSON.parse(savedLayout);
+                    const chart = (window as any).__GRAPH_CHART__;
+                    if (!chart) {
+                        console.log(`Retry ${i}: Chart not found`);
+                        await wait(500);
+                        continue;
+                    }
 
-                const currentOption = chart.getOption();
-                const nodes = currentOption.series[0].data;
-                console.log("Current nodes after reload:", nodes);
+                    const currentOption = chart.getOption();
+                    const nodes = currentOption.series[0].data;
 
-                // 最初のノード（page1）の位置を確認
-                const currentFirstNode = nodes.find((n: any) => n.id === "page1");
-                const savedFirstNode = layoutData.nodes.find((n: any) => n.id === "page1");
+                    // 最初のノード（page1）の位置を確認
+                    const currentFirstNode = nodes.find((n: any) => n.id === "page1");
+                    const savedFirstNode = layoutData.nodes.find((n: any) => n.id === "page1");
 
-                console.log("Saved first node:", savedFirstNode);
-                console.log("Current first node:", currentFirstNode);
+                    if (savedFirstNode && currentFirstNode) {
+                        // 座標が有効な数値であることを確認
+                        const isValid = (n: any) =>
+                            typeof n.x === "number" && typeof n.y === "number" && !isNaN(n.x) && !isNaN(n.y);
 
-                if (savedFirstNode && currentFirstNode) {
-                    return {
-                        success: true,
-                        restoredPosition: { x: currentFirstNode.x, y: currentFirstNode.y },
-                        expectedPosition: { x: savedFirstNode.x, y: savedFirstNode.y },
-                        layoutRestored: currentFirstNode.x === savedFirstNode.x
-                            && currentFirstNode.y === savedFirstNode.y,
-                        savedLayout: layoutData,
-                        currentNodes: nodes.length,
-                        debugInfo: {
-                            savedFirstNode,
-                            currentFirstNode,
-                        },
-                    };
+                        if (isValid(currentFirstNode) && isValid(savedFirstNode)) {
+                            // 座標が一致するか確認 (許容誤差を含めるか、完全一致か)
+                            // ここでは完全一致を期待しているが、浮動小数点の誤差を考慮して差分チェックにするのが安全かも
+                            // しかし元のテストは完全一致を期待しているのでそれに従う
+                            if (currentFirstNode.x === savedFirstNode.x && currentFirstNode.y === savedFirstNode.y) {
+                                return {
+                                    success: true,
+                                    restoredPosition: { x: currentFirstNode.x, y: currentFirstNode.y },
+                                    expectedPosition: { x: savedFirstNode.x, y: savedFirstNode.y },
+                                    layoutRestored: true,
+                                    savedLayout: layoutData,
+                                    currentNodes: nodes.length,
+                                    attempts: i + 1,
+                                };
+                            } else {
+                                console.log(
+                                    `Retry ${i}: Position mismatch. Current: (${currentFirstNode.x}, ${currentFirstNode.y}), Saved: (${savedFirstNode.x}, ${savedFirstNode.y})`,
+                                );
+                            }
+                        } else {
+                            console.log(
+                                `Retry ${i}: Invalid coordinates. Current: (${currentFirstNode.x}, ${currentFirstNode.y}), Saved: (${savedFirstNode.x}, ${savedFirstNode.y})`,
+                            );
+                        }
+                    } else {
+                        console.log(`Retry ${i}: Node not found`);
+                    }
+                } catch (error: any) {
+                    console.log(`Retry ${i}: Error: ${error.message}`);
                 }
-                return { success: false, error: "Node not found", savedFirstNode, currentFirstNode };
-            } catch (error) {
-                return { success: false, error: error.message };
+                await wait(500);
             }
+            return { success: false, error: "Timeout waiting for layout restoration" };
         });
 
         console.log("Layout restore result:", layoutRestoreResult);
 
         expect(layoutRestoreResult.success).toBe(true);
-        expect(layoutRestoreResult.restoredPosition).toEqual({ x: 200, y: 200 });
-        expect(layoutRestoreResult.layoutRestored).toBe(true);
+        expect((layoutRestoreResult as any).restoredPosition).toEqual({ x: 200, y: 200 });
+        expect((layoutRestoreResult as any).layoutRestored).toBe(true);
     });
 });

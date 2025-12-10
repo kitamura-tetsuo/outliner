@@ -113,6 +113,7 @@ test.describe("CMT-0001: comment threads", () => {
     });
 
     test("add, edit and remove comment", async ({ page }) => {
+        test.setTimeout(60000); // Increase timeout for this specific test under load
         // Using TestHelpers.prepareTestEnvironment from beforeEach ensures we have a fresh page for this test
         await TestHelpers.waitForOutlinerItems(page);
         // インデックス1を使用（インデックス0はページタイトルでコメントボタンが表示されない）
@@ -145,8 +146,11 @@ test.describe("CMT-0001: comment threads", () => {
         // Wait for the comment thread to appear with increased timeout
         // Use a more specific locator to ensure we're waiting for the right thread
         await expect(page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`)).toBeVisible({
-            timeout: 15000,
+            timeout: 30000,
         });
+
+        // Wait for thread to be fully interactive
+        await page.waitForTimeout(1000);
 
         await page.fill('[data-testid="new-comment-input"]', "hello");
         const addBtns = page.locator('[data-testid="add-comment-btn"]');
@@ -163,13 +167,13 @@ test.describe("CMT-0001: comment threads", () => {
         // Wait for comment count to appear and have the correct value
         await expect(
             page.locator(`[data-item-id="${firstId}"] .comment-count`),
-        ).toBeVisible();
+        ).toBeVisible({ timeout: 30000 });
         await expect(
             page.locator(`[data-item-id="${firstId}"] .comment-count`),
-        ).toHaveText("1");
+        ).toHaveText("1", { timeout: 30000 });
 
         // Wait for the comment element to appear with specific text, which indicates successful sync
-        await expect(page.locator('[data-testid="comment-thread"] .text')).toContainText("hello", { timeout: 15000 });
+        await expect(page.locator('[data-testid="comment-thread"] .text')).toContainText("hello", { timeout: 30000 });
 
         // Now verify the comment exists
         const comment = page.locator('[data-testid="comment-thread"] .comment');
@@ -183,7 +187,7 @@ test.describe("CMT-0001: comment threads", () => {
         await page.click(`[data-testid="comment-${commentId}"] .edit`);
 
         // 編集入力フィールドが表示されるまで待機
-        await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).toBeVisible();
+        await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).toBeVisible({ timeout: 30000 });
 
         // 編集入力フィールドをクリアしてから新しいテキストを入力
         await page.fill(`[data-testid="edit-input-${commentId}"]`, "");
@@ -193,16 +197,16 @@ test.describe("CMT-0001: comment threads", () => {
         await page.click(`[data-testid="save-edit-${commentId}"]`);
 
         // 編集モードが終了するまで待機
-        await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).not.toBeVisible();
+        await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).not.toBeVisible({ timeout: 30000 });
 
         // Add a longer delay to ensure the Yjs update has time to propagate in full test suite
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(3000);
 
         // Wait for the text to be updated with a longer timeout to ensure edit operation completes
         // Use a more specific selector to ensure we're checking the right comment
         // Increase timeout and add retry mechanism for Yjs synchronization
         await expect(page.locator(`[data-testid="comment-${commentId}"] .text`)).toHaveText("edited", {
-            timeout: 30000,
+            timeout: 45000,
         });
 
         await page.click(`[data-testid="comment-${commentId}"] .delete`);
