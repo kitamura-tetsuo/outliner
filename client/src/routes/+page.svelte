@@ -1,8 +1,8 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
-import ContainerSelector from "../../components/ContainerSelector.svelte";
-import { getLogger } from "../../lib/logger";
-import { yjsStore } from "../../stores/yjsStore.svelte";
+import ContainerSelector from "../components/ContainerSelector.svelte";
+import { getLogger } from "../lib/logger";
+import { yjsStore } from "../stores/yjsStore.svelte";
 
 // Import test helper in test environments only
 if (typeof window !== "undefined" && (
@@ -57,7 +57,7 @@ async function handleContainerSelected(
 
     try {
         // Defer import to avoid SSR issues in test/SSR context
-        const { createYjsClient } = await import("../../services");
+        const { createYjsClient } = await import("../services");
         const client = await createYjsClient(selectedContainerId);
         yjsStore.yjsClient = client as any;
 
