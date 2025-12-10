@@ -166,6 +166,31 @@ export async function getUserContainers(): Promise<{ containers: string[]; defau
     return { containers: [], defaultContainerId: null };
 }
 
+export async function renameProject(newTitle: string): Promise<void> {
+    const client = yjsStore.yjsClient;
+    if (!client) {
+        throw new Error("No active Yjs client.");
+    }
+
+    const project = Project.fromDoc(client.ydoc);
+    if (!project) {
+        throw new Error("No active project.");
+    }
+
+    project.setTitle(newTitle);
+    setContainerTitleInMetaDoc(client.roomName, newTitle);
+
+    // Update the project in the registry
+    for (const [key, value] of registry.entries()) {
+        const [registeredClient] = value;
+        if (registeredClient === client) {
+            registry.set({ type: "container", id: client.roomName }, [client, project]);
+            break;
+        }
+    }
+}
+
+
 // Testing hooks
 if (process.env.NODE_ENV === "test" && typeof window !== "undefined") {
     (window as any).__YJS_SERVICE__ = {
@@ -173,5 +198,6 @@ if (process.env.NODE_ENV === "test" && typeof window !== "undefined") {
         getClientByProjectTitle,
         createClient,
         cleanupClient,
+        renameProject,
     };
 }
