@@ -190,6 +190,7 @@ export async function renameProject(newTitle: string): Promise<void> {
     }
 }
 
+
 // Testing hooks
 if (process.env.NODE_ENV === "test" && typeof window !== "undefined") {
     (window as any).__YJS_SERVICE__ = {

@@ -1,29 +1,18 @@
 <script lang="ts">
     import { store } from '../../stores/store.svelte';
     import * as yjsService from '../../lib/yjsService.svelte';
-    import { onMount } from 'svelte';
 
-    let newProjectName = '';
-    let currentProjectName = '';
+    let newProjectName = $state('');
+    const currentProjectName = $derived(store.project?.title ?? '');
 
-    onMount(() => {
-        // Ensure the component updates when the project changes.
-        const unsubscribe = store.subscribe((value) => {
-            currentProjectName = value.project?.title ?? '';
-            if (newProjectName === '') {
-                newProjectName = currentProjectName;
-            }
-        });
-
-        return unsubscribe;
+    // Initialize newProjectName when the component mounts or the project changes.
+    $effect(() => {
+        newProjectName = currentProjectName;
     });
-
 
     async function handleRename() {
         if (newProjectName && newProjectName !== currentProjectName) {
-            // This function doesn't exist yet, but I'll add it in the next step.
             await yjsService.renameProject(newProjectName);
-            // Optionally, refresh the project name in the store or wait for reactivity
         }
     }
 </script>
