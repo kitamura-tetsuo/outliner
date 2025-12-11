@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Project Restoration", () => {
@@ -14,7 +14,6 @@ test.describe("Project Restoration", () => {
         await page.click(`button:has-text("Delete")`);
         await page.fill("input[type='text']", projectTitle);
         await page.click("button:has-text('Delete')");
-
 
         // Go to trash and restore it
         await page.goto("/projects/trash");
