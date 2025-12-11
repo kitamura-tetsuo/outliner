@@ -13,3 +13,4 @@ process.env.AZURE_ACTIVE_KEY = "primary";
 // Firebase エミュレーター設定
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
 process.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
+process.env.ADMIN_DELETE_TOKEN = "test-admin-token";
