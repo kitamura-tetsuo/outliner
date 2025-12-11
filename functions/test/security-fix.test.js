@@ -3,7 +3,6 @@ const functions = require("firebase-functions-test")();
 const myFunctions = require("../index");
 
 describe("Security Fix: deleteAllProductionData", () => {
-
   afterAll(() => {
     functions.cleanup();
   });
@@ -14,8 +13,8 @@ describe("Security Fix: deleteAllProductionData", () => {
       headers: { origin: "http://localhost:7090" },
       body: {
         adminToken: "wrong-token",
-        confirmationCode: "DELETE_ALL_PRODUCTION_DATA_CONFIRM"
-      }
+        confirmationCode: "DELETE_ALL_PRODUCTION_DATA_CONFIRM",
+      },
     };
 
     const statusMock = jest.fn().mockReturnThis();
@@ -28,7 +27,7 @@ describe("Security Fix: deleteAllProductionData", () => {
       json: jsonMock,
       end: jest.fn(),
       on: jest.fn(),
-      emit: jest.fn()
+      emit: jest.fn(),
     };
 
     await myFunctions.deleteAllProductionData(req, res);
@@ -50,8 +49,8 @@ describe("Security Fix: deleteAllProductionData", () => {
       headers: { origin: "http://localhost:7090" },
       body: {
         adminToken: "test-admin-token",
-        confirmationCode: "DELETE_ALL_PRODUCTION_DATA_CONFIRM"
-      }
+        confirmationCode: "DELETE_ALL_PRODUCTION_DATA_CONFIRM",
+      },
     };
 
     const statusMock = jest.fn().mockReturnThis();
@@ -64,7 +63,7 @@ describe("Security Fix: deleteAllProductionData", () => {
       json: jsonMock,
       end: jest.fn(),
       on: jest.fn(),
-      emit: jest.fn()
+      emit: jest.fn(),
     };
 
     await myFunctions.deleteAllProductionData(req, res);
@@ -73,7 +72,7 @@ describe("Security Fix: deleteAllProductionData", () => {
     // If verification fails, it returns 401
     expect(statusMock).toHaveBeenCalledWith(400);
     expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
-       error: "This endpoint only works in production environment"
+      error: "This endpoint only works in production environment",
     }));
   });
 });
