@@ -201,6 +201,11 @@ export class Project {
         }
     }
 
+    setTitle(newTitle: string) {
+        const meta = this.ydoc.getMap("metadata");
+        meta.set("title", newTitle);
+    }
+
     get items(): Items {
         return new Items(this.ydoc, this.tree, "root");
     }

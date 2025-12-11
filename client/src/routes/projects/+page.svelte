@@ -6,12 +6,12 @@ import {
 } from "svelte";
 import {
     userManager,
-} from "../../../auth/UserManager";
-import AuthComponent from "../../../components/AuthComponent.svelte";
-import * as yjsHighService from "../../../lib/yjsService.svelte";
-import { getLogger } from "../../../lib/logger";
-import { saveContainerId } from "../../../stores/firestoreStore.svelte";
-import { yjsStore } from "../../../stores/yjsStore.svelte";
+} from "../../auth/UserManager";
+import AuthComponent from "../../components/AuthComponent.svelte";
+import * as yjsHighService from "../../lib/yjsService.svelte";
+import { getLogger } from "../../lib/logger";
+import { saveContainerId } from "../../stores/firestoreStore.svelte";
+import { yjsStore } from "../../stores/yjsStore.svelte";
 const logger = getLogger();
 
 let isLoading = $state(false);
