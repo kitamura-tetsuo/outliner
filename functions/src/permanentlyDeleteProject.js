@@ -2,9 +2,16 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 
-admin.initializeApp();
+exports.permanentlyDeleteProject = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
+    }
 
-async function permanentlyDeleteProject(projectId) {
+    const projectId = data.projectId;
+    if (!projectId) {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a \"projectId\" argument.");
+    }
+
     // Delete from Yjs
     const yjsUrl = process.env.YJS_URL || "http://localhost:3000";
     const yjsSecretKey = process.env.YJS_SECRET_KEY || "default-secret-key";
@@ -21,24 +28,6 @@ async function permanentlyDeleteProject(projectId) {
     const db = admin.firestore();
     const projectRef = db.collection("projects").doc(projectId);
     await projectRef.delete();
-}
 
-
-exports.purgeDeletedProjects = functions.pubsub.schedule("every 24 hours").onRun(async (context) => {
-    const db = admin.firestore();
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-
-    const snapshot = await db.collection("projects").where("deletedAt", "<=", thirtyDaysAgo).get();
-
-    if (snapshot.empty) {
-        console.log("No projects to purge.");
-        return null;
-    }
-
-    const promises = [];
-    snapshot.forEach((doc) => {
-        promises.push(permanentlyDeleteProject(doc.id));
-    });
-
-    return Promise.all(promises);
+    return { success: true };
 });

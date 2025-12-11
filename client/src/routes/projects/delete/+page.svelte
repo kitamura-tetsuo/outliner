@@ -37,7 +37,7 @@
 
     async function handleDelete() {
         if (projectToDelete) {
-            await projectService.deleteProject(projectToDelete.id);
+            await projectService.deleteProject(projectToDelete.id, projectToDelete.name);
             projectToDelete = null;
             syncContainers();
         }
@@ -56,8 +56,8 @@
             projectTitle={projectToDelete.name}
             message="This will move the project to the trash. It will be permanently deleted after 30 days."
             confirmText="Delete"
-            on:delete={handleDelete}
-            on:cancel={() => (projectToDelete = null)}
+            onDelete={handleDelete}
+            onCancel={() => (projectToDelete = null)}
         />
     {/if}
 
@@ -78,7 +78,7 @@
                         <td>
                             <button
                                 class="bg-red-500 text-white px-4 py-2 rounded"
-                                on:click={() => openDeleteDialog(project)}
+                                onclick={() => openDeleteDialog(project)}
                             >
                                 Delete
                             </button>

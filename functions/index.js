@@ -1683,6 +1683,8 @@ exports.adminCheckForContainerUserListing = onRequest(
   },
 );
 
+exports.permanentlyDeleteProject = require("./src/permanentlyDeleteProject").permanentlyDeleteProject;
+
 // 管理者ユーザーリスト API
 exports.adminUserList = onRequest(
   async (req, res) => {

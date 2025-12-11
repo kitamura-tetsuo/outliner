@@ -5,7 +5,7 @@
     import type { FirestoreProject } from "../../../types/project";
     import DeleteProjectDialog from "../../../components/DeleteProjectDialog.svelte";
 
-    let deletedProjects: FirestoreProject[] = [];
+    let deletedProjects = $state<FirestoreProject[]>([]);
     let projectToDelete: FirestoreProject | null = $state(null);
 
     onMount(async () => {
@@ -20,7 +20,7 @@
         deletedProjects = deletedProjects.filter(p => p.id !== projectId);
     }
 
-    function openDeleteDialog(project) {
+    function openDeleteDialog(project: FirestoreProject) {
         projectToDelete = project;
     }
 
@@ -40,8 +40,8 @@
         projectTitle={projectToDelete.title}
         message="This will permanently delete the project. This action cannot be undone."
         confirmText="Delete Permanently"
-        on:delete={permanentlyDeleteProject}
-        on:cancel={() => (projectToDelete = null)}
+        onDelete={permanentlyDeleteProject}
+        onCancel={() => (projectToDelete = null)}
     />
 {/if}
 
@@ -61,8 +61,8 @@
                 <td>{new Date(project.deletedAt).toLocaleString()}</td>
                 <td>{project.deletedBy}</td>
                 <td>
-                    <button on:click={() => restoreProject(project.id)}>Restore</button>
-                    <button on:click={() => openDeleteDialog(project)}>Delete Permanently</button>
+                    <button onclick={() => restoreProject(project.id)}>Restore</button>
+                    <button onclick={() => openDeleteDialog(project)}>Delete Permanently</button>
                 </td>
             </tr>
         {/each}
