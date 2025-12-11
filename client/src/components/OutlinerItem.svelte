@@ -1902,7 +1902,12 @@ onMount(() => {
     <div class="item-header">
         {#if !isPageTitle}
             {#if hasChildren}
-                <button class="collapse-btn" onclick={toggleCollapse}>
+                <button
+                    class="collapse-btn"
+                    onclick={toggleCollapse}
+                    aria-label={isCollapsed ? "Expand item" : "Collapse item"}
+                    aria-expanded={!isCollapsed}
+                >
                     {isCollapsed ? "▶" : "▼"}
                 </button>
             {:else}
@@ -1993,6 +1998,7 @@ onMount(() => {
                         <select
                             value={(componentType ?? compTypeValue) || "none"}
                             onchange={(e: Event) => handleComponentTypeChange(String((e.target as HTMLSelectElement)?.value ?? "none"))}
+                            aria-label="Item component type"
                         >
                             <option value="none">テキスト</option>
                             <option value="table">テーブル</option>
@@ -2015,13 +2021,15 @@ onMount(() => {
 
         {#if !isPageTitle}
             <div class="item-actions">
-                <button onclick={addNewItem} title="新しいアイテムを追加">+</button>
-                <button onclick={handleDelete} title="削除">×</button>
+                <button onclick={addNewItem} title="新しいアイテムを追加" aria-label="Add new item">+</button>
+                <button onclick={handleDelete} title="削除" aria-label="Delete item">×</button>
                 <button
                     onclick={toggleVote}
                     class="vote-btn"
                     class:voted={model.votes.includes(currentUser)}
                     title="投票"
+                    aria-label="Vote for this item"
+                    aria-pressed={model.votes.includes(currentUser)}
                 >
                     ⭐
                 </button>
