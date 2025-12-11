@@ -1825,8 +1825,9 @@ exports.deleteAllProductionData = onRequest(
     try {
       const { adminToken, confirmationCode } = req.body;
 
-      // 管理者トークンの検証（簡易的な実装）
-      if (!adminToken || adminToken !== "ADMIN_DELETE_ALL_DATA_2024") {
+      // 管理者トークンの検証
+      const adminSecret = process.env.ADMIN_DELETE_TOKEN;
+      if (!adminToken || !adminSecret || adminToken !== adminSecret) {
         logger.warn("Unauthorized attempt to delete all production data");
         return res.status(401).json({ error: "Unauthorized" });
       }
