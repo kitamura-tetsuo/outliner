@@ -181,7 +181,7 @@ export async function renameProject(newTitle: string): Promise<void> {
     setContainerTitleInMetaDoc(client.roomName, newTitle);
 
     // Update the project in the registry
-    for (const [key, value] of registry.entries()) {
+    for (const [, value] of registry.entries()) {
         const [registeredClient] = value;
         if (registeredClient === client) {
             registry.set({ type: "container", id: client.roomName }, [client, project]);

@@ -3,8 +3,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Project Renaming", () => {
     test("should allow a user to rename a project", async ({ page }) => {
-        const { projectName } = await TestHelpers.prepareTestEnvironment(page);
-        const initialProjectName = projectName;
+        await TestHelpers.prepareTestEnvironment(page);
 
         // Navigate to the settings page
         await page.goto("/settings");

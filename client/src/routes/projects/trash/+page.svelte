@@ -55,7 +55,7 @@
         </tr>
     </thead>
     <tbody>
-        {#each deletedProjects as project}
+        {#each deletedProjects as project (project.id)}
             <tr>
                 <td>{project.title}</td>
                 <td>{new Date(project.deletedAt).toLocaleString()}</td>

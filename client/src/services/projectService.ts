@@ -1,12 +1,12 @@
 import { getAuth } from "firebase/auth";
-import { deleteDoc, doc, getFirestore, updateDoc } from "firebase/firestore";
+import { doc, getFirestore, updateDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { yjsService } from "../lib/yjsService.svelte";
+import { yjsStore } from "../stores/yjsStore.svelte";
 import { Project } from "../schema/app-schema";
 
 class ProjectService {
     async deleteProject(projectId: string, projectTitle: string) {
-        const ydoc = await yjsService.getYDoc(projectId);
+        const ydoc = await yjsStore.getYDoc(projectId);
         const project = Project.fromDoc(ydoc);
         const auth = getAuth();
         const user = auth.currentUser;
@@ -27,7 +27,7 @@ class ProjectService {
     }
 
     async restoreProject(projectId: string) {
-        const ydoc = await yjsService.getYDoc(projectId);
+        const ydoc = await yjsStore.getYDoc(projectId);
         const project = Project.fromDoc(ydoc);
         project.deletedAt = null;
         project.deletedBy = null;
