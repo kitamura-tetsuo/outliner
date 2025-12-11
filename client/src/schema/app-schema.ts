@@ -516,6 +516,30 @@ export class Project {
         this.ydoc.getMap("metadata").set("title", v);
     }
 
+    get deletedAt(): number | null {
+        return (this.ydoc.getMap("metadata").get("deletedAt") as number) ?? null;
+    }
+
+    set deletedAt(v: number | null) {
+        if (v === null) {
+            this.ydoc.getMap("metadata").delete("deletedAt");
+        } else {
+            this.ydoc.getMap("metadata").set("deletedAt", v);
+        }
+    }
+
+    get deletedBy(): string | null {
+        return (this.ydoc.getMap("metadata").get("deletedBy") as string) ?? null;
+    }
+
+    set deletedBy(v: string | null) {
+        if (v === null) {
+            this.ydoc.getMap("metadata").delete("deletedBy");
+        } else {
+            this.ydoc.getMap("metadata").set("deletedBy", v);
+        }
+    }
+
     // ルート直下のItems（親キー 'root'）
     get items(): Items {
         return wrapArrayLike(new Items(this.ydoc, this.tree, "root"));

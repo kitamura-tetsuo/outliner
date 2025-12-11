@@ -13,6 +13,7 @@ const ConfigSchema = z.object({
     IDLE_TIMEOUT_MS: z.coerce.number().default(60_000),
     MAX_MESSAGE_SIZE_BYTES: z.coerce.number().default(1_000_000),
     ORIGIN_ALLOWLIST: z.string().default(""),
+    YJS_SECRET_KEY: z.string().default("default-secret-key"),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
