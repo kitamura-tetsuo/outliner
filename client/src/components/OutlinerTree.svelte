@@ -56,8 +56,6 @@ let containerRef = $state<HTMLDivElement | null>(null);
 let itemHeights = $state<number[]>([]);
 // 非リアクティブな前回長さの記録（$effect内での自己参照ループを防ぐ）
 
-let itemPositions = $state<number[]>([]);
-
 // ドラッグ選択関連の状態
 let isDragging = $state(false);
 let dragStartItemId = $state<string | null>(null);
@@ -108,64 +106,18 @@ let displayItems = $derived.by<DisplayItem[]>(() => {
     return viewModel.getVisibleItems();
 });
 
-
-
-
-
-// アイテムの高さが変更されたときに位置を再計算
-function updateItemPositions() {
+let itemPositions = $derived.by(() => {
     let currentTop = 8; // 最初のアイテムの上部マージン
-    itemPositions = itemHeights.map((height) => {
+    // Ensure we map over displayItems to guarantee correct length and order
+    return displayItems.map((_, index) => {
+        const height = itemHeights[index];
         const position = currentTop;
         // 最小高さ36pxを考慮
         const effectiveHeight = Math.max(height || 28, 28);
-        // ページタイトルの後は24px、それ以降は36pxの間隔
         currentTop += effectiveHeight;
         return position;
     });
-
-    // デバッグ用のログ
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-        console.log("Heights:", $state.snapshot(itemHeights));
-        console.log("Positions:", $state.snapshot(itemPositions));
-    }
-}
-
-// 安全に高さを更新する関数：変更がある場合のみ状態を更新
-
-
-
-
-// アイテムの高さが変更されたときのハンドラ
-function handleItemResize(event: CustomEvent) {
-    const { index, height } = event.detail;
-    if (typeof index === 'number' && typeof height === 'number') {
-        // 高さが実際に変更され、かつ0より大きい場合のみ更新
-        if (index >= 0 && index < itemHeights.length && itemHeights[index] !== height && height > 0) {
-            // Create a new array to avoid issues with state updates
-            const newHeights = [...itemHeights];
-            newHeights[index] = height;
-            // Only update if the array actually changed
-            let arraysDifferent = false;
-            for (let i = 0; i < itemHeights.length; i++) {
-                if (itemHeights[i] !== newHeights[i]) {
-                    arraysDifferent = true;
-                    break;
-                }
-            }
-
-            if (arraysDifferent) {
-                itemHeights = newHeights; // 新しい配列を作成して状態を更新
-                updateItemPositions();
-
-                // デバッグ用のログ
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`Item ${index} height changed to ${height}px`);
-                }
-            }
-        }
-    }
-}
+});
 
 onMount(() => {
     currentUser = userManager.getCurrentUser()?.id ?? "anonymous";
@@ -180,8 +132,6 @@ onMount(() => {
     const initialLength = 1; // Start with just the page title
     itemHeights = new Array(initialLength).fill(0);
 
-    // 初期表示時に重なりを避けるため、暫定レイアウトで位置を先に確定
-    updateItemPositions();
 });
 
 // 可視アイテム数の変化に反応して高さを再測定（$effect は未使用）
@@ -1549,7 +1499,6 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
                     on:indent={handleIndent}
                     on:unindent={handleUnindent}
                     on:navigate-to-item={handleNavigateToItem}
-                    on:resize={handleItemResize}
                     on:add-sibling={handleAddSibling}
                     on:drag-start={handleItemDragStart}
                     on:drag={handleItemDrag}
