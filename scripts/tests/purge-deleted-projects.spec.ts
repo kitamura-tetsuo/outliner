@@ -1,7 +1,7 @@
+import { vi, test, expect, describe } from "vitest";
 import * as fs from "fs";
-import * as path from "path";
-import { describe, expect, test, vi } from "vitest";
 import * as vm from "vm";
+import * as path from "path";
 
 const mockFetch = vi.fn();
 const mockGet = vi.fn();

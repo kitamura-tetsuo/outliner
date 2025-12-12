@@ -6,7 +6,7 @@
 		onDelete,
 		onCancel
 	} = $props();
-	let confirmTitle = '';
+	let confirmTitle = $state('');
 
 	function handleDelete() {
 		if (confirmTitle === projectTitle) {
