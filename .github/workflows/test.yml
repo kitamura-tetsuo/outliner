@@ -71,9 +71,9 @@ jobs:
               echo "No changes were made by dprint fmt"
               echo "format_fixed=false" >> $GITHUB_OUTPUT
             else
-              # Configure git
-              git config --local user.email "action@github.com"
-              git config --local user.name "GitHub Action"
+              # Configure git (use --global as fallback for container environments)
+              git config user.email "action@github.com" || git config --global user.email "action@github.com"
+              git config user.name "GitHub Action" || git config --global user.name "GitHub Action"
 
               # Only auto-commit for push/PR events, not workflow_run
               if [[ "${{ github.event_name }}" == "push" || "${{ github.event_name }}" == "pull_request" ]]; then
