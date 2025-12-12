@@ -1973,7 +1973,6 @@ onMount(() => {
                     <span class="comment-count-visual" aria-hidden="true">{commentCountVisual}</span>
                 {/if}
                 {#if !isPageTitle}
-                    <!-- Comment toggle button with accessibility labels -->
                     <button
                         type="button"
                         class="comment-button"
